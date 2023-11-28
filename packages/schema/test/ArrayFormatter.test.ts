@@ -72,7 +72,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, { a: "a", b: 1 }, [{
       _tag: "Unexpected",
       path: ["b"],
-      message: "Unexpected value 1"
+      message: `Unexpected, expected "a"`
     }])
   })
 
@@ -81,7 +81,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, ["a", 1], [{
       _tag: "Unexpected",
       path: [1],
-      message: "Unexpected value 1"
+      message: "Unexpected"
     }])
   })
 
@@ -140,7 +140,7 @@ describe("ArrayFormatter", () => {
       {
         _tag: "Unexpected",
         path: ["a"],
-        message: "Unexpected value 1"
+        message: `Unexpected, expected "age" or "name" or "tags"`
       },
       {
         _tag: "Missing",

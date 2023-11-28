@@ -55,7 +55,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        "/b is unexpected",
+        `/b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -79,7 +79,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        "/b is unexpected",
+        `/b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -107,7 +107,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        "/b is unexpected",
+        `/b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -131,7 +131,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        "/b is unexpected",
+        `/b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -162,7 +162,7 @@ describe("Schema/struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `/b is unexpected`,
+        `/b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -174,7 +174,7 @@ describe("Schema/struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `/b is unexpected`,
+        `/b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -186,7 +186,7 @@ describe("Schema/struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `/b is unexpected`,
+        `/b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -199,7 +199,7 @@ describe("Schema/struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `/b is unexpected`,
+        `/b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })

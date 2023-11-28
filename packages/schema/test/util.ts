@@ -9,7 +9,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
-import * as O from "effect/Option"
+import * as Option from "effect/Option"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as RA from "effect/ReadonlyArray"
 import * as fc from "fast-check"
@@ -39,7 +39,7 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
     case "Tuple":
       return AST.createTuple(
         ast.elements.map((e) => AST.createElement(effectifyAST(e.type, mode), e.isOptional)),
-        O.map(ast.rest, RA.map((ast) => effectifyAST(ast, mode))),
+        Option.map(ast.rest, RA.map((ast) => effectifyAST(ast, mode))),
         ast.isReadonly,
         ast.annotations
       )
@@ -264,9 +264,9 @@ const formatDecodeError = (e: PR.ParseErrors): string => {
     case "Type":
       return pipe(
         getMessage(e.expected),
-        O.map((f) => f(e.actual)),
-        O.orElse(() => e.message),
-        O.getOrElse(() =>
+        Option.map((f) => f(e.actual)),
+        Option.orElse(() => e.message),
+        Option.getOrElse(() =>
           `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
         )
       )
@@ -279,7 +279,8 @@ const formatDecodeError = (e: PR.ParseErrors): string => {
     case "Missing":
       return `is missing`
     case "Unexpected":
-      return `is unexpected`
+      return "is unexpected" +
+        (Option.isSome(e.ast) ? `, expected ${formatExpected(e.ast.value)}` : "")
     case "UnionMember":
       return `union member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
   }

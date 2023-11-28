@@ -82,24 +82,24 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: 1, b: "b", c: "c" },
-          `/b is unexpected, /c is unexpected`,
+          `/b is unexpected, expected "a", /c is unexpected, expected "a"`,
           { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
     })
 
     describe("record", () => {
-      it("wrong type for keys", async () => {
+      it("all key errors", async () => {
         const schema = S.record(S.string.pipe(S.minLength(2)), S.number)
         await Util.expectParseFailure(
           schema,
           { a: 1, b: 2 },
-          `/a Expected a string at least 2 character(s) long, actual "a", /b Expected a string at least 2 character(s) long, actual "b"`,
-          Util.allErrors
+          `/a is unexpected, expected a string at least 2 character(s) long, /b is unexpected, expected a string at least 2 character(s) long`,
+          { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
 
-      it("wrong type for values", async () => {
+      it("all value errors", async () => {
         const schema = S.record(S.string, S.number)
         await Util.expectParseFailure(
           schema,
@@ -178,8 +178,8 @@ describe("Schema/allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           { aa: "a", bb: "bb" },
-          `/aa Expected a character, actual "aa", /bb Expected a character, actual "bb"`,
-          Util.allErrors
+          `/aa is unexpected, expected a character, /bb is unexpected, expected a character`,
+          { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
 

@@ -26,7 +26,7 @@ describe("Schema/onExcess", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b", c: true },
-        `union member: /c is unexpected, union member: /b is unexpected`,
+        `union member: /c is unexpected, expected "a" or "b", union member: /b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
       await Util.expectEncodeSuccess(

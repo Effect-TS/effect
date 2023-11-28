@@ -1,9 +1,10 @@
 /**
  * @since 1.0.0
  */
+import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { ParseErrors } from "./ParseResult.js"
-import { formatActual, getMessage } from "./TreeFormatter.js"
+import { formatExpected, getMessage } from "./TreeFormatter.js"
 
 /**
  * @category model
@@ -31,7 +32,12 @@ const format = (self: ParseErrors, path: ReadonlyArray<PropertyKey> = []): Array
     case "Forbidden":
       return [{ _tag, path, message: "Forbidden" }]
     case "Unexpected":
-      return [{ _tag, path, message: `Unexpected value ${formatActual(self.actual)}` }]
+      return [{
+        _tag,
+        path,
+        message: "Unexpected" +
+          (Option.isSome(self.ast) ? `, expected ${formatExpected(self.ast.value)}` : "")
+      }]
   }
 }
 

@@ -41,7 +41,7 @@ describe("formatErrors", () => {
       { a: "a", b: 1 },
       `error(s) found
 └─ ["b"]
-   └─ is unexpected`,
+   └─ is unexpected, expected "a"`,
       Util.onExcessPropertyError
     )
   })

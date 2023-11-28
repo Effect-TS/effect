@@ -383,7 +383,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         if (Option.isNone(ast.rest)) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = ParseResult.index(i, [ParseResult.unexpected(input[i])])
+            const e = ParseResult.index(i, [ParseResult.unexpected(Option.none())])
             if (allErrors) {
               es.push([stepKey++, e])
               continue
@@ -583,23 +583,20 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         expectedKeys[ps.name] = null
       }
 
-      const indexSignatures: Array<readonly [Parser<any, any>, Parser<any, any>]> = []
-      const expectedKeyTypes: {
-        string?: true
-        symbol?: true
-      } = {}
-      for (const is of ast.indexSignatures) {
-        indexSignatures.push([
+      const indexSignatures = ast.indexSignatures.map((is) =>
+        [
           goMemo(is.parameter, isDecoding),
           goMemo(is.type, isDecoding)
-        ])
-        const base = AST.getParameterBase(is.parameter)
-        if (AST.isSymbolKeyword(base)) {
-          expectedKeyTypes.symbol = true
-        } else {
-          expectedKeyTypes.string = true
-        }
-      }
+        ] as const
+      )
+      const expectedAST = AST.createUnion(
+        ast.indexSignatures.map((is): AST.AST => is.parameter).concat(
+          Internal.ownKeys(expectedKeys).map((key) =>
+            Predicate.isSymbol(key) ? AST.createUniqueSymbol(key) : AST.createLiteral(key)
+          )
+        )
+      )
+      const expected = goMemo(expectedAST, isDecoding)
 
       return (input: unknown, options) => {
         if (!Predicate.isRecord(input)) {
@@ -615,15 +612,14 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         const onExcessPropertyError = options?.onExcessProperty === "error"
         if (onExcessPropertyError) {
           for (const key of Internal.ownKeys(input)) {
-            if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
-              if (!(typeof key in expectedKeyTypes)) {
-                const e = ParseResult.key(key, [ParseResult.unexpected(input[key])])
-                if (allErrors) {
-                  es.push([stepKey++, e])
-                  continue
-                } else {
-                  return ParseResult.failures(mutableAppend(sortByIndex(es), e))
-                }
+            const eu = ParseResult.eitherOrUndefined(expected(key, options))
+            if (eu && Either.isLeft(eu)) {
+              const e = ParseResult.key(key, [ParseResult.unexpected(Option.some(expectedAST))])
+              if (allErrors) {
+                es.push([stepKey++, e])
+                continue
+              } else {
+                return ParseResult.failures(mutableAppend(sortByIndex(es), e))
               }
             }
           }
@@ -704,28 +700,16 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // handle index signatures
         // ---------------------------------------------
         for (let i = 0; i < indexSignatures.length; i++) {
-          const parameter = indexSignatures[i][0]
-          const type = indexSignatures[i][1]
+          const indexSignature = indexSignatures[i]
+          const parameter = indexSignature[0]
+          const type = indexSignature[1]
           const keys = Internal.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
           for (const key of keys) {
-            if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
-              // ---------------------------------------------
-              // handle keys
-              // ---------------------------------------------
-              const keu = ParseResult.eitherOrUndefined(parameter(key, options))
-              if (keu) {
-                if (Either.isLeft(keu)) {
-                  const e = ParseResult.key(key, keu.left.errors)
-                  if (allErrors) {
-                    es.push([stepKey++, e])
-                    continue
-                  } else {
-                    return ParseResult.failures(mutableAppend(sortByIndex(es), e))
-                  }
-                }
-              }
-              // there's no else here because index signature parameters are restricted to primitives
-
+            // ---------------------------------------------
+            // handle keys
+            // ---------------------------------------------
+            const keu = ParseResult.eitherOrUndefined(parameter(key, options))
+            if (keu && Either.isRight(keu)) {
               // ---------------------------------------------
               // handle values
               // ---------------------------------------------

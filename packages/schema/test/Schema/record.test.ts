@@ -20,22 +20,14 @@ describe("Schema/record", () => {
         [],
         "Expected <anonymous type literal schema>, actual []"
       )
-      await Util.expectParseFailure(
-        schema,
-        { a: "a" },
-        `/a Expected number, actual "a"`
-      )
+      await Util.expectParseFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
       const b = Symbol.for("@effect/schema/test/b")
+      await Util.expectParseSuccess(schema, { a: 1, [b]: "b" }, { a: 1 })
       await Util.expectParseFailure(
         schema,
         { a: 1, [b]: "b" },
-        "/Symbol(@effect/schema/test/b) is unexpected",
+        "/Symbol(@effect/schema/test/b) is unexpected, expected string",
         Util.onExcessPropertyError
-      )
-      await Util.expectParseSuccess(
-        schema,
-        { a: 1, [b]: "b" },
-        { a: 1 }
       )
     })
 
@@ -55,16 +47,16 @@ describe("Schema/record", () => {
         { [a]: "a" },
         `/Symbol(@effect/schema/test/a) Expected number, actual "a"`
       )
-      await Util.expectParseFailure(
-        schema,
-        { [a]: 1, b: "b" },
-        "/b is unexpected",
-        Util.onExcessPropertyError
-      )
       await Util.expectParseSuccess(
         schema,
         { [a]: 1, b: "b" },
         { [a]: 1 }
+      )
+      await Util.expectParseFailure(
+        schema,
+        { [a]: 1, b: "b" },
+        "/b is unexpected, expected symbol",
+        Util.onExcessPropertyError
       )
     })
 
@@ -133,16 +125,8 @@ describe("Schema/record", () => {
       await Util.expectParseSuccess(schema, { [a]: 1, [b]: 2 })
 
       await Util.expectParseFailure(schema, {}, `/Symbol(@effect/schema/test/a) is missing`)
-      await Util.expectParseFailure(
-        schema,
-        { [a]: 1 },
-        `/Symbol(@effect/schema/test/b) is missing`
-      )
-      await Util.expectParseFailure(
-        schema,
-        { [b]: 2 },
-        `/Symbol(@effect/schema/test/a) is missing`
-      )
+      await Util.expectParseFailure(schema, { [a]: 1 }, `/Symbol(@effect/schema/test/b) is missing`)
+      await Util.expectParseFailure(schema, { [b]: 2 }, `/Symbol(@effect/schema/test/a) is missing`)
     })
 
     it("record(${string}-${string}, number)", async () => {
@@ -152,34 +136,57 @@ describe("Schema/record", () => {
       await Util.expectParseSuccess(schema, { "a-": 1 })
       await Util.expectParseSuccess(schema, { "-b": 1 })
       await Util.expectParseSuccess(schema, { "a-b": 1 })
+      await Util.expectParseSuccess(schema, { "": 1 }, {})
+      await Util.expectParseSuccess(schema, { "a": 1 }, {})
+      await Util.expectParseSuccess(schema, { "a": "a" }, {})
+
+      await Util.expectParseFailure(schema, { "-": "a" }, `/- Expected number, actual "a"`)
+      await Util.expectParseFailure(schema, { "a-": "a" }, `/a- Expected number, actual "a"`)
+      await Util.expectParseFailure(schema, { "-b": "b" }, `/-b Expected number, actual "b"`)
+      await Util.expectParseFailure(schema, { "a-b": "ab" }, `/a-b Expected number, actual "ab"`)
 
       await Util.expectParseFailure(
         schema,
-        { "": 1 },
-        "/ Expected ${string}-${string}, actual \"\""
-      )
-      await Util.expectParseFailure(
-        schema,
-        { "-": "a" },
-        `/- Expected number, actual "a"`
+        { "a": 1 },
+        "/a is unexpected, expected ${string}-${string}",
+        Util.onExcessPropertyError
       )
     })
 
     it("record(minLength(2), number)", async () => {
       const schema = S.record(S.string.pipe(S.minLength(2)), S.number)
       await Util.expectParseSuccess(schema, {})
+      await Util.expectParseSuccess(schema, { "a": 1 }, {})
+      await Util.expectParseSuccess(schema, { "a": "a" }, {})
       await Util.expectParseSuccess(schema, { "aa": 1 })
       await Util.expectParseSuccess(schema, { "aaa": 1 })
 
-      await Util.expectParseFailure(
-        schema,
-        { "": 1 },
-        `/ Expected a string at least 2 character(s) long, actual ""`
-      )
+      await Util.expectParseFailure(schema, { "aa": "aa" }, `/aa Expected number, actual "aa"`)
       await Util.expectParseFailure(
         schema,
         { "a": 1 },
-        `/a Expected a string at least 2 character(s) long, actual "a"`
+        "/a is unexpected, expected a string at least 2 character(s) long",
+        Util.onExcessPropertyError
+      )
+    })
+
+    it("record(${string}-${string}, number) & record(string, string | number)", async () => {
+      const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number).pipe(
+        S.extend(S.record(S.string, S.union(S.string, S.number)))
+      )
+      await Util.expectParseSuccess(schema, {})
+      await Util.expectParseSuccess(schema, { "a": "a" })
+      await Util.expectParseSuccess(schema, { "a-": 1 })
+
+      await Util.expectParseFailure(
+        schema,
+        { "a-": "a" },
+        `/a- Expected number, actual "a"`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { "a": true },
+        `/a union member: Expected string, actual true, union member: Expected number, actual true`
       )
     })
 
@@ -187,17 +194,19 @@ describe("Schema/record", () => {
       const schema = S.record(S.NonEmpty.pipe(S.brand("UserId")), S.number)
       await Util.expectParseSuccess(schema, {})
       await Util.expectParseSuccess(schema, { "a": 1 })
+      await Util.expectParseSuccess(schema, { "": 1 }, {})
+      await Util.expectParseSuccess(schema, { "": "" }, {})
 
       await Util.expectParseFailure(
         schema,
         { "": 1 },
-        `/ Expected a non empty string, actual ""`
+        "/ is unexpected, expected a non empty string",
+        Util.onExcessPropertyError
       )
     })
   })
 
   describe("encoding", () => {
-    // raises an error while encoding if the string is not a char
     const Char = S.string.pipe(S.length(1))
 
     it("key error", async () => {
@@ -205,7 +214,8 @@ describe("Schema/record", () => {
       await Util.expectEncodeFailure(
         schema,
         { aa: "a" },
-        `/aa Expected a character, actual "aa"`
+        `/aa is unexpected, expected a character`,
+        Util.onExcessPropertyError
       )
     })
 

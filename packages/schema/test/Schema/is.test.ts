@@ -423,20 +423,39 @@ describe("Schema/is", () => {
     expect(is({ "a-": 1 })).toEqual(true)
     expect(is({ "-b": 1 })).toEqual(true)
     expect(is({ "a-b": 1 })).toEqual(true)
+    expect(is({ "": 1 })).toEqual(true)
+    expect(is({ "a": 1 })).toEqual(true)
+    expect(is({ "a": "a" })).toEqual(true)
 
-    expect(is({ "": 1 })).toEqual(false)
     expect(is({ "-": "a" })).toEqual(false)
+    expect(is({ "a-": "a" })).toEqual(false)
+    expect(is({ "-b": "b" })).toEqual(false)
+    expect(is({ "a-b": "ab" })).toEqual(false)
   })
 
-  it("record(minLength(1), number)", () => {
+  it("record(minLength(2), number)", () => {
     const schema = S.record(S.string.pipe(S.minLength(2)), S.number)
     const is = P.is(schema)
     expect(is({})).toEqual(true)
+    expect(is({ "a": 1 })).toEqual(true)
+    expect(is({ "a": "a" })).toEqual(true)
     expect(is({ "aa": 1 })).toEqual(true)
     expect(is({ "aaa": 1 })).toEqual(true)
 
-    expect(is({ "": 1 })).toEqual(false)
-    expect(is({ "a": 1 })).toEqual(false)
+    expect(is({ "aa": "aa" })).toEqual(false)
+  })
+
+  it("record(${string}-${string}, number) & record(string, string | number)", () => {
+    const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number).pipe(
+      S.extend(S.record(S.string, S.union(S.string, S.number)))
+    )
+    const is = P.is(schema)
+    expect(is({})).toEqual(true)
+    expect(is({ "a": "a" })).toEqual(true)
+    expect(is({ "a-": 1 })).toEqual(true)
+
+    expect(is({ "a-": "a" })).toEqual(false)
+    expect(is({ "a": true })).toEqual(false)
   })
 
   it("union", () => {

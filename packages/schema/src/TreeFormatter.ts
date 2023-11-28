@@ -162,7 +162,9 @@ const go = (e: ParseErrors): Tree<string> => {
       return make(`[${e.index}]`, es)
     }
     case "Unexpected":
-      return make(`is unexpected`)
+      return make(
+        "is unexpected" + (Option.isSome(e.ast) ? `, expected ${formatExpected(e.ast.value)}` : "")
+      )
     case "Key": {
       const es = e.errors.map(go)
       if (isCollapsible(es, e.errors)) {
