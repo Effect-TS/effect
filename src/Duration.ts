@@ -123,7 +123,7 @@ const DurationProto: Omit<Duration, "value"> = {
     return isDuration(that) && equals(this, that)
   },
   toString(this: Duration) {
-    return toString(this)
+    return `Duration(${format(this)})`
   },
   toJSON(this: Duration) {
     switch (this.value._tag) {
@@ -596,10 +596,10 @@ export const equals: {
  * @example
  * import * as Duration from "effect/Duration"
  *
- * Duration.toString(Duration.millis(1000)) // "1s"
- * Duration.toString(Duration.millis(1001)) // "1s 1ms"
+ * Duration.format(Duration.millis(1000)) // "1s"
+ * Duration.format(Duration.millis(1001)) // "1s 1ms"
  */
-export const toString = (self: DurationInput): string => {
+export const format = (self: DurationInput): string => {
   const duration = decode(self)
   const parts = []
 
