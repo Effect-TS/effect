@@ -127,3 +127,9 @@ export const schemaFormDataJson: <I, A>(
   Error.RequestError | FormData.FormDataError | ParseResult.ParseError,
   A
 > = internal.schemaFormDataJson
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const fromWeb: (request: Request) => ServerRequest = internal.fromWeb

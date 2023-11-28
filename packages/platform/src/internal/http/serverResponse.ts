@@ -2,7 +2,7 @@ import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
-import type * as Stream from "effect/Stream"
+import * as Stream from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
 import type * as FileSystem from "../../FileSystem.js"
 import type * as Body from "../../Http/Body.js"
@@ -259,3 +259,46 @@ export const setBody = dual<
     body
   )
 })
+
+/** @internal */
+export const toWeb = (response: ServerResponse.ServerResponse, withoutBody = false): Response => {
+  if (withoutBody) {
+    return new Response(undefined, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    })
+  }
+  const body = response.body
+  switch (body._tag) {
+    case "Empty": {
+      return new Response(undefined, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+    case "Uint8Array":
+    case "Raw": {
+      return new Response(body.body as any, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+    case "FormData": {
+      return new Response(body.formData as any, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+    case "Stream": {
+      return new Response(Stream.toReadableStream(body.stream), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+  }
+}

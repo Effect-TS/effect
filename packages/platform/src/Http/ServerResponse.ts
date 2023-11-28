@@ -190,3 +190,9 @@ export const setStatus: {
   (status: number, statusText?: string | undefined): (self: ServerResponse) => ServerResponse
   (self: ServerResponse, status: number, statusText?: string | undefined): ServerResponse
 } = internal.setStatus
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toWeb: (response: ServerResponse, withoutBody?: boolean) => Response = internal.toWeb
