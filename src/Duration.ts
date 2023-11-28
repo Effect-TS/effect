@@ -6,7 +6,7 @@ import type * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as Hash from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
-import { NodeInspectSymbol, toString } from "./Inspectable.js"
+import { format, NodeInspectSymbol } from "./Inspectable.js"
 import * as Option from "./Option.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -123,7 +123,7 @@ const DurationProto: Omit<Duration, "value"> = {
     return isDuration(that) && equals(this, that)
   },
   toString(this: Duration) {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON(this: Duration) {
     switch (this.value._tag) {

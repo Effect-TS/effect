@@ -31,7 +31,7 @@ Added in v2.0.0
   - [make](#make)
   - [unsafeFromString](#unsafefromstring)
 - [conversions](#conversions)
-  - [toString](#tostring)
+  - [format](#format)
   - [unsafeToNumber](#unsafetonumber)
 - [guards](#guards)
   - [isBigDecimal](#isbigdecimal)
@@ -172,24 +172,24 @@ Added in v2.0.0
 
 # conversions
 
-## toString
+## format
 
 Formats a given `BigDecimal` as a `string`.
 
 **Signature**
 
 ```ts
-export declare const toString: (n: BigDecimal) => string
+export declare const format: (n: BigDecimal) => string
 ```
 
 **Example**
 
 ```ts
-import { toString, unsafeFromString } from "effect/BigDecimal"
+import { format, unsafeFromString } from "effect/BigDecimal"
 
-assert.deepStrictEqual(toString(unsafeFromString("-5")), "-5")
-assert.deepStrictEqual(toString(unsafeFromString("123.456")), "123.456")
-assert.deepStrictEqual(toString(unsafeFromString("-0.00000123")), "-0.00000123")
+assert.deepStrictEqual(format(unsafeFromString("-5")), "-5")
+assert.deepStrictEqual(format(unsafeFromString("123.456")), "123.456")
+assert.deepStrictEqual(format(unsafeFromString("-0.00000123")), "-0.00000123")
 ```
 
 Added in v2.0.0

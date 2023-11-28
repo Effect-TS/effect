@@ -4,7 +4,7 @@ import { dual, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
-import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { hasProperty } from "../Predicate.js"
@@ -49,7 +49,7 @@ class None implements FiberId.None {
     return isFiberId(that) && that._tag === OP_NONE
   }
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   }
   toJSON() {
     return {
@@ -85,7 +85,7 @@ class Runtime implements FiberId.Runtime {
       this.startTimeMillis === that.startTimeMillis
   }
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   }
   toJSON() {
     return {
@@ -123,7 +123,7 @@ class Composite implements FiberId.Composite {
       Equal.equals(this.right, that.right)
   }
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   }
   toJSON() {
     return {

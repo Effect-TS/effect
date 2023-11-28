@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as Dual from "./Function.js"
-import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -55,7 +55,7 @@ const MutableListProto: Omit<MutableList<unknown>, "head" | "tail"> = {
     }
   },
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON() {
     return {

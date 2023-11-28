@@ -64,7 +64,7 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
     return isBigDecimal(that) && equals(this, that)
   },
   toString(this: BigDecimal) {
-    return toString(this)
+    return format(this)
   },
   toJSON(this: BigDecimal) {
     return {
@@ -877,16 +877,16 @@ export const unsafeFromString = (s: string): BigDecimal =>
  * @param normalized - The `BigDecimal` to format.
  *
  * @example
- * import { toString, unsafeFromString } from "effect/BigDecimal"
+ * import { format, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(toString(unsafeFromString("-5")), "-5")
- * assert.deepStrictEqual(toString(unsafeFromString("123.456")), "123.456")
- * assert.deepStrictEqual(toString(unsafeFromString("-0.00000123")), "-0.00000123")
+ * assert.deepStrictEqual(format(unsafeFromString("-5")), "-5")
+ * assert.deepStrictEqual(format(unsafeFromString("123.456")), "123.456")
+ * assert.deepStrictEqual(format(unsafeFromString("-0.00000123")), "-0.00000123")
  *
  * @since 2.0.0
  * @category conversions
  */
-export const toString = (n: BigDecimal): string => {
+export const format = (n: BigDecimal): string => {
   const negative = n.value < bigint0
   const absolute = negative ? `${n.value}`.substring(1) : `${n.value}`
 
@@ -927,7 +927,7 @@ export const toString = (n: BigDecimal): string => {
  * @since 2.0.0
  * @category conversions
  */
-export const unsafeToNumber = (n: BigDecimal): number => Number(toString(n))
+export const unsafeToNumber = (n: BigDecimal): number => Number(format(n))
 
 /**
  * Checks if a given `BigDecimal` is an integer.

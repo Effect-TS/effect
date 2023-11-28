@@ -7,7 +7,7 @@ import * as Equivalence from "./Equivalence.js"
 import { dual, identity, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import type { TypeLambda } from "./HKT.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import type { NonEmptyIterable } from "./NonEmptyIterable.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
@@ -127,7 +127,7 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
     _A: (_: never) => _
   },
   toString<A>(this: Chunk<A>) {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON<A>(this: Chunk<A>) {
     return {
