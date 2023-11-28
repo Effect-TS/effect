@@ -200,20 +200,23 @@ describe.concurrent("Duration", () => {
     expect(Duration.lessThanOrEqualTo("2 seconds", "3 seconds")).toBe(true)
   })
 
-  it("toString", () => {
+  it("String()", () => {
     expect(String(Duration.infinity)).toEqual(`Duration(Infinity)`)
     expect(String(Duration.nanos(10n))).toEqual(`Duration(10ns)`)
     expect(String(Duration.millis(2))).toEqual(`Duration(2ms)`)
     expect(String(Duration.millis(2.125))).toEqual(`Duration(2ms 125000ns)`)
     expect(String(Duration.seconds(2))).toEqual(`Duration(2s)`)
     expect(String(Duration.seconds(2.5))).toEqual(`Duration(2s 500ms)`)
-    expect(String(Duration.minutes(5))).toEqual(`Duration(5m)`)
-    expect(String(Duration.minutes(5.325))).toEqual(`Duration(5m 19s 500ms)`)
-    expect(String(Duration.hours(3))).toEqual(`Duration(3h)`)
-    expect(String(Duration.hours(3.11125))).toEqual(`Duration(3h 6m 40s 500ms)`)
-    expect(String(Duration.days(2))).toEqual(`Duration(2d)`)
-    expect(String(Duration.days(2.25))).toEqual(`Duration(2d 6h)`)
-    expect(String(Duration.weeks(1))).toEqual(`Duration(7d)`)
+  })
+
+  it("format", () => {
+    expect(Duration.format(Duration.minutes(5))).toEqual(`Duration(5m)`)
+    expect(Duration.format(Duration.minutes(5.325))).toEqual(`Duration(5m 19s 500ms)`)
+    expect(Duration.format(Duration.hours(3))).toEqual(`Duration(3h)`)
+    expect(Duration.format(Duration.hours(3.11125))).toEqual(`Duration(3h 6m 40s 500ms)`)
+    expect(Duration.format(Duration.days(2))).toEqual(`Duration(2d)`)
+    expect(Duration.format(Duration.days(2.25))).toEqual(`Duration(2d 6h)`)
+    expect(Duration.format(Duration.weeks(1))).toEqual(`Duration(7d)`)
   })
 
   it("toJSON", () => {
