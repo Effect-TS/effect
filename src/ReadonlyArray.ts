@@ -1366,9 +1366,15 @@ export const unionWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  * @since 2.0.0
  */
 export const union: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Array<A | B>
+  <T extends ReadonlyArray<any> | Iterable<any>>(
+    that: T
+  ): <S extends ReadonlyArray<any> | Iterable<any>>(
+    self: S
+  ) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<B>): NonEmptyArray<A | B>
+  <A, B>(self: ReadonlyArray<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B>
-} = unionWith(_equivalence)
+} = unionWith(_equivalence) as any
 
 /**
  * @since 2.0.0
@@ -1385,16 +1391,6 @@ export const unionNonEmptyWith = <A>(isEquivalent: (self: A, that: A) => boolean
     (self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<A>): NonEmptyArray<A> => dedupe(appendAll(self, that))
   )
 }
-
-/**
- * @since 2.0.0
- */
-export const unionNonEmpty: {
-  <A>(that: NonEmptyReadonlyArray<A>): (self: ReadonlyArray<A>) => NonEmptyArray<A>
-  <A>(that: ReadonlyArray<A>): (self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A>
-  <A>(self: ReadonlyArray<A>, that: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
-  <A>(self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<A>): NonEmptyArray<A>
-} = unionNonEmptyWith(_equivalence)
 
 /**
  * Creates an `Array` of unique values that are included in all given `Iterable`s using the provided `isEquivalent` function.

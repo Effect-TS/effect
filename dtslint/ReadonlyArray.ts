@@ -582,3 +582,43 @@ pipe(nonEmptyStrings, ReadonlyArray.rotate(10))
 
 // $ExpectType [string, ...string[]]
 ReadonlyArray.rotate(10)(nonEmptyStrings)
+
+// -------------------------------------------------------------------------------------
+// union
+// -------------------------------------------------------------------------------------
+
+// $ExpectType (string | number)[]
+ReadonlyArray.union(strings, numbers)
+
+// $ExpectType (string | number)[]
+pipe(strings, ReadonlyArray.union(numbers))
+
+// $ExpectType (string | number)[]
+ReadonlyArray.union(numbers)(strings)
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.union(nonEmptyStrings, numbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.union(strings, nonEmptyNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.union(nonEmptyStrings, nonEmptyNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, ReadonlyArray.union(numbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(strings, ReadonlyArray.union(nonEmptyNumbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, ReadonlyArray.union(nonEmptyNumbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.union(numbers)(nonEmptyStrings)
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.union(nonEmptyNumbers)(strings)
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.union(nonEmptyNumbers)(nonEmptyStrings)

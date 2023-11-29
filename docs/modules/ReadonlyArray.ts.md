@@ -160,7 +160,6 @@ Added in v2.0.0
   - [setNonEmptyHead](#setnonemptyhead)
   - [setNonEmptyLast](#setnonemptylast)
   - [union](#union)
-  - [unionNonEmpty](#unionnonempty)
   - [unionNonEmptyWith](#unionnonemptywith)
   - [unionWith](#unionwith)
   - [unzip](#unzip)
@@ -2093,23 +2092,14 @@ Added in v2.0.0
 
 ```ts
 export declare const union: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => (B | A)[]
+  <T extends readonly any[] | Iterable<any>>(
+    that: T
+  ): <S extends readonly any[] | Iterable<any>>(
+    self: S
+  ) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(self: readonly [A, ...A[]], that: readonly B[]): [A | B, ...(A | B)[]]
+  <A, B>(self: readonly A[], that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
   <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
-}
-```
-
-Added in v2.0.0
-
-## unionNonEmpty
-
-**Signature**
-
-```ts
-export declare const unionNonEmpty: {
-  <A>(that: readonly [A, ...A[]]): (self: readonly A[]) => [A, ...A[]]
-  <A>(that: readonly A[]): (self: readonly [A, ...A[]]) => [A, ...A[]]
-  <A>(self: readonly A[], that: readonly [A, ...A[]]): [A, ...A[]]
-  <A>(self: readonly [A, ...A[]], that: readonly A[]): [A, ...A[]]
 }
 ```
 
