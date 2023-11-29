@@ -193,7 +193,7 @@ Added in v2.0.0
 
 ## prependAll
 
-Concatenates two chunks, combining their elements.
+Prepends the specified prefix chunk to the beginning of the specified chunk.
 If either chunk is non-empty, the result is also a non-empty chunk.
 
 **Signature**

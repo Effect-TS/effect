@@ -352,13 +352,24 @@ export const prepend: {
 
 /**
  * Prepends the specified prefix list to the beginning of the specified list.
+ * If either list is non-empty, the result is also a non-empty list.
+ *
+ * @example
+ * import * as List from "effect/List"
+ *
+ * assert.deepStrictEqual(
+ *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
+ *   ["a", "b", 1, 2]
+ * )
  *
  * @category concatenating
  * @since 2.0.0
  */
 export const prependAll: {
-  <B>(prefix: List<B>): <A>(self: List<A>) => List<A | B>
-  <A, B>(self: List<A>, prefix: List<B>): List<A | B>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
+  <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
+  <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
+  <A, B>(self: List<A>, that: List<B>): List<A | B>
 } = dual(2, <A, B>(self: List<A>, prefix: List<B>): List<A | B> => {
   if (isNil(self)) {
     return prefix
@@ -377,17 +388,6 @@ export const prependAll: {
     return result
   }
 })
-
-/**
- * @category concatenating
- * @since 2.0.0
- */
-export const prependAllNonEmpty: {
-  <B>(that: Cons<B>): <A>(self: List<A>) => Cons<B | A>
-  <B>(that: List<B>): <A>(self: Cons<A>) => Cons<B | A>
-  <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
-  <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
-} = dual(2, <A, B>(self: Cons<A>, that: List<B>): Cons<A | B> => prependAll(self, that) as any)
 
 /**
  * Prepends the specified prefix list (in reverse order) to the beginning of the

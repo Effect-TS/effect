@@ -36,7 +36,6 @@ Added in v2.0.0
   - [appendAll](#appendall)
   - [prepend](#prepend)
   - [prependAll](#prependall)
-  - [prependAllNonEmpty](#prependallnonempty)
   - [prependAllReversed](#prependallreversed)
 - [constructors](#constructors)
   - [cons](#cons)
@@ -293,29 +292,25 @@ Added in v2.0.0
 ## prependAll
 
 Prepends the specified prefix list to the beginning of the specified list.
+If either list is non-empty, the result is also a non-empty list.
 
 **Signature**
 
 ```ts
 export declare const prependAll: {
-  <B>(prefix: List<B>): <A>(self: List<A>) => List<B | A>
-  <A, B>(self: List<A>, prefix: List<B>): List<A | B>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
+  <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
+  <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
+  <A, B>(self: List<A>, that: List<B>): List<A | B>
 }
 ```
 
-Added in v2.0.0
-
-## prependAllNonEmpty
-
-**Signature**
+**Example**
 
 ```ts
-export declare const prependAllNonEmpty: {
-  <B>(that: Cons<B>): <A>(self: List<A>) => Cons<B | A>
-  <B>(that: List<B>): <A>(self: Cons<A>) => Cons<B | A>
-  <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
-  <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
-}
+import * as List from "effect/List"
+
+assert.deepStrictEqual(List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray), ["a", "b", 1, 2])
 ```
 
 Added in v2.0.0
