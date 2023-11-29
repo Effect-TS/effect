@@ -226,3 +226,19 @@ List.prependAll(nonEmptyStrings, nonEmptyNumbers)
 
 // $ExpectType Cons<string | number>
 pipe(nonEmptyStrings, List.prependAll(nonEmptyNumbers))
+
+// -------------------------------------------------------------------------------------
+// flatMap
+// -------------------------------------------------------------------------------------
+
+// $ExpectType List<number>
+List.flatMap(strings, (_) => List.empty<number>())
+
+// $ExpectType List<number>
+List.flatMap(strings, (s) => List.of(s.length))
+
+// $ExpectType List<number>
+List.flatMap(nonEmptyStrings, (_s) => List.empty<number>())
+
+// $ExpectType Cons<number>
+List.flatMap(nonEmptyStrings, (s) => List.of(s.length))

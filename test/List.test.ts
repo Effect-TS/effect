@@ -77,12 +77,6 @@ describe.concurrent("List", () => {
     )
   })
 
-  it("flatMapNonEmpty", () => {
-    expect(List.flatMapNonEmpty(List.make(1, 2, 3, 4), (n) => List.make(n - 1, n + 1))).toEqual(
-      List.make(0, 2, 1, 3, 2, 4, 3, 5)
-    )
-  })
-
   it("forEach", () => {
     const as: Array<number> = []
     List.forEach(List.make(1, 2, 3, 4), (n) => as.push(n))

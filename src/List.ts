@@ -633,14 +633,17 @@ export const findFirst: {
 })
 
 /**
- * Flat maps a list using the specified function.
+ * Applies a function to each element in a list and returns a new list containing the concatenated mapped elements.
  *
  * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
-  <A, B>(f: (a: A) => List<B>): (self: List<A>) => List<B>
-  <A, B>(self: List<A>, f: (a: A) => List<B>): List<B>
+  <S extends List<any>, T extends List<any>>(
+    f: (a: List.Infer<S>, i: number) => T
+  ): (self: S) => List.With2<S, T, List.Infer<T>>
+  <A, B>(self: Cons<A>, f: (a: A, i: number) => Cons<B>): Cons<B>
+  <A, B>(self: List<A>, f: (a: A, i: number) => List<B>): List<B>
 } = dual(2, <A, B>(self: List<A>, f: (a: A) => List<B>): List<B> => {
   let rest = self
   let head: MutableCons<B> | undefined = undefined
@@ -664,15 +667,6 @@ export const flatMap: {
   }
   return head
 })
-
-/**
- * @category sequencing
- * @since 2.0.0
- */
-export const flatMapNonEmpty: {
-  <A, B>(f: (a: A) => Cons<B>): (self: Cons<A>) => Cons<B>
-  <A, B>(self: Cons<A>, f: (a: A) => Cons<B>): Cons<B>
-} = flatMap as any
 
 /**
  * Applies the specified function to each element of the `List`.

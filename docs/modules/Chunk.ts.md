@@ -1024,7 +1024,7 @@ Added in v2.0.0
 
 ## flatMap
 
-Returns a chunk with the elements mapped by the specified function.
+Applies a function to each element in a chunk and returns a new chunk containing the concatenated mapped elements.
 
 **Signature**
 
