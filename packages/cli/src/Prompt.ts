@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { Terminal, UserInput } from "@effect/platform/Terminal"
+import type { QuitException, Terminal, UserInput } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
@@ -32,7 +32,7 @@ export type PromptTypeId = typeof PromptTypeId
  * @category models
  */
 export interface Prompt<Output>
-  extends Prompt.Variance<Output>, Pipeable, Effect<Terminal, never, Output>
+  extends Prompt.Variance<Output>, Pipeable, Effect<Terminal, QuitException, Output>
 {}
 
 /**
@@ -455,7 +455,7 @@ export const map: {
  * @since 1.0.0
  * @category execution
  */
-export const run: <Output>(self: Prompt<Output>) => Effect<Terminal, never, Output> =
+export const run: <Output>(self: Prompt<Output>) => Effect<Terminal, QuitException, Output> =
   InternalPrompt.run
 
 /**

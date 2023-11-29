@@ -1,4 +1,5 @@
 import type * as Terminal from "@effect/platform/Terminal"
+import * as Color from "@effect/printer-ansi/Color"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -9,12 +10,12 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as BuiltInOptions from "../BuiltInOptions.js"
 import type * as CliApp from "../CliApp.js"
 import type * as CliConfig from "../CliConfig.js"
-import type * as Command from "../Command.js"
+import type * as Command from "../CommandDescriptor.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalCliConfig from "./cliConfig.js"
-import * as InternalCommand from "./command.js"
+import * as InternalCommand from "./commandDescriptor.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalUsage from "./usage.js"
@@ -84,7 +85,14 @@ export const run = dual<
       onSuccess: Effect.unifiedFn((directive) => {
         switch (directive._tag) {
           case "UserDefined": {
-            return execute(directive.value)
+            return execute(directive.value).pipe(
+              Effect.catchSome((e) =>
+                InternalValidationError.isValidationError(e) &&
+                  InternalValidationError.isHelpRequested(e)
+                  ? Option.some(handleBuiltInOption(self, e.showHelp, config))
+                  : Option.none()
+              )
+            )
           }
           case "BuiltIn": {
             return handleBuiltInOption(self, directive.option, config).pipe(
@@ -178,41 +186,53 @@ const handleBuiltInOption = <A>(
       )
     }
     case "ShowWizard": {
-      const summary = InternalSpan.isEmpty(self.summary)
-        ? InternalSpan.empty
-        : InternalSpan.spans([
-          InternalSpan.space,
-          InternalSpan.text("--"),
-          InternalSpan.space,
-          self.summary
-        ])
-      const instructions = InternalHelpDoc.sequence(
-        InternalHelpDoc.p(InternalSpan.spans([
-          InternalSpan.text("The wizard mode will assist you with constructing commands for"),
-          InternalSpan.space,
-          InternalSpan.code(`${self.name} (${self.version})`),
-          InternalSpan.text(".")
-        ])),
-        InternalHelpDoc.p("Please answer all prompts provided by the wizard.")
-      )
-      const description = InternalHelpDoc.descriptionList([[
-        InternalSpan.text("Instructions"),
-        instructions
-      ]])
-      const header = InternalHelpDoc.h1(
-        InternalSpan.spans([
-          InternalSpan.code("Wizard Mode for CLI Application:"),
-          InternalSpan.space,
-          InternalSpan.code(self.name),
-          InternalSpan.space,
-          InternalSpan.code(`(${self.version})`),
-          summary
-        ])
-      )
-      const help = InternalHelpDoc.sequence(header, description)
-      return Console.log(InternalHelpDoc.toAnsiText(help)).pipe(
-        Effect.zipRight(InternalCommand.wizard(builtIn.command, config)),
-        Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args))))
+      const commandNames = ReadonlyArray.fromIterable(InternalCommand.getNames(self.command))
+      if (ReadonlyArray.isNonEmptyReadonlyArray(commandNames)) {
+        const programName = ReadonlyArray.headNonEmpty(commandNames)
+        const summary = InternalSpan.isEmpty(self.summary)
+          ? InternalSpan.empty
+          : InternalSpan.spans([
+            InternalSpan.space,
+            InternalSpan.text("--"),
+            InternalSpan.space,
+            self.summary
+          ])
+        const instructions = InternalHelpDoc.sequence(
+          InternalHelpDoc.p(InternalSpan.spans([
+            InternalSpan.text("The wizard mode will assist you with constructing commands for"),
+            InternalSpan.space,
+            InternalSpan.code(`${self.name} (${self.version})`),
+            InternalSpan.text(".")
+          ])),
+          InternalHelpDoc.p("Please answer all prompts provided by the wizard.")
+        )
+        const description = InternalHelpDoc.descriptionList([[
+          InternalSpan.text("Instructions"),
+          instructions
+        ]])
+        const header = InternalHelpDoc.h1(
+          InternalSpan.spans([
+            InternalSpan.code("Wizard Mode for CLI Application:"),
+            InternalSpan.space,
+            InternalSpan.code(self.name),
+            InternalSpan.space,
+            InternalSpan.code(`(${self.version})`),
+            summary
+          ])
+        )
+        const help = InternalHelpDoc.sequence(header, description)
+        const text = InternalHelpDoc.toAnsiText(help)
+        return Console.log(text).pipe(
+          Effect.zipRight(InternalCommand.wizard(builtIn.command, programName, config)),
+          Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args)))),
+          Effect.catchTag("QuitException", () => {
+            const message = InternalHelpDoc.p(InternalSpan.error("\n\nQuitting wizard mode..."))
+            return Console.log(InternalHelpDoc.toAnsiText(message))
+          })
+        )
+      }
+      throw new Error(
+        "[BUG]: BuiltInOptions.showWizard - received empty list of command names"
       )
     }
     case "ShowVersion": {
@@ -260,13 +280,15 @@ const renderWizardArgs = (args: ReadonlyArray<string>) => {
     ReadonlyArray.filter(args, (param) => param.length > 0),
     ReadonlyArray.join(" ")
   )
-  const executeMsg = InternalSpan.weak(
+  const executeMsg = InternalSpan.text(
     "You may now execute your command directly with the following options and arguments:"
   )
   return InternalHelpDoc.blocks([
-    InternalHelpDoc.p(""),
     InternalHelpDoc.p(InternalSpan.strong(InternalSpan.code("Wizard Mode Complete!"))),
     InternalHelpDoc.p(executeMsg),
-    InternalHelpDoc.p(InternalSpan.code(`    ${params}`))
+    InternalHelpDoc.p(InternalSpan.concat(
+      InternalSpan.text("    "),
+      InternalSpan.highlight(params, Color.cyan)
+    ))
   ])
 }

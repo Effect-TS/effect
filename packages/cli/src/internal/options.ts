@@ -3,7 +3,7 @@ import type * as Terminal from "@effect/platform/Terminal"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { absurd, dual, pipe } from "effect/Function"
+import { dual, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
@@ -455,11 +455,7 @@ export const parse = dual<
 >(3, (self, args, config) => parseInternal(self as Instruction, args, config) as any)
 
 /** @internal */
-export const repeated = <A>(self: Options.Options<A>): Options.Options<ReadonlyArray<A>> =>
-  makeVariadic(self, Option.none(), Option.none())
-
-/** @internal */
-export const validate = dual<
+export const processCommandLine = dual<
   (
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
@@ -498,6 +494,10 @@ export const validate = dual<
 )
 
 /** @internal */
+export const repeated = <A>(self: Options.Options<A>): Options.Options<ReadonlyArray<A>> =>
+  makeVariadic(self, Option.none(), Option.none())
+
+/** @internal */
 export const withAlias = dual<
   (alias: string) => <A>(self: Options.Options<A>) => Options.Options<A>,
   <A>(self: Options.Options<A>, alias: string) => Options.Options<A>
@@ -515,8 +515,8 @@ export const withAlias = dual<
 
 /** @internal */
 export const withDefault = dual<
-  <A>(fallback: A) => (self: Options.Options<A>) => Options.Options<A>,
-  <A>(self: Options.Options<A>, fallback: A) => Options.Options<A>
+  <const B>(fallback: B) => <A>(self: Options.Options<A>) => Options.Options<A | B>,
+  <A, const B>(self: Options.Options<A>, fallback: B) => Options.Options<A | B>
 >(2, (self, fallback) => makeWithDefault(self, fallback))
 
 /** @internal */
@@ -553,12 +553,12 @@ export const withPseudoName = dual<
 export const wizard = dual<
   (config: CliConfig.CliConfig) => <A>(self: Options.Options<A>) => Effect.Effect<
     FileSystem.FileSystem | Terminal.Terminal,
-    ValidationError.ValidationError,
+    Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >,
   <A>(self: Options.Options<A>, config: CliConfig.CliConfig) => Effect.Effect<
     FileSystem.FileSystem | Terminal.Terminal,
-    ValidationError.ValidationError,
+    Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >
 >(2, (self, config) => wizardInternal(self as Instruction, config))
@@ -906,7 +906,10 @@ const makeVariadic = <A>(
   return op
 }
 
-const makeWithDefault = <A>(options: Options.Options<A>, fallback: A): Options.Options<A> => {
+const makeWithDefault = <A, const B>(
+  options: Options.Options<A>,
+  fallback: B
+): Options.Options<A | B> => {
   const op = Object.create(proto)
   op._tag = "WithDefault"
   op.options = options
@@ -985,183 +988,6 @@ export const getNames = (self: Instruction): ReadonlyArray<string> => {
     ReadonlyArray.sort(order),
     ReadonlyArray.map((tuple) => tuple[1])
   )
-}
-
-const parseOptions = (
-  self: ParseableInstruction,
-  args: ReadonlyArray<string>,
-  config: CliConfig.CliConfig
-): Effect.Effect<
-  never,
-  ValidationError.ValidationError,
-  [ReadonlyArray<string>, ReadonlyArray<string>]
-> => {
-  switch (self._tag) {
-    case "Single": {
-      return processArgs(args).pipe(
-        Effect.flatMap((args) => {
-          if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-            const head = ReadonlyArray.headNonEmpty(args)
-            const tail = ReadonlyArray.tailNonEmpty(args)
-            const normalizedArgv0 = InternalCliConfig.normalizeCase(config, head)
-            const normalizedNames = ReadonlyArray.map(
-              getNames(self),
-              (name) => InternalCliConfig.normalizeCase(config, name)
-            )
-            if (ReadonlyArray.contains(normalizedNames, normalizedArgv0)) {
-              if (InternalPrimitive.isBool(self.primitiveType)) {
-                if (ReadonlyArray.isNonEmptyReadonlyArray(tail) && tail[0] === "true") {
-                  return Effect.succeed([
-                    ReadonlyArray.make(head, "true"),
-                    ReadonlyArray.drop(tail, 1)
-                  ])
-                }
-                if (ReadonlyArray.isNonEmptyReadonlyArray(tail) && tail[0] === "false") {
-                  return Effect.succeed([
-                    ReadonlyArray.make(head, "false"),
-                    ReadonlyArray.drop(tail, 1)
-                  ])
-                }
-                return Effect.succeed([ReadonlyArray.of(head), tail])
-              }
-              if (ReadonlyArray.isNonEmptyReadonlyArray(tail)) {
-                return Effect.succeed([
-                  ReadonlyArray.make(head, tail[0]),
-                  ReadonlyArray.drop(tail, 1)
-                ])
-              }
-              const error = InternalHelpDoc.p(
-                `Expected a value following option: '${self.fullName}'`
-              )
-              return Effect.fail(InternalValidationError.missingValue(error))
-            }
-            if (
-              self.name.length > config.autoCorrectLimit + 1 &&
-              InternalAutoCorrect.levensteinDistance(head, self.fullName, config) <=
-                config.autoCorrectLimit
-            ) {
-              const error = InternalHelpDoc.p(
-                `The flag '${head}' is not recognized. Did you mean '${self.fullName}'?`
-              )
-              return Effect.fail(InternalValidationError.correctedFlag(error))
-            }
-            const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
-            return Effect.fail(InternalValidationError.missingFlag(error))
-          }
-          const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
-          return Effect.fail(InternalValidationError.missingFlag(error))
-        })
-      )
-    }
-    case "KeyValueMap": {
-      const singleNames = ReadonlyArray.map(
-        getNames(self.argumentOption),
-        (name) => InternalCliConfig.normalizeCase(config, name)
-      )
-      if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-        let currentIndex = 0
-        let inKeyValueOption = false
-        let keyValues = ReadonlyArray.empty<string>()
-        let leftover = args as ReadonlyArray<string>
-        while (currentIndex < leftover.length) {
-          const name = leftover[currentIndex].trim()
-          const normalizedName = InternalCliConfig.normalizeCase(config, name)
-          // Can be in the form of "--flag key1=value1 --flag key2=value2"
-          if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, normalizedName)) {
-            // Attempt to parse the key/value
-            const currentValue = leftover[currentIndex + 1]
-            if (currentValue !== undefined) {
-              const keyValue = currentValue.trim()
-              const [key, value] = keyValue.split("=")
-              if (key !== undefined && value !== undefined) {
-                if (ReadonlyArray.isEmptyReadonlyArray(keyValues)) {
-                  // Add the name to the head of the array on first value found
-                  keyValues = ReadonlyArray.appendAll(keyValues, [name, keyValue])
-                } else {
-                  // Otherwise just add the value
-                  keyValues = ReadonlyArray.append(keyValues, keyValue)
-                }
-                leftover = ReadonlyArray.appendAll(
-                  // Take everything from the start of leftover to the current index
-                  ReadonlyArray.take(leftover, currentIndex),
-                  // Drop the current argument and its key/value from the leftover
-                  ReadonlyArray.takeRight(leftover, leftover.length - (currentIndex + 2))
-                )
-                inKeyValueOption = true
-              }
-            } else {
-              currentIndex = currentIndex + 1
-            }
-          } // The prior steps will parse out the name of the flag and the first
-          // key/value pair - this step is to parse out variadic repetitions of
-          // key/value pairs that may occcur after the initial flag (i.e. in the
-          // form "--flag key1=value1 key2=value2")
-          else if (inKeyValueOption && name.includes("=")) {
-            const [key, value] = name.split("=")
-            if (key !== undefined && value !== undefined) {
-              // The flag name should have already been added by this point, so
-              // no need to perform the check from the prior step
-              keyValues = ReadonlyArray.append(keyValues, name)
-              leftover = ReadonlyArray.appendAll(
-                // Take everything from the start of leftover to the current index
-                ReadonlyArray.take(leftover, currentIndex),
-                // Drop the current key/value from the leftover
-                ReadonlyArray.takeRight(leftover, leftover.length - (currentIndex + 1))
-              )
-            }
-          } else {
-            inKeyValueOption = false
-            currentIndex = currentIndex + 1
-          }
-        }
-        return Effect.succeed([keyValues, leftover])
-      }
-      return Effect.succeed([ReadonlyArray.empty(), args])
-    }
-    case "Variadic": {
-      const singleNames = ReadonlyArray.map(
-        getNames(self.argumentOption),
-        (name) => InternalCliConfig.normalizeCase(config, name)
-      )
-      if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-        let currentIndex = 0
-        let values = ReadonlyArray.empty<string>()
-        let leftover = args as ReadonlyArray<string>
-        while (currentIndex < leftover.length) {
-          const name = leftover[currentIndex].trim()
-          const normalizedName = InternalCliConfig.normalizeCase(config, name)
-          if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, normalizedName)) {
-            const currentValue = leftover[currentIndex + 1]
-            if (currentValue !== undefined) {
-              const value = leftover[currentIndex + 1].trim()
-              if (ReadonlyArray.isEmptyReadonlyArray(values)) {
-                // Add the name to the head of the array on first value found
-                values = ReadonlyArray.appendAll(values, [name, value])
-              } else {
-                // Otherwise just add the value
-                values = ReadonlyArray.append(values, value)
-              }
-              leftover = ReadonlyArray.appendAll(
-                // Take everything from the start of leftover to the current index
-                ReadonlyArray.take(leftover, currentIndex),
-                // Drop the current argument and its value from the leftover
-                ReadonlyArray.takeRight(leftover, leftover.length - (currentIndex + 2))
-              )
-            } else {
-              currentIndex = currentIndex + 1
-            }
-          } else {
-            currentIndex = currentIndex + 1
-          }
-        }
-        return Effect.succeed([values, leftover])
-      }
-      return Effect.succeed([ReadonlyArray.empty(), args])
-    }
-    default: {
-      return absurd(self)
-    }
-  }
 }
 
 const toParseableInstruction = (self: Instruction): ReadonlyArray<ParseableInstruction> => {
@@ -1350,11 +1176,9 @@ const parseInternal = (
   }
 }
 
-const wizardHeader = InternalHelpDoc.p("OPTIONS WIZARD")
-
 const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.Effect<
   FileSystem.FileSystem | Terminal.Terminal,
-  ValidationError.ValidationError,
+  Terminal.QuitException | ValidationError.ValidationError,
   ReadonlyArray<string>
 > => {
   switch (self._tag) {
@@ -1362,31 +1186,29 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
       return Effect.succeed(ReadonlyArray.empty())
     }
     case "Single": {
-      const help = InternalHelpDoc.sequence(wizardHeader, getHelpInternal(self))
-      return Console.log().pipe(
-        Effect.zipRight(
-          InternalPrimitive.wizard(self.primitiveType, help).pipe(Effect.flatMap((input) => {
-            // There will always be at least one name in names
-            const args = ReadonlyArray.make(getNames(self)[0]!, input as string)
-            return parseOptions(self, args, config).pipe(Effect.as(args))
-          }))
-        )
+      const help = getHelpInternal(self)
+      return InternalPrimitive.wizard(self.primitiveType, help).pipe(
+        Effect.flatMap((input) => {
+          // There will always be at least one name in names
+          const args = ReadonlyArray.make(getNames(self)[0]!, input as string)
+          return parseCommandLine(self, args, config).pipe(Effect.as(args))
+        }),
+        Effect.zipLeft(Console.log())
       )
     }
     case "KeyValueMap": {
-      const optionHelp = InternalHelpDoc.p("Enter `key=value` pairs separated by spaces")
-      const message = InternalHelpDoc.sequence(wizardHeader, optionHelp)
-      return Console.log().pipe(
-        Effect.zipRight(InternalListPrompt.list({
-          message: InternalHelpDoc.toAnsiText(message).trim(),
-          delimiter: " "
-        })),
+      const message = InternalHelpDoc.p("Enter `key=value` pairs separated by spaces")
+      return InternalListPrompt.list({
+        message: InternalHelpDoc.toAnsiText(message).trim(),
+        delimiter: " "
+      }).pipe(
         Effect.flatMap((args) => {
           const identifier = Option.getOrElse(getIdentifierInternal(self), () => "")
           return parseInternal(self, HashMap.make([identifier, args]), config).pipe(
             Effect.as(ReadonlyArray.prepend(args, identifier))
           )
-        })
+        }),
+        Effect.zipLeft(Console.log())
       )
     }
     case "Map": {
@@ -1402,8 +1224,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
     case "OrElse": {
       const alternativeHelp = InternalHelpDoc.p("Select which option you would like to use")
       const message = pipe(
-        wizardHeader,
-        InternalHelpDoc.sequence(getHelpInternal(self)),
+        getHelpInternal(self),
         InternalHelpDoc.sequence(alternativeHelp)
       )
       const makeChoice = (title: string, value: Instruction) => ({ title, value })
@@ -1417,28 +1238,24 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
           (title) => makeChoice(title, self.right as Instruction)
         )
       ])
-      return Console.log().pipe(Effect.zipRight(
-        InternalSelectPrompt.select({
-          message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-          choices
-        }).pipe(Effect.flatMap((option) => wizardInternal(option, config)))
-      ))
+      return InternalSelectPrompt.select({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        choices
+      }).pipe(Effect.flatMap((option) => wizardInternal(option, config)))
     }
     case "Variadic": {
       const repeatHelp = InternalHelpDoc.p(
         "How many times should this argument should be repeated?"
       )
       const message = pipe(
-        wizardHeader,
-        InternalHelpDoc.sequence(getHelpInternal(self)),
+        getHelpInternal(self),
         InternalHelpDoc.sequence(repeatHelp)
       )
-      return Console.log().pipe(
-        Effect.zipRight(InternalNumberPrompt.integer({
-          message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-          min: getMinSizeInternal(self),
-          max: getMaxSizeInternal(self)
-        })),
+      return InternalNumberPrompt.integer({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        min: getMinSizeInternal(self),
+        max: getMaxSizeInternal(self)
+      }).pipe(
         Effect.flatMap((n) =>
           Ref.make(ReadonlyArray.empty<string>()).pipe(
             Effect.flatMap((ref) =>
@@ -1453,22 +1270,22 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
       )
     }
     case "WithDefault": {
+      if (isBoolInternal(self.options as Instruction)) {
+        return wizardInternal(self.options as Instruction, config)
+      }
       const defaultHelp = InternalHelpDoc.p(`This option is optional - use the default?`)
       const message = pipe(
-        wizardHeader,
-        InternalHelpDoc.sequence(getHelpInternal(self.options as Instruction)),
+        getHelpInternal(self.options as Instruction),
         InternalHelpDoc.sequence(defaultHelp)
       )
-      return Console.log().pipe(
-        Effect.zipRight(
-          InternalSelectPrompt.select({
-            message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-            choices: [
-              { title: `Default ['${JSON.stringify(self.fallback)}']`, value: true },
-              { title: "Custom", value: false }
-            ]
-          })
-        ),
+      return InternalSelectPrompt.select({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        choices: [
+          { title: `Default ['${JSON.stringify(self.fallback)}']`, value: true },
+          { title: "Custom", value: false }
+        ]
+      }).pipe(
+        Effect.zipLeft(Console.log()),
         Effect.flatMap((useFallback) =>
           useFallback
             ? Effect.succeed(ReadonlyArray.empty())
@@ -1482,45 +1299,6 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
 // =============================================================================
 // Parsing Internals
 // =============================================================================
-
-const CLUSTERED_REGEX = /^-{1}([^-]{2,}$)/
-const FLAG_REGEX = /^(--[^=]+)(?:=(.+))?$/
-
-const escape = (string: string): string => {
-  return string
-    .replaceAll("\\", "\\\\")
-    .replaceAll("'", "'\\''")
-    .replaceAll("[", "\\[")
-    .replaceAll("]", "\\]")
-    .replaceAll(":", "\\:")
-    .replaceAll("$", "\\$")
-    .replaceAll("`", "\\`")
-    .replaceAll("(", "\\(")
-    .replaceAll(")", "\\)")
-}
-
-const processArgs = (
-  args: ReadonlyArray<string>
-): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> => {
-  if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-    const head = ReadonlyArray.headNonEmpty(args)
-    const tail = ReadonlyArray.tailNonEmpty(args)
-    if (CLUSTERED_REGEX.test(head.trim())) {
-      const unclustered = head.substring(1).split("").map((c) => `-${c}`)
-      return Effect.fail(
-        InternalValidationError.unclusteredFlag(InternalHelpDoc.empty, unclustered, tail)
-      )
-    }
-    if (head.startsWith("--")) {
-      const result = FLAG_REGEX.exec(head)
-      if (result !== null && result[2] !== undefined) {
-        return Effect.succeed(ReadonlyArray.prependAll(tail, [result[1], result[2]]))
-      }
-    }
-    return Effect.succeed(args)
-  }
-  return Effect.succeed(ReadonlyArray.empty())
-}
 
 /**
  * Returns a possible `ValidationError` when parsing the commands, leftover
@@ -1600,64 +1378,267 @@ const findOptions = (
     ReadonlyArray<ParseableInstruction>,
     HashMap.HashMap<string, ReadonlyArray<string>>
   ]
-> => {
-  if (ReadonlyArray.isNonEmptyReadonlyArray(options)) {
-    const head = ReadonlyArray.headNonEmpty(options)
-    const tail = ReadonlyArray.tailNonEmpty(options)
-    return parseOptions(head, input, config).pipe(
-      Effect.flatMap(([nameValues, leftover]) => {
-        if (ReadonlyArray.isNonEmptyReadonlyArray(nameValues)) {
-          const name = ReadonlyArray.headNonEmpty(nameValues)
-          const values: ReadonlyArray<unknown> = ReadonlyArray.tailNonEmpty(nameValues)
-          return Effect.succeed([leftover, tail, HashMap.make([name, values])] as [
-            ReadonlyArray<string>,
-            ReadonlyArray<ParseableInstruction>,
-            HashMap.HashMap<string, ReadonlyArray<string>>
-          ])
-        }
-        return findOptions(leftover, tail, config).pipe(
-          Effect.map(([otherArgs, otherOptions, map]) =>
-            [otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as [
-              ReadonlyArray<string>,
-              ReadonlyArray<ParseableInstruction>,
-              HashMap.HashMap<string, ReadonlyArray<string>>
-            ]
-          )
-        )
-      }),
-      Effect.catchTags({
-        CorrectedFlag: (e) =>
-          findOptions(input, tail, config).pipe(
-            Effect.catchSome(() => Option.some(Effect.fail(e))),
-            Effect.flatMap(([otherArgs, otherOptions, map]) =>
-              Effect.fail(e).pipe(
-                Effect.when(() => HashMap.isEmpty(map)),
-                Effect.as([otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as [
+> =>
+  ReadonlyArray.matchLeft(options, {
+    onEmpty: () => Effect.succeed([input, ReadonlyArray.empty(), HashMap.empty()]),
+    onNonEmpty: (head, tail) =>
+      parseCommandLine(head, input, config).pipe(
+        Effect.flatMap(({ leftover, parsed }) =>
+          Option.match(parsed, {
+            onNone: () =>
+              findOptions(leftover, tail, config).pipe(Effect.map(([nextArgs, nextOptions, map]) =>
+                [nextArgs, ReadonlyArray.prepend(nextOptions, head), map] as [
                   ReadonlyArray<string>,
                   ReadonlyArray<ParseableInstruction>,
                   HashMap.HashMap<string, ReadonlyArray<string>>
-                ])
-              )
-            )
-          ),
-        MissingFlag: () =>
-          findOptions(input, tail, config).pipe(
-            Effect.map(([otherArgs, otherOptions, map]) =>
-              [otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as [
+                ]
+              )),
+            onSome: ({ name, values }) =>
+              Effect.succeed([leftover, tail, HashMap.make([name, values])] as [
                 ReadonlyArray<string>,
                 ReadonlyArray<ParseableInstruction>,
                 HashMap.HashMap<string, ReadonlyArray<string>>
-              ]
+              ])
+          })
+        ),
+        Effect.catchTags({
+          CorrectedFlag: (e) =>
+            findOptions(input, tail, config).pipe(
+              Effect.catchSome(() => Option.some(Effect.fail(e))),
+              Effect.flatMap(([otherArgs, otherOptions, map]) =>
+                Effect.fail(e).pipe(
+                  Effect.when(() => HashMap.isEmpty(map)),
+                  Effect.as([otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as [
+                    ReadonlyArray<string>,
+                    ReadonlyArray<ParseableInstruction>,
+                    HashMap.HashMap<string, ReadonlyArray<string>>
+                  ])
+                )
+              )
+            ),
+          MissingFlag: () =>
+            findOptions(input, tail, config).pipe(
+              Effect.map(([otherArgs, otherOptions, map]) =>
+                [otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as [
+                  ReadonlyArray<string>,
+                  ReadonlyArray<ParseableInstruction>,
+                  HashMap.HashMap<string, ReadonlyArray<string>>
+                ]
+              )
+            ),
+          UnclusteredFlag: (e) =>
+            matchUnclustered(e.unclustered, e.rest, options, config).pipe(
+              Effect.catchAll(() => Effect.fail(e))
             )
-          ),
-        UnclusteredFlag: (e) =>
-          matchUnclustered(e.unclustered, e.rest, options, config).pipe(
-            Effect.catchAll(() => Effect.fail(e))
+        })
+      )
+  })
+
+interface ParsedCommandLine {
+  readonly parsed: Option.Option<{
+    readonly name: string
+    readonly values: ReadonlyArray<string>
+  }>
+  readonly leftover: ReadonlyArray<string>
+}
+
+const CLUSTERED_REGEX = /^-{1}([^-]{2,}$)/
+const FLAG_REGEX = /^(--[^=]+)(?:=(.+))?$/
+
+/**
+ * Normalizes the leading command-line argument by performing the following:
+ *   1. If a clustered series of short command-line options is encountered,
+ *      uncluster the options and return a `ValidationError.UnclusteredFlag`
+ *      to be handled later on in the parsing algorithm
+ *   2. If a long command-line option with a value is encountered, ensure that
+ *      the option and it's value are separated (i.e. `--option=value` becomes
+ *      ["--option", "value"])
+ */
+const processArgs = (
+  args: ReadonlyArray<string>
+): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> =>
+  ReadonlyArray.matchLeft(args, {
+    onEmpty: () => Effect.succeed(ReadonlyArray.empty()),
+    onNonEmpty: (head, tail) => {
+      const value = head.trim()
+      // Attempt to match clustered short command-line arguments (i.e. `-abc`)
+      if (CLUSTERED_REGEX.test(value)) {
+        const unclustered = value.substring(1).split("").map((c) => `-${c}`)
+        return Effect.fail(InternalValidationError.unclusteredFlag(
+          InternalHelpDoc.empty,
+          unclustered,
+          tail
+        ))
+      }
+      // Attempt to match a long command-line argument and ensure the option and
+      // it's value have been separated and added back to the arguments
+      if (FLAG_REGEX.test(value)) {
+        const result = FLAG_REGEX.exec(value)
+        if (result !== null && result[2] !== undefined) {
+          return Effect.succeed<ReadonlyArray<string>>(
+            ReadonlyArray.appendAll([result[1], result[2]], tail)
           )
+        }
+      }
+      // Otherwise return the original command-line arguments
+      return Effect.succeed(args)
+    }
+  })
+
+/**
+ * Processes the command-line arguments for a parseable option, returning the
+ * parsed command line results, which inclue:
+ *   - The name of the option and its associated value(s), if any
+ *   - Any leftover command-line arguments
+ */
+const parseCommandLine = (
+  self: ParseableInstruction,
+  args: ReadonlyArray<string>,
+  config: CliConfig.CliConfig
+): Effect.Effect<
+  never,
+  ValidationError.ValidationError,
+  ParsedCommandLine
+> => {
+  switch (self._tag) {
+    case "Single": {
+      return processArgs(args).pipe(Effect.flatMap((args) =>
+        ReadonlyArray.matchLeft(args, {
+          onEmpty: () => {
+            const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
+            return Effect.fail(InternalValidationError.missingFlag(error))
+          },
+          onNonEmpty: (head, tail) => {
+            const normalize = (value: string) => InternalCliConfig.normalizeCase(config, value)
+            const normalizedHead = normalize(head)
+            const normalizedNames = ReadonlyArray.map(getNames(self), normalize)
+            if (ReadonlyArray.contains(normalizedNames, normalizedHead)) {
+              if (InternalPrimitive.isBool(self.primitiveType)) {
+                return ReadonlyArray.matchLeft(tail, {
+                  onEmpty: () => {
+                    const parsed = Option.some({ name: head, values: ReadonlyArray.empty() })
+                    return Effect.succeed({ parsed, leftover: tail })
+                  },
+                  onNonEmpty: (value, leftover) => {
+                    if (InternalPrimitive.isTrueValue(value)) {
+                      const parsed = Option.some({ name: head, values: ReadonlyArray.of("true") })
+                      return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                    }
+                    if (InternalPrimitive.isFalseValue(value)) {
+                      const parsed = Option.some({ name: head, values: ReadonlyArray.of("false") })
+                      return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                    }
+                    const parsed = Option.some({ name: head, values: ReadonlyArray.empty() })
+                    return Effect.succeed<ParsedCommandLine>({ parsed, leftover: tail })
+                  }
+                })
+              }
+              return ReadonlyArray.matchLeft(tail, {
+                onEmpty: () => {
+                  const error = InternalHelpDoc.p(
+                    `Expected a value following option: '${self.fullName}'`
+                  )
+                  return Effect.fail(InternalValidationError.missingValue(error))
+                },
+                onNonEmpty: (value, leftover) => {
+                  const parsed = Option.some({ name: head, values: ReadonlyArray.of(value) })
+                  return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                }
+              })
+            }
+            if (
+              self.name.length > config.autoCorrectLimit + 1 &&
+              InternalAutoCorrect.levensteinDistance(head, self.fullName, config) <=
+                config.autoCorrectLimit
+            ) {
+              const error = InternalHelpDoc.p(
+                `The flag '${head}' is not recognized. Did you mean '${self.fullName}'?`
+              )
+              return Effect.fail(InternalValidationError.correctedFlag(error))
+            }
+            const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
+            return Effect.fail(InternalValidationError.missingFlag(error))
+          }
+        })
+      ))
+    }
+    case "KeyValueMap": {
+      const singleNames = ReadonlyArray.map(
+        getNames(self.argumentOption),
+        (name) => InternalCliConfig.normalizeCase(config, name)
+      )
+      return ReadonlyArray.matchLeft(args, {
+        onEmpty: () => Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args }),
+        onNonEmpty: (head, tail) => {
+          const loop = (
+            args: ReadonlyArray<string>
+          ): [ReadonlyArray<string>, ReadonlyArray<string>] => {
+            let keyValues = ReadonlyArray.empty<string>()
+            let leftover = args as ReadonlyArray<string>
+            while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
+              const name = leftover[0].trim()
+              const normalizedName = InternalCliConfig.normalizeCase(config, name)
+              // Can be in the form of "--flag key1=value1 --flag key2=value2"
+              if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, normalizedName)) {
+                const keyValue = leftover[1].trim()
+                const [key, value] = keyValue.split("=")
+                if (key !== undefined && value !== undefined && value.length > 0) {
+                  keyValues = ReadonlyArray.append(keyValues, keyValue)
+                  leftover = leftover.slice(2)
+                  continue
+                }
+              }
+              // Can be in the form of "--flag key1=value1 key2=value2")
+              if (name.includes("=")) {
+                const [key, value] = name.split("=")
+                if (key !== undefined && value !== undefined && value.length > 0) {
+                  keyValues = ReadonlyArray.append(keyValues, name)
+                  leftover = leftover.slice(1)
+                  continue
+                }
+              }
+              break
+            }
+            return [keyValues, leftover]
+          }
+          const name = InternalCliConfig.normalizeCase(config, head)
+          if (ReadonlyArray.contains(singleNames, name)) {
+            const [values, leftover] = loop(tail)
+            return Effect.succeed({ parsed: Option.some({ name, values }), leftover })
+          }
+          return Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args })
+        }
       })
-    )
+    }
+    case "Variadic": {
+      const singleNames = ReadonlyArray.map(
+        getNames(self.argumentOption),
+        (name) => InternalCliConfig.normalizeCase(config, name)
+      )
+      let optionName: string | undefined = undefined
+      let values = ReadonlyArray.empty<string>()
+      let leftover = args as ReadonlyArray<string>
+      while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
+        const name = InternalCliConfig.normalizeCase(config, ReadonlyArray.headNonEmpty(leftover))
+        if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, name)) {
+          if (optionName === undefined) {
+            optionName = name
+          }
+          const value = leftover[1]
+          if (value !== undefined && value.length > 0) {
+            values = ReadonlyArray.append(values, value.trim())
+            leftover = leftover.slice(2)
+            continue
+          }
+          break
+        }
+      }
+      const parsed = Option.fromNullable(optionName).pipe(
+        Option.map((name) => ({ name, values }))
+      )
+      return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+    }
   }
-  return Effect.succeed([input, ReadonlyArray.empty(), HashMap.empty()])
 }
 
 const matchUnclustered = (
@@ -1721,6 +1702,18 @@ const merge = (
 // =============================================================================
 // Completion Internals
 // =============================================================================
+
+const escape = (string: string): string =>
+  string
+    .replaceAll("\\", "\\\\")
+    .replaceAll("'", "'\\''")
+    .replaceAll("[", "\\[")
+    .replaceAll("]", "\\]")
+    .replaceAll(":", "\\:")
+    .replaceAll("$", "\\$")
+    .replaceAll("`", "\\`")
+    .replaceAll("(", "\\(")
+    .replaceAll(")", "\\)")
 
 const getShortDescription = (self: Instruction): string => {
   switch (self._tag) {

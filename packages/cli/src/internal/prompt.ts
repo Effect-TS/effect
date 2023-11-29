@@ -24,7 +24,7 @@ const proto = {
   [PromptTypeId]: {
     _Output: (_: never) => _
   },
-  commit(): Effect.Effect<Terminal.Terminal, never, unknown> {
+  commit(): Effect.Effect<Terminal.Terminal, Terminal.QuitException, unknown> {
     return run(this as Prompt.Prompt<unknown>)
   },
   pipe() {
@@ -164,7 +164,7 @@ export const flatMap = dual<
 /** @internal */
 export const run = <Output>(
   self: Prompt.Prompt<Output>
-): Effect.Effect<Terminal.Terminal, never, Output> =>
+): Effect.Effect<Terminal.Terminal, Terminal.QuitException, Output> =>
   Effect.flatMap(Terminal.Terminal, (terminal) => {
     const op = self as Primitive
     switch (op._tag) {
@@ -176,13 +176,12 @@ export const run = <Output>(
           Effect.flatMap(([prevStateRef, nextStateRef]) => {
             const loop = (
               action: Exclude<PromptAction.PromptAction<unknown, unknown>, { _tag: "Submit" }>
-            ): Effect.Effect<never, never, any> =>
+            ): Effect.Effect<never, Terminal.QuitException, any> =>
               Effect.all([Ref.get(prevStateRef), Ref.get(nextStateRef)]).pipe(
                 Effect.flatMap(([prevState, nextState]) =>
                   op.render(prevState, nextState, action).pipe(
                     Effect.flatMap((msg) => Effect.orDie(terminal.display(msg))),
                     Effect.zipRight(terminal.readInput),
-                    Effect.catchTag("QuitException", (e) => Effect.die(e)),
                     Effect.flatMap((input) => op.process(input, nextState)),
                     Effect.flatMap((action) => {
                       switch (action._tag) {

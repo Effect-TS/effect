@@ -1,8 +1,8 @@
 import * as Option from "effect/Option"
 import type * as BuiltInOptions from "../BuiltInOptions.js"
-import type * as Command from "../Command.js"
+import type * as Command from "../CommandDescriptor.js"
 import type * as HelpDoc from "../HelpDoc.js"
-import * as Options from "../Options.js"
+import type * as Options from "../Options.js"
 import type * as Usage from "../Usage.js"
 import * as InternalOptions from "./options.js"
 
@@ -62,7 +62,7 @@ export const completionsOptions: Options.Options<
   ["bash", "bash" as const],
   ["fish", "fish" as const],
   ["zsh", "zsh" as const]
-]).pipe(Options.optional)
+]).pipe(InternalOptions.optional)
 
 /** @internal */
 export const helpOptions: Options.Options<boolean> = InternalOptions.boolean("help").pipe(

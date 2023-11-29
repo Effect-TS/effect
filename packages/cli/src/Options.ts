@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
-import type { Terminal } from "@effect/platform/Terminal"
+import type { QuitException, Terminal } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
@@ -398,18 +398,20 @@ export const parse: {
 export const repeated: <A>(self: Options<A>) => Options<ReadonlyArray<A>> = InternalOptions.repeated
 
 /**
- * Parses the provided command-line arguments looking for the specified options,
- * and returns an `Option<ValidationError>`, any leftover arguments, and the
+ * Processes the provided command-line arguments, searching for the specified
+ * `Options`.
+ *
+ * Returns an `Option<ValidationError>`, any leftover arguments, and the
  * constructed value of type `A`. The possible error inside
  * `Option<ValidationError>` would only be triggered if there is an error when
  * parsing the command-line arguments. This is because `ValidationError`s are
  * also used internally to control the end of the command-line arguments (i.e.
- * the command-line symbol `-`) corresponding to options.
+ * the command-line symbol `--`) corresponding to options.
  *
  * @since 1.0.0
  * @category combinators
  */
-export const validate: {
+export const processCommandLine: {
   (
     args: ReadonlyArray<string>,
     config: CliConfig
@@ -429,7 +431,7 @@ export const validate: {
     ValidationError,
     [Option<ValidationError>, ReadonlyArray<string>, A]
   >
-} = InternalOptions.validate
+} = InternalOptions.processCommandLine
 
 /**
  * @since 1.0.0
@@ -445,8 +447,8 @@ export const withAlias: {
  * @category combinators
  */
 export const withDefault: {
-  <A>(fallback: A): (self: Options<A>) => Options<A>
-  <A>(self: Options<A>, fallback: A): Options<A>
+  <const B>(fallback: B): <A>(self: Options<A>) => Options<B | A>
+  <A, const B>(self: Options<A>, fallback: B): Options<A | B>
 } = InternalOptions.withDefault
 
 /**
@@ -474,9 +476,11 @@ export const withPseudoName: {
 export const wizard: {
   (
     config: CliConfig
-  ): <A>(self: Options<A>) => Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+  ): <A>(
+    self: Options<A>
+  ) => Effect<FileSystem | Terminal, QuitException | ValidationError, ReadonlyArray<string>>
   <A>(
     self: Options<A>,
     config: CliConfig
-  ): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+  ): Effect<FileSystem | Terminal, QuitException | ValidationError, ReadonlyArray<string>>
 } = InternalOptions.wizard

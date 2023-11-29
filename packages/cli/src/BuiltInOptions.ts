@@ -3,7 +3,7 @@
  */
 
 import type { Option } from "effect/Option"
-import type { Command } from "./Command.js"
+import type { Command } from "./CommandDescriptor.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalBuiltInOptions from "./internal/builtInOptions.js"
 import type { Options } from "./Options.js"

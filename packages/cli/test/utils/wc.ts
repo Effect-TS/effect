@@ -1,5 +1,5 @@
 import * as Args from "@effect/cli/Args"
-import * as Command from "@effect/cli/Command"
+import * as Descriptor from "@effect/cli/CommandDescriptor"
 import * as Options from "@effect/cli/Options"
 
 const bytesFlag = Options.boolean("c")
@@ -15,8 +15,8 @@ export const options: Options.Options<[boolean, boolean, boolean, boolean]> = Op
 
 export const args: Args.Args<ReadonlyArray<string>> = Args.repeated(Args.file({ name: "files" }))
 
-export const command: Command.Command<{
+export const command: Descriptor.Command<{
   readonly name: "wc"
   readonly options: [boolean, boolean, boolean, boolean]
   readonly args: ReadonlyArray<string>
-}> = Command.make("wc", { options, args })
+}> = Descriptor.make("wc", options, args)

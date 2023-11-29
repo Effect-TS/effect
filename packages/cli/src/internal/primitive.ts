@@ -130,7 +130,13 @@ export const isTextType = (self: Instruction): self is Text => self._tag === "Te
 export const trueValues = Schema.literal("true", "1", "y", "yes", "on")
 
 /** @internal */
+export const isTrueValue = Schema.is(trueValues)
+
+/** @internal */
 export const falseValues = Schema.literal("false", "0", "n", "no", "off")
+
+/** @internal */
+export const isFalseValue = Schema.is(falseValues)
 
 /** @internal */
 export const boolean = (defaultValue: Option.Option<boolean>): Primitive.Primitive<boolean> => {
@@ -367,9 +373,9 @@ const validateInternal = (
               () => `Missing default value for boolean parameter`
             ),
           onSome: (value) =>
-            Schema.is(trueValues)(value)
+            isTrueValue(value)
               ? Effect.succeed(true)
-              : Schema.is(falseValues)(value)
+              : isFalseValue(value)
               ? Effect.succeed(false)
               : Effect.fail(`Unable to recognize '${value}' as a valid boolean`)
         })
@@ -504,9 +510,10 @@ const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt
     case "Bool": {
       const primitiveHelp = InternalHelpDoc.p("Select true or false")
       const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      const initial = Option.getOrElse(self.defaultValue, () => false)
       return InternalTogglePrompt.toggle({
         message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-        initial: Option.getOrElse(self.defaultValue, () => false),
+        initial,
         active: "true",
         inactive: "false"
       }).pipe(InternalPrompt.map((bool) => `${bool}`))
@@ -539,7 +546,7 @@ const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt
     case "Integer": {
       const primitiveHelp = InternalHelpDoc.p("Enter an integer")
       const message = InternalHelpDoc.sequence(help, primitiveHelp)
-      return InternalNumberPrompt.float({
+      return InternalNumberPrompt.integer({
         message: InternalHelpDoc.toAnsiText(message).trimEnd()
       }).pipe(InternalPrompt.map((value) => `${value}`))
     }
@@ -553,7 +560,9 @@ const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt
     case "Text": {
       const primitiveHelp = InternalHelpDoc.p("Enter some text")
       const message = InternalHelpDoc.sequence(help, primitiveHelp)
-      return InternalTextPrompt.text({ message: InternalHelpDoc.toAnsiText(message).trimEnd() })
+      return InternalTextPrompt.text({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd()
+      })
     }
   }
 }

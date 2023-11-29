@@ -16,7 +16,7 @@ export const Tag = Context.Tag<CliConfig.CliConfig>()
 export const defaultConfig: CliConfig.CliConfig = {
   isCaseSensitive: false,
   autoCorrectLimit: 2,
-  finalCheckBuiltIn: false,
+  finalCheckBuiltIn: true,
   showAllNames: true,
   showTypes: true
 }

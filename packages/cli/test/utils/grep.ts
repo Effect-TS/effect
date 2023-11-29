@@ -1,5 +1,5 @@
 import * as Args from "@effect/cli/Args"
-import * as Command from "@effect/cli/Command"
+import * as Descriptor from "@effect/cli/CommandDescriptor"
 import * as Options from "@effect/cli/Options"
 
 const afterFlag = Options.integer("after").pipe(Options.withAlias("A"))
@@ -11,8 +11,8 @@ export const options: Options.Options<[number, number]> = Options.all([
 
 export const args: Args.Args<string> = Args.text()
 
-export const command: Command.Command<{
+export const command: Descriptor.Command<{
   readonly name: "grep"
   readonly options: [number, number]
   readonly args: string
-}> = Command.make("grep", { options, args })
+}> = Descriptor.make("grep", options, args)

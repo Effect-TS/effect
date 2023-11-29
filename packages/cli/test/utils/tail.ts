@@ -1,5 +1,5 @@
 import * as Args from "@effect/cli/Args"
-import * as Command from "@effect/cli/Command"
+import * as Descriptor from "@effect/cli/CommandDescriptor"
 import * as Options from "@effect/cli/Options"
 
 export const options: Options.Options<number> = Options.integer("n").pipe(
@@ -8,8 +8,8 @@ export const options: Options.Options<number> = Options.integer("n").pipe(
 
 export const args: Args.Args<string> = Args.file({ name: "file" })
 
-export const command: Command.Command<{
+export const command: Descriptor.Command<{
   readonly name: "tail"
   readonly options: number
   readonly args: string
-}> = Command.make("tail", { options, args })
+}> = Descriptor.make("tail", options, args)

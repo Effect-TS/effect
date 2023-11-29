@@ -8,7 +8,8 @@ export const ValidationErrorTypeId: ValidationError.ValidationErrorTypeId = Symb
   ValidationErrorSymbolKey
 ) as ValidationError.ValidationErrorTypeId
 
-const proto: ValidationError.ValidationError.Proto = {
+/** @internal */
+export const proto: ValidationError.ValidationError.Proto = {
   [ValidationErrorTypeId]: ValidationErrorTypeId
 }
 
@@ -25,6 +26,11 @@ export const isCommandMismatch = (
 export const isCorrectedFlag = (
   self: ValidationError.ValidationError
 ): self is ValidationError.CorrectedFlag => self._tag === "CorrectedFlag"
+
+/** @internal */
+export const isHelpRequested = (
+  self: ValidationError.ValidationError
+): self is ValidationError.HelpRequested => self._tag === "HelpRequested"
 
 /** @internal */
 export const isInvalidArgument = (

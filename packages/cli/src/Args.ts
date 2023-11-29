@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
-import type { Terminal } from "@effect/platform/Terminal"
+import type { QuitException, Terminal } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { Option } from "effect/Option"
@@ -349,8 +349,8 @@ export const validate: {
  * @category combinators
  */
 export const withDefault: {
-  <A>(fallback: A): (self: Args<A>) => Args<A>
-  <A>(self: Args<A>, fallback: A): Args<A>
+  <const B>(fallback: B): <A>(self: Args<A>) => Args<B | A>
+  <A, const B>(self: Args<A>, fallback: B): Args<A | B>
 } = InternalArgs.withDefault
 
 /**
@@ -369,9 +369,11 @@ export const withDescription: {
 export const wizard: {
   (
     config: CliConfig
-  ): <A>(self: Args<A>) => Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+  ): <A>(
+    self: Args<A>
+  ) => Effect<FileSystem | Terminal, ValidationError | QuitException, ReadonlyArray<string>>
   <A>(
     self: Args<A>,
     config: CliConfig
-  ): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+  ): Effect<FileSystem | Terminal, ValidationError | QuitException, ReadonlyArray<string>>
 } = InternalArgs.wizard

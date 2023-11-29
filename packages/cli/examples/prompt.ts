@@ -1,4 +1,3 @@
-import * as CliApp from "@effect/cli/CliApp"
 import * as Command from "@effect/cli/Command"
 import * as Prompt from "@effect/cli/Prompt"
 import * as NodeContext from "@effect/platform-node/NodeContext"
@@ -57,14 +56,12 @@ const prompt = Prompt.all([
   togglePrompt
 ])
 
-const cli = CliApp.make({
+const cli = Command.run(Command.prompt("favorites", prompt, Effect.log), {
   name: "Prompt Examples",
-  version: "0.0.1",
-  command: Command.prompt("favorites", prompt)
+  version: "0.0.1"
 })
 
-Effect.sync(() => process.argv.slice(2)).pipe(
-  Effect.flatMap((args) => CliApp.run(cli, args, (input) => Effect.log(input))),
+Effect.suspend(() => cli(process.argv.slice(2))).pipe(
   Effect.provide(NodeContext.layer),
   Runtime.runMain
 )

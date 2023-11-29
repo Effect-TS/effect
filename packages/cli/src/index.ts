@@ -31,6 +31,11 @@ export * as Command from "./Command.js"
 /**
  * @since 1.0.0
  */
+export * as CommandDescriptor from "./CommandDescriptor.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as CommandDirective from "./CommandDirective.js"
 
 /**

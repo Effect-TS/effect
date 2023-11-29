@@ -1,7 +1,10 @@
 /**
  * @since 1.0.0
  */
+import type { BuiltInOptions } from "./BuiltInOptions.js"
+import type { Command } from "./CommandDescriptor.js"
 import type { HelpDoc } from "./HelpDoc.js"
+import * as InternalCommand from "./internal/commandDescriptor.js"
 import * as InternalValidationError from "./internal/validationError.js"
 
 /**
@@ -23,6 +26,7 @@ export type ValidationErrorTypeId = typeof ValidationErrorTypeId
 export type ValidationError =
   | CommandMismatch
   | CorrectedFlag
+  | HelpRequested
   | InvalidArgument
   | InvalidValue
   | MissingValue
@@ -48,6 +52,16 @@ export interface CommandMismatch extends ValidationError.Proto {
 export interface CorrectedFlag extends ValidationError.Proto {
   readonly _tag: "CorrectedFlag"
   readonly error: HelpDoc
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface HelpRequested extends ValidationError.Proto {
+  readonly _tag: "HelpRequested"
+  readonly error: HelpDoc
+  readonly showHelp: BuiltInOptions
 }
 
 /**
@@ -163,6 +177,13 @@ export const isCorrectedFlag: (self: ValidationError) => self is CorrectedFlag =
  * @since 1.0.0
  * @category refinements
  */
+export const isHelpRequested: (self: ValidationError) => self is HelpRequested =
+  InternalValidationError.isHelpRequested
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
 export const isInvalidArgument: (self: ValidationError) => self is InvalidArgument =
   InternalValidationError.isInvalidArgument
 
@@ -228,6 +249,13 @@ export const commandMismatch: (error: HelpDoc) => ValidationError =
  */
 export const correctedFlag: (error: HelpDoc) => ValidationError =
   InternalValidationError.correctedFlag
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const helpRequested: <A>(command: Command<A>) => ValidationError =
+  InternalCommand.helpRequestedError
 
 /**
  * @since 1.0.0

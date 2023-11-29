@@ -1,48 +1,33 @@
 /**
  * @since 1.0.0
  */
+import type { Color } from "@effect/printer-ansi/Color"
 import * as InternalSpan from "../internal/helpDoc/span.js"
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Span = Text | Code | Error | Weak | Strong | URI | Sequence
+export type Span = Highlight | Sequence | Strong | Text | URI | Weak
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface Text {
-  readonly _tag: "Text"
-  readonly value: string
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Code {
-  readonly _tag: "Code"
-  readonly value: string
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Error {
-  readonly _tag: "Error"
+export interface Highlight {
+  readonly _tag: "Highlight"
   readonly value: Span
+  readonly color: Color
 }
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface Weak {
-  readonly _tag: "Weak"
-  readonly value: Span
+export interface Sequence {
+  readonly _tag: "Sequence"
+  readonly left: Span
+  readonly right: Span
 }
 
 /**
@@ -58,6 +43,15 @@ export interface Strong {
  * @since 1.0.0
  * @category models
  */
+export interface Text {
+  readonly _tag: "Text"
+  readonly value: string
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export interface URI {
   readonly _tag: "URI"
   readonly value: string
@@ -67,17 +61,10 @@ export interface URI {
  * @since 1.0.0
  * @category models
  */
-export interface Sequence {
-  readonly _tag: "Sequence"
-  readonly left: Span
-  readonly right: Span
+export interface Weak {
+  readonly _tag: "Weak"
+  readonly value: Span
 }
-
-/**
- * @since 1.0.0
- * @category refinements
- */
-export const isError: (self: Span) => self is Error = InternalSpan.isError
 
 /**
  * @since 1.0.0
@@ -131,7 +118,7 @@ export const text: (value: string) => Span = InternalSpan.text
  * @since 1.0.0
  * @category constructors
  */
-export const code: (value: string) => Span = InternalSpan.code
+export const code: (value: string | Span) => Span = InternalSpan.code
 
 /**
  * @since 1.0.0

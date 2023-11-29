@@ -19,21 +19,16 @@ export const empty: Span.Span = text("")
 export const space: Span.Span = text(" ")
 
 /** @internal */
-export const code = (value: string): Span.Span => ({
-  _tag: "Code",
-  value
-})
+export const code = (value: Span.Span | string): Span.Span => highlight(value, Color.white)
 
 /** @internal */
-export const error = (value: Span.Span | string): Span.Span => ({
-  _tag: "Error",
-  value: typeof value === "string" ? text(value) : value
-})
+export const error = (value: Span.Span | string): Span.Span => highlight(value, Color.red)
 
 /** @internal */
-export const weak = (value: Span.Span | string): Span.Span => ({
-  _tag: "Weak",
-  value: typeof value === "string" ? text(value) : value
+export const highlight = (value: Span.Span | string, color: Color.Color): Span.Span => ({
+  _tag: "Highlight",
+  value: typeof value === "string" ? text(value) : value,
+  color
 })
 
 /** @internal */
@@ -49,10 +44,10 @@ export const uri = (value: string): Span.Span => ({
 })
 
 /** @internal */
-export const isCode = (self: Span.Span): self is Span.Code => self._tag === "Code"
-
-/** @internal */
-export const isError = (self: Span.Span): self is Span.Error => self._tag === "Error"
+export const weak = (value: Span.Span | string): Span.Span => ({
+  _tag: "Weak",
+  value: typeof value === "string" ? text(value) : value
+})
 
 /** @internal */
 export const isSequence = (self: Span.Span): self is Span.Sequence => self._tag === "Sequence"
@@ -82,11 +77,10 @@ export const concat = dual<
 export const getText = (self: Span.Span): string => {
   switch (self._tag) {
     case "Text":
-    case "Code":
     case "URI": {
       return self.value
     }
-    case "Error":
+    case "Highlight":
     case "Weak":
     case "Strong": {
       return getText(self.value)
@@ -112,12 +106,11 @@ export const isEmpty = (self: Span.Span): boolean => size(self) === 0
 /** @internal */
 export const size = (self: Span.Span): number => {
   switch (self._tag) {
-    case "Code":
     case "Text":
     case "URI": {
       return self.value.length
     }
-    case "Error":
+    case "Highlight":
     case "Strong":
     case "Weak": {
       return size(self.value)
@@ -131,26 +124,23 @@ export const size = (self: Span.Span): number => {
 /** @internal */
 export const toAnsiDoc = (self: Span.Span): AnsiDoc.AnsiDoc => {
   switch (self._tag) {
-    case "Text": {
-      return Doc.text(self.value)
+    case "Highlight": {
+      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.color(self.color))
     }
-    case "Code": {
-      return Doc.annotate(Doc.text(self.value), AnsiStyle.color(Color.white))
-    }
-    case "Error": {
-      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.color(Color.red))
-    }
-    case "Weak": {
-      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.dullColor(Color.black))
+    case "Sequence": {
+      return Doc.cat(toAnsiDoc(self.left), toAnsiDoc(self.right))
     }
     case "Strong": {
       return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.bold)
     }
+    case "Text": {
+      return Doc.text(self.value)
+    }
     case "URI": {
       return Doc.annotate(Doc.text(self.value), AnsiStyle.underlined)
     }
-    case "Sequence": {
-      return Doc.cat(toAnsiDoc(self.left), toAnsiDoc(self.right))
+    case "Weak": {
+      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.dullColor(Color.black))
     }
   }
 }
