@@ -596,8 +596,8 @@ export const equals: {
  * @example
  * import * as Duration from "effect/Duration"
  *
- * Duration.format(Duration.millis(1000)) // "Duration(1s)"
- * Duration.format(Duration.millis(1001)) // "Duration(1s 1ms)"
+ * Duration.format(Duration.millis(1000)) // "1s"
+ * Duration.format(Duration.millis(1001)) // "1s 1ms"
  */
 export const format = (self: DurationInput): string => {
   const duration = decode(self)
