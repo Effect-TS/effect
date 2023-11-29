@@ -680,3 +680,13 @@ ReadonlyArray.reverse(strings)
 
 // $ExpectType [string, ...string[]]
 ReadonlyArray.reverse(nonEmptyStrings)
+
+// -------------------------------------------------------------------------------------
+// sortBy
+// -------------------------------------------------------------------------------------
+
+// $ExpectType AB[]
+ReadonlyArray.sortBy(ordera)(abs)
+
+// $ExpectType [AB, ...AB[]]
+ReadonlyArray.sortBy(ordera)(nonEmptyabs)

@@ -928,7 +928,7 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(dedupeNonEmpty(["a", "b", "A"]), ["a", "b", "A"])
   })
 
-  it("sortBy / sortByNonEmpty", () => {
+  it("sortBy", () => {
     interface X {
       readonly a: string
       readonly b: number
@@ -972,7 +972,7 @@ describe.concurrent("ReadonlyArray", () => {
       { a: "c", b: 2, c: true }
     ])
 
-    const sortByAgeByName = RA.sortByNonEmpty(byAge, byName)
+    const sortByAgeByName = RA.sortBy(byAge, byName)
     deepStrictEqual(sortByAgeByName(xs), [
       { a: "a", b: 1, c: true },
       { a: "b", b: 2, c: true },

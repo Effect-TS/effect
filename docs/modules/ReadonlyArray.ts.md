@@ -118,7 +118,6 @@ Added in v2.0.0
 - [sorting](#sorting)
   - [sort](#sort)
   - [sortBy](#sortby)
-  - [sortByNonEmpty](#sortbynonempty)
 - [type lambdas](#type-lambdas)
   - [ReadonlyArrayTypeLambda (interface)](#readonlyarraytypelambda-interface)
 - [unsafe](#unsafe)
@@ -1536,19 +1535,10 @@ using first `orders[0]`, then `orders[1]`, etc...
 **Signature**
 
 ```ts
-export declare const sortBy: <B>(...orders: readonly Order.Order<B>[]) => <A extends B>(self: Iterable<A>) => A[]
-```
-
-Added in v2.0.0
-
-## sortByNonEmpty
-
-**Signature**
-
-```ts
-export declare const sortByNonEmpty: <B>(
-  ...orders: readonly Order.Order<B>[]
-) => <A extends B>(as: readonly [A, ...A[]]) => [A, ...A[]]
+export declare const sortBy: <B>(...orders: readonly Order.Order<B>[]) => {
+  <A extends B>(as: readonly [A, ...A[]]): [A, ...A[]]
+  <A extends B>(self: Iterable<A>): A[]
+}
 ```
 
 Added in v2.0.0

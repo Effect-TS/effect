@@ -875,18 +875,19 @@ export const sortWith: {
  * @category sorting
  * @since 2.0.0
  */
-export const sortBy = <B>(...orders: ReadonlyArray<Order.Order<B>>) => <A extends B>(self: Iterable<A>): Array<A> => {
-  const input = fromIterable(self)
-  return (isNonEmptyReadonlyArray(input) ? sortByNonEmpty(...orders)(input) : [])
+export const sortBy = <B>(...orders: ReadonlyArray<Order.Order<B>>): {
+  <A extends B>(as: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
+  <A extends B>(self: Iterable<A>): Array<A>
+} => {
+  const sortByNonEmpty = sort(Order.combineAll(orders))
+  return (<A extends B>(self: Iterable<A>): Array<A> => {
+    const input = fromIterable(self)
+    if (isNonEmptyReadonlyArray(input)) {
+      return sortByNonEmpty(input)
+    }
+    return []
+  }) as any
 }
-
-/**
- * @category sorting
- * @since 2.0.0
- */
-export const sortByNonEmpty = <B>(
-  ...orders: ReadonlyArray<Order.Order<B>>
-): <A extends B>(as: NonEmptyReadonlyArray<A>) => NonEmptyArray<A> => sort(Order.combineAll(orders))
 
 /**
  * Takes two `Iterable`s and returns an `Array` of corresponding pairs.
