@@ -57,6 +57,7 @@ Added in v2.0.0
 - [utils](#utils)
   - [clamp](#clamp)
   - [decode](#decode)
+  - [format](#format)
   - [max](#max)
   - [min](#min)
 
@@ -498,6 +499,27 @@ Added in v2.0.0
 
 ```ts
 export declare const decode: (input: DurationInput) => Duration
+```
+
+Added in v2.0.0
+
+## format
+
+Converts a `Duration` to a human readable string.
+
+**Signature**
+
+```ts
+export declare const format: (self: DurationInput) => string
+```
+
+**Example**
+
+```ts
+import * as Duration from "effect/Duration"
+
+Duration.format(Duration.millis(1000)) // "1s"
+Duration.format(Duration.millis(1001)) // "1s 1ms"
 ```
 
 Added in v2.0.0
