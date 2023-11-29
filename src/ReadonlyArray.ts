@@ -980,36 +980,31 @@ export const unzipNonEmpty = <A, B>(
 }
 
 /**
- * Places an element in between members of an `Iterable`
+ * Places an element in between members of an `Iterable`.
+ * If the input is a non-empty array, the result is also a non-empty array.
  *
  * @since 2.0.0
  */
 export const intersperse: {
-  <B>(middle: B): <A>(self: Iterable<A>) => Array<A | B>
+  <B>(
+    middle: B
+  ): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A, B>(self: NonEmptyReadonlyArray<A>, middle: B): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, middle: B): Array<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, middle: B): Array<A | B> => {
   const input = fromIterable(self)
-  return (isNonEmptyReadonlyArray(input) ? intersperseNonEmpty(input, middle) : [])
-})
-
-/**
- * Places an element in between members of a `NonEmptyReadonlyArray`
- *
- * @since 2.0.0
- */
-export const intersperseNonEmpty: {
-  <B>(middle: B): <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A | B>
-  <A, B>(self: NonEmptyReadonlyArray<A>, middle: B): NonEmptyArray<A | B>
-} = dual(2, <A, B>(self: NonEmptyReadonlyArray<A>, middle: B): NonEmptyArray<A | B> => {
-  const out: NonEmptyArray<A | B> = [headNonEmpty(self)]
-  const tail = tailNonEmpty(self)
-  for (let i = 0; i < tail.length; i++) {
-    if (i < tail.length) {
-      out.push(middle)
+  if (isNonEmptyReadonlyArray(input)) {
+    const out: NonEmptyArray<A | B> = [headNonEmpty(input)]
+    const tail = tailNonEmpty(input)
+    for (let i = 0; i < tail.length; i++) {
+      if (i < tail.length) {
+        out.push(middle)
+      }
+      out.push(tail[i])
     }
-    out.push(tail[i])
+    return out
   }
-  return out
+  return []
 })
 
 /**

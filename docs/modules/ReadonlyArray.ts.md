@@ -147,7 +147,6 @@ Added in v2.0.0
   - [intersection](#intersection)
   - [intersectionWith](#intersectionwith)
   - [intersperse](#intersperse)
-  - [intersperseNonEmpty](#interspersenonempty)
   - [max](#max)
   - [min](#min)
   - [modify](#modify)
@@ -1897,29 +1896,16 @@ Added in v2.0.0
 
 ## intersperse
 
-Places an element in between members of an `Iterable`
+Places an element in between members of an `Iterable`.
+If the input is a non-empty array, the result is also a non-empty array.
 
 **Signature**
 
 ```ts
 export declare const intersperse: {
-  <B>(middle: B): <A>(self: Iterable<A>) => (B | A)[]
-  <A, B>(self: Iterable<A>, middle: B): (A | B)[]
-}
-```
-
-Added in v2.0.0
-
-## intersperseNonEmpty
-
-Places an element in between members of a `NonEmptyReadonlyArray`
-
-**Signature**
-
-```ts
-export declare const intersperseNonEmpty: {
-  <B>(middle: B): <A>(self: readonly [A, ...A[]]) => [B | A, ...(B | A)[]]
+  <B>(middle: B): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
   <A, B>(self: readonly [A, ...A[]], middle: B): [A | B, ...(A | B)[]]
+  <A, B>(self: Iterable<A>, middle: B): (A | B)[]
 }
 ```
 

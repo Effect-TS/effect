@@ -527,8 +527,36 @@ ReadonlyArray.zip(strings, numbers)
 // $ExpectType [string, number][]
 pipe(strings, ReadonlyArray.zip(numbers))
 
+// $ExpectType [string, number][]
+ReadonlyArray.zip(numbers)(strings)
+
 // $ExpectType [[string, number], ...[string, number][]]
 ReadonlyArray.zip(nonEmptyStrings, nonEmptyNumbers)
 
 // $ExpectType [[string, number], ...[string, number][]]
 pipe(nonEmptyStrings, ReadonlyArray.zip(nonEmptyNumbers))
+
+// $ExpectType [[string, number], ...[string, number][]]
+ReadonlyArray.zip(nonEmptyNumbers)(nonEmptyStrings)
+
+// -------------------------------------------------------------------------------------
+// intersperse
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+ReadonlyArray.intersperse(strings, "a")
+
+// $ExpectType string[]
+pipe(strings, ReadonlyArray.intersperse("a"))
+
+// $ExpectType string[]
+ReadonlyArray.intersperse("a")(strings)
+
+// $ExpectType [string, ...string[]]
+ReadonlyArray.intersperse(nonEmptyStrings, "a")
+
+// $ExpectType [string, ...string[]]
+pipe(nonEmptyStrings, ReadonlyArray.intersperse("a"))
+
+// $ExpectType [string, ...string[]]
+ReadonlyArray.intersperse("a")(nonEmptyStrings)
