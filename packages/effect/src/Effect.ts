@@ -1512,7 +1512,7 @@ export const catchAll: {
 /**
  * Recovers from both recoverable and unrecoverable errors.
  *
- * See `absorb`, `sandbox`, `mapErrorCause` for other functions that can
+ * See `sandbox`, `mapErrorCause` for other functions that can
  * recover from defects.
  *
  * @since 2.0.0
@@ -2199,7 +2199,7 @@ export const mapError: {
  * function. This can be used to transform errors while preserving the
  * original structure of `Cause`.
  *
- * See `absorb`, `sandbox`, `catchAllCause` for other functions for dealing
+ * See `sandbox`, `catchAllCause` for other functions for dealing
  * with defects.
  *
  * @since 2.0.0
