@@ -2168,7 +2168,7 @@ Added in v2.0.0
 
 Recovers from both recoverable and unrecoverable errors.
 
-See `absorb`, `sandbox`, `mapErrorCause` for other functions that can
+See `sandbox`, `mapErrorCause` for other functions that can
 recover from defects.
 
 **Signature**
@@ -3691,7 +3691,7 @@ Returns an effect with its full cause of failure mapped using the specified
 function. This can be used to transform errors while preserving the
 original structure of `Cause`.
 
-See `absorb`, `sandbox`, `catchAllCause` for other functions for dealing
+See `sandbox`, `catchAllCause` for other functions for dealing
 with defects.
 
 **Signature**
