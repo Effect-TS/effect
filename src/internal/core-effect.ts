@@ -1629,7 +1629,6 @@ export const tryPromise: {
 ): Effect.Effect<never, E | Cause.UnknownException, A> => {
   let evaluate: (signal?: AbortSignal) => Promise<A>
   let catcher: ((error: unknown) => E) | undefined = undefined
-
   if (typeof arg === "function") {
     evaluate = arg as (signal?: AbortSignal) => Promise<A>
   } else {
@@ -1638,40 +1637,38 @@ export const tryPromise: {
   }
 
   if (evaluate.length >= 1) {
-    return core.suspend(() => {
-      const controller = new AbortController()
-      return core.flatMap(try_(() => evaluate(controller.signal)), (promise) =>
-        core.async((resolve) => {
-          promise
-            .then((a) => resolve(core.exitSucceed(a)))
-            .catch((e) =>
-              resolve(core.fail(
-                catcher ? catcher(e) : new core.UnknownException(e)
-              ))
-            )
-          return core.sync(() => controller.abort())
-        }))
-    })
-  }
-
-  return core.flatMap(
-    try_(
-      arg as {
-        readonly try: LazyArg<Promise<A>>
-        readonly catch: (error: unknown) => E
-      }
-    ),
-    (promise) =>
-      core.async((resolve) => {
-        promise
+    return core.async((resolve, signal) => {
+      try {
+        evaluate(signal)
           .then((a) => resolve(core.exitSucceed(a)))
           .catch((e) =>
             resolve(core.fail(
               catcher ? catcher(e) : new core.UnknownException(e)
             ))
           )
-      })
-  )
+      } catch (error) {
+        throw core.makeEffectError(internalCause.fail(
+          catcher ? catcher(error) : new core.UnknownException(error)
+        ))
+      }
+    })
+  }
+
+  return core.async((resolve) => {
+    try {
+      evaluate()
+        .then((a) => resolve(core.exitSucceed(a)))
+        .catch((e) =>
+          resolve(core.fail(
+            catcher ? catcher(e) : new core.UnknownException(e)
+          ))
+        )
+    } catch (error) {
+      throw core.makeEffectError(internalCause.fail(
+        catcher ? catcher(error) : new core.UnknownException(error)
+      ))
+    }
+  })
 }
 
 /* @internal */
