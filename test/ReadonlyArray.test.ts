@@ -530,10 +530,6 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(pipe(RA.make(1, 2, 3, 4), RA.splitNonEmptyAt(2)), [[1, 2], [3, 4]])
   })
 
-  it("rotateNonEmpty", () => {
-    deepStrictEqual(RA.rotateNonEmpty(2)([1, 2, 3, 4, 5]), [4, 5, 1, 2, 3])
-  })
-
   describe.concurrent("unsafeGet", () => {
     it("should throw on index out of bound", () => {
       expect(() => pipe([], RA.unsafeGet(100))).toThrowError(new Error("Index 100 out of bounds"))

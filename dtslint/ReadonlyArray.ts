@@ -560,3 +560,25 @@ pipe(nonEmptyStrings, ReadonlyArray.intersperse("a"))
 
 // $ExpectType [string, ...string[]]
 ReadonlyArray.intersperse("a")(nonEmptyStrings)
+
+// -------------------------------------------------------------------------------------
+// rotate
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+ReadonlyArray.rotate(strings, 10)
+
+// $ExpectType string[]
+pipe(strings, ReadonlyArray.rotate(10))
+
+// $ExpectType string[]
+ReadonlyArray.rotate(10)(strings)
+
+// $ExpectType [string, ...string[]]
+ReadonlyArray.rotate(nonEmptyStrings, 10)
+
+// $ExpectType [string, ...string[]]
+pipe(nonEmptyStrings, ReadonlyArray.rotate(10))
+
+// $ExpectType [string, ...string[]]
+ReadonlyArray.rotate(10)(nonEmptyStrings)

@@ -157,7 +157,6 @@ Added in v2.0.0
   - [replace](#replace)
   - [replaceOption](#replaceoption)
   - [rotate](#rotate)
-  - [rotateNonEmpty](#rotatenonempty)
   - [setNonEmptyHead](#setnonemptyhead)
   - [setNonEmptyLast](#setnonemptylast)
   - [union](#union)
@@ -2044,25 +2043,15 @@ Added in v2.0.0
 ## rotate
 
 Rotate an `Iterable` by `n` steps.
+If the input is a non-empty array, the result is also a non-empty array.
 
 **Signature**
 
 ```ts
-export declare const rotate: { (n: number): <A>(self: Iterable<A>) => A[]; <A>(self: Iterable<A>, n: number): A[] }
-```
-
-Added in v2.0.0
-
-## rotateNonEmpty
-
-Rotate a `NonEmptyReadonlyArray` by `n` steps.
-
-**Signature**
-
-```ts
-export declare const rotateNonEmpty: {
-  (n: number): <A>(self: readonly [A, ...A[]]) => [A, ...A[]]
+export declare const rotate: {
+  (n: number): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
   <A>(self: readonly [A, ...A[]], n: number): [A, ...A[]]
+  <A>(self: Iterable<A>, n: number): A[]
 }
 ```
 

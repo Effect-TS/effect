@@ -1065,37 +1065,30 @@ export const setNonEmptyLast: {
 
 /**
  * Rotate an `Iterable` by `n` steps.
+ * If the input is a non-empty array, the result is also a non-empty array.
  *
  * @since 2.0.0
  */
 export const rotate: {
-  (n: number): <A>(self: Iterable<A>) => Array<A>
+  (n: number): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<A>
   <A>(self: Iterable<A>, n: number): Array<A>
 } = dual(2, <A>(self: Iterable<A>, n: number): Array<A> => {
   const input = fromIterable(self)
-  return isNonEmptyReadonlyArray(input) ? rotateNonEmpty(input, n) : []
-})
-
-/**
- * Rotate a `NonEmptyReadonlyArray` by `n` steps.
- *
- * @since 2.0.0
- */
-export const rotateNonEmpty: {
-  (n: number): <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A>
-  <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<A>
-} = dual(2, <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<A> => {
-  const len = self.length
-  const m = Math.round(n) % len
-  if (isOutOfBound(Math.abs(m), self) || m === 0) {
-    return copy(self)
+  if (isNonEmptyReadonlyArray(input)) {
+    const len = input.length
+    const m = Math.round(n) % len
+    if (isOutOfBound(Math.abs(m), input) || m === 0) {
+      return copy(input)
+    }
+    if (m < 0) {
+      const [f, s] = splitNonEmptyAt(input, -m)
+      return appendAll(s, f)
+    } else {
+      return rotate(self, m - len)
+    }
   }
-  if (m < 0) {
-    const [f, s] = splitNonEmptyAt(self, -m)
-    return appendAll(s, f)
-  } else {
-    return rotateNonEmpty(self, m - len)
-  }
+  return []
 })
 
 /**
