@@ -3,7 +3,9 @@ import * as List from "effect/List"
 import * as Predicate from "effect/Predicate"
 
 declare const numbers: List.List<number>
+declare const strings: List.List<string>
 declare const nonEmptyNumbers: List.Cons<number>
+declare const nonEmptyStrings: List.Cons<string>
 declare const numbersOrStrings: List.List<number | string>
 declare const nonEmptyNumbersOrStrings: List.Cons<number | string>
 
@@ -83,22 +85,6 @@ List.append(numbersOrStrings, true)
 
 // $ExpectType Cons<string | number | boolean>
 List.append(true)(numbersOrStrings)
-
-// -------------------------------------------------------------------------------------
-// appendAllNonEmpty
-// -------------------------------------------------------------------------------------
-
-// $ExpectType Cons<string | number>
-List.appendAllNonEmpty(numbersOrStrings, nonEmptyNumbersOrStrings)
-
-// $ExpectType Cons<string | number>
-List.appendAllNonEmpty(numbersOrStrings)(nonEmptyNumbersOrStrings)
-
-// $ExpectType Cons<string | number>
-List.appendAllNonEmpty(nonEmptyNumbersOrStrings, numbersOrStrings)
-
-// $ExpectType Cons<string | number>
-List.appendAllNonEmpty(nonEmptyNumbersOrStrings)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // prepend
@@ -201,3 +187,31 @@ List.findFirst(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Option<number>
 pipe(numbersOrStrings, List.findFirst(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// appendAll
+// -------------------------------------------------------------------------------------
+
+// $ExpectType List<string | number>
+List.appendAll(strings, numbers)
+
+// $ExpectType List<string | number>
+pipe(strings, List.appendAll(numbers))
+
+// $ExpectType Cons<string | number>
+List.appendAll(nonEmptyStrings, numbers)
+
+// $ExpectType Cons<string | number>
+pipe(nonEmptyStrings, List.appendAll(numbers))
+
+// $ExpectType Cons<string | number>
+List.appendAll(strings, nonEmptyNumbers)
+
+// $ExpectType Cons<string | number>
+pipe(strings, List.appendAll(nonEmptyNumbers))
+
+// $ExpectType Cons<string | number>
+List.appendAll(nonEmptyStrings, nonEmptyNumbers)
+
+// $ExpectType Cons<string | number>
+pipe(nonEmptyStrings, List.appendAll(nonEmptyNumbers))

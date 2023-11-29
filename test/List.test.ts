@@ -23,8 +23,6 @@ describe.concurrent("List", () => {
     expect(List.size).exist
     expect(List.filter).exist
     expect(List.filterMap).exist
-    expect(List.appendAllNonEmpty).exist
-    expect(List.prependAllNonEmpty).exist
   })
 
   it("is an iterable", () => {

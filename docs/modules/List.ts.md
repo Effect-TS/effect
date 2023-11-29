@@ -34,7 +34,6 @@ Added in v2.0.0
 - [concatenating](#concatenating)
   - [append](#append)
   - [appendAll](#appendall)
-  - [appendAllNonEmpty](#appendallnonempty)
   - [prepend](#prepend)
   - [prependAll](#prependall)
   - [prependAllNonEmpty](#prependallnonempty)
@@ -88,6 +87,7 @@ Added in v2.0.0
   - [List (namespace)](#list-namespace)
     - [Infer (type alias)](#infer-type-alias)
     - [With (type alias)](#with-type-alias)
+    - [With2 (type alias)](#with2-type-alias)
 
 ---
 
@@ -251,30 +251,26 @@ Added in v2.0.0
 
 ## appendAll
 
-Concatentates the specified lists together.
+Concatenates two lists, combining their elements.
+If either list is non-empty, the result is also a non-empty list.
 
 **Signature**
 
 ```ts
 export declare const appendAll: {
-  <B>(that: List<B>): <A>(self: List<A>) => List<B | A>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
+  <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
+  <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
   <A, B>(self: List<A>, that: List<B>): List<A | B>
 }
 ```
 
-Added in v2.0.0
-
-## appendAllNonEmpty
-
-**Signature**
+**Example**
 
 ```ts
-export declare const appendAllNonEmpty: {
-  <B>(that: Cons<B>): <A>(self: List<A>) => Cons<B | A>
-  <B>(that: List<B>): <A>(self: Cons<A>) => Cons<B | A>
-  <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
-  <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
-}
+import * as List from "effect/List"
+
+assert.deepStrictEqual(List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray), [1, 2, "a", "b"])
 ```
 
 Added in v2.0.0
@@ -817,6 +813,20 @@ Added in v2.0.0
 
 ```ts
 export type With<T extends List<any>, A> = T extends Cons<any> ? Cons<A> : List<A>
+```
+
+Added in v2.0.0
+
+### With2 (type alias)
+
+**Signature**
+
+```ts
+export type With2<S extends List<any>, T extends List<any>, A> = S extends Cons<any>
+  ? Cons<A>
+  : T extends Cons<any>
+    ? Cons<A>
+    : List<A>
 ```
 
 Added in v2.0.0

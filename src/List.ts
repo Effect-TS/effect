@@ -315,29 +315,29 @@ export const make = <Elements extends readonly [any, ...Array<any>]>(
 export const append: {
   <B>(element: B): <A>(self: List<A>) => Cons<A | B>
   <A, B>(self: List<A>, element: B): Cons<A | B>
-} = dual(2, <A, B>(self: List<A>, element: B): Cons<A | B> => appendAllNonEmpty(self, of(element)))
+} = dual(2, <A, B>(self: List<A>, element: B): Cons<A | B> => appendAll(self, of(element)))
 
 /**
- * Concatentates the specified lists together.
+ * Concatenates two lists, combining their elements.
+ * If either list is non-empty, the result is also a non-empty list.
+ *
+ * @example
+ * import * as List from "effect/List"
+ *
+ * assert.deepStrictEqual(
+ *   List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray),
+ *   [1, 2, "a", "b"]
+ * )
  *
  * @category concatenating
  * @since 2.0.0
  */
 export const appendAll: {
-  <B>(that: List<B>): <A>(self: List<A>) => List<A | B>
-  <A, B>(self: List<A>, that: List<B>): List<A | B>
-} = dual(2, <A, B>(self: List<A>, that: List<B>): List<A | B> => prependAll(that, self))
-
-/**
- * @category concatenating
- * @since 2.0.0
- */
-export const appendAllNonEmpty: {
-  <B>(that: Cons<B>): <A>(self: List<A>) => Cons<B | A>
-  <B>(that: List<B>): <A>(self: Cons<A>) => Cons<B | A>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
   <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
   <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
-} = dual(2, <A, B>(self: Cons<A>, that: List<B>): Cons<A | B> => appendAll(self, that) as any)
+  <A, B>(self: List<A>, that: List<B>): List<A | B>
+} = dual(2, <A, B>(self: List<A>, that: List<B>): List<A | B> => prependAll(that, self))
 
 /**
  * Prepends the specified element to the beginning of the list.
@@ -722,6 +722,13 @@ export declare namespace List {
    * @since 2.0.0
    */
   export type With<T extends List<any>, A> = T extends Cons<any> ? Cons<A> : List<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type With2<S extends List<any>, T extends List<any>, A> = S extends Cons<any> ? Cons<A>
+    : T extends Cons<any> ? Cons<A>
+    : List<A>
 }
 
 /**
