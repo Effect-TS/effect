@@ -200,24 +200,24 @@ describe.concurrent("Duration", () => {
     expect(Duration.lessThanOrEqualTo("2 seconds", "3 seconds")).toBe(true)
   })
 
-  it("toString", () => {
-    expect(String(Duration.seconds(2))).toEqual(`{
-  "_id": "Duration",
-  "_tag": "Millis",
-  "millis": 2000
-}`)
-    expect(String(Duration.nanos(10n))).toEqual(`{
-  "_id": "Duration",
-  "_tag": "Nanos",
-  "hrtime": [
-    0,
-    10
-  ]
-}`)
-    expect(String(Duration.millis(Infinity))).toEqual(`{
-  "_id": "Duration",
-  "_tag": "Infinity"
-}`)
+  it("String()", () => {
+    expect(String(Duration.infinity)).toEqual(`Duration(Infinity)`)
+    expect(String(Duration.nanos(10n))).toEqual(`Duration(10ns)`)
+    expect(String(Duration.millis(2))).toEqual(`Duration(2ms)`)
+    expect(String(Duration.millis(2.125))).toEqual(`Duration(2ms 125000ns)`)
+    expect(String(Duration.seconds(2))).toEqual(`Duration(2s)`)
+    expect(String(Duration.seconds(2.5))).toEqual(`Duration(2s 500ms)`)
+  })
+
+  it("format", () => {
+    expect(Duration.format(Duration.infinity)).toEqual(`Infinity`)
+    expect(Duration.format(Duration.minutes(5))).toEqual(`5m`)
+    expect(Duration.format(Duration.minutes(5.325))).toEqual(`5m 19s 500ms`)
+    expect(Duration.format(Duration.hours(3))).toEqual(`3h`)
+    expect(Duration.format(Duration.hours(3.11125))).toEqual(`3h 6m 40s 500ms`)
+    expect(Duration.format(Duration.days(2))).toEqual(`2d`)
+    expect(Duration.format(Duration.days(2.25))).toEqual(`2d 6h`)
+    expect(Duration.format(Duration.weeks(1))).toEqual(`7d`)
   })
 
   it("toJSON", () => {
