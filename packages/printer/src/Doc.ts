@@ -23,6 +23,7 @@ import type { Monoid } from "@effect/typeclass/Monoid"
 import type { Semigroup } from "@effect/typeclass/Semigroup"
 import type { Equal } from "effect/Equal"
 import type { TypeLambda } from "effect/HKT"
+import type { Pipeable } from "effect/Pipeable"
 import type { Flatten } from "./Flatten.js"
 import * as internal from "./internal/doc.js"
 import type { PageWidth } from "./PageWidth.js"
@@ -73,7 +74,7 @@ export declare namespace Doc {
    * @since 1.0.0
    * @category model
    */
-  export interface Variance<A> extends Equal {
+  export interface Variance<A> extends Equal, Pipeable {
     readonly [DocTypeId]: {
       readonly _A: () => A
     }
@@ -1700,7 +1701,11 @@ export const indent: {
  * @category alignment
  */
 export const encloseSep: {
-  <A, B, C>(left: Doc<A>, right: Doc<B>, sep: Doc<C>): <D>(docs: Iterable<Doc<D>>) => Doc<A | B | C | D>
+  <A, B, C>(
+    left: Doc<A>,
+    right: Doc<B>,
+    sep: Doc<C>
+  ): <D>(docs: Iterable<Doc<D>>) => Doc<A | B | C | D>
   <A, B, C, D>(docs: Iterable<Doc<D>>, left: Doc<A>, right: Doc<B>, sep: Doc<C>): Doc<A | B | C | D>
 } = internal.encloseSep
 
@@ -1884,7 +1889,8 @@ export const flatten: <A>(self: Doc<A>) => Doc<A> = internal.flatten
  * @since 1.0.0
  * @category flattening
  */
-export const changesUponFlattening: <A>(self: Doc<A>) => Flatten<Doc<A>> = internal.changesUponFlattening
+export const changesUponFlattening: <A>(self: Doc<A>) => Flatten<Doc<A>> =
+  internal.changesUponFlattening
 
 // -----------------------------------------------------------------------------
 // Annotations

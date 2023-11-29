@@ -10,7 +10,9 @@ import type * as PageWidth from "../PageWidth.js"
 const PageWidthSymbolKey = "@effect/printer/PageWidth"
 
 /** @internal */
-export const PageWidthTypeId: PageWidth.PageWidthTypeId = Symbol.for(PageWidthSymbolKey) as PageWidth.PageWidthTypeId
+export const PageWidthTypeId: PageWidth.PageWidthTypeId = Symbol.for(
+  PageWidthSymbolKey
+) as PageWidth.PageWidthTypeId
 
 const protoHash = {
   AvailablePerLine: (self: PageWidth.AvailablePerLine) =>
@@ -33,7 +35,8 @@ const protoEqual = {
     that._tag === "AvailablePerLine" &&
     self.lineWidth === that.lineWidth &&
     self.ribbonFraction === that.ribbonFraction,
-  Unbounded: (self: PageWidth.Unbounded, that: unknown) => isPageWidth(that) && that._tag === "Unbounded"
+  Unbounded: (self: PageWidth.Unbounded, that: unknown) =>
+    isPageWidth(that) && that._tag === "Unbounded"
 }
 
 const proto = {
@@ -59,14 +62,18 @@ export const isAvailablePerLine = (self: PageWidth.PageWidth): self is PageWidth
   self._tag === "AvailablePerLine"
 
 /** @internal */
-export const isUnbounded = (self: PageWidth.PageWidth): self is PageWidth.Unbounded => self._tag === "AvailablePerLine"
+export const isUnbounded = (self: PageWidth.PageWidth): self is PageWidth.Unbounded =>
+  self._tag === "AvailablePerLine"
 
 // -----------------------------------------------------------------------------
 // Constructors
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const availablePerLine = (lineWidth: number, ribbonFraction: number): PageWidth.PageWidth => {
+export const availablePerLine = (
+  lineWidth: number,
+  ribbonFraction: number
+): PageWidth.PageWidth => {
   const op = Object.create(proto)
   op._tag = "AvailablePerLine"
   op.lineWidth = lineWidth

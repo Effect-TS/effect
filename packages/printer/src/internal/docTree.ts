@@ -20,7 +20,9 @@ import * as docTreeToken from "./docTreeToken.js"
 const DocTreeSymbolKey = "@effect/printer/DocTree"
 
 /** @internal */
-export const DocTreeTypeId: DocTree.DocTreeTypeId = Symbol.for(DocTreeSymbolKey) as DocTree.DocTreeTypeId
+export const DocTreeTypeId: DocTree.DocTreeTypeId = Symbol.for(
+  DocTreeSymbolKey
+) as DocTree.DocTreeTypeId
 
 const protoHash = {
   EmptyTree: (_: DocTree.EmptyTree<any>) =>
@@ -62,7 +64,8 @@ const protoHash = {
 }
 
 const protoEqual = {
-  EmptyTree: (_: DocTree.EmptyTree<any>, that: unknown) => isDocTree(that) && that._tag === "EmptyTree",
+  EmptyTree: (_: DocTree.EmptyTree<any>, that: unknown) =>
+    isDocTree(that) && that._tag === "EmptyTree",
   CharTree: (self: DocTree.CharTree<any>, that: unknown) =>
     isDocTree(that) && that._tag === "CharTree" && self.char === that.char,
   TextTree: (self: DocTree.TextTree<any>, that: unknown) =>
@@ -99,23 +102,28 @@ export const isDocTree = (u: unknown): u is DocTree.DocTree<unknown> =>
   typeof u === "object" && u != null && DocTreeTypeId in u
 
 /** @internal */
-export const isEmptyTree = <A>(self: DocTree.DocTree<A>): self is DocTree.EmptyTree<A> => self._tag === "EmptyTree"
+export const isEmptyTree = <A>(self: DocTree.DocTree<A>): self is DocTree.EmptyTree<A> =>
+  self._tag === "EmptyTree"
 
 /** @internal */
-export const isCharTree = <A>(self: DocTree.DocTree<A>): self is DocTree.CharTree<A> => self._tag === "CharTree"
+export const isCharTree = <A>(self: DocTree.DocTree<A>): self is DocTree.CharTree<A> =>
+  self._tag === "CharTree"
 
 /** @internal */
-export const isTextTree = <A>(self: DocTree.DocTree<A>): self is DocTree.TextTree<A> => self._tag === "TextTree"
+export const isTextTree = <A>(self: DocTree.DocTree<A>): self is DocTree.TextTree<A> =>
+  self._tag === "TextTree"
 
 /** @internal */
-export const isLineTree = <A>(self: DocTree.DocTree<A>): self is DocTree.LineTree<A> => self._tag === "LineTree"
+export const isLineTree = <A>(self: DocTree.DocTree<A>): self is DocTree.LineTree<A> =>
+  self._tag === "LineTree"
 
 /** @internal */
 export const isAnnotationTree = <A>(self: DocTree.DocTree<A>): self is DocTree.AnnotationTree<A> =>
   self._tag === "AnnotationTree"
 
 /** @internal */
-export const isConcatTree = <A>(self: DocTree.DocTree<A>): self is DocTree.ConcatTree<A> => self._tag === "ConcatTree"
+export const isConcatTree = <A>(self: DocTree.DocTree<A>): self is DocTree.ConcatTree<A> =>
+  self._tag === "ConcatTree"
 
 // -----------------------------------------------------------------------------
 // Constructors
@@ -222,7 +230,8 @@ export const reAnnotate = dual<
 >(2, (self, f) => alterAnnotations(self, (a) => [f(a)]))
 
 /** @internal */
-export const unAnnotate = <A>(self: DocTree.DocTree<A>): DocTree.DocTree<never> => alterAnnotations(self, () => [])
+export const unAnnotate = <A>(self: DocTree.DocTree<A>): DocTree.DocTree<never> =>
+  alterAnnotations(self, () => [])
 
 // -----------------------------------------------------------------------------
 // Folding
@@ -308,7 +317,9 @@ const renderSimplyDecoratedSafe = <A, M>(
       return Effect.succeed(renderText(self.text))
     }
     case "LineTree": {
-      return Effect.succeed(M.combine(renderText("\n"), renderText(doc.textSpaces(self.indentation))))
+      return Effect.succeed(
+        M.combine(renderText("\n"), renderText(doc.textSpaces(self.indentation)))
+      )
     }
     case "AnnotationTree": {
       return Effect.map(
@@ -371,14 +382,16 @@ interface DocTreeParser<S, A> {
   (stream: S): Option.Option<readonly [A, S]>
 }
 
-const parserSucceed = <S, A>(value: A): DocTreeParser<S, A> => (stream) => Option.some([value, stream] as const)
+const parserSucceed = <S, A>(value: A): DocTreeParser<S, A> => (stream) =>
+  Option.some([value, stream] as const)
 
-const parserMap = <S, A, B>(self: DocTreeParser<S, A>, f: (a: A) => B): DocTreeParser<S, B> => (stream) =>
-  Option.map(self(stream), ([a, s]) => [f(a), s] as const)
+const parserMap =
+  <S, A, B>(self: DocTreeParser<S, A>, f: (a: A) => B): DocTreeParser<S, B> => (stream) =>
+    Option.map(self(stream), ([a, s]) => [f(a), s] as const)
 
 const parserFlatMap =
-  <S, A, B>(self: DocTreeParser<S, A>, f: (a: A) => DocTreeParser<S, B>): DocTreeParser<S, B> => (stream) =>
-    Option.flatMap(self(stream), ([a, s1]) => f(a)(s1))
+  <S, A, B>(self: DocTreeParser<S, A>, f: (a: A) => DocTreeParser<S, B>): DocTreeParser<S, B> =>
+  (stream) => Option.flatMap(self(stream), ([a, s1]) => f(a)(s1))
 
 function many<S, A>(parser: DocTreeParser<S, A>): DocTreeParser<S, ReadonlyArray<A>> {
   return (stream) =>

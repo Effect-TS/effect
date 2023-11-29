@@ -182,7 +182,9 @@ describe.concurrent("Doc", () => {
             case "AvailablePerLine": {
               const lineWidth = pageWidth.lineWidth
               const ribbonFraction = pageWidth.ribbonFraction
-              return Doc.squareBracketed(Doc.text(`Width: ${lineWidth}, Ribbon Fraction: ${ribbonFraction}`))
+              return Doc.squareBracketed(
+                Doc.text(`Width: ${lineWidth}, Ribbon Fraction: ${ribbonFraction}`)
+              )
             }
             case "Unbounded": {
               return Doc.empty
@@ -311,12 +313,16 @@ describe.concurrent("Doc", () => {
       })
 
       it("should flatten the right document", () => {
-        const doc = Doc.group(Doc.flatAlt(Doc.char("x"), Doc.hcat([Doc.char("y"), Doc.line, Doc.char("y")])))
+        const doc = Doc.group(
+          Doc.flatAlt(Doc.char("x"), Doc.hcat([Doc.char("y"), Doc.line, Doc.char("y")]))
+        )
         expect(Render.prettyDefault(doc)).toBe("y y")
       })
 
       it("should never render an unflattenable `right` document", () => {
-        const doc = Doc.group(Doc.flatAlt(Doc.char("x"), Doc.hcat([Doc.char("y"), Doc.hardLine, Doc.char("y")])))
+        const doc = Doc.group(
+          Doc.flatAlt(Doc.char("x"), Doc.hcat([Doc.char("y"), Doc.hardLine, Doc.char("y")]))
+        )
         expect(Render.prettyDefault(doc)).toBe("x")
       })
     })
@@ -638,7 +644,10 @@ describe.concurrent("Doc", () => {
 
     it("Monoid", () => {
       const M = Doc.getMonoid<never>()
-      const doc = M.combine(M.combine(Doc.text("hello"), Doc.parenthesized(M.empty)), Doc.text("world"))
+      const doc = M.combine(
+        M.combine(Doc.text("hello"), Doc.parenthesized(M.empty)),
+        Doc.text("world")
+      )
       expect(Render.prettyDefault(doc)).toBe("hello()world")
     })
   })

@@ -16,7 +16,9 @@ import type * as DocStream from "../DocStream.js"
 const DocStreamSymbolKey = "@effect/printer/DocStream"
 
 /** @internal */
-export const DocStreamTypeId: DocStream.DocStreamTypeId = Symbol.for(DocStreamSymbolKey) as DocStream.DocStreamTypeId
+export const DocStreamTypeId: DocStream.DocStreamTypeId = Symbol.for(
+  DocStreamSymbolKey
+) as DocStream.DocStreamTypeId
 
 const protoHash = {
   FailedStream: (_: DocStream.FailedStream<any>) =>
@@ -65,8 +67,10 @@ const protoHash = {
 }
 
 const protoEqual = {
-  FailedStream: (self: DocStream.FailedStream<any>, that: unknown) => isDocStream(that) && that._tag === "FailedStream",
-  EmptyStream: (self: DocStream.EmptyStream<any>, that: unknown) => isDocStream(that) && that._tag === "EmptyStream",
+  FailedStream: (self: DocStream.FailedStream<any>, that: unknown) =>
+    isDocStream(that) && that._tag === "FailedStream",
+  EmptyStream: (self: DocStream.EmptyStream<any>, that: unknown) =>
+    isDocStream(that) && that._tag === "EmptyStream",
   CharStream: (self: DocStream.CharStream<any>, that: unknown) =>
     isDocStream(that) &&
     that._tag === "CharStream" &&
@@ -111,8 +115,9 @@ export const isDocStream = (u: unknown): u is DocStream.DocStream<unknown> =>
   typeof u === "object" && u != null && DocStreamTypeId in u
 
 /** @internal */
-export const isFailedStream = <A>(self: DocStream.DocStream<A>): self is DocStream.FailedStream<A> =>
-  self._tag === "FailedStream"
+export const isFailedStream = <A>(
+  self: DocStream.DocStream<A>
+): self is DocStream.FailedStream<A> => self._tag === "FailedStream"
 
 /** @internal */
 export const isEmptyStream = <A>(self: DocStream.DocStream<A>): self is DocStream.EmptyStream<A> =>
@@ -131,12 +136,14 @@ export const isLineStream = <A>(self: DocStream.DocStream<A>): self is DocStream
   self._tag === "LineStream"
 
 /** @internal */
-export const isPushAnnotationStream = <A>(self: DocStream.DocStream<A>): self is DocStream.PushAnnotationStream<A> =>
-  self._tag === "PushAnnotationStream"
+export const isPushAnnotationStream = <A>(
+  self: DocStream.DocStream<A>
+): self is DocStream.PushAnnotationStream<A> => self._tag === "PushAnnotationStream"
 
 /** @internal */
-export const isPopAnnotationStream = <A>(self: DocStream.DocStream<A>): self is DocStream.PopAnnotationStream<A> =>
-  self._tag === "PopAnnotationStream"
+export const isPopAnnotationStream = <A>(
+  self: DocStream.DocStream<A>
+): self is DocStream.PopAnnotationStream<A> => self._tag === "PopAnnotationStream"
 
 // -----------------------------------------------------------------------------
 // Constructors
@@ -256,7 +263,9 @@ const alterAnnotationSafe = <A, B>(
       const altered = f(self.annotation)
       if (Option.isSome(altered)) {
         return Effect.map(
-          Effect.suspend(() => alterAnnotationSafe(self.stream, f, List.prepend(stack, DontRemove))),
+          Effect.suspend(() =>
+            alterAnnotationSafe(self.stream, f, List.prepend(stack, DontRemove))
+          ),
           pushAnnotation(altered.value)
         )
       }
@@ -331,7 +340,9 @@ const reAnnotateSafe = <A, B>(
 export const unAnnotate = <A>(self: DocStream.DocStream<A>): DocStream.DocStream<never> =>
   Effect.runSync(unAnnotateSafe(self))
 
-const unAnnotateSafe = <A>(self: DocStream.DocStream<A>): Effect.Effect<never, never, DocStream.DocStream<never>> => {
+const unAnnotateSafe = <A>(
+  self: DocStream.DocStream<A>
+): Effect.Effect<never, never, DocStream.DocStream<never>> => {
   switch (self._tag) {
     case "CharStream": {
       return Effect.map(

@@ -33,7 +33,8 @@ export const wadlerLeijen = dual<
   ) => DocStream.DocStream<A>
 >(
   3,
-  (self, fits, options) => Effect.runSync(wadlerLeijenSafe(0, 0, pipeline.cons(0, self, pipeline.nil), fits, options))
+  (self, fits, options) =>
+    Effect.runSync(wadlerLeijenSafe(0, 0, pipeline.cons(0, self, pipeline.nil), fits, options))
 )
 
 const wadlerLeijenSafe = <A>(
@@ -107,7 +108,11 @@ const wadlerLeijenSafe = <A>(
           return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
         }
         case "WithPageWidth": {
-          const layoutPipeline = pipeline.cons(x.indent, x.document.react(options.pageWidth), x.pipeline)
+          const layoutPipeline = pipeline.cons(
+            x.indent,
+            x.document.react(options.pageWidth),
+            x.pipeline
+          )
           return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
         }
         case "Nesting": {
@@ -116,7 +121,11 @@ const wadlerLeijenSafe = <A>(
         }
         case "Annotated": {
           const annotation = x.document.annotation
-          const layoutPipeline = pipeline.cons(x.indent, x.document.doc, pipeline.undoAnnotation(x.pipeline))
+          const layoutPipeline = pipeline.cons(
+            x.indent,
+            x.document.doc,
+            pipeline.undoAnnotation(x.pipeline)
+          )
           return Effect.map(
             Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options)),
             (stream) => docStream.pushAnnotation(annotation)(stream)
@@ -160,7 +169,8 @@ const selectNicer = <A>(
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const compact = <A>(self: Doc.Doc<A>): DocStream.DocStream<A> => Effect.runSync(compactSafe(List.of(self), 0))
+export const compact = <A>(self: Doc.Doc<A>): DocStream.DocStream<A> =>
+  Effect.runSync(compactSafe(List.of(self), 0))
 
 const compactSafe = <A>(
   docs: List.List<Doc.Doc<A>>,

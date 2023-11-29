@@ -1,28 +1,16 @@
-import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
-import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
-import * as Color from "@effect/printer-ansi/Color"
-import * as Doc from "@effect/printer/Doc"
+import * as Ansi from "@effect/printer-ansi/Ansi"
+import * as Doc from "@effect/printer-ansi/AnsiDoc"
 
-const doc = Doc.annotate(
-  Doc.hsep([
-    Doc.text("red"),
-    Doc.align(
-      Doc.vsep([
-        Doc.annotate(
-          Doc.hsep([
-            Doc.text("blue+u"),
-            Doc.annotate(
-              Doc.text("bold"),
-              AnsiStyle.combine(AnsiStyle.color(Color.blue), AnsiStyle.bold)
-            ),
-            Doc.text("blue+u")
-          ]),
-          AnsiStyle.combine(AnsiStyle.color(Color.blue), AnsiStyle.underlined)
-        ),
-        Doc.text("red")
-      ])
-    )
-  ]),
-  AnsiStyle.color(Color.red)
-)
-console.log(AnsiRender.prettyDefault(doc))
+const doc = Doc.hsep([
+  Doc.text("red"),
+  Doc.align(Doc.vsep([
+    Doc.hsep([
+      Doc.text("blue+u"),
+      Doc.text("bold").pipe(Doc.annotate(Ansi.bold)),
+      Doc.text("blue+u")
+    ]).pipe(Doc.annotate(Ansi.combine(Ansi.blue, Ansi.underlined))),
+    Doc.text("red")
+  ]))
+]).pipe(Doc.annotate(Ansi.red))
+
+console.log(Doc.render(doc, { style: "pretty" }))

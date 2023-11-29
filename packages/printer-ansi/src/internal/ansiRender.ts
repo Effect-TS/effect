@@ -4,19 +4,39 @@ import * as PageWidth from "@effect/printer/PageWidth"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as List from "effect/List"
+import type * as Ansi from "../Ansi.js"
 import type * as AnsiDoc from "../AnsiDoc.js"
-import type * as AnsiStyle from "../AnsiStyle.js"
-import * as ansiStyle from "./ansiStyle.js"
+import * as InternalAnsi from "./ansi.js"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const render = (self: DocStream.DocStream<AnsiStyle.AnsiStyle>): string =>
-  Effect.runSync(renderSafe(self, List.of(ansiStyle.Monoid.empty)))
+export const render = dual<
+  (config: AnsiDoc.AnsiDoc.RenderConfig) => (self: AnsiDoc.AnsiDoc) => string,
+  (self: AnsiDoc.AnsiDoc, config: AnsiDoc.AnsiDoc.RenderConfig) => string
+>(2, (self, config) => {
+  switch (config.style) {
+    case "compact": {
+      return renderStream(Layout.compact(self))
+    }
+    case "pretty": {
+      const width = Object.assign({}, PageWidth.defaultPageWidth, config.options)
+      return renderStream(Layout.pretty(self, Layout.options(width)))
+    }
+    case "smart": {
+      const width = Object.assign({}, PageWidth.defaultPageWidth, config.options)
+      return renderStream(Layout.smart(self, Layout.options(width)))
+    }
+  }
+})
 
-const unsafePeek = (stack: List.List<AnsiStyle.AnsiStyle>): AnsiStyle.AnsiStyle => {
+/** @internal */
+export const renderStream = (self: DocStream.DocStream<Ansi.Ansi>): string =>
+  Effect.runSync(renderSafe(self, List.of(InternalAnsi.none)))
+
+const unsafePeek = (stack: List.List<Ansi.Ansi>): Ansi.Ansi => {
   if (List.isNil(stack)) {
     throw new Error(
       "BUG: AnsiRender.unsafePeek - peeked at an empty stack" +
@@ -27,8 +47,8 @@ const unsafePeek = (stack: List.List<AnsiStyle.AnsiStyle>): AnsiStyle.AnsiStyle 
 }
 
 const unsafePop = (
-  stack: List.List<AnsiStyle.AnsiStyle>
-): readonly [AnsiStyle.AnsiStyle, List.List<AnsiStyle.AnsiStyle>] => {
+  stack: List.List<Ansi.Ansi>
+): readonly [Ansi.Ansi, List.List<Ansi.Ansi>] => {
   if (List.isNil(stack)) {
     throw new Error(
       "BUG: AnsiRender.unsafePop - popped from an empty stack" +
@@ -39,8 +59,8 @@ const unsafePop = (
 }
 
 const renderSafe = (
-  self: DocStream.DocStream<AnsiStyle.AnsiStyle>,
-  stack: List.List<AnsiStyle.AnsiStyle>
+  self: DocStream.DocStream<Ansi.Ansi>,
+  stack: List.List<Ansi.Ansi>
 ): Effect.Effect<never, never, string> => {
   switch (self._tag) {
     case "FailedStream": {
@@ -76,10 +96,10 @@ const renderSafe = (
     }
     case "PushAnnotationStream": {
       const currentStyle = unsafePeek(stack)
-      const nextStyle = ansiStyle.Monoid.combine(self.annotation, currentStyle)
+      const nextStyle = InternalAnsi.combine(self.annotation, currentStyle)
       return Effect.map(
         Effect.suspend(() => renderSafe(self.stream, List.cons(self.annotation, stack))),
-        (rest) => ansiStyle.stringify(nextStyle) + rest
+        (rest) => InternalAnsi.stringify(nextStyle) + rest
       )
     }
     case "PopAnnotationStream": {
@@ -87,45 +107,8 @@ const renderSafe = (
       const nextStyle = unsafePeek(styles)
       return Effect.map(
         Effect.suspend(() => renderSafe(self.stream, styles)),
-        (rest) => ansiStyle.stringify(nextStyle) + rest
+        (rest) => InternalAnsi.stringify(nextStyle) + rest
       )
     }
   }
 }
-
-/** @internal */
-export const compact = (self: AnsiDoc.AnsiDoc): string => render(Layout.compact(self))
-
-/** @internal */
-export const pretty = dual<
-  (options: Partial<Omit<PageWidth.AvailablePerLine, "_tag">>) => (self: AnsiDoc.AnsiDoc) => string,
-  (self: AnsiDoc.AnsiDoc, options: Partial<Omit<PageWidth.AvailablePerLine, "_tag">>) => string
->(2, (self, options) => {
-  const width = Object.assign({}, PageWidth.defaultPageWidth, options)
-  const layoutOptions = Layout.options(width)
-  return render(Layout.pretty(self, layoutOptions))
-})
-
-/** @internal */
-export const prettyDefault = (self: AnsiDoc.AnsiDoc): string => render(Layout.pretty(self, Layout.defaultOptions))
-
-/** @internal */
-export const prettyUnbounded = (self: AnsiDoc.AnsiDoc): string =>
-  render(Layout.pretty(self, Layout.options(PageWidth.unbounded)))
-
-/** @internal */
-export const smart = dual<
-  (options: Partial<Omit<PageWidth.AvailablePerLine, "_tag">>) => (self: AnsiDoc.AnsiDoc) => string,
-  (self: AnsiDoc.AnsiDoc, options: Partial<Omit<PageWidth.AvailablePerLine, "_tag">>) => string
->(2, (self, options) => {
-  const width = Object.assign({}, PageWidth.defaultPageWidth, options)
-  const layoutOptions = Layout.options(width)
-  return render(Layout.smart(self, layoutOptions))
-})
-
-/** @internal */
-export const smartDefault = (self: AnsiDoc.AnsiDoc): string => render(Layout.smart(self, Layout.defaultOptions))
-
-/** @internal */
-export const smartUnbounded = (self: AnsiDoc.AnsiDoc): string =>
-  render(Layout.smart(self, Layout.options(PageWidth.unbounded)))

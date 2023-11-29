@@ -10,7 +10,10 @@ export const optimize = dual<
   <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth) => Doc.Doc<A>
 >(2, (self, depth) => Effect.runSync(optimizeSafe(self, depth)))
 
-const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effect.Effect<never, never, Doc.Doc<A>> => {
+const optimizeSafe = <A>(
+  self: Doc.Doc<A>,
+  depth: Optimize.Optimize.Depth
+): Effect.Effect<never, never, Doc.Doc<A>> => {
   switch (self._tag) {
     case "FlatAlt": {
       return Effect.zipWith(
@@ -107,7 +110,9 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
       }
       if (_doc.isNest(self.doc)) {
         const doc = self.doc
-        return Effect.suspend(() => optimizeSafe(_doc.nest(doc.doc, self.indent + doc.indent), depth))
+        return Effect.suspend(() =>
+          optimizeSafe(_doc.nest(doc.doc, self.indent + doc.indent), depth)
+        )
       }
       if (self.indent === 0) {
         return Effect.suspend(() => optimizeSafe(self.doc, depth))

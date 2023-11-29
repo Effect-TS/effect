@@ -28,7 +28,9 @@ describe.concurrent("DocStream", () => {
   })
 
   it("isPushAnnotationStream", () => {
-    expect(DocStream.isPushAnnotationStream(DocStream.pushAnnotation(DocStream.empty, 1))).toBe(true)
+    expect(DocStream.isPushAnnotationStream(DocStream.pushAnnotation(DocStream.empty, 1))).toBe(
+      true
+    )
     expect(DocStream.isPushAnnotationStream(DocStream.empty)).toBe(false)
   })
 
