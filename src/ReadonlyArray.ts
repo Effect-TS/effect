@@ -831,15 +831,10 @@ export const remove: {
  * @category elements
  * @since 2.0.0
  */
-export const reverse = <A>(self: Iterable<A>): Array<A> => Array.from(self).reverse()
-
-/**
- * @category elements
- * @since 2.0.0
- */
-export const reverseNonEmpty = <A>(
-  self: NonEmptyReadonlyArray<A>
-): NonEmptyArray<A> => [lastNonEmpty(self), ...self.slice(0, -1).reverse()]
+export const reverse: {
+  <A>(self: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
+  <A>(self: Iterable<A>): Array<A>
+} = (<A>(self: Iterable<A>): Array<A> => Array.from(self).reverse()) as any
 
 /**
  * Create a new array with elements sorted in increasing order based on the specified comparator.

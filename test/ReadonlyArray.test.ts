@@ -899,11 +899,6 @@ describe.concurrent("ReadonlyArray", () => {
     )
   })
 
-  it("reverseNonEmpty", () => {
-    deepStrictEqual(RA.reverseNonEmpty([1]), [1])
-    deepStrictEqual(RA.reverseNonEmpty(RA.make(1, 2, 3)), [3, 2, 1])
-  })
-
   it("match", () => {
     const len: <A>(as: ReadonlyArray<A>) => number = RA.match({
       onEmpty: () => 0,

@@ -670,3 +670,13 @@ pipe(nonEmptyStrings, ReadonlyArray.chunksOf(10))
 
 // $ExpectType [[string, ...string[]], ...[string, ...string[]][]]
 ReadonlyArray.chunksOf(10)(nonEmptyStrings)
+
+// -------------------------------------------------------------------------------------
+// reverse
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+ReadonlyArray.reverse(strings)
+
+// $ExpectType [string, ...string[]]
+ReadonlyArray.reverse(nonEmptyStrings)

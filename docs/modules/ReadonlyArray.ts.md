@@ -43,7 +43,6 @@ Added in v2.0.0
   - [findLast](#findlast)
   - [findLastIndex](#findlastindex)
   - [reverse](#reverse)
-  - [reverseNonEmpty](#reversenonempty)
   - [some](#some)
   - [sortWith](#sortwith)
 - [filtering](#filtering)
@@ -568,17 +567,7 @@ Reverse an `Iterable`, creating a new `Array`.
 **Signature**
 
 ```ts
-export declare const reverse: <A>(self: Iterable<A>) => A[]
-```
-
-Added in v2.0.0
-
-## reverseNonEmpty
-
-**Signature**
-
-```ts
-export declare const reverseNonEmpty: <A>(self: readonly [A, ...A[]]) => [A, ...A[]]
+export declare const reverse: { <A>(self: readonly [A, ...A[]]): [A, ...A[]]; <A>(self: Iterable<A>): A[] }
 ```
 
 Added in v2.0.0
