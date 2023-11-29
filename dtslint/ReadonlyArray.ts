@@ -516,3 +516,19 @@ ReadonlyArray.appendAll(nonEmptyStrings, nonEmptyNumbers)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, ReadonlyArray.appendAll(nonEmptyNumbers))
+
+// -------------------------------------------------------------------------------------
+// zip
+// -------------------------------------------------------------------------------------
+
+// $ExpectType [string, number][]
+ReadonlyArray.zip(strings, numbers)
+
+// $ExpectType [string, number][]
+pipe(strings, ReadonlyArray.zip(numbers))
+
+// $ExpectType [[string, number], ...[string, number][]]
+ReadonlyArray.zip(nonEmptyStrings, nonEmptyNumbers)
+
+// $ExpectType [[string, number], ...[string, number][]]
+pipe(nonEmptyStrings, ReadonlyArray.zip(nonEmptyNumbers))

@@ -902,7 +902,9 @@ export const sortByNonEmpty = <B>(
  * @since 2.0.0
  */
 export const zip: {
+  <B>(that: NonEmptyReadonlyArray<B>): <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<[A, B]>
   <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Array<[A, B]>
+  <A, B>(self: NonEmptyReadonlyArray<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<[A, B]>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<[A, B]>
 } = dual(
   2,
@@ -924,19 +926,6 @@ export const zipWith: {
   const bs = fromIterable(that)
   return isNonEmptyReadonlyArray(as) && isNonEmptyReadonlyArray(bs) ? zipNonEmptyWith(bs, f)(as) : []
 })
-
-/**
- * @category zipping
- * @since 2.0.0
- */
-export const zipNonEmpty: {
-  <B>(that: NonEmptyReadonlyArray<B>): <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<[A, B]>
-  <A, B>(self: NonEmptyReadonlyArray<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<[A, B]>
-} = dual(
-  2,
-  <A, B>(self: NonEmptyReadonlyArray<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<[A, B]> =>
-    zipNonEmptyWith(self, that, (a, b) => [a, b])
-)
 
 /**
  * @category zipping

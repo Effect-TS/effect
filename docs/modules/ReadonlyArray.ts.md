@@ -169,7 +169,6 @@ Added in v2.0.0
   - [unzipNonEmpty](#unzipnonempty)
 - [zipping](#zipping)
   - [zip](#zip)
-  - [zipNonEmpty](#zipnonempty)
   - [zipNonEmptyWith](#zipnonemptywith)
   - [zipWith](#zipwith)
 
@@ -2205,21 +2204,10 @@ longer `Iterable` are discarded.
 
 ```ts
 export declare const zip: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => [A, B][]
-  <A, B>(self: Iterable<A>, that: Iterable<B>): [A, B][]
-}
-```
-
-Added in v2.0.0
-
-## zipNonEmpty
-
-**Signature**
-
-```ts
-export declare const zipNonEmpty: {
   <B>(that: readonly [B, ...B[]]): <A>(self: readonly [A, ...A[]]) => [[A, B], ...[A, B][]]
+  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => [A, B][]
   <A, B>(self: readonly [A, ...A[]], that: readonly [B, ...B[]]): [[A, B], ...[A, B][]]
+  <A, B>(self: Iterable<A>, that: Iterable<B>): [A, B][]
 }
 ```
 

@@ -828,14 +828,6 @@ describe.concurrent("ReadonlyArray", () => {
     )
   })
 
-  it("zipNonEmpty", () => {
-    deepStrictEqual(pipe(RA.make(1, 2, 3), RA.zipNonEmpty(["a", "b", "c", "d"])), [
-      [1, "a"],
-      [2, "b"],
-      [3, "c"]
-    ])
-  })
-
   it("unzipNonEmpty", () => {
     deepStrictEqual(
       RA.unzipNonEmpty([
