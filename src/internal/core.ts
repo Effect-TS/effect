@@ -12,7 +12,7 @@ import type * as Fiber from "../Fiber.js"
 import * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
 import type * as FiberStatus from "../FiberStatus.js"
-import type { LazyArg } from "../Function.js"
+import type { FunctionN, LazyArg } from "../Function.js"
 import { dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
@@ -78,9 +78,7 @@ export const makeEffectError = <E>(cause: Cause.Cause<E>): EffectError<E> => ({
   cause
 })
 
-/**
- * @internal
- */
+/** @internal */
 export const blocked = <R, E, A>(
   blockedRequests: BlockedRequests.RequestBlock<R>,
   _continue: Effect.Effect<R, E, A>
@@ -91,9 +89,7 @@ export const blocked = <R, E, A>(
   return effect
 }
 
-/**
- * @internal
- */
+/** @internal*/
 export const runRequestBlock = <R>(
   blockedRequests: BlockedRequests.RequestBlock<R>
 ): Effect.Blocked<R, never, void> => {
@@ -443,6 +439,17 @@ export const as = dual<
 /* @internal */
 export const asUnit = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, void> => as(self, void 0)
 
+const withSignalAndCallback = <T, U>(
+  register: FunctionN<[U, AbortSignal], T>,
+  callback: U
+): readonly [T] | readonly [T, AbortController] => {
+  if (register.length === 2) {
+    const controller = new AbortController()
+    return [register(callback, controller.signal), controller] as const
+  }
+  return [(register as FunctionN<[U], T>)(callback)] as const
+}
+
 /* @internal */
 export const async = <R, E, A>(
   register: (
@@ -453,19 +460,10 @@ export const async = <R, E, A>(
 ): Effect.Effect<R, E, A> =>
   suspend(() => {
     let cancelerRef: Effect.Effect<R, never, void> | void = undefined
-    let controllerRef: AbortController | void = undefined
+    let controllerRef: AbortController | undefined = undefined
     const effect = new EffectPrimitive(OpCodes.OP_ASYNC) as any
-    if (register.length !== 1) {
-      const controller = new AbortController()
-      controllerRef = controller
-      effect.i0 = (resume: (_: Effect.Effect<R, E, A>) => void) => {
-        cancelerRef = register(resume, controller.signal)
-      }
-    } else {
-      effect.i0 = (resume: (_: Effect.Effect<R, E, A>) => void) => {
-        // @ts-expect-error
-        cancelerRef = register(resume)
-      }
+    effect.i0 = (resume: (_: Effect.Effect<R, E, A>) => void) => {
+      ;[cancelerRef, controllerRef] = withSignalAndCallback(register, resume)
     }
     effect.i1 = blockingOn
     return onInterrupt(effect, () => {
@@ -1911,9 +1909,7 @@ export const currentConcurrency: FiberRef.FiberRef<"unbounded" | number> = globa
   () => fiberRefUnsafeMake<"unbounded" | number>("unbounded")
 )
 
-/**
- * @internal
- */
+/** @internal */
 export const currentRequestBatching = globalValue(
   Symbol.for("effect/FiberRef/currentRequestBatching"),
   () => fiberRefUnsafeMake(true)
