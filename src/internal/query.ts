@@ -78,7 +78,7 @@ export const fromRequest = <
                               proxy,
                               (entry) => entry.handle === orNew.left.handle
                             ),
-                            () => fromRequest(proxy, dataSource)
+                            () => fromRequest(proxy, ds)
                           )
                         }
                         return ensuring(

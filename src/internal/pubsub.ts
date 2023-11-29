@@ -1302,12 +1302,13 @@ class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
       core.flatMap(
         core.sync(() => unsafePollAllQueue(this.publishers)),
         (publishers) =>
-          fiberRuntime.forEachParUnboundedDiscard(
+          fiberRuntime.forEachConcurrentDiscard(
             publishers,
             ([_, deferred, last]) =>
               last ?
                 pipe(core.deferredInterruptWith(deferred, fiberId), core.asUnit) :
                 core.unit,
+            false,
             false
           )
       ))

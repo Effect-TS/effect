@@ -81,10 +81,10 @@ export const makeEffectError = <E>(cause: Cause.Cause<E>): EffectError<E> => ({
 /**
  * @internal
  */
-export const blocked = <R, E, A>(
-  blockedRequests: BlockedRequests.RequestBlock<R>,
-  _continue: Effect.Effect<R, E, A>
-): Effect.Blocked<R, E, A> => {
+export const blocked = <E, A>(
+  blockedRequests: BlockedRequests.RequestBlock,
+  _continue: Effect.Effect<never, E, A>
+): Effect.Blocked<E, A> => {
   const effect = new EffectPrimitive("Blocked") as any
   effect.i0 = blockedRequests
   effect.i1 = _continue
@@ -94,9 +94,9 @@ export const blocked = <R, E, A>(
 /**
  * @internal
  */
-export const runRequestBlock = <R>(
-  blockedRequests: BlockedRequests.RequestBlock<R>
-): Effect.Blocked<R, never, void> => {
+export const runRequestBlock = (
+  blockedRequests: BlockedRequests.RequestBlock
+): Effect.Effect<never, never, void> => {
   const effect = new EffectPrimitive("RunBlocked") as any
   effect.i0 = blockedRequests
   return effect
@@ -269,17 +269,17 @@ export interface Async extends
 {}
 
 /** @internal */
-export interface Blocked<out R = any, out E = any, out A = any> extends
+export interface Blocked<out E = any, out A = any> extends
   Op<"Blocked", {
-    readonly i0: BlockedRequests.RequestBlock<R>
-    readonly i1: Effect.Effect<R, E, A>
+    readonly i0: BlockedRequests.RequestBlock
+    readonly i1: Effect.Effect<never, E, A>
   }>
 {}
 
 /** @internal */
-export interface RunBlocked<out R = any> extends
+export interface RunBlocked extends
   Op<"RunBlocked", {
-    readonly i0: BlockedRequests.RequestBlock<R>
+    readonly i0: BlockedRequests.RequestBlock
   }>
 {}
 
@@ -317,12 +317,7 @@ export interface OnSuccess extends
 {}
 
 /** @internal */
-export interface OnStep extends
-  Op<"OnStep", {
-    readonly i0: Primitive
-    i1(result: Exit.Exit<any, any> | Blocked): Primitive
-  }>
-{}
+export interface OnStep extends Op<"OnStep", { readonly i0: Primitive }> {}
 
 /** @internal */
 export interface OnSuccessAndFailure extends
@@ -406,28 +401,20 @@ export const acquireUseRelease = dual<
     flatMap(
       acquire,
       (a) =>
-        flatMap(exit(suspend(() => restore(step(use(a))))), (exit): Effect.Effect<R | R2 | R3, E | E2, A2> => {
-          if (exit._tag === "Success" && exit.value._op === "Blocked") {
-            const value = exit.value
-            return blocked(
-              value.i0,
-              acquireUseRelease(succeed(a), () => value.i1, release)
-            )
-          }
-          const flat = exitFlatten(exit as Exit.Exit<E2, Exit.Exit<E2, A2>>)
-          return suspend(() => release(a, flat)).pipe(
+        flatMap(exit(suspend(() => restore(use(a)))), (exit): Effect.Effect<R | R2 | R3, E | E2, A2> => {
+          return suspend(() => release(a, exit)).pipe(
             matchCauseEffect({
               onFailure: (cause) => {
-                switch (flat._tag) {
+                switch (exit._tag) {
                   case OpCodes.OP_FAILURE: {
-                    return failCause(internalCause.parallel(flat.i0, cause))
+                    return failCause(internalCause.parallel(exit.i0, cause))
                   }
                   case OpCodes.OP_SUCCESS: {
                     return failCause(cause)
                   }
                 }
               },
-              onSuccess: () => flat
+              onSuccess: () => exit
             })
           )
         })
@@ -756,21 +743,9 @@ export const andThen = dual<
 /* @internal */
 export const step = <R, E, A>(
   self: Effect.Effect<R, E, A>
-): Effect.Effect<R, E, Exit.Exit<E, A> | Effect.Blocked<R, E, A>> => {
+): Effect.Effect<R, never, Exit.Exit<E, A> | Effect.Blocked<E, A>> => {
   const effect = new EffectPrimitive("OnStep") as any
   effect.i0 = self
-  effect.i1 = exitSucceed
-  return effect
-}
-
-/* @internal */
-export const flatMapStep = <R, E, A, R1, E1, B>(
-  self: Effect.Effect<R, E, A>,
-  f: (step: Exit.Exit<E, A> | Effect.Blocked<R, E, A>) => Effect.Effect<R1, E1, B>
-): Effect.Effect<R | R1, E1, B> => {
-  const effect = new EffectPrimitive("OnStep") as any
-  effect.i0 = self
-  effect.i1 = f
   return effect
 }
 
@@ -939,14 +914,7 @@ export const interruptWith = (fiberId: FiberId.FiberId): Effect.Effect<never, ne
 export const interruptible = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
-  const _continue = (orBlock: any) => {
-    if (orBlock._tag === "Blocked") {
-      return blocked(orBlock.i0, interruptible(orBlock.i1))
-    } else {
-      return orBlock
-    }
-  }
-  effect.i1 = () => flatMapStep(self, _continue)
+  effect.i1 = () => self
   return effect
 }
 
@@ -956,17 +924,11 @@ export const interruptibleMask = <R, E, A>(
 ): Effect.Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
-  const _continue = (step: Exit.Exit<E, A> | Effect.Blocked<R, E, A>): Exit.Exit<E, A> | Effect.Blocked<R, E, A> => {
-    if (step._op === "Blocked") {
-      return blocked(step.i0, interruptible(step.i1))
-    }
-    return step
-  }
   effect.i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
     _runtimeFlags.interruption(oldFlags)
-      ? step(f(interruptible))
-      : step(f(uninterruptible))
-  return flatMap(effect, _continue)
+      ? f(interruptible)
+      : f(uninterruptible)
+  return effect
 }
 
 /* @internal */
@@ -1233,14 +1195,7 @@ export const uninterruptible: <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.
 ): Effect.Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
-  effect.i1 = () => flatMapStep(self, _continue)
-  const _continue = (orBlock: any) => {
-    if (orBlock._tag === "Blocked") {
-      return blocked(orBlock.i0, uninterruptible(orBlock.i1))
-    } else {
-      return orBlock
-    }
-  }
+  effect.i1 = () => self
   return effect
 }
 
@@ -1250,17 +1205,11 @@ export const uninterruptibleMask = <R, E, A>(
 ): Effect.Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
-  const _continue = (step: Exit.Exit<E, A> | Effect.Blocked<R, E, A>): Exit.Exit<E, A> | Effect.Blocked<R, E, A> => {
-    if (step._op === "Blocked") {
-      return blocked(step.i0, uninterruptible(step.i1))
-    }
-    return step
-  }
   effect.i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
     _runtimeFlags.interruption(oldFlags)
-      ? step(f(interruptible))
-      : step(f(uninterruptible))
-  return flatMap(effect, _continue)
+      ? f(interruptible)
+      : f(uninterruptible)
+  return effect
 }
 
 /* @internal */
@@ -1743,16 +1692,16 @@ export const resolverLocally = dual<
   ))
 
 /** @internal */
-export const requestBlockLocally = <R, A>(
-  self: BlockedRequests.RequestBlock<R>,
+export const requestBlockLocally = <A>(
+  self: BlockedRequests.RequestBlock,
   ref: FiberRef.FiberRef<A>,
   value: A
-): BlockedRequests.RequestBlock<R> => _blockedRequests.reduce(self, LocallyReducer(ref, value))
+): BlockedRequests.RequestBlock => _blockedRequests.reduce(self, LocallyReducer(ref, value))
 
-const LocallyReducer = <R, A>(
+const LocallyReducer = <A>(
   ref: FiberRef.FiberRef<A>,
   value: A
-): BlockedRequests.RequestBlock.Reducer<R, BlockedRequests.RequestBlock<R>> => ({
+): BlockedRequests.RequestBlock.Reducer<BlockedRequests.RequestBlock> => ({
   emptyCase: () => _blockedRequests.empty,
   parCase: (left, right) => _blockedRequests.par(left, right),
   seqCase: (left, right) => _blockedRequests.seq(left, right),
@@ -1771,18 +1720,10 @@ export const fiberRefLocally: {
   <A>(self: FiberRef.FiberRef<A>, value: A) => <R, E, B>(use: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>,
   <R, E, B, A>(use: Effect.Effect<R, E, B>, self: FiberRef.FiberRef<A>, value: A) => Effect.Effect<R, E, B>
 >(3, (use, self, value) =>
-  flatMap(
-    acquireUseRelease(
-      zipLeft(fiberRefGet(self), fiberRefSet(self, value)),
-      () => step(use),
-      (oldValue) => fiberRefSet(self, oldValue)
-    ),
-    (res) => {
-      if (res._op === "Blocked") {
-        return blocked(res.i0, fiberRefLocally(res.i1, self, value))
-      }
-      return res
-    }
+  acquireUseRelease(
+    zipLeft(fiberRefGet(self), fiberRefSet(self, value)),
+    () => use,
+    (oldValue) => fiberRefSet(self, oldValue)
   ))
 
 /* @internal */
