@@ -463,10 +463,9 @@ export const async = <R, E, A>(
     }
     const effect = new EffectPrimitive(OpCodes.OP_ASYNC) as any
     effect.i0 = (resume: (_: Effect.Effect<R, E, A>) => void) => {
+      backingResume = resume
       if (pendingEffect) {
         resume(pendingEffect)
-      } else {
-        backingResume = resume
       }
     }
     effect.i1 = blockingOn
