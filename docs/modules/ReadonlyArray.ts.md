@@ -66,7 +66,6 @@ Added in v2.0.0
   - [scanRight](#scanright)
 - [getters](#getters)
   - [chunksOf](#chunksof)
-  - [chunksOfNonEmpty](#chunksofnonempty)
   - [drop](#drop)
   - [dropRight](#dropright)
   - [dropWhile](#dropwhile)
@@ -893,24 +892,13 @@ whenever `n` evenly divides the length of `self`.
 
 ```ts
 export declare const chunksOf: {
-  (n: number): <A>(self: Iterable<A>) => [A, ...A[]][]
-  <A>(self: Iterable<A>, n: number): [A, ...A[]][]
-}
-```
-
-Added in v2.0.0
-
-## chunksOfNonEmpty
-
-Splits a `NonEmptyReadonlyArray` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
-the `NonEmptyReadonlyArray`.
-
-**Signature**
-
-```ts
-export declare const chunksOfNonEmpty: {
-  (n: number): <A>(self: readonly [A, ...A[]]) => [[A, ...A[]], ...[A, ...A[]][]]
+  (
+    n: number
+  ): <T extends readonly any[] | Iterable<any>>(
+    self: T
+  ) => ReadonlyArray.With<T, [ReadonlyArray.Infer<T>, ...ReadonlyArray.Infer<T>[]]>
   <A>(self: readonly [A, ...A[]], n: number): [[A, ...A[]], ...[A, ...A[]][]]
+  <A>(self: Iterable<A>, n: number): [A, ...A[]][]
 }
 ```
 

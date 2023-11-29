@@ -833,28 +833,28 @@ describe.concurrent("ReadonlyArray", () => {
     )
   })
 
-  it("chunksOfNonEmpty", () => {
-    deepStrictEqual(RA.chunksOfNonEmpty(2)([1, 2, 3, 4, 5]), [
+  it("chunksOf", () => {
+    deepStrictEqual(RA.chunksOf(2)([1, 2, 3, 4, 5]), [
       RA.make(1, 2),
       [3, 4],
       [5]
     ])
-    deepStrictEqual(RA.chunksOfNonEmpty(2)([1, 2, 3, 4, 5, 6]), [
+    deepStrictEqual(RA.chunksOf(2)([1, 2, 3, 4, 5, 6]), [
       RA.make(1, 2),
       [3, 4],
       [5, 6]
     ])
-    deepStrictEqual(RA.chunksOfNonEmpty(1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
-    deepStrictEqual(RA.chunksOfNonEmpty(5)([1, 2, 3, 4, 5]), [[1, 2, 3, 4, 5]])
+    deepStrictEqual(RA.chunksOf(1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
+    deepStrictEqual(RA.chunksOf(5)([1, 2, 3, 4, 5]), [[1, 2, 3, 4, 5]])
     // out of bounds
-    deepStrictEqual(RA.chunksOfNonEmpty(0)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
-    deepStrictEqual(RA.chunksOfNonEmpty(-1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
+    deepStrictEqual(RA.chunksOf(0)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
+    deepStrictEqual(RA.chunksOf(-1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
 
     const assertSingleChunk = (
       input: RA.NonEmptyReadonlyArray<number>,
       n: number
     ) => {
-      const chunks = RA.chunksOfNonEmpty(n)(input)
+      const chunks = RA.chunksOf(n)(input)
       strictEqual(chunks.length, 1)
       deepStrictEqual(RA.headNonEmpty(chunks), input)
     }

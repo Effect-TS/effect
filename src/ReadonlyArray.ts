@@ -1237,27 +1237,20 @@ export const splitNonEmptyAt: {
  * @since 2.0.0
  */
 export const chunksOf: {
-  (n: number): <A>(self: Iterable<A>) => Array<NonEmptyArray<A>>
+  (
+    n: number
+  ): <T extends ReadonlyArray<any> | Iterable<any>>(
+    self: T
+  ) => ReadonlyArray.With<T, NonEmptyArray<ReadonlyArray.Infer<T>>>
+  <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<NonEmptyArray<A>>
   <A>(self: Iterable<A>, n: number): Array<NonEmptyArray<A>>
 } = dual(2, <A>(self: Iterable<A>, n: number): Array<NonEmptyArray<A>> => {
   const input = fromIterable(self)
-  return isNonEmptyReadonlyArray(input) ? chunksOfNonEmpty(input, n) : []
+  if (isNonEmptyReadonlyArray(input)) {
+    return chop(input, splitNonEmptyAt(n))
+  }
+  return []
 })
-
-/**
- * Splits a `NonEmptyReadonlyArray` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
- * the `NonEmptyReadonlyArray`.
- *
- * @category getters
- * @since 2.0.0
- */
-export const chunksOfNonEmpty: {
-  (n: number): <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<NonEmptyArray<A>>
-  <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<NonEmptyArray<A>>
-} = dual(
-  2,
-  <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<NonEmptyArray<A>> => chop(self, splitNonEmptyAt(n))
-)
 
 /**
  * Group equal, consecutive elements of a `NonEmptyReadonlyArray` into `NonEmptyArray`s using the provided `isEquivalent` function.
