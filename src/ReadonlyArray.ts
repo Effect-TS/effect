@@ -224,7 +224,7 @@ export const prepend: {
 } = dual(2, <A, B>(self: Iterable<A>, head: B): NonEmptyArray<A | B> => [head, ...self])
 
 /**
- * Prepends the specified prefix array to the beginning of the specified array.
+ * Prepends the specified prefix array (or iterable) to the beginning of the specified array (or iterable).
  * If either array is non-empty, the result is also a non-empty array.
  *
  * @example
@@ -262,29 +262,22 @@ export const append: {
 } = dual(2, <A, B>(self: Iterable<A>, last: B): Array<A | B> => [...self, last])
 
 /**
+ * Concatenates two arrays (or iterables), combining their elements.
+ * If either array is non-empty, the result is also a non-empty array.
+ *
  * @category concatenating
  * @since 2.0.0
  */
 export const appendAll: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Array<A | B>
+  <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
+    that: T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(self: Iterable<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
+  <A, B>(self: NonEmptyReadonlyArray<A>, that: Iterable<B>): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B>
 } = dual(
   2,
   <A>(self: Iterable<A>, that: Iterable<A>): Array<A> => fromIterable(self).concat(fromIterable(that))
-)
-
-/**
- * @category concatenating
- * @since 2.0.0
- */
-export const appendAllNonEmpty: {
-  <B>(that: NonEmptyReadonlyArray<B>): <A>(self: Iterable<A>) => NonEmptyArray<A | B>
-  <B>(that: Iterable<B>): <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A | B>
-  <A, B>(self: Iterable<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
-  <A, B>(self: NonEmptyReadonlyArray<A>, that: Iterable<B>): NonEmptyArray<A | B>
-} = dual(
-  2,
-  <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B> => appendAll(self, that)
 )
 
 /**
@@ -1125,7 +1118,7 @@ export const rotateNonEmpty: {
   }
   if (m < 0) {
     const [f, s] = splitNonEmptyAt(self, -m)
-    return appendAllNonEmpty(s, f)
+    return appendAll(s, f)
   } else {
     return rotateNonEmpty(self, m - len)
   }
@@ -1422,7 +1415,7 @@ export const unionNonEmptyWith = <A>(isEquivalent: (self: A, that: A) => boolean
   const dedupe = dedupeNonEmptyWith(isEquivalent)
   return dual(
     2,
-    (self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<A>): NonEmptyArray<A> => dedupe(appendAllNonEmpty(self, that))
+    (self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<A>): NonEmptyArray<A> => dedupe(appendAll(self, that))
   )
 }
 

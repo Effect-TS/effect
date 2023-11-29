@@ -12,7 +12,6 @@ declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
 declare const strings: Array<string>
 declare const numbersOrStrings: Array<number | string>
-declare const nonEmptyReadonlyNumbersOrStrings: ReadonlyArray.NonEmptyReadonlyArray<number | string>
 
 declare const pimitiveNumber: number
 declare const pimitiveNumerOrString: string | number
@@ -149,22 +148,6 @@ ReadonlyArray.append(numbersOrStrings, true)
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
 ReadonlyArray.append(true)(numbersOrStrings)
-
-// -------------------------------------------------------------------------------------
-// appendAllNonEmpty
-// -------------------------------------------------------------------------------------
-
-// $ExpectType [string | number, ...(string | number)[]]
-ReadonlyArray.appendAllNonEmpty(numbersOrStrings, nonEmptyReadonlyNumbersOrStrings)
-
-// $ExpectType [string | number, ...(string | number)[]]
-ReadonlyArray.appendAllNonEmpty(numbersOrStrings)(nonEmptyReadonlyNumbersOrStrings)
-
-// $ExpectType [string | number, ...(string | number)[]]
-ReadonlyArray.appendAllNonEmpty(nonEmptyReadonlyNumbersOrStrings, numbersOrStrings)
-
-// $ExpectType [string | number, ...(string | number)[]]
-ReadonlyArray.appendAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // prepend
@@ -498,3 +481,31 @@ ReadonlyArray.prependAll(nonEmptyStrings, nonEmptyNumbers)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, ReadonlyArray.prependAll(nonEmptyNumbers))
+
+// -------------------------------------------------------------------------------------
+// appendAll
+// -------------------------------------------------------------------------------------
+
+// $ExpectType (string | number)[]
+ReadonlyArray.appendAll(strings, numbers)
+
+// $ExpectType (string | number)[]
+pipe(strings, ReadonlyArray.appendAll(numbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.appendAll(nonEmptyStrings, numbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, ReadonlyArray.appendAll(numbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.appendAll(strings, nonEmptyNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(strings, ReadonlyArray.appendAll(nonEmptyNumbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.appendAll(nonEmptyStrings, nonEmptyNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, ReadonlyArray.appendAll(nonEmptyNumbers))

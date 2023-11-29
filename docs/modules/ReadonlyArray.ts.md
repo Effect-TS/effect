@@ -17,7 +17,6 @@ Added in v2.0.0
 - [concatenating](#concatenating)
   - [append](#append)
   - [appendAll](#appendall)
-  - [appendAllNonEmpty](#appendallnonempty)
   - [prepend](#prepend)
   - [prependAll](#prependall)
 - [constructors](#constructors)
@@ -196,27 +195,19 @@ Added in v2.0.0
 
 ## appendAll
 
+Concatenates two arrays (or iterables), combining their elements.
+If either array is non-empty, the result is also a non-empty array.
+
 **Signature**
 
 ```ts
 export declare const appendAll: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => (B | A)[]
-  <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
-}
-```
-
-Added in v2.0.0
-
-## appendAllNonEmpty
-
-**Signature**
-
-```ts
-export declare const appendAllNonEmpty: {
-  <B>(that: readonly [B, ...B[]]): <A>(self: Iterable<A>) => [B | A, ...(B | A)[]]
-  <B>(that: Iterable<B>): <A>(self: readonly [A, ...A[]]) => [B | A, ...(B | A)[]]
+  <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
+    that: T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: Iterable<A>, that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
   <A, B>(self: readonly [A, ...A[]], that: Iterable<B>): [A | B, ...(A | B)[]]
+  <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
 }
 ```
 
@@ -239,7 +230,7 @@ Added in v2.0.0
 
 ## prependAll
 
-Prepends the specified prefix array to the beginning of the specified array.
+Prepends the specified prefix array (or iterable) to the beginning of the specified array (or iterable).
 If either array is non-empty, the result is also a non-empty array.
 
 **Signature**
