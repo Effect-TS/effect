@@ -1646,9 +1646,9 @@ export const tryPromise: {
               catcher ? catcher(e) : new core.UnknownException(e)
             ))
           )
-      } catch (error) {
-        throw core.makeEffectError(internalCause.fail(
-          catcher ? catcher(error) : new core.UnknownException(error)
+      } catch (e) {
+        resolve(core.fail(
+          catcher ? catcher(e) : new core.UnknownException(e)
         ))
       }
     })
@@ -1663,9 +1663,9 @@ export const tryPromise: {
             catcher ? catcher(e) : new core.UnknownException(e)
           ))
         )
-    } catch (error) {
-      throw core.makeEffectError(internalCause.fail(
-        catcher ? catcher(error) : new core.UnknownException(error)
+    } catch (e) {
+      resolve(core.fail(
+        catcher ? catcher(e) : new core.UnknownException(e)
       ))
     }
   })
