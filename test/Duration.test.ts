@@ -210,13 +210,14 @@ describe.concurrent("Duration", () => {
   })
 
   it("format", () => {
-    expect(Duration.format(Duration.minutes(5))).toEqual(`Duration(5m)`)
-    expect(Duration.format(Duration.minutes(5.325))).toEqual(`Duration(5m 19s 500ms)`)
-    expect(Duration.format(Duration.hours(3))).toEqual(`Duration(3h)`)
-    expect(Duration.format(Duration.hours(3.11125))).toEqual(`Duration(3h 6m 40s 500ms)`)
-    expect(Duration.format(Duration.days(2))).toEqual(`Duration(2d)`)
-    expect(Duration.format(Duration.days(2.25))).toEqual(`Duration(2d 6h)`)
-    expect(Duration.format(Duration.weeks(1))).toEqual(`Duration(7d)`)
+    expect(Duration.format(Duration.infinity)).toEqual(`Infinity`)
+    expect(Duration.format(Duration.minutes(5))).toEqual(`5m`)
+    expect(Duration.format(Duration.minutes(5.325))).toEqual(`5m 19s 500ms`)
+    expect(Duration.format(Duration.hours(3))).toEqual(`3h`)
+    expect(Duration.format(Duration.hours(3.11125))).toEqual(`3h 6m 40s 500ms`)
+    expect(Duration.format(Duration.days(2))).toEqual(`2d`)
+    expect(Duration.format(Duration.days(2.25))).toEqual(`2d 6h`)
+    expect(Duration.format(Duration.weeks(1))).toEqual(`7d`)
   })
 
   it("toJSON", () => {

@@ -123,7 +123,7 @@ const DurationProto: Omit<Duration, "value"> = {
     return isDuration(that) && equals(this, that)
   },
   toString(this: Duration) {
-    return format(this)
+    return `Duration(${format(this)})`
   },
   toJSON(this: Duration) {
     switch (this.value._tag) {
@@ -604,7 +604,7 @@ export const format = (self: DurationInput): string => {
   const parts = []
 
   if (duration.value._tag === "Infinity") {
-    return "Duration(Infinity)"
+    return "Infinity"
   }
 
   const nanos = unsafeToNanos(duration)
@@ -638,5 +638,5 @@ export const format = (self: DurationInput): string => {
     parts.push(`${days}d`)
   }
 
-  return `Duration(${parts.reverse().join(" ")})`
+  return parts.reverse().join(" ")
 }
