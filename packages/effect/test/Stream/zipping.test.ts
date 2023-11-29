@@ -143,7 +143,7 @@ describe.concurrent("Stream", () => {
       )
       assert.deepStrictEqual(
         result,
-        Exit.failCause(Cause.parallel(Cause.empty, Cause.die(new Cause.RuntimeException("Ouch"))))
+        Exit.failCause(Cause.die(new Cause.RuntimeException("Ouch")))
       )
     }))
 

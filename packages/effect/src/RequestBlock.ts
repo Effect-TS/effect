@@ -1,11 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context.js"
-import type { FiberRef } from "./FiberRef.js"
 import * as _RequestBlock from "./internal/blockedRequests.js"
-import * as core from "./internal/core.js"
-import * as _dataSource from "./internal/dataSource.js"
 import type * as Request from "./Request.js"
 import type * as RequestResolver from "./RequestResolver.js"
 
@@ -19,7 +15,7 @@ import type * as RequestResolver from "./RequestResolver.js"
  * @since 2.0.0
  * @category models
  */
-export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
+export type RequestBlock = Empty | Par | Seq | Single
 
 /**
  * @since 2.0.0
@@ -30,11 +26,11 @@ export declare namespace RequestBlock {
    * @since 2.0.0
    * @category models
    */
-  export interface Reducer<in R, in out Z> {
+  export interface Reducer<in out Z> {
     emptyCase(): Z
     parCase(left: Z, right: Z): Z
     singleCase(
-      dataSource: RequestResolver.RequestResolver<unknown, R>,
+      dataSource: RequestResolver.RequestResolver<unknown, never>,
       blockedRequest: Request.Entry<unknown>
     ): Z
     seqCase(left: Z, right: Z): Z
@@ -53,29 +49,29 @@ export interface Empty {
  * @since 2.0.0
  * @category models
  */
-export interface Par<out R> {
+export interface Par {
   readonly _tag: "Par"
-  readonly left: RequestBlock<R>
-  readonly right: RequestBlock<R>
+  readonly left: RequestBlock
+  readonly right: RequestBlock
 }
 
 /**
  * @since 2.0.0
  * @category models
  */
-export interface Seq<out R> {
+export interface Seq {
   readonly _tag: "Seq"
-  readonly left: RequestBlock<R>
-  readonly right: RequestBlock<R>
+  readonly left: RequestBlock
+  readonly right: RequestBlock
 }
 
 /**
  * @since 2.0.0
  * @category models
  */
-export interface Single<out R> {
+export interface Single {
   readonly _tag: "Single"
-  readonly dataSource: RequestResolver.RequestResolver<unknown, R>
+  readonly dataSource: RequestResolver.RequestResolver<unknown, never>
   readonly blockedRequest: Request.Entry<unknown>
 }
 
@@ -83,75 +79,40 @@ export interface Single<out R> {
  * @since 2.0.0
  * @category constructors
  */
-export const single: <R, A>(
-  dataSource: RequestResolver.RequestResolver<A, R>,
+export const single: <A>(
+  dataSource: RequestResolver.RequestResolver<A, never>,
   blockedRequest: Request.Entry<A>
-) => RequestBlock<R> = _RequestBlock.single
+) => RequestBlock = _RequestBlock.single
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const empty: RequestBlock<never> = _RequestBlock.empty
+export const empty: RequestBlock = _RequestBlock.empty
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const mapRequestResolvers: <R, A, R2>(
-  self: RequestBlock<R>,
-  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>
-) => RequestBlock<R | R2> = _RequestBlock.mapRequestResolvers
+export const mapRequestResolvers: <A>(
+  self: RequestBlock,
+  f: (dataSource: RequestResolver.RequestResolver<A>) => RequestResolver.RequestResolver<A>
+) => RequestBlock = _RequestBlock.mapRequestResolvers
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const parallel: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) => RequestBlock<R | R2> =
-  _RequestBlock.par
+export const parallel: (self: RequestBlock, that: RequestBlock) => RequestBlock = _RequestBlock.par
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const reduce: <R, Z>(self: RequestBlock<R>, reducer: RequestBlock.Reducer<R, Z>) => Z = _RequestBlock.reduce
+export const reduce: <Z>(self: RequestBlock, reducer: RequestBlock.Reducer<Z>) => Z = _RequestBlock.reduce
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const sequential: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) => RequestBlock<R | R2> =
-  _RequestBlock.seq
-
-/**
- * Provides each data source with part of its required environment.
- *
- * @since 2.0.0
- * @category utils
- */
-export const mapInputContext = <R0, R>(
-  self: RequestBlock<R>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
-): RequestBlock<R0> => reduce(self, MapInputContextReducer(f))
-
-const MapInputContextReducer = <R0, R>(
-  f: (context: Context.Context<R0>) => Context.Context<R>
-): RequestBlock.Reducer<R, RequestBlock<R0>> => ({
-  emptyCase: () => empty,
-  parCase: (left, right) => parallel(left, right),
-  seqCase: (left, right) => sequential(left, right),
-  singleCase: (dataSource, blockedRequest) =>
-    single(
-      _dataSource.mapInputContext(dataSource, f),
-      blockedRequest as any
-    )
-})
-
-/**
- * Provides each data source with a fiber ref value.
- *
- * @since 2.0.0
- * @category utils
- */
-export const locally: <R, A>(self: RequestBlock<R>, ref: FiberRef<A>, value: A) => RequestBlock<R> =
-  core.requestBlockLocally
+export const sequential: (self: RequestBlock, that: RequestBlock) => RequestBlock = _RequestBlock.seq

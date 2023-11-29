@@ -136,10 +136,10 @@ const contOpSuccess = {
   },
   ["OnStep"]: (
     _: FiberRuntime<any, any>,
-    cont: core.OnStep,
+    _cont: core.OnStep,
     value: unknown
   ) => {
-    return cont.i1(core.exitSucceed(value))
+    return core.exitSucceed(core.exitSucceed(value))
   },
   [OpCodes.OP_ON_SUCCESS_AND_FAILURE]: (
     _: FiberRuntime<any, any>,
@@ -215,11 +215,11 @@ const drainQueueWhileRunningTable = {
 /**
  * Executes all requests, submitting requests to each data source in parallel.
  */
-const runBlockedRequests = <R>(self: RequestBlock.RequestBlock<R>) =>
+const runBlockedRequests = (self: RequestBlock.RequestBlock) =>
   core.forEachSequentialDiscard(
     _RequestBlock.flatten(self),
     (requestsByRequestResolver) =>
-      forEachParUnboundedDiscard(
+      forEachConcurrentDiscard(
         _RequestBlock.sequentialCollectionToChunk(requestsByRequestResolver),
         ([dataSource, sequential]) => {
           const map = new Map<Request<any, any>, Entry<any>>()
@@ -234,9 +234,16 @@ const runBlockedRequests = <R>(self: RequestBlock.RequestBlock<R>) =>
             map
           )
         },
+        false,
         false
       )
   )
+
+/** @internal */
+export interface Snapshot {
+  refs: FiberRefs.FiberRefs
+  flags: RuntimeFlags.RuntimeFlags
+}
 
 /** @internal */
 export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A> {
@@ -259,7 +266,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   private _asyncInterruptor: ((effect: Effect.Effect<any, any, any>) => any) | null = null
   private _asyncBlockingOn: FiberId.FiberId | null = null
   private _exitValue: Exit.Exit<E, A> | null = null
-  private _steps: Array<boolean> = [false]
+  private _steps: Array<Snapshot> = []
   public _supervisor: Supervisor.Supervisor<any>
   public _scheduler: Scheduler
   private _tracer: Tracer.Tracer
@@ -460,6 +467,13 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
    */
   interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<never, never, void> {
     return core.sync(() => this.tell(FiberMessage.interruptSignal(internalCause.interrupt(fiberId))))
+  }
+
+  /**
+   * In the background, interrupts the fiber as if interrupted from the specified fiber.
+   */
+  unsafeInterruptAsFork(fiberId: FiberId.FiberId) {
+    this.tell(FiberMessage.interruptSignal(internalCause.interrupt(fiberId)))
   }
 
   /**
@@ -988,17 +1002,14 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   pushStack(cont: core.Continuation) {
     this._stack.push(cont)
     if (cont._op === "OnStep") {
-      this._steps.push(true)
-    }
-    if (cont._op === "RevertFlags") {
-      this._steps.push(false)
+      this._steps.push({ refs: this.getFiberRefs(), flags: this._runtimeFlags })
     }
   }
 
   popStack() {
     const item = this._stack.pop()
     if (item) {
-      if (item._op === "OnStep" || item._op === "RevertFlags") {
+      if (item._op === "OnStep") {
         this._steps.pop()
       }
       return item
@@ -1029,14 +1040,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   [OpCodes.OP_TAG](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
     return core.map(
       core.fiberRefGet(core.currentContext),
-      (context) => {
-        try {
-          return Context.unsafeGet(context, op as unknown as Context.Tag<any, any>)
-        } catch (e) {
-          console.log(e)
-          throw e
-        }
-      }
+      (context) => Context.unsafeGet(context, op as unknown as Context.Tag<any, any>)
     )
   }
 
@@ -1101,7 +1105,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
         }
         case "OnStep": {
           if (!(_runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted())) {
-            return cont.i1(core.exitFailCause(cause))
+            return core.exitSucceed(core.exitFailCause(cause))
           } else {
             return core.exitFailCause(internalCause.stripFailures(cause))
           }
@@ -1131,54 +1135,37 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   }
 
   ["Blocked"](op: core.Primitive & { _op: "Blocked" }) {
-    if (this._steps[this._steps.length - 1]) {
-      const nextOp = this.popStack()
-      if (nextOp) {
-        switch (nextOp._op) {
-          case "OnStep": {
-            return nextOp.i1(op)
-          }
-          case "OnSuccess": {
-            return core.blocked(op.i0, core.flatMap(op.i1, nextOp.i1))
-          }
-          case "OnSuccessAndFailure": {
-            return core.blocked(
-              op.i0,
-              core.matchCauseEffect(op.i1, {
-                onFailure: nextOp.i1,
-                onSuccess: nextOp.i2
-              })
-            )
-          }
-          case "OnFailure": {
-            return core.blocked(op.i0, core.catchAllCause(op.i1, nextOp.i1))
-          }
-          case "While": {
-            return core.blocked(
-              op.i0,
-              core.flatMap(op.i1, (a) => {
-                nextOp.i2(a)
-                if (nextOp.i0()) {
-                  return core.whileLoop({
-                    while: nextOp.i0,
-                    body: nextOp.i1,
-                    step: nextOp.i2
-                  })
-                }
-                return core.unit
-              })
-            )
-          }
-          case "RevertFlags": {
-            this.pushStack(nextOp)
-            break
-          }
-        }
+    const refs = this.getFiberRefs()
+    const flags = this._runtimeFlags
+    if (this._steps.length > 0) {
+      const frames: Array<core.Continuation> = []
+      const snap = this._steps[this._steps.length - 1]
+      let frame = this.popStack()
+      while (frame && frame._op !== "OnStep") {
+        frames.push(frame)
+        frame = this.popStack()
       }
+      this.setFiberRefs(snap.refs)
+      this._runtimeFlags = snap.flags
+      const patchRefs = FiberRefsPatch.diff(snap.refs, refs)
+      const patchFlags = _runtimeFlags.diff(snap.flags, flags)
+      return core.exitSucceed(core.blocked(
+        op.i0,
+        core.withFiberRuntime((newFiber) => {
+          while (frames.length > 0) {
+            newFiber.pushStack(frames.pop()!)
+          }
+          newFiber.setFiberRefs(
+            FiberRefsPatch.patch(newFiber.id(), newFiber.getFiberRefs())(patchRefs)
+          )
+          newFiber._runtimeFlags = _runtimeFlags.patch(patchFlags)(newFiber._runtimeFlags)
+          return op.i1
+        })
+      ))
     }
     return core.uninterruptibleMask((restore) =>
       core.flatMap(
-        fork(core.runRequestBlock(op.i0)),
+        forkDaemon(core.runRequestBlock(op.i0)),
         () => restore(op.i1)
       )
     )
@@ -1286,7 +1273,6 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
       }
       try {
         if (!("_op" in cur) || !((cur as core.Primitive)._op in this)) {
-          console.log(cur)
           // @ts-expect-error
           absurd(cur)
         }
@@ -1891,16 +1877,16 @@ export const forEach: {
         () =>
           finalizersMask(ExecutionStrategy.sequential)((restore) =>
             isRequestBatchingEnabled
-              ? forEachBatchedDiscard(self, (a, i) => restore(f(a, i)))
+              ? forEachConcurrentDiscard(self, (a, i) => restore(f(a, i)), true, false, 1)
               : core.forEachSequentialDiscard(self, (a, i) => restore(f(a, i)))
           ),
         () =>
           finalizersMask(ExecutionStrategy.parallel)((restore) =>
-            forEachParUnboundedDiscard(self, (a, i) => restore(f(a, i)), isRequestBatchingEnabled)
+            forEachConcurrentDiscard(self, (a, i) => restore(f(a, i)), isRequestBatchingEnabled, false)
           ),
         (n) =>
           finalizersMask(ExecutionStrategy.parallelN(n))((restore) =>
-            forEachParNDiscard(self, n, (a, i) => restore(f(a, i)), isRequestBatchingEnabled)
+            forEachConcurrentDiscard(self, (a, i) => restore(f(a, i)), isRequestBatchingEnabled, false, n)
           )
       )
     }
@@ -1934,162 +1920,176 @@ export const forEachParUnbounded = <A, R, E, B>(
     const as = RA.fromIterable(self)
     const array = new Array<B>(as.length)
     const fn = (a: A, i: number) => core.flatMap(f(a, i), (b) => core.sync(() => array[i] = b))
-    return core.zipRight(forEachParUnboundedDiscard(as, fn, batching), core.succeed(array))
+    return core.zipRight(forEachConcurrentDiscard(as, fn, batching, false), core.succeed(array))
   })
 
-const forEachBatchedDiscard = <R, E, A, _>(
-  self: Iterable<A>,
-  f: (a: A, i: number) => Effect.Effect<R, E, _>
-): Effect.Effect<R, E, void> =>
-  core.suspend(() => {
-    const as = RA.fromIterable(self)
-    const size = as.length
-    if (size === 0) {
-      return core.unit
-    } else if (size === 1) {
-      return core.asUnit(f(as[0], 0))
-    }
-    const effects = as.map(f)
-    const blocked = new Array<Effect.Blocked<R, E, void>>()
-    const loop = (i: number): Effect.Effect<R, E, void> =>
-      i === effects.length ?
-        core.suspend(() => {
-          if (blocked.length > 0) {
-            const requests = blocked.map((b) => b.i0).reduce(_RequestBlock.par)
-            return core.blocked(
-              requests,
-              forEachBatchedDiscard(blocked.map((b) => b.i1), identity)
-            )
-          }
-          return core.unit
-        }) :
-        core.flatMapStep(effects[i], (s) => {
-          if (s._op === "Blocked") {
-            blocked.push(s)
-            return loop(i + 1)
-          } else if (s._op === "Failure") {
-            return core.suspend(() => {
-              if (blocked.length > 0) {
-                const requests = blocked.map((b) => b.i0).reduce(_RequestBlock.par)
-                return core.blocked(
-                  requests,
-                  core.flatMap(forEachBatchedDiscard(blocked.map((b) => b.i1), identity), () => s)
-                )
-              }
-              return core.unit
-            })
-          } else {
-            return loop(i + 1)
-          }
-        })
-    return loop(0)
-  })
-
-/* @internal */
-export const forEachParUnboundedDiscard = <R, E, A, _>(
+/** @internal */
+export const forEachConcurrentDiscard = <R, E, A, _>(
   self: Iterable<A>,
   f: (a: A, i: number) => Effect.Effect<R, E, _>,
-  batching: boolean
+  batching: boolean,
+  processAll: boolean,
+  n?: number
 ): Effect.Effect<R, E, void> =>
-  core.suspend(() => {
-    const as = RA.fromIterable(self)
-    const size = as.length
-    if (size === 0) {
-      return core.unit
-    } else if (size === 1) {
-      return core.asUnit(f(as[0], 0))
-    }
-    return core.uninterruptibleMask((restore) => {
-      const deferred = core.deferredUnsafeMake<void, Effect.Effect<any, any, any>>(FiberId.none)
-      let ref = 0
-      const residual: Array<Effect.Blocked<any, any, any>> = []
-      const joinOrder: Array<Fiber.RuntimeFiber<any, any>> = []
-      const process = core.transplant((graft) =>
-        core.forEachSequential(as, (a, i) =>
-          pipe(
-            graft(pipe(
-              core.suspend(() => restore((batching ? core.step : core.exit)(f(a, i)))),
-              core.flatMap(
-                (exit) => {
-                  switch (exit._op) {
-                    case "Failure": {
-                      if (residual.length > 0) {
-                        const requests = residual.map((blocked) => blocked.i0).reduce(_RequestBlock.par)
-                        const _continue = forEachParUnboundedDiscard(residual, (blocked) => blocked.i1, batching)
-                        return core.blocked(
-                          requests,
-                          core.matchCauseEffect(_continue, {
-                            onFailure: (cause) =>
-                              core.zipRight(
-                                core.deferredFail(deferred, void 0),
-                                core.failCause(internalCause.parallel(cause, exit.cause))
-                              ),
-                            onSuccess: () =>
-                              core.zipRight(
-                                core.deferredFail(deferred, void 0),
-                                core.failCause(exit.cause)
-                              )
-                          })
-                        )
-                      }
-                      return core.zipRight(
-                        core.deferredFail(deferred, void 0),
-                        core.failCause(exit.cause)
-                      )
-                    }
-                    default: {
-                      if (exit._op === "Blocked") {
-                        residual.push(exit)
-                      }
-                      if (ref + 1 === size) {
-                        if (residual.length > 0) {
-                          const requests = residual.map((blocked) => blocked.i0).reduce(_RequestBlock.par)
-                          const _continue = forEachParUnboundedDiscard(residual, (blocked) => blocked.i1, batching)
-                          return core.deferredSucceed(deferred, core.blocked(requests, _continue))
-                        } else {
-                          core.deferredUnsafeDone(deferred, core.exitSucceed(core.exitUnit))
-                        }
-                      } else {
-                        ref = ref + 1
-                      }
-                      return core.unit
-                    }
-                  }
-                }
-              )
-            )),
-            forkDaemon,
-            core.map((fiber) => {
-              fiber.addObserver(() => {
-                joinOrder.push(fiber)
-              })
-              return fiber
-            })
-          ))
-      )
-      return core.flatMap(process, (fibers) =>
-        core.matchCauseEffect(
-          restore(core.deferredAwait(deferred)),
-          {
-            onFailure: (cause) =>
-              core.flatMap(
-                forEachParUnbounded(fibers, core.interruptFiber, batching),
-                (exits) => {
-                  const exit = core.exitCollectAll(exits, { parallel: true })
-                  if (exit._tag === "Some" && core.exitIsFailure(exit.value)) {
-                    return core.failCause(
-                      internalCause.parallel(internalCause.stripFailures(cause), exit.value.i0)
-                    )
-                  } else {
-                    return core.failCause(internalCause.stripFailures(cause))
-                  }
-                }
-              ),
-            onSuccess: (rest) => core.flatMap(rest, () => core.forEachSequentialDiscard(joinOrder, (f) => f.inheritAll))
+  core.uninterruptibleMask((restore) =>
+    core.transplant((graft) =>
+      core.withFiberRuntime((parent) => {
+        let todos = Array.from(self).reverse()
+        let target = todos.length
+        if (target === 0) {
+          return core.unit
+        }
+        let counter = 0
+        let interrupted = false
+        const fibersCount = n ? Math.min(todos.length, n) : todos.length
+        const fibers = new Set<FiberRuntime<never, Exit.Exit<E, _> | Effect.Blocked<E, _>>>()
+        const results = new Array()
+        const interruptAll = () =>
+          fibers.forEach((fiber) => {
+            fiber._scheduler.scheduleTask(() => {
+              fiber.unsafeInterruptAsFork(parent.id())
+            }, 0)
+          })
+        const startOrder = new Array<FiberRuntime<never, Exit.Exit<E, _> | Effect.Blocked<E, _>>>()
+        const joinOrder = new Array<FiberRuntime<never, Exit.Exit<E, _> | Effect.Blocked<E, _>>>()
+        const residual = new Array<core.Blocked>()
+        const collectExits = () => {
+          const exits: Array<Exit.Exit<E, any>> = results
+            .filter(({ exit }) => exit._tag === "Failure")
+            .sort((a, b) => a.index < b.index ? -1 : a.index === b.index ? 0 : 1)
+            .map(({ exit }) => exit)
+          if (exits.length === 0) {
+            exits.push(core.exitUnit)
           }
+          return exits
+        }
+        const runFiber = <R, E, A>(eff: Effect.Effect<R, E, A>) => {
+          const runnable = core.uninterruptible(graft(eff))
+          const fiber = unsafeForkUnstarted(
+            runnable,
+            parent,
+            parent._runtimeFlags,
+            fiberScope.globalScope
+          )
+          parent._scheduler.scheduleTask(() => {
+            fiber.resume(runnable)
+          }, 0)
+          return fiber
+        }
+        const onInterruptSignal = () => {
+          if (!processAll) {
+            target -= todos.length
+            todos = []
+          }
+          interrupted = true
+          interruptAll()
+        }
+        const stepOrExit = batching ? core.step : core.exit
+        const processingFiber = runFiber(
+          core.async<any, any, any>((resume) => {
+            const pushResult = <E, _>(res: Exit.Exit<E, _> | Effect.Blocked<E, _>, index: number) => {
+              if (res._op === "Blocked") {
+                residual.push(res as core.Blocked)
+              } else {
+                results.push({ index, exit: res })
+                if (res._op === "Failure" && !interrupted) {
+                  onInterruptSignal()
+                }
+              }
+            }
+            const next = () => {
+              if (todos.length > 0) {
+                const a = todos.pop()!
+                let index = counter++
+                const returnNextElement = () => {
+                  const a = todos.pop()!
+                  index = counter++
+                  return core.flatMap(core.yieldNow(), () =>
+                    core.flatMap(
+                      stepOrExit(restore(f(a, index))),
+                      onRes
+                    ))
+                }
+                const onRes = (
+                  res: Exit.Exit<E, _> | Effect.Blocked<E, _>
+                ): Effect.Effect<R, never, Exit.Exit<E, _> | Effect.Blocked<E, _>> => {
+                  if (todos.length > 0) {
+                    pushResult(res, index)
+                    if (todos.length > 0) {
+                      return returnNextElement()
+                    }
+                  }
+                  return core.succeed(res)
+                }
+                const todo = core.flatMap(
+                  stepOrExit(restore(f(a, index))),
+                  onRes
+                )
+                const fiber = runFiber(todo)
+                startOrder.push(fiber)
+                fibers.add(fiber)
+                if (interrupted) {
+                  fiber._scheduler.scheduleTask(() => {
+                    fiber.unsafeInterruptAsFork(parent.id())
+                  }, 0)
+                }
+                fiber.addObserver((wrapped) => {
+                  let exit: Exit.Exit<any, any> | core.Blocked
+                  if (wrapped._op === "Failure") {
+                    exit = wrapped
+                  } else {
+                    exit = wrapped.i0 as any
+                  }
+                  joinOrder.push(fiber)
+                  fibers.delete(fiber)
+                  pushResult(exit, index)
+                  if (results.length === target) {
+                    resume(core.succeed(Option.getOrElse(
+                      core.exitCollectAll(collectExits(), { parallel: true }),
+                      () => core.exitUnit
+                    )))
+                  } else if (residual.length + results.length === target) {
+                    const requests = residual.map((blocked) => blocked.i0).reduce(_RequestBlock.par)
+                    resume(core.succeed(core.blocked(
+                      requests,
+                      forEachConcurrentDiscard(
+                        [
+                          Option.getOrElse(
+                            core.exitCollectAll(collectExits(), { parallel: true }),
+                            () => core.exitUnit
+                          ),
+                          ...residual.map((blocked) => blocked.i1)
+                        ],
+                        (i) => i,
+                        batching,
+                        true,
+                        n
+                      )
+                    )))
+                  } else {
+                    next()
+                  }
+                })
+              }
+            }
+            for (let i = 0; i < fibersCount; i++) {
+              next()
+            }
+          })
+        )
+        return core.asUnit(core.tap(
+          core.flatten(core.onInterrupt(
+            restore(internalFiber.join(processingFiber)),
+            () => {
+              onInterruptSignal()
+              return internalFiber._await(processingFiber)
+            }
+          )),
+          () => core.forEachSequential(joinOrder, (f) => f.inheritAll)
         ))
-    })
-  })
+      })
+    )
+  )
 
 /* @internal */
 export const forEachParN = <A, R, E, B>(
@@ -2102,60 +2102,7 @@ export const forEachParN = <A, R, E, B>(
     const as = RA.fromIterable(self)
     const array = new Array<B>(as.length)
     const fn = (a: A, i: number) => core.map(f(a, i), (b) => array[i] = b)
-    return core.zipRight(forEachParNDiscard(as, n, fn, batching), core.succeed(array))
-  })
-
-/* @internal */
-export const forEachParNDiscard = <A, R, E, _>(
-  self: Iterable<A>,
-  n: number,
-  f: (a: A, i: number) => Effect.Effect<R, E, _>,
-  batching: boolean
-): Effect.Effect<R, E, void> =>
-  core.suspend(() => {
-    let i = 0
-    const iterator = self[Symbol.iterator]()
-    const residual: Array<Effect.Blocked<any, any, any>> = []
-    const worker: Effect.Effect<R, E, void> = core.flatMap(
-      core.sync(() => iterator.next()),
-      (next) =>
-        next.done ?
-          core.unit :
-          core.flatMap((batching ? core.step : core.exit)(core.asUnit(f(next.value, i++))), (res) => {
-            switch (res._op) {
-              case "Blocked": {
-                residual.push(res)
-                return worker
-              }
-              case "Failure": {
-                return res
-              }
-              case "Success":
-                return worker
-            }
-          })
-    )
-    const effects: Array<Effect.Effect<R, E, void>> = []
-    for (let i = 0; i < n; i++) {
-      effects.push(worker)
-    }
-    return core.flatMap(core.exit(forEachParUnboundedDiscard(effects, identity, batching)), (exit) => {
-      if (residual.length === 0) {
-        return exit
-      }
-      const requests = residual.map((blocked) => blocked.i0).reduce(_RequestBlock.par)
-      const _continue = forEachParNDiscard(residual, n, (blocked) => blocked.i1, batching)
-      if (exit._tag === "Failure") {
-        return core.blocked(
-          requests,
-          core.matchCauseEffect(_continue, {
-            onFailure: (cause) => core.exitFailCause(internalCause.parallel(exit.cause, cause)),
-            onSuccess: () => exit
-          })
-        )
-      }
-      return core.blocked(requests, _continue)
-    })
+    return core.zipRight(forEachConcurrentDiscard(as, fn, batching, false, n), core.succeed(array))
   })
 
 /* @internal */
@@ -2199,6 +2146,17 @@ export const unsafeFork = <R, E, A, E2, B>(
 ): FiberRuntime<E, A> => {
   const childFiber = unsafeMakeChildFiber(effect, parentFiber, parentRuntimeFlags, overrideScope)
   childFiber.resume(effect)
+  return childFiber
+}
+
+/** @internal */
+export const unsafeForkUnstarted = <R, E, A, E2, B>(
+  effect: Effect.Effect<R, E, A>,
+  parentFiber: FiberRuntime<E2, B>,
+  parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
+  overrideScope: fiberScope.FiberScope | null = null
+): FiberRuntime<E, A> => {
+  const childFiber = unsafeMakeChildFiber(effect, parentFiber, parentRuntimeFlags, overrideScope)
   return childFiber
 }
 
