@@ -622,3 +622,13 @@ ReadonlyArray.union(nonEmptyNumbers)(strings)
 
 // $ExpectType [string | number, ...(string | number)[]]
 ReadonlyArray.union(nonEmptyNumbers)(nonEmptyStrings)
+
+// -------------------------------------------------------------------------------------
+// dedupe
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+ReadonlyArray.dedupe(strings)
+
+// $ExpectType [string, ...string[]]
+ReadonlyArray.dedupe(nonEmptyStrings)

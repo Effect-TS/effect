@@ -1143,15 +1143,6 @@ export const dedupeNonEmptyWith: {
 })
 
 /**
- * Remove duplicates from a `NonEmptyReadonlyArray`, keeping the first occurrence of an element.
- *
- * @since 2.0.0
- */
-export const dedupeNonEmpty: <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A> = dedupeNonEmptyWith(
-  Equal.equivalence()
-)
-
-/**
  * A useful recursion pattern for processing an `Iterable` to produce a new `Array`, often used for "chopping" up the input
  * `Iterable`. Typically chop is called with some function that will consume an initial prefix of the `Iterable` and produce a
  * value and the rest of the `Array`.
@@ -1949,7 +1940,10 @@ export const dedupeWith: {
  *
  * @since 2.0.0
  */
-export const dedupe: <A>(self: Iterable<A>) => Array<A> = dedupeWith(Equal.equivalence())
+export const dedupe: {
+  <A>(self: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
+  <A>(self: Iterable<A>): Array<A>
+} = dedupeWith(Equal.equivalence()) as any
 
 /**
  * Deduplicates adjacent elements that are identical using the provided `isEquivalent` function.

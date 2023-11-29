@@ -136,7 +136,6 @@ Added in v2.0.0
   - [dedupe](#dedupe)
   - [dedupeAdjacent](#dedupeadjacent)
   - [dedupeAdjacentWith](#dedupeadjacentwith)
-  - [dedupeNonEmpty](#dedupenonempty)
   - [dedupeNonEmptyWith](#dedupenonemptywith)
   - [dedupeWith](#dedupewith)
   - [difference](#difference)
@@ -1710,7 +1709,7 @@ Remove duplicates from am `Iterable`, keeping the first occurrence of an element
 **Signature**
 
 ```ts
-export declare const dedupe: <A>(self: Iterable<A>) => A[]
+export declare const dedupe: { <A>(self: readonly [A, ...A[]]): [A, ...A[]]; <A>(self: Iterable<A>): A[] }
 ```
 
 Added in v2.0.0
@@ -1738,18 +1737,6 @@ export declare const dedupeAdjacentWith: {
   <A>(isEquivalent: (self: A, that: A) => boolean): (self: Iterable<A>) => A[]
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): A[]
 }
-```
-
-Added in v2.0.0
-
-## dedupeNonEmpty
-
-Remove duplicates from a `NonEmptyReadonlyArray`, keeping the first occurrence of an element.
-
-**Signature**
-
-```ts
-export declare const dedupeNonEmpty: <A>(self: readonly [A, ...A[]]) => [A, ...A[]]
 ```
 
 Added in v2.0.0
