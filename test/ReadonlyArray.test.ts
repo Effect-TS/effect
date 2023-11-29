@@ -997,7 +997,7 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(f(empty), RA.empty())
     deepStrictEqual(f(RA.empty()), RA.empty())
     deepStrictEqual(f([1, 2, 3]), [2, 4, 6])
-    deepStrictEqual(RA.chopNonEmpty<number, number>((as) => [as[0] * 2, as.slice(1)])([1, 2, 3]), [
+    deepStrictEqual(RA.chop<number, number>((as) => [as[0] * 2, as.slice(1)])([1, 2, 3]), [
       2,
       4,
       6

@@ -1152,7 +1152,11 @@ export const dedupeNonEmptyWith: {
 export const chop: {
   <A, B>(
     f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
-  ): (self: Iterable<A>) => Array<B>
+  ): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A, B>(
+    self: NonEmptyReadonlyArray<A>,
+    f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
+  ): NonEmptyArray<B>
   <A, B>(
     self: Iterable<A>,
     f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
@@ -1162,37 +1166,18 @@ export const chop: {
   f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
 ): Array<B> => {
   const input = fromIterable(self)
-  return isNonEmptyReadonlyArray(input) ? chopNonEmpty(input, f) : []
-})
-
-/**
- * A useful recursion pattern for processing a `NonEmptyReadonlyArray` to produce a new `NonEmptyReadonlyArray`, often used for "chopping" up the input
- * `NonEmptyReadonlyArray`. Typically `chop` is called with some function that will consume an initial prefix of the `NonEmptyReadonlyArray` and produce a
- * value and the tail of the `NonEmptyReadonlyArray`.
- *
- * @since 2.0.0
- */
-export const chopNonEmpty: {
-  <A, B>(
-    f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
-  ): (self: NonEmptyReadonlyArray<A>) => NonEmptyArray<B>
-  <A, B>(
-    self: NonEmptyReadonlyArray<A>,
-    f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
-  ): NonEmptyArray<B>
-} = dual(2, <A, B>(
-  self: NonEmptyReadonlyArray<A>,
-  f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
-): NonEmptyArray<B> => {
-  const [b, rest] = f(self)
-  const out: NonEmptyArray<B> = [b]
-  let next: ReadonlyArray<A> = rest
-  while (readonlyArray.isNonEmptyArray(next)) {
-    const [b, rest] = f(next)
-    out.push(b)
-    next = rest
+  if (isNonEmptyReadonlyArray(input)) {
+    const [b, rest] = f(input)
+    const out: NonEmptyArray<B> = [b]
+    let next: ReadonlyArray<A> = rest
+    while (readonlyArray.isNonEmptyArray(next)) {
+      const [b, rest] = f(next)
+      out.push(b)
+      next = rest
+    }
+    return out
   }
-  return out
+  return []
 })
 
 /**
@@ -1271,8 +1256,7 @@ export const chunksOfNonEmpty: {
   <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<NonEmptyArray<A>>
 } = dual(
   2,
-  <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<NonEmptyArray<A>> =>
-    chopNonEmpty(self, splitNonEmptyAt(n))
+  <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<NonEmptyArray<A>> => chop(self, splitNonEmptyAt(n))
 )
 
 /**
@@ -1287,7 +1271,7 @@ export const groupWith: {
 } = dual(
   2,
   <A>(self: NonEmptyReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyArray<NonEmptyArray<A>> =>
-    chopNonEmpty(self, (as) => {
+    chop(self, (as) => {
       const h = headNonEmpty(as)
       const out: NonEmptyArray<A> = [h]
       let i = 1

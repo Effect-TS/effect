@@ -131,7 +131,6 @@ Added in v2.0.0
     - [With (type alias)](#with-type-alias)
     - [With2 (type alias)](#with2-type-alias)
   - [chop](#chop)
-  - [chopNonEmpty](#chopnonempty)
   - [copy](#copy)
   - [dedupe](#dedupe)
   - [dedupeAdjacent](#dedupeadjacent)
@@ -1668,25 +1667,11 @@ value and the rest of the `Array`.
 
 ```ts
 export declare const chop: {
-  <A, B>(f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): (self: Iterable<A>) => B[]
-  <A, B>(self: Iterable<A>, f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): B[]
-}
-```
-
-Added in v2.0.0
-
-## chopNonEmpty
-
-A useful recursion pattern for processing a `NonEmptyReadonlyArray` to produce a new `NonEmptyReadonlyArray`, often used for "chopping" up the input
-`NonEmptyReadonlyArray`. Typically `chop` is called with some function that will consume an initial prefix of the `NonEmptyReadonlyArray` and produce a
-value and the tail of the `NonEmptyReadonlyArray`.
-
-**Signature**
-
-```ts
-export declare const chopNonEmpty: {
-  <A, B>(f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): (self: readonly [A, ...A[]]) => [B, ...B[]]
+  <A, B>(
+    f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]
+  ): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
   <A, B>(self: readonly [A, ...A[]], f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): [B, ...B[]]
+  <A, B>(self: Iterable<A>, f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): B[]
 }
 ```
 

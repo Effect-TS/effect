@@ -632,3 +632,19 @@ ReadonlyArray.dedupe(strings)
 
 // $ExpectType [string, ...string[]]
 ReadonlyArray.dedupe(nonEmptyStrings)
+
+// -------------------------------------------------------------------------------------
+// chop
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+ReadonlyArray.chop(strings, ([head, ...tail]) => [head, tail])
+
+// $ExpectType string[]
+pipe(strings, ReadonlyArray.chop(([head, ...tail]) => [head, tail]))
+
+// $ExpectType [string, ...string[]]
+ReadonlyArray.chop(nonEmptyStrings, ([head, ...tail]) => [head, tail])
+
+// $ExpectType [string, ...string[]]
+pipe(nonEmptyStrings, ReadonlyArray.chop(([head, ...tail]) => [head, tail]))
