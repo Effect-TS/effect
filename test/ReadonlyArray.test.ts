@@ -407,11 +407,13 @@ describe.concurrent("ReadonlyArray", () => {
       deepStrictEqual(RA.unzip(new Set([])), [[], []])
       deepStrictEqual(
         RA.unzip(
-          new Set([
-            [1, "a"],
-            [2, "b"],
-            [3, "c"]
-          ])
+          new Set(
+            [
+              [1, "a"],
+              [2, "b"],
+              [3, "c"]
+            ] as const
+          )
         ),
         [
           [1, 2, 3],
@@ -816,20 +818,6 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(
       pipe([1, 2, 3], RA.zipNonEmptyWith(["a", "b", "c", "d"], (n, s) => s + n)),
       ["a1", "b2", "c3"]
-    )
-  })
-
-  it("unzipNonEmpty", () => {
-    deepStrictEqual(
-      RA.unzipNonEmpty([
-        [1, "a"],
-        [2, "b"],
-        [3, "c"]
-      ]),
-      [
-        [1, 2, 3],
-        ["a", "b", "c"]
-      ]
     )
   })
 

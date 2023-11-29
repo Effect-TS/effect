@@ -955,25 +955,22 @@ export const zipNonEmptyWith: {
  *
  * @since 2.0.0
  */
-export const unzip = <A, B>(self: Iterable<readonly [A, B]>): [Array<A>, Array<B>] => {
+export const unzip: {
+  <A, B>(self: NonEmptyReadonlyArray<readonly [A, B]>): [NonEmptyArray<A>, NonEmptyArray<B>]
+  <A, B>(self: Iterable<readonly [A, B]>): [Array<A>, Array<B>]
+} = (<A, B>(self: Iterable<readonly [A, B]>): [Array<A>, Array<B>] => {
   const input = fromIterable(self)
-  return isNonEmptyReadonlyArray(input) ? unzipNonEmpty(input) : [[], []]
-}
-
-/**
- * @since 2.0.0
- */
-export const unzipNonEmpty = <A, B>(
-  self: NonEmptyReadonlyArray<readonly [A, B]>
-): [NonEmptyArray<A>, NonEmptyArray<B>] => {
-  const fa: NonEmptyArray<A> = [self[0][0]]
-  const fb: NonEmptyArray<B> = [self[0][1]]
-  for (let i = 1; i < self.length; i++) {
-    fa[i] = self[i][0]
-    fb[i] = self[i][1]
+  if (isNonEmptyReadonlyArray(input)) {
+    const fa: NonEmptyArray<A> = [input[0][0]]
+    const fb: NonEmptyArray<B> = [input[0][1]]
+    for (let i = 1; i < input.length; i++) {
+      fa[i] = input[i][0]
+      fb[i] = input[i][1]
+    }
+    return [fa, fb]
   }
-  return [fa, fb]
-}
+  return [[], []]
+}) as any
 
 /**
  * Places an element in between members of an `Iterable`.

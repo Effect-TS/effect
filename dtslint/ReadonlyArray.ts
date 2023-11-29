@@ -690,3 +690,13 @@ ReadonlyArray.sortBy(ordera)(abs)
 
 // $ExpectType [AB, ...AB[]]
 ReadonlyArray.sortBy(ordera)(nonEmptyabs)
+
+// -------------------------------------------------------------------------------------
+// unzip
+// -------------------------------------------------------------------------------------
+
+// $ExpectType [string[], number[]]
+ReadonlyArray.unzip(hole<Iterable<[string, number]>>())
+
+// $ExpectType [[string, ...string[]], [number, ...number[]]]
+ReadonlyArray.unzip(hole<ReadonlyArray.NonEmptyReadonlyArray<[string, number]>>())

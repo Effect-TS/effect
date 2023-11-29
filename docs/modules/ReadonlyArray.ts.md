@@ -158,7 +158,6 @@ Added in v2.0.0
   - [unionNonEmptyWith](#unionnonemptywith)
   - [unionWith](#unionwith)
   - [unzip](#unzip)
-  - [unzipNonEmpty](#unzipnonempty)
 - [zipping](#zipping)
   - [zip](#zip)
   - [zipNonEmptyWith](#zipnonemptywith)
@@ -2079,19 +2078,10 @@ This function is the inverse of `zip`. Takes an `Iterable` of pairs and return t
 **Signature**
 
 ```ts
-export declare const unzip: <A, B>(self: Iterable<readonly [A, B]>) => [A[], B[]]
-```
-
-Added in v2.0.0
-
-## unzipNonEmpty
-
-**Signature**
-
-```ts
-export declare const unzipNonEmpty: <A, B>(
-  self: readonly [readonly [A, B], ...(readonly [A, B])[]]
-) => [[A, ...A[]], [B, ...B[]]]
+export declare const unzip: {
+  <A, B>(self: readonly [readonly [A, B], ...(readonly [A, B])[]]): [[A, ...A[]], [B, ...B[]]]
+  <A, B>(self: Iterable<readonly [A, B]>): [A[], B[]]
+}
 ```
 
 Added in v2.0.0
