@@ -452,28 +452,42 @@ export const async = <R, E, A>(
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect.Effect<R, E, A> =>
   suspend(() => {
-    let cancelerRef: Effect.Effect<R, never, void> | void = undefined
-    let controllerRef: AbortController | void = undefined
-    const effect = new EffectPrimitive(OpCodes.OP_ASYNC) as any
-    if (register.length !== 1) {
-      const controller = new AbortController()
-      controllerRef = controller
-      effect.i0 = (resume: (_: Effect.Effect<R, E, A>) => void) => {
-        cancelerRef = register(resume, controller.signal)
+    let backingResume: ((_: Effect.Effect<R, E, A>) => void) | undefined = undefined
+    let pendingEffect: Effect.Effect<R, E, A> | undefined = undefined
+    function proxyResume(effect: Effect.Effect<R, E, A>) {
+      if (backingResume) {
+        backingResume(effect)
+      } else if (pendingEffect === undefined) {
+        pendingEffect = effect
       }
-    } else {
-      effect.i0 = (resume: (_: Effect.Effect<R, E, A>) => void) => {
-        // @ts-expect-error
-        cancelerRef = register(resume)
+    }
+    const effect = new EffectPrimitive(OpCodes.OP_ASYNC) as any
+    effect.i0 = (resume: (_: Effect.Effect<R, E, A>) => void) => {
+      if (pendingEffect) {
+        resume(pendingEffect)
+      } else {
+        backingResume = resume
       }
     }
     effect.i1 = blockingOn
-    return onInterrupt(effect, () => {
-      if (controllerRef) {
-        controllerRef.abort()
-      }
-      return cancelerRef ?? unit
-    })
+
+    let cancelerRef: Effect.Effect<R, never, void> | void = undefined
+    let controllerRef: AbortController | void = undefined
+    if (register.length !== 1) {
+      controllerRef = new AbortController()
+      cancelerRef = register(proxyResume, controllerRef.signal)
+    } else {
+      cancelerRef = (register as any)(proxyResume)
+    }
+
+    return (cancelerRef || controllerRef) ?
+      onInterrupt(effect, (_) => {
+        if (controllerRef) {
+          controllerRef.abort()
+        }
+        return cancelerRef ?? unit
+      }) :
+      effect
   })
 
 /* @internal */
