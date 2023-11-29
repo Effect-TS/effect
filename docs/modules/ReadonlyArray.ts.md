@@ -117,10 +117,8 @@ Added in v2.0.0
   - [matchRight](#matchright)
 - [sequencing](#sequencing)
   - [flatMap](#flatmap)
-  - [flatMapNonEmpty](#flatmapnonempty)
   - [flatMapNullable](#flatmapnullable)
   - [flatten](#flatten)
-  - [flattenNonEmpty](#flattennonempty)
 - [sorting](#sorting)
   - [sort](#sort)
   - [sortBy](#sortby)
@@ -134,6 +132,7 @@ Added in v2.0.0
   - [ReadonlyArray (namespace)](#readonlyarray-namespace)
     - [Infer (type alias)](#infer-type-alias)
     - [With (type alias)](#with-type-alias)
+    - [With2 (type alias)](#with2-type-alias)
   - [chop](#chop)
   - [chopNonEmpty](#chopnonempty)
   - [copy](#copy)
@@ -1504,25 +1503,17 @@ Added in v2.0.0
 
 ## flatMap
 
+Applies a function to each element in an array and returns a new array containing the concatenated mapped elements.
+
 **Signature**
 
 ```ts
 export declare const flatMap: {
-  <A, B>(f: (a: A, i: number) => readonly B[]): (self: readonly A[]) => B[]
-  <A, B>(self: readonly A[], f: (a: A, i: number) => readonly B[]): B[]
-}
-```
-
-Added in v2.0.0
-
-## flatMapNonEmpty
-
-**Signature**
-
-```ts
-export declare const flatMapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => readonly [B, ...B[]]): (self: readonly [A, ...A[]]) => [B, ...B[]]
+  <S extends readonly any[], T extends readonly any[]>(
+    f: (a: ReadonlyArray.Infer<S>, i: number) => T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<T>>
   <A, B>(self: readonly [A, ...A[]], f: (a: A, i: number) => readonly [B, ...B[]]): [B, ...B[]]
+  <A, B>(self: readonly A[], f: (a: A, i: number) => readonly B[]): B[]
 }
 ```
 
@@ -1543,22 +1534,15 @@ Added in v2.0.0
 
 ## flatten
 
-**Signature**
-
-```ts
-export declare const flatten: <A>(self: readonly (readonly A[])[]) => A[]
-```
-
-Added in v2.0.0
-
-## flattenNonEmpty
+Flattens an array of arrays into a single array by concatenating all arrays.
 
 **Signature**
 
 ```ts
-export declare const flattenNonEmpty: <A>(
-  self: readonly [readonly [A, ...A[]], ...(readonly [A, ...A[]])[]]
-) => [A, ...A[]]
+export declare const flatten: {
+  <A>(self: readonly [readonly [A, ...A[]], ...(readonly [A, ...A[]])[]]): [A, ...A[]]
+  <A>(self: readonly (readonly A[])[]): A[]
+}
 ```
 
 Added in v2.0.0
@@ -1673,6 +1657,20 @@ Added in v2.0.0
 
 ```ts
 export type With<T extends ReadonlyArray<any>, A> = T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A> : Array<A>
+```
+
+Added in v2.0.0
+
+### With2 (type alias)
+
+**Signature**
+
+```ts
+export type With2<S extends ReadonlyArray<any>, T extends ReadonlyArray<any>, A> = S extends NonEmptyReadonlyArray<any>
+  ? NonEmptyReadonlyArray<A>
+  : T extends NonEmptyReadonlyArray<any>
+    ? NonEmptyReadonlyArray<A>
+    : ReadonlyArray<A>
 ```
 
 Added in v2.0.0

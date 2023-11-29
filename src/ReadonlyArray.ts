@@ -1519,6 +1519,14 @@ export declare namespace ReadonlyArray {
    */
   export type With<T extends ReadonlyArray<any>, A> = T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
     : Array<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type With2<S extends ReadonlyArray<any>, T extends ReadonlyArray<any>, A> = S extends
+    NonEmptyReadonlyArray<any> ? NonEmptyReadonlyArray<A>
+    : T extends NonEmptyReadonlyArray<any> ? NonEmptyReadonlyArray<A>
+    : ReadonlyArray<A>
 }
 
 /**
@@ -1533,11 +1541,16 @@ export const map: {
 } = dual(2, <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => B): Array<B> => self.map(f))
 
 /**
+ * Applies a function to each element in an array and returns a new array containing the concatenated mapped elements.
+ *
  * @category sequencing
  * @since 2.0.0
  */
 export const flatMap: {
-  <A, B>(f: (a: A, i: number) => ReadonlyArray<B>): (self: ReadonlyArray<A>) => Array<B>
+  <S extends ReadonlyArray<any>, T extends ReadonlyArray<any>>(
+    f: (a: ReadonlyArray.Infer<S>, i: number) => T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<T>>
+  <A, B>(self: NonEmptyReadonlyArray<A>, f: (a: A, i: number) => NonEmptyReadonlyArray<B>): NonEmptyArray<B>
   <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => ReadonlyArray<B>): Array<B>
 } = dual(
   2,
@@ -1554,27 +1567,15 @@ export const flatMap: {
 )
 
 /**
+ * Flattens an array of arrays into a single array by concatenating all arrays.
+ *
  * @category sequencing
  * @since 2.0.0
  */
-export const flatMapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => NonEmptyReadonlyArray<B>): (self: NonEmptyReadonlyArray<A>) => NonEmptyArray<B>
-  <A, B>(self: NonEmptyReadonlyArray<A>, f: (a: A, i: number) => NonEmptyReadonlyArray<B>): NonEmptyArray<B>
-} = flatMap as any
-
-/**
- * @category sequencing
- * @since 2.0.0
- */
-export const flatten: <A>(self: ReadonlyArray<ReadonlyArray<A>>) => Array<A> = flatMap(identity)
-
-/**
- * @category sequencing
- * @since 2.0.0
- */
-export const flattenNonEmpty: <A>(
-  self: NonEmptyReadonlyArray<NonEmptyReadonlyArray<A>>
-) => NonEmptyArray<A> = flatMapNonEmpty(identity)
+export const flatten: {
+  <A>(self: NonEmptyReadonlyArray<NonEmptyReadonlyArray<A>>): NonEmptyArray<A>
+  <A>(self: ReadonlyArray<ReadonlyArray<A>>): Array<A>
+} = flatMap(identity) as any
 
 /**
  * @category filtering

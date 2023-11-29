@@ -869,11 +869,6 @@ describe.concurrent("ReadonlyArray", () => {
     )
   })
 
-  it("flatMapNonEmpty", () => {
-    expect(RA.flatMapNonEmpty(RA.make(1, 2), (a) => [a, 4])).toEqual([1, 4, 2, 4])
-    expect(RA.flatMapNonEmpty(RA.make(1, 2), (a, i) => [a + i, 4])).toEqual([1, 4, 3, 4])
-  })
-
   it("chunksOfNonEmpty", () => {
     deepStrictEqual(RA.chunksOfNonEmpty(2)([1, 2, 3, 4, 5]), [
       RA.make(1, 2),
@@ -903,10 +898,6 @@ describe.concurrent("ReadonlyArray", () => {
     assertSingleChunk(RA.make(1, 2), 2)
     // n out of bounds
     assertSingleChunk(RA.make(1, 2), 3)
-  })
-
-  it("flattenNonEmpty", () => {
-    expect(RA.flattenNonEmpty(RA.make(RA.make(1, 2), RA.make(3, 4)))).toEqual([1, 2, 3, 4])
   })
 
   it("min", () => {

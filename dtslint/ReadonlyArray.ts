@@ -1,13 +1,15 @@
-import { pipe } from "effect/Function"
+import { hole, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 
 declare const nonEmptyReadonlyNumbers: ReadonlyArray.NonEmptyReadonlyArray<number>
+declare const nonEmptyReadonlyStrings: ReadonlyArray.NonEmptyReadonlyArray<string>
 declare const nonEmptyNumbers: ReadonlyArray.NonEmptyArray<number>
 declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
+declare const strings: Array<string>
 declare const numbersOrStrings: Array<number | string>
 declare const nonEmptyReadonlyNumbersOrStrings: ReadonlyArray.NonEmptyReadonlyArray<number | string>
 
@@ -439,3 +441,47 @@ ReadonlyArray.dropWhile(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType (string | number)[]
 pipe(numbersOrStrings, ReadonlyArray.dropWhile(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// flatMap
+// -------------------------------------------------------------------------------------
+
+// $ExpectType number[]
+ReadonlyArray.flatMap(strings, (
+  _,
+  _i // $ExpectType number
+) => ReadonlyArray.empty<number>())
+
+// $ExpectType number[]
+ReadonlyArray.flatMap(strings, (
+  s,
+  _i // $ExpectType number
+) => ReadonlyArray.of(s.length))
+
+// $ExpectType number[]
+ReadonlyArray.flatMap(nonEmptyReadonlyStrings, (
+  _s,
+  _i // $ExpectType number
+) => ReadonlyArray.empty<number>())
+
+// $ExpectType [number, ...number[]]
+ReadonlyArray.flatMap(nonEmptyReadonlyStrings, (
+  s,
+  _i // $ExpectType number
+) => ReadonlyArray.of(s.length))
+
+// -------------------------------------------------------------------------------------
+// flatten
+// -------------------------------------------------------------------------------------
+
+// $ExpectType number[]
+ReadonlyArray.flatten(hole<Array<Array<number>>>())
+
+// $ExpectType number[]
+ReadonlyArray.flatten(hole<Array<ReadonlyArray.NonEmptyArray<number>>>())
+
+// $ExpectType number[]
+ReadonlyArray.flatten(hole<ReadonlyArray.NonEmptyArray<Array<number>>>())
+
+// $ExpectType [number, ...number[]]
+ReadonlyArray.flatten(hole<ReadonlyArray.NonEmptyReadonlyArray<ReadonlyArray.NonEmptyReadonlyArray<number>>>())
