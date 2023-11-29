@@ -1,5 +1,11 @@
 # @effect/printer-ansi
 
+## 0.25.0
+
+### Minor Changes
+
+- [#444](https://github.com/Effect-TS/printer/pull/444) [`124da70`](https://github.com/Effect-TS/printer/commit/124da70ff30dce2b028ccb7d6f3fbe7b4443f91a) Thanks [@IMax153](https://github.com/IMax153)! - refactor and enhance the external api of printer-ansi
+
 ## 0.24.0
 
 ### Minor Changes
