@@ -23,8 +23,6 @@ describe.concurrent("List", () => {
     expect(List.size).exist
     expect(List.filter).exist
     expect(List.filterMap).exist
-    expect(List.appendAllNonEmpty).exist
-    expect(List.prependAllNonEmpty).exist
   })
 
   it("is an iterable", () => {
@@ -76,12 +74,6 @@ describe.concurrent("List", () => {
     )
     expect(List.flatMap(List.make(1, 2, 3, 4), () => List.empty())).toEqual(
       List.empty()
-    )
-  })
-
-  it("flatMapNonEmpty", () => {
-    expect(List.flatMapNonEmpty(List.make(1, 2, 3, 4), (n) => List.make(n - 1, n + 1))).toEqual(
-      List.make(0, 2, 1, 3, 2, 4, 3, 5)
     )
   })
 

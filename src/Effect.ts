@@ -137,10 +137,10 @@ export interface EffectTypeLambda extends TypeLambda {
  * @since 2.0.0
  * @category models
  */
-export interface Blocked<out R, out E, out A> extends Effect<R, E, A> {
+export interface Blocked<out E, out A> extends Effect<never, E, A> {
   readonly _op: "Blocked"
-  readonly i0: RequestBlock<R>
-  readonly i1: Effect<R, E, A>
+  readonly i0: RequestBlock
+  readonly i1: Effect<never, E, A>
 }
 
 /**
@@ -1512,7 +1512,7 @@ export const catchAll: {
 /**
  * Recovers from both recoverable and unrecoverable errors.
  *
- * See `absorb`, `sandbox`, `mapErrorCause` for other functions that can
+ * See `sandbox`, `mapErrorCause` for other functions that can
  * recover from defects.
  *
  * @since 2.0.0
@@ -2199,7 +2199,7 @@ export const mapError: {
  * function. This can be used to transform errors while preserving the
  * original structure of `Cause`.
  *
- * See `absorb`, `sandbox`, `catchAllCause` for other functions for dealing
+ * See `sandbox`, `catchAllCause` for other functions for dealing
  * with defects.
  *
  * @since 2.0.0
@@ -4880,29 +4880,20 @@ export const ap: {
  * @category requests & batching
  * @since 2.0.0
  */
-export const blocked: <R, E, A>(blockedRequests: RequestBlock<R>, _continue: Effect<R, E, A>) => Blocked<R, E, A> =
+export const blocked: <E, A>(blockedRequests: RequestBlock, _continue: Effect<never, E, A>) => Blocked<E, A> =
   core.blocked
 
 /**
  * @category requests & batching
  * @since 2.0.0
  */
-export const runRequestBlock: <R>(blockedRequests: RequestBlock<R>) => Blocked<R, never, void> = core.runRequestBlock
+export const runRequestBlock: <R>(blockedRequests: RequestBlock) => Effect<R, never, void> = core.runRequestBlock
 
 /**
  * @category requests & batching
  * @since 2.0.0
  */
-export const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E, A> | Blocked<R, E, A>> = core.step
-
-/**
- * @category requests & batching
- * @since 2.0.0
- */
-export const flatMapStep: <R, E, A, R1, E1, B>(
-  self: Effect<R, E, A>,
-  f: (step: Exit.Exit<E, A> | Blocked<R, E, A>) => Effect<R1, E1, B>
-) => Effect<R | R1, E1, B> = core.flatMapStep
+export const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E, A> | Blocked<E, A>> = core.step
 
 /**
  * @since 2.0.0

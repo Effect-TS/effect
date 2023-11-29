@@ -315,29 +315,29 @@ export const make = <Elements extends readonly [any, ...Array<any>]>(
 export const append: {
   <B>(element: B): <A>(self: List<A>) => Cons<A | B>
   <A, B>(self: List<A>, element: B): Cons<A | B>
-} = dual(2, <A, B>(self: List<A>, element: B): Cons<A | B> => appendAllNonEmpty(self, of(element)))
+} = dual(2, <A, B>(self: List<A>, element: B): Cons<A | B> => appendAll(self, of(element)))
 
 /**
- * Concatentates the specified lists together.
+ * Concatenates two lists, combining their elements.
+ * If either list is non-empty, the result is also a non-empty list.
+ *
+ * @example
+ * import * as List from "effect/List"
+ *
+ * assert.deepStrictEqual(
+ *   List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray),
+ *   [1, 2, "a", "b"]
+ * )
  *
  * @category concatenating
  * @since 2.0.0
  */
 export const appendAll: {
-  <B>(that: List<B>): <A>(self: List<A>) => List<A | B>
-  <A, B>(self: List<A>, that: List<B>): List<A | B>
-} = dual(2, <A, B>(self: List<A>, that: List<B>): List<A | B> => prependAll(that, self))
-
-/**
- * @category concatenating
- * @since 2.0.0
- */
-export const appendAllNonEmpty: {
-  <B>(that: Cons<B>): <A>(self: List<A>) => Cons<B | A>
-  <B>(that: List<B>): <A>(self: Cons<A>) => Cons<B | A>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
   <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
   <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
-} = dual(2, <A, B>(self: Cons<A>, that: List<B>): Cons<A | B> => appendAll(self, that) as any)
+  <A, B>(self: List<A>, that: List<B>): List<A | B>
+} = dual(2, <A, B>(self: List<A>, that: List<B>): List<A | B> => prependAll(that, self))
 
 /**
  * Prepends the specified element to the beginning of the list.
@@ -352,13 +352,24 @@ export const prepend: {
 
 /**
  * Prepends the specified prefix list to the beginning of the specified list.
+ * If either list is non-empty, the result is also a non-empty list.
+ *
+ * @example
+ * import * as List from "effect/List"
+ *
+ * assert.deepStrictEqual(
+ *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
+ *   ["a", "b", 1, 2]
+ * )
  *
  * @category concatenating
  * @since 2.0.0
  */
 export const prependAll: {
-  <B>(prefix: List<B>): <A>(self: List<A>) => List<A | B>
-  <A, B>(self: List<A>, prefix: List<B>): List<A | B>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
+  <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
+  <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
+  <A, B>(self: List<A>, that: List<B>): List<A | B>
 } = dual(2, <A, B>(self: List<A>, prefix: List<B>): List<A | B> => {
   if (isNil(self)) {
     return prefix
@@ -377,17 +388,6 @@ export const prependAll: {
     return result
   }
 })
-
-/**
- * @category concatenating
- * @since 2.0.0
- */
-export const prependAllNonEmpty: {
-  <B>(that: Cons<B>): <A>(self: List<A>) => Cons<B | A>
-  <B>(that: List<B>): <A>(self: Cons<A>) => Cons<B | A>
-  <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
-  <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
-} = dual(2, <A, B>(self: Cons<A>, that: List<B>): Cons<A | B> => prependAll(self, that) as any)
 
 /**
  * Prepends the specified prefix list (in reverse order) to the beginning of the
@@ -633,14 +633,17 @@ export const findFirst: {
 })
 
 /**
- * Flat maps a list using the specified function.
+ * Applies a function to each element in a list and returns a new list containing the concatenated mapped elements.
  *
  * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
-  <A, B>(f: (a: A) => List<B>): (self: List<A>) => List<B>
-  <A, B>(self: List<A>, f: (a: A) => List<B>): List<B>
+  <S extends List<any>, T extends List<any>>(
+    f: (a: List.Infer<S>, i: number) => T
+  ): (self: S) => List.With2<S, T, List.Infer<T>>
+  <A, B>(self: Cons<A>, f: (a: A, i: number) => Cons<B>): Cons<B>
+  <A, B>(self: List<A>, f: (a: A, i: number) => List<B>): List<B>
 } = dual(2, <A, B>(self: List<A>, f: (a: A) => List<B>): List<B> => {
   let rest = self
   let head: MutableCons<B> | undefined = undefined
@@ -664,15 +667,6 @@ export const flatMap: {
   }
   return head
 })
-
-/**
- * @category sequencing
- * @since 2.0.0
- */
-export const flatMapNonEmpty: {
-  <A, B>(f: (a: A) => Cons<B>): (self: Cons<A>) => Cons<B>
-  <A, B>(self: Cons<A>, f: (a: A) => Cons<B>): Cons<B>
-} = flatMap as any
 
 /**
  * Applies the specified function to each element of the `List`.
@@ -722,6 +716,13 @@ export declare namespace List {
    * @since 2.0.0
    */
   export type With<T extends List<any>, A> = T extends Cons<any> ? Cons<A> : List<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type With2<S extends List<any>, T extends List<any>, A> = S extends Cons<any> ? Cons<A>
+    : T extends Cons<any> ? Cons<A>
+    : List<A>
 }
 
 /**

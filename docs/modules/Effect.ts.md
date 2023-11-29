@@ -262,7 +262,6 @@ Added in v2.0.0
 - [requests & batching](#requests--batching)
   - [blocked](#blocked)
   - [cacheRequestResult](#cacherequestresult)
-  - [flatMapStep](#flatmapstep)
   - [request](#request)
   - [runRequestBlock](#runrequestblock)
   - [step](#step)
@@ -2168,7 +2167,7 @@ Added in v2.0.0
 
 Recovers from both recoverable and unrecoverable errors.
 
-See `absorb`, `sandbox`, `mapErrorCause` for other functions that can
+See `sandbox`, `mapErrorCause` for other functions that can
 recover from defects.
 
 **Signature**
@@ -3691,7 +3690,7 @@ Returns an effect with its full cause of failure mapped using the specified
 function. This can be used to transform errors while preserving the
 original structure of `Cause`.
 
-See `absorb`, `sandbox`, `catchAllCause` for other functions for dealing
+See `sandbox`, `catchAllCause` for other functions for dealing
 with defects.
 
 **Signature**
@@ -4121,10 +4120,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Blocked<out R, out E, out A> extends Effect<R, E, A> {
+export interface Blocked<out E, out A> extends Effect<never, E, A> {
   readonly _op: "Blocked"
-  readonly i0: RequestBlock<R>
-  readonly i1: Effect<R, E, A>
+  readonly i0: RequestBlock
+  readonly i1: Effect<never, E, A>
 }
 ```
 
@@ -4615,10 +4614,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const blocked: <R, E, A>(
-  blockedRequests: RequestBlock<R>,
-  _continue: Effect<R, E, A>
-) => Blocked<R, E, A>
+export declare const blocked: <E, A>(blockedRequests: RequestBlock, _continue: Effect<never, E, A>) => Blocked<E, A>
 ```
 
 Added in v2.0.0
@@ -4632,19 +4628,6 @@ export declare const cacheRequestResult: <A extends Request.Request<any, any>>(
   request: A,
   result: Request.Request.Result<A>
 ) => Effect<never, never, void>
-```
-
-Added in v2.0.0
-
-## flatMapStep
-
-**Signature**
-
-```ts
-export declare const flatMapStep: <R, E, A, R1, E1, B>(
-  self: Effect<R, E, A>,
-  f: (step: Exit.Exit<E, A> | Blocked<R, E, A>) => Effect<R1, E1, B>
-) => Effect<R | R1, E1, B>
 ```
 
 Added in v2.0.0
@@ -4674,7 +4657,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const runRequestBlock: <R>(blockedRequests: RequestBlock<R>) => Blocked<R, never, void>
+export declare const runRequestBlock: <R>(blockedRequests: RequestBlock) => Effect<R, never, void>
 ```
 
 Added in v2.0.0
@@ -4684,7 +4667,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E, A> | Blocked<R, E, A>>
+export declare const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E, A> | Blocked<E, A>>
 ```
 
 Added in v2.0.0

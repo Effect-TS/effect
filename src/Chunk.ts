@@ -547,7 +547,7 @@ export const dropWhile: {
 })
 
 /**
- * Concatenates two chunks, combining their elements.
+ * Prepends the specified prefix chunk to the beginning of the specified chunk.
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
  * @example
@@ -680,7 +680,7 @@ export const filterMapWhile: {
 export const compact = <A>(self: Chunk<Option<A>>): Chunk<A> => filterMap(self, identity)
 
 /**
- * Returns a chunk with the elements mapped by the specified function.
+ * Applies a function to each element in a chunk and returns a new chunk containing the concatenated mapped elements.
  *
  * @since 2.0.0
  * @category sequencing
