@@ -17,7 +17,7 @@ import * as Ref from "effect/Ref"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import type * as Scope from "effect/Scope"
-import * as Persistance from "./Persistance.js"
+import * as Persistence from "./Persistence.js"
 
 interface DataLoaderItem<A extends Request.Request<any, any>> {
   readonly request: A
@@ -112,7 +112,7 @@ export const persisted = dual<
     }
   ) => <Req extends Request.Request<EA, AA> & { readonly _tag: string } & PrimaryKey.PrimaryKey>(
     self: RequestResolver.RequestResolver<Req, never>
-  ) => Effect.Effect<Persistance.SchemaPersistance | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>,
+  ) => Effect.Effect<Persistence.SchemaPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>,
   <Req extends Request.Request<EA, AA> & { readonly _tag: string } & PrimaryKey.PrimaryKey, EI, EA, AI, AA>(
     self: RequestResolver.RequestResolver<Req, never>,
     options: {
@@ -120,7 +120,7 @@ export const persisted = dual<
       readonly failureSchema: Schema.Schema<EI, EA>
       readonly successSchema: Schema.Schema<AI, AA>
     }
-  ) => Effect.Effect<Persistance.SchemaPersistance | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>
+  ) => Effect.Effect<Persistence.SchemaPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>
 >(2, <Req extends Request.Request<EA, AA> & { readonly _tag: string } & PrimaryKey.PrimaryKey, EI, EA, AI, AA>(
   self: RequestResolver.RequestResolver<Req, never>,
   options: {
@@ -128,11 +128,11 @@ export const persisted = dual<
     readonly failureSchema: Schema.Schema<EI, EA>
     readonly successSchema: Schema.Schema<AI, AA>
   }
-): Effect.Effect<Persistance.SchemaPersistance | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>> =>
+): Effect.Effect<Persistence.SchemaPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>> =>
   Effect.gen(function*(_) {
     const resultSchema = Schema.either(options.failureSchema, options.successSchema)
     const storage = yield* _(
-      (yield* _(Persistance.SchemaPersistance)).make(options.storeId, resultSchema)
+      (yield* _(Persistence.SchemaPersistence)).make(options.storeId, resultSchema)
     )
     const requestKey = (request: Req) => `${request._tag}:${request[PrimaryKey.symbol]()}`
 
