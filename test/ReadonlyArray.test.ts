@@ -539,11 +539,6 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(pipe(RA.make(1, 2, 3), RA.intersperseNonEmpty(0)), [1, 0, 2, 0, 3])
   })
 
-  it("sortNonEmpty", () => {
-    deepStrictEqual(RA.sortNonEmpty(Number.Order)([1]), [1])
-    deepStrictEqual(RA.sortNonEmpty(Number.Order)([1, 3, 2]), [1, 2, 3])
-  })
-
   describe.concurrent("unsafeGet", () => {
     it("should throw on index out of bound", () => {
       expect(() => pipe([], RA.unsafeGet(100))).toThrowError(new Error("Index 100 out of bounds"))

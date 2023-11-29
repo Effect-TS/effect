@@ -169,6 +169,7 @@ interface AB {
   readonly b: number
 }
 declare const abs: ReadonlyArray<AB>
+declare const nonEmptyabs: ReadonlyArray.NonEmptyReadonlyArray<AB>
 
 // $ExpectType AB[]
 ReadonlyArray.sort(abs, ordera)
@@ -179,8 +180,14 @@ pipe(abs, ReadonlyArray.sort(ordera))
 // $ExpectType AB[]
 ReadonlyArray.sort(ordera)(abs)
 
-// // $ExpectType AB[]
-// pipe(abs, ReadonlyArray.sort(Order.mapInput(Order.reverse(Order.string), ({ a }) => a)))
+// $ExpectType [AB, ...AB[]]
+ReadonlyArray.sort(nonEmptyabs, ordera)
+
+// $ExpectType [AB, ...AB[]]
+pipe(nonEmptyabs, ReadonlyArray.sort(ordera))
+
+// $ExpectType [AB, ...AB[]]
+ReadonlyArray.sort(ordera)(nonEmptyabs)
 
 // -------------------------------------------------------------------------------------
 // partition

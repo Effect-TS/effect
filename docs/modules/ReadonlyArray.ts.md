@@ -121,7 +121,6 @@ Added in v2.0.0
   - [sort](#sort)
   - [sortBy](#sortby)
   - [sortByNonEmpty](#sortbynonempty)
-  - [sortNonEmpty](#sortnonempty)
 - [type lambdas](#type-lambdas)
   - [ReadonlyArrayTypeLambda (interface)](#readonlyarraytypelambda-interface)
 - [unsafe](#unsafe)
@@ -1541,13 +1540,17 @@ Added in v2.0.0
 
 ## sort
 
-Sort the elements of an `Iterable` in increasing order, creating a new `Array`.
+Create a new array with elements sorted in increasing order based on the specified comparator.
+If the input is a `NonEmptyReadonlyArray`, the output will also be a `NonEmptyReadonlyArray`.
 
 **Signature**
 
 ```ts
 export declare const sort: {
-  <B>(O: Order.Order<B>): <A extends B>(self: Iterable<A>) => A[]
+  <B>(
+    O: Order.Order<B>
+  ): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A extends B, B>(self: readonly [A, ...A[]], O: Order.Order<B>): [A, ...A[]]
   <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): A[]
 }
 ```
@@ -1575,21 +1578,6 @@ Added in v2.0.0
 export declare const sortByNonEmpty: <B>(
   ...orders: readonly Order.Order<B>[]
 ) => <A extends B>(as: readonly [A, ...A[]]) => [A, ...A[]]
-```
-
-Added in v2.0.0
-
-## sortNonEmpty
-
-Sort the elements of a `NonEmptyReadonlyArray` in increasing order, creating a new `NonEmptyArray`.
-
-**Signature**
-
-```ts
-export declare const sortNonEmpty: {
-  <B>(O: Order.Order<B>): <A extends B>(self: readonly [A, ...A[]]) => [A, ...A[]]
-  <A extends B, B>(self: readonly [A, ...A[]], O: Order.Order<B>): [A, ...A[]]
-}
 ```
 
 Added in v2.0.0
@@ -1650,7 +1638,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type With<T extends ReadonlyArray<any>, A> = T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A> : Array<A>
+export type With<T extends ReadonlyArray<any> | Iterable<any>, A> = T extends NonEmptyReadonlyArray<any>
+  ? NonEmptyArray<A>
+  : Array<A>
 ```
 
 Added in v2.0.0

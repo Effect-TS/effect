@@ -842,13 +842,17 @@ export const reverseNonEmpty = <A>(
 ): NonEmptyArray<A> => [lastNonEmpty(self), ...self.slice(0, -1).reverse()]
 
 /**
- * Sort the elements of an `Iterable` in increasing order, creating a new `Array`.
+ * Create a new array with elements sorted in increasing order based on the specified comparator.
+ * If the input is a `NonEmptyReadonlyArray`, the output will also be a `NonEmptyReadonlyArray`.
  *
  * @category sorting
  * @since 2.0.0
  */
 export const sort: {
-  <B>(O: Order.Order<B>): <A extends B>(self: Iterable<A>) => Array<A>
+  <B>(
+    O: Order.Order<B>
+  ): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A extends B, B>(self: NonEmptyReadonlyArray<A>, O: Order.Order<B>): NonEmptyArray<A>
   <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): Array<A>
 } = dual(2, <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): Array<A> => {
   const out = Array.from(self)
@@ -870,20 +874,6 @@ export const sortWith: {
 )
 
 /**
- * Sort the elements of a `NonEmptyReadonlyArray` in increasing order, creating a new `NonEmptyArray`.
- *
- * @category sorting
- * @since 2.0.0
- */
-export const sortNonEmpty: {
-  <B>(O: Order.Order<B>): <A extends B>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A>
-  <A extends B, B>(self: NonEmptyReadonlyArray<A>, O: Order.Order<B>): NonEmptyArray<A>
-} = dual(
-  2,
-  <A extends B, B>(self: NonEmptyReadonlyArray<A>, O: Order.Order<B>): NonEmptyArray<A> => sort(O)(self) as any
-)
-
-/**
  * Sort the elements of an `Iterable` in increasing order, where elements are compared
  * using first `orders[0]`, then `orders[1]`, etc...
  *
@@ -901,7 +891,7 @@ export const sortBy = <B>(...orders: ReadonlyArray<Order.Order<B>>) => <A extend
  */
 export const sortByNonEmpty = <B>(
   ...orders: ReadonlyArray<Order.Order<B>>
-): <A extends B>(as: NonEmptyReadonlyArray<A>) => NonEmptyArray<A> => sortNonEmpty(Order.combineAll(orders))
+): <A extends B>(as: NonEmptyReadonlyArray<A>) => NonEmptyArray<A> => sort(Order.combineAll(orders))
 
 /**
  * Takes two `Iterable`s and returns an `Array` of corresponding pairs.
@@ -1513,7 +1503,8 @@ export declare namespace ReadonlyArray {
   /**
    * @since 2.0.0
    */
-  export type With<T extends ReadonlyArray<any>, A> = T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
+  export type With<T extends ReadonlyArray<any> | Iterable<any>, A> = T extends NonEmptyReadonlyArray<any> ?
+    NonEmptyArray<A>
     : Array<A>
 
   /**
