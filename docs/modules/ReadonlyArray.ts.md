@@ -20,7 +20,6 @@ Added in v2.0.0
   - [appendAllNonEmpty](#appendallnonempty)
   - [prepend](#prepend)
   - [prependAll](#prependall)
-  - [prependAllNonEmpty](#prependallnonempty)
 - [constructors](#constructors)
   - [empty](#empty)
   - [make](#make)
@@ -240,28 +239,28 @@ Added in v2.0.0
 
 ## prependAll
 
+Prepends the specified prefix array to the beginning of the specified array.
+If either array is non-empty, the result is also a non-empty array.
+
 **Signature**
 
 ```ts
 export declare const prependAll: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => (B | A)[]
+  <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
+    that: T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(self: Iterable<A>, that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
+  <A, B>(self: readonly [A, ...A[]], that: Iterable<B>): [A | B, ...(A | B)[]]
   <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
 }
 ```
 
-Added in v2.0.0
-
-## prependAllNonEmpty
-
-**Signature**
+**Example**
 
 ```ts
-export declare const prependAllNonEmpty: {
-  <B>(that: readonly [B, ...B[]]): <A>(self: Iterable<A>) => [B | A, ...(B | A)[]]
-  <B>(that: Iterable<B>): <A>(self: readonly [A, ...A[]]) => [B | A, ...(B | A)[]]
-  <A, B>(self: Iterable<A>, that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
-  <A, B>(self: readonly [A, ...A[]], that: Iterable<B>): [A | B, ...(A | B)[]]
-}
+import * as ReadonlyArray from "effect/ReadonlyArray"
+
+assert.deepStrictEqual(ReadonlyArray.prependAll([1, 2], ["a", "b"]), ["a", "b", 1, 2])
 ```
 
 Added in v2.0.0
@@ -1646,7 +1645,11 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Infer<T extends ReadonlyArray<any>> = T[number]
+export type Infer<T extends ReadonlyArray<any> | Iterable<any>> = T extends ReadonlyArray<infer A>
+  ? A
+  : T extends Iterable<infer A>
+    ? A
+    : never
 ```
 
 Added in v2.0.0
@@ -1666,11 +1669,15 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type With2<S extends ReadonlyArray<any>, T extends ReadonlyArray<any>, A> = S extends NonEmptyReadonlyArray<any>
-  ? NonEmptyReadonlyArray<A>
+export type With2<
+  S extends ReadonlyArray<any> | Iterable<any>,
+  T extends ReadonlyArray<any> | Iterable<any>,
+  A
+> = S extends NonEmptyReadonlyArray<any>
+  ? NonEmptyArray<A>
   : T extends NonEmptyReadonlyArray<any>
-    ? NonEmptyReadonlyArray<A>
-    : ReadonlyArray<A>
+    ? NonEmptyArray<A>
+    : Array<A>
 ```
 
 Added in v2.0.0

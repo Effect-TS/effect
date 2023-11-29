@@ -45,13 +45,6 @@ describe.concurrent("ReadonlyArray", () => {
       deepStrictEqual(pipe(new Set([3, 4]), RA.prependAll([1, 2])), [1, 2, 3, 4])
     })
 
-    it("prependAllNonEmpty", () => {
-      deepStrictEqual(pipe([3, 4], RA.prependAllNonEmpty([1, 2])), [1, 2, 3, 4])
-
-      deepStrictEqual(pipe(RA.make(3, 4), RA.prependAllNonEmpty(new Set([1, 2]))), [1, 2, 3, 4])
-      deepStrictEqual(pipe(new Set([3, 4]), RA.prependAllNonEmpty([1, 2])), [1, 2, 3, 4])
-    })
-
     it("append", () => {
       deepStrictEqual(pipe([1, 2, 3], RA.append(4)), [1, 2, 3, 4])
       deepStrictEqual(pipe([[1]], RA.append([2])), [[1], [2]])

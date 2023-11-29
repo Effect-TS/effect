@@ -7,6 +7,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 declare const nonEmptyReadonlyNumbers: ReadonlyArray.NonEmptyReadonlyArray<number>
 declare const nonEmptyReadonlyStrings: ReadonlyArray.NonEmptyReadonlyArray<string>
 declare const nonEmptyNumbers: ReadonlyArray.NonEmptyArray<number>
+declare const nonEmptyStrings: ReadonlyArray.NonEmptyArray<string>
 declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
 declare const strings: Array<string>
@@ -174,22 +175,6 @@ ReadonlyArray.prepend(numbersOrStrings, true)
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
 ReadonlyArray.prepend(true)(numbersOrStrings)
-
-// -------------------------------------------------------------------------------------
-// prependAllNonEmpty
-// -------------------------------------------------------------------------------------
-
-// $ExpectType [string | number, ...(string | number)[]]
-ReadonlyArray.prependAllNonEmpty(numbersOrStrings, nonEmptyReadonlyNumbersOrStrings)
-
-// $ExpectType [string | number, ...(string | number)[]]
-ReadonlyArray.prependAllNonEmpty(numbersOrStrings)(nonEmptyReadonlyNumbersOrStrings)
-
-// $ExpectType [string | number, ...(string | number)[]]
-ReadonlyArray.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings, numbersOrStrings)
-
-// $ExpectType [string | number, ...(string | number)[]]
-ReadonlyArray.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // sort
@@ -485,3 +470,31 @@ ReadonlyArray.flatten(hole<ReadonlyArray.NonEmptyArray<Array<number>>>())
 
 // $ExpectType [number, ...number[]]
 ReadonlyArray.flatten(hole<ReadonlyArray.NonEmptyReadonlyArray<ReadonlyArray.NonEmptyReadonlyArray<number>>>())
+
+// -------------------------------------------------------------------------------------
+// prependAll
+// -------------------------------------------------------------------------------------
+
+// $ExpectType (string | number)[]
+ReadonlyArray.prependAll(strings, numbers)
+
+// $ExpectType (string | number)[]
+pipe(strings, ReadonlyArray.prependAll(numbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.prependAll(nonEmptyStrings, numbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, ReadonlyArray.prependAll(numbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.prependAll(strings, nonEmptyNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(strings, ReadonlyArray.prependAll(nonEmptyNumbers))
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.prependAll(nonEmptyStrings, nonEmptyNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, ReadonlyArray.prependAll(nonEmptyNumbers))

@@ -224,29 +224,30 @@ export const prepend: {
 } = dual(2, <A, B>(self: Iterable<A>, head: B): NonEmptyArray<A | B> => [head, ...self])
 
 /**
+ * Prepends the specified prefix array to the beginning of the specified array.
+ * If either array is non-empty, the result is also a non-empty array.
+ *
+ * @example
+ * import * as ReadonlyArray from "effect/ReadonlyArray"
+ *
+ * assert.deepStrictEqual(
+ *   ReadonlyArray.prependAll([1, 2], ["a", "b"]),
+ *   ["a", "b", 1, 2]
+ * )
+ *
  * @category concatenating
  * @since 2.0.0
  */
 export const prependAll: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Array<A | B>
+  <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
+    that: T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(self: Iterable<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
+  <A, B>(self: NonEmptyReadonlyArray<A>, that: Iterable<B>): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B>
 } = dual(
   2,
   <A>(self: Iterable<A>, that: Iterable<A>): Array<A> => fromIterable(that).concat(fromIterable(self))
-)
-
-/**
- * @category concatenating
- * @since 2.0.0
- */
-export const prependAllNonEmpty: {
-  <B>(that: NonEmptyReadonlyArray<B>): <A>(self: Iterable<A>) => NonEmptyArray<A | B>
-  <B>(that: Iterable<B>): <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A | B>
-  <A, B>(self: Iterable<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
-  <A, B>(self: NonEmptyReadonlyArray<A>, that: Iterable<B>): NonEmptyArray<A | B>
-} = dual(
-  2,
-  <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B> => prependAll(self, that)
 )
 
 /**
@@ -1512,7 +1513,9 @@ export declare namespace ReadonlyArray {
   /**
    * @since 2.0.0
    */
-  export type Infer<T extends ReadonlyArray<any>> = T[number]
+  export type Infer<T extends ReadonlyArray<any> | Iterable<any>> = T extends ReadonlyArray<infer A> ? A
+    : T extends Iterable<infer A> ? A
+    : never
 
   /**
    * @since 2.0.0
@@ -1523,10 +1526,10 @@ export declare namespace ReadonlyArray {
   /**
    * @since 2.0.0
    */
-  export type With2<S extends ReadonlyArray<any>, T extends ReadonlyArray<any>, A> = S extends
-    NonEmptyReadonlyArray<any> ? NonEmptyReadonlyArray<A>
-    : T extends NonEmptyReadonlyArray<any> ? NonEmptyReadonlyArray<A>
-    : ReadonlyArray<A>
+  export type With2<S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>, A> =
+    S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
+      : T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
+      : Array<A>
 }
 
 /**
