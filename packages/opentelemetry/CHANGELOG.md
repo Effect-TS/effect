@@ -1,5 +1,15 @@
 # @effect/opentelemetry
 
+## 0.25.0
+
+### Minor Changes
+
+- [#96](https://github.com/Effect-TS/opentelemetry/pull/96) [`63b82a3`](https://github.com/Effect-TS/opentelemetry/commit/63b82a3768ec47a5b38ff2b0dc61c24c226c0e5f) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#96](https://github.com/Effect-TS/opentelemetry/pull/96) [`63b82a3`](https://github.com/Effect-TS/opentelemetry/commit/63b82a3768ec47a5b38ff2b0dc61c24c226c0e5f) Thanks [@tim-smart](https://github.com/tim-smart)! - accept Effect's for sdk constructors
+
 ## 0.24.0
 
 ### Minor Changes
