@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.33.1
+
+### Patch Changes
+
+- [#308](https://github.com/Effect-TS/platform/pull/308) [`4da9a1b`](https://github.com/Effect-TS/platform/commit/4da9a1b73f7644561eab5d7d0d3dcc3b1b8b9b64) Thanks [@tim-smart](https://github.com/tim-smart)! - fix mime version to preserve cjs support
+
 ## 0.33.0
 
 ### Minor Changes
