@@ -3537,7 +3537,7 @@ export const readonlySet = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, 
 // ---------------------------------------------
 
 const bigDecimalPretty = (): Pretty<BigDecimal.BigDecimal> => (val) =>
-  `BigDecimal(${BigDecimal.toString(BigDecimal.normalize(val))})`
+  `BigDecimal(${BigDecimal.format(BigDecimal.normalize(val))})`
 
 const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
   fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => BigDecimal.make(value, scale))
@@ -3596,7 +3596,7 @@ export const bigDecimalFromString = <I, A extends string>(
         onNone: () => ParseResult.fail(ParseResult.type(ast, num)),
         onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
       })),
-    (val) => ParseResult.succeed(BigDecimal.toString(BigDecimal.normalize(val))),
+    (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val))),
     { strict: false }
   )
 
@@ -3664,7 +3664,7 @@ export const greaterThanOrEqualToBigDecimal = <A extends BigDecimal.BigDecimal>(
   self.pipe(
     filter((a): a is A => BigDecimal.greaterThanOrEqualTo(a, min), {
       typeId: { id: GreaterThanOrEqualToBigDecimalTypeId, params: { min } },
-      description: `a BigDecimal greater than or equal to ${BigDecimal.toString(min)}`,
+      description: `a BigDecimal greater than or equal to ${BigDecimal.format(min)}`,
       ...options
     })
   )
@@ -3687,7 +3687,7 @@ export const lessThanBigDecimal = <A extends BigDecimal.BigDecimal>(
   self.pipe(
     filter((a): a is A => BigDecimal.lessThan(a, max), {
       typeId: { id: LessThanBigDecimalTypeId, params: { max } },
-      description: `a BigDecimal less than ${BigDecimal.toString(max)}`,
+      description: `a BigDecimal less than ${BigDecimal.format(max)}`,
       ...options
     })
   )
@@ -3712,7 +3712,7 @@ export const lessThanOrEqualToBigDecimal = <A extends BigDecimal.BigDecimal>(
   self.pipe(
     filter((a): a is A => BigDecimal.lessThanOrEqualTo(a, max), {
       typeId: { id: LessThanOrEqualToBigDecimalTypeId, params: { max } },
-      description: `a BigDecimal less than or equal to ${BigDecimal.toString(max)}`,
+      description: `a BigDecimal less than or equal to ${BigDecimal.format(max)}`,
       ...options
     })
   )
@@ -3832,8 +3832,8 @@ export const betweenBigDecimal = <A extends BigDecimal.BigDecimal>(
   self.pipe(
     filter((a): a is A => BigDecimal.between(a, { minimum, maximum }), {
       typeId: { id: BetweenBigDecimalTypeId, params: { maximum, minimum } },
-      description: `a BigDecimal between ${BigDecimal.toString(minimum)} and ${
-        BigDecimal.toString(maximum)
+      description: `a BigDecimal between ${BigDecimal.format(minimum)} and ${
+        BigDecimal.format(maximum)
       }`,
       ...options
     })

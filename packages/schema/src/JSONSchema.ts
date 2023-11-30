@@ -196,7 +196,7 @@ const goWithIdentifier = (ast: AST.AST, $defs: Record<string, JsonSchema7>): Jso
 }
 
 const getMetaData = (annotated: AST.Annotated) => {
-  return ReadonlyRecord.compact<unknown>({
+  return ReadonlyRecord.getSomes<unknown>({
     description: AST.getDescriptionAnnotation(annotated),
     title: AST.getTitleAnnotation(annotated),
     examples: AST.getExamplesAnnotation(annotated),
