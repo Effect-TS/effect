@@ -1,5 +1,5 @@
 import * as Terminal from "@effect/platform/Terminal"
-import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
+import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
@@ -8,7 +8,6 @@ import * as Pipeable from "effect/Pipeable"
 import * as Ref from "effect/Ref"
 import type * as Prompt from "../Prompt.js"
 import type * as PromptAction from "../Prompt/Action.js"
-import * as InternalAnsiUtils from "./prompt/ansi-utils.js"
 
 /** @internal */
 const PromptSymbolKey = "@effect/cli/Prompt"
@@ -209,7 +208,7 @@ export const run = <Output>(
           }),
           // Always make sure to restore the display of the cursor
           Effect.ensuring(Effect.orDie(
-            terminal.display(AnsiRender.prettyDefault(InternalAnsiUtils.cursorShow))
+            terminal.display(Doc.render(Doc.cursorShow, { style: "pretty" }))
           ))
         )
       }

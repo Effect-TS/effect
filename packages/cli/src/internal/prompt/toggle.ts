@@ -1,9 +1,6 @@
 import * as Terminal from "@effect/platform/Terminal"
-import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
-import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
-import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
-import * as Color from "@effect/printer-ansi/Color"
-import * as Doc from "@effect/printer/Doc"
+import * as Ansi from "@effect/printer-ansi/Ansi"
+import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -18,14 +15,14 @@ interface State {
   readonly value: boolean
 }
 
-const renderBeep = AnsiRender.prettyDefault(InternalAnsiUtils.beep)
+const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
 const renderClearScreen = (
   prevState: Option.Option<State>,
   options: Required<Prompt.Prompt.ToggleOptions>,
   columns: number
-): AnsiDoc.AnsiDoc => {
-  const clearPrompt = Doc.cat(InternalAnsiUtils.eraseLine, InternalAnsiUtils.cursorLeft)
+): Doc.AnsiDoc => {
+  const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
   if (Option.isNone(prevState)) {
     return clearPrompt
   }
@@ -34,8 +31,8 @@ const renderClearScreen = (
 }
 
 const renderToggle = (value: boolean, options: Required<Prompt.Prompt.ToggleOptions>) => {
-  const separator = Doc.annotate(Doc.char("/"), AnsiStyle.color(Color.black))
-  const selectedAnnotation = AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.cyan))
+  const separator = pipe(Doc.char("/"), Doc.annotate(Ansi.black))
+  const selectedAnnotation = Ansi.combine(Ansi.underlined, Ansi.cyan)
   const inactive = value
     ? Doc.text(options.inactive)
     : Doc.annotate(Doc.text(options.inactive), selectedAnnotation)
@@ -46,13 +43,12 @@ const renderToggle = (value: boolean, options: Required<Prompt.Prompt.ToggleOpti
 }
 
 const renderOutput = (
-  toggle: AnsiDoc.AnsiDoc,
-  leadingSymbol: AnsiDoc.AnsiDoc,
-  trailingSymbol: AnsiDoc.AnsiDoc,
+  toggle: Doc.AnsiDoc,
+  leadingSymbol: Doc.AnsiDoc,
+  trailingSymbol: Doc.AnsiDoc,
   options: Required<Prompt.Prompt.ToggleOptions>
-): AnsiDoc.AnsiDoc => {
-  const annotateLine = (line: string): AnsiDoc.AnsiDoc =>
-    Doc.annotate(Doc.text(line), AnsiStyle.bold)
+): Doc.AnsiDoc => {
+  const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
   const promptLines = options.message.split(/\r?\n/)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
   if (ReadonlyArray.isNonEmptyReadonlyArray(promptLines)) {
@@ -78,16 +74,16 @@ const renderNextFrame = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), AnsiStyle.color(Color.cyan))
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, AnsiStyle.color(Color.black))
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
     const toggle = renderToggle(nextState.value, options)
     const promptMsg = renderOutput(toggle, leadingSymbol, trailingSymbol, options)
     return pipe(
       clearScreen,
-      Doc.cat(InternalAnsiUtils.cursorHide),
+      Doc.cat(Doc.cursorHide),
       Doc.cat(promptMsg),
       Optimize.optimize(Optimize.Deep),
-      AnsiRender.prettyDefault
+      Doc.render({ style: "pretty" })
     )
   })
 
@@ -100,8 +96,8 @@ const renderSubmission = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
-    const leadingSymbol = Doc.annotate(figures.tick, AnsiStyle.color(Color.green))
-    const trailingSymbol = Doc.annotate(figures.ellipsis, AnsiStyle.color(Color.black))
+    const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
     const toggle = renderToggle(value, options)
     const promptMsg = renderOutput(toggle, leadingSymbol, trailingSymbol, options)
     return pipe(
@@ -109,7 +105,7 @@ const renderSubmission = (
       Doc.cat(promptMsg),
       Doc.cat(Doc.hardLine),
       Optimize.optimize(Optimize.Deep),
-      AnsiRender.prettyDefault
+      Doc.render({ style: "pretty" })
     )
   })
 

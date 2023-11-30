@@ -89,7 +89,7 @@ describe("Primitive", () => {
         }).pipe(runEffect))))
   })
 
-  simplePrimitiveTestSuite(Primitive.date, fc.date(), "Date")
+  simplePrimitiveTestSuite(Primitive.date, fc.date({ noInvalidDate: true }), "Date")
 
   simplePrimitiveTestSuite(
     Primitive.float,

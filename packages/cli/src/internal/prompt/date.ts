@@ -1,9 +1,6 @@
 import * as Terminal from "@effect/platform/Terminal"
-import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
-import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
-import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
-import * as Color from "@effect/printer-ansi/Color"
-import * as Doc from "@effect/printer/Doc"
+import * as Ansi from "@effect/printer-ansi/Ansi"
+import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -23,48 +20,45 @@ interface State {
   readonly error: Option.Option<string>
 }
 
-const renderBeep = AnsiRender.prettyDefault(InternalAnsiUtils.beep)
+const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
 const renderClearScreen = (
   prevState: Option.Option<State>,
   options: Required<Prompt.Prompt.DateOptions>,
   columns: number
-): AnsiDoc.AnsiDoc => {
-  const clearPrompt = Doc.cat(InternalAnsiUtils.eraseLine, InternalAnsiUtils.cursorLeft)
+): Doc.AnsiDoc => {
+  const resetCurrentLine = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
   if (Option.isNone(prevState)) {
-    return clearPrompt
+    return resetCurrentLine
   }
   const clearError = Option.match(prevState.value.error, {
     onNone: () => Doc.empty,
     onSome: (error) =>
       pipe(
-        InternalAnsiUtils.cursorDown(InternalAnsiUtils.lines(error, columns)),
+        Doc.cursorDown(InternalAnsiUtils.lines(error, columns)),
         Doc.cat(InternalAnsiUtils.eraseText(`\n${error}`, columns))
       )
   })
   const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
-  return Doc.cat(clearError, Doc.cat(clearOutput, clearPrompt))
+  return Doc.cat(clearError, Doc.cat(clearOutput, resetCurrentLine))
 }
 
-const renderError = (nextState: State, pointer: AnsiDoc.AnsiDoc): AnsiDoc.AnsiDoc =>
+const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
   Option.match(nextState.error, {
     onNone: () => Doc.empty,
     onSome: (error) => {
       const errorLines = error.split(/\r?\n/)
       if (ReadonlyArray.isNonEmptyReadonlyArray(errorLines)) {
-        const annotateLine = (line: string): AnsiDoc.AnsiDoc =>
-          Doc.annotate(
-            Doc.text(line),
-            AnsiStyle.combine(AnsiStyle.italicized, AnsiStyle.color(Color.red))
-          )
-        const prefix = Doc.cat(Doc.annotate(pointer, AnsiStyle.color(Color.red)), Doc.space)
+        const annotateLine = (line: string): Doc.AnsiDoc =>
+          Doc.annotate(Doc.text(line), Ansi.combine(Ansi.italicized, Ansi.red))
+        const prefix = Doc.cat(Doc.annotate(pointer, Ansi.red), Doc.space)
         const lines = ReadonlyArray.map(errorLines, (str) => annotateLine(str))
         return pipe(
-          InternalAnsiUtils.cursorSave,
+          Doc.cursorSavePosition,
           Doc.cat(Doc.hardLine),
           Doc.cat(prefix),
           Doc.cat(Doc.align(Doc.vsep(lines))),
-          Doc.cat(InternalAnsiUtils.cursorRestore)
+          Doc.cat(Doc.cursorRestorePosition)
         )
       }
       return Doc.empty
@@ -74,11 +68,11 @@ const renderError = (nextState: State, pointer: AnsiDoc.AnsiDoc): AnsiDoc.AnsiDo
 const renderParts = (nextState: State, submitted: boolean = false) =>
   ReadonlyArray.reduce(
     nextState.dateParts,
-    Doc.empty as AnsiDoc.AnsiDoc,
+    Doc.empty as Doc.AnsiDoc,
     (doc, part, currentIndex) => {
       const partDoc = Doc.text(part.toString())
       if (currentIndex === nextState.cursor && !submitted) {
-        const annotation = AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.cyan))
+        const annotation = Ansi.combine(Ansi.underlined, Ansi.cyan)
         return Doc.cat(doc, Doc.annotate(partDoc, annotation))
       }
       return Doc.cat(doc, partDoc)
@@ -86,28 +80,27 @@ const renderParts = (nextState: State, submitted: boolean = false) =>
   )
 
 const renderOutput = (
-  nextState: State,
-  leadingSymbol: AnsiDoc.AnsiDoc,
-  trailingSymbol: AnsiDoc.AnsiDoc,
-  parts: AnsiDoc.AnsiDoc,
+  leadingSymbol: Doc.AnsiDoc,
+  trailingSymbol: Doc.AnsiDoc,
+  parts: Doc.AnsiDoc,
   options: Required<Prompt.Prompt.DateOptions>
-): AnsiDoc.AnsiDoc => {
-  const annotateLine = (line: string): AnsiDoc.AnsiDoc =>
-    Doc.annotate(Doc.text(line), AnsiStyle.bold)
-  const promptLines = options.message.split(/\r?\n/)
+): Doc.AnsiDoc => {
+  const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  if (ReadonlyArray.isNonEmptyReadonlyArray(promptLines)) {
-    const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
-    return pipe(
-      prefix,
-      Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
-      Doc.cat(Doc.space),
-      Doc.cat(trailingSymbol),
-      Doc.cat(Doc.space),
-      Doc.cat(parts)
-    )
-  }
-  return Doc.hsep([prefix, trailingSymbol, parts])
+  return ReadonlyArray.match(options.message.split(/\r?\n/), {
+    onEmpty: () => Doc.hsep([prefix, trailingSymbol, parts]),
+    onNonEmpty: (promptLines) => {
+      const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
+      return pipe(
+        prefix,
+        Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
+        Doc.cat(Doc.space),
+        Doc.cat(trailingSymbol),
+        Doc.cat(Doc.space),
+        Doc.cat(parts)
+      )
+    }
+  })
 }
 
 const renderNextFrame = (
@@ -119,18 +112,18 @@ const renderNextFrame = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), AnsiStyle.color(Color.cyan))
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, AnsiStyle.color(Color.black))
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
     const parts = renderParts(nextState)
-    const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, parts, options)
+    const promptMsg = renderOutput(leadingSymbol, trailingSymbol, parts, options)
     const errorMsg = renderError(nextState, figures.pointerSmall)
     return pipe(
       clearScreen,
-      Doc.cat(InternalAnsiUtils.cursorHide),
+      Doc.cat(Doc.cursorHide),
       Doc.cat(promptMsg),
       Doc.cat(errorMsg),
       Optimize.optimize(Optimize.Deep),
-      AnsiRender.prettyDefault
+      Doc.render({ style: "pretty" })
     )
   })
 
@@ -139,16 +132,16 @@ const renderSubmission = (nextState: State, options: Required<Prompt.Prompt.Date
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
-    const leadingSymbol = Doc.annotate(figures.tick, AnsiStyle.color(Color.green))
-    const trailingSymbol = Doc.annotate(figures.ellipsis, AnsiStyle.color(Color.black))
+    const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
     const parts = renderParts(nextState, true)
-    const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, parts, options)
+    const promptMsg = renderOutput(leadingSymbol, trailingSymbol, parts, options)
     return pipe(
       clearScreen,
       Doc.cat(promptMsg),
       Doc.cat(Doc.hardLine),
       Optimize.optimize(Optimize.Deep),
-      AnsiRender.prettyDefault
+      Doc.render({ style: "pretty" })
     )
   })
 

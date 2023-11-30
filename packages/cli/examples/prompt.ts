@@ -33,11 +33,11 @@ const numberPrompt = Prompt.float({
 })
 
 const textPrompt = Prompt.text({
-  message: `Please answer the following question\nWhat is your favorite food?`,
-  type: "hidden",
+  message: "Enter your password: ",
+  type: "password",
   validate: (value) =>
     value.length === 0
-      ? Effect.fail("must be non-empty\nyou entered " + value)
+      ? Effect.fail("Password cannot be empty")
       : Effect.succeed(value)
 })
 

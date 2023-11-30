@@ -1,9 +1,6 @@
 import * as Terminal from "@effect/platform/Terminal"
-import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
-import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
-import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
-import * as Color from "@effect/printer-ansi/Color"
-import * as Doc from "@effect/printer/Doc"
+import * as Ansi from "@effect/printer-ansi/Ansi"
+import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -18,18 +15,18 @@ interface State {
   readonly cursor: number
 }
 
-const renderBeep = AnsiRender.prettyDefault(InternalAnsiUtils.beep)
+const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
 const renderClearScreen = <A>(
   prevState: Option.Option<State>,
-  options: Prompt.Prompt.SelectOptions<A>,
+  options: Required<Prompt.Prompt.SelectOptions<A>>,
   columns: number
-): AnsiDoc.AnsiDoc => {
-  const clearPrompt = Doc.cat(InternalAnsiUtils.eraseLine, InternalAnsiUtils.cursorLeft)
+): Doc.AnsiDoc => {
+  const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
   if (Option.isNone(prevState)) {
     return clearPrompt
   }
-  const text = "\n".repeat(options.choices.length) + options.message
+  const text = "\n".repeat(Math.min(options.choices.length, options.maxPerPage)) + options.message
   const clearOutput = InternalAnsiUtils.eraseText(text, columns)
   return Doc.cat(clearOutput, clearPrompt)
 }
@@ -40,58 +37,51 @@ const renderChoicePrefix = <A>(
   toDisplay: { readonly startIndex: number; readonly endIndex: number },
   currentIndex: number,
   figures: Effect.Effect.Success<typeof InternalAnsiUtils.figures>
-): AnsiDoc.AnsiDoc => {
-  let prefix: AnsiDoc.AnsiDoc = Doc.space
+): Doc.AnsiDoc => {
+  let prefix: Doc.AnsiDoc = Doc.space
   if (currentIndex === toDisplay.startIndex && toDisplay.startIndex > 0) {
     prefix = figures.arrowUp
   } else if (currentIndex === toDisplay.endIndex - 1 && toDisplay.endIndex < choices.length) {
     prefix = figures.arrowDown
   }
-  if (choices[currentIndex]!.disabled) {
-    const annotation = AnsiStyle.combine(AnsiStyle.bold, AnsiStyle.color(Color.black))
+  if (choices[currentIndex].disabled) {
+    const annotation = Ansi.combine(Ansi.bold, Ansi.black)
     return nextState.cursor === currentIndex
-      ? pipe(
-        Doc.annotate(figures.pointer, annotation),
-        Doc.cat(prefix)
-      )
-      : Doc.cat(Doc.space, prefix)
+      ? pipe(figures.pointer, Doc.annotate(annotation), Doc.cat(prefix))
+      : pipe(prefix, Doc.cat(Doc.space))
   }
   return nextState.cursor === currentIndex
-    ? pipe(
-      Doc.annotate(figures.pointer, AnsiStyle.color(Color.green)),
-      Doc.cat(prefix)
-    )
-    : Doc.cat(Doc.space, prefix)
+    ? pipe(figures.pointer, Doc.annotate(Ansi.green), Doc.cat(prefix))
+    : pipe(prefix, Doc.cat(Doc.space))
 }
 
 const renderChoiceTitle = <A>(
   choice: Prompt.Prompt.SelectChoice<A>,
   isSelected: boolean
-): AnsiDoc.AnsiDoc => {
+): Doc.AnsiDoc => {
   const title = Doc.text(choice.title)
-  const blackUnderlined = AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.black))
-  const greenUnderlined = AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.green))
+  const disabledAnnotation = Ansi.combine(Ansi.strikethrough, Ansi.black)
+  const selectedAnnotaion = Ansi.combine(Ansi.underlined, Ansi.green)
   if (isSelected) {
     return choice.disabled
-      ? Doc.annotate(title, blackUnderlined)
-      : Doc.annotate(title, greenUnderlined)
+      ? Doc.annotate(title, disabledAnnotation)
+      : Doc.annotate(title, selectedAnnotaion)
   }
   return choice.disabled
-    // TODO: strikethrough in printer?
-    ? Doc.annotate(title, blackUnderlined)
+    ? Doc.annotate(title, disabledAnnotation)
     : title
 }
 
 const renderChoiceDescription = <A>(
   choice: Prompt.Prompt.SelectChoice<A>,
   isSelected: boolean
-): AnsiDoc.AnsiDoc => {
+): Doc.AnsiDoc => {
   if (!choice.disabled && choice.description && isSelected) {
     return pipe(
       Doc.char("-"),
       Doc.cat(Doc.space),
       Doc.cat(Doc.text(choice.description)),
-      Doc.annotate(AnsiStyle.color(Color.black))
+      Doc.annotate(Ansi.black)
     )
   }
   return Doc.empty
@@ -101,7 +91,7 @@ const renderChoices = <A>(
   nextState: State,
   options: Prompt.Prompt.SelectOptions<A>,
   figures: Effect.Effect.Success<typeof InternalAnsiUtils.figures>
-): AnsiDoc.AnsiDoc => {
+): Doc.AnsiDoc => {
   const choices = options.choices
   const toDisplay = entriesToDisplay(nextState.cursor, choices.length, options.maxPerPage)
   const choicesToRender = choices.slice(toDisplay.startIndex, toDisplay.endIndex)
@@ -115,25 +105,25 @@ const renderChoices = <A>(
 }
 
 const renderOutput = <A>(
-  leadingSymbol: AnsiDoc.AnsiDoc,
-  trailingSymbol: AnsiDoc.AnsiDoc,
+  leadingSymbol: Doc.AnsiDoc,
+  trailingSymbol: Doc.AnsiDoc,
   options: Required<Prompt.Prompt.SelectOptions<A>>
-): AnsiDoc.AnsiDoc => {
-  const annotateLine = (line: string): AnsiDoc.AnsiDoc =>
-    Doc.annotate(Doc.text(line), AnsiStyle.bold)
-  const promptLines = options.message.split(/\r?\n/)
+): Doc.AnsiDoc => {
+  const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  if (ReadonlyArray.isNonEmptyReadonlyArray(promptLines)) {
-    const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
-    return pipe(
-      prefix,
-      Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
-      Doc.cat(Doc.space),
-      Doc.cat(trailingSymbol),
-      Doc.cat(Doc.space)
-    )
-  }
-  return Doc.hsep([prefix, trailingSymbol])
+  return ReadonlyArray.match(options.message.split(/\r?\n/), {
+    onEmpty: () => Doc.hsep([prefix, trailingSymbol]),
+    onNonEmpty: (promptLines) => {
+      const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
+      return pipe(
+        prefix,
+        Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
+        Doc.cat(Doc.space),
+        Doc.cat(trailingSymbol),
+        Doc.cat(Doc.space)
+      )
+    }
+  })
 }
 
 const renderNextFrame = <A>(
@@ -146,18 +136,16 @@ const renderNextFrame = <A>(
     const figures = yield* _(InternalAnsiUtils.figures)
     const choices = renderChoices(nextState, options, figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), AnsiStyle.color(Color.cyan))
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, AnsiStyle.color(Color.black))
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
     return pipe(
       clearScreen,
-      Doc.cat(InternalAnsiUtils.cursorHide),
+      Doc.cat(Doc.cursorHide),
       Doc.cat(promptMsg),
       Doc.cat(Doc.hardLine),
       Doc.cat(choices),
-      // TODO: figure out what the bug is here that screws up formatting
-      // Optimize.optimize(Optimize.Deep),
-      AnsiRender.prettyDefault
+      Doc.render({ style: "pretty" })
     )
   })
 
@@ -170,18 +158,16 @@ const renderSubmission = <A>(
     const figures = yield* _(InternalAnsiUtils.figures)
     const selected = Doc.text(options.choices[state.cursor].title)
     const clearScreen = renderClearScreen(Option.some(state), options, terminal.columns)
-    const leadingSymbol = Doc.annotate(figures.tick, AnsiStyle.color(Color.green))
-    const trailingSymbol = Doc.annotate(figures.ellipsis, AnsiStyle.color(Color.black))
+    const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
     return pipe(
       clearScreen,
       Doc.cat(promptMsg),
       Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(selected, AnsiStyle.color(Color.white))),
+      Doc.cat(Doc.annotate(selected, Ansi.white)),
       Doc.cat(Doc.hardLine),
-      // TODO: figure out what the bug is here that screws up formatting
-      // Optimize.optimize(Optimize.Deep),
-      AnsiRender.prettyDefault
+      Doc.render({ style: "pretty" })
     )
   })
 
@@ -240,7 +226,11 @@ export const select = <A>(options: Prompt.Prompt.SelectOptions<A>): Prompt.Promp
         }
         case "enter":
         case "return": {
-          return Effect.succeed(InternalPromptAction.submit(opts.choices[state.cursor].value))
+          const selected = opts.choices[state.cursor]
+          if (selected.disabled) {
+            return Effect.succeed(InternalPromptAction.beep)
+          }
+          return Effect.succeed(InternalPromptAction.submit(selected.value))
         }
         default: {
           return Effect.succeed(InternalPromptAction.beep)

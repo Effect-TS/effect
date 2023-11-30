@@ -1,9 +1,6 @@
 import * as Terminal from "@effect/platform/Terminal"
-import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
-import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
-import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
-import * as Color from "@effect/printer-ansi/Color"
-import * as Doc from "@effect/printer/Doc"
+import * as Ansi from "@effect/printer-ansi/Ansi"
+import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -19,43 +16,43 @@ interface State {
   readonly value: boolean
 }
 
-const renderBeep = AnsiRender.prettyDefault(InternalAnsiUtils.beep)
+const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
 const renderClearScreen = (
   prevState: Option.Option<State>,
   options: Required<Prompt.Prompt.ConfirmOptions>,
   columns: number
-): AnsiDoc.AnsiDoc => {
-  const clearPrompt = Doc.cat(InternalAnsiUtils.eraseLine, InternalAnsiUtils.cursorLeft)
+): Doc.AnsiDoc => {
+  const resetCurrentLine = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
   if (Option.isNone(prevState)) {
-    return clearPrompt
+    return resetCurrentLine
   }
   const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
-  return Doc.cat(clearOutput, clearPrompt)
+  return Doc.cat(clearOutput, resetCurrentLine)
 }
 
 const renderOutput = (
-  confirm: AnsiDoc.AnsiDoc,
-  leadingSymbol: AnsiDoc.AnsiDoc,
-  trailingSymbol: AnsiDoc.AnsiDoc,
+  confirm: Doc.AnsiDoc,
+  leadingSymbol: Doc.AnsiDoc,
+  trailingSymbol: Doc.AnsiDoc,
   options: Required<Prompt.Prompt.ConfirmOptions>
-): AnsiDoc.AnsiDoc => {
-  const annotateLine = (line: string): AnsiDoc.AnsiDoc =>
-    Doc.annotate(Doc.text(line), AnsiStyle.bold)
-  const promptLines = options.message.split(/\r?\n/)
+): Doc.AnsiDoc => {
+  const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  if (ReadonlyArray.isNonEmptyReadonlyArray(promptLines)) {
-    const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
-    return pipe(
-      prefix,
-      Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
-      Doc.cat(Doc.space),
-      Doc.cat(trailingSymbol),
-      Doc.cat(Doc.space),
-      Doc.cat(confirm)
-    )
-  }
-  return Doc.hsep([prefix, trailingSymbol, confirm])
+  return ReadonlyArray.match(options.message.split(/\r?\n/), {
+    onEmpty: () => Doc.hsep([prefix, trailingSymbol, confirm]),
+    onNonEmpty: (promptLines) => {
+      const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
+      return pipe(
+        prefix,
+        Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
+        Doc.cat(Doc.space),
+        Doc.cat(trailingSymbol),
+        Doc.cat(Doc.space),
+        Doc.cat(confirm)
+      )
+    }
+  })
 }
 
 const renderNextFrame = (
@@ -67,9 +64,9 @@ const renderNextFrame = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), AnsiStyle.color(Color.cyan))
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, AnsiStyle.color(Color.black))
-    const confirmAnnotation = AnsiStyle.color(Color.black)
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
+    const confirmAnnotation = Ansi.black
     // Marking these explicitly as present with `!` because they always will be
     // and there is really no value in adding a `DeepRequired` type helper just
     // for these internal cases
@@ -80,10 +77,10 @@ const renderNextFrame = (
     const promptMsg = renderOutput(confirm, leadingSymbol, trailingSymbol, options)
     return pipe(
       clearScreen,
-      Doc.cat(InternalAnsiUtils.cursorHide),
+      Doc.cat(Doc.cursorHide),
       Doc.cat(promptMsg),
       Optimize.optimize(Optimize.Deep),
-      AnsiRender.prettyDefault
+      Doc.render({ style: "pretty" })
     )
   })
 
@@ -96,8 +93,8 @@ const renderSubmission = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
-    const leadingSymbol = Doc.annotate(figures.tick, AnsiStyle.color(Color.green))
-    const trailingSymbol = Doc.annotate(figures.ellipsis, AnsiStyle.color(Color.black))
+    const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
     const confirmMessage = value ? options.label.confirm : options.label.deny
     const confirm = Doc.text(confirmMessage)
     const promptMsg = renderOutput(confirm, leadingSymbol, trailingSymbol, options)
@@ -106,7 +103,7 @@ const renderSubmission = (
       Doc.cat(promptMsg),
       Doc.cat(Doc.hardLine),
       Optimize.optimize(Optimize.Deep),
-      AnsiRender.prettyDefault
+      Doc.render({ style: "pretty" })
     )
   })
 

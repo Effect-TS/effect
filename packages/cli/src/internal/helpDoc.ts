@@ -1,7 +1,5 @@
-import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
-import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
-import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
-import * as Doc from "@effect/printer/Doc"
+import * as Ansi from "@effect/printer-ansi/Ansi"
+import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import { dual, pipe } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -133,25 +131,25 @@ export const mapDescriptionList = dual<
     : self)
 
 /** @internal */
-export const toAnsiDoc = (self: HelpDoc.HelpDoc): AnsiDoc.AnsiDoc =>
+export const toAnsiDoc = (self: HelpDoc.HelpDoc): Doc.AnsiDoc =>
   Optimize.optimize(toAnsiDocInternal(self), Optimize.Deep)
 
 /** @internal */
 export const toAnsiText = (self: HelpDoc.HelpDoc): string =>
-  AnsiRender.prettyDefault(toAnsiDoc(self))
+  Doc.render(toAnsiDoc(self), { style: "pretty" })
 
 // =============================================================================
 // Internals
 // =============================================================================
 
-const toAnsiDocInternal = (self: HelpDoc.HelpDoc): AnsiDoc.AnsiDoc => {
+const toAnsiDocInternal = (self: HelpDoc.HelpDoc): Doc.AnsiDoc => {
   switch (self._tag) {
     case "Empty": {
       return Doc.empty
     }
     case "Header": {
       return pipe(
-        Doc.annotate(InternalSpan.toAnsiDoc(self.value), AnsiStyle.bold),
+        Doc.annotate(InternalSpan.toAnsiDoc(self.value), Ansi.bold),
         Doc.cat(Doc.hardLine)
       )
     }
@@ -164,7 +162,7 @@ const toAnsiDocInternal = (self: HelpDoc.HelpDoc): AnsiDoc.AnsiDoc => {
     case "DescriptionList": {
       const definitions = self.definitions.map(([span, doc]) =>
         Doc.cats([
-          Doc.annotate(InternalSpan.toAnsiDoc(span), AnsiStyle.bold),
+          Doc.annotate(InternalSpan.toAnsiDoc(span), Ansi.bold),
           Doc.empty,
           Doc.indent(toAnsiDocInternal(doc), 2)
         ])

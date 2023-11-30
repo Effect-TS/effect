@@ -402,11 +402,7 @@ const validateInternal = (
       )
     }
     case "DateTime": {
-      return attempt(
-        value,
-        getTypeNameInternal(self),
-        Schema.parse(Schema.dateFromString(Schema.string))
-      )
+      return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.Date))
     }
     case "Float": {
       const numberFromString = Schema.string.pipe(Schema.numberFromString)

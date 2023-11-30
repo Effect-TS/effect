@@ -1,7 +1,6 @@
-import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
-import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
+import * as Ansi from "@effect/printer-ansi/Ansi"
+import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Color from "@effect/printer-ansi/Color"
-import * as Doc from "@effect/printer/Doc"
 import { dual } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as Span from "../../HelpDoc/Span.js"
@@ -122,25 +121,25 @@ export const size = (self: Span.Span): number => {
 }
 
 /** @internal */
-export const toAnsiDoc = (self: Span.Span): AnsiDoc.AnsiDoc => {
+export const toAnsiDoc = (self: Span.Span): Doc.AnsiDoc => {
   switch (self._tag) {
     case "Highlight": {
-      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.color(self.color))
+      return Doc.annotate(toAnsiDoc(self.value), Ansi.color(self.color))
     }
     case "Sequence": {
       return Doc.cat(toAnsiDoc(self.left), toAnsiDoc(self.right))
     }
     case "Strong": {
-      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.bold)
+      return Doc.annotate(toAnsiDoc(self.value), Ansi.bold)
     }
     case "Text": {
       return Doc.text(self.value)
     }
     case "URI": {
-      return Doc.annotate(Doc.text(self.value), AnsiStyle.underlined)
+      return Doc.annotate(Doc.text(self.value), Ansi.underlined)
     }
     case "Weak": {
-      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.dullColor(Color.black))
+      return Doc.annotate(toAnsiDoc(self.value), Ansi.black)
     }
   }
 }
