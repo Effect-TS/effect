@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import type * as _Cache from "./Cache.js"
+import type { Cause } from "./Cause.js"
 import type * as Data from "./Data.js"
 import type { Deferred } from "./Deferred.js"
 import type { DurationInput } from "./Duration.js"
@@ -215,6 +216,17 @@ export const fail: {
   <A extends Request<any, any>>(error: Request.Error<A>): (self: A) => Effect.Effect<never, never, void>
   <A extends Request<any, any>>(self: A, error: Request.Error<A>): Effect.Effect<never, never, void>
 } = internal.fail
+
+/**
+ * Complete a `Request` with the specified cause.
+ *
+ * @since 2.0.0
+ * @category request completion
+ */
+export const failCause: {
+  <A extends Request<any, any>>(cause: Cause<Request.Error<A>>): (self: A) => Effect.Effect<never, never, void>
+  <A extends Request<any, any>>(self: A, cause: Cause<Request.Error<A>>): Effect.Effect<never, never, void>
+} = internal.failCause
 
 /**
  * Complete a `Request` with the specified value.

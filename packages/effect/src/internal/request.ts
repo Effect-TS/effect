@@ -1,3 +1,4 @@
+import type * as Cause from "../Cause.js"
 import type * as Effect from "../Effect.js"
 import { dual } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
@@ -119,6 +120,17 @@ export const fail = dual<
     error: Request.Request.Error<A>
   ) => Effect.Effect<never, never, void>
 >(2, (self, error) => complete(self, core.exitFail(error) as any))
+
+/** @internal */
+export const failCause = dual<
+  <A extends Request.Request<any, any>>(
+    cause: Cause.Cause<Request.Request.Error<A>>
+  ) => (self: A) => Effect.Effect<never, never, void>,
+  <A extends Request.Request<any, any>>(
+    self: A,
+    cause: Cause.Cause<Request.Request.Error<A>>
+  ) => Effect.Effect<never, never, void>
+>(2, (self, cause) => complete(self, core.exitFailCause(cause) as any))
 
 /** @internal */
 export const succeed = dual<
