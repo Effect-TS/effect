@@ -132,7 +132,6 @@ Added in v2.0.0
   - [dedupe](#dedupe)
   - [dedupeAdjacent](#dedupeadjacent)
   - [dedupeAdjacentWith](#dedupeadjacentwith)
-  - [dedupeNonEmptyWith](#dedupenonemptywith)
   - [dedupeWith](#dedupewith)
   - [difference](#difference)
   - [differenceWith](#differencewith)
@@ -1654,7 +1653,8 @@ Added in v2.0.0
 
 ## dedupe
 
-Remove duplicates from am `Iterable`, keeping the first occurrence of an element.
+Remove duplicates from an `Iterable`, preserving the order of the first occurrence of each element.
+The equivalence used to compare elements is provided by `Equal.equivalence()` from the `Equal` module.
 
 **Signature**
 
@@ -1691,30 +1691,19 @@ export declare const dedupeAdjacentWith: {
 
 Added in v2.0.0
 
-## dedupeNonEmptyWith
-
-Remove duplicates from a `NonEmptyReadonlyArray`, keeping the first occurrence of an element using the provided `isEquivalent` function.
-
-**Signature**
-
-```ts
-export declare const dedupeNonEmptyWith: {
-  <A>(isEquivalent: (self: A, that: A) => boolean): (self: readonly [A, ...A[]]) => [A, ...A[]]
-  <A>(self: readonly [A, ...A[]], isEquivalent: (self: A, that: A) => boolean): [A, ...A[]]
-}
-```
-
-Added in v2.0.0
-
 ## dedupeWith
 
-Remove duplicates from am `Iterable` using the provided `isEquivalent` function, keeping the first occurrence of an element.
+Remove duplicates from an `Iterable` using the provided `isEquivalent` function,
+preserving the order of the first occurrence of each element.
 
 **Signature**
 
 ```ts
 export declare const dedupeWith: {
-  <A>(isEquivalent: (self: A, that: A) => boolean): (self: Iterable<A>) => A[]
+  <A>(
+    isEquivalent: (self: A, that: A) => boolean
+  ): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A>(self: readonly [A, ...A[]], isEquivalent: (self: A, that: A) => boolean): [A, ...A[]]
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): A[]
 }
 ```

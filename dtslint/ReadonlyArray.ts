@@ -1,3 +1,4 @@
+import * as Equal from "effect/Equal"
 import { hole, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as Order from "effect/Order"
@@ -632,6 +633,22 @@ ReadonlyArray.dedupe(strings)
 
 // $ExpectType [string, ...string[]]
 ReadonlyArray.dedupe(nonEmptyStrings)
+
+// -------------------------------------------------------------------------------------
+// dedupeWith
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+ReadonlyArray.dedupeWith(strings, Equal.equivalence())
+
+// $ExpectType string[]
+pipe(strings, ReadonlyArray.dedupeWith(Equal.equivalence()))
+
+// $ExpectType [string, ...string[]]
+ReadonlyArray.dedupeWith(nonEmptyStrings, Equal.equivalence())
+
+// $ExpectType [string, ...string[]]
+pipe(nonEmptyStrings, ReadonlyArray.dedupeWith(Equal.equivalence()))
 
 // -------------------------------------------------------------------------------------
 // chop

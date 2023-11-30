@@ -904,11 +904,6 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(len([1, 2, 3]), 3)
   })
 
-  it("dedupeNonEmptyWith", () => {
-    const dedupeNonEmpty = RA.dedupeNonEmptyWith(String.Equivalence)
-    deepStrictEqual(dedupeNonEmpty(["a", "b", "A"]), ["a", "b", "A"])
-  })
-
   it("sortBy", () => {
     interface X {
       readonly a: string

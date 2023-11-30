@@ -1101,25 +1101,6 @@ export const contains: {
 } = containsWith(_equivalence)
 
 /**
- * Remove duplicates from a `NonEmptyReadonlyArray`, keeping the first occurrence of an element using the provided `isEquivalent` function.
- *
- * @since 2.0.0
- */
-export const dedupeNonEmptyWith: {
-  <A>(isEquivalent: (self: A, that: A) => boolean): (self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A>
-  <A>(self: NonEmptyReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyArray<A>
-} = dual(2, <A>(self: NonEmptyReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyArray<A> => {
-  const out: NonEmptyArray<A> = [headNonEmpty(self)]
-  const rest = tailNonEmpty(self)
-  for (const a of rest) {
-    if (out.every((o) => !isEquivalent(a, o))) {
-      out.push(a)
-    }
-  }
-  return out
-})
-
-/**
  * A useful recursion pattern for processing an `Iterable` to produce a new `Array`, often used for "chopping" up the input
  * `Iterable`. Typically chop is called with some function that will consume an initial prefix of the `Iterable` and produce a
  * value and the rest of the `Array`.
@@ -1330,7 +1311,7 @@ export const unionNonEmptyWith = <A>(isEquivalent: (self: A, that: A) => boolean
   (self: ReadonlyArray<A>, that: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
   (self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<A>): NonEmptyArray<A>
 } => {
-  const dedupe = dedupeNonEmptyWith(isEquivalent)
+  const dedupe = dedupeWith(isEquivalent)
   return dual(
     2,
     (self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<A>): NonEmptyArray<A> => dedupe(appendAll(self, that))
@@ -1874,23 +1855,38 @@ export const forEach: {
 } = dual(2, <A>(self: Iterable<A>, f: (a: A, i: number) => void): void => fromIterable(self).forEach((a, i) => f(a, i)))
 
 /**
- * Remove duplicates from am `Iterable` using the provided `isEquivalent` function, keeping the first occurrence of an element.
+ * Remove duplicates from an `Iterable` using the provided `isEquivalent` function,
+ * preserving the order of the first occurrence of each element.
  *
  * @since 2.0.0
  */
 export const dedupeWith: {
-  <A>(isEquivalent: (self: A, that: A) => boolean): (self: Iterable<A>) => Array<A>
+  <A>(
+    isEquivalent: (self: A, that: A) => boolean
+  ): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A>(self: NonEmptyReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyArray<A>
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A>
 } = dual(
   2,
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> => {
     const input = fromIterable(self)
-    return isNonEmptyReadonlyArray(input) ? dedupeNonEmptyWith(isEquivalent)(input) : []
+    if (isNonEmptyReadonlyArray(input)) {
+      const out: NonEmptyArray<A> = [headNonEmpty(input)]
+      const rest = tailNonEmpty(input)
+      for (const r of rest) {
+        if (out.every((a) => !isEquivalent(r, a))) {
+          out.push(r)
+        }
+      }
+      return out
+    }
+    return []
   }
 )
 
 /**
- * Remove duplicates from am `Iterable`, keeping the first occurrence of an element.
+ * Remove duplicates from an `Iterable`, preserving the order of the first occurrence of each element.
+ * The equivalence used to compare elements is provided by `Equal.equivalence()` from the `Equal` module.
  *
  * @since 2.0.0
  */
