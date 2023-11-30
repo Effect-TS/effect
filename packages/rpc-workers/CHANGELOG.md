@@ -1,5 +1,16 @@
 # @effect/rpc-workers
 
+## 0.20.0
+
+### Minor Changes
+
+- [#151](https://github.com/Effect-TS/rpc/pull/151) [`cdb7e25`](https://github.com/Effect-TS/rpc/commit/cdb7e25f9ca9439d5dd06203cbede0a49d516271) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- Updated dependencies [[`cdb7e25`](https://github.com/Effect-TS/rpc/commit/cdb7e25f9ca9439d5dd06203cbede0a49d516271)]:
+  - @effect/rpc@0.20.0
+
 ## 0.19.0
 
 ### Minor Changes
