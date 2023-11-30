@@ -18,6 +18,7 @@ Added in v2.0.0
   - [NodeInspectSymbol](#nodeinspectsymbol)
   - [NodeInspectSymbol (type alias)](#nodeinspectsymbol-type-alias)
 - [utils](#utils)
+  - [format](#format)
   - [toJSON](#tojson)
 
 ---
@@ -61,6 +62,16 @@ export type NodeInspectSymbol = typeof NodeInspectSymbol
 Added in v2.0.0
 
 # utils
+
+## format
+
+**Signature**
+
+```ts
+export declare const format: (x: unknown) => string
+```
+
+Added in v2.0.0
 
 ## toJSON
 
