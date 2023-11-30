@@ -1,5 +1,15 @@
 # @effect/schema
 
+## 0.51.0
+
+### Minor Changes
+
+- [#613](https://github.com/Effect-TS/schema/pull/613) [`2af3914`](https://github.com/Effect-TS/schema/commit/2af39143de6d4a1d83d092ef7311ecd2d3194d85) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#612](https://github.com/Effect-TS/schema/pull/612) [`7596197`](https://github.com/Effect-TS/schema/commit/7596197345c709f3fbab3e4e92b70747018b9c61) Thanks [@patroza](https://github.com/patroza)! - doc: fix S.split README sample
+
 ## 0.50.0
 
 ### Minor Changes
