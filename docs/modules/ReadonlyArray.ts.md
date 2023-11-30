@@ -1028,7 +1028,8 @@ Added in v2.0.0
 
 ## splitAt
 
-Splits an `Iterable` into two pieces, the first piece has max `n` elements.
+Splits an `Iterable` into two segments, with the first segment containing a maximum of `n` elements.
+The value of `n` can be `0`.
 
 **Signature**
 
@@ -1043,7 +1044,8 @@ Added in v2.0.0
 
 ## splitNonEmptyAt
 
-Splits a `NonEmptyReadonlyArray` into two pieces, the first piece has max `n` elements.
+Splits a `NonEmptyReadonlyArray` into two segments, with the first segment containing a maximum of `n` elements.
+The value of `n` must be `>= 1`.
 
 **Signature**
 
