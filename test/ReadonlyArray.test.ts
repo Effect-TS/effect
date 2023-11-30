@@ -45,13 +45,6 @@ describe.concurrent("ReadonlyArray", () => {
       deepStrictEqual(pipe(new Set([3, 4]), RA.prependAll([1, 2])), [1, 2, 3, 4])
     })
 
-    it("prependAllNonEmpty", () => {
-      deepStrictEqual(pipe([3, 4], RA.prependAllNonEmpty([1, 2])), [1, 2, 3, 4])
-
-      deepStrictEqual(pipe(RA.make(3, 4), RA.prependAllNonEmpty(new Set([1, 2]))), [1, 2, 3, 4])
-      deepStrictEqual(pipe(new Set([3, 4]), RA.prependAllNonEmpty([1, 2])), [1, 2, 3, 4])
-    })
-
     it("append", () => {
       deepStrictEqual(pipe([1, 2, 3], RA.append(4)), [1, 2, 3, 4])
       deepStrictEqual(pipe([[1]], RA.append([2])), [[1], [2]])
@@ -65,13 +58,6 @@ describe.concurrent("ReadonlyArray", () => {
 
       deepStrictEqual(pipe([1, 2], RA.appendAll(new Set([3, 4]))), [1, 2, 3, 4])
       deepStrictEqual(pipe(new Set([1, 2]), RA.appendAll([3, 4])), [1, 2, 3, 4])
-    })
-
-    it("appendAllNonEmpty", () => {
-      deepStrictEqual(pipe([1, 2], RA.appendAllNonEmpty([3, 4])), [1, 2, 3, 4])
-
-      deepStrictEqual(pipe(RA.make(1, 2), RA.appendAllNonEmpty(new Set([3, 4]))), [1, 2, 3, 4])
-      deepStrictEqual(pipe(new Set([1, 2]), RA.appendAllNonEmpty([3, 4])), [1, 2, 3, 4])
     })
 
     it("scan", () => {
@@ -421,11 +407,13 @@ describe.concurrent("ReadonlyArray", () => {
       deepStrictEqual(RA.unzip(new Set([])), [[], []])
       deepStrictEqual(
         RA.unzip(
-          new Set([
-            [1, "a"],
-            [2, "b"],
-            [3, "c"]
-          ])
+          new Set(
+            [
+              [1, "a"],
+              [2, "b"],
+              [3, "c"]
+            ] as const
+          )
         ),
         [
           [1, 2, 3],
@@ -542,20 +530,6 @@ describe.concurrent("ReadonlyArray", () => {
 
   it("splitNonEmptyAt", () => {
     deepStrictEqual(pipe(RA.make(1, 2, 3, 4), RA.splitNonEmptyAt(2)), [[1, 2], [3, 4]])
-  })
-
-  it("rotateNonEmpty", () => {
-    deepStrictEqual(RA.rotateNonEmpty(2)([1, 2, 3, 4, 5]), [4, 5, 1, 2, 3])
-  })
-
-  it("intersperseNonEmpty", () => {
-    deepStrictEqual(pipe(RA.make(1), RA.intersperseNonEmpty(0)), [1])
-    deepStrictEqual(pipe(RA.make(1, 2, 3), RA.intersperseNonEmpty(0)), [1, 0, 2, 0, 3])
-  })
-
-  it("sortNonEmpty", () => {
-    deepStrictEqual(RA.sortNonEmpty(Number.Order)([1]), [1])
-    deepStrictEqual(RA.sortNonEmpty(Number.Order)([1, 3, 2]), [1, 2, 3])
   })
 
   describe.concurrent("unsafeGet", () => {
@@ -840,62 +814,28 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(RA.last([]), O.none())
   })
 
-  it("zipNonEmptyWith", () => {
-    deepStrictEqual(
-      pipe([1, 2, 3], RA.zipNonEmptyWith(["a", "b", "c", "d"], (n, s) => s + n)),
-      ["a1", "b2", "c3"]
-    )
-  })
-
-  it("zipNonEmpty", () => {
-    deepStrictEqual(pipe(RA.make(1, 2, 3), RA.zipNonEmpty(["a", "b", "c", "d"])), [
-      [1, "a"],
-      [2, "b"],
-      [3, "c"]
-    ])
-  })
-
-  it("unzipNonEmpty", () => {
-    deepStrictEqual(
-      RA.unzipNonEmpty([
-        [1, "a"],
-        [2, "b"],
-        [3, "c"]
-      ]),
-      [
-        [1, 2, 3],
-        ["a", "b", "c"]
-      ]
-    )
-  })
-
-  it("flatMapNonEmpty", () => {
-    expect(RA.flatMapNonEmpty(RA.make(1, 2), (a) => [a, 4])).toEqual([1, 4, 2, 4])
-    expect(RA.flatMapNonEmpty(RA.make(1, 2), (a, i) => [a + i, 4])).toEqual([1, 4, 3, 4])
-  })
-
-  it("chunksOfNonEmpty", () => {
-    deepStrictEqual(RA.chunksOfNonEmpty(2)([1, 2, 3, 4, 5]), [
+  it("chunksOf", () => {
+    deepStrictEqual(RA.chunksOf(2)([1, 2, 3, 4, 5]), [
       RA.make(1, 2),
       [3, 4],
       [5]
     ])
-    deepStrictEqual(RA.chunksOfNonEmpty(2)([1, 2, 3, 4, 5, 6]), [
+    deepStrictEqual(RA.chunksOf(2)([1, 2, 3, 4, 5, 6]), [
       RA.make(1, 2),
       [3, 4],
       [5, 6]
     ])
-    deepStrictEqual(RA.chunksOfNonEmpty(1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
-    deepStrictEqual(RA.chunksOfNonEmpty(5)([1, 2, 3, 4, 5]), [[1, 2, 3, 4, 5]])
+    deepStrictEqual(RA.chunksOf(1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
+    deepStrictEqual(RA.chunksOf(5)([1, 2, 3, 4, 5]), [[1, 2, 3, 4, 5]])
     // out of bounds
-    deepStrictEqual(RA.chunksOfNonEmpty(0)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
-    deepStrictEqual(RA.chunksOfNonEmpty(-1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
+    deepStrictEqual(RA.chunksOf(0)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
+    deepStrictEqual(RA.chunksOf(-1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
 
     const assertSingleChunk = (
       input: RA.NonEmptyReadonlyArray<number>,
       n: number
     ) => {
-      const chunks = RA.chunksOfNonEmpty(n)(input)
+      const chunks = RA.chunksOf(n)(input)
       strictEqual(chunks.length, 1)
       deepStrictEqual(RA.headNonEmpty(chunks), input)
     }
@@ -903,10 +843,6 @@ describe.concurrent("ReadonlyArray", () => {
     assertSingleChunk(RA.make(1, 2), 2)
     // n out of bounds
     assertSingleChunk(RA.make(1, 2), 3)
-  })
-
-  it("flattenNonEmpty", () => {
-    expect(RA.flattenNonEmpty(RA.make(RA.make(1, 2), RA.make(3, 4)))).toEqual([1, 2, 3, 4])
   })
 
   it("min", () => {
@@ -944,11 +880,6 @@ describe.concurrent("ReadonlyArray", () => {
     )
   })
 
-  it("reverseNonEmpty", () => {
-    deepStrictEqual(RA.reverseNonEmpty([1]), [1])
-    deepStrictEqual(RA.reverseNonEmpty(RA.make(1, 2, 3)), [3, 2, 1])
-  })
-
   it("match", () => {
     const len: <A>(as: ReadonlyArray<A>) => number = RA.match({
       onEmpty: () => 0,
@@ -973,12 +904,7 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(len([1, 2, 3]), 3)
   })
 
-  it("dedupeNonEmptyWith", () => {
-    const dedupeNonEmpty = RA.dedupeNonEmptyWith(String.Equivalence)
-    deepStrictEqual(dedupeNonEmpty(["a", "b", "A"]), ["a", "b", "A"])
-  })
-
-  it("sortBy / sortByNonEmpty", () => {
+  it("sortBy", () => {
     interface X {
       readonly a: string
       readonly b: number
@@ -1022,7 +948,7 @@ describe.concurrent("ReadonlyArray", () => {
       { a: "c", b: 2, c: true }
     ])
 
-    const sortByAgeByName = RA.sortByNonEmpty(byAge, byName)
+    const sortByAgeByName = RA.sortBy(byAge, byName)
     deepStrictEqual(sortByAgeByName(xs), [
       { a: "a", b: 1, c: true },
       { a: "b", b: 2, c: true },
@@ -1042,7 +968,7 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(f(empty), RA.empty())
     deepStrictEqual(f(RA.empty()), RA.empty())
     deepStrictEqual(f([1, 2, 3]), [2, 4, 6])
-    deepStrictEqual(RA.chopNonEmpty<number, number>((as) => [as[0] * 2, as.slice(1)])([1, 2, 3]), [
+    deepStrictEqual(RA.chop<number, number>((as) => [as[0] * 2, as.slice(1)])([1, 2, 3]), [
       2,
       4,
       6
@@ -1131,18 +1057,16 @@ describe.concurrent("ReadonlyArray", () => {
   })
 
   it("unionWith", () => {
-    const unionWith = RA.unionWith(Number.Equivalence)
     const two: ReadonlyArray<number> = [1, 2]
-    deepStrictEqual(pipe(two, unionWith([3, 4])), [1, 2, 3, 4])
-    deepStrictEqual(pipe(two, unionWith([2, 3])), [1, 2, 3])
-    deepStrictEqual(pipe(two, unionWith([1, 2])), [1, 2])
-    deepStrictEqual(pipe(two, unionWith(RA.empty())), two)
-    deepStrictEqual(pipe(RA.empty(), unionWith(two)), two)
+    deepStrictEqual(pipe(two, RA.unionWith([3, 4], Number.Equivalence)), [1, 2, 3, 4])
+    deepStrictEqual(pipe(two, RA.unionWith([2, 3], Number.Equivalence)), [1, 2, 3])
+    deepStrictEqual(pipe(two, RA.unionWith([1, 2], Number.Equivalence)), [1, 2])
+    deepStrictEqual(pipe(two, RA.unionWith(RA.empty(), Number.Equivalence)), two)
+    deepStrictEqual(pipe(RA.empty(), RA.unionWith(two, Number.Equivalence)), two)
     deepStrictEqual(
-      pipe(RA.empty(), unionWith(RA.empty())),
+      pipe(RA.empty(), RA.unionWith(RA.empty(), Number.Equivalence)),
       RA.empty()
     )
-    deepStrictEqual(RA.unionNonEmptyWith(Number.Equivalence)([3, 4])([1, 2]), [1, 2, 3, 4])
   })
 
   it("intersectionWith", () => {

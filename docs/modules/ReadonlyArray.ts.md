@@ -17,10 +17,8 @@ Added in v2.0.0
 - [concatenating](#concatenating)
   - [append](#append)
   - [appendAll](#appendall)
-  - [appendAllNonEmpty](#appendallnonempty)
   - [prepend](#prepend)
   - [prependAll](#prependall)
-  - [prependAllNonEmpty](#prependallnonempty)
 - [constructors](#constructors)
   - [empty](#empty)
   - [make](#make)
@@ -45,7 +43,6 @@ Added in v2.0.0
   - [findLast](#findlast)
   - [findLastIndex](#findlastindex)
   - [reverse](#reverse)
-  - [reverseNonEmpty](#reversenonempty)
   - [some](#some)
   - [sortWith](#sortwith)
 - [filtering](#filtering)
@@ -68,7 +65,6 @@ Added in v2.0.0
   - [scanRight](#scanright)
 - [getters](#getters)
   - [chunksOf](#chunksof)
-  - [chunksOfNonEmpty](#chunksofnonempty)
   - [drop](#drop)
   - [dropRight](#dropright)
   - [dropWhile](#dropwhile)
@@ -117,15 +113,11 @@ Added in v2.0.0
   - [matchRight](#matchright)
 - [sequencing](#sequencing)
   - [flatMap](#flatmap)
-  - [flatMapNonEmpty](#flatmapnonempty)
   - [flatMapNullable](#flatmapnullable)
   - [flatten](#flatten)
-  - [flattenNonEmpty](#flattennonempty)
 - [sorting](#sorting)
   - [sort](#sort)
   - [sortBy](#sortby)
-  - [sortByNonEmpty](#sortbynonempty)
-  - [sortNonEmpty](#sortnonempty)
 - [type lambdas](#type-lambdas)
   - [ReadonlyArrayTypeLambda (interface)](#readonlyarraytypelambda-interface)
 - [unsafe](#unsafe)
@@ -134,14 +126,12 @@ Added in v2.0.0
   - [ReadonlyArray (namespace)](#readonlyarray-namespace)
     - [Infer (type alias)](#infer-type-alias)
     - [With (type alias)](#with-type-alias)
+    - [With2 (type alias)](#with2-type-alias)
   - [chop](#chop)
-  - [chopNonEmpty](#chopnonempty)
   - [copy](#copy)
   - [dedupe](#dedupe)
   - [dedupeAdjacent](#dedupeadjacent)
   - [dedupeAdjacentWith](#dedupeadjacentwith)
-  - [dedupeNonEmpty](#dedupenonempty)
-  - [dedupeNonEmptyWith](#dedupenonemptywith)
   - [dedupeWith](#dedupewith)
   - [difference](#difference)
   - [differenceWith](#differencewith)
@@ -151,7 +141,6 @@ Added in v2.0.0
   - [intersection](#intersection)
   - [intersectionWith](#intersectionwith)
   - [intersperse](#intersperse)
-  - [intersperseNonEmpty](#interspersenonempty)
   - [max](#max)
   - [min](#min)
   - [modify](#modify)
@@ -162,19 +151,13 @@ Added in v2.0.0
   - [replace](#replace)
   - [replaceOption](#replaceoption)
   - [rotate](#rotate)
-  - [rotateNonEmpty](#rotatenonempty)
   - [setNonEmptyHead](#setnonemptyhead)
   - [setNonEmptyLast](#setnonemptylast)
   - [union](#union)
-  - [unionNonEmpty](#unionnonempty)
-  - [unionNonEmptyWith](#unionnonemptywith)
   - [unionWith](#unionwith)
   - [unzip](#unzip)
-  - [unzipNonEmpty](#unzipnonempty)
 - [zipping](#zipping)
   - [zip](#zip)
-  - [zipNonEmpty](#zipnonempty)
-  - [zipNonEmptyWith](#zipnonemptywith)
   - [zipWith](#zipwith)
 
 ---
@@ -198,27 +181,19 @@ Added in v2.0.0
 
 ## appendAll
 
+Concatenates two arrays (or iterables), combining their elements.
+If either array is non-empty, the result is also a non-empty array.
+
 **Signature**
 
 ```ts
 export declare const appendAll: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => (B | A)[]
-  <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
-}
-```
-
-Added in v2.0.0
-
-## appendAllNonEmpty
-
-**Signature**
-
-```ts
-export declare const appendAllNonEmpty: {
-  <B>(that: readonly [B, ...B[]]): <A>(self: Iterable<A>) => [B | A, ...(B | A)[]]
-  <B>(that: Iterable<B>): <A>(self: readonly [A, ...A[]]) => [B | A, ...(B | A)[]]
+  <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
+    that: T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: Iterable<A>, that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
   <A, B>(self: readonly [A, ...A[]], that: Iterable<B>): [A | B, ...(A | B)[]]
+  <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
 }
 ```
 
@@ -241,28 +216,28 @@ Added in v2.0.0
 
 ## prependAll
 
+Prepends the specified prefix array (or iterable) to the beginning of the specified array (or iterable).
+If either array is non-empty, the result is also a non-empty array.
+
 **Signature**
 
 ```ts
 export declare const prependAll: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => (B | A)[]
+  <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
+    that: T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(self: Iterable<A>, that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
+  <A, B>(self: readonly [A, ...A[]], that: Iterable<B>): [A | B, ...(A | B)[]]
   <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
 }
 ```
 
-Added in v2.0.0
-
-## prependAllNonEmpty
-
-**Signature**
+**Example**
 
 ```ts
-export declare const prependAllNonEmpty: {
-  <B>(that: readonly [B, ...B[]]): <A>(self: Iterable<A>) => [B | A, ...(B | A)[]]
-  <B>(that: Iterable<B>): <A>(self: readonly [A, ...A[]]) => [B | A, ...(B | A)[]]
-  <A, B>(self: Iterable<A>, that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
-  <A, B>(self: readonly [A, ...A[]], that: Iterable<B>): [A | B, ...(A | B)[]]
-}
+import * as ReadonlyArray from "effect/ReadonlyArray"
+
+assert.deepStrictEqual(ReadonlyArray.prependAll([1, 2], ["a", "b"]), ["a", "b", 1, 2])
 ```
 
 Added in v2.0.0
@@ -587,17 +562,7 @@ Reverse an `Iterable`, creating a new `Array`.
 **Signature**
 
 ```ts
-export declare const reverse: <A>(self: Iterable<A>) => A[]
-```
-
-Added in v2.0.0
-
-## reverseNonEmpty
-
-**Signature**
-
-```ts
-export declare const reverseNonEmpty: <A>(self: readonly [A, ...A[]]) => [A, ...A[]]
+export declare const reverse: { <A>(self: readonly [A, ...A[]]): [A, ...A[]]; <A>(self: Iterable<A>): A[] }
 ```
 
 Added in v2.0.0
@@ -911,24 +876,13 @@ whenever `n` evenly divides the length of `self`.
 
 ```ts
 export declare const chunksOf: {
-  (n: number): <A>(self: Iterable<A>) => [A, ...A[]][]
-  <A>(self: Iterable<A>, n: number): [A, ...A[]][]
-}
-```
-
-Added in v2.0.0
-
-## chunksOfNonEmpty
-
-Splits a `NonEmptyReadonlyArray` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
-the `NonEmptyReadonlyArray`.
-
-**Signature**
-
-```ts
-export declare const chunksOfNonEmpty: {
-  (n: number): <A>(self: readonly [A, ...A[]]) => [[A, ...A[]], ...[A, ...A[]][]]
+  (
+    n: number
+  ): <T extends readonly any[] | Iterable<any>>(
+    self: T
+  ) => ReadonlyArray.With<T, [ReadonlyArray.Infer<T>, ...ReadonlyArray.Infer<T>[]]>
   <A>(self: readonly [A, ...A[]], n: number): [[A, ...A[]], ...[A, ...A[]][]]
+  <A>(self: Iterable<A>, n: number): [A, ...A[]][]
 }
 ```
 
@@ -1074,7 +1028,8 @@ Added in v2.0.0
 
 ## splitAt
 
-Splits an `Iterable` into two pieces, the first piece has max `n` elements.
+Splits an `Iterable` into two segments, with the first segment containing a maximum of `n` elements.
+The value of `n` can be `0`.
 
 **Signature**
 
@@ -1089,7 +1044,8 @@ Added in v2.0.0
 
 ## splitNonEmptyAt
 
-Splits a `NonEmptyReadonlyArray` into two pieces, the first piece has max `n` elements.
+Splits a `NonEmptyReadonlyArray` into two segments, with the first segment containing a maximum of `n` elements.
+The value of `n` must be `>= 1`.
 
 **Signature**
 
@@ -1504,25 +1460,17 @@ Added in v2.0.0
 
 ## flatMap
 
+Applies a function to each element in an array and returns a new array containing the concatenated mapped elements.
+
 **Signature**
 
 ```ts
 export declare const flatMap: {
-  <A, B>(f: (a: A, i: number) => readonly B[]): (self: readonly A[]) => B[]
-  <A, B>(self: readonly A[], f: (a: A, i: number) => readonly B[]): B[]
-}
-```
-
-Added in v2.0.0
-
-## flatMapNonEmpty
-
-**Signature**
-
-```ts
-export declare const flatMapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => readonly [B, ...B[]]): (self: readonly [A, ...A[]]) => [B, ...B[]]
+  <S extends readonly any[], T extends readonly any[]>(
+    f: (a: ReadonlyArray.Infer<S>, i: number) => T
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<T>>
   <A, B>(self: readonly [A, ...A[]], f: (a: A, i: number) => readonly [B, ...B[]]): [B, ...B[]]
+  <A, B>(self: readonly A[], f: (a: A, i: number) => readonly B[]): B[]
 }
 ```
 
@@ -1543,22 +1491,15 @@ Added in v2.0.0
 
 ## flatten
 
-**Signature**
-
-```ts
-export declare const flatten: <A>(self: readonly (readonly A[])[]) => A[]
-```
-
-Added in v2.0.0
-
-## flattenNonEmpty
+Flattens an array of arrays into a single array by concatenating all arrays.
 
 **Signature**
 
 ```ts
-export declare const flattenNonEmpty: <A>(
-  self: readonly [readonly [A, ...A[]], ...(readonly [A, ...A[]])[]]
-) => [A, ...A[]]
+export declare const flatten: {
+  <A>(self: readonly [readonly [A, ...A[]], ...(readonly [A, ...A[]])[]]): [A, ...A[]]
+  <A>(self: readonly (readonly A[])[]): A[]
+}
 ```
 
 Added in v2.0.0
@@ -1567,13 +1508,17 @@ Added in v2.0.0
 
 ## sort
 
-Sort the elements of an `Iterable` in increasing order, creating a new `Array`.
+Create a new array with elements sorted in increasing order based on the specified comparator.
+If the input is a `NonEmptyReadonlyArray`, the output will also be a `NonEmptyReadonlyArray`.
 
 **Signature**
 
 ```ts
 export declare const sort: {
-  <B>(O: Order.Order<B>): <A extends B>(self: Iterable<A>) => A[]
+  <B>(
+    O: Order.Order<B>
+  ): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A extends B, B>(self: readonly [A, ...A[]], O: Order.Order<B>): [A, ...A[]]
   <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): A[]
 }
 ```
@@ -1588,33 +1533,9 @@ using first `orders[0]`, then `orders[1]`, etc...
 **Signature**
 
 ```ts
-export declare const sortBy: <B>(...orders: readonly Order.Order<B>[]) => <A extends B>(self: Iterable<A>) => A[]
-```
-
-Added in v2.0.0
-
-## sortByNonEmpty
-
-**Signature**
-
-```ts
-export declare const sortByNonEmpty: <B>(
-  ...orders: readonly Order.Order<B>[]
-) => <A extends B>(as: readonly [A, ...A[]]) => [A, ...A[]]
-```
-
-Added in v2.0.0
-
-## sortNonEmpty
-
-Sort the elements of a `NonEmptyReadonlyArray` in increasing order, creating a new `NonEmptyArray`.
-
-**Signature**
-
-```ts
-export declare const sortNonEmpty: {
-  <B>(O: Order.Order<B>): <A extends B>(self: readonly [A, ...A[]]) => [A, ...A[]]
-  <A extends B, B>(self: readonly [A, ...A[]], O: Order.Order<B>): [A, ...A[]]
+export declare const sortBy: <B>(...orders: readonly Order.Order<B>[]) => {
+  <A extends B>(as: readonly [A, ...A[]]): [A, ...A[]]
+  <A extends B>(self: Iterable<A>): A[]
 }
 ```
 
@@ -1662,7 +1583,11 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Infer<T extends ReadonlyArray<any>> = T[number]
+export type Infer<T extends ReadonlyArray<any> | Iterable<any>> = T extends ReadonlyArray<infer A>
+  ? A
+  : T extends Iterable<infer A>
+    ? A
+    : never
 ```
 
 Added in v2.0.0
@@ -1672,7 +1597,27 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type With<T extends ReadonlyArray<any>, A> = T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A> : Array<A>
+export type With<T extends ReadonlyArray<any> | Iterable<any>, A> = T extends NonEmptyReadonlyArray<any>
+  ? NonEmptyArray<A>
+  : Array<A>
+```
+
+Added in v2.0.0
+
+### With2 (type alias)
+
+**Signature**
+
+```ts
+export type With2<
+  S extends ReadonlyArray<any> | Iterable<any>,
+  T extends ReadonlyArray<any> | Iterable<any>,
+  A
+> = S extends NonEmptyReadonlyArray<any>
+  ? NonEmptyArray<A>
+  : T extends NonEmptyReadonlyArray<any>
+    ? NonEmptyArray<A>
+    : Array<A>
 ```
 
 Added in v2.0.0
@@ -1687,25 +1632,11 @@ value and the rest of the `Array`.
 
 ```ts
 export declare const chop: {
-  <A, B>(f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): (self: Iterable<A>) => B[]
-  <A, B>(self: Iterable<A>, f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): B[]
-}
-```
-
-Added in v2.0.0
-
-## chopNonEmpty
-
-A useful recursion pattern for processing a `NonEmptyReadonlyArray` to produce a new `NonEmptyReadonlyArray`, often used for "chopping" up the input
-`NonEmptyReadonlyArray`. Typically `chop` is called with some function that will consume an initial prefix of the `NonEmptyReadonlyArray` and produce a
-value and the tail of the `NonEmptyReadonlyArray`.
-
-**Signature**
-
-```ts
-export declare const chopNonEmpty: {
-  <A, B>(f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): (self: readonly [A, ...A[]]) => [B, ...B[]]
+  <A, B>(
+    f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]
+  ): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
   <A, B>(self: readonly [A, ...A[]], f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): [B, ...B[]]
+  <A, B>(self: Iterable<A>, f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): B[]
 }
 ```
 
@@ -1723,12 +1654,13 @@ Added in v2.0.0
 
 ## dedupe
 
-Remove duplicates from am `Iterable`, keeping the first occurrence of an element.
+Remove duplicates from an `Iterable`, preserving the order of the first occurrence of each element.
+The equivalence used to compare elements is provided by `Equal.equivalence()` from the `Equal` module.
 
 **Signature**
 
 ```ts
-export declare const dedupe: <A>(self: Iterable<A>) => A[]
+export declare const dedupe: { <A>(self: readonly [A, ...A[]]): [A, ...A[]]; <A>(self: Iterable<A>): A[] }
 ```
 
 Added in v2.0.0
@@ -1760,42 +1692,19 @@ export declare const dedupeAdjacentWith: {
 
 Added in v2.0.0
 
-## dedupeNonEmpty
-
-Remove duplicates from a `NonEmptyReadonlyArray`, keeping the first occurrence of an element.
-
-**Signature**
-
-```ts
-export declare const dedupeNonEmpty: <A>(self: readonly [A, ...A[]]) => [A, ...A[]]
-```
-
-Added in v2.0.0
-
-## dedupeNonEmptyWith
-
-Remove duplicates from a `NonEmptyReadonlyArray`, keeping the first occurrence of an element using the provided `isEquivalent` function.
-
-**Signature**
-
-```ts
-export declare const dedupeNonEmptyWith: {
-  <A>(isEquivalent: (self: A, that: A) => boolean): (self: readonly [A, ...A[]]) => [A, ...A[]]
-  <A>(self: readonly [A, ...A[]], isEquivalent: (self: A, that: A) => boolean): [A, ...A[]]
-}
-```
-
-Added in v2.0.0
-
 ## dedupeWith
 
-Remove duplicates from am `Iterable` using the provided `isEquivalent` function, keeping the first occurrence of an element.
+Remove duplicates from an `Iterable` using the provided `isEquivalent` function,
+preserving the order of the first occurrence of each element.
 
 **Signature**
 
 ```ts
 export declare const dedupeWith: {
-  <A>(isEquivalent: (self: A, that: A) => boolean): (self: Iterable<A>) => A[]
+  <A>(
+    isEquivalent: (self: A, that: A) => boolean
+  ): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  <A>(self: readonly [A, ...A[]], isEquivalent: (self: A, that: A) => boolean): [A, ...A[]]
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): A[]
 }
 ```
@@ -1912,29 +1821,16 @@ Added in v2.0.0
 
 ## intersperse
 
-Places an element in between members of an `Iterable`
+Places an element in between members of an `Iterable`.
+If the input is a non-empty array, the result is also a non-empty array.
 
 **Signature**
 
 ```ts
 export declare const intersperse: {
-  <B>(middle: B): <A>(self: Iterable<A>) => (B | A)[]
-  <A, B>(self: Iterable<A>, middle: B): (A | B)[]
-}
-```
-
-Added in v2.0.0
-
-## intersperseNonEmpty
-
-Places an element in between members of a `NonEmptyReadonlyArray`
-
-**Signature**
-
-```ts
-export declare const intersperseNonEmpty: {
-  <B>(middle: B): <A>(self: readonly [A, ...A[]]) => [B | A, ...(B | A)[]]
+  <B>(middle: B): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
   <A, B>(self: readonly [A, ...A[]], middle: B): [A | B, ...(A | B)[]]
+  <A, B>(self: Iterable<A>, middle: B): (A | B)[]
 }
 ```
 
@@ -2073,25 +1969,15 @@ Added in v2.0.0
 ## rotate
 
 Rotate an `Iterable` by `n` steps.
+If the input is a non-empty array, the result is also a non-empty array.
 
 **Signature**
 
 ```ts
-export declare const rotate: { (n: number): <A>(self: Iterable<A>) => A[]; <A>(self: Iterable<A>, n: number): A[] }
-```
-
-Added in v2.0.0
-
-## rotateNonEmpty
-
-Rotate a `NonEmptyReadonlyArray` by `n` steps.
-
-**Signature**
-
-```ts
-export declare const rotateNonEmpty: {
-  (n: number): <A>(self: readonly [A, ...A[]]) => [A, ...A[]]
+export declare const rotate: {
+  (n: number): <T extends readonly any[] | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
   <A>(self: readonly [A, ...A[]], n: number): [A, ...A[]]
+  <A>(self: Iterable<A>, n: number): A[]
 }
 ```
 
@@ -2133,38 +2019,14 @@ Added in v2.0.0
 
 ```ts
 export declare const union: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => (B | A)[]
+  <T extends readonly any[] | Iterable<any>>(
+    that: T
+  ): <S extends readonly any[] | Iterable<any>>(
+    self: S
+  ) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(self: readonly [A, ...A[]], that: readonly B[]): [A | B, ...(A | B)[]]
+  <A, B>(self: readonly A[], that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
   <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
-}
-```
-
-Added in v2.0.0
-
-## unionNonEmpty
-
-**Signature**
-
-```ts
-export declare const unionNonEmpty: {
-  <A>(that: readonly [A, ...A[]]): (self: readonly A[]) => [A, ...A[]]
-  <A>(that: readonly A[]): (self: readonly [A, ...A[]]) => [A, ...A[]]
-  <A>(self: readonly A[], that: readonly [A, ...A[]]): [A, ...A[]]
-  <A>(self: readonly [A, ...A[]], that: readonly A[]): [A, ...A[]]
-}
-```
-
-Added in v2.0.0
-
-## unionNonEmptyWith
-
-**Signature**
-
-```ts
-export declare const unionNonEmptyWith: <A>(isEquivalent: (self: A, that: A) => boolean) => {
-  (that: readonly [A, ...A[]]): (self: readonly A[]) => [A, ...A[]]
-  (that: readonly A[]): (self: readonly [A, ...A[]]) => [A, ...A[]]
-  (self: readonly A[], that: readonly [A, ...A[]]): [A, ...A[]]
-  (self: readonly [A, ...A[]], that: readonly A[]): [A, ...A[]]
 }
 ```
 
@@ -2175,9 +2037,22 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unionWith: <A>(isEquivalent: (self: A, that: A) => boolean) => {
-  (that: Iterable<A>): (self: Iterable<A>) => A[]
-  (self: Iterable<A>, that: Iterable<A>): A[]
+export declare const unionWith: {
+  <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
+    that: T,
+    isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<T>) => boolean
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(
+    self: readonly [A, ...A[]],
+    that: Iterable<B>,
+    isEquivalent: (self: A, that: B) => boolean
+  ): [A | B, ...(A | B)[]]
+  <A, B>(
+    self: Iterable<A>,
+    that: readonly [B, ...B[]],
+    isEquivalent: (self: A, that: B) => boolean
+  ): [A | B, ...(A | B)[]]
+  <A, B>(self: Iterable<A>, that: Iterable<B>, isEquivalent: (self: A, that: B) => boolean): (A | B)[]
 }
 ```
 
@@ -2190,19 +2065,10 @@ This function is the inverse of `zip`. Takes an `Iterable` of pairs and return t
 **Signature**
 
 ```ts
-export declare const unzip: <A, B>(self: Iterable<readonly [A, B]>) => [A[], B[]]
-```
-
-Added in v2.0.0
-
-## unzipNonEmpty
-
-**Signature**
-
-```ts
-export declare const unzipNonEmpty: <A, B>(
-  self: readonly [readonly [A, B], ...(readonly [A, B])[]]
-) => [[A, ...A[]], [B, ...B[]]]
+export declare const unzip: {
+  <A, B>(self: readonly [readonly [A, B], ...(readonly [A, B])[]]): [[A, ...A[]], [B, ...B[]]]
+  <A, B>(self: Iterable<readonly [A, B]>): [A[], B[]]
+}
 ```
 
 Added in v2.0.0
@@ -2219,34 +2085,10 @@ longer `Iterable` are discarded.
 
 ```ts
 export declare const zip: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => [A, B][]
-  <A, B>(self: Iterable<A>, that: Iterable<B>): [A, B][]
-}
-```
-
-Added in v2.0.0
-
-## zipNonEmpty
-
-**Signature**
-
-```ts
-export declare const zipNonEmpty: {
   <B>(that: readonly [B, ...B[]]): <A>(self: readonly [A, ...A[]]) => [[A, B], ...[A, B][]]
+  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => [A, B][]
   <A, B>(self: readonly [A, ...A[]], that: readonly [B, ...B[]]): [[A, B], ...[A, B][]]
-}
-```
-
-Added in v2.0.0
-
-## zipNonEmptyWith
-
-**Signature**
-
-```ts
-export declare const zipNonEmptyWith: {
-  <B, A, C>(that: readonly [B, ...B[]], f: (a: A, b: B) => C): (self: readonly [A, ...A[]]) => [C, ...C[]]
-  <A, B, C>(self: readonly [A, ...A[]], that: readonly [B, ...B[]], f: (a: A, b: B) => C): [C, ...C[]]
+  <A, B>(self: Iterable<A>, that: Iterable<B>): [A, B][]
 }
 ```
 
@@ -2261,7 +2103,9 @@ input `Iterable` is short, excess elements of the longer `Iterable` are discarde
 
 ```ts
 export declare const zipWith: {
+  <B, A, C>(that: readonly [B, ...B[]], f: (a: A, b: B) => C): (self: readonly [A, ...A[]]) => [C, ...C[]]
   <B, A, C>(that: Iterable<B>, f: (a: A, b: B) => C): (self: Iterable<A>) => C[]
+  <A, B, C>(self: readonly [A, ...A[]], that: readonly [B, ...B[]], f: (a: A, b: B) => C): [C, ...C[]]
   <B, A, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): C[]
 }
 ```
