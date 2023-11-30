@@ -30,9 +30,13 @@ const renderClearScreen = (
   return Doc.cat(clearOutput, clearPrompt)
 }
 
-const renderToggle = (value: boolean, options: Required<Prompt.Prompt.ToggleOptions>) => {
-  const separator = pipe(Doc.char("/"), Doc.annotate(Ansi.black))
-  const selectedAnnotation = Ansi.combine(Ansi.underlined, Ansi.cyan)
+const renderToggle = (
+  value: boolean,
+  options: Required<Prompt.Prompt.ToggleOptions>,
+  submitted: boolean = false
+) => {
+  const separator = pipe(Doc.char("/"), Doc.annotate(Ansi.blackBright))
+  const selectedAnnotation = Ansi.combine(Ansi.underlined, submitted ? Ansi.white : Ansi.cyanBright)
   const inactive = value
     ? Doc.text(options.inactive)
     : Doc.annotate(Doc.text(options.inactive), selectedAnnotation)
@@ -74,8 +78,8 @@ const renderNextFrame = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const toggle = renderToggle(nextState.value, options)
     const promptMsg = renderOutput(toggle, leadingSymbol, trailingSymbol, options)
     return pipe(
@@ -97,8 +101,8 @@ const renderSubmission = (
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
-    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
-    const toggle = renderToggle(value, options)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
+    const toggle = renderToggle(value, options, true)
     const promptMsg = renderOutput(toggle, leadingSymbol, trailingSymbol, options)
     return pipe(
       clearScreen,

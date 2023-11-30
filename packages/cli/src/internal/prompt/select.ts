@@ -45,13 +45,13 @@ const renderChoicePrefix = <A>(
     prefix = figures.arrowDown
   }
   if (choices[currentIndex].disabled) {
-    const annotation = Ansi.combine(Ansi.bold, Ansi.black)
+    const annotation = Ansi.combine(Ansi.bold, Ansi.blackBright)
     return nextState.cursor === currentIndex
       ? pipe(figures.pointer, Doc.annotate(annotation), Doc.cat(prefix))
       : pipe(prefix, Doc.cat(Doc.space))
   }
   return nextState.cursor === currentIndex
-    ? pipe(figures.pointer, Doc.annotate(Ansi.green), Doc.cat(prefix))
+    ? pipe(figures.pointer, Doc.annotate(Ansi.cyanBright), Doc.cat(prefix))
     : pipe(prefix, Doc.cat(Doc.space))
 }
 
@@ -60,15 +60,13 @@ const renderChoiceTitle = <A>(
   isSelected: boolean
 ): Doc.AnsiDoc => {
   const title = Doc.text(choice.title)
-  const disabledAnnotation = Ansi.combine(Ansi.strikethrough, Ansi.black)
-  const selectedAnnotaion = Ansi.combine(Ansi.underlined, Ansi.green)
   if (isSelected) {
     return choice.disabled
-      ? Doc.annotate(title, disabledAnnotation)
-      : Doc.annotate(title, selectedAnnotaion)
+      ? Doc.annotate(title, Ansi.combine(Ansi.underlined, Ansi.blackBright))
+      : Doc.annotate(title, Ansi.combine(Ansi.underlined, Ansi.cyanBright))
   }
   return choice.disabled
-    ? Doc.annotate(title, disabledAnnotation)
+    ? Doc.annotate(title, Ansi.combine(Ansi.strikethrough, Ansi.blackBright))
     : title
 }
 
@@ -81,7 +79,7 @@ const renderChoiceDescription = <A>(
       Doc.char("-"),
       Doc.cat(Doc.space),
       Doc.cat(Doc.text(choice.description)),
-      Doc.annotate(Ansi.black)
+      Doc.annotate(Ansi.blackBright)
     )
   }
   return Doc.empty
@@ -136,8 +134,8 @@ const renderNextFrame = <A>(
     const figures = yield* _(InternalAnsiUtils.figures)
     const choices = renderChoices(nextState, options, figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
     return pipe(
       clearScreen,
@@ -159,7 +157,7 @@ const renderSubmission = <A>(
     const selected = Doc.text(options.choices[state.cursor].title)
     const clearScreen = renderClearScreen(Option.some(state), options, terminal.columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
-    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
     return pipe(
       clearScreen,

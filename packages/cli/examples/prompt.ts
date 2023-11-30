@@ -42,7 +42,7 @@ const textPrompt = Prompt.text({
 })
 
 const togglePrompt = Prompt.toggle({
-  message: "Can you confirm?",
+  message: "Yes or no?",
   active: "yes",
   inactive: "no"
 })

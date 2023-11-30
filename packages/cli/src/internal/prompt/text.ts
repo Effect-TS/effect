@@ -55,10 +55,10 @@ const renderClearScreen = (
 const renderInput = (
   nextState: State,
   options: Required<Prompt.Prompt.TextOptions>,
-  submitted: boolean = false
+  submitted: boolean
 ): Doc.AnsiDoc => {
   const annotation = Option.match(nextState.error, {
-    onNone: () => submitted ? Ansi.white : Ansi.combine(Ansi.underlined, Ansi.green),
+    onNone: () => submitted ? Ansi.white : Ansi.combine(Ansi.underlined, Ansi.cyanBright),
     onSome: () => Ansi.red
   })
   switch (options.type) {
@@ -103,7 +103,8 @@ const renderOutput = (
   nextState: State,
   leadingSymbol: Doc.AnsiDoc,
   trailingSymbol: Doc.AnsiDoc,
-  options: Required<Prompt.Prompt.TextOptions>
+  options: Required<Prompt.Prompt.TextOptions>,
+  submitted: boolean = false
 ): Doc.AnsiDoc => {
   const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
   const promptLines = options.message.split(/\r?\n/)
@@ -116,10 +117,10 @@ const renderOutput = (
       Doc.cat(Doc.space),
       Doc.cat(trailingSymbol),
       Doc.cat(Doc.space),
-      Doc.cat(renderInput(nextState, options))
+      Doc.cat(renderInput(nextState, options, submitted))
     )
   }
-  return Doc.hsep([prefix, trailingSymbol, renderInput(nextState, options)])
+  return Doc.hsep([prefix, trailingSymbol, renderInput(nextState, options, submitted)])
 }
 
 const renderNextFrame = (
@@ -131,8 +132,8 @@ const renderNextFrame = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, options)
     const errorMsg = renderError(nextState, figures.pointerSmall)
     return pipe(
@@ -154,8 +155,8 @@ const renderSubmission = (
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
-    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
-    const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, options)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
+    const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, options, true)
     return pipe(
       clearScreen,
       Doc.cat(promptMsg),

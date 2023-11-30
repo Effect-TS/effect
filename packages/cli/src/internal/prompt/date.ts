@@ -72,7 +72,7 @@ const renderParts = (nextState: State, submitted: boolean = false) =>
     (doc, part, currentIndex) => {
       const partDoc = Doc.text(part.toString())
       if (currentIndex === nextState.cursor && !submitted) {
-        const annotation = Ansi.combine(Ansi.underlined, Ansi.cyan)
+        const annotation = Ansi.combine(Ansi.underlined, Ansi.cyanBright)
         return Doc.cat(doc, Doc.annotate(partDoc, annotation))
       }
       return Doc.cat(doc, partDoc)
@@ -112,8 +112,8 @@ const renderNextFrame = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const parts = renderParts(nextState)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, parts, options)
     const errorMsg = renderError(nextState, figures.pointerSmall)
@@ -133,7 +133,7 @@ const renderSubmission = (nextState: State, options: Required<Prompt.Prompt.Date
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
-    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
     const parts = renderParts(nextState, true)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, parts, options)
     return pipe(

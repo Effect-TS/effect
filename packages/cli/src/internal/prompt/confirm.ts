@@ -64,9 +64,9 @@ const renderNextFrame = (
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(prevState, options, terminal.columns)
-    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyan)
-    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.black)
-    const confirmAnnotation = Ansi.black
+    const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
+    const confirmAnnotation = Ansi.blackBright
     // Marking these explicitly as present with `!` because they always will be
     // and there is really no value in adding a `DeepRequired` type helper just
     // for these internal cases
@@ -94,7 +94,7 @@ const renderSubmission = (
     const figures = yield* _(InternalAnsiUtils.figures)
     const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
-    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.black)
+    const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
     const confirmMessage = value ? options.label.confirm : options.label.deny
     const confirm = Doc.text(confirmMessage)
     const promptMsg = renderOutput(confirm, leadingSymbol, trailingSymbol, options)
