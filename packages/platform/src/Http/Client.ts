@@ -72,9 +72,23 @@ export declare namespace Client {
 
 /**
  * @since 1.0.0
+ * @category models
+ */
+export interface Fetch {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
  * @category tags
  */
 export const Client: Context.Tag<Client.Default, Client.Default> = internal.tag
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const Fetch: Context.Tag<Fetch, typeof globalThis.fetch> = internal.Fetch
 
 /**
  * @since 1.0.0
@@ -305,6 +319,31 @@ export const mapRequestEffect: {
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>
   ): Client<R | R2, E | E2, A>
 } = internal.mapRequestEffect
+
+/**
+ * @since 1.0.0
+ * @category mapping & sequencing
+ */
+export const mapInputRequest: {
+  (
+    f: (a: ClientRequest.ClientRequest) => ClientRequest.ClientRequest
+  ): <R, E, A>(self: Client<R, E, A>) => Client<R, E, A>
+  <R, E, A>(self: Client<R, E, A>, f: (a: ClientRequest.ClientRequest) => ClientRequest.ClientRequest): Client<R, E, A>
+} = internal.mapInputRequest
+
+/**
+ * @since 1.0.0
+ * @category mapping & sequencing
+ */
+export const mapInputRequestEffect: {
+  <R2, E2>(
+    f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>
+  ): <R, E, A>(self: Client<R, E, A>) => Client<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2>(
+    self: Client<R, E, A>,
+    f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>
+  ): Client<R | R2, E | E2, A>
+} = internal.mapInputRequestEffect
 
 /**
  * @since 1.0.0

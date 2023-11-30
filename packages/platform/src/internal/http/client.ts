@@ -72,6 +72,11 @@ export const makeDefault = (
 ): Client.Client.Default => make(Effect.flatMap(f), addB3Headers)
 
 /** @internal */
+export const Fetch = Context.Tag<Client.Fetch, typeof globalThis.fetch>(
+  Symbol.for("@effect/platform/Http/Client/Fetch")
+)
+
+/** @internal */
 export const fetch = (
   options: RequestInit = {}
 ): Client.Client.Default =>
@@ -84,13 +89,14 @@ export const fetch = (
           error: _
         })),
       (url) =>
-        Effect.suspend(() => {
+        Effect.flatMap(Effect.serviceOption(Fetch), (fetch_) => {
+          const fetch = fetch_._tag === "Some" ? fetch_.value : globalThis.fetch
           const headers = new Headers(request.headers)
           const send = (body: BodyInit | undefined) =>
             Effect.map(
               Effect.tryPromise({
                 try: (signal) =>
-                  globalThis.fetch(url, {
+                  fetch(url, {
                     ...options,
                     method: request.method,
                     headers,
@@ -410,6 +416,28 @@ export const mapRequestEffect = dual<
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>
   ) => Client.Client<R | R2, E | E2, A>
 >(2, (self, f) => make(self.execute as any, (request) => Effect.flatMap(self.preprocess(request), f)))
+
+/** @internal */
+export const mapInputRequest = dual<
+  (f: (a: ClientRequest.ClientRequest) => ClientRequest.ClientRequest) => <R, E, A>(
+    self: Client.Client<R, E, A>
+  ) => Client.Client<R, E, A>,
+  <R, E, A>(
+    self: Client.Client<R, E, A>,
+    f: (a: ClientRequest.ClientRequest) => ClientRequest.ClientRequest
+  ) => Client.Client<R, E, A>
+>(2, (self, f) => make(self.execute, (request) => self.preprocess(f(request))))
+
+/** @internal */
+export const mapInputRequestEffect = dual<
+  <R2, E2>(f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>) => <R, E, A>(
+    self: Client.Client<R, E, A>
+  ) => Client.Client<R | R2, E | E2, A>,
+  <R, E, A, R2, E2>(
+    self: Client.Client<R, E, A>,
+    f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>
+  ) => Client.Client<R | R2, E | E2, A>
+>(2, (self, f) => make(self.execute as any, (request) => Effect.flatMap(f(request), self.preprocess)))
 
 /** @internal */
 export const retry: {
