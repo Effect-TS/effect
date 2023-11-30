@@ -41,5 +41,7 @@ export const toJSON = (x: unknown): unknown => {
   return x
 }
 
-/** @internal */
+/**
+ * @since 2.0.0
+ */
 export const format = (x: unknown): string => JSON.stringify(x, null, 2)
