@@ -112,7 +112,7 @@ const run = Command.make("naval_fate").pipe(
 const main = Effect.suspend(() => run(globalThis.process.argv.slice(2)))
 
 const MainLayer = NavalFateStore.layer.pipe(
-  Layer.use(KeyValueStore.layerFileSystem("naval-fate-store")),
+  Layer.provide(KeyValueStore.layerFileSystem("naval-fate-store")),
   Layer.merge(NodeContext.layer)
 )
 

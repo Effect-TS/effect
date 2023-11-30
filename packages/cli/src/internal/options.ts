@@ -680,7 +680,7 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
     }
     case "Both":
     case "OrElse": {
-      const ids = ReadonlyArray.compact([
+      const ids = ReadonlyArray.getSomes([
         getIdentifierInternal(self.left as Instruction),
         getIdentifierInternal(self.right as Instruction)
       ])
@@ -1228,7 +1228,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         InternalHelpDoc.sequence(alternativeHelp)
       )
       const makeChoice = (title: string, value: Instruction) => ({ title, value })
-      const choices = ReadonlyArray.compact([
+      const choices = ReadonlyArray.getSomes([
         Option.map(
           getIdentifierInternal(self.left as Instruction),
           (title) => makeChoice(title, self.left as Instruction)

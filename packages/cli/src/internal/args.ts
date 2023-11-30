@@ -449,7 +449,7 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
       return getIdentifierInternal(self.args as Instruction)
     }
     case "Both": {
-      const ids = ReadonlyArray.compact([
+      const ids = ReadonlyArray.getSomes([
         getIdentifierInternal(self.left as Instruction),
         getIdentifierInternal(self.right as Instruction)
       ])

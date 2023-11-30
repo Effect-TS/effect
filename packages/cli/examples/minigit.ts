@@ -55,7 +55,7 @@ const minigitClone = Command.make("clone", {
   depth: Options.integer("depth").pipe(Options.optional)
 }, ({ depth, directory, repository }) => {
   const optionsAndArgs = pipe(
-    ReadonlyArray.compact([
+    ReadonlyArray.getSomes([
       Option.map(depth, (depth) => `--depth ${depth}`),
       Option.some(repository),
       directory
