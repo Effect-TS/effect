@@ -355,7 +355,7 @@ const combineInternal = (self: AnsiImpl, that: AnsiImpl): Ansi.Ansi =>
 
 const stringifyInternal = (self: AnsiImpl): string => {
   const displaySequence = SGR.toEscapeSequence(
-    ReadonlyArray.compact([
+    ReadonlyArray.getSomes([
       Option.some(SGR.reset),
       self.foreground,
       self.background,
