@@ -207,17 +207,17 @@ export const layerTracer = Layer.effect(
 
 /** @internal */
 export const layerGlobalTracer = layerTracer.pipe(
-  Layer.use(layerGlobalProvider)
+  Layer.provide(layerGlobalProvider)
 )
 
 /** @internal */
 export const layerGlobal = Layer.unwrapEffect(Effect.map(make, Layer.setTracer)).pipe(
-  Layer.use(layerGlobalTracer)
+  Layer.provide(layerGlobalTracer)
 )
 
 /** @internal */
 export const layer = Layer.unwrapEffect(Effect.map(make, Layer.setTracer)).pipe(
-  Layer.use(layerTracer)
+  Layer.provide(layerTracer)
 )
 
 // -------------------------------------------------------------------------------------

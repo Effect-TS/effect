@@ -59,23 +59,30 @@ export const layerTracerProvider = (
  * @since 1.0.0
  * @category layer
  */
-export const layer = (
-  evaluate: LazyArg<Configuration>
+export const layer: {
+  (evaluate: LazyArg<Configuration>): Layer.Layer<never, never, Resource.Resource>
+  <R, E>(evaluate: Effect.Effect<R, E, Configuration>): Layer.Layer<R, E, Resource.Resource>
+} = (
+  evaluate: LazyArg<Configuration> | Effect.Effect<any, any, Configuration>
 ): Layer.Layer<never, never, Resource.Resource> =>
   Layer.unwrapEffect(
-    Effect.sync(() => {
-      const config = evaluate()
-      const ResourceLive = Resource.layer(config.resource)
-      const TracerLive = config.spanProcessor ?
-        Tracer.layer.pipe(
-          Layer.use(layerTracerProvider(config.spanProcessor, config.tracerConfig))
+    Effect.map(
+      Effect.isEffect(evaluate)
+        ? evaluate as Effect.Effect<never, never, Configuration>
+        : Effect.sync(evaluate),
+      (config) => {
+        const ResourceLive = Resource.layer(config.resource)
+        const TracerLive = config.spanProcessor ?
+          Tracer.layer.pipe(
+            Layer.provide(layerTracerProvider(config.spanProcessor, config.tracerConfig))
+          )
+          : Layer.effectDiscard(Effect.unit)
+        const MetricsLive = config.metricReader
+          ? Metrics.layer(() => config.metricReader!)
+          : Layer.effectDiscard(Effect.unit)
+        return Layer.merge(TracerLive, MetricsLive).pipe(
+          Layer.provideMerge(ResourceLive)
         )
-        : Layer.effectDiscard(Effect.unit)
-      const MetricsLive = config.metricReader
-        ? Metrics.layer(() => config.metricReader!)
-        : Layer.effectDiscard(Effect.unit)
-      return Layer.merge(TracerLive, MetricsLive).pipe(
-        Layer.useMerge(ResourceLive)
-      )
-    })
+      }
+    )
   )

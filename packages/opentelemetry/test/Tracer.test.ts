@@ -8,12 +8,12 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import { assert, describe, expect } from "vitest"
 
-const TracingLive = NodeSdk.layer(() => ({
+const TracingLive = NodeSdk.layer(Effect.sync(() => ({
   resource: {
     serviceName: "test"
   },
   spanProcessor: new SimpleSpanProcessor(new InMemorySpanExporter())
-}))
+})))
 
 // needed to test context propagation
 const contextManager = new AsyncHooksContextManager()
