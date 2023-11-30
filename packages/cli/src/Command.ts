@@ -307,16 +307,16 @@ export const withSubcommands: {
  */
 export const wizard: {
   (
-    rootCommand: string,
+    prefix: ReadonlyArray<string>,
     config: CliConfig
   ): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
-  ) => Effect<FileSystem | Terminal, QuitException | ValidationError, ReadonlyArray<string>>
+  ) => Effect<Terminal | FileSystem, QuitException | ValidationError, ReadonlyArray<string>>
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
-    rootCommand: string,
+    prefix: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<FileSystem | Terminal, QuitException | ValidationError, ReadonlyArray<string>>
+  ): Effect<Terminal | FileSystem, QuitException | ValidationError, ReadonlyArray<string>>
 } = Internal.wizard
 
 /**

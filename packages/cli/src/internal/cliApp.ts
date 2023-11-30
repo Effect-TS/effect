@@ -4,6 +4,7 @@ import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
+import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -90,13 +91,13 @@ export const run = dual<
               Effect.catchSome((e) =>
                 InternalValidationError.isValidationError(e) &&
                   InternalValidationError.isHelpRequested(e)
-                  ? Option.some(handleBuiltInOption(self, e.showHelp, execute, config))
+                  ? Option.some(handleBuiltInOption(self, args, e.showHelp, execute, config))
                   : Option.none()
               )
             )
           }
           case "BuiltIn": {
-            return handleBuiltInOption(self, directive.option, execute, config).pipe(
+            return handleBuiltInOption(self, args, directive.option, execute, config).pipe(
               Effect.catchSome((e) =>
                 InternalValidationError.isValidationError(e)
                   ? Option.some(Effect.zipRight(printDocs(e.error), Effect.fail(e)))
@@ -122,6 +123,7 @@ const isQuitException = (u: unknown): u is Terminal.QuitException =>
 
 const handleBuiltInOption = <R, E, A>(
   self: CliApp.CliApp<A>,
+  args: ReadonlyArray<string>,
   builtIn: BuiltInOptions.BuiltInOptions,
   execute: (a: A) => Effect.Effect<R, E, void>,
   config: CliConfig.CliConfig
@@ -228,8 +230,9 @@ const handleBuiltInOption = <R, E, A>(
         )
         const help = InternalHelpDoc.sequence(header, description)
         const text = InternalHelpDoc.toAnsiText(help)
+        const wizardPrefix = getWizardPrefix(builtIn, programName, args)
         return Console.log(text).pipe(
-          Effect.zipRight(InternalCommand.wizard(builtIn.command, programName, config)),
+          Effect.zipRight(InternalCommand.wizard(builtIn.command, wizardPrefix, config)),
           Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args)))),
           Effect.flatMap((args) =>
             InternalTogglePrompt.toggle({
@@ -237,11 +240,13 @@ const handleBuiltInOption = <R, E, A>(
               initial: true,
               active: "yes",
               inactive: "no"
-            }).pipe(Effect.flatMap((shouldRunCommand) =>
-              shouldRunCommand
-                ? Console.log().pipe(Effect.zipRight(run(self, args.slice(1), execute)))
+            }).pipe(Effect.flatMap((shouldRunCommand) => {
+              return shouldRunCommand
+                ? Console.log().pipe(
+                  Effect.zipRight(run(self, ReadonlyArray.drop(args, 1), execute))
+                )
                 : Effect.unit
-            ))
+            }))
           ),
           Effect.catchAll((e) => {
             if (isQuitException(e)) {
@@ -294,6 +299,23 @@ const prefixCommand = <A>(self: Command.Command<A>): ReadonlyArray<string> => {
     }
   }
   return prefix
+}
+
+const getWizardPrefix = (
+  builtIn: BuiltInOptions.ShowWizard,
+  rootCommand: string,
+  commandLineArgs: ReadonlyArray<string>
+): ReadonlyArray<string> => {
+  const subcommands = InternalCommand.getSubcommands(builtIn.command)
+  const [parentArgs, childArgs] = ReadonlyArray.span(
+    commandLineArgs,
+    (name) => !HashMap.has(subcommands, name)
+  )
+  const args = ReadonlyArray.matchLeft(childArgs, {
+    onEmpty: () => ReadonlyArray.filter(parentArgs, (arg) => arg !== "--wizard"),
+    onNonEmpty: (head) => ReadonlyArray.append(parentArgs, head)
+  })
+  return ReadonlyArray.prepend(args, rootCommand)
 }
 
 const renderWizardArgs = (args: ReadonlyArray<string>) => {

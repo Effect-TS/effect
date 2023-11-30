@@ -343,7 +343,7 @@ export const withSubcommands = dual<
 /** @internal */
 export const wizard = dual<
   (
-    rootCommand: string,
+    prefix: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => <A>(self: Descriptor.Command<A>) => Effect.Effect<
     FileSystem.FileSystem | Terminal.Terminal,
@@ -352,14 +352,14 @@ export const wizard = dual<
   >,
   <A>(
     self: Descriptor.Command<A>,
-    rootCommand: string,
+    prefix: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
     FileSystem.FileSystem | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >
->(3, (self, rootCommand, config) => wizardInternal(self as Instruction, rootCommand, config))
+>(3, (self, prefix, config) => wizardInternal(self as Instruction, prefix, config))
 
 // =============================================================================
 // Internals
@@ -883,7 +883,7 @@ const optionsWizardHeader = InternalSpan.code("Options Wizard - ")
 
 const wizardInternal = (
   self: Instruction,
-  rootCommand: string,
+  prefix: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
   FileSystem.FileSystem | Terminal.Terminal,
@@ -970,7 +970,7 @@ const wizardInternal = (
       }
     }
   }
-  return Ref.make<ReadonlyArray<string>>(ReadonlyArray.of(rootCommand)).pipe(
+  return Ref.make(prefix).pipe(
     Effect.flatMap((commandLineRef) =>
       loop(getWizardCommandSequence(self), commandLineRef).pipe(
         Effect.zipRight(Ref.get(commandLineRef))

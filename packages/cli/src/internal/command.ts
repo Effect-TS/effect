@@ -388,7 +388,7 @@ export const withSubcommands = dual<
 /** @internal */
 export const wizard = dual<
   (
-    rootCommand: string,
+    prefix: ReadonlyArray<string>,
     config: CliConfig
   ) => <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>
@@ -399,14 +399,14 @@ export const wizard = dual<
   >,
   <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>,
-    rootCommand: string,
+    prefix: ReadonlyArray<string>,
     config: CliConfig
   ) => Effect.Effect<
     FileSystem | Terminal,
     QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >
->(3, (self, rootCommand, config) => InternalDescriptor.wizard(self.descriptor, rootCommand, config))
+>(3, (self, prefix, config) => InternalDescriptor.wizard(self.descriptor, prefix, config))
 
 /** @internal */
 export const run = dual<
