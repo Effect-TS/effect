@@ -16,21 +16,21 @@ const PoolLive = Resolver.makePoolLayer({
   spawn: () => new globalThis.Worker(new URL("./e2e/worker", import.meta.url)),
   size: 1
 }).pipe(
-  Layer.use(Worker.layerManager)
+  Layer.provide(Worker.layerManager)
 )
 
 const SetupPoolLive = Resolver.makePoolLayer({
   spawn: () => new globalThis.Worker(new URL("./e2e/worker-setup", import.meta.url)),
   size: 1
 }).pipe(
-  Layer.use(Worker.layerManager)
+  Layer.provide(Worker.layerManager)
 )
 
 const SharedPoolLive = Resolver.makePoolLayer({
   spawn: () => new globalThis.SharedWorker(new URL("./e2e/worker", import.meta.url)),
   size: 1
 }).pipe(
-  Layer.use(Worker.layerManager)
+  Layer.provide(Worker.layerManager)
 )
 
 const client = Client.make(schema)
