@@ -610,37 +610,39 @@ const validateInternal = (
     }
     case "Single": {
       return Effect.suspend(() => {
-        if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-          const head = ReadonlyArray.headNonEmpty(args)
-          const tail = ReadonlyArray.tailNonEmpty(args)
-          return InternalPrimitive.validate(self.primitiveType, Option.some(head), config).pipe(
-            Effect.mapBoth({
-              onFailure: (text) => InternalValidationError.invalidArgument(InternalHelpDoc.p(text)),
-              onSuccess: (a) => [tail, a] as [ReadonlyArray<string>, any]
-            })
-          )
-        }
-        const choices = InternalPrimitive.getChoices(self.primitiveType)
-        if (Option.isSome(self.pseudoName) && Option.isSome(choices)) {
-          return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
-            `Missing argument <${self.pseudoName.value}> with choices ${choices.value}`
-          )))
-        }
-        if (Option.isSome(self.pseudoName)) {
-          return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
-            `Missing argument <${self.pseudoName.value}>`
-          )))
-        }
-        if (Option.isSome(choices)) {
-          return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
-            `Missing argument ${
-              InternalPrimitive.getTypeName(self.primitiveType)
-            } with choices ${choices.value}`
-          )))
-        }
-        return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
-          `Missing argument ${InternalPrimitive.getTypeName(self.primitiveType)}`
-        )))
+        return ReadonlyArray.matchLeft(args, {
+          onEmpty: () => {
+            const choices = InternalPrimitive.getChoices(self.primitiveType)
+            if (Option.isSome(self.pseudoName) && Option.isSome(choices)) {
+              return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
+                `Missing argument <${self.pseudoName.value}> with choices ${choices.value}`
+              )))
+            }
+            if (Option.isSome(self.pseudoName)) {
+              return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
+                `Missing argument <${self.pseudoName.value}>`
+              )))
+            }
+            if (Option.isSome(choices)) {
+              return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
+                `Missing argument ${
+                  InternalPrimitive.getTypeName(self.primitiveType)
+                } with choices ${choices.value}`
+              )))
+            }
+            return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
+              `Missing argument ${InternalPrimitive.getTypeName(self.primitiveType)}`
+            )))
+          },
+          onNonEmpty: (head, tail) =>
+            InternalPrimitive.validate(self.primitiveType, Option.some(head), config).pipe(
+              Effect.mapBoth({
+                onFailure: (text) =>
+                  InternalValidationError.invalidArgument(InternalHelpDoc.p(text)),
+                onSuccess: (a) => [tail, a] as [ReadonlyArray<string>, any]
+              })
+            )
+        })
       })
     }
     case "Map": {
@@ -869,6 +871,50 @@ export const getFishCompletions = (self: Instruction): ReadonlyArray<string> => 
     case "Variadic":
     case "WithDefault": {
       return getFishCompletions(self.args as Instruction)
+    }
+  }
+}
+
+interface ZshCompletionState {
+  readonly multiple: boolean
+  readonly optional: boolean
+}
+
+export const getZshCompletions = (
+  self: Instruction,
+  state: ZshCompletionState = { multiple: false, optional: false }
+): ReadonlyArray<string> => {
+  switch (self._tag) {
+    case "Empty": {
+      return ReadonlyArray.empty()
+    }
+    case "Single": {
+      const multiple = state.multiple ? "*" : ""
+      const optional = state.optional ? "::" : ":"
+      const shortDescription = getShortDescription(self)
+      const description = shortDescription.length > 0 ? ` -- ${shortDescription}` : ""
+      const possibleValues = InternalPrimitive.getZshCompletions(
+        self.primitiveType as InternalPrimitive.Instruction
+      )
+      return possibleValues.length === 0
+        ? ReadonlyArray.empty()
+        : ReadonlyArray.of(`${multiple}${optional}${self.name}${description}${possibleValues}`)
+    }
+    case "Map": {
+      return getZshCompletions(self.args as Instruction, state)
+    }
+    case "Both": {
+      const left = getZshCompletions(self.left as Instruction, state)
+      const right = getZshCompletions(self.right as Instruction, state)
+      return ReadonlyArray.appendAll(left, right)
+    }
+    case "Variadic": {
+      return Option.isSome(self.max) && self.max.value > 1
+        ? getZshCompletions(self.args as Instruction, { ...state, multiple: true })
+        : getZshCompletions(self.args as Instruction, state)
+    }
+    case "WithDefault": {
+      return getZshCompletions(self.args as Instruction, { ...state, optional: true })
     }
   }
 }

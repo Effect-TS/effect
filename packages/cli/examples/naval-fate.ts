@@ -34,7 +34,7 @@ const speedOption = Options.integer("speed").pipe(
 
 const shipCommand = Command.make("ship", {
   verbose: Options.boolean("verbose")
-})
+}).pipe(Command.withDescription("Controls a ship in Naval Fate"))
 
 const newShipCommand = Command.make("new", {
   name: nameArg
@@ -46,7 +46,7 @@ const newShipCommand = Command.make("new", {
     if (verbose) {
       yield* _(Console.log(`Verbose mode enabled`))
     }
-  }))
+  })).pipe(Command.withDescription("Create a new ship"))
 
 const moveShipCommand = Command.make("move", {
   ...nameAndCoordinatesArg,
@@ -55,7 +55,7 @@ const moveShipCommand = Command.make("move", {
   Effect.gen(function*(_) {
     yield* _(moveShip(name, x, y))
     yield* _(Console.log(`Moving ship '${name}' to coordinates (${x}, ${y}) at ${speed} knots`))
-  }))
+  })).pipe(Command.withDescription("Move a ship"))
 
 const shootShipCommand = Command.make(
   "shoot",
@@ -65,9 +65,11 @@ const shootShipCommand = Command.make(
       yield* _(shoot(x, y))
       yield* _(Console.log(`Shot cannons at coordinates (${x}, ${y})`))
     })
-)
+).pipe(Command.withDescription("Shoot from a ship"))
 
-const mineCommand = Command.make("mine")
+const mineCommand = Command.make("mine").pipe(
+  Command.withDescription("Controls mines in Naval Fate")
+)
 
 const setMineCommand = Command.make("set", {
   ...coordinatesArg,
@@ -78,7 +80,7 @@ const setMineCommand = Command.make("set", {
     yield* _(
       Console.log(`Set ${moored ? "moored" : "drifting"} mine at coordinates (${x}, ${y})`)
     )
-  }))
+  })).pipe(Command.withDescription("Set a mine at specific coordinates"))
 
 const removeMineCommand = Command.make("remove", {
   ...coordinatesArg
@@ -86,7 +88,7 @@ const removeMineCommand = Command.make("remove", {
   Effect.gen(function*(_) {
     yield* _(removeMine(x, y))
     yield* _(Console.log(`Removing mine at coordinates (${x}, ${y}), if present`))
-  }))
+  })).pipe(Command.withDescription("Remove a mine at specific coordinates"))
 
 const run = Command.make("naval_fate").pipe(
   Command.withDescription("An implementation of the Naval Fate CLI application."),

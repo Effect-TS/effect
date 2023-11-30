@@ -1382,14 +1382,20 @@ const getZshSubcommandCases = (
       const options = isStandard(self)
         ? InternalOptions.all([InternalBuiltInOptions.builtIns, self.options])
         : InternalBuiltInOptions.builtIns
+      const args = isStandard(self) ? self.args : InternalArgs.none
       const optionCompletions = pipe(
         InternalOptions.getZshCompletions(options as InternalOptions.Instruction),
+        ReadonlyArray.map((completion) => `'${completion}' \\`)
+      )
+      const argCompletions = pipe(
+        InternalArgs.getZshCompletions(args as InternalArgs.Instruction),
         ReadonlyArray.map((completion) => `'${completion}' \\`)
       )
       if (ReadonlyArray.isEmptyReadonlyArray(parentCommands)) {
         return [
           "_arguments \"${_arguments_options[@]}\" \\",
           ...indentAll(optionCompletions, 4),
+          ...indentAll(argCompletions, 4),
           `    ":: :_${self.name}_commands" \\`,
           `    "*::: :->${self.name}" \\`,
           "    && ret=0"
@@ -1400,6 +1406,7 @@ const getZshSubcommandCases = (
           `(${self.name})`,
           "_arguments \"${_arguments_options[@]}\" \\",
           ...indentAll(optionCompletions, 4),
+          ...indentAll(argCompletions, 4),
           "    && ret=0",
           ";;"
         ]
@@ -1408,6 +1415,7 @@ const getZshSubcommandCases = (
         `(${self.name})`,
         "_arguments \"${_arguments_options[@]}\" \\",
         ...indentAll(optionCompletions, 4),
+        ...indentAll(argCompletions, 4),
         `    ":: :_${ReadonlyArray.append(parentCommands, self.name).join("__")}_commands" \\`,
         `    "*::: :->${self.name}" \\`,
         "    && ret=0"

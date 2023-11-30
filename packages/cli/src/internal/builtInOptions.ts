@@ -62,7 +62,10 @@ export const completionsOptions: Options.Options<
   ["bash", "bash" as const],
   ["fish", "fish" as const],
   ["zsh", "zsh" as const]
-]).pipe(InternalOptions.optional)
+]).pipe(
+  InternalOptions.optional,
+  InternalOptions.withDescription("Generate a completion script for a specific shell")
+)
 
 /** @internal */
 export const helpOptions: Options.Options<boolean> = InternalOptions.boolean("help").pipe(

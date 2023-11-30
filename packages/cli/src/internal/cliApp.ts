@@ -18,6 +18,7 @@ import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalCommand from "./commandDescriptor.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
+import * as InternalTogglePrompt from "./prompt/toggle.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
 
@@ -89,13 +90,13 @@ export const run = dual<
               Effect.catchSome((e) =>
                 InternalValidationError.isValidationError(e) &&
                   InternalValidationError.isHelpRequested(e)
-                  ? Option.some(handleBuiltInOption(self, e.showHelp, config))
+                  ? Option.some(handleBuiltInOption(self, e.showHelp, execute, config))
                   : Option.none()
               )
             )
           }
           case "BuiltIn": {
-            return handleBuiltInOption(self, directive.option, config).pipe(
+            return handleBuiltInOption(self, directive.option, execute, config).pipe(
               Effect.catchSome((e) =>
                 InternalValidationError.isValidationError(e)
                   ? Option.some(Effect.zipRight(printDocs(e.error), Effect.fail(e)))
@@ -115,13 +116,18 @@ export const run = dual<
 const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<never, never, void> =>
   Console.log(InternalHelpDoc.toAnsiText(error))
 
-const handleBuiltInOption = <A>(
+// TODO: move to `/platform`
+const isQuitException = (u: unknown): u is Terminal.QuitException =>
+  typeof u === "object" && u != null && "_tag" in u && u._tag === "QuitException"
+
+const handleBuiltInOption = <R, E, A>(
   self: CliApp.CliApp<A>,
   builtIn: BuiltInOptions.BuiltInOptions,
+  execute: (a: A) => Effect.Effect<R, E, void>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  CliApp.CliApp.Environment | Terminal.Terminal,
-  ValidationError.ValidationError,
+  R | CliApp.CliApp.Environment | Terminal.Terminal,
+  E | ValidationError.ValidationError,
   void
 > => {
   switch (builtIn._tag) {
@@ -225,9 +231,24 @@ const handleBuiltInOption = <A>(
         return Console.log(text).pipe(
           Effect.zipRight(InternalCommand.wizard(builtIn.command, programName, config)),
           Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args)))),
-          Effect.catchTag("QuitException", () => {
-            const message = InternalHelpDoc.p(InternalSpan.error("\n\nQuitting wizard mode..."))
-            return Console.log(InternalHelpDoc.toAnsiText(message))
+          Effect.flatMap((args) =>
+            InternalTogglePrompt.toggle({
+              message: "Would you like to run the command?",
+              initial: true,
+              active: "yes",
+              inactive: "no"
+            }).pipe(Effect.flatMap((shouldRunCommand) =>
+              shouldRunCommand
+                ? Console.log().pipe(Effect.zipRight(run(self, args.slice(1), execute)))
+                : Effect.unit
+            ))
+          ),
+          Effect.catchAll((e) => {
+            if (isQuitException(e)) {
+              const message = InternalHelpDoc.p(InternalSpan.error("\n\nQuitting wizard mode..."))
+              return Console.log(InternalHelpDoc.toAnsiText(message))
+            }
+            return Effect.fail(e)
           })
         )
       }
