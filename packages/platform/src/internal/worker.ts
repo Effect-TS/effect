@@ -283,11 +283,4 @@ export const makePoolLayer = <W>(managerLayer: Layer.Layer<never, never, Worker.
 <Tag, I, E, O>(
   tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
   options: Worker.WorkerPool.Options<I, W>
-) =>
-  Layer.provide(
-    managerLayer,
-    Layer.scoped(
-      tag,
-      makePool<W>()(options)
-    )
-  )
+) => Layer.scoped(tag, makePool<W>()(options)).pipe(Layer.provide(managerLayer))

@@ -25,9 +25,11 @@ export type BunContext =
  * @category layer
  */
 export const layer: Layer.Layer<never, never, BunContext> = pipe(
-  FileSystem.layer,
-  Layer.merge(Path.layer),
-  Layer.merge(Layer.provideMerge(FileSystem.layer, CommandExecutor.layer)),
-  Layer.merge(Terminal.layer),
-  Layer.merge(Worker.layerManager)
+  Layer.mergeAll(
+    Path.layer,
+    CommandExecutor.layer,
+    Terminal.layer,
+    Worker.layerManager
+  ),
+  Layer.provideMerge(FileSystem.layer)
 )

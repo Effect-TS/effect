@@ -36,8 +36,8 @@ const serve = Http.router.empty.pipe(
 )
 
 const HttpLive = Layer.scopedDiscard(serve).pipe(
-  Layer.use(ServerLive),
-  Layer.use(NodeContext.layer)
+  Layer.provide(ServerLive),
+  Layer.provide(NodeContext.layer)
 )
 
 Layer.launch(HttpLive).pipe(

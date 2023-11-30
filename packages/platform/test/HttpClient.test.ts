@@ -37,10 +37,8 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
 })
 interface JsonPlaceholder extends Effect.Effect.Success<typeof makeJsonPlaceholder> {}
 const JsonPlaceholder = Context.Tag<JsonPlaceholder>()
-const JsonPlaceholderLive = Layer.provide(
-  Http.client.layer,
-  Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
-)
+const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
+  .pipe(Layer.provide(Http.client.layer))
 
 describe("HttpClient", () => {
   it("google", () =>

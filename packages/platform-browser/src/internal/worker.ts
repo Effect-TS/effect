@@ -54,7 +54,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
 export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerImpl)
 
 /** @internal */
-export const layerManager = Layer.provide(layerWorker, Worker.layerManager)
+export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
 
 /** @internal */
 export const makePool = Worker.makePool<globalThis.Worker | globalThis.SharedWorker>()

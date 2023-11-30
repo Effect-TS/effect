@@ -45,7 +45,7 @@ const makeTodoService = Effect.gen(function*(_) {
 })
 
 const TodoServiceLive = Layer.effect(TodoService, makeTodoService).pipe(
-  Layer.use(Http.client.layer)
+  Layer.provide(Http.client.layer)
 )
 
 Effect.flatMap(

@@ -92,16 +92,16 @@ export const schemaExternalSpan = flow(
       (_) => {
         const parts = _.b3.split("-")
         if (parts.length >= 2) {
-          return ParseResult.success({
+          return ParseResult.succeed({
             traceId: parts[0],
             spanId: parts[1],
             sampled: parts[2] ? parts[2] === "1" : true,
             parentSpanId: parts[3]
           })
         }
-        return ParseResult.failure(ParseResult.missing)
+        return ParseResult.fail(ParseResult.missing)
       },
-      (_) => ParseResult.success({ b3: "" })
+      (_) => ParseResult.succeed({ b3: "" })
     ),
     Schema.transform(
       Schema.struct({

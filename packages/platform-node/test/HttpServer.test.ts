@@ -16,7 +16,9 @@ const EnvLive = Layer.mergeAll(
   NodeContext.layer,
   Etag.layer,
   ServerLive,
-  Layer.provide(HttpC.nodeClient.makeAgentLayer({ keepAlive: false }), HttpC.nodeClient.layerWithoutAgent)
+  HttpC.nodeClient.layerWithoutAgent
+).pipe(
+  Layer.provide(HttpC.nodeClient.makeAgentLayer({ keepAlive: false }))
 )
 const runPromise = <E, A>(
   effect: Effect.Effect<

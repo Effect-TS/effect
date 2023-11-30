@@ -22,6 +22,6 @@ export const make = Platform.make({
 /** @internal */
 export const layer = pipe(
   Layer.effect(Platform.Platform, make),
-  Layer.use(FileSystem.layer),
-  Layer.use(Etag.layer)
+  Layer.provide(FileSystem.layer),
+  Layer.provide(Etag.layer)
 )

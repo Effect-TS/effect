@@ -17,8 +17,8 @@ import { describe, expect, it } from "vitest"
 
 const TEST_BASH_SCRIPTS_PATH = [__dirname, "fixtures", "bash"]
 
-const TestLive = FileSystem.layer.pipe(
-  Layer.provideMerge(CommandExecutor.layer),
+const TestLive = CommandExecutor.layer.pipe(
+  Layer.provideMerge(FileSystem.layer),
   Layer.merge(Path.layer)
 )
 

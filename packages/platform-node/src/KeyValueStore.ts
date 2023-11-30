@@ -22,6 +22,6 @@ export const layerFileSystem: (
   directory: string
 ) => Layer.Layer<never, PlatformError.PlatformError, KeyValueStore.KeyValueStore> = (directory: string) =>
   Layer.provide(
-    Layer.merge(FileSystem.layer, Path.layer),
-    KeyValueStore.layerFileSystem(directory)
+    KeyValueStore.layerFileSystem(directory),
+    Layer.merge(FileSystem.layer, Path.layer)
   )

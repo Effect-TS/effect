@@ -224,4 +224,4 @@ export const make = Effect.map(HttpAgent, fromAgent)
 export const layerWithoutAgent = Layer.effect(Client.Client, make)
 
 /** @internal */
-export const layer = Layer.provide(agentLayer, layerWithoutAgent)
+export const layer = Layer.provide(layerWithoutAgent, agentLayer)
