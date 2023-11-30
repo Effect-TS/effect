@@ -76,7 +76,7 @@ const traverseFilterMap = <F extends TypeLambda>(
     self: ReadonlyRecord.ReadonlyRecord<A>,
     f: (a: A) => Kind<F, R, O, E, Option<B>>
   ): Kind<F, R, O, E, Record<string, B>> => {
-    return F.map(traverse(F)(self, f), ReadonlyRecord.compact)
+    return F.map(traverse(F)(self, f), ReadonlyRecord.getSomes)
   })
 
 /**

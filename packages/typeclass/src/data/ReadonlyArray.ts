@@ -99,7 +99,7 @@ const traverseFilterMap = <F extends TypeLambda>(
     self: ReadonlyArray<A>,
     f: (a: A) => Kind<F, R, O, E, Option<B>>
   ): Kind<F, R, O, E, Array<B>> => {
-    return F.map(traverse(F)(self, f), ReadonlyArray.compact)
+    return F.map(traverse(F)(self, f), ReadonlyArray.getSomes)
   })
 
 /**
