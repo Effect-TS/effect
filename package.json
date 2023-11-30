@@ -1,6 +1,6 @@
 {
   "name": "effect",
-  "version": "2.0.0-next.56",
+  "version": "2.0.0-next.57",
   "type": "module",
   "packageManager": "pnpm@8.10.0",
   "publishConfig": {
