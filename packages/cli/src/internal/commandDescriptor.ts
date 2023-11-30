@@ -858,7 +858,7 @@ const withDescriptionInternal = (
       return op
     }
     case "Map": {
-      return map(withDescriptionInternal(self.command as Instruction, description), self.f)
+      return mapOrFail(withDescriptionInternal(self.command as Instruction, description), self.f)
     }
     case "OrElse": {
       // TODO: if both the left and right commands also have help defined, that

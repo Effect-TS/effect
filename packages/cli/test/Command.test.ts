@@ -5,7 +5,7 @@ import { assert, describe, test } from "vitest"
 
 const git = Command.make("git", {
   verbose: Options.boolean("verbose").pipe(Options.withAlias("v"))
-})
+}).pipe(Command.withDescription("the stupid content tracker"))
 
 const clone = Command.make("clone", {
   repository: Args.text({ name: "repository" })
@@ -18,7 +18,7 @@ const clone = Command.make("clone", {
     } else {
       yield* _(log(`Cloning`))
     }
-  }))
+  })).pipe(Command.withDescription("Clone a repository into a new directory"))
 
 const add = Command.make("add", {
   pathspec: Args.text({ name: "pathspec" })
@@ -31,7 +31,7 @@ const add = Command.make("add", {
     } else {
       yield* _(log(`Adding`))
     }
-  }))
+  })).pipe(Command.withDescription("Add file contents to the index"))
 
 const run = git.pipe(
   Command.withSubcommands([clone, add]),

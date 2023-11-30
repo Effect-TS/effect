@@ -271,7 +271,7 @@ const mapDescriptor = dual<
     self: Command.Command<Name, R, E, A>,
     f: (_: Descriptor.Command<A>) => Descriptor.Command<A>
   ) => Command.Command<Name, R, E, A>
->(2, (self, f) => makeProto(f(getDescriptor(self)), self.handler, self.tag))
+>(2, (self, f) => makeProto(f(self.descriptor), self.handler, self.tag))
 
 /** @internal */
 export const prompt = <Name extends string, A, R, E>(
