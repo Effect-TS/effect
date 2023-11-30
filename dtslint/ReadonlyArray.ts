@@ -700,3 +700,27 @@ ReadonlyArray.unzip(hole<Iterable<[string, number]>>())
 
 // $ExpectType [[string, ...string[]], [number, ...number[]]]
 ReadonlyArray.unzip(hole<ReadonlyArray.NonEmptyReadonlyArray<[string, number]>>())
+
+// -------------------------------------------------------------------------------------
+// zipWith
+// -------------------------------------------------------------------------------------
+
+declare const makeTuple: (a: string, b: number) => [string, number]
+
+// $ExpectType [string, number][]
+ReadonlyArray.zipWith(strings, numbers, makeTuple)
+
+// $ExpectType [string, number][]
+pipe(strings, ReadonlyArray.zipWith(numbers, makeTuple))
+
+// $ExpectType [string, number][]
+ReadonlyArray.zipWith(numbers, makeTuple)(strings)
+
+// $ExpectType [[string, number], ...[string, number][]]
+ReadonlyArray.zipWith(nonEmptyStrings, nonEmptyNumbers, makeTuple)
+
+// $ExpectType [[string, number], ...[string, number][]]
+pipe(nonEmptyStrings, ReadonlyArray.zipWith(nonEmptyNumbers, makeTuple))
+
+// $ExpectType [[string, number], ...[string, number][]]
+ReadonlyArray.zipWith(nonEmptyNumbers, makeTuple)(nonEmptyStrings)

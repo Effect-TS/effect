@@ -17,6 +17,7 @@ import * as O from "./Option.js"
 import * as Order from "./Order.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import * as RR from "./ReadonlyRecord.js"
+import * as Tuple from "./Tuple.js"
 
 /**
  * @category type lambdas
@@ -879,11 +880,11 @@ export const sortBy = <B>(...orders: ReadonlyArray<Order.Order<B>>): {
   <A extends B>(as: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
   <A extends B>(self: Iterable<A>): Array<A>
 } => {
-  const sortByNonEmpty = sort(Order.combineAll(orders))
+  const sortByAll = sort(Order.combineAll(orders))
   return (<A extends B>(self: Iterable<A>): Array<A> => {
     const input = fromIterable(self)
     if (isNonEmptyReadonlyArray(input)) {
-      return sortByNonEmpty(input)
+      return sortByAll(input)
     }
     return []
   }) as any
@@ -904,7 +905,7 @@ export const zip: {
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<[A, B]>
 } = dual(
   2,
-  <A, B>(self: Iterable<A>, that: Iterable<B>): Array<[A, B]> => zipWith(self, that, (a, b) => [a, b])
+  <A, B>(self: Iterable<A>, that: Iterable<B>): Array<[A, B]> => zipWith(self, that, Tuple.make)
 )
 
 /**
@@ -915,39 +916,22 @@ export const zip: {
  * @since 2.0.0
  */
 export const zipWith: {
+  <B, A, C>(that: NonEmptyReadonlyArray<B>, f: (a: A, b: B) => C): (self: NonEmptyReadonlyArray<A>) => NonEmptyArray<C>
   <B, A, C>(that: Iterable<B>, f: (a: A, b: B) => C): (self: Iterable<A>) => Array<C>
+  <A, B, C>(self: NonEmptyReadonlyArray<A>, that: NonEmptyReadonlyArray<B>, f: (a: A, b: B) => C): NonEmptyArray<C>
   <B, A, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Array<C>
 } = dual(3, <B, A, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Array<C> => {
   const as = fromIterable(self)
   const bs = fromIterable(that)
-  return isNonEmptyReadonlyArray(as) && isNonEmptyReadonlyArray(bs) ? zipNonEmptyWith(bs, f)(as) : []
-})
-
-/**
- * @category zipping
- * @since 2.0.0
- */
-export const zipNonEmptyWith: {
-  <B, A, C>(
-    that: NonEmptyReadonlyArray<B>,
-    f: (a: A, b: B) => C
-  ): (self: NonEmptyReadonlyArray<A>) => NonEmptyArray<C>
-  <A, B, C>(
-    self: NonEmptyReadonlyArray<A>,
-    that: NonEmptyReadonlyArray<B>,
-    f: (a: A, b: B) => C
-  ): NonEmptyArray<C>
-} = dual(3, <A, B, C>(
-  self: NonEmptyReadonlyArray<A>,
-  that: NonEmptyReadonlyArray<B>,
-  f: (a: A, b: B) => C
-): NonEmptyArray<C> => {
-  const cs: NonEmptyArray<C> = [f(headNonEmpty(self), headNonEmpty(that))]
-  const len = Math.min(self.length, that.length)
-  for (let i = 1; i < len; i++) {
-    cs[i] = f(self[i], that[i])
+  if (isNonEmptyReadonlyArray(as) && isNonEmptyReadonlyArray(bs)) {
+    const out: NonEmptyArray<C> = [f(headNonEmpty(as), headNonEmpty(bs))]
+    const len = Math.min(as.length, bs.length)
+    for (let i = 1; i < len; i++) {
+      out[i] = f(as[i], bs[i])
+    }
+    return out
   }
-  return cs
+  return []
 })
 
 /**

@@ -160,7 +160,6 @@ Added in v2.0.0
   - [unzip](#unzip)
 - [zipping](#zipping)
   - [zip](#zip)
-  - [zipNonEmptyWith](#zipnonemptywith)
   - [zipWith](#zipwith)
 
 ---
@@ -2107,19 +2106,6 @@ export declare const zip: {
 
 Added in v2.0.0
 
-## zipNonEmptyWith
-
-**Signature**
-
-```ts
-export declare const zipNonEmptyWith: {
-  <B, A, C>(that: readonly [B, ...B[]], f: (a: A, b: B) => C): (self: readonly [A, ...A[]]) => [C, ...C[]]
-  <A, B, C>(self: readonly [A, ...A[]], that: readonly [B, ...B[]], f: (a: A, b: B) => C): [C, ...C[]]
-}
-```
-
-Added in v2.0.0
-
 ## zipWith
 
 Apply a function to pairs of elements at the same index in two `Iterable`s, collecting the results in a new `Array`. If one
@@ -2129,7 +2115,9 @@ input `Iterable` is short, excess elements of the longer `Iterable` are discarde
 
 ```ts
 export declare const zipWith: {
+  <B, A, C>(that: readonly [B, ...B[]], f: (a: A, b: B) => C): (self: readonly [A, ...A[]]) => [C, ...C[]]
   <B, A, C>(that: Iterable<B>, f: (a: A, b: B) => C): (self: Iterable<A>) => C[]
+  <A, B, C>(self: readonly [A, ...A[]], that: readonly [B, ...B[]], f: (a: A, b: B) => C): [C, ...C[]]
   <B, A, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): C[]
 }
 ```

@@ -814,13 +814,6 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(RA.last([]), O.none())
   })
 
-  it("zipNonEmptyWith", () => {
-    deepStrictEqual(
-      pipe([1, 2, 3], RA.zipNonEmptyWith(["a", "b", "c", "d"], (n, s) => s + n)),
-      ["a1", "b2", "c3"]
-    )
-  })
-
   it("chunksOf", () => {
     deepStrictEqual(RA.chunksOf(2)([1, 2, 3, 4, 5]), [
       RA.make(1, 2),
