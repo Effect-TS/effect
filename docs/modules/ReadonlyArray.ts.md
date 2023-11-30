@@ -154,7 +154,6 @@ Added in v2.0.0
   - [setNonEmptyHead](#setnonemptyhead)
   - [setNonEmptyLast](#setnonemptylast)
   - [union](#union)
-  - [unionNonEmptyWith](#unionnonemptywith)
   - [unionWith](#unionwith)
   - [unzip](#unzip)
 - [zipping](#zipping)
@@ -2031,29 +2030,27 @@ export declare const union: {
 
 Added in v2.0.0
 
-## unionNonEmptyWith
-
-**Signature**
-
-```ts
-export declare const unionNonEmptyWith: <A>(isEquivalent: (self: A, that: A) => boolean) => {
-  (that: readonly [A, ...A[]]): (self: readonly A[]) => [A, ...A[]]
-  (that: readonly A[]): (self: readonly [A, ...A[]]) => [A, ...A[]]
-  (self: readonly A[], that: readonly [A, ...A[]]): [A, ...A[]]
-  (self: readonly [A, ...A[]], that: readonly A[]): [A, ...A[]]
-}
-```
-
-Added in v2.0.0
-
 ## unionWith
 
 **Signature**
 
 ```ts
-export declare const unionWith: <A>(isEquivalent: (self: A, that: A) => boolean) => {
-  (that: Iterable<A>): (self: Iterable<A>) => A[]
-  (self: Iterable<A>, that: Iterable<A>): A[]
+export declare const unionWith: {
+  <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
+    that: T,
+    isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<T>) => boolean
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(
+    self: readonly [A, ...A[]],
+    that: Iterable<B>,
+    isEquivalent: (self: A, that: B) => boolean
+  ): [A | B, ...(A | B)[]]
+  <A, B>(
+    self: Iterable<A>,
+    that: readonly [B, ...B[]],
+    isEquivalent: (self: A, that: B) => boolean
+  ): [A | B, ...(A | B)[]]
+  <A, B>(self: Iterable<A>, that: Iterable<B>, isEquivalent: (self: A, that: B) => boolean): (A | B)[]
 }
 ```
 

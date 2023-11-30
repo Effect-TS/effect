@@ -1057,18 +1057,16 @@ describe.concurrent("ReadonlyArray", () => {
   })
 
   it("unionWith", () => {
-    const unionWith = RA.unionWith(Number.Equivalence)
     const two: ReadonlyArray<number> = [1, 2]
-    deepStrictEqual(pipe(two, unionWith([3, 4])), [1, 2, 3, 4])
-    deepStrictEqual(pipe(two, unionWith([2, 3])), [1, 2, 3])
-    deepStrictEqual(pipe(two, unionWith([1, 2])), [1, 2])
-    deepStrictEqual(pipe(two, unionWith(RA.empty())), two)
-    deepStrictEqual(pipe(RA.empty(), unionWith(two)), two)
+    deepStrictEqual(pipe(two, RA.unionWith([3, 4], Number.Equivalence)), [1, 2, 3, 4])
+    deepStrictEqual(pipe(two, RA.unionWith([2, 3], Number.Equivalence)), [1, 2, 3])
+    deepStrictEqual(pipe(two, RA.unionWith([1, 2], Number.Equivalence)), [1, 2])
+    deepStrictEqual(pipe(two, RA.unionWith(RA.empty(), Number.Equivalence)), two)
+    deepStrictEqual(pipe(RA.empty(), RA.unionWith(two, Number.Equivalence)), two)
     deepStrictEqual(
-      pipe(RA.empty(), unionWith(RA.empty())),
+      pipe(RA.empty(), RA.unionWith(RA.empty(), Number.Equivalence)),
       RA.empty()
     )
-    deepStrictEqual(RA.unionNonEmptyWith(Number.Equivalence)([3, 4])([1, 2]), [1, 2, 3, 4])
   })
 
   it("intersectionWith", () => {

@@ -1274,19 +1274,34 @@ export const groupBy: {
 /**
  * @since 2.0.0
  */
-export const unionWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
-  (that: Iterable<A>): (self: Iterable<A>) => Array<A>
-  (self: Iterable<A>, that: Iterable<A>): Array<A>
-} =>
-  dual(2, (self: Iterable<A>, that: Iterable<A>): Array<A> => {
-    const a = fromIterable(self)
-    const b = fromIterable(that)
-    return isNonEmptyReadonlyArray(a) && isNonEmptyReadonlyArray(b) ?
-      unionNonEmptyWith(isEquivalent)(a, b) :
-      isNonEmptyReadonlyArray(a) ?
-      a :
-      b
-  })
+export const unionWith: {
+  <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
+    that: T,
+    isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<T>) => boolean
+  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  <A, B>(
+    self: NonEmptyReadonlyArray<A>,
+    that: Iterable<B>,
+    isEquivalent: (self: A, that: B) => boolean
+  ): NonEmptyArray<A | B>
+  <A, B>(
+    self: Iterable<A>,
+    that: NonEmptyReadonlyArray<B>,
+    isEquivalent: (self: A, that: B) => boolean
+  ): NonEmptyArray<A | B>
+  <A, B>(self: Iterable<A>, that: Iterable<B>, isEquivalent: (self: A, that: B) => boolean): Array<A | B>
+} = dual(3, <A>(self: Iterable<A>, that: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> => {
+  const a = fromIterable(self)
+  const b = fromIterable(that)
+  if (isNonEmptyReadonlyArray(a)) {
+    if (isNonEmptyReadonlyArray(b)) {
+      const dedupe = dedupeWith(isEquivalent)
+      return dedupe(appendAll(a, b))
+    }
+    return a
+  }
+  return b
+})
 
 /**
  * @since 2.0.0
@@ -1300,23 +1315,7 @@ export const union: {
   <A, B>(self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<B>): NonEmptyArray<A | B>
   <A, B>(self: ReadonlyArray<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B>
-} = unionWith(_equivalence) as any
-
-/**
- * @since 2.0.0
- */
-export const unionNonEmptyWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
-  (that: NonEmptyReadonlyArray<A>): (self: ReadonlyArray<A>) => NonEmptyArray<A>
-  (that: ReadonlyArray<A>): (self: NonEmptyReadonlyArray<A>) => NonEmptyArray<A>
-  (self: ReadonlyArray<A>, that: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
-  (self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<A>): NonEmptyArray<A>
-} => {
-  const dedupe = dedupeWith(isEquivalent)
-  return dual(
-    2,
-    (self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<A>): NonEmptyArray<A> => dedupe(appendAll(self, that))
-  )
-}
+} = dual(2, <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B> => unionWith(self, that, _equivalence))
 
 /**
  * Creates an `Array` of unique values that are included in all given `Iterable`s using the provided `isEquivalent` function.
