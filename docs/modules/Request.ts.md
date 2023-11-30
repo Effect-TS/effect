@@ -34,6 +34,7 @@ Added in v2.0.0
   - [complete](#complete)
   - [completeEffect](#completeeffect)
   - [fail](#fail)
+  - [failCause](#failcause)
   - [interruptWhenPossible](#interruptwhenpossible)
   - [succeed](#succeed)
 - [symbols](#symbols)
@@ -347,6 +348,21 @@ Complete a `Request` with the specified error.
 export declare const fail: {
   <A extends Request<any, any>>(error: Request.Error<A>): (self: A) => Effect.Effect<never, never, void>
   <A extends Request<any, any>>(self: A, error: Request.Error<A>): Effect.Effect<never, never, void>
+}
+```
+
+Added in v2.0.0
+
+## failCause
+
+Complete a `Request` with the specified cause.
+
+**Signature**
+
+```ts
+export declare const failCause: {
+  <A extends Request<any, any>>(cause: Cause<Request.Error<A>>): (self: A) => Effect.Effect<never, never, void>
+  <A extends Request<any, any>>(self: A, cause: Cause<Request.Error<A>>): Effect.Effect<never, never, void>
 }
 ```
 
