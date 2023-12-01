@@ -963,16 +963,8 @@ describe.concurrent("ReadonlyArray", () => {
   })
 
   it("chop", () => {
-    const f = RA.chop((as) => [as[0] * 2, as.slice(1)])
-    const empty: ReadonlyArray<number> = []
-    deepStrictEqual(f(empty), RA.empty())
-    deepStrictEqual(f(RA.empty()), RA.empty())
-    deepStrictEqual(f([1, 2, 3]), [2, 4, 6])
-    deepStrictEqual(RA.chop((as) => [as[0] * 2, as.slice(1)])([1, 2, 3]), [
-      2,
-      4,
-      6
-    ])
+    deepStrictEqual(pipe([], RA.chop((as) => [as[0] * 2, as.slice(1)])), [])
+    deepStrictEqual(pipe([1, 2, 3], RA.chop((as) => [as[0] * 2, as.slice(1)])), [2, 4, 6])
   })
 
   describe.concurrent("chunksOf", () => {
