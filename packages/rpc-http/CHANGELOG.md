@@ -1,5 +1,14 @@
 # @effect/rpc-http
 
+## 0.20.1
+
+### Patch Changes
+
+- [#153](https://github.com/Effect-TS/rpc/pull/153) [`40d291b`](https://github.com/Effect-TS/rpc/commit/40d291b9be85878cb710cad986ffcaae2173994d) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+- Updated dependencies [[`40d291b`](https://github.com/Effect-TS/rpc/commit/40d291b9be85878cb710cad986ffcaae2173994d)]:
+  - @effect/rpc@0.20.1
+
 ## 0.20.0
 
 ### Minor Changes
