@@ -1,0 +1,29 @@
+name: Set npm latest
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Set latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
+      - run: |
+          # npm dist-tag rm effect@0.0.0-snapshot-cd2ce058b07b2826dfb058edc32bc4ab50f27f76 snapshot
+          # npm dist-tag add effect@2.0.0-next.60 latest
+          npm dist-tag rm effect@2.0.0-next.60 next
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
