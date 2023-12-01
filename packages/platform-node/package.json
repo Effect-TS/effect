@@ -39,14 +39,14 @@
     "multipasta": "^0.1.19"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.57"
+    "effect": "2.0.0-next.58"
   },
   "devDependencies": {
-    "@effect/schema": "^0.51.0",
+    "@effect/schema": "^0.51.1",
     "@types/mime": "^3.0.4",
     "@types/node": "^20.10.1",
     "@types/tar": "^6.1.10",
-    "effect": "2.0.0-next.57",
+    "effect": "2.0.0-next.58",
     "tar": "^6.2.0"
   }
 }
