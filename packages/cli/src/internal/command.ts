@@ -34,14 +34,14 @@ export const TypeId: Command.TypeId = Symbol.for(
   CommandSymbolKey
 ) as Command.TypeId
 
-const parseConfig = (config: Command.Command.ConfigBase): Command.Command.ParsedConfig => {
+const parseConfig = (config: Command.Command.Config): Command.Command.ParsedConfig => {
   const args: Array<Args.Args<any>> = []
   let argsIndex = 0
   const options: Array<Options.Options<any>> = []
   let optionsIndex = 0
   const tree: Command.Command.ParsedConfigTree = {}
 
-  function parse(config: Command.Command.ConfigBase) {
+  function parse(config: Command.Command.Config) {
     for (const key in config) {
       tree[key] = parseValue(config[key])
     }
@@ -52,8 +52,8 @@ const parseConfig = (config: Command.Command.ConfigBase): Command.Command.Parsed
     value:
       | Args.Args<any>
       | Options.Options<any>
-      | ReadonlyArray<Args.Args<any> | Options.Options<any> | Command.Command.ConfigBase>
-      | Command.Command.ConfigBase
+      | ReadonlyArray<Args.Args<any> | Options.Options<any> | Command.Command.Config>
+      | Command.Command.Config
   ): Command.Command.ParsedConfigNode {
     if (Array.isArray(value)) {
       return {
@@ -175,7 +175,7 @@ export const fromDescriptor = dual<
   }
 )
 
-const makeDescriptor = <const Config extends Command.Command.ConfigBase>(
+const makeDescriptor = <const Config extends Command.Command.Config>(
   name: string,
   config: Config
 ): Descriptor.Command<Types.Simplify<Command.Command.ParseConfig<Config>>> => {
@@ -195,7 +195,7 @@ export const make: {
     {}
   >
 
-  <Name extends string, const Config extends Command.Command.ConfigBase>(
+  <Name extends string, const Config extends Command.Command.Config>(
     name: Name,
     config: Config
   ): Command.Command<
@@ -205,7 +205,7 @@ export const make: {
     Types.Simplify<Command.Command.ParseConfig<Config>>
   >
 
-  <Name extends string, const Config extends Command.Command.ConfigBase, R, E>(
+  <Name extends string, const Config extends Command.Command.Config, R, E>(
     name: Name,
     config: Config,
     handler: (_: Types.Simplify<Command.Command.ParseConfig<Config>>) => Effect.Effect<R, E, void>
@@ -217,7 +217,7 @@ export const make: {
   >
 } = (
   name: string,
-  config: Command.Command.ConfigBase = {},
+  config: Command.Command.Config = {},
   handler?: (_: any) => Effect.Effect<any, any, any>
 ) => fromDescriptor(makeDescriptor(name, config) as any, handler as any) as any
 

@@ -65,19 +65,19 @@ export declare namespace Command {
    * @since 1.0.0
    * @category models
    */
-  export interface ConfigBase {
+  export interface Config {
     readonly [key: string]:
       | Args<any>
       | Options<any>
-      | ReadonlyArray<Args<any> | Options<any> | ConfigBase>
-      | ConfigBase
+      | ReadonlyArray<Args<any> | Options<any> | Config>
+      | Config
   }
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ParseConfig<A extends ConfigBase> = Types.Simplify<
+  export type ParseConfig<A extends Config> = Types.Simplify<
     { readonly [Key in keyof A]: ParseConfigValue<A[Key]> }
   >
 
@@ -85,7 +85,7 @@ export declare namespace Command {
     { readonly [Key in keyof A]: ParseConfigValue<A[Key]> } :
     A extends Args<infer Value> ? Value
     : A extends Options<infer Value> ? Value
-    : A extends ConfigBase ? ParseConfig<A>
+    : A extends Config ? ParseConfig<A>
     : never
 
   interface ParsedConfigTree {
@@ -209,7 +209,7 @@ export const make: {
     {}
   >
 
-  <Name extends string, const Config extends Command.ConfigBase>(
+  <Name extends string, const Config extends Command.Config>(
     name: Name,
     config: Config
   ): Command<
@@ -219,7 +219,7 @@ export const make: {
     Types.Simplify<Command.ParseConfig<Config>>
   >
 
-  <Name extends string, const Config extends Command.ConfigBase, R, E>(
+  <Name extends string, const Config extends Command.Config, R, E>(
     name: Name,
     config: Config,
     handler: (_: Types.Simplify<Command.ParseConfig<Config>>) => Effect<R, E, void>
