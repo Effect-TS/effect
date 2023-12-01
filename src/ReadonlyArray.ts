@@ -832,10 +832,10 @@ export const remove: {
  * @category elements
  * @since 2.0.0
  */
-export const reverse: {
-  <A>(self: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
-  <A>(self: Iterable<A>): Array<A>
-} = (<A>(self: Iterable<A>): Array<A> => Array.from(self).reverse()) as any
+export const reverse = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
+  self: S
+): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never =>
+  Array.from(self).reverse() as any
 
 /**
  * Create a new array with elements sorted in increasing order based on the specified comparator.
@@ -847,7 +847,7 @@ export const reverse: {
 export const sort: {
   <B>(
     O: Order.Order<B>
-  ): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A extends B, B>(self: NonEmptyReadonlyArray<A>, O: Order.Order<B>): NonEmptyArray<A>
   <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): Array<A>
 } = dual(2, <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): Array<A> => {
@@ -965,7 +965,7 @@ export const unzip: {
 export const intersperse: {
   <B>(
     middle: B
-  ): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A, B>(self: NonEmptyReadonlyArray<A>, middle: B): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, middle: B): Array<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, middle: B): Array<A | B> => {
@@ -1047,7 +1047,7 @@ export const setNonEmptyLast: {
  * @since 2.0.0
  */
 export const rotate: {
-  (n: number): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  (n: number): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<A>
   <A>(self: Iterable<A>, n: number): Array<A>
 } = dual(2, <A>(self: Iterable<A>, n: number): Array<A> => {
@@ -1110,7 +1110,7 @@ export const contains: {
 export const chop: {
   <A, B>(
     f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
-  ): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A, B>(
     self: NonEmptyReadonlyArray<A>,
     f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
@@ -1202,9 +1202,9 @@ export const splitNonEmptyAt: {
 export const chunksOf: {
   (
     n: number
-  ): <T extends ReadonlyArray<any> | Iterable<any>>(
-    self: T
-  ) => ReadonlyArray.With<T, NonEmptyArray<ReadonlyArray.Infer<T>>>
+  ): <S extends ReadonlyArray<any> | Iterable<any>>(
+    self: S
+  ) => ReadonlyArray.With<S, NonEmptyArray<ReadonlyArray.Infer<S>>>
   <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<NonEmptyArray<A>>
   <A>(self: Iterable<A>, n: number): Array<NonEmptyArray<A>>
 } = dual(2, <A>(self: Iterable<A>, n: number): Array<NonEmptyArray<A>> => {
@@ -1399,14 +1399,14 @@ export declare namespace ReadonlyArray {
   /**
    * @since 2.0.0
    */
-  export type Infer<T extends ReadonlyArray<any> | Iterable<any>> = T extends ReadonlyArray<infer A> ? A
-    : T extends Iterable<infer A> ? A
+  export type Infer<S extends ReadonlyArray<any> | Iterable<any>> = S extends ReadonlyArray<infer A> ? A
+    : S extends Iterable<infer A> ? A
     : never
 
   /**
    * @since 2.0.0
    */
-  export type With<T extends ReadonlyArray<any> | Iterable<any>, A> = T extends NonEmptyReadonlyArray<any> ?
+  export type With<S extends ReadonlyArray<any> | Iterable<any>, A> = S extends NonEmptyReadonlyArray<any> ?
     NonEmptyArray<A>
     : Array<A>
 
@@ -1417,14 +1417,6 @@ export declare namespace ReadonlyArray {
     S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
       : T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
       : Array<A>
-
-  /**
-   * @since 2.0.0
-   */
-  export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends
-    NonEmptyReadonlyArray<NonEmptyReadonlyArray<infer A>> ? NonEmptyArray<A>
-    : T extends ReadonlyArray<ReadonlyArray<infer A>> ? Array<A>
-    : never
 }
 
 /**
@@ -1432,10 +1424,10 @@ export declare namespace ReadonlyArray {
  * @since 2.0.0
  */
 export const map: {
-  <T extends ReadonlyArray<any>, B>(
-    f: (a: ReadonlyArray.Infer<T>, i: number) => B
-  ): (self: T) => ReadonlyArray.With<T, B>
-  <T extends ReadonlyArray<any>, B>(self: T, f: (a: ReadonlyArray.Infer<T>, i: number) => B): ReadonlyArray.With<T, B>
+  <S extends ReadonlyArray<any>, B>(
+    f: (a: ReadonlyArray.Infer<S>, i: number) => B
+  ): (self: S) => ReadonlyArray.With<S, B>
+  <S extends ReadonlyArray<any>, B>(self: S, f: (a: ReadonlyArray.Infer<S>, i: number) => B): ReadonlyArray.With<S, B>
 } = dual(2, <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => B): Array<B> => self.map(f))
 
 /**
@@ -1470,9 +1462,13 @@ export const flatMap: {
  * @category sequencing
  * @since 2.0.0
  */
-export const flatten: <T extends ReadonlyArray<ReadonlyArray<any>>>(self: T) => ReadonlyArray.Flatten<T> = flatMap(
-  identity
-) as any
+export const flatten: <S extends ReadonlyArray<ReadonlyArray<any>>>(
+  self: S
+) => S extends NonEmptyReadonlyArray<NonEmptyReadonlyArray<infer A>> ? NonEmptyArray<A>
+  : S extends ReadonlyArray<ReadonlyArray<infer A>> ? Array<A>
+  : never = flatMap(
+    identity
+  ) as any
 
 /**
  * @category filtering
@@ -1874,7 +1870,7 @@ export const forEach: {
 export const dedupeWith: {
   <A>(
     isEquivalent: (self: A, that: A) => boolean
-  ): <T extends ReadonlyArray<any> | Iterable<any>>(self: T) => ReadonlyArray.With<T, ReadonlyArray.Infer<T>>
+  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A>(self: NonEmptyReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyArray<A>
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A>
 } = dual(

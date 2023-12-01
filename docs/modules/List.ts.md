@@ -604,8 +604,8 @@ Applies the specified mapping function to each element of the list.
 
 ```ts
 export declare const map: {
-  <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>
-  <T extends List<any>, B>(self: T, f: (a: List.Infer<T>, i: number) => B): List.With<T, B>
+  <S extends List<any>, B>(f: (a: List.Infer<S>, i: number) => B): (self: S) => List.With<S, B>
+  <S extends List<any>, B>(self: S, f: (a: List.Infer<S>, i: number) => B): List.With<S, B>
 }
 ```
 
@@ -786,7 +786,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Infer<T extends List<any>> = T extends List<infer A> ? A : never
+export type Infer<S extends List<any>> = S extends List<infer A> ? A : never
 ```
 
 Added in v2.0.0
@@ -796,7 +796,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type With<T extends List<any>, A> = T extends Cons<any> ? Cons<A> : List<A>
+export type With<S extends List<any>, A> = S extends Cons<any> ? Cons<A> : List<A>
 ```
 
 Added in v2.0.0

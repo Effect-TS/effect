@@ -710,12 +710,12 @@ export declare namespace List {
   /**
    * @since 2.0.0
    */
-  export type Infer<T extends List<any>> = T extends List<infer A> ? A : never
+  export type Infer<S extends List<any>> = S extends List<infer A> ? A : never
 
   /**
    * @since 2.0.0
    */
-  export type With<T extends List<any>, A> = T extends Cons<any> ? Cons<A> : List<A>
+  export type With<S extends List<any>, A> = S extends Cons<any> ? Cons<A> : List<A>
 
   /**
    * @since 2.0.0
@@ -732,8 +732,8 @@ export declare namespace List {
  * @category mapping
  */
 export const map: {
-  <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>
-  <T extends List<any>, B>(self: T, f: (a: List.Infer<T>, i: number) => B): List.With<T, B>
+  <S extends List<any>, B>(f: (a: List.Infer<S>, i: number) => B): (self: S) => List.With<S, B>
+  <S extends List<any>, B>(self: S, f: (a: List.Infer<S>, i: number) => B): List.With<S, B>
 } = dual(2, <A, B>(self: List<A>, f: (a: A, i: number) => B): List<B> => {
   if (isNil(self)) {
     return self as unknown as List<B>

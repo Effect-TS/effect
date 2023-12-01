@@ -743,8 +743,14 @@ ReadonlyArray.chunksOf(10)(nonEmptyStrings)
 // $ExpectType string[]
 ReadonlyArray.reverse(strings)
 
+// $ExpectType string[]
+pipe(strings, ReadonlyArray.reverse)
+
 // $ExpectType [string, ...string[]]
 ReadonlyArray.reverse(nonEmptyStrings)
+
+// $ExpectType [string, ...string[]]
+pipe(nonEmptyStrings, ReadonlyArray.reverse)
 
 // -------------------------------------------------------------------------------------
 // sortBy
