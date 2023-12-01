@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.33.4
+
+### Patch Changes
+
+- [#314](https://github.com/Effect-TS/platform/pull/314) [`e63cf81`](https://github.com/Effect-TS/platform/commit/e63cf819dc26588e29a0177afb1665aa5fd96dfd) Thanks [@tim-smart](https://github.com/tim-smart)! - refactor node command executor
+
 ## 0.33.3
 
 ### Patch Changes
