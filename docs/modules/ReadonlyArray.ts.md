@@ -124,9 +124,11 @@ Added in v2.0.0
   - [unsafeGet](#unsafeget)
 - [utils](#utils)
   - [ReadonlyArray (namespace)](#readonlyarray-namespace)
+    - [AndNonEmpty (type alias)](#andnonempty-type-alias)
+    - [Flatten (type alias)](#flatten-type-alias)
     - [Infer (type alias)](#infer-type-alias)
+    - [OrNonEmpty (type alias)](#ornonempty-type-alias)
     - [With (type alias)](#with-type-alias)
-    - [With2 (type alias)](#with2-type-alias)
   - [chop](#chop)
   - [copy](#copy)
   - [dedupe](#dedupe)
@@ -190,7 +192,7 @@ If either array is non-empty, the result is also a non-empty array.
 export declare const appendAll: {
   <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
     that: T
-  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: Iterable<A>, that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
   <A, B>(self: readonly [A, ...A[]], that: Iterable<B>): [A | B, ...(A | B)[]]
   <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
@@ -225,7 +227,7 @@ If either array is non-empty, the result is also a non-empty array.
 export declare const prependAll: {
   <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
     that: T
-  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: Iterable<A>, that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
   <A, B>(self: readonly [A, ...A[]], that: Iterable<B>): [A | B, ...(A | B)[]]
   <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
@@ -1470,7 +1472,7 @@ Applies a function to each element in an array and returns a new array containin
 export declare const flatMap: {
   <S extends readonly any[], T extends readonly any[]>(
     f: (a: ReadonlyArray.Infer<S>, i: number) => T
-  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<T>>
+  ): (self: S) => ReadonlyArray.AndNonEmpty<S, T, ReadonlyArray.Infer<T>>
   <A, B>(self: readonly [A, ...A[]], f: (a: A, i: number) => readonly [B, ...B[]]): [B, ...B[]]
   <A, B>(self: readonly A[], f: (a: A, i: number) => readonly B[]): B[]
 }
@@ -1498,13 +1500,7 @@ Flattens an array of arrays into a single array by concatenating all arrays.
 **Signature**
 
 ```ts
-export declare const flatten: <S extends readonly (readonly any[])[]>(
-  self: S
-) => S extends readonly [readonly [infer A, ...(infer A)[]], ...(readonly [infer A, ...(infer A)[]])[]]
-  ? [A, ...A[]]
-  : S extends readonly (readonly (infer A)[])[]
-    ? A[]
-    : never
+export declare const flatten: <S extends readonly (readonly any[])[]>(self: S) => ReadonlyArray.Flatten<S>
 ```
 
 Added in v2.0.0
@@ -1583,6 +1579,40 @@ Added in v2.0.0
 
 Added in v2.0.0
 
+### AndNonEmpty (type alias)
+
+**Signature**
+
+```ts
+export type AndNonEmpty<
+  S extends ReadonlyArray<any> | Iterable<any>,
+  T extends ReadonlyArray<any> | Iterable<any>,
+  A
+> = S extends NonEmptyReadonlyArray<any>
+  ? T extends NonEmptyReadonlyArray<any>
+    ? NonEmptyArray<A>
+    : Array<A>
+  : Array<A>
+```
+
+Added in v2.0.0
+
+### Flatten (type alias)
+
+**Signature**
+
+```ts
+export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends NonEmptyReadonlyArray<
+  NonEmptyReadonlyArray<infer A>
+>
+  ? NonEmptyArray<A>
+  : T extends ReadonlyArray<ReadonlyArray<infer A>>
+    ? Array<A>
+    : never
+```
+
+Added in v2.0.0
+
 ### Infer (type alias)
 
 **Signature**
@@ -1597,24 +1627,12 @@ export type Infer<S extends ReadonlyArray<any> | Iterable<any>> = S extends Read
 
 Added in v2.0.0
 
-### With (type alias)
+### OrNonEmpty (type alias)
 
 **Signature**
 
 ```ts
-export type With<S extends ReadonlyArray<any> | Iterable<any>, A> = S extends NonEmptyReadonlyArray<any>
-  ? NonEmptyArray<A>
-  : Array<A>
-```
-
-Added in v2.0.0
-
-### With2 (type alias)
-
-**Signature**
-
-```ts
-export type With2<
+export type OrNonEmpty<
   S extends ReadonlyArray<any> | Iterable<any>,
   T extends ReadonlyArray<any> | Iterable<any>,
   A
@@ -1623,6 +1641,18 @@ export type With2<
   : T extends NonEmptyReadonlyArray<any>
     ? NonEmptyArray<A>
     : Array<A>
+```
+
+Added in v2.0.0
+
+### With (type alias)
+
+**Signature**
+
+```ts
+export type With<S extends ReadonlyArray<any> | Iterable<any>, A> = S extends NonEmptyReadonlyArray<any>
+  ? NonEmptyArray<A>
+  : Array<A>
 ```
 
 Added in v2.0.0
@@ -2028,7 +2058,7 @@ export declare const union: {
     that: T
   ): <S extends readonly any[] | Iterable<any>>(
     self: S
-  ) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  ) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: readonly [A, ...A[]], that: readonly B[]): [A | B, ...(A | B)[]]
   <A, B>(self: readonly A[], that: readonly [B, ...B[]]): [A | B, ...(A | B)[]]
   <A, B>(self: Iterable<A>, that: Iterable<B>): (A | B)[]
@@ -2046,7 +2076,7 @@ export declare const unionWith: {
   <S extends readonly any[] | Iterable<any>, T extends readonly any[] | Iterable<any>>(
     that: T,
     isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<T>) => boolean
-  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(
     self: readonly [A, ...A[]],
     that: Iterable<B>,

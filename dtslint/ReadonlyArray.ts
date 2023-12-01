@@ -425,27 +425,63 @@ pipe(numbersOrStrings, ReadonlyArray.dropWhile(Predicate.isNumber))
 
 // $ExpectType number[]
 ReadonlyArray.flatMap(strings, (
-  _,
+  _s, // $ExpectType string
   _i // $ExpectType number
 ) => ReadonlyArray.empty<number>())
+
+// $ExpectType number[]
+pipe(
+  strings,
+  ReadonlyArray.flatMap((
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => ReadonlyArray.empty<number>())
+)
 
 // $ExpectType number[]
 ReadonlyArray.flatMap(strings, (
-  s,
+  s, // $ExpectType string
   _i // $ExpectType number
 ) => ReadonlyArray.of(s.length))
 
 // $ExpectType number[]
+pipe(
+  strings,
+  ReadonlyArray.flatMap((
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => ReadonlyArray.of(s.length))
+)
+
+// $ExpectType number[]
 ReadonlyArray.flatMap(nonEmptyReadonlyStrings, (
-  _s,
+  _s, // $ExpectType string
   _i // $ExpectType number
 ) => ReadonlyArray.empty<number>())
 
+// $ExpectType number[]
+pipe(
+  nonEmptyReadonlyStrings,
+  ReadonlyArray.flatMap((
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => ReadonlyArray.empty<number>())
+)
+
 // $ExpectType [number, ...number[]]
 ReadonlyArray.flatMap(nonEmptyReadonlyStrings, (
-  s,
+  s, // $ExpectType string
   _i // $ExpectType number
 ) => ReadonlyArray.of(s.length))
+
+// $ExpectType [number, ...number[]]
+pipe(
+  nonEmptyReadonlyStrings,
+  ReadonlyArray.flatMap((
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => ReadonlyArray.of(s.length))
+)
 
 // -------------------------------------------------------------------------------------
 // flatten

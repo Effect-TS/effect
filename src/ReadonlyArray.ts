@@ -242,7 +242,7 @@ export const prepend: {
 export const prependAll: {
   <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
     that: T
-  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: Iterable<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
   <A, B>(self: NonEmptyReadonlyArray<A>, that: Iterable<B>): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B>
@@ -272,7 +272,7 @@ export const append: {
 export const appendAll: {
   <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
     that: T
-  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: Iterable<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
   <A, B>(self: NonEmptyReadonlyArray<A>, that: Iterable<B>): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B>
@@ -1283,7 +1283,7 @@ export const unionWith: {
   <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
     that: T,
     isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<T>) => boolean
-  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(
     self: NonEmptyReadonlyArray<A>,
     that: Iterable<B>,
@@ -1316,7 +1316,7 @@ export const union: {
     that: T
   ): <S extends ReadonlyArray<any> | Iterable<any>>(
     self: S
-  ) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
+  ) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<B>): NonEmptyArray<A | B>
   <A, B>(self: ReadonlyArray<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B>
@@ -1413,10 +1413,32 @@ export declare namespace ReadonlyArray {
   /**
    * @since 2.0.0
    */
-  export type With2<S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>, A> =
-    S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
-      : T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
-      : Array<A>
+  export type OrNonEmpty<
+    S extends ReadonlyArray<any> | Iterable<any>,
+    T extends ReadonlyArray<any> | Iterable<any>,
+    A
+  > = S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
+    : T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
+    : Array<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type AndNonEmpty<
+    S extends ReadonlyArray<any> | Iterable<any>,
+    T extends ReadonlyArray<any> | Iterable<any>,
+    A
+  > = S extends NonEmptyReadonlyArray<any> ? T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
+    : Array<A>
+    : Array<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends
+    NonEmptyReadonlyArray<NonEmptyReadonlyArray<infer A>> ? NonEmptyArray<A>
+    : T extends ReadonlyArray<ReadonlyArray<infer A>> ? Array<A>
+    : never
 }
 
 /**
@@ -1439,7 +1461,7 @@ export const map: {
 export const flatMap: {
   <S extends ReadonlyArray<any>, T extends ReadonlyArray<any>>(
     f: (a: ReadonlyArray.Infer<S>, i: number) => T
-  ): (self: S) => ReadonlyArray.With2<S, T, ReadonlyArray.Infer<T>>
+  ): (self: S) => ReadonlyArray.AndNonEmpty<S, T, ReadonlyArray.Infer<T>>
   <A, B>(self: NonEmptyReadonlyArray<A>, f: (a: A, i: number) => NonEmptyReadonlyArray<B>): NonEmptyArray<B>
   <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => ReadonlyArray<B>): Array<B>
 } = dual(
@@ -1462,13 +1484,9 @@ export const flatMap: {
  * @category sequencing
  * @since 2.0.0
  */
-export const flatten: <S extends ReadonlyArray<ReadonlyArray<any>>>(
-  self: S
-) => S extends NonEmptyReadonlyArray<NonEmptyReadonlyArray<infer A>> ? NonEmptyArray<A>
-  : S extends ReadonlyArray<ReadonlyArray<infer A>> ? Array<A>
-  : never = flatMap(
-    identity
-  ) as any
+export const flatten: <S extends ReadonlyArray<ReadonlyArray<any>>>(self: S) => ReadonlyArray.Flatten<S> = flatMap(
+  identity
+) as any
 
 /**
  * @category filtering
