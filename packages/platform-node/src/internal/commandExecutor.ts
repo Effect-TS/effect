@@ -35,22 +35,19 @@ const toPlatformError = (
   return handleErrnoException("Command", method)(error, [flattened])
 }
 
+type ExitCode = readonly [code: number | null, signal: NodeJS.Signals | null]
+type ExitCodeDeferred = Deferred.Deferred<never, ExitCode>
+
 const runCommand =
   (fileSystem: FileSystem.FileSystem) =>
   (command: Command.Command): Effect.Effect<Scope.Scope, Error.PlatformError, CommandExecutor.Process> => {
     switch (command._tag) {
       case "StandardCommand": {
-        return pipe(
-          // Validate that the directory is accessible
-          Option.match(command.cwd, {
-            onNone: () => Effect.unit,
-            onSome: (dir) => fileSystem.access(dir)
-          }),
-          Effect.zipRight(Effect.sync(() => globalThis.process.env)),
-          Effect.zip(Deferred.make<never, readonly [code: number | null, signal: NodeJS.Signals | null]>()),
-          Effect.flatMap(([env, exitCode]) =>
-            Effect.acquireRelease(
-              Effect.sync(() => {
+        const spawn = Effect.flatMap(
+          Deferred.make<never, ExitCode>(),
+          (exitCode) =>
+            Effect.async<never, Error.PlatformError, readonly [ChildProcess.ChildProcess, ExitCodeDeferred]>(
+              (resume) => {
                 const handle = ChildProcess.spawn(command.command, command.args, {
                   stdio: [
                     inputToStdioOption(command.stdin),
@@ -59,103 +56,107 @@ const runCommand =
                   ],
                   cwd: Option.getOrElse(command.cwd, constUndefined),
                   shell: command.shell,
-                  env: { ...env, ...Object.fromEntries(command.env) }
+                  env: { ...process.env, ...Object.fromEntries(command.env) }
                 })
-                handle.once("exit", () => {
-                  Deferred.unsafeDone(exitCode, Effect.succeed([handle.exitCode, handle.signalCode] as const))
+                handle.on("error", (err) => {
+                  resume(Effect.fail(toPlatformError("spawn", err, command)))
                 })
-                return [handle, exitCode] as const
-              }),
+                handle.on("exit", (...args) => {
+                  Deferred.unsafeDone(exitCode, Effect.succeed(args))
+                })
+                handle.on("spawn", () => {
+                  resume(Effect.succeed([handle, exitCode]))
+                })
+                return Effect.sync(() => {
+                  handle.kill("SIGTERM")
+                })
+              }
+            )
+        )
+        return pipe(
+          // Validate that the directory is accessible
+          Option.match(command.cwd, {
+            onNone: () => Effect.unit,
+            onSome: (dir) => fileSystem.access(dir)
+          }),
+          Effect.zipRight(
+            Effect.acquireRelease(
+              spawn,
               ([handle, exitCode]) =>
                 Effect.flatMap(Deferred.isDone(exitCode), (done) =>
                   done ? Effect.unit : Effect.suspend(() => {
-                    if (handle.pid && handle.kill("SIGTERM")) {
+                    if (handle.kill("SIGTERM")) {
                       return Deferred.await(exitCode)
                     }
                     return Effect.unit
                   }))
             )
           ),
-          Effect.flatMap(([handle, exitCodeDeferred]) =>
-            Effect.async<never, Error.PlatformError, CommandExecutor.Process>((resume) => {
-              // If starting the process throws an error, make sure to capture it
-              handle.on("error", (err) => {
-                resume(Effect.fail(toPlatformError("spawn", err, command)))
-              })
+          Effect.map(([handle, exitCodeDeferred]): CommandExecutor.Process => {
+            let stdin: Sink.Sink<never, Error.PlatformError, unknown, never, void> = Sink.drain
 
-              // If the process is assigned a process identifier, then we know it
-              // was spawned successfully
-              if (handle.pid) {
-                let stdin: Sink.Sink<never, Error.PlatformError, unknown, never, void> = Sink.drain
+            if (handle.stdin !== null) {
+              stdin = fromWritable(
+                () => handle.stdin!,
+                (err) => toPlatformError("toWritable", toError(err), command)
+              )
+            }
 
-                if (handle.stdin !== null) {
-                  stdin = fromWritable(
-                    () => handle.stdin!,
-                    (err) => toPlatformError("toWritable", toError(err), command)
-                  )
+            const exitCode: CommandExecutor.Process["exitCode"] = Effect.flatMap(
+              Deferred.await(exitCodeDeferred),
+              ([code, signal]) => {
+                if (code !== null) {
+                  return Effect.succeed(CommandExecutor.ExitCode(code))
                 }
-
-                const exitCode: CommandExecutor.Process["exitCode"] = Effect.flatMap(
-                  Deferred.await(exitCodeDeferred),
-                  ([code, signal]) => {
-                    if (code !== null) {
-                      return Effect.succeed(CommandExecutor.ExitCode(code))
-                    }
-                    // If code is `null`, then `signal` must be defined. See the NodeJS
-                    // documentation for the `"exit"` event on a `child_process`.
-                    // https://nodejs.org/api/child_process.html#child_process_event_exit
-                    return Effect.fail(
-                      toPlatformError(
-                        "exitCode",
-                        new globalThis.Error(`Process interrupted due to receipt of signal: ${signal}`),
-                        command
-                      )
-                    )
-                  }
+                // If code is `null`, then `signal` must be defined. See the NodeJS
+                // documentation for the `"exit"` event on a `child_process`.
+                // https://nodejs.org/api/child_process.html#child_process_event_exit
+                return Effect.fail(
+                  toPlatformError(
+                    "exitCode",
+                    new globalThis.Error(`Process interrupted due to receipt of signal: ${signal}`),
+                    command
+                  )
                 )
-
-                const isRunning = Effect.negate(Deferred.isDone(exitCodeDeferred))
-
-                const kill: CommandExecutor.Process["kill"] = (signal = "SIGTERM") =>
-                  Effect.flatMap(
-                    Effect.sync(() => handle.kill(signal)),
-                    (success) =>
-                      success
-                        ? Effect.asUnit(Deferred.await(exitCodeDeferred))
-                        : Effect.fail(toPlatformError("kill", new globalThis.Error("Failed to kill process"), command))
-                  )
-
-                resume(Effect.sync<CommandExecutor.Process>(() => {
-                  const pid = CommandExecutor.ProcessId(handle.pid!)
-                  const stderr = fromReadable<Error.PlatformError, Uint8Array>(
-                    () => handle.stderr!,
-                    (err) => toPlatformError("fromReadable(stderr)", toError(err), command)
-                  )
-                  let stdout: Stream.Stream<never, Error.PlatformError, Uint8Array> = fromReadable<
-                    Error.PlatformError,
-                    Uint8Array
-                  >(
-                    () => handle.stdout!,
-                    (err) => toPlatformError("fromReadable(stdout)", toError(err), command)
-                  )
-                  // TODO: add Sink.isSink
-                  if (typeof command.stdout !== "string") {
-                    stdout = Stream.transduce(stdout, command.stdout)
-                  }
-                  return {
-                    [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
-                    pid,
-                    exitCode,
-                    isRunning,
-                    kill,
-                    stdin,
-                    stderr,
-                    stdout
-                  }
-                }))
               }
-            })
-          ),
+            )
+
+            const isRunning = Effect.negate(Deferred.isDone(exitCodeDeferred))
+
+            const kill: CommandExecutor.Process["kill"] = (signal = "SIGTERM") =>
+              Effect.suspend(() =>
+                handle.kill(signal)
+                  ? Effect.asUnit(Deferred.await(exitCodeDeferred))
+                  : Effect.fail(toPlatformError("kill", new globalThis.Error("Failed to kill process"), command))
+              )
+
+            const pid = CommandExecutor.ProcessId(handle.pid!)
+            const stderr = fromReadable<Error.PlatformError, Uint8Array>(
+              () => handle.stderr!,
+              (err) => toPlatformError("fromReadable(stderr)", toError(err), command)
+            )
+            let stdout: Stream.Stream<never, Error.PlatformError, Uint8Array> = fromReadable<
+              Error.PlatformError,
+              Uint8Array
+            >(
+              () => handle.stdout!,
+              (err) => toPlatformError("fromReadable(stdout)", toError(err), command)
+            )
+            // TODO: add Sink.isSink
+            if (typeof command.stdout !== "string") {
+              stdout = Stream.transduce(stdout, command.stdout)
+            }
+            return {
+              [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
+              pid,
+              exitCode,
+              isRunning,
+              kill,
+              stdin,
+              stderr,
+              stdout
+            }
+          }),
           Effect.tap((process) =>
             Option.match(command.stdin, {
               onNone: () => Effect.unit,
