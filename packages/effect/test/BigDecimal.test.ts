@@ -2,7 +2,6 @@ import { assertFalse, assertTrue, deepStrictEqual } from "effect-test/util"
 import * as BigDecimal from "effect/BigDecimal"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
-import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 const _ = BigDecimal.unsafeFromString
@@ -282,6 +281,8 @@ describe.concurrent("BigDecimal", () => {
 
   it("inspect", () => {
     if (typeof window === "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { inspect } = require("node:util")
       expect(inspect(_("2"))).toEqual(inspect({ _id: "BigDecimal", value: "2", scale: 0 }))
     }
   })

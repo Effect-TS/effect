@@ -1,7 +1,6 @@
 import { deepStrictEqual, strictEqual } from "effect-test/util"
 import { pipe } from "effect/Function"
 import * as MutableList from "effect/MutableList"
-import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("MutableList", () => {
@@ -26,6 +25,8 @@ describe.concurrent("MutableList", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
     expect(inspect(MutableList.make(0, 1, 2))).toEqual(
       inspect({ _id: "MutableList", values: [0, 1, 2] })
     )

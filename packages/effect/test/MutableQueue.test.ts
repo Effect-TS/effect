@@ -1,6 +1,5 @@
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect-test/util"
 import * as MutableQueue from "effect/MutableQueue"
-import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("MutableQueue", () => {
@@ -26,6 +25,8 @@ describe.concurrent("MutableQueue", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
     const queue = MutableQueue.bounded<number>(2)
     MutableQueue.offerAll([0, 1, 2])(queue)
     expect(inspect(queue)).toEqual(inspect({ _id: "MutableQueue", values: [0, 1] }))
