@@ -835,16 +835,34 @@ pipe(
 // -------------------------------------------------------------------------------------
 
 // $ExpectType string[]
-ReadonlyArray.chop(strings, ([head, ...tail]) => [head, tail])
+ReadonlyArray.chop(strings, ([
+  head, // $ExpectType string
+  ...tail // $ExpectType string[]
+]) => [head, tail])
 
 // $ExpectType string[]
-pipe(strings, ReadonlyArray.chop(([head, ...tail]) => [head, tail]))
+pipe(
+  strings,
+  ReadonlyArray.chop(([
+    head, // $ExpectType string
+    ...tail // $ExpectType string[]
+  ]) => [head, tail])
+)
 
 // $ExpectType [string, ...string[]]
-ReadonlyArray.chop(nonEmptyStrings, ([head, ...tail]) => [head, tail])
+ReadonlyArray.chop(nonEmptyStrings, ([
+  head, // $ExpectType string
+  ...tail // $ExpectType string[]
+]) => [head, tail])
 
 // $ExpectType [string, ...string[]]
-pipe(nonEmptyStrings, ReadonlyArray.chop(([head, ...tail]) => [head, tail]))
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.chop(([
+    head, // $ExpectType string
+    ...tail // $ExpectType string[]
+  ]) => [head, tail])
+)
 
 // -------------------------------------------------------------------------------------
 // chunksOf

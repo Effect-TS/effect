@@ -1667,9 +1667,11 @@ value and the rest of the `Array`.
 
 ```ts
 export declare const chop: {
-  <A, B>(
-    f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]
-  ): <S extends readonly any[] | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
+  <S extends readonly any[] | Iterable<any>, B>(
+    f: (
+      as: readonly [ReadonlyArray.Infer<S>, ...ReadonlyArray.Infer<S>[]]
+    ) => readonly [B, readonly ReadonlyArray.Infer<S>[]]
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A, B>(self: readonly [A, ...A[]], f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): [B, ...B[]]
   <A, B>(self: Iterable<A>, f: (as: readonly [A, ...A[]]) => readonly [B, readonly A[]]): B[]
 }

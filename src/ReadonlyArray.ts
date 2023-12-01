@@ -1108,9 +1108,9 @@ export const contains: {
  * @since 2.0.0
  */
 export const chop: {
-  <A, B>(
-    f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
-  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
+  <S extends ReadonlyArray<any> | Iterable<any>, B>(
+    f: (as: NonEmptyReadonlyArray<ReadonlyArray.Infer<S>>) => readonly [B, ReadonlyArray<ReadonlyArray.Infer<S>>]
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A, B>(
     self: NonEmptyReadonlyArray<A>,
     f: (as: NonEmptyReadonlyArray<A>) => readonly [B, ReadonlyArray<A>]
