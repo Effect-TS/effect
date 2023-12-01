@@ -2107,9 +2107,9 @@ export declare const unzip: <
   S extends Iterable<readonly [any, any]> | readonly [readonly [any, any], ...(readonly [any, any])[]]
 >(
   self: S
-) => S extends readonly [[infer A, infer B], ...[infer A, infer B][]]
+) => S extends readonly [readonly [infer A, infer B], ...(readonly [infer A, infer B])[]]
   ? [[A, ...A[]], [B, ...B[]]]
-  : S extends Iterable<[infer A, infer B]>
+  : S extends Iterable<readonly [infer A, infer B]>
     ? [A[], B[]]
     : never
 ```

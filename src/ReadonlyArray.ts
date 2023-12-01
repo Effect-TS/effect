@@ -942,8 +942,8 @@ export const zipWith: {
  */
 export const unzip: <S extends Iterable<readonly [any, any]> | NonEmptyReadonlyArray<readonly [any, any]>>(
   self: S
-) => S extends NonEmptyReadonlyArray<[infer A, infer B]> ? [NonEmptyArray<A>, NonEmptyArray<B>]
-  : S extends Iterable<[infer A, infer B]> ? [Array<A>, Array<B>]
+) => S extends NonEmptyReadonlyArray<readonly [infer A, infer B]> ? [NonEmptyArray<A>, NonEmptyArray<B>]
+  : S extends Iterable<readonly [infer A, infer B]> ? [Array<A>, Array<B>]
   : never = (<A, B>(self: Iterable<readonly [A, B]>): [Array<A>, Array<B>] => {
     const input = fromIterable(self)
     if (isNonEmptyReadonlyArray(input)) {
