@@ -98,9 +98,11 @@ Added in v2.0.0
   - [unsafeLast](#unsafelast)
 - [utils](#utils)
   - [Chunk (namespace)](#chunk-namespace)
+    - [And (type alias)](#and-type-alias)
+    - [Flatten (type alias)](#flatten-type-alias)
     - [Infer (type alias)](#infer-type-alias)
+    - [Or (type alias)](#or-type-alias)
     - [With (type alias)](#with-type-alias)
-    - [With2 (type alias)](#with2-type-alias)
   - [drop](#drop)
   - [dropRight](#dropright)
   - [dropWhile](#dropwhile)
@@ -159,7 +161,7 @@ If either chunk is non-empty, the result is also a non-empty chunk.
 
 ```ts
 export declare const appendAll: {
-  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.With2<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
+  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.Or<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
   <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<A | B>
@@ -200,7 +202,7 @@ If either chunk is non-empty, the result is also a non-empty chunk.
 
 ```ts
 export declare const prependAll: {
-  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.With2<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
+  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.Or<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
   <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<A | B>
@@ -1032,7 +1034,7 @@ Applies a function to each element in a chunk and returns a new chunk containing
 export declare const flatMap: {
   <S extends Chunk<any>, T extends Chunk<any>>(
     f: (a: Chunk.Infer<S>, i: number) => T
-  ): (self: S) => Chunk.With2<S, T, Chunk.Infer<T>>
+  ): (self: S) => Chunk.And<S, T, Chunk.Infer<T>>
   <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => NonEmptyChunk<B>): NonEmptyChunk<B>
   <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>): Chunk<B>
 }
@@ -1047,13 +1049,7 @@ Flattens a chunk of chunks into a single chunk by concatenating all chunks.
 **Signature**
 
 ```ts
-export declare const flatten: <S extends Chunk<Chunk<any>>>(
-  self: S
-) => S extends NonEmptyChunk<NonEmptyChunk<infer A>>
-  ? NonEmptyChunk<A>
-  : S extends Chunk<Chunk<infer A>>
-    ? Chunk<A>
-    : never
+export declare const flatten: <S extends Chunk<Chunk<any>>>(self: S) => Chunk.Flatten<S>
 ```
 
 Added in v2.0.0
@@ -1152,6 +1148,34 @@ Added in v2.0.0
 
 Added in v2.0.0
 
+### And (type alias)
+
+**Signature**
+
+```ts
+export type And<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any>
+  ? T extends NonEmptyChunk<any>
+    ? NonEmptyChunk<A>
+    : Chunk<A>
+  : Chunk<A>
+```
+
+Added in v2.0.0
+
+### Flatten (type alias)
+
+**Signature**
+
+```ts
+export type Flatten<T extends Chunk<Chunk<any>>> = T extends NonEmptyChunk<NonEmptyChunk<infer A>>
+  ? NonEmptyChunk<A>
+  : T extends Chunk<Chunk<infer A>>
+    ? Chunk<A>
+    : never
+```
+
+Added in v2.0.0
+
 ### Infer (type alias)
 
 **Signature**
@@ -1162,26 +1186,26 @@ export type Infer<S extends Chunk<any>> = S extends Chunk<infer A> ? A : never
 
 Added in v2.0.0
 
+### Or (type alias)
+
+**Signature**
+
+```ts
+export type Or<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any>
+  ? NonEmptyChunk<A>
+  : T extends NonEmptyChunk<any>
+    ? NonEmptyChunk<A>
+    : Chunk<A>
+```
+
+Added in v2.0.0
+
 ### With (type alias)
 
 **Signature**
 
 ```ts
 export type With<S extends Chunk<any>, A> = S extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
-```
-
-Added in v2.0.0
-
-### With2 (type alias)
-
-**Signature**
-
-```ts
-export type With2<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any>
-  ? NonEmptyChunk<A>
-  : T extends NonEmptyChunk<any>
-    ? NonEmptyChunk<A>
-    : Chunk<A>
 ```
 
 Added in v2.0.0

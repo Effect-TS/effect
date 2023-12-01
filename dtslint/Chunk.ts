@@ -362,27 +362,63 @@ pipe(nonEmptyStrings, Chunk.appendAll(nonEmptyNumbers))
 
 // $ExpectType Chunk<number>
 Chunk.flatMap(strings, (
-  _,
+  _s, // $ExpectType string
   _i // $ExpectType number
 ) => Chunk.empty<number>())
+
+// $ExpectType Chunk<number>
+pipe(
+  strings,
+  Chunk.flatMap((
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Chunk.empty<number>())
+)
 
 // $ExpectType Chunk<number>
 Chunk.flatMap(strings, (
-  s,
+  s, // $ExpectType string
   _i // $ExpectType number
 ) => Chunk.of(s.length))
 
 // $ExpectType Chunk<number>
+pipe(
+  strings,
+  Chunk.flatMap((
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Chunk.of(s.length))
+)
+
+// $ExpectType Chunk<number>
 Chunk.flatMap(nonEmptyStrings, (
-  _s,
+  _s, // $ExpectType string
   _i // $ExpectType number
 ) => Chunk.empty<number>())
 
+// $ExpectType Chunk<number>
+pipe(
+  nonEmptyStrings,
+  Chunk.flatMap((
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Chunk.empty<number>())
+)
+
 // $ExpectType NonEmptyChunk<number>
 Chunk.flatMap(nonEmptyStrings, (
-  s,
+  s, // $ExpectType string
   _i // $ExpectType number
 ) => Chunk.of(s.length))
+
+// $ExpectType NonEmptyChunk<number>
+pipe(
+  nonEmptyStrings,
+  Chunk.flatMap((
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Chunk.of(s.length))
+)
 
 // -------------------------------------------------------------------------------------
 // flatten
