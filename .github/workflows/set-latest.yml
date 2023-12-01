@@ -16,7 +16,12 @@ jobs:
     name: Set latest
     runs-on: ubuntu-latest
     steps:
-      - run: npm dist-tag add effect@2.0.0-next.58 latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
+      - run: |
+          npm dist-tag add effect@2.0.0-next.58 latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
