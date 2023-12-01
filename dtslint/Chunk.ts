@@ -392,13 +392,25 @@ Chunk.flatMap(nonEmptyStrings, (
 Chunk.flatten(hole<Chunk.Chunk<Chunk.Chunk<number>>>())
 
 // $ExpectType Chunk<number>
+pipe(hole<Chunk.Chunk<Chunk.Chunk<number>>>(), Chunk.flatten)
+
+// $ExpectType Chunk<number>
 Chunk.flatten(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>())
+
+// $ExpectType Chunk<number>
+pipe(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten)
 
 // $ExpectType Chunk<number>
 Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>())
 
+// $ExpectType Chunk<number>
+pipe(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>(), Chunk.flatten)
+
 // $ExpectType NonEmptyChunk<number>
 Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>())
+
+// $ExpectType NonEmptyChunk<number>
+pipe(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten)
 
 declare const flattenChunk: Effect.Effect<never, never, Chunk.Chunk<Chunk.Chunk<number>>>
 declare const flattenNonEmptyChunk: Effect.Effect<never, never, Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>
