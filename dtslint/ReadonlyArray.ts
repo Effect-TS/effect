@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { hole, pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -461,6 +462,25 @@ ReadonlyArray.flatten(hole<ReadonlyArray.NonEmptyArray<Array<number>>>())
 
 // $ExpectType [number, ...number[]]
 ReadonlyArray.flatten(hole<ReadonlyArray.NonEmptyReadonlyArray<ReadonlyArray.NonEmptyReadonlyArray<number>>>())
+
+declare const flattenArray: Effect.Effect<never, never, ReadonlyArray<ReadonlyArray<number>>>
+declare const flattenNonEmptyArray: Effect.Effect<
+  never,
+  never,
+  ReadonlyArray.NonEmptyReadonlyArray<ReadonlyArray.NonEmptyReadonlyArray<number>>
+>
+
+// $ExpectType Effect<never, never, number[]>
+flattenArray.pipe(Effect.map((_) => ReadonlyArray.flatten(_)))
+
+// $ExpectType Effect<never, never, number[]>
+flattenArray.pipe(Effect.map(ReadonlyArray.flatten))
+
+// $ExpectType Effect<never, never, [number, ...number[]]>
+flattenNonEmptyArray.pipe(Effect.map((_) => ReadonlyArray.flatten(_)))
+
+// $ExpectType Effect<never, never, [number, ...number[]]>
+flattenNonEmptyArray.pipe(Effect.map(ReadonlyArray.flatten))
 
 // -------------------------------------------------------------------------------------
 // prependAll

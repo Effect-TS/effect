@@ -124,6 +124,7 @@ Added in v2.0.0
   - [unsafeGet](#unsafeget)
 - [utils](#utils)
   - [ReadonlyArray (namespace)](#readonlyarray-namespace)
+    - [Flatten (type alias)](#flatten-type-alias)
     - [Infer (type alias)](#infer-type-alias)
     - [With (type alias)](#with-type-alias)
     - [With2 (type alias)](#with2-type-alias)
@@ -1496,10 +1497,7 @@ Flattens an array of arrays into a single array by concatenating all arrays.
 **Signature**
 
 ```ts
-export declare const flatten: {
-  <A>(self: readonly [readonly [A, ...A[]], ...(readonly [A, ...A[]])[]]): [A, ...A[]]
-  <A>(self: readonly (readonly A[])[]): A[]
-}
+export declare const flatten: <T extends readonly (readonly any[])[]>(self: T) => ReadonlyArray.Flatten<T>
 ```
 
 Added in v2.0.0
@@ -1575,6 +1573,22 @@ Added in v2.0.0
 # utils
 
 ## ReadonlyArray (namespace)
+
+Added in v2.0.0
+
+### Flatten (type alias)
+
+**Signature**
+
+```ts
+export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends NonEmptyReadonlyArray<
+  NonEmptyReadonlyArray<infer A>
+>
+  ? NonEmptyArray<A>
+  : T extends ReadonlyArray<ReadonlyArray<infer A>>
+    ? Array<A>
+    : never
+```
 
 Added in v2.0.0
 
