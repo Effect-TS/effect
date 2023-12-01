@@ -937,8 +937,14 @@ pipe(
 // $ExpectType [string[], number[]]
 ReadonlyArray.unzip(hole<Iterable<[string, number]>>())
 
+// $ExpectType [string[], number[]]
+pipe(hole<Iterable<[string, number]>>(), ReadonlyArray.unzip)
+
 // $ExpectType [[string, ...string[]], [number, ...number[]]]
 ReadonlyArray.unzip(hole<ReadonlyArray.NonEmptyReadonlyArray<[string, number]>>())
+
+// $ExpectType [[string, ...string[]], [number, ...number[]]]
+pipe(hole<ReadonlyArray.NonEmptyReadonlyArray<[string, number]>>(), ReadonlyArray.unzip)
 
 // -------------------------------------------------------------------------------------
 // zipWith

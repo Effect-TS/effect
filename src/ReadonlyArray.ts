@@ -940,22 +940,23 @@ export const zipWith: {
  *
  * @since 2.0.0
  */
-export const unzip: {
-  <A, B>(self: NonEmptyReadonlyArray<readonly [A, B]>): [NonEmptyArray<A>, NonEmptyArray<B>]
-  <A, B>(self: Iterable<readonly [A, B]>): [Array<A>, Array<B>]
-} = (<A, B>(self: Iterable<readonly [A, B]>): [Array<A>, Array<B>] => {
-  const input = fromIterable(self)
-  if (isNonEmptyReadonlyArray(input)) {
-    const fa: NonEmptyArray<A> = [input[0][0]]
-    const fb: NonEmptyArray<B> = [input[0][1]]
-    for (let i = 1; i < input.length; i++) {
-      fa[i] = input[i][0]
-      fb[i] = input[i][1]
+export const unzip: <S extends Iterable<readonly [any, any]> | NonEmptyReadonlyArray<readonly [any, any]>>(
+  self: S
+) => S extends NonEmptyReadonlyArray<[infer A, infer B]> ? [NonEmptyArray<A>, NonEmptyArray<B>]
+  : S extends Iterable<[infer A, infer B]> ? [Array<A>, Array<B>]
+  : never = (<A, B>(self: Iterable<readonly [A, B]>): [Array<A>, Array<B>] => {
+    const input = fromIterable(self)
+    if (isNonEmptyReadonlyArray(input)) {
+      const fa: NonEmptyArray<A> = [input[0][0]]
+      const fb: NonEmptyArray<B> = [input[0][1]]
+      for (let i = 1; i < input.length; i++) {
+        fa[i] = input[i][0]
+        fb[i] = input[i][1]
+      }
+      return [fa, fb]
     }
-    return [fa, fb]
-  }
-  return [[], []]
-}) as any
+    return [[], []]
+  }) as any
 
 /**
  * Places an element in between members of an `Iterable`.

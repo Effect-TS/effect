@@ -2103,10 +2103,15 @@ This function is the inverse of `zip`. Takes an `Iterable` of pairs and return t
 **Signature**
 
 ```ts
-export declare const unzip: {
-  <A, B>(self: readonly [readonly [A, B], ...(readonly [A, B])[]]): [[A, ...A[]], [B, ...B[]]]
-  <A, B>(self: Iterable<readonly [A, B]>): [A[], B[]]
-}
+export declare const unzip: <
+  S extends Iterable<readonly [any, any]> | readonly [readonly [any, any], ...(readonly [any, any])[]]
+>(
+  self: S
+) => S extends readonly [[infer A, infer B], ...[infer A, infer B][]]
+  ? [[A, ...A[]], [B, ...B[]]]
+  : S extends Iterable<[infer A, infer B]>
+    ? [A[], B[]]
+    : never
 ```
 
 Added in v2.0.0
