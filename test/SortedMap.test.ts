@@ -4,7 +4,6 @@ import * as Hash from "effect/Hash"
 import * as N from "effect/Number"
 import * as O from "effect/Option"
 import * as SM from "effect/SortedMap"
-import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 class Key implements Eq.Equal {
@@ -85,6 +84,9 @@ describe.concurrent("SortedMap", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
+
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 
     expect(inspect(map)).toEqual(

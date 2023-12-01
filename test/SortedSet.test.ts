@@ -4,7 +4,6 @@ import * as Hash from "effect/Hash"
 import * as Order from "effect/Order"
 import * as SortedSet from "effect/SortedSet"
 import * as Str from "effect/String"
-import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 class Member implements Eq.Equal {
@@ -61,6 +60,8 @@ describe.concurrent("SortedSet", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
     const set = makeNumericSortedSet(0, 1, 2)
     expect(inspect(set)).toEqual(inspect({ _id: "SortedSet", values: [0, 1, 2] }))
   })

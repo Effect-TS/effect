@@ -5,7 +5,6 @@ import { pipe } from "effect/Function"
 import * as N from "effect/Number"
 import * as _ from "effect/Option"
 import * as S from "effect/String"
-import { inspect } from "node:util"
 import { assert, assertType, describe, expect, it } from "vitest"
 
 const p = (n: number): boolean => n > 2
@@ -82,6 +81,8 @@ describe.concurrent("Option", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
     expect(inspect(_.none())).toEqual(inspect({ _id: "Option", _tag: "None" }))
     expect(inspect(_.some(1))).toEqual(inspect({ _id: "Option", _tag: "Some", value: 1 }))
   })

@@ -3,7 +3,6 @@ import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HM from "effect/MutableHashMap"
 import * as O from "effect/Option"
-import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 class Key implements Equal.Equal {
@@ -75,6 +74,9 @@ describe.concurrent("MutableHashMap", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
+
     const map = HM.make(
       [0, "a"],
       [1, "b"]

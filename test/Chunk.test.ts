@@ -10,7 +10,6 @@ import * as Order from "effect/Order"
 import type { Predicate } from "effect/Predicate"
 import * as RA from "effect/ReadonlyArray"
 import * as fc from "fast-check"
-import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Chunk", () => {
@@ -70,6 +69,8 @@ describe.concurrent("Chunk", () => {
 
   it("inspect", () => {
     if (typeof window === "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { inspect } = require("node:util")
       expect(inspect(Chunk.make(0, 1, 2))).toEqual(inspect({ _id: "Chunk", values: [0, 1, 2] }))
     }
   })

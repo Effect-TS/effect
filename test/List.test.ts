@@ -5,7 +5,6 @@ import { equals, symbol } from "effect/Equal"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 const testStructuralSharing = <A>(a: List.List<A>, b: List.List<A>, n = 0): number | undefined => {
@@ -233,6 +232,8 @@ describe.concurrent("List", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
     expect(inspect(List.empty())).toEqual(inspect({ _id: "List", _tag: "Nil" }))
     expect(inspect(List.make(0, 1, 2))).toEqual(inspect({ _id: "List", _tag: "Cons", values: [0, 1, 2] }))
   })
