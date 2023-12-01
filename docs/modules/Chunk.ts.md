@@ -1154,7 +1154,9 @@ Added in v2.0.0
 ```ts
 export type Flatten<T extends Chunk<Chunk<any>>> = T extends NonEmptyChunk<NonEmptyChunk<infer A>>
   ? NonEmptyChunk<A>
-  : Chunk<Chunk.Infer<Chunk.Infer<T>>>
+  : T extends Chunk<Chunk<infer A>>
+    ? Chunk<A>
+    : never
 ```
 
 Added in v2.0.0

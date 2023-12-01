@@ -720,9 +720,7 @@ export const forEach: {
  * @since 2.0.0
  * @category sequencing
  */
-export const flatten: {
-  <T extends Chunk<Chunk<any>>>(self: T): Chunk.Flatten<T>
-} = flatMap(identity) as any
+export const flatten: <T extends Chunk<Chunk<any>>>(self: T) => Chunk.Flatten<T> = flatMap(identity) as any
 
 /**
  * Groups elements in chunks of up to `n` elements.
@@ -847,7 +845,8 @@ export declare namespace Chunk {
    * @since 2.0.0
    */
   export type Flatten<T extends Chunk<Chunk<any>>> = T extends NonEmptyChunk<NonEmptyChunk<infer A>> ? NonEmptyChunk<A>
-    : Chunk<Chunk.Infer<Chunk.Infer<T>>>
+    : T extends Chunk<Chunk<infer A>> ? Chunk<A>
+    : never
 }
 
 /**
