@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.33.3
+
+### Patch Changes
+
+- [#312](https://github.com/Effect-TS/platform/pull/312) [`cc1f588`](https://github.com/Effect-TS/platform/commit/cc1f5886bf4188e0128b64b9e2a67f789680cab0) Thanks [@tim-smart](https://github.com/tim-smart)! - scope commands to prevent process leaks
+
+- Updated dependencies [[`cc1f588`](https://github.com/Effect-TS/platform/commit/cc1f5886bf4188e0128b64b9e2a67f789680cab0)]:
+  - @effect/platform@0.32.2
+
 ## 0.33.2
 
 ### Patch Changes
