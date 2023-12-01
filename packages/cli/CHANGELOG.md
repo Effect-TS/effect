@@ -1,5 +1,39 @@
 # @effect/cli
 
+## 0.23.0
+
+### Minor Changes
+
+- [#373](https://github.com/Effect-TS/cli/pull/373) [`e6b790d`](https://github.com/Effect-TS/cli/commit/e6b790d0c05be67a6eccb4673d803ebf4faec832) Thanks [@IMax153](https://github.com/IMax153)! - implement `--wizard` mode for cli applications
+
+- [#373](https://github.com/Effect-TS/cli/pull/373) [`e6b790d`](https://github.com/Effect-TS/cli/commit/e6b790d0c05be67a6eccb4673d803ebf4faec832) Thanks [@IMax153](https://github.com/IMax153)! - implement completion script generation for cli applications
+
+- [#390](https://github.com/Effect-TS/cli/pull/390) [`1512ce7`](https://github.com/Effect-TS/cli/commit/1512ce7c9da71c1bf122b4e11205f2b158c8f04e) Thanks [@tim-smart](https://github.com/tim-smart)! - add localized handlers for Command's
+
+- [#398](https://github.com/Effect-TS/cli/pull/398) [`3e21194`](https://github.com/Effect-TS/cli/commit/3e21194f61de4144161eeaa1bfcb54946b588b0f) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+- [#388](https://github.com/Effect-TS/cli/pull/388) [`0502e7e`](https://github.com/Effect-TS/cli/commit/0502e7e176606069a46ad0c09d2ce8db0468a835) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#382](https://github.com/Effect-TS/cli/pull/382) [`d24623b`](https://github.com/Effect-TS/cli/commit/d24623bfce76bb407d03ff1f61a3936bd0902d64) Thanks [@IMax153](https://github.com/IMax153)! - fix the type signature of `Options.keyValueMap`
+
+- [#397](https://github.com/Effect-TS/cli/pull/397) [`48db351`](https://github.com/Effect-TS/cli/commit/48db351b51a74f634779b453f299376a526da911) Thanks [@tim-smart](https://github.com/tim-smart)! - fix withDescription for mapped commands
+
+- [#375](https://github.com/Effect-TS/cli/pull/375) [`ab92954`](https://github.com/Effect-TS/cli/commit/ab92954a8d3dc22970712af5ce487c004d004737) Thanks [@IMax153](https://github.com/IMax153)! - cleanup readonly tuple types
+
+- [#385](https://github.com/Effect-TS/cli/pull/385) [`fec4166`](https://github.com/Effect-TS/cli/commit/fec416627e389f111cd82f0dbe0e512ac48b9d8b) Thanks [@IMax153](https://github.com/IMax153)! - support multi-valued arguments appearing anywhere in command-line arguments
+
+- [#383](https://github.com/Effect-TS/cli/pull/383) [`714fe74`](https://github.com/Effect-TS/cli/commit/714fe74dfe919b79384480cd62d1a2f62f537932) Thanks [@IMax153](https://github.com/IMax153)! - add support for variadic options
+
+- [#384](https://github.com/Effect-TS/cli/pull/384) [`3fd5804`](https://github.com/Effect-TS/cli/commit/3fd58041e5b45c20205bee48eca28eedf20e154b) Thanks [@IMax153](https://github.com/IMax153)! - implement withDefault for Args
+
+- [#381](https://github.com/Effect-TS/cli/pull/381) [`fb0bb00`](https://github.com/Effect-TS/cli/commit/fb0bb00cf7b4c3fcda8dccb3783df67e3e8f474b) Thanks [@IMax153](https://github.com/IMax153)! - introduce Args.optional
+
+- [#375](https://github.com/Effect-TS/cli/pull/375) [`ab92954`](https://github.com/Effect-TS/cli/commit/ab92954a8d3dc22970712af5ce487c004d004737) Thanks [@IMax153](https://github.com/IMax153)! - convert all modules to better support tree-shaking
+
+- [#378](https://github.com/Effect-TS/cli/pull/378) [`2cc9d15`](https://github.com/Effect-TS/cli/commit/2cc9d15541011e20b8d4bc1a7971c84f179589f8) Thanks [@IMax153](https://github.com/IMax153)! - fix completion script generation
+
 ## 0.22.0
 
 ### Minor Changes
