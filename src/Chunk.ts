@@ -562,7 +562,9 @@ export const dropWhile: {
  * @since 2.0.0
  */
 export const prependAll: {
-  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.Or<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
+  <S extends Chunk<any>, T extends Chunk<any>>(
+    that: T
+  ): (self: S) => Chunk.OrNonEmpty<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
   <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<A | B>
@@ -584,7 +586,9 @@ export const prependAll: {
  * @since 2.0.0
  */
 export const appendAll: {
-  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.Or<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
+  <S extends Chunk<any>, T extends Chunk<any>>(
+    that: T
+  ): (self: S) => Chunk.OrNonEmpty<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
   <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<A | B>
@@ -688,7 +692,7 @@ export const compact = <A>(self: Chunk<Option<A>>): Chunk<A> => filterMap(self, 
 export const flatMap: {
   <S extends Chunk<any>, T extends Chunk<any>>(
     f: (a: Chunk.Infer<S>, i: number) => T
-  ): (self: S) => Chunk.And<S, T, Chunk.Infer<T>>
+  ): (self: S) => Chunk.AndNonEmpty<S, T, Chunk.Infer<T>>
   <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => NonEmptyChunk<B>): NonEmptyChunk<B>
   <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>): Chunk<B>
 } = dual(2, <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>) => {
@@ -837,14 +841,15 @@ export declare namespace Chunk {
   /**
    * @since 2.0.0
    */
-  export type Or<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any> ? NonEmptyChunk<A>
+  export type OrNonEmpty<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any> ?
+    NonEmptyChunk<A>
     : T extends NonEmptyChunk<any> ? NonEmptyChunk<A>
     : Chunk<A>
 
   /**
    * @since 2.0.0
    */
-  export type And<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any> ?
+  export type AndNonEmpty<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any> ?
     T extends NonEmptyChunk<any> ? NonEmptyChunk<A>
     : Chunk<A> :
     Chunk<A>

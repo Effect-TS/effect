@@ -333,7 +333,7 @@ export const append: {
  * @since 2.0.0
  */
 export const appendAll: {
-  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.OrNonEmpty<S, T, List.Infer<S> | List.Infer<T>>
   <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
   <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
   <A, B>(self: List<A>, that: List<B>): List<A | B>
@@ -366,7 +366,7 @@ export const prepend: {
  * @since 2.0.0
  */
 export const prependAll: {
-  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.OrNonEmpty<S, T, List.Infer<S> | List.Infer<T>>
   <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
   <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
   <A, B>(self: List<A>, that: List<B>): List<A | B>
@@ -641,7 +641,7 @@ export const findFirst: {
 export const flatMap: {
   <S extends List<any>, T extends List<any>>(
     f: (a: List.Infer<S>, i: number) => T
-  ): (self: S) => List.With2<S, T, List.Infer<T>>
+  ): (self: S) => List.AndNonEmpty<S, T, List.Infer<T>>
   <A, B>(self: Cons<A>, f: (a: A, i: number) => Cons<B>): Cons<B>
   <A, B>(self: List<A>, f: (a: A, i: number) => List<B>): List<B>
 } = dual(2, <A, B>(self: List<A>, f: (a: A) => List<B>): List<B> => {
@@ -720,9 +720,17 @@ export declare namespace List {
   /**
    * @since 2.0.0
    */
-  export type With2<S extends List<any>, T extends List<any>, A> = S extends Cons<any> ? Cons<A>
+  export type OrNonEmpty<S extends List<any>, T extends List<any>, A> = S extends Cons<any> ? Cons<A>
     : T extends Cons<any> ? Cons<A>
     : List<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type AndNonEmpty<S extends List<any>, T extends List<any>, A> = S extends Cons<any> ?
+    T extends Cons<any> ? Cons<A>
+    : List<A> :
+    List<A>
 }
 
 /**
