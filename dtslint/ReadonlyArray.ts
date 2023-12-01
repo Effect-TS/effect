@@ -688,25 +688,85 @@ ReadonlyArray.union(nonEmptyNumbers)(nonEmptyStrings)
 ReadonlyArray.unionWith(strings, numbers, Equal.equivalence<string | number>())
 
 // $ExpectType (string | number)[]
+ReadonlyArray.unionWith(strings, numbers, (
+  _a, // $ExpectType string
+  _b // $ExpectType number
+) => true)
+
+// $ExpectType (string | number)[]
 pipe(strings, ReadonlyArray.unionWith(numbers, Equal.equivalence<string | number>()))
+
+// $ExpectType (string | number)[]
+pipe(
+  strings,
+  ReadonlyArray.unionWith(numbers, (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true)
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
 ReadonlyArray.unionWith(nonEmptyStrings, numbers, Equal.equivalence<string | number>())
 
 // $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.unionWith(nonEmptyStrings, numbers, (
+  _a, // $ExpectType string
+  _b // $ExpectType number
+) => true)
+
+// $ExpectType [string | number, ...(string | number)[]]
 ReadonlyArray.unionWith(strings, nonEmptyNumbers, Equal.equivalence<string | number>())
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.unionWith(strings, nonEmptyNumbers, (
+  _a, // $ExpectType string
+  _b // $ExpectType number
+) => true)
 
 // $ExpectType [string | number, ...(string | number)[]]
 ReadonlyArray.unionWith(nonEmptyStrings, nonEmptyNumbers, Equal.equivalence<string | number>())
 
 // $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.unionWith(nonEmptyStrings, nonEmptyNumbers, (
+  _a, // $ExpectType string
+  _b // $ExpectType number
+) => true)
+
+// $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, ReadonlyArray.unionWith(numbers, Equal.equivalence<string | number>()))
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.unionWith(numbers, (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true)
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(strings, ReadonlyArray.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>()))
 
 // $ExpectType [string | number, ...(string | number)[]]
+pipe(
+  strings,
+  ReadonlyArray.unionWith(nonEmptyNumbers, (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true)
+)
+
+// $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, ReadonlyArray.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>()))
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.unionWith(nonEmptyNumbers, (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // dedupe
