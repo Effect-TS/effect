@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Path } from "@effect/platform/Path"
 import type { Terminal } from "@effect/platform/Terminal"
@@ -35,7 +34,7 @@ export declare namespace CliApp {
    * @since 1.0.0
    * @category models
    */
-  export type Environment = CommandExecutor | FileSystem | Path | Terminal
+  export type Environment = FileSystem | Path | Terminal
 }
 
 /**

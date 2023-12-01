@@ -87,14 +87,21 @@ export const run = dual<
       onSuccess: Effect.unifiedFn((directive) => {
         switch (directive._tag) {
           case "UserDefined": {
-            return execute(directive.value).pipe(
-              Effect.catchSome((e) =>
-                InternalValidationError.isValidationError(e) &&
-                  InternalValidationError.isHelpRequested(e)
-                  ? Option.some(handleBuiltInOption(self, args, e.showHelp, execute, config))
-                  : Option.none()
-              )
-            )
+            return ReadonlyArray.matchLeft(directive.leftover, {
+              onEmpty: () =>
+                execute(directive.value).pipe(
+                  Effect.catchSome((e) =>
+                    InternalValidationError.isValidationError(e) &&
+                      InternalValidationError.isHelpRequested(e)
+                      ? Option.some(handleBuiltInOption(self, args, e.showHelp, execute, config))
+                      : Option.none()
+                  )
+                ),
+              onNonEmpty: (head) => {
+                const error = InternalHelpDoc.p(`Received unknown argument: '${head}'`)
+                return Effect.fail(InternalValidationError.invalidValue(error))
+              }
+            })
           }
           case "BuiltIn": {
             return handleBuiltInOption(self, args, directive.option, execute, config).pipe(
