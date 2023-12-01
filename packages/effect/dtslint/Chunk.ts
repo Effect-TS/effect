@@ -1,4 +1,5 @@
 import * as Chunk from "effect/Chunk"
+import * as Effect from "effect/Effect"
 import { hole, pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 
@@ -398,3 +399,18 @@ Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>())
 
 // $ExpectType NonEmptyChunk<number>
 Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>())
+
+declare const flattenChunk: Effect.Effect<never, never, Chunk.Chunk<Chunk.Chunk<number>>>
+declare const flattenNonEmptyChunk: Effect.Effect<never, never, Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>
+
+// $ExpectType Effect<never, never, Chunk<number>>
+flattenChunk.pipe(Effect.map((_) => Chunk.flatten(_)))
+
+// $ExpectType Effect<never, never, Chunk<number>>
+flattenChunk.pipe(Effect.map(Chunk.flatten))
+
+// $ExpectType Effect<never, never, NonEmptyChunk<number>>
+flattenNonEmptyChunk.pipe(Effect.map((_) => Chunk.flatten(_)))
+
+// $ExpectType Effect<never, never, NonEmptyChunk<number>>
+flattenNonEmptyChunk.pipe(Effect.map(Chunk.flatten))

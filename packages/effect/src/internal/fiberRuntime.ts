@@ -3081,7 +3081,7 @@ export const fiberAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Fiber.Fiber
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
   id: () => RA.fromIterable(fibers).reduce((id, fiber) => FiberId.combine(id, fiber.id()), FiberId.none),
   await: core.exit(forEachParUnbounded(fibers, (fiber) => core.flatten(fiber.await), false)),
-  children: core.map(forEachParUnbounded(fibers, (fiber) => fiber.children, false), (children) => RA.flatten(children)),
+  children: core.map(forEachParUnbounded(fibers, (fiber) => fiber.children, false), RA.flatten),
   inheritAll: core.forEachSequentialDiscard(fibers, (fiber) => fiber.inheritAll),
   poll: core.map(
     core.forEachSequential(fibers, (fiber) => fiber.poll),

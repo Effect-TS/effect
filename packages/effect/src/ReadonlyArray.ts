@@ -1417,6 +1417,14 @@ export declare namespace ReadonlyArray {
     S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
       : T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
       : Array<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends
+    NonEmptyReadonlyArray<NonEmptyReadonlyArray<infer A>> ? NonEmptyArray<A>
+    : T extends ReadonlyArray<ReadonlyArray<infer A>> ? Array<A>
+    : never
 }
 
 /**
@@ -1462,10 +1470,9 @@ export const flatMap: {
  * @category sequencing
  * @since 2.0.0
  */
-export const flatten: {
-  <A>(self: NonEmptyReadonlyArray<NonEmptyReadonlyArray<A>>): NonEmptyArray<A>
-  <A>(self: ReadonlyArray<ReadonlyArray<A>>): Array<A>
-} = flatMap(identity) as any
+export const flatten: <T extends ReadonlyArray<ReadonlyArray<any>>>(self: T) => ReadonlyArray.Flatten<T> = flatMap(
+  identity
+) as any
 
 /**
  * @category filtering
