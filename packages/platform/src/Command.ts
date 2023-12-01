@@ -6,6 +6,7 @@ import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
 import type { CommandExecutor, ExitCode, Process } from "./CommandExecutor.js"
@@ -211,7 +212,7 @@ export const runInShell: {
  * @since 1.0.0
  * @category execution
  */
-export const start: (command: Command) => Effect<CommandExecutor, PlatformError, Process> = internal.start
+export const start: (command: Command) => Effect<CommandExecutor | Scope, PlatformError, Process> = internal.start
 
 /**
  * Start running the command and return the output as a `Stream`.

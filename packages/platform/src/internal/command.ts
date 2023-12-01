@@ -5,6 +5,7 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import type ReadonlyArray from "effect/ReadonlyArray"
+import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as Command from "../Command.js"
 import type * as CommandExecutor from "../CommandExecutor.js"
@@ -191,7 +192,7 @@ export const stdout: {
 /** @internal */
 export const start = (
   command: Command.Command
-): Effect.Effect<CommandExecutor.CommandExecutor, PlatformError, CommandExecutor.Process> =>
+): Effect.Effect<CommandExecutor.CommandExecutor | Scope, PlatformError, CommandExecutor.Process> =>
   Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.start(command))
 
 /** @internal */

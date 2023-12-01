@@ -24,10 +24,7 @@ export const CommandExecutor = Tag<_CommandExecutor.CommandExecutor>("@effect/pl
 /** @internal */
 export const makeExecutor = (start: _CommandExecutor.CommandExecutor["start"]): _CommandExecutor.CommandExecutor => {
   const stream: _CommandExecutor.CommandExecutor["stream"] = (command) =>
-    pipe(
-      Stream.fromEffect(start(command)),
-      Stream.flatMap((process) => process.stdout)
-    )
+    Stream.unwrapScoped(Effect.map(start(command), (process) => process.stdout))
   const streamLines: _CommandExecutor.CommandExecutor["streamLines"] = (command, encoding) => {
     const decoder = new TextDecoder(encoding)
     return Stream.splitLines(
@@ -36,14 +33,15 @@ export const makeExecutor = (start: _CommandExecutor.CommandExecutor["start"]): 
   }
   return {
     start,
-    exitCode: (command) => Effect.flatMap(start(command), (process) => process.exitCode),
+    exitCode: (command) => Effect.scoped(Effect.flatMap(start(command), (process) => process.exitCode)),
     stream,
     string: (command, encoding = "utf-8") => {
       const decoder = new TextDecoder(encoding)
       return pipe(
         start(command),
         Effect.flatMap((process) => Stream.run(process.stdout, collectUint8Array)),
-        Effect.map((bytes) => decoder.decode(bytes))
+        Effect.map((bytes) => decoder.decode(bytes)),
+        Effect.scoped
       )
     },
     lines: (command, encoding = "utf-8") => {

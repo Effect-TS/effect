@@ -242,19 +242,21 @@ describe("Command", () => {
     })))
 
   it("should be able to kill a running process", () =>
-    runPromise(Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
-      const command = pipe(
-        Command.make("./repeat.sh"),
-        Command.workingDirectory(path.join(...TEST_BASH_SCRIPTS_PATH))
-      )
-      const process = yield* _(Command.start(command))
-      const isRunningBeforeKill = yield* _(process.isRunning)
-      yield* _(process.kill())
-      const isRunningAfterKill = yield* _(process.isRunning)
-      expect(isRunningBeforeKill).toBe(true)
-      expect(isRunningAfterKill).toBe(false)
-    })))
+    runPromise(
+      Effect.gen(function*(_) {
+        const path = yield* _(Path.Path)
+        const command = pipe(
+          Command.make("./repeat.sh"),
+          Command.workingDirectory(path.join(...TEST_BASH_SCRIPTS_PATH))
+        )
+        const process = yield* _(Command.start(command))
+        const isRunningBeforeKill = yield* _(process.isRunning)
+        yield* _(process.kill())
+        const isRunningAfterKill = yield* _(process.isRunning)
+        expect(isRunningBeforeKill).toBe(true)
+        expect(isRunningAfterKill).toBe(false)
+      }).pipe(Effect.scoped)
+    ))
 
   it("should support piping commands together", () =>
     runPromise(Effect.gen(function*(_) {
@@ -345,13 +347,15 @@ describe("Command", () => {
   })
 
   it("exitCode after exit", () =>
-    runPromise(Effect.gen(function*(_) {
-      const command = Command.make("echo", "-n", "test")
-      const process = yield* _(Command.start(command))
-      yield* _(process.exitCode)
-      const code = yield* _(process.exitCode)
-      expect(code).toEqual(0)
-    })))
+    runPromise(
+      Effect.gen(function*(_) {
+        const command = Command.make("echo", "-n", "test")
+        const process = yield* _(Command.start(command))
+        yield* _(process.exitCode)
+        const code = yield* _(process.exitCode)
+        expect(code).toEqual(0)
+      }).pipe(Effect.scoped)
+    ))
 
   it("should allow running commands in a shell", () =>
     runPromise(
