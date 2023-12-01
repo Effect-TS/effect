@@ -83,9 +83,10 @@ Added in v2.0.0
   - [unsafeTail](#unsafetail)
 - [utils](#utils)
   - [List (namespace)](#list-namespace)
+    - [AndNonEmpty (type alias)](#andnonempty-type-alias)
     - [Infer (type alias)](#infer-type-alias)
+    - [OrNonEmpty (type alias)](#ornonempty-type-alias)
     - [With (type alias)](#with-type-alias)
-    - [With2 (type alias)](#with2-type-alias)
 
 ---
 
@@ -256,7 +257,7 @@ If either list is non-empty, the result is also a non-empty list.
 
 ```ts
 export declare const appendAll: {
-  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.OrNonEmpty<S, T, List.Infer<S> | List.Infer<T>>
   <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
   <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
   <A, B>(self: List<A>, that: List<B>): List<A | B>
@@ -297,7 +298,7 @@ If either list is non-empty, the result is also a non-empty list.
 
 ```ts
 export declare const prependAll: {
-  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.With2<S, T, List.Infer<S> | List.Infer<T>>
+  <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.OrNonEmpty<S, T, List.Infer<S> | List.Infer<T>>
   <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
   <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
   <A, B>(self: List<A>, that: List<B>): List<A | B>
@@ -604,8 +605,8 @@ Applies the specified mapping function to each element of the list.
 
 ```ts
 export declare const map: {
-  <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>
-  <T extends List<any>, B>(self: T, f: (a: List.Infer<T>, i: number) => B): List.With<T, B>
+  <S extends List<any>, B>(f: (a: List.Infer<S>, i: number) => B): (self: S) => List.With<S, B>
+  <S extends List<any>, B>(self: S, f: (a: List.Infer<S>, i: number) => B): List.With<S, B>
 }
 ```
 
@@ -707,7 +708,7 @@ Applies a function to each element in a list and returns a new list containing t
 export declare const flatMap: {
   <S extends List<any>, T extends List<any>>(
     f: (a: List.Infer<S>, i: number) => T
-  ): (self: S) => List.With2<S, T, List.Infer<T>>
+  ): (self: S) => List.AndNonEmpty<S, T, List.Infer<T>>
   <A, B>(self: Cons<A>, f: (a: A, i: number) => Cons<B>): Cons<B>
   <A, B>(self: List<A>, f: (a: A, i: number) => List<B>): List<B>
 }
@@ -781,12 +782,40 @@ Added in v2.0.0
 
 Added in v2.0.0
 
+### AndNonEmpty (type alias)
+
+**Signature**
+
+```ts
+export type AndNonEmpty<S extends List<any>, T extends List<any>, A> = S extends Cons<any>
+  ? T extends Cons<any>
+    ? Cons<A>
+    : List<A>
+  : List<A>
+```
+
+Added in v2.0.0
+
 ### Infer (type alias)
 
 **Signature**
 
 ```ts
-export type Infer<T extends List<any>> = T extends List<infer A> ? A : never
+export type Infer<S extends List<any>> = S extends List<infer A> ? A : never
+```
+
+Added in v2.0.0
+
+### OrNonEmpty (type alias)
+
+**Signature**
+
+```ts
+export type OrNonEmpty<S extends List<any>, T extends List<any>, A> = S extends Cons<any>
+  ? Cons<A>
+  : T extends Cons<any>
+    ? Cons<A>
+    : List<A>
 ```
 
 Added in v2.0.0
@@ -796,21 +825,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type With<T extends List<any>, A> = T extends Cons<any> ? Cons<A> : List<A>
-```
-
-Added in v2.0.0
-
-### With2 (type alias)
-
-**Signature**
-
-```ts
-export type With2<S extends List<any>, T extends List<any>, A> = S extends Cons<any>
-  ? Cons<A>
-  : T extends Cons<any>
-    ? Cons<A>
-    : List<A>
+export type With<S extends List<any>, A> = S extends Cons<any> ? Cons<A> : List<A>
 ```
 
 Added in v2.0.0

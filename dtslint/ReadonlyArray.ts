@@ -425,27 +425,63 @@ pipe(numbersOrStrings, ReadonlyArray.dropWhile(Predicate.isNumber))
 
 // $ExpectType number[]
 ReadonlyArray.flatMap(strings, (
-  _,
+  _s, // $ExpectType string
   _i // $ExpectType number
 ) => ReadonlyArray.empty<number>())
+
+// $ExpectType number[]
+pipe(
+  strings,
+  ReadonlyArray.flatMap((
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => ReadonlyArray.empty<number>())
+)
 
 // $ExpectType number[]
 ReadonlyArray.flatMap(strings, (
-  s,
+  s, // $ExpectType string
   _i // $ExpectType number
 ) => ReadonlyArray.of(s.length))
 
 // $ExpectType number[]
+pipe(
+  strings,
+  ReadonlyArray.flatMap((
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => ReadonlyArray.of(s.length))
+)
+
+// $ExpectType number[]
 ReadonlyArray.flatMap(nonEmptyReadonlyStrings, (
-  _s,
+  _s, // $ExpectType string
   _i // $ExpectType number
 ) => ReadonlyArray.empty<number>())
 
+// $ExpectType number[]
+pipe(
+  nonEmptyReadonlyStrings,
+  ReadonlyArray.flatMap((
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => ReadonlyArray.empty<number>())
+)
+
 // $ExpectType [number, ...number[]]
 ReadonlyArray.flatMap(nonEmptyReadonlyStrings, (
-  s,
+  s, // $ExpectType string
   _i // $ExpectType number
 ) => ReadonlyArray.of(s.length))
+
+// $ExpectType [number, ...number[]]
+pipe(
+  nonEmptyReadonlyStrings,
+  ReadonlyArray.flatMap((
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => ReadonlyArray.of(s.length))
+)
 
 // -------------------------------------------------------------------------------------
 // flatten
@@ -652,25 +688,85 @@ ReadonlyArray.union(nonEmptyNumbers)(nonEmptyStrings)
 ReadonlyArray.unionWith(strings, numbers, Equal.equivalence<string | number>())
 
 // $ExpectType (string | number)[]
+ReadonlyArray.unionWith(strings, numbers, (
+  _a, // $ExpectType string
+  _b // $ExpectType number
+) => true)
+
+// $ExpectType (string | number)[]
 pipe(strings, ReadonlyArray.unionWith(numbers, Equal.equivalence<string | number>()))
+
+// $ExpectType (string | number)[]
+pipe(
+  strings,
+  ReadonlyArray.unionWith(numbers, (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true)
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
 ReadonlyArray.unionWith(nonEmptyStrings, numbers, Equal.equivalence<string | number>())
 
 // $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.unionWith(nonEmptyStrings, numbers, (
+  _a, // $ExpectType string
+  _b // $ExpectType number
+) => true)
+
+// $ExpectType [string | number, ...(string | number)[]]
 ReadonlyArray.unionWith(strings, nonEmptyNumbers, Equal.equivalence<string | number>())
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.unionWith(strings, nonEmptyNumbers, (
+  _a, // $ExpectType string
+  _b // $ExpectType number
+) => true)
 
 // $ExpectType [string | number, ...(string | number)[]]
 ReadonlyArray.unionWith(nonEmptyStrings, nonEmptyNumbers, Equal.equivalence<string | number>())
 
 // $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.unionWith(nonEmptyStrings, nonEmptyNumbers, (
+  _a, // $ExpectType string
+  _b // $ExpectType number
+) => true)
+
+// $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, ReadonlyArray.unionWith(numbers, Equal.equivalence<string | number>()))
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.unionWith(numbers, (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true)
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(strings, ReadonlyArray.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>()))
 
 // $ExpectType [string | number, ...(string | number)[]]
+pipe(
+  strings,
+  ReadonlyArray.unionWith(nonEmptyNumbers, (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true)
+)
+
+// $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, ReadonlyArray.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>()))
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.unionWith(nonEmptyNumbers, (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // dedupe
@@ -679,8 +775,14 @@ pipe(nonEmptyStrings, ReadonlyArray.unionWith(nonEmptyNumbers, Equal.equivalence
 // $ExpectType string[]
 ReadonlyArray.dedupe(strings)
 
+// $ExpectType string[]
+pipe(strings, ReadonlyArray.dedupe)
+
 // $ExpectType [string, ...string[]]
 ReadonlyArray.dedupe(nonEmptyStrings)
+
+// $ExpectType [string, ...string[]]
+pipe(nonEmptyStrings, ReadonlyArray.dedupe)
 
 // -------------------------------------------------------------------------------------
 // dedupeWith
@@ -690,29 +792,77 @@ ReadonlyArray.dedupe(nonEmptyStrings)
 ReadonlyArray.dedupeWith(strings, Equal.equivalence())
 
 // $ExpectType string[]
+ReadonlyArray.dedupeWith(strings, (
+  _a, // $ExpectType string
+  _b // $ExpectType string
+) => true)
+
+// $ExpectType string[]
 pipe(strings, ReadonlyArray.dedupeWith(Equal.equivalence()))
+
+// $ExpectType string[]
+pipe(
+  strings,
+  ReadonlyArray.dedupeWith((
+    _a, // $ExpectType string
+    _b // $ExpectType string
+  ) => true)
+)
 
 // $ExpectType [string, ...string[]]
 ReadonlyArray.dedupeWith(nonEmptyStrings, Equal.equivalence())
 
 // $ExpectType [string, ...string[]]
+ReadonlyArray.dedupeWith(nonEmptyStrings, (
+  _a, // $ExpectType string
+  _b // $ExpectType string
+) => true)
+
+// $ExpectType [string, ...string[]]
 pipe(nonEmptyStrings, ReadonlyArray.dedupeWith(Equal.equivalence()))
+
+// $ExpectType [string, ...string[]]
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.dedupeWith((
+    _a, // $ExpectType string
+    _b // $ExpectType string
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // chop
 // -------------------------------------------------------------------------------------
 
 // $ExpectType string[]
-ReadonlyArray.chop(strings, ([head, ...tail]) => [head, tail])
+ReadonlyArray.chop(strings, ([
+  head, // $ExpectType string
+  ...tail // $ExpectType string[]
+]) => [head, tail])
 
 // $ExpectType string[]
-pipe(strings, ReadonlyArray.chop(([head, ...tail]) => [head, tail]))
+pipe(
+  strings,
+  ReadonlyArray.chop(([
+    head, // $ExpectType string
+    ...tail // $ExpectType string[]
+  ]) => [head, tail])
+)
 
 // $ExpectType [string, ...string[]]
-ReadonlyArray.chop(nonEmptyStrings, ([head, ...tail]) => [head, tail])
+ReadonlyArray.chop(nonEmptyStrings, ([
+  head, // $ExpectType string
+  ...tail // $ExpectType string[]
+]) => [head, tail])
 
 // $ExpectType [string, ...string[]]
-pipe(nonEmptyStrings, ReadonlyArray.chop(([head, ...tail]) => [head, tail]))
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.chop(([
+    head, // $ExpectType string
+    ...tail // $ExpectType string[]
+  ]) => [head, tail])
+)
 
 // -------------------------------------------------------------------------------------
 // chunksOf
@@ -743,18 +893,42 @@ ReadonlyArray.chunksOf(10)(nonEmptyStrings)
 // $ExpectType string[]
 ReadonlyArray.reverse(strings)
 
+// $ExpectType string[]
+pipe(strings, ReadonlyArray.reverse)
+
 // $ExpectType [string, ...string[]]
 ReadonlyArray.reverse(nonEmptyStrings)
+
+// $ExpectType [string, ...string[]]
+pipe(nonEmptyStrings, ReadonlyArray.reverse)
 
 // -------------------------------------------------------------------------------------
 // sortBy
 // -------------------------------------------------------------------------------------
 
 // $ExpectType AB[]
-ReadonlyArray.sortBy(ordera)(abs)
+pipe(abs, ReadonlyArray.sortBy(ordera))
+
+// $ExpectType AB[]
+pipe(
+  abs,
+  ReadonlyArray.sortBy((
+    _a, // $ExpectType AB
+    _b // $ExpectType AB
+  ) => 0)
+)
 
 // $ExpectType [AB, ...AB[]]
-ReadonlyArray.sortBy(ordera)(nonEmptyabs)
+pipe(nonEmptyabs, ReadonlyArray.sortBy(ordera))
+
+// $ExpectType [AB, ...AB[]]
+pipe(
+  nonEmptyabs,
+  ReadonlyArray.sortBy((
+    _a, // $ExpectType AB
+    _b // $ExpectType AB
+  ) => 0)
+)
 
 // -------------------------------------------------------------------------------------
 // unzip
@@ -763,29 +937,45 @@ ReadonlyArray.sortBy(ordera)(nonEmptyabs)
 // $ExpectType [string[], number[]]
 ReadonlyArray.unzip(hole<Iterable<[string, number]>>())
 
+// $ExpectType [string[], number[]]
+pipe(hole<Iterable<[string, number]>>(), ReadonlyArray.unzip)
+
 // $ExpectType [[string, ...string[]], [number, ...number[]]]
 ReadonlyArray.unzip(hole<ReadonlyArray.NonEmptyReadonlyArray<[string, number]>>())
+
+// $ExpectType [[string, ...string[]], [number, ...number[]]]
+pipe(hole<ReadonlyArray.NonEmptyReadonlyArray<[string, number]>>(), ReadonlyArray.unzip)
 
 // -------------------------------------------------------------------------------------
 // zipWith
 // -------------------------------------------------------------------------------------
 
-declare const makeTuple: (a: string, b: number) => [string, number]
+// $ExpectType [string, number][]
+ReadonlyArray.zipWith(strings, numbers, (
+  a, // $ExpectType string
+  b // $ExpectType number
+) => [a, b] as [string, number])
 
 // $ExpectType [string, number][]
-ReadonlyArray.zipWith(strings, numbers, makeTuple)
-
-// $ExpectType [string, number][]
-pipe(strings, ReadonlyArray.zipWith(numbers, makeTuple))
-
-// $ExpectType [string, number][]
-ReadonlyArray.zipWith(numbers, makeTuple)(strings)
-
-// $ExpectType [[string, number], ...[string, number][]]
-ReadonlyArray.zipWith(nonEmptyStrings, nonEmptyNumbers, makeTuple)
+pipe(
+  strings,
+  ReadonlyArray.zipWith(numbers, (
+    a, // $ExpectType string
+    b // $ExpectType number
+  ) => [a, b] as [string, number])
+)
 
 // $ExpectType [[string, number], ...[string, number][]]
-pipe(nonEmptyStrings, ReadonlyArray.zipWith(nonEmptyNumbers, makeTuple))
+ReadonlyArray.zipWith(nonEmptyStrings, nonEmptyNumbers, (
+  a, // $ExpectType string
+  b // $ExpectType number
+) => [a, b] as [string, number])
 
 // $ExpectType [[string, number], ...[string, number][]]
-ReadonlyArray.zipWith(nonEmptyNumbers, makeTuple)(nonEmptyStrings)
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.zipWith(nonEmptyNumbers, (
+    a, // $ExpectType string
+    b // $ExpectType number
+  ) => [a, b] as [string, number])
+)

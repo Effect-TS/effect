@@ -362,27 +362,63 @@ pipe(nonEmptyStrings, Chunk.appendAll(nonEmptyNumbers))
 
 // $ExpectType Chunk<number>
 Chunk.flatMap(strings, (
-  _,
+  _s, // $ExpectType string
   _i // $ExpectType number
 ) => Chunk.empty<number>())
+
+// $ExpectType Chunk<number>
+pipe(
+  strings,
+  Chunk.flatMap((
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Chunk.empty<number>())
+)
 
 // $ExpectType Chunk<number>
 Chunk.flatMap(strings, (
-  s,
+  s, // $ExpectType string
   _i // $ExpectType number
 ) => Chunk.of(s.length))
 
 // $ExpectType Chunk<number>
+pipe(
+  strings,
+  Chunk.flatMap((
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Chunk.of(s.length))
+)
+
+// $ExpectType Chunk<number>
 Chunk.flatMap(nonEmptyStrings, (
-  _s,
+  _s, // $ExpectType string
   _i // $ExpectType number
 ) => Chunk.empty<number>())
 
+// $ExpectType Chunk<number>
+pipe(
+  nonEmptyStrings,
+  Chunk.flatMap((
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Chunk.empty<number>())
+)
+
 // $ExpectType NonEmptyChunk<number>
 Chunk.flatMap(nonEmptyStrings, (
-  s,
+  s, // $ExpectType string
   _i // $ExpectType number
 ) => Chunk.of(s.length))
+
+// $ExpectType NonEmptyChunk<number>
+pipe(
+  nonEmptyStrings,
+  Chunk.flatMap((
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Chunk.of(s.length))
+)
 
 // -------------------------------------------------------------------------------------
 // flatten
@@ -392,13 +428,25 @@ Chunk.flatMap(nonEmptyStrings, (
 Chunk.flatten(hole<Chunk.Chunk<Chunk.Chunk<number>>>())
 
 // $ExpectType Chunk<number>
+pipe(hole<Chunk.Chunk<Chunk.Chunk<number>>>(), Chunk.flatten)
+
+// $ExpectType Chunk<number>
 Chunk.flatten(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>())
+
+// $ExpectType Chunk<number>
+pipe(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten)
 
 // $ExpectType Chunk<number>
 Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>())
 
+// $ExpectType Chunk<number>
+pipe(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>(), Chunk.flatten)
+
 // $ExpectType NonEmptyChunk<number>
 Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>())
+
+// $ExpectType NonEmptyChunk<number>
+pipe(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten)
 
 declare const flattenChunk: Effect.Effect<never, never, Chunk.Chunk<Chunk.Chunk<number>>>
 declare const flattenNonEmptyChunk: Effect.Effect<never, never, Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>
