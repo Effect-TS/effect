@@ -721,8 +721,7 @@ export const forEach: {
  * @category sequencing
  */
 export const flatten: {
-  <A>(self: NonEmptyChunk<NonEmptyChunk<A>>): NonEmptyChunk<A>
-  <A>(self: Chunk<Chunk<A>>): Chunk<A>
+  <T extends Chunk<Chunk<any>>>(self: T): Chunk.Flatten<T>
 } = flatMap(identity) as any
 
 /**
@@ -843,6 +842,12 @@ export declare namespace Chunk {
   export type With2<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any> ? NonEmptyChunk<A>
     : T extends NonEmptyChunk<any> ? NonEmptyChunk<A>
     : Chunk<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type Flatten<T extends Chunk<Chunk<any>>> = T extends NonEmptyChunk<NonEmptyChunk<infer A>> ? NonEmptyChunk<A>
+    : Chunk<Chunk.Infer<Chunk.Infer<T>>>
 }
 
 /**

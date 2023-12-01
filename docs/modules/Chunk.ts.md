@@ -98,6 +98,7 @@ Added in v2.0.0
   - [unsafeLast](#unsafelast)
 - [utils](#utils)
   - [Chunk (namespace)](#chunk-namespace)
+    - [Flatten (type alias)](#flatten-type-alias)
     - [Infer (type alias)](#infer-type-alias)
     - [With (type alias)](#with-type-alias)
     - [With2 (type alias)](#with2-type-alias)
@@ -1047,10 +1048,7 @@ Flattens a chunk of chunks into a single chunk by concatenating all chunks.
 **Signature**
 
 ```ts
-export declare const flatten: {
-  <A>(self: NonEmptyChunk<NonEmptyChunk<A>>): NonEmptyChunk<A>
-  <A>(self: Chunk<Chunk<A>>): Chunk<A>
-}
+export declare const flatten: <T extends Chunk<Chunk<any>>>(self: T) => Chunk.Flatten<T>
 ```
 
 Added in v2.0.0
@@ -1146,6 +1144,18 @@ Added in v2.0.0
 # utils
 
 ## Chunk (namespace)
+
+Added in v2.0.0
+
+### Flatten (type alias)
+
+**Signature**
+
+```ts
+export type Flatten<T extends Chunk<Chunk<any>>> = T extends NonEmptyChunk<NonEmptyChunk<infer A>>
+  ? NonEmptyChunk<A>
+  : Chunk<Chunk.Infer<Chunk.Infer<T>>>
+```
 
 Added in v2.0.0
 
