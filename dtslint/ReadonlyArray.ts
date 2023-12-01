@@ -950,22 +950,32 @@ pipe(hole<ReadonlyArray.NonEmptyReadonlyArray<[string, number]>>(), ReadonlyArra
 // zipWith
 // -------------------------------------------------------------------------------------
 
-declare const makeTuple: (a: string, b: number) => [string, number]
+// $ExpectType [string, number][]
+ReadonlyArray.zipWith(strings, numbers, (
+  a, // $ExpectType string
+  b // $ExpectType number
+) => [a, b] as [string, number])
 
 // $ExpectType [string, number][]
-ReadonlyArray.zipWith(strings, numbers, makeTuple)
-
-// $ExpectType [string, number][]
-pipe(strings, ReadonlyArray.zipWith(numbers, makeTuple))
-
-// $ExpectType [string, number][]
-ReadonlyArray.zipWith(numbers, makeTuple)(strings)
-
-// $ExpectType [[string, number], ...[string, number][]]
-ReadonlyArray.zipWith(nonEmptyStrings, nonEmptyNumbers, makeTuple)
+pipe(
+  strings,
+  ReadonlyArray.zipWith(numbers, (
+    a, // $ExpectType string
+    b // $ExpectType number
+  ) => [a, b] as [string, number])
+)
 
 // $ExpectType [[string, number], ...[string, number][]]
-pipe(nonEmptyStrings, ReadonlyArray.zipWith(nonEmptyNumbers, makeTuple))
+ReadonlyArray.zipWith(nonEmptyStrings, nonEmptyNumbers, (
+  a, // $ExpectType string
+  b // $ExpectType number
+) => [a, b] as [string, number])
 
 // $ExpectType [[string, number], ...[string, number][]]
-ReadonlyArray.zipWith(nonEmptyNumbers, makeTuple)(nonEmptyStrings)
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.zipWith(nonEmptyNumbers, (
+    a, // $ExpectType string
+    b // $ExpectType number
+  ) => [a, b] as [string, number])
+)
