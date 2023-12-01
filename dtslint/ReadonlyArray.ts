@@ -907,10 +907,28 @@ pipe(nonEmptyStrings, ReadonlyArray.reverse)
 // -------------------------------------------------------------------------------------
 
 // $ExpectType AB[]
-ReadonlyArray.sortBy(ordera)(abs)
+pipe(abs, ReadonlyArray.sortBy(ordera))
+
+// $ExpectType AB[]
+pipe(
+  abs,
+  ReadonlyArray.sortBy((
+    _a, // $ExpectType AB
+    _b // $ExpectType AB
+  ) => 0)
+)
 
 // $ExpectType [AB, ...AB[]]
-ReadonlyArray.sortBy(ordera)(nonEmptyabs)
+pipe(nonEmptyabs, ReadonlyArray.sortBy(ordera))
+
+// $ExpectType [AB, ...AB[]]
+pipe(
+  nonEmptyabs,
+  ReadonlyArray.sortBy((
+    _a, // $ExpectType AB
+    _b // $ExpectType AB
+  ) => 0)
+)
 
 // -------------------------------------------------------------------------------------
 // unzip

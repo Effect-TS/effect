@@ -876,18 +876,19 @@ export const sortWith: {
  * @category sorting
  * @since 2.0.0
  */
-export const sortBy = <B>(...orders: ReadonlyArray<Order.Order<B>>): {
-  <A extends B>(as: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
-  <A extends B>(self: Iterable<A>): Array<A>
-} => {
+export const sortBy = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
+  ...orders: ReadonlyArray<Order.Order<ReadonlyArray.Infer<S>>>
+) => {
   const sortByAll = sort(Order.combineAll(orders))
-  return (<A extends B>(self: Iterable<A>): Array<A> => {
+  return (
+    self: S
+  ): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never => {
     const input = fromIterable(self)
     if (isNonEmptyReadonlyArray(input)) {
-      return sortByAll(input)
+      return sortByAll(input) as any
     }
-    return []
-  }) as any
+    return [] as any
+  }
 }
 
 /**
