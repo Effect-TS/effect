@@ -1736,9 +1736,9 @@ preserving the order of the first occurrence of each element.
 
 ```ts
 export declare const dedupeWith: {
-  <A>(
-    isEquivalent: (self: A, that: A) => boolean
-  ): <S extends readonly any[] | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
+  <S extends readonly any[] | Iterable<any>>(
+    isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<S>) => boolean
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A>(self: readonly [A, ...A[]], isEquivalent: (self: A, that: A) => boolean): [A, ...A[]]
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): A[]
 }

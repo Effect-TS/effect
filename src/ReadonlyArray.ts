@@ -1886,9 +1886,9 @@ export const forEach: {
  * @since 2.0.0
  */
 export const dedupeWith: {
-  <A>(
-    isEquivalent: (self: A, that: A) => boolean
-  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
+  <S extends ReadonlyArray<any> | Iterable<any>>(
+    isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<S>) => boolean
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A>(self: NonEmptyReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyArray<A>
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A>
 } = dual(

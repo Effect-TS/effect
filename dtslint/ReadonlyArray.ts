@@ -726,13 +726,43 @@ ReadonlyArray.dedupe(nonEmptyStrings)
 ReadonlyArray.dedupeWith(strings, Equal.equivalence())
 
 // $ExpectType string[]
+ReadonlyArray.dedupeWith(strings, (
+  _a, // $ExpectType string
+  _b // $ExpectType string
+) => true)
+
+// $ExpectType string[]
 pipe(strings, ReadonlyArray.dedupeWith(Equal.equivalence()))
+
+// $ExpectType string[]
+pipe(
+  strings,
+  ReadonlyArray.dedupeWith((
+    _a, // $ExpectType string
+    _b // $ExpectType string
+  ) => true)
+)
 
 // $ExpectType [string, ...string[]]
 ReadonlyArray.dedupeWith(nonEmptyStrings, Equal.equivalence())
 
 // $ExpectType [string, ...string[]]
+ReadonlyArray.dedupeWith(nonEmptyStrings, (
+  _a, // $ExpectType string
+  _b // $ExpectType string
+) => true)
+
+// $ExpectType [string, ...string[]]
 pipe(nonEmptyStrings, ReadonlyArray.dedupeWith(Equal.equivalence()))
+
+// $ExpectType [string, ...string[]]
+pipe(
+  nonEmptyStrings,
+  ReadonlyArray.dedupeWith((
+    _a, // $ExpectType string
+    _b // $ExpectType string
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // chop
