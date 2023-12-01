@@ -1915,10 +1915,10 @@ export const dedupeWith: {
  *
  * @since 2.0.0
  */
-export const dedupe: {
-  <A>(self: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
-  <A>(self: Iterable<A>): Array<A>
-} = dedupeWith(Equal.equivalence()) as any
+export const dedupe = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
+  self: S
+): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never =>
+  dedupeWith(self, Equal.equivalence()) as any
 
 /**
  * Deduplicates adjacent elements that are identical using the provided `isEquivalent` function.

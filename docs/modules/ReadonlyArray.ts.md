@@ -1695,7 +1695,9 @@ The equivalence used to compare elements is provided by `Equal.equivalence()` fr
 **Signature**
 
 ```ts
-export declare const dedupe: { <A>(self: readonly [A, ...A[]]): [A, ...A[]]; <A>(self: Iterable<A>): A[] }
+export declare const dedupe: <S extends Iterable<any> | readonly [any, ...any[]]>(
+  self: S
+) => S extends readonly [infer A, ...(infer A)[]] ? [A, ...A[]] : S extends Iterable<infer A> ? A[] : never
 ```
 
 Added in v2.0.0

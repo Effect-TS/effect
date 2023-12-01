@@ -775,8 +775,14 @@ pipe(
 // $ExpectType string[]
 ReadonlyArray.dedupe(strings)
 
+// $ExpectType string[]
+pipe(strings, ReadonlyArray.dedupe)
+
 // $ExpectType [string, ...string[]]
 ReadonlyArray.dedupe(nonEmptyStrings)
+
+// $ExpectType [string, ...string[]]
+pipe(nonEmptyStrings, ReadonlyArray.dedupe)
 
 // -------------------------------------------------------------------------------------
 // dedupeWith
