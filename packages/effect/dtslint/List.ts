@@ -232,13 +232,53 @@ pipe(nonEmptyStrings, List.prependAll(nonEmptyNumbers))
 // -------------------------------------------------------------------------------------
 
 // $ExpectType List<number>
-List.flatMap(strings, (_) => List.empty<number>())
+List.flatMap(strings, (
+  _s // $ExpectType string
+) => List.empty<number>())
 
 // $ExpectType List<number>
-List.flatMap(strings, (s) => List.of(s.length))
+pipe(
+  strings,
+  List.flatMap((
+    _s // $ExpectType string
+  ) => List.empty<number>())
+)
 
 // $ExpectType List<number>
-List.flatMap(nonEmptyStrings, (_s) => List.empty<number>())
+List.flatMap(strings, (
+  s // $ExpectType string
+) => List.of(s.length))
+
+// $ExpectType List<number>
+pipe(
+  strings,
+  List.flatMap((
+    s // $ExpectType string
+  ) => List.of(s.length))
+)
+
+// $ExpectType List<number>
+List.flatMap(nonEmptyStrings, (
+  _s // $ExpectType string
+) => List.empty<number>())
+
+// $ExpectType List<number>
+pipe(
+  nonEmptyStrings,
+  List.flatMap((
+    _s // $ExpectType string
+  ) => List.empty<number>())
+)
 
 // $ExpectType Cons<number>
-List.flatMap(nonEmptyStrings, (s) => List.of(s.length))
+List.flatMap(nonEmptyStrings, (
+  s // $ExpectType string
+) => List.of(s.length))
+
+// $ExpectType Cons<number>
+pipe(
+  nonEmptyStrings,
+  List.flatMap((
+    s // $ExpectType string
+  ) => List.of(s.length))
+)
