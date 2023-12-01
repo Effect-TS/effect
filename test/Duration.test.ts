@@ -3,7 +3,6 @@ import * as Duration from "effect/Duration"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Duration", () => {
@@ -246,6 +245,8 @@ describe.concurrent("Duration", () => {
 
   it(`inspect`, () => {
     if (typeof window === "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { inspect } = require("node:util")
       expect(inspect(Duration.millis(1000))).toEqual(
         inspect({ _id: "Duration", _tag: "Millis", millis: 1000 })
       )

@@ -1,7 +1,6 @@
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as MutableHashSet from "effect/MutableHashSet"
-import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 class Value implements Equal.Equal {
@@ -59,6 +58,9 @@ describe.concurrent("MutableHashSet", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
+
     const set = MutableHashSet.make(
       new Value(0, 1),
       new Value(2, 3)

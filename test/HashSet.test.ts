@@ -3,7 +3,6 @@ import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
-import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 class Value implements Equal.Equal {
@@ -51,6 +50,8 @@ describe.concurrent("HashSet", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
     const map = HashSet.make(0, "a")
     expect(inspect(map)).toEqual(inspect({ _id: "HashSet", values: [0, "a"] }))
   })

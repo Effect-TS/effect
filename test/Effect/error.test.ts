@@ -2,7 +2,6 @@ import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import { inspect } from "node:util"
 import { assert, describe, expect } from "vitest"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}
@@ -14,7 +13,7 @@ describe.concurrent("Effect", () => {
       const log = Cause.pretty(cause)
       expect(log).includes("TestError")
       if (typeof window === "undefined") {
-        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:13:78")
+        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:12:78")
       }
       expect(log).includes("at A")
     }))
@@ -32,7 +31,7 @@ describe.concurrent("Effect", () => {
       )
       const log = Cause.pretty(cause)
       if (typeof window === "undefined") {
-        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:27")
+        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:26")
       }
       expect(log).includes("at A")
     }))
@@ -55,12 +54,15 @@ describe.concurrent("Effect", () => {
       const log = Cause.pretty(cause)
       expect(log).includes("Failure: some message")
       if (typeof window === "undefined") {
-        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:49")
+        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:48")
       }
       expect(log).includes("at A")
     }))
 
   if (typeof window === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
+
     it.it("inspect", () => {
       class MessageError extends Data.TaggedError("MessageError") {
         get message() {
@@ -69,7 +71,7 @@ describe.concurrent("Effect", () => {
       }
       const err = new MessageError()
       expect(inspect(err)).include("MessageError: fail")
-      expect(inspect(err).replaceAll("\\", "/")).include("test/Effect/error.test.ts:70")
+      expect(inspect(err).replaceAll("\\", "/")).include("test/Effect/error.test.ts:72")
     })
 
     it.it("toString", () => {

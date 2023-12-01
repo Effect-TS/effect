@@ -6,7 +6,6 @@ import * as number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as RedBlackTree from "effect/RedBlackTree"
-import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("RedBlackTree", () => {
@@ -48,6 +47,9 @@ describe.concurrent("RedBlackTree", () => {
     if (typeof window !== "undefined") {
       return
     }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { inspect } = require("node:util")
+
     const tree = pipe(
       RedBlackTree.empty<number, string>(number.Order),
       RedBlackTree.insert(1, "a"),

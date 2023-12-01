@@ -5,7 +5,6 @@ import { flow, pipe } from "effect/Function"
 import * as N from "effect/Number"
 import * as O from "effect/Option"
 import * as S from "effect/String"
-import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("Either", () => {
@@ -95,6 +94,8 @@ describe.concurrent("Either", () => {
 
   it("inspect", () => {
     if (typeof window === "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { inspect } = require("node:util")
       expect(inspect(Either.right(1))).toEqual(inspect({ _id: "Either", _tag: "Right", right: 1 }))
       expect(inspect(Either.left("e"))).toEqual(inspect({ _id: "Either", _tag: "Left", left: "e" }))
     }

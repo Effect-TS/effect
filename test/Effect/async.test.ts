@@ -10,7 +10,6 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Runtime from "effect/Runtime"
-import * as os from "node:os"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
@@ -28,24 +27,28 @@ describe.concurrent("Effect", () => {
       }))
       assert.strictEqual(result, 42)
     }))
-  it.effect("deep asyncEffect doesn't block", () =>
-    Effect.gen(function*($) {
-      const asyncIO = (cont: Effect.Effect<never, never, number>): Effect.Effect<never, never, number> => {
-        return Effect.asyncEffect((cb) => {
-          return pipe(
-            Effect.sleep(Duration.millis(5)),
-            Effect.zipRight(cont),
-            Effect.zipRight(Effect.succeed(cb(Effect.succeed(42))))
-          )
-        })
-      }
-      const stackIOs = (count: number): Effect.Effect<never, never, number> => {
-        return count < 0 ? Effect.succeed(42) : asyncIO(stackIOs(count - 1))
-      }
-      const procNum = Effect.sync(() => os.cpus().length)
-      const result = yield* $(procNum, Effect.flatMap(stackIOs))
-      assert.strictEqual(result, 42)
-    }))
+  if (typeof window === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const os = require("node:os")
+    it.effect("deep asyncEffect doesn't block", () =>
+      Effect.gen(function*($) {
+        const asyncIO = (cont: Effect.Effect<never, never, number>): Effect.Effect<never, never, number> => {
+          return Effect.asyncEffect((cb) => {
+            return pipe(
+              Effect.sleep(Duration.millis(5)),
+              Effect.zipRight(cont),
+              Effect.zipRight(Effect.succeed(cb(Effect.succeed(42))))
+            )
+          })
+        }
+        const stackIOs = (count: number): Effect.Effect<never, never, number> => {
+          return count < 0 ? Effect.succeed(42) : asyncIO(stackIOs(count - 1))
+        }
+        const procNum = Effect.sync(() => os.cpus().length)
+        const result = yield* $(procNum, Effect.flatMap(stackIOs))
+        assert.strictEqual(result, 42)
+      }))
+  }
   it.effect("interrupt of asyncEffect register", () =>
     Effect.gen(function*($) {
       const release = yield* $(Deferred.make<never, void>())
