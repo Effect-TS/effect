@@ -435,6 +435,12 @@ describe.concurrent("Schedule", () => {
         )
         assert.strictEqual(result, "Error: 2")
       }))
+    it.effect("retry exactly 'n' times after failure", () =>
+      Effect.gen(function*($) {
+        const ref = yield* $(Ref.make(0))
+        const result = yield* $(alwaysFail(ref), Effect.retryN(3), Effect.flip)
+        assert.strictEqual(result, "Error: 4")
+      }))
     // TODO(Max): after TestRandom
     // it.skip("for a given number of times with random jitter in (0, 1)")
     // Effect.gen(function*(){
