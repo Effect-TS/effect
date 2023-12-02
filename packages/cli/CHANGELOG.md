@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.23.1
+
+### Patch Changes
+
+- [#403](https://github.com/Effect-TS/cli/pull/403) [`26ab5b5`](https://github.com/Effect-TS/cli/commit/26ab5b5304c84faf73e4d9e7a2443332e7a6b640) Thanks [@tim-smart](https://github.com/tim-smart)! - add Args/Options.withFallbackConfig
+
 ## 0.23.0
 
 ### Minor Changes
