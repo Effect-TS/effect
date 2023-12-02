@@ -1,6 +1,6 @@
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext, Runtime } from "@effect/platform-node"
-import { Console, Effect, Option, ReadonlyArray } from "effect"
+import { Config, ConfigProvider, Console, Effect, Option, ReadonlyArray } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
@@ -17,7 +17,10 @@ const minigit = Command.make("minigit", { configs }, ({ configs }) =>
 
 // minigit add   [-v | --verbose] [--] [<pathspec>...]
 const pathspec = Args.text({ name: "pathspec" }).pipe(Args.repeated)
-const verbose = Options.boolean("verbose").pipe(Options.withAlias("v"))
+const verbose = Options.boolean("verbose").pipe(
+  Options.withAlias("v"),
+  Options.withFallbackConfig(Config.boolean("VERBOSE"))
+)
 const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbose }) => {
   const paths = ReadonlyArray.match(pathspec, {
     onEmpty: () => "",
@@ -29,7 +32,10 @@ const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbo
 // minigit clone [--depth <depth>] [--] <repository> [<directory>]
 const repository = Args.text({ name: "repository" })
 const directory = Args.directory().pipe(Args.optional)
-const depth = Options.integer("depth").pipe(Options.optional)
+const depth = Options.integer("depth").pipe(
+  Options.withFallbackConfig(Config.integer("DEPTH")),
+  Options.optional
+)
 const minigitClone = Command.make(
   "clone",
   { repository, directory, depth },
@@ -58,6 +64,7 @@ const cli = Command.run(command, {
 })
 
 Effect.suspend(() => cli(process.argv.slice(2))).pipe(
+  Effect.withConfigProvider(ConfigProvider.nested(ConfigProvider.fromEnv(), "GIT")),
   Effect.provide(NodeContext.layer),
   Runtime.runMain
 )

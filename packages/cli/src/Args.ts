@@ -3,6 +3,7 @@
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
 import type { QuitException, Terminal } from "@effect/platform/Terminal"
+import type { Config } from "effect/Config"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { Option } from "effect/Option"
@@ -352,6 +353,15 @@ export const withDefault: {
   <const B>(fallback: B): <A>(self: Args<A>) => Args<B | A>
   <A, const B>(self: Args<A>, fallback: B): Args<A | B>
 } = InternalArgs.withDefault
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withFallbackConfig: {
+  <B>(config: Config<B>): <A>(self: Args<A>) => Args<B | A>
+  <A, B>(self: Args<A>, config: Config<B>): Args<A | B>
+} = InternalArgs.withFallbackConfig
 
 /**
  * @since 1.0.0

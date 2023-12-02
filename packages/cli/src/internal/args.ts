@@ -1,5 +1,6 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Terminal from "@effect/platform/Terminal"
+import type * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -51,6 +52,7 @@ export type Instruction =
   | Both
   | Variadic
   | WithDefault
+  | WithFallbackConfig
 
 /** @internal */
 export interface Empty extends Op<"Empty", {}> {}
@@ -98,6 +100,14 @@ export interface WithDefault extends
   }>
 {}
 
+/** @internal */
+export interface WithFallbackConfig extends
+  Op<"WithFallbackConfig", {
+    readonly args: Args.Args<unknown>
+    readonly config: Config.Config<unknown>
+  }>
+{}
+
 // =============================================================================
 // Refinements
 // =============================================================================
@@ -105,6 +115,9 @@ export interface WithDefault extends
 /** @internal */
 export const isArgs = (u: unknown): u is Args.Args<unknown> =>
   typeof u === "object" && u != null && ArgsTypeId in u
+
+/** @internal */
+export const isInstruction = <_>(self: Args.Args<_>): self is Instruction => self as any
 
 /** @internal */
 export const isEmpty = (self: Instruction): self is Empty => self._tag === "Empty"
@@ -120,6 +133,13 @@ export const isMap = (self: Instruction): self is Map => self._tag === "Map"
 
 /** @internal */
 export const isVariadic = (self: Instruction): self is Variadic => self._tag === "Variadic"
+
+/** @internal */
+export const isWithDefault = (self: Instruction): self is WithDefault => self._tag === "WithDefault"
+
+/** @internal */
+export const isWithFallbackConfig = (self: Instruction): self is WithFallbackConfig =>
+  self._tag === "WithFallbackConfig"
 
 // =============================================================================
 // Constructors
@@ -334,6 +354,23 @@ export const withDefault = dual<
 >(2, (self, fallback) => makeWithDefault(self, fallback))
 
 /** @internal */
+export const withFallbackConfig: {
+  <B>(config: Config.Config<B>): <A>(self: Args.Args<A>) => Args.Args<B | A>
+  <A, B>(self: Args.Args<A>, config: Config.Config<B>): Args.Args<A | B>
+} = dual<
+  <B>(config: Config.Config<B>) => <A>(self: Args.Args<A>) => Args.Args<A | B>,
+  <A, B>(self: Args.Args<A>, config: Config.Config<B>) => Args.Args<A | B>
+>(2, (self, config) => {
+  if (isInstruction(self) && isWithDefault(self)) {
+    return makeWithDefault(
+      withFallbackConfig(self.args, config),
+      self.fallback as any
+    )
+  }
+  return makeWithFallbackConfig(self, config)
+})
+
+/** @internal */
 export const withDescription = dual<
   (description: string) => <A>(self: Args.Args<A>) => Args.Args<A>,
   <A>(self: Args.Args<A>, description: string) => Args.Args<A>
@@ -432,6 +469,20 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
         }
       )
     }
+    case "WithFallbackConfig": {
+      return InternalHelpDoc.mapDescriptionList(
+        getHelpInternal(self.args as Instruction),
+        (span, block) => [
+          span,
+          InternalHelpDoc.sequence(
+            block,
+            InternalHelpDoc.p(
+              "This argument can be set from environment variables."
+            )
+          )
+        ]
+      )
+    }
   }
 }
 
@@ -445,7 +496,8 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
     }
     case "Map":
     case "Variadic":
-    case "WithDefault": {
+    case "WithDefault":
+    case "WithFallbackConfig": {
       return getIdentifierInternal(self.args as Instruction)
     }
     case "Both": {
@@ -464,7 +516,8 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
 const getMinSizeInternal = (self: Instruction): number => {
   switch (self._tag) {
     case "Empty":
-    case "WithDefault": {
+    case "WithDefault":
+    case "WithFallbackConfig": {
       return 0
     }
     case "Single": {
@@ -494,7 +547,8 @@ const getMaxSizeInternal = (self: Instruction): number => {
       return 1
     }
     case "Map":
-    case "WithDefault": {
+    case "WithDefault":
+    case "WithFallbackConfig": {
       return getMaxSizeInternal(self.args as Instruction)
     }
     case "Both": {
@@ -532,7 +586,8 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
     case "Variadic": {
       return InternalUsage.repeated(getUsageInternal(self.args as Instruction))
     }
-    case "WithDefault": {
+    case "WithDefault":
+    case "WithFallbackConfig": {
       return InternalUsage.optional(getUsageInternal(self.args as Instruction))
     }
   }
@@ -579,6 +634,17 @@ const makeWithDefault = <A, const B>(
   op._tag = "WithDefault"
   op.args = self
   op.fallback = fallback
+  return op
+}
+
+const makeWithFallbackConfig = <A, B>(
+  args: Args.Args<A>,
+  config: Config.Config<B>
+): Args.Args<A | B> => {
+  const op = Object.create(proto)
+  op._tag = "WithFallbackConfig"
+  op.args = args
+  op.config = config
   return op
 }
 
@@ -699,6 +765,15 @@ const validateInternal = (
           ]))
       )
     }
+    case "WithFallbackConfig": {
+      return validateInternal(self.args as Instruction, args, config).pipe(
+        Effect.catchTag("MissingValue", (e) =>
+          Effect.map(
+            Effect.mapError(Effect.config(self.config), () => e),
+            (value) => [args, value] as [ReadonlyArray<string>, any]
+          ))
+      )
+    }
   }
 }
 
@@ -731,6 +806,12 @@ const withDescriptionInternal = (self: Instruction, description: string): Args.A
       return makeWithDefault(
         withDescriptionInternal(self.args as Instruction, description),
         self.fallback
+      )
+    }
+    case "WithFallbackConfig": {
+      return makeWithFallbackConfig(
+        withDescriptionInternal(self.args as Instruction, description),
+        self.config
       )
     }
   }
@@ -816,6 +897,27 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         )
       )
     }
+    case "WithFallbackConfig": {
+      const defaultHelp = InternalHelpDoc.p(`Try load this option from the environment?`)
+      const message = pipe(
+        getHelpInternal(self.args as Instruction),
+        InternalHelpDoc.sequence(defaultHelp)
+      )
+      return InternalSelectPrompt.select({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        choices: [
+          { title: `Use environment variables`, value: true },
+          { title: "Custom", value: false }
+        ]
+      }).pipe(
+        Effect.zipLeft(Console.log()),
+        Effect.flatMap((useFallback) =>
+          useFallback
+            ? Effect.succeed(ReadonlyArray.empty())
+            : wizardInternal(self.args as Instruction, config)
+        )
+      )
+    }
   }
 }
 
@@ -834,7 +936,8 @@ const getShortDescription = (self: Instruction): string => {
     }
     case "Map":
     case "Variadic":
-    case "WithDefault": {
+    case "WithDefault":
+    case "WithFallbackConfig": {
       return getShortDescription(self.args as Instruction)
     }
   }
@@ -869,7 +972,8 @@ export const getFishCompletions = (self: Instruction): ReadonlyArray<string> => 
     }
     case "Map":
     case "Variadic":
-    case "WithDefault": {
+    case "WithDefault":
+    case "WithFallbackConfig": {
       return getFishCompletions(self.args as Instruction)
     }
   }
@@ -913,7 +1017,8 @@ export const getZshCompletions = (
         ? getZshCompletions(self.args as Instruction, { ...state, multiple: true })
         : getZshCompletions(self.args as Instruction, state)
     }
-    case "WithDefault": {
+    case "WithDefault":
+    case "WithFallbackConfig": {
       return getZshCompletions(self.args as Instruction, { ...state, optional: true })
     }
   }

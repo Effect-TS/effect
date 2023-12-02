@@ -1,14 +1,19 @@
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext } from "@effect/platform-node"
-import { Context, Effect, Layer } from "effect"
+import { Config, ConfigProvider, Context, Effect, Layer } from "effect"
 import { assert, describe, it } from "vitest"
 
 const git = Command.make("git", {
-  verbose: Options.boolean("verbose").pipe(Options.withAlias("v"))
+  verbose: Options.boolean("verbose").pipe(
+    Options.withAlias("v"),
+    Options.withFallbackConfig(Config.boolean("VERBOSE"))
+  )
 }).pipe(Command.withDescription("the stupid content tracker"))
 
 const clone = Command.make("clone", {
-  repository: Args.text({ name: "repository" })
+  repository: Args.text({ name: "repository" }).pipe(
+    Args.withFallbackConfig(Config.string("REPOSITORY"))
+  )
 }, ({ repository }) =>
   Effect.gen(function*(_) {
     const { log } = yield* _(Messages)
@@ -51,31 +56,57 @@ describe("Command", () => {
         assert.deepStrictEqual(yield* _(messages.messages), [])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
 
-    it.skip("add", () =>
+    it("add", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
         yield* _(run(["add", "file"]))
         yield* _(run(["--verbose", "add", "file"]))
-        yield* _(run(["add", "--verbose", "file"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "Adding",
-          "Adding file",
-          "Adding" // TODO: probably should be "Adding repo"
+          "Adding file"
         ])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
 
-    it.skip("clone", () =>
+    it("clone", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
         yield* _(run(["clone", "repo"]))
         yield* _(run(["--verbose", "clone", "repo"]))
-        yield* _(run(["clone", "--verbose", "repo"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "Cloning",
-          "Cloning repo",
-          "Cloning" // TODO: probably should be "Cloning repo"
+          "Cloning repo"
         ])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+    it("withFallbackConfig Options boolean", () =>
+      Effect.gen(function*(_) {
+        const messages = yield* _(Messages)
+        yield* _(run(["clone", "repo"]))
+        assert.deepStrictEqual(yield* _(messages.messages), [
+          "Cloning repo"
+        ])
+      }).pipe(
+        Effect.withConfigProvider(ConfigProvider.fromMap(
+          new Map([["VERBOSE", "true"]])
+        )),
+        Effect.provide(EnvLive),
+        Effect.runPromise
+      ))
+
+    it("withFallbackConfig Args", () =>
+      Effect.gen(function*(_) {
+        const messages = yield* _(Messages)
+        yield* _(run(["clone"]))
+        assert.deepStrictEqual(yield* _(messages.messages), [
+          "Cloning repo"
+        ])
+      }).pipe(
+        Effect.withConfigProvider(ConfigProvider.fromMap(
+          new Map([["VERBOSE", "true"], ["REPOSITORY", "repo"]])
+        )),
+        Effect.provide(EnvLive),
+        Effect.runPromise
+      ))
   })
 })
 
