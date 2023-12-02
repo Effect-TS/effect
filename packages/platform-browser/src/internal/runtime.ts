@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import type * as FiberId from "effect/FiberId"
@@ -6,7 +7,14 @@ import type * as FiberId from "effect/FiberId"
 export const runMain = <E, A>(
   effect: Effect.Effect<never, E, A>
 ) => {
-  const fiber = Effect.runFork(effect)
+  const fiber = Effect.runFork(
+    Effect.tapErrorCause(effect, (cause) => {
+      if (Cause.isInterruptedOnly(cause)) {
+        return Effect.unit
+      }
+      return Effect.logError(cause)
+    })
+  )
 
   fiber.addObserver(() => {
     Effect.runFork(interruptAll(fiber.id()))

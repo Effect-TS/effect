@@ -1,3 +1,4 @@
+import { runMain } from "@effect/platform-bun/Runtime"
 import * as Worker from "@effect/platform-bun/Worker"
 import { Console, Context, Effect, Stream } from "effect"
 import * as OS from "node:os"
@@ -28,4 +29,4 @@ Effect.gen(function*(_) {
       )
     ], { concurrency: "inherit" })
   )
-}).pipe(Effect.provide(PoolLive), Effect.tapErrorCause(Effect.log), Effect.runPromise)
+}).pipe(Effect.provide(PoolLive), runMain)
