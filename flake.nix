@@ -31,7 +31,7 @@
             bun
             deno
             nodejs_20
-            playwright-driver
+            playwright
           ];
         };
       };
