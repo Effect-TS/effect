@@ -96,8 +96,11 @@ export declare namespace Command {
    */
   export type Subcommands<
     A extends NonEmptyReadonlyArray<readonly [id: unknown, command: Command<any>]>
-  > = A[number] extends readonly [infer Id, Command<infer Value>] ? readonly [id: Id, value: Value]
-    : never
+  > = {
+    [I in keyof A]: A[I] extends readonly [infer Id, Command<infer Value>]
+      ? readonly [id: Id, value: Value]
+      : never
+  }[number]
 }
 
 /**
