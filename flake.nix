@@ -28,6 +28,7 @@
         default = pkgs.mkShell {
           buildInputs = with pkgs; [
             bun
+            deno
             nodejs_20
             corepackEnable
           ];

@@ -1,21 +1,28 @@
 name: Setup
 description: Perform standard setup and install dependencies using pnpm.
 inputs:
-  node-version:
-    description: The version of Node.js to install
+  cachixAuthToken:
+    description: The cachix auth token
     required: true
-    default: 20.9.0
 
 runs:
   using: composite
   steps:
-    - name: Install pnpm
-      uses: pnpm/action-setup@v2
-    - name: Install node
-      uses: actions/setup-node@v3
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@main
+    - uses: DeterminateSystems/magic-nix-cache-action@main
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      shell: bash
+      run: |
+        echo "::set-output name=pnpm_cache_dir::$(nix develop --command -- pnpm store path)"
+    - uses: actions/cache@v3
+      name: Cache pnpm
       with:
-        cache: pnpm
-        node-version: ${{ inputs.node-version }}
+        path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
     - name: Install dependencies
       shell: bash
-      run: pnpm install --ignore-scripts
+      run: nix develop --command -- pnpm install --ignore-scripts
