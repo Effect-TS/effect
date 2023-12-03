@@ -1,5 +1,15 @@
 # @effect/schema
 
+## 0.51.2
+
+### Patch Changes
+
+- [#618](https://github.com/Effect-TS/schema/pull/618) [`95a0354`](https://github.com/Effect-TS/schema/commit/95a03549ead66f3fb0fea76e68445c14718ca3e7) Thanks [@gcanti](https://github.com/gcanti)! - Arbitrary: remove runtime dependency from Schema module
+
+- [#617](https://github.com/Effect-TS/schema/pull/617) [`0cd3262`](https://github.com/Effect-TS/schema/commit/0cd326237cff52e2b0973850b1e167b2782fefa2) Thanks [@matheuspuel](https://github.com/matheuspuel)! - add Schema.transformLiteral and Schema.transformLiterals
+
+- [#618](https://github.com/Effect-TS/schema/pull/618) [`95a0354`](https://github.com/Effect-TS/schema/commit/95a03549ead66f3fb0fea76e68445c14718ca3e7) Thanks [@gcanti](https://github.com/gcanti)! - Pretty: remove runtime dependency from Schema module
+
 ## 0.51.1
 
 ### Patch Changes
