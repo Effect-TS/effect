@@ -1918,7 +1918,7 @@ const retryN_EffectLoop = <R, E, A>(
   n: number
 ): Effect.Effect<R, E, A> => {
   return core.catchAll(self, (e) =>
-    n < 0 ?
+    n <= 0 ?
       core.fail(e) :
       core.flatMap(core.yieldNow(), () => retryN_EffectLoop(self, n - 1)))
 }
