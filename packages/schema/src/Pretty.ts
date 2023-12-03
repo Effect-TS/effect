@@ -4,9 +4,11 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as Internal from "./internal/common.js"
+import * as Internal from "./internal/ast.js"
+import * as hooks from "./internal/hooks.js"
+import * as InternalSchema from "./internal/schema.js"
 import * as Parser from "./Parser.js"
-import * as Schema from "./Schema.js"
+import type * as Schema from "./Schema.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
@@ -21,7 +23,13 @@ export interface Pretty<To> {
  * @category hooks
  * @since 1.0.0
  */
-export const PrettyHookId = Internal.PrettyHookId
+export const PrettyHookId: unique symbol = hooks.PrettyHookId
+
+/**
+ * @category hooks
+ * @since 1.0.0
+ */
+export type PrettyHookId = typeof PrettyHookId
 
 /**
  * @category prettify
@@ -155,7 +163,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Union": (ast, go) => {
-    const types = ast.types.map((ast) => [Parser.is(Schema.make(ast)), go(ast)] as const)
+    const types = ast.types.map((ast) => [Parser.is(InternalSchema.make(ast)), go(ast)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
       return types[index][1](a)

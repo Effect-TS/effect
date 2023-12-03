@@ -8,9 +8,11 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as FastCheck from "fast-check"
 import * as AST from "./AST.js"
-import * as Internal from "./internal/common.js"
+import * as Internal from "./internal/ast.js"
+import * as filters from "./internal/filters.js"
+import * as hooks from "./internal/hooks.js"
 import * as Parser from "./Parser.js"
-import * as Schema from "./Schema.js"
+import type * as Schema from "./Schema.js"
 
 /**
  * @category model
@@ -24,7 +26,18 @@ export interface Arbitrary<A> {
  * @category hooks
  * @since 1.0.0
  */
-export const ArbitraryHookId = Internal.ArbitraryHookId
+export const ArbitraryHookId: unique symbol = hooks.ArbitraryHookId
+
+/**
+ * @category hooks
+ * @since 1.0.0
+ */
+export type ArbitraryHookId = typeof ArbitraryHookId
+
+/** @internal */
+export const unsafeTo = <I, A>(
+  schema: Schema.Schema<I, A>
+): (fc: typeof FastCheck) => FastCheck.Arbitrary<A> => go(schema.ast, {})
 
 /**
  * @category arbitrary
@@ -369,15 +382,15 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
   const jsonSchema: any = ast.annotations[AST.JSONSchemaAnnotationId]
   switch (TypeAnnotationId) {
     // number
-    case Schema.GreaterThanTypeId:
-    case Schema.GreaterThanOrEqualToTypeId:
+    case filters.GreaterThanTypeId:
+    case filters.GreaterThanOrEqualToTypeId:
       return numberConstraints({ min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum })
-    case Schema.LessThanTypeId:
-    case Schema.LessThanOrEqualToTypeId:
+    case filters.LessThanTypeId:
+    case filters.LessThanOrEqualToTypeId:
       return numberConstraints({ max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum })
-    case Schema.IntTypeId:
+    case filters.IntTypeId:
       return integerConstraints({})
-    case Schema.BetweenTypeId: {
+    case filters.BetweenTypeId: {
       const min = jsonSchema.minimum
       const max = jsonSchema.maximum
       const constraints: NumberConstraints["constraints"] = {}
@@ -390,17 +403,17 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
       return numberConstraints(constraints)
     }
     // bigint
-    case Schema.GreaterThanBigintTypeId:
-    case Schema.GreaterThanOrEqualToBigintTypeId: {
+    case filters.GreaterThanBigintTypeId:
+    case filters.GreaterThanOrEqualToBigintTypeId: {
       const params: any = ast.annotations[TypeAnnotationId]
       return bigintConstraints({ min: params.min })
     }
-    case Schema.LessThanBigintTypeId:
-    case Schema.LessThanOrEqualToBigintTypeId: {
+    case filters.LessThanBigintTypeId:
+    case filters.LessThanOrEqualToBigintTypeId: {
       const params: any = ast.annotations[TypeAnnotationId]
       return bigintConstraints({ max: params.max })
     }
-    case Schema.BetweenBigintTypeId: {
+    case filters.BetweenBigintTypeId: {
       const params: any = ast.annotations[TypeAnnotationId]
       const min = params.min
       const max = params.max
@@ -414,18 +427,18 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
       return bigintConstraints(constraints)
     }
     // string
-    case Schema.MinLengthTypeId:
+    case filters.MinLengthTypeId:
       return stringConstraints({ minLength: jsonSchema.minLength })
-    case Schema.MaxLengthTypeId:
+    case filters.MaxLengthTypeId:
       return stringConstraints({ maxLength: jsonSchema.maxLength })
-    case Schema.LengthTypeId:
+    case filters.LengthTypeId:
       return stringConstraints({ minLength: jsonSchema.minLength, maxLength: jsonSchema.maxLength })
     // array
-    case Schema.MinItemsTypeId:
+    case filters.MinItemsTypeId:
       return arrayConstraints({ minLength: jsonSchema.minItems })
-    case Schema.MaxItemsTypeId:
+    case filters.MaxItemsTypeId:
       return arrayConstraints({ maxLength: jsonSchema.maxItems })
-    case Schema.ItemsCountTypeId:
+    case filters.ItemsCountTypeId:
       return arrayConstraints({ minLength: jsonSchema.minItems, maxLength: jsonSchema.maxItems })
   }
 }

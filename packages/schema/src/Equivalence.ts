@@ -8,28 +8,35 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as Internal from "./internal/common.js"
+import * as Internal from "./internal/ast.js"
+import * as hooks from "./internal/hooks.js"
 import * as Parser from "./Parser.js"
-import type * as S from "./Schema.js"
+import type * as Schema from "./Schema.js"
 
 /**
  * @category hooks
  * @since 1.0.0
  */
-export const EquivalenceHookId = Internal.EquivalenceHookId
+export const EquivalenceHookId: unique symbol = hooks.EquivalenceHookId
+
+/**
+ * @category hooks
+ * @since 1.0.0
+ */
+export type EquivalenceHookId = typeof EquivalenceHookId
 
 /**
  * @category Equivalence
  * @since 1.0.0
  */
-export const to = <I, A>(schema: S.Schema<I, A>): Equivalence.Equivalence<A> =>
+export const to = <I, A>(schema: Schema.Schema<I, A>): Equivalence.Equivalence<A> =>
   go(AST.to(schema.ast))
 
 /**
  * @category Equivalence
  * @since 1.0.0
  */
-export const from = <I, A>(schema: S.Schema<I, A>): Equivalence.Equivalence<I> =>
+export const from = <I, A>(schema: Schema.Schema<I, A>): Equivalence.Equivalence<I> =>
   go(AST.from(schema.ast))
 
 const getHook = AST.getAnnotation<

@@ -4,23 +4,6 @@
 
 import type * as AST from "../AST.js"
 
-// ---------------------------------------------
-// hooks
-// ---------------------------------------------
-
-/** @internal */
-export const ArbitraryHookId = Symbol.for("@effect/schema/ArbitraryHookId")
-
-/** @internal */
-export const PrettyHookId = Symbol.for("@effect/schema/PrettyHookId")
-
-/** @internal */
-export const EquivalenceHookId = Symbol.for("@effect/schema/EquivalenceHookId")
-
-// ---------------------------------------------
-// Schema APIs
-// ---------------------------------------------
-
 /** @internal */
 export const getKeysForIndexSignature = (
   input: { readonly [x: PropertyKey]: unknown },
@@ -36,16 +19,6 @@ export const getKeysForIndexSignature = (
       return getKeysForIndexSignature(input, parameter.from)
   }
 }
-
-// ---------------------------------------------
-// general helpers
-// ---------------------------------------------
-
-/** @internal */
-export const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
-
-/** @internal */
-export const minSafeInteger = BigInt(Number.MIN_SAFE_INTEGER)
 
 /** @internal */
 export const ownKeys = (o: object): Array<PropertyKey> =>
