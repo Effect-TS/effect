@@ -27,10 +27,11 @@
       devShells = {
         default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            corepackEnable
             bun
             deno
             nodejs_20
-            corepackEnable
+            playwright-driver
           ];
         };
       };
