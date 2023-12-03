@@ -1,5 +1,11 @@
 # @effect/platform-browser
 
+## 0.20.3
+
+### Patch Changes
+
+- [#316](https://github.com/Effect-TS/platform/pull/316) [`19431f0`](https://github.com/Effect-TS/platform/commit/19431f0b5ccb8beacd502de876962f55cabf6ed4) Thanks [@tim-smart](https://github.com/tim-smart)! - add logging to runMain
+
 ## 0.20.2
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.33.5
+
+### Patch Changes
+
+- [#316](https://github.com/Effect-TS/platform/pull/316) [`19431f0`](https://github.com/Effect-TS/platform/commit/19431f0b5ccb8beacd502de876962f55cabf6ed4) Thanks [@tim-smart](https://github.com/tim-smart)! - add logging to runMain
+
 ## 0.33.4
 
 ### Patch Changes
