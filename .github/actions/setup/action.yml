@@ -15,11 +15,11 @@ runs:
       id: pnpm-cache
       shell: bash
       run: |
-        echo "::set-output name=pnpm_cache_dir::$(nix develop --command -- pnpm store path)"
+        echo "STORE_PATH=$(nix develop --command -- pnpm store path --silent)" >> $GITHUB_ENV
     - uses: actions/cache@v3
       name: Cache pnpm
       with:
-        path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
+        path: ${{ env.STORE_PATH }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: |
           ${{ runner.os }}-pnpm-store-
