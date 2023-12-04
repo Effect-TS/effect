@@ -10,15 +10,27 @@ import * as AST from "./AST.js"
 import * as Parser from "./Parser.js"
 import type * as Schema from "./Schema.js"
 
-interface JsonSchema7Any {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Any {
   $id: "/schemas/any"
 }
 
-interface JsonSchema7Unknown {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Unknown {
   $id: "/schemas/unknown"
 }
 
-interface JsonSchema7object {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7object {
   $id: "/schemas/object"
   oneOf: [
     { type: "object" },
@@ -26,7 +38,11 @@ interface JsonSchema7object {
   ]
 }
 
-interface JsonSchema7empty {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7empty {
   $id: "/schemas/{}"
   oneOf: [
     { type: "object" },
@@ -34,15 +50,27 @@ interface JsonSchema7empty {
   ]
 }
 
-interface JsonSchema7Ref {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Ref {
   $ref: string
 }
 
-interface JsonSchema7Const {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Const {
   const: AST.LiteralValue
 }
 
-interface JsonSchema7String {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7String {
   type: "string"
   minLength?: number
   maxLength?: number
@@ -50,26 +78,46 @@ interface JsonSchema7String {
   description?: string
 }
 
-interface JsonSchema7Numeric {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Numeric {
   minimum?: number
   exclusiveMinimum?: number
   maximum?: number
   exclusiveMaximum?: number
 }
 
-interface JsonSchema7Number extends JsonSchema7Numeric {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Number extends JsonSchema7Numeric {
   type: "number"
 }
 
-interface JsonSchema7Integer extends JsonSchema7Numeric {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Integer extends JsonSchema7Numeric {
   type: "integer"
 }
 
-interface JsonSchema7Boolean {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Boolean {
   type: "boolean"
 }
 
-interface JsonSchema7Array {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Array {
   type: "array"
   items?: JsonSchema7 | Array<JsonSchema7>
   minItems?: number
@@ -77,15 +125,27 @@ interface JsonSchema7Array {
   additionalItems?: JsonSchema7 | boolean
 }
 
-interface JsonSchema7OneOf {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7OneOf {
   oneOf: Array<JsonSchema7>
 }
 
-interface JsonSchema7Enum {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Enum {
   enum: Array<AST.LiteralValue>
 }
 
-interface JsonSchema7Enums {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Enums {
   $comment: "/schemas/enums"
   oneOf: Array<{
     title: string
@@ -93,11 +153,19 @@ interface JsonSchema7Enums {
   }>
 }
 
-interface JsonSchema7AnyOf {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7AnyOf {
   anyOf: Array<JsonSchema7>
 }
 
-interface JsonSchema7Object {
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Object {
   type: "object"
   required: Array<string>
   properties: Record<string, JsonSchema7>
@@ -105,7 +173,10 @@ interface JsonSchema7Object {
   patternProperties?: Record<string, JsonSchema7>
 }
 
-/** @internal */
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type JsonSchema7 =
   | JsonSchema7Any
   | JsonSchema7Unknown
@@ -124,7 +195,10 @@ export type JsonSchema7 =
   | JsonSchema7AnyOf
   | JsonSchema7Object
 
-/** @internal */
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type JsonSchema7Top = JsonSchema7 & {
   $schema?: string
   $defs?: Record<string, JsonSchema7>
