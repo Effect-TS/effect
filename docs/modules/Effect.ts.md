@@ -60,6 +60,10 @@ Added in v2.0.0
   - [configProviderWith](#configproviderwith)
   - [withConfigProvider](#withconfigprovider)
   - [withConfigProviderScoped](#withconfigproviderscoped)
+- [console](#console)
+  - [console](#console-1)
+  - [consoleWith](#consolewith)
+  - [withConsole](#withconsole)
 - [constructors](#constructors)
   - [async](#async)
   - [asyncEffect](#asynceffect)
@@ -83,6 +87,7 @@ Added in v2.0.0
   - [sync](#sync)
   - [unit](#unit)
   - [withClockScoped](#withclockscoped)
+  - [withConsoleScoped](#withconsolescoped)
   - [yieldNow](#yieldnow)
 - [context](#context)
   - [context](#context-1)
@@ -1269,6 +1274,49 @@ export declare const withConfigProviderScoped: (value: ConfigProvider) => Effect
 
 Added in v2.0.0
 
+# console
+
+## console
+
+Retreives the `Console` service from the context
+
+**Signature**
+
+```ts
+export declare const console: Effect<never, never, Console>
+```
+
+Added in v2.0.0
+
+## consoleWith
+
+Retreives the `Console` service from the context and provides it to the
+specified effectful function.
+
+**Signature**
+
+```ts
+export declare const consoleWith: <R, E, A>(f: (console: Console) => Effect<R, E, A>) => Effect<R, E, A>
+```
+
+Added in v2.0.0
+
+## withConsole
+
+Executes the specified workflow with the specified implementation of the
+console service.
+
+**Signature**
+
+```ts
+export declare const withConsole: {
+  <A extends Console>(console: A): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A extends Console>(effect: Effect<R, E, A>, console: A): Effect<R, E, A>
+}
+```
+
+Added in v2.0.0
+
 # constructors
 
 ## async
@@ -1576,6 +1624,19 @@ restores it to its original value when the scope is closed.
 
 ```ts
 export declare const withClockScoped: <A extends Clock.Clock>(value: A) => Effect<Scope.Scope, never, void>
+```
+
+Added in v2.0.0
+
+## withConsoleScoped
+
+Sets the implementation of the clock service to the specified value and
+restores it to its original value when the scope is closed.
+
+**Signature**
+
+```ts
+export declare const withConsoleScoped: <A extends Console>(console: A) => Effect<Scope.Scope, never, void>
 ```
 
 Added in v2.0.0
