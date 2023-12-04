@@ -1731,13 +1731,16 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
           ))
         }
       }
+      if (propertySignatureTransforms.length === 0) {
+        return ast
+      }
       return createTransform(
         ast,
         createTypeLiteral(
           ast.propertySignatures.map((ps) => {
             const name = mapping[ps.name]
-            return name === undefined ? ps : createPropertySignature(
-              name,
+            return createPropertySignature(
+              name === undefined ? ps.name : name,
               to(ps.type),
               ps.isOptional,
               ps.isReadonly,

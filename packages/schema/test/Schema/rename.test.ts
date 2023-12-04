@@ -1,6 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Schema > rename", () => {
   describe("Struct", () => {
@@ -74,9 +74,25 @@ describe("Schema > rename", () => {
   })
 
   it("pipe", async () => {
-    const renamed = S.struct({ a: S.string, b: S.number }).pipe(S.rename({ a: "c" }))
+    const renamed = S.struct({ a: S.string, b: S.number }).pipe(
+      S.rename({ a: "c" })
+    )
 
     await Util.expectParseSuccess(renamed, { a: "a", b: 1 }, { c: "a", b: 1 })
     await Util.expectEncodeSuccess(renamed, { c: "a", b: 1 }, { a: "a", b: 1 })
+  })
+
+  it("should return the same ast if there are no mappings", () => {
+    const schema = S.struct({ a: S.string })
+    const renamed = S.rename(schema, {})
+    expect(schema.ast === renamed.ast).toBe(true)
+  })
+
+  it("field transformation", async () => {
+    const schema = S.struct({ a: S.string, b: S.NumberFromString })
+    const renamed = S.rename(schema, { a: "c" })
+
+    await Util.expectParseSuccess(renamed, { a: "a", b: "1" }, { c: "a", b: 1 })
+    await Util.expectEncodeSuccess(renamed, { c: "a", b: 1 }, { a: "a", b: "1" })
   })
 })

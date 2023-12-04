@@ -18,7 +18,7 @@ export const propertyTo = <I, A>(
   params?: fc.Parameters<[A, ...Array<A>]>
 ) => {
   const arb = A.to(schema)(fc)
-  console.log(fc.sample(arb, 10))
+  // console.log(fc.sample(arb, 10))
   const equivalence = E.to(schema)
 
   const reflexivity = fc.property(arb, (a) => equivalence(a, a))
