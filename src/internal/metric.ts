@@ -118,13 +118,35 @@ export const fromMetricKey = <Type extends MetricKeyType.MetricKeyType<any, any>
   MetricKeyType.MetricKeyType.InType<Type>,
   MetricKeyType.MetricKeyType.OutType<Type>
 > => {
+  let untaggedHook_:
+    | MetricHook.MetricHook<
+      MetricKeyType.MetricKeyType.InType<Type>,
+      MetricKeyType.MetricKeyType.OutType<Type>
+    >
+    | undefined
+  const hookCache = new WeakMap<ReadonlyArray<MetricLabel.MetricLabel>, MetricHook.MetricHook<any, any>>()
+
   const hook = (extraTags: ReadonlyArray<MetricLabel.MetricLabel>): MetricHook.MetricHook<
     MetricKeyType.MetricKeyType.InType<Type>,
     MetricKeyType.MetricKeyType.OutType<Type>
   > => {
-    const fullKey = pipe(key, metricKey.taggedWithLabels(extraTags))
-    return globalMetricRegistry.get(fullKey)
+    if (extraTags.length === 0) {
+      if (untaggedHook_ !== undefined) {
+        return untaggedHook_
+      }
+      untaggedHook_ = globalMetricRegistry.get(key)
+      return untaggedHook_
+    }
+
+    let hook = hookCache.get(extraTags)
+    if (hook !== undefined) {
+      return hook
+    }
+    hook = globalMetricRegistry.get(metricKey.taggedWithLabels(key, extraTags))
+    hookCache.set(extraTags, hook)
+    return hook
   }
+
   return make(
     key.keyType,
     (input, extraTags) => hook(extraTags).update(input),

@@ -207,10 +207,10 @@ export const tagged: {
  */
 export const taggedWithLabels: {
   (
-    extraTags: Iterable<MetricLabel.MetricLabel>
+    extraTags: ReadonlyArray<MetricLabel.MetricLabel>
   ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey<Type>,
-    extraTags: Iterable<MetricLabel.MetricLabel>
+    extraTags: ReadonlyArray<MetricLabel.MetricLabel>
   ): MetricKey<Type>
 } = internal.taggedWithLabels

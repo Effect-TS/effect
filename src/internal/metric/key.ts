@@ -148,17 +148,15 @@ export const tagged = dual<
 /** @internal */
 export const taggedWithLabels = dual<
   (
-    extraTags: Iterable<MetricLabel.MetricLabel>
+    extraTags: ReadonlyArray<MetricLabel.MetricLabel>
   ) => <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey.MetricKey<Type>
   ) => MetricKey.MetricKey<Type>,
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey.MetricKey<Type>,
-    extraTags: Iterable<MetricLabel.MetricLabel>
+    extraTags: ReadonlyArray<MetricLabel.MetricLabel>
   ) => MetricKey.MetricKey<Type>
->(2, (self, extraTags) => {
-  const arr = ReadonlyArray.fromIterable(extraTags)
-  return arr.length === 0
+>(2, (self, extraTags) =>
+  extraTags.length === 0
     ? self
-    : new MetricKeyImpl(self.name, self.keyType, self.description, ReadonlyArray.union(self.tags, arr))
-})
+    : new MetricKeyImpl(self.name, self.keyType, self.description, ReadonlyArray.union(self.tags, extraTags)))

@@ -744,6 +744,9 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   reportExitValue(exit: Exit.Exit<E, A>) {
     if (_runtimeFlags.runtimeMetrics(this._runtimeFlags)) {
       const tags = this.getFiberRef(core.currentMetricLabels)
+      const startTimeMillis = this.id().startTimeMillis
+      const endTimeMillis = new Date().getTime()
+      fiberLifetimes.unsafeUpdate(endTimeMillis - startTimeMillis, tags)
       fiberActive.unsafeUpdate(-1, tags)
       switch (exit._tag) {
         case OpCodes.OP_SUCCESS: {
@@ -766,16 +769,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
 
   setExitValue(exit: Exit.Exit<E, A>) {
     this._exitValue = exit
-
-    if (_runtimeFlags.runtimeMetrics(this._runtimeFlags)) {
-      const tags = this.getFiberRef(core.currentMetricLabels)
-      const startTimeMillis = this.id().startTimeMillis
-      const endTimeMillis = new Date().getTime()
-      fiberLifetimes.unsafeUpdate(endTimeMillis - startTimeMillis, tags)
-    }
-
     this.reportExitValue(exit)
-
     for (let i = this._observers.length - 1; i >= 0; i--) {
       this._observers[i](exit)
     }
