@@ -165,12 +165,8 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
 
   const getBuckets = (): Chunk.Chunk<readonly [number, number]> => {
     const builder: Array<readonly [number, number]> = Array(size)
-    let cumulated = 0
     for (let i = 0; i < size; i++) {
-      const boundary = boundaries[i]
-      const value = values[i]
-      cumulated = cumulated + value
-      builder[i] = [boundary, cumulated]
+      builder[i] = [boundaries[i], values[i]]
     }
     return Chunk.unsafeFromArray(builder)
   }
