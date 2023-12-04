@@ -1,9 +1,5 @@
 name: Setup
 description: Perform standard setup and install dependencies using pnpm.
-inputs:
-  cachixAuthToken:
-    description: The cachix auth token
-    required: true
 
 runs:
   using: composite
