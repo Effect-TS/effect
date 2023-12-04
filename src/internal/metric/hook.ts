@@ -1,8 +1,6 @@
-import * as Chunk from "../../Chunk.js"
 import * as Duration from "../../Duration.js"
 import type { LazyArg } from "../../Function.js"
 import { dual, pipe } from "../../Function.js"
-import * as HashMap from "../../HashMap.js"
 import type * as MetricHook from "../../MetricHook.js"
 import type * as MetricKey from "../../MetricKey.js"
 import type * as MetricState from "../../MetricState.js"
@@ -88,9 +86,8 @@ export const frequency = (_key: MetricKey.MetricKey.Frequency): MetricHook.Metri
     const slotCount = values.get(word) ?? 0
     values.set(word, slotCount + 1)
   }
-  const snapshot = () => HashMap.fromIterable(values.entries())
   return make({
-    get: () => metricState.frequency(snapshot()),
+    get: () => metricState.frequency(values),
     update
   })
 }
@@ -125,8 +122,8 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
 
   pipe(
     bounds,
-    Chunk.sort(number.Order),
-    Chunk.map((n, i) => {
+    ReadonlyArray.sort(number.Order),
+    ReadonlyArray.map((n, i) => {
       boundaries[i] = n
     })
   )
@@ -163,7 +160,7 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
     }
   }
 
-  const getBuckets = (): Chunk.Chunk<readonly [number, number]> => {
+  const getBuckets = (): ReadonlyArray<readonly [number, number]> => {
     const builder: Array<readonly [number, number]> = Array(size)
     let cumulated = 0
     for (let i = 0; i < size; i++) {
@@ -172,7 +169,7 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
       cumulated = cumulated + value
       builder[i] = [boundary, cumulated]
     }
-    return Chunk.unsafeFromArray(builder)
+    return builder
   }
 
   return make({
@@ -191,7 +188,7 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
 /** @internal */
 export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook.Summary => {
   const { error, maxAge, maxSize, quantiles } = key.keyType
-  const sortedQuantiles = pipe(quantiles, Chunk.sort(number.Order))
+  const sortedQuantiles = pipe(quantiles, ReadonlyArray.sort(number.Order))
   const values = Array<readonly [number, number]>(maxSize)
 
   let head = 0
@@ -201,7 +198,7 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
   let max = Number.MIN_VALUE
 
   // Just before the snapshot we filter out all values older than maxAge
-  const snapshot = (now: number): Chunk.Chunk<readonly [number, Option.Option<number>]> => {
+  const snapshot = (now: number): ReadonlyArray<readonly [number, Option.Option<number>]> => {
     const builder: Array<number> = []
     // If the buffer is not full yet it contains valid items at the 0..last
     // indices and null values at the rest of the positions.
@@ -230,7 +227,7 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
     return calculateQuantiles(
       error,
       sortedQuantiles,
-      pipe(Chunk.unsafeFromArray(builder), Chunk.sort(number.Order))
+      ReadonlyArray.sort(builder, number.Order)
     )
   }
 
@@ -282,54 +279,44 @@ interface ResolvedQuantile {
   /**
    * The rest of the samples after the quantile has been resolved.
    */
-  readonly rest: Chunk.Chunk<number>
+  readonly rest: ReadonlyArray<number>
 }
 
 /** @internal */
 const calculateQuantiles = (
   error: number,
-  sortedQuantiles: Chunk.Chunk<number>,
-  sortedSamples: Chunk.Chunk<number>
-): Chunk.Chunk<readonly [number, Option.Option<number>]> => {
+  sortedQuantiles: ReadonlyArray<number>,
+  sortedSamples: ReadonlyArray<number>
+): ReadonlyArray<readonly [number, Option.Option<number>]> => {
   // The number of samples examined
   const sampleCount = sortedSamples.length
-  if (Chunk.isEmpty(sortedQuantiles)) {
-    return Chunk.empty()
+  if (!ReadonlyArray.isNonEmptyReadonlyArray(sortedQuantiles)) {
+    return ReadonlyArray.empty()
   }
-  const head = Chunk.unsafeHead(sortedQuantiles)
-  const tail = pipe(sortedQuantiles, Chunk.drop(1))
-  const resolved = pipe(
-    tail,
-    ReadonlyArray.reduce(
-      Chunk.of(
-        resolveQuantile(
-          error,
-          sampleCount,
-          Option.none(),
-          0,
-          head,
-          sortedSamples
-        )
-      ) as Chunk.Chunk<ResolvedQuantile>,
-      (accumulator, quantile) => {
-        const h = Chunk.unsafeHead(accumulator)
-        return pipe(
-          accumulator,
-          Chunk.append(
-            resolveQuantile(
-              error,
-              sampleCount,
-              h.value,
-              h.consumed,
-              quantile,
-              h.rest
-            )
-          )
-        )
-      }
-    )
+  const head = sortedQuantiles[0]
+  const tail = sortedQuantiles.slice(1)
+  const resolvedHead = resolveQuantile(
+    error,
+    sampleCount,
+    Option.none(),
+    0,
+    head,
+    sortedSamples
   )
-  return pipe(resolved, Chunk.map((rq) => [rq.quantile, rq.value] as const))
+  const resolved = ReadonlyArray.of(resolvedHead)
+  tail.forEach((quantile) => {
+    resolved.push(
+      resolveQuantile(
+        error,
+        sampleCount,
+        resolvedHead.value,
+        resolvedHead.consumed,
+        quantile,
+        resolvedHead.rest
+      )
+    )
+  })
+  return ReadonlyArray.map(resolved, (rq) => [rq.quantile, rq.value] as const)
 }
 
 /** @internal */
@@ -339,7 +326,7 @@ const resolveQuantile = (
   current: Option.Option<number>,
   consumed: number,
   quantile: number,
-  rest: Chunk.Chunk<number>
+  rest: ReadonlyArray<number>
 ): ResolvedQuantile => {
   let error_1 = error
   let sampleCount_1 = sampleCount
@@ -356,12 +343,12 @@ const resolveQuantile = (
   // eslint-disable-next-line no-constant-condition
   while (1) {
     // If the remaining list of samples is empty, there is nothing more to resolve
-    if (Chunk.isEmpty(rest_1)) {
+    if (!ReadonlyArray.isNonEmptyReadonlyArray(rest_1)) {
       return {
         quantile: quantile_1,
         value: Option.none(),
         consumed: consumed_1,
-        rest: Chunk.empty()
+        rest: []
       }
     }
     // If the quantile is the 100% quantile, we can take the maximum of all the
@@ -369,14 +356,14 @@ const resolveQuantile = (
     if (quantile_1 === 1) {
       return {
         quantile: quantile_1,
-        value: Option.some(Chunk.unsafeLast(rest_1)),
+        value: Option.some(ReadonlyArray.lastNonEmpty(rest_1)),
         consumed: consumed_1 + rest_1.length,
-        rest: Chunk.empty()
+        rest: []
       }
     }
     // Split into two chunks - the first chunk contains all elements of the same
     // value as the chunk head
-    const sameHead = pipe(rest_1, Chunk.splitWhere((n) => n > Chunk.unsafeHead(rest_1)))
+    const sameHead = ReadonlyArray.span(rest_1, (n) => n <= rest_1[0])
     // How many elements do we want to accept for this quantile
     const desired = quantile_1 * sampleCount_1
     // The error margin
@@ -390,7 +377,7 @@ const resolveQuantile = (
     if (candConsumed < desired - allowedError) {
       error_2 = error_1
       sampleCount_2 = sampleCount_1
-      current_2 = Chunk.head(rest_1)
+      current_2 = ReadonlyArray.head(rest_1)
       consumed_2 = candConsumed
       quantile_2 = quantile_1
       rest_2 = sameHead[1]
@@ -418,7 +405,7 @@ const resolveQuantile = (
       case "None": {
         error_2 = error_1
         sampleCount_2 = sampleCount_1
-        current_2 = Chunk.head(rest_1)
+        current_2 = ReadonlyArray.head(rest_1)
         consumed_2 = candConsumed
         quantile_2 = quantile_1
         rest_2 = sameHead[1]
@@ -435,7 +422,7 @@ const resolveQuantile = (
         if (candError < prevError) {
           error_2 = error_1
           sampleCount_2 = sampleCount_1
-          current_2 = Chunk.head(rest_1)
+          current_2 = ReadonlyArray.head(rest_1)
           consumed_2 = candConsumed
           quantile_2 = quantile_1
           rest_2 = sameHead[1]

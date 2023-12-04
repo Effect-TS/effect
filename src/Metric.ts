@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
 import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import type { LazyArg } from "./Function.js"
@@ -409,7 +408,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ) => Metric.Summary<number> = internal.summary
@@ -424,7 +423,7 @@ export const summaryTimestamp: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ) => Metric.Summary<readonly [value: number, timestamp: number]> // readonly because contravariant
@@ -498,7 +497,7 @@ export const timer: (
  */
 export const timerWithBoundaries: (
   name: string,
-  boundaries: Chunk.Chunk<number>,
+  boundaries: ReadonlyArray<number>,
   description?: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram> =
   internal.timerWithBoundaries

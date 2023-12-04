@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
 import type * as Duration from "./Duration.js"
 import type * as Equal from "./Equal.js"
 import * as internal from "./internal/metric/keyType.js"
@@ -143,7 +142,7 @@ export declare namespace MetricKeyType {
     readonly maxAge: Duration.Duration
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
   }
 
   /**
@@ -217,7 +216,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
   }
 ) => MetricKeyType.Summary = internal.summary
 

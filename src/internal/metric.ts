@@ -1,4 +1,3 @@
-import type * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
@@ -218,7 +217,7 @@ export const summary = (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ): Metric.Metric.Summary<number> => withNow(summaryTimestamp(options))
@@ -230,7 +229,7 @@ export const summaryTimestamp = (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ): Metric.Metric.Summary<readonly [value: number, timestamp: number]> => fromMetricKey(metricKey.summary(options))
@@ -300,7 +299,7 @@ export const timer = (name: string, description?: string): Metric.Metric<
 /** @internal */
 export const timerWithBoundaries = (
   name: string,
-  boundaries: Chunk.Chunk<number>,
+  boundaries: ReadonlyArray<number>,
   description?: string
 ): Metric.Metric<
   MetricKeyType.MetricKeyType.Histogram,
@@ -308,7 +307,7 @@ export const timerWithBoundaries = (
   MetricState.MetricState.Histogram
 > => {
   const base = pipe(
-    histogram(name, metricBoundaries.fromChunk(boundaries), description),
+    histogram(name, metricBoundaries.fromIterable(boundaries), description),
     tagged("time_unit", "milliseconds")
   )
   return mapInput(base, Duration.toMillis)

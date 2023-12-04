@@ -19,9 +19,9 @@ class MetricLabelImpl implements MetricLabel.MetricLabel {
   constructor(readonly key: string, readonly value: string) {}
   [Hash.symbol](): number {
     return pipe(
-      Hash.hash(MetricLabelSymbolKey),
-      Hash.combine(Hash.hash(this.key)),
-      Hash.combine(Hash.hash(this.value))
+      Hash.string(MetricLabelSymbolKey),
+      Hash.combine(Hash.string(this.key)),
+      Hash.combine(Hash.string(this.value))
     )
   }
   [Equal.symbol](that: unknown): boolean {

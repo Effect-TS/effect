@@ -1,4 +1,3 @@
-import type * as Chunk from "../../Chunk.js"
 import * as Duration from "../../Duration.js"
 import * as Equal from "../../Equal.js"
 import { pipe } from "../../Function.js"
@@ -140,7 +139,7 @@ class SummaryKeyType implements MetricKeyType.MetricKeyType.Summary {
     readonly maxAge: Duration.Duration,
     readonly maxSize: number,
     readonly error: number,
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
   ) {}
   [Hash.symbol](): number {
     return pipe(
@@ -210,7 +209,7 @@ export const summary = (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
   }
 ): MetricKeyType.MetricKeyType.Summary => {
   return new SummaryKeyType(Duration.decode(options.maxAge), options.maxSize, options.error, options.quantiles)

@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
 import type * as Duration from "./Duration.js"
 import type * as Equal from "./Equal.js"
 import type * as HashSet from "./HashSet.js"
@@ -178,7 +177,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ) => MetricKey.Summary = internal.summary
