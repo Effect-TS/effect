@@ -7,6 +7,7 @@ import type * as Clock from "./Clock.js"
 import type { Config } from "./Config.js"
 import type { ConfigError } from "./ConfigError.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
+import type { Console } from "./Console.js"
 import type * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
@@ -25,6 +26,7 @@ import { dual, identity } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
+import * as _console from "./internal/console.js"
 import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
@@ -2827,6 +2829,49 @@ export const withClock: {
   <A extends Clock.Clock>(value: A): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A extends Clock.Clock>(effect: Effect<R, E, A>, value: A): Effect<R, E, A>
 } = defaultServices.withClock
+
+// -------------------------------------------------------------------------------------
+// console
+// -------------------------------------------------------------------------------------
+
+/**
+ * Retreives the `Console` service from the context
+ *
+ * @since 2.0.0
+ * @category console
+ */
+export const console: Effect<never, never, Console> = _console.console
+
+/**
+ * Retreives the `Console` service from the context and provides it to the
+ * specified effectful function.
+ *
+ * @since 2.0.0
+ * @category console
+ */
+export const consoleWith: <R, E, A>(f: (console: Console) => Effect<R, E, A>) => Effect<R, E, A> = _console.consoleWith
+
+/**
+ * Sets the implementation of the clock service to the specified value and
+ * restores it to its original value when the scope is closed.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const withConsoleScoped: <A extends Console>(console: A) => Effect<Scope.Scope, never, void> =
+  _console.withConsoleScoped
+
+/**
+ * Executes the specified workflow with the specified implementation of the
+ * console service.
+ *
+ * @since 2.0.0
+ * @category console
+ */
+export const withConsole: {
+  <A extends Console>(console: A): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A extends Console>(effect: Effect<R, E, A>, console: A): Effect<R, E, A>
+} = _console.withConsole
 
 // ---------------------------------------------------------------------------------------
 // delays & timeouts
