@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.51.3
+
+### Patch Changes
+
+- [#621](https://github.com/Effect-TS/schema/pull/621) [`c97aad8`](https://github.com/Effect-TS/schema/commit/c97aad8f83e434bcd7fd7b738a917f8a937772b0) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add `fromJson` combinator
+
 ## 0.51.2
 
 ### Patch Changes
