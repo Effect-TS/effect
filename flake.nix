@@ -25,22 +25,22 @@
       formatter = pkgs.alejandra;
 
       devShells = {
-        default = with pkgs; mkShell {
-          buildInputs = [
-            corepackEnable
-            bun
-            deno
-            nodejs_20
-            playwright-test
-          ];
+        default = with pkgs;
+          mkShell {
+            buildInputs = [
+              corepackEnable
+              bun
+              deno
+              nodejs_20
+            ];
 
-          PLAYWRIGHT_BROWSERS_PATH="${playwright-driver.browsers}";
+            nativeBuildInputs = [
+              playwright-driver.browsers
+            ];
 
-          shellHook = ''
-            # Remove playwright from node_modules, so it will be taken from playwright-test
-            rm node_modules/@playwright/ -R
-          '';
-        };
+            PLAYWRIGHT_BROWSERS_PATH = "${playwright-driver.browsers}";
+            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+          };
       };
     });
 }
