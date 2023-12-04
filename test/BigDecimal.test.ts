@@ -288,7 +288,7 @@ describe.concurrent("BigDecimal", () => {
   })
 
   it("toString()", () => {
-    deepStrictEqual(String(_("2")), "2")
+    deepStrictEqual(String(_("2")), "BigDecimal(2)")
   })
 
   it("Equal.symbol", () => {

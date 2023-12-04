@@ -64,7 +64,7 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
     return isBigDecimal(that) && equals(this, that)
   },
   toString(this: BigDecimal) {
-    return format(this)
+    return `BigDecimal(${format(this)})`
   },
   toJSON(this: BigDecimal) {
     return {
