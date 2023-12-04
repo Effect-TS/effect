@@ -2008,17 +2008,25 @@ export const split: {
 )
 
 /**
+ * @since 1.0.0
+ */
+export type JsonOptions = {
+  readonly reviver?: Parameters<typeof JSON.parse>[1]
+  readonly replacer?: Parameters<typeof JSON.stringify>[1]
+  readonly space?: Parameters<typeof JSON.stringify>[2]
+}
+
+/**
  * The `parseJson` combinator offers a method to convert JSON strings into the `unknown` type using the underlying
  * functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
  *
  * @category string transformations
  * @since 1.0.0
  */
-export const parseJson = <I, A extends string>(self: Schema<I, A>, options?: {
-  reviver?: Parameters<typeof JSON.parse>[1]
-  replacer?: Parameters<typeof JSON.stringify>[1]
-  space?: Parameters<typeof JSON.stringify>[2]
-}): Schema<I, unknown> => {
+export const parseJson = <I, A extends string>(
+  self: Schema<I, A>,
+  options?: JsonOptions
+): Schema<I, unknown> => {
   return transformOrFail(
     self,
     unknown,
@@ -2035,6 +2043,18 @@ export const parseJson = <I, A extends string>(self: Schema<I, A>, options?: {
     { strict: false }
   )
 }
+
+/**
+ * The `fromJson` combinator offers a method to convert JSON strings into the `A` type using the underlying
+ * functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
+ *
+ * @category string transformations
+ * @since 1.0.0
+ */
+export const fromJson = <I, A>(
+  schema: Schema<I, A>,
+  options?: JsonOptions
+): Schema<string, A> => compose(parseJson(string, options), schema)
 
 // ---------------------------------------------
 // string constructors

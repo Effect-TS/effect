@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/ParseJson", () => {
+describe("Schema/parseJson", () => {
   it("decoding", async () => {
     const schema = S.ParseJson
     await Util.expectParseSuccess(schema, "{}", {})
