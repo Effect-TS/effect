@@ -4,7 +4,6 @@
 import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import type { LazyArg } from "./Function.js"
-import type * as HashSet from "./HashSet.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/metric.js"
 import type * as MetricBoundaries from "./MetricBoundaries.js"
@@ -55,8 +54,8 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
    * `MetricKeyType.Counter` or `MetricKeyType.Gauge`.
    */
   readonly keyType: Type
-  unsafeUpdate(input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): void
-  unsafeValue(extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): Out
+  unsafeUpdate(input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>): void
+  unsafeValue(extraTags: ReadonlyArray<MetricLabel.MetricLabel>): Out
   register(): this
   <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 }
@@ -68,8 +67,8 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
 export interface MetricApply {
   <Type, In, Out>(
     keyType: Type,
-    unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void,
-    unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
+    unsafeUpdate: (input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => void,
+    unsafeValue: (extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => Out
   ): Metric<Type, In, Out>
 }
 
@@ -356,7 +355,7 @@ export const set: {
  * @since 2.0.0
  * @category getters
  */
-export const snapshot: Effect.Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>> = internal.snapshot
+export const snapshot: Effect.Effect<never, never, ReadonlyArray<MetricPair.MetricPair.Untyped>> = internal.snapshot
 
 /**
  * Creates a metric that ignores input and produces constant output.
@@ -722,7 +721,7 @@ export const zip: {
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeSnapshot: (_: void) => HashSet.HashSet<MetricPair.MetricPair.Untyped> = internal.unsafeSnapshot
+export const unsafeSnapshot: (_: void) => ReadonlyArray<MetricPair.MetricPair.Untyped> = internal.unsafeSnapshot
 
 /**
  * @since 2.0.0

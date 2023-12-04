@@ -14,6 +14,7 @@ import * as ContextPatch from "./internal/differ/contextPatch.js"
 import * as HashMapPatch from "./internal/differ/hashMapPatch.js"
 import * as HashSetPatch from "./internal/differ/hashSetPatch.js"
 import * as OrPatch from "./internal/differ/orPatch.js"
+import * as ReadonlyArrayPatch from "./internal/differ/readonlyArrayPatch.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -63,6 +64,8 @@ const ContextPatchTypeId: unique symbol = ContextPatch.ContextPatchTypeId as Dif
 const HashMapPatchTypeId: unique symbol = HashMapPatch.HashMapPatchTypeId as Differ.HashMap.TypeId
 const HashSetPatchTypeId: unique symbol = HashSetPatch.HashSetPatchTypeId as Differ.HashSet.TypeId
 const OrPatchTypeId: unique symbol = OrPatch.OrPatchTypeId as Differ.Or.TypeId
+const ReadonlyArrayPatchTypeId: unique symbol = ReadonlyArrayPatch
+  .ReadonlyArrayPatchTypeId as Differ.ReadonlyArray.TypeId
 
 /**
  * @since 2.0.0
@@ -183,6 +186,29 @@ export declare namespace Differ {
         readonly _Value2: Types.Invariant<Value2>
         readonly _Patch: Types.Invariant<Patch>
         readonly _Patch2: Types.Invariant<Patch2>
+      }
+    }
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace ReadonlyArray {
+    /**
+     * @since 2.0.0
+     * @category symbol
+     */
+    export type TypeId = typeof ReadonlyArrayPatchTypeId
+    /**
+     * A patch which describes updates to a chunk of values.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Patch<in out Value, in out Patch> extends Equal {
+      readonly [ReadonlyArrayPatchTypeId]: {
+        readonly _Value: Types.Invariant<Value>
+        readonly _Patch: Types.Invariant<Patch>
       }
     }
   }
@@ -351,6 +377,16 @@ export const orElseEither: {
     Differ.Or.Patch<Value, Value2, Patch, Patch2>
   >
 } = internal.orElseEither
+
+/**
+ * Constructs a differ that knows how to diff a `HashSet` of values.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const readonlyArray: <Value, Patch>(
+  differ: Differ<Value, Patch>
+) => Differ<ReadonlyArray<Value>, Differ.ReadonlyArray.Patch<Value, Patch>> = internal.readonlyArray
 
 /**
  * Transforms the type of values that this differ knows how to differ using

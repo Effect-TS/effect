@@ -12,6 +12,7 @@ import * as ContextPatch from "./differ/contextPatch.js"
 import * as HashMapPatch from "./differ/hashMapPatch.js"
 import * as HashSetPatch from "./differ/hashSetPatch.js"
 import * as OrPatch from "./differ/orPatch.js"
+import * as ReadonlyArrayPatch from "./differ/readonlyArrayPatch.js"
 
 /** @internal */
 export const DifferTypeId: Differ.TypeId = Symbol.for("effect/Differ") as Differ.TypeId
@@ -108,6 +109,17 @@ export const orElseEither = Dual.dual<
         right: that
       })
   }))
+
+/** @internal */
+export const readonlyArray = <Value, Patch>(
+  differ: Differ.Differ<Value, Patch>
+): Differ.Differ<ReadonlyArray<Value>, Differ.Differ.ReadonlyArray.Patch<Value, Patch>> =>
+  make({
+    empty: ReadonlyArrayPatch.empty(),
+    combine: (first, second) => ReadonlyArrayPatch.combine(first, second),
+    diff: (oldValue, newValue) => ReadonlyArrayPatch.diff({ oldValue, newValue, differ }),
+    patch: (patch, oldValue) => ReadonlyArrayPatch.patch(patch, oldValue, differ)
+  })
 
 /** @internal */
 export const transform = Dual.dual<

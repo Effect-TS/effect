@@ -2,7 +2,6 @@ import type * as Duration from "../../Duration.js"
 import * as Equal from "../../Equal.js"
 import { dual, pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
-import * as HashSet from "../../HashSet.js"
 import type * as MetricBoundaries from "../../MetricBoundaries.js"
 import type * as MetricKey from "../../MetricKey.js"
 import type * as MetricKeyType from "../../MetricKeyType.js"
@@ -10,6 +9,7 @@ import type * as MetricLabel from "../../MetricLabel.js"
 import * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
+import * as ReadonlyArray from "../../ReadonlyArray.js"
 import * as metricKeyType from "./keyType.js"
 import * as metricLabel from "./label.js"
 
@@ -26,6 +26,8 @@ const metricKeyVariance = {
   _Type: (_: never) => _
 }
 
+const arrayEquivilence = ReadonlyArray.getEquivalence(Equal.equals)
+
 /** @internal */
 class MetricKeyImpl<out Type extends MetricKeyType.MetricKeyType<any, any>> implements MetricKey.MetricKey<Type> {
   readonly [MetricKeyTypeId] = metricKeyVariance
@@ -33,14 +35,14 @@ class MetricKeyImpl<out Type extends MetricKeyType.MetricKeyType<any, any>> impl
     readonly name: string,
     readonly keyType: Type,
     readonly description: Option.Option<string>,
-    readonly tags: HashSet.HashSet<MetricLabel.MetricLabel> = HashSet.empty()
+    readonly tags: ReadonlyArray<MetricLabel.MetricLabel> = []
   ) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(this.name),
       Hash.combine(Hash.hash(this.keyType)),
       Hash.combine(Hash.hash(this.description)),
-      Hash.combine(Hash.hash(this.tags))
+      Hash.combine(Hash.array(this.tags))
     )
   }
   [Equal.symbol](u: unknown): boolean {
@@ -48,7 +50,7 @@ class MetricKeyImpl<out Type extends MetricKeyType.MetricKeyType<any, any>> impl
       this.name === u.name &&
       Equal.equals(this.keyType, u.keyType) &&
       Equal.equals(this.description, u.description) &&
-      Equal.equals(this.tags, u.tags)
+      arrayEquivilence(this.tags, u.tags)
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -141,7 +143,7 @@ export const tagged = dual<
     key: string,
     value: string
   ) => MetricKey.MetricKey<Type>
->(3, (self, key, value) => taggedWithLabelSet(self, HashSet.make(metricLabel.make(key, value))))
+>(3, (self, key, value) => taggedWithLabels(self, [metricLabel.make(key, value)]))
 
 /** @internal */
 export const taggedWithLabels = dual<
@@ -154,20 +156,9 @@ export const taggedWithLabels = dual<
     self: MetricKey.MetricKey<Type>,
     extraTags: Iterable<MetricLabel.MetricLabel>
   ) => MetricKey.MetricKey<Type>
->(2, (self, extraTags) => taggedWithLabelSet(self, HashSet.fromIterable(extraTags)))
-
-/** @internal */
-export const taggedWithLabelSet = dual<
-  (
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
-  ) => <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey.MetricKey<Type>
-  ) => MetricKey.MetricKey<Type>,
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey.MetricKey<Type>,
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
-  ) => MetricKey.MetricKey<Type>
->(2, (self, extraTags) =>
-  HashSet.size(extraTags) === 0
+>(2, (self, extraTags) => {
+  const arr = ReadonlyArray.fromIterable(extraTags)
+  return arr.length === 0
     ? self
-    : new MetricKeyImpl(self.name, self.keyType, self.description, pipe(self.tags, HashSet.union(extraTags))))
+    : new MetricKeyImpl(self.name, self.keyType, self.description, ReadonlyArray.union(self.tags, arr))
+})

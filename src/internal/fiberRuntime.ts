@@ -2596,14 +2596,9 @@ export const tagMetricsScoped = (key: string, value: string): Effect.Effect<Scop
 
 /* @internal */
 export const labelMetricsScoped = (
-  labels: ReadonlyArray<MetricLabel.MetricLabel>
-): Effect.Effect<Scope.Scope, never, void> => labelMetricsScopedSet(HashSet.fromIterable(labels))
-
-/* @internal */
-export const labelMetricsScopedSet = (
-  labels: HashSet.HashSet<MetricLabel.MetricLabel>
+  labels: Iterable<MetricLabel.MetricLabel>
 ): Effect.Effect<Scope.Scope, never, void> =>
-  fiberRefLocallyScopedWith(core.currentMetricLabels, (set) => pipe(set, HashSet.union(labels)))
+  fiberRefLocallyScopedWith(core.currentMetricLabels, (old) => RA.union(old, labels))
 
 /* @internal */
 export const using = dual<

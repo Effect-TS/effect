@@ -5,7 +5,6 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as HashSet from "effect/HashSet"
 import * as Metric from "effect/Metric"
 import * as MetricBoundaries from "effect/MetricBoundaries"
 import * as MetricKey from "effect/MetricKey"
@@ -221,7 +220,7 @@ describe.concurrent("Metric", () => {
         const base = pipe(Metric.counter(name), Metric.tagged("static", "0"), Metric.withConstantInput(1))
         const counter = pipe(
           base,
-          Metric.taggedWithLabelsInput((input: string) => HashSet.make(MetricLabel.make("dyn", input)))
+          Metric.taggedWithLabelsInput((input: string) => [MetricLabel.make("dyn", input)])
         )
         const result = yield* $(
           pipe(
@@ -308,7 +307,7 @@ describe.concurrent("Metric", () => {
         const base = pipe(Metric.frequency(name), Metric.taggedWithLabels(labels))
         const frequency = pipe(
           base,
-          Metric.taggedWithLabelsInput((s: string) => HashSet.make(MetricLabel.make("dyn", s)))
+          Metric.taggedWithLabelsInput((s: string) => [MetricLabel.make("dyn", s)])
         )
         const { result1, result2, result3 } = yield* $(
           pipe(
@@ -372,7 +371,7 @@ describe.concurrent("Metric", () => {
         const base = pipe(Metric.gauge(name), Metric.tagged("static", "0"), Metric.mapInput((s: string) => s.length))
         const gauge = pipe(
           base,
-          Metric.taggedWithLabelsInput((input: string) => HashSet.make(MetricLabel.make("dyn", input)))
+          Metric.taggedWithLabelsInput((input: string) => [MetricLabel.make("dyn", input)])
         )
         const result = yield* $(
           pipe(
@@ -480,7 +479,7 @@ describe.concurrent("Metric", () => {
           Metric.mapInput((s: string) => s.length)
         )
         const histogram = base.pipe(
-          Metric.taggedWithLabelsInput((input: string) => HashSet.make(MetricLabel.make("dyn", input)))
+          Metric.taggedWithLabelsInput((input: string) => [MetricLabel.make("dyn", input)])
         )
         const { result1, result2, result3 } = yield* $(
           Effect.succeed("x"),
@@ -582,7 +581,7 @@ describe.concurrent("Metric", () => {
           Metric.mapInput((s: string) => s.length)
         )
         const summary = base.pipe(
-          Metric.taggedWithLabelsInput((input: string) => HashSet.make(MetricLabel.make("dyn", input)))
+          Metric.taggedWithLabelsInput((input: string) => [MetricLabel.make("dyn", input)])
         )
         const { result1, result2, result3 } = yield* $(
           Effect.succeed("x"),
