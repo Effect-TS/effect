@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.51.4
+
+### Patch Changes
+
+- [#623](https://github.com/Effect-TS/schema/pull/623) [`3a56b06`](https://github.com/Effect-TS/schema/commit/3a56b069eac9ecbbff3c0448590f7137afc11fbc) Thanks [@sukovanej](https://github.com/sukovanej)! - Export `JsonSchema7` types.
+
+- [#626](https://github.com/Effect-TS/schema/pull/626) [`67c154e`](https://github.com/Effect-TS/schema/commit/67c154e92bd2a7a0d70faa14442fae6e6a7216ad) Thanks [@gcanti](https://github.com/gcanti)! - S.rename: handle field transformations, closes #625
+
 ## 0.51.3
 
 ### Patch Changes
