@@ -126,6 +126,14 @@ const absurd = (_: never): never => {
   )
 }
 
+const YieldedOp = Symbol.for("effect/internal/fiberRuntime/YieldedOp")
+type YieldedOp = typeof YieldedOp
+const yieldedOpChannel: {
+  currentOp: core.Primitive | null
+} = globalValue("effect/internal/fiberRuntime/yieldedOpChannel", () => ({
+  currentOp: null
+}))
+
 const contOpSuccess = {
   [OpCodes.OP_ON_SUCCESS]: (
     _: FiberRuntime<any, any>,
@@ -867,9 +875,24 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
           core.exitFailCause(this.getInterruptedCause()) :
           effect0
       while (effect !== null) {
-        try {
-          const eff: Effect.Effect<any, any, any> = effect
-          const exit = this.runLoop(eff)
+        const eff: Effect.Effect<any, any, any> = effect
+        const exit = this.runLoop(eff)
+        if (exit === YieldedOp) {
+          const op = yieldedOpChannel.currentOp!
+          yieldedOpChannel.currentOp = null
+          if (op._op === OpCodes.OP_YIELD) {
+            if (_runtimeFlags.cooperativeYielding(this._runtimeFlags)) {
+              this.tell(FiberMessage.yieldNow())
+              this.tell(FiberMessage.resume(core.exitUnit))
+              effect = null
+            } else {
+              effect = core.exitUnit
+            }
+          } else if (op._op === OpCodes.OP_ASYNC) {
+            // Terminate this evaluation, async resumption will continue evaluation:
+            effect = null
+          }
+        } else {
           this._runtimeFlags = pipe(this._runtimeFlags, _runtimeFlags.enable(_runtimeFlags.WindDown))
           const interruption = this.interruptAllChildren()
           if (interruption !== null) {
@@ -885,23 +908,6 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
               this.tell(FiberMessage.resume(exit))
             }
             effect = null
-          }
-        } catch (e) {
-          if (core.isEffect(e)) {
-            if ((e as core.Primitive)._op === OpCodes.OP_YIELD) {
-              if (_runtimeFlags.cooperativeYielding(this._runtimeFlags)) {
-                this.tell(FiberMessage.yieldNow())
-                this.tell(FiberMessage.resume(core.exitUnit))
-                effect = null
-              } else {
-                effect = core.exitUnit
-              }
-            } else if ((e as core.Primitive)._op === OpCodes.OP_ASYNC) {
-              // Terminate this evaluation, async resumption will continue evaluation:
-              effect = null
-            }
-          } else {
-            throw e
           }
         }
       }
@@ -1065,7 +1071,8 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
       // @ts-expect-error
       return contOpSuccess[cont._op](this, cont, value)
     } else {
-      throw core.exitSucceed(value)
+      yieldedOpChannel.currentOp = core.exitSucceed(value) as any
+      return YieldedOp
     }
   }
 
@@ -1080,7 +1087,8 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
       // @ts-expect-error
       return contOpSuccess[cont._op](this, cont, oldCur.i0)
     } else {
-      throw oldCur
+      yieldedOpChannel.currentOp = oldCur
+      return YieldedOp
     }
   }
 
@@ -1117,7 +1125,8 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
         }
       }
     } else {
-      throw core.exitFailCause(cause)
+      yieldedOpChannel.currentOp = core.exitFailCause(cause) as any
+      return YieldedOp
     }
   }
 
@@ -1216,12 +1225,14 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   [OpCodes.OP_ASYNC](op: core.Primitive & { _op: OpCodes.OP_ASYNC }) {
     this._asyncBlockingOn = op.i1
     this.initiateAsync(this._runtimeFlags, op.i0)
-    throw op
+    yieldedOpChannel.currentOp = op
+    return YieldedOp
   }
 
   [OpCodes.OP_YIELD](op: core.Primitive & { op: OpCodes.OP_YIELD }) {
     this.isYielding = false
-    throw op
+    yieldedOpChannel.currentOp = op
+    return YieldedOp
   }
 
   [OpCodes.OP_WHILE](op: core.Primitive & { _op: OpCodes.OP_WHILE }) {
@@ -1244,8 +1255,8 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  runLoop(effect0: Effect.Effect<any, any, any>): Exit.Exit<any, any> {
-    let cur = effect0
+  runLoop(effect0: Effect.Effect<any, any, any>): Exit.Exit<any, any> | YieldedOp {
+    let cur: Effect.Effect<any, any, any> | YieldedOp = effect0
     this.currentOpCount = 0
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -1286,22 +1297,26 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
           },
           this
         )
-      } catch (e) {
-        if (core.isEffect(e)) {
+
+        if (cur === YieldedOp) {
+          const op = yieldedOpChannel.currentOp!
           if (
-            (e as core.Primitive)._op === OpCodes.OP_YIELD ||
-            (e as core.Primitive)._op === OpCodes.OP_ASYNC
+            op._op === OpCodes.OP_YIELD ||
+            op._op === OpCodes.OP_ASYNC
           ) {
-            throw e
-          } else if (
-            (e as core.Primitive)._op === OpCodes.OP_SUCCESS ||
-            (e as core.Primitive)._op === OpCodes.OP_FAILURE
-          ) {
-            return e as Exit.Exit<E, A>
-          } else {
-            cur = core.exitFailCause(internalCause.die(e))
+            return YieldedOp
           }
-        } else if (core.isEffectError(e)) {
+
+          yieldedOpChannel.currentOp = null
+          return (
+              op._op === OpCodes.OP_SUCCESS ||
+              op._op === OpCodes.OP_FAILURE
+            ) ?
+            op as unknown as Exit.Exit<E, A> :
+            core.exitFailCause(internalCause.die(op))
+        }
+      } catch (e) {
+        if (core.isEffectError(e)) {
           cur = core.exitFailCause(e.cause)
         } else if (core.isInterruptedException(e)) {
           cur = core.exitFailCause(
