@@ -5,6 +5,7 @@ import type * as MetricState from "../../MetricState.js"
 import type * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
+import * as ReadonlyArray from "../../ReadonlyArray.js"
 
 /** @internal */
 const MetricStateSymbolKey = "effect/MetricState"
@@ -78,6 +79,8 @@ class CounterState<A extends (number | bigint)> implements MetricState.MetricSta
   }
 }
 
+const arrayEquals = ReadonlyArray.getEquivalence(Equal.equals)
+
 /** @internal */
 class FrequencyState implements MetricState.MetricState.Frequency {
   readonly [MetricStateTypeId] = metricStateVariance
@@ -86,11 +89,14 @@ class FrequencyState implements MetricState.MetricState.Frequency {
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(FrequencyStateSymbolKey),
-      Hash.combine(Hash.structure(Object.fromEntries(Array.from(this.occurrences.entries()))))
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.occurrences.entries())))
     )
   }
   [Equal.symbol](that: unknown): boolean {
-    return isFrequencyState(that) && Equal.equals(this.occurrences, that.occurrences)
+    return isFrequencyState(that) && arrayEquals(
+      ReadonlyArray.fromIterable(this.occurrences.entries()),
+      ReadonlyArray.fromIterable(that.occurrences.entries())
+    )
   }
   pipe() {
     return pipeArguments(this, arguments)
