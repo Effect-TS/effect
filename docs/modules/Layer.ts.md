@@ -746,8 +746,15 @@ the layer construction.
 
 ```ts
 export declare const buildWithMemoMap: {
-  (memoMap: MemoMap): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
-  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, memoMap: MemoMap): Effect.Effect<RIn, E, Context.Context<ROut>>
+  (
+    memoMap: MemoMap,
+    scope: Scope.Scope
+  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>,
+    memoMap: MemoMap,
+    scope: Scope.Scope
+  ): Effect.Effect<RIn, E, Context.Context<ROut>>
 }
 ```
 
@@ -760,7 +767,7 @@ Constructs a `MemoMap` that can be used to build additional layers.
 **Signature**
 
 ```ts
-export declare const makeMemoMap: Effect.Effect<Scope.Scope, never, MemoMap>
+export declare const makeMemoMap: Effect.Effect<never, never, MemoMap>
 ```
 
 Added in v2.0.0
@@ -786,11 +793,9 @@ export interface MemoMap {
   readonly [MemoMapTypeId]: MemoMapTypeId
 
   /** @internal */
-  readonly scope: Scope.Scope
-  /** @internal */
   readonly getOrElseMemoize: <RIn, E, ROut>(
     layer: Layer<RIn, E, ROut>,
-    scope?: Scope.Scope | undefined
+    scope: Scope.Scope
   ) => Effect.Effect<RIn, E, Context.Context<ROut>>
 }
 ```
