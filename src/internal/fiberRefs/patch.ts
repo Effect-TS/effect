@@ -111,7 +111,7 @@ export const patch = dual<
         break
       }
       case OP_ADD: {
-        fiberRefs = _fiberRefs.updatedAs(fiberRefs, {
+        fiberRefs = _fiberRefs.updateAs(fiberRefs, {
           fiberId,
           fiberRef: head.fiberRef,
           value: head.value
@@ -126,7 +126,7 @@ export const patch = dual<
       }
       case OP_UPDATE: {
         const value = _fiberRefs.getOrDefault(fiberRefs, head.fiberRef)
-        fiberRefs = _fiberRefs.updatedAs(fiberRefs, {
+        fiberRefs = _fiberRefs.updateAs(fiberRefs, {
           fiberId,
           fiberRef: head.fiberRef,
           value: head.fiberRef.patch(head.patch)(value)

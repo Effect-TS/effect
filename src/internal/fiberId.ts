@@ -265,5 +265,5 @@ export const toSet = (self: FiberId.FiberId): HashSet.HashSet<FiberId.Runtime> =
 export const unsafeMake = (): FiberId.Runtime => {
   const id = MutableRef.get(_fiberCounter)
   pipe(_fiberCounter, MutableRef.set(id + 1))
-  return new Runtime(id, new Date().getTime())
+  return new Runtime(id, Date.now())
 }

@@ -144,6 +144,9 @@ export const patch = Dual.dual<
   self: Differ.HashSet.Patch<Value>,
   oldValue: HashSet.HashSet<Value>
 ) => {
+  if ((self as Instruction)._tag === "Empty") {
+    return oldValue
+  }
   let set = oldValue
   let patches: Chunk.Chunk<Differ.HashSet.Patch<Value>> = Chunk.of(self)
   while (Chunk.isNonEmpty(patches)) {

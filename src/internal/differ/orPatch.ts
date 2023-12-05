@@ -264,6 +264,9 @@ export const patch = Dual.dual<
     right: Differ<Value2, Patch2>
   }
 ) => {
+  if ((self as Instruction)._tag === "Empty") {
+    return oldValue
+  }
   let patches: Chunk.Chunk<Differ.Or.Patch<Value, Value2, Patch, Patch2>> = Chunk.of(self)
   let result = oldValue
   while (Chunk.isNonEmpty(patches)) {

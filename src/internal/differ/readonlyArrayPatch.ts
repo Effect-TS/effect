@@ -169,6 +169,9 @@ export const patch = Dual.dual<
   oldValue: ReadonlyArray<Value>,
   differ: Differ.Differ<Value, Patch>
 ) => {
+  if ((self as Instruction)._tag === "Empty") {
+    return oldValue
+  }
   let readonlyArray = oldValue.slice()
   let patches: Array<Differ.Differ.ReadonlyArray.Patch<Value, Patch>> = ReadonlyArray.of(self)
   while (ReadonlyArray.isNonEmptyArray(patches)) {
