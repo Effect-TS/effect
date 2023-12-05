@@ -371,7 +371,7 @@ export const currentSupervisor: FiberRef<Supervisor.Supervisor<any>> = fiberRunt
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentMetricLabels: FiberRef<HashSet.HashSet<MetricLabel.MetricLabel>> = core.currentMetricLabels
+export const currentMetricLabels: FiberRef<ReadonlyArray<MetricLabel.MetricLabel>> = core.currentMetricLabels
 
 /**
  * @since 2.0.0

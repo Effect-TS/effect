@@ -1,11 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
 import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import type { LazyArg } from "./Function.js"
-import type * as HashSet from "./HashSet.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/metric.js"
 import type * as MetricBoundaries from "./MetricBoundaries.js"
@@ -56,8 +54,8 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
    * `MetricKeyType.Counter` or `MetricKeyType.Gauge`.
    */
   readonly keyType: Type
-  unsafeUpdate(input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): void
-  unsafeValue(extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): Out
+  unsafeUpdate(input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>): void
+  unsafeValue(extraTags: ReadonlyArray<MetricLabel.MetricLabel>): Out
   register(): this
   <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 }
@@ -69,8 +67,8 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
 export interface MetricApply {
   <Type, In, Out>(
     keyType: Type,
-    unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void,
-    unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
+    unsafeUpdate: (input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => void,
+    unsafeValue: (extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => Out
   ): Metric<Type, In, Out>
 }
 
@@ -357,7 +355,7 @@ export const set: {
  * @since 2.0.0
  * @category getters
  */
-export const snapshot: Effect.Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>> = internal.snapshot
+export const snapshot: Effect.Effect<never, never, ReadonlyArray<MetricPair.MetricPair.Untyped>> = internal.snapshot
 
 /**
  * Creates a metric that ignores input and produces constant output.
@@ -396,7 +394,7 @@ export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out> =
  *   maxAge: "60 seconds", // Retain observations for 60 seconds.
  *   maxSize: 1000, // Keep a maximum of 1000 observations.
  *   error: 0.01, // Allow a 1% error when calculating quantiles.
- *   quantiles: Chunk.make(0.5, 0.9, 0.99), // Calculate 50th, 90th, and 99th percentiles.
+ *   quantiles: [0.5, 0.9, 0.99], // Calculate 50th, 90th, and 99th percentiles.
  *   description: "Measures the distribution of response times."
  * });
  *
@@ -409,7 +407,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ) => Metric.Summary<number> = internal.summary
@@ -424,7 +422,7 @@ export const summaryTimestamp: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ) => Metric.Summary<readonly [value: number, timestamp: number]> // readonly because contravariant
@@ -498,7 +496,7 @@ export const timer: (
  */
 export const timerWithBoundaries: (
   name: string,
-  boundaries: Chunk.Chunk<number>,
+  boundaries: ReadonlyArray<number>,
   description?: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram> =
   internal.timerWithBoundaries
@@ -723,7 +721,7 @@ export const zip: {
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeSnapshot: (_: void) => HashSet.HashSet<MetricPair.MetricPair.Untyped> = internal.unsafeSnapshot
+export const unsafeSnapshot: (_: void) => ReadonlyArray<MetricPair.MetricPair.Untyped> = internal.unsafeSnapshot
 
 /**
  * @since 2.0.0

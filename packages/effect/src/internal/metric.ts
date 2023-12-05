@@ -1,11 +1,9 @@
-import type * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
-import * as HashSet from "../HashSet.js"
 import type * as Metric from "../Metric.js"
 import type * as MetricBoundaries from "../MetricBoundaries.js"
 import type * as MetricHook from "../MetricHook.js"
@@ -51,14 +49,14 @@ export const globalMetricRegistry: MetricRegistry.MetricRegistry = globalValue(
 /** @internal */
 export const make: Metric.MetricApply = function<Type, In, Out>(
   keyType: Type,
-  unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void,
-  unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
+  unsafeUpdate: (input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => void,
+  unsafeValue: (extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => Out
 ): Metric.Metric<Type, In, Out> {
   const metric: Metric.Metric<Type, In, Out> = Object.assign(
     <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
       core.tap(
         effect,
-        (a) => core.sync(() => unsafeUpdate(a, HashSet.empty()))
+        (a) => core.sync(() => unsafeUpdate(a, []))
       ),
     {
       [MetricTypeId]: metricVariance,
@@ -66,7 +64,7 @@ export const make: Metric.MetricApply = function<Type, In, Out>(
       unsafeUpdate,
       unsafeValue,
       register() {
-        this.unsafeValue(HashSet.empty())
+        this.unsafeValue([])
         return this as any
       },
       pipe() {
@@ -120,13 +118,35 @@ export const fromMetricKey = <Type extends MetricKeyType.MetricKeyType<any, any>
   MetricKeyType.MetricKeyType.InType<Type>,
   MetricKeyType.MetricKeyType.OutType<Type>
 > => {
-  const hook = (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): MetricHook.MetricHook<
+  let untaggedHook:
+    | MetricHook.MetricHook<
+      MetricKeyType.MetricKeyType.InType<Type>,
+      MetricKeyType.MetricKeyType.OutType<Type>
+    >
+    | undefined
+  const hookCache = new WeakMap<ReadonlyArray<MetricLabel.MetricLabel>, MetricHook.MetricHook<any, any>>()
+
+  const hook = (extraTags: ReadonlyArray<MetricLabel.MetricLabel>): MetricHook.MetricHook<
     MetricKeyType.MetricKeyType.InType<Type>,
     MetricKeyType.MetricKeyType.OutType<Type>
   > => {
-    const fullKey = pipe(key, metricKey.taggedWithLabelSet(extraTags))
-    return globalMetricRegistry.get(fullKey)
+    if (extraTags.length === 0) {
+      if (untaggedHook !== undefined) {
+        return untaggedHook
+      }
+      untaggedHook = globalMetricRegistry.get(key)
+      return untaggedHook
+    }
+
+    let hook = hookCache.get(extraTags)
+    if (hook !== undefined) {
+      return hook
+    }
+    hook = globalMetricRegistry.get(metricKey.taggedWithLabels(key, extraTags))
+    hookCache.set(extraTags, hook)
+    return hook
   }
+
   return make(
     key.keyType,
     (input, extraTags) => hook(extraTags).update(input),
@@ -218,7 +238,7 @@ export const summary = (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ): Metric.Metric.Summary<number> => withNow(summaryTimestamp(options))
@@ -230,7 +250,7 @@ export const summaryTimestamp = (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ): Metric.Metric.Summary<readonly [value: number, timestamp: number]> => fromMetricKey(metricKey.summary(options))
@@ -239,7 +259,7 @@ export const summaryTimestamp = (
 export const tagged = dual<
   <Type, In, Out>(key: string, value: string) => (self: Metric.Metric<Type, In, Out>) => Metric.Metric<Type, In, Out>,
   <Type, In, Out>(self: Metric.Metric<Type, In, Out>, key: string, value: string) => Metric.Metric<Type, In, Out>
->(3, (self, key, value) => taggedWithLabels(self, HashSet.make(metricLabel.make(key, value))))
+>(3, (self, key, value) => taggedWithLabels(self, [metricLabel.make(key, value)]))
 
 /** @internal */
 export const taggedWithLabelsInput = dual<
@@ -257,7 +277,7 @@ export const taggedWithLabelsInput = dual<
       (input, extraTags) =>
         self.unsafeUpdate(
           input,
-          HashSet.union(HashSet.fromIterable(f(input)), extraTags)
+          ReadonlyArray.union(f(input), extraTags)
         ),
       self.unsafeValue
     ),
@@ -273,12 +293,11 @@ export const taggedWithLabels = dual<
     self: Metric.Metric<Type, In, Out>,
     extraTags: Iterable<MetricLabel.MetricLabel>
   ) => Metric.Metric<Type, In, Out>
->(2, (self, extraTagsIterable) => {
-  const extraTags = HashSet.isHashSet(extraTagsIterable) ? extraTagsIterable : HashSet.fromIterable(extraTagsIterable)
+>(2, (self, extraTags) => {
   return make(
     self.keyType,
-    (input, extraTags1) => self.unsafeUpdate(input, pipe(extraTags, HashSet.union(extraTags1))),
-    (extraTags1) => self.unsafeValue(pipe(extraTags, HashSet.union(extraTags1)))
+    (input, extraTags1) => self.unsafeUpdate(input, ReadonlyArray.union(extraTags, extraTags1)),
+    (extraTags1) => self.unsafeValue(ReadonlyArray.union(extraTags, extraTags1))
   )
 })
 
@@ -300,7 +319,7 @@ export const timer = (name: string, description?: string): Metric.Metric<
 /** @internal */
 export const timerWithBoundaries = (
   name: string,
-  boundaries: Chunk.Chunk<number>,
+  boundaries: ReadonlyArray<number>,
   description?: string
 ): Metric.Metric<
   MetricKeyType.MetricKeyType.Histogram,
@@ -308,7 +327,7 @@ export const timerWithBoundaries = (
   MetricState.MetricState.Histogram
 > => {
   const base = pipe(
-    histogram(name, metricBoundaries.fromChunk(boundaries), description),
+    histogram(name, metricBoundaries.fromIterable(boundaries), description),
     tagged("time_unit", "milliseconds")
   )
   return mapInput(base, Duration.toMillis)
@@ -328,11 +347,11 @@ export const trackAll = dual<
 >(2, (self, input) => (effect) =>
   core.matchCauseEffect(effect, {
     onFailure: (cause) => {
-      self.unsafeUpdate(input, HashSet.empty())
+      self.unsafeUpdate(input, [])
       return core.failCause(cause)
     },
     onSuccess: (value) => {
-      self.unsafeUpdate(input, HashSet.empty())
+      self.unsafeUpdate(input, [])
       return core.succeed(value)
     }
   }))
@@ -360,7 +379,7 @@ export const trackDefectWith = dual<
     f: (defect: unknown) => In
   ) => Effect.Effect<R, E, A>
 >(3, (self, metric, f) => {
-  const updater = (defect: unknown): void => metric.unsafeUpdate(f(defect), HashSet.empty())
+  const updater = (defect: unknown): void => metric.unsafeUpdate(f(defect), [])
   return _effect.tapDefect(self, (cause) =>
     core.sync(() =>
       pipe(
@@ -398,7 +417,7 @@ export const trackDurationWith = dual<
     return core.map(self, (a) => {
       const endTime = clock.unsafeCurrentTimeNanos()
       const duration = Duration.nanos(endTime - startTime)
-      metric.unsafeUpdate(f(duration), HashSet.empty())
+      metric.unsafeUpdate(f(duration), [])
       return a
     })
   }))
@@ -521,9 +540,9 @@ export const zip = dual<
 )
 
 /** @internal */
-export const unsafeSnapshot = (): HashSet.HashSet<MetricPair.MetricPair.Untyped> => globalMetricRegistry.snapshot()
+export const unsafeSnapshot = (): ReadonlyArray<MetricPair.MetricPair.Untyped> => globalMetricRegistry.snapshot()
 
 /** @internal */
-export const snapshot: Effect.Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>> = core.sync(
+export const snapshot: Effect.Effect<never, never, ReadonlyArray<MetricPair.MetricPair.Untyped>> = core.sync(
   unsafeSnapshot
 )

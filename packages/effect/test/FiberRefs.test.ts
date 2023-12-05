@@ -34,7 +34,7 @@ describe.concurrent("FiberRefs", () => {
     const parent = FiberId.make(1, Date.now()) as FiberId.Runtime
     const child = FiberId.make(2, Date.now()) as FiberId.Runtime
     const parentFiberRefs = FiberRefs.unsafeMake(new Map())
-    const childFiberRefs = FiberRefs.updatedAs(parentFiberRefs, {
+    const childFiberRefs = FiberRefs.updateAs(parentFiberRefs, {
       fiberId: child,
       fiberRef: FiberRef.interruptedCause,
       value: Cause.interrupt(parent)

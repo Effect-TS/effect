@@ -1,12 +1,11 @@
-import type * as Chunk from "../../Chunk.js"
 import * as Equal from "../../Equal.js"
 import { pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
-import type * as HashMap from "../../HashMap.js"
 import type * as MetricState from "../../MetricState.js"
 import type * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
+import * as ReadonlyArray from "../../ReadonlyArray.js"
 
 /** @internal */
 const MetricStateSymbolKey = "effect/MetricState"
@@ -80,19 +79,29 @@ class CounterState<A extends (number | bigint)> implements MetricState.MetricSta
   }
 }
 
+const arrayEquals = ReadonlyArray.getEquivalence(Equal.equals)
+
 /** @internal */
 class FrequencyState implements MetricState.MetricState.Frequency {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [FrequencyStateTypeId]: MetricState.FrequencyStateTypeId = FrequencyStateTypeId
-  constructor(readonly occurrences: HashMap.HashMap<string, number>) {}
+  constructor(readonly occurrences: ReadonlyMap<string, number>) {}
+  _hash: number | undefined;
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FrequencyStateSymbolKey),
-      Hash.combine(Hash.hash(this.occurrences))
+    if (this._hash !== undefined) {
+      return this._hash
+    }
+    this._hash = pipe(
+      Hash.string(FrequencyStateSymbolKey),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.occurrences.entries())))
     )
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
-    return isFrequencyState(that) && Equal.equals(this.occurrences, that.occurrences)
+    return isFrequencyState(that) && arrayEquals(
+      ReadonlyArray.fromIterable(this.occurrences.entries()),
+      ReadonlyArray.fromIterable(that.occurrences.entries())
+    )
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -123,7 +132,7 @@ export class HistogramState implements MetricState.MetricState.Histogram {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [HistogramStateTypeId]: MetricState.HistogramStateTypeId = HistogramStateTypeId
   constructor(
-    readonly buckets: Chunk.Chunk<readonly [number, number]>,
+    readonly buckets: ReadonlyArray<readonly [number, number]>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -158,7 +167,7 @@ export class SummaryState implements MetricState.MetricState.Summary {
   readonly [SummaryStateTypeId]: MetricState.SummaryStateTypeId = SummaryStateTypeId
   constructor(
     readonly error: number,
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>,
+    readonly quantiles: ReadonlyArray<readonly [number, Option.Option<number>]>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -196,7 +205,7 @@ export const counter: {
 } = (count) => new CounterState(count) as any
 
 /** @internal */
-export const frequency = (occurrences: HashMap.HashMap<string, number>): MetricState.MetricState.Frequency => {
+export const frequency = (occurrences: ReadonlyMap<string, number>): MetricState.MetricState.Frequency => {
   return new FrequencyState(occurrences)
 }
 
@@ -209,7 +218,7 @@ export const gauge: {
 /** @internal */
 export const histogram = (
   options: {
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
+    readonly buckets: ReadonlyArray<readonly [number, number]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -228,7 +237,7 @@ export const histogram = (
 export const summary = (
   options: {
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+    readonly quantiles: ReadonlyArray<readonly [number, Option.Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number

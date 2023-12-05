@@ -17,7 +17,7 @@ import { dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashMap from "../HashMap.js"
-import * as HashSet from "../HashSet.js"
+import type * as HashSet from "../HashSet.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as List from "../List.js"
 import type * as LogLevel from "../LogLevel.js"
@@ -1771,6 +1771,17 @@ export const fiberRefUnsafeMakeHashSet = <A>(
 }
 
 /** @internal */
+export const fiberRefUnsafeMakeReadonlyArray = <A>(
+  initial: ReadonlyArray<A>
+): FiberRef.FiberRef<ReadonlyArray<A>> => {
+  const differ = internalDiffer.readonlyArray(internalDiffer.update<A>())
+  return fiberRefUnsafeMakePatch(initial, {
+    differ,
+    fork: differ.empty
+  })
+}
+
+/** @internal */
 export const fiberRefUnsafeMakeContext = <A>(
   initial: Context.Context<A>
 ): FiberRef.FiberRef<Context.Context<A>> => {
@@ -1886,13 +1897,13 @@ export const withUnhandledErrorLogLevel = dual<
 >(2, (self, level) => fiberRefLocally(self, currentUnhandledErrorLogLevel, level))
 
 /** @internal */
-export const currentMetricLabels: FiberRef.FiberRef<HashSet.HashSet<MetricLabel.MetricLabel>> = globalValue(
+export const currentMetricLabels: FiberRef.FiberRef<ReadonlyArray<MetricLabel.MetricLabel>> = globalValue(
   Symbol.for("effect/FiberRef/currentMetricLabels"),
-  () => fiberRefUnsafeMakeHashSet(HashSet.empty())
+  () => fiberRefUnsafeMakeReadonlyArray(ReadonlyArray.empty())
 )
 
 /* @internal */
-export const metricLabels: Effect.Effect<never, never, HashSet.HashSet<MetricLabel.MetricLabel>> = fiberRefGet(
+export const metricLabels: Effect.Effect<never, never, ReadonlyArray<MetricLabel.MetricLabel>> = fiberRefGet(
   currentMetricLabels
 )
 

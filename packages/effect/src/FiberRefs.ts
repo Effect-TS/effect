@@ -123,7 +123,7 @@ export const setAll: (self: FiberRefs) => Effect.Effect<never, never, void> = in
  * @since 2.0.0
  * @category utils
  */
-export const updatedAs: {
+export const updateAs: {
   <A>(
     options: {
       readonly fiberId: FiberId.Runtime
@@ -139,7 +139,51 @@ export const updatedAs: {
       readonly value: A
     }
   ): FiberRefs
-} = internal.updatedAs
+} = internal.updateAs
+
+/**
+ * Updates the values of the specified `FiberRef` & value pairs using the provided `FiberId`
+ *
+ * @since 2.0.0
+ * @category utils
+ */
+export const updateManyAs: {
+  (
+    options: {
+      readonly forkAs?: FiberId.Runtime | undefined
+      readonly entries: readonly [
+        readonly [
+          FiberRef.FiberRef<any>,
+          readonly [readonly [FiberId.Runtime, any], ...Array<readonly [FiberId.Runtime, any]>]
+        ],
+        ...Array<
+          readonly [
+            FiberRef.FiberRef<any>,
+            readonly [readonly [FiberId.Runtime, any], ...Array<readonly [FiberId.Runtime, any]>]
+          ]
+        >
+      ]
+    }
+  ): (self: FiberRefs) => FiberRefs
+  (
+    self: FiberRefs,
+    options: {
+      readonly forkAs?: FiberId.Runtime | undefined
+      readonly entries: readonly [
+        readonly [
+          FiberRef.FiberRef<any>,
+          readonly [readonly [FiberId.Runtime, any], ...Array<readonly [FiberId.Runtime, any]>]
+        ],
+        ...Array<
+          readonly [
+            FiberRef.FiberRef<any>,
+            readonly [readonly [FiberId.Runtime, any], ...Array<readonly [FiberId.Runtime, any]>]
+          ]
+        >
+      ]
+    }
+  ): FiberRefs
+} = internal.updateManyAs
 
 /**
  * Note: it will not copy the provided Map, make sure to provide a fresh one.

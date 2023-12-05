@@ -1,5 +1,4 @@
 import { pipe } from "../../Function.js"
-import * as HashSet from "../../HashSet.js"
 import type * as MetricHook from "../../MetricHook.js"
 import type * as MetricKey from "../../MetricKey.js"
 import type * as MetricKeyType from "../../MetricKeyType.js"
@@ -28,12 +27,12 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
     MetricHook.MetricHook.Root
   >()
 
-  snapshot(): HashSet.HashSet<MetricPair.MetricPair.Untyped> {
+  snapshot(): ReadonlyArray<MetricPair.MetricPair.Untyped> {
     const result: Array<MetricPair.MetricPair.Untyped> = []
     for (const [key, hook] of this.map) {
       result.push(metricPair.unsafeMake(key, hook.get()))
     }
-    return HashSet.fromIterable(result)
+    return result
   }
 
   get<Type extends MetricKeyType.MetricKeyType<any, any>>(

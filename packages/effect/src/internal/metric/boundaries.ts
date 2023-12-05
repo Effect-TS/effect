@@ -18,12 +18,15 @@ export const MetricBoundariesTypeId: MetricBoundaries.MetricBoundariesTypeId = S
 /** @internal */
 class MetricBoundariesImpl implements MetricBoundaries.MetricBoundaries {
   readonly [MetricBoundariesTypeId]: MetricBoundaries.MetricBoundariesTypeId = MetricBoundariesTypeId
-  constructor(readonly values: Chunk.Chunk<number>) {}
-  [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(MetricBoundariesSymbolKey),
-      Hash.combine(Hash.hash(this.values))
+  constructor(readonly values: ReadonlyArray<number>) {
+    this._hash = pipe(
+      Hash.string(MetricBoundariesSymbolKey),
+      Hash.combine(Hash.array(this.values))
     )
+  }
+  readonly _hash: number;
+  [Hash.symbol](): number {
+    return this._hash
   }
   [Equal.symbol](u: unknown): boolean {
     return isMetricBoundaries(u) && Equal.equals(this.values, u.values)
@@ -38,11 +41,11 @@ export const isMetricBoundaries = (u: unknown): u is MetricBoundaries.MetricBoun
   hasProperty(u, MetricBoundariesTypeId)
 
 /** @internal */
-export const fromChunk = (chunk: Chunk.Chunk<number>): MetricBoundaries.MetricBoundaries => {
+export const fromIterable = (iterable: Iterable<number>): MetricBoundaries.MetricBoundaries => {
   const values = pipe(
-    chunk,
-    Chunk.appendAll(Chunk.of(Number.POSITIVE_INFINITY)),
-    Chunk.dedupe
+    iterable,
+    ReadonlyArray.appendAll(Chunk.of(Number.POSITIVE_INFINITY)),
+    ReadonlyArray.dedupe
   )
   return new MetricBoundariesImpl(values)
 }
@@ -56,7 +59,7 @@ export const linear = (options: {
   pipe(
     ReadonlyArray.makeBy(options.count - 1, (i) => options.start + i * options.width),
     Chunk.unsafeFromArray,
-    fromChunk
+    fromIterable
   )
 
 /** @internal */
@@ -68,5 +71,5 @@ export const exponential = (options: {
   pipe(
     ReadonlyArray.makeBy(options.count - 1, (i) => options.start * Math.pow(options.factor, i)),
     Chunk.unsafeFromArray,
-    fromChunk
+    fromIterable
   )

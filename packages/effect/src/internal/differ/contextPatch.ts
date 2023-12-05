@@ -177,6 +177,9 @@ export const patch = Dual.dual<
     context: Context<Input>
   ) => Context<Output>
 >(2, <Input, Output>(self: Differ.Context.Patch<Input, Output>, context: Context<Input>) => {
+  if ((self as Instruction)._tag === "Empty") {
+    return context as any
+  }
   let wasServiceUpdated = false
   let patches: Chunk.Chunk<Differ.Context.Patch<unknown, unknown>> = Chunk.of(
     self as Differ.Context.Patch<unknown, unknown>

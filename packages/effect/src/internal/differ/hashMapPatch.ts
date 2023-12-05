@@ -179,6 +179,9 @@ export const patch = Dual.dual<
   oldValue: HashMap.HashMap<Key, Value>,
   differ: Differ.Differ<Value, Patch>
 ) => {
+  if ((self as Instruction)._tag === "Empty") {
+    return oldValue
+  }
   let map = oldValue
   let patches: Chunk.Chunk<Differ.Differ.HashMap.Patch<Key, Value, Patch>> = Chunk.of(self)
   while (Chunk.isNonEmpty(patches)) {
