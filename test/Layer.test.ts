@@ -685,6 +685,26 @@ describe.concurrent("Layer", () => {
         const result = yield* $(Ref.get(ref))
         assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, acquire2, release2, release1])
       }))
+
+    it.effect("layers are not released early", () =>
+      Effect.gen(function*($) {
+        const ref = yield* $(makeRef())
+        const layer1 = makeLayer1(ref)
+        const layer2 = makeLayer2(ref).pipe(
+          Layer.provide(layer1)
+        )
+        const memoMap = yield* $(Layer.makeMemoMap)
+        const scope1 = yield* $(Scope.make())
+        const scope2 = yield* $(Scope.make())
+
+        yield* $(Layer.buildWithMemoMap(layer1, memoMap, scope1))
+        yield* $(Layer.buildWithMemoMap(layer2, memoMap, scope2))
+        yield* $(Scope.close(scope1, Exit.unit))
+        yield* $(Scope.close(scope2, Exit.unit))
+
+        const result = yield* $(Ref.get(ref))
+        assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
+      }))
   })
 })
 export const makeRef = (): Effect.Effect<never, never, Ref.Ref<Chunk.Chunk<string>>> => {
