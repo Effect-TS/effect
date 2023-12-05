@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: nix develop --command -- pnpm vitest
+      - run: pnpm vitest
 
   edge:
     name: Edge
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: nix develop --command -- pnpm vitest --environment edge-runtime
+      - run: pnpm vitest --environment edge-runtime
 
   browser:
     name: Browser ${{ matrix.shard }} (${{ matrix.browser }})
@@ -43,7 +43,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: nix develop --command pnpm vitest --browser ${{ matrix.browser }} --shard ${{ matrix.shard }}
+      - run: pnpm playwright install --with-deps ${{ matrix.browser }}
+      - run: pnpm vitest --browser ${{ matrix.browser }} --shard ${{ matrix.shard }}
 
   bun:
     name: Bun
@@ -54,7 +55,7 @@ jobs:
         uses: ./.github/actions/setup
       - name: Install bun
         uses: oven-sh/setup-bun@v1
-      - run: nix develop --command -- bun vitest
+      - run: bun vitest
 
   deno:
     name: Deno
@@ -63,4 +64,4 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: nix develop --command -- deno task test
+      - run: deno task test

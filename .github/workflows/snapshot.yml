@@ -55,35 +55,35 @@ jobs:
 
       - name: Get current branch name
         id: branch
-        run: echo "branch=$(nix develop --command -- git branch --show-current)" >> $GITHUB_OUTPUT
+        run: echo "branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
 
       - name: Retrieve changeset entries
         if: ${{ steps.branch.outputs.branch == 'changeset-release/main' }}
-        run: nix develop --command -- git checkout origin/main
+        run: git checkout origin/main
 
       - name: Install dependencies
         uses: ./.github/actions/setup
 
       - name: Exit pre-release mode
         if: ${{ hashFiles('.changeset/pre.json') != '' }}
-        run: nix develop --command -- pnpm changeset pre exit
+        run: pnpm changeset pre exit
 
       - name: Version snapshot
-        run: nix develop --command -- pnpm changeset version --snapshot ${{ steps.command.outputs.snapshot }} | grep -q "All files have been updated"
+        run: pnpm changeset version --snapshot ${{ steps.command.outputs.snapshot }} | grep -q "All files have been updated"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build snapshot
-        run: nix develop --command -- pnpm build
+        run: pnpm build
 
       - name: Set registry config
-        run: nix develop --command -- pnpm config set --location project "//registry.npmjs.org/:_authToken" "${{ secrets.NPM_TOKEN }}"
+        run: pnpm config set --location project "//registry.npmjs.org/:_authToken" "${{ secrets.NPM_TOKEN }}"
 
       - name: Publish snapshot
         id: snapshot
         run: |
           # Publish and extract published tags from stdout.
-          output=$(nix develop --command -- pnpm changeset publish --tag ${{ steps.command.outputs.snapshot }} --no-git-tag)
+          output=$(pnpm changeset publish --tag ${{ steps.command.outputs.snapshot }} --no-git-tag)
           output=$(echo "$output" | awk '/packages published successfully:/{flag=1; next} flag')
           output=$(echo "$output" | grep -o '@[^ ]*' | awk '{print "\"" $0 "\""}' | paste -sd ',')
           echo "tags=[$output]" >> $GITHUB_OUTPUT
@@ -94,7 +94,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           script: |
-            const commands = ${{ steps.snapshot.outputs.tags }}.map(tag => '```sh\n' + `nix develop --command -- pnpm add ${tag}` + '\n```')
+            const commands = ${{ steps.snapshot.outputs.tags }}.map(tag => '```sh\n' + `pnpm add ${tag}` + '\n```')
             const header = `**Good news @${{ github.actor }}, your snapshot has been published!**`
             const footer = `You can review the build log [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).`
 

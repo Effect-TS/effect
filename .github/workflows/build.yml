@@ -22,18 +22,17 @@ jobs:
           fetch-depth: 0
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: nix develop --command -- pnpm build
+      - run: pnpm build
       - name: Check source state
-        run: nix develop --command -- git add src && git diff-index --cached HEAD --exit-code src
-      - run: nix develop --command -- pnpm circular
-      - run: nix develop --command -- pnpm docgen
+        run: git add src && git diff-index --cached HEAD --exit-code src
+      - run: pnpm circular
       - name: Create Release Pull Request or Publish
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: changesets
         uses: changesets/action@v1
         with:
-          version: nix develop --command -- pnpm update-version
-          publish: nix develop --command -- pnpm changeset publish
+          version: pnpm update-version
+          publish: pnpm changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
