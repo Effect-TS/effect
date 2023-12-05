@@ -453,6 +453,11 @@ export * as MutableHashMap from "./MutableHashMap.js"
 /**
  * @since 2.0.0
  */
+export * as MutableHashMapSimple from "./MutableHashMapSimple.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as MutableHashSet from "./MutableHashSet.js"
 
 /**
