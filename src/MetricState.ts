@@ -1,9 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
 import type * as Equal from "./Equal.js"
-import type * as HashMap from "./HashMap.js"
 import * as internal from "./internal/metric/state.js"
 import type * as MetricKeyType from "./MetricKeyType.js"
 import type * as Option from "./Option.js"
@@ -119,7 +117,7 @@ export declare namespace MetricState {
    */
   export interface Frequency extends MetricState<MetricKeyType.MetricKeyType.Frequency> {
     readonly [FrequencyStateTypeId]: FrequencyStateTypeId
-    readonly occurrences: HashMap.HashMap<string, number>
+    readonly occurrences: ReadonlyMap<string, number>
   }
 
   /**
@@ -137,7 +135,7 @@ export declare namespace MetricState {
    */
   export interface Histogram extends MetricState<MetricKeyType.MetricKeyType.Histogram> {
     readonly [HistogramStateTypeId]: HistogramStateTypeId
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
+    readonly buckets: ReadonlyArray<readonly [number, number]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -151,7 +149,7 @@ export declare namespace MetricState {
   export interface Summary extends MetricState<MetricKeyType.MetricKeyType.Summary> {
     readonly [SummaryStateTypeId]: SummaryStateTypeId
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+    readonly quantiles: ReadonlyArray<readonly [number, Option.Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -182,7 +180,7 @@ export const counter: {
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: (occurrences: HashMap.HashMap<string, number>) => MetricState.Frequency = internal.frequency
+export const frequency: (occurrences: ReadonlyMap<string, number>) => MetricState.Frequency = internal.frequency
 
 /**
  * @since 2.0.0
@@ -199,7 +197,7 @@ export const gauge: {
  */
 export const histogram: (
   options: {
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
+    readonly buckets: ReadonlyArray<readonly [number, number]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -214,7 +212,7 @@ export const histogram: (
 export const summary: (
   options: {
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+    readonly quantiles: ReadonlyArray<readonly [number, Option.Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number

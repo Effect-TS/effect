@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/metric/registry.js"
 import type * as MetricHook from "./MetricHook.js"
 import type * as MetricKey from "./MetricKey.js"
@@ -26,7 +25,7 @@ export type MetricRegistryTypeId = typeof MetricRegistryTypeId
  */
 export interface MetricRegistry {
   readonly [MetricRegistryTypeId]: MetricRegistryTypeId
-  snapshot(): HashSet.HashSet<MetricPair.MetricPair.Untyped>
+  snapshot(): ReadonlyArray<MetricPair.MetricPair.Untyped>
   get<Type extends MetricKeyType.MetricKeyType<any, any>>(
     key: MetricKey.MetricKey<Type>
   ): MetricHook.MetricHook<

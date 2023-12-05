@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
 import type * as Duration from "./Duration.js"
 import type * as Equal from "./Equal.js"
-import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/metric/key.js"
 import type * as MetricBoundaries from "./MetricBoundaries.js"
 import type * as MetricKeyType from "./MetricKeyType.js"
@@ -41,7 +39,7 @@ export interface MetricKey<out Type extends MetricKeyType.MetricKeyType<any, any
   readonly name: string
   readonly keyType: Type
   readonly description: Option.Option<string>
-  readonly tags: HashSet.HashSet<MetricLabel.MetricLabel>
+  readonly tags: ReadonlyArray<MetricLabel.MetricLabel>
 }
 
 /**
@@ -178,7 +176,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: ReadonlyArray<number>
     readonly description?: string | undefined
   }
 ) => MetricKey.Summary = internal.summary
@@ -209,26 +207,10 @@ export const tagged: {
  */
 export const taggedWithLabels: {
   (
-    extraTags: Iterable<MetricLabel.MetricLabel>
+    extraTags: ReadonlyArray<MetricLabel.MetricLabel>
   ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey<Type>,
-    extraTags: Iterable<MetricLabel.MetricLabel>
+    extraTags: ReadonlyArray<MetricLabel.MetricLabel>
   ): MetricKey<Type>
 } = internal.taggedWithLabels
-
-/**
- * Returns a new `MetricKey` with the specified tags appended.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const taggedWithLabelSet: {
-  (
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey<Type>,
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
-  ): MetricKey<Type>
-} = internal.taggedWithLabelSet

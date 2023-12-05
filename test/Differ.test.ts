@@ -85,6 +85,10 @@ function randomHashSet(): HashSet.HashSet<number> {
   return HashSet.fromIterable(Array.from({ length: 20 }, smallInt))
 }
 
+function randomReadonlyArray(): ReadonlyArray<number> {
+  return Array.from({ length: 20 }, smallInt)
+}
+
 function randomPair(): readonly [number, number] {
   return [smallInt(), smallInt()]
 }
@@ -111,6 +115,14 @@ describe.concurrent("Differ", () => {
       Differ.hashSet<number>(),
       randomHashSet,
       Equal.equals
+    )
+  })
+
+  describe.concurrent("readonlyArray", () => {
+    diffLaws(
+      Differ.readonlyArray<number, (n: number) => number>(Differ.update()),
+      randomReadonlyArray,
+      RA.getEquivalence(Equal.equals)
     )
   })
 
