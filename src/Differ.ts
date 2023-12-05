@@ -200,7 +200,7 @@ export declare namespace Differ {
      */
     export type TypeId = typeof ReadonlyArrayPatchTypeId
     /**
-     * A patch which describes updates to a chunk of values.
+     * A patch which describes updates to a ReadonlyArray of values.
      *
      * @since 2.0.0
      * @category models
@@ -379,7 +379,7 @@ export const orElseEither: {
 } = internal.orElseEither
 
 /**
- * Constructs a differ that knows how to diff a `HashSet` of values.
+ * Constructs a differ that knows how to diff a `ReadonlyArray` of values.
  *
  * @since 2.0.0
  * @category constructors
