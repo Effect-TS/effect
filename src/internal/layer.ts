@@ -251,9 +251,9 @@ class MemoMapImpl implements Layer.MemoMap {
                                     core.zipRight(
                                       core.scopeAddFinalizerExit(scope, (exit) =>
                                         pipe(
-                                          ref.get(finalizerRef),
-                                          core.flatMap((finalizer) => finalizer(exit)),
-                                          core.zipRight(core.sync(() => map.delete(layer)))
+                                          core.sync(() => map.delete(layer)),
+                                          core.zipRight(ref.get(finalizerRef)),
+                                          core.flatMap((finalizer) => finalizer(exit))
                                         ))
                                     ),
                                     core.zipRight(core.deferredSucceed(deferred, exit.i0)),
