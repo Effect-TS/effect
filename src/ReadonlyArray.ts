@@ -1164,6 +1164,23 @@ export const splitAt: {
 })
 
 /**
+ * Splits a `NonEmptyReadonlyArray` into two segments, with the first segment containing a maximum of `n` elements.
+ * The value of `n` must be `>= 1`.
+ *
+ * @category splitting
+ * @since 2.0.0
+ */
+export const splitNonEmptyAt: {
+  (n: number): <A>(self: NonEmptyReadonlyArray<A>) => [beforeIndex: NonEmptyArray<A>, fromIndex: Array<A>]
+  <A>(self: NonEmptyReadonlyArray<A>, n: number): [beforeIndex: NonEmptyArray<A>, fromIndex: Array<A>]
+} = dual(2, <A>(self: NonEmptyReadonlyArray<A>, n: number): [NonEmptyArray<A>, Array<A>] => {
+  const _n = Math.max(1, Math.floor(n))
+  return _n >= self.length ?
+    [copy(self), []] :
+    [prepend(self.slice(1, _n), headNonEmpty(self)), self.slice(_n)]
+})
+
+/**
  * Splits this iterable into `n` equally sized arrays.
  *
  * @since 2.0.0
@@ -1200,23 +1217,6 @@ export const copy: {
   <A>(self: NonEmptyReadonlyArray<A>): NonEmptyArray<A>
   <A>(self: ReadonlyArray<A>): Array<A>
 } = (<A>(self: ReadonlyArray<A>): Array<A> => self.slice()) as any
-
-/**
- * Splits a `NonEmptyReadonlyArray` into two segments, with the first segment containing a maximum of `n` elements.
- * The value of `n` must be `>= 1`.
- *
- * @category getters
- * @since 2.0.0
- */
-export const splitNonEmptyAt: {
-  (n: number): <A>(self: NonEmptyReadonlyArray<A>) => [beforeIndex: NonEmptyArray<A>, fromIndex: Array<A>]
-  <A>(self: NonEmptyReadonlyArray<A>, n: number): [beforeIndex: NonEmptyArray<A>, fromIndex: Array<A>]
-} = dual(2, <A>(self: NonEmptyReadonlyArray<A>, n: number): [NonEmptyArray<A>, Array<A>] => {
-  const _n = Math.max(1, Math.floor(n))
-  return _n >= self.length ?
-    [copy(self), []] :
-    [prepend(self.slice(1, _n), headNonEmpty(self)), self.slice(_n)]
-})
 
 /**
  * Splits an `Iterable` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of

@@ -74,7 +74,6 @@ Added in v2.0.0
   - [last](#last)
   - [lastNonEmpty](#lastnonempty)
   - [length](#length)
-  - [splitNonEmptyAt](#splitnonemptyat)
   - [tail](#tail)
   - [tailNonEmpty](#tailnonempty)
   - [take](#take)
@@ -118,6 +117,7 @@ Added in v2.0.0
   - [span](#span)
   - [split](#split)
   - [splitAt](#splitat)
+  - [splitNonEmptyAt](#splitnonemptyat)
   - [splitWhere](#splitwhere)
   - [unappend](#unappend)
   - [unprepend](#unprepend)
@@ -983,22 +983,6 @@ export declare const length: <A>(self: readonly A[]) => number
 
 Added in v2.0.0
 
-## splitNonEmptyAt
-
-Splits a `NonEmptyReadonlyArray` into two segments, with the first segment containing a maximum of `n` elements.
-The value of `n` must be `>= 1`.
-
-**Signature**
-
-```ts
-export declare const splitNonEmptyAt: {
-  (n: number): <A>(self: readonly [A, ...A[]]) => [beforeIndex: [A, ...A[]], fromIndex: A[]]
-  <A>(self: readonly [A, ...A[]], n: number): [beforeIndex: [A, ...A[]], fromIndex: A[]]
-}
-```
-
-Added in v2.0.0
-
 ## tail
 
 Get all but the first element of an `Iterable`, creating a new `Array`, or `None` if the `Iterable` is empty.
@@ -1529,6 +1513,22 @@ The value of `n` can be `0`.
 export declare const splitAt: {
   (n: number): <A>(self: Iterable<A>) => [beforeIndex: A[], fromIndex: A[]]
   <A>(self: Iterable<A>, n: number): [beforeIndex: A[], fromIndex: A[]]
+}
+```
+
+Added in v2.0.0
+
+## splitNonEmptyAt
+
+Splits a `NonEmptyReadonlyArray` into two segments, with the first segment containing a maximum of `n` elements.
+The value of `n` must be `>= 1`.
+
+**Signature**
+
+```ts
+export declare const splitNonEmptyAt: {
+  (n: number): <A>(self: readonly [A, ...A[]]) => [beforeIndex: [A, ...A[]], fromIndex: A[]]
+  <A>(self: readonly [A, ...A[]], n: number): [beforeIndex: [A, ...A[]], fromIndex: A[]]
 }
 ```
 

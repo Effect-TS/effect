@@ -87,6 +87,7 @@ Added in v2.0.0
 - [splitting](#splitting)
   - [split](#split)
   - [splitAt](#splitat)
+  - [splitNonEmptyAt](#splitnonemptyat)
   - [splitWhere](#splitwhere)
 - [symbol](#symbol)
   - [TypeId (type alias)](#typeid-type-alias)
@@ -1044,6 +1045,22 @@ Returns two splits of this chunk at the specified index.
 export declare const splitAt: {
   (n: number): <A>(self: Chunk<A>) => [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
   <A>(self: Chunk<A>, n: number): [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
+}
+```
+
+Added in v2.0.0
+
+## splitNonEmptyAt
+
+Splits a `NonEmptyChunk` into two segments, with the first segment containing a maximum of `n` elements.
+The value of `n` must be `>= 1`.
+
+**Signature**
+
+```ts
+export declare const splitNonEmptyAt: {
+  (n: number): <A>(self: NonEmptyChunk<A>) => [beforeIndex: NonEmptyChunk<A>, fromIndex: Chunk<A>]
+  <A>(self: NonEmptyChunk<A>, n: number): [beforeIndex: NonEmptyChunk<A>, fromIndex: Chunk<A>]
 }
 ```
 
