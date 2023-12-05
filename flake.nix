@@ -33,13 +33,6 @@
               deno
               nodejs_20
             ];
-
-            nativeBuildInputs = lib.optionals (!stdenvNoCC.isDarwin) [
-              playwright-driver.browsers
-            ];
-
-            PLAYWRIGHT_BROWSERS_PATH = lib.optionalString (!stdenvNoCC.isDarwin) "${playwright-driver.browsers}";
-            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = lib.optionalString (!stdenvNoCC.isDarwin) "true";
           };
       };
     });

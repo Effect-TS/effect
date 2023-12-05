@@ -1,24 +1,21 @@
 name: Setup
 description: Perform standard setup and install dependencies using pnpm.
+inputs:
+  node-version:
+    description: The version of Node.js to install
+    required: true
+    default: 20.9.0
 
 runs:
   using: composite
   steps:
-    - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@main
-    - uses: DeterminateSystems/magic-nix-cache-action@main
-    - name: Get pnpm store directory
-      id: pnpm-cache
-      shell: bash
-      run: |
-        echo "STORE_PATH=$(nix develop --command -- pnpm store path --silent)" >> $GITHUB_ENV
-    - uses: actions/cache@v3
-      name: Cache pnpm
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+    - name: Install node
+      uses: actions/setup-node@v3
       with:
-        path: ${{ env.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
+        cache: pnpm
+        node-version: ${{ inputs.node-version }}
     - name: Install dependencies
       shell: bash
-      run: nix develop --command -- pnpm install --ignore-scripts
+      run: pnpm install --ignore-scripts
