@@ -4932,7 +4932,7 @@ export const blocked: <E, A>(blockedRequests: RequestBlock, _continue: Effect<ne
  * @category requests & batching
  * @since 2.0.0
  */
-export const runRequestBlock: <R>(blockedRequests: RequestBlock) => Effect<R, never, void> = core.runRequestBlock
+export const runRequestBlock: (blockedRequests: RequestBlock) => Effect<never, never, void> = core.runRequestBlock
 
 /**
  * @category requests & batching
