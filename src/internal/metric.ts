@@ -118,7 +118,7 @@ export const fromMetricKey = <Type extends MetricKeyType.MetricKeyType<any, any>
   MetricKeyType.MetricKeyType.InType<Type>,
   MetricKeyType.MetricKeyType.OutType<Type>
 > => {
-  let untaggedHook_:
+  let untaggedHook:
     | MetricHook.MetricHook<
       MetricKeyType.MetricKeyType.InType<Type>,
       MetricKeyType.MetricKeyType.OutType<Type>
@@ -131,11 +131,11 @@ export const fromMetricKey = <Type extends MetricKeyType.MetricKeyType<any, any>
     MetricKeyType.MetricKeyType.OutType<Type>
   > => {
     if (extraTags.length === 0) {
-      if (untaggedHook_ !== undefined) {
-        return untaggedHook_
+      if (untaggedHook !== undefined) {
+        return untaggedHook
       }
-      untaggedHook_ = globalMetricRegistry.get(key)
-      return untaggedHook_
+      untaggedHook = globalMetricRegistry.get(key)
+      return untaggedHook
     }
 
     let hook = hookCache.get(extraTags)
