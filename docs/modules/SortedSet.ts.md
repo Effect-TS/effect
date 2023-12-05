@@ -63,6 +63,8 @@ Added in v2.0.0
 
 ## fromIterable
 
+Creates a new `SortedSet` from an iterable collection of values.
+
 **Signature**
 
 ```ts

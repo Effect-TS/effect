@@ -21,6 +21,7 @@ Added in v2.0.0
   - [prependAll](#prependall)
 - [constructors](#constructors)
   - [empty](#empty)
+  - [fromIterable](#fromiterable)
   - [make](#make)
   - [makeBy](#makeby)
   - [of](#of)
@@ -28,7 +29,6 @@ Added in v2.0.0
   - [replicate](#replicate)
   - [unfold](#unfold)
 - [conversions](#conversions)
-  - [fromIterable](#fromiterable)
   - [fromNullable](#fromnullable)
   - [fromOption](#fromoption)
   - [fromRecord](#fromrecord)
@@ -259,6 +259,18 @@ export declare const empty: <A = never>() => A[]
 
 Added in v2.0.0
 
+## fromIterable
+
+Creates a new `Array` from an iterable collection of values.
+
+**Signature**
+
+```ts
+export declare const fromIterable: <A>(collection: Iterable<A>) => A[]
+```
+
+Added in v2.0.0
+
 ## make
 
 Builds a `NonEmptyArray` from an non-empty collection of elements.
@@ -363,16 +375,6 @@ export declare const unfold: <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>) 
 Added in v2.0.0
 
 # conversions
-
-## fromIterable
-
-**Signature**
-
-```ts
-export declare const fromIterable: <A>(collection: Iterable<A>) => A[]
-```
-
-Added in v2.0.0
 
 ## fromNullable
 

@@ -58,6 +58,8 @@ Added in v2.0.0
 
 ## fromIterable
 
+Creates a new `SortedMap` from an iterable collection of key/value pairs.
+
 **Signature**
 
 ```ts

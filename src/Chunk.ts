@@ -243,9 +243,9 @@ export const make = <As extends readonly [any, ...ReadonlyArray<any>]>(
 export const of = <A>(a: A): NonEmptyChunk<A> => makeChunk({ _tag: "ISingleton", a }) as any
 
 /**
- * Converts from an `Iterable<A>`
+ * Creates a new `Chunk` from an iterable collection of values.
  *
- * @category conversions
+ * @category constructors
  * @since 2.0.0
  */
 export const fromIterable = <A>(self: Iterable<A>): Chunk<A> =>

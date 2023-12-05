@@ -96,7 +96,7 @@ export const forEach: {
 } = internal.forEach
 
 /**
- * Makes a new `TSet` initialized with provided iterable.
+ * Creates a new `TSet` from an iterable collection of values.
  *
  * @since 2.0.0
  * @category constructors

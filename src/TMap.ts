@@ -133,7 +133,7 @@ export const forEach: {
 } = internal.forEach
 
 /**
- * Makes a new `TMap` initialized with provided iterable.
+ * Creates a new `TMap` from an iterable collection of key/value pairs.
  *
  * @since 2.0.0
  * @category constructors

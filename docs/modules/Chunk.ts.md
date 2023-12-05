@@ -21,13 +21,13 @@ Added in v2.0.0
   - [prependAll](#prependall)
 - [constructors](#constructors)
   - [empty](#empty)
+  - [fromIterable](#fromiterable)
   - [isChunk](#ischunk)
   - [make](#make)
   - [makeBy](#makeby)
   - [of](#of)
   - [range](#range)
 - [conversions](#conversions)
-  - [fromIterable](#fromiterable)
   - [toArray](#toarray)
   - [toReadonlyArray](#toreadonlyarray)
 - [elements](#elements)
@@ -238,6 +238,18 @@ export declare const empty: <A = never>() => Chunk<A>
 
 Added in v2.0.0
 
+## fromIterable
+
+Creates a new `Chunk` from an iterable collection of values.
+
+**Signature**
+
+```ts
+export declare const fromIterable: <A>(self: Iterable<A>) => Chunk<A>
+```
+
+Added in v2.0.0
+
 ## isChunk
 
 Checks if `u` is a `Chunk<unknown>`
@@ -304,18 +316,6 @@ export declare const range: (start: number, end: number) => NonEmptyChunk<number
 Added in v2.0.0
 
 # conversions
-
-## fromIterable
-
-Converts from an `Iterable<A>`
-
-**Signature**
-
-```ts
-export declare const fromIterable: <A>(self: Iterable<A>) => Chunk<A>
-```
-
-Added in v2.0.0
 
 ## toArray
 

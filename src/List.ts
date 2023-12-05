@@ -274,7 +274,7 @@ export const empty = nil
 export const of = <A>(value: A): Cons<A> => makeCons(value, _Nil)
 
 /**
- * Constructs a new `List<A>` from the specified `Iterable<A>`.
+ * Creates a new `List` from an iterable collection of values.
  *
  * @since 2.0.0
  * @category constructors

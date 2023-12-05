@@ -85,7 +85,7 @@ Added in v2.0.0
 
 ## fromIterable
 
-Creates a new `MutableList` from an `Iterable`.
+Creates a new `MutableList` from an iterable collection of values.
 
 **Signature**
 

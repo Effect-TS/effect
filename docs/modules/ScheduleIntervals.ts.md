@@ -50,7 +50,7 @@ Added in v2.0.0
 
 ## fromIterable
 
-Constructs `Intervals` from the specified `Iterable<Interval>`.
+Creates `Intervals` from the specified `Iterable<Interval>`.
 
 **Signature**
 

@@ -82,7 +82,7 @@ Added in v2.0.0
 
 ## fromIterable
 
-Makes a new `TMap` initialized with provided iterable.
+Creates a new `TMap` from an iterable collection of key/value pairs.
 
 **Signature**
 

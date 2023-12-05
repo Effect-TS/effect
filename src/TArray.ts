@@ -298,7 +298,7 @@ export const forEach: {
 } = internal.forEach
 
 /**
- * Makes a new `TArray` initialized with provided iterable.
+ * Creates a new `TArray` from an iterable collection of values.
  *
  * @since 2.0.0
  * @category constructors

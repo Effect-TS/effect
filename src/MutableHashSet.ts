@@ -61,6 +61,8 @@ const fromHashMap = <V>(keyMap: MutableHashMap.MutableHashMap<V, boolean>): Muta
 export const empty = <K = never>(): MutableHashSet<K> => fromHashMap(MutableHashMap.empty())
 
 /**
+ * Creates a new `MutableHashSet` from an iterable collection of values.
+ *
  * @since 2.0.0
  * @category constructors
  */

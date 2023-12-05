@@ -74,8 +74,10 @@ export const make: <Entries extends Array<readonly [any, any]>>(
 > = (...entries) => fromIterable(entries)
 
 /**
+ * Creates a new `MutableHashMap` from an iterable collection of key/value pairs.
+ *
  * @since 2.0.0
- * @category conversions
+ * @category constructors
  */
 export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): MutableHashMap<K, V> =>
   fromHashMap(HashMap.fromIterable(entries))

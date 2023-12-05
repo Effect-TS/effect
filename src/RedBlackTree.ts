@@ -68,7 +68,7 @@ export const isRedBlackTree: {
 export const empty: <K, V = never>(ord: Order<K>) => RedBlackTree<K, V> = RBT.empty
 
 /**
- * Constructs a new tree from an iterable of key-value pairs.
+ * Creates a new `RedBlackTree` from an iterable collection of key/value pairs.
  *
  * @since 2.0.0
  * @category constructors

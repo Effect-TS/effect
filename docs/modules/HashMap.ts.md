@@ -85,7 +85,7 @@ Added in v2.0.0
 
 ## fromIterable
 
-Constructs a new `HashMap` from an iterable of key/value pairs.
+Creates a new `HashMap` from an iterable collection of key/value pairs.
 
 **Signature**
 

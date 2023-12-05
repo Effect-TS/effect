@@ -1550,7 +1550,7 @@ export const fromPubSub: {
 } = internal.fromPubSub
 
 /**
- * Creates a stream from an `Iterable` collection of values.
+ * Creates a new `Stream` from an iterable collection of values.
  *
  * @since 2.0.0
  * @category constructors

@@ -105,7 +105,9 @@ export const replicate: {
 } = dual(2, <A>(a: A, n: number): NonEmptyArray<A> => makeBy(n, () => a))
 
 /**
- * @category conversions
+ * Creates a new `Array` from an iterable collection of values.
+ *
+ * @category constructors
  * @since 2.0.0
  */
 export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>

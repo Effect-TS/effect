@@ -18,10 +18,10 @@ Added in v2.0.0
   - [product](#product)
   - [productMany](#productmany)
 - [constructors](#constructors)
+  - [fromIterable](#fromiterable)
   - [none](#none)
   - [some](#some)
 - [conversions](#conversions)
-  - [fromIterable](#fromiterable)
   - [fromNullable](#fromnullable)
   - [getLeft](#getleft)
   - [getOrThrow](#getorthrow)
@@ -169,6 +169,28 @@ Added in v2.0.0
 
 # constructors
 
+## fromIterable
+
+Converts an `Iterable` of values into an `Option`. Returns the first value of the `Iterable` wrapped in a `Some`
+if the `Iterable` is not empty, otherwise returns `None`.
+
+**Signature**
+
+```ts
+export declare const fromIterable: <A>(collection: Iterable<A>) => Option<A>
+```
+
+**Example**
+
+```ts
+import { fromIterable, some, none } from "effect/Option"
+
+assert.deepStrictEqual(fromIterable([1, 2, 3]), some(1))
+assert.deepStrictEqual(fromIterable([]), none())
+```
+
+Added in v2.0.0
+
 ## none
 
 Creates a new `Option` that represents the absence of a value.
@@ -194,28 +216,6 @@ export declare const some: <A>(value: A) => Option<A>
 Added in v2.0.0
 
 # conversions
-
-## fromIterable
-
-Converts an `Iterable` of values into an `Option`. Returns the first value of the `Iterable` wrapped in a `Some`
-if the `Iterable` is not empty, otherwise returns `None`.
-
-**Signature**
-
-```ts
-export declare const fromIterable: <A>(collection: Iterable<A>) => Option<A>
-```
-
-**Example**
-
-```ts
-import { fromIterable, some, none } from "effect/Option"
-
-assert.deepStrictEqual(fromIterable([1, 2, 3]), some(1))
-assert.deepStrictEqual(fromIterable([]), none())
-```
-
-Added in v2.0.0
 
 ## fromNullable
 
