@@ -1000,6 +1000,23 @@ export const splitAt: {
 } = dual(2, <A>(self: Chunk<A>, n: number): [Chunk<A>, Chunk<A>] => [take(self, n), drop(self, n)])
 
 /**
+ * Splits a `NonEmptyChunk` into two segments, with the first segment containing a maximum of `n` elements.
+ * The value of `n` must be `>= 1`.
+ *
+ * @category splitting
+ * @since 2.0.0
+ */
+export const splitNonEmptyAt: {
+  (n: number): <A>(self: NonEmptyChunk<A>) => [beforeIndex: NonEmptyChunk<A>, fromIndex: Chunk<A>]
+  <A>(self: NonEmptyChunk<A>, n: number): [beforeIndex: NonEmptyChunk<A>, fromIndex: Chunk<A>]
+} = dual(2, <A>(self: NonEmptyChunk<A>, n: number): [Chunk<A>, Chunk<A>] => {
+  const _n = Math.max(1, Math.floor(n))
+  return _n >= self.length ?
+    [self, empty()] :
+    [take(self, _n), drop(self, _n)]
+})
+
+/**
  * Splits this chunk into `n` equally sized chunks.
  *
  * @since 2.0.0
