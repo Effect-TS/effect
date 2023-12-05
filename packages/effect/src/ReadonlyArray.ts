@@ -15,6 +15,7 @@ import * as readonlyArray from "./internal/readonlyArray.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import * as Order from "./Order.js"
+import { not } from "./Predicate.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import * as RR from "./ReadonlyRecord.js"
 import * as Tuple from "./Tuple.js"
@@ -434,7 +435,7 @@ export const unsafeGet: {
 /**
  * Return a tuple containing the first element, and a new `Array` of the remaining elements, if any.
  *
- * @category getters
+ * @category splitting
  * @since 2.0.0
  */
 export const unprepend = <A>(
@@ -444,7 +445,7 @@ export const unprepend = <A>(
 /**
  * Return a tuple containing a copy of the `NonEmptyReadonlyArray` without its last element, and that last element.
  *
- * @category getters
+ * @category splitting
  * @since 2.0.0
  */
 export const unappend = <A>(
@@ -588,7 +589,7 @@ const spanIndex = <A>(self: Iterable<A>, predicate: Predicate<A>): number => {
  * 1. the longest initial subarray for which all elements satisfy the specified predicate
  * 2. the remaining elements
  *
- * @category filtering
+ * @category splitting
  * @since 2.0.0
  */
 export const span: {
@@ -1144,7 +1145,7 @@ export const chop: {
  * Splits an `Iterable` into two segments, with the first segment containing a maximum of `n` elements.
  * The value of `n` can be `0`.
  *
- * @category getters
+ * @category splitting
  * @since 2.0.0
  */
 export const splitAt: {
@@ -1161,6 +1162,36 @@ export const splitAt: {
   }
   return [input, []]
 })
+
+/**
+ * Splits this iterable into `n` equally sized arrays.
+ *
+ * @since 2.0.0
+ * @category splitting
+ */
+export const split: {
+  (n: number): <A>(self: Iterable<A>) => Array<Array<A>>
+  <A>(self: Iterable<A>, n: number): Array<Array<A>>
+} = dual(2, <A>(self: Iterable<A>, n: number) => {
+  const input = fromIterable(self)
+  return chunksOf(input, Math.ceil(input.length / Math.floor(n)))
+})
+
+/**
+ * Splits this iterable on the first element that matches this predicate.
+ * Returns a tuple containing two arrays: the first one is before the match, and the second one is from the match onward.
+ *
+ * @category splitting
+ * @since 2.0.0
+ */
+export const splitWhere: {
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => [beforeMatch: Array<B>, fromMatch: Array<B>]
+  <A>(self: Iterable<A>, predicate: Predicate<A>): [beforeMatch: Array<A>, fromMatch: Array<A>]
+} = dual(
+  2,
+  <A>(self: Iterable<A>, predicate: Predicate<A>): [beforeMatch: Array<A>, fromMatch: Array<A>] =>
+    span(self, not(predicate))
+)
 
 /**
  * @since 2.0.0
@@ -1198,7 +1229,7 @@ export const splitNonEmptyAt: {
  *
  * whenever `n` evenly divides the length of `self`.
  *
- * @category getters
+ * @category splitting
  * @since 2.0.0
  */
 export const chunksOf: {
