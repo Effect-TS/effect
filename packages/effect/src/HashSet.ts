@@ -42,7 +42,7 @@ export const isHashSet: {
 export const empty: <A = never>() => HashSet<A> = HS.empty
 
 /**
- * Construct a new `HashSet` from a `Collection` of values
+ * Creates a new `HashSet` from an iterable collection of values.
  *
  * @since 2.0.0
  * @category constructors

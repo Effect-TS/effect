@@ -88,6 +88,8 @@ export const isSortedMap: {
 export const empty = <K, V = never>(ord: Order<K>): SortedMap<K, V> => makeImpl<K, V>(RBT.empty<K, V>(ord))
 
 /**
+ * Creates a new `SortedMap` from an iterable collection of key/value pairs.
+ *
  * @since 2.0.0
  * @category constructors
  */

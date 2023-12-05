@@ -83,19 +83,19 @@ export const isEmptyReadonlyRecord: <A>(self: ReadonlyRecord<A>) => self is Read
  * @param f - A projection function that maps values of the iterable to a tuple of a key and a value.
  *
  * @example
- * import { fromIterable } from "effect/ReadonlyRecord"
+ * import { fromIterableWith } from "effect/ReadonlyRecord"
  *
  * const input = [1, 2, 3, 4]
  *
  * assert.deepStrictEqual(
- *   fromIterable(input, a => [String(a), a * 2]),
+ *   fromIterableWith(input, a => [String(a), a * 2]),
  *   { '1': 2, '2': 4, '3': 6, '4': 8 }
  * )
  *
- * @category conversions
+ * @category constructors
  * @since 2.0.0
  */
-export const fromIterable: {
+export const fromIterableWith: {
   <A, B>(f: (a: A) => readonly [string, B]): (self: Iterable<A>) => Record<string, B>
   <A, B>(self: Iterable<A>, f: (a: A) => readonly [string, B]): Record<string, B>
 } = dual(2, <A, B>(self: Iterable<A>, f: (a: A) => readonly [string, B]): Record<string, B> => {
@@ -106,6 +106,16 @@ export const fromIterable: {
   }
   return out
 })
+
+/**
+ * Creates a new record from an iterable collection of key/value pairs.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Record<string, V> = fromIterableWith(
+  identity
+)
 
 /**
  * Builds a record from an iterable of key-value pairs.
@@ -125,7 +135,7 @@ export const fromIterable: {
  * @category conversions
  * @since 2.0.0
  */
-export const fromEntries: <A>(self: Iterable<readonly [string, A]>) => Record<string, A> = fromIterable(identity)
+export const fromEntries: <A>(self: Iterable<readonly [string, A]>) => Record<string, A> = fromIterableWith(identity)
 
 /**
  * Transforms the values of a record into an `Array` with a custom mapping function.

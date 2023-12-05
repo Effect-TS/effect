@@ -87,6 +87,8 @@ export const isSortedSet: {
 export const empty = <A>(O: Order<A>): SortedSet<A> => fromTree(RBT.empty(O))
 
 /**
+ * Creates a new `SortedSet` from an iterable collection of values.
+ *
  * @since 2.0.0
  * @category constructors
  */

@@ -231,7 +231,7 @@ export const toRefinement = <A, B extends A>(f: (a: A) => Option<B>): (a: A) => 
  * assert.deepStrictEqual(fromIterable([1, 2, 3]), some(1))
  * assert.deepStrictEqual(fromIterable([]), none())
  *
- * @category conversions
+ * @category constructors
  * @since 2.0.0
  */
 export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {

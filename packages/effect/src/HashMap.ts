@@ -98,7 +98,7 @@ export const make: <Entries extends ReadonlyArray<readonly [any, any]>>(
 > = HM.make
 
 /**
- * Constructs a new `HashMap` from an iterable of key/value pairs.
+ * Creates a new `HashMap` from an iterable collection of key/value pairs.
  *
  * @since 2.0.0
  * @category constructors

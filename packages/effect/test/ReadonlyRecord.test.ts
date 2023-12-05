@@ -34,8 +34,18 @@ describe.concurrent("ReadonlyRecord", () => {
   })
 
   it("fromIterable", () => {
+    const input = [["1", 2], ["2", 4], ["3", 6], ["4", 8]] as const
+    expect(RR.fromIterable(input)).toEqual({
+      "1": 2,
+      "2": 4,
+      "3": 6,
+      "4": 8
+    })
+  })
+
+  it("fromIterableWith", () => {
     const input = [1, 2, 3, 4]
-    expect(RR.fromIterable(input, (a) => [String(a), a * 2])).toEqual({
+    expect(RR.fromIterableWith(input, (a) => [String(a), a * 2])).toEqual({
       "1": 2,
       "2": 4,
       "3": 6,
