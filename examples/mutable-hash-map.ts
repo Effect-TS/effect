@@ -1,6 +1,6 @@
 import { Equal, Hash } from "effect"
 import * as MHM from "effect/MutableHashMap"
-import * as MHMS from "effect/MutableHashMapSimple"
+import * as MHMS from "effect/MutableHashMap"
 
 class MyKey {
   constructor(readonly i: number) {}

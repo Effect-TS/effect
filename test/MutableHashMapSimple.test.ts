@@ -1,7 +1,7 @@
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
-import * as HM from "effect/MutableHashMapSimple"
+import * as HM from "effect/MutableHashMap"
 import * as O from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 
