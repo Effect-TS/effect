@@ -1,5 +1,8 @@
 import * as AST from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
+import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
 describe("Schema/filter", () => {
@@ -29,5 +32,30 @@ describe("Schema/filter", () => {
       },
       [AST.TitleAnnotationId]: "title"
     })
+  })
+
+  it("Option overloading", async () => {
+    const schema = S.struct({ a: S.string, b: S.string }).pipe(
+      S.filter((o) =>
+        o.b === o.a
+          ? Option.none()
+          : Option.some(
+            ParseResult.parseError([
+              ParseResult.key("b", [
+                ParseResult.type(S.literal(o.a).ast, o.b, `should be equal to a's value ("${o.a}")`)
+              ])
+            ])
+          )
+      )
+    )
+
+    await Util.expectParseSuccess(schema, { a: "x", b: "x" })
+    await Util.expectParseFailureTree(
+      schema,
+      { a: "a", b: "b" },
+      `error(s) found
+└─ ["b"]
+   └─ should be equal to a's value ("a")`
+    )
   })
 })

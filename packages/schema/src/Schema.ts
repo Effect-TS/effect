@@ -1190,6 +1190,10 @@ export const lazy = <I, A = I>(
  * @category combinators
  * @since 1.0.0
  */
+export function filter<A>(
+  f: (a: A, options: ParseOptions, self: AST.AST) => Option.Option<ParseResult.ParseError>,
+  options?: FilterAnnotations<A>
+): <I>(self: Schema<I, A>) => Schema<I, A>
 export function filter<C extends A, B extends A, A = C>(
   refinement: Predicate.Refinement<A, B>,
   options?: FilterAnnotations<A>
@@ -1199,16 +1203,23 @@ export function filter<B extends A, A = B>(
   options?: FilterAnnotations<A>
 ): <I>(self: Schema<I, B>) => Schema<I, B>
 export function filter<A>(
-  predicate: Predicate.Predicate<A>,
+  predicate:
+    | Predicate.Predicate<A>
+    | ((a: A, options: ParseOptions, self: AST.AST) => Option.Option<ParseResult.ParseError>),
   options?: FilterAnnotations<A>
 ): <I>(self: Schema<I, A>) => Schema<I, A> {
   return (self) =>
     make(AST.createRefinement(
       self.ast,
-      (a: A, _, ast: AST.AST) =>
-        predicate(a)
-          ? Option.none()
-          : Option.some(ParseResult.parseError([ParseResult.type(ast, a)])),
+      (a: A, options, ast: AST.AST) => {
+        const out = predicate(a, options, ast)
+        if (Predicate.isBoolean(out)) {
+          return out
+            ? Option.none()
+            : Option.some(ParseResult.parseError([ParseResult.type(ast, a)]))
+        }
+        return out
+      },
       toAnnotations(options)
     ))
 }
