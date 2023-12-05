@@ -180,8 +180,7 @@ class MemoMapImpl implements Layer.MemoMap {
         Layer.Layer<any, any, any>,
         readonly [Effect.Effect<never, any, any>, Scope.Scope.Finalizer]
       >
-    >,
-    readonly scope: Scope.Scope
+    >
   ) {
     this[MemoMapTypeId] = MemoMapTypeId
   }
@@ -193,7 +192,7 @@ class MemoMapImpl implements Layer.MemoMap {
    */
   getOrElseMemoize<RIn, E, ROut>(
     layer: Layer.Layer<RIn, E, ROut>,
-    scope: Scope.Scope = this.scope
+    scope: Scope.Scope
   ): Effect.Effect<RIn, E, Context.Context<ROut>> {
     return pipe(
       synchronized.modifyEffect(this.ref, (map) => {
@@ -253,7 +252,8 @@ class MemoMapImpl implements Layer.MemoMap {
                                       core.scopeAddFinalizerExit(scope, (exit) =>
                                         pipe(
                                           ref.get(finalizerRef),
-                                          core.flatMap((finalizer) => finalizer(exit))
+                                          core.flatMap((finalizer) => finalizer(exit)),
+                                          core.zipRight(core.sync(() => map.delete(layer)))
                                         ))
                                     ),
                                     core.zipRight(core.deferredSucceed(deferred, exit.i0)),
@@ -296,7 +296,8 @@ class MemoMapImpl implements Layer.MemoMap {
   }
 }
 
-const makeMemoMapIn = (scope: Scope.Scope): Effect.Effect<never, never, Layer.MemoMap> =>
+/** @internal */
+export const makeMemoMap: Effect.Effect<never, never, Layer.MemoMap> = core.suspend(() =>
   core.map(
     circular.makeSynchronized<
       Map<
@@ -307,13 +308,8 @@ const makeMemoMapIn = (scope: Scope.Scope): Effect.Effect<never, never, Layer.Me
         ]
       >
     >(new Map()),
-    (ref) => new MemoMapImpl(ref, scope)
+    (ref) => new MemoMapImpl(ref)
   )
-
-/** @internal */
-export const makeMemoMap: Effect.Effect<Scope.Scope, never, Layer.MemoMap> = core.flatMap(
-  fiberRuntime.scopeTag,
-  makeMemoMapIn
 )
 
 /** @internal */
@@ -333,24 +329,26 @@ export const buildWithScope = dual<
   ) => Effect.Effect<RIn, E, Context.Context<ROut>>
 >(2, (self, scope) =>
   core.flatMap(
-    makeMemoMapIn(scope),
-    (memoMap) => core.flatMap(makeBuilder(self), (run) => run(memoMap))
+    makeMemoMap,
+    (memoMap) => core.flatMap(makeBuilder(self, scope), (run) => run(memoMap))
   ))
 
 /** @internal */
 export const buildWithMemoMap = dual<
   (
-    memoMap: Layer.MemoMap
+    memoMap: Layer.MemoMap,
+    scope: Scope.Scope
   ) => <RIn, E, ROut>(self: Layer.Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>,
   <RIn, E, ROut>(
     self: Layer.Layer<RIn, E, ROut>,
-    memoMap: Layer.MemoMap
+    memoMap: Layer.MemoMap,
+    scope: Scope.Scope
   ) => Effect.Effect<RIn, E, Context.Context<ROut>>
->(2, (self, memoMap) => core.flatMap(makeBuilder(self), (run) => run(memoMap)))
+>(3, (self, memoMap, scope) => core.flatMap(makeBuilder(self, scope), (run) => run(memoMap)))
 
 const makeBuilder = <RIn, E, ROut>(
   self: Layer.Layer<RIn, E, ROut>,
-  scope?: Scope.Scope
+  scope: Scope.Scope
 ): Effect.Effect<never, never, (memoMap: Layer.MemoMap) => Effect.Effect<RIn, E, Context.Context<ROut>>> => {
   const op = self as Primitive
   switch (op._tag) {
@@ -376,7 +374,7 @@ const makeBuilder = <RIn, E, ROut>(
       )
     }
     case "Fresh": {
-      return core.sync(() => (memoMap: Layer.MemoMap) => pipe(op.layer, buildWithScope(scope ?? memoMap.scope)))
+      return core.sync(() => (_: Layer.MemoMap) => pipe(op.layer, buildWithScope(scope)))
     }
     case "FromEffect": {
       return core.sync(() => (_: Layer.MemoMap) => op.effect as Effect.Effect<RIn, E, Context.Context<ROut>>)
@@ -395,10 +393,10 @@ const makeBuilder = <RIn, E, ROut>(
       )
     }
     case "Scoped": {
-      return core.sync(() => (memoMap: Layer.MemoMap) =>
+      return core.sync(() => (_: Layer.MemoMap) =>
         fiberRuntime.scopeExtend(
           op.effect as Effect.Effect<RIn, E, Context.Context<ROut>>,
-          scope ?? memoMap.scope
+          scope
         )
       )
     }

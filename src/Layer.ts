@@ -113,11 +113,9 @@ export interface MemoMap {
   readonly [MemoMapTypeId]: MemoMapTypeId
 
   /** @internal */
-  readonly scope: Scope.Scope
-  /** @internal */
   readonly getOrElseMemoize: <RIn, E, ROut>(
     layer: Layer<RIn, E, ROut>,
-    scope?: Scope.Scope | undefined
+    scope: Scope.Scope
   ) => Effect.Effect<RIn, E, Context.Context<ROut>>
 }
 
@@ -1023,7 +1021,7 @@ export const withParentSpan: {
  * @since 2.0.0
  * @category memo map
  */
-export const makeMemoMap: Effect.Effect<Scope.Scope, never, MemoMap> = internal.makeMemoMap
+export const makeMemoMap: Effect.Effect<never, never, MemoMap> = internal.makeMemoMap
 
 /**
  * Builds a layer into an `Effect` value, using the specified `MemoMap` to memoize
@@ -1033,6 +1031,13 @@ export const makeMemoMap: Effect.Effect<Scope.Scope, never, MemoMap> = internal.
  * @category memo map
  */
 export const buildWithMemoMap: {
-  (memoMap: MemoMap): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
-  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, memoMap: MemoMap): Effect.Effect<RIn, E, Context.Context<ROut>>
+  (
+    memoMap: MemoMap,
+    scope: Scope.Scope
+  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>,
+    memoMap: MemoMap,
+    scope: Scope.Scope
+  ): Effect.Effect<RIn, E, Context.Context<ROut>>
 } = internal.buildWithMemoMap
