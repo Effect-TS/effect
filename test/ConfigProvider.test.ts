@@ -4,7 +4,6 @@ import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import * as ConfigError from "effect/ConfigError"
 import * as ConfigProvider from "effect/ConfigProvider"
-import * as ConfigSecret from "effect/ConfigSecret"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
@@ -13,6 +12,7 @@ import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
+import * as Secret from "effect/Secret"
 import { assert, describe, expect } from "vitest"
 
 interface HostPort {
@@ -796,7 +796,7 @@ describe.concurrent("ConfigProvider", () => {
       const value = "Hello, World!"
       const configProvider = ConfigProvider.fromMap(new Map([["greeting", value]]))
       const result = yield* $(configProvider.load(Config.secret("greeting")))
-      assert.deepStrictEqual(result, ConfigSecret.make(value.split("").map((c) => c.charCodeAt(0))))
+      assert.deepStrictEqual(result, Secret.make(value.split("").map((c) => c.charCodeAt(0))))
     }))
 
   it.effect("snakeCase", () =>
