@@ -918,13 +918,8 @@ export const suspend = <RIn, E, ROut>(
 }
 
 const fromLayer = <RIn, E, ROut>(
-  evaluate: Layer.Layer<RIn, E, ROut>
-): Layer.Layer<RIn, E, ROut> => {
-  const suspend = Object.create(proto)
-  suspend._tag = OpCodes.OP_SUSPEND
-  suspend.evaluate = () => evaluate
-  return suspend
-}
+  layer: Layer.Layer<RIn, E, ROut>
+): Layer.Layer<RIn, E, ROut> => suspend(() => layer)
 
 /** @internal */
 export const sync = dual<
