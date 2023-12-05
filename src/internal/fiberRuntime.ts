@@ -547,7 +547,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
    * **NOTE**: This method must be invoked by the fiber itself.
    */
   setFiberRef<X>(fiberRef: FiberRef.FiberRef<X>, value: X): void {
-    this._fiberRefs = fiberRefs.updatedAs(this._fiberRefs, {
+    this._fiberRefs = fiberRefs.updateAs(this._fiberRefs, {
       fiberId: this._fiberId,
       fiberRef,
       value

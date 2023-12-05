@@ -11,6 +11,7 @@ import { format, NodeInspectSymbol } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
+import type * as ReadonlyArray from "../ReadonlyArray.js"
 import type * as Runtime from "../Runtime.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as _scheduler from "../Scheduler.js"
@@ -31,19 +32,18 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
   const fiberId = FiberId.unsafeMake()
   const effect = self
 
-  let fiberRefs = FiberRefs.updatedAs(runtime.fiberRefs, {
-    fiberId,
-    fiberRef: core.currentContext,
-    value: runtime.context as Context.Context<never>
-  })
+  const fiberRefUpdates: ReadonlyArray.NonEmptyArray<
+    readonly [FiberRef.FiberRef<any>, ReadonlyArray.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
+  > = [[core.currentContext, [[fiberId, runtime.context]]]]
 
   if (options?.scheduler) {
-    fiberRefs = FiberRefs.updatedAs(fiberRefs, {
-      fiberId,
-      fiberRef: _scheduler.currentScheduler,
-      value: options.scheduler
-    })
+    fiberRefUpdates.push([_scheduler.currentScheduler, [[fiberId, options.scheduler]]])
   }
+
+  let fiberRefs = FiberRefs.updateManyAs(runtime.fiberRefs, {
+    entries: fiberRefUpdates,
+    forkAs: fiberId
+  })
 
   if (options?.updateRefs) {
     fiberRefs = options.updateRefs(fiberRefs, fiberId)
@@ -51,7 +51,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 
   const fiberRuntime: FiberRuntime.FiberRuntime<E, A> = new FiberRuntime.FiberRuntime<E, A>(
     fiberId,
-    FiberRefs.forkAs(fiberRefs, fiberId),
+    fiberRefs,
     runtime.runtimeFlags
   )
 

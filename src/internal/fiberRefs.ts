@@ -132,17 +132,25 @@ export const forkAs = dual<
   (self: FiberRefs.FiberRefs, childId: FiberId.Runtime) => FiberRefs.FiberRefs
 >(2, (self, childId) => {
   const map = new Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, unknown]>>()
+  unsafeForkAs(self, map, childId)
+  return new FiberRefsImpl(map)
+})
+
+const unsafeForkAs = (
+  self: FiberRefs.FiberRefs,
+  map: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>,
+  fiberId: FiberId.Runtime
+) => {
   self.locals.forEach((stack, fiberRef) => {
     const oldValue = stack[0][1]
     const newValue = fiberRef.patch(fiberRef.fork)(oldValue)
     if (Equal.equals(oldValue, newValue)) {
       map.set(fiberRef, stack)
     } else {
-      map.set(fiberRef, [[childId, newValue] as const, ...stack])
+      map.set(fiberRef, [[fiberId, newValue] as const, ...stack])
     }
   })
-  return new FiberRefsImpl(map)
-})
+}
 
 /** @internal */
 export const fiberRefs = (self: FiberRefs.FiberRefs) => HashSet.fromIterable(self.locals.keys())
@@ -182,7 +190,7 @@ export const getOrDefault = dual<
 >(2, (self, fiberRef) => pipe(get(self, fiberRef), Option.getOrElse(() => fiberRef.initial)))
 
 /** @internal */
-export const updatedAs = dual<
+export const updateAs = dual<
   <A>(
     options: {
       readonly fiberId: FiberId.Runtime
@@ -206,15 +214,25 @@ export const updatedAs = dual<
   if (self.locals.size === 0) {
     return new FiberRefsImpl(new Map([[fiberRef, [[fiberId, value] as const]]]))
   }
+  const locals = new Map(self.locals)
+  unsafeUpdateAs(locals, fiberId, fiberRef, value)
+  return new FiberRefsImpl(locals)
+})
 
-  const oldStack: ReadonlyArray<readonly [FiberId.Runtime, A]> = self.locals.get(fiberRef) ?? []
-  let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, A]> | undefined
+const unsafeUpdateAs = (
+  locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>,
+  fiberId: FiberId.Runtime,
+  fiberRef: FiberRef.FiberRef<any>,
+  value: any
+) => {
+  const oldStack: ReadonlyArray<readonly [FiberId.Runtime, any]> = locals.get(fiberRef) ?? []
+  let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]> | undefined
 
   if (Arr.isNonEmptyReadonlyArray(oldStack)) {
     const [currentId, currentValue] = Arr.headNonEmpty(oldStack)
     if (currentId[Equal.symbol](fiberId)) {
       if (Equal.equals(currentValue, value)) {
-        return self
+        return
       } else {
         newStack = [
           [fiberId, value] as const,
@@ -231,6 +249,50 @@ export const updatedAs = dual<
     newStack = [[fiberId, value] as const]
   }
 
+  locals.set(fiberRef, newStack)
+}
+
+/** @internal */
+export const updateManyAs = dual<
+  (
+    options: {
+      readonly forkAs?: FiberId.Runtime | undefined
+      readonly entries: Arr.NonEmptyReadonlyArray<
+        readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
+      >
+    }
+  ) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
+  (
+    self: FiberRefs.FiberRefs,
+    options: {
+      readonly forkAs?: FiberId.Runtime | undefined
+      readonly entries: Arr.NonEmptyReadonlyArray<
+        readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
+      >
+    }
+  ) => FiberRefs.FiberRefs
+>(2, (self: FiberRefs.FiberRefs, { entries, forkAs }: {
+  readonly forkAs?: FiberId.Runtime | undefined
+  readonly entries: Arr.NonEmptyReadonlyArray<
+    readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
+  >
+}) => {
+  if (self.locals.size === 0) {
+    return new FiberRefsImpl(new Map(entries))
+  }
+
   const locals = new Map(self.locals)
-  return new FiberRefsImpl(locals.set(fiberRef, newStack))
+  if (forkAs !== undefined) {
+    unsafeForkAs(self, locals, forkAs)
+  }
+  entries.forEach(([fiberRef, values]) => {
+    if (values.length === 1) {
+      unsafeUpdateAs(locals, values[0][0], fiberRef, values[0][1])
+    } else {
+      values.forEach(([fiberId, value]) => {
+        unsafeUpdateAs(locals, fiberId, fiberRef, value)
+      })
+    }
+  })
+  return new FiberRefsImpl(locals)
 })
