@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.51.5
+
+### Patch Changes
+
+- [#629](https://github.com/Effect-TS/schema/pull/629) [`f690ebe`](https://github.com/Effect-TS/schema/commit/f690ebe28549181d80c985048784f9190e17bdaf) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add filter overloading returning Option<ParseError>
+
+  For more complex scenarios, you can return an `Option<ParseError>` type instead of a boolean. In this context, `None` indicates success, and `Some(error)` rejects the input with a specific error
+
 ## 0.51.4
 
 ### Patch Changes
