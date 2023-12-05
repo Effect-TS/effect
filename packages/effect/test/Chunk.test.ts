@@ -785,6 +785,14 @@ describe.concurrent("Chunk", () => {
     expect(() => Chunk.unsafeLast(Chunk.empty())).toThrow(new Error("Index out of bounds"))
   })
 
+  it("splitNonEmptyAt", () => {
+    expect(pipe(Chunk.make(1, 2, 3, 4), Chunk.splitNonEmptyAt(2))).toStrictEqual([Chunk.make(1, 2), Chunk.make(3, 4)])
+    expect(pipe(Chunk.make(1, 2, 3, 4), Chunk.splitNonEmptyAt(10))).toStrictEqual([
+      Chunk.make(1, 2, 3, 4),
+      Chunk.empty()
+    ])
+  })
+
   it("splitWhere", () => {
     expect(Chunk.splitWhere(Chunk.empty(), (n) => n > 1)).toEqual([Chunk.empty(), Chunk.empty()])
     expect(Chunk.splitWhere(Chunk.make(1, 2, 3), (n) => n > 1)).toEqual([Chunk.make(1), Chunk.make(2, 3)])

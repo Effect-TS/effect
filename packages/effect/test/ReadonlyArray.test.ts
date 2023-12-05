@@ -568,6 +568,7 @@ describe.concurrent("ReadonlyArray", () => {
 
   it("splitNonEmptyAt", () => {
     deepStrictEqual(pipe(RA.make(1, 2, 3, 4), RA.splitNonEmptyAt(2)), [[1, 2], [3, 4]])
+    deepStrictEqual(pipe(RA.make(1, 2, 3, 4), RA.splitNonEmptyAt(10)), [[1, 2, 3, 4], []])
   })
 
   describe.concurrent("unsafeGet", () => {
