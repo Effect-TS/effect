@@ -94,6 +94,34 @@ export declare namespace Layer {
 }
 
 /**
+ * @since 2.0.0
+ * @category symbols
+ */
+export const MemoMapTypeId: unique symbol = internal.MemoMapTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type MemoMapTypeId = typeof MemoMapTypeId
+
+/**
+ * @since 2.0.0
+ * @category models
+ */
+export interface MemoMap {
+  readonly [MemoMapTypeId]: MemoMapTypeId
+
+  /** @internal */
+  readonly scope: Scope.Scope
+  /** @internal */
+  readonly getOrElseMemoize: <RIn, E, ROut>(
+    layer: Layer<RIn, E, ROut>,
+    scope?: Scope.Scope | undefined
+  ) => Effect.Effect<RIn, E, Context.Context<ROut>>
+}
+
+/**
  * Returns `true` if the specified value is a `Layer`, `false` otherwise.
  *
  * @since 2.0.0
@@ -984,3 +1012,27 @@ export const withParentSpan: {
   (span: Tracer.ParentSpan): <R, E, A>(self: Layer<R, E, A>) => Layer<Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(self: Layer<R, E, A>, span: Tracer.ParentSpan): Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 } = internal.withParentSpan
+
+// -----------------------------------------------------------------------------
+// memo map
+// -----------------------------------------------------------------------------
+
+/**
+ * Constructs a `MemoMap` that can be used to build additional layers.
+ *
+ * @since 2.0.0
+ * @category memo map
+ */
+export const makeMemoMap: Effect.Effect<Scope.Scope, never, MemoMap> = internal.makeMemoMap
+
+/**
+ * Builds a layer into an `Effect` value, using the specified `MemoMap` to memoize
+ * the layer construction.
+ *
+ * @since 2.0.0
+ * @category memo map
+ */
+export const buildWithMemoMap: {
+  (memoMap: MemoMap): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
+  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, memoMap: MemoMap): Effect.Effect<RIn, E, Context.Context<ROut>>
+} = internal.buildWithMemoMap

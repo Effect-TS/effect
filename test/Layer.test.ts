@@ -662,6 +662,28 @@ describe.concurrent("Layer", () => {
       const result = Context.get(env, BarTag)
       assert.strictEqual(result.bar, "bar: 1")
     }))
+
+  describe("MemoMap", () => {
+    it.effect("memoizes layer across builds", () =>
+      Effect.gen(function*($) {
+        const ref = yield* $(makeRef())
+        const layer1 = makeLayer1(ref)
+        const layer2 = makeLayer2(ref).pipe(
+          Layer.provide(layer1)
+        )
+        yield* $(
+          Effect.gen(function*(_) {
+            const memoMap = yield* _(Layer.makeMemoMap)
+            yield* _(Layer.buildWithMemoMap(layer1, memoMap))
+            yield* _(Layer.buildWithMemoMap(layer1, memoMap))
+            return yield* _(Layer.buildWithMemoMap(layer2, memoMap))
+          }),
+          Effect.scoped
+        )
+        const result = yield* $(Ref.get(ref))
+        assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
+      }))
+  })
 })
 export const makeRef = (): Effect.Effect<never, never, Ref.Ref<Chunk.Chunk<string>>> => {
   return Ref.make(Chunk.empty())
