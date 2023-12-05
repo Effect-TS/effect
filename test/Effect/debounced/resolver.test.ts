@@ -32,7 +32,7 @@ describe("DebouncedResolver", () => {
   it.live("resolves requests in a debounced manner", () =>
     Effect.scoped(
       Effect.gen(function*(_) {
-        const { debounced } = yield* _(makeDataLoader(Schedule.fixed("100 millis")))
+        const { withDataLoader } = yield* _(makeDataLoader(Schedule.fixed("100 millis")))
 
         const blocks = [] as Array<any>
 
@@ -44,7 +44,7 @@ describe("DebouncedResolver", () => {
           pipe(
             Effect.request(req, testResolver),
             Effect.withRequestCaching(true),
-            debounced
+            withDataLoader
           )
 
         const reqs = yield* _(

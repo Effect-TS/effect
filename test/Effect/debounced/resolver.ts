@@ -24,17 +24,17 @@ export const makeDataLoader = <R, A>(schedule: Schedule.Schedule<R, unknown, A>)
       Effect.forkScoped
     )
 
-    const debounced = <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+    const withDataLoader = <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
       Effect.uninterruptibleMask((restore) =>
         Effect.flatMap(
           Effect.step(restore(effect)),
           (step) =>
             Exit.isExit(step) ? step : Effect.suspend(() => {
               queue.push(step.i0)
-              return Effect.blocked(RequestBlock.empty, debounced(step.i1))
+              return Effect.blocked(RequestBlock.empty, withDataLoader(step.i1))
             })
         )
       )
 
-    return { debounced }
+    return { withDataLoader }
   })
