@@ -98,7 +98,7 @@ export const empty = <A>(): MutableList<A> => {
 }
 
 /**
- * Creates a new `MutableList` from an `Iterable`.
+ * Creates a new `MutableList` from an iterable collection of values.
  *
  * @since 2.0.0
  * @category constructors

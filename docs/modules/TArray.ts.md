@@ -84,7 +84,7 @@ Added in v2.0.0
 
 ## fromIterable
 
-Makes a new `TArray` initialized with provided iterable.
+Creates a new `TArray` from an iterable collection of values.
 
 **Signature**
 

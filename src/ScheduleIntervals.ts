@@ -45,7 +45,7 @@ export const make: (intervals: Check.Chunk<Interval.Interval>) => Intervals = in
 export const empty: Intervals = internal.empty
 
 /**
- * Constructs `Intervals` from the specified `Iterable<Interval>`.
+ * Creates `Intervals` from the specified `Iterable<Interval>`.
  *
  * @since 2.0.0
  * @category constructors

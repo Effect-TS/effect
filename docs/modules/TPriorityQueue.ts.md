@@ -61,7 +61,7 @@ Added in v2.0.0
 
 ## fromIterable
 
-Makes a new `TPriorityQueue` initialized with provided iterable.
+Creates a new `TPriorityQueue` from an iterable collection of values.
 
 **Signature**
 

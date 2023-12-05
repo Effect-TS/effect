@@ -71,7 +71,7 @@ Added in v2.0.0
 
 ## fromIterable
 
-Construct a new `HashSet` from a `Collection` of values
+Creates a new `HashSet` from an iterable collection of values.
 
 **Signature**
 

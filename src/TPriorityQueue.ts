@@ -67,7 +67,7 @@ export declare namespace TPriorityQueue {
 export const empty: <A>(order: Order.Order<A>) => STM.STM<never, never, TPriorityQueue<A>> = internal.empty
 
 /**
- * Makes a new `TPriorityQueue` initialized with provided iterable.
+ * Creates a new `TPriorityQueue` from an iterable collection of values.
  *
  * @since 2.0.0
  * @category constructors

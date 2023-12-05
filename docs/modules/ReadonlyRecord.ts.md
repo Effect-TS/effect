@@ -16,11 +16,12 @@ Added in v2.0.0
 
 - [constructors](#constructors)
   - [empty](#empty)
+  - [fromIterable](#fromiterable)
+  - [fromIterableWith](#fromiterablewith)
   - [singleton](#singleton)
 - [conversions](#conversions)
   - [collect](#collect)
   - [fromEntries](#fromentries)
-  - [fromIterable](#fromiterable)
   - [toEntries](#toentries)
 - [filtering](#filtering)
   - [filter](#filter)
@@ -77,6 +78,47 @@ Creates a new, empty record.
 
 ```ts
 export declare const empty: <A>() => Record<string, A>
+```
+
+Added in v2.0.0
+
+## fromIterable
+
+Creates a new record from an iterable collection of key/value pairs.
+
+**Signature**
+
+```ts
+export declare const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Record<string, V>
+```
+
+Added in v2.0.0
+
+## fromIterableWith
+
+Takes an iterable and a projection function and returns a record.
+The projection function maps each value of the iterable to a tuple of a key and a value, which is then added to the resulting record.
+
+**Signature**
+
+```ts
+export declare const fromIterableWith: {
+  <A, B>(f: (a: A) => readonly [string, B]): (self: Iterable<A>) => Record<string, B>
+  <A, B>(self: Iterable<A>, f: (a: A) => readonly [string, B]): Record<string, B>
+}
+```
+
+**Example**
+
+```ts
+import { fromIterableWith } from "effect/ReadonlyRecord"
+
+const input = [1, 2, 3, 4]
+
+assert.deepStrictEqual(
+  fromIterableWith(input, (a) => [String(a), a * 2]),
+  { "1": 2, "2": 4, "3": 6, "4": 8 }
+)
 ```
 
 Added in v2.0.0
@@ -150,35 +192,6 @@ const input: Array<[string, number]> = [
 ]
 
 assert.deepStrictEqual(fromEntries(input), { a: 1, b: 2 })
-```
-
-Added in v2.0.0
-
-## fromIterable
-
-Takes an iterable and a projection function and returns a record.
-The projection function maps each value of the iterable to a tuple of a key and a value, which is then added to the resulting record.
-
-**Signature**
-
-```ts
-export declare const fromIterable: {
-  <A, B>(f: (a: A) => readonly [string, B]): (self: Iterable<A>) => Record<string, B>
-  <A, B>(self: Iterable<A>, f: (a: A) => readonly [string, B]): Record<string, B>
-}
-```
-
-**Example**
-
-```ts
-import { fromIterable } from "effect/ReadonlyRecord"
-
-const input = [1, 2, 3, 4]
-
-assert.deepStrictEqual(
-  fromIterable(input, (a) => [String(a), a * 2]),
-  { "1": 2, "2": 4, "3": 6, "4": 8 }
-)
 ```
 
 Added in v2.0.0

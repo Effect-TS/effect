@@ -14,9 +14,8 @@ Added in v2.0.0
 
 - [constructors](#constructors)
   - [empty](#empty)
-  - [make](#make)
-- [conversions](#conversions)
   - [fromIterable](#fromiterable)
+  - [make](#make)
 - [elements](#elements)
   - [get](#get)
   - [has](#has)
@@ -45,6 +44,18 @@ export declare const empty: <K = never, V = never>() => MutableHashMap<K, V>
 
 Added in v2.0.0
 
+## fromIterable
+
+Creates a new `MutableHashMap` from an iterable collection of key/value pairs.
+
+**Signature**
+
+```ts
+export declare const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => MutableHashMap<K, V>
+```
+
+Added in v2.0.0
+
 ## make
 
 **Signature**
@@ -56,18 +67,6 @@ export declare const make: <Entries extends (readonly [any, any])[]>(
   Entries[number] extends readonly [infer K, any] ? K : never,
   Entries[number] extends readonly [any, infer V] ? V : never
 >
-```
-
-Added in v2.0.0
-
-# conversions
-
-## fromIterable
-
-**Signature**
-
-```ts
-export declare const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => MutableHashMap<K, V>
 ```
 
 Added in v2.0.0

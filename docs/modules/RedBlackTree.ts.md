@@ -92,7 +92,7 @@ Added in v2.0.0
 
 ## fromIterable
 
-Constructs a new tree from an iterable of key-value pairs.
+Creates a new `RedBlackTree` from an iterable collection of key/value pairs.
 
 **Signature**
 
