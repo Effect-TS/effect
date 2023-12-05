@@ -966,7 +966,7 @@ export const size = <A>(self: Chunk<A>): number => self.length
  * Sort the elements of a Chunk in increasing order, creating a new Chunk.
  *
  * @since 2.0.0
- * @category elements
+ * @category sorting
  */
 export const sort: {
   <B>(O: Order.Order<B>): <A extends B>(self: Chunk<A>) => Chunk<A>
@@ -978,7 +978,7 @@ export const sort: {
 
 /**
  * @since 2.0.0
- * @category elements
+ * @category sorting
  */
 export const sortWith: {
   <A, B>(f: (a: A) => B, order: Order.Order<B>): (self: Chunk<A>) => Chunk<A>
@@ -992,7 +992,7 @@ export const sortWith: {
  *  Returns two splits of this chunk at the specified index.
  *
  * @since 2.0.0
- * @category elements
+ * @category splitting
  */
 export const splitAt: {
   (n: number): <A>(self: Chunk<A>) => [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
@@ -1003,7 +1003,7 @@ export const splitAt: {
  * Splits this chunk into `n` equally sized chunks.
  *
  * @since 2.0.0
- * @category elements
+ * @category splitting
  */
 export const split: {
   (n: number): <A>(self: Chunk<A>) => Chunk<Chunk<A>>
@@ -1012,8 +1012,9 @@ export const split: {
 
 /**
  * Splits this chunk on the first element that matches this predicate.
+ * Returns a tuple containing two chunks: the first one is before the match, and the second one is from the match onward.
  *
- * @category elements
+ * @category splitting
  * @since 2.0.0
  */
 export const splitWhere: {

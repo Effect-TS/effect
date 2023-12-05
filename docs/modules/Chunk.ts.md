@@ -50,11 +50,6 @@ Added in v2.0.0
   - [reverse](#reverse)
   - [size](#size)
   - [some](#some)
-  - [sort](#sort)
-  - [sortWith](#sortwith)
-  - [split](#split)
-  - [splitAt](#splitat)
-  - [splitWhere](#splitwhere)
   - [tail](#tail)
   - [tailNonEmpty](#tailnonempty)
   - [takeRight](#takeright)
@@ -86,6 +81,13 @@ Added in v2.0.0
 - [sequencing](#sequencing)
   - [flatMap](#flatmap)
   - [flatten](#flatten)
+- [sorting](#sorting)
+  - [sort](#sort)
+  - [sortWith](#sortwith)
+- [splitting](#splitting)
+  - [split](#split)
+  - [splitAt](#splitat)
+  - [splitWhere](#splitwhere)
 - [symbol](#symbol)
   - [TypeId (type alias)](#typeid-type-alias)
 - [type lambdas](#type-lambdas)
@@ -605,79 +607,6 @@ export declare const some: {
 
 Added in v2.0.0
 
-## sort
-
-Sort the elements of a Chunk in increasing order, creating a new Chunk.
-
-**Signature**
-
-```ts
-export declare const sort: {
-  <B>(O: Order.Order<B>): <A extends B>(self: Chunk<A>) => Chunk<A>
-  <A extends B, B>(self: Chunk<A>, O: Order.Order<B>): Chunk<A>
-}
-```
-
-Added in v2.0.0
-
-## sortWith
-
-**Signature**
-
-```ts
-export declare const sortWith: {
-  <A, B>(f: (a: A) => B, order: Order.Order<B>): (self: Chunk<A>) => Chunk<A>
-  <A, B>(self: Chunk<A>, f: (a: A) => B, order: Order.Order<B>): Chunk<A>
-}
-```
-
-Added in v2.0.0
-
-## split
-
-Splits this chunk into `n` equally sized chunks.
-
-**Signature**
-
-```ts
-export declare const split: {
-  (n: number): <A>(self: Chunk<A>) => Chunk<Chunk<A>>
-  <A>(self: Chunk<A>, n: number): Chunk<Chunk<A>>
-}
-```
-
-Added in v2.0.0
-
-## splitAt
-
-Returns two splits of this chunk at the specified index.
-
-**Signature**
-
-```ts
-export declare const splitAt: {
-  (n: number): <A>(self: Chunk<A>) => [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
-  <A>(self: Chunk<A>, n: number): [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
-}
-```
-
-Added in v2.0.0
-
-## splitWhere
-
-Splits this chunk on the first element that matches this predicate.
-
-**Signature**
-
-```ts
-export declare const splitWhere: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [beforeMatch: Chunk<B>, fromMatch: Chunk<B>]
-  <A>(self: Chunk<A>, predicate: Predicate<A>): [beforeMatch: Chunk<A>, fromMatch: Chunk<A>]
-}
-```
-
-Added in v2.0.0
-
 ## tail
 
 Returns every elements after the first.
@@ -1054,6 +983,84 @@ Flattens a chunk of chunks into a single chunk by concatenating all chunks.
 
 ```ts
 export declare const flatten: <S extends Chunk<Chunk<any>>>(self: S) => Chunk.Flatten<S>
+```
+
+Added in v2.0.0
+
+# sorting
+
+## sort
+
+Sort the elements of a Chunk in increasing order, creating a new Chunk.
+
+**Signature**
+
+```ts
+export declare const sort: {
+  <B>(O: Order.Order<B>): <A extends B>(self: Chunk<A>) => Chunk<A>
+  <A extends B, B>(self: Chunk<A>, O: Order.Order<B>): Chunk<A>
+}
+```
+
+Added in v2.0.0
+
+## sortWith
+
+**Signature**
+
+```ts
+export declare const sortWith: {
+  <A, B>(f: (a: A) => B, order: Order.Order<B>): (self: Chunk<A>) => Chunk<A>
+  <A, B>(self: Chunk<A>, f: (a: A) => B, order: Order.Order<B>): Chunk<A>
+}
+```
+
+Added in v2.0.0
+
+# splitting
+
+## split
+
+Splits this chunk into `n` equally sized chunks.
+
+**Signature**
+
+```ts
+export declare const split: {
+  (n: number): <A>(self: Chunk<A>) => Chunk<Chunk<A>>
+  <A>(self: Chunk<A>, n: number): Chunk<Chunk<A>>
+}
+```
+
+Added in v2.0.0
+
+## splitAt
+
+Returns two splits of this chunk at the specified index.
+
+**Signature**
+
+```ts
+export declare const splitAt: {
+  (n: number): <A>(self: Chunk<A>) => [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
+  <A>(self: Chunk<A>, n: number): [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
+}
+```
+
+Added in v2.0.0
+
+## splitWhere
+
+Splits this chunk on the first element that matches this predicate.
+Returns a tuple containing two chunks: the first one is before the match, and the second one is from the match onward.
+
+**Signature**
+
+```ts
+export declare const splitWhere: {
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [beforeMatch: Chunk<B>, fromMatch: Chunk<B>]
+  <A>(self: Chunk<A>, predicate: Predicate<A>): [beforeMatch: Chunk<A>, fromMatch: Chunk<A>]
+}
 ```
 
 Added in v2.0.0
