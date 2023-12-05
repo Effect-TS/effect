@@ -55,7 +55,6 @@ Added in v2.0.0
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
-  - [span](#span)
 - [folding](#folding)
   - [join](#join)
   - [mapAccum](#mapaccum)
@@ -64,7 +63,6 @@ Added in v2.0.0
   - [scan](#scan)
   - [scanRight](#scanright)
 - [getters](#getters)
-  - [chunksOf](#chunksof)
   - [drop](#drop)
   - [dropRight](#dropright)
   - [dropWhile](#dropwhile)
@@ -76,15 +74,12 @@ Added in v2.0.0
   - [last](#last)
   - [lastNonEmpty](#lastnonempty)
   - [length](#length)
-  - [splitAt](#splitat)
   - [splitNonEmptyAt](#splitnonemptyat)
   - [tail](#tail)
   - [tailNonEmpty](#tailnonempty)
   - [take](#take)
   - [takeRight](#takeright)
   - [takeWhile](#takewhile)
-  - [unappend](#unappend)
-  - [unprepend](#unprepend)
 - [grouping](#grouping)
   - [group](#group)
   - [groupBy](#groupby)
@@ -118,6 +113,14 @@ Added in v2.0.0
 - [sorting](#sorting)
   - [sort](#sort)
   - [sortBy](#sortby)
+- [splitting](#splitting)
+  - [chunksOf](#chunksof)
+  - [span](#span)
+  - [split](#split)
+  - [splitAt](#splitat)
+  - [splitWhere](#splitwhere)
+  - [unappend](#unappend)
+  - [unprepend](#unprepend)
 - [type lambdas](#type-lambdas)
   - [ReadonlyArrayTypeLambda (interface)](#readonlyarraytypelambda-interface)
 - [unsafe](#unsafe)
@@ -752,28 +755,6 @@ export declare const separate: <E, A>(self: Iterable<Either<E, A>>) => [E[], A[]
 
 Added in v2.0.0
 
-## span
-
-Split an `Iterable` into two parts:
-
-1. the longest initial subarray for which all elements satisfy the specified predicate
-2. the remaining elements
-
-**Signature**
-
-```ts
-export declare const span: {
-  <C extends A, B extends A, A = C>(
-    refinement: Refinement<A, B>
-  ): (self: Iterable<C>) => [init: B[], rest: Exclude<C, B>[]]
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => [init: B[], rest: B[]]
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: B[], rest: Exclude<A, B>[]]
-  <A>(self: Iterable<A>, predicate: Predicate<A>): [init: A[], rest: A[]]
-}
-```
-
-Added in v2.0.0
-
 # folding
 
 ## join
@@ -863,34 +844,6 @@ export declare const scanRight: {
 Added in v2.0.0
 
 # getters
-
-## chunksOf
-
-Splits an `Iterable` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
-the `Iterable`. Note that `chunksOf(n)([])` is `[]`, not `[[]]`. This is intentional, and is consistent with a recursive
-definition of `chunksOf`; it satisfies the property that
-
-```ts
-chunksOf(n)(xs).concat(chunksOf(n)(ys)) == chunksOf(n)(xs.concat(ys)))
-```
-
-whenever `n` evenly divides the length of `self`.
-
-**Signature**
-
-```ts
-export declare const chunksOf: {
-  (
-    n: number
-  ): <S extends readonly any[] | Iterable<any>>(
-    self: S
-  ) => ReadonlyArray.With<S, [ReadonlyArray.Infer<S>, ...ReadonlyArray.Infer<S>[]]>
-  <A>(self: readonly [A, ...A[]], n: number): [[A, ...A[]], ...[A, ...A[]][]]
-  <A>(self: Iterable<A>, n: number): [A, ...A[]][]
-}
-```
-
-Added in v2.0.0
 
 ## drop
 
@@ -1030,22 +983,6 @@ export declare const length: <A>(self: readonly A[]) => number
 
 Added in v2.0.0
 
-## splitAt
-
-Splits an `Iterable` into two segments, with the first segment containing a maximum of `n` elements.
-The value of `n` can be `0`.
-
-**Signature**
-
-```ts
-export declare const splitAt: {
-  (n: number): <A>(self: Iterable<A>) => [beforeIndex: A[], fromIndex: A[]]
-  <A>(self: Iterable<A>, n: number): [beforeIndex: A[], fromIndex: A[]]
-}
-```
-
-Added in v2.0.0
-
 ## splitNonEmptyAt
 
 Splits a `NonEmptyReadonlyArray` into two segments, with the first segment containing a maximum of `n` elements.
@@ -1125,30 +1062,6 @@ export declare const takeWhile: {
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): B[]
   <A>(self: Iterable<A>, predicate: Predicate<A>): A[]
 }
-```
-
-Added in v2.0.0
-
-## unappend
-
-Return a tuple containing a copy of the `NonEmptyReadonlyArray` without its last element, and that last element.
-
-**Signature**
-
-```ts
-export declare const unappend: <A>(self: readonly [A, ...A[]]) => [arrayWithoutLastElement: A[], lastElement: A]
-```
-
-Added in v2.0.0
-
-## unprepend
-
-Return a tuple containing the first element, and a new `Array` of the remaining elements, if any.
-
-**Signature**
-
-```ts
-export declare const unprepend: <A>(self: readonly [A, ...A[]]) => [firstElement: A, remainingElements: A[]]
 ```
 
 Added in v2.0.0
@@ -1537,6 +1450,126 @@ using first `orders[0]`, then `orders[1]`, etc...
 export declare const sortBy: <S extends Iterable<any> | readonly [any, ...any[]]>(
   ...orders: readonly Order.Order<ReadonlyArray.Infer<S>>[]
 ) => (self: S) => S extends readonly [infer A, ...(infer A)[]] ? [A, ...A[]] : S extends Iterable<infer A> ? A[] : never
+```
+
+Added in v2.0.0
+
+# splitting
+
+## chunksOf
+
+Splits an `Iterable` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
+the `Iterable`. Note that `chunksOf(n)([])` is `[]`, not `[[]]`. This is intentional, and is consistent with a recursive
+definition of `chunksOf`; it satisfies the property that
+
+```ts
+chunksOf(n)(xs).concat(chunksOf(n)(ys)) == chunksOf(n)(xs.concat(ys)))
+```
+
+whenever `n` evenly divides the length of `self`.
+
+**Signature**
+
+```ts
+export declare const chunksOf: {
+  (
+    n: number
+  ): <S extends readonly any[] | Iterable<any>>(
+    self: S
+  ) => ReadonlyArray.With<S, [ReadonlyArray.Infer<S>, ...ReadonlyArray.Infer<S>[]]>
+  <A>(self: readonly [A, ...A[]], n: number): [[A, ...A[]], ...[A, ...A[]][]]
+  <A>(self: Iterable<A>, n: number): [A, ...A[]][]
+}
+```
+
+Added in v2.0.0
+
+## span
+
+Split an `Iterable` into two parts:
+
+1. the longest initial subarray for which all elements satisfy the specified predicate
+2. the remaining elements
+
+**Signature**
+
+```ts
+export declare const span: {
+  <C extends A, B extends A, A = C>(
+    refinement: Refinement<A, B>
+  ): (self: Iterable<C>) => [init: B[], rest: Exclude<C, B>[]]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => [init: B[], rest: B[]]
+  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: B[], rest: Exclude<A, B>[]]
+  <A>(self: Iterable<A>, predicate: Predicate<A>): [init: A[], rest: A[]]
+}
+```
+
+Added in v2.0.0
+
+## split
+
+Splits this iterable into `n` equally sized arrays.
+
+**Signature**
+
+```ts
+export declare const split: { (n: number): <A>(self: Iterable<A>) => A[][]; <A>(self: Iterable<A>, n: number): A[][] }
+```
+
+Added in v2.0.0
+
+## splitAt
+
+Splits an `Iterable` into two segments, with the first segment containing a maximum of `n` elements.
+The value of `n` can be `0`.
+
+**Signature**
+
+```ts
+export declare const splitAt: {
+  (n: number): <A>(self: Iterable<A>) => [beforeIndex: A[], fromIndex: A[]]
+  <A>(self: Iterable<A>, n: number): [beforeIndex: A[], fromIndex: A[]]
+}
+```
+
+Added in v2.0.0
+
+## splitWhere
+
+Splits this iterable on the first element that matches this predicate.
+Returns a tuple containing two arrays: the first one is before the match, and the second one is from the match onward.
+
+**Signature**
+
+```ts
+export declare const splitWhere: {
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => [beforeMatch: B[], fromMatch: B[]]
+  <A>(self: Iterable<A>, predicate: Predicate<A>): [beforeMatch: A[], fromMatch: A[]]
+}
+```
+
+Added in v2.0.0
+
+## unappend
+
+Return a tuple containing a copy of the `NonEmptyReadonlyArray` without its last element, and that last element.
+
+**Signature**
+
+```ts
+export declare const unappend: <A>(self: readonly [A, ...A[]]) => [arrayWithoutLastElement: A[], lastElement: A]
+```
+
+Added in v2.0.0
+
+## unprepend
+
+Return a tuple containing the first element, and a new `Array` of the remaining elements, if any.
+
+**Signature**
+
+```ts
+export declare const unprepend: <A>(self: readonly [A, ...A[]]) => [firstElement: A, remainingElements: A[]]
 ```
 
 Added in v2.0.0

@@ -169,6 +169,44 @@ describe.concurrent("ReadonlyArray", () => {
       assertSpan(new Set([2, 4]), RA.empty(), [2, 4])
     })
 
+    it("splitWhere", () => {
+      const f = RA.splitWhere((n: number) => n % 2 !== 1)
+      const assertSplitWhere = (
+        input: Iterable<number>,
+        expectedInit: ReadonlyArray<number>,
+        expectedRest: ReadonlyArray<number>
+      ) => {
+        const [init, rest] = f(input)
+        deepStrictEqual(init, expectedInit)
+        deepStrictEqual(rest, expectedRest)
+      }
+      assertSplitWhere([1, 3, 2, 4, 5], [1, 3], [2, 4, 5])
+      assertSplitWhere(RA.empty(), RA.empty(), RA.empty())
+      assertSplitWhere([1, 3], [1, 3], RA.empty())
+      assertSplitWhere([2, 4], RA.empty(), [2, 4])
+
+      assertSplitWhere(new Set([1, 3, 2, 4, 5]), [1, 3], [2, 4, 5])
+      assertSplitWhere(new Set(), RA.empty(), RA.empty())
+      assertSplitWhere(new Set([1, 3]), [1, 3], RA.empty())
+      assertSplitWhere(new Set([2, 4]), RA.empty(), [2, 4])
+    })
+
+    it("split", () => {
+      expect(pipe(RA.empty(), RA.split(2))).toEqual(RA.empty())
+      expect(pipe(RA.make(1), RA.split(2))).toEqual(
+        RA.make(RA.make(1))
+      )
+      expect(pipe(RA.make(1, 2), RA.split(2))).toEqual(
+        RA.make(RA.make(1), RA.make(2))
+      )
+      expect(pipe(RA.make(1, 2, 3, 4, 5), RA.split(2))).toEqual(
+        RA.make(RA.make(1, 2, 3), RA.make(4, 5))
+      )
+      expect(pipe(RA.make(1, 2, 3, 4, 5), RA.split(3))).toEqual(
+        RA.make(RA.make(1, 2), RA.make(3, 4), RA.make(5))
+      )
+    })
+
     it("drop", () => {
       deepStrictEqual(pipe(RA.empty(), RA.drop(0)), [])
       deepStrictEqual(pipe([1, 2], RA.drop(0)), [1, 2])
