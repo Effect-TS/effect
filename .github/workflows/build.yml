@@ -16,26 +16,26 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    steps: 
+    steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: pnpm build
+      - run: nix develop --command -- pnpm build
       - name: Check source state
-        run: git add src && git diff-index --cached HEAD --exit-code src
-      - run: pnpm circular
-      - run: pnpm docgen
+        run: nix develop --command -- git add src && git diff-index --cached HEAD --exit-code src
+      - run: nix develop --command -- pnpm circular
+      - run: nix develop --command -- pnpm docgen
       - name: Check docs state
-        run: git add docs && git diff-index --cached HEAD --exit-code docs
+        run: nix develop --command -- git add docs && git diff-index --cached HEAD --exit-code docs
       - name: Create Release Pull Request or Publish
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: changesets
         uses: changesets/action@v1
         with:
-          version: pnpm update-version
-          publish: pnpm changeset publish
+          version: nix develop --command -- pnpm update-version
+          publish: nix develop --command -- pnpm changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
