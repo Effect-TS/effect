@@ -19,11 +19,15 @@ export interface Terminal {
   /**
    * The number of columns available on the platform's terminal interface.
    */
-  readonly columns: number
+  readonly columns: Effect<never, never, number>
   /**
    * Reads a single input event from the default standard input.
    */
   readonly readInput: Effect<never, QuitException, UserInput>
+  /**
+   * Reads a single line from the default standard input.
+   */
+  readonly readLine: Effect<never, QuitException, string>
   /**
    * Displays text to the the default standard output.
    */

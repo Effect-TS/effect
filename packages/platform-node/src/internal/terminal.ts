@@ -16,40 +16,22 @@ export const make = (
     const input = yield* _(Effect.sync(() => globalThis.process.stdin))
     const output = yield* _(Effect.sync(() => globalThis.process.stdout))
 
-    // Acquire a `readline` interface and use it to force `stdin` to emit
-    // keypress events
-    const acquireReadlineInterface = Effect.sync(() => {
-      const rl = readline.createInterface({ input, escapeCodeTimeout: 50 })
+    // Acquire a readline interface
+    const acquireReadlineInterface = Effect.sync(() =>
+      readline.createInterface({
+        input,
+        escapeCodeTimeout: 50
+      })
+    )
+
+    // Uses the readline interface to force `stdin` to emit keypress events
+    const emitKeypressEvents = (rl: readline.Interface): readline.Interface => {
       readline.emitKeypressEvents(input, rl)
       if (input.isTTY) {
         input.setRawMode(true)
       }
       return rl
-    })
-
-    // Handle the `"keypress"` event emitted by `stdin` forced by `readline`
-    const handleKeypressEvent = Effect.async<never, Terminal.QuitException, Terminal.UserInput>((resume) => {
-      const handleKeypress = (input: string | undefined, key: readline.Key) => {
-        const userInput: Terminal.UserInput = {
-          input: Option.fromNullable(input),
-          key: {
-            name: key.name || "",
-            ctrl: key.ctrl || false,
-            meta: key.meta || false,
-            shift: key.shift || false
-          }
-        }
-        if (shouldQuit(userInput)) {
-          resume(Effect.fail(new Terminal.QuitException()))
-        } else {
-          resume(Effect.succeed(userInput))
-        }
-      }
-      input.once("keypress", handleKeypress)
-      return Effect.sync(() => {
-        input.removeListener("keypress", handleKeypress)
-      })
-    })
+    }
 
     // Close the `readline` interface
     const releaseReadlineInterface = (rl: readline.Interface) =>
@@ -60,9 +42,52 @@ export const make = (
         rl.close()
       })
 
+    // Handle the `"keypress"` event emitted by `stdin` (forced by readline)
+    const handleKeypressEvent = (input: typeof globalThis.process.stdin) =>
+      Effect.async<never, Terminal.QuitException, Terminal.UserInput>((resume) => {
+        const handleKeypress = (input: string | undefined, key: readline.Key) => {
+          const userInput: Terminal.UserInput = {
+            input: Option.fromNullable(input),
+            key: {
+              name: key.name || "",
+              ctrl: key.ctrl || false,
+              meta: key.meta || false,
+              shift: key.shift || false
+            }
+          }
+          if (shouldQuit(userInput)) {
+            resume(Effect.fail(new Terminal.QuitException()))
+          } else {
+            resume(Effect.succeed(userInput))
+          }
+        }
+        input.once("keypress", handleKeypress)
+        return Effect.sync(() => {
+          input.removeListener("keypress", handleKeypress)
+        })
+      })
+
+    // Handle the `"line"` event emitted by the readline interface
+    const handleLineEvent = (rl: readline.Interface) =>
+      Effect.async<never, Terminal.QuitException, string>((resume) => {
+        const handleLine = (line: string) => {
+          resume(Effect.succeed(line))
+        }
+        rl.on("line", handleLine)
+        return Effect.sync(() => {
+          rl.removeListener("line", handleLine)
+        })
+      })
+
     const readInput = Effect.acquireUseRelease(
+      acquireReadlineInterface.pipe(Effect.map(emitKeypressEvents)),
+      () => handleKeypressEvent(input),
+      releaseReadlineInterface
+    )
+
+    const readLine = Effect.acquireUseRelease(
       acquireReadlineInterface,
-      () => handleKeypressEvent,
+      (rl) => handleLineEvent(rl),
       releaseReadlineInterface
     )
 
@@ -84,8 +109,9 @@ export const make = (
 
     return Terminal.Terminal.of({
       // The columns property can be undefined if stdout was redirected
-      columns: output.columns || 0,
+      columns: Effect.sync(() => output.columns || 0),
       readInput,
+      readLine,
       display
     })
   })

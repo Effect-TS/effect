@@ -54,6 +54,5 @@ Effect.flatMap(
 ).pipe(
   Effect.tap(Effect.log),
   Effect.provide(TodoServiceLive),
-  Effect.tapErrorCause(Effect.logError),
   runMain
 )

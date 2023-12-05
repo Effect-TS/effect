@@ -41,6 +41,5 @@ const HttpLive = Layer.scopedDiscard(serve).pipe(
 )
 
 Layer.launch(HttpLive).pipe(
-  Effect.tapErrorCause(Effect.logError),
   runMain
 )
