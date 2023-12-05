@@ -137,12 +137,12 @@ export const forkAs = dual<
 >(2, (self, childId) => {
   const map = new Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, unknown]>>()
   for (const [fiberRef, stack] of self.locals.entries()) {
-    const oldValue = Arr.headNonEmpty(stack)[1]
+    const oldValue = stack[0][1]
     const newValue = fiberRef.patch(fiberRef.fork)(oldValue)
     if (Equal.equals(oldValue, newValue)) {
       map.set(fiberRef, stack)
     } else {
-      map.set(fiberRef, Arr.prepend([childId, newValue] as const)(stack) as typeof stack)
+      map.set(fiberRef, [[childId, newValue] as const, ...stack])
     }
   }
   return new FiberRefsImpl(map)
@@ -211,29 +211,29 @@ export const updatedAs = dual<
     self.locals.get(fiberRef)! :
     Arr.empty<readonly [FiberId.Runtime, any]>()
 
-  let newStack: ReadonlyArray<readonly [FiberId.Runtime, A]> | undefined
+  let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, A]> | undefined
 
-  if (Arr.isEmptyReadonlyArray(oldStack)) {
-    newStack = Arr.of([fiberId, value] as const)
-  } else {
-    const [currentId, currentValue] = Arr.headNonEmpty(
-      oldStack as Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>
-    )
-    if (Equal.equals(currentId, fiberId)) {
+  if (Arr.isNonEmptyReadonlyArray(oldStack)) {
+    const [currentId, currentValue] = Arr.headNonEmpty(oldStack)
+    if (currentId[Equal.symbol](fiberId)) {
       if (Equal.equals(currentValue, value)) {
         return self
       } else {
-        newStack = Arr.prepend([fiberId, value] as const)(
-          Arr.tailNonEmpty(oldStack as Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>)
-        )
+        newStack = [
+          [fiberId, value] as const,
+          ...oldStack.slice(1)
+        ]
       }
     } else {
-      newStack = Arr.prepend([fiberId, value] as const)(oldStack)
+      newStack = [
+        [fiberId, value] as const,
+        ...oldStack
+      ]
     }
+  } else {
+    newStack = [[fiberId, value] as const]
   }
 
   const locals = new Map(self.locals)
-  return new FiberRefsImpl(
-    locals.set(fiberRef, newStack as Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>)
-  )
+  return new FiberRefsImpl(locals.set(fiberRef, newStack))
 })

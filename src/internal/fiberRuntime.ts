@@ -745,7 +745,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
     if (_runtimeFlags.runtimeMetrics(this._runtimeFlags)) {
       const tags = this.getFiberRef(core.currentMetricLabels)
       const startTimeMillis = this.id().startTimeMillis
-      const endTimeMillis = new Date().getTime()
+      const endTimeMillis = Date.now()
       fiberLifetimes.unsafeUpdate(endTimeMillis - startTimeMillis, tags)
       fiberActive.unsafeUpdate(-1, tags)
       switch (exit._tag) {
