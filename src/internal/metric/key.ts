@@ -36,14 +36,16 @@ class MetricKeyImpl<out Type extends MetricKeyType.MetricKeyType<any, any>> impl
     readonly keyType: Type,
     readonly description: Option.Option<string>,
     readonly tags: ReadonlyArray<MetricLabel.MetricLabel> = []
-  ) {}
-  [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(this.name),
+  ) {
+    this._hash = pipe(
+      Hash.string(this.name + this.description),
       Hash.combine(Hash.hash(this.keyType)),
-      Hash.combine(Hash.hash(this.description)),
       Hash.combine(Hash.array(this.tags))
     )
+  }
+  readonly _hash: number;
+  [Hash.symbol](): number {
+    return this._hash
   }
   [Equal.symbol](u: unknown): boolean {
     return isMetricKey(u) &&

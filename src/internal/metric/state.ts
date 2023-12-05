@@ -86,11 +86,16 @@ class FrequencyState implements MetricState.MetricState.Frequency {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [FrequencyStateTypeId]: MetricState.FrequencyStateTypeId = FrequencyStateTypeId
   constructor(readonly occurrences: ReadonlyMap<string, number>) {}
+  _hash: number | undefined;
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FrequencyStateSymbolKey),
+    if (this._hash !== undefined) {
+      return this._hash
+    }
+    this._hash = pipe(
+      Hash.string(FrequencyStateSymbolKey),
       Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.occurrences.entries())))
     )
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFrequencyState(that) && arrayEquals(

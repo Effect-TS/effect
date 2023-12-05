@@ -1,5 +1,4 @@
 import * as Equal from "../../Equal.js"
-import { pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
 import type * as MetricLabel from "../../MetricLabel.js"
 import { pipeArguments } from "../../Pipeable.js"
@@ -16,13 +15,12 @@ export const MetricLabelTypeId: MetricLabel.MetricLabelTypeId = Symbol.for(
 /** @internal */
 class MetricLabelImpl implements MetricLabel.MetricLabel {
   readonly [MetricLabelTypeId]: MetricLabel.MetricLabelTypeId = MetricLabelTypeId
-  constructor(readonly key: string, readonly value: string) {}
+  readonly _hash: number
+  constructor(readonly key: string, readonly value: string) {
+    this._hash = Hash.string(MetricLabelSymbolKey + this.key + this.value)
+  }
   [Hash.symbol](): number {
-    return pipe(
-      Hash.string(MetricLabelSymbolKey),
-      Hash.combine(Hash.string(this.key)),
-      Hash.combine(Hash.string(this.value))
-    )
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isMetricLabel(that) &&

@@ -18,12 +18,15 @@ export const MetricBoundariesTypeId: MetricBoundaries.MetricBoundariesTypeId = S
 /** @internal */
 class MetricBoundariesImpl implements MetricBoundaries.MetricBoundaries {
   readonly [MetricBoundariesTypeId]: MetricBoundaries.MetricBoundariesTypeId = MetricBoundariesTypeId
-  constructor(readonly values: ReadonlyArray<number>) {}
-  [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(MetricBoundariesSymbolKey),
-      Hash.combine(Hash.hash(this.values))
+  constructor(readonly values: ReadonlyArray<number>) {
+    this._hash = pipe(
+      Hash.string(MetricBoundariesSymbolKey),
+      Hash.combine(Hash.array(this.values))
     )
+  }
+  readonly _hash: number;
+  [Hash.symbol](): number {
+    return this._hash
   }
   [Equal.symbol](u: unknown): boolean {
     return isMetricBoundaries(u) && Equal.equals(this.values, u.values)

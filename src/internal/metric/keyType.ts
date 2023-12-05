@@ -66,9 +66,12 @@ const metricKeyTypeVariance = {
 class CounterKeyType<A extends (number | bigint)> implements MetricKeyType.MetricKeyType.Counter<A> {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [CounterKeyTypeTypeId]: MetricKeyType.CounterKeyTypeTypeId = CounterKeyTypeTypeId
-  constructor(readonly incremental: boolean, readonly bigint: boolean) {}
+  constructor(readonly incremental: boolean, readonly bigint: boolean) {
+    this._hash = Hash.string(CounterKeyTypeSymbolKey)
+  }
+  readonly _hash: number;
   [Hash.symbol](): number {
-    return Hash.hash(CounterKeyTypeSymbolKey)
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isCounterKey(that)
@@ -81,9 +84,10 @@ class CounterKeyType<A extends (number | bigint)> implements MetricKeyType.Metri
 /** @internal */
 class FrequencyKeyType implements MetricKeyType.MetricKeyType.Frequency {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
-  readonly [FrequencyKeyTypeTypeId]: MetricKeyType.FrequencyKeyTypeTypeId = FrequencyKeyTypeTypeId;
+  readonly [FrequencyKeyTypeTypeId]: MetricKeyType.FrequencyKeyTypeTypeId = FrequencyKeyTypeTypeId
+  readonly _hash = Hash.string(FrequencyKeyTypeSymbolKey);
   [Hash.symbol](): number {
-    return Hash.hash(FrequencyKeyTypeSymbolKey)
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFrequencyKey(that)
@@ -98,8 +102,9 @@ class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.MetricK
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [GaugeKeyTypeTypeId]: MetricKeyType.GaugeKeyTypeTypeId = GaugeKeyTypeTypeId
   constructor(readonly bigint: boolean) {}
+  readonly _hash = Hash.string(GaugeKeyTypeSymbolKey);
   [Hash.symbol](): number {
-    return Hash.hash(GaugeKeyTypeSymbolKey)
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isGaugeKey(that)
@@ -116,12 +121,15 @@ class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.MetricK
 export class HistogramKeyType implements MetricKeyType.MetricKeyType.Histogram {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [HistogramKeyTypeTypeId]: MetricKeyType.HistogramKeyTypeTypeId = HistogramKeyTypeTypeId
-  constructor(readonly boundaries: MetricBoundaries.MetricBoundaries) {}
-  [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(HistogramKeyTypeSymbolKey),
+  constructor(readonly boundaries: MetricBoundaries.MetricBoundaries) {
+    this._hash = pipe(
+      Hash.string(HistogramKeyTypeSymbolKey),
       Hash.combine(Hash.hash(this.boundaries))
     )
+  }
+  readonly _hash: number;
+  [Hash.symbol](): number {
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isHistogramKey(that) && Equal.equals(this.boundaries, that.boundaries)
@@ -140,15 +148,18 @@ class SummaryKeyType implements MetricKeyType.MetricKeyType.Summary {
     readonly maxSize: number,
     readonly error: number,
     readonly quantiles: ReadonlyArray<number>
-  ) {}
-  [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(SummaryKeyTypeSymbolKey),
+  ) {
+    this._hash = pipe(
+      Hash.string(SummaryKeyTypeSymbolKey),
       Hash.combine(Hash.hash(this.maxAge)),
       Hash.combine(Hash.hash(this.maxSize)),
       Hash.combine(Hash.hash(this.error)),
-      Hash.combine(Hash.hash(this.quantiles))
+      Hash.combine(Hash.array(this.quantiles))
     )
+  }
+  readonly _hash: number;
+  [Hash.symbol](): number {
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isSummaryKey(that) &&
