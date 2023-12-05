@@ -191,6 +191,22 @@ describe.concurrent("ReadonlyArray", () => {
       assertSplitWhere(new Set([2, 4]), RA.empty(), [2, 4])
     })
 
+    it("split", () => {
+      expect(pipe(RA.empty(), RA.split(2))).toEqual(RA.empty())
+      expect(pipe(RA.make(1), RA.split(2))).toEqual(
+        RA.make(RA.make(1))
+      )
+      expect(pipe(RA.make(1, 2), RA.split(2))).toEqual(
+        RA.make(RA.make(1), RA.make(2))
+      )
+      expect(pipe(RA.make(1, 2, 3, 4, 5), RA.split(2))).toEqual(
+        RA.make(RA.make(1, 2, 3), RA.make(4, 5))
+      )
+      expect(pipe(RA.make(1, 2, 3, 4, 5), RA.split(3))).toEqual(
+        RA.make(RA.make(1, 2), RA.make(3, 4), RA.make(5))
+      )
+    })
+
     it("drop", () => {
       deepStrictEqual(pipe(RA.empty(), RA.drop(0)), [])
       deepStrictEqual(pipe([1, 2], RA.drop(0)), [1, 2])

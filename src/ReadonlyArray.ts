@@ -1164,6 +1164,20 @@ export const splitAt: {
 })
 
 /**
+ * Splits this iterable into `n` equally sized arrays.
+ *
+ * @since 2.0.0
+ * @category splitting
+ */
+export const split: {
+  (n: number): <A>(self: Iterable<A>) => Array<Array<A>>
+  <A>(self: Iterable<A>, n: number): Array<Array<A>>
+} = dual(2, <A>(self: Iterable<A>, n: number) => {
+  const input = fromIterable(self)
+  return chunksOf(input, Math.ceil(input.length / Math.floor(n)))
+})
+
+/**
  * Splits this iterable on the first element that matches this predicate.
  * Returns a tuple containing two arrays: the first one is before the match, and the second one is from the match onward.
  *

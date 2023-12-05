@@ -116,6 +116,7 @@ Added in v2.0.0
 - [splitting](#splitting)
   - [chunksOf](#chunksof)
   - [span](#span)
+  - [split](#split)
   - [splitAt](#splitat)
   - [splitWhere](#splitwhere)
   - [unappend](#unappend)
@@ -1501,6 +1502,18 @@ export declare const span: {
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: B[], rest: Exclude<A, B>[]]
   <A>(self: Iterable<A>, predicate: Predicate<A>): [init: A[], rest: A[]]
 }
+```
+
+Added in v2.0.0
+
+## split
+
+Splits this iterable into `n` equally sized arrays.
+
+**Signature**
+
+```ts
+export declare const split: { (n: number): <A>(self: Iterable<A>) => A[][]; <A>(self: Iterable<A>, n: number): A[][] }
 ```
 
 Added in v2.0.0
