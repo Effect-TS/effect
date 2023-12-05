@@ -77,8 +77,12 @@ Added in v2.0.0
   - [discard](#discard)
   - [map](#map)
   - [mapError](#maperror)
+- [memo map](#memo-map)
+  - [buildWithMemoMap](#buildwithmemomap)
+  - [makeMemoMap](#makememomap)
 - [models](#models)
   - [Layer (interface)](#layer-interface)
+  - [MemoMap (interface)](#memomap-interface)
 - [requests & batching](#requests--batching)
   - [setRequestBatching](#setrequestbatching)
   - [setRequestCache](#setrequestcache)
@@ -96,6 +100,8 @@ Added in v2.0.0
 - [symbols](#symbols)
   - [LayerTypeId](#layertypeid)
   - [LayerTypeId (type alias)](#layertypeid-type-alias)
+  - [MemoMapTypeId](#memomaptypeid)
+  - [MemoMapTypeId (type alias)](#memomaptypeid-type-alias)
 - [tracing](#tracing)
   - [parentSpan](#parentspan)
   - [setTracer](#settracer)
@@ -729,6 +735,43 @@ export declare const mapError: {
 
 Added in v2.0.0
 
+# memo map
+
+## buildWithMemoMap
+
+Builds a layer into an `Effect` value, using the specified `MemoMap` to memoize
+the layer construction.
+
+**Signature**
+
+```ts
+export declare const buildWithMemoMap: {
+  (
+    memoMap: MemoMap,
+    scope: Scope.Scope
+  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>,
+    memoMap: MemoMap,
+    scope: Scope.Scope
+  ): Effect.Effect<RIn, E, Context.Context<ROut>>
+}
+```
+
+Added in v2.0.0
+
+## makeMemoMap
+
+Constructs a `MemoMap` that can be used to build additional layers.
+
+**Signature**
+
+```ts
+export declare const makeMemoMap: Effect.Effect<never, never, MemoMap>
+```
+
+Added in v2.0.0
+
 # models
 
 ## Layer (interface)
@@ -737,6 +780,24 @@ Added in v2.0.0
 
 ```ts
 export interface Layer<out RIn, out E, in ROut> extends Layer.Variance<RIn, E, ROut>, Pipeable {}
+```
+
+Added in v2.0.0
+
+## MemoMap (interface)
+
+**Signature**
+
+```ts
+export interface MemoMap {
+  readonly [MemoMapTypeId]: MemoMapTypeId
+
+  /** @internal */
+  readonly getOrElseMemoize: <RIn, E, ROut>(
+    layer: Layer<RIn, E, ROut>,
+    scope: Scope.Scope
+  ) => Effect.Effect<RIn, E, Context.Context<ROut>>
+}
 ```
 
 Added in v2.0.0
@@ -925,6 +986,26 @@ Added in v2.0.0
 
 ```ts
 export type LayerTypeId = typeof LayerTypeId
+```
+
+Added in v2.0.0
+
+## MemoMapTypeId
+
+**Signature**
+
+```ts
+export declare const MemoMapTypeId: typeof MemoMapTypeId
+```
+
+Added in v2.0.0
+
+## MemoMapTypeId (type alias)
+
+**Signature**
+
+```ts
+export type MemoMapTypeId = typeof MemoMapTypeId
 ```
 
 Added in v2.0.0

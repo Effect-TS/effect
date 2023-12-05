@@ -56,6 +56,14 @@ const proto = {
 }
 
 /** @internal */
+const MemoMapTypeIdKey = "effect/Layer/MemoMap"
+
+/** @internal */
+export const MemoMapTypeId: Layer.MemoMapTypeId = Symbol.for(
+  MemoMapTypeIdKey
+) as Layer.MemoMapTypeId
+
+/** @internal */
 export type Primitive =
   | ExtendScope
   | Fold
@@ -164,7 +172,8 @@ export const isFresh = <R, E, A>(self: Layer.Layer<R, E, A>): boolean => {
 // -----------------------------------------------------------------------------
 
 /** @internal */
-class MemoMap {
+class MemoMapImpl implements Layer.MemoMap {
+  readonly [MemoMapTypeId]: Layer.MemoMapTypeId
   constructor(
     readonly ref: Synchronized.SynchronizedRef<
       Map<
@@ -173,6 +182,7 @@ class MemoMap {
       >
     >
   ) {
+    this[MemoMapTypeId] = MemoMapTypeId
   }
 
   /**
@@ -214,7 +224,7 @@ class MemoMap {
                         core.flatMap((innerScope) =>
                           pipe(
                             restore(core.flatMap(
-                              withScope(layer, innerScope),
+                              makeBuilder(layer, innerScope, true),
                               (f) => effect.diffFiberRefs(f(this))
                             )),
                             core.exit,
@@ -241,7 +251,8 @@ class MemoMap {
                                     core.zipRight(
                                       core.scopeAddFinalizerExit(scope, (exit) =>
                                         pipe(
-                                          ref.get(finalizerRef),
+                                          core.sync(() => map.delete(layer)),
+                                          core.zipRight(ref.get(finalizerRef)),
                                           core.flatMap((finalizer) => finalizer(exit))
                                         ))
                                     ),
@@ -285,7 +296,8 @@ class MemoMap {
   }
 }
 
-const makeMemoMap = (): Effect.Effect<never, never, MemoMap> =>
+/** @internal */
+export const makeMemoMap: Effect.Effect<never, never, Layer.MemoMap> = core.suspend(() =>
   core.map(
     circular.makeSynchronized<
       Map<
@@ -296,8 +308,9 @@ const makeMemoMap = (): Effect.Effect<never, never, MemoMap> =>
         ]
       >
     >(new Map()),
-    (ref) => new MemoMap(ref)
+    (ref) => new MemoMapImpl(ref)
   )
+)
 
 /** @internal */
 export const build = <RIn, E, ROut>(
@@ -316,28 +329,42 @@ export const buildWithScope = dual<
   ) => Effect.Effect<RIn, E, Context.Context<ROut>>
 >(2, (self, scope) =>
   core.flatMap(
-    makeMemoMap(),
-    (memoMap) => core.flatMap(withScope(self, scope), (run) => run(memoMap))
+    makeMemoMap,
+    (memoMap) => core.flatMap(makeBuilder(self, scope), (run) => run(memoMap))
   ))
 
-const withScope = <RIn, E, ROut>(
+/** @internal */
+export const buildWithMemoMap = dual<
+  (
+    memoMap: Layer.MemoMap,
+    scope: Scope.Scope
+  ) => <RIn, E, ROut>(self: Layer.Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>,
+  <RIn, E, ROut>(
+    self: Layer.Layer<RIn, E, ROut>,
+    memoMap: Layer.MemoMap,
+    scope: Scope.Scope
+  ) => Effect.Effect<RIn, E, Context.Context<ROut>>
+>(3, (self, memoMap, scope) => core.flatMap(makeBuilder(self, scope), (run) => run(memoMap)))
+
+const makeBuilder = <RIn, E, ROut>(
   self: Layer.Layer<RIn, E, ROut>,
-  scope: Scope.Scope
-): Effect.Effect<never, never, (memoMap: MemoMap) => Effect.Effect<RIn, E, Context.Context<ROut>>> => {
+  scope: Scope.Scope,
+  inMemoMap = false
+): Effect.Effect<never, never, (memoMap: Layer.MemoMap) => Effect.Effect<RIn, E, Context.Context<ROut>>> => {
   const op = self as Primitive
   switch (op._tag) {
     case "Locally": {
-      return core.sync(() => (memoMap: MemoMap) => op.f(memoMap.getOrElseMemoize(op.self, scope)))
+      return core.sync(() => (memoMap: Layer.MemoMap) => op.f(memoMap.getOrElseMemoize(op.self, scope)))
     }
     case "ExtendScope": {
-      return core.sync(() => (memoMap: MemoMap) =>
+      return core.sync(() => (memoMap: Layer.MemoMap) =>
         fiberRuntime.scopeWith(
           (scope) => memoMap.getOrElseMemoize(op.layer, scope)
         ) as unknown as Effect.Effect<RIn, E, Context.Context<ROut>>
       )
     }
     case "Fold": {
-      return core.sync(() => (memoMap: MemoMap) =>
+      return core.sync(() => (memoMap: Layer.MemoMap) =>
         pipe(
           memoMap.getOrElseMemoize(op.layer, scope),
           core.matchCauseEffect({
@@ -348,13 +375,15 @@ const withScope = <RIn, E, ROut>(
       )
     }
     case "Fresh": {
-      return core.sync(() => (_: MemoMap) => pipe(op.layer, buildWithScope(scope)))
+      return core.sync(() => (_: Layer.MemoMap) => pipe(op.layer, buildWithScope(scope)))
     }
     case "FromEffect": {
-      return core.sync(() => (_: MemoMap) => op.effect as Effect.Effect<RIn, E, Context.Context<ROut>>)
+      return inMemoMap
+        ? core.sync(() => (_: Layer.MemoMap) => op.effect as Effect.Effect<RIn, E, Context.Context<ROut>>)
+        : core.sync(() => (memoMap: Layer.MemoMap) => memoMap.getOrElseMemoize(self, scope))
     }
     case "Provide": {
-      return core.sync(() => (memoMap: MemoMap) =>
+      return core.sync(() => (memoMap: Layer.MemoMap) =>
         pipe(
           memoMap.getOrElseMemoize(op.first, scope),
           core.flatMap((env) =>
@@ -367,15 +396,17 @@ const withScope = <RIn, E, ROut>(
       )
     }
     case "Scoped": {
-      return core.sync(() => (_: MemoMap) =>
-        fiberRuntime.scopeExtend(
-          op.effect as Effect.Effect<RIn, E, Context.Context<ROut>>,
-          scope
+      return inMemoMap
+        ? core.sync(() => (_: Layer.MemoMap) =>
+          fiberRuntime.scopeExtend(
+            op.effect as Effect.Effect<RIn, E, Context.Context<ROut>>,
+            scope
+          )
         )
-      )
+        : core.sync(() => (memoMap: Layer.MemoMap) => memoMap.getOrElseMemoize(self, scope))
     }
     case "Suspend": {
-      return core.sync(() => (memoMap: MemoMap) =>
+      return core.sync(() => (memoMap: Layer.MemoMap) =>
         memoMap.getOrElseMemoize(
           op.evaluate(),
           scope
@@ -383,7 +414,7 @@ const withScope = <RIn, E, ROut>(
       )
     }
     case "ProvideMerge": {
-      return core.sync(() => (memoMap: MemoMap) =>
+      return core.sync(() => (memoMap: Layer.MemoMap) =>
         pipe(
           memoMap.getOrElseMemoize(op.first, scope),
           core.zipWith(
@@ -394,7 +425,7 @@ const withScope = <RIn, E, ROut>(
       )
     }
     case "ZipWith": {
-      return core.sync(() => (memoMap: MemoMap) =>
+      return core.sync(() => (memoMap: Layer.MemoMap) =>
         pipe(
           memoMap.getOrElseMemoize(op.first, scope),
           fiberRuntime.zipWithOptions(
@@ -828,9 +859,7 @@ export const scoped = dual<
 /** @internal */
 export const scopedDiscard = <R, E, _>(
   effect: Effect.Effect<R, E, _>
-): Layer.Layer<Exclude<R, Scope.Scope>, E, never> => {
-  return scopedContext(pipe(effect, core.as(Context.empty())))
-}
+): Layer.Layer<Exclude<R, Scope.Scope>, E, never> => scopedContext(pipe(effect, core.as(Context.empty())))
 
 /** @internal */
 export const scopedContext = <R, E, A>(
@@ -856,9 +885,7 @@ export const scope: Layer.Layer<never, never, Scope.Scope.Closeable> = scopedCon
 /** @internal */
 export const service = <T extends Context.Tag<any, any>>(
   tag: T
-): Layer.Layer<Context.Tag.Identifier<T>, never, Context.Tag.Identifier<T>> => {
-  return fromEffect(tag, tag)
-}
+): Layer.Layer<Context.Tag.Identifier<T>, never, Context.Tag.Identifier<T>> => fromEffect(tag, tag)
 
 /** @internal */
 export const succeed = dual<
