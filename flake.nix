@@ -34,7 +34,7 @@
               nodejs_20
             ];
 
-            nativeBuildInputs = lib.optional (!pkgs.stdenvNoCC.isDarwin) [
+            nativeBuildInputs = lib.optionals (!pkgs.stdenvNoCC.isDarwin) [
               playwright-driver.browsers
             ];
           }
