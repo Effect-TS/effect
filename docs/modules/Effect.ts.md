@@ -4718,7 +4718,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const runRequestBlock: <R>(blockedRequests: RequestBlock) => Effect<R, never, void>
+export declare const runRequestBlock: (blockedRequests: RequestBlock) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
