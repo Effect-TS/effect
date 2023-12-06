@@ -53,9 +53,15 @@
   },
   "packageManager": "pnpm@8.6.10",
   "peerDependencies": {
+    "@effect/platform": "^0.33.0",
     "@effect/platform-node": "^0.34.0",
     "@effect/schema": "^0.52.0",
     "effect": "2.0.0-next.59"
+  },
+  "peerDependenciesMeta": {
+    "@effect/platform-node": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@babel/cli": "^7.23.4",
@@ -69,6 +75,7 @@
     "@effect/dtslint": "^0.0.4",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
+    "@effect/platform": "^0.33.0",
     "@effect/platform-node": "^0.34.0",
     "@effect/schema": "^0.52.0",
     "@types/chai": "^4.3.11",

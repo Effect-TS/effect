@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Context from "effect/Context"
@@ -229,6 +230,69 @@ export const layerMemory: Layer.Layer<never, never, BackingPersistence> = Layer.
  * @since 1.0.0
  * @category layers
  */
+export const layerKeyValueStore: Layer.Layer<KeyValueStore.KeyValueStore, never, BackingPersistence> = Layer.effect(
+  BackingPersistence,
+  Effect.gen(function*(_) {
+    const backing = yield* _(KeyValueStore.KeyValueStore)
+    return BackingPersistence.of({
+      [BackingPersistenceTypeId]: BackingPersistenceTypeId,
+      make: (storeId) =>
+        Effect.sync(() => {
+          const store = KeyValueStore.prefix(backing, storeId)
+          const get = (method: string, key: string) =>
+            Effect.flatMap(
+              Effect.mapError(
+                store.get(key),
+                (error) => new PersistenceBackingError({ method, error })
+              ),
+              Option.match({
+                onNone: () => Effect.succeedNone,
+                onSome: (s) =>
+                  Effect.try({
+                    try: () => JSON.parse(s),
+                    catch: (error) => new PersistenceBackingError({ method, error })
+                  })
+              })
+            )
+          return identity<BackingPersistenceStore>({
+            get: (key) => get("get", key),
+            getMany: (keys) => Effect.forEach(keys, (key) => get("getMany", key)),
+            set: (key, value) =>
+              Effect.flatMap(
+                Effect.try({
+                  try: () => JSON.stringify(value),
+                  catch: (error) => new PersistenceBackingError({ method: "set", error })
+                }),
+                (u) =>
+                  Effect.mapError(
+                    store.set(key, u),
+                    (error) => new PersistenceBackingError({ method: "set", error })
+                  )
+              ),
+            remove: (key) =>
+              Effect.mapError(
+                store.remove(key),
+                (error) => new PersistenceBackingError({ method: "remove", error })
+              )
+          })
+        })
+    })
+  })
+)
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
 export const layerResultMemory: Layer.Layer<never, never, ResultPersistence> = layerResult.pipe(
   Layer.provide(layerMemory)
 )
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerResultKeyValueStore: Layer.Layer<KeyValueStore.KeyValueStore, never, ResultPersistence> = layerResult
+  .pipe(
+    Layer.provide(layerKeyValueStore)
+  )
