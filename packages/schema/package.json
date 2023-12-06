@@ -48,7 +48,7 @@
     "coverage": "vitest run --coverage"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.58",
+    "effect": "2.0.0-next.59",
     "fast-check": "^3.13.2"
   },
   "devDependencies": {
@@ -71,7 +71,7 @@
     "ajv": "^8.12.0",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "benchmark": "^2.1.4",
-    "effect": "2.0.0-next.58",
+    "effect": "2.0.0-next.59",
     "eslint": "^8.54.0",
     "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-codegen": "^0.21.0",

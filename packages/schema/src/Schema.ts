@@ -3868,7 +3868,7 @@ export const greaterThanBigDecimal = <A extends BigDecimal.BigDecimal>(
   self.pipe(
     filter((a): a is A => BigDecimal.greaterThan(a, min), {
       typeId: { id: GreaterThanBigDecimalTypeId, params: { min } },
-      description: `a BigDecimal greater than ${min}`,
+      description: `a BigDecimal greater than ${BigDecimal.format(min)}`,
       ...options
     })
   )

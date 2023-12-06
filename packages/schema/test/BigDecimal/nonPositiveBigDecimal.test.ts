@@ -15,7 +15,7 @@ describe("BigDecimal/nonPositiveBigDecimal", () => {
     await Util.expectParseFailure(
       schema,
       BigDecimal.make(2n, 0),
-      "Expected a non-positive BigDecimal, actual 2"
+      "Expected a non-positive BigDecimal, actual BigDecimal(2)"
     )
     await Util.expectParseSuccess(
       schema,
