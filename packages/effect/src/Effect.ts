@@ -2852,7 +2852,7 @@ export const console: Effect<never, never, Console> = _console.console
 export const consoleWith: <R, E, A>(f: (console: Console) => Effect<R, E, A>) => Effect<R, E, A> = _console.consoleWith
 
 /**
- * Sets the implementation of the clock service to the specified value and
+ * Sets the implementation of the console service to the specified value and
  * restores it to its original value when the scope is closed.
  *
  * @since 2.0.0
