@@ -85,7 +85,7 @@ jobs:
           # Publish and extract published tags from stdout.
           output=$(pnpm changeset publish --tag ${{ steps.command.outputs.snapshot }} --no-git-tag)
           output=$(echo "$output" | awk '/packages published successfully:/{flag=1; next} flag')
-          output=$(echo "$output" | grep -o '@[^ ]*' | awk '{print "\"" $0 "\""}' | paste -sd ',')
+          output=$(echo "$output" | grep -o '[^ ]*@[^ ]*' | awk '{print "\"" $0 "\""}' | paste -sd ',')
           echo "tags=[$output]" >> $GITHUB_OUTPUT
 
       - name: Update comment (success)
