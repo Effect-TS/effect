@@ -3,7 +3,6 @@
  */
 import type * as Chunk from "./Chunk.js"
 import type * as ConfigError from "./ConfigError.js"
-import type * as ConfigSecret from "./ConfigSecret.js"
 import type * as Either from "./Either.js"
 import type { LazyArg } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
@@ -13,6 +12,7 @@ import type * as LogLevel from "./LogLevel.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import type * as Secret from "./Secret.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -300,7 +300,7 @@ export const repeat: <A>(self: Config<A>) => Config<Array<A>> = internal.repeat
  * @since 2.0.0
  * @category constructors
  */
-export const secret: (name?: string) => Config<ConfigSecret.ConfigSecret> = internal.secret
+export const secret: (name?: string) => Config<Secret.Secret> = internal.secret
 
 /**
  * Constructs a config for a sequence of values.

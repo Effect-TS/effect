@@ -1,7 +1,6 @@
 import * as Chunk from "../Chunk.js"
 import type * as Config from "../Config.js"
 import * as ConfigError from "../ConfigError.js"
-import type * as ConfigSecret from "../ConfigSecret.js"
 import * as Either from "../Either.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, pipe } from "../Function.js"
@@ -11,10 +10,11 @@ import type * as LogLevel from "../LogLevel.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
+import type * as Secret from "../Secret.js"
 import * as configError from "./configError.js"
-import * as configSecret from "./configSecret.js"
 import * as core from "./core.js"
 import * as OpCodes from "./opCodes/config.js"
+import * as InternalSecret from "./secret.js"
 
 const ConfigSymbolKey = "effect/Config"
 
@@ -380,10 +380,10 @@ export const repeat = <A>(self: Config.Config<A>): Config.Config<Array<A>> => {
 }
 
 /** @internal */
-export const secret = (name?: string): Config.Config<ConfigSecret.ConfigSecret> => {
+export const secret = (name?: string): Config.Config<Secret.Secret> => {
   const config = primitive(
     "a secret property",
-    (text) => Either.right(configSecret.fromString(text))
+    (text) => Either.right(InternalSecret.fromString(text))
   )
   return name === undefined ? config : nested(config, name)
 }
