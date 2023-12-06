@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.2.0
+
+### Minor Changes
+
+- [#8](https://github.com/Effect-TS/experimental/pull/8) [`a39bfc5`](https://github.com/Effect-TS/experimental/commit/a39bfc5ba19fe9e574b7063e5c98bae8944bae4b) Thanks [@tim-smart](https://github.com/tim-smart)! - use Schema/Serializable for peristence
+
 ## 0.1.1
 
 ### Patch Changes
