@@ -2,28 +2,15 @@
  * @since 1.0.0
  */
 import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Persistence<A> {
-  readonly get: (key: string) => Effect.Effect<never, PersistenceError, Option.Option<A>>
-  readonly getMany: (key: Array<string>) => Effect.Effect<never, PersistenceError, Array<Option.Option<A>>>
-  readonly set: (key: string, value: A) => Effect.Effect<never, PersistenceError, void>
-  readonly remove: (key: string) => Effect.Effect<never, PersistenceError, void>
-}
-
-/**
- * @since 1.0.0
- */
-export const Persistence = <A>(_: Persistence<A>) => _
+import * as PrimaryKey from "effect/PrimaryKey"
 
 /**
  * @since 1.0.0
@@ -67,7 +54,18 @@ export type BackingPersistenceTypeId = typeof BackingPersistenceTypeId
  */
 export interface BackingPersistence {
   readonly [BackingPersistenceTypeId]: BackingPersistenceTypeId
-  readonly make: (storeId: string) => Effect.Effect<never, never, Persistence<unknown>>
+  readonly make: (storeId: string) => Effect.Effect<never, never, BackingPersistenceStore>
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface BackingPersistenceStore {
+  readonly get: (key: string) => Effect.Effect<never, PersistenceError, Option.Option<unknown>>
+  readonly getMany: (key: Array<string>) => Effect.Effect<never, PersistenceError, Array<Option.Option<unknown>>>
+  readonly set: (key: string, value: unknown) => Effect.Effect<never, PersistenceError, void>
+  readonly remove: (key: string) => Effect.Effect<never, PersistenceError, void>
 }
 
 /**
@@ -82,80 +80,124 @@ export const BackingPersistence: Context.Tag<BackingPersistence, BackingPersiste
  * @since 1.0.0
  * @category type ids
  */
-export const SchemaPersistenceTypeId = Symbol.for("@effect/experimental/SchemaPersistence")
+export const ResultPersistenceTypeId = Symbol.for("@effect/experimental/ResultPersistence")
 
 /**
  * @since 1.0.0
  * @category type ids
  */
-export type SchemaPersistenceTypeId = typeof SchemaPersistenceTypeId
+export type ResultPersistenceTypeId = typeof ResultPersistenceTypeId
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface SchemaPersistence {
-  readonly [SchemaPersistenceTypeId]: SchemaPersistenceTypeId
-  readonly make: <I, A>(storeId: string, schema: Schema.Schema<I, A>) => Effect.Effect<never, never, Persistence<A>>
+export interface ResultPersistence {
+  readonly [ResultPersistenceTypeId]: ResultPersistenceTypeId
+  readonly make: (storeId: string) => Effect.Effect<never, never, ResultPersistenceStore>
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface ResultPersistenceStore {
+  readonly get: <IE, E, IA, A>(
+    key: ResultPersistence.Key<IE, E, IA, A>
+  ) => Effect.Effect<never, PersistenceError, Option.Option<Exit.Exit<E, A>>>
+  readonly getMany: <IE, E, IA, A>(
+    key: ReadonlyArray<ResultPersistence.Key<IE, E, IA, A>>
+  ) => Effect.Effect<never, PersistenceError, Array<Option.Option<Exit.Exit<E, A>>>>
+  readonly set: <IE, E, IA, A>(
+    key: ResultPersistence.Key<IE, E, IA, A>,
+    value: Exit.Exit<E, A>
+  ) => Effect.Effect<never, PersistenceError, void>
+  readonly remove: <IE, E, IA, A>(
+    key: ResultPersistence.Key<IE, E, IA, A>
+  ) => Effect.Effect<never, PersistenceError, void>
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export declare namespace ResultPersistence {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Key<IE, E, IA, A> extends PrimaryKey.PrimaryKey, Serializable.WithResult<IE, E, IA, A> {
+    readonly _tag: string
+  }
 }
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const SchemaPersistence: Context.Tag<SchemaPersistence, SchemaPersistence> = Context.Tag<SchemaPersistence>(
-  SchemaPersistenceTypeId
+export const ResultPersistence: Context.Tag<ResultPersistence, ResultPersistence> = Context.Tag<ResultPersistence>(
+  ResultPersistenceTypeId
 )
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerSchema = Layer.effect(
-  SchemaPersistence,
+export const layerResult = Layer.effect(
+  ResultPersistence,
   Effect.gen(function*(_) {
     const backing = yield* _(BackingPersistence)
-    return SchemaPersistence.of({
-      [SchemaPersistenceTypeId]: SchemaPersistenceTypeId,
-      make: <I, A>(storeId: string, schema: Schema.Schema<I, A>) =>
+    return ResultPersistence.of({
+      [ResultPersistenceTypeId]: ResultPersistenceTypeId,
+      make: (storeId: string) =>
         Effect.gen(function*(_) {
           const storage = yield* _(backing.make(storeId))
-          const parse_ = Schema.parse(schema)
-          const parse = (method: string, value: unknown) =>
-            Effect.mapError(parse_(value), (_) => new PersistenceSchemaError({ method, errors: _.errors }))
+          const parse = <IE, E, IA, A>(method: string, key: ResultPersistence.Key<IE, E, IA, A>, value: unknown) =>
+            Effect.mapError(Serializable.deserializeExit(key, value), (_) =>
+              new PersistenceSchemaError({ method, errors: _.errors }))
+          const encode = <IE, E, IA, A>(
+            method: string,
+            key: ResultPersistence.Key<IE, E, IA, A>,
+            value: Exit.Exit<E, A>
+          ) =>
+            Effect.mapError(Serializable.serializeExit(key, value), (_) =>
+              new PersistenceSchemaError({ method, errors: _.errors }))
+          const makeKey = <IE, E, IA, A>(
+            key: ResultPersistence.Key<IE, E, IA, A>
+          ) =>
+            `${key._tag}:${key[PrimaryKey.symbol]()}`
 
-          const encode_ = Schema.encode(schema)
-          const encode = (method: string, value: A) =>
-            Effect.mapError(encode_(value), (_) => new PersistenceSchemaError({ method, errors: _.errors }))
-
-          return Persistence<A>({
+          return identity<ResultPersistenceStore>({
             get: (key) =>
               Effect.flatMap(
-                storage.get(key),
+                storage.get(makeKey(key)),
                 Option.match({
-                  onNone: () => Effect.succeedNone,
-                  onSome: (_) => Effect.asSome(parse("get", _))
+                  onNone: () =>
+                    Effect.succeedNone,
+                  onSome: (_) =>
+                    Effect.asSome(parse("get", key, _))
                 })
               ),
             getMany: (keys) =>
               Effect.flatMap(
-                storage.getMany(keys),
-                Effect.forEach((result, i) =>
-                  Option.match(result, {
+                storage.getMany(keys.map(makeKey)),
+                Effect.forEach((result, i) => {
+                  const key = keys[i]
+                  return Option.match(result, {
                     onNone: () => Effect.succeedNone,
                     onSome: (_) =>
-                      parse("getMany", _).pipe(
-                        Effect.tapError((_) => storage.remove(keys[i])),
+                      parse("getMany", key, _).pipe(
+                        Effect.tapError((_) => storage.remove(makeKey(keys[i]))),
                         Effect.option
                       )
                   })
-                )
+                })
               ),
             set: (key, value) =>
-              encode("set", value).pipe(
-                Effect.flatMap((_) => storage.set(key, _))
+              encode("set", key, value).pipe(
+                Effect.flatMap((_) => storage.set(makeKey(key), _))
               ),
-            remove: storage.remove
+            remove: (key) => storage.remove(makeKey(key))
           })
         })
     })
@@ -173,7 +215,7 @@ export const layerMemory: Layer.Layer<never, never, BackingPersistence> = Layer.
     make: (_storeId) =>
       Effect.sync(() => {
         const map = new Map<string, unknown>()
-        return Persistence<unknown>({
+        return identity<BackingPersistenceStore>({
           get: (key) => Effect.sync(() => Option.fromNullable(map.get(key))),
           getMany: (keys) => Effect.sync(() => keys.map((key) => Option.fromNullable(map.get(key)))),
           set: (key, value) => Effect.sync(() => map.set(key, value)),
@@ -187,4 +229,6 @@ export const layerMemory: Layer.Layer<never, never, BackingPersistence> = Layer.
  * @since 1.0.0
  * @category layers
  */
-export const layerSchemaMemory: Layer.Layer<never, never, SchemaPersistence> = layerSchema.pipe(Layer.use(layerMemory))
+export const layerResultMemory: Layer.Layer<never, never, ResultPersistence> = layerResult.pipe(
+  Layer.provide(layerMemory)
+)

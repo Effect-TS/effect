@@ -1,5 +1,41 @@
-import { describe, test } from "vitest"
+import * as Persistence from "@effect/experimental/Persistence"
+import * as RequestResolverX from "@effect/experimental/RequestResolver"
+import { Schema } from "@effect/schema"
+import { Effect, PrimaryKey, ReadonlyArray, RequestResolver } from "effect"
+import { assert, describe, test } from "vitest"
 
 describe("RequestResolver", () => {
-  test("stub", () => {})
+  describe("persisted", () => {
+    class User extends Schema.Class<User>()({
+      id: Schema.number,
+      name: Schema.string
+    }) {}
+    class MyRequest extends Schema.TaggedRequest<MyRequest>()("MyRequest", Schema.string, User, {
+      id: Schema.number
+    }) {
+      [PrimaryKey.symbol]() {
+        return String(this.id)
+      }
+    }
+
+    test("memory", () =>
+      Effect.gen(function*(_) {
+        const baseResolver = RequestResolver.fromEffectTagged<MyRequest>()({
+          MyRequest: (reqs) => Effect.succeed(ReadonlyArray.map(reqs, (req) => new User({ id: req.id, name: "John" })))
+        })
+        const persised = yield* _(RequestResolverX.persisted(baseResolver, "memory"))
+        let users = yield* _(
+          Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persised), {
+            batching: true
+          })
+        )
+        assert.strictEqual(users.length, 5)
+        users = yield* _(
+          Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persised), {
+            batching: true
+          })
+        )
+        assert.strictEqual(users.length, 5)
+      }).pipe(Effect.scoped, Effect.provide(Persistence.layerResultMemory), Effect.runPromise))
+  })
 })

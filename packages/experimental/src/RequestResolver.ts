@@ -1,16 +1,14 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
+import type * as Schema from "@effect/schema/Schema"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as PrimaryKey from "effect/PrimaryKey"
+import type * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
@@ -55,9 +53,14 @@ export const dataLoader = dual<
   }
 ) =>
   Effect.gen(function*(_) {
-    const queue = yield* _(Queue.unbounded<DataLoaderItem<A>>())
-    const batch = yield* _(Ref.make(Chunk.empty<DataLoaderItem<A>>()))
-    const takeOne = Effect.flatMap(Queue.take(queue), (item) => Ref.updateAndGet(batch, Chunk.append(item)))
+    const queue = yield* _(
+      Effect.acquireRelease(
+        Queue.unbounded<DataLoaderItem<A>>(),
+        Queue.shutdown
+      )
+    )
+    const batch = yield* _(Ref.make(ReadonlyArray.empty<DataLoaderItem<A>>()))
+    const takeOne = Effect.flatMap(Queue.take(queue), (item) => Ref.updateAndGet(batch, ReadonlyArray.append(item)))
     const takeRest = takeOne.pipe(
       Effect.repeatUntil(
         (items) =>
@@ -65,7 +68,7 @@ export const dataLoader = dual<
           items.length >= options.maxBatchSize
       ),
       Effect.timeout(options.window),
-      Effect.zipRight(Ref.getAndSet(batch, Chunk.empty()))
+      Effect.zipRight(Ref.getAndSet(batch, ReadonlyArray.empty()))
     )
 
     yield* _(
@@ -84,6 +87,7 @@ export const dataLoader = dual<
         )
       ),
       Effect.forever,
+      Effect.withRequestCaching(false),
       Effect.forkScoped
     )
 
@@ -104,40 +108,24 @@ export const dataLoader = dual<
  * @category combinators
  */
 export const persisted = dual<
-  <EI, EA, AI, AA>(
-    options: {
-      readonly storeId: string
-      readonly failureSchema: Schema.Schema<EI, EA>
-      readonly successSchema: Schema.Schema<AI, AA>
-    }
-  ) => <Req extends Request.Request<EA, AA> & { readonly _tag: string } & PrimaryKey.PrimaryKey>(
+  (storeId: string) => <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
     self: RequestResolver.RequestResolver<Req, never>
-  ) => Effect.Effect<Persistence.SchemaPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>,
-  <Req extends Request.Request<EA, AA> & { readonly _tag: string } & PrimaryKey.PrimaryKey, EI, EA, AI, AA>(
+  ) => Effect.Effect<Persistence.ResultPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>,
+  <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
     self: RequestResolver.RequestResolver<Req, never>,
-    options: {
-      readonly storeId: string
-      readonly failureSchema: Schema.Schema<EI, EA>
-      readonly successSchema: Schema.Schema<AI, AA>
-    }
-  ) => Effect.Effect<Persistence.SchemaPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>
->(2, <Req extends Request.Request<EA, AA> & { readonly _tag: string } & PrimaryKey.PrimaryKey, EI, EA, AI, AA>(
+    storeId: string
+  ) => Effect.Effect<Persistence.ResultPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>
+>(2, <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
   self: RequestResolver.RequestResolver<Req, never>,
-  options: {
-    readonly storeId: string
-    readonly failureSchema: Schema.Schema<EI, EA>
-    readonly successSchema: Schema.Schema<AI, AA>
-  }
-): Effect.Effect<Persistence.SchemaPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>> =>
+  storeId: string
+): Effect.Effect<Persistence.ResultPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>> =>
   Effect.gen(function*(_) {
-    const resultSchema = Schema.either(options.failureSchema, options.successSchema)
     const storage = yield* _(
-      (yield* _(Persistence.SchemaPersistence)).make(options.storeId, resultSchema)
+      (yield* _(Persistence.ResultPersistence)).make(storeId)
     )
-    const requestKey = (request: Req) => `${request._tag}:${request[PrimaryKey.symbol]()}`
 
     const partition = (requests: ReadonlyArray<Req>) =>
-      storage.getMany(requests.map(requestKey)).pipe(
+      storage.getMany(requests).pipe(
         Effect.map(
           ReadonlyArray.partitionMap((_, i) =>
             Option.match(_, {
@@ -152,23 +140,14 @@ export const persisted = dual<
     const set = (
       request: Req,
       result: Request.Request.Result<Req>
-    ): Effect.Effect<never, never, void> => {
-      const key = requestKey(request)
-      if (result._tag === "Failure") {
-        return Either.match(Cause.failureOrCause(result.cause), {
-          onLeft: (e) => Effect.ignoreLogged(storage.set(key, Either.left(e))),
-          onRight: (_cause) => Effect.unit
-        })
-      }
-      return Effect.ignoreLogged(storage.set(key, Either.right(result.value)))
-    }
+    ): Effect.Effect<never, never, void> => Effect.ignoreLogged(storage.set(request, result))
 
     return RequestResolver.makeBatched((requests: Array<Req>) =>
       Effect.flatMap(partition(requests), ([remaining, results]) => {
         const completeCached = Effect.forEach(
           results,
           ([request, result]) =>
-            Request.completeEffect(request, result as any) as Effect.Effect<
+            Request.complete(request, result as any) as Effect.Effect<
               never,
               never,
               void
@@ -193,7 +172,8 @@ export const persisted = dual<
               },
               { discard: true }
             )
-          )
+          ),
+          Effect.withRequestCaching(false)
         )
         return Effect.zipRight(completeCached, completeUncached)
       })
