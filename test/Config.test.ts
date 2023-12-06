@@ -413,7 +413,7 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("ConfigSecret", () => {
+  describe.concurrent("Secret", () => {
     describe.concurrent("Config.secret", () => {
       it("name = undefined", () => {
         const config = Config.array(Config.secret(), "ITEMS")
@@ -439,7 +439,7 @@ describe.concurrent("Config", () => {
 
     it("toString", () => {
       const secret = Secret.fromString("secret")
-      assert.strictEqual(`${secret}`, "ConfigSecret(<redacted>)")
+      assert.strictEqual(`${secret}`, "Secret(<redacted>)")
     })
 
     it("wipe", () => {

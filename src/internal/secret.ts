@@ -37,7 +37,7 @@ export const make = (bytes: Array<number>): Secret.Secret => {
   Object.defineProperty(secret, "toString", {
     enumerable: false,
     value() {
-      return "ConfigSecret(<redacted>)"
+      return "Secret(<redacted>)"
     }
   })
   Object.defineProperty(secret, "raw", {
