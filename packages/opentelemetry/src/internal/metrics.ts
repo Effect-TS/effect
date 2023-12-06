@@ -13,13 +13,13 @@ import type {
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
-import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Metric from "effect/Metric"
 import type * as MetricKey from "effect/MetricKey"
 import * as MetricKeyType from "effect/MetricKeyType"
 import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Resource from "../Resource.js"
 
 const sdkName = "@effect/opentelemetry/Metrics"
@@ -34,8 +34,9 @@ export class MetricProducerImpl implements MetricProducer {
     const hrTimeNow = currentHrTime()
     const metricData: Array<MetricData> = []
 
-    for (const { metricKey, metricState } of snapshot) {
-      const attributes = HashSet.reduce(metricKey.tags, {}, (acc: Record<string, string>, label) => {
+    for (let i = 0, len = snapshot.length; i < len; i++) {
+      const { metricKey, metricState } = snapshot[i]
+      const attributes = ReadonlyArray.reduce(metricKey.tags, {}, (acc: Record<string, string>, label) => {
         acc[label.key] = label.value
         return acc
       })
