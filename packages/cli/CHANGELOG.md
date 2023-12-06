@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.24.0
+
+### Minor Changes
+
+- [#410](https://github.com/Effect-TS/cli/pull/410) [`686ce6c`](https://github.com/Effect-TS/cli/commit/686ce6c7caf6be6f0c6b37e8b83e746cac95a1cd) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#407](https://github.com/Effect-TS/cli/pull/407) [`77b31e8`](https://github.com/Effect-TS/cli/commit/77b31e891d0a246db709cf7dba81dd7cd19a5d44) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Subcommand type extraction
+
 ## 0.23.1
 
 ### Patch Changes
