@@ -1,5 +1,21 @@
 # @effect/schema
 
+## 0.52.0
+
+### Minor Changes
+
+- [#632](https://github.com/Effect-TS/schema/pull/632) [`ad220dd`](https://github.com/Effect-TS/schema/commit/ad220dd29e94e1a3ae047680a5de87fb77966ec4) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#609](https://github.com/Effect-TS/schema/pull/609) [`8ca0220`](https://github.com/Effect-TS/schema/commit/8ca0220568b9d86dabebbb4f7df352aedea704ee) Thanks [@tim-smart](https://github.com/tim-smart)! - add Serializable module
+
+- [#609](https://github.com/Effect-TS/schema/pull/609) [`8ca0220`](https://github.com/Effect-TS/schema/commit/8ca0220568b9d86dabebbb4f7df352aedea704ee) Thanks [@tim-smart](https://github.com/tim-smart)! - add FiberId schema
+
+- [#609](https://github.com/Effect-TS/schema/pull/609) [`8ca0220`](https://github.com/Effect-TS/schema/commit/8ca0220568b9d86dabebbb4f7df352aedea704ee) Thanks [@tim-smart](https://github.com/tim-smart)! - add Exit schema
+
+- [#609](https://github.com/Effect-TS/schema/pull/609) [`8ca0220`](https://github.com/Effect-TS/schema/commit/8ca0220568b9d86dabebbb4f7df352aedea704ee) Thanks [@tim-smart](https://github.com/tim-smart)! - add Cause schema
+
 ## 0.51.5
 
 ### Patch Changes
