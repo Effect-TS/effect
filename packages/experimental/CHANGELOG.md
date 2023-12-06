@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.2.1
+
+### Patch Changes
+
+- [#9](https://github.com/Effect-TS/experimental/pull/9) [`b7f0163`](https://github.com/Effect-TS/experimental/commit/b7f0163d4b98f14705e8b810521ed800d4d2874a) Thanks [@tim-smart](https://github.com/tim-smart)! - add support for platform key value store
+
 ## 0.2.0
 
 ### Minor Changes
