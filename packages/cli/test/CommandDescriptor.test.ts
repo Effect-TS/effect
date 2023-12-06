@@ -466,6 +466,7 @@ describe("Command", () => {
     it("should create completions for the zsh shell", () =>
       Effect.gen(function*(_) {
         const result = yield* _(Descriptor.getZshCompletions(command, "forge"))
+        console.log(result)
         yield* _(
           Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/zsh-completions"))
         )

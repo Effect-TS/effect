@@ -132,8 +132,9 @@ const renderNextFrame = <A>(
   Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
+    const columns = yield* _(terminal.columns)
     const choices = renderChoices(nextState, options, figures)
-    const clearScreen = renderClearScreen(prevState, options, terminal.columns)
+    const clearScreen = renderClearScreen(prevState, options, columns)
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
@@ -154,8 +155,9 @@ const renderSubmission = <A>(
   Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
+    const columns = yield* _(terminal.columns)
     const selected = Doc.text(options.choices[state.cursor].title)
-    const clearScreen = renderClearScreen(Option.some(state), options, terminal.columns)
+    const clearScreen = renderClearScreen(Option.some(state), options, columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)

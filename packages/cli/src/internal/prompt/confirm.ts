@@ -63,7 +63,8 @@ const renderNextFrame = (
   Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
-    const clearScreen = renderClearScreen(prevState, options, terminal.columns)
+    const columns = yield* _(terminal.columns)
+    const clearScreen = renderClearScreen(prevState, options, columns)
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const confirmAnnotation = Ansi.blackBright
@@ -92,7 +93,8 @@ const renderSubmission = (
   Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
-    const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
+    const columns = yield* _(terminal.columns)
+    const clearScreen = renderClearScreen(Option.some(nextState), options, columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
     const confirmMessage = value ? options.label.confirm : options.label.deny
