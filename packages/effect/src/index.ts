@@ -157,11 +157,6 @@ export * as ConfigProviderPathPatch from "./ConfigProviderPathPatch.js"
 /**
  * @since 2.0.0
  */
-export * as ConfigSecret from "./ConfigSecret.js"
-
-/**
- * @since 2.0.0
- */
 export * as Console from "./Console.js"
 
 /**
@@ -642,6 +637,11 @@ export * as ScopedCache from "./ScopedCache.js"
  * @since 2.0.0
  */
 export * as ScopedRef from "./ScopedRef.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as Secret from "./Secret.js"
 
 /**
  * @since 2.0.0

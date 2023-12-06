@@ -2,7 +2,6 @@ import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import * as ConfigError from "effect/ConfigError"
 import * as ConfigProvider from "effect/ConfigProvider"
-import * as ConfigSecret from "effect/ConfigSecret"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
@@ -10,6 +9,7 @@ import { pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
+import * as Secret from "effect/Secret"
 import { assert, describe, expect, it } from "vitest"
 
 const assertFailure = <A>(
@@ -413,41 +413,41 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("ConfigSecret", () => {
+  describe.concurrent("Secret", () => {
     describe.concurrent("Config.secret", () => {
       it("name = undefined", () => {
         const config = Config.array(Config.secret(), "ITEMS")
-        assertSuccess(config, [["ITEMS", "a"]], [ConfigSecret.fromString("a")])
+        assertSuccess(config, [["ITEMS", "a"]], [Secret.fromString("a")])
       })
 
       it("name != undefined", () => {
         const config = Config.secret("SECRET")
-        assertSuccess(config, [["SECRET", "a"]], ConfigSecret.fromString("a"))
+        assertSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
       })
     })
 
     it("chunk constructor", () => {
-      const secret = ConfigSecret.fromChunk(Chunk.fromIterable("secret".split("")))
-      assert.isTrue(Equal.equals(secret, ConfigSecret.fromString("secret")))
+      const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
+      assert.isTrue(Equal.equals(secret, Secret.fromString("secret")))
     })
 
     it("value", () => {
-      const secret = ConfigSecret.fromChunk(Chunk.fromIterable("secret".split("")))
-      const value = ConfigSecret.value(secret)
+      const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
+      const value = Secret.value(secret)
       assert.strictEqual(value, "secret")
     })
 
     it("toString", () => {
-      const secret = ConfigSecret.fromString("secret")
-      assert.strictEqual(`${secret}`, "ConfigSecret(<redacted>)")
+      const secret = Secret.fromString("secret")
+      assert.strictEqual(`${secret}`, "Secret(<redacted>)")
     })
 
     it("wipe", () => {
-      const secret = ConfigSecret.fromString("secret")
-      ConfigSecret.unsafeWipe(secret)
+      const secret = Secret.fromString("secret")
+      Secret.unsafeWipe(secret)
       assert.isTrue(
         Equal.equals(
-          ConfigSecret.value(secret),
+          Secret.value(secret),
           Array.from({ length: "secret".length }, () => String.fromCharCode(0)).join("")
         )
       )
