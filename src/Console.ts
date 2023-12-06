@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type * as Context from "./Context.js"
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/console.js"
 import * as defaultConsole from "./internal/defaultServices/console.js"
@@ -76,6 +77,12 @@ export interface UnsafeConsole {
   trace(...args: ReadonlyArray<any>): void
   warn(...args: ReadonlyArray<any>): void
 }
+
+/**
+ * @since 2.0.0
+ * @category context
+ */
+export const Console: Context.Tag<Console, Console> = defaultConsole.consoleTag
 
 /**
  * @since 2.0.0
