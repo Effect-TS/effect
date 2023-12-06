@@ -350,3 +350,9 @@ export const rejects = async <A>(promise: Promise<A>) => {
     // ok
   }
 }
+
+export const sample = <I, A>(schema: S.Schema<I, A>, n: number) => {
+  const arbitrary = A.to(schema)
+  const arb = arbitrary(fc)
+  console.log(JSON.stringify(fc.sample(arb, n), null, 2))
+}

@@ -29,7 +29,7 @@ describe("Either/eitherFromSelf", () => {
     await Util.expectParseSuccess(schema, E.right("1"), E.right(1))
   })
 
-  it("encoding", () => {
+  it("pretty", () => {
     const schema = S.eitherFromSelf(S.string, S.number)
     const pretty = Pretty.to(schema)
     expect(pretty(E.left("a"))).toEqual(`left("a")`)

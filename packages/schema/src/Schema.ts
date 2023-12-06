@@ -5,6 +5,7 @@
 import * as BigDecimal from "effect/BigDecimal"
 import * as BigInt_ from "effect/BigInt"
 import * as Brand from "effect/Brand"
+import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Duration from "effect/Duration"
@@ -13,6 +14,8 @@ import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
+import * as Exit from "effect/Exit"
+import * as FiberId from "effect/FiberId"
 import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
 import * as N from "effect/Number"
@@ -34,9 +37,11 @@ import * as InternalBigInt from "./internal/bigint.js"
 import * as filters from "./internal/filters.js"
 import * as hooks from "./internal/hooks.js"
 import * as InternalSchema from "./internal/schema.js"
+import * as InternalSerializable from "./internal/serializable.js"
 import * as Parser from "./Parser.js"
 import * as ParseResult from "./ParseResult.js"
 import type { Pretty } from "./Pretty.js"
+import type * as Serializable from "./Serializable.js"
 
 // ---------------------------------------------
 // model
@@ -3420,12 +3425,14 @@ export {
  * @category Option transformations
  * @since 1.0.0
  */
-export type OptionFrom<I> = {
-  readonly _tag: "None"
-} | {
-  readonly _tag: "Some"
-  readonly value: I
-}
+export type OptionFrom<I> =
+  | {
+    readonly _tag: "None"
+  }
+  | {
+    readonly _tag: "Some"
+    readonly value: I
+  }
 
 const optionFrom = <I, A>(value: Schema<I, A>): Schema<OptionFrom<I>, OptionFrom<A>> =>
   union(
@@ -3438,8 +3445,8 @@ const optionFrom = <I, A>(value: Schema<I, A>): Schema<OptionFrom<I>, OptionFrom
     })
   )
 
-const optionDecode = <A>(o: OptionFrom<A>): Option.Option<A> =>
-  o._tag === "None" ? Option.none() : Option.some(o.value)
+const optionDecode = <A>(input: OptionFrom<A>): Option.Option<A> =>
+  input._tag === "None" ? Option.none() : Option.some(input.value)
 
 const optionArbitrary = <A>(value: Arbitrary<A>): Arbitrary<Option.Option<A>> => {
   const placeholder = lazy<A>(() => any).pipe(annotations({
@@ -3495,8 +3502,8 @@ export const option = <I, A>(
     optionFromSelf(to(value)),
     optionDecode,
     Option.match({
-      onNone: () => ({ _tag: "None" as const }),
-      onSome: (value) => ({ _tag: "Some" as const, value })
+      onNone: () => ({ _tag: "None" }) as const,
+      onSome: (value) => ({ _tag: "Some", value }) as const
     })
   )
 
@@ -3517,13 +3524,15 @@ export const optionFromNullable = <I, A>(
  * @category Either transformations
  * @since 1.0.0
  */
-export type EitherFrom<IE, IA> = {
-  readonly _tag: "Left"
-  readonly left: IE
-} | {
-  readonly _tag: "Right"
-  readonly right: IA
-}
+export type EitherFrom<IE, IA> =
+  | {
+    readonly _tag: "Left"
+    readonly left: IE
+  }
+  | {
+    readonly _tag: "Right"
+    readonly right: IA
+  }
 
 const eitherFrom = <IE, E, IA, A>(
   left: Schema<IE, E>,
@@ -3540,8 +3549,8 @@ const eitherFrom = <IE, E, IA, A>(
     })
   )
 
-const eitherDecode = <E, A>(e: EitherFrom<E, A>): Either.Either<E, A> =>
-  e._tag === "Left" ? Either.left(e.left) : Either.right(e.right)
+const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<E, A> =>
+  input._tag === "Left" ? Either.left(input.left) : Either.right(input.right)
 
 const eitherArbitrary = <E, A>(
   left: Arbitrary<E>,
@@ -3606,8 +3615,8 @@ export const either = <IE, E, IA, A>(
     eitherFromSelf(to(left), to(right)),
     eitherDecode,
     Either.match({
-      onLeft: (left) => ({ _tag: "Left" as const, left }),
-      onRight: (right) => ({ _tag: "Right" as const, right })
+      onLeft: (left) => ({ _tag: "Left", left }) as const,
+      onRight: (right) => ({ _tag: "Right", right }) as const
     })
   )
 
@@ -4344,28 +4353,22 @@ export const TaggedError = <Self>() =>
  * @category classes
  * @since 1.0.0
  */
+export interface TaggedRequest<Tag extends string, IS, S, IE, E, IA, A>
+  extends Request.Request<E, A>, Serializable.SerializableWithResult<IS, S, IE, E, IA, A>
+{
+  readonly _tag: Tag
+}
+
+/**
+ * @category classes
+ * @since 1.0.0
+ */
 export declare namespace TaggedRequest {
   /**
    * @category classes
    * @since 1.0.0
    */
-  export interface Base<
-    EI,
-    EA,
-    AI,
-    AA,
-    I,
-    Req extends Request.Request<EA, AA> & { readonly _tag: string }
-  > extends Schema<I, Req>, TaggedRequest.ResultSchemas<EI, EA, AI, AA> {}
-
-  /**
-   * @category classes
-   * @since 1.0.0
-   */
-  export interface ResultSchemas<EI, EA, AI, AA> {
-    readonly Failure: Schema<EI, EA>
-    readonly Success: Schema<AI, AA>
-  }
+  export type Any = TaggedRequest<string, any, any, any, any, any, any>
 }
 
 /**
@@ -4376,31 +4379,42 @@ export const TaggedRequest =
   <Self>() =>
   <Tag extends string, Fields extends StructFields, EI, EA, AI, AA>(
     tag: Tag,
-    failure: Schema<EI, EA>,
-    success: Schema<AI, AA>,
+    Failure: Schema<EI, EA>,
+    Success: Schema<AI, AA>,
     fields: Fields
   ): [unknown] extends [Self] ?
     MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-    :
-      & Class<
+    : Class<
+      Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+      Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
+      Simplify<ToStruct<Fields>>,
+      Self,
+      TaggedRequest<
+        Tag,
         Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
-        Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
-        Simplify<ToStruct<Fields>>,
         Self,
-        Request.Request<EA, AA>
+        EI,
+        EA,
+        AI,
+        AA
       >
-      & TaggedRequest.ResultSchemas<EI, EA, AI, AA> =>
+    > =>
   {
+    class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
+      get [InternalSerializable.symbol]() {
+        return this.constructor
+      }
+      get [InternalSerializable.symbolResult]() {
+        return { Failure, Success }
+      }
+    }
     const fieldsWithTag = { ...fields, _tag: literal(tag) }
-    const Base = makeClass(
+    return makeClass(
       struct(fieldsWithTag),
       fieldsWithTag,
-      Request.Class,
+      SerializableRequest,
       { _tag: tag }
     )
-    Base.Failure = failure
-    Base.Success = success
-    return Base
   }
 
 const makeClass = <I, A>(
@@ -4491,3 +4505,442 @@ const makeClass = <I, A>(
     }
   }
 }
+
+// ---------------------------------------------
+// FiberId
+// ---------------------------------------------
+
+/**
+ * @category FiberId
+ * @since 1.0.0
+ */
+export type FiberIdFrom =
+  | {
+    readonly _tag: "Composite"
+    readonly left: FiberIdFrom
+    readonly right: FiberIdFrom
+  }
+  | {
+    readonly _tag: "None"
+  }
+  | {
+    readonly _tag: "Runtime"
+    readonly id: number
+    readonly startTimeMillis: number
+  }
+
+const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
+  struct({
+    _tag: literal("Composite"),
+    left: lazy(() => FiberIdFrom),
+    right: lazy(() => FiberIdFrom)
+  }),
+  struct({
+    _tag: literal("None")
+  }),
+  struct({
+    _tag: literal("Runtime"),
+    id: Int.pipe(nonNegative({
+      title: "id",
+      description: "id"
+    })),
+    startTimeMillis: Int.pipe(nonNegative({
+      title: "startTimeMillis",
+      description: "startTimeMillis"
+    }))
+  })
+)
+
+const fiberIdFromArbitrary = arbitrary.unsafeTo(FiberIdFrom)
+
+const fiberIdArbitrary: Arbitrary<FiberId.FiberId> = (fc) =>
+  fiberIdFromArbitrary(fc).map(fiberIdDecode)
+
+const fiberIdPretty: Pretty<FiberId.FiberId> = (fiberId) => {
+  switch (fiberId._tag) {
+    case "None":
+      return "FiberId.none"
+    case "Runtime":
+      return `FiberId.runtime(${fiberId.id}, ${fiberId.startTimeMillis})`
+    case "Composite":
+      return `FiberId.composite(${fiberIdPretty(fiberId.right)}, ${fiberIdPretty(fiberId.left)})`
+  }
+}
+
+/**
+ * @category FiberId
+ * @since 1.0.0
+ */
+export const FiberIdFromSelf: Schema<FiberId.FiberId, FiberId.FiberId> = declare(
+  [],
+  FiberIdFrom,
+  () => (input, _, ast) =>
+    FiberId.isFiberId(input)
+      ? ParseResult.succeed(input)
+      : ParseResult.fail(ParseResult.type(ast, input)),
+  {
+    [AST.IdentifierAnnotationId]: "FiberId",
+    [hooks.PrettyHookId]: () => fiberIdPretty,
+    [hooks.ArbitraryHookId]: () => fiberIdArbitrary,
+    [hooks.EquivalenceHookId]: () => Equal.equals
+  }
+)
+
+const fiberIdDecode = (input: FiberIdFrom): FiberId.FiberId => {
+  switch (input._tag) {
+    case "Composite":
+      return FiberId.composite(fiberIdDecode(input.left), fiberIdDecode(input.right))
+    case "None":
+      return FiberId.none
+    case "Runtime":
+      return FiberId.runtime(input.id, input.startTimeMillis)
+  }
+}
+
+const fiberIdEncode = (input: FiberId.FiberId): FiberIdFrom => {
+  switch (input._tag) {
+    case "None":
+      return { _tag: "None" }
+    case "Runtime":
+      return { _tag: "Runtime", id: input.id, startTimeMillis: input.startTimeMillis }
+    case "Composite":
+      return {
+        _tag: "Composite",
+        left: fiberIdEncode(input.left),
+        right: fiberIdEncode(input.right)
+      }
+  }
+}
+
+const _FiberId: Schema<FiberIdFrom, FiberId.FiberId> = transform(
+  FiberIdFrom,
+  FiberIdFromSelf,
+  fiberIdDecode,
+  fiberIdEncode
+)
+
+export {
+  /**
+   * @category FiberId
+   * @since 1.0.0
+   */
+  _FiberId as FiberId
+}
+
+// ---------------------------------------------
+// Cause
+// ---------------------------------------------
+
+/**
+ * @category Cause
+ * @since 1.0.0
+ */
+export type CauseFrom<E> =
+  | {
+    readonly _tag: "Die"
+    readonly defect: unknown
+  }
+  | {
+    readonly _tag: "Empty"
+  }
+  | {
+    readonly _tag: "Fail"
+    readonly error: E
+  }
+  | {
+    readonly _tag: "Interrupt"
+    readonly fiberId: FiberIdFrom
+  }
+  | {
+    readonly _tag: "Parallel"
+    readonly left: CauseFrom<E>
+    readonly right: CauseFrom<E>
+  }
+  | {
+    readonly _tag: "Sequential"
+    readonly left: CauseFrom<E>
+    readonly right: CauseFrom<E>
+  }
+
+const causeFrom = <EI, E>(
+  error: Schema<EI, E>,
+  defect: Schema<unknown, unknown>
+): Schema<CauseFrom<EI>, CauseFrom<E>> =>
+  union(
+    struct({
+      _tag: literal("Die"),
+      defect
+    }),
+    struct({
+      _tag: literal("Empty")
+    }),
+    struct({
+      _tag: literal("Fail"),
+      error
+    }),
+    struct({
+      _tag: literal("Interrupt"),
+      fiberId: FiberIdFrom
+    }),
+    struct({
+      _tag: literal("Parallel"),
+      left: lazy(() => causeFrom(error, defect)),
+      right: lazy(() => causeFrom(error, defect))
+    }),
+    struct({
+      _tag: literal("Sequential"),
+      left: lazy(() => causeFrom(error, defect)),
+      right: lazy(() => causeFrom(error, defect))
+    })
+  )
+
+const causeArbitrary = <E>(
+  error: Arbitrary<E>,
+  defect: Arbitrary<unknown>
+): Arbitrary<Cause.Cause<E>> => {
+  const placeholderError = lazy<E>(() => any).pipe(annotations({
+    [hooks.ArbitraryHookId]: () => error
+  }))
+  const placeholderDefect = lazy<unknown>(() => any).pipe(annotations({
+    [hooks.ArbitraryHookId]: () => defect
+  }))
+  const arb = arbitrary.unsafeTo(causeFrom(placeholderError, placeholderDefect))
+  return (fc) => arb(fc).map(causeDecode)
+}
+
+const causePretty = <E>(error: Pretty<E>): Pretty<Cause.Cause<E>> => (cause) => {
+  const f = (cause: Cause.Cause<E>): string => {
+    switch (cause._tag) {
+      case "Empty":
+        return "Cause.empty"
+      case "Die":
+        return `Cause.die(${Cause.pretty(cause)})`
+      case "Interrupt":
+        return `Cause.interrupt(${fiberIdPretty(cause.fiberId)})`
+      case "Fail":
+        return `Cause.fail(${error(cause.error)})`
+      case "Sequential":
+        return `Cause.sequential(${f(cause.left)}, ${f(cause.right)})`
+      case "Parallel":
+        return `Cause.parallel(${f(cause.left)}, ${f(cause.right)})`
+    }
+  }
+  return f(cause)
+}
+
+/**
+ * @category Cause
+ * @since 1.0.0
+ */
+export const causeFromSelf = <IE, E>(
+  error: Schema<IE, E>,
+  defect: Schema<unknown, unknown> = unknown
+): Schema<Cause.Cause<IE>, Cause.Cause<E>> => {
+  return declare(
+    [error, defect],
+    causeFrom(error, defect),
+    (isDecoding, error) => {
+      const parse = isDecoding
+        ? Parser.parse(causeFrom(error, defect))
+        : Parser.encode(causeFrom(error, defect))
+      return (u, options, ast) => {
+        if (Cause.isCause(u)) {
+          return ParseResult.map(parse(causeEncode(u), options), causeDecode)
+        }
+        return ParseResult.fail(ParseResult.type(ast, u))
+      }
+    },
+    {
+      [AST.IdentifierAnnotationId]: "Cause",
+      [hooks.PrettyHookId]: causePretty,
+      [hooks.ArbitraryHookId]: causeArbitrary,
+      [hooks.EquivalenceHookId]: () => Equal.equals
+    }
+  )
+}
+
+function causeDecode<E>(cause: CauseFrom<E>): Cause.Cause<E> {
+  switch (cause._tag) {
+    case "Die":
+      return Cause.die(cause.defect)
+    case "Empty":
+      return Cause.empty
+    case "Interrupt":
+      return Cause.interrupt(fiberIdDecode(cause.fiberId))
+    case "Fail":
+      return Cause.fail(cause.error)
+    case "Parallel":
+      return Cause.parallel(causeDecode(cause.left), causeDecode(cause.right))
+    case "Sequential":
+      return Cause.sequential(causeDecode(cause.left), causeDecode(cause.right))
+  }
+}
+
+function causeEncode<E>(cause: Cause.Cause<E>): CauseFrom<E> {
+  switch (cause._tag) {
+    case "Empty":
+      return { _tag: "Empty" }
+    case "Die":
+      return { _tag: "Die", defect: cause.defect }
+    case "Interrupt":
+      return { _tag: "Interrupt", fiberId: cause.fiberId }
+    case "Fail":
+      return { _tag: "Fail", error: cause.error }
+    case "Sequential":
+      return {
+        _tag: "Sequential",
+        left: causeEncode(cause.left),
+        right: causeEncode(cause.right)
+      }
+    case "Parallel":
+      return {
+        _tag: "Parallel",
+        left: causeEncode(cause.left),
+        right: causeEncode(cause.right)
+      }
+  }
+}
+
+const causeDefectPretty: Schema<unknown, unknown> = transform(
+  unknown,
+  unknown,
+  identity,
+  (defect) => {
+    if (Predicate.isObject(defect)) {
+      return Cause.pretty(Cause.die(defect))
+    }
+    return String(defect)
+  }
+)
+
+/**
+ * @category Cause
+ * @since 1.0.0
+ */
+export const cause = <EI, E>(
+  error: Schema<EI, E>,
+  defect: Schema<unknown, unknown> = causeDefectPretty
+): Schema<CauseFrom<EI>, Cause.Cause<E>> =>
+  transform(
+    causeFrom(error, defect),
+    causeFromSelf(to(error), to(defect)),
+    causeDecode,
+    causeEncode
+  )
+
+// ---------------------------------------------
+// Exit
+// ---------------------------------------------
+
+/**
+ * @category Exit
+ * @since 1.0.0
+ */
+export type ExitFrom<E, A> =
+  | {
+    readonly _tag: "Failure"
+    readonly cause: CauseFrom<E>
+  }
+  | {
+    readonly _tag: "Success"
+    readonly value: A
+  }
+
+const exitFrom = <EI, E, AI, A>(
+  error: Schema<EI, E>,
+  value: Schema<AI, A>,
+  defect: Schema<unknown, unknown>
+): Schema<ExitFrom<EI, AI>, ExitFrom<E, A>> =>
+  union(
+    struct({
+      _tag: literal("Failure"),
+      cause: causeFrom(error, defect)
+    }),
+    struct({
+      _tag: literal("Success"),
+      value
+    })
+  )
+
+const exitDecode = <E, A>(input: ExitFrom<E, A>): Exit.Exit<E, A> => {
+  switch (input._tag) {
+    case "Failure":
+      return Exit.failCause(causeDecode(input.cause))
+    case "Success":
+      return Exit.succeed(input.value)
+  }
+}
+
+const exitArbitrary = <E, A>(
+  error: Arbitrary<E>,
+  value: Arbitrary<A>,
+  defect: Arbitrary<unknown>
+): Arbitrary<Exit.Exit<E, A>> => {
+  const placeholderError = lazy<E>(() => any).pipe(annotations({
+    [hooks.ArbitraryHookId]: () => error
+  }))
+  const placeholderValue = lazy<A>(() => any).pipe(annotations({
+    [hooks.ArbitraryHookId]: () => value
+  }))
+  const placeholderDefect = lazy<unknown>(() => any).pipe(annotations({
+    [hooks.ArbitraryHookId]: () => defect
+  }))
+  const arb = arbitrary.unsafeTo(exitFrom(placeholderError, placeholderValue, placeholderDefect))
+  return (fc) => arb(fc).map(exitDecode)
+}
+
+const exitPretty = <E, A>(error: Pretty<E>, value: Pretty<A>): Pretty<Exit.Exit<E, A>> => (exit) =>
+  exit._tag === "Failure"
+    ? `Exit.failCause(${causePretty(error)(exit.cause)})`
+    : `Exit.succeed(${value(exit.value)})`
+
+/**
+ * @category Exit
+ * @since 1.0.0
+ */
+export const exitFromSelf = <IE, E, IA, A>(
+  error: Schema<IE, E>,
+  value: Schema<IA, A>,
+  defect: Schema<unknown, unknown> = unknown
+): Schema<Exit.Exit<IE, IA>, Exit.Exit<E, A>> =>
+  declare(
+    [error, value, defect],
+    exitFrom(error, value, defect),
+    (isDecoding, error, value) => {
+      const parseCause = isDecoding
+        ? Parser.parse(causeFromSelf(error, defect))
+        : Parser.encode(causeFromSelf(error, defect))
+      const parseValue = isDecoding ? Parser.parse(value) : Parser.encode(value)
+      return (u, options, ast) =>
+        !Exit.isExit(u) ?
+          ParseResult.fail(ParseResult.type(ast, u)) :
+          Exit.isFailure(u) ?
+          ParseResult.map(parseCause(u.cause, options), Exit.failCause) :
+          ParseResult.map(parseValue(u.value, options), Exit.succeed)
+    },
+    {
+      [AST.IdentifierAnnotationId]: "Exit",
+      [hooks.PrettyHookId]: exitPretty,
+      [hooks.ArbitraryHookId]: exitArbitrary,
+      [hooks.EquivalenceHookId]: () => Equal.equals
+    }
+  )
+
+/**
+ * @category Exit
+ * @since 1.0.0
+ */
+export const exit = <IE, E, IA, A>(
+  error: Schema<IE, E>,
+  value: Schema<IA, A>,
+  defect: Schema<unknown, unknown> = causeDefectPretty
+): Schema<ExitFrom<IE, IA>, Exit.Exit<E, A>> =>
+  transform(
+    exitFrom(error, value, defect),
+    exitFromSelf(to(error), to(value), to(defect)),
+    exitDecode,
+    (exit) =>
+      exit._tag === "Failure"
+        ? { _tag: "Failure", cause: exit.cause } as const
+        : { _tag: "Success", value: exit.value } as const
+  )

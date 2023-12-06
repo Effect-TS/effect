@@ -45,5 +45,12 @@ export * as Schema from "./Schema.js"
 
 /**
  * @since 1.0.0
+ *
+ * Serializable represents an object that has self-contained Schema(s)
+ */
+export * as Serializable from "./Serializable.js"
+
+/**
+ * @since 1.0.0
  */
 export * as TreeFormatter from "./TreeFormatter.js"

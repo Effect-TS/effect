@@ -1,8 +1,9 @@
 import * as AST from "@effect/schema/AST"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Util from "@effect/schema/test/util"
-import { Effect } from "effect"
+import { Effect, Exit } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
@@ -258,27 +259,40 @@ describe("Schema/Class", () => {
     expect(req._tag).toEqual("MyRequest")
     expect(req.id).toEqual(1)
     expect(Request.isRequest(req)).toEqual(true)
-
-    S.decodeSync(MyRequest.Success)(123)
-    S.decodeSync(MyRequest.Failure)("fail")
   })
 
-  it("TaggedRequest assignable to TaggedRequest.Base", () => {
-    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.number, {
-      id: S.number
-    }) {}
+  it("TaggedRequest extends SerializableWithExit", () => {
+    class MyRequest
+      extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.NumberFromString, {
+        id: S.number
+      })
+    {}
 
-    const makeCache = <
-      EI,
-      EA,
-      AI,
-      AA,
-      I,
-      Req extends Request.Request<EA, AA> & { readonly _tag: string }
-    >(
-      schema: S.TaggedRequest.Base<EI, EA, AI, AA, I, Req>
-    ) => schema
-
-    makeCache(MyRequest)
+    const req = new MyRequest({ id: 1 })
+    assert.deepStrictEqual(
+      Serializable.serialize(req).pipe(Effect.runSync),
+      { _tag: "MyRequest", id: 1 }
+    )
+    assert(Equal.equals(
+      Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(Effect.runSync),
+      req
+    ))
+    assert.deepStrictEqual(
+      Serializable.serializeExit(req, Exit.fail("fail")).pipe(Effect.runSync),
+      { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
+    )
+    assert.deepStrictEqual(
+      Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
+        .pipe(Effect.runSync),
+      Exit.fail("fail")
+    )
+    assert.deepStrictEqual(
+      Serializable.serializeExit(req, Exit.succeed(123)).pipe(Effect.runSync),
+      { _tag: "Success", value: "123" }
+    )
+    assert.deepStrictEqual(
+      Serializable.deserializeExit(req, { _tag: "Success", value: "123" }).pipe(Effect.runSync),
+      Exit.succeed(123)
+    )
   })
 })
