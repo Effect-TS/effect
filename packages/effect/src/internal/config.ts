@@ -8,11 +8,12 @@ import type * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
 import type * as LogLevel from "../LogLevel.js"
 import * as Option from "../Option.js"
-import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import type * as Secret from "../Secret.js"
 import * as configError from "./configError.js"
 import * as core from "./core.js"
+import * as defaultServices from "./defaultServices.js"
+import * as effectable from "./effectable.js"
 import * as OpCodes from "./opCodes/config.js"
 import * as InternalSecret from "./secret.js"
 
@@ -43,9 +44,10 @@ const configVariance = {
 }
 
 const proto = {
+  ...effectable.CommitPrototype,
   [ConfigTypeId]: configVariance,
-  pipe() {
-    return pipeArguments(this, arguments)
+  commit(this: Config.Config<unknown>) {
+    return defaultServices.config(this)
   }
 }
 
