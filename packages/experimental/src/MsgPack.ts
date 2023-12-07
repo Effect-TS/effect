@@ -10,8 +10,6 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import { Packr, Unpackr } from "msgpackr"
-import * as Socket from "./Socket.js"
-import type { SocketError } from "./Socket.js"
 
 /**
  * @since 1.0.0
@@ -181,85 +179,127 @@ export const unpackSchema = <I, A>(
  * @since 1.0.0
  * @category combinators
  */
-export const socket = (
-  self: Socket.Socket
+export const duplex = <R, IE, OE>(
+  self: Channel.Channel<
+    R,
+    IE | MsgPackError,
+    Chunk.Chunk<Uint8Array>,
+    unknown,
+    OE,
+    Chunk.Chunk<Uint8Array>,
+    void
+  >
 ): Channel.Channel<
-  never,
-  never,
+  R,
+  IE,
   Chunk.Chunk<unknown>,
   unknown,
-  MsgPackError | SocketError,
+  MsgPackError | OE,
   Chunk.Chunk<unknown>,
   void
 > =>
-  pipe(
-    pack(),
-    Channel.pipeTo(Socket.withInputError(self)),
-    Channel.pipeTo(unpack<MsgPackError | SocketError>())
+  Channel.pipeTo(
+    Channel.pipeTo(pack(), self),
+    unpack()
   )
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const socketSchema: {
+export const duplexSchema: {
   <II, IA, OI, OA>(
     options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
-  ): (
-    self: Socket.Socket
-  ) => <IE>() => Channel.Channel<
-    never,
-    IE,
-    Chunk.Chunk<IA>,
-    unknown,
-    MsgPackError | ParseError | Socket.SocketError | IE,
-    Chunk.Chunk<OA>,
-    void
-  >
-  <II, IA, OI, OA>(
-    self: Socket.Socket,
+  ): <R, InErr, OutErr>(
+    self: Channel.Channel<
+      R,
+      MsgPackError | ParseError | InErr,
+      Chunk.Chunk<Uint8Array>,
+      unknown,
+      OutErr,
+      Chunk.Chunk<Uint8Array>,
+      void
+    >
+  ) => Channel.Channel<R, InErr, Chunk.Chunk<IA>, unknown, MsgPackError | ParseError | OutErr, Chunk.Chunk<OA>, void>
+  <R, InErr, OutErr, II, IA, OI, OA>(
+    self: Channel.Channel<
+      R,
+      MsgPackError | ParseError | InErr,
+      Chunk.Chunk<Uint8Array>,
+      unknown,
+      OutErr,
+      Chunk.Chunk<Uint8Array>,
+      void
+    >,
     options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
-  ): <IE>() => Channel.Channel<
-    never,
-    IE,
-    Chunk.Chunk<IA>,
-    unknown,
-    MsgPackError | ParseError | Socket.SocketError | IE,
-    Chunk.Chunk<OA>,
-    void
-  >
+  ): Channel.Channel<R, InErr, Chunk.Chunk<IA>, unknown, MsgPackError | ParseError | OutErr, Chunk.Chunk<OA>, void>
 } = dual<
-  <II, IA, OI, OA>(options: {
-    readonly inputSchema: Schema.Schema<II, IA>
-    readonly outputSchema: Schema.Schema<OI, OA>
-  }) => (self: Socket.Socket) => <IE>() => Channel.Channel<
-    never,
-    IE,
+  <II, IA, OI, OA>(
+    options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
+  ) => <R, InErr, OutErr>(
+    self: Channel.Channel<
+      R,
+      MsgPackError | ParseError | InErr,
+      Chunk.Chunk<Uint8Array>,
+      unknown,
+      OutErr,
+      Chunk.Chunk<Uint8Array>,
+      void
+    >
+  ) => Channel.Channel<
+    R,
+    InErr,
     Chunk.Chunk<IA>,
     unknown,
-    IE | MsgPackError | ParseError | SocketError,
+    MsgPackError | ParseError | OutErr,
     Chunk.Chunk<OA>,
     void
   >,
-  <II, IA, OI, OA>(self: Socket.Socket, options: {
-    readonly inputSchema: Schema.Schema<II, IA>
-    readonly outputSchema: Schema.Schema<OI, OA>
-  }) => <IE>() => Channel.Channel<
-    never,
-    IE,
+  <R, InErr, OutErr, II, IA, OI, OA>(
+    self: Channel.Channel<
+      R,
+      MsgPackError | ParseError | InErr,
+      Chunk.Chunk<Uint8Array>,
+      unknown,
+      OutErr,
+      Chunk.Chunk<Uint8Array>,
+      void
+    >,
+    options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
+  ) => Channel.Channel<
+    R,
+    InErr,
     Chunk.Chunk<IA>,
     unknown,
-    IE | MsgPackError | ParseError | SocketError,
+    MsgPackError | ParseError | OutErr,
     Chunk.Chunk<OA>,
     void
   >
->(2, (self, options) => {
+>(2, <R, InErr, OutErr, II, IA, OI, OA>(
+  self: Channel.Channel<
+    R,
+    MsgPackError | ParseError | InErr,
+    Chunk.Chunk<Uint8Array>,
+    unknown,
+    OutErr,
+    Chunk.Chunk<Uint8Array>,
+    void
+  >,
+  options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
+): Channel.Channel<
+  R,
+  InErr,
+  Chunk.Chunk<IA>,
+  unknown,
+  MsgPackError | ParseError | OutErr,
+  Chunk.Chunk<OA>,
+  void
+> => {
   const pack = packSchema(options.inputSchema)
   const unpack = unpackSchema(options.outputSchema)
-  return <IE>() =>
-    pipe(
-      pack<IE>(),
-      Channel.pipeTo(Socket.withInputError(self)),
-      Channel.pipeTo(unpack())
-    )
+  return pipe(
+    pack<InErr>(),
+    Channel.pipeTo(self),
+    Channel.pipeTo(unpack())
+  )
 })

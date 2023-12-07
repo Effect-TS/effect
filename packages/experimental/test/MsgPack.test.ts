@@ -22,9 +22,8 @@ server.listen({
 describe("MsgPack", () => {
   test("socket", () =>
     Effect.gen(function*(_) {
-      const platform = yield* _(Socket.SocketPlatform)
-      const socket = platform.open({ port, host: "localhost" }).pipe(
-        MsgPack.socket
+      const socket = Socket.makeNetChannel<MsgPack.MsgPackError>({ port, host: "localhost" }).pipe(
+        MsgPack.duplex
       )
 
       const outputEffect = Stream.make({ hello: "world" }, { test: 123 }).pipe(
@@ -34,13 +33,12 @@ describe("MsgPack", () => {
       const output = yield* _(outputEffect)
 
       assert.deepStrictEqual(Chunk.toArray(output), [{ hello: "world" }, { test: 123 }])
-    }).pipe(Effect.provide(Socket.layer), Effect.runPromise))
+    }).pipe(Effect.runPromise))
 
   test("socket x10000", () =>
     Effect.gen(function*(_) {
-      const platform = yield* _(Socket.SocketPlatform)
-      const socket = platform.open({ port, host: "localhost" }).pipe(
-        MsgPack.socket
+      const socket = Socket.makeNetChannel<MsgPack.MsgPackError>({ port }).pipe(
+        MsgPack.duplex
       )
       const msgs = Array.from({ length: 10000 }, (_, i) => ({ hello: i }))
 
@@ -51,5 +49,5 @@ describe("MsgPack", () => {
       const output = yield* _(outputEffect)
 
       assert.deepStrictEqual(Chunk.toArray(output), msgs)
-    }).pipe(Effect.provide(Socket.layer), Effect.runPromise))
+    }).pipe(Effect.runPromise))
 })

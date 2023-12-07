@@ -1,31 +1,46 @@
 /**
  * @since 1.0.0
  */
-import type { Channel } from "effect/Channel"
-import type { Chunk } from "effect/Chunk"
+import type * as Cause from "effect/Cause"
+import * as Channel from "effect/Channel"
+import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import type { Option } from "effect/Option"
-import * as Queue from "effect/Queue"
-import type { Scope } from "effect/Scope"
-import * as Stream from "effect/Stream"
+import * as Exit from "effect/Exit"
+import * as Option from "effect/Option"
+import * as Scope from "effect/Scope"
+import type * as AsyncProducer from "effect/SingleProducerAsyncInput"
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const SocketTypeId = Symbol.for("@effect/experimental/Socket")
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type SocketTypeId = typeof SocketTypeId
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const Socket: Context.Tag<Socket, Socket> = Context.Tag<Socket>(
+  "@effect/experimental/Socket"
+)
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface Socket<IE = never> extends
-  Channel<
-    never,
-    IE,
-    Chunk<Uint8Array>,
-    unknown,
-    IE | SocketError,
-    Chunk<Uint8Array>,
-    void
-  >
-{}
+export interface Socket {
+  readonly [SocketTypeId]: SocketTypeId
+  readonly writer: Effect.Effect<Scope.Scope, never, (chunk: Uint8Array) => Effect.Effect<never, SocketError, void>>
+  readonly pull: Effect.Effect<never, Option.Option<SocketError>, Uint8Array>
+}
 
 /**
  * @since 1.0.0
@@ -38,72 +53,70 @@ export class SocketError extends Data.TaggedError("SocketError")<{
 
 /**
  * @since 1.0.0
- * @category type ids
- */
-export const SocketPlatformTypeId = Symbol.for("@effect/experimental/Socket/SocketPlatform")
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type SocketPlatformTypeId = typeof SocketPlatformTypeId
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface SocketPlatform {
-  readonly [SocketPlatformTypeId]: SocketPlatformTypeId
-  readonly open: (
-    options: {
-      readonly port: number
-      readonly host: string
-    } | {
-      readonly path: string
-    }
-  ) => Socket
-}
-
-/**
- * @since 1.0.0
- * @category tags
- */
-export const SocketPlatform: Context.Tag<SocketPlatform, SocketPlatform> = Context.Tag<SocketPlatform>(
-  SocketPlatformTypeId
-)
-
-/**
- * @since 1.0.0
  * @category combinators
  */
-export const withInputError = <IE>(self: Socket): Socket<IE> => self as any
+export const toChannel = <IE = never>() =>
+(
+  self: Socket
+): Channel.Channel<never, IE, Chunk.Chunk<Uint8Array>, unknown, SocketError | IE, Chunk.Chunk<Uint8Array>, void> =>
+  Channel.unwrap(
+    Effect.gen(function*(_) {
+      const writeScope = yield* _(Scope.make())
+      const write = yield* _(Scope.extend(self.writer, writeScope))
+      let inputError: Cause.Cause<IE | SocketError> | undefined
+
+      const input: AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array>, unknown> = {
+        awaitRead: () => Effect.unit,
+        emit(chunk) {
+          return Effect.catchAllCause(Effect.forEach(chunk, write, { discard: true }), (cause) => {
+            inputError = cause
+            return Effect.unit
+          })
+        },
+        error(error) {
+          inputError = error
+          return Scope.close(writeScope, Exit.unit)
+        },
+        done() {
+          return Scope.close(writeScope, Exit.unit)
+        }
+      }
+
+      const loop: Channel.Channel<
+        never,
+        unknown,
+        unknown,
+        unknown,
+        Option.Option<SocketError>,
+        Chunk.Chunk<Uint8Array>,
+        void
+      > = Channel.flatMap(
+        self.pull,
+        (chunk) => Channel.zipRight(Channel.write(Chunk.of(chunk)), loop)
+      )
+
+      const pull = Channel.catchAll(
+        loop,
+        Option.match({
+          onNone: () => inputError ? Channel.failCause(inputError) : Channel.unit,
+          onSome: (error: SocketError | IE) => Channel.fail(error)
+        })
+      )
+
+      return Channel.embedInput(pull, input)
+    })
+  )
 
 /**
  * @since 1.0.0
- * @category models
+ * @category constructors
  */
-export interface SocketPull<E, I, O> {
-  readonly write: (element: I) => Effect.Effect<never, never, void>
-  readonly pull: Effect.Effect<never, Option<E>, Chunk<O>>
-}
-
-/**
- * @since 1.0.0
- * @category combinators
- */
-export const toPull = <E, I, O>(
-  self: Channel<never, never, Chunk<I>, unknown, E, Chunk<O>, unknown>
-): Effect.Effect<Scope, never, SocketPull<E, I, O>> =>
-  Effect.gen(function*(_) {
-    const queue = yield* _(Effect.acquireRelease(
-      Queue.unbounded<I>(),
-      Queue.shutdown
-    ))
-    const write = (element: I) => Queue.offer(queue, element)
-    const pull = yield* _(
-      Stream.fromQueue(queue),
-      Stream.pipeThroughChannel(self),
-      Stream.toPull
-    )
-    return { write, pull }
-  })
+export const makeChannel = <IE = never>(): Channel.Channel<
+  Socket,
+  IE,
+  Chunk.Chunk<Uint8Array>,
+  unknown,
+  SocketError | IE,
+  Chunk.Chunk<Uint8Array>,
+  void
+> => Channel.unwrap(Effect.map(Socket, toChannel<IE>()))

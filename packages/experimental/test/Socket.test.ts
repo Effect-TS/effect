@@ -21,12 +21,11 @@ server.listen({
 describe("Socket", () => {
   test("open", () =>
     Effect.gen(function*(_) {
-      const platform = yield* _(Socket.SocketPlatform)
-      const socket = platform.open({ port, host: "localhost" })
+      const channel = Socket.makeNetChannel({ port })
 
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
-        Stream.pipeThroughChannel(socket),
+        Stream.pipeThroughChannel(channel),
         Stream.decodeText(),
         Stream.mkString,
         Stream.runCollect
@@ -34,5 +33,5 @@ describe("Socket", () => {
 
       const output = yield* _(outputEffect)
       assert.strictEqual(Chunk.join(output, ""), "HelloWorld")
-    }).pipe(Effect.provide(Socket.layer), Effect.runPromise))
+    }).pipe(Effect.runPromise))
 })
