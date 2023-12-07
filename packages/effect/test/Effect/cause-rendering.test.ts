@@ -86,4 +86,16 @@ describe.concurrent("Effect", () => {
       assert.include(rendered, "spanA")
       assert.include(rendered, "spanB")
     }))
+  it.effect("shows line where error was created", () =>
+    Effect.gen(function*($) {
+      const cause = yield* $(
+        Effect.sync(() => {
+          throw new Error("ok")
+        }),
+        Effect.sandbox,
+        Effect.flip
+      )
+      const pretty = Cause.pretty(cause)
+      assert.include(pretty, "cause-rendering.test.ts")
+    }))
 })
