@@ -3451,10 +3451,7 @@ const optionDecode = <A>(input: OptionFrom<A>): Option.Option<A> =>
   input._tag === "None" ? Option.none() : Option.some(input.value)
 
 const optionArbitrary = <A>(value: Arbitrary<A>): Arbitrary<Option.Option<A>> => {
-  const placeholder = suspend<A>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => value
-  }))
-  const arb = arbitrary.unsafeTo(optionFrom(placeholder))
+  const arb = arbitrary.unsafe(optionFrom(schemaFromArbitrary(value)))
   return (fc) => arb(fc).map(optionDecode)
 }
 
@@ -3558,13 +3555,7 @@ const eitherArbitrary = <E, A>(
   left: Arbitrary<E>,
   right: Arbitrary<A>
 ): Arbitrary<Either.Either<E, A>> => {
-  const placeholderLeft = suspend<E>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => left
-  }))
-  const placeholderRight = suspend<A>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => right
-  }))
-  const arb = arbitrary.unsafeTo(eitherFrom(placeholderLeft, placeholderRight))
+  const arb = arbitrary.unsafe(eitherFrom(schemaFromArbitrary(left), schemaFromArbitrary(right)))
   return (fc) => arb(fc).map(eitherDecode)
 }
 
@@ -4553,7 +4544,7 @@ const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
   })
 )
 
-const fiberIdFromArbitrary = arbitrary.unsafeTo(FiberIdFrom)
+const fiberIdFromArbitrary = arbitrary.unsafe(FiberIdFrom)
 
 const fiberIdArbitrary: Arbitrary<FiberId.FiberId> = (fc) =>
   fiberIdFromArbitrary(fc).map(fiberIdDecode)
@@ -4702,13 +4693,7 @@ const causeArbitrary = <E>(
   error: Arbitrary<E>,
   defect: Arbitrary<unknown>
 ): Arbitrary<Cause.Cause<E>> => {
-  const placeholderError = suspend<E>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => error
-  }))
-  const placeholderDefect = suspend<unknown>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => defect
-  }))
-  const arb = arbitrary.unsafeTo(causeFrom(placeholderError, placeholderDefect))
+  const arb = arbitrary.unsafe(causeFrom(schemaFromArbitrary(error), schemaFromArbitrary(defect)))
   return (fc) => arb(fc).map(causeDecode)
 }
 
@@ -4878,16 +4863,9 @@ const exitArbitrary = <E, A>(
   value: Arbitrary<A>,
   defect: Arbitrary<unknown>
 ): Arbitrary<Exit.Exit<E, A>> => {
-  const placeholderError = suspend<E>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => error
-  }))
-  const placeholderValue = suspend<A>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => value
-  }))
-  const placeholderDefect = suspend<unknown>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => defect
-  }))
-  const arb = arbitrary.unsafeTo(exitFrom(placeholderError, placeholderValue, placeholderDefect))
+  const arb = arbitrary.unsafe(
+    exitFrom(schemaFromArbitrary(error), schemaFromArbitrary(value), schemaFromArbitrary(defect))
+  )
   return (fc) => arb(fc).map(exitDecode)
 }
 
@@ -4945,3 +4923,8 @@ export const exit = <IE, E, IA, A>(
         ? { _tag: "Failure", cause: exit.cause } as const
         : { _tag: "Success", value: exit.value } as const
   )
+
+const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
+  suspend<A>(() => any).pipe(annotations({
+    [hooks.ArbitraryHookId]: () => value
+  }))

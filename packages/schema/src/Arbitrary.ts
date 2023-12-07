@@ -35,7 +35,7 @@ export const ArbitraryHookId: unique symbol = hooks.ArbitraryHookId
 export type ArbitraryHookId = typeof ArbitraryHookId
 
 /** @internal */
-export const unsafeTo = <I, A>(
+export const unsafe = <I, A>(
   schema: Schema.Schema<I, A>
 ): (fc: typeof FastCheck) => FastCheck.Arbitrary<A> => go(schema.ast, {})
 
@@ -103,7 +103,6 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
     case "UniqueSymbol":
       return (fc) => fc.constant(ast.symbol)
     case "UndefinedKeyword":
-      return (fc) => fc.constant(undefined)
     case "VoidKeyword":
       return (fc) => fc.constant(undefined)
     case "NeverKeyword":
