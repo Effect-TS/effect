@@ -470,4 +470,12 @@ describe.concurrent("Config", () => {
       assertSuccess(config, [["HASH_SET", "a,b,c"]], HashSet.make("a", "b", "c"))
     })
   })
+
+  it("can be yielded", () => {
+    const result = Effect.runSync(Effect.withConfigProvider(
+      Config.string("STRING"),
+      ConfigProvider.fromMap(new Map([["STRING", "value"]]))
+    ))
+    assert.strictEqual(result, "value")
+  })
 })
