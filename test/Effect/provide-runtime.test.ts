@@ -1,6 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
@@ -21,6 +22,25 @@ const LiveEnv = Layer.mergeAll(
 )
 
 describe.concurrent("Effect", () => {
+  it.effect("provideSomeRuntime doesn't break env", () => {
+    const someServiceImpl = {
+      value: 42
+    } as const
+    interface SomeService {
+      readonly _: unique symbol
+    }
+    const SomeService = Context.Tag<SomeService, typeof someServiceImpl>()
+    return Effect.gen(function*(_) {
+      const rt = yield* _(Layer.succeedContext(Context.empty()), Layer.toRuntime)
+      const pre = yield* _(Effect.context<never>())
+      yield* _(Effect.provide(Effect.unit, rt))
+      const post = yield* _(Effect.context<never>())
+      assert.isTrue(Equal.equals(pre, post))
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Layer.succeed(SomeService, someServiceImpl))
+    )
+  })
   it.it("provideSomeRuntime", async () => {
     const { runtime, scope } = await Effect.runPromise(
       Effect.flatMap(Scope.make(), (scope) =>
