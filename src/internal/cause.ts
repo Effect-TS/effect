@@ -962,13 +962,15 @@ const filterStack = (stack: string) => {
   const out: Array<string> = []
   for (let i = 0; i < lines.length; i++) {
     if (
-      lines[i].includes("EffectPrimitive")
-      || lines[i].includes("Generator.next")
-      || lines[i].includes("FiberRuntime")
+      i > 0 && (
+        lines[i].includes("EffectPrimitive")
+        || lines[i].includes("Generator.next")
+        || lines[i].includes("FiberRuntime")
+      )
     ) {
       return out.join("\n")
     } else {
-      out.push(lines[i])
+      out.push(lines[i].replace(/EffectPrimitive\..*\((.*)\)/, "$1"))
     }
   }
   return out.join("\n")
