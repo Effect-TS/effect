@@ -63,7 +63,7 @@ const record = <K extends PropertyKey, V>(
   value: FastCheck.Arbitrary<V>,
   options: Options
 ): FastCheck.Arbitrary<{ readonly [k in K]: V }> => {
-  return (options.isLazy ?
+  return (options.isSuspend ?
     fc.oneof(
       { depthSize },
       fc.constant([]),
@@ -84,7 +84,7 @@ const getHook = AST.getAnnotation<
 
 type Options = {
   readonly constraints?: Constraints
-  readonly isLazy?: boolean
+  readonly isSuspend?: boolean
 }
 
 /** @internal */
@@ -207,7 +207,7 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
           const constraints = options.constraints
           output = output.chain((as) => {
             let out = fc.array(arb)
-            if (options.isLazy) {
+            if (options.isSuspend) {
               out = fc.oneof(
                 { depthSize },
                 fc.constant([]),
@@ -285,12 +285,12 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
         })
       )
     }
-    case "Lazy": {
+    case "Suspend": {
       return pipe(
         getHook(ast),
         Option.match({
           onNone: () => {
-            const get = Internal.memoizeThunk(() => go(ast.f(), { ...options, isLazy: true }))
+            const get = Internal.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
             return (fc) => fc.constant(null).chain(() => get()(fc))
           },
           onSome: (handler) => handler()

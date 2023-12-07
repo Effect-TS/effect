@@ -515,11 +515,11 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         pattern: regex.source
       }
     }
-    case "Lazy": {
+    case "Suspend": {
       const identifier = AST.getIdentifierAnnotation(ast)
       if (Option.isNone(identifier)) {
         throw new Error(
-          "Generating a JSON Schema for lazy schemas requires an identifier annotation"
+          "Generating a JSON Schema for suspended schemas requires an identifier annotation"
         )
       }
       const id = identifier.value

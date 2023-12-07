@@ -4,12 +4,12 @@ import * as _ from "@effect/schema/TreeFormatter"
 import { describe, expect, it } from "vitest"
 
 describe("formatExpected", () => {
-  it("lazy", () => {
+  it("suspend", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.lazy<A>(
+    const schema: S.Schema<A> = S.suspend( // intended outer suspend
       () => S.tuple(S.number, S.union(schema, S.literal(null)))
     )
-    expect(_.formatExpected(schema.ast)).toEqual("<anonymous lazy schema>")
+    expect(_.formatExpected(schema.ast)).toEqual("<anonymous suspended schema>")
   })
 })
 

@@ -319,7 +319,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
             map((members) => ts.factory.createTypeLiteralNode(members))
           )
         )
-      case "Lazy":
+      case "Suspend":
         throw new Error("Unhandled schema")
       case "Enums": {
         const id = pipe(

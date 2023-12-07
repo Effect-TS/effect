@@ -53,8 +53,8 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
       )
     case "Union":
       return AST.createUnion(ast.types.map((ast) => effectifyAST(ast, mode)), ast.annotations)
-    case "Lazy":
-      return AST.createLazy(() => effectifyAST(ast.f(), mode), ast.annotations)
+    case "Suspend":
+      return AST.createSuspend(() => effectifyAST(ast.f(), mode), ast.annotations)
     case "Refinement":
       return AST.createRefinement(
         effectifyAST(ast.from, mode),

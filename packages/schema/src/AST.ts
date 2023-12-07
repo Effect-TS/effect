@@ -246,7 +246,7 @@ export type AST =
   | Tuple
   | TypeLiteral
   | Union
-  | Lazy
+  | Suspend
   // transformations
   | Transform
 
@@ -902,8 +902,8 @@ export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
  * @category model
  * @since 1.0.0
  */
-export interface Lazy extends Annotated {
-  readonly _tag: "Lazy"
+export interface Suspend extends Annotated {
+  readonly _tag: "Suspend"
   readonly f: () => AST
 }
 
@@ -911,11 +911,11 @@ export interface Lazy extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const createLazy = (
+export const createSuspend = (
   f: () => AST,
   annotations: Annotated["annotations"] = {}
-): Lazy => ({
-  _tag: "Lazy",
+): Suspend => ({
+  _tag: "Suspend",
   f: Internal.memoizeThunk(f),
   annotations
 })
@@ -924,7 +924,7 @@ export const createLazy = (
  * @category guards
  * @since 1.0.0
  */
-export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
+export const isSuspend = (ast: AST): ast is Suspend => ast._tag === "Suspend"
 
 /**
  * @category model
@@ -1256,7 +1256,7 @@ export const getPropertySignatures = (
   switch (ast._tag) {
     case "TypeLiteral":
       return ast.propertySignatures
-    case "Lazy":
+    case "Suspend":
       return getPropertySignatures(ast.f())
   }
   throw new Error(`getPropertySignatures: unsupported schema (${ast._tag})`)
@@ -1342,8 +1342,8 @@ export const partial = (ast: AST): AST => {
       )
     case "Union":
       return createUnion(ast.types.map((member) => partial(member)))
-    case "Lazy":
-      return createLazy(() => partial(ast.f()))
+    case "Suspend":
+      return createSuspend(() => partial(ast.f()))
     case "Declaration":
       throw new Error("`partial` cannot handle declarations")
     case "Refinement":
@@ -1383,8 +1383,8 @@ export const required = (ast: AST): AST => {
       )
     case "Union":
       return createUnion(ast.types.map((member) => required(member)))
-    case "Lazy":
-      return createLazy(() => required(ast.f()))
+    case "Suspend":
+      return createSuspend(() => required(ast.f()))
     case "Declaration":
       throw new Error("`required` cannot handle declarations")
     case "Refinement":
@@ -1417,8 +1417,8 @@ export const mutable = (ast: AST): AST => {
       )
     case "Union":
       return createUnion(ast.types.map(mutable), ast.annotations)
-    case "Lazy":
-      return createLazy(() => mutable(ast.f()), ast.annotations)
+    case "Suspend":
+      return createSuspend(() => mutable(ast.f()), ast.annotations)
     case "Refinement":
       return createRefinement(mutable(ast.from), ast.filter, ast.annotations)
     case "Transform":
@@ -1497,8 +1497,8 @@ export const to = (ast: AST): AST => {
       )
     case "Union":
       return createUnion(ast.types.map(to), ast.annotations)
-    case "Lazy":
-      return createLazy(() => to(ast.f()), ast.annotations)
+    case "Suspend":
+      return createSuspend(() => to(ast.f()), ast.annotations)
     case "Refinement":
       return createRefinement(to(ast.from), ast.filter, ast.annotations)
     case "Transform":
@@ -1536,8 +1536,8 @@ export const from = (ast: AST): AST => {
       )
     case "Union":
       return createUnion(ast.types.map(from))
-    case "Lazy":
-      return createLazy(() => from(ast.f()))
+    case "Suspend":
+      return createSuspend(() => from(ast.f()))
     case "Refinement":
     case "Transform":
       return from(ast.from)
@@ -1610,7 +1610,7 @@ export const getWeight = (ast: AST): Weight => {
       const [_, y, z] = getWeight(ast.type)
       return [6, y, z]
     }
-    case "Lazy":
+    case "Suspend":
       return [8, 0, 0]
     case "Union":
       return maxWeightAll(ast.types.map(getWeight))
@@ -1703,7 +1703,7 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
       return ast.propertySignatures.map((p): AST =>
         Predicate.isSymbol(p.name) ? createUniqueSymbol(p.name) : createLiteral(p.name)
       ).concat(ast.indexSignatures.map((is) => getParameterBase(is.parameter)))
-    case "Lazy":
+    case "Suspend":
       return _keyof(ast.f())
     default:
       throw new Error(`keyof: unsupported schema (${ast._tag})`)
@@ -1752,8 +1752,8 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
         createTypeLiteralTransformation(propertySignatureTransforms)
       )
     }
-    case "Lazy":
-      return createLazy(() => rename(ast.f(), mapping))
+    case "Suspend":
+      return createSuspend(() => rename(ast.f(), mapping))
     case "Transform":
       return compose(ast, rename(to(ast), mapping))
   }

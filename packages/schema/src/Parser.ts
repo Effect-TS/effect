@@ -909,7 +909,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         return computeResult(es)
       }
     }
-    case "Lazy": {
+    case "Suspend": {
       const get = Internal.memoizeThunk(() => goMemo(ast.f(), isDecoding))
       return (a, options) => get()(a, options)
     }

@@ -558,18 +558,17 @@ describe("Equivalence", () => {
     })
   })
 
-  describe("Lazy", () => {
-    it("should support recursive schemas", () => {
+  describe("Suspend", () => {
+    it("should support suspended schemas", () => {
       interface A {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.lazy<A>(() =>
-        S.struct({
-          a: string,
-          as: S.array(schema)
-        })
-      ).pipe(S.identifier("A"))
+      const schema: S.Schema<A> = S.struct({
+        a: string,
+        as: S.array(S.suspend(() => schema))
+      })
+
       const equivalence = E.to(schema)
 
       const a1: A = { a: "a1", as: [] }
@@ -586,7 +585,7 @@ describe("Equivalence", () => {
       // propertyTo(schema, { numRuns: 5 })
     })
 
-    it("should support mutually recursive schemas", () => {
+    it("should support mutually suspended schemas", () => {
       interface Expression {
         readonly type: "expression"
         readonly value: number | Operation
@@ -599,21 +598,17 @@ describe("Equivalence", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.lazy(() =>
-        S.struct({
-          type: S.literal("expression"),
-          value: S.union(number, Operation)
-        })
-      ).pipe(S.identifier("Expression"))
+      const Expression: S.Schema<Expression> = S.struct({
+        type: S.literal("expression"),
+        value: S.union(number, S.suspend(() => Operation))
+      })
 
-      const Operation: S.Schema<Operation> = S.lazy(() =>
-        S.struct({
-          type: S.literal("operation"),
-          operator: S.union(S.literal("+"), S.literal("-")),
-          left: Expression,
-          right: Expression
-        })
-      ).pipe(S.identifier("Operation"))
+      const Operation: S.Schema<Operation> = S.struct({
+        type: S.literal("operation"),
+        operator: S.union(S.literal("+"), S.literal("-")),
+        left: Expression,
+        right: Expression
+      })
 
       const equivalence = E.to(Operation)
 

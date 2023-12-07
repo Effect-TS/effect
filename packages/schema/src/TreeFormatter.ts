@@ -121,8 +121,8 @@ export const formatExpected = (ast: AST.AST): string => {
         getExpected(ast),
         () => ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
       )
-    case "Lazy":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous lazy schema>")
+    case "Suspend":
+      return Option.getOrElse(getExpected(ast), () => "<anonymous suspended schema>")
     case "Declaration":
       return Option.getOrElse(getExpected(ast), () => "<anonymous declaration schema>")
     case "Refinement":

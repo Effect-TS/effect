@@ -38,16 +38,17 @@ describe("Schema/omit", () => {
     await Util.expectParseFailure(schema, { a: "a" }, `/b is missing`)
   })
 
-  it("recursive", async () => {
+  it("suspend", async () => {
     interface A {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<A> = S.lazy<A>(() =>
-      S.struct({
-        a: S.string,
-        as: S.array(A)
-      })
+    const A: S.Schema<A> = S.suspend( // intended outer suspend
+      () =>
+        S.struct({
+          a: S.string,
+          as: S.array(A)
+        })
     )
     const schema = A.pipe(S.omit("a"))
     await Util.expectParseSuccess(schema, { as: [] })

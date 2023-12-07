@@ -466,18 +466,16 @@ describe("Schema/is", () => {
     expect(is("a")).toEqual(true)
   })
 
-  describe("lazy", () => {
+  describe("suspend", () => {
     it("baseline", () => {
       interface Category {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
       }
-      const schema: S.Schema<Category> = S.lazy<Category>(() =>
-        S.struct({
-          name: S.string,
-          categories: S.array(schema)
-        })
-      )
+      const schema: S.Schema<Category> = S.struct({
+        name: S.string,
+        categories: S.array(S.suspend(() => schema))
+      })
       const is = P.is(schema)
       expect(is({ name: "a", categories: [] })).toEqual(true)
       expect(
@@ -492,7 +490,7 @@ describe("Schema/is", () => {
       expect(is({ name: "a", categories: [1] })).toEqual(false)
     })
 
-    it("mutually recursive", () => {
+    it("mutually suspended", () => {
       interface A {
         readonly a: string
         readonly bs: ReadonlyArray<B>
@@ -501,18 +499,14 @@ describe("Schema/is", () => {
         readonly b: number
         readonly as: ReadonlyArray<A>
       }
-      const schemaA: S.Schema<A> = S.lazy<A>(() =>
-        S.struct({
-          a: S.string,
-          bs: S.array(schemaB)
-        })
-      )
-      const schemaB: S.Schema<B> = S.lazy<B>(() =>
-        S.struct({
-          b: S.number,
-          as: S.array(schemaA)
-        })
-      )
+      const schemaA: S.Schema<A> = S.struct({
+        a: S.string,
+        bs: S.array(S.suspend(() => schemaB))
+      })
+      const schemaB: S.Schema<B> = S.struct({
+        b: S.number,
+        as: S.array(S.suspend(() => schemaA))
+      })
       const isA = P.is(schemaA)
       expect(isA({ a: "a1", bs: [] })).toEqual(true)
       expect(isA({ a: "a1", bs: [{ b: 1, as: [] }] })).toEqual(true)

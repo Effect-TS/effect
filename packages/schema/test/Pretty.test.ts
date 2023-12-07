@@ -365,17 +365,15 @@ describe("Pretty", () => {
     )
   })
 
-  it("lazy", () => {
+  it("suspend", () => {
     interface A {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<A> = S.lazy<A>(() =>
-      S.struct({
-        a: S.string,
-        as: S.array(A)
-      })
-    )
+    const A: S.Schema<A> = S.struct({
+      a: S.string,
+      as: S.array(S.suspend(() => A))
+    })
     const pretty = P.to(A)
     expect(pretty({ a: "a", as: [] })).toEqual(
       `{ "a": "a", "as": [] }`

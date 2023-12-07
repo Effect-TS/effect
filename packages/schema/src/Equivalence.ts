@@ -78,7 +78,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
       return Equivalence.strict()
     case "Refinement":
       return go(ast.from)
-    case "Lazy": {
+    case "Suspend": {
       const get = Internal.memoizeThunk(() => go(ast.f()))
       return (a, b) => get()(a, b)
     }

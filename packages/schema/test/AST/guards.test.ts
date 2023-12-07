@@ -13,13 +13,13 @@ describe("AST/guards", () => {
     expect(AST.isTemplateLiteral(S.number.ast)).toEqual(false)
   })
 
-  it("isLazy", () => {
+  it("isSuspend", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.lazy<A>(
+    const schema: S.Schema<A> = S.suspend( // intended outer suspend
       () => S.tuple(S.number, S.union(schema, S.literal(null)))
     )
-    expect(AST.isLazy(schema.ast)).toEqual(true)
-    expect(AST.isLazy(S.number.ast)).toEqual(false)
+    expect(AST.isSuspend(schema.ast)).toEqual(true)
+    expect(AST.isSuspend(S.number.ast)).toEqual(false)
   })
 
   it("isTransform", () => {

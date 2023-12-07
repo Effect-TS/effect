@@ -218,7 +218,7 @@ describe("Arbitrary/Arbitrary", () => {
     propertyTo(schema)
   })
 
-  describe("lazy", () => {
+  describe("suspend", () => {
     it("should support an arbitrary annotation", () => {
       interface A {
         readonly a: string
@@ -234,12 +234,11 @@ describe("Arbitrary/Arbitrary", () => {
           )
         })
       })).root
-      const schema: S.Schema<A> = S.lazy<A>(() =>
-        S.struct({
-          a: S.string,
-          as: S.array(schema)
-        }), {
-        [Arbitrary.ArbitraryHookId]: () => () => arb
+      const schema: S.Schema<A> = S.struct({
+        a: S.string,
+        as: S.array(S.suspend(() => schema, {
+          [Arbitrary.ArbitraryHookId]: () => () => arb
+        }))
       })
       propertyTo(schema)
     })
@@ -249,12 +248,10 @@ describe("Arbitrary/Arbitrary", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.lazy(() =>
-        S.struct({
-          a: S.string,
-          as: S.array(schema)
-        })
-      )
+      const schema: S.Schema<A> = S.struct({
+        a: S.string,
+        as: S.array(S.suspend(() => schema))
+      })
       propertyTo(schema)
     })
 
@@ -266,18 +263,18 @@ describe("Arbitrary/Arbitrary", () => {
       interface A {
         readonly a: number | A
       }
-      const schema: S.Schema<I, A> = S.lazy(() =>
-        S.struct({
-          a: S.union(NumberFromString, schema)
-        })
-      )
+      const schema: S.Schema<I, A> = S.struct({
+        a: S.union(NumberFromString, S.suspend(() => schema))
+      })
+
       propertyFrom(schema)
     })
 
     it("tuple", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.lazy<A>(
-        () => S.tuple(S.number, S.union(schema, S.literal(null)))
+      const schema: S.Schema<A> = S.tuple(
+        S.number,
+        S.union(S.literal(null), S.suspend(() => schema))
       )
       propertyTo(schema)
     })
@@ -286,11 +283,11 @@ describe("Arbitrary/Arbitrary", () => {
       type A = {
         [_: string]: A
       }
-      const schema: S.Schema<A> = S.lazy(() => S.record(S.string, schema))
+      const schema: S.Schema<A> = S.record(S.string, S.suspend(() => schema))
       propertyTo(schema)
     })
 
-    it("should support mutually recursive schemas", () => {
+    it("should support mutually suspended schemas", () => {
       interface Expression {
         readonly type: "expression"
         readonly value: number | Operation
@@ -303,21 +300,17 @@ describe("Arbitrary/Arbitrary", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.lazy(() =>
-        S.struct({
-          type: S.literal("expression"),
-          value: S.union(S.JsonNumber, Operation)
-        })
-      )
+      const Expression: S.Schema<Expression> = S.struct({
+        type: S.literal("expression"),
+        value: S.union(S.JsonNumber, S.suspend(() => Operation))
+      })
 
-      const Operation: S.Schema<Operation> = S.lazy(() =>
-        S.struct({
-          type: S.literal("operation"),
-          operator: S.union(S.literal("+"), S.literal("-")),
-          left: Expression,
-          right: Expression
-        })
-      )
+      const Operation: S.Schema<Operation> = S.struct({
+        type: S.literal("operation"),
+        operator: S.union(S.literal("+"), S.literal("-")),
+        left: Expression,
+        right: Expression
+      })
       propertyTo(Operation, { numRuns: 5 })
     })
   })

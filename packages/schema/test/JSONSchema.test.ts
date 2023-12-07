@@ -1038,29 +1038,29 @@ describe("JSONSchema", () => {
     expect(validate("aa")).toEqual(false)
   })
 
-  describe("Lazy", () => {
+  describe("Suspend", () => {
     it("should raise an error if there is no identifier annotation", () => {
       interface A {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: Schema.Schema<A> = Schema.lazy<A>(() =>
-        Schema.struct({
-          a: Schema.string,
-          as: Schema.array(schema)
-        })
-      )
+      const schema: Schema.Schema<A> = Schema.struct({
+        a: Schema.string,
+        as: Schema.array(Schema.suspend(() => schema))
+      })
       expect(() => JSONSchema.to(schema)).toThrow(
-        new Error("Generating a JSON Schema for lazy schemas requires an identifier annotation")
+        new Error(
+          "Generating a JSON Schema for suspended schemas requires an identifier annotation"
+        )
       )
     })
 
-    it("should support recursive schemas", () => {
+    it("should support outer suspended schemas", () => {
       interface A {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: Schema.Schema<A> = Schema.lazy<A>(() =>
+      const schema: Schema.Schema<A> = Schema.suspend(() =>
         Schema.struct({
           a: Schema.string,
           as: Schema.array(schema)
@@ -1107,7 +1107,75 @@ describe("JSONSchema", () => {
       propertyTo(schema)
     })
 
-    it("should support mutually recursive schemas", () => {
+    it("should support inner suspended schemas", () => {
+      interface A {
+        readonly a: string
+        readonly as: ReadonlyArray<A>
+      }
+      const schema: Schema.Schema<A> = Schema.struct({
+        a: Schema.string,
+        as: Schema.array(Schema.suspend(() => schema).pipe(Schema.identifier("A")))
+      })
+      const jsonSchema = JSONSchema.to(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "a",
+          "as"
+        ],
+        "properties": {
+          "a": {
+            "type": "string",
+            "description": "a string",
+            "title": "string"
+          },
+          "as": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/A"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "$defs": {
+          "A": {
+            "type": "object",
+            "required": [
+              "a",
+              "as"
+            ],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "a string",
+                "title": "string"
+              },
+              "as": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/A"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      })
+      const validate = new Ajv().compile(jsonSchema)
+      expect(validate({ a: "a1", as: [] })).toEqual(true)
+      expect(validate({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(true)
+      expect(validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [] }] })).toEqual(true)
+      expect(
+        validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [] }] }] })
+      ).toEqual(true)
+      expect(
+        validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
+      ).toEqual(false)
+      propertyTo(schema)
+    })
+
+    it("should support mutually suspended schemas", () => {
       interface Expression {
         readonly type: "expression"
         readonly value: number | Operation
@@ -1120,14 +1188,14 @@ describe("JSONSchema", () => {
         readonly right: Expression
       }
 
-      const Expression: Schema.Schema<Expression> = Schema.lazy(() =>
+      const Expression: Schema.Schema<Expression> = Schema.suspend(() =>
         Schema.struct({
           type: Schema.literal("expression"),
           value: Schema.union(JsonNumber, Operation)
         })
       ).pipe(Schema.identifier("Expression"))
 
-      const Operation: Schema.Schema<Operation> = Schema.lazy(() =>
+      const Operation: Schema.Schema<Operation> = Schema.suspend(() =>
         Schema.struct({
           type: Schema.literal("operation"),
           operator: Schema.union(Schema.literal("+"), Schema.literal("-")),

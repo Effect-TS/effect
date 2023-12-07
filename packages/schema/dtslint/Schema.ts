@@ -422,19 +422,17 @@ S.extend(S.struct({ a: S.string, b: S.string }), S.struct({ c: S.string }))
 // );
 
 // ---------------------------------------------
-// lazy
+// suspend
 // ---------------------------------------------
 
-interface LazyTo1 {
+interface SuspendTo1 {
   readonly a: number
-  readonly as: ReadonlyArray<LazyTo1>
+  readonly as: ReadonlyArray<SuspendTo1>
 }
-const lazy1: S.Schema<LazyTo1> = S.lazy(() =>
-  S.struct({
+const suspend1: S.Schema<SuspendTo1> = S.struct({
     a: S.number,
-    as: S.array(lazy1)
+    as: S.array(S.suspend(() => suspend1))
   })
-)
 
 interface LazyFrom2 {
   readonly a: string
@@ -444,12 +442,12 @@ interface LazyTo2 {
   readonly a: number
   readonly as: ReadonlyArray<LazyTo2>
 }
-const lazy2: S.Schema<LazyFrom2, LazyTo2> = S.lazy(() =>
+const lazy2: S.Schema<LazyFrom2, LazyTo2> =
   S.struct({
     a: S.NumberFromString,
-    as: S.array(lazy2)
+    as: S.array(S.suspend(() => lazy2))
   })
-)
+
 
 // ---------------------------------------------
 // rename
@@ -638,7 +636,7 @@ S.mutable(S.union(S.struct({ a: S.number }), S.array(S.string)))
 S.mutable(S.array(S.string).pipe(S.maxItems(2)))
 
 // $ExpectType Schema<string[], string[]>
-S.mutable(S.lazy(() => S.array(S.string)))
+S.mutable(S.suspend(() => S.array(S.string)))
 
 // $ExpectType Schema<string[], string[]>
 S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))

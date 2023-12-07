@@ -169,7 +169,7 @@ export const match: AST.Match<Pretty<any>> = {
       return types[index][1](a)
     }
   },
-  "Lazy": (ast, go) => {
+  "Suspend": (ast, go) => {
     const get = Internal.memoizeThunk(() => go(ast.f()))
     return (a) => get()(a)
   },

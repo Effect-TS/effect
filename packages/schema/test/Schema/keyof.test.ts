@@ -42,16 +42,17 @@ describe("Schema/keyof", () => {
     expect(AST.keyof(schema.ast)).toEqual(S.symbolFromSelf.ast)
   })
 
-  it("lazy", () => {
+  it("suspend", () => {
     interface Category {
       readonly name: string
       readonly categories: ReadonlyArray<Category>
     }
-    const schema: S.Schema<Category> = S.lazy<Category>(() =>
-      S.struct({
-        name: S.string,
-        categories: S.array(schema)
-      })
+    const schema: S.Schema<Category> = S.suspend( // intended outer suspend
+      () =>
+        S.struct({
+          name: S.string,
+          categories: S.array(schema)
+        })
     )
     expect(AST.keyof(schema.ast)).toEqual(S.literal("name", "categories").ast)
   })
