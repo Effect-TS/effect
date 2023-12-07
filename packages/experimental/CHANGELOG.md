@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.2.2
+
+### Patch Changes
+
+- [#11](https://github.com/Effect-TS/experimental/pull/11) [`3a83e5a`](https://github.com/Effect-TS/experimental/commit/3a83e5af3f38f676abccd532e69289aaf0cebceb) Thanks [@tim-smart](https://github.com/tim-smart)! - refactor Socket api
+
 ## 0.2.1
 
 ### Patch Changes
