@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.33.1
+
+### Patch Changes
+
+- [#326](https://github.com/Effect-TS/platform/pull/326) [`162aa91`](https://github.com/Effect-TS/platform/commit/162aa915934112983c543a6be2a9d7091b86fac9) Thanks [@tim-smart](https://github.com/tim-smart)! - add Router.schemaSearchParams/schemaPathParams
+
 ## 0.33.0
 
 ### Minor Changes
