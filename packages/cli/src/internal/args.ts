@@ -9,6 +9,7 @@ import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
+import type * as Secret from "effect/Secret"
 import type * as Args from "../Args.js"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
@@ -222,6 +223,12 @@ export const path = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =
     Option.fromNullable(config.name),
     InternalPrimitive.path("either", config.exists || "either")
   )
+
+/** @internal */
+export const secret = (
+  config: Args.Args.BaseArgsConfig = {}
+): Args.Args<Secret.Secret> =>
+  makeSingle(Option.fromNullable(config.name), InternalPrimitive.secret)
 
 /** @internal */
 export const text = (config: Args.Args.BaseArgsConfig = {}): Args.Args<string> =>

@@ -32,9 +32,8 @@ const numberPrompt = Prompt.float({
   validate: (n) => n > 0 ? Effect.succeed(n) : Effect.fail("must be greater than 0")
 })
 
-const textPrompt = Prompt.text({
+const passwordPrompt = Prompt.password({
   message: "Enter your password: ",
-  type: "password",
   validate: (value) =>
     value.length === 0
       ? Effect.fail("Password cannot be empty")
@@ -52,7 +51,7 @@ const prompt = Prompt.all([
   confirmPrompt,
   datePrompt,
   numberPrompt,
-  textPrompt,
+  passwordPrompt,
   togglePrompt
 ])
 

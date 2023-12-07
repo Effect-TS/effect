@@ -1,14 +1,11 @@
 import * as FileSystem from "@effect/platform/FileSystem"
-// import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
-// import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
-// import * as Color from "@effect/printer-ansi/Color"
-// import * as Doc from "@effect/printer/Doc"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as EffectSecret from "effect/Secret"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
@@ -53,6 +50,7 @@ export type Instruction =
   | Float
   | Integer
   | Path
+  | Secret
   | Text
 
 /** @internal */
@@ -87,6 +85,9 @@ export interface Path extends
 {}
 
 /** @internal */
+export interface Secret extends Op<"Secret", {}> {}
+
+/** @internal */
 export interface Text extends Op<"Text", {}> {}
 
 // =============================================================================
@@ -118,6 +119,9 @@ export const isIntegerType = (self: Instruction): self is Integer => self._tag =
 
 /** @internal */
 export const isPathType = (self: Instruction): self is Path => self._tag === "Path"
+
+/** @internal */
+export const isSecretType = (self: Instruction): self is Path => self._tag === "Path"
 
 /** @internal */
 export const isTextType = (self: Instruction): self is Text => self._tag === "Text"
@@ -188,6 +192,13 @@ export const path = (
   op.pathExists = pathExists
   return op
 }
+
+/** @internal */
+export const secret: Primitive.Primitive<EffectSecret.Secret> = (() => {
+  const op = Object.create(proto)
+  op._tag = "Secret"
+  return op
+})()
 
 /** @internal */
 export const text: Primitive.Primitive<string> = (() => {
@@ -261,6 +272,7 @@ const getChoicesInternal = (self: Instruction): Option.Option<string> => {
     case "Float":
     case "Integer":
     case "Path":
+    case "Secret":
     case "Text": {
       return Option.none()
     }
@@ -323,6 +335,9 @@ const getHelpInternal = (self: Instruction): Span.Span => {
           `('${self.pathType}') and path existence ('${self.pathExists}')`
       )
     }
+    case "Secret": {
+      return InternalSpan.text("A user-defined piece of text that is confidential.")
+    }
     case "Text": {
       return InternalSpan.text("A user-defined piece of text.")
     }
@@ -351,6 +366,9 @@ const getTypeNameInternal = (self: Instruction): string => {
         return "path"
       }
       return self.pathType
+    }
+    case "Secret": {
+      return "secret"
     }
     case "Text": {
       return "text"
@@ -431,6 +449,11 @@ const validateInternal = (
           )
         )
       })
+    }
+    case "Secret": {
+      return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.string)).pipe(
+        Effect.map((value) => EffectSecret.fromString(value))
+      )
     }
     case "Text": {
       return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.string))
@@ -553,6 +576,13 @@ const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt
         message: InternalHelpDoc.toAnsiText(message).trimEnd()
       })
     }
+    case "Secret": {
+      const primitiveHelp = InternalHelpDoc.p("Enter some text (value will be hidden)")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalTextPrompt.hidden({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd()
+      })
+    }
     case "Text": {
       const primitiveHelp = InternalHelpDoc.p("Enter some text")
       const message = InternalHelpDoc.sequence(help, primitiveHelp)
@@ -576,6 +606,7 @@ export const getBashCompletions = (self: Instruction): string => {
     case "DateTime":
     case "Float":
     case "Integer":
+    case "Secret":
     case "Text": {
       return "$(compgen -f \"${cur}\")"
     }
@@ -617,6 +648,7 @@ export const getFishCompletions = (self: Instruction): ReadonlyArray<string> => 
     case "DateTime":
     case "Float":
     case "Integer":
+    case "Secret":
     case "Text": {
       return ReadonlyArray.make("-r", "-f")
     }
@@ -695,6 +727,7 @@ export const getZshCompletions = (self: Instruction): string => {
         }
       }
     }
+    case "Secret":
     case "Text": {
       return ""
     }

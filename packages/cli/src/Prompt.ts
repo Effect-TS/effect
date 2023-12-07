@@ -5,6 +5,7 @@ import type { QuitException, Terminal, UserInput } from "@effect/platform/Termin
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
+import type { Secret } from "effect/Secret"
 import * as InternalPrompt from "./internal/prompt.js"
 import * as InternalConfirmPrompt from "./internal/prompt/confirm.js"
 import * as InternalDatePrompt from "./internal/prompt/date.js"
@@ -285,10 +286,6 @@ export declare namespace Prompt {
      */
     readonly message: string
     /**
-     * The type of the text option.
-     */
-    readonly type?: "hidden" | "password" | "text"
-    /**
      * The default value of the text option.
      */
     readonly default?: string
@@ -430,6 +427,12 @@ export const float: (options: Prompt.FloatOptions) => Prompt<number> = InternalN
  * @since 1.0.0
  * @category constructors
  */
+export const hidden: (options: Prompt.TextOptions) => Prompt<Secret> = InternalTextPrompt.hidden
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
 export const integer: (options: Prompt.IntegerOptions) => Prompt<number> =
   InternalNumberPrompt.integer
 
@@ -448,6 +451,12 @@ export const map: {
   <Output, Output2>(f: (output: Output) => Output2): (self: Prompt<Output>) => Prompt<Output2>
   <Output, Output2>(self: Prompt<Output>, f: (output: Output) => Output2): Prompt<Output2>
 } = InternalPrompt.map
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const password: (options: Prompt.TextOptions) => Prompt<Secret> = InternalTextPrompt.password
 
 /**
  * Executes the specified `Prompt`.

@@ -11,6 +11,7 @@ import * as Order from "effect/Order"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
+import type * as Secret from "effect/Secret"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
@@ -330,6 +331,10 @@ export const none: Options.Options<void> = (() => {
   op._tag = "Empty"
   return op
 })()
+
+/** @internal */
+export const secret = (name: string): Options.Options<Secret.Secret> =>
+  makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.secret)
 
 /** @internal */
 export const text = (name: string): Options.Options<string> =>

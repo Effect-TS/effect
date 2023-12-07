@@ -6,10 +6,18 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Secret from "effect/Secret"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
 import * as InternalPromptAction from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
+
+interface Options extends Required<Prompt.Prompt.TextOptions> {
+  /**
+   * The type of the text option.
+   */
+  readonly type: "hidden" | "password" | "text"
+}
 
 interface State {
   readonly cursor: number
@@ -22,7 +30,7 @@ const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
 const renderClearScreen = (
   prevState: Option.Option<State>,
-  options: Required<Prompt.Prompt.TextOptions>,
+  options: Options,
   columns: number
 ): Doc.AnsiDoc => {
   // Erase the current line and place the cursor in column one
@@ -54,7 +62,7 @@ const renderClearScreen = (
 
 const renderInput = (
   nextState: State,
-  options: Required<Prompt.Prompt.TextOptions>,
+  options: Options,
   submitted: boolean
 ): Doc.AnsiDoc => {
   const annotation = Option.match(nextState.error, {
@@ -103,7 +111,7 @@ const renderOutput = (
   nextState: State,
   leadingSymbol: Doc.AnsiDoc,
   trailingSymbol: Doc.AnsiDoc,
-  options: Required<Prompt.Prompt.TextOptions>,
+  options: Options,
   submitted: boolean = false
 ): Doc.AnsiDoc => {
   const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
@@ -126,7 +134,7 @@ const renderOutput = (
 const renderNextFrame = (
   prevState: Option.Option<State>,
   nextState: State,
-  options: Required<Prompt.Prompt.TextOptions>
+  options: Options
 ): Effect.Effect<Terminal.Terminal, never, string> =>
   Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
@@ -149,7 +157,7 @@ const renderNextFrame = (
 
 const renderSubmission = (
   nextState: State,
-  options: Required<Prompt.Prompt.TextOptions>
+  options: Options
 ) =>
   Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
@@ -232,11 +240,13 @@ const initialState: State = {
   error: Option.none()
 }
 
-/** @internal */
-export const text = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<string> => {
-  const opts: Required<Prompt.Prompt.TextOptions> = {
+const basePrompt = (
+  options: Prompt.Prompt.TextOptions,
+  type: Options["type"]
+): Prompt.Prompt<string> => {
+  const opts: Options = {
     default: "",
-    type: "text",
+    type,
     validate: Effect.succeed,
     ...options
   }
@@ -285,3 +295,15 @@ export const text = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<string> 
     }
   )
 }
+
+/** @internal */
+export const hidden = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Secret.Secret> =>
+  basePrompt(options, "hidden").pipe(InternalPrompt.map(Secret.fromString))
+
+/** @internal */
+export const password = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Secret.Secret> =>
+  basePrompt(options, "password").pipe(InternalPrompt.map(Secret.fromString))
+
+/** @internal */
+export const text = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<string> =>
+  basePrompt(options, "text")

@@ -9,6 +9,7 @@ import type { Either } from "effect/Either"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { Secret } from "effect/Secret"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalArgs from "./internal/args.js"
@@ -318,6 +319,16 @@ export const path: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs
  * @category combinators
  */
 export const repeated: <A>(self: Args<A>) => Args<ReadonlyArray<A>> = InternalArgs.repeated
+
+/**
+ * Creates a text argument.
+ *
+ * Can optionally provide a custom argument name (defaults to `"secret"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const secret: (config?: Args.BaseArgsConfig) => Args<Secret> = InternalArgs.secret
 
 /**
  * Creates a text argument.
