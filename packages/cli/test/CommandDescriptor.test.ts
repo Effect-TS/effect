@@ -171,7 +171,7 @@ describe("Command", () => {
         const args = ReadonlyArray.make("git", "abc")
         const result = yield* _(Effect.flip(Descriptor.parse(git, args, CliConfig.defaultConfig)))
         expect(result).toEqual(ValidationError.commandMismatch(HelpDoc.p(
-          "Invalid subcommand for git - use one of 'log', 'remote'"
+          "Invalid subcommand for git - use one of 'remote', 'log'"
         )))
       }).pipe(runEffect))
   })

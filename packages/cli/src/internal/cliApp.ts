@@ -291,16 +291,11 @@ const prefixCommand = <A>(self: Command.Command<A>): ReadonlyArray<string> => {
         break
       }
       case "Map": {
-        command = command.command as InternalCommand.Instruction
-        break
-      }
-      case "OrElse": {
-        prefix = ReadonlyArray.empty()
-        command = undefined
+        command = command.command
         break
       }
       case "Subcommands": {
-        command = command.parent as InternalCommand.Instruction
+        command = command.parent
         break
       }
     }
