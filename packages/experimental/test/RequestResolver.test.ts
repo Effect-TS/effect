@@ -24,15 +24,15 @@ describe("RequestResolver", () => {
         const baseResolver = RequestResolver.fromEffectTagged<MyRequest>()({
           MyRequest: (reqs) => Effect.succeed(ReadonlyArray.map(reqs, (req) => new User({ id: req.id, name: "John" })))
         })
-        const persised = yield* _(RequestResolverX.persisted(baseResolver, "memory"))
+        const persisted = yield* _(RequestResolverX.persisted(baseResolver, "memory"))
         let users = yield* _(
-          Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persised), {
+          Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
             batching: true
           })
         )
         assert.strictEqual(users.length, 5)
         users = yield* _(
-          Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persised), {
+          Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
             batching: true
           })
         )
