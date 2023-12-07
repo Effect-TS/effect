@@ -1163,21 +1163,27 @@ const provideSomeRuntime: {
   <R>(context: Runtime.Runtime<R>) => <R1, E, A>(self: Effect.Effect<R1, E, A>) => Effect.Effect<Exclude<R1, R>, E, A>,
   <R, R1, E, A>(self: Effect.Effect<R1, E, A>, context: Runtime.Runtime<R>) => Effect.Effect<Exclude<R1, R>, E, A>
 >(2, (self, rt) => {
-  const patchFlags = runtimeFlags.diff(runtime.defaultRuntime.runtimeFlags, rt.runtimeFlags)
-  const inversePatchFlags = runtimeFlags.diff(rt.runtimeFlags, runtime.defaultRuntime.runtimeFlags)
   const patchRefs = FiberRefsPatch.diff(runtime.defaultRuntime.fiberRefs, rt.fiberRefs)
-  const inversePatchRefs = FiberRefsPatch.diff(rt.fiberRefs, runtime.defaultRuntime.fiberRefs)
-  return core.acquireUseRelease(
-    core.flatMap(
-      core.updateRuntimeFlags(patchFlags),
-      () => effect.patchFiberRefs(patchRefs)
-    ),
-    () => core.provideSomeContext(self, rt.context),
-    () =>
-      core.flatMap(
-        core.updateRuntimeFlags(inversePatchFlags),
-        () => effect.patchFiberRefs(inversePatchRefs)
+  const patchFlags = runtimeFlags.diff(runtime.defaultRuntime.runtimeFlags, rt.runtimeFlags)
+  return core.uninterruptibleMask((restore) =>
+    core.withFiberRuntime((fiber) => {
+      const oldRefs = fiber.getFiberRefs()
+      const newRefs = FiberRefsPatch.patch(fiber.id(), oldRefs)(patchRefs)
+      const oldFlags = fiber._runtimeFlags
+      const newFlags = runtimeFlags.patch(patchFlags)(oldFlags)
+      const rollbackRefs = FiberRefsPatch.diff(newRefs, oldRefs)
+      const rollbackFlags = runtimeFlags.diff(newFlags, oldFlags)
+      fiber.setFiberRefs(newRefs)
+      fiber._runtimeFlags = newFlags
+      return fiberRuntime.ensuring(
+        core.provideSomeContext(restore(self), rt.context),
+        core.withFiberRuntime((fiber) => {
+          fiber.setFiberRefs(FiberRefsPatch.patch(fiber.id(), fiber.getFiberRefs())(rollbackRefs))
+          fiber._runtimeFlags = runtimeFlags.patch(rollbackFlags)(fiber._runtimeFlags)
+          return core.unit
+        })
       )
+    })
   )
 })
 
