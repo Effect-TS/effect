@@ -4,8 +4,6 @@
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
-import type { Config } from "./Config.js"
-import type { ConfigError } from "./ConfigError.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
 import type { Console } from "./Console.js"
 import type * as Context from "./Context.js"
@@ -3020,15 +3018,6 @@ export const timeoutTo: {
 // -------------------------------------------------------------------------------------
 // config
 // -------------------------------------------------------------------------------------
-
-/**
- * Uses the default config provider to load the specified config, or fail with
- * an error of type Config.Error.
- *
- * @since 2.0.0
- * @category config
- */
-export const config: <A>(config: Config<A>) => Effect<never, ConfigError, A> = defaultServices.config
 
 /**
  * Retrieves the default config provider, and passes it to the specified
