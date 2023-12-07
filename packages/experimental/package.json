@@ -101,9 +101,14 @@
     "rimraf": "^5.0.5",
     "tsx": "^4.6.2",
     "typescript": "^5.3.3",
-    "vitest": "1.0.1"
+    "vitest": "1.0.1",
+    "vitest-websocket-mock": "^0.2.2"
   },
   "dependencies": {
+    "isomorphic-ws": "^5.0.0",
     "msgpackr": "^1.10.0"
+  },
+  "optionalDependencies": {
+    "ws": "^8.14.2"
   }
 }

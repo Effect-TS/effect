@@ -4,7 +4,6 @@
 import { Channel } from "effect"
 import type * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
@@ -43,8 +42,9 @@ export const makeNet = (
     const conn = yield* _(Effect.acquireRelease(
       Effect.async<never, Socket.SocketError, Net.Socket>((resume) => {
         const conn = Net.createConnection(options)
-        const resumed = false
+        let connected = false
         conn.on("connect", () => {
+          connected = true
           resume(Effect.succeed(conn))
         })
         conn.on("data", (chunk) => {
@@ -56,7 +56,7 @@ export const makeNet = (
         conn.on("error", (error_) => {
           error = new Socket.SocketError({ reason: "Open", error: error_ })
           Queue.unsafeOffer(queue, EOF)
-          if (resumed === false) {
+          if (connected === false) {
             resume(Effect.fail(error))
           }
         })
@@ -88,14 +88,14 @@ export const makeNet = (
       () => Effect.sync(() => conn.end())
     )
 
-    const pull = pipe(
+    const pull = Effect.flatMap(
       Queue.take(queue),
-      Effect.flatMap((item) => {
+      (item) => {
         if (item === EOF) {
           return error ? Effect.fail(Option.some(error)) : Effect.fail(Option.none())
         }
         return Effect.succeed(item as Uint8Array)
-      })
+      }
     )
 
     return Socket.Socket.of({
