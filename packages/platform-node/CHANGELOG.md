@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.34.1
+
+### Patch Changes
+
+- [#324](https://github.com/Effect-TS/platform/pull/324) [`6b90c81`](https://github.com/Effect-TS/platform/commit/6b90c81391e613a25db564aebb9a64971ce077a5) Thanks [@tim-smart](https://github.com/tim-smart)! - improve serve api
+
 ## 0.34.0
 
 ### Minor Changes
