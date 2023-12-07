@@ -39,14 +39,19 @@ export const searchParams = Effect.map(RouteContext, (_) => _.searchParams)
 /** @internal */
 export const schemaParams = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<I, A>) => {
   const parse = Schema.parse(schema)
-  return Effect.flatMap(
-    RouteContext,
-    (_) =>
-      parse({
-        ..._.searchParams,
-        ..._.params
-      })
-  )
+  return Effect.flatMap(RouteContext, (_) => parse({ ..._.searchParams, ..._.params }))
+}
+
+/** @internal */
+export const schemaPathParams = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<I, A>) => {
+  const parse = Schema.parse(schema)
+  return Effect.flatMap(RouteContext, (_) => parse(_.params))
+}
+
+/** @internal */
+export const schemaSearchParams = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<I, A>) => {
+  const parse = Schema.parse(schema)
+  return Effect.flatMap(RouteContext, (_) => parse(_.searchParams))
 }
 
 class RouterImpl<R, E> extends Effectable.StructuralClass<
