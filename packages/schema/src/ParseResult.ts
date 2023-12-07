@@ -218,10 +218,10 @@ export const unionMember = (
  */
 export const succeed: <A>(a: A) => ParseResult<A> = Either.right
 
-const _try = <A>(options: {
+const _try: <A>(options: {
   try: LazyArg<A>
   catch: (e: unknown) => ParseError
-}): ParseResult<A> => Either.try(options)
+}) => ParseResult<A> = Either.try
 
 export {
   /**
