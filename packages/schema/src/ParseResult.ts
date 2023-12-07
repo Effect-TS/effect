@@ -21,12 +21,12 @@ export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
  */
 export interface ParseError {
   readonly _tag: "ParseError"
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 }
 
 class ParseErrorImpl implements Inspectable.Inspectable {
   readonly _tag = "ParseError"
-  constructor(readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>) {}
+  constructor(readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>) {}
   toString() {
     return TreeFormatter.formatErrors(this.errors)
   }
@@ -45,7 +45,7 @@ class ParseErrorImpl implements Inspectable.Inspectable {
  * @since 1.0.0
  */
 export const parseError = (
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 ): ParseError => new ParseErrorImpl(errors)
 
 /**
@@ -54,7 +54,7 @@ export const parseError = (
  * @category model
  * @since 1.0.0
  */
-export type ParseErrors =
+export type ParseIssue =
   | Type
   | Index
   | Key
@@ -64,7 +64,7 @@ export type ParseErrors =
   | Forbidden
 
 /**
- * The `Type` variant of the `ParseError` type represents an error that occurs when the `actual` value is not of the expected type.
+ * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
  * The `expected` field specifies the expected type, and the `actual` field contains the value that caused the error.
  * This error can occur when trying to decode a value using a schema that is only able to decode values of a specific type,
  * and the actual value is not of that type. For example, if you are using a schema to decode a string value and the actual value
@@ -81,7 +81,7 @@ export interface Type {
 }
 
 /**
- * The `Forbidden` variant of the `ParseError` type represents an error that occurs when an Effect is encounter but disallowed from execution.
+ * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
  *
  * @category model
  * @since 1.0.0
@@ -121,7 +121,7 @@ export const forbidden: Forbidden = {
 export interface Index {
   readonly _tag: "Index"
   readonly index: number
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 }
 
 /**
@@ -130,11 +130,11 @@ export interface Index {
  */
 export const index = (
   index: number,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 ): Index => ({ _tag: "Index", index, errors })
 
 /**
- * The `Key` variant of the `ParseError` type represents an error that occurs when a key in an object is invalid.
+ * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in an object is invalid.
  * This error typically occurs when the `actual` value is not a valid key type (e.g. a string or number)
  * or when the key is not present in the object being decoded. In either case, the `key` field of the error will contain
  * the invalid key value. This error is typically used in combination with the `Unexpected` error,
@@ -146,7 +146,7 @@ export const index = (
 export interface Key {
   readonly _tag: "Key"
   readonly key: PropertyKey
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 }
 
 /**
@@ -155,7 +155,7 @@ export interface Key {
  */
 export const key = (
   key: PropertyKey,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 ): Key => ({ _tag: "Key", key, errors })
 
 /**
@@ -201,7 +201,7 @@ export const unexpected = (
  */
 export interface UnionMember {
   readonly _tag: "UnionMember"
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 }
 
 /**
@@ -209,7 +209,7 @@ export interface UnionMember {
  * @since 1.0.0
  */
 export const unionMember = (
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 ): UnionMember => ({ _tag: "UnionMember", errors })
 
 /**
@@ -236,9 +236,9 @@ export {
  * @since 1.0.0
  */
 export const fail = (
-  error: ParseError | ParseErrors | ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  error: ParseError | ParseIssue | ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 ): ParseResult<never> => {
-  const e: any = error
+  const e = error
   if ("_tag" in e) {
     return e._tag === "ParseError" ? Either.left(e) : Either.left(parseError([e]))
   }

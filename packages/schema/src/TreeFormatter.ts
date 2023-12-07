@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import type { ParseErrors, Type } from "./ParseResult.js"
+import type { ParseIssue, Type } from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -24,7 +24,7 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrors = (errors: NonEmptyReadonlyArray<ParseErrors>): string =>
+export const formatErrors = (errors: NonEmptyReadonlyArray<ParseIssue>): string =>
   drawTree(make(`error(s) found`, errors.map(go)))
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
@@ -135,7 +135,7 @@ export const formatExpected = (ast: AST.AST): string => {
   }
 }
 
-const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseErrors>): boolean =>
+const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseIssue>): boolean =>
   es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "UnionMember"
 
 /** @internal */
@@ -148,7 +148,7 @@ export const getMessage = (e: Type) =>
     )
   )
 
-const go = (e: ParseErrors): Tree<string> => {
+const go = (e: ParseIssue): Tree<string> => {
   switch (e._tag) {
     case "Type":
       return make(getMessage(e))

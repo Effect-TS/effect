@@ -254,12 +254,12 @@ export const expectEncodeFailure = async <I, A>(
   }
 }
 
-export const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseErrors>): string =>
+export const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseIssue>): string =>
   pipe(errors, RA.map(formatDecodeError), RA.join(", "))
 
 const getMessage = AST.getAnnotation<AST.MessageAnnotation<unknown>>(AST.MessageAnnotationId)
 
-const formatDecodeError = (e: PR.ParseErrors): string => {
+const formatDecodeError = (e: PR.ParseIssue): string => {
   switch (e._tag) {
     case "Type":
       return pipe(

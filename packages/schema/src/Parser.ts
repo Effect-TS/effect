@@ -362,7 +362,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           return ParseResult.fail(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
-        const es: Array<[number, ParseResult.ParseErrors]> = []
+        const es: Array<[number, ParseResult.ParseIssue]> = []
         let stepKey = 0
         // ---------------------------------------------
         // handle missing indexes
@@ -603,7 +603,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           return ParseResult.fail(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
-        const es: Array<[number, ParseResult.ParseErrors]> = []
+        const es: Array<[number, ParseResult.ParseIssue]> = []
         let stepKey = 0
 
         // ---------------------------------------------
@@ -796,7 +796,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         map.set(ast.types[i], goMemo(ast.types[i], isDecoding))
       }
       return (input, options) => {
-        const es: Array<[number, ParseResult.ParseErrors]> = []
+        const es: Array<[number, ParseResult.ParseIssue]> = []
         let stepKey = 0
         let candidates: Array<AST.AST> = []
         if (len > 0) {

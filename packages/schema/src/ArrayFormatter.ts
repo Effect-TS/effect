@@ -3,7 +3,7 @@
  */
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type { ParseErrors } from "./ParseResult.js"
+import type { ParseIssue } from "./ParseResult.js"
 import { formatExpected, getMessage } from "./TreeFormatter.js"
 
 /**
@@ -11,12 +11,12 @@ import { formatExpected, getMessage } from "./TreeFormatter.js"
  * @since 1.0.0
  */
 export interface Issue {
-  readonly _tag: ParseErrors["_tag"]
+  readonly _tag: ParseIssue["_tag"]
   readonly path: ReadonlyArray<PropertyKey>
   readonly message: string
 }
 
-const format = (self: ParseErrors, path: ReadonlyArray<PropertyKey> = []): Array<Issue> => {
+const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Issue> => {
   const _tag = self._tag
   switch (_tag) {
     case "Type":
@@ -46,5 +46,5 @@ const format = (self: ParseErrors, path: ReadonlyArray<PropertyKey> = []): Array
  * @since 1.0.0
  */
 export const formatErrors = (
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 ): Array<Issue> => ReadonlyArray.flatMap(errors, (e) => format(e))
