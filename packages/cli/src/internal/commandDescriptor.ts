@@ -499,53 +499,59 @@ const parseInternal = (
     case "Standard": {
       const parseCommandLine = (
         args: ReadonlyArray<string>
-      ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> => {
-        if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-          const head = ReadonlyArray.headNonEmpty(args)
-          const tail = ReadonlyArray.tailNonEmpty(args)
-          const normalizedArgv0 = InternalCliConfig.normalizeCase(config, head)
-          const normalizedCommandName = InternalCliConfig.normalizeCase(config, self.name)
-          return Effect.succeed(tail).pipe(
-            Effect.when(() => normalizedArgv0 === normalizedCommandName),
-            Effect.flatten,
-            Effect.catchTag("NoSuchElementException", () => {
-              const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
-              return Effect.fail(InternalValidationError.commandMismatch(error))
-            })
-          )
-        }
-        const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
-        return Effect.fail(InternalValidationError.commandMismatch(error))
-      }
+      ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> =>
+        ReadonlyArray.matchLeft(args, {
+          onEmpty: () => {
+            const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
+            return Effect.fail(InternalValidationError.commandMismatch(error))
+          },
+          onNonEmpty: (head, tail) => {
+            const normalizedArgv0 = InternalCliConfig.normalizeCase(config, head)
+            const normalizedCommandName = InternalCliConfig.normalizeCase(config, self.name)
+            return Effect.succeed(tail).pipe(
+              Effect.when(() => normalizedArgv0 === normalizedCommandName),
+              Effect.flatten,
+              Effect.catchTag("NoSuchElementException", () => {
+                const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
+                return Effect.fail(InternalValidationError.commandMismatch(error))
+              })
+            )
+          }
+        })
       const parseBuiltInArgs = (
         args: ReadonlyArray<string>
       ): Effect.Effect<
         FileSystem.FileSystem,
         ValidationError.ValidationError,
         Directive.CommandDirective<never>
-      > => {
-        if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-          const argv0 = ReadonlyArray.headNonEmpty(args)
-          const normalizedArgv0 = InternalCliConfig.normalizeCase(config, argv0)
-          const normalizedCommandName = InternalCliConfig.normalizeCase(config, self.name)
-          if (normalizedArgv0 === normalizedCommandName) {
-            const help = getHelpInternal(self)
-            const usage = getUsageInternal(self)
-            const options = InternalBuiltInOptions.builtInOptions(self, usage, help)
-            return InternalOptions.processCommandLine(options, ReadonlyArray.drop(args, 1), config)
-              .pipe(
-                Effect.flatMap((tuple) => tuple[2]),
-                Effect.catchTag("NoSuchElementException", () => {
-                  const error = InternalHelpDoc.p("No built-in option was matched")
-                  return Effect.fail(InternalValidationError.noBuiltInMatch(error))
-                }),
-                Effect.map(InternalCommandDirective.builtIn)
-              )
+      > =>
+        ReadonlyArray.matchLeft(args, {
+          onEmpty: () => {
+            const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
+            return Effect.fail(InternalValidationError.commandMismatch(error))
+          },
+          onNonEmpty: (argv0) => {
+            const normalizedArgv0 = InternalCliConfig.normalizeCase(config, argv0)
+            const normalizedCommandName = InternalCliConfig.normalizeCase(config, self.name)
+            if (normalizedArgv0 === normalizedCommandName) {
+              const help = getHelpInternal(self)
+              const usage = getUsageInternal(self)
+              const options = InternalBuiltInOptions.builtInOptions(self, usage, help)
+              const argsWithoutCommand = ReadonlyArray.drop(args, 1)
+              return InternalOptions.processCommandLine(options, argsWithoutCommand, config)
+                .pipe(
+                  Effect.flatMap((tuple) => tuple[2]),
+                  Effect.catchTag("NoSuchElementException", () => {
+                    const error = InternalHelpDoc.p("No built-in option was matched")
+                    return Effect.fail(InternalValidationError.noBuiltInMatch(error))
+                  }),
+                  Effect.map(InternalCommandDirective.builtIn)
+                )
+            }
+            const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
+            return Effect.fail(InternalValidationError.commandMismatch(error))
           }
-        }
-        const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
-        return Effect.fail(InternalValidationError.commandMismatch(error))
-      }
+        })
       const parseUserDefinedArgs = (
         args: ReadonlyArray<string>
       ): Effect.Effect<

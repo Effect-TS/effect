@@ -14,25 +14,35 @@ import * as InternalCliConfig from "./internal/cliConfig.js"
 export interface CliConfig {
   /**
    * Whether or not the argument parser should be case sensitive.
+   *
+   * Defaults to `false`.
    */
   readonly isCaseSensitive: boolean
   /**
-   * Threshold for when to show auto correct suggestions.
+   * Levenstein distance threshold for when to show auto correct suggestions.
+   *
+   * Defaults to `2`.
    */
   readonly autoCorrectLimit: number
   /**
    * Whether or not to perform a final check of the command-line arguments for
    * a built-in option, even if the provided command is not valid.
+   *
+   * Defaults to `false`.
    */
   readonly finalCheckBuiltIn: boolean
   /**
    * Whether or not to display all the names of an option in the usage of a
    * particular command.
+   *
+   * Defaults to `true`.
    */
   readonly showAllNames: boolean
   /**
    * Whether or not to display the type of an option in the usage of a
    * particular command.
+   *
+   * Defaults to `true`.
    */
   readonly showTypes: boolean
 }
