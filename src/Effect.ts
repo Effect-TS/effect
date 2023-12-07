@@ -3575,7 +3575,30 @@ export const flatMap: {
 } = core.flatMap
 
 /**
- * Executes a sequence of two `Effect`s. The second `Effect` can be dependent on the result of the first `Effect`.
+ * Executes a sequence of two actions, typically two `Effect`s, where the second action can depend on the result of the first action.
+ *
+ * The `that` action can take various forms:
+ *
+ * - a value
+ * - a function returning a value
+ * - a promise
+ * - a function returning a promise
+ * - an effect
+ * - a function returning an effect
+ *
+ * @example
+ * import * as Effect from "effect/Effect"
+ *
+ * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen(1))), 1)
+ * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen((s) => s.length))), 2)
+ *
+ * assert.deepStrictEqual(await Effect.runPromise(Effect.succeed("aa").pipe(Effect.andThen(Promise.resolve(1)))), 1)
+ * assert.deepStrictEqual(await Effect.runPromise(Effect.succeed("aa").pipe(Effect.andThen((s) => Promise.resolve(s.length)))), 2)
+ *
+ * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen(Effect.succeed(1)))), 1)
+ * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen((s) => Effect.succeed(s.length)))), 2)
+ *
+ * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen(1))), 2)
  *
  * @since 2.0.0
  * @category sequencing
