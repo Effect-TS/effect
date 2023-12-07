@@ -69,6 +69,22 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(schema, { b: 2 }, `/a is missing`)
     })
 
+    it("record('a' | `prefix-${string}`, number)", async () => {
+      const schema = S.record(
+        S.union(S.literal("a"), S.templateLiteral(S.literal("prefix-"), S.string)),
+        S.number
+      )
+      await Util.expectParseSuccess(schema, { a: 1 })
+      await Util.expectParseSuccess(schema, { a: 1, "prefix-b": 2 })
+
+      await Util.expectParseFailure(schema, {}, `/a is missing`)
+      await Util.expectParseFailure(
+        schema,
+        { a: 1, "prefix-b": "b" },
+        `/prefix-b Expected number, actual "b"`
+      )
+    })
+
     it("record(keyof struct({ a, b }), number)", async () => {
       const schema = S.record(S.keyof(S.struct({ a: S.string, b: S.string })), S.number)
       await Util.expectParseSuccess(schema, { a: 1, b: 2 })
