@@ -53,6 +53,9 @@ export class SocketError extends Data.TaggedError("SocketError")<{
   readonly reason: "Write" | "Read" | "Open" | "Close"
   readonly error: unknown
 }> {
+  /**
+   * @since 1.0.0
+   */
   toString(): string {
     return `SocketError: ${this.reason} - ${this.error}`
   }
