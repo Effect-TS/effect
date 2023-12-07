@@ -30,6 +30,7 @@ import * as internalCause from "./cause.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as fiberRefsPatch from "./fiberRefs/patch.js"
+import { internalize } from "./internalize.js"
 import * as metricLabel from "./metric/label.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as SingleShotGen from "./singleShotGen.js"
@@ -800,6 +801,7 @@ export const gen: typeof Effect.gen = function() {
   } else {
     f = arguments[1].bind(arguments[0])
   }
+  internalize(f)
   return core.suspend(() => {
     const iterator = f(adapter)
     const state = iterator.next()

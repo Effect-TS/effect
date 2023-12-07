@@ -43,6 +43,7 @@ import * as internalDiffer from "./differ.js"
 import { effectVariance, StructuralCommitPrototype } from "./effectable.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
+import { internalize } from "./internalize.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
@@ -376,6 +377,7 @@ export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unkno
 export const withFiberRuntime = <R, E, A>(
   withRuntime: (fiber: FiberRuntime.FiberRuntime<E, A>, status: FiberStatus.Running) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, A> => {
+  internalize(withRuntime)
   const effect = new EffectPrimitive(OpCodes.OP_WITH_RUNTIME) as any
   effect.i0 = withRuntime
   return effect
@@ -439,6 +441,7 @@ export const async = <R, E, A>(
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect.Effect<R, E, A> =>
   suspend(() => {
+    internalize(register)
     let backingResume: ((_: Effect.Effect<R, E, A>) => void) | undefined = undefined
     let pendingEffect: Effect.Effect<R, E, A> | undefined = undefined
     function proxyResume(effect: Effect.Effect<R, E, A>) {
@@ -505,6 +508,7 @@ export const catchAllCause = dual<
   const effect = new EffectPrimitive(OpCodes.OP_ON_FAILURE) as any
   effect.i0 = self
   effect.i1 = f
+  internalize(f)
   return effect
 })
 
@@ -702,6 +706,7 @@ export const flatMap = dual<
     f: (a: A) => Effect.Effect<R1, E1, B>
   ) => Effect.Effect<R1 | R, E1 | E, B>
 >(2, (self, f) => {
+  internalize(f)
   const effect = new EffectPrimitive(OpCodes.OP_ON_SUCCESS) as any
   effect.i0 = self
   effect.i1 = f
@@ -810,6 +815,8 @@ export const matchCauseEffect = dual<
   effect.i0 = self
   effect.i1 = onFailure
   effect.i2 = onSuccess
+  internalize(onFailure)
+  internalize(onSuccess)
   return effect
 })
 
@@ -935,6 +942,7 @@ export const interruptible = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Eff
 export const interruptibleMask = <R, E, A>(
   f: (restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, A> => {
+  internalize(f)
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
   effect.i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
@@ -1119,6 +1127,7 @@ export const suspend = <R, E, A>(effect: LazyArg<Effect.Effect<R, E, A>>): Effec
 
 /* @internal */
 export const sync = <A>(evaluate: LazyArg<A>): Effect.Effect<never, never, A> => {
+  internalize(evaluate)
   const effect = new EffectPrimitive(OpCodes.OP_SYNC) as any
   effect.i0 = evaluate
   return effect
@@ -1216,6 +1225,7 @@ export const uninterruptible: <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.
 export const uninterruptibleMask = <R, E, A>(
   f: (restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, A> => {
+  internalize(f)
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
   effect.i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
@@ -1267,6 +1277,9 @@ export const whileLoop = <R, E, A>(
   effect.i0 = options.while
   effect.i1 = options.body
   effect.i2 = options.step
+  internalize(options.body)
+  internalize(options.step)
+  internalize(options.while)
   return effect
 }
 
