@@ -7,6 +7,7 @@ import type * as App from "@effect/platform/Http/App"
 import type * as Middleware from "@effect/platform/Http/Middleware"
 import type * as Platform from "@effect/platform/Http/Platform"
 import type * as Server from "@effect/platform/Http/Server"
+import type { ServeError } from "@effect/platform/Http/ServerError"
 import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as Config from "effect/Config"
 import type * as ConfigError from "effect/ConfigError"
@@ -28,9 +29,13 @@ export * from "@effect/platform/Http/Server"
  * @category constructors
  */
 export const make: (
-  evaluate: LazyArg<Http.Server>,
+  evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
   options: Net.ListenOptions
-) => Effect.Effect<Scope.Scope, never, Server.Server> = internal.make
+) => Effect.Effect<
+  Scope.Scope,
+  ServeError,
+  Server.Server
+> = internal.make
 
 /**
  * @since 1.0.0
@@ -59,15 +64,15 @@ export const makeHandler: {
  * @category layers
  */
 export const layer: (
-  evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
+  evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
-) => Layer.Layer<never, never, Server.Server | Platform.Platform> = internal.layer
+) => Layer.Layer<never, ServeError, Server.Server | Platform.Platform> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
 export const layerConfig: (
-  evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
+  evaluate: LazyArg<Http.Server>,
   options: Config.Config.Wrap<Net.ListenOptions>
-) => Layer.Layer<never, ConfigError.ConfigError, Server.Server | Platform.Platform> = internal.layerConfig
+) => Layer.Layer<never, ServeError | ConfigError.ConfigError, Server.Server | Platform.Platform> = internal.layerConfig

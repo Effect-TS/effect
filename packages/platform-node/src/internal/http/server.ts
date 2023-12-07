@@ -12,7 +12,6 @@ import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import type * as Path from "@effect/platform/Path"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -32,12 +31,11 @@ import * as internalPlatform from "./platform.js"
 export const make = (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
-): Effect.Effect<Scope.Scope, never, Server.Server> =>
+): Effect.Effect<Scope.Scope, Error.ServeError, Server.Server> =>
   Effect.gen(function*(_) {
-    const server = evaluate()
-
-    const serverFiber = yield* _(
-      Effect.addFinalizer(() =>
+    const server = yield* _(Effect.acquireRelease(
+      Effect.sync(evaluate),
+      (server) =>
         Effect.async<never, never, void>((resume) => {
           server.close((error) => {
             if (error) {
@@ -47,19 +45,12 @@ export const make = (
             }
           })
         })
-      ),
-      Effect.zipRight(
-        Effect.async<never, Error.ServeError, never>((resume) => {
-          server.on("error", (error) => {
-            resume(Effect.fail(Error.ServeError({ error })))
-          })
-        })
-      ),
-      Effect.scoped,
-      Effect.forkScoped
-    )
+    ))
 
-    yield* _(Effect.async<never, never, void>((resume) => {
+    yield* _(Effect.async<never, Error.ServeError, void>((resume) => {
+      server.on("error", (error) => {
+        resume(Effect.fail(Error.ServeError({ error })))
+      })
       server.listen(options, () => {
         resume(Effect.unit)
       })
@@ -80,13 +71,15 @@ export const make = (
         },
       serve: (httpApp, middleware) =>
         Effect.flatMap(makeHandler(httpApp, middleware!), (handler) =>
-          Effect.all([
-            Effect.acquireRelease(
-              Effect.sync(() => server.on("request", handler)),
-              () => Effect.sync(() => server.off("request", handler))
-            ),
-            Fiber.join(serverFiber)
-          ], { discard: true, concurrency: "unbounded" }) as Effect.Effect<never, Error.ServeError, never>)
+          Effect.zipRight(
+            Effect.addFinalizer(() => Effect.sync(() => server.off("request", handler))),
+            Effect.async<never, Error.ServeError, never>((resume) => {
+              server.on("request", handler)
+              server.on("error", (error) => {
+                resume(Effect.fail(Error.ServeError({ error })))
+              })
+            })
+          ))
     })
   }).pipe(
     Effect.locally(

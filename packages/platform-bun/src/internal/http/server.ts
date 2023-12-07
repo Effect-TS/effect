@@ -52,6 +52,7 @@ export const make = (
         const app = (middleware
           ? middleware(App.withDefaultMiddleware(respond(httpApp)))
           : App.withDefaultMiddleware(respond(httpApp))) as App.Default<never, unknown>
+
         return pipe(
           Effect.all([Effect.runtime<never>(), Effect.fiberId]),
           Effect.zipLeft(
