@@ -199,7 +199,7 @@ export type JsonSchema7 =
  * @category model
  * @since 1.0.0
  */
-export type JsonSchema7Top = JsonSchema7 & {
+export type JsonSchema7Root = JsonSchema7 & {
   $schema?: string
   $defs?: Record<string, JsonSchema7>
 }
@@ -208,14 +208,14 @@ export type JsonSchema7Top = JsonSchema7 & {
  * @category encoding
  * @since 1.0.0
  */
-export const to = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Top => goTop(AST.to(schema.ast))
+export const to = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root => goRoot(AST.to(schema.ast))
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const from = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Top =>
-  goTop(AST.from(schema.ast))
+export const from = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root =>
+  goRoot(AST.from(schema.ast))
 
 const anyJsonSchema: JsonSchema7 = { $id: "/schemas/any" }
 
@@ -240,10 +240,10 @@ const emptyJsonSchema: JsonSchema7 = {
 const $schema = "http://json-schema.org/draft-07/schema#"
 
 /** @internal */
-export const goTop = (ast: AST.AST): JsonSchema7Top => {
+export const goRoot = (ast: AST.AST): JsonSchema7Root => {
   const $defs = {}
   const jsonSchema = goWithMetaData(ast, $defs)
-  const out: JsonSchema7Top = {
+  const out: JsonSchema7Root = {
     $schema,
     ...jsonSchema
   }

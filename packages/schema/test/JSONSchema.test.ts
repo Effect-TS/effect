@@ -1221,7 +1221,7 @@ describe("JSONSchema", () => {
   })
 
   it("Transform should raise an error", () => {
-    expect(() => JSONSchema.goTop(Schema.NumberFromString.ast)).toThrow(
+    expect(() => JSONSchema.goRoot(Schema.NumberFromString.ast)).toThrow(
       new Error("cannot build a JSON Schema for transformations")
     )
   })
@@ -1316,7 +1316,7 @@ describe("JSONSchema", () => {
   })
 
   describe("identifier annotations support", () => {
-    it("on top level schema", () => {
+    it("on root level schema", () => {
       const schema = Schema.string.pipe(Schema.identifier("Name"))
       const jsonSchema = JSONSchema.to(schema)
       expect(jsonSchema).toEqual({
@@ -1375,14 +1375,14 @@ describe("JSONSchema", () => {
   })
 })
 
-export const decode = <A>(schema: JSONSchema.JsonSchema7Top): Schema.Schema<A> =>
+export const decode = <A>(schema: JSONSchema.JsonSchema7Root): Schema.Schema<A> =>
   Schema.make(decodeAST(schema, schema.$defs))
 
 const emptyTypeLiteralAST = AST.createTypeLiteral([], [])
 
 const decodeAST = (
   schema: JSONSchema.JsonSchema7,
-  $defs: JSONSchema.JsonSchema7Top["$defs"]
+  $defs: JSONSchema.JsonSchema7Root["$defs"]
 ): AST.AST => {
   if ("$id" in schema) {
     switch (schema.$id) {
