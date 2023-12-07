@@ -1,5 +1,13 @@
 # @effect/experimental
 
+## 0.2.4
+
+### Patch Changes
+
+- [#16](https://github.com/Effect-TS/experimental/pull/16) [`56f4f76`](https://github.com/Effect-TS/experimental/commit/56f4f76cb6391d8d30a7bc654b9e6bfbcfa7961e) Thanks [@tim-smart](https://github.com/tim-smart)! - add SocketServer module
+
+- [#16](https://github.com/Effect-TS/experimental/pull/16) [`56f4f76`](https://github.com/Effect-TS/experimental/commit/56f4f76cb6391d8d30a7bc654b9e6bfbcfa7961e) Thanks [@tim-smart](https://github.com/tim-smart)! - add run to Socket to make it retryable
+
 ## 0.2.3
 
 ### Patch Changes
