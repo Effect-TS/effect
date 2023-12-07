@@ -3,6 +3,7 @@
  */
 import type * as Chunk from "./Chunk.js"
 import type * as ConfigError from "./ConfigError.js"
+import type * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
 import type { LazyArg } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
@@ -10,7 +11,6 @@ import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/config.js"
 import type * as LogLevel from "./LogLevel.js"
 import type * as Option from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Secret from "./Secret.js"
 import type * as Types from "./Types.js"
@@ -33,7 +33,7 @@ export type ConfigTypeId = typeof ConfigTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Config<out A> extends Config.Variance<A>, Pipeable {}
+export interface Config<out A> extends Config.Variance<A>, Effect.Effect<never, ConfigError.ConfigError, A> {}
 
 /**
  * @since 2.0.0
