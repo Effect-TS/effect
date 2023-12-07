@@ -961,16 +961,9 @@ const filterStack = (stack: string) => {
   const lines = stack.split("\n")
   const out: Array<string> = []
   for (let i = 0; i < lines.length; i++) {
-    if (
-      i > 0 && (
-        lines[i].includes("EffectPrimitive")
-        || lines[i].includes("Generator.next")
-        || lines[i].includes("FiberRuntime")
-      )
-    ) {
+    out.push(lines[i].replace(/at .*effect_cutpoint.*\((.*)\)/, "at $1"))
+    if (lines[i].includes("effect_cutpoint")) {
       return out.join("\n")
-    } else {
-      out.push(lines[i].replace(/EffectPrimitive\..*\((.*)\)/, "$1"))
     }
   }
   return out.join("\n")
