@@ -3431,6 +3431,32 @@ export const filterOrElse: {
  * Filter the specified effect with the provided function, failing with specified
  * error if the predicate fails.
  *
+ * In addition to the filtering capabilities discussed earlier, you have the option to further
+ * refine and narrow down the type of the success channel by providing a
+ * [user-defined type guard](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates).
+ * Let's explore this concept through an example:
+ *
+ * @example
+ * import { Effect, pipe } from "effect"
+ *
+ * // Define a user interface
+ * interface User {
+ *   readonly name: string
+ * }
+ *
+ * // Assume an asynchronous authentication function
+ * declare const auth: () => Promise<User | null>
+ *
+ * const program = pipe(
+ *   Effect.promise(() => auth()),
+ *   Effect.filterOrFail(
+ *     // Define a guard to narrow down the type
+ *     (user): user is User => user !== null,
+ *     () => new Error("Unauthorized")
+ *   ),
+ *   Effect.map((user) => user.name) // The 'user' here has type `User`, not `User | null`
+ * )
+ *
  * @since 2.0.0
  * @category filtering & conditionals
  */
