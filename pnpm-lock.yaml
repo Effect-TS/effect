@@ -39,8 +39,8 @@ devDependencies:
     specifier: ^0.1.2
     version: 0.1.2
   '@effect/language-service':
-    specifier: ^0.0.21
-    version: 0.0.21
+    specifier: ^0.1.0
+    version: 0.1.0
   '@types/node':
     specifier: ^20.10.1
     version: 20.10.1
@@ -700,8 +700,8 @@ packages:
       diff: 5.1.0
     dev: true
 
-  /@effect/language-service@0.0.21:
-    resolution: {integrity: sha512-e8vfKbjnbYiyneBincEFS0tzXluopGK77OkVFbPRtUbNDS5tJfb+jiwOQEiqASDsadcZmd+9J9+Q6v/z7GuN2g==}
+  /@effect/language-service@0.1.0:
+    resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
     dev: true
 
   /@esbuild/android-arm64@0.18.20:
