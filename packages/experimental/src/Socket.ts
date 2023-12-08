@@ -65,8 +65,7 @@ export class SocketError extends Data.TaggedError("SocketError")<{
  * @since 1.0.0
  * @category combinators
  */
-export const toChannel = <IE = never>() =>
-(
+export const toChannel = <IE>(
   self: Socket
 ): Channel.Channel<never, IE, Chunk.Chunk<Uint8Array>, unknown, SocketError | IE, Chunk.Chunk<Uint8Array>, void> =>
   Channel.unwrap(
@@ -130,6 +129,16 @@ export const toChannel = <IE = never>() =>
 
 /**
  * @since 1.0.0
+ * @category combinators
+ */
+export const toChannelWith = <IE = never>() =>
+(
+  self: Socket
+): Channel.Channel<never, IE, Chunk.Chunk<Uint8Array>, unknown, SocketError | IE, Chunk.Chunk<Uint8Array>, void> =>
+  toChannel(self)
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const makeChannel = <IE = never>(): Channel.Channel<
@@ -140,7 +149,7 @@ export const makeChannel = <IE = never>(): Channel.Channel<
   SocketError | IE,
   Chunk.Chunk<Uint8Array>,
   void
-> => Channel.unwrap(Effect.map(Socket, toChannel<IE>()))
+> => Channel.unwrap(Effect.map(Socket, toChannelWith<IE>()))
 
 /**
  * @since 1.0.0
@@ -200,7 +209,7 @@ export const makeWebSocket = (url: string | Effect.Effect<never, never, string>,
         Effect.tap((chunk) =>
           Effect.try({
             try: () => ws.send(chunk),
-            catch: (error) => Effect.fail(new SocketError({ reason: "Write", error }))
+            catch: (error) => Effect.fail(new SocketError({ reason: "Write", error: (error as any).message }))
           })
         ),
         Effect.forever,
@@ -208,16 +217,6 @@ export const makeWebSocket = (url: string | Effect.Effect<never, never, string>,
       )
 
       yield* _(Effect.async<never, SocketError, void>((resume) => {
-        ws.onmessage = (event) => {
-          Queue.unsafeOffer(
-            messages,
-            event.data instanceof Uint8Array
-              ? event.data
-              : typeof event.data === "string"
-              ? encoder.encode(event.data)
-              : new Uint8Array(event.data)
-          )
-        }
         ws.onclose = (event) => {
           if (closeCodeIsError(event.code)) {
             resume(Effect.fail(new SocketError({ reason: "Close", error: event })))
@@ -225,13 +224,8 @@ export const makeWebSocket = (url: string | Effect.Effect<never, never, string>,
             resume(Effect.unit)
           }
         }
-        ws.onerror = (error_) => {
-          resume(Effect.fail(
-            new SocketError({
-              reason: "Read",
-              error: (error_ as any).message
-            })
-          ))
+        ws.onerror = (error) => {
+          resume(Effect.fail(new SocketError({ reason: "Read", error: (error as any).message })))
         }
       }))
     }).pipe(Effect.scoped)
@@ -266,7 +260,7 @@ export const makeWebSocketChannel = <IE = never>(
   void
 > =>
   Channel.unwrapScoped(
-    Effect.map(makeWebSocket(url, options), toChannel<IE>())
+    Effect.map(makeWebSocket(url, options), toChannelWith<IE>())
   )
 
 /**

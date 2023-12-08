@@ -33,8 +33,8 @@ export const SocketServer: Context.Tag<SocketServer, SocketServer> = Context.Tag
  */
 export interface SocketServer {
   readonly [SocketServerTypeId]: SocketServerTypeId
-  readonly address: Address
-  readonly join: Effect.Effect<never, SocketServerError, never>
+  readonly address: Effect.Effect<never, never, Address>
+  readonly run: Effect.Effect<never, SocketServerError, never>
   readonly sockets: Queue.Dequeue<Socket.Socket>
 }
 
@@ -43,7 +43,7 @@ export interface SocketServer {
  * @category errors
  */
 export class SocketServerError extends Data.TaggedError("SocketServerError")<{
-  readonly reason: "Open"
+  readonly reason: "Open" | "Unknown"
   readonly error: unknown
 }> {
   /**

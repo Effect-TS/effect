@@ -32,7 +32,9 @@ describe("Socket", () => {
   test("open", () =>
     Effect.gen(function*(_) {
       const server = yield* _(makeServer)
-      const channel = Socket.makeNetChannel({ port: (server.address as SocketServer.TcpAddress).port })
+      yield* _(server.run, Effect.fork)
+      const address = yield* _(server.address)
+      const channel = Socket.makeNetChannel({ port: (address as SocketServer.TcpAddress).port })
 
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
