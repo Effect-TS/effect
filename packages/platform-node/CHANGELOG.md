@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.34.3
+
+### Patch Changes
+
+- [#329](https://github.com/Effect-TS/platform/pull/329) [`5c75749`](https://github.com/Effect-TS/platform/commit/5c75749d451f8e79e1cb8057729691e4b3c1c6aa) Thanks [@leonitousconforti](https://github.com/leonitousconforti)! - HttpClient added another error event listener in waitForResponse
+
 ## 0.34.2
 
 ### Patch Changes
