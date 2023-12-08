@@ -8,7 +8,6 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Option } from "effect/Option"
-import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
@@ -162,7 +161,7 @@ export const Pong = Schema.struct({
  * @since 1.0.0
  * @category schemas
  */
-export const Request = Ping
+export const Request = Schema.union(Ping, Span)
 
 /**
  * @since 1.0.0
@@ -174,7 +173,7 @@ export type Request = Schema.Schema.To<typeof Request>
  * @since 1.0.0
  * @category schemas
  */
-export const Response = Schema.union(Span, Pong)
+export const Response = Pong
 
 /**
  * @since 1.0.0
@@ -186,44 +185,70 @@ export type Response = Schema.Schema.To<typeof Response>
  * @since 1.0.0
  * @category models
  */
-export interface HostPortConfig {
-  /** defaults to 34437 */
-  readonly port?: number
-  /** defaults to 127.0.0.1 */
-  readonly host?: string
+export interface ClientImpl {
+  readonly unsafeWrite: (_: Span) => void
+  readonly write: (_: Span) => Effect.Effect<never, never, void>
 }
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Client {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const Client = Context.Tag<Client, ClientImpl>("@effect/experimental/DevTools/Client")
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makeClient = ({
-  host = "127.0.0.1",
-  port = 34437
-}: HostPortConfig = {}) =>
-  Effect.gen(function*(_) {
-    const requests = yield* _(Effect.acquireRelease(
-      Queue.unbounded<Request>(),
-      Queue.shutdown
-    ))
-    const responses = pipe(
-      Stream.fromQueue(requests),
-      Stream.pipeThroughChannel(
-        MsgPack.duplexSchema(Socket.makeNetChannel({ host, port, timeout: 5000 }), {
-          inputSchema: Request,
-          outputSchema: Response
-        })
-      ),
-      Stream.filter((_): _ is Span => _._tag === "Span")
-    )
-    yield* _(
-      Queue.offer(requests, { _tag: "Ping" }),
-      Effect.delay("3 seconds"),
-      Effect.forever,
-      Effect.forkScoped
-    )
-    return responses
-  }).pipe(Stream.unwrapScoped)
+export const makeClient: Effect.Effect<Scope.Scope | Socket.Socket, never, ClientImpl> = Effect.gen(function*(_) {
+  const socket = yield* _(Socket.Socket)
+  const requests = yield* _(Effect.acquireRelease(
+    Queue.bounded<Request>(100),
+    Queue.shutdown
+  ))
+  yield* _(
+    Stream.fromQueue(requests),
+    Stream.pipeThroughChannel(
+      MsgPack.duplexSchema(Socket.toChannel(socket), {
+        inputSchema: Request,
+        outputSchema: Response
+      })
+    ),
+    Stream.runDrain,
+    Effect.tapErrorCause(Effect.logDebug),
+    Effect.retry(
+      Schedule.exponential("500 millis").pipe(
+        Schedule.union(Schedule.spaced("10 seconds"))
+      )
+    ),
+    Effect.forkScoped
+  )
+  yield* _(
+    Queue.offer(requests, { _tag: "Ping" }),
+    Effect.delay("3 seconds"),
+    Effect.forever,
+    Effect.forkScoped
+  )
+
+  return Client.of({
+    write: (request) => Queue.offer(requests, request),
+    unsafeWrite: (request) => Queue.unsafeOffer(requests, request)
+  })
+})
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerClient: Layer.Layer<Socket.Socket, never, Client> = Layer.scoped(Client, makeClient)
 
 /**
  * @since 1.0.0
@@ -231,7 +256,7 @@ export const makeClient = ({
  */
 export interface ServerImpl {
   readonly run: Effect.Effect<never, SocketServer.SocketServerError, never>
-  readonly responses: Queue.Enqueue<Response>
+  readonly clients: Queue.Dequeue<Queue.Dequeue<Span>>
 }
 
 /**
@@ -252,101 +277,74 @@ export const Server = Context.Tag<Server, ServerImpl>("@effect/experimental/DevT
  * @since 1.0.0
  * @category constructors
  */
-export const makeServer = ({
-  host = "127.0.0.1",
-  port = 34437
-}: HostPortConfig = {}): Effect.Effect<Scope.Scope, SocketServer.SocketServerError, ServerImpl> =>
-  Effect.gen(function*(_) {
-    const server = yield* _(SocketServer.make({ host, port }))
-    const hub = yield* _(Effect.acquireRelease(
-      PubSub.unbounded<Response>(),
-      PubSub.shutdown
-    ))
-    const buffer = yield* _(Queue.dropping<Response>(100))
-    yield* _(
-      Effect.gen(function*(_) {
-        const queue = yield* _(hub.subscribe)
-        yield* _(
-          queue.take,
-          Effect.flatMap((_) => buffer.offer(_)),
-          Effect.forever
-        )
-      }),
-      Effect.forkScoped
-    )
+export const makeServer = Effect.gen(function*(_) {
+  const server = yield* _(SocketServer.SocketServer)
+  const clients = yield* _(Effect.acquireRelease(
+    Queue.unbounded<Queue.Dequeue<Span>>(),
+    Queue.shutdown
+  ))
 
-    const handle = (socket: Socket.Socket) =>
-      Effect.gen(function*(_) {
-        const sub = yield* _(PubSub.subscribe(hub))
-        const responses = yield* _(Effect.acquireRelease(
-          Queue.unbounded<Response>(),
-          Queue.shutdown
-        ))
-        yield* _(responses.offerAll(yield* _(buffer.takeAll)))
+  const handle = (socket: Socket.Socket) =>
+    Effect.gen(function*(_) {
+      const responses = yield* _(Effect.acquireRelease(
+        Queue.unbounded<Response>(),
+        Queue.shutdown
+      ))
+      const requests = yield* _(Effect.acquireRelease(
+        Queue.unbounded<Span>(),
+        Queue.shutdown
+      ))
 
-        yield* _(
-          sub.take,
-          Effect.flatMap((_) => responses.offer(_)),
-          Effect.forever,
-          Effect.fork
-        )
+      yield* _(clients.offer(requests))
 
-        yield* _(
-          Stream.fromQueue(responses),
-          Stream.pipeThroughChannel(
-            MsgPack.duplexSchema(Socket.toChannel(socket), {
-              inputSchema: Response,
-              outputSchema: Request
-            })
-          ),
-          Stream.runForEach((_req) => responses.offer({ _tag: "Pong" }))
+      yield* _(
+        Stream.fromQueue(responses),
+        Stream.pipeThroughChannel(
+          MsgPack.duplexSchema(Socket.toChannel(socket), {
+            inputSchema: Response,
+            outputSchema: Request
+          })
+        ),
+        Stream.runForEach((req) =>
+          req._tag === "Ping"
+            ? responses.offer({ _tag: "Pong" })
+            : requests.offer(req)
         )
-      }).pipe(
-        Effect.scoped,
-        Effect.catchAllCause(Effect.log),
-        Effect.fork
       )
-
-    yield* _(
-      server.sockets.take,
-      Effect.flatMap(handle),
-      Effect.forever,
-      Effect.forkScoped
+    }).pipe(
+      Effect.scoped,
+      Effect.catchAllCause(Effect.log),
+      Effect.fork
     )
 
-    return {
-      run: server.run,
-      responses: hub
-    } as const
-  })
+  yield* _(
+    server.sockets.take,
+    Effect.flatMap(handle),
+    Effect.forever,
+    Effect.forkScoped
+  )
+
+  return {
+    run: server.run,
+    clients
+  } as const
+})
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makeTracer: Effect.Effect<Server | Scope.Scope, never, Tracer.Tracer> = Effect.gen(function*(_) {
-  const server = yield* _(Server)
-
-  yield* _(
-    server.run,
-    Effect.tapErrorCause(Effect.logError),
-    Effect.retry(
-      Schedule.exponential("500 millis").pipe(
-        Schedule.union(Schedule.spaced("10 seconds"))
-      )
-    ),
-    Effect.forkScoped
-  )
-
+export const makeTracer: Effect.Effect<Client, never, Tracer.Tracer> = Effect.gen(function*(_) {
+  const client = yield* _(Client)
   const currentTracer = yield* _(Effect.tracer)
 
   return Tracer.make({
     span(name, parent, context, links, startTime) {
       const span = currentTracer.span(name, parent, context, links, startTime)
-      server.responses.unsafeOffer(span)
+      client.unsafeWrite(span)
       const oldEnd = span.end
       span.end = function(this: any) {
-        server.responses.unsafeOffer(span)
+        client.unsafeWrite(span)
         return oldEnd.apply(this, arguments as any)
       }
       return span
@@ -365,11 +363,11 @@ export const makeTracer: Effect.Effect<Server | Scope.Scope, never, Tracer.Trace
  * @since 1.0.0
  * @category layers
  */
-export const layerTracer = (hostPortConfig?: HostPortConfig): Layer.Layer<never, never, never> =>
+export const layerTracer = (url = "ws://localhost:34437"): Layer.Layer<never, never, never> =>
   pipe(
     makeTracer,
     Effect.map(Layer.setTracer),
-    Effect.provideServiceEffect(Server, makeServer(hostPortConfig)),
-    Effect.orDie,
-    Layer.unwrapScoped
+    Layer.unwrapEffect,
+    Layer.provide(layerClient),
+    Layer.provide(Socket.layerWebSocket(url))
   )

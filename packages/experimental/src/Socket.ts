@@ -162,26 +162,38 @@ export const defaultCloseCodeIsError = (code: number) => code !== 1000
  */
 export const makeWebSocket = (url: string | Effect.Effect<never, never, string>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Effect.Effect<Scope.Scope, SocketError, Socket> =>
+}): Effect.Effect<never, never, Socket> =>
+  fromWebSocket(
+    Effect.acquireRelease(
+      Effect.map(
+        typeof url === "string" ? Effect.succeed(url) : url,
+        (url) => {
+          const WS = "WebSocket" in globalThis ? globalThis.WebSocket : WebSocket
+          return new WS(url) as globalThis.WebSocket
+        }
+      ),
+      (ws) => Effect.sync(() => ws.close())
+    ),
+    options
+  )
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fromWebSocket = (
+  acquire: Effect.Effect<Scope.Scope, SocketError, globalThis.WebSocket>,
+  options?: {
+    readonly closeCodeIsError?: (code: number) => boolean
+  }
+): Effect.Effect<never, never, Socket> =>
   Effect.gen(function*(_) {
     const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-    const sendQueue = yield* _(Effect.acquireRelease(
-      Queue.unbounded<Uint8Array>(),
-      Queue.shutdown
-    ))
-    const messages = yield* _(Effect.acquireRelease(
-      Queue.unbounded<Uint8Array>(),
-      Queue.shutdown
-    ))
+    const sendQueue = yield* _(Queue.unbounded<Uint8Array>())
+    const messages = yield* _(Queue.unbounded<Uint8Array>())
 
     const run = Effect.gen(function*(_) {
-      const WS = "WebSocket" in globalThis ? globalThis.WebSocket : WebSocket
-
-      const currentUrl = typeof url === "string" ? url : (yield* _(url))
-      const ws = yield* _(Effect.acquireRelease(
-        Effect.sync(() => new WS(currentUrl) as globalThis.WebSocket),
-        (ws) => Effect.sync(() => ws.close())
-      ))
+      const ws = yield* _(acquire)
       const encoder = new TextEncoder()
 
       ws.onmessage = (event) => {
@@ -195,14 +207,16 @@ export const makeWebSocket = (url: string | Effect.Effect<never, never, string>,
         )
       }
 
-      yield* _(Effect.async<never, SocketError, void>((resume) => {
-        ws.onopen = () => {
-          resume(Effect.unit)
-        }
-        ws.onerror = (error_) => {
-          resume(Effect.fail(new SocketError({ reason: "Open", error: (error_ as any).message })))
-        }
-      }))
+      if (ws.readyState !== WebSocket.OPEN) {
+        yield* _(Effect.async<never, SocketError, void>((resume) => {
+          ws.onopen = () => {
+            resume(Effect.unit)
+          }
+          ws.onerror = (error_) => {
+            resume(Effect.fail(new SocketError({ reason: "Open", error: (error_ as any).message })))
+          }
+        }))
+      }
 
       yield* _(
         Queue.take(sendQueue),
@@ -269,4 +283,4 @@ export const makeWebSocketChannel = <IE = never>(
  */
 export const layerWebSocket = (url: string, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Layer.Layer<never, SocketError, Socket> => Layer.scoped(Socket, makeWebSocket(url, options))
+}): Layer.Layer<never, never, Socket> => Layer.scoped(Socket, makeWebSocket(url, options))

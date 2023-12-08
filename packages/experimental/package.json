@@ -31,7 +31,8 @@
     "generateExports": {
       "include": [
         "*.ts",
-        "Socket/*.ts"
+        "Socket/*.ts",
+        "SocketServer/*.ts"
       ]
     }
   },
@@ -56,10 +57,14 @@
     "@effect/platform": "^0.33.0",
     "@effect/platform-node": "^0.34.0",
     "@effect/schema": "^0.52.0",
-    "effect": "2.0.0-next.59"
+    "effect": "2.0.0-next.59",
+    "ws": "^8.14.2"
   },
   "peerDependenciesMeta": {
     "@effect/platform-node": {
+      "optional": true
+    },
+    "ws": {
       "optional": true
     }
   },
@@ -80,6 +85,7 @@
     "@effect/schema": "^0.52.0",
     "@types/chai": "^4.3.11",
     "@types/node": "^20.10.3",
+    "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "@typescript-eslint/parser": "^6.13.2",
     "@vitejs/plugin-react": "^4.2.1",
@@ -102,13 +108,11 @@
     "tsx": "^4.6.2",
     "typescript": "^5.3.3",
     "vitest": "1.0.1",
-    "vitest-websocket-mock": "^0.2.2"
+    "vitest-websocket-mock": "^0.2.2",
+    "ws": "^8.14.2"
   },
   "dependencies": {
     "isomorphic-ws": "^5.0.0",
     "msgpackr": "^1.10.0"
-  },
-  "optionalDependencies": {
-    "ws": "^8.14.2"
   }
 }
