@@ -1,5 +1,15 @@
 # @effect/experimental
 
+## 0.2.5
+
+### Patch Changes
+
+- [#18](https://github.com/Effect-TS/experimental/pull/18) [`26e8dca`](https://github.com/Effect-TS/experimental/commit/26e8dcaf850ae362bc554422241aed5d4ad88e10) Thanks [@tim-smart](https://github.com/tim-smart)! - remove duplicate onmessage in ws
+
+- [#18](https://github.com/Effect-TS/experimental/pull/18) [`26e8dca`](https://github.com/Effect-TS/experimental/commit/26e8dcaf850ae362bc554422241aed5d4ad88e10) Thanks [@tim-smart](https://github.com/tim-smart)! - add DevTools module
+
+- [#18](https://github.com/Effect-TS/experimental/pull/18) [`26e8dca`](https://github.com/Effect-TS/experimental/commit/26e8dcaf850ae362bc554422241aed5d4ad88e10) Thanks [@tim-smart](https://github.com/tim-smart)! - add SocketServer.run
+
 ## 0.2.4
 
 ### Patch Changes
