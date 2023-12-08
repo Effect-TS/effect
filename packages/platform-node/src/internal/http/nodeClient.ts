@@ -79,7 +79,7 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
               signal: controller.signal
             })
           return pipe(
-            Effect.zipRight(sendBody(nodeRequest, request, request.body), waitForResponse(nodeRequest), {
+            Effect.zipRight(sendBody(nodeRequest, request, request.body), waitForResponse(nodeRequest, request), {
               concurrent: true
             }),
             Effect.onInterrupt(() => Effect.sync(() => controller.abort())),
@@ -141,12 +141,22 @@ const sendBody = (
     }
   })
 
-const waitForResponse = (nodeRequest: Http.ClientRequest) =>
-  Effect.async<never, never, Http.IncomingMessage>((resume) => {
+const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
+  Effect.async<never, Error.RequestError, Http.IncomingMessage>((resume) => {
+    nodeRequest.on("error", (error) => {
+      resume(Effect.fail(Error.RequestError({
+        request,
+        reason: "Transport",
+        error
+      })))
+    })
+
     nodeRequest.on("response", (response) => {
       resume(Effect.succeed(response))
     })
+
     return Effect.sync(() => {
+      nodeRequest.removeAllListeners("error")
       nodeRequest.removeAllListeners("response")
     })
   })
