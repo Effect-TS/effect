@@ -267,6 +267,7 @@ describe("Command", () => {
   describe("Help Documentation", () => {
     it("should allow adding help documentation to a command", () =>
       Effect.gen(function*(_) {
+        const config = CliConfig.make({ showBuiltIns: false })
         const cmd = Descriptor.make("tldr").pipe(Descriptor.withDescription("this is some help"))
         const args = ReadonlyArray.of("tldr")
         const result = yield* _(Descriptor.parse(cmd, args, CliConfig.defaultConfig))
@@ -276,18 +277,20 @@ describe("Command", () => {
           HelpDoc.p("this is some help")
         )
         expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expectedValue))
-        expect(Descriptor.getHelp(cmd)).toEqual(expectedDoc)
+        expect(Descriptor.getHelp(cmd, config)).toEqual(expectedDoc)
       }).pipe(runEffect))
 
     it("should allow adding help documentation to subcommands", () => {
+      const config = CliConfig.make({ showBuiltIns: false })
       const cmd = Descriptor.make("command").pipe(Descriptor.withSubcommands([
         ["sub", Descriptor.make("sub").pipe(Descriptor.withDescription("this is some help"))]
       ]))
       const expected = HelpDoc.sequence(HelpDoc.h1("DESCRIPTION"), HelpDoc.p("this is some help"))
-      expect(Descriptor.getHelp(cmd)).not.toEqual(expected)
+      expect(Descriptor.getHelp(cmd, config)).not.toEqual(expected)
     })
 
     it("should correctly display help documentation for a command", () => {
+      const config = CliConfig.make({ showBuiltIns: false })
       const child2 = Descriptor.make("child2").pipe(
         Descriptor.withDescription("help 2")
       )
@@ -299,7 +302,7 @@ describe("Command", () => {
         Descriptor.withSubcommands([["child1", child1]])
       )
       const result = Render.prettyDefault(
-        Doc.unAnnotate(HelpDoc.toAnsiDoc(Descriptor.getHelp(parent)))
+        Doc.unAnnotate(HelpDoc.toAnsiDoc(Descriptor.getHelp(parent, config)))
       )
       expect(result).toBe(String.stripMargin(
         `|COMMANDS

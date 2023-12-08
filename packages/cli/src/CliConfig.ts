@@ -39,6 +39,13 @@ export interface CliConfig {
    */
   readonly showAllNames: boolean
   /**
+   * Whether or not to display built-in options in the help documentation
+   * generated for a `Command`.
+   *
+   * Defaults to `true`.
+   */
+  readonly showBuiltIns: boolean
+  /**
    * Whether or not to display the type of an option in the usage of a
    * particular command.
    *

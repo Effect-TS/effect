@@ -18,6 +18,7 @@ export const defaultConfig: CliConfig.CliConfig = {
   autoCorrectLimit: 2,
   finalCheckBuiltIn: false,
   showAllNames: true,
+  showBuiltIns: true,
   showTypes: true
 }
 

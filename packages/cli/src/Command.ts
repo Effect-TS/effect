@@ -144,8 +144,10 @@ export const fromDescriptor: {
  * @since 1.0.0
  * @category accessors
  */
-export const getHelp: <Name extends string, R, E, A>(self: Command<Name, R, E, A>) => HelpDoc =
-  Internal.getHelp
+export const getHelp: <Name extends string, R, E, A>(
+  self: Command<Name, R, E, A>,
+  config: CliConfig
+) => HelpDoc = Internal.getHelp
 
 /**
  * @since 1.0.0

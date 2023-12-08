@@ -1,26 +1,26 @@
-import type { FileSystem } from "@effect/platform/FileSystem"
-import type { QuitException, Terminal } from "@effect/platform/Terminal"
+import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as Terminal from "@effect/platform/Terminal"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import type { HashMap } from "effect/HashMap"
-import type { HashSet } from "effect/HashSet"
+import type * as HashMap from "effect/HashMap"
+import type * as HashSet from "effect/HashSet"
 import type * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as Types from "effect/Types"
 import type * as Args from "../Args.js"
 import type * as CliApp from "../CliApp.js"
-import type { CliConfig } from "../CliConfig.js"
+import type * as CliConfig from "../CliConfig.js"
 import type * as Command from "../Command.js"
 import type * as Descriptor from "../CommandDescriptor.js"
-import type { HelpDoc } from "../HelpDoc.js"
-import type { Span } from "../HelpDoc/Span.js"
+import type * as HelpDoc from "../HelpDoc.js"
+import type * as Span from "../HelpDoc/Span.js"
 import type * as Options from "../Options.js"
 import type * as Prompt from "../Prompt.js"
-import type { Usage } from "../Usage.js"
+import type * as Usage from "../Usage.js"
 import * as ValidationError from "../ValidationError.js"
 import * as InternalArgs from "./args.js"
 import * as InternalCliApp from "./cliApp.js"
@@ -223,13 +223,14 @@ export const make: {
 
 /** @internal */
 export const getHelp = <Name extends string, R, E, A>(
-  self: Command.Command<Name, R, E, A>
-): HelpDoc => InternalDescriptor.getHelp(self.descriptor)
+  self: Command.Command<Name, R, E, A>,
+  config: CliConfig.CliConfig
+): HelpDoc.HelpDoc => InternalDescriptor.getHelp(self.descriptor, config)
 
 /** @internal */
 export const getNames = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>
-): HashSet<string> => InternalDescriptor.getNames(self.descriptor)
+): HashSet.HashSet<string> => InternalDescriptor.getNames(self.descriptor)
 
 /** @internal */
 export const getBashCompletions = <Name extends string, R, E, A>(
@@ -255,13 +256,13 @@ export const getZshCompletions = <Name extends string, R, E, A>(
 /** @internal */
 export const getSubcommands = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>
-): HashMap<string, Descriptor.Command<unknown>> =>
+): HashMap.HashMap<string, Descriptor.Command<unknown>> =>
   InternalDescriptor.getSubcommands(self.descriptor)
 
 /** @internal */
 export const getUsage = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>
-): Usage => InternalDescriptor.getUsage(self.descriptor)
+): Usage.Usage => InternalDescriptor.getUsage(self.descriptor)
 
 const mapDescriptor = dual<
   <A>(f: (_: Descriptor.Command<A>) => Descriptor.Command<A>) => <Name extends string, R, E>(
@@ -290,13 +291,13 @@ export const prompt = <Name extends string, A, R, E>(
 /** @internal */
 export const withDescription = dual<
   (
-    help: string | HelpDoc
+    help: string | HelpDoc.HelpDoc
   ) => <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>
   ) => Command.Command<Name, R, E, A>,
   <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>,
-    help: string | HelpDoc
+    help: string | HelpDoc.HelpDoc
   ) => Command.Command<Name, R, E, A>
 >(2, (self, help) => mapDescriptor(self, InternalDescriptor.withDescription(help)))
 
@@ -389,21 +390,21 @@ export const withSubcommands = dual<
 export const wizard = dual<
   (
     prefix: ReadonlyArray<string>,
-    config: CliConfig
+    config: CliConfig.CliConfig
   ) => <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>
   ) => Effect.Effect<
-    FileSystem | Terminal,
-    QuitException | ValidationError.ValidationError,
+    FileSystem.FileSystem | Terminal.Terminal,
+    Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >,
   <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>,
     prefix: ReadonlyArray<string>,
-    config: CliConfig
+    config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem | Terminal,
-    QuitException | ValidationError.ValidationError,
+    FileSystem.FileSystem | Terminal.Terminal,
+    Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >
 >(3, (self, prefix, config) => InternalDescriptor.wizard(self.descriptor, prefix, config))
@@ -413,8 +414,8 @@ export const run = dual<
   (config: {
     readonly name: string
     readonly version: string
-    readonly summary?: Span | undefined
-    readonly footer?: HelpDoc | undefined
+    readonly summary?: Span.Span | undefined
+    readonly footer?: HelpDoc.HelpDoc | undefined
   }) => <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>
   ) => (
@@ -423,8 +424,8 @@ export const run = dual<
   <Name extends string, R, E, A>(self: Command.Command<Name, R, E, A>, config: {
     readonly name: string
     readonly version: string
-    readonly summary?: Span | undefined
-    readonly footer?: HelpDoc | undefined
+    readonly summary?: Span.Span | undefined
+    readonly footer?: HelpDoc.HelpDoc | undefined
   }) => (
     args: ReadonlyArray<string>
   ) => Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void>

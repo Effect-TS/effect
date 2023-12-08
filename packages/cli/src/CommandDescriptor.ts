@@ -107,7 +107,7 @@ export declare namespace Command {
  * @since 1.0.0
  * @category combinators
  */
-export const getHelp: <A>(self: Command<A>) => HelpDoc = Internal.getHelp
+export const getHelp: <A>(self: Command<A>, config: CliConfig) => HelpDoc = Internal.getHelp
 
 /**
  * @since 1.0.0

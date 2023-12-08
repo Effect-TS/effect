@@ -158,8 +158,10 @@ export const prompt = <Name extends string, A>(
 // =============================================================================
 
 /** @internal */
-export const getHelp = <A>(self: Descriptor.Command<A>): HelpDoc.HelpDoc =>
-  getHelpInternal(self as Instruction)
+export const getHelp = <A>(
+  self: Descriptor.Command<A>,
+  config: CliConfig.CliConfig
+): HelpDoc.HelpDoc => getHelpInternal(self as Instruction, config)
 
 /** @internal */
 export const getNames = <A>(self: Descriptor.Command<A>): HashSet.HashSet<string> =>
@@ -314,7 +316,7 @@ export const wizard = dual<
 // Internals
 // =============================================================================
 
-const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
+const getHelpInternal = (self: Instruction, config: CliConfig.CliConfig): HelpDoc.HelpDoc => {
   switch (self._tag) {
     case "Standard": {
       const header = InternalHelpDoc.isEmpty(self.description)
@@ -324,7 +326,10 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
       const argsSection = InternalHelpDoc.isEmpty(argsHelp)
         ? InternalHelpDoc.empty
         : InternalHelpDoc.sequence(InternalHelpDoc.h1("ARGUMENTS"), argsHelp)
-      const optionsHelp = InternalOptions.getHelp(self.options)
+      const options = config.showBuiltIns
+        ? Options.all([self.options, InternalBuiltInOptions.builtIns])
+        : self.options
+      const optionsHelp = InternalOptions.getHelp(options)
       const optionsSection = InternalHelpDoc.isEmpty(optionsHelp)
         ? InternalHelpDoc.empty
         : InternalHelpDoc.sequence(InternalHelpDoc.h1("OPTIONS"), optionsHelp)
@@ -336,7 +341,7 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
         : InternalHelpDoc.sequence(InternalHelpDoc.h1("DESCRIPTION"), self.description)
     }
     case "Map": {
-      return getHelpInternal(self.command)
+      return getHelpInternal(self.command, config)
     }
     case "Subcommands": {
       const getUsage = (
@@ -405,7 +410,7 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
         throw new Error("[BUG]: Subcommands.usage - received empty list of subcommands to print")
       }
       return InternalHelpDoc.sequence(
-        getHelpInternal(self.parent),
+        getHelpInternal(self.parent, config),
         InternalHelpDoc.sequence(
           InternalHelpDoc.h1("COMMANDS"),
           printSubcommands(ReadonlyArray.flatMap(
@@ -534,7 +539,7 @@ const parseInternal = (
             const normalizedArgv0 = InternalCliConfig.normalizeCase(config, argv0)
             const normalizedCommandName = InternalCliConfig.normalizeCase(config, self.name)
             if (normalizedArgv0 === normalizedCommandName) {
-              const help = getHelpInternal(self)
+              const help = getHelpInternal(self, config)
               const usage = getUsageInternal(self)
               const options = InternalBuiltInOptions.builtInOptions(self, usage, help)
               const argsWithoutCommand = ReadonlyArray.drop(args, 1)
@@ -680,7 +685,7 @@ const parseInternal = (
       const helpDirectiveForParent = Effect.sync(() => {
         return InternalCommandDirective.builtIn(InternalBuiltInOptions.showHelp(
           getUsageInternal(self),
-          getHelpInternal(self)
+          getHelpInternal(self, config)
         ))
       })
       const helpDirectiveForChild = parseChildren.pipe(
@@ -1357,7 +1362,7 @@ export const helpRequestedError = <A>(
   op.error = InternalHelpDoc.empty
   op.showHelp = InternalBuiltInOptions.showHelp(
     getUsageInternal(command as Instruction),
-    getHelpInternal(command as Instruction)
+    getHelpInternal(command as Instruction, InternalCliConfig.defaultConfig)
   )
   return op
 }
