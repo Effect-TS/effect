@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.2.6
+
+### Patch Changes
+
+- [#20](https://github.com/Effect-TS/experimental/pull/20) [`963f717`](https://github.com/Effect-TS/experimental/commit/963f717d4c9f231660f9145185b957edfd30abbd) Thanks [@tim-smart](https://github.com/tim-smart)! - add websocket server
+
 ## 0.2.5
 
 ### Patch Changes
