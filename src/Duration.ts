@@ -63,7 +63,7 @@ export type DurationInput =
   | Duration
   | number // millis
   | bigint // nanos
-  | [number, number] // [seconds, nanos]
+  | [seconds: number, nanos: number]
   | `${number} ${Unit}`
 
 const DURATION_REGEX = /^(-?\d+(?:\.\d+)?)\s+(nanos|micros|millis|seconds|minutes|hours|days|weeks)$/
