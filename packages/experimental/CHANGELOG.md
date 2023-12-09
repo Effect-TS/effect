@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.2.7
+
+### Patch Changes
+
+- [#23](https://github.com/Effect-TS/experimental/pull/23) [`fc89b83`](https://github.com/Effect-TS/experimental/commit/fc89b8351386bef64638b3880d7383f6a7e6dee3) Thanks [@tim-smart](https://github.com/tim-smart)! - seperate DevTools modules
+
 ## 0.2.6
 
 ### Patch Changes
