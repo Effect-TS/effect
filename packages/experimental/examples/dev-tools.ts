@@ -9,6 +9,6 @@ const program = Effect.log("Hello!").pipe(
 )
 
 program.pipe(
-  Effect.provide(DevTools.layerTracer()),
+  Effect.provide(DevTools.layer()),
   runMain
 )

@@ -31,6 +31,7 @@
     "generateExports": {
       "include": [
         "*.ts",
+        "DevTools/*.ts",
         "Socket/*.ts",
         "SocketServer/*.ts"
       ]
