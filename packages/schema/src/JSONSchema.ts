@@ -292,13 +292,7 @@ export const DEFINITION_PREFIX = "#/$defs/"
 const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotation = AST.getJSONSchemaAnnotation(ast)
-      if (Option.isSome(annotation)) {
-        return annotation.value as any
-      }
-      throw new Error(
-        "cannot build a JSON Schema for declarations without a JSON Schema annotation"
-      )
+      throw new Error("cannot convert a declaration to JSON Schema")
     }
     case "Literal": {
       const literal = ast.literal

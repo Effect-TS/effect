@@ -65,14 +65,12 @@ describe("Schema/annotations", () => {
     expect(S.isSchema(schema)).toEqual(true)
   })
 
-  it("jsonSchema", () => {
-    const schema = S.string.pipe(S.jsonSchema({ type: "string" }))
-    expect(schema.ast.annotations).toEqual({
-      [AST.JSONSchemaAnnotationId]: { type: "string" },
-      [AST.TitleAnnotationId]: "string",
-      [AST.DescriptionAnnotationId]: "a string"
+  describe("jsonSchema", () => {
+    it("should raise an error on non refinements", () => {
+      expect(() => S.string.pipe(S.jsonSchema({ type: "number" }))).toThrow(
+        new Error("JSON Schema annotations can be applied exclusively to refinements")
+      )
     })
-    expect(S.isSchema(schema)).toEqual(true)
   })
 
   it("message as annotation options", async () => {

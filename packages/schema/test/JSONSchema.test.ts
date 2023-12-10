@@ -1,7 +1,6 @@
 import * as A from "@effect/schema/Arbitrary"
 import * as AST from "@effect/schema/AST"
 import * as JSONSchema from "@effect/schema/JSONSchema"
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import AjvNonEsm from "ajv"
 import * as Option from "effect/Option"
@@ -74,26 +73,11 @@ describe("JSONSchema", () => {
     propertyFrom(Schema.struct({ a: Schema.string, b: Schema.NumberFromString }))
   })
 
-  describe("declaration", () => {
-    it("should raise an error when an annotation doesn't exist", () => {
-      const schema = Schema.chunk(JsonNumber)
-      expect(() => JSONSchema.to(schema)).toThrow(
-        new Error("cannot build a JSON Schema for declarations without a JSON Schema annotation")
-      )
-    })
-
-    it("should return the provided JSON Schema when an annotation exists", () => {
-      const schema = Schema.declare(
-        [],
-        Schema.struct({}),
-        () => (input) => ParseResult.succeed(input),
-        {
-          [AST.JSONSchemaAnnotationId]: { type: "string" },
-          [A.ArbitraryHookId]: (): A.Arbitrary<string> => (fc) => fc.string()
-        }
-      )
-      propertyTo(schema)
-    })
+  it("declaration should raise an error", () => {
+    const schema = Schema.chunk(JsonNumber)
+    expect(() => JSONSchema.to(schema)).toThrow(
+      new Error("cannot convert a declaration to JSON Schema")
+    )
   })
 
   it("bigint should raise an error", () => {

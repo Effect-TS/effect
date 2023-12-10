@@ -1496,6 +1496,11 @@ export interface DocAnnotations<A> extends AST.Annotations {
  */
 export interface FilterAnnotations<A> extends DocAnnotations<A> {
   readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; params: unknown }
+  /**
+   * Attaches a JSON Schema annotation to this refinement.
+   *
+   * If the schema is composed of more than one refinement, the corresponding annotations will be merged.
+   */
   readonly jsonSchema?: AST.JSONSchemaAnnotation
   readonly arbitrary?: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
   readonly pretty?: (...args: ReadonlyArray<Pretty<any>>) => Pretty<any>
@@ -1569,12 +1574,20 @@ export const documentation =
     make(AST.setAnnotation(self.ast, AST.DocumentationAnnotationId, documentation))
 
 /**
+ * Attaches a JSON Schema annotation to a schema that represents a refinement.
+ *
+ * If the schema is composed of more than one refinement, the corresponding annotations will be merged.
+ *
  * @category annotations
  * @since 1.0.0
  */
 export const jsonSchema =
-  (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
-    make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
+  (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> => {
+    if (AST.isRefinement(self.ast)) {
+      return make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
+    }
+    throw new Error("JSON Schema annotations can be applied exclusively to refinements")
+  }
 
 /**
  * @category annotations
