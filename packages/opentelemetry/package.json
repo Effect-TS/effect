@@ -1,6 +1,6 @@
 {
   "name": "@effect/opentelemetry",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "publishConfig": {
     "access": "public",
     "directory": "dist"
