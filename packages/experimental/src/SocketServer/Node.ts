@@ -67,10 +67,10 @@ export const make = (
         )
       })
       server.listen(options)
-      return Effect.async<never, never, void>((resume) => {
+      return Effect.sync(() => {
         serverDeferred = Deferred.unsafeMake(fiberId)
         server.removeAllListeners()
-        server.close(() => resume(Effect.unit))
+        server.close()
       })
     }).pipe(
       semaphore.withPermits(1)
@@ -159,10 +159,10 @@ export const makeWebSocket = (
           Effect.runFork
         )
       })
-      return Effect.async<never, never, void>((resume) => {
+      return Effect.sync(() => {
         serverDeferred = Deferred.unsafeMake(fiberId)
         server.removeAllListeners()
-        server.close(() => resume(Effect.unit))
+        server.close()
       })
     }).pipe(
       semaphore.withPermits(1)

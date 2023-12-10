@@ -46,14 +46,8 @@ export const make = Effect.gen(function*(_) {
 
   const handle = (socket: Socket.Socket) =>
     Effect.gen(function*(_) {
-      const responses = yield* _(Effect.acquireRelease(
-        Queue.unbounded<Domain.Response>(),
-        Queue.shutdown
-      ))
-      const requests = yield* _(Effect.acquireRelease(
-        Queue.unbounded<Domain.Span>(),
-        Queue.shutdown
-      ))
+      const responses = yield* _(Queue.unbounded<Domain.Response>())
+      const requests = yield* _(Queue.unbounded<Domain.Span>())
 
       yield* _(clients.offer(requests))
 
@@ -69,10 +63,13 @@ export const make = Effect.gen(function*(_) {
           req._tag === "Ping"
             ? responses.offer({ _tag: "Pong" })
             : requests.offer(req)
-        )
+        ),
+        Effect.ensuring(Effect.all([
+          requests.shutdown,
+          responses.shutdown
+        ]))
       )
     }).pipe(
-      Effect.scoped,
       Effect.catchAllCause(Effect.log),
       Effect.fork
     )
