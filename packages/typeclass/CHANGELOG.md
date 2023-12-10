@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.19.0
+
+### Minor Changes
+
+- [#60](https://github.com/Effect-TS/typeclass/pull/60) [`0f1cff8`](https://github.com/Effect-TS/typeclass/commit/0f1cff8b68118b4fd89f0e72bb986824e78d08aa) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.18.0
 
 ### Minor Changes
