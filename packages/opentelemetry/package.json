@@ -53,7 +53,7 @@
     "@opentelemetry/sdk-trace-node": "^1.17",
     "@opentelemetry/sdk-trace-web": "^1.17",
     "@opentelemetry/semantic-conventions": "^1.17",
-    "effect": "2.0.0-next.59"
+    "effect": "2.0.0-next.60"
   },
   "peerDependenciesMeta": {
     "@opentelemetry/sdk-metrics": {
@@ -76,11 +76,11 @@
     "@babel/plugin-transform-modules-commonjs": "^7.23.3",
     "@changesets/changelog-github": "^0.5.0",
     "@changesets/cli": "^2.27.1",
-    "@effect/build-utils": "^0.5.1",
-    "@effect/docgen": "^0.3.6",
+    "@effect/build-utils": "^0.7.0",
+    "@effect/docgen": "^0.3.8",
     "@effect/dtslint": "^0.0.4",
     "@effect/eslint-plugin": "^0.1.2",
-    "@effect/language-service": "^0.0.21",
+    "@effect/language-service": "^0.1.0",
     "@opentelemetry/api": "^1.7.0",
     "@opentelemetry/context-async-hooks": "^1.18.1",
     "@opentelemetry/exporter-metrics-otlp-http": "0.45.1",
@@ -94,14 +94,14 @@
     "@opentelemetry/sdk-trace-web": "^1.18.1",
     "@opentelemetry/semantic-conventions": "^1.18.1",
     "@types/chai": "^4.3.11",
-    "@types/node": "^20.10.3",
+    "@types/node": "^20.10.4",
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "@typescript-eslint/parser": "^6.13.2",
     "@vitejs/plugin-react": "^4.2.1",
-    "@vitest/coverage-v8": "^1.0.1",
+    "@vitest/coverage-v8": "^1.0.4",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.2",
-    "effect": "2.0.0-next.59",
+    "effect": "2.0.0-next.60",
     "error-stack-parser": "^2.1.4",
     "eslint": "^8.55.0",
     "eslint-import-resolver-typescript": "^3.6.1",
@@ -112,10 +112,10 @@
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
     "fast-check": "^3.14.0",
     "madge": "^6.1.0",
-    "prettier": "^3.1.0",
+    "prettier": "^3.1.1",
     "rimraf": "^5.0.5",
     "tsx": "^4.6.2",
-    "typescript": "^5.3.2",
-    "vitest": "1.0.1"
+    "typescript": "^5.3.3",
+    "vitest": "1.0.4"
   }
 }
