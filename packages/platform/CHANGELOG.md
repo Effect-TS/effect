@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.34.0
+
+### Minor Changes
+
+- [#331](https://github.com/Effect-TS/platform/pull/331) [`db1ca18`](https://github.com/Effect-TS/platform/commit/db1ca18725f9dd4be1c36ddc80faa3aa53c10eb7) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.33.1
 
 ### Patch Changes
