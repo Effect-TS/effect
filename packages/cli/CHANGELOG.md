@@ -1,5 +1,22 @@
 # @effect/cli
 
+## 0.25.0
+
+### Minor Changes
+
+- [#417](https://github.com/Effect-TS/cli/pull/417) [`486dcdd`](https://github.com/Effect-TS/cli/commit/486dcddf60ee603fb02ca30d09e984826c1f66e5) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#411](https://github.com/Effect-TS/cli/pull/411) [`07b3529`](https://github.com/Effect-TS/cli/commit/07b35297b18401a3b3600bd6ccdbfd8dc496c353) Thanks [@IMax153](https://github.com/IMax153)! - default `CliConfig.finalCheckBuiltIn` to `false`
+
+- [#404](https://github.com/Effect-TS/cli/pull/404) [`70fc225`](https://github.com/Effect-TS/cli/commit/70fc225a2e463ec5b2cea6692491e036ec41fd5b) Thanks [@IMax153](https://github.com/IMax153)! - remove `"type"` option from `Prompt.text` and add `Prompt.password` and `Prompt.hidden` which return `Secret`
+
+- [#416](https://github.com/Effect-TS/cli/pull/416) [`234c3f7`](https://github.com/Effect-TS/cli/commit/234c3f780cd9409386b5b4fbcccaadbe7035c2b9) Thanks [@IMax153](https://github.com/IMax153)! - Make help documentation print built-in options by default
+
+  The printing of built-in options in the help documentation can be disabled by providing a custom
+  `CliConfig` to your CLI application with `showBuiltIns` set to `false`.
+
 ## 0.24.0
 
 ### Minor Changes

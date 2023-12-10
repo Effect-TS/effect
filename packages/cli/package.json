@@ -1,6 +1,6 @@
 {
   "name": "@effect/cli",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "type": "module",
   "packageManager": "pnpm@8.10.2",
   "publishConfig": {
