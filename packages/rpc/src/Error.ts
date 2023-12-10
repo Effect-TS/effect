@@ -38,7 +38,7 @@ export const RpcNotFound: SchemaC<
  */
 export interface RpcDecodeFailure {
   readonly _tag: "RpcDecodeFailure"
-  readonly errors: ROA.NonEmptyReadonlyArray<ParseResult.ParseErrors>
+  readonly errors: ROA.NonEmptyReadonlyArray<ParseResult.ParseIssue>
 }
 
 /**
@@ -48,7 +48,7 @@ export interface RpcDecodeFailure {
 export const RpcDecodeFailure: SchemaC<
   RpcDecodeFailure,
   RpcDecodeFailure,
-  { readonly errors: ROA.NonEmptyReadonlyArray<ParseResult.ParseErrors> }
+  { readonly errors: ROA.NonEmptyReadonlyArray<ParseResult.ParseIssue> }
 > = withConstructorTagged(
   Schema.struct({
     _tag: Schema.literal("RpcDecodeFailure"),
@@ -63,7 +63,7 @@ export const RpcDecodeFailure: SchemaC<
  */
 export interface RpcEncodeFailure {
   readonly _tag: "RpcEncodeFailure"
-  readonly errors: ROA.NonEmptyReadonlyArray<ParseResult.ParseErrors>
+  readonly errors: ROA.NonEmptyReadonlyArray<ParseResult.ParseIssue>
 }
 
 /**
@@ -73,7 +73,7 @@ export interface RpcEncodeFailure {
 export const RpcEncodeFailure: SchemaC<
   RpcEncodeFailure,
   RpcEncodeFailure,
-  { readonly errors: ROA.NonEmptyReadonlyArray<ParseResult.ParseErrors> }
+  { readonly errors: ROA.NonEmptyReadonlyArray<ParseResult.ParseIssue> }
 > = withConstructorTagged(
   Schema.struct({
     _tag: Schema.literal("RpcEncodeFailure"),
