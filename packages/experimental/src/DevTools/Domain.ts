@@ -64,7 +64,7 @@ export const Span: Schema.Schema<SpanFrom, Span> = Schema.struct({
   sampled: Schema.boolean,
   attributes: Schema.readonlyMap(Schema.string, Schema.unknown),
   status: SpanStatus,
-  parent: Schema.option(Schema.lazy(() => ParentSpan))
+  parent: Schema.option(Schema.suspend(() => ParentSpan))
 })
 
 /**
