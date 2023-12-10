@@ -87,6 +87,8 @@ jobs:
           output=$(echo "$output" | awk '/packages published successfully:/{flag=1; next} flag')
           output=$(echo "$output" | grep -o '[^ ]*@[^ ]*' | awk '{print "\"" $0 "\""}' | paste -sd ',')
           echo "tags=[$output]" >> $GITHUB_OUTPUT
+          # remove npm tag
+          npm dist-tag rm "$output" snapshot
 
       - name: Update comment (success)
         uses: actions/github-script@v6
