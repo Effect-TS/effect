@@ -164,7 +164,7 @@ export const layerConfig = (
   options: Config.Config.Wrap<Omit<ServeOptions, "fetch" | "error">>
 ) =>
   Layer.merge(
-    Layer.scoped(Server.Server, Effect.flatMap(Effect.config(Config.unwrap(options)), make)),
+    Layer.scoped(Server.Server, Effect.flatMap(Config.unwrap(options), make)),
     Platform.layer
   )
 

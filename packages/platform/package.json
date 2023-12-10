@@ -36,12 +36,12 @@
     "path-browserify": "^1.0.1"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.52.0",
-    "effect": "2.0.0-next.59"
+    "@effect/schema": "^0.53.0",
+    "effect": "2.0.0-next.60"
   },
   "devDependencies": {
-    "@effect/schema": "^0.52.0",
+    "@effect/schema": "^0.53.0",
     "@types/path-browserify": "^1.0.2",
-    "effect": "2.0.0-next.59"
+    "effect": "2.0.0-next.60"
   }
 }

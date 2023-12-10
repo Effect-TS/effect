@@ -258,10 +258,7 @@ export const layerConfig = (
   Layer.merge(
     Layer.scoped(
       Server.Server,
-      Effect.flatMap(
-        Effect.config(Config.unwrap(options)),
-        (options) => make(evaluate, options)
-      )
+      Effect.flatMap(Config.unwrap(options), (options) => make(evaluate, options))
     ),
     internalPlatform.layer
   )
