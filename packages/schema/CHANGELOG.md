@@ -1,5 +1,21 @@
 # @effect/schema
 
+## 0.53.0
+
+### Minor Changes
+
+- [#635](https://github.com/Effect-TS/schema/pull/635) [`30802d5`](https://github.com/Effect-TS/schema/commit/30802d5280ad6cab154c98c00076d37451b1fbdd) Thanks [@gcanti](https://github.com/gcanti)! - JSONSchema: rename `JsonSchema7Top` to `JsonSchema7Root`
+
+- [#650](https://github.com/Effect-TS/schema/pull/650) [`05c2275`](https://github.com/Effect-TS/schema/commit/05c22753171e67e42956b8f63b744ef855afde40) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+- [#640](https://github.com/Effect-TS/schema/pull/640) [`8dcf12c`](https://github.com/Effect-TS/schema/commit/8dcf12cec004fb04495a6726474d10ecd065a2e0) Thanks [@gcanti](https://github.com/gcanti)! - ParseResult: rename `ParseErrors` to `ParseIssue`
+
+- [#636](https://github.com/Effect-TS/schema/pull/636) [`deddf6e`](https://github.com/Effect-TS/schema/commit/deddf6e2a88acea89e7eb96b8ff0720ed2bc7077) Thanks [@gcanti](https://github.com/gcanti)! - Schema: rename lazy to suspend (to align with Effect.suspend)
+
+### Patch Changes
+
+- [#645](https://github.com/Effect-TS/schema/pull/645) [`ece6128`](https://github.com/Effect-TS/schema/commit/ece6128e79d23311491a1eb4e6cf18523e8f7c09) Thanks [@gcanti](https://github.com/gcanti)! - ensure that JSON Schema annotations can be exclusively applied to refinements
+
 ## 0.52.0
 
 ### Minor Changes
