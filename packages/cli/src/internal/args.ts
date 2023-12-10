@@ -776,7 +776,7 @@ const validateInternal = (
       return validateInternal(self.args as Instruction, args, config).pipe(
         Effect.catchTag("MissingValue", (e) =>
           Effect.map(
-            Effect.mapError(Effect.config(self.config), () => e),
+            Effect.mapError(self.config, () => e),
             (value) => [args, value] as [ReadonlyArray<string>, any]
           ))
       )

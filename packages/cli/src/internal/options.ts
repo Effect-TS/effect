@@ -1251,7 +1251,7 @@ const parseInternal = (
       return parseInternal(self.options as Instruction, args, config).pipe(
         Effect.catchTag(
           "MissingValue",
-          (e) => Effect.mapError(Effect.config(self.config), () => e)
+          (e) => Effect.mapError(self.config, () => e)
         )
       )
     }
