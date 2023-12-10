@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.2.8
+
+### Patch Changes
+
+- [#25](https://github.com/Effect-TS/experimental/pull/25) [`e8d5e6d`](https://github.com/Effect-TS/experimental/commit/e8d5e6d5fdc529d55bd3e3c6d9a4bc59dedd5060) Thanks [@tim-smart](https://github.com/tim-smart)! - fix server interrupt
+
 ## 0.2.7
 
 ### Patch Changes
