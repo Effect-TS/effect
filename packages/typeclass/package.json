@@ -52,7 +52,7 @@
   },
   "sideEffects": false,
   "peerDependencies": {
-    "effect": "2.0.0-next.59"
+    "effect": "2.0.0-next.60"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.4",
