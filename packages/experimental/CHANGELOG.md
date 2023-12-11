@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.3.1
+
+### Patch Changes
+
+- [#29](https://github.com/Effect-TS/experimental/pull/29) [`7f346ac`](https://github.com/Effect-TS/experimental/commit/7f346ac95ad2b31e07f1494e8c78e66b2e1bdb40) Thanks [@tim-smart](https://github.com/tim-smart)! - add metrics to dev tools
+
 ## 0.3.0
 
 ### Minor Changes
