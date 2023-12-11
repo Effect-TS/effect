@@ -149,7 +149,140 @@ export const Pong = Schema.struct({
  * @since 1.0.0
  * @category schemas
  */
-export const Request = Schema.union(Ping, Span)
+export const MetricsRequest = Schema.struct({
+  _tag: Schema.literal("MetricsRequest")
+})
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const MetricLabel = Schema.struct({
+  key: Schema.string,
+  value: Schema.string
+})
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const metric = <Tag extends string, IS, S>(tag: Tag, state: Schema.Schema<IS, S>) =>
+  Schema.struct({
+    _tag: Schema.literal(tag),
+    name: Schema.string,
+    description: Schema.optional(Schema.string).toOption(),
+    tags: Schema.array(MetricLabel),
+    state
+  })
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Counter = metric(
+  "Counter",
+  Schema.struct({
+    count: Schema.union(Schema.number, Schema.bigint)
+  })
+)
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Frequency = metric(
+  "Frequency",
+  Schema.struct({
+    occurrences: Schema.record(Schema.string, Schema.number)
+  })
+)
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Gauge = metric(
+  "Gauge",
+  Schema.struct({
+    value: Schema.union(Schema.number, Schema.bigint)
+  })
+)
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Histogram = metric(
+  "Histogram",
+  Schema.struct({
+    buckets: Schema.array(Schema.tuple(Schema.number, Schema.number)),
+    count: Schema.number,
+    min: Schema.number,
+    max: Schema.number,
+    sum: Schema.number
+  })
+)
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Summary = metric(
+  "Summary",
+  Schema.struct({
+    error: Schema.number,
+    quantiles: Schema.array(Schema.tuple(Schema.number, Schema.option(Schema.number))),
+    count: Schema.number,
+    min: Schema.number,
+    max: Schema.number,
+    sum: Schema.number
+  })
+)
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Metric = Schema.union(Counter, Frequency, Gauge, Histogram, Summary)
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export type Metric = Schema.Schema.To<typeof Metric>
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export type MetricFrom = Schema.Schema.From<typeof Metric>
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const MetricsSnapshot = Schema.struct({
+  _tag: Schema.literal("MetricsSnapshot"),
+  metrics: Schema.array(Metric)
+})
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export type MetricsSnapshot = Schema.Schema.To<typeof MetricsSnapshot>
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export type MetricsSnapshotFrom = Schema.Schema.From<typeof MetricsSnapshot>
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Request = Schema.union(Ping, Span, MetricsSnapshot)
 
 /**
  * @since 1.0.0
@@ -161,10 +294,34 @@ export type Request = Schema.Schema.To<typeof Request>
  * @since 1.0.0
  * @category schemas
  */
-export const Response = Pong
+export declare namespace Request {
+  /**
+   * @since 1.0.0
+   * @category schemas
+   */
+  export type WithoutPing = Exclude<Request, { readonly _tag: "Ping" }>
+}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Response = Schema.union(Pong, MetricsRequest)
 
 /**
  * @since 1.0.0
  * @category schemas
  */
 export type Response = Schema.Schema.To<typeof Response>
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export declare namespace Response {
+  /**
+   * @since 1.0.0
+   * @category schemas
+   */
+  export type WithoutPong = Exclude<Response, { readonly _tag: "Pong" }>
+}

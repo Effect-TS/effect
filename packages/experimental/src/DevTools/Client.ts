@@ -6,6 +6,8 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Metric from "effect/Metric"
+import * as MetricState from "effect/MetricState"
 import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
@@ -19,8 +21,7 @@ import * as Domain from "./Domain.js"
  * @category models
  */
 export interface ClientImpl {
-  readonly unsafeWrite: (_: Domain.Span) => void
-  readonly write: (_: Domain.Span) => Effect.Effect<never, never, void>
+  readonly unsafeAddSpan: (_: Domain.Span) => void
 }
 
 /**
@@ -47,6 +48,64 @@ export const make: Effect.Effect<Scope.Scope | Socket.Socket, never, ClientImpl>
     Queue.bounded<Domain.Request>(100),
     Queue.shutdown
   ))
+
+  function metricsSnapshot(): Domain.MetricsSnapshot {
+    const snapshot = Metric.unsafeSnapshot()
+    const metrics: Array<Domain.Metric> = []
+
+    for (let i = 0, len = snapshot.length; i < len; i++) {
+      const metricPair = snapshot[i]
+      if (MetricState.isCounterState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Counter",
+          name: metricPair.metricKey.name,
+          description: metricPair.metricKey.description,
+          tags: metricPair.metricKey.tags,
+          state: metricPair.metricState
+        })
+      } else if (MetricState.isGaugeState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Gauge",
+          name: metricPair.metricKey.name,
+          description: metricPair.metricKey.description,
+          tags: metricPair.metricKey.tags,
+          state: metricPair.metricState
+        })
+      } else if (MetricState.isHistogramState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Histogram",
+          name: metricPair.metricKey.name,
+          description: metricPair.metricKey.description,
+          tags: metricPair.metricKey.tags,
+          state: metricPair.metricState
+        })
+      } else if (MetricState.isSummaryState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Summary",
+          name: metricPair.metricKey.name,
+          description: metricPair.metricKey.description,
+          tags: metricPair.metricKey.tags,
+          state: metricPair.metricState
+        })
+      } else if (MetricState.isFrequencyState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Frequency",
+          name: metricPair.metricKey.name,
+          description: metricPair.metricKey.description,
+          tags: metricPair.metricKey.tags,
+          state: {
+            occurrences: Object.fromEntries(metricPair.metricState.occurrences.entries())
+          }
+        })
+      }
+    }
+
+    return {
+      _tag: "MetricsSnapshot",
+      metrics
+    }
+  }
+
   yield* _(
     Stream.fromQueue(requests),
     Stream.pipeThroughChannel(
@@ -55,7 +114,16 @@ export const make: Effect.Effect<Scope.Scope | Socket.Socket, never, ClientImpl>
         outputSchema: Domain.Response
       })
     ),
-    Stream.runDrain,
+    Stream.runForEach((req) => {
+      switch (req._tag) {
+        case "MetricsRequest": {
+          return requests.offer(metricsSnapshot())
+        }
+        case "Pong": {
+          return Effect.unit
+        }
+      }
+    }),
     Effect.tapErrorCause(Effect.logDebug),
     Effect.retry(
       Schedule.exponential("500 millis").pipe(
@@ -72,8 +140,7 @@ export const make: Effect.Effect<Scope.Scope | Socket.Socket, never, ClientImpl>
   )
 
   return Client.of({
-    write: (request) => Queue.offer(requests, request),
-    unsafeWrite: (request) => Queue.unsafeOffer(requests, request)
+    unsafeAddSpan: (request) => Queue.unsafeOffer(requests, request)
   })
 })
 
@@ -94,10 +161,10 @@ export const makeTracer: Effect.Effect<Client, never, Tracer.Tracer> = Effect.ge
   return Tracer.make({
     span(name, parent, context, links, startTime) {
       const span = currentTracer.span(name, parent, context, links, startTime)
-      client.unsafeWrite(span)
+      client.unsafeAddSpan(span)
       const oldEnd = span.end
       span.end = function(this: any) {
-        client.unsafeWrite(span)
+        client.unsafeAddSpan(span)
         return oldEnd.apply(this, arguments as any)
       }
       return span

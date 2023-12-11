@@ -16,7 +16,16 @@ import * as Domain from "./Domain.js"
  */
 export interface ServerImpl {
   readonly run: Effect.Effect<never, SocketServer.SocketServerError, never>
-  readonly clients: Queue.Dequeue<Queue.Dequeue<Domain.Span>>
+  readonly clients: Queue.Dequeue<Client>
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Client {
+  readonly queue: Queue.Dequeue<Domain.Request.WithoutPing>
+  readonly request: (_: Domain.Response.WithoutPong) => Effect.Effect<never, never, void>
 }
 
 /**
@@ -40,16 +49,21 @@ export const Server = Context.Tag<Server, ServerImpl>("@effect/experimental/DevT
 export const make = Effect.gen(function*(_) {
   const server = yield* _(SocketServer.SocketServer)
   const clients = yield* _(Effect.acquireRelease(
-    Queue.unbounded<Queue.Dequeue<Domain.Span>>(),
+    Queue.unbounded<Client>(),
     Queue.shutdown
   ))
 
   const handle = (socket: Socket.Socket) =>
     Effect.gen(function*(_) {
       const responses = yield* _(Queue.unbounded<Domain.Response>())
-      const requests = yield* _(Queue.unbounded<Domain.Span>())
+      const requests = yield* _(Queue.unbounded<Domain.Request.WithoutPing>())
 
-      yield* _(clients.offer(requests))
+      const client: Client = {
+        queue: requests,
+        request: (res) => responses.offer(res)
+      }
+
+      yield* _(clients.offer(client))
 
       yield* _(
         Stream.fromQueue(responses),
@@ -84,5 +98,5 @@ export const make = Effect.gen(function*(_) {
   return {
     run: server.run,
     clients
-  } as const
+  } satisfies ServerImpl
 })
