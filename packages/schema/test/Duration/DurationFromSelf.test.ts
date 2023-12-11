@@ -1,7 +1,8 @@
+import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Schema/DurationFromSelf", () => {
   const schema = S.DurationFromSelf
@@ -19,5 +20,13 @@ describe("Schema/DurationFromSelf", () => {
 
   it("encoding", async () => {
     await Util.expectEncodeSuccess(schema, Duration.seconds(5), Duration.seconds(5))
+  })
+
+  it("pretty", () => {
+    const pretty = Pretty.to(schema)
+
+    expect(pretty(Duration.millis(500))).toEqual("Duration(500ms)")
+    expect(pretty(Duration.seconds(30))).toEqual("Duration(30s)")
+    expect(pretty(Duration.minutes(5.25))).toEqual("Duration(5m 15s)")
   })
 })

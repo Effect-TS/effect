@@ -770,3 +770,25 @@ S.BigDecimalFromNumber
 
 // $ExpectType Schema<string, BigDecimal>
 S.bigDecimalFromString(S.string)
+
+// ---------------------------------------------
+// Duration
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly [seconds: number, nanos: number], Duration>
+S.Duration
+
+// $ExpectType Schema<Duration, Duration>
+S.DurationFromSelf
+
+// $ExpectType Schema<number, Duration>
+S.durationFromMillis(S.number)
+
+// $ExpectType Schema<number, Duration>
+S.DurationFromMillis
+
+// $ExpectType Schema<bigint, Duration>
+S.durationFromNanos(S.bigintFromSelf)
+
+// $ExpectType Schema<bigint, Duration>
+S.DurationFromNanos

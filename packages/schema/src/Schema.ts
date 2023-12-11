@@ -3010,13 +3010,10 @@ export const DurationFromSelf: Schema<Duration.Duration> = declare(
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
     [AST.IdentifierAnnotationId]: "Duration",
-    [hooks.PrettyHookId]: (): Pretty<Duration.Duration> =>
-      Duration.match({
-        onMillis: (_) => `Duration.millis(${_})`,
-        onNanos: (_) => `Duration.nanos(${_})`
-      }),
+    [hooks.PrettyHookId]: (): Pretty<Duration.Duration> => (duration) => String(duration),
     [hooks.ArbitraryHookId]: (): Arbitrary<Duration.Duration> => (fc) =>
       fc.oneof(
+        fc.constant(Duration.infinity),
         fc.bigUint().map((_) => Duration.nanos(_)),
         fc.bigUint().map((_) => Duration.micros(_)),
         fc.maxSafeNat().map((_) => Duration.millis(_)),
@@ -3051,15 +3048,85 @@ export const durationFromHrTime = <I, A extends readonly [seconds: number, nanos
     { strict: false }
   )
 
+/**
+ * A combinator that transforms a `bigint` into a `Duration`.
+ * Treats the value as the number of nanoseconds.
+ *
+ * @category Duration transformations
+ * @since 1.0.0
+ */
+export const durationFromNanos = <I, A extends bigint>(
+  self: Schema<I, A>
+): Schema<I, Duration.Duration> =>
+  transformOrFail(
+    self,
+    DurationFromSelf,
+    (nanos) => ParseResult.succeed(Duration.nanos(nanos)),
+    (duration, _, ast) =>
+      Duration.toNanos(duration).pipe(Option.match({
+        onNone: () => ParseResult.fail(ParseResult.type(ast, duration)),
+        onSome: (val) => ParseResult.succeed(val)
+      })),
+    { strict: false }
+  )
+
+/**
+ * A schema that transforms a `bigint` tuple into a `Duration`.
+ * Treats the value as the number of nanoseconds.
+ *
+ * @category Duration constructors
+ * @since 1.0.0
+ */
+export const DurationFromNanos: Schema<
+  bigint,
+  Duration.Duration
+> = durationFromNanos(bigintFromSelf)
+
+/**
+ * A combinator that transforms a `number` into a `Duration`.
+ * Treats the value as the number of milliseconds.
+ *
+ * @category Duration transformations
+ * @since 1.0.0
+ */
+export const durationFromMillis = <I, A extends number>(
+  self: Schema<I, A>
+): Schema<I, Duration.Duration> =>
+  transform(
+    self,
+    DurationFromSelf,
+    (ms) => Duration.millis(ms),
+    (n) => Duration.toMillis(n),
+    { strict: false }
+  )
+
+/**
+ * A schema that transforms a `number` tuple into a `Duration`.
+ * Treats the value as the number of milliseconds.
+ *
+ * @category Duration constructors
+ * @since 1.0.0
+ */
+export const DurationFromMillis: Schema<
+  number,
+  Duration.Duration
+> = durationFromMillis(number)
+
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
-  NonNegative.pipe(annotations({
-    [AST.TitleAnnotationId]: "seconds",
-    [AST.DescriptionAnnotationId]: "seconds"
-  })),
-  NonNegative.pipe(annotations({
-    [AST.TitleAnnotationId]: "nanos",
-    [AST.DescriptionAnnotationId]: "nanos"
-  }))
+  NonNegative.pipe(
+    annotations({
+      [AST.TitleAnnotationId]: "seconds",
+      [AST.DescriptionAnnotationId]: "seconds"
+    }),
+    finite()
+  ),
+  NonNegative.pipe(
+    annotations({
+      [AST.TitleAnnotationId]: "nanos",
+      [AST.DescriptionAnnotationId]: "nanos"
+    }),
+    finite()
+  )
 ).pipe(annotations({
   [AST.TitleAnnotationId]: "a high resolution time tuple",
   [AST.DescriptionAnnotationId]: "a high resolution time tuple"
@@ -3077,6 +3144,147 @@ export {
    */
   _Duration as Duration
 }
+
+/**
+ * Clamps a `Duration` between a minimum and a maximum value.
+ *
+ * @category Duration transformations
+ * @since 1.0.0
+ */
+export const clampDuration =
+  (minimum: Duration.DurationInput, maximum: Duration.DurationInput) =>
+  <I, A extends Duration.Duration>(self: Schema<I, A>): Schema<I, A> =>
+    transform(
+      self,
+      self.pipe(to, betweenDuration(minimum, maximum)),
+      (self) => Duration.clamp(self, { minimum, maximum }),
+      identity,
+      { strict: false }
+    )
+
+// ---------------------------------------------
+// Duration filters
+// ---------------------------------------------
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const LessThanDurationTypeId = Symbol.for("@effect/schema/TypeId/LessThanDuration")
+
+/**
+ * @category Duration filters
+ * @since 1.0.0
+ */
+export const lessThanDuration = <A extends Duration.Duration>(
+  max: Duration.DurationInput,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => Duration.lessThan(a, max), {
+      typeId: { id: LessThanDurationTypeId, params: { max } },
+      description: `a Duration less than ${Duration.decode(max)}`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const LessThanOrEqualToDurationTypeId = Symbol.for(
+  "@effect/schema/TypeId/LessThanOrEqualToDuration"
+)
+
+/**
+ * @category Duration filters
+ * @since 1.0.0
+ */
+export const lessThanOrEqualToDuration = <A extends Duration.Duration>(
+  max: Duration.DurationInput,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => Duration.lessThanOrEqualTo(a, max), {
+      typeId: { id: LessThanDurationTypeId, params: { max } },
+      description: `a Duration less than or equal to ${Duration.decode(max)}`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const GreaterThanDurationTypeId = Symbol.for("@effect/schema/TypeId/GreaterThanDuration")
+
+/**
+ * @category Duration filters
+ * @since 1.0.0
+ */
+export const greaterThanDuration = <A extends Duration.Duration>(
+  min: Duration.DurationInput,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => Duration.greaterThan(a, min), {
+      typeId: { id: GreaterThanDurationTypeId, params: { min } },
+      description: `a Duration greater than ${Duration.decode(min)}`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const GreaterThanOrEqualToDurationTypeId = Symbol.for(
+  "@effect/schema/TypeId/GreaterThanOrEqualToDuration"
+)
+
+/**
+ * @category Duration filters
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualToDuration = <A extends Duration.Duration>(
+  min: Duration.DurationInput,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => Duration.greaterThanOrEqualTo(a, min), {
+      typeId: { id: GreaterThanOrEqualToDurationTypeId, params: { min } },
+      description: `a Duration greater than or equal to ${Duration.decode(min)}`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const BetweenDurationTypeId = Symbol.for("@effect/schema/TypeId/BetweenDuration")
+
+/**
+ * @category Duration filters
+ * @since 1.0.0
+ */
+export const betweenDuration = <A extends Duration.Duration>(
+  minimum: Duration.DurationInput,
+  maximum: Duration.DurationInput,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => Duration.between(a, { minimum, maximum }), {
+      typeId: { id: BetweenDurationTypeId, params: { maximum, minimum } },
+      description: `a Duration between ${Duration.decode(minimum)} and ${Duration.decode(maximum)}`,
+      ...options
+    })
+  )
 
 // ---------------------------------------------
 // Uint8Array constructors
