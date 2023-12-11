@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.19.1
+
+### Patch Changes
+
+- [#62](https://github.com/Effect-TS/typeclass/pull/62) [`2205f0a`](https://github.com/Effect-TS/typeclass/commit/2205f0a04267db4ffba9967ed8a1e82611027bc6) Thanks [@gcanti](https://github.com/gcanti)! - fix peerDependencies
+
 ## 0.19.0
 
 ### Minor Changes
