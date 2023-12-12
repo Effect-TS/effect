@@ -7,6 +7,7 @@ import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { HashMap } from "effect/HashMap"
 import type { HashSet } from "effect/HashSet"
+import type { Layer } from "effect/Layer"
 import type { Option } from "effect/Option"
 import { type Pipeable } from "effect/Pipeable"
 import type * as Types from "effect/Types"
@@ -45,6 +46,7 @@ export interface Command<Name extends string, R, E, A>
   readonly descriptor: Descriptor.Command<A>
   readonly handler: (_: A) => Effect<R, E, void>
   readonly tag: Tag<Command.Context<Name>, A>
+  readonly transform: Command.Transform<R, E, A>
 }
 
 /**
@@ -115,6 +117,12 @@ export declare namespace Command {
     readonly options: ReadonlyArray<Options<any>>
     readonly tree: ParsedConfigTree
   }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Transform<R, E, A> = (effect: Effect<any, any, void>, config: A) => Effect<R, E, void>
 }
 
 /**
@@ -247,6 +255,50 @@ export const prompt: <Name extends string, A, R, E>(
  * @since 1.0.0
  * @category combinators
  */
+export const provide: {
+  <A, LR, LE, LA>(
+    layer: Layer<LR, LE, LA> | ((_: A) => Layer<LR, LE, LA>)
+  ): <Name extends string, R, E>(
+    self: Command<Name, R, E, A>
+  ) => Command<Name, LR | Exclude<R, LA>, LE | E, A>
+  <Name extends string, R, E, A, LR, LE, LA>(
+    self: Command<Name, R, E, A>,
+    layer: Layer<LR, LE, LA> | ((_: A) => Layer<LR, LE, LA>)
+  ): Command<Name, LR | Exclude<R, LA>, E | LE, A>
+} = Internal.provide
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const provideEffectDiscard: {
+  <A, R2, E2, _>(
+    effect: Effect<R2, E2, _> | ((_: A) => Effect<R2, E2, _>)
+  ): <Name extends string, R, E>(self: Command<Name, R, E, A>) => Command<Name, R2 | R, E2 | E, A>
+  <Name extends string, R, E, A, R2, E2, _>(
+    self: Command<Name, R, E, A>,
+    effect: Effect<R2, E2, _> | ((_: A) => Effect<R2, E2, _>)
+  ): Command<Name, R | R2, E | E2, A>
+} = Internal.provideEffectDiscard
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const transformHandler: {
+  <R, E, A, R2, E2>(
+    f: (effect: Effect<R, E, void>, config: A) => Effect<R2, E2, void>
+  ): <Name extends string>(self: Command<Name, R, E, A>) => Command<Name, R | R2, E | E2, A>
+  <Name extends string, R, E, A, R2, E2>(
+    self: Command<Name, R, E, A>,
+    f: (effect: Effect<R, E, void>, config: A) => Effect<R2, E2, void>
+  ): Command<Name, R | R2, E | E2, A>
+} = Internal.transformHandler
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const withDescription: {
   (
     help: string | HelpDoc
@@ -256,6 +308,20 @@ export const withDescription: {
     help: string | HelpDoc
   ): Command<Name, R, E, A>
 } = Internal.withDescription
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withHandler: {
+  <A, R, E>(
+    handler: (_: A) => Effect<R, E, void>
+  ): <Name extends string, XR, XE>(self: Command<Name, XR, XE, A>) => Command<Name, R, E, A>
+  <Name extends string, XR, XE, A, R, E>(
+    self: Command<Name, XR, XE, A>,
+    handler: (_: A) => Effect<R, E, void>
+  ): Command<Name, R, E, A>
+} = Internal.withHandler
 
 /**
  * @since 1.0.0

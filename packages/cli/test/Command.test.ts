@@ -8,7 +8,15 @@ const git = Command.make("git", {
     Options.withAlias("v"),
     Options.withFallbackConfig(Config.boolean("VERBOSE"))
   )
-}).pipe(Command.withDescription("the stupid content tracker"))
+}).pipe(
+  Command.withDescription("the stupid content tracker"),
+  Command.provideEffectDiscard(() =>
+    Effect.flatMap(
+      Messages,
+      (_) => _.log("shared")
+    )
+  )
+)
 
 const clone = Command.make("clone", {
   repository: Args.text({ name: "repository" }).pipe(
@@ -27,16 +35,20 @@ const clone = Command.make("clone", {
 
 const add = Command.make("add", {
   pathspec: Args.text({ name: "pathspec" })
-}, ({ pathspec }) =>
-  Effect.gen(function*(_) {
-    const { log } = yield* _(Messages)
-    const { verbose } = yield* _(git)
-    if (verbose) {
-      yield* _(log(`Adding ${pathspec}`))
-    } else {
-      yield* _(log(`Adding`))
-    }
-  })).pipe(Command.withDescription("Add file contents to the index"))
+}).pipe(
+  Command.withHandler(({ pathspec }) =>
+    Effect.gen(function*(_) {
+      const { log } = yield* _(Messages)
+      const { verbose } = yield* _(git)
+      if (verbose) {
+        yield* _(log(`Adding ${pathspec}`))
+      } else {
+        yield* _(log(`Adding`))
+      }
+    })
+  ),
+  Command.withDescription("Add file contents to the index")
+)
 
 const run = git.pipe(
   Command.withSubcommands([clone, add]),
@@ -53,7 +65,7 @@ describe("Command", () => {
         const messages = yield* _(Messages)
         yield* _(run(["--verbose"]))
         yield* _(run([]))
-        assert.deepStrictEqual(yield* _(messages.messages), [])
+        assert.deepStrictEqual(yield* _(messages.messages), ["shared", "shared"])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
 
     it("add", () =>
@@ -62,7 +74,9 @@ describe("Command", () => {
         yield* _(run(["add", "file"]))
         yield* _(run(["--verbose", "add", "file"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
+          "shared",
           "Adding",
+          "shared",
           "Adding file"
         ])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
@@ -73,7 +87,9 @@ describe("Command", () => {
         yield* _(run(["clone", "repo"]))
         yield* _(run(["--verbose", "clone", "repo"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
+          "shared",
           "Cloning",
+          "shared",
           "Cloning repo"
         ])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
@@ -83,6 +99,7 @@ describe("Command", () => {
         const messages = yield* _(Messages)
         yield* _(run(["clone", "repo"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
+          "shared",
           "Cloning repo"
         ])
       }).pipe(
@@ -98,6 +115,7 @@ describe("Command", () => {
         const messages = yield* _(Messages)
         yield* _(run(["clone"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
+          "shared",
           "Cloning repo"
         ])
       }).pipe(

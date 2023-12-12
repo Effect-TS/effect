@@ -3,10 +3,11 @@ import type * as Terminal from "@effect/platform/Terminal"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
-import { dual } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import type * as HashMap from "effect/HashMap"
 import type * as HashSet from "effect/HashSet"
+import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -135,13 +136,31 @@ const getDescriptor = <Name extends string, R, E, A>(self: Command.Command<Name,
 const makeProto = <Name extends string, R, E, A>(
   descriptor: Descriptor.Command<A>,
   handler: (_: A) => Effect.Effect<R, E, void>,
-  tag?: Context.Tag<any, any>
+  tag?: Context.Tag<any, any>,
+  transform: Command.Command.Transform<R, E, A> = identity
 ): Command.Command<Name, R, E, A> => {
   const self = Object.create(Prototype)
   self.descriptor = descriptor
   self.handler = handler
+  self.transform = transform
   self.tag = tag ?? Context.Tag()
   return self
+}
+
+const makeDerive = <Name extends string, R, E, A>(
+  self: Command.Command<Name, any, any, A>,
+  options: {
+    readonly descriptor?: Descriptor.Command<A>
+    readonly handler?: (_: A) => Effect.Effect<R, E, void>
+    readonly transform?: Command.Command.Transform<R, E, A>
+  }
+): Command.Command<Name, R, E, A> => {
+  const command = Object.create(Prototype)
+  command.descriptor = options.descriptor ?? self.descriptor
+  command.handler = options.handler ?? self.handler
+  command.transform = options.transform ?? self.transform
+  command.tag = self.tag
+  return command
 }
 
 /** @internal */
@@ -272,7 +291,7 @@ const mapDescriptor = dual<
     self: Command.Command<Name, R, E, A>,
     f: (_: Descriptor.Command<A>) => Descriptor.Command<A>
   ) => Command.Command<Name, R, E, A>
->(2, (self, f) => makeProto(f(self.descriptor), self.handler, self.tag))
+>(2, (self, f) => makeDerive(self, { descriptor: f(self.descriptor) }))
 
 /** @internal */
 export const prompt = <Name extends string, A, R, E>(
@@ -287,6 +306,68 @@ export const prompt = <Name extends string, A, R, E>(
     ),
     handler
   )
+
+/** @internal */
+export const withHandler = dual<
+  <A, R, E>(
+    handler: (_: A) => Effect.Effect<R, E, void>
+  ) => <Name extends string, XR, XE>(
+    self: Command.Command<Name, XR, XE, A>
+  ) => Command.Command<Name, R, E, A>,
+  <Name extends string, XR, XE, A, R, E>(
+    self: Command.Command<Name, XR, XE, A>,
+    handler: (_: A) => Effect.Effect<R, E, void>
+  ) => Command.Command<Name, R, E, A>
+>(2, (self, handler) => makeDerive(self, { handler, transform: identity }))
+
+/** @internal */
+export const transformHandler = dual<
+  <R, E, A, R2, E2>(
+    f: (effect: Effect.Effect<R, E, void>, config: A) => Effect.Effect<R2, E2, void>
+  ) => <Name extends string>(
+    self: Command.Command<Name, R, E, A>
+  ) => Command.Command<Name, R | R2, E | E2, A>,
+  <Name extends string, R, E, A, R2, E2>(
+    self: Command.Command<Name, R, E, A>,
+    f: (effect: Effect.Effect<R, E, void>, config: A) => Effect.Effect<R2, E2, void>
+  ) => Command.Command<Name, R | R2, E | E2, A>
+>(2, (self, f) => makeDerive(self, { transform: f }))
+
+/** @internal */
+export const provide = dual<
+  <A, LR, LE, LA>(
+    layer: Layer.Layer<LR, LE, LA> | ((_: A) => Layer.Layer<LR, LE, LA>)
+  ) => <Name extends string, R, E>(
+    self: Command.Command<Name, R, E, A>
+  ) => Command.Command<Name, Exclude<R, LA> | LR, E | LE, A>,
+  <Name extends string, R, E, A, LR, LE, LA>(
+    self: Command.Command<Name, R, E, A>,
+    layer: Layer.Layer<LR, LE, LA> | ((_: A) => Layer.Layer<LR, LE, LA>)
+  ) => Command.Command<Name, Exclude<R, LA> | LR, E | LE, A>
+>(2, (self, layer) =>
+  makeDerive(self, {
+    transform: (effect, config) =>
+      Effect.provide(effect, typeof layer === "function" ? layer(config) : layer)
+  }))
+
+/** @internal */
+export const provideEffectDiscard = dual<
+  <A, R2, E2, _>(
+    effect: Effect.Effect<R2, E2, _> | ((_: A) => Effect.Effect<R2, E2, _>)
+  ) => <Name extends string, R, E>(
+    self: Command.Command<Name, R, E, A>
+  ) => Command.Command<Name, R | R2, E | E2, A>,
+  <Name extends string, R, E, A, R2, E2, _>(
+    self: Command.Command<Name, R, E, A>,
+    effect: Effect.Effect<R2, E2, _> | ((_: A) => Effect.Effect<R2, E2, _>)
+  ) => Command.Command<Name, R | R2, E | E2, A>
+>(2, (self, effect_) =>
+  makeDerive(self, {
+    transform: (self, config) => {
+      const effect = typeof effect_ === "function" ? effect_(config) : effect_
+      return Effect.zipRight(effect, self)
+    }
+  }))
 
 /** @internal */
 export const withDescription = dual<
@@ -357,7 +438,7 @@ export const withSubcommands = dual<
     self.descriptor,
     ReadonlyArray.map(subcommands, (_) => [_.tag, _.descriptor])
   )
-  const handlers = ReadonlyArray.reduce(
+  const subcommandMap = ReadonlyArray.reduce(
     subcommands,
     new Map<Context.Tag<any, any>, Command.Command<any, any, any, any>>(),
     (handlers, subcommand) => {
@@ -374,16 +455,17 @@ export const withSubcommands = dual<
   ) {
     if (args.subcommand._tag === "Some") {
       const [tag, value] = args.subcommand.value
-      const subcommand = handlers.get(tag)!
+      const subcommand = subcommandMap.get(tag)!
+      const subcommandEffect = subcommand.transform(subcommand.handler(value), value)
       return Effect.provideService(
-        subcommand.handler(value),
+        subcommandEffect,
         self.tag,
         args as any
       )
     }
     return self.handler(args as any)
   }
-  return makeProto(command as any, handler, self.tag) as any
+  return makeDerive(self as any, { descriptor: command as any, handler }) as any
 })
 
 /** @internal */
@@ -435,5 +517,6 @@ export const run = dual<
     command: self.descriptor
   })
   registeredDescriptors.set(self.tag, self.descriptor)
-  return (args) => InternalCliApp.run(app, args, self.handler)
+  const handler = (args: any) => self.transform(self.handler(args), args)
+  return (args) => InternalCliApp.run(app, args, handler)
 })
