@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.25.1
+
+### Patch Changes
+
+- [#422](https://github.com/Effect-TS/cli/pull/422) [`ca7dcd5`](https://github.com/Effect-TS/cli/commit/ca7dcd5fe5cc23527639e971d19d13e555912a37) Thanks [@tim-smart](https://github.com/tim-smart)! - add Command.withHandler,transformHandler,provide,provideEffectDiscard
+
 ## 0.25.0
 
 ### Minor Changes
