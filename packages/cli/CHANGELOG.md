@@ -1,5 +1,13 @@
 # @effect/cli
 
+## 0.25.3
+
+### Patch Changes
+
+- [#426](https://github.com/Effect-TS/cli/pull/426) [`5ac4637`](https://github.com/Effect-TS/cli/commit/5ac4637c37b779363115afb94b477e5f7558cf6b) Thanks [@tim-smart](https://github.com/tim-smart)! - add Command.provideSync
+
+- [#426](https://github.com/Effect-TS/cli/pull/426) [`5ac4637`](https://github.com/Effect-TS/cli/commit/5ac4637c37b779363115afb94b477e5f7558cf6b) Thanks [@tim-smart](https://github.com/tim-smart)! - add Command.provideEffect
+
 ## 0.25.2
 
 ### Patch Changes
