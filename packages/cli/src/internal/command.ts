@@ -351,6 +351,27 @@ export const provide = dual<
   }))
 
 /** @internal */
+export const provideEffect = dual<
+  <I, S, A, R2, E2>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<R2, E2, S> | ((_: A) => Effect.Effect<R2, E2, S>)
+  ) => <Name extends string, R, E>(
+    self: Command.Command<Name, R, E, A>
+  ) => Command.Command<Name, Exclude<R, I> | R2, E | E2, A>,
+  <Name extends string, R, E, A, I, S, R2, E2>(
+    self: Command.Command<Name, R, E, A>,
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<R2, E2, S> | ((_: A) => Effect.Effect<R2, E2, S>)
+  ) => Command.Command<Name, Exclude<R, I> | R2, E | E2, A>
+>(3, (self, tag, effect_) =>
+  makeDerive(self, {
+    transform: (self, config) => {
+      const effect = typeof effect_ === "function" ? effect_(config) : effect_
+      return Effect.provideServiceEffect(self, tag, effect)
+    }
+  }))
+
+/** @internal */
 export const provideEffectDiscard = dual<
   <A, R2, E2, _>(
     effect: Effect.Effect<R2, E2, _> | ((_: A) => Effect.Effect<R2, E2, _>)
@@ -366,6 +387,27 @@ export const provideEffectDiscard = dual<
     transform: (self, config) => {
       const effect = typeof effect_ === "function" ? effect_(config) : effect_
       return Effect.zipRight(effect, self)
+    }
+  }))
+
+/** @internal */
+export const provideSync = dual<
+  <I, S, A>(
+    tag: Context.Tag<I, S>,
+    service: S | ((_: A) => S)
+  ) => <Name extends string, R, E>(
+    self: Command.Command<Name, R, E, A>
+  ) => Command.Command<Name, Exclude<R, I>, E, A>,
+  <Name extends string, R, E, A, I, S>(
+    self: Command.Command<Name, R, E, A>,
+    tag: Context.Tag<I, S>,
+    service: S | ((_: A) => S)
+  ) => Command.Command<Name, Exclude<R, I>, E, A>
+>(3, (self, tag, f) =>
+  makeDerive(self, {
+    transform: (self, config) => {
+      const service = typeof f === "function" ? (f as any)(config) : f
+      return Effect.provideService(self, tag, service)
     }
   }))
 

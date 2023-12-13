@@ -271,6 +271,24 @@ export const provide: {
  * @since 1.0.0
  * @category combinators
  */
+export const provideEffect: {
+  <I, S, A, R2, E2>(
+    tag: Tag<I, S>,
+    effect: Effect<R2, E2, S> | ((_: A) => Effect<R2, E2, S>)
+  ): <Name extends string, R, E>(
+    self: Command<Name, R, E, A>
+  ) => Command<Name, R2 | Exclude<R, I>, E2 | E, A>
+  <Name extends string, R, E, A, I, S, R2, E2>(
+    self: Command<Name, R, E, A>,
+    tag: Tag<I, S>,
+    effect: Effect<R2, E2, S> | ((_: A) => Effect<R2, E2, S>)
+  ): Command<Name, R2 | Exclude<R, I>, E | E2, A>
+} = Internal.provideEffect
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const provideEffectDiscard: {
   <A, R2, E2, _>(
     effect: Effect<R2, E2, _> | ((_: A) => Effect<R2, E2, _>)
@@ -280,6 +298,22 @@ export const provideEffectDiscard: {
     effect: Effect<R2, E2, _> | ((_: A) => Effect<R2, E2, _>)
   ): Command<Name, R | R2, E | E2, A>
 } = Internal.provideEffectDiscard
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const provideSync: {
+  <I, S, A>(
+    tag: Tag<I, S>,
+    service: S | ((_: A) => S)
+  ): <Name extends string, R, E>(self: Command<Name, R, E, A>) => Command<Name, Exclude<R, I>, E, A>
+  <Name extends string, R, E, A, I, S>(
+    self: Command<Name, R, E, A>,
+    tag: Tag<I, S>,
+    service: S | ((_: A) => S)
+  ): Command<Name, Exclude<R, I>, E, A>
+} = Internal.provideSync
 
 /**
  * @since 1.0.0

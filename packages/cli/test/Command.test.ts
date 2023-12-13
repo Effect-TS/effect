@@ -33,11 +33,14 @@ const clone = Command.make("clone", {
     }
   })).pipe(Command.withDescription("Clone a repository into a new directory"))
 
+const AddService = Context.Tag<"AddService">()
+
 const add = Command.make("add", {
   pathspec: Args.text({ name: "pathspec" })
 }).pipe(
   Command.withHandler(({ pathspec }) =>
     Effect.gen(function*(_) {
+      yield* _(AddService)
       const { log } = yield* _(Messages)
       const { verbose } = yield* _(git)
       if (verbose) {
@@ -47,7 +50,8 @@ const add = Command.make("add", {
       }
     })
   ),
-  Command.withDescription("Add file contents to the index")
+  Command.withDescription("Add file contents to the index"),
+  Command.provideEffect(AddService, (_) => Effect.succeed("AddService" as const))
 )
 
 const run = git.pipe(
