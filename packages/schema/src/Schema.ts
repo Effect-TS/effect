@@ -4585,7 +4585,9 @@ export declare namespace TaggedRequest {
    * @category classes
    * @since 1.0.0
    */
-  export type Any = TaggedRequest<string, any, any, any, any, any, any>
+  export type Any =
+    | TaggedRequest<string, any, any, any, any, any, any>
+    | TaggedRequest<string, any, any, never, never, any, any>
 }
 
 /**
@@ -4641,7 +4643,6 @@ const makeClass = <I, A>(
   additionalProps?: any
 ): any => {
   const validator = Parser.validateSync(selfSchema)
-  const pretty = Pretty.to(selfSchema)
 
   return class extends Base {
     constructor(props: any = {}, disableValidation = false) {
@@ -4654,7 +4655,7 @@ const makeClass = <I, A>(
     static [TypeId] = variance
 
     toString() {
-      return `${this.constructor.name}(${pretty(this as any)})`
+      return Pretty.to(this.constructor as any)(this)
     }
 
     static pipe() {
