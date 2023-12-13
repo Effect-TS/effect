@@ -158,7 +158,10 @@ const makeDerive = <Name extends string, R, E, A>(
   const command = Object.create(Prototype)
   command.descriptor = options.descriptor ?? self.descriptor
   command.handler = options.handler ?? self.handler
-  command.transform = options.transform ?? self.transform
+  command.transform = options.transform
+    ? ((effect: Effect.Effect<R, E, void>, opts: A) =>
+      options.transform!(self.transform(effect, opts), opts))
+    : self.transform
   command.tag = self.tag
   return command
 }
