@@ -27,13 +27,13 @@
     "@effect/rpc-http": "workspace:^"
   },
   "devDependencies": {
-    "@effect/platform": "^0.34.0",
-    "@effect/schema": "^0.53.0",
+    "@effect/platform": "^0.35.0",
+    "@effect/schema": "^0.53.1",
     "effect": "2.0.0-next.60",
     "next": "^14.0.4"
   },
   "peerDependencies": {
-    "@effect/platform": "^0.34.0",
+    "@effect/platform": "^0.35.0",
     "effect": "2.0.0-next.60",
     "next": ">=13 <15"
   }

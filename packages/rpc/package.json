@@ -23,11 +23,11 @@
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
   },
   "devDependencies": {
-    "@effect/schema": "^0.53.0",
+    "@effect/schema": "^0.53.1",
     "effect": "2.0.0-next.60"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.53.0",
+    "@effect/schema": "^0.53.1",
     "effect": "2.0.0-next.60"
   }
 }
