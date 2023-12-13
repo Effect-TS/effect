@@ -70,16 +70,18 @@ export const make = (
           port: address.port
         },
       serve: (httpApp, middleware) =>
-        Effect.flatMap(makeHandler(httpApp, middleware!), (handler) =>
-          Effect.zipRight(
-            Effect.addFinalizer(() => Effect.sync(() => server.off("request", handler))),
-            Effect.async<never, Error.ServeError, never>((resume) => {
+        makeHandler(httpApp, middleware!).pipe(
+          Effect.flatMap((handler) =>
+            Effect.async<never, never, never>((_resume) => {
               server.on("request", handler)
-              server.on("error", (error) => {
-                resume(Effect.fail(Error.ServeError({ error })))
+              return Effect.sync(() => {
+                server.off("request", handler)
               })
             })
-          ))
+          ),
+          Effect.forkScoped,
+          Effect.asUnit
+        )
     })
   }).pipe(
     Effect.locally(

@@ -55,16 +55,8 @@ export const make = (
 
         return pipe(
           Effect.all([Effect.runtime<never>(), Effect.fiberId]),
-          Effect.zipLeft(
-            Effect.addFinalizer(() =>
-              Effect.sync(() => {
-                handlerStack.pop()
-                server.reload({ fetch: handlerStack[handlerStack.length - 1] } as ServeOptions)
-              })
-            )
-          ),
           Effect.flatMap(([runtime, fiberId]) =>
-            Effect.async<never, Error.ServeError, never>(() => {
+            Effect.async<never, never, never>((_) => {
               const runFork = Runtime.runFork(runtime)
               function handler(request: Request, _server: BunServer) {
                 return new Promise<Response>((resolve, reject) => {
@@ -80,8 +72,14 @@ export const make = (
               }
               handlerStack.push(handler)
               server.reload({ fetch: handler } as ServeOptions)
+              return Effect.sync(() => {
+                handlerStack.pop()
+                server.reload({ fetch: handlerStack[handlerStack.length - 1] } as ServeOptions)
+              })
             })
-          )
+          ),
+          Effect.forkScoped,
+          Effect.asUnit
         )
       }
     })

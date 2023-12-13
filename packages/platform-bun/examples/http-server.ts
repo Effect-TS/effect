@@ -1,11 +1,9 @@
 import * as Http from "@effect/platform-bun/HttpServer"
 import { runMain } from "@effect/platform-bun/Runtime"
-import * as Effect from "effect/Effect"
+import { Effect, Layer } from "effect"
 
-const ServerLive = Http.server.layer({ port: 3000 })
-
-Http.server.serve(Effect.succeed(Http.response.text("Hello World"))).pipe(
-  Effect.scoped,
-  Effect.provide(ServerLive),
-  runMain
+const HttpLive = Http.server.serve(Effect.succeed(Http.response.text("Hello World"))).pipe(
+  Layer.provide(Http.server.layer({ port: 3000 }))
 )
+
+runMain(Layer.launch(HttpLive))

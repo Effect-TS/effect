@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 
 const ServerLive = Http.server.layer({ port: 3000 })
 
-const serve = Http.router.empty.pipe(
+const HttpLive = Http.router.empty.pipe(
   Http.router.get(
     "/",
     Effect.map(
@@ -27,13 +27,9 @@ const serve = Http.router.empty.pipe(
       return Http.response.empty()
     }).pipe(Effect.scoped)
   ),
-  Http.server.serve(Http.middleware.logger)
+  Http.server.serve(Http.middleware.logger),
+  Layer.provide(ServerLive),
+  Layer.provide(NodeContext.layer)
 )
 
-const EnvLive = Layer.merge(ServerLive, NodeContext.layer)
-
-serve.pipe(
-  Effect.scoped,
-  Effect.provide(EnvLive),
-  runMain
-)
+runMain(Layer.launch(HttpLive))

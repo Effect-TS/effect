@@ -8,7 +8,7 @@ import { createServer } from "node:http"
 
 const ServerLive = Http.server.layer(() => createServer(), { port: 3000 })
 
-const serve = Http.router.empty.pipe(
+const HttpLive = Http.router.empty.pipe(
   Http.router.get(
     "/",
     Effect.map(
@@ -30,16 +30,11 @@ const serve = Http.router.empty.pipe(
       })))
       console.log("got files", data.files)
       return Http.response.empty()
-    })
+    }).pipe(Effect.scoped)
   ),
-  Http.server.serve(Http.middleware.logger)
-)
-
-const HttpLive = Layer.scopedDiscard(serve).pipe(
+  Http.server.serve(Http.middleware.logger),
   Layer.provide(ServerLive),
   Layer.provide(NodeContext.layer)
 )
 
-Layer.launch(HttpLive).pipe(
-  runMain
-)
+runMain(Layer.launch(HttpLive))

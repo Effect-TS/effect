@@ -64,14 +64,12 @@ describe("HttpServer", () => {
             ({ id }) => todoResponse({ id, title: "test" })
           )
         ),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeTodoClient)
       const todo = yield* _(client(HttpC.request.get("/todos/1")))
       expect(todo).toEqual({ id: 1, title: "test" })
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("formData", () =>
     Effect.gen(function*(_) {
@@ -90,9 +88,7 @@ describe("HttpServer", () => {
             return yield* _(Http.response.json({ ok: "file" in formData }))
           }).pipe(Effect.scoped)
         ),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
       const formData = new FormData()
@@ -102,7 +98,7 @@ describe("HttpServer", () => {
         Effect.flatMap((_) => _.json)
       )
       expect(result).toEqual({ ok: true })
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("schemaFormData", () =>
     Effect.gen(function*(_) {
@@ -121,9 +117,7 @@ describe("HttpServer", () => {
           }).pipe(Effect.scoped)
         ),
         Effect.tapErrorCause(Effect.logError),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
       const formData = new FormData()
@@ -133,7 +127,7 @@ describe("HttpServer", () => {
         client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
       )
       expect(response.status).toEqual(204)
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("formData withMaxFileSize", () =>
     Effect.gen(function*(_) {
@@ -151,10 +145,8 @@ describe("HttpServer", () => {
           error.reason === "FileTooLarge" ?
             Http.response.empty({ status: 413 }) :
             Effect.fail(error)),
-        Http.server.serve(),
-        Http.formData.withMaxFileSize(Option.some(100)),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect(),
+        Http.formData.withMaxFileSize(Option.some(100))
       )
       const client = yield* _(makeClient)
       const formData = new FormData()
@@ -164,7 +156,7 @@ describe("HttpServer", () => {
         client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
       )
       expect(response.status).toEqual(413)
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("formData withMaxFieldSize", () =>
     Effect.gen(function*(_) {
@@ -182,10 +174,8 @@ describe("HttpServer", () => {
           error.reason === "FieldTooLarge" ?
             Http.response.empty({ status: 413 }) :
             Effect.fail(error)),
-        Http.server.serve(),
-        Http.formData.withMaxFieldSize(100),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect(),
+        Http.formData.withMaxFieldSize(100)
       )
       const client = yield* _(makeClient)
       const formData = new FormData()
@@ -195,7 +185,7 @@ describe("HttpServer", () => {
         client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
       )
       expect(response.status).toEqual(413)
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("mount", () =>
     Effect.gen(function*(_) {
@@ -206,16 +196,14 @@ describe("HttpServer", () => {
       yield* _(
         Http.router.empty,
         Http.router.mount("/child", child),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
       const todo = yield* _(client(HttpC.request.get("/child/1")), Effect.flatMap((_) => _.text))
       expect(todo).toEqual("/1")
       const root = yield* _(client(HttpC.request.get("/child")), Effect.flatMap((_) => _.text))
       expect(root).toEqual("/")
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("mountApp", () =>
     Effect.gen(function*(_) {
@@ -226,16 +214,14 @@ describe("HttpServer", () => {
       yield* _(
         Http.router.empty,
         Http.router.mountApp("/child", child),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
       const todo = yield* _(client(HttpC.request.get("/child/1")), Effect.flatMap((_) => _.text))
       expect(todo).toEqual("/1")
       const root = yield* _(client(HttpC.request.get("/child")), Effect.flatMap((_) => _.text))
       expect(root).toEqual("/")
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("file", () =>
     Effect.gen(function*(_) {
@@ -258,9 +244,7 @@ describe("HttpServer", () => {
           )
         ),
         Effect.tapErrorCause(Effect.logError),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
       const res = yield* _(client(HttpC.request.get("/")))
@@ -270,7 +254,7 @@ describe("HttpServer", () => {
       expect(res.headers.etag).toEqual("\"etag\"")
       const text = yield* _(res.text)
       expect(text.trim()).toEqual("lorem ipsum dolar sit amet")
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("fileWeb", () =>
     Effect.gen(function*(_) {
@@ -292,9 +276,7 @@ describe("HttpServer", () => {
               )
           })
         ),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
       const res = yield* _(client(HttpC.request.get("/")))
@@ -305,7 +287,7 @@ describe("HttpServer", () => {
       expect(res.headers.etag).toEqual("W/\"etag\"")
       const text = yield* _(res.text)
       expect(text.trim()).toEqual("test")
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("schemaBodyUrlParams", () =>
     Effect.gen(function*(_) {
@@ -321,9 +303,7 @@ describe("HttpServer", () => {
             ({ id, title }) => todoResponse({ id, title })
           )
         ),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeTodoClient)
       const todo = yield* _(
@@ -332,7 +312,7 @@ describe("HttpServer", () => {
         client
       )
       expect(todo).toEqual({ id: 1, title: "test" })
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("schemaBodyUrlParams error", () =>
     Effect.gen(function*(_) {
@@ -349,9 +329,7 @@ describe("HttpServer", () => {
           )
         ),
         Http.router.catchTag("ParseError", (error) => Http.response.unsafeJson({ error }, { status: 400 })),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
       const response = yield* _(
@@ -359,7 +337,7 @@ describe("HttpServer", () => {
         client
       )
       expect(response.status).toEqual(400)
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 
   it("tracing", () =>
     Effect.gen(function*(_) {
@@ -372,9 +350,7 @@ describe("HttpServer", () => {
             (_) => Http.response.json({ spanId: _.spanId, parent: _.parent })
           )
         ),
-        Http.server.serve(),
-        Effect.scoped,
-        Effect.fork
+        Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
       const requestSpan = yield* _(Effect.makeSpan("client request"))
@@ -386,5 +362,5 @@ describe("HttpServer", () => {
         Effect.repeatN(2)
       )
       expect((body as any).parent.value.spanId).toEqual(requestSpan.spanId)
-    }).pipe(runPromise))
+    }).pipe(Effect.scoped, runPromise))
 })
