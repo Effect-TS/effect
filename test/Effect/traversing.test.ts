@@ -439,6 +439,11 @@ describe.concurrent("Effect", () => {
       const result = yield* $([3, 5, 7].map(Effect.succeed), Effect.mergeAll([] as Array<number>, (b, a) => [...b, a]))
       assert.deepStrictEqual(result, [3, 5, 7])
     }))
+  it.effect("mergeAll - should work when Z is a function", () =>
+    Effect.gen(function*($) {
+      const result = yield* $([3, 5, 7].map(Effect.succeed), Effect.mergeAll(() => 1, (_b, a) => () => a))
+      assert.deepStrictEqual(result(), 7)
+    }))
   it.effect("mergeAll - return error if it exists in list", () =>
     Effect.gen(function*($) {
       const effects: ReadonlyArray<Effect.Effect<never, number, void>> = [Effect.unit, Effect.fail(1)]
