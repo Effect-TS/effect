@@ -31,7 +31,8 @@ describe("Worker", () => {
         spawn: () => new globalThis.SharedWorker(new URL("./fixtures/serializedWorker.ts", import.meta.url)),
         size: 1
       }))
-      const user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
+      let user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
+      user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
       assert.deepStrictEqual(user, new User({ id: 123, name: "test" }))
       const people = yield* _(pool.execute(new GetPersonById({ id: 123 })), Stream.runCollect)
       assert.deepStrictEqual(Chunk.toReadonlyArray(people), [

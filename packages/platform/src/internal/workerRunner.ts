@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
+import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -116,23 +117,43 @@ export const makeSerialized = <
   never
 > => {
   const parseRequest = Schema.decode(schema)
-  return make((request: I) =>
-    pipe(
-      parseRequest(request),
-      Stream.flatMap((request: A) => {
+  const effectTags = new Set<string>()
+  return make((request: I) => {
+    if (Predicate.hasProperty(request, "_tag") && effectTags.has(request._tag as string)) {
+      return Effect.flatMap(parseRequest(request), (request: A) => {
         const handler =
-          (handlers as unknown as Record<string, (req: unknown) => Stream.Stream<never, any, any>>)[request._tag]
+          (handlers as unknown as Record<string, (req: unknown) => Effect.Effect<never, any, any>>)[request._tag]
         if (!handler) {
-          return Stream.dieMessage(`No handler for ${request._tag}`)
+          return Effect.dieMessage(`No handler for ${request._tag}`)
         }
         const encodeSuccess = Schema.encode(Serializable.successSchema(request as any))
         return pipe(
-          handler(request),
-          Stream.catchAll((error) => Effect.flatMap(Serializable.serializeFailure(request as any, error), Effect.fail)),
-          Stream.mapEffect(encodeSuccess)
+          Effect.matchEffect(handler(request), {
+            onFailure: (error) => Effect.flatMap(Serializable.serializeFailure(request as any, error), Effect.fail),
+            onSuccess: encodeSuccess
+          })
         )
       })
-    ), {
+    }
+
+    return Stream.flatMap(parseRequest(request), (request: A) => {
+      const handler =
+        (handlers as unknown as Record<string, (req: unknown) => Stream.Stream<never, any, any>>)[request._tag]
+      if (!handler) {
+        return Stream.dieMessage(`No handler for ${request._tag}`)
+      }
+      const encodeSuccess = Schema.encode(Serializable.successSchema(request as any))
+      const stream = handler(request)
+      if (Effect.isEffect(stream)) {
+        effectTags.add(request._tag)
+      }
+      return pipe(
+        stream,
+        Stream.catchAll((error) => Effect.flatMap(Serializable.serializeFailure(request as any, error), Effect.fail)),
+        Stream.mapEffect(encodeSuccess)
+      )
+    })
+  }, {
     transfers(message) {
       return Transferable.get(message)
     }
