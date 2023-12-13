@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.25.2
+
+### Patch Changes
+
+- [#424](https://github.com/Effect-TS/cli/pull/424) [`960cc02`](https://github.com/Effect-TS/cli/commit/960cc02998c177462b22c566d714b8114a5a1cff) Thanks [@tim-smart](https://github.com/tim-smart)! - update /platform
+
 ## 0.25.1
 
 ### Patch Changes
