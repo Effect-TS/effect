@@ -719,7 +719,7 @@ export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional> {
  */
 export const propertySignature = <I, A>(
   schema: Schema<I, A>,
-  options: DocAnnotations<A>
+  options: DocAnnotations
 ): PropertySignature<I, false, A, false> =>
   new PropertySignatureImpl({
     _tag: "PropertySignature",
@@ -732,7 +732,7 @@ export const propertySignature = <I, A>(
  */
 export const optional = <I, A>(
   schema: Schema<I, A>,
-  options?: DocAnnotations<A>
+  options?: DocAnnotations
 ): OptionalPropertySignature<I, true, A, true> =>
   new PropertySignatureImpl({
     _tag: "Optional",
@@ -939,10 +939,10 @@ export interface BrandSchema<From, To extends Brand.Brand<any>>
   extends Schema<From, To>, Brand.Brand.Constructor<To>
 {}
 
-const appendBrandAnnotation = <B extends string | symbol, A>(
+const appendBrandAnnotation = <B extends string | symbol>(
   ast: AST.AST,
   brand: B,
-  options?: DocAnnotations<A>
+  options?: DocAnnotations
 ): AST.AST => {
   if (AST.isTransform(ast)) {
     return AST.createTransform(
@@ -978,7 +978,7 @@ const appendBrandAnnotation = <B extends string | symbol, A>(
  */
 export const brand = <B extends string | symbol, A>(
   brand: B,
-  options?: DocAnnotations<A>
+  options?: DocAnnotations
 ) =>
 <I>(self: Schema<I, A>): BrandSchema<I, A & Brand.Brand<B>> => {
   const ast = appendBrandAnnotation(self.ast, brand, options)
@@ -1481,20 +1481,20 @@ const toAnnotations = <A>(
 /**
  * @since 1.0.0
  */
-export interface DocAnnotations<A> extends AST.Annotations {
+export interface DocAnnotations extends AST.Annotations {
   readonly identifier?: AST.IdentifierAnnotation
   readonly title?: AST.TitleAnnotation
   readonly description?: AST.DescriptionAnnotation
   readonly examples?: AST.ExamplesAnnotation
   readonly default?: AST.DefaultAnnotation
   readonly documentation?: AST.DocumentationAnnotation
-  readonly message?: AST.MessageAnnotation<A>
 }
 
 /**
  * @since 1.0.0
  */
-export interface FilterAnnotations<A> extends DocAnnotations<A> {
+export interface FilterAnnotations<A> extends DocAnnotations {
+  readonly message?: AST.MessageAnnotation<A>
   readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; params: unknown }
   /**
    * Attaches a JSON Schema annotation to this refinement.
