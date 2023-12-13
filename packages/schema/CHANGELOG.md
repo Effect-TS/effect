@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.53.2
+
+### Patch Changes
+
+- [#656](https://github.com/Effect-TS/schema/pull/656) [`5da1d36`](https://github.com/Effect-TS/schema/commit/5da1d36241889bdb333c001aaa512573541328be) Thanks [@gcanti](https://github.com/gcanti)! - Schema: fix `DocAnnotations` definition
+
 ## 0.53.1
 
 ### Patch Changes
