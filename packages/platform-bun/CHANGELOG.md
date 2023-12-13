@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.23.1
+
+### Patch Changes
+
+- [#335](https://github.com/Effect-TS/platform/pull/335) [`4f0166e`](https://github.com/Effect-TS/platform/commit/4f0166ee2241bd9b71739c98d428b5809313e46e) Thanks [@tim-smart](https://github.com/tim-smart)! - add SerializedWorker
+
+- Updated dependencies [[`4f0166e`](https://github.com/Effect-TS/platform/commit/4f0166ee2241bd9b71739c98d428b5809313e46e), [`4f0166e`](https://github.com/Effect-TS/platform/commit/4f0166ee2241bd9b71739c98d428b5809313e46e)]:
+  - @effect/platform-node@0.35.1
+  - @effect/platform@0.35.0
+
 ## 0.23.0
 
 ### Minor Changes

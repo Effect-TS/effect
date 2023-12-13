@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.35.0
+
+### Minor Changes
+
+- [#335](https://github.com/Effect-TS/platform/pull/335) [`4f0166e`](https://github.com/Effect-TS/platform/commit/4f0166ee2241bd9b71739c98d428b5809313e46e) Thanks [@tim-smart](https://github.com/tim-smart)! - remove index module from /platform
+
+### Patch Changes
+
+- [#335](https://github.com/Effect-TS/platform/pull/335) [`4f0166e`](https://github.com/Effect-TS/platform/commit/4f0166ee2241bd9b71739c98d428b5809313e46e) Thanks [@tim-smart](https://github.com/tim-smart)! - add SerializedWorker
+
 ## 0.34.0
 
 ### Minor Changes
