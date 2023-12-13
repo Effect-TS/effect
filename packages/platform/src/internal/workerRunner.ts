@@ -1,3 +1,5 @@
+import * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -5,7 +7,9 @@ import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
 import type * as WorkerError from "../WorkerError.js"
 import type * as WorkerRunner from "../WorkerRunner.js"
@@ -90,3 +94,47 @@ export const make = <I, R, E, O>(
       ], { concurrency: "unbounded", discard: true }) as Effect.Effect<R, WorkerError.WorkerError, never>
     )
   })
+
+/** @internal */
+export const makeSerialized = <
+  I,
+  A extends Schema.TaggedRequest.Any,
+  const Handlers extends {
+    readonly [K in A["_tag"]]: Extract<A, { readonly _tag: K }> extends
+      Serializable.SerializableWithResult<infer _IS, infer S, infer _IE, infer E, infer _IO, infer O>
+      ? (_: S) => Stream.Stream<any, E, O> | Effect.Effect<any, E, O> :
+      never
+  }
+>(
+  schema: Schema.Schema<I, A>,
+  handlers: Handlers
+): Effect.Effect<
+  | WorkerRunner.PlatformRunner
+  | Scope.Scope
+  | (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
+  WorkerError.WorkerError,
+  never
+> => {
+  const parseRequest = Schema.decode(schema)
+  return make((request: I) =>
+    pipe(
+      parseRequest(request),
+      Stream.flatMap((request: A) => {
+        const handler =
+          (handlers as unknown as Record<string, (req: unknown) => Stream.Stream<never, any, any>>)[request._tag]
+        if (!handler) {
+          return Stream.dieMessage(`No handler for ${request._tag}`)
+        }
+        const encodeSuccess = Schema.encode(Serializable.successSchema(request as any))
+        return pipe(
+          handler(request),
+          Stream.catchAll((error) => Effect.flatMap(Serializable.serializeFailure(request as any, error), Effect.fail)),
+          Stream.mapEffect(encodeSuccess)
+        )
+      })
+    ), {
+    transfers(message) {
+      return Transferable.get(message)
+    }
+  })
+}

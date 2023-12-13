@@ -42,7 +42,7 @@
     "effect": "2.0.0-next.60"
   },
   "devDependencies": {
-    "@effect/schema": "^0.53.0",
+    "@effect/schema": "^0.53.1",
     "@types/mime": "^3.0.4",
     "@types/node": "^20.10.4",
     "@types/tar": "^6.1.10",

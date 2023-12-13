@@ -73,6 +73,13 @@ export * as Terminal from "./Terminal.js"
 /**
  * @since 1.0.0
  *
+ * Also includes exports from [`@effect/platform/Transferable`](https://effect-ts.github.io/platform/platform/Transferable.ts.html).
+ */
+export * as Transferable from "./Transferable.js"
+
+/**
+ * @since 1.0.0
+ *
  * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
  */
 export * as Worker from "./Worker.js"

@@ -1,6 +1,9 @@
 /**
  * @since 1.0.0
  */
+import type * as ParseResult from "@effect/schema/ParseResult"
+import type * as Schema from "@effect/schema/Schema"
+import type * as Serializable from "@effect/schema/Serializable"
 import type * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
@@ -210,3 +213,110 @@ export const makePoolLayer: <W>(
   tag: Context.Tag<Tag, WorkerPool<I, E, O>>,
   options: WorkerPool.Options<I, W>
 ) => Layer.Layer<never, never, Tag> = internal.makePoolLayer
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface SerializedWorker<I extends Schema.TaggedRequest.Any> {
+  readonly id: number
+  readonly join: Effect.Effect<never, WorkerError, never>
+  readonly execute: <Req extends I>(
+    message: Req
+  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
+    ? Stream.Stream<never, E | WorkerError | ParseResult.ParseError, A>
+    : never
+  readonly executeEffect: <Req extends I>(
+    message: Req
+  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
+    ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, A>
+    : never
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export declare namespace SerializedWorker {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Options<I, W = unknown> {
+    readonly spawn: (id: number) => W
+    readonly permits?: number
+    readonly queue?: WorkerQueue<I>
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface SerializedWorkerPool<I extends Schema.TaggedRequest.Any> {
+  readonly backing: Pool.Pool<WorkerError, SerializedWorker<I>>
+  readonly broadcast: <Req extends I>(
+    message: Req
+  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer _A>
+    ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, void>
+    : never
+  readonly execute: <Req extends I>(
+    message: Req
+  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
+    ? Stream.Stream<never, E | WorkerError | ParseResult.ParseError, A>
+    : never
+  readonly executeEffect: <Req extends I>(
+    message: Req
+  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
+    ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, A>
+    : never
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export declare namespace SerializedWorkerPool {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Options<I, W = unknown> =
+    & SerializedWorker.Options<I, W>
+    & ({
+      readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<never, WorkerError, void>
+      readonly size: number
+    } | {
+      readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<never, WorkerError, void>
+      readonly minSize: number
+      readonly maxSize: number
+      readonly timeToLive: Duration.DurationInput
+    })
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeSerialized: <I extends Schema.TaggedRequest.Any, W = unknown>(
+  options: SerializedWorker.Options<I, W>
+) => Effect.Effect<WorkerManager | Scope.Scope, WorkerError, SerializedWorker<I>> = internal.makeSerialized
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makePoolSerialized: <W>() => <I extends Schema.TaggedRequest.Any>(
+  options: SerializedWorkerPool.Options<I, W>
+) => Effect.Effect<WorkerManager | Scope.Scope, never, SerializedWorkerPool<I>> = internal.makePoolSerialized
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const makePoolSerializedLayer: <W>(
+  managerLayer: Layer.Layer<never, never, WorkerManager>
+) => <Tag, I extends Schema.TaggedRequest.Any>(
+  tag: Context.Tag<Tag, SerializedWorkerPool<I>>,
+  options: SerializedWorkerPool.Options<I, W>
+) => Layer.Layer<never, never, Tag> = internal.makePoolSerializedLayer

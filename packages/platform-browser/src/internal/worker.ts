@@ -61,3 +61,11 @@ export const makePool = Worker.makePool<globalThis.Worker | globalThis.SharedWor
 
 /** @internal */
 export const makePoolLayer = Worker.makePoolLayer<globalThis.Worker | globalThis.SharedWorker>(layerManager)
+
+/** @internal */
+export const makePoolSerialized = Worker.makePoolSerialized<globalThis.Worker | globalThis.SharedWorker>()
+
+/** @internal */
+export const makePoolSerializedLayer = Worker.makePoolSerializedLayer<globalThis.Worker | globalThis.SharedWorker>(
+  layerManager
+)

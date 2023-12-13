@@ -1,3 +1,5 @@
+import * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -10,7 +12,9 @@ import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Pool from "effect/Pool"
 import * as Queue from "effect/Queue"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
 import type { WorkerError } from "../WorkerError.js"
 
@@ -284,3 +288,110 @@ export const makePoolLayer = <W>(managerLayer: Layer.Layer<never, never, Worker.
   tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
   options: Worker.WorkerPool.Options<I, W>
 ) => Layer.scoped(tag, makePool<W>()(options)).pipe(Layer.provide(managerLayer))
+
+/** @internal */
+export const makeSerialized = <
+  I extends Schema.TaggedRequest.Any,
+  W = unknown
+>(
+  options: Worker.SerializedWorker.Options<I, W>
+): Effect.Effect<Worker.WorkerManager | Scope.Scope, WorkerError, Worker.SerializedWorker<I>> =>
+  Effect.gen(function*(_) {
+    const manager = yield* _(WorkerManager)
+    const backing = yield* _(
+      manager.spawn({
+        ...options,
+        transfers(message) {
+          return Transferable.get(message)
+        }
+      })
+    )
+    const execute = <Req extends I>(message: Req) => {
+      const parseSuccess = Schema.decode(Serializable.successSchema(message as any))
+      const parseFailure = Schema.decode(Serializable.failureSchema(message as any))
+      return pipe(
+        Serializable.serialize(message),
+        Stream.flatMap((message) => backing.execute(message)),
+        Stream.catchAll((error) => Effect.flatMap(parseFailure(error), Effect.fail)),
+        Stream.mapEffect(parseSuccess)
+      )
+    }
+    const executeEffect = <Req extends I>(message: Req) => {
+      const parseSuccess = Schema.decode(Serializable.successSchema(message as any))
+      const parseFailure = Schema.decode(Serializable.failureSchema(message as any))
+      return pipe(
+        Serializable.serialize(message),
+        Effect.flatMap((message) => backing.executeEffect(message)),
+        Effect.matchEffect({
+          onFailure: (error) => Effect.flatMap(parseFailure(error), Effect.fail),
+          onSuccess: parseSuccess
+        })
+      )
+    }
+    return identity<Worker.SerializedWorker<I>>({
+      id: backing.id,
+      join: backing.join,
+      execute: execute as any,
+      executeEffect: executeEffect as any
+    })
+  })
+
+/** @internal */
+export const makePoolSerialized = <W>() =>
+<I extends Schema.TaggedRequest.Any>(
+  options: Worker.SerializedWorkerPool.Options<I, W>
+) =>
+  Effect.gen(function*(_) {
+    const manager = yield* _(WorkerManager)
+    const workers = new Set<Worker.SerializedWorker<I>>()
+    const acquire = pipe(
+      makeSerialized<I, W>(options),
+      Effect.tap((worker) => Effect.sync(() => workers.add(worker))),
+      Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
+      options.onCreate ? Effect.tap(options.onCreate) : identity,
+      Effect.provideService(WorkerManager, manager)
+    )
+    const backing = yield* _(
+      "timeToLive" in options ?
+        Pool.makeWithTTL({
+          acquire,
+          min: options.minSize,
+          max: options.maxSize,
+          timeToLive: options.timeToLive
+        }) :
+        Pool.make({
+          acquire,
+          size: options.size
+        })
+    )
+    const pool: Worker.SerializedWorkerPool<I> = {
+      backing,
+      broadcast: <Req extends I>(message: Req) =>
+        Effect.forEach(workers, (worker) => worker.executeEffect(message), {
+          concurrency: "unbounded",
+          discard: true
+        }) as any,
+      execute: <Req extends I>(message: Req) =>
+        Stream.unwrap(
+          Effect.map(
+            Effect.scoped(backing.get),
+            (worker) => worker.execute(message)
+          )
+        ) as any,
+      executeEffect: <Req extends I>(message: Req) =>
+        Effect.flatMap(
+          Effect.scoped(backing.get),
+          (worker) => worker.executeEffect(message)
+        ) as any
+    }
+
+    return pool
+  })
+
+/** @internal */
+export const makePoolSerializedLayer =
+  <W>(managerLayer: Layer.Layer<never, never, Worker.WorkerManager>) =>
+  <Tag, I extends Schema.TaggedRequest.Any>(
+    tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
+    options: Worker.SerializedWorkerPool.Options<I, W>
+  ) => Layer.scoped(tag, makePoolSerialized<W>()(options)).pipe(Layer.provide(managerLayer))

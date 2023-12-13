@@ -37,6 +37,7 @@
     "effect": "2.0.0-next.60"
   },
   "devDependencies": {
+    "@effect/schema": "^0.53.1",
     "effect": "2.0.0-next.60",
     "happy-dom": "^12.10.3"
   }

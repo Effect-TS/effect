@@ -4,6 +4,7 @@
  * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
  */
 import type * as Worker from "@effect/platform/Worker"
+import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
@@ -32,6 +33,24 @@ export const makePoolLayer: <Tag, I, E, O>(
   tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
   options: Worker.WorkerPool.Options<I, WorkerThreads.Worker>
 ) => Layer.Layer<never, never, Tag> = internal.makePoolLayer
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makePoolSerialized: <I extends Schema.TaggedRequest.Any>(
+  options: Worker.SerializedWorkerPool.Options<I, WorkerThreads.Worker>
+) => Effect.Effect<Worker.WorkerManager | Scope.Scope, never, Worker.SerializedWorkerPool<I>> =
+  internal.makePoolSerialized
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makePoolSerializedLayer: <Tag, I extends Schema.TaggedRequest.Any>(
+  tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
+  options: Worker.SerializedWorkerPool.Options<I, WorkerThreads.Worker>
+) => Layer.Layer<never, never, Tag> = internal.makePoolSerializedLayer
 
 /**
  * @since 1.0.0
