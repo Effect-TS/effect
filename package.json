@@ -75,6 +75,7 @@
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
     "fast-check": "^3.14.0",
     "madge": "^6.1.0",
+    "picocolors": "^1.0.0",
     "playwright": "^1.40.1",
     "prettier": "^3.1.0",
     "rimraf": "^5.0.5",
