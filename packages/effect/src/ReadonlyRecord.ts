@@ -118,6 +118,34 @@ export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Recor
 )
 
 /**
+ * Creates a new record from an iterable, utilizing the provided function to determine the key for each element.
+ *
+ * @param items - An iterable containing elements.
+ * @param f - A function that extracts the key for each element.
+ *
+ * @example
+ * import { fromIterableBy } from "effect/ReadonlyRecord"
+ *
+ * const users = [
+ *   { id: "2", name: "name2" },
+ *   { id: "1", name: "name1" }
+ * ]
+ *
+ * assert.deepStrictEqual(
+ *   fromIterableBy(users, user => user.id),
+ *   {
+ *     "2": { id: "2", name: "name2" },
+ *     "1": { id: "1", name: "name1" }
+ *   }
+ * )
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const fromIterableBy = <A>(items: Iterable<A>, f: (a: A) => string): Record<string, A> =>
+  fromIterableWith(items, (a) => [f(a), a])
+
+/**
  * Builds a record from an iterable of key-value pairs.
  *
  * If there are conflicting keys when using `fromEntries`, the last occurrence of the key/value pair will overwrite the

@@ -53,6 +53,17 @@ describe.concurrent("ReadonlyRecord", () => {
     })
   })
 
+  it("fromIterableBy", () => {
+    const users = [
+      { id: "2", name: "name2" },
+      { id: "1", name: "name1" }
+    ]
+    expect(RR.fromIterableBy(users, (user) => user.id)).toEqual({
+      "2": { id: "2", name: "name2" },
+      "1": { id: "1", name: "name1" }
+    })
+  })
+
   it("fromEntries", () => {
     const input: Array<[string, number]> = [["a", 1], ["b", 2]]
     expect(RR.fromEntries(input)).toEqual({ a: 1, b: 2 })
