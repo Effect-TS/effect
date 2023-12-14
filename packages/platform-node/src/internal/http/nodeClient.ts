@@ -143,41 +143,47 @@ const sendBody = (
 
 const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
   Effect.async<never, Error.RequestError, Http.IncomingMessage>((resume) => {
-    nodeRequest.on("error", (error) => {
+    function onError(error: Error) {
       resume(Effect.fail(Error.RequestError({
         request,
         reason: "Transport",
         error
       })))
-    })
+    }
+    nodeRequest.on("error", onError)
 
-    nodeRequest.on("response", (response) => {
+    function onResponse(response: Http.IncomingMessage) {
+      nodeRequest.off("error", onError)
       resume(Effect.succeed(response))
-    })
+    }
+    nodeRequest.on("response", onResponse)
 
     return Effect.sync(() => {
-      nodeRequest.removeAllListeners("error")
-      nodeRequest.removeAllListeners("response")
+      nodeRequest.off("error", onError)
+      nodeRequest.off("response", onResponse)
     })
   })
 
 const waitForFinish = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
   Effect.async<never, Error.RequestError, void>((resume) => {
-    nodeRequest.on("error", (error) => {
+    function onError(error: Error) {
       resume(Effect.fail(Error.RequestError({
         request,
         reason: "Transport",
         error
       })))
-    })
+    }
+    nodeRequest.once("error", onError)
 
-    nodeRequest.on("finish", () => {
+    function onFinish() {
+      nodeRequest.off("error", onError)
       resume(Effect.unit)
-    })
+    }
+    nodeRequest.once("finish", onFinish)
 
     return Effect.sync(() => {
-      nodeRequest.removeAllListeners("error")
-      nodeRequest.removeAllListeners("finish")
+      nodeRequest.off("error", onError)
+      nodeRequest.off("finish", onFinish)
     })
   })
 

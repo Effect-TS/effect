@@ -92,4 +92,16 @@ describe("HttpClient", () => {
       )
       expect(response).toEqual({ status: 200 })
     }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
+
+  it("interrupt", () =>
+    Effect.gen(function*(_) {
+      const client = yield* _(Http.client.Client)
+      const response = yield* _(
+        Http.request.get("https://www.google.com/"),
+        client,
+        Effect.flatMap((_) => _.text),
+        Effect.timeout(1)
+      )
+      expect(response._tag).toEqual("None")
+    }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
 })
