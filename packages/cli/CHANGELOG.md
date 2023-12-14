@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.25.4
+
+### Patch Changes
+
+- [#428](https://github.com/Effect-TS/cli/pull/428) [`ff2d006`](https://github.com/Effect-TS/cli/commit/ff2d006495fa317a53763302846ebce0cd9a620b) Thanks [@tim-smart](https://github.com/tim-smart)! - fix for multiple handler transforms
+
 ## 0.25.3
 
 ### Patch Changes
