@@ -55,9 +55,9 @@
   },
   "packageManager": "pnpm@8.6.10",
   "peerDependencies": {
-    "@effect/platform": "^0.34.0",
-    "@effect/platform-node": "^0.35.0",
-    "@effect/schema": "^0.53.0",
+    "@effect/platform": "^0.37.0",
+    "@effect/platform-node": "^0.37.0",
+    "@effect/schema": "^0.53.2",
     "effect": "2.0.0-next.60",
     "ws": "^8.14"
   },
@@ -71,7 +71,7 @@
   },
   "devDependencies": {
     "@babel/cli": "^7.23.4",
-    "@babel/core": "^7.23.5",
+    "@babel/core": "^7.23.6",
     "@babel/plugin-transform-export-namespace-from": "^7.23.4",
     "@babel/plugin-transform-modules-commonjs": "^7.23.3",
     "@changesets/changelog-github": "^0.5.0",
@@ -81,14 +81,14 @@
     "@effect/dtslint": "^0.0.4",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.1.0",
-    "@effect/platform": "^0.34.0",
-    "@effect/platform-node": "^0.35.0",
-    "@effect/schema": "^0.53.0",
+    "@effect/platform": "^0.37.0",
+    "@effect/platform-node": "^0.37.0",
+    "@effect/schema": "^0.53.2",
     "@types/chai": "^4.3.11",
     "@types/node": "^20.10.4",
     "@types/ws": "^8.5.10",
-    "@typescript-eslint/eslint-plugin": "^6.13.2",
-    "@typescript-eslint/parser": "^6.13.2",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^1.0.4",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
@@ -110,7 +110,7 @@
     "typescript": "^5.3.3",
     "vitest": "1.0.4",
     "vitest-websocket-mock": "^0.3.0",
-    "ws": "^8.15.0"
+    "ws": "^8.15.1"
   },
   "dependencies": {
     "isomorphic-ws": "^5.0.0",

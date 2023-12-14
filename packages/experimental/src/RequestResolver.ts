@@ -125,7 +125,7 @@ export const persisted = dual<
     )
 
     const partition = (requests: ReadonlyArray<Req>) =>
-      storage.getMany(requests).pipe(
+      storage.getMany(requests as any).pipe(
         Effect.map(
           ReadonlyArray.partitionMap((_, i) =>
             Option.match(_, {
@@ -140,7 +140,7 @@ export const persisted = dual<
     const set = (
       request: Req,
       result: Request.Request.Result<Req>
-    ): Effect.Effect<never, never, void> => Effect.ignoreLogged(storage.set(request, result))
+    ): Effect.Effect<never, never, void> => Effect.ignoreLogged(storage.set(request as any, result))
 
     return RequestResolver.makeBatched((requests: Array<Req>) =>
       Effect.flatMap(partition(requests), ([remaining, results]) => {
