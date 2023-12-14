@@ -25,6 +25,7 @@ import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
+import * as Secret from "effect/Secret"
 import * as S from "effect/String"
 import type { Equals, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
@@ -2992,6 +2993,58 @@ export const NonNegativeBigint: Schema<string, bigint> = bigint.pipe(
  * @since 1.0.0
  */
 export const BigintFromNumber: Schema<number, bigint> = bigintFromNumber(number)
+
+// ---------------------------------------------
+// Secret
+// ---------------------------------------------
+
+/**
+ * @category Secret constructors
+ * @since 1.0.0
+ */
+export const SecretFromSelf: Schema<Secret.Secret> = declare(
+  [],
+  struct({}),
+  () => (u, _, ast) =>
+    Secret.isSecret(u) ?
+      ParseResult.succeed(u)
+      : ParseResult.fail(ParseResult.type(ast, u)),
+  {
+    [AST.IdentifierAnnotationId]: "Secret",
+    [hooks.PrettyHookId]: (): Pretty.Pretty<Secret.Secret> => (secret) => String(secret),
+    [hooks.ArbitraryHookId]: (): Arbitrary<Secret.Secret> => (fc) =>
+      fc.string().map((_) => Secret.fromString(_))
+  }
+)
+
+/**
+ * A combinator that transforms a `string` into a `Secret`.
+ *
+ * @category Secret transformations
+ * @since 1.0.0
+ */
+export const secret = <I, A extends string>(
+  self: Schema<I, A>
+): Schema<I, Secret.Secret> =>
+  transform(
+    self,
+    SecretFromSelf,
+    (str) => Secret.fromString(str),
+    (secret) => Secret.value(secret),
+    { strict: false }
+  )
+
+const _Secret: Schema<string, Secret.Secret> = secret(string)
+
+export {
+  /**
+   * A schema that transforms a `string` into a `Secret`.
+   *
+   * @category Secret constructors
+   * @since 1.0.0
+   */
+  _Secret as Secret
+}
 
 // ---------------------------------------------
 // Duration constructors

@@ -792,3 +792,16 @@ S.durationFromNanos(S.bigintFromSelf)
 
 // $ExpectType Schema<bigint, Duration>
 S.DurationFromNanos
+
+// ---------------------------------------------
+// Secret
+// ---------------------------------------------
+
+// $ExpectType Schema<string, Secret>
+S.Secret
+
+// $ExpectType Schema<Secret, Secret>
+S.SecretFromSelf
+
+// $ExpectType Schema<string, Secret>
+S.secret(S.string)
