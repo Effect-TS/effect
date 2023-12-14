@@ -8,6 +8,7 @@ import type * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
+import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
 import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
@@ -87,10 +88,11 @@ export declare namespace Worker {
    */
   export interface Options<I, W = unknown> {
     readonly spawn: (id: number) => W
-    readonly encode?: (message: I) => unknown
+    readonly encode?: (message: I) => Effect.Effect<never, WorkerError, unknown>
     readonly transfers?: (message: I) => ReadonlyArray<unknown>
     readonly permits?: number
     readonly queue?: WorkerQueue<I>
+    readonly initialMessage?: LazyArg<I>
   }
 
   /**
@@ -246,6 +248,7 @@ export declare namespace SerializedWorker {
     readonly spawn: (id: number) => W
     readonly permits?: number
     readonly queue?: WorkerQueue<I>
+    readonly initialMessage?: LazyArg<I>
   }
 }
 

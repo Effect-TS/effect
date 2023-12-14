@@ -24,7 +24,7 @@ export * from "@effect/platform/WorkerRunner"
  */
 export const make: <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O>,
-  options?: Runner.Runner.Options<O> | undefined
+  options?: Runner.Runner.Options<E, O> | undefined
 ) => Effect.Effect<R | Scope.Scope, WorkerError, void> = internal.make
 
 /**

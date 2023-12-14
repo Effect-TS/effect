@@ -28,7 +28,7 @@ export const PlatformRunner = Context.Tag<WorkerRunner.PlatformRunner>(
 /** @internal */
 export const make = <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
-  options?: WorkerRunner.Runner.Options<O>
+  options?: WorkerRunner.Runner.Options<E, O>
 ) =>
   Effect.gen(function*(_) {
     const platform = yield* _(PlatformRunner)
@@ -51,27 +51,46 @@ export const make = <I, R, E, O>(
           Effect.matchCauseEffect(stream, {
             onFailure: (cause) =>
               Either.match(Cause.failureOrCause(cause), {
-                onLeft: (error) => backing.send([id, 2, error]),
+                onLeft: (error) => {
+                  const transfers = options?.transfers ? options.transfers(error) : undefined
+                  return pipe(
+                    options?.encodeError ? options.encodeError(error) : Effect.succeed(error),
+                    Effect.flatMap((payload) => backing.send([id, 2, payload as any], transfers)),
+                    Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
+                  )
+                },
                 onRight: (cause) => backing.send([id, 3, Cause.squash(cause)])
               }),
             onSuccess: (data) => {
               const transfers = options?.transfers ? options.transfers(data) : undefined
-              const payload = options?.encode ? options.encode(data) : data
-              return backing.send([id, 1, payload], transfers)
+              return pipe(
+                options?.encodeOutput ? options.encodeOutput(data) : Effect.succeed(data),
+                Effect.flatMap((payload) => backing.send([id, 0, payload], transfers)),
+                Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
+              )
             }
           }) :
           pipe(
             stream,
-            Stream.tap((item) => {
-              const transfers = options?.transfers ? options.transfers(item) : undefined
-              const payload = options?.encode ? options.encode(item) : item
-              return backing.send([id, 0, payload], transfers)
+            Stream.tap((data) => {
+              const transfers = options?.transfers ? options.transfers(data) : undefined
+              return Effect.flatMap(
+                options?.encodeOutput ? Effect.orDie(options.encodeOutput(data)) : Effect.succeed(data),
+                (payload) => backing.send([id, 0, payload], transfers)
+              )
             }),
             Stream.runDrain,
             Effect.matchCauseEffect({
               onFailure: (cause) =>
                 Either.match(Cause.failureOrCause(cause), {
-                  onLeft: (error) => backing.send([id, 2, error]),
+                  onLeft: (error) => {
+                    const transfers = options?.transfers ? options.transfers(error) : undefined
+                    return pipe(
+                      options?.encodeError ? options.encodeError(error) : Effect.succeed(error),
+                      Effect.flatMap((payload) => backing.send([id, 2, payload as any], transfers)),
+                      Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
+                    )
+                  },
                   onRight: (cause) => backing.send([id, 3, Cause.squash(cause)])
                 }),
               onSuccess: () => backing.send([id, 1])

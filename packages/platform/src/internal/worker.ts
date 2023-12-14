@@ -16,7 +16,7 @@ import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
-import type { WorkerError } from "../WorkerError.js"
+import { WorkerError } from "../WorkerError.js"
 
 /** @internal */
 export const defaultQueue = <I>() =>
@@ -55,7 +55,14 @@ export const makeManager = Effect.gen(function*(_) {
   let idCounter = 0
   return WorkerManager.of({
     [WorkerManagerTypeId]: WorkerManagerTypeId,
-    spawn<I, E, O>({ encode, permits = 1, queue, spawn, transfers = (_) => [] }: Worker.Worker.Options<I>) {
+    spawn<I, E, O>({
+      encode,
+      initialMessage,
+      permits = 1,
+      queue,
+      spawn,
+      transfers = (_) => []
+    }: Worker.Worker.Options<I>) {
       return Effect.gen(function*(_) {
         const id = idCounter++
         let requestIdCounter = 0
@@ -194,13 +201,13 @@ export const makeManager = Effect.gen(function*(_) {
                 const result = requestMap.get(id)
                 if (!result) return Effect.unit
                 const transferables = transfers(request)
-                const payload = encode ? encode(request) : request
-                return Effect.zipRight(
-                  Effect.catchAllCause(
-                    backing.send([id, 0, payload], transferables),
-                    (cause) => Queue.offer(result[0], Exit.failCause(cause))
+                return pipe(
+                  Effect.flatMap(
+                    encode ? encode(request) : Effect.succeed(request),
+                    (payload) => backing.send([id, 0, payload], transferables)
                   ),
-                  Deferred.await(result[1])
+                  Effect.catchAllCause((cause) => Queue.offer(result[0], Exit.failCause(cause))),
+                  Effect.zipRight(Deferred.await(result[1]))
                 )
               }),
               Effect.ensuring(semaphore.release(1)),
@@ -221,6 +228,14 @@ export const makeManager = Effect.gen(function*(_) {
           WorkerError,
           never
         >
+
+        if (initialMessage) {
+          yield* _(
+            Effect.sync(initialMessage),
+            Effect.flatMap(executeEffect),
+            Effect.mapError((error) => WorkerError("spawn", error))
+          )
+        }
 
         return { id, join, execute, executeEffect }
       }).pipe(Effect.parallelFinalizers)
@@ -303,6 +318,9 @@ export const makeSerialized = <
         ...options,
         transfers(message) {
           return Transferable.get(message)
+        },
+        encode(message) {
+          return Effect.mapError(Serializable.serialize(message), (error) => WorkerError("encode", error))
         }
       })
     )
@@ -310,8 +328,7 @@ export const makeSerialized = <
       const parseSuccess = Schema.decode(Serializable.successSchema(message as any))
       const parseFailure = Schema.decode(Serializable.failureSchema(message as any))
       return pipe(
-        Serializable.serialize(message),
-        Stream.flatMap((message) => backing.execute(message)),
+        backing.execute(message),
         Stream.catchAll((error) => Effect.flatMap(parseFailure(error), Effect.fail)),
         Stream.mapEffect(parseSuccess)
       )
@@ -319,14 +336,10 @@ export const makeSerialized = <
     const executeEffect = <Req extends I>(message: Req) => {
       const parseSuccess = Schema.decode(Serializable.successSchema(message as any))
       const parseFailure = Schema.decode(Serializable.failureSchema(message as any))
-      return pipe(
-        Serializable.serialize(message),
-        Effect.flatMap((message) => backing.executeEffect(message)),
-        Effect.matchEffect({
-          onFailure: (error) => Effect.flatMap(parseFailure(error), Effect.fail),
-          onSuccess: parseSuccess
-        })
-      )
+      return Effect.matchEffect(backing.executeEffect(message), {
+        onFailure: (error) => Effect.flatMap(parseFailure(error), Effect.fail),
+        onSuccess: parseSuccess
+      })
     }
     return identity<Worker.SerializedWorker<I>>({
       id: backing.id,

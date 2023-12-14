@@ -2,7 +2,8 @@ import "@vitest/web-worker"
 import * as EffectWorker from "@effect/platform-browser/Worker"
 import { Chunk, Effect, Stream } from "effect"
 import { assert, describe, it } from "vitest"
-import { GetPersonById, GetUserById, Person, User } from "./fixtures/schema.js"
+import type { WorkerMessage } from "./fixtures/schema.js"
+import { GetPersonById, GetUserById, Person, SetName, User } from "./fixtures/schema.js"
 
 describe("Worker", () => {
   it("executes streams", () =>
@@ -34,6 +35,23 @@ describe("Worker", () => {
       let user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
       user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
       assert.deepStrictEqual(user, new User({ id: 123, name: "test" }))
+      const people = yield* _(pool.execute(new GetPersonById({ id: 123 })), Stream.runCollect)
+      assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
+        new Person({ id: 123, name: "test" }),
+        new Person({ id: 123, name: "ing" })
+      ])
+    }).pipe(Effect.scoped, Effect.provide(EffectWorker.layerManager), Effect.runPromise))
+
+  it("Serialized with initialMessage", () =>
+    Effect.gen(function*(_) {
+      const pool = yield* _(EffectWorker.makePoolSerialized<WorkerMessage>({
+        spawn: () => new globalThis.SharedWorker(new URL("./fixtures/serializedWorker.ts", import.meta.url)),
+        size: 1,
+        initialMessage: () => new SetName({ name: "custom" })
+      }))
+      let user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
+      user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
+      assert.deepStrictEqual(user, new User({ id: 123, name: "custom" }))
       const people = yield* _(pool.execute(new GetPersonById({ id: 123 })), Stream.runCollect)
       assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
         new Person({ id: 123, name: "test" }),

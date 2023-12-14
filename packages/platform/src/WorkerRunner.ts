@@ -70,9 +70,10 @@ export declare namespace Runner {
    * @since 1.0.0
    * @category models
    */
-  export interface Options<O> {
-    readonly encode?: (message: O) => unknown
-    readonly transfers?: (message: O) => ReadonlyArray<unknown>
+  export interface Options<E, O> {
+    readonly encodeOutput?: (message: O) => Effect.Effect<never, WorkerError, unknown>
+    readonly encodeError?: (message: E) => Effect.Effect<never, WorkerError, unknown>
+    readonly transfers?: (message: O | E) => ReadonlyArray<unknown>
   }
 }
 
@@ -82,7 +83,7 @@ export declare namespace Runner {
  */
 export const make: <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
-  options?: Runner.Options<O> | undefined
+  options?: Runner.Options<E, O> | undefined
 ) => Effect.Effect<Scope.Scope | R | PlatformRunner, WorkerError, never> = internal.make
 
 /**
