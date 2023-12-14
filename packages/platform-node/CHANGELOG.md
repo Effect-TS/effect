@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.37.2
+
+### Patch Changes
+
+- [#346](https://github.com/Effect-TS/platform/pull/346) [`c0fdc3d`](https://github.com/Effect-TS/platform/commit/c0fdc3df8d8fc057fc388f5cb1a17d707d54f3eb) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure node client doesn't throw on interruption
+
 ## 0.37.1
 
 ### Patch Changes
