@@ -1,5 +1,16 @@
 # @effect/platform-browser
 
+## 0.23.0
+
+### Minor Changes
+
+- [#341](https://github.com/Effect-TS/platform/pull/341) [`649f57f`](https://github.com/Effect-TS/platform/commit/649f57fdf557eed5f8405a4a4553dfc47fd8d4b1) Thanks [@tim-smart](https://github.com/tim-smart)! - use peer deps for /platform-\*
+
+### Patch Changes
+
+- Updated dependencies [[`649f57f`](https://github.com/Effect-TS/platform/commit/649f57fdf557eed5f8405a4a4553dfc47fd8d4b1), [`649f57f`](https://github.com/Effect-TS/platform/commit/649f57fdf557eed5f8405a4a4553dfc47fd8d4b1)]:
+  - @effect/platform@0.37.0
+
 ## 0.22.2
 
 ### Patch Changes
