@@ -34,14 +34,15 @@
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
   },
   "dependencies": {
-    "@effect/platform": "workspace:*",
     "mime": "^3.0.0",
     "multipasta": "^0.1.19"
   },
   "peerDependencies": {
+    "@effect/platform": "workspace:*",
     "effect": "2.0.0-next.60"
   },
   "devDependencies": {
+    "@effect/platform": "workspace:*",
     "@effect/schema": "^0.53.1",
     "@types/mime": "^3.0.4",
     "@types/node": "^20.10.4",

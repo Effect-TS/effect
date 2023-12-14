@@ -7,8 +7,7 @@ import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
-import type { HTTPMethod } from "find-my-way"
-import FindMyWay from "find-my-way"
+import * as FindMyWay from "find-my-way-ts"
 import type * as App from "../../Http/App.js"
 import type * as Method from "../../Http/Method.js"
 import type * as Router from "../../Http/Router.js"
@@ -95,17 +94,14 @@ class RouterImpl<R, E> extends Effectable.StructuralClass<
 const toHttpApp = <R, E>(
   self: Router.Router<R, E>
 ): App.Default<Router.Router.ExcludeProvided<R>, E | Error.RouteNotFound> => {
-  const router = FindMyWay()
+  const router = FindMyWay.make<Router.Route<R, E>>()
   const mounts = Chunk.toReadonlyArray(self.mounts)
   const mountsLen = mounts.length
   Chunk.forEach(self.routes, (route) => {
-    function fn() {
-      return route
-    }
     if (route.method === "*") {
-      router.all(route.path, fn)
+      router.all(route.path, route)
     } else {
-      router.on(route.method, route.path, fn)
+      router.on(route.method, route.path, route)
     }
   })
   return Effect.flatMap(
@@ -124,14 +120,14 @@ const toHttpApp = <R, E>(
         }
       }
 
-      let result = router.find(request.method as HTTPMethod, request.url)
-      if (result === null && request.method === "HEAD") {
+      let result = router.find(request.method, request.url)
+      if (result === undefined && request.method === "HEAD") {
         result = router.find("GET", request.url)
       }
-      if (result === null) {
+      if (result === undefined) {
         return Effect.fail(Error.RouteNotFound({ request }))
       }
-      const route = (result.handler as any)() as Router.Route<R, E>
+      const route = result.handler
       if (route.prefix._tag === "Some") {
         request = sliceRequestUrl(request, route.prefix.value)
       }
@@ -157,7 +153,7 @@ class RouteImpl<R, E> implements Router.Route<R, E> {
   readonly [RouteTypeId]: Router.RouteTypeId
   constructor(
     readonly method: Method.Method | "*",
-    readonly path: string,
+    readonly path: Router.PathInput,
     readonly handler: Router.Route.Handler<R, E>,
     readonly prefix = Option.none<string>()
   ) {
@@ -186,7 +182,7 @@ export const fromIterable = <R, E>(
 /** @internal */
 export const makeRoute = <R, E>(
   method: Method.Method,
-  path: string,
+  path: Router.PathInput,
   handler: Router.Route.Handler<R, E>,
   prefix: Option.Option<string> = Option.none()
 ): Router.Route<R, E> => new RouteImpl(method, path, handler, prefix)
@@ -197,12 +193,14 @@ export const concat = dual<
   <R, E, R1, E1>(self: Router.Router<R, E>, that: Router.Router<R1, E1>) => Router.Router<R | R1, E | E1>
 >(2, (self, that) => new RouterImpl(Chunk.appendAll(self.routes, that.routes) as any, self.mounts))
 
-const removeTrailingSlash = (path: string) => (path.endsWith("/") ? path.slice(0, -1) : path)
+const removeTrailingSlash = (
+  path: Router.PathInput
+): Router.PathInput => (path.endsWith("/") ? path.slice(0, -1) : path) as any
 
 /** @internal */
 export const prefixAll = dual<
-  (prefix: string) => <R, E>(self: Router.Router<R, E>) => Router.Router<R, E>,
-  <R, E>(self: Router.Router<R, E>, prefix: string) => Router.Router<R, E>
+  (prefix: Router.PathInput) => <R, E>(self: Router.Router<R, E>) => Router.Router<R, E>,
+  <R, E>(self: Router.Router<R, E>, prefix: Router.PathInput) => Router.Router<R, E>
 >(
   2,
   (self, prefix) => {
@@ -211,7 +209,7 @@ export const prefixAll = dual<
       Chunk.map(self.routes, (route) =>
         new RouteImpl(
           route.method,
-          route.path === "/" ? prefix : prefix + route.path,
+          route.path === "/" ? prefix : prefix + route.path as Router.PathInput,
           route.handler,
           Option.orElse(
             Option.map(route.prefix, (_) => prefix + _),
@@ -226,12 +224,12 @@ export const prefixAll = dual<
 /** @internal */
 export const mount = dual<
   <R1, E1>(
-    path: string,
+    path: `/${string}`,
     that: Router.Router<R1, E1>
   ) => <R, E>(self: Router.Router<R, E>) => Router.Router<R | R1, E | E1>,
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
-    path: string,
+    path: `/${string}`,
     that: Router.Router<R1, E1>
   ) => Router.Router<R | R1, E | E1>
 >(
@@ -242,14 +240,14 @@ export const mount = dual<
 /** @internal */
 export const mountApp = dual<
   <R1, E1>(
-    path: string,
+    path: `/${string}`,
     that: App.Default<R1, E1>
   ) => <R, E>(
     self: Router.Router<R, E>
   ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>,
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
-    path: string,
+    path: `/${string}`,
     that: App.Default<R1, E1>
   ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>
 >(
@@ -261,27 +259,27 @@ export const mountApp = dual<
 /** @internal */
 export const route = (method: Method.Method | "*"): {
   <R1, E1>(
-    path: string,
+    path: Router.PathInput,
     handler: Router.Route.Handler<R1, E1>
   ): <R, E>(
     self: Router.Router<R, E>
   ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E1 | E>
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
-    path: string,
+    path: Router.PathInput,
     handler: Router.Route.Handler<R1, E1>
   ): Router.Router<Router.Router.ExcludeProvided<R | R1>, E1 | E>
 } =>
   dual<
     <R1, E1>(
-      path: string,
+      path: Router.PathInput,
       handler: Router.Route.Handler<R1, E1>
     ) => <R, E>(
       self: Router.Router<R, E>
     ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>,
     <R, E, R1, E1>(
       self: Router.Router<R, E>,
-      path: string,
+      path: Router.PathInput,
       handler: Router.Route.Handler<R1, E1>
     ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>
   >(3, (self, path, handler) =>

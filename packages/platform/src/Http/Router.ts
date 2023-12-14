@@ -63,10 +63,16 @@ export type RouteTypeId = typeof RouteTypeId
  * @since 1.0.0
  * @category models
  */
+export type PathInput = `/${string}` | "*"
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export interface Route<R, E> {
   readonly [RouteTypeId]: RouteTypeId
   readonly method: Method.Method | "*"
-  readonly path: string
+  readonly path: PathInput
   readonly handler: Route.Handler<R, E>
   readonly prefix: Option.Option<string>
 }
@@ -177,8 +183,9 @@ export const fromIterable: <R, E>(
  */
 export const makeRoute: <R, E>(
   method: Method.Method,
-  path: string,
-  handler: Route.Handler<R, E>
+  path: PathInput,
+  handler: Route.Handler<R, E>,
+  prefix?: Option.Option<string>
 ) => Route<R, E> = internal.makeRoute
 
 /**
@@ -186,8 +193,8 @@ export const makeRoute: <R, E>(
  * @category combinators
  */
 export const prefixAll: {
-  (prefix: string): <R, E>(self: Router<R, E>) => Router<R, E>
-  <R, E>(self: Router<R, E>, prefix: string): Router<R, E>
+  (prefix: PathInput): <R, E>(self: Router<R, E>) => Router<R, E>
+  <R, E>(self: Router<R, E>, prefix: PathInput): Router<R, E>
 } = internal.prefixAll
 
 /**
@@ -209,8 +216,8 @@ export const concat: {
  * @category routing
  */
 export const mount: {
-  <R1, E1>(path: string, that: Router<R1, E1>): <R, E>(self: Router<R, E>) => Router<R1 | R, E1 | E>
-  <R, E, R1, E1>(self: Router<R, E>, path: string, that: Router<R1, E1>): Router<R | R1, E | E1>
+  <R1, E1>(path: `/${string}`, that: Router<R1, E1>): <R, E>(self: Router<R, E>) => Router<R1 | R, E1 | E>
+  <R, E, R1, E1>(self: Router<R, E>, path: `/${string}`, that: Router<R1, E1>): Router<R | R1, E | E1>
 } = internal.mount
 
 /**
@@ -219,7 +226,7 @@ export const mount: {
  */
 export const mountApp: {
   <R1, E1>(
-    path: string,
+    path: `/${string}`,
     that: App.Default<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -229,7 +236,7 @@ export const mountApp: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: `/${string}`,
     that: App.Default<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -245,7 +252,7 @@ export const route: (
   method: Method.Method | "*"
 ) => {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -255,7 +262,7 @@ export const route: (
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -269,7 +276,7 @@ export const route: (
  */
 export const all: {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -279,7 +286,7 @@ export const all: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -293,7 +300,7 @@ export const all: {
  */
 export const get: {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -303,7 +310,7 @@ export const get: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -317,7 +324,7 @@ export const get: {
  */
 export const post: {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -327,7 +334,7 @@ export const post: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -341,7 +348,7 @@ export const post: {
  */
 export const patch: {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -351,7 +358,7 @@ export const patch: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -365,7 +372,7 @@ export const patch: {
  */
 export const put: {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -375,7 +382,7 @@ export const put: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -389,7 +396,7 @@ export const put: {
  */
 export const del: {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -399,7 +406,7 @@ export const del: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -413,7 +420,7 @@ export const del: {
  */
 export const head: {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -423,7 +430,7 @@ export const head: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
@@ -437,7 +444,7 @@ export const head: {
  */
 export const options: {
   <R1, E1>(
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): <R, E>(
     self: Router<R, E>
@@ -447,7 +454,7 @@ export const options: {
   >
   <R, E, R1, E1>(
     self: Router<R, E>,
-    path: string,
+    path: PathInput,
     handler: Route.Handler<R1, E1>
   ): Router<
     Exclude<R, RouteContext | ServerRequest.ServerRequest> | Exclude<R1, RouteContext | ServerRequest.ServerRequest>,
