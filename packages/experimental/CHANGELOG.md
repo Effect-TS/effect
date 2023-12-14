@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.3.2
+
+### Patch Changes
+
+- [#31](https://github.com/Effect-TS/experimental/pull/31) [`216e3d3`](https://github.com/Effect-TS/experimental/commit/216e3d31867124d2d38676b526830f4a4c7d7c5d) Thanks [@tim-smart](https://github.com/tim-smart)! - update /platform
+
 ## 0.3.1
 
 ### Patch Changes
