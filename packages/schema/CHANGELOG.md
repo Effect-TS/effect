@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.53.3
+
+### Patch Changes
+
+- [#654](https://github.com/Effect-TS/schema/pull/654) [`a5950d1`](https://github.com/Effect-TS/schema/commit/a5950d14e5868aa88e1c263d14e305185debbc30) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added S.Secret
+
 ## 0.53.2
 
 ### Patch Changes
