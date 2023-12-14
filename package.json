@@ -81,6 +81,6 @@
     "tsx": "^4.6.1",
     "typescript": "^5.3.2",
     "vite": "^5.0.4",
-    "vitest": "v1.0.0-beta.6"
+    "vitest": "1.0.4"
   }
 }
