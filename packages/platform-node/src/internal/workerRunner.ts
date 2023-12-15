@@ -5,7 +5,6 @@ import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
-import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import * as WorkerThreads from "node:worker_threads"
 
@@ -18,7 +17,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       }
       const port = WorkerThreads.parentPort
       const queue = yield* _(Queue.unbounded<I>())
-      const fiber = yield* _(
+      yield* _(
         Effect.async<never, WorkerError, never>((resume) => {
           port.on("message", (message: Runner.BackingRunner.Message<I>) => {
             if (message[0] === 0) {
@@ -34,28 +33,34 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             resume(Effect.fail(WorkerError("unknown", error.message, error.stack)))
           })
         }),
+        Effect.ignoreLogged,
+        Effect.forever,
+        Effect.annotateLogs({
+          package: "@effect/platform-node",
+          module: "WorkerRunner"
+        }),
         Effect.forkScoped
       )
       const send = (message: O, transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => port.postMessage([1, message], transfers as any))
       // ready
       port.postMessage([0])
-      return { fiber, queue, send }
+      return { queue, send }
     })
   }
 })
 
 /** @internal */
-export const layer = Layer.succeed(Runner.PlatformRunner, platformRunnerImpl)
+export const layerPlatform = Layer.succeed(Runner.PlatformRunner, platformRunnerImpl)
 
 /** @internal */
-export const make = <I, R, E, O>(
+export const layer = <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O>,
   options?: Runner.Runner.Options<E, O>
-): Effect.Effect<Scope.Scope | R, WorkerError, never> => Effect.provide(Runner.make(process, options), layer)
+): Layer.Layer<R, WorkerError, never> => Layer.provide(Runner.layer(process, options), layerPlatform)
 
 /** @internal */
-export const makeSerialized = <
+export const layerSerialized = <
   I,
   A extends Schema.TaggedRequest.Any,
   Handlers extends {
@@ -67,9 +72,8 @@ export const makeSerialized = <
 >(
   schema: Schema.Schema<I, A>,
   handlers: Handlers
-): Effect.Effect<
-  | Scope.Scope
-  | (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
+): Layer.Layer<
+  (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
   WorkerError,
   never
-> => Effect.provide(Runner.makeSerialized(schema, handlers), layer)
+> => Layer.provide(Runner.layerSerialized(schema, handlers), layerPlatform)

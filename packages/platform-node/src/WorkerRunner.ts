@@ -9,7 +9,6 @@ import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
-import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import * as internal from "./internal/workerRunner.js"
 
@@ -20,18 +19,24 @@ export * from "@effect/platform/WorkerRunner"
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category layers
  */
-export const make: <I, R, E, O>(
-  process: (request: I) => Stream.Stream<R, E, O>,
-  options?: Runner.Runner.Options<E, O> | undefined
-) => Effect.Effect<R | Scope.Scope, WorkerError, void> = internal.make
+export const layerPlatform: Layer.Layer<never, never, Runner.PlatformRunner> = internal.layerPlatform
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category layers
  */
-export const makeSerialized: <
+export const layer: <I, R, E, O>(
+  process: (request: I) => Stream.Stream<R, E, O>,
+  options?: Runner.Runner.Options<E, O> | undefined
+) => Layer.Layer<R, WorkerError, never> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerSerialized: <
   I,
   A extends Schema.TaggedRequest.Any,
   Handlers extends {
@@ -43,14 +48,8 @@ export const makeSerialized: <
 >(
   schema: Schema.Schema<I, A>,
   handlers: Handlers
-) => Effect.Effect<
-  Scope.Scope | (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
+) => Layer.Layer<
+  ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never,
   WorkerError,
   never
-> = internal.makeSerialized
-
-/**
- * @since 1.0.0
- * @category layers
- */
-export const layer: Layer.Layer<never, never, Runner.PlatformRunner> = internal.layer
+> = internal.layerSerialized

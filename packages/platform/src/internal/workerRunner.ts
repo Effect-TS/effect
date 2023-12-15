@@ -1,11 +1,14 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Cause from "effect/Cause"
+import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
@@ -34,8 +37,9 @@ export const make = <I, R, E, O>(
     const platform = yield* _(PlatformRunner)
     const backing = yield* _(platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>())
     const fiberMap = new Map<number, Fiber.Fiber<never, void>>()
+    const parentFiber = Option.getOrThrow(Fiber.getCurrentFiber())
 
-    const handleRequests = pipe(
+    yield* _(
       Queue.take(backing.queue),
       Effect.tap((req) => {
         const id = req[0]
@@ -65,17 +69,29 @@ export const make = <I, R, E, O>(
               const transfers = options?.transfers ? options.transfers(data) : undefined
               return pipe(
                 options?.encodeOutput ? options.encodeOutput(data) : Effect.succeed(data),
-                Effect.flatMap((payload) => backing.send([id, 0, payload], transfers)),
+                Effect.flatMap((payload) => backing.send([id, 0, [payload]], transfers)),
                 Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
               )
             }
           }) :
           pipe(
             stream,
+            Stream.chunks,
             Stream.tap((data) => {
-              const transfers = options?.transfers ? options.transfers(data) : undefined
+              if (options?.encodeOutput === undefined) {
+                const payload = Chunk.toReadonlyArray(data)
+                const transfers = options?.transfers ? payload.flatMap(options.transfers) : undefined
+                return backing.send([id, 0, payload], transfers)
+              }
+
+              const transfers: Array<unknown> = []
               return Effect.flatMap(
-                options?.encodeOutput ? Effect.orDie(options.encodeOutput(data)) : Effect.succeed(data),
+                Effect.forEach(data, (data) => {
+                  if (options?.transfers) {
+                    transfers.push(...options.transfers(data))
+                  }
+                  return Effect.orDie(options.encodeOutput!(data))
+                }),
                 (payload) => backing.send([id, 0, payload], transfers)
               )
             }),
@@ -104,16 +120,18 @@ export const make = <I, R, E, O>(
           Effect.tap((fiber) => Effect.sync(() => fiberMap.set(id, fiber)))
         )
       }),
-      Effect.forever
-    )
-
-    return yield* _(
-      Effect.all([
-        handleRequests,
-        Fiber.join(backing.fiber)
-      ], { concurrency: "unbounded", discard: true }) as Effect.Effect<R, WorkerError.WorkerError, never>
+      Effect.forever,
+      Effect.onInterrupt(() => Fiber.interrupt(parentFiber)),
+      Effect.forkScoped
     )
   })
+
+/** @internal */
+export const layer = <I, R, E, O>(
+  process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
+  options?: WorkerRunner.Runner.Options<E, O>
+): Layer.Layer<WorkerRunner.PlatformRunner | R, WorkerError.WorkerError, never> =>
+  Layer.scopedDiscard(make(process, options))
 
 /** @internal */
 export const makeSerialized = <
@@ -133,7 +151,7 @@ export const makeSerialized = <
   | Scope.Scope
   | (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
   WorkerError.WorkerError,
-  never
+  void
 > => {
   const parseRequest = Schema.decode(schema)
   const effectTags = new Set<string>()
@@ -178,3 +196,23 @@ export const makeSerialized = <
     }
   })
 }
+
+/** @internal */
+export const layerSerialized = <
+  I,
+  A extends Schema.TaggedRequest.Any,
+  const Handlers extends {
+    readonly [K in A["_tag"]]: Extract<A, { readonly _tag: K }> extends
+      Serializable.SerializableWithResult<infer _IS, infer S, infer _IE, infer E, infer _IO, infer O>
+      ? (_: S) => Stream.Stream<any, E, O> | Effect.Effect<any, E, O> :
+      never
+  }
+>(
+  schema: Schema.Schema<I, A>,
+  handlers: Handlers
+): Layer.Layer<
+  | WorkerRunner.PlatformRunner
+  | (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
+  WorkerError.WorkerError,
+  never
+> => Layer.scopedDiscard(makeSerialized(schema, handlers))

@@ -1,5 +1,5 @@
-import "@vitest/web-worker"
 import * as EffectWorker from "@effect/platform-browser/Worker"
+import "@vitest/web-worker"
 import { Chunk, Effect, Stream } from "effect"
 import { assert, describe, it } from "vitest"
 import type { WorkerMessage } from "./fixtures/schema.js"
@@ -40,7 +40,11 @@ describe("Worker", () => {
         new Person({ id: 123, name: "test" }),
         new Person({ id: 123, name: "ing" })
       ])
-    }).pipe(Effect.scoped, Effect.provide(EffectWorker.layerManager), Effect.runPromise))
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(EffectWorker.layerManager),
+      Effect.runPromise
+    ))
 
   it("Serialized with initialMessage", () =>
     Effect.gen(function*(_) {
