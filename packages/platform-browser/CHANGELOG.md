@@ -1,5 +1,14 @@
 # @effect/platform-browser
 
+## 0.23.2
+
+### Patch Changes
+
+- [#348](https://github.com/Effect-TS/platform/pull/348) [`28edc60`](https://github.com/Effect-TS/platform/commit/28edc60d2fcd30160529c677a9ffd786775e534b) Thanks [@tim-smart](https://github.com/tim-smart)! - add layer worker runner apis
+
+- Updated dependencies [[`28edc60`](https://github.com/Effect-TS/platform/commit/28edc60d2fcd30160529c677a9ffd786775e534b)]:
+  - @effect/platform@0.37.2
+
 ## 0.23.1
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.25.3
+
+### Patch Changes
+
+- [#348](https://github.com/Effect-TS/platform/pull/348) [`28edc60`](https://github.com/Effect-TS/platform/commit/28edc60d2fcd30160529c677a9ffd786775e534b) Thanks [@tim-smart](https://github.com/tim-smart)! - add layer worker runner apis
+
+- Updated dependencies [[`28edc60`](https://github.com/Effect-TS/platform/commit/28edc60d2fcd30160529c677a9ffd786775e534b)]:
+  - @effect/platform-node@0.37.3
+  - @effect/platform@0.37.2
+
 ## 0.25.2
 
 ### Patch Changes
