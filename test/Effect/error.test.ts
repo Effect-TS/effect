@@ -6,7 +6,7 @@ import { assert, describe, expect } from "vitest"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("TaggedError has a stack", () =>
     Effect.gen(function*($) {
       const cause = yield* $(Effect.flip(Effect.sandbox(Effect.withSpan("A")(new TestError()))))

@@ -10,7 +10,7 @@ import * as Option from "effect/Option"
 // import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("when - returns the stream if the condition is satisfied", () =>
     Effect.gen(function*($) {
       const stream = Stream.make(1, 2, 3, 4, 5)

@@ -2,7 +2,7 @@ import * as Chunk from "effect/Chunk"
 import * as MutableRef from "effect/MutableRef"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("MutableRef", () => {
+describe("MutableRef", () => {
   it("toString", () => {
     expect(String(MutableRef.make(Chunk.make(1, 2, 3)))).toEqual(`{
   "_id": "MutableRef",

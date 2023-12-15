@@ -1,8 +1,8 @@
 import * as Inspectable from "effect/Inspectable"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Inspectable", () => {
-  describe.concurrent("toString", () => {
+describe("Inspectable", () => {
+  describe("toString", () => {
     it("primitives", () => {
       expect(Inspectable.format(null)).toEqual("null")
       expect(Inspectable.format(undefined)).toEqual(undefined)

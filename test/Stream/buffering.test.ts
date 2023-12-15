@@ -9,7 +9,7 @@ import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("buffer - maintains elements and ordering", () =>
     Effect.gen(function*($) {
       const chunks = Chunk.make(

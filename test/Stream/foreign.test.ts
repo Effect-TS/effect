@@ -11,7 +11,7 @@ import * as Stream from "effect/Stream"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream.Foreign", () => {
+describe("Stream.Foreign", () => {
   it.effect("Tag", () =>
     Effect.gen(function*($) {
       const tag = Context.Tag<number>()

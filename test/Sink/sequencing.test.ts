@@ -7,7 +7,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Sink", () => {
+describe("Sink", () => {
   it.effect("flatMap - empty input", () =>
     Effect.gen(function*($) {
       const sink = pipe(Sink.head<number>(), Sink.flatMap(Sink.succeed))

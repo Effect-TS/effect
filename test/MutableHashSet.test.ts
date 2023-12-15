@@ -19,7 +19,7 @@ class Value implements Equal.Equal {
   }
 }
 
-describe.concurrent("MutableHashSet", () => {
+describe("MutableHashSet", () => {
   it("toString", () => {
     const set = MutableHashSet.make(
       new Value(0, 1),

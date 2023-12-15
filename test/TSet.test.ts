@@ -6,7 +6,7 @@ import * as STM from "effect/STM"
 import * as TSet from "effect/TSet"
 import { assert, describe } from "vitest"
 
-describe.concurrent("TSet", () => {
+describe("TSet", () => {
   it.effect("add - new element", () =>
     Effect.gen(function*($) {
       const transaction = pipe(

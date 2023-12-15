@@ -19,7 +19,7 @@ function diffLaws<Value, Patch>(
       }
     })
 
-  describe.concurrent("differ laws", () => {
+  describe("differ laws", () => {
     it("combining patches is associative", () => {
       const value1 = gen()
       const value2 = gen()
@@ -93,8 +93,8 @@ function randomPair(): readonly [number, number] {
   return [smallInt(), smallInt()]
 }
 
-describe.concurrent("Differ", () => {
-  describe.concurrent("chunk", () => {
+describe("Differ", () => {
+  describe("chunk", () => {
     diffLaws(
       Differ.chunk<number, (n: number) => number>(Differ.update()),
       randomChunk,
@@ -102,7 +102,7 @@ describe.concurrent("Differ", () => {
     )
   })
 
-  describe.concurrent("hashMap", () => {
+  describe("hashMap", () => {
     diffLaws(
       Differ.hashMap<number, number, (n: number) => number>(Differ.update<number>()),
       randomHashMap,
@@ -110,7 +110,7 @@ describe.concurrent("Differ", () => {
     )
   })
 
-  describe.concurrent("hashSet", () => {
+  describe("hashSet", () => {
     diffLaws(
       Differ.hashSet<number>(),
       randomHashSet,
@@ -118,7 +118,7 @@ describe.concurrent("Differ", () => {
     )
   })
 
-  describe.concurrent("readonlyArray", () => {
+  describe("readonlyArray", () => {
     diffLaws(
       Differ.readonlyArray<number, (n: number) => number>(Differ.update()),
       randomReadonlyArray,
@@ -126,7 +126,7 @@ describe.concurrent("Differ", () => {
     )
   })
 
-  describe.concurrent("tuple", () => {
+  describe("tuple", () => {
     diffLaws(
       pipe(Differ.update<number>(), Differ.zip(Differ.update<number>())),
       randomPair,

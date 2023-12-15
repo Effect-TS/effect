@@ -7,7 +7,7 @@ import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("distributedWithDynamic - ensures no race between subscription and stream end", () =>
     Effect.gen(function*($) {
       const result = yield* $(

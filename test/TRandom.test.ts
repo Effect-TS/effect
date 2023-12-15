@@ -17,7 +17,7 @@ const intsArb: fc.Arbitrary<readonly [number, number]> = fc.tuple(fc.integer(), 
   .filter(([a, b]) => a !== b)
   .map(([a, b]) => b > a ? [a, b] : [b, a])
 
-describe.concurrent("TRandom", () => {
+describe("TRandom", () => {
   it.it("nextIntBetween - generates integers in the specified range", () =>
     fc.assert(fc.asyncProperty(intsArb, async ([min, max]) => {
       const result = await pipe(

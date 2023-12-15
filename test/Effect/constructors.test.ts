@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("can lift a value to an option", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeedSome(42))

@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("changes", () =>
     Effect.gen(function*($) {
       const stream = Stream.range(0, 19)

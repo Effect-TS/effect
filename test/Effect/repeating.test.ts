@@ -4,7 +4,7 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("succeeds eventually", () =>
     Effect.gen(function*($) {
       const effect = (ref: Ref.Ref<number>) => {

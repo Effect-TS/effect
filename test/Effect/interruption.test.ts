@@ -18,7 +18,7 @@ import * as Ref from "effect/Ref"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("sync forever is interruptible", () =>
     Effect.gen(function*($) {
       const fiber = yield* $(Effect.succeed(1), Effect.forever, Effect.fork)

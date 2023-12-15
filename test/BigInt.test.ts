@@ -4,7 +4,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 
-describe.concurrent("BigInt", () => {
+describe("BigInt", () => {
   it("sign", () => {
     assert.deepStrictEqual(BigInt.sign(-5n), -1)
     assert.deepStrictEqual(BigInt.sign(0n), 0)

@@ -44,7 +44,7 @@ export const splitChunks = <A>(chunks: Chunk.Chunk<Chunk.Chunk<A>>): fc.Arbitrar
   return fc.oneof(fc.constant(chunks), split(chunks).chain((chunks) => splitChunks(chunks)))
 }
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.it("zipAllSortedByKeyWith", () => {
     const intArb = fc.integer({ min: 1, max: 100 })
     const chunkArb = fc.array(fc.tuple(intArb, intArb)).map((entries) =>

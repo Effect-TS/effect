@@ -16,7 +16,7 @@ const testStructuralSharing = <A>(a: List.List<A>, b: List.List<A>, n = 0): numb
   }
 }
 
-describe.concurrent("List", () => {
+describe("List", () => {
   it("exports", () => {
     expect(List.cons).exist
     expect(List.size).exist

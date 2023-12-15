@@ -32,7 +32,7 @@ const hashEffect = dual<
   (x: number, y: number) => Effect.Effect<never, never, number>
 >(2, (x, y) => Effect.sync(() => hash(x, y)))
 
-describe.concurrent("ScopedCache", () => {
+describe("ScopedCache", () => {
   it.it("cacheStats - should correctly keep track of cache size, hits and misses", () =>
     fc.assert(
       fc.asyncProperty(fc.integer(), async (salt) => {

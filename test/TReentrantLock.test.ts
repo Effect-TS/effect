@@ -26,7 +26,7 @@ const pollSchedule = <E, A>(): Schedule.Schedule<
     )
   )
 
-describe.concurrent("TReentrantLock", () => {
+describe("TReentrantLock", () => {
   it.effect("one read lock", () =>
     Effect.gen(function*($) {
       const lock = yield* $(TReentrantLock.make)

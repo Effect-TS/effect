@@ -21,7 +21,7 @@ export const release1 = "Releasing Module 1"
 export const release2 = "Releasing Module 2"
 export const release3 = "Releasing Module 3"
 
-describe.concurrent("Layer", () => {
+describe("Layer", () => {
   it.effect("layers can be acquired in parallel", () =>
     Effect.gen(function*($) {
       const BoolTag = Context.Tag<boolean>()

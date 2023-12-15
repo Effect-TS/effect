@@ -19,7 +19,7 @@ const initial = "initial"
 const update = "update"
 const fibers = Array.from({ length: 10000 }, () => Fiber.unit)
 
-describe.concurrent("Fiber", () => {
+describe("Fiber", () => {
   it.effect("should track blockingOn in await", () =>
     Effect.gen(function*($) {
       const fiber1 = yield* $(Effect.never, Effect.fork)

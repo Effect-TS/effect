@@ -16,7 +16,7 @@ interface StringService {
 
 const StringService = Context.Tag<StringService>()
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("environment - provide is modular", () =>
     pipe(
       Effect.gen(function*($) {

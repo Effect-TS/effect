@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import * as timeout from "effect/internal/timeout"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it("promise - success with AbortSignal", async () => {
     let aborted = false
     const effect = Effect.promise<void>((signal) => {

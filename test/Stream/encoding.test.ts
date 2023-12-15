@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import { describe, expect } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("decodeText/encodeText round trip", () =>
     Effect.gen(function*(_) {
       const items = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]

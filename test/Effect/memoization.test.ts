@@ -5,7 +5,7 @@ import * as Random from "effect/Random"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("non-memoized returns new instances on repeated calls", () =>
     it.flakyTest(Effect.gen(function*($) {
       const random = Random.nextInt

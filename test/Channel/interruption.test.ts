@@ -8,7 +8,7 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("interruptWhen - interrupts the current element", () =>
     Effect.gen(function*($) {
       const interrupted = yield* $(Ref.make(false))

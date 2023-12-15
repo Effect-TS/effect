@@ -19,7 +19,7 @@ const exactlyOnce = <R, A, A1>(
   })
 }
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("filter - filters a collection using an effectual predicate", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<ReadonlyArray<number>>([]))

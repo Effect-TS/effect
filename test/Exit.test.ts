@@ -1,8 +1,8 @@
 import * as Exit from "effect/Exit"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Exit", () => {
-  describe.concurrent("toJSON", () => {
+describe("Exit", () => {
+  describe("toJSON", () => {
     it("succeed", () => {
       expect(Exit.succeed(1).toJSON()).toEqual({
         _id: "Exit",
@@ -38,7 +38,7 @@ describe.concurrent("Exit", () => {
     })
   })
 
-  describe.concurrent("toString", () => {
+  describe("toString", () => {
     it("succeed", () => {
       expect(String(Exit.succeed(1))).toEqual(`{
   "_id": "Exit",

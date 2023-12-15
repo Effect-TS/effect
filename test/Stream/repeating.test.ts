@@ -15,7 +15,7 @@ import * as TestEnvironment from "effect/TestContext"
 import fc from "fast-check"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("forever", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))

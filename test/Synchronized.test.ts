@@ -33,7 +33,7 @@ const isActive = (self: State): boolean => self._tag === "Active"
 const isChanged = (self: State): boolean => self._tag === "Changed"
 const isClosed = (self: State): boolean => self._tag === "Closed"
 
-describe.concurrent("SynchronizedRef", () => {
+describe("SynchronizedRef", () => {
   it.effect("get", () =>
     Effect.gen(function*($) {
       const result = yield* $(Synchronized.make(current), Effect.flatMap(Synchronized.get))

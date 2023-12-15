@@ -43,7 +43,7 @@ const zipParLaw = <A, B, C, E>(
     )
   )
 
-describe.concurrent("Sink", () => {
+describe("Sink", () => {
   it.effect("zipParLeft", () =>
     Effect.gen(function*($) {
       const result = yield* $(

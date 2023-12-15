@@ -20,7 +20,7 @@ const withPermitsScoped = (permits: number) => (semaphore: Effect.Semaphore) =>
     (n) => semaphore.release(n)
   )
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("branchAfter - switches streams", () =>
     Effect.gen(function*($) {
       const result = yield* $(

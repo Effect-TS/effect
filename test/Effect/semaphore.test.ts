@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("semaphore works", () =>
     Effect.gen(function*($) {
       const sem = yield* $(Effect.makeSemaphore(4))

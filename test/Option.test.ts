@@ -9,7 +9,7 @@ import { assert, assertType, describe, expect, it } from "vitest"
 
 const p = (n: number): boolean => n > 2
 
-describe.concurrent("Option", () => {
+describe("Option", () => {
   it("gen", () => {
     const a = _.gen(function*($) {
       const x = yield* $(_.some(1))

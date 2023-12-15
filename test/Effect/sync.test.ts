@@ -13,7 +13,7 @@ const sum = (n: number): number => {
   return n + sum(n - 1)
 }
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("sync - effect", () =>
     Effect.gen(function*($) {
       const sumEffect = (n: number): Effect.Effect<never, unknown, number> => {

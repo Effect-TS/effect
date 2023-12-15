@@ -30,7 +30,7 @@ const makeTArray = <A>(length: number, value: A): STM.STM<never, never, TArray.T
 const valuesOf = <A>(array: TArray.TArray<A>): STM.STM<never, never, Array<A>> =>
   pipe(array, TArray.reduce<Array<A>, A>([], (acc, a) => [...acc, a]))
 
-describe.concurrent("TArray", () => {
+describe("TArray", () => {
   it.effect("collectFirst - finds and transforms correctly", () =>
     Effect.gen(function*($) {
       const n = 10

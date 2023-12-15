@@ -5,7 +5,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("zip/all joins fibers in the correct order", () =>
     Effect.gen(function*($) {
       const ref = yield* $(FiberRef.make(5))
