@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.37.3
+
+### Patch Changes
+
+- [#350](https://github.com/Effect-TS/platform/pull/350) [`b30e5e3`](https://github.com/Effect-TS/platform/commit/b30e5e3874f22037f92253037fff6952f537ee40) Thanks [@tim-smart](https://github.com/tim-smart)! - add decode option to worker runner
+
 ## 0.37.2
 
 ### Patch Changes
