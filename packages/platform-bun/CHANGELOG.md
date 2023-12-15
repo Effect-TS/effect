@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.25.6
+
+### Patch Changes
+
+- [#354](https://github.com/Effect-TS/platform/pull/354) [`190bc84`](https://github.com/Effect-TS/platform/commit/190bc84b137a729a38b6812e220085b3d12cb124) Thanks [@tim-smart](https://github.com/tim-smart)! - add Layer support to SerializedWorker
+
+- Updated dependencies [[`190bc84`](https://github.com/Effect-TS/platform/commit/190bc84b137a729a38b6812e220085b3d12cb124)]:
+  - @effect/platform-node@0.37.6
+  - @effect/platform@0.37.5
+
 ## 0.25.5
 
 ### Patch Changes
