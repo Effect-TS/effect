@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import * as monoid from "@effect/typeclass/Monoid"
-import * as semigroup from "@effect/typeclass/Semigroup"
 import { Order } from "effect/BigInt"
+import * as monoid from "../Monoid.js"
+import * as semigroup from "../Semigroup.js"
 
 /**
  * `bigint` semigroup under addition.

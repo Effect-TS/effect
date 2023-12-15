@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type * as bicovariant from "@effect/typeclass/Bicovariant"
 import { dual } from "effect/Function"
 import * as Tuple from "effect/Tuple"
+import type * as bicovariant from "../Bicovariant.js"
 
 const bimap: {
   <E1, E2, A, B>(onFirst: (e: E1) => E2, onSecond: (a: A) => B): (self: [E1, A]) => [E2, B]

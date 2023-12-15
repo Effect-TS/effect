@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type * as bounded from "@effect/typeclass/Bounded"
-import * as monoid from "@effect/typeclass/Monoid"
-import * as semigroup from "@effect/typeclass/Semigroup"
 import * as Duration from "effect/Duration"
+import type * as bounded from "../Bounded.js"
+import * as monoid from "../Monoid.js"
+import * as semigroup from "../Semigroup.js"
 
 /**
  * @category instances

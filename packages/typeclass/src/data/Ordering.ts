@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as monoid from "@effect/typeclass/Monoid"
-import * as semigroup from "@effect/typeclass/Semigroup"
 import type { Ordering } from "effect/Ordering"
+import * as monoid from "../Monoid.js"
+import * as semigroup from "../Semigroup.js"
 
 /**
  * `Semigroup` instance for `Ordering`, returns the left-most non-zero `Ordering`.

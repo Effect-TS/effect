@@ -1,16 +1,16 @@
 /**
  * @since 1.0.0
  */
-import * as contravariant from "@effect/typeclass/Contravariant"
-import type * as invariant from "@effect/typeclass/Invariant"
-import * as monoid from "@effect/typeclass/Monoid"
-import type * as of_ from "@effect/typeclass/Of"
-import type * as product_ from "@effect/typeclass/Product"
-import * as semigroup from "@effect/typeclass/Semigroup"
-import type { Semigroup } from "@effect/typeclass/Semigroup"
-import type * as semiProduct from "@effect/typeclass/SemiProduct"
 import { constFalse, constTrue } from "effect/Function"
 import * as Predicate from "effect/Predicate"
+import * as contravariant from "../Contravariant.js"
+import type * as invariant from "../Invariant.js"
+import * as monoid from "../Monoid.js"
+import type * as of_ from "../Of.js"
+import type * as product_ from "../Product.js"
+import * as semigroup from "../Semigroup.js"
+import type { Semigroup } from "../Semigroup.js"
+import type * as semiProduct from "../SemiProduct.js"
 
 const contramap = Predicate.mapInput
 
