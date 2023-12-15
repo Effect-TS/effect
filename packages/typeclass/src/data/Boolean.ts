@@ -8,7 +8,7 @@ import * as semigroup from "@effect/typeclass/Semigroup"
  * `boolean` semigroup under conjunction.
  *
  * @example
- * import { SemigroupEvery } from '@effect/typeclass/data/Boolean'
+ * import { SemigroupEvery } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupEvery.combine(true, true), true)
  * assert.deepStrictEqual(SemigroupEvery.combine(true, false), false)
@@ -37,7 +37,7 @@ export const SemigroupEvery: semigroup.Semigroup<boolean> = semigroup.make(
  * `boolean` semigroup under disjunction.
  *
  * @example
- * import { SemigroupSome } from '@effect/typeclass/data/Boolean'
+ * import { SemigroupSome } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupSome.combine(true, true), true)
  * assert.deepStrictEqual(SemigroupSome.combine(true, false), true)
@@ -66,7 +66,7 @@ export const SemigroupSome: semigroup.Semigroup<boolean> = semigroup.make(
  * `boolean` semigroup under exclusive disjunction.
  *
  * @example
- * import { SemigroupXor } from '@effect/typeclass/data/Boolean'
+ * import { SemigroupXor } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupXor.combine(true, true), false)
  * assert.deepStrictEqual(SemigroupXor.combine(true, false), true)
@@ -84,7 +84,7 @@ export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, 
  * `boolean` semigroup under equivalence.
  *
  * @example
- * import { SemigroupEqv } from '@effect/typeclass/data/Boolean'
+ * import { SemigroupEqv } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupEqv.combine(true, true), true)
  * assert.deepStrictEqual(SemigroupEqv.combine(true, false), false)

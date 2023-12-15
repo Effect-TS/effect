@@ -20,7 +20,7 @@ export const Bounded: bounded.Bounded<number> = {
  * `number` semigroup under addition.
  *
  * @example
- * import { SemigroupSum } from '@effect/typeclass/data/Number'
+ * import { SemigroupSum } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(SemigroupSum.combine(2, 3), 5)
  *
@@ -33,7 +33,7 @@ export const SemigroupSum: semigroup.Semigroup<number> = semigroup.make((self, t
  * `number` semigroup under multiplication.
  *
  * @example
- * import { SemigroupMultiply } from '@effect/typeclass/data/Number'
+ * import { SemigroupMultiply } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(SemigroupMultiply.combine(2, 3), 6)
  *
@@ -61,7 +61,7 @@ export const SemigroupMultiply: semigroup.Semigroup<number> = semigroup.make(
  * A `Semigroup` that uses the minimum between two values.
  *
  * @example
- * import { SemigroupMin } from '@effect/typeclass/data/Number'
+ * import { SemigroupMin } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(SemigroupMin.combine(2, 3), 2)
  *
@@ -74,7 +74,7 @@ export const SemigroupMin: semigroup.Semigroup<number> = semigroup.min(Number.Or
  * A `Semigroup` that uses the maximum between two values.
  *
  * @example
- * import { SemigroupMax } from '@effect/typeclass/data/Number'
+ * import { SemigroupMax } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(SemigroupMax.combine(2, 3), 3)
  *
@@ -89,7 +89,7 @@ export const SemigroupMax: semigroup.Semigroup<number> = semigroup.max(Number.Or
  * The `empty` value is `0`.
  *
  * @example
- * import { MonoidSum } from '@effect/typeclass/data/Number'
+ * import { MonoidSum } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(MonoidSum.combine(2, 3), 5)
  * assert.deepStrictEqual(MonoidSum.combine(2, MonoidSum.empty), 2)
@@ -105,7 +105,7 @@ export const MonoidSum: monoid.Monoid<number> = monoid.fromSemigroup(SemigroupSu
  * The `empty` value is `1`.
  *
  * @example
- * import { MonoidMultiply } from '@effect/typeclass/data/Number'
+ * import { MonoidMultiply } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(MonoidMultiply.combine(2, 3), 6)
  * assert.deepStrictEqual(MonoidMultiply.combine(2, MonoidMultiply.empty), 2)
@@ -121,7 +121,7 @@ export const MonoidMultiply: monoid.Monoid<number> = monoid.fromSemigroup(Semigr
  * The `empty` value is `-Infinity`.
  *
  * @example
- * import { MonoidMin } from '@effect/typeclass/data/Number'
+ * import { MonoidMin } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(MonoidMin.combine(2, 3), 2)
  * assert.deepStrictEqual(MonoidMin.combine(2, MonoidMin.empty), 2)
@@ -137,7 +137,7 @@ export const MonoidMin: monoid.Monoid<number> = bounded.min(Bounded)
  * The `empty` value is `Infinity`.
  *
  * @example
- * import { MonoidMax } from '@effect/typeclass/data/Number'
+ * import { MonoidMax } from "@effect/typeclass/data/Number"
  *
  * assert.deepStrictEqual(MonoidMax.combine(2, 3), 3)
  * assert.deepStrictEqual(MonoidMax.combine(2, MonoidMax.empty), 2)
