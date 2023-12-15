@@ -22,7 +22,12 @@ export {
    * @category teardown
    * @since 1.0.0
    */
-  defaultTeardown
+  defaultTeardown,
+  /**
+   * @category teardown
+   * @since 1.0.0
+   */
+  interruptAll
 } from "@effect/platform/Runtime"
 
 /**

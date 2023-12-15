@@ -1,7 +1,6 @@
+import * as Runtime from "@effect/platform/Runtime"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import type * as FiberId from "effect/FiberId"
 
 /** @internal */
 export const runMain = <E, A>(
@@ -17,16 +16,10 @@ export const runMain = <E, A>(
   )
 
   fiber.addObserver(() => {
-    Effect.runFork(interruptAll(fiber.id()))
+    Effect.runFork(Runtime.interruptAll(fiber.id()))
   })
 
   addEventListener("beforeunload", () => {
     Effect.runFork(fiber.interruptAsFork(fiber.id()))
   })
 }
-
-const interruptAll = (id: FiberId.FiberId) =>
-  Effect.flatMap(
-    Fiber.roots,
-    (roots) => Fiber.interruptAllAs(roots, id)
-  )

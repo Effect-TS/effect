@@ -191,7 +191,7 @@ export const makeManager = Effect.gen(function*(_) {
             Deferred.complete(deferred, Effect.unit),
             Effect.sync(() => requestMap.delete(id))
           )
-          return Exit.isInterrupted(exit) ?
+          return Exit.isFailure(exit) ?
             Effect.zipRight(sendQueue.offer([[id, 1]]), release) :
             release
         }

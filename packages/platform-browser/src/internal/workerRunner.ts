@@ -1,7 +1,9 @@
+import * as Runtime from "@effect/platform/Runtime"
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
+import { Cause } from "effect"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
@@ -28,7 +30,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
-              Effect.runFork(Queue.shutdown(queue))
+              Effect.runFork(Effect.flatMap(Effect.fiberId, Runtime.interruptAll))
             }
           }
           function onMessageError(error: ErrorEvent) {
@@ -46,8 +48,8 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             port.removeEventListener("error", onError as any)
           })
         }),
-        Effect.ignoreLogged,
-        Effect.forever,
+        Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.unit : Effect.logDebug(cause)),
+        Effect.retryWhile(() => true),
         Effect.annotateLogs({
           package: "@effect/platform-browser",
           module: "WorkerRunner"

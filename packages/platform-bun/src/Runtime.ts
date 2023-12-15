@@ -23,6 +23,10 @@ export {
   defaultTeardown,
   /**
    * @since 1.0.0
+   */
+  interruptAll,
+  /**
+   * @since 1.0.0
    * @category runtime
    */
   runMain

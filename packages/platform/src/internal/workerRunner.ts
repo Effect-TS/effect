@@ -8,7 +8,6 @@ import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -36,7 +35,6 @@ export const make = <I, R, E, O>(
     const platform = yield* _(PlatformRunner)
     const backing = yield* _(platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>())
     const fiberMap = new Map<number, Fiber.Fiber<never, void>>()
-    const parentFiber = Option.getOrThrow(Fiber.getCurrentFiber())
 
     yield* _(
       Queue.take(backing.queue),
@@ -129,7 +127,6 @@ export const make = <I, R, E, O>(
         )
       }),
       Effect.forever,
-      Effect.onInterrupt(() => Fiber.interrupt(parentFiber)),
       Effect.forkScoped
     )
   })
