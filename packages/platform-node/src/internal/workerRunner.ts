@@ -2,7 +2,6 @@ import * as Runtime from "@effect/platform/Runtime"
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
 import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -65,17 +64,12 @@ export const layer = <I, R, E, O>(
 export const layerSerialized = <
   I,
   A extends Schema.TaggedRequest.Any,
-  Handlers extends {
-    readonly [K in A["_tag"]]: Extract<A, { readonly _tag: K }> extends
-      Serializable.SerializableWithResult<infer _IS, infer S, infer _IE, infer E, infer _IO, infer O>
-      ? (_: S) => Stream.Stream<any, E, O> | Effect.Effect<any, E, O> :
-      never
-  }
+  Handlers extends Runner.SerializedRunner.Handlers<A>
 >(
   schema: Schema.Schema<I, A>,
   handlers: Handlers
 ): Layer.Layer<
-  (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
+  Runner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError,
   never
 > => Layer.provide(Runner.layerSerialized(schema, handlers), layerPlatform)

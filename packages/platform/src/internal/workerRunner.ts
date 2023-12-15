@@ -142,64 +142,69 @@ export const layer = <I, R, E, O>(
 export const makeSerialized = <
   I,
   A extends Schema.TaggedRequest.Any,
-  const Handlers extends {
-    readonly [K in A["_tag"]]: Extract<A, { readonly _tag: K }> extends
-      Serializable.SerializableWithResult<infer _IS, infer S, infer _IE, infer E, infer _IO, infer O>
-      ? (_: S) => Stream.Stream<any, E, O> | Effect.Effect<any, E, O> :
-      never
-  }
+  const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>
 >(
   schema: Schema.Schema<I, A>,
   handlers: Handlers
 ): Effect.Effect<
   | WorkerRunner.PlatformRunner
   | Scope.Scope
-  | (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
+  | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError.WorkerError,
   void
-> => {
-  const parseRequest = Schema.parse(schema)
-  return make((request: A) => (handlers as any)[request._tag](request), {
-    transfers(message) {
-      return Transferable.get(message)
-    },
-    decode(message) {
-      return Effect.mapError(
-        parseRequest(message),
-        (error) => WorkerError.WorkerError("decode", error)
-      )
-    },
-    encodeError(request, message) {
-      return Effect.mapError(
-        Serializable.serializeFailure(request as any, message),
-        (error) => WorkerError.WorkerError("encode", error)
-      )
-    },
-    encodeOutput(request, message) {
-      return Effect.mapError(
-        Serializable.serializeSuccess(request as any, message),
-        (error) => WorkerError.WorkerError("encode", error)
-      )
-    }
-  })
-}
+> =>
+  Effect.gen(function*(_) {
+    const scope = yield* _(Effect.scope)
+    let context = Context.empty() as Context.Context<any>
+    const parseRequest = Schema.parse(schema)
+
+    return yield* _(make((request: A) => {
+      const result = (handlers as any)[request._tag](request)
+      if (Layer.isLayer(result)) {
+        return Effect.flatMap(Layer.buildWithScope(result, scope), (_) =>
+          Effect.sync(() => {
+            context = Context.merge(context, _)
+          }))
+      } else if (Effect.isEffect(result)) {
+        return Effect.provide(result, context)
+      }
+      return Stream.provideContext(result as any, context)
+    }, {
+      transfers(message) {
+        return Transferable.get(message)
+      },
+      decode(message) {
+        return Effect.mapError(
+          parseRequest(message),
+          (error) => WorkerError.WorkerError("decode", error)
+        )
+      },
+      encodeError(request, message) {
+        return Effect.mapError(
+          Serializable.serializeFailure(request as any, message),
+          (error) => WorkerError.WorkerError("encode", error)
+        )
+      },
+      encodeOutput(request, message) {
+        return Effect.mapError(
+          Serializable.serializeSuccess(request as any, message),
+          (error) => WorkerError.WorkerError("encode", error)
+        )
+      }
+    }))
+  }) as any
 
 /** @internal */
 export const layerSerialized = <
   I,
   A extends Schema.TaggedRequest.Any,
-  const Handlers extends {
-    readonly [K in A["_tag"]]: Extract<A, { readonly _tag: K }> extends
-      Serializable.SerializableWithResult<infer _IS, infer S, infer _IE, infer E, infer _IO, infer O>
-      ? (_: S) => Stream.Stream<any, E, O> | Effect.Effect<any, E, O> :
-      never
-  }
+  const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>
 >(
   schema: Schema.Schema<I, A>,
   handlers: Handlers
 ): Layer.Layer<
   | WorkerRunner.PlatformRunner
-  | (ReturnType<Handlers[keyof Handlers]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never),
+  | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError.WorkerError,
   never
 > => Layer.scopedDiscard(makeSerialized(schema, handlers))
