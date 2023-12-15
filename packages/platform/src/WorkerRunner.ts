@@ -69,9 +69,10 @@ export declare namespace Runner {
    * @since 1.0.0
    * @category models
    */
-  export interface Options<E, O> {
-    readonly encodeOutput?: (message: O) => Effect.Effect<never, WorkerError, unknown>
-    readonly encodeError?: (message: E) => Effect.Effect<never, WorkerError, unknown>
+  export interface Options<I, E, O> {
+    readonly decode?: (message: unknown) => Effect.Effect<never, WorkerError, I>
+    readonly encodeOutput?: (request: I, message: O) => Effect.Effect<never, WorkerError, unknown>
+    readonly encodeError?: (request: I, error: E) => Effect.Effect<never, WorkerError, unknown>
     readonly transfers?: (message: O | E) => ReadonlyArray<unknown>
   }
 }
@@ -82,7 +83,7 @@ export declare namespace Runner {
  */
 export const make: <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
-  options?: Runner.Options<E, O> | undefined
+  options?: Runner.Options<I, E, O> | undefined
 ) => Effect.Effect<Scope.Scope | R | PlatformRunner, WorkerError, void> = internal.make
 
 /**
@@ -91,7 +92,7 @@ export const make: <I, R, E, O>(
  */
 export const layer: <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
-  options?: Runner.Options<E, O> | undefined
+  options?: Runner.Options<I, E, O> | undefined
 ) => Layer.Layer<R | PlatformRunner, WorkerError, never> = internal.layer
 
 /**

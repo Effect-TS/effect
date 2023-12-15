@@ -6,16 +6,15 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
-import type * as WorkerError from "../WorkerError.js"
+import * as WorkerError from "../WorkerError.js"
 import type * as WorkerRunner from "../WorkerRunner.js"
 
 /** @internal */
@@ -31,7 +30,7 @@ export const PlatformRunner = Context.Tag<WorkerRunner.PlatformRunner>(
 /** @internal */
 export const make = <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
-  options?: WorkerRunner.Runner.Options<E, O>
+  options?: WorkerRunner.Runner.Options<I, E, O>
 ) =>
   Effect.gen(function*(_) {
     const platform = yield* _(PlatformRunner)
@@ -41,6 +40,15 @@ export const make = <I, R, E, O>(
 
     yield* _(
       Queue.take(backing.queue),
+      options?.decode ?
+        Effect.flatMap((req): Effect.Effect<never, WorkerError.WorkerError, Worker.Worker.Request<I>> => {
+          if (req[1] === 1) {
+            return Effect.succeed(req)
+          }
+
+          return Effect.map(options.decode!(req[2]), (data) => [req[0], req[1], data])
+        }) :
+        identity,
       Effect.tap((req) => {
         const id = req[0]
         if (req[1] === 1) {
@@ -58,7 +66,7 @@ export const make = <I, R, E, O>(
                 onLeft: (error) => {
                   const transfers = options?.transfers ? options.transfers(error) : undefined
                   return pipe(
-                    options?.encodeError ? options.encodeError(error) : Effect.succeed(error),
+                    options?.encodeError ? options.encodeError(req[2], error) : Effect.succeed(error),
                     Effect.flatMap((payload) => backing.send([id, 2, payload as any], transfers)),
                     Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
                   )
@@ -68,7 +76,7 @@ export const make = <I, R, E, O>(
             onSuccess: (data) => {
               const transfers = options?.transfers ? options.transfers(data) : undefined
               return pipe(
-                options?.encodeOutput ? options.encodeOutput(data) : Effect.succeed(data),
+                options?.encodeOutput ? options.encodeOutput(req[2], data) : Effect.succeed(data),
                 Effect.flatMap((payload) => backing.send([id, 0, [payload]], transfers)),
                 Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
               )
@@ -90,7 +98,7 @@ export const make = <I, R, E, O>(
                   if (options?.transfers) {
                     transfers.push(...options.transfers(data))
                   }
-                  return Effect.orDie(options.encodeOutput!(data))
+                  return Effect.orDie(options.encodeOutput!(req[2], data))
                 }),
                 (payload) => backing.send([id, 0, payload], transfers)
               )
@@ -102,7 +110,7 @@ export const make = <I, R, E, O>(
                   onLeft: (error) => {
                     const transfers = options?.transfers ? options.transfers(error) : undefined
                     return pipe(
-                      options?.encodeError ? options.encodeError(error) : Effect.succeed(error),
+                      options?.encodeError ? options.encodeError(req[2], error) : Effect.succeed(error),
                       Effect.flatMap((payload) => backing.send([id, 2, payload as any], transfers)),
                       Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
                     )
@@ -129,7 +137,7 @@ export const make = <I, R, E, O>(
 /** @internal */
 export const layer = <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
-  options?: WorkerRunner.Runner.Options<E, O>
+  options?: WorkerRunner.Runner.Options<I, E, O>
 ): Layer.Layer<WorkerRunner.PlatformRunner | R, WorkerError.WorkerError, never> =>
   Layer.scopedDiscard(make(process, options))
 
@@ -153,46 +161,28 @@ export const makeSerialized = <
   WorkerError.WorkerError,
   void
 > => {
-  const parseRequest = Schema.decode(schema)
-  const effectTags = new Set<string>()
-  return make((request: I) => {
-    if (Predicate.hasProperty(request, "_tag") && effectTags.has(request._tag as string)) {
-      return Effect.flatMap(parseRequest(request), (request: A) => {
-        const handler =
-          (handlers as unknown as Record<string, (req: unknown) => Effect.Effect<never, any, any>>)[request._tag]
-        if (!handler) {
-          return Effect.dieMessage(`No handler for ${request._tag}`)
-        }
-        const encodeSuccess = Schema.encode(Serializable.successSchema(request as any))
-        return pipe(
-          Effect.matchEffect(handler(request), {
-            onFailure: (error) => Effect.flatMap(Serializable.serializeFailure(request as any, error), Effect.fail),
-            onSuccess: encodeSuccess
-          })
-        )
-      })
-    }
-
-    return Stream.flatMap(parseRequest(request), (request: A) => {
-      const handler =
-        (handlers as unknown as Record<string, (req: unknown) => Stream.Stream<never, any, any>>)[request._tag]
-      if (!handler) {
-        return Stream.dieMessage(`No handler for ${request._tag}`)
-      }
-      const encodeSuccess = Schema.encode(Serializable.successSchema(request as any))
-      const stream = handler(request)
-      if (Effect.isEffect(stream)) {
-        effectTags.add(request._tag)
-      }
-      return pipe(
-        stream,
-        Stream.catchAll((error) => Effect.flatMap(Serializable.serializeFailure(request as any, error), Effect.fail)),
-        Stream.mapEffect(encodeSuccess)
-      )
-    })
-  }, {
+  const parseRequest = Schema.parse(schema)
+  return make((request: A) => (handlers as any)[request._tag](request), {
     transfers(message) {
       return Transferable.get(message)
+    },
+    decode(message) {
+      return Effect.mapError(
+        parseRequest(message),
+        (error) => WorkerError.WorkerError("decode", error)
+      )
+    },
+    encodeError(request, message) {
+      return Effect.mapError(
+        Serializable.serializeFailure(request as any, message),
+        (error) => WorkerError.WorkerError("encode", error)
+      )
+    },
+    encodeOutput(request, message) {
+      return Effect.mapError(
+        Serializable.serializeSuccess(request as any, message),
+        (error) => WorkerError.WorkerError("encode", error)
+      )
     }
   })
 }
