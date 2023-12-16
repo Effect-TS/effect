@@ -5,4 +5,4 @@ import { describe } from "vitest"
 
 const KeyValueLive = Kv.layerFileSystem(`${__dirname}/fixtures/kv`)
 
-describe("KeyValueStore / layerFileSystem", () => testLayer(KeyValueLive))
+describe.sequential("KeyValueStore / layerFileSystem", () => testLayer(KeyValueLive))
