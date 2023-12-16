@@ -1,5 +1,14 @@
 # @effect/platform-bun
 
+## 0.25.7
+
+### Patch Changes
+
+- [#357](https://github.com/Effect-TS/platform/pull/357) [`6db1c07`](https://github.com/Effect-TS/platform/commit/6db1c0768d8afd8a45c0af31cbdfc40c9319e48b) Thanks [@tim-smart](https://github.com/tim-smart)! - respond witu 499 on interrupt
+
+- Updated dependencies [[`6db1c07`](https://github.com/Effect-TS/platform/commit/6db1c0768d8afd8a45c0af31cbdfc40c9319e48b)]:
+  - @effect/platform-node@0.37.7
+
 ## 0.25.6
 
 ### Patch Changes
