@@ -140,6 +140,8 @@ const respond = Middleware.make((httpApp) =>
           Effect.sync(() => {
             if (exit._tag === "Success") {
               ;(request as ServerRequestImpl).resolve(makeResponse(request, exit.value))
+            } else if (Cause.isInterruptedOnly(exit.cause)) {
+              ;(request as ServerRequestImpl).resolve(new Response(undefined, { status: 499 }))
             } else {
               ;(request as ServerRequestImpl).reject(Cause.pretty(exit.cause))
             }

@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Function from "effect/Function"
@@ -59,7 +60,7 @@ export const logger = make((httpApp) => {
                 Effect.annotateLogs(Effect.log(exit.cause), {
                   "http.method": request.method,
                   "http.url": request.url,
-                  "http.status": 500
+                  "http.status": Cause.isInterruptedOnly(exit.cause) ? 499 : 500
                 }) :
                 Effect.annotateLogs(Effect.log(""), {
                   "http.method": request.method,

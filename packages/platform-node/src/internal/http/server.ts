@@ -10,6 +10,7 @@ import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import type * as Path from "@effect/platform/Path"
+import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
@@ -100,11 +101,11 @@ const respond = Middleware.make((httpApp) =>
         ),
         (response) => handleResponse(request, response)
       ),
-      (_cause) =>
+      (cause) =>
         Effect.sync(() => {
           const nodeResponse = (request as ServerRequestImpl).response
           if (!nodeResponse.headersSent) {
-            nodeResponse.writeHead(500)
+            nodeResponse.writeHead(Cause.isInterruptedOnly(cause) ? 499 : 500)
           }
           if (!nodeResponse.writableEnded) {
             nodeResponse.end()
