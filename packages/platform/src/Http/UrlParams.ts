@@ -1,40 +1,38 @@
 /**
  * @since 1.0.0
  */
-import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface UrlParams extends Chunk.Chunk<[string, string]> {}
+export interface UrlParams extends ReadonlyArray<readonly [string, string]> {}
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Input = UrlParams | Readonly<Record<string, string>> | Iterable<readonly [string, string]> | URLSearchParams
+export type Input = Readonly<Record<string, string>> | Iterable<readonly [string, string]> | URLSearchParams
 
 /**
  * @since 1.0.0
  * @category constructors
  */
 export const fromInput = (input: Input): UrlParams => {
-  if (Chunk.isChunk(input)) {
-    return input
-  } else if (Symbol.iterator in input) {
-    return Chunk.fromIterable(input) as UrlParams
+  if (Symbol.iterator in input) {
+    return ReadonlyArray.fromIterable(input)
   }
-  return Chunk.fromIterable(Object.entries(input))
+  return ReadonlyArray.fromIterable(Object.entries(input))
 }
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const empty: UrlParams = Chunk.empty()
+export const empty: UrlParams = []
 
 /**
  * @since 1.0.0
@@ -47,8 +45,8 @@ export const set: {
   (key: string, value: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string, value: string) => UrlParams
 >(3, (self, key, value) =>
-  Chunk.append(
-    Chunk.filter(self, ([k]) => k !== key),
+  ReadonlyArray.append(
+    ReadonlyArray.filter(self, ([k]) => k !== key),
     [key, value]
   ))
 
@@ -64,9 +62,9 @@ export const setAll: {
   (self: UrlParams, input: Input) => UrlParams
 >(2, (self, input) => {
   const toSet = fromInput(input)
-  const keys = Chunk.toReadonlyArray(toSet).map(([k]) => k)
-  return Chunk.appendAll(
-    Chunk.filter(self, ([k]) => keys.includes(k)),
+  const keys = toSet.map(([k]) => k)
+  return ReadonlyArray.appendAll(
+    ReadonlyArray.filter(self, ([k]) => keys.includes(k)),
     toSet
   )
 })
@@ -82,7 +80,7 @@ export const append: {
   (key: string, value: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string, value: string) => UrlParams
 >(3, (self, key, value) =>
-  Chunk.append(
+  ReadonlyArray.append(
     self,
     [key, value]
   ))
@@ -98,7 +96,7 @@ export const appendAll: {
   (input: Input) => (self: UrlParams) => UrlParams,
   (self: UrlParams, input: Input) => UrlParams
 >(2, (self, input) =>
-  Chunk.appendAll(
+  ReadonlyArray.appendAll(
     self,
     fromInput(input)
   ))
@@ -113,13 +111,13 @@ export const remove: {
 } = dual<
   (key: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string) => UrlParams
->(2, (self, key) => Chunk.filter(self, ([k]) => k !== key))
+>(2, (self, key) => ReadonlyArray.filter(self, ([k]) => k !== key))
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const toString = (self: UrlParams): string => new URLSearchParams(Chunk.toReadonlyArray(self) as any).toString()
+export const toString = (self: UrlParams): string => new URLSearchParams(self as any).toString()
 
 /**
  * @since 1.0.0
@@ -129,7 +127,7 @@ export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown)
   Effect.try({
     try: () => {
       const urlInstance = new URL(url, baseUrl())
-      Chunk.forEach(params, ([key, value]) => {
+      ReadonlyArray.forEach(params, ([key, value]) => {
         if (value !== undefined) {
           urlInstance.searchParams.append(key, value)
         }

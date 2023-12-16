@@ -4,6 +4,7 @@ import { pipe } from "effect/Function"
 import * as FileSystem from "../../FileSystem.js"
 import type * as Body from "../../Http/Body.js"
 import * as Etag from "../../Http/Etag.js"
+import * as Headers from "../../Http/Headers.js"
 import type * as Platform from "../../Http/Platform.js"
 import type * as ServerResponse from "../../Http/ServerResponse.js"
 
@@ -19,7 +20,7 @@ export const make = (impl: {
     path: string,
     status: number,
     statusText: string | undefined,
-    headers: Record<string, string>,
+    headers: Headers.Headers,
     start: number,
     end: number | undefined,
     contentLength: number
@@ -28,7 +29,7 @@ export const make = (impl: {
     file: Body.Body.FileLike,
     status: number,
     statusText: string | undefined,
-    headers: Record<string, string>,
+    headers: Headers.Headers,
     options?: FileSystem.StreamOptions
   ) => ServerResponse.ServerResponse
 }): Effect.Effect<FileSystem.FileSystem | Etag.Generator, never, Platform.Platform> =>
@@ -45,12 +46,9 @@ export const make = (impl: {
           Effect.map(({ etag, info }) => {
             const start = Number(options?.offset ?? 0)
             const end = options?.bytesToRead !== undefined ? start + Number(options.bytesToRead) : undefined
-            const headers: Record<string, string> = {
-              ...(options?.headers ?? {}),
-              etag: Etag.toString(etag)
-            }
+            const headers = Headers.set(options?.headers ?? Headers.empty, "etag", Etag.toString(etag))
             if (info.mtime._tag === "Some") {
-              headers["last-modified"] = info.mtime.value.toUTCString()
+              ;(headers as any)["last-modified"] = info.mtime.value.toUTCString()
             }
             const contentLength = end !== undefined ? end - start : Number(info.size) - start
             return impl.fileResponse(
@@ -67,11 +65,13 @@ export const make = (impl: {
       },
       fileWebResponse(file, options) {
         return Effect.map(etagGen.fromFileWeb(file), (etag) => {
-          const headers: Record<string, string> = {
-            ...(options?.headers ?? {}),
-            etag: Etag.toString(etag),
-            "last-modified": new Date(file.lastModified).toUTCString()
-          }
+          const headers = Headers.merge(
+            options?.headers ?? Headers.empty,
+            Headers.unsafeFromRecord({
+              etag: Etag.toString(etag),
+              "last-modified": new Date(file.lastModified).toUTCString()
+            })
+          )
           return impl.fileWebResponse(
             file,
             options?.status ?? 200,

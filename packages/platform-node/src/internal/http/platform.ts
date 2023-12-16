@@ -1,3 +1,4 @@
+import * as Headers from "@effect/platform/Http/Headers"
 import * as Platform from "@effect/platform/Http/Platform"
 import * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import { pipe } from "effect/Function"
@@ -24,11 +25,13 @@ export const make = Platform.make({
   },
   fileWebResponse(file, status, statusText, headers, _options) {
     return ServerResponse.raw(Readable.fromWeb(file.stream() as any), {
-      headers: {
-        ...headers,
-        "content-type": headers["content-type"] ?? Mime.getType(file.name) ?? "application/octet-stream",
-        "content-length": file.size.toString()
-      },
+      headers: Headers.merge(
+        headers,
+        Headers.unsafeFromRecord({
+          "content-type": headers["content-type"] ?? Mime.getType(file.name) ?? "application/octet-stream",
+          "content-length": file.size.toString()
+        })
+      ),
       status,
       statusText
     })

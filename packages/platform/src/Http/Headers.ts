@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Brand from "effect/Brand"
 import { dual } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -8,21 +9,33 @@ import * as ReadonlyRecord from "effect/ReadonlyRecord"
 
 /**
  * @since 1.0.0
- * @category models
+ * @category type ids
  */
-export interface Headers extends ReadonlyRecord.ReadonlyRecord<string> {}
+export const HeadersTypeId = Symbol.for("@effect/platform/Http/Headers")
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type HeadersTypeId = typeof HeadersTypeId
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Input = Headers | Iterable<readonly [string, string]>
+export type Headers = Brand.Branded<ReadonlyRecord.ReadonlyRecord<string>, HeadersTypeId>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Input = ReadonlyRecord.ReadonlyRecord<string> | Iterable<readonly [string, string]>
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const empty: Headers = ReadonlyRecord.empty()
+export const empty: Headers = Object.create(null) as Headers
 
 /**
  * @since 1.0.0
@@ -35,12 +48,18 @@ export const fromInput: (input?: Input) => Headers = (input) => {
     return ReadonlyRecord.fromEntries(ReadonlyArray.map(
       ReadonlyArray.fromIterable(input),
       ([k, v]) => [k.toLowerCase(), v] as const
-    ))
+    )) as Headers
   }
   return ReadonlyRecord.fromEntries(
     Object.entries(input).map(([k, v]) => [k.toLowerCase(), v])
-  )
+  ) as Headers
 }
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const unsafeFromRecord = (input: ReadonlyRecord.ReadonlyRecord<string>): Headers => input as Headers
 
 /**
  * @since 1.0.0
@@ -100,10 +119,25 @@ export const setAll: {
  * @since 1.0.0
  * @category combinators
  */
+export const merge: {
+  (headers: Headers): (self: Headers) => Headers
+  (self: Headers, headers: Headers): Headers
+} = dual<
+  (headers: Headers) => (self: Headers) => Headers,
+  (self: Headers, headers: Headers) => Headers
+>(2, (self, headers) => ({
+  ...self,
+  ...headers
+}))
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const remove: {
   (key: string): (self: Headers) => Headers
   (self: Headers, key: string): Headers
 } = dual<
   (key: string) => (self: Headers) => Headers,
   (self: Headers, key: string) => Headers
->(2, (self, key) => ReadonlyRecord.remove(self, key.toLowerCase()))
+>(2, (self, key) => ReadonlyRecord.remove(self, key.toLowerCase()) as Headers)

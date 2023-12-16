@@ -8,6 +8,7 @@ import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/platform.js"
 import type * as Body from "./Body.js"
 import type * as Etag from "./Etag.js"
+import type * as Headers from "./Headers.js"
 import type * as ServerResponse from "./ServerResponse.js"
 
 /**
@@ -54,7 +55,7 @@ export const make: (
       path: string,
       status: number,
       statusText: string | undefined,
-      headers: Record<string, string>,
+      headers: Headers.Headers,
       start: number,
       end: number | undefined,
       contentLength: number
@@ -63,7 +64,7 @@ export const make: (
       file: Body.Body.FileLike,
       status: number,
       statusText: string | undefined,
-      headers: Record<string, string>,
+      headers: Headers.Headers,
       options?: FileSystem.StreamOptions | undefined
     ) => ServerResponse.ServerResponse
   }
