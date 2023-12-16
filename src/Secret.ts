@@ -73,3 +73,12 @@ export const value: (self: Secret) => string = InternalSecret.value
  * @category unsafe
  */
 export const unsafeWipe: (self: Secret) => void = InternalSecret.unsafeWipe
+
+/**
+ * @since 2.0.0
+ * @category mapping
+ */
+export const map: {
+  (f: (value: string) => string): (self: Secret) => Secret
+  (self: Secret, f: (value: string) => string): Secret
+} = InternalSecret.map

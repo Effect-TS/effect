@@ -1,5 +1,5 @@
 import * as Equal from "../Equal.js"
-import { pipe } from "../Function.js"
+import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import { hasProperty } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
@@ -67,3 +67,9 @@ export const unsafeWipe = (self: Secret.Secret): void => {
     self.raw[i] = 0
   }
 }
+
+/** @internal */
+export const map: {
+  (f: (value: string) => string): (self: Secret.Secret) => Secret.Secret
+  (self: Secret.Secret, f: (value: string) => string): Secret.Secret
+} = dual(2, (self, f) => fromString(f(value(self))))
