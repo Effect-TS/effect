@@ -7,7 +7,6 @@ import type * as Effect from "effect/Effect"
 import * as internal from "../internal/http/clientResponse.js"
 import type * as Error from "./ClientError.js"
 import type * as ClientRequest from "./ClientRequest.js"
-import type * as Headers from "./Headers.js"
 import type * as IncomingMessage from "./IncomingMessage.js"
 
 export {
@@ -77,7 +76,7 @@ export const schemaJson: <
  * @category schema
  */
 export const schemaNoBody: <
-  I extends { readonly status?: number; readonly headers?: Headers.Headers },
+  I extends { readonly status?: number | undefined; readonly headers?: Readonly<Record<string, string>> | undefined },
   A
 >(schema: Schema.Schema<I, A>) => (self: ClientResponse) => Effect.Effect<never, ParseResult.ParseError, A> =
   internal.schemaNoBody
