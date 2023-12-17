@@ -13,7 +13,7 @@ import type * as Path from "@effect/platform/Path"
 import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
-import type { LazyArg } from "effect/Function"
+import { type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
@@ -71,18 +71,15 @@ export const make = (
           port: address.port
         },
       serve: (httpApp, middleware) =>
-        makeHandler(httpApp, middleware!).pipe(
-          Effect.flatMap((handler) =>
-            Effect.async<never, never, never>((_resume) => {
-              server.on("request", handler)
-              return Effect.sync(() => {
-                server.off("request", handler)
-              })
+        Effect.gen(function*(_) {
+          const handler = yield* _(makeHandler(httpApp, middleware!))
+          yield* _(Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              server.off("request", handler)
             })
-          ),
-          Effect.forkScoped,
-          Effect.asUnit
-        )
+          ))
+          server.on("request", handler)
+        })
     })
   }).pipe(
     Effect.locally(
@@ -94,7 +91,7 @@ export const make = (
 /** @internal */
 export const makeHandler: {
   <R, E>(httpApp: App.Default<R, E>): Effect.Effect<
-    Exclude<R, ServerRequest.ServerRequest>,
+    Exclude<R, ServerRequest.ServerRequest | Scope.Scope>,
     never,
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void
   >
@@ -102,14 +99,16 @@ export const makeHandler: {
     httpApp: App.Default<R, E>,
     middleware: Middleware.Middleware.Applied<R, E, App>
   ): Effect.Effect<
-    Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+    Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>,
     never,
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void
   >
 } = <R, E>(httpApp: App.Default<R, E>, middleware?: Middleware.Middleware) => {
-  const handledApp = middleware
-    ? middleware(App.withDefaultMiddleware(respond(httpApp)))
-    : App.withDefaultMiddleware(respond(httpApp))
+  const handledApp = Effect.scoped(
+    middleware
+      ? middleware(App.withDefaultMiddleware(respond(httpApp)))
+      : App.withDefaultMiddleware(respond(httpApp))
+  )
   return Effect.map(Effect.runtime<R>(), (runtime) => {
     const runFork = Runtime.runFork(runtime)
     return function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {

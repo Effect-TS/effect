@@ -185,7 +185,7 @@ export const makeRoute = <R, E>(
   path: Router.PathInput,
   handler: Router.Route.Handler<R, E>,
   prefix: Option.Option<string> = Option.none()
-): Router.Route<R, E> => new RouteImpl(method, path, handler, prefix)
+): Router.Route<Router.Router.ExcludeProvided<R>, E> => new RouteImpl(method, path, handler, prefix) as any
 
 /** @internal */
 export const concat = dual<

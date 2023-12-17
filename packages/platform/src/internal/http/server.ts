@@ -38,14 +38,14 @@ export const serve = dual<
     (): <R, E>(
       httpApp: App.Default<R, E>
     ) => Layer.Layer<
-      Server.Server | Exclude<R, ServerRequest.ServerRequest>,
+      Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>,
       never,
       never
     >
     <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<R, E, App>): (
       httpApp: App.Default<R, E>
     ) => Layer.Layer<
-      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>,
       never,
       never
     >
@@ -53,12 +53,12 @@ export const serve = dual<
   {
     <R, E>(
       httpApp: App.Default<R, E>
-    ): Layer.Layer<Server.Server | Exclude<R, ServerRequest.ServerRequest>, never, never>
+    ): Layer.Layer<Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>, never, never>
     <R, E, App extends App.Default<any, any>>(
       httpApp: App.Default<R, E>,
       middleware: Middleware.Middleware.Applied<R, E, App>
     ): Layer.Layer<
-      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>,
       never,
       never
     >
@@ -69,7 +69,7 @@ export const serve = dual<
     httpApp: App.Default<R, E>,
     middleware?: Middleware.Middleware.Applied<R, E, App>
   ): Layer.Layer<
-    Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+    Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>,
     never,
     never
   > =>

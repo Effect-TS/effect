@@ -49,9 +49,11 @@ export const make = (
     return Server.make({
       address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },
       serve(httpApp, middleware) {
-        const app = (middleware
-          ? middleware(App.withDefaultMiddleware(respond(httpApp)))
-          : App.withDefaultMiddleware(respond(httpApp))) as App.Default<never, unknown>
+        const app = Effect.scoped(
+          middleware
+            ? middleware(App.withDefaultMiddleware(respond(httpApp)))
+            : App.withDefaultMiddleware(respond(httpApp))
+        ) as App.Default<never, unknown>
 
         return pipe(
           Effect.runtime<never>(),

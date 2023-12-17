@@ -1,5 +1,5 @@
 import type { SizeInput } from "@effect/platform/FileSystem"
-import type { Cause } from "effect"
+import type * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"

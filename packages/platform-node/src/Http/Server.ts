@@ -45,7 +45,7 @@ export const makeHandler: {
   <R, E>(
     httpApp: App.Default<R, E>
   ): Effect.Effect<
-    Exclude<R, ServerRequest.ServerRequest>,
+    Exclude<R, Scope.Scope | ServerRequest.ServerRequest>,
     never,
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse<Http.IncomingMessage>) => void
   >
@@ -53,7 +53,7 @@ export const makeHandler: {
     httpApp: App.Default<R, E>,
     middleware: Middleware.Middleware.Applied<R, E, App>
   ): Effect.Effect<
-    Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+    Exclude<Effect.Effect.Context<App>, Scope.Scope | ServerRequest.ServerRequest>,
     never,
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse<Http.IncomingMessage>) => void
   >
