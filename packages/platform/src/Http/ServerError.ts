@@ -1,7 +1,9 @@
 /**
  * @since 1.0.0
  */
+import type * as Cause from "effect/Cause"
 import type * as Data from "effect/Data"
+import type * as FiberId from "effect/FiberId"
 import * as internal from "../internal/http/serverError.js"
 import type * as ServerRequest from "./ServerRequest.js"
 import type * as ServerResponse from "./ServerResponse.js"
@@ -53,6 +55,12 @@ export interface RequestError extends HttpError.Proto {
   readonly reason: "Transport" | "Decode"
   readonly error: unknown
 }
+
+/**
+ * @since 1.0.0
+ * @category predicates
+ */
+export const isServerError: (u: unknown) => u is HttpServerError = internal.isServerError
 
 /**
  * @since 1.0.0
@@ -109,3 +117,13 @@ export interface ServeError extends HttpError.Proto {
  * @category error
  */
 export const ServeError: (props: Omit<ServeError, HttpError.ProvidedFields>) => ServeError = internal.serveError
+
+/**
+ * @since 1.0.0
+ */
+export const clientAbortFiberId: FiberId.FiberId = internal.clientAbortFiberId
+
+/**
+ * @since 1.0.0
+ */
+export const isClientAbortCause: <E>(cause: Cause.Cause<E>) => boolean = internal.isClientAbortCause

@@ -91,29 +91,6 @@ export const make = (
     )
   )
 
-const respond = Middleware.make((httpApp) =>
-  Effect.flatMap(ServerRequest.ServerRequest, (request) =>
-    Effect.tapErrorCause(
-      Effect.tap(
-        Effect.flatMap(
-          httpApp,
-          (response) => Effect.flatMap(App.preResponseHandler, (f) => f(request, response))
-        ),
-        (response) => handleResponse(request, response)
-      ),
-      (cause) =>
-        Effect.sync(() => {
-          const nodeResponse = (request as ServerRequestImpl).response
-          if (!nodeResponse.headersSent) {
-            nodeResponse.writeHead(Cause.isInterruptedOnly(cause) ? 499 : 500)
-          }
-          if (!nodeResponse.writableEnded) {
-            nodeResponse.end()
-          }
-        })
-    ))
-)
-
 /** @internal */
 export const makeHandler: {
   <R, E>(httpApp: App.Default<R, E>): Effect.Effect<
@@ -133,27 +110,55 @@ export const makeHandler: {
   const handledApp = middleware
     ? middleware(App.withDefaultMiddleware(respond(httpApp)))
     : App.withDefaultMiddleware(respond(httpApp))
-  return Effect.map(
-    Effect.zip(Effect.runtime<R>(), Effect.fiberId),
-    ([runtime, fiberId]) => {
-      const runFork = Runtime.runFork(runtime)
-      return function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {
-        const fiber = runFork(
-          Effect.provideService(
-            handledApp,
-            ServerRequest.ServerRequest,
-            new ServerRequestImpl(nodeRequest, nodeResponse)
-          )
+  return Effect.map(Effect.runtime<R>(), (runtime) => {
+    const runFork = Runtime.runFork(runtime)
+    return function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {
+      const fiber = runFork(
+        Effect.provideService(
+          handledApp,
+          ServerRequest.ServerRequest,
+          new ServerRequestImpl(nodeRequest, nodeResponse)
         )
-        nodeResponse.on("close", () => {
-          if (!nodeResponse.writableEnded) {
-            runFork(fiber.interruptAsFork(fiberId))
+      )
+      nodeResponse.on("close", () => {
+        if (!nodeResponse.writableEnded) {
+          if (!nodeResponse.headersSent) {
+            nodeResponse.writeHead(499)
           }
-        })
-      }
+          nodeResponse.end()
+          runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
+        }
+      })
     }
-  )
+  })
 }
+
+const respond = Middleware.make((httpApp) =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(ServerRequest.ServerRequest, (request) =>
+      Effect.tapErrorCause(
+        restore(
+          Effect.tap(
+            Effect.flatMap(
+              httpApp,
+              (response) => Effect.flatMap(App.preResponseHandler, (f) => f(request, response))
+            ),
+            (response) => handleResponse(request, response)
+          )
+        ),
+        (cause) =>
+          Effect.sync(() => {
+            const nodeResponse = (request as ServerRequestImpl).response
+            if (!nodeResponse.headersSent) {
+              nodeResponse.writeHead(Cause.isInterruptedOnly(cause) ? 503 : 500)
+            }
+            if (!nodeResponse.writableEnded) {
+              nodeResponse.end()
+            }
+          })
+      ))
+  )
+)
 
 class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implements ServerRequest.ServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId

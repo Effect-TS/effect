@@ -54,8 +54,8 @@ export const make = (
           : App.withDefaultMiddleware(respond(httpApp))) as App.Default<never, unknown>
 
         return pipe(
-          Effect.all([Effect.runtime<never>(), Effect.fiberId]),
-          Effect.flatMap(([runtime, fiberId]) =>
+          Effect.runtime<never>(),
+          Effect.flatMap((runtime) =>
             Effect.async<never, never, never>((_) => {
               const runFork = Runtime.runFork(runtime)
               function handler(request: Request, _server: BunServer) {
@@ -66,7 +66,7 @@ export const make = (
                     new ServerRequestImpl(request, resolve, reject, removeHost(request.url))
                   ))
                   request.signal.addEventListener("abort", () => {
-                    runFork(fiber.interruptAsFork(fiberId))
+                    runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
                   })
                 })
               }
@@ -138,12 +138,17 @@ const respond = Middleware.make((httpApp) =>
         ),
         (exit) =>
           Effect.sync(() => {
+            const impl = request as ServerRequestImpl
             if (exit._tag === "Success") {
-              ;(request as ServerRequestImpl).resolve(makeResponse(request, exit.value))
+              impl.resolve(makeResponse(request, exit.value))
             } else if (Cause.isInterruptedOnly(exit.cause)) {
-              ;(request as ServerRequestImpl).resolve(new Response(undefined, { status: 499 }))
+              impl.resolve(
+                new Response(undefined, {
+                  status: impl.source.signal.aborted ? 499 : 503
+                })
+              )
             } else {
-              ;(request as ServerRequestImpl).reject(Cause.pretty(exit.cause))
+              impl.reject(Cause.pretty(exit.cause))
             }
           })
       )

@@ -3,7 +3,10 @@ import * as Platform from "@effect/platform-node/Http/Platform"
 import * as HttpC from "@effect/platform-node/HttpClient"
 import * as Http from "@effect/platform-node/HttpServer"
 import * as NodeContext from "@effect/platform-node/NodeContext"
+import * as ServerError from "@effect/platform/Http/ServerError"
+import type { ServerResponse } from "@effect/platform/Http/ServerResponse"
 import * as Schema from "@effect/schema/Schema"
+import { Deferred, Fiber } from "effect"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -362,5 +365,21 @@ describe("HttpServer", () => {
         Effect.repeatN(2)
       )
       expect((body as any).parent.value.spanId).toEqual(requestSpan.spanId)
+    }).pipe(Effect.scoped, runPromise))
+
+  it("client abort", () =>
+    Effect.gen(function*(_) {
+      const latch = yield* _(Deferred.make<never, ServerResponse>())
+      yield* _(
+        Http.response.empty(),
+        Effect.delay(1000),
+        Http.server.serveEffect((app) => Effect.onExit(app, (exit) => Deferred.complete(latch, exit)))
+      )
+      const client = yield* _(makeClient)
+      const fiber = yield* _(client(HttpC.request.get("/")), Effect.fork)
+      yield* _(Effect.sleep(100))
+      yield* _(Fiber.interrupt(fiber))
+      const cause = yield* _(Deferred.await(latch), Effect.sandbox, Effect.flip)
+      expect(ServerError.isClientAbortCause(cause)).toEqual(true)
     }).pipe(Effect.scoped, runPromise))
 })

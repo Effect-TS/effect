@@ -42,6 +42,7 @@ export type TypeId = typeof TypeId
  */
 export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.RequestError> {
   readonly [TypeId]: TypeId
+  readonly source: unknown
   readonly url: string
   readonly originalUrl: string
   readonly method: Method

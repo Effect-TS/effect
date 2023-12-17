@@ -1,12 +1,13 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import * as Function from "effect/Function"
+import { constFalse, dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import type * as Predicate from "effect/Predicate"
 import * as Headers from "../../Http/Headers.js"
 import * as IncomingMessage from "../../Http/IncomingMessage.js"
 import type * as Middleware from "../../Http/Middleware.js"
+import * as ServerError from "../../Http/ServerError.js"
 import * as ServerRequest from "../../Http/ServerRequest.js"
 
 /** @internal */
@@ -28,11 +29,11 @@ export const withLoggerDisabled = <R, E, A>(self: Effect.Effect<R, E, A>): Effec
 /** @internal */
 export const currentTracerDisabledWhen = globalValue(
   Symbol.for("@effect/platform/Http/Middleware/tracerDisabledWhen"),
-  () => FiberRef.unsafeMake<Predicate.Predicate<ServerRequest.ServerRequest>>(Function.constFalse)
+  () => FiberRef.unsafeMake<Predicate.Predicate<ServerRequest.ServerRequest>>(constFalse)
 )
 
 /** @internal */
-export const withTracerDisabledWhen = Function.dual<
+export const withTracerDisabledWhen = dual<
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
@@ -60,7 +61,11 @@ export const logger = make((httpApp) => {
                 Effect.annotateLogs(Effect.log(exit.cause), {
                   "http.method": request.method,
                   "http.url": request.url,
-                  "http.status": Cause.isInterruptedOnly(exit.cause) ? 499 : 500
+                  "http.status": Cause.isInterruptedOnly(exit.cause)
+                    ? ServerError.isClientAbortCause(exit.cause)
+                      ? 499
+                      : 503
+                    : 500
                 }) :
                 Effect.annotateLogs(Effect.log(""), {
                   "http.method": request.method,
