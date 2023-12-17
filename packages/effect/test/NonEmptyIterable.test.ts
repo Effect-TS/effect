@@ -2,7 +2,7 @@ import * as Chunk from "effect/Chunk"
 import * as NonEmpty from "effect/NonEmptyIterable"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("NonEmptyIterable", () => {
+describe("NonEmptyIterable", () => {
   it("should get head and rest", () => {
     const [head, rest] = NonEmpty.unprepend(Chunk.make(0, 1, 2))
     const restArray: Array<number> = []

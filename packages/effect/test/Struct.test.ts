@@ -4,7 +4,7 @@ import * as String from "effect/String"
 import * as Struct from "effect/Struct"
 import { assert, describe, expect, it } from "vitest"
 
-describe.concurrent("Struct", () => {
+describe("Struct", () => {
   it("exports", () => {
     expect(Struct.getOrder).exist
   })

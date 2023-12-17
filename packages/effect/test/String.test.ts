@@ -5,7 +5,7 @@ import * as Order from "effect/Order"
 import * as S from "effect/String"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("String", () => {
+describe("String", () => {
   it("isString", () => {
     expect(S.isString("a")).toEqual(true)
     expect(S.isString(1)).toEqual(false)
@@ -210,7 +210,7 @@ describe.concurrent("String", () => {
     expect(pipe("i\u0307", S.toLocaleUpperCase(locales))).toBe("I")
   })
 
-  describe.concurrent("takeLeft", () => {
+  describe("takeLeft", () => {
     it("should take the specified number of characters from the left side of a string", () => {
       expect(S.takeLeft("Hello, World!", 7)).toBe("Hello, ")
     })
@@ -229,7 +229,7 @@ describe.concurrent("String", () => {
     })
   })
 
-  describe.concurrent("takeRight", () => {
+  describe("takeRight", () => {
     it("should take the specified number of characters from the right side of a string", () => {
       expect(S.takeRight("Hello, World!", 7)).toBe(" World!")
     })
@@ -248,7 +248,7 @@ describe.concurrent("String", () => {
     })
   })
 
-  describe.concurrent("stripMargin", () => {
+  describe("stripMargin", () => {
     it("should strip a leading prefix from each line", () => {
       const string = `|
     |Hello,
@@ -265,7 +265,7 @@ describe.concurrent("String", () => {
     })
   })
 
-  describe.concurrent("linesWithSeparators", () => {
+  describe("linesWithSeparators", () => {
     it("should split a string into lines with separators", () => {
       const string = "\n$\n    $Hello,\r\n    $World!\n $"
       const result = S.linesWithSeparators(string)

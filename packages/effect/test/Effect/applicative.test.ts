@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   const add = (a: number) => (b: number) => a + b
 
   it.effect("two successes should succeed", () =>

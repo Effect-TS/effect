@@ -10,7 +10,7 @@ import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 import { assert, describe, expect } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("absolve - happy path", () =>
     Effect.gen(function*($) {
       const chunk = Chunk.range(1, 10)

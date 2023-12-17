@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("succeed", () =>
     Effect.gen(function*($) {
       const [chunk, value] = yield* $(Channel.runCollect(Channel.succeed(1)))

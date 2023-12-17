@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Deferred", () => {
+describe("Deferred", () => {
   it.effect("complete a deferred using succeed", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<never, number>())

@@ -8,7 +8,7 @@ import * as Order from "effect/Order"
 import * as RedBlackTree from "effect/RedBlackTree"
 import { assert, describe, expect, it } from "vitest"
 
-describe.concurrent("RedBlackTree", () => {
+describe("RedBlackTree", () => {
   it("toString", () => {
     const tree = pipe(
       RedBlackTree.empty<number, string>(number.Order),

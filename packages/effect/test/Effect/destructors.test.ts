@@ -8,7 +8,7 @@ import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("head - on non empty list", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed([1, 2, 3]), Effect.head, Effect.either)

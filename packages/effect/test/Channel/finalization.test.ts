@@ -20,7 +20,7 @@ interface Second {
 
 const Second = (first: First): Second => ({ _tag: "Second", first })
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("ensuring - prompt closure between continuations", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))

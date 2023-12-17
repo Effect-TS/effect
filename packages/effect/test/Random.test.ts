@@ -2,7 +2,7 @@ import { Chunk, Effect, Random, ReadonlyArray } from "effect"
 import * as it from "effect-test/utils/extend"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Random", () => {
+describe("Random", () => {
   it.effect("shuffle", () =>
     Effect.gen(function*($) {
       const start = ReadonlyArray.range(0, 100)

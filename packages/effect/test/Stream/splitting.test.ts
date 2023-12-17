@@ -28,7 +28,7 @@ const testSplitLines = (
   )
 }
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("split - should split properly", () =>
     Effect.gen(function*($) {
       const chunks = Chunk.make(

@@ -26,7 +26,7 @@ interface Second {
 
 const Second = (first: First): Second => ({ _tag: "Second", first })
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("map", () =>
     Effect.gen(function*($) {
       const [chunk, value] = yield* $(

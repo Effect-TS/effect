@@ -6,7 +6,7 @@ import { assert, describe, expect, it } from "vitest"
 const f = (n: number): number => n + 1
 const g = double
 
-describe.concurrent("Function", () => {
+describe("Function", () => {
   it("apply", () => {
     deepStrictEqual(Function.pipe(String.length, Function.apply("a")), 1)
   })

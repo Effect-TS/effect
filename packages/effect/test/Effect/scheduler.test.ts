@@ -4,7 +4,7 @@ import * as timeout from "effect/internal/timeout"
 import * as Scheduler from "effect/Scheduler"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("matrix schedules according to priority", () =>
     Effect.gen(function*($) {
       const ps000: Array<number> = []

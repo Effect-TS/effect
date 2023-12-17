@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("returns first success", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.raceAll([Effect.fail("fail"), Effect.succeed(24)]))

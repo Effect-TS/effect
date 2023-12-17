@@ -2,7 +2,7 @@ import * as _ from "effect/Equivalence"
 import { pipe } from "effect/Function"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Equivalence", () => {
+describe("Equivalence", () => {
   it("array", () => {
     const eq = _.array(_.number)
 

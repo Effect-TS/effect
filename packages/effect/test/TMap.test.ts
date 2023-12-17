@@ -29,7 +29,7 @@ const mapEntriesArb: fc.Arbitrary<Array<readonly [string, number]>> = fc.uniqueA
       .map((values) => pipe(keys, ReadonlyArray.zip(values)))
   )
 
-describe.concurrent("TMap", () => {
+describe("TMap", () => {
   it.effect("empty", () =>
     Effect.gen(function*($) {
       const transaction = pipe(

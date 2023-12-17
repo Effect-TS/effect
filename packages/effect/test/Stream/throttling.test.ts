@@ -15,7 +15,7 @@ import * as Stream from "effect/Stream"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("throttleEnforce - free elements", () =>
     Effect.gen(function*($) {
       const result = yield* $(

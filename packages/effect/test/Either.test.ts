@@ -7,7 +7,7 @@ import * as O from "effect/Option"
 import * as S from "effect/String"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Either", () => {
+describe("Either", () => {
   it("gen", () => {
     const a = Either.gen(function*($) {
       const x = yield* $(Either.right(1))

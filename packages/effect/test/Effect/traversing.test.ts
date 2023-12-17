@@ -11,7 +11,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("dropWhile - happy path", () =>
     Effect.gen(function*($) {
       const result = yield* $(

@@ -3,7 +3,7 @@ import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import { assert, describe, it } from "vitest"
 
-describe.concurrent("Base64", () => {
+describe("Base64", () => {
   const valid: Array<[string, string]> = [
     ["", ""],
     ["ß", "w58="],
@@ -60,7 +60,7 @@ describe.concurrent("Base64", () => {
   })
 })
 
-describe.concurrent("Base64Url", () => {
+describe("Base64Url", () => {
   const valid: Array<[string, string]> = [
     ["", ""],
     ["ß", "w58"],
@@ -105,7 +105,7 @@ describe.concurrent("Base64Url", () => {
   })
 })
 
-describe.concurrent("Hex", () => {
+describe("Hex", () => {
   const valid: Array<[hex: string, bytes: Uint8Array]> = [
     ["", Uint8Array.from([])],
     ["0001020304050607", Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7])],

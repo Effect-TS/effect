@@ -5,7 +5,7 @@ import { identity, pipe } from "effect/Function"
 import * as ScopedRef from "effect/ScopedRef"
 import { assert, describe, expect } from "vitest"
 
-describe.concurrent("ScopedRef", () => {
+describe("ScopedRef", () => {
   it.scoped("single set", () =>
     Effect.gen(function*($) {
       const counter = yield* $(Counter.make())

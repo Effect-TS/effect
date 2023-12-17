@@ -134,7 +134,7 @@ const EnvLive = Layer.mergeAll(
   )
 ))
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("nested queries are batched", () =>
     Effect.gen(function*($) {
       const parents = yield* $(getAllParents)

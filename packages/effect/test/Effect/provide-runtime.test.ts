@@ -21,7 +21,7 @@ const LiveEnv = Layer.mergeAll(
   Layer.scopedDiscard(Effect.locallyScoped(ref, 2))
 )
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("provideSomeRuntime doesn't break env", () => {
     const someServiceImpl = {
       value: 42

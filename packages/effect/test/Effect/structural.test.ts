@@ -5,7 +5,7 @@ import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   describe("all", () => {
     it.effect("should work with one array argument", () =>
       Effect.gen(function*($) {

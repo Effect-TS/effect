@@ -21,7 +21,7 @@ export const waitForSize = <A>(queue: Queue.Queue<A>, size: number): Effect.Effe
   return waitForValue(Queue.size(queue), size)
 }
 
-describe.concurrent("Queue", () => {
+describe("Queue", () => {
   it.effect("bounded - offerAll returns true when there is enough space", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(5))

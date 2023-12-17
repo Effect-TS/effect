@@ -12,7 +12,7 @@ import { assert, describe } from "vitest"
 
 const runSink = <R, E, A>(sink: Sink.Sink<R, E, unknown, unknown, A>) => Stream.run(Effect.unit, sink)
 
-describe.concurrent("Channel.Foreign", () => {
+describe("Channel.Foreign", () => {
   it.effect("Tag", () =>
     Effect.gen(function*($) {
       const tag = Context.Tag<number>()

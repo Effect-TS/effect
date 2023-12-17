@@ -9,7 +9,7 @@ import * as Predicate from "effect/Predicate"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
-describe.concurrent("Cause", () => {
+describe("Cause", () => {
   it("[internal] prettyErrorMessage", () => {
     class Error1 {
       readonly _tag = "WithTag"
@@ -46,7 +46,7 @@ describe.concurrent("Cause", () => {
     )
   })
 
-  describe.concurrent("pretty", () => {
+  describe("pretty", () => {
     it("Empty", () => {
       expect(Cause.pretty(Cause.empty)).toEqual("All fibers interrupted without errors.")
     })
@@ -94,7 +94,7 @@ describe.concurrent("Cause", () => {
     })
   })
 
-  describe.concurrent("toJSON", () => {
+  describe("toJSON", () => {
     it("Empty", () => {
       expect(Cause.empty.toJSON()).toEqual({
         _id: "Cause",
@@ -200,7 +200,7 @@ describe.concurrent("Cause", () => {
     })
   })
 
-  describe.concurrent("toString", () => {
+  describe("toString", () => {
     it("Empty", () => {
       expect(String(Cause.empty)).toEqual(`All fibers interrupted without errors.`)
     })
@@ -309,7 +309,7 @@ describe.concurrent("Cause", () => {
     expect(Cause.andThen(err1, err2)).toStrictEqual(err2)
   })
 
-  describe.concurrent("stripSomeDefects", () => {
+  describe("stripSomeDefects", () => {
     it("returns `Some` with remaining causes", () => {
       const cause1 = Cause.die({
         _tag: "NumberFormatException",

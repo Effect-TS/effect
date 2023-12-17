@@ -59,7 +59,7 @@ export const refReader = <A>(
   )
 }
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("simple reads", () =>
     Effect.gen(function*($) {
       class Whatever implements Equal.Equal {

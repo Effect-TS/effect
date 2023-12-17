@@ -4,7 +4,7 @@ import { constFalse, constTrue } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("retryUntil - retries until condition is true", () =>
     Effect.gen(function*($) {
       const input = yield* $(Ref.make(10))

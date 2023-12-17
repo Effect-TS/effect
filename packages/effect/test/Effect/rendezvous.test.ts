@@ -5,7 +5,7 @@ import * as Queue from "effect/Queue"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("bounded 0 is rendezvous", () =>
     Effect.gen(function*(_) {
       const rendevous = yield* _(Queue.bounded<string>(0))

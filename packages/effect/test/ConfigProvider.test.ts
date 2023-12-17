@@ -87,7 +87,7 @@ const provider = (map: Map<string, string>): ConfigProvider.ConfigProvider => {
   return ConfigProvider.fromMap(map)
 }
 
-describe.concurrent("ConfigProvider", () => {
+describe("ConfigProvider", () => {
   it.effect("flat atoms", () =>
     Effect.gen(function*($) {
       const map = new Map([["host", "localhost"], ["port", "8080"]])

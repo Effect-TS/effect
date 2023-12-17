@@ -4,7 +4,7 @@ import * as Flags from "effect/RuntimeFlags"
 import * as Patch from "effect/RuntimeFlagsPatch"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.it("should enable flags in the current fiber", () =>
     Effect.runPromise(Effect.gen(function*($) {
       const before = yield* $(Effect.getRuntimeFlags)

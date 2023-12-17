@@ -10,7 +10,7 @@ import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import { assert, describe, expect } from "vitest"
 
-describe.concurrent("FiberRefs", () => {
+describe("FiberRefs", () => {
   it.scoped("propagate FiberRef values across fiber boundaries", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(false))
@@ -43,7 +43,7 @@ describe.concurrent("FiberRefs", () => {
     assert.deepStrictEqual(FiberRefs.get(newParentFiberRefs, FiberRef.interruptedCause), Option.some(Cause.empty))
   })
 
-  describe.concurrent("currentLogAnnotations", () => {
+  describe("currentLogAnnotations", () => {
     it.it("doesnt leak", () => {
       Effect.unit.pipe(Effect.annotateLogs("test", "abc"), Effect.runSync)
       expect(FiberRef.currentLogAnnotations.pipe(FiberRef.get, Effect.map(HashMap.size), Effect.runSync)).toBe(0)

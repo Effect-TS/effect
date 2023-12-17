@@ -24,7 +24,7 @@ const fib = (n: number): number => {
   return fib(n - 1) + fib(n - 2)
 }
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("flip must make error into value", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.flip(Effect.fail(ExampleError)))

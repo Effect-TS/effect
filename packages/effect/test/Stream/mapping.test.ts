@@ -14,7 +14,7 @@ import * as Stream from "effect/Stream"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("map", () =>
     Effect.gen(function*($) {
       const stream = Stream.make(1, 2, 3, 4, 5)

@@ -4,7 +4,7 @@ import * as _ from "effect/Order"
 import { sort } from "effect/ReadonlyArray"
 import { describe, it } from "vitest"
 
-describe.concurrent("Order", () => {
+describe("Order", () => {
   it("struct", () => {
     const O = _.struct({ a: _.string, b: _.string })
     U.deepStrictEqual(O({ a: "a", b: "b" }, { a: "a", b: "c" }), -1)

@@ -50,7 +50,7 @@ const resource = (id: number, ref: Ref.Ref<ReadonlyArray<Action>>): Effect.Effec
   )
 }
 
-describe.concurrent("Scope", () => {
+describe("Scope", () => {
   it.effect("runs finalizers when the scope is closed", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<ReadonlyArray<Action>>([]))

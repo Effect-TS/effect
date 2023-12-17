@@ -10,7 +10,7 @@ import * as String from "effect/String"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
-describe.concurrent("ReadonlyArray", () => {
+describe("ReadonlyArray", () => {
   it("exports", () => {
     expect(RA.fromRecord).exist
     expect(RA.getEquivalence).exist
@@ -29,7 +29,7 @@ describe.concurrent("ReadonlyArray", () => {
     expect(RA.fromIterable(new Set([1, 2, 3]))).toEqual([1, 2, 3])
   })
 
-  describe.concurrent("iterable inputs", () => {
+  describe("iterable inputs", () => {
     it("prepend", () => {
       deepStrictEqual(pipe([1, 2, 3], RA.prepend(0)), [0, 1, 2, 3])
       deepStrictEqual(pipe([[2]], RA.prepend([1])), [[1], [2]])
@@ -571,7 +571,7 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(pipe(RA.make(1, 2, 3, 4), RA.splitNonEmptyAt(10)), [[1, 2, 3, 4], []])
   })
 
-  describe.concurrent("unsafeGet", () => {
+  describe("unsafeGet", () => {
     it("should throw on index out of bound", () => {
       expect(() => pipe([], RA.unsafeGet(100))).toThrowError(new Error("Index 100 out of bounds"))
     })
@@ -1006,7 +1006,7 @@ describe.concurrent("ReadonlyArray", () => {
     deepStrictEqual(pipe([1, 2, 3], RA.chop((as) => [as[0] * 2, as.slice(1)])), [2, 4, 6])
   })
 
-  describe.concurrent("chunksOf", () => {
+  describe("chunksOf", () => {
     it("should split a `ReadonlyArray` into length-n pieces", () => {
       deepStrictEqual(RA.chunksOf(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4], [5]])
       deepStrictEqual(RA.chunksOf(2)([1, 2, 3, 4, 5, 6]), [

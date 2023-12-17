@@ -27,8 +27,8 @@ const makePollingGauge = (name: string, increment: number) => {
 let nameCount = 0
 const nextName = () => `m${++nameCount}`
 
-describe.concurrent("Metric", () => {
-  describe.concurrent("Counter", () => {
+describe("Metric", () => {
+  describe("Counter", () => {
     it.effect("custom increment as aspect", () =>
       Effect.gen(function*($) {
         const id = nextName()
@@ -251,7 +251,7 @@ describe.concurrent("Metric", () => {
         assert.deepStrictEqual(result, MetricState.counter(1))
       }))
   })
-  describe.concurrent("Frequency", () => {
+  describe("Frequency", () => {
     it.effect("custom occurrences as aspect", () =>
       Effect.gen(function*($) {
         const name = nextName()
@@ -327,7 +327,7 @@ describe.concurrent("Metric", () => {
         assert.deepStrictEqual(result3.occurrences, new Map([["world", 1] as const]))
       }))
   })
-  describe.concurrent("Gauge", () => {
+  describe("Gauge", () => {
     it.effect("custom set as aspect", () =>
       Effect.gen(function*($) {
         const name = nextName()
@@ -385,7 +385,7 @@ describe.concurrent("Metric", () => {
         assert.deepStrictEqual(result, MetricState.gauge(1))
       }))
   })
-  describe.concurrent("Histogram", () => {
+  describe("Histogram", () => {
     it.effect("custom observe as aspect", () =>
       Effect.gen(function*($) {
         const name = nextName()
@@ -496,7 +496,7 @@ describe.concurrent("Metric", () => {
         assert.strictEqual(result3.count, 1)
       }))
   })
-  describe.concurrent("Summary", () => {
+  describe("Summary", () => {
     it.effect("custom observe as aspect", () =>
       Effect.gen(function*($) {
         const name = nextName()
@@ -598,7 +598,7 @@ describe.concurrent("Metric", () => {
         assert.strictEqual(result3.count, 1)
       }))
   })
-  describe.concurrent("Polling", () => {
+  describe("Polling", () => {
     it.scopedLive("launch should be interruptible", () =>
       Effect.gen(function*($) {
         const name = yield* $(Clock.currentTimeMillis, Effect.map((now) => `gauge-${now}`))

@@ -23,7 +23,7 @@ const loseTimeAndCpu: Effect.Effect<never, never, void> = Effect.yieldNow().pipe
   Effect.repeatN(100)
 )
 
-describe.concurrent("FiberRef", () => {
+describe("FiberRef", () => {
   it.scoped("get returns the current value", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(initial))

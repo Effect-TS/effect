@@ -30,7 +30,7 @@ class Value implements Equal.Equal {
   }
 }
 
-describe.concurrent("HashMap", () => {
+describe("HashMap", () => {
   function key(n: number): Key {
     return new Key(n)
   }

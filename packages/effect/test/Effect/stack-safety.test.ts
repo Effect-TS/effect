@@ -14,7 +14,7 @@ const deepMapEffect = (n: number): Effect.Effect<never, never, number> => {
   return loop(n, Effect.succeed(0))
 }
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("deep map of sync effect", () =>
     Effect.gen(function*($) {
       const result = yield* $(deepMapEffect(10000))

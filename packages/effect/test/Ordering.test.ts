@@ -2,7 +2,7 @@ import { deepStrictEqual } from "effect-test/util"
 import * as _ from "effect/Ordering"
 import { describe, it } from "vitest"
 
-describe.concurrent("Ordering", () => {
+describe("Ordering", () => {
   it("match", () => {
     const f = _.match({
       onLessThan: () => "lt",

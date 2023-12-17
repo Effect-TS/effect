@@ -13,7 +13,7 @@ import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("merge - slower stream", () =>
     Effect.gen(function*($) {
       const stream1 = Stream.make(1, 2, 3, 4)

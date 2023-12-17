@@ -9,7 +9,7 @@ import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("partitionEither - allows repeated runs without hanging", () =>
     Effect.gen(function*($) {
       const stream = pipe(

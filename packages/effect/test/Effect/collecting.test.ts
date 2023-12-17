@@ -4,9 +4,9 @@ import * as Effect from "effect/Effect"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
-  describe.concurrent("all", () => {
-    describe.concurrent("returns results in the same order", () => {
+describe("Effect", () => {
+  describe("all", () => {
+    describe("returns results in the same order", () => {
       it.effect("unbounded", () =>
         Effect.gen(function*($) {
           const result = yield* $(Effect.all([1, 2, 3].map(Effect.succeed), {

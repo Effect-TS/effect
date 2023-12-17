@@ -8,7 +8,7 @@ import * as Schedule from "effect/Schedule"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("schedule - runs effect for each recurrence of the schedule", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<ReadonlyArray<Duration.Duration>>([]))

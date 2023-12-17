@@ -49,7 +49,7 @@ function makeNumericSortedMap(
   return SM.fromIterable(numbers, (self: number, that: number) => self > that ? 1 : self < that ? -1 : 0)
 }
 
-describe.concurrent("SortedMap", () => {
+describe("SortedMap", () => {
   it("toString", () => {
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 

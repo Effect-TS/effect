@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("Cause should include span data", () =>
     Effect.gen(function*($) {
       const cause = yield* $(Effect.flip(Effect.sandbox(

@@ -12,7 +12,7 @@ import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import { assert, describe } from "vitest"
 
-describe.concurrent("SubscriptionRef", () => {
+describe("SubscriptionRef", () => {
   it.effect("multiple subscribers can receive changes", () =>
     Effect.gen(function*($) {
       const subscriptionRef = yield* $(SubscriptionRef.make(0))

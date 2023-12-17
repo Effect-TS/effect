@@ -6,7 +6,7 @@ import * as Ref from "effect/Ref"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("cached - returns new instances after duration", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))

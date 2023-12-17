@@ -16,7 +16,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Sink", () => {
+describe("Sink", () => {
   it.effect("drain - fails if upstream fails", () =>
     Effect.gen(function*($) {
       const stream = pipe(

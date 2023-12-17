@@ -9,7 +9,7 @@ import * as Random from "effect/Random"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Channel.Foreign", () => {
+describe("Channel.Foreign", () => {
   it.effect("Tag", () =>
     Effect.gen(function*($) {
       const tag = Context.Tag<number>()

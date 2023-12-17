@@ -3,7 +3,7 @@ import * as Boolean from "effect/Boolean"
 import { pipe } from "effect/Function"
 import { assert, describe, expect, it } from "vitest"
 
-describe.concurrent("Boolean", () => {
+describe("Boolean", () => {
   it("isBoolean", () => {
     expect(Boolean.isBoolean(true)).toEqual(true)
     expect(Boolean.isBoolean(false)).toEqual(true)

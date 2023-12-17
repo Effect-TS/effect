@@ -149,7 +149,7 @@ const EnvLive = Layer.mergeAll(
 
 const provideEnv = Effect.provide(EnvLive)
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("requests are executed correctly", () =>
     provideEnv(
       Effect.gen(function*($) {

@@ -2,7 +2,7 @@ import { pipe } from "effect/Function"
 import * as T from "effect/Tuple"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Tuple", () => {
+describe("Tuple", () => {
   it("exports", () => {
     expect(T.getOrder).exist
     expect(T.getEquivalence).exist
