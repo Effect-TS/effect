@@ -111,6 +111,7 @@ const bigint0 = BigInt(0)
 const bigint1 = BigInt(1)
 const bigint10 = BigInt(10)
 const zero = make(bigint0, 0)
+zero.normalized = zero
 
 /**
  * Normalizes a given `BigDecimal` by removing trailing zeros.
@@ -148,7 +149,9 @@ export const normalize = (self: BigDecimal): BigDecimal => {
 
       const value = BigInt(digits.substring(0, digits.length - trail))
       const scale = self.scale - trail
+
       self.normalized = make(value, scale)
+      self.normalized.normalized = self.normalized
     }
   }
 
