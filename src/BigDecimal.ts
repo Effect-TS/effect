@@ -109,8 +109,14 @@ export const make = (value: bigint, scale: number): BigDecimal => {
 
 /**
  * Internal function used to create pre-normalized `BigDecimal`s.
+ *
+ * @internal
  */
-const makeNormalized = (value: bigint, scale: number): BigDecimal => {
+export const unsafeMakeNormalized = (value: bigint, scale: number): BigDecimal => {
+  if (value !== bigint0 && value % bigint10 === bigint0) {
+    throw new RangeError("Value must be normalized")
+  }
+
   const o = make(value, scale)
   o.normalized = o
   return o
@@ -119,7 +125,7 @@ const makeNormalized = (value: bigint, scale: number): BigDecimal => {
 const bigint0 = BigInt(0)
 const bigint1 = BigInt(1)
 const bigint10 = BigInt(10)
-const zero = makeNormalized(bigint0, 0)
+const zero = unsafeMakeNormalized(bigint0, 0)
 
 /**
  * Normalizes a given `BigDecimal` by removing trailing zeros.
@@ -157,7 +163,7 @@ export const normalize = (self: BigDecimal): BigDecimal => {
 
       const value = BigInt(digits.substring(0, digits.length - trail))
       const scale = self.scale - trail
-      self.normalized = makeNormalized(value, scale)
+      self.normalized = unsafeMakeNormalized(value, scale)
     }
   }
 

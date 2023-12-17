@@ -240,17 +240,12 @@ describe.concurrent("BigDecimal", () => {
   })
 
   it("normalize", () => {
-    const normalized = (b: BigDecimal.BigDecimal) => {
-      b.normalized = b
-      return b
-    }
-
-    deepStrictEqual(BigDecimal.normalize(_("0")), normalized(_("0")))
-    deepStrictEqual(BigDecimal.normalize(_("0.123000")), normalized(_("0.123")))
-    deepStrictEqual(BigDecimal.normalize(_("123.000")), normalized(_("123")))
-    deepStrictEqual(BigDecimal.normalize(_("-0.000123000")), normalized(_("-0.000123")))
-    deepStrictEqual(BigDecimal.normalize(_("-123.000")), normalized(_("-123")))
-    deepStrictEqual(BigDecimal.normalize(_("12300000")), normalized(BigDecimal.make(123n, -5)))
+    deepStrictEqual(BigDecimal.normalize(_("0")), BigDecimal.unsafeMakeNormalized(0n, 0))
+    deepStrictEqual(BigDecimal.normalize(_("0.123000")), BigDecimal.unsafeMakeNormalized(123n, 3))
+    deepStrictEqual(BigDecimal.normalize(_("123.000")), BigDecimal.unsafeMakeNormalized(123n, 0))
+    deepStrictEqual(BigDecimal.normalize(_("-0.000123000")), BigDecimal.unsafeMakeNormalized(-123n, 6))
+    deepStrictEqual(BigDecimal.normalize(_("-123.000")), BigDecimal.unsafeMakeNormalized(-123n, 0))
+    deepStrictEqual(BigDecimal.normalize(_("12300000")), BigDecimal.unsafeMakeNormalized(123n, -5))
   })
 
   it("fromString", () => {
