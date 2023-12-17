@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.37.8
+
+### Patch Changes
+
+- [#363](https://github.com/Effect-TS/platform/pull/363) [`e2c545a`](https://github.com/Effect-TS/platform/commit/e2c545a328c2bccbba661540a8835b10bce4b438) Thanks [@tim-smart](https://github.com/tim-smart)! - fix schemaNoBody type
+
+- [#366](https://github.com/Effect-TS/platform/pull/366) [`1d6bf73`](https://github.com/Effect-TS/platform/commit/1d6bf730dad0a6bbb282f436ec7d5870de76ca3a) Thanks [@tim-smart](https://github.com/tim-smart)! - add Scope to every http request
+
+- [#365](https://github.com/Effect-TS/platform/pull/365) [`3351136`](https://github.com/Effect-TS/platform/commit/335113601c238104eb2e331d26b5e463bde80dff) Thanks [@tim-smart](https://github.com/tim-smart)! - respond with 503 on server induced interrupt
+
 ## 0.37.7
 
 ### Patch Changes
