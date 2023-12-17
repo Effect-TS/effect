@@ -6,7 +6,7 @@ import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
 import type { LazyArg } from "../Function.js"
-import { dual, identity, pipe } from "../Function.js"
+import { dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
 import * as number from "../Number.js"
@@ -726,14 +726,10 @@ interface JsonMap {
 interface JsonArray extends Array<string | number | boolean | null | JsonArray | JsonMap> {}
 
 /** @internal */
-export const fromJsonString = (json: string): ConfigProvider.ConfigProvider => {
-  const parsedJson = Either.getOrThrow(Either.try({
-    try: () => JSON.parse(json),
-    catch: identity
-  }))
+export const fromJson = (json: unknown): ConfigProvider.ConfigProvider => {
   const hiddenDelimiter = "\ufeff"
   const indexedEntries = ReadonlyArray.map(
-    getIndexedEntries(parsedJson),
+    getIndexedEntries(json as JsonMap),
     ([key, value]): [string, string] => [configPathToString(key).join(hiddenDelimiter), value]
   )
   return fromMap(new Map(indexedEntries), {

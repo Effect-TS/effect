@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-add ConfigProvider.fromJsonString to support loading configuration from a JSON string
+add ConfigProvider.fromJson to support loading configuration from a JSON object

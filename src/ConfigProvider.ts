@@ -188,12 +188,12 @@ export const fromEnv: (config?: ConfigProvider.FromEnvConfig) => ConfigProvider 
 export const fromFlat: (flat: ConfigProvider.Flat) => ConfigProvider = internal.fromFlat
 
 /**
- * Constructs a new `ConfigProvider` from a JSON string.
+ * Constructs a new `ConfigProvider` from a JSON object.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromJsonString: (json: string) => ConfigProvider = internal.fromJsonString
+export const fromJson: (json: unknown) => ConfigProvider = internal.fromJson
 
 /**
  * Constructs a ConfigProvider using a map and the specified delimiter string,
