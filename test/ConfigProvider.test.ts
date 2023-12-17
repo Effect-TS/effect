@@ -900,4 +900,37 @@ describe.concurrent("ConfigProvider", () => {
       const result = yield* $(configProvider.load(config))
       assert.deepStrictEqual(result, ["value1", "value2"])
     }))
+
+  it.effect("fromJson - should load configs from flat JSON", () =>
+    Effect.gen(function*($) {
+      const json = JSON.stringify({
+        host: "localhost",
+        port: 8080
+      })
+      const result = yield* $(ConfigProvider.fromJsonString(json).load(hostPortConfig))
+      assert.deepStrictEqual(result, {
+        host: "localhost",
+        port: 8080
+      })
+    }))
+
+  it.effect("fromJson - should load configs from nested JSON", () =>
+    Effect.gen(function*($) {
+      const json = JSON.stringify({
+        hostPorts: [{
+          host: "localhost",
+          port: 8080
+        }, {
+          host: "localhost",
+          port: 8080
+        }, {
+          host: "localhost",
+          port: 8080
+        }]
+      })
+      const result = yield* $(ConfigProvider.fromJsonString(json).load(hostPortsConfig))
+      assert.deepStrictEqual(result, {
+        hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
+      })
+    }))
 })
