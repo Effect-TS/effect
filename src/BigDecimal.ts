@@ -121,8 +121,8 @@ zero.normalized = zero
  * @example
  * import { normalize, make, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(normalize(unsafeFromString("123.00000")), make(123n, 0))
- * assert.deepStrictEqual(normalize(unsafeFromString("12300000")), make(123n, -5))
+ * assert.deepStrictEqual(normalize(unsafeFromString("123.00000")), normalize(make(123n, 0)))
+ * assert.deepStrictEqual(normalize(unsafeFromString("12300000")), normalize(make(123n, -5)))
  *
  * @since 2.0.0
  * @category scaling
