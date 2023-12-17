@@ -135,7 +135,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
 export const schemaJson = <
   I extends {
     readonly status?: number
-    readonly headers?: Headers.Headers
+    readonly headers?: Readonly<Record<string, string>>
     readonly body?: unknown
   },
   A
@@ -157,7 +157,7 @@ export const schemaJson = <
 export const schemaNoBody = <
   I extends {
     readonly status?: number
-    readonly headers?: Headers.Headers
+    readonly headers?: Readonly<Record<string, string>>
   },
   A
 >(schema: Schema.Schema<I, A>) => {

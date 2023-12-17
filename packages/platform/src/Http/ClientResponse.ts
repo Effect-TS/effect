@@ -63,7 +63,7 @@ export const fromWeb: (request: ClientRequest.ClientRequest, source: Response) =
 export const schemaJson: <
   I extends {
     readonly status?: number
-    readonly headers?: Headers.Headers
+    readonly headers?: Readonly<Record<string, string>>
     readonly body?: unknown
   },
   A
