@@ -22,7 +22,7 @@ import { assert, describe } from "vitest"
 
 Stream.onError
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("aggregate - simple example", () =>
     Effect.gen(function*($) {
       const result = yield* $(

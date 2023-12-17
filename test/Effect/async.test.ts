@@ -12,7 +12,7 @@ import * as Ref from "effect/Ref"
 import * as Runtime from "effect/Runtime"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("simple async must return", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.async<never, unknown, number>((cb) => {

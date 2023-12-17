@@ -11,7 +11,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("andThen", () =>
     Effect.gen(function*($) {
       const a0 = Effect.andThen(Effect.succeed(0), Effect.succeed(1))
@@ -88,7 +88,7 @@ describe.concurrent("Effect", () => {
       )
       assert.isTrue(result)
     }))
-  describe.concurrent("", () => {
+  describe("", () => {
     it.effect("tapErrorCause - effectually peeks at the cause of the failure of this effect", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(false))

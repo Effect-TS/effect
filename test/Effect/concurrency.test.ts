@@ -33,7 +33,7 @@ const concurrentFib = (n: number): Effect.Effect<never, never, number> => {
   })
 }
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("shallow fork/join identity", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed(42), Effect.fork, Effect.flatMap(Fiber.join))

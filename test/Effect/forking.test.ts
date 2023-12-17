@@ -9,7 +9,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("fork - propagates interruption", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.never, Effect.fork, Effect.flatMap(Fiber.interrupt))

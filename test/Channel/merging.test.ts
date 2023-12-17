@@ -9,7 +9,7 @@ import * as MergeDecision from "effect/MergeDecision"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("mergeWith - simple merge", () =>
     Effect.gen(function*($) {
       const [chunk, value] = yield* $(

@@ -26,7 +26,7 @@ function makeNumericSortedSet(
   return SortedSet.fromIterable(numbers, (self, that: number) => self > that ? 1 : self < that ? -1 : 0)
 }
 
-describe.concurrent("SortedSet", () => {
+describe("SortedSet", () => {
   it("fromIterable", () => {
     expect(Array.from(SortedSet.fromIterable(["c", "a", "b"], Str.Order))).toStrictEqual(["a", "b", "c"])
     expect(Array.from(pipe(["c", "a", "b"], SortedSet.fromIterable(Str.Order)))).toStrictEqual(["a", "b", "c"])

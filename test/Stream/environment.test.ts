@@ -15,7 +15,7 @@ interface StringService {
 
 const StringService = Context.Tag<StringService>()
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("context", () =>
     Effect.gen(function*($) {
       const context = pipe(

@@ -9,7 +9,7 @@ import { nextInt } from "effect/Random"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Foreign", () => {
+describe("Foreign", () => {
   it.effect("Unify", () =>
     Effect.gen(function*($) {
       const unifiedEffect = unify((yield* $(nextInt)) > 1 ? Effect.succeed(0) : Effect.fail(1))

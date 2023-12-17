@@ -6,7 +6,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Sink", () => {
+describe("Sink", () => {
   it.effect("ensuring - happy path", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))

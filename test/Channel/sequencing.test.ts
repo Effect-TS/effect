@@ -6,7 +6,7 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("flatMap - simple", () =>
     Effect.gen(function*($) {
       const channel = pipe(

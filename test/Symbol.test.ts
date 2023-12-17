@@ -1,7 +1,7 @@
 import * as S from "effect/Symbol"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Symbol", () => {
+describe("Symbol", () => {
   it("isSymbol", () => {
     expect(S.isSymbol(Symbol.for("effect-test/a"))).toEqual(true)
     expect(S.isSymbol(1n)).toEqual(false)

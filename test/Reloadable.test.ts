@@ -20,7 +20,7 @@ const DummyService: DummyService = {
 
 const Tag = Context.Tag<DummyService>()
 
-describe.concurrent("Reloadable", () => {
+describe("Reloadable", () => {
   it.effect("initialization", () =>
     Effect.gen(function*($) {
       const counter = yield* $(Counter.make())

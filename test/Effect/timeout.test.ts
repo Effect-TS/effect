@@ -9,7 +9,7 @@ import * as Option from "effect/Option"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.live("timeout a long computation", () =>
     Effect.gen(function*($) {
       const result = yield* $(

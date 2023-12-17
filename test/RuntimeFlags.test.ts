@@ -17,7 +17,7 @@ const arbRuntimeFlags = fc.uniqueArray(arbRuntimeFlag).map(
   (flags) => RuntimeFlags.make(...flags)
 )
 
-describe.concurrent("RuntimeFlags", () => {
+describe("RuntimeFlags", () => {
   it("isDisabled & isEnabled", () => {
     const flags = RuntimeFlags.make(
       RuntimeFlags.RuntimeMetrics,

@@ -12,7 +12,7 @@ import * as Stream from "effect/Stream"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("retry - retries a failing stream", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))

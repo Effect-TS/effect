@@ -8,7 +8,7 @@ import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import { assert, describe } from "vitest"
 
-describe.concurrent("PubSub", () => {
+describe("PubSub", () => {
   it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {
     const messages = [1, 2]
     return PubSub.bounded<number>(2).pipe(

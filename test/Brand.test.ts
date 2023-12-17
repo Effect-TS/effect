@@ -19,7 +19,7 @@ const Positive = Brand.refined<Positive>(
 type PositiveInt = Positive & Int
 const PositiveInt = Brand.all(Int, Positive)
 
-describe.concurrent("Brand", () => {
+describe("Brand", () => {
   it("nominal", () => {
     type MyNumber = number & Brand.Brand<"MyNumber">
     const MyNumber = Brand.nominal<MyNumber>()

@@ -4,7 +4,7 @@ import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 
-describe.concurrent("Number", () => {
+describe("Number", () => {
   it("isNumber", () => {
     expect(Number.isNumber(1)).toEqual(true)
     expect(Number.isNumber("a")).toEqual(false)

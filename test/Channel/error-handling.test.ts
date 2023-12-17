@@ -7,7 +7,7 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("catchAll - structure confusion", () =>
     Effect.gen(function*($) {
       const channel = pipe(

@@ -5,7 +5,7 @@ import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("paginate", () =>
     Effect.gen(function*($) {
       const s: readonly [number, Array<number>] = [0, [1, 2, 3]]

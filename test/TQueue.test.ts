@@ -6,7 +6,7 @@ import * as STM from "effect/STM"
 import * as TQueue from "effect/TQueue"
 import { assert, describe } from "vitest"
 
-describe.concurrent("TQueue", () => {
+describe("TQueue", () => {
   it.effect("bounded", () =>
     Effect.gen(function*($) {
       const capacity = 5

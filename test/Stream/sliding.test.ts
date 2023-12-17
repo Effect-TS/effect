@@ -7,7 +7,7 @@ import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("sliding - returns a sliding window", () =>
     Effect.gen(function*($) {
       const stream0 = Stream.fromChunks(

@@ -9,7 +9,7 @@ import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("toQueue", () =>
     Effect.gen(function*($) {
       const chunk = Chunk.make(1, 2, 3)

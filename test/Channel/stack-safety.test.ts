@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("mapOut is stack safe", () =>
     Effect.gen(function*($) {
       const N = 10_000

@@ -16,7 +16,7 @@ type NonEmptyString = string & NonEmptyStringBrand
 
 const isNonEmptyString: _.Refinement<string, NonEmptyString> = (s): s is NonEmptyString => s.length > 0
 
-describe.concurrent("Predicate", () => {
+describe("Predicate", () => {
   it("compose", () => {
     const refinement = pipe(isString, _.compose(isNonEmptyString))
     deepStrictEqual(refinement("a"), true)

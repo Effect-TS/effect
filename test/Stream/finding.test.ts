@@ -7,7 +7,7 @@ import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("find", () =>
     Effect.gen(function*($) {
       const stream = Stream.make(1, 2, 3, 4, 5)

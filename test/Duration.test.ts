@@ -5,7 +5,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 
-describe.concurrent("Duration", () => {
+describe("Duration", () => {
   it("exports", () => {
     expect(Duration.matchWith).exist
   })

@@ -32,8 +32,8 @@ const assertSuccess = <A>(
   expect(result).toStrictEqual(Exit.succeed(a))
 }
 
-describe.concurrent("Config", () => {
-  describe.concurrent("boolean", () => {
+describe("Config", () => {
+  describe("boolean", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.boolean(), "ITEMS")
       assertSuccess(config, [["ITEMS", "true"]], [true])
@@ -64,7 +64,7 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("number", () => {
+  describe("number", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.number(), "ITEMS")
       assertSuccess(config, [["ITEMS", "1"]], [1])
@@ -93,7 +93,7 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("date", () => {
+  describe("date", () => {
     it("name = undefined", () => {
       const config = Config.date()
       assertSuccess(config, [["", "0"]], new Date(Date.parse("0")))
@@ -147,7 +147,7 @@ describe.concurrent("Config", () => {
     assertFailure(config, [], ConfigError.MissingData(["STRING"], "Expected STRING to exist in the provided map"))
   })
 
-  describe.concurrent("logLevel", () => {
+  describe("logLevel", () => {
     it("name = undefined", () => {
       const config = Config.logLevel()
       assertSuccess(config, [["", "DEBUG"]], LogLevel.Debug)
@@ -167,7 +167,7 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("validate", () => {
+  describe("validate", () => {
     it("should preserve the original path", () => {
       const flat = Config.number("NUMBER").pipe(
         Config.validate({
@@ -205,7 +205,7 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("withDefault", () => {
+  describe("withDefault", () => {
     it("recovers from missing data error", () => {
       const config = pipe(
         Config.integer("key"),
@@ -269,7 +269,7 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("option", () => {
+  describe("option", () => {
     it("recovers from missing data error", () => {
       const config = Config.option(Config.integer("key"))
       assertSuccess(config, [], Option.none())
@@ -329,7 +329,7 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("Wrap", () => {
+  describe("Wrap", () => {
     it("unwrap correctly builds config", () => {
       const wrapper = (
         _: Config.Config.Wrap<{
@@ -368,8 +368,8 @@ describe.concurrent("Config", () => {
     assertSuccess(config, [], 1)
   })
 
-  describe.concurrent("all", () => {
-    describe.concurrent("tuple", () => {
+  describe("all", () => {
+    describe("tuple", () => {
       it("length = 0", () => {
         const config = Config.all([])
         assertSuccess(config, [], [])
@@ -413,8 +413,8 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("Secret", () => {
-    describe.concurrent("Config.secret", () => {
+  describe("Secret", () => {
+    describe("Config.secret", () => {
       it("name = undefined", () => {
         const config = Config.array(Config.secret(), "ITEMS")
         assertSuccess(config, [["ITEMS", "a"]], [Secret.fromString("a")])
@@ -459,7 +459,7 @@ describe.concurrent("Config", () => {
     expect("description" in config).toBe(true)
   })
 
-  describe.concurrent("hashSet", () => {
+  describe("hashSet", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.hashSet(Config.string()), "ITEMS")
       assertSuccess(config, [["ITEMS", "a,b,c"]], [HashSet.make("a", "b", "c")])

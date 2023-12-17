@@ -37,7 +37,7 @@ const deepErrorFail = (n: number): Effect.Effect<never, Error, never> => {
   return pipe(Effect.unit, Effect.zipRight(deepErrorFail(n - 1)))
 }
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("attempt - error in sync effect", () =>
     Effect.gen(function*($) {
       const result = yield* $(

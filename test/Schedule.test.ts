@@ -17,7 +17,7 @@ import * as Intervals from "effect/ScheduleIntervals"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Schedule", () => {
+describe("Schedule", () => {
   it.effect("collect all inputs into a list as long as the condition f holds", () =>
     Effect.gen(function*($) {
       const result = yield* $(repeat(Schedule.collectWhile((n) => n < 10)))
@@ -136,7 +136,7 @@ describe.concurrent("Schedule", () => {
       )
       assert.strictEqual(result, 10)
     }))
-  describe.concurrent("simulate a schedule", () => {
+  describe("simulate a schedule", () => {
     it.effect("without timing out", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.exponential("1 minutes")
@@ -177,7 +177,7 @@ describe.concurrent("Schedule", () => {
         assert.deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4, 5])
       }))
   })
-  describe.concurrent("repeat an action a single time", () => {
+  describe("repeat an action a single time", () => {
     it.effect("repeat on failure does not actually repeat", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
@@ -194,7 +194,7 @@ describe.concurrent("Schedule", () => {
         assert.strictEqual(result, (n + 1) * 2)
       }))
   })
-  describe.concurrent("repeat an action two times and call ensuring should", () => {
+  describe("repeat an action two times and call ensuring should", () => {
     it.effect("run the specified finalizer as soon as the schedule is complete", () =>
       Effect.gen(function*($) {
         const deferred = yield* $(Deferred.make<never, void>())
@@ -210,7 +210,7 @@ describe.concurrent("Schedule", () => {
         assert.isTrue(Option.isSome(finalizerValue))
       }))
   })
-  describe.concurrent("repeat on success according to a provided strategy", () => {
+  describe("repeat on success according to a provided strategy", () => {
     it.effect("for 'recurs(a negative number)' repeats 0 additional time", () =>
       Effect.gen(function*($) {
         // A repeat with a negative number of times should not repeat the action at all
@@ -261,7 +261,7 @@ describe.concurrent("Schedule", () => {
         assert.strictEqual(result, 11)
       }))
   })
-  describe.concurrent("delays", () => {
+  describe("delays", () => {
     it.effect("duration", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkDelays(Schedule.duration("1 seconds")))
@@ -297,7 +297,7 @@ describe.concurrent("Schedule", () => {
         assert.deepStrictEqual(actual, expected)
       }))
   })
-  describe.concurrent("repetitions", () => {
+  describe("repetitions", () => {
     it.effect("forever", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.repeatForever))
@@ -359,7 +359,7 @@ describe.concurrent("Schedule", () => {
         assert.deepStrictEqual(actual, expected)
       }))
   })
-  describe.concurrent("retries", () => {
+  describe("retries", () => {
     it.effect("for up to 10 times", () =>
       Effect.gen(function*($) {
         let i = 0
@@ -569,7 +569,7 @@ describe.concurrent("Schedule", () => {
         assert.isTrue(Option.isSome(finalizerValue))
       }))
   })
-  describe.concurrent("cron-like scheduling - repeats at point of time (minute of hour, day of week, ...)", () => {
+  describe("cron-like scheduling - repeats at point of time (minute of hour, day of week, ...)", () => {
     it.effect("recur at 01 second of each minute", () =>
       Effect.gen(function*($) {
         const originOffset = new Date(new Date(new Date().setMinutes(0)).setSeconds(0)).setMilliseconds(0)

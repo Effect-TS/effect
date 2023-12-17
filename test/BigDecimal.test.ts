@@ -7,7 +7,7 @@ import { assert, describe, expect, it } from "vitest"
 const _ = BigDecimal.unsafeFromString
 const assertEquals = (a: BigDecimal.BigDecimal, b: BigDecimal.BigDecimal) => assertTrue(BigDecimal.equals(a, b))
 
-describe.concurrent("BigDecimal", () => {
+describe("BigDecimal", () => {
   it("isBigDecimal", () => {
     assertTrue(BigDecimal.isBigDecimal(_("0")))
     assertTrue(BigDecimal.isBigDecimal(_("987")))

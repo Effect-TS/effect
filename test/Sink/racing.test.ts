@@ -48,7 +48,7 @@ const sinkRaceLaw = <E, A, L>(
     )
   )
 
-describe.concurrent("Sink", () => {
+describe("Sink", () => {
   it.effect("raceBoth", () =>
     Effect.gen(function*($) {
       const ints = yield* $(unfoldEffect(

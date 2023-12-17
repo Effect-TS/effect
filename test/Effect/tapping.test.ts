@@ -12,7 +12,7 @@ class TestError2 {
   constructor() {}
 }
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it("tapErrorTag", async () => {
     let val = 0
 

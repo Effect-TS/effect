@@ -24,7 +24,7 @@ const UserResolver = Resolver.makeBatched((requests: Array<GetNameById>) =>
 const getUserNameById = (id: number) => Effect.request(GetNameById({ id }), UserResolver)
 const getAllUserNames = Effect.forEach([1, 1], getUserNameById, { batching: true })
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.it("requests are executed correctly", () =>
     Effect.runPromise(
       Effect.gen(function*($) {

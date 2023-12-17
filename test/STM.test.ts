@@ -140,7 +140,7 @@ const permutation = (ref1: TRef.TRef<number>, ref2: TRef.TRef<number>): STM.STM<
     )
   )
 
-describe.concurrent("STM", () => {
+describe("STM", () => {
   it.effect("catchAll", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
@@ -1304,7 +1304,7 @@ describe.concurrent("STM", () => {
       assert.isTrue(result === 0 || result === 2)
     }))
 
-  describe.concurrent("concurrent computations", () => {
+  describe("concurrent computations", () => {
     it.effect("increment `TRef` 100 times in 100 fibers", () =>
       Effect.gen(function*($) {
         const ref = yield* $(TRef.make(0))

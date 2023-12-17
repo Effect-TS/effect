@@ -2,7 +2,7 @@ import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Data", () => {
+describe("Data", () => {
   it("struct", () => {
     const x = Data.struct({ a: 0, b: 1, c: 2 })
     const y = Data.struct({ a: 0, b: 1, c: 2 })

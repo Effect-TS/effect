@@ -26,7 +26,7 @@ const asyncUnit = <E>(): Effect.Effect<never, E, void> => {
   })
 }
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("fail ensuring", () =>
     Effect.gen(function*($) {
       let finalized = false

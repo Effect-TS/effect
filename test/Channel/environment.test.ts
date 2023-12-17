@@ -41,7 +41,7 @@ export const isNumberService = (u: unknown): u is NumberService => {
   return typeof u === "object" && u != null && NumberServiceTypeId in u
 }
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.effect("provide - simple", () =>
     Effect.gen(function*($) {
       const result = yield* $(

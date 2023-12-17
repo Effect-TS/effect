@@ -7,7 +7,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("peel", () =>
     Effect.gen(function*($) {
       const sink = Sink.take<number>(3)

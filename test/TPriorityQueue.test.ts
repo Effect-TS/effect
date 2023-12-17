@@ -30,7 +30,7 @@ const eventsArb: fc.Arbitrary<Array<Event>> = fc.array(eventArb)
 
 const predicateArb: fc.Arbitrary<(event: Event) => boolean> = fc.func(fc.boolean()).map((f) => (e: Event) => f(e))
 
-describe.concurrent("TPriorityQueue", () => {
+describe("TPriorityQueue", () => {
   it.it("isEmpty", () =>
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(

@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.effect("interleave", () =>
     Effect.gen(function*($) {
       const stream1 = Stream.make(2, 3)

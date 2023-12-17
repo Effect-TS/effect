@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { defineConfig } from "vite"
+import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   test: {
@@ -9,7 +9,10 @@ export default defineConfig({
       provider: "playwright",
       headless: true
     },
-    fakeTimers: { toFake: undefined }
+    fakeTimers: { toFake: undefined },
+    sequence: {
+      concurrent: true
+    }
   },
   resolve: {
     alias: {

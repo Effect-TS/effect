@@ -13,7 +13,7 @@ import { assert, describe } from "vitest"
 
 const sort: (array: ReadonlyArray<number>) => ReadonlyArray<number> = RA.sort(number.Order)
 
-describe.concurrent("TPubSub", () => {
+describe("TPubSub", () => {
   it.it("sequential publishers and subscribers - with one publisher and one subscriber", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*($) {

@@ -8,7 +8,7 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("acquireUseRelease - happy path", () =>
     Effect.gen(function*($) {
       const release = yield* $(Ref.make(false))

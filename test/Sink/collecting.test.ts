@@ -7,7 +7,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Sink", () => {
+describe("Sink", () => {
   it.effect("collectAllN - respects the given limit", () =>
     Effect.gen(function*($) {
       const stream = pipe(

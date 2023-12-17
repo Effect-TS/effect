@@ -2,7 +2,7 @@ import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect-te
 import * as MutableQueue from "effect/MutableQueue"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("MutableQueue", () => {
+describe("MutableQueue", () => {
   it("toString", () => {
     const queue = MutableQueue.bounded<number>(2)
     MutableQueue.offerAll([0, 1, 2])(queue)
@@ -32,7 +32,7 @@ describe.concurrent("MutableQueue", () => {
     expect(inspect(queue)).toEqual(inspect({ _id: "MutableQueue", values: [0, 1] }))
   })
 
-  describe.concurrent("bounded", () => {
+  describe("bounded", () => {
     it("length", () => {
       const queue = MutableQueue.bounded<number>(2)
       strictEqual(MutableQueue.length(queue), 0)
@@ -93,7 +93,7 @@ describe.concurrent("MutableQueue", () => {
     })
   })
 
-  describe.concurrent("unbounded", () => {
+  describe("unbounded", () => {
     it("capacity", () => {
       const queue = MutableQueue.unbounded<number>()
 

@@ -19,7 +19,7 @@ interface C {
 }
 const C = Context.Tag<C>("C")
 
-describe.concurrent("Context", () => {
+describe("Context", () => {
   it("Tag.toJson()", () => {
     const json: any = A.toJSON()
     expect(json["_id"]).toEqual("Tag")

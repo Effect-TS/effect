@@ -17,7 +17,7 @@ class Value implements Equal.Equal {
   }
 }
 
-describe.concurrent("HashSet", () => {
+describe("HashSet", () => {
   function value(n: number): Value {
     return new Value(n)
   }

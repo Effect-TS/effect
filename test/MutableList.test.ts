@@ -3,7 +3,7 @@ import { pipe } from "effect/Function"
 import * as MutableList from "effect/MutableList"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("MutableList", () => {
+describe("MutableList", () => {
   it("toString", () => {
     expect(String(MutableList.make(0, 1, 2))).toEqual(`{
   "_id": "MutableList",

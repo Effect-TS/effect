@@ -10,7 +10,7 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Channel", () => {
+describe("Channel", () => {
   it.it("acquireUseReleaseOut - acquire is executed uninterruptibly", async () => {
     const latch = Deferred.unsafeMake<never, void>(FiberId.none)
     const program = Effect.gen(function*($) {

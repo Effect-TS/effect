@@ -29,7 +29,7 @@ const grouped = <A>(arr: Array<A>, size: number): Array<Array<A>> => {
   return builder
 }
 
-describe.concurrent("Stream", () => {
+describe("Stream", () => {
   it.it("concatAll", () =>
     fc.assert(fc.asyncProperty(fc.array(chunkArb(fc.integer())), async (chunks) => {
       const stream = pipe(

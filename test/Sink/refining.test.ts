@@ -8,7 +8,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Sink", () => {
+describe("Sink", () => {
   it.effect("refineOrDie", () =>
     Effect.gen(function*($) {
       const exception = new Cause.RuntimeException()

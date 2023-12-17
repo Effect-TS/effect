@@ -6,7 +6,7 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Effect", () => {
+describe("Effect", () => {
   it.effect("validate - fails", () =>
     Effect.gen(function*($) {
       const result = yield* $(
@@ -139,7 +139,7 @@ describe.concurrent("Effect", () => {
       const result = yield* $([2, 4, 6, 3, 5, 6], Effect.validateFirst(Effect.fail), Effect.flip)
       assert.deepStrictEqual(Array.from(result), [2, 4, 6, 3, 5, 6])
     }))
-  describe.concurrent("", () => {
+  describe("", () => {
     it.effect("validateFirst/concurrency - returns all errors if never valid", () =>
       Effect.gen(function*($) {
         const array = Array.from({ length: 1000 }, () => 0)

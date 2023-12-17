@@ -1,7 +1,7 @@
 import * as _ from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe.concurrent("Pipeable", () => {
+describe("Pipeable", () => {
   it("pipeArguments", () => {
     const f = (n: number): number => n + 1
     const g = (n: number): number => n * 2

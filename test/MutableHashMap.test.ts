@@ -37,7 +37,7 @@ function value(c: number, d: number): Value {
   return new Value(c, d)
 }
 
-describe.concurrent("MutableHashMap", () => {
+describe("MutableHashMap", () => {
   it("toString", () => {
     const map = HM.make(
       [0, "a"],
