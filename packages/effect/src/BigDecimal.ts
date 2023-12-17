@@ -107,10 +107,25 @@ export const make = (value: bigint, scale: number): BigDecimal => {
   return o
 }
 
+/**
+ * Internal function used to create pre-normalized `BigDecimal`s.
+ *
+ * @internal
+ */
+export const unsafeMakeNormalized = (value: bigint, scale: number): BigDecimal => {
+  if (value !== bigint0 && value % bigint10 === bigint0) {
+    throw new RangeError("Value must be normalized")
+  }
+
+  const o = make(value, scale)
+  o.normalized = o
+  return o
+}
+
 const bigint0 = BigInt(0)
 const bigint1 = BigInt(1)
 const bigint10 = BigInt(10)
-const zero = make(bigint0, 0)
+const zero = unsafeMakeNormalized(bigint0, 0)
 
 /**
  * Normalizes a given `BigDecimal` by removing trailing zeros.
@@ -120,8 +135,8 @@ const zero = make(bigint0, 0)
  * @example
  * import { normalize, make, unsafeFromString } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(normalize(unsafeFromString("123.00000")), make(123n, 0))
- * assert.deepStrictEqual(normalize(unsafeFromString("12300000")), make(123n, -5))
+ * assert.deepStrictEqual(normalize(unsafeFromString("123.00000")), normalize(make(123n, 0)))
+ * assert.deepStrictEqual(normalize(unsafeFromString("12300000")), normalize(make(123n, -5)))
  *
  * @since 2.0.0
  * @category scaling
@@ -148,7 +163,7 @@ export const normalize = (self: BigDecimal): BigDecimal => {
 
       const value = BigInt(digits.substring(0, digits.length - trail))
       const scale = self.scale - trail
-      self.normalized = make(value, scale)
+      self.normalized = unsafeMakeNormalized(value, scale)
     }
   }
 
