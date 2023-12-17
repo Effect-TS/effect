@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.37.7
+
+### Patch Changes
+
+- [#361](https://github.com/Effect-TS/platform/pull/361) [`df3af6b`](https://github.com/Effect-TS/platform/commit/df3af6be61572bab15004bbca2c5739d8206f3c3) Thanks [@tim-smart](https://github.com/tim-smart)! - fix headers type for schemaJson
+
 ## 0.37.6
 
 ### Patch Changes
