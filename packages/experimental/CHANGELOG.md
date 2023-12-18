@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.4.0
+
+### Minor Changes
+
+- [#33](https://github.com/Effect-TS/experimental/pull/33) [`d716090`](https://github.com/Effect-TS/experimental/commit/d716090f539b56d5093a82a10dd5fd6b2b369e86) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.3.2
 
 ### Patch Changes
