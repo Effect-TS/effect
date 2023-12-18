@@ -56,7 +56,8 @@ describe("Effect", () => {
       })
     })
     const program = effect.pipe(
-      Effect.timeout("10 millis")
+      Effect.timeout("10 millis"),
+      Effect.optionFromOptional
     )
     const exit = await Effect.runPromiseExit(program)
     expect(exit._tag).toBe("Success")
@@ -79,7 +80,8 @@ describe("Effect", () => {
       catch: () => new Error()
     })
     const program = effect.pipe(
-      Effect.timeout("10 millis")
+      Effect.timeout("10 millis"),
+      Effect.optionFromOptional
     )
     const exit = await Effect.runPromiseExit(program)
     expect(exit._tag).toBe("Success")

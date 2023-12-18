@@ -16,13 +16,13 @@ describe("Effect", () => {
     }))
   it.effect("head - on empty list", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Effect.succeed([] as ReadonlyArray<number>), Effect.head, Effect.either)
-      assert.deepStrictEqual(result, Either.left(Option.none()))
+      const result = yield* $(Effect.succeed([] as ReadonlyArray<number>), Effect.head, Effect.option)
+      assert.deepStrictEqual(result, Option.none())
     }))
   it.effect("head - on failure", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.fail("fail"), Effect.head, Effect.either)
-      assert.deepStrictEqual(result, Either.left(Option.some("fail")))
+      assert.deepStrictEqual(result, Either.left("fail"))
     }))
   it.effect("isFailure - returns true when the effect is a failure", () =>
     Effect.gen(function*($) {
@@ -44,21 +44,21 @@ describe("Effect", () => {
       const result = yield* $(Effect.isSuccess(Effect.succeed("succeed")))
       assert.isTrue(result)
     }))
-  it.effect("none - on Some fails with None", () =>
+  it.effect("none - on Some fails with NoSuchElementException", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.exit(Effect.none(Effect.succeed(Option.some(1)))))
-      assert.deepStrictEqual(result, Exit.fail(Option.none()))
+      assert.deepStrictEqual(result, Exit.fail(new Cause.NoSuchElementException()))
     }))
   it.effect("none - on None succeeds with undefined", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.none(Effect.succeed(Option.none())))
       assert.isUndefined(result)
     }))
-  it.effect("none - fails with Some(ex) when effect fails with ex", () =>
+  it.effect("none - fails with ex when effect fails with ex", () =>
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("failed task")
       const result = yield* $(Effect.exit(Effect.none(Effect.fail(error))))
-      assert.deepStrictEqual(result, Exit.fail(Option.some(error)))
+      assert.deepStrictEqual(result, Exit.fail(error))
     }))
   it.effect("option - return success in Some", () =>
     Effect.gen(function*($) {
