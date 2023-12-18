@@ -3211,8 +3211,15 @@ export const serviceMembers: <I, S>(tag: Context.Tag<I, S>) => {
  * @since 2.0.0
  * @category context
  */
-export const serviceOption: <I, S>(tag: Context.Tag<I, S>) => Effect<never, Cause.NoSuchElementException, S> =
+export const serviceOption: <I, S>(tag: Context.Tag<I, S>) => Effect<never, never, Option.Option<S>> =
   effect.serviceOption
+
+/**
+ * @since 2.0.0
+ * @category context
+ */
+export const serviceOptional: <I, S>(tag: Context.Tag<I, S>) => Effect<never, Cause.NoSuchElementException, S> =
+  effect.serviceOptional
 
 /**
  * Updates the service with the required service entry.

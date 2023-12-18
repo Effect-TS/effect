@@ -1891,7 +1891,10 @@ export const serviceMembers = <I, S>(tag: Context.Tag<I, S>): {
 })
 
 /** @internal */
-export const serviceOption = <I, S>(tag: Context.Tag<I, S>) =>
+export const serviceOption = <I, S>(tag: Context.Tag<I, S>) => core.map(core.context<never>(), Context.getOption(tag))
+
+/** @internal */
+export const serviceOptional = <I, S>(tag: Context.Tag<I, S>) =>
   core.flatMap(core.context<never>(), Context.getOption(tag))
 
 // -----------------------------------------------------------------------------
@@ -1950,7 +1953,7 @@ export const annotateSpans = dual<
 )
 
 /** @internal */
-export const currentParentSpan: Effect.Effect<never, Cause.NoSuchElementException, Tracer.ParentSpan> = serviceOption(
+export const currentParentSpan: Effect.Effect<never, Cause.NoSuchElementException, Tracer.ParentSpan> = serviceOptional(
   internalTracer.spanTag
 )
 
