@@ -257,6 +257,14 @@ export const effectContext: <R, E, A>(effect: Effect.Effect<R, E, Context.Contex
   internal.fromEffectContext
 
 /**
+ * A Layer that constructs an empty Context.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const empty: Layer<never, never, never> = internal.empty
+
+/**
  * Extends the scope of this layer, returning a new layer that when provided
  * to an effect will not immediately release its associated resources when
  * that effect completes execution but instead when the scope the resulting

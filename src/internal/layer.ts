@@ -913,6 +913,9 @@ export const succeedContext = <A>(
 }
 
 /** @internal */
+export const empty = succeedContext(Context.empty())
+
+/** @internal */
 export const suspend = <RIn, E, ROut>(
   evaluate: LazyArg<Layer.Layer<RIn, E, ROut>>
 ): Layer.Layer<RIn, E, ROut> => {
