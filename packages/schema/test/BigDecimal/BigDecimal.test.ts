@@ -10,12 +10,12 @@ describe("BigDecimal/BigDecimal", () => {
     await Util.expectParseSuccess(
       schema,
       "2",
-      BigDecimal.make(2n, 0)
+      BigDecimal.normalize(BigDecimal.make(2n, 0))
     )
     await Util.expectParseSuccess(
       schema,
       "0.123",
-      BigDecimal.make(123n, 3)
+      BigDecimal.normalize(BigDecimal.make(123n, 3))
     )
     await Util.expectParseSuccess(
       schema,

@@ -16,7 +16,7 @@ describe("BigDecimal/greaterThanOrEqualToBigDecimal", () => {
     await Util.expectParseSuccess(
       schema,
       "10",
-      BigDecimal.make(1n, -1)
+      BigDecimal.normalize(BigDecimal.fromNumber(10))
     )
   })
 
