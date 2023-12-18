@@ -732,6 +732,7 @@ export const fromJson = (json: unknown): ConfigProvider.ConfigProvider => {
     getIndexedEntries(json as JsonMap),
     ([key, value]): [string, string] => [configPathToString(key).join(hiddenDelimiter), value]
   )
+  console.log(indexedEntries)
   return fromMap(new Map(indexedEntries), {
     pathDelim: hiddenDelimiter,
     seqDelim: hiddenDelimiter
@@ -776,10 +777,10 @@ const getIndexedEntries = (
       return ReadonlyArray.make([path, String(value)] as [ReadonlyArray<KeyComponent>, string])
     }
     if (Array.isArray(value)) {
-      return loopArray(path, value)
+      return ReadonlyArray.prepend(loopArray(path, value), [path, JSON.stringify(value)])
     }
     if (typeof value === "object" && value !== null) {
-      return loopObject(path, value)
+      return ReadonlyArray.prepend(loopObject(path, value), [path, JSON.stringify(value)])
     }
     return ReadonlyArray.empty<[ReadonlyArray<KeyComponent>, string]>()
   }

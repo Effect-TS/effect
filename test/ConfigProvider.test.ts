@@ -917,6 +917,26 @@ describe("ConfigProvider", () => {
 
   it.effect("fromJson - should load configs from nested JSON", () =>
     Effect.gen(function*($) {
+      const config = Config.primitive<Record<string, unknown>>(
+        "a JSON record",
+        (json) => Either.right(JSON.parse(json))
+      ).pipe(Config.nested("hostPorts"))
+      const result = yield* $(
+        ConfigProvider.fromJson({
+          hostPorts: {
+            host: "localhost",
+            port: 8080
+          }
+        }).load(config)
+      )
+      assert.deepStrictEqual(result, {
+        host: "localhost",
+        port: 8080
+      })
+    }))
+
+  it.effect("fromJson - should load configs from nested JSON fields", () =>
+    Effect.gen(function*($) {
       const result = yield* $(
         ConfigProvider.fromJson({
           hostPorts: [{
