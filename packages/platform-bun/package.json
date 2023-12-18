@@ -31,15 +31,15 @@
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
   },
   "peerDependencies": {
-    "@effect/platform": "workspace:*",
-    "@effect/platform-node": "workspace:*",
-    "effect": "2.0.0-next.60"
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "effect": "2.0.0-next.61"
   },
   "devDependencies": {
-    "@effect/platform": "workspace:*",
-    "@effect/platform-node": "workspace:*",
-    "@effect/schema": "^0.53.1",
-    "bun-types": "^1.0.17",
-    "effect": "2.0.0-next.60"
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@effect/schema": "^0.54.0",
+    "bun-types": "^1.0.18",
+    "effect": "2.0.0-next.61"
   }
 }
