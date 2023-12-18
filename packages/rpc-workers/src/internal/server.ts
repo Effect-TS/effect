@@ -14,7 +14,7 @@ import { getTransferables } from "../Schema.js"
 export const make = <R extends RpcRouter.Base>(router: R): Effect.Effect<
   Scope.Scope | Runner.PlatformRunner | RpcRouter.Services<R>,
   Error.WorkerError,
-  never
+  void
 > => {
   const run = (handler: Server.RpcServerSingleWithSchema) =>
     Runner.make<
@@ -23,10 +23,14 @@ export const make = <R extends RpcRouter.Base>(router: R): Effect.Effect<
       RpcTransportError,
       readonly [RpcResponse, Option.Option<Schema.RpcSchema.Base>]
     >(handler, {
-      encode([response]) {
-        return response
+      encodeOutput(_request, [response]) {
+        return Effect.succeed(response)
       },
-      transfers([response, schema]) {
+      transfers(message) {
+        if ("_tag" in message) {
+          return []
+        }
+        const [response, schema] = message
         return Option.getOrElse(
           Option.map(schema, (schema) =>
             response._tag === "Success"

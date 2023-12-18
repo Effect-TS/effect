@@ -2,6 +2,7 @@ import "@vitest/web-worker"
 import * as Worker from "@effect/platform-browser/Worker"
 import * as Client from "@effect/rpc-workers/Client"
 import * as Resolver from "@effect/rpc-workers/Resolver"
+import { Exit } from "effect"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
@@ -35,21 +36,20 @@ const SharedPoolLive = Resolver.makePoolLayer({
 
 const client = Client.make(schema)
 
+const runPromise = <E, A>(effect: Effect.Effect<never, E, A>) =>
+  Effect.runPromiseExit(effect).then((exit) => {
+    if (Exit.isFailure(exit) && !Exit.isInterrupted(exit)) {
+      throw Cause.squash(exit.cause)
+    }
+  })
+
 describe("e2e", () => {
   it("Worker", () =>
     pipe(
       client.getBinary(new Uint8Array([1, 2, 3])),
       Effect.tap((_) => Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3])))),
       Effect.provide(PoolLive),
-      Effect.runPromise
-    ))
-
-  it("SharedWorker", () =>
-    pipe(
-      client.getBinary(new Uint8Array([1, 2, 3])),
-      Effect.tap((_) => Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3])))),
-      Effect.provide(SharedPoolLive),
-      Effect.runPromise
+      runPromise
     ))
 
   it("100x", () =>
@@ -60,7 +60,7 @@ describe("e2e", () => {
       ),
       Effect.tap((_) => Effect.sync(() => expect(_.length).toEqual(100))),
       Effect.provide(PoolLive),
-      Effect.runPromise
+      runPromise
     ))
 
   it("interruption", () => {
@@ -99,4 +99,12 @@ describe("e2e", () => {
 
     expect(await closedPromise).toEqual("closed")
   })
+
+  it("SharedWorker", () =>
+    pipe(
+      client.getBinary(new Uint8Array([1, 2, 3])),
+      Effect.tap((_) => Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3])))),
+      Effect.provide(SharedPoolLive),
+      runPromise
+    ))
 }, 10000)

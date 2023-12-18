@@ -27,7 +27,7 @@ export const makePool = (
           return Effect.unit
         },
         encode(message) {
-          return message.payload
+          return Effect.succeed(message.payload)
         },
         transfers(message) {
           return "input" in message.schema

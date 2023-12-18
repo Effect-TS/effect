@@ -5,6 +5,7 @@ import * as Router from "@effect/rpc-http/Router"
 import * as RS from "@effect/rpc-http/Schema"
 import * as _ from "@effect/rpc-http/Server"
 import * as S from "@effect/schema/Schema"
+import { Layer } from "effect"
 import * as Effect from "effect/Effect"
 import { createServer } from "http"
 import { assert, describe, it } from "vitest"
@@ -26,7 +27,7 @@ const router = Router.make(schema, {
   headers: Effect.map(Http.request.ServerRequest, (request) => request.headers)
 })
 
-const server = _.make(router).pipe(Http.server.serve())
+const HttpLive = Http.server.serve(_.make(router))
 const ServerLive = Http.server.layer(createServer, { port: 0 })
 const serverPort = Http.server.Server.pipe(Effect.map((_) => (_.address as Http.server.TcpAddress).port))
 
@@ -35,7 +36,7 @@ describe("Server", () => {
     Effect.gen(function*(_) {
       const port = yield* _(serverPort)
 
-      yield* _(Effect.fork(server))
+      yield* _(Effect.fork(Layer.launch(HttpLive)))
       yield* _(Effect.yieldNow())
 
       const client = Client.make(
@@ -49,7 +50,6 @@ describe("Server", () => {
       const headers = yield* _(client.headers)
       assert.strictEqual(headers["x-foo"], "bar")
     }).pipe(
-      Effect.scoped,
       Effect.provide(ServerLive),
       Effect.runPromise
     ), 10000)

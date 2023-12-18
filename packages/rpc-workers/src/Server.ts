@@ -15,5 +15,5 @@ import * as internal from "./internal/server.js"
 export const make: <R extends RpcRouter.Base>(router: R) => Effect.Effect<
   Scope | Runner.PlatformRunner | RpcRouter.Services<R>,
   Error.WorkerError,
-  never
+  void
 > = internal.make
