@@ -613,27 +613,27 @@ export declare namespace Types {
   type SafeRefinementP<A> = A extends never ? never
     : A extends SafeRefinement<infer S, infer _> ? S
     : A extends Function ? A
-    : A extends Record<string, any> ? DrainOuterGeneric<{ [K in keyof A]: SafeRefinementP<A[K]> }>
+    : A extends Record<string, any> ? { [K in keyof A]: SafeRefinementP<A[K]> }
     : A
 
   type SafeRefinementR<A> = A extends never ? never
     : A extends SafeRefinement<infer _, infer R> ? R
     : A extends Function ? A
-    : A extends Record<string, any> ? DrainOuterGeneric<{ [K in keyof A]: SafeRefinementR<A[K]> }>
+    : A extends Record<string, any> ? { [K in keyof A]: SafeRefinementR<A[K]> }
     : A
 
   type ResolvePred<A> = A extends never ? never
     : A extends Predicate.Refinement<any, infer P> ? P
     : A extends Predicate.Predicate<infer P> ? P
     : A extends SafeRefinement<any> ? A
-    : A extends Record<string, any> ? DrainOuterGeneric<{ [K in keyof A]: ResolvePred<A[K]> }>
+    : A extends Record<string, any> ? { [K in keyof A]: ResolvePred<A[K]> }
     : A
 
   type ToSafeRefinement<A> = A extends never ? never
     : A extends Predicate.Refinement<any, infer P> ? SafeRefinement<P, P>
     : A extends Predicate.Predicate<infer P> ? SafeRefinement<P, never>
     : A extends SafeRefinement<any> ? A
-    : A extends Record<string, any> ? DrainOuterGeneric<{ [K in keyof A]: ToSafeRefinement<A[K]> }>
+    : A extends Record<string, any> ? { [K in keyof A]: ToSafeRefinement<A[K]> }
     : NonLiteralsTo<A, never>
 
   type NonLiteralsTo<A, T> = [A] extends [string | number | boolean | bigint] ? [string] extends [A] ? T
@@ -643,16 +643,12 @@ export declare namespace Types {
     : A
     : A
 
-  type DrainOuterGeneric<T> = [T] extends [unknown] ? T : never
-
   /**
    * @since 1.0.0
    */
   export type PatternBase<A> = A extends ReadonlyArray<infer _T> ? ReadonlyArray<any> | PatternPrimitive<A>
     : A extends Record<string, any> ? Partial<
-        DrainOuterGeneric<
-          { [K in keyof A]: PatternPrimitive<A[K] & {}> | PatternBase<A[K] & {}> }
-        >
+        { [K in keyof A]: PatternPrimitive<A[K] & {}> | PatternBase<A[K] & {}> }
       >
     : never
 
@@ -718,33 +714,6 @@ export declare namespace Types {
   export type ExtractMatch<I, P> = [ExtractAndNarrow<I, P>] extends [infer EI] ? EI
     : never
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
-  type IntersectOf<U extends unknown> = (
-    U extends unknown ? (k: U) => void : never
-  ) extends (k: infer I) => void ? I
-    : never
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
-  type Last<U extends any> = IntersectOf<
-    U extends unknown ? (x: U) => void : never
-  > extends (x: infer P) => void ? P
-    : never
-
-  type _ListOf<U, LN extends Array<any> = [], LastU = Last<U>> = {
-    0: _ListOf<Exclude<U, LastU>, [LastU, ...LN]>
-    1: LN
-  }[[U] extends [never] ? 1 : 0]
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
-  type ListOf<U extends any> = _ListOf<U> extends infer X ? X extends Array<any> ? X
-    : []
-    : never
-
-  type IsUnion<T, U extends T = T> = (
-    T extends any ? (U extends T ? false : true) : never
-  ) extends false ? false
-    : true
-
   type Replace<A, B> = A extends Function ? A
     : A extends Record<string | number, any> ? { [K in keyof A]: K extends keyof B ? Replace<A[K], B[K]> : A[K] }
     : [B] extends [A] ? B
@@ -767,46 +736,39 @@ export declare namespace Types {
 
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
-  type ExtractAndNarrow<I, P> =
+  type ExtractAndNarrow<Input, P> =
     // unknown is a wildcard pattern
-    unknown extends P ? I
-      : IsUnion<I> extends true ? ListOf<I> extends infer L ? L extends Array<any> ? Exclude<
-              DrainOuterGeneric<
-                { [K in keyof L]: ExtractAndNarrow<L[K], P> }
-              >[number],
-              Fail
-            >
-          : never
-        : never
-      : I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? DrainOuterGeneric<
-            {
-              readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>
-                : I[K]
-            }
-          > extends infer R ? Fail extends R[keyof R] ? never
-            : R
-          : never
-        : never
-      : IsPlainObject<I> extends true ? string extends keyof I ? I extends P ? I
-          : never
-        : symbol extends keyof I ? I extends P ? I
-          : never
-        : Simplify<
-          DrainOuterGeneric<
-            {
-              [RK in Extract<keyof I, keyof P>]-?: ExtractAndNarrow<I[RK], P[RK]>
-            }
-          > & Omit<I, keyof P>
-        > extends infer R ? [keyof P] extends [keyof RemoveFails<R>] ? R
-          : never
-        : never
-      : MaybeReplace<I, P> extends infer R ? [I] extends [R] ? I
-        : R
-      : never
+    unknown extends P ? Input
+      : Input extends infer I ? Exclude<
+          I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
+                readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>
+                  : I[K]
+              } extends infer R ? Fail extends R[keyof R] ? never
+                : R
+              : never
+            : never
+            : IsPlainObject<I> extends true ? string extends keyof I ? I extends P ? I
+                : never
+              : symbol extends keyof I ? I extends P ? I
+                : never
+              : Simplify<
+                & { [RK in Extract<keyof I, keyof P>]-?: ExtractAndNarrow<I[RK], P[RK]> }
+                & Omit<I, keyof P>
+              > extends infer R ? [keyof P] extends [keyof RemoveFails<R>] ? R
+                : never
+              : never
+            : MaybeReplace<I, P> extends infer R ? [I] extends [R] ? I
+              : R
+            : never,
+          Fail
+        > :
+      never
 
-  type RemoveFails<A> = {
-    [K in keyof A & {}]: A[K] extends Fail ? never : K
-  }[keyof A] extends infer K ? [K] extends [keyof A] ? { [RK in K]: A[RK] }
+  type RemoveFails<A> = NonFailKeys<A> extends infer K ? [K] extends [keyof A] ? { [RK in K]: A[RK] }
     : {}
     : {}
+
+  type NonFailKeys<A> = keyof A & {} extends infer K ? K extends keyof A ? A[K] extends Fail ? never : K
+    : never :
+    never
 }
