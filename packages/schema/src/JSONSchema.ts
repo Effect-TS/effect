@@ -269,14 +269,13 @@ const goWithIdentifier = (ast: AST.AST, $defs: Record<string, JsonSchema7>): Jso
   })
 }
 
-const getMetaData = (annotated: AST.Annotated) => {
-  return ReadonlyRecord.getSomes<unknown>({
+const getMetaData = (annotated: AST.Annotated) =>
+  ReadonlyRecord.getSomes({
     description: AST.getDescriptionAnnotation(annotated),
     title: AST.getTitleAnnotation(annotated),
     examples: AST.getExamplesAnnotation(annotated),
     default: AST.getDefaultAnnotation(annotated)
   })
-}
 
 const goWithMetaData = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
   const jsonSchema = go(ast, $defs)

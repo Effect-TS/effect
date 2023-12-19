@@ -1270,6 +1270,64 @@ describe("JSONSchema", () => {
       })).toEqual(true)
       propertyTo(Operation, { params: { numRuns: 5 } })
     })
+
+    it("should handle identifier annotations when generating a schema through `from()`", () => {
+      interface Category {
+        readonly name: string
+        readonly categories: ReadonlyArray<Category>
+      }
+
+      const schema: Schema.Schema<Category> = Schema.struct({
+        name: Schema.string,
+        categories: Schema.array(Schema.suspend(() => schema).pipe(Schema.identifier("Category")))
+      })
+      const jsonSchema = JSONSchema.from(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "name",
+          "categories"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "a string",
+            "title": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Category"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "$defs": {
+          "Category": {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "a string",
+                "title": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Category"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      })
+    })
   })
 
   it("Transform should raise an error", () => {

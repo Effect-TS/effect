@@ -27,7 +27,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Secret from "effect/Secret"
 import * as S from "effect/String"
-import type { Equals, Simplify } from "effect/Types"
+import type { Equals, Mutable, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as arbitrary from "./Arbitrary.js"
 import * as ArrayFormatter from "./ArrayFormatter.js"
@@ -286,7 +286,7 @@ export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
  */
 export const uniqueSymbol = <S extends symbol>(
   symbol: S,
-  annotations?: AST.Annotated["annotations"]
+  annotations?: AST.Annotations
 ): Schema<S> => make(AST.createUniqueSymbol(symbol, annotations))
 
 /**
@@ -386,7 +386,7 @@ export const declare = (
     isDecoding: boolean,
     ...typeParameters: ReadonlyArray<Schema<any>>
   ) => (input: any, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<any>,
-  annotations?: AST.Annotated["annotations"]
+  annotations?: AST.Annotations
 ): Schema<any> =>
   make(AST.createDeclaration(
     typeParameters.map((tp) => tp.ast),
@@ -666,23 +666,23 @@ type PropertySignatureConfig =
   | {
     readonly _tag: "PropertySignature"
     readonly ast: AST.AST
-    readonly annotations: AST.Annotated["annotations"]
+    readonly annotations: AST.Annotations
   }
   | {
     readonly _tag: "Optional"
     readonly ast: AST.AST
-    readonly annotations: AST.Annotated["annotations"] | undefined
+    readonly annotations: AST.Annotations | undefined
   }
   | {
     readonly _tag: "Default"
     readonly ast: AST.AST
     readonly value: LazyArg<any>
-    readonly annotations: AST.Annotated["annotations"] | undefined
+    readonly annotations: AST.Annotations | undefined
   }
   | {
     readonly _tag: "Option"
     readonly ast: AST.AST
-    readonly annotations: AST.Annotated["annotations"] | undefined
+    readonly annotations: AST.Annotations | undefined
   }
 
 /** @internal */
@@ -1030,15 +1030,6 @@ export const required = <I, A>(
 ): Schema<Simplify<Required<I>>, Simplify<Required<A>>> => make(AST.required(self.ast))
 
 /**
- * Make all properties in T mutable
- *
- * @since 1.0.0
- */
-export type Mutable<T> = {
-  -readonly [P in keyof T]: T[P]
-}
-
-/**
  * Creates a new schema with shallow mutability applied to its properties.
  *
  * @param schema - The original schema to make properties mutable (shallowly).
@@ -1189,7 +1180,7 @@ export const compose: {
  */
 export const suspend = <I, A = I>(
   f: () => Schema<I, A>,
-  annotations?: AST.Annotated["annotations"]
+  annotations?: AST.Annotations
 ): Schema<I, A> => make(AST.createSuspend(() => f().ast, annotations))
 
 /**
@@ -1437,11 +1428,11 @@ export const attachPropertySignature: {
 
 const toAnnotations = <A>(
   options?: FilterAnnotations<A>
-): AST.Annotated["annotations"] => {
+): Mutable<AST.Annotations> => {
   if (!options) {
     return {}
   }
-  const out: AST.Annotated["annotations"] = {}
+  const out: Mutable<AST.Annotations> = {}
 
   // symbols are reserved for custom annotations
   const custom = Object.getOwnPropertySymbols(options)
@@ -1513,7 +1504,7 @@ export interface FilterAnnotations<A> extends DocAnnotations {
  * @since 1.0.0
  */
 export const annotations =
-  (annotations: AST.Annotated["annotations"]) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  (annotations: AST.Annotations) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
     make(AST.mergeAnnotations(self.ast, annotations))
 
 /**
