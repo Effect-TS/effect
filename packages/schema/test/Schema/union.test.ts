@@ -81,8 +81,8 @@ describe("Schema/literal", () => {
     })
 
     it("union/optional property signatures: should return the best output", async () => {
-      const ab = S.struct({ a: S.string, b: S.optional(S.number) })
-      const ac = S.struct({ a: S.string, c: S.optional(S.number) })
+      const ab = S.struct({ a: S.string, b: S.optional(S.number, { exact: true }) })
+      const ac = S.struct({ a: S.string, c: S.optional(S.number, { exact: true }) })
       const schema = S.union(ab, ac)
       await Util.expectParseSuccess(
         schema,
@@ -116,8 +116,8 @@ describe("Schema/literal", () => {
     })
 
     it("union/ optional property signatures", async () => {
-      const ab = S.struct({ a: S.string, b: S.optional(S.number) })
-      const ac = S.struct({ a: S.string, c: S.optional(S.number) })
+      const ab = S.struct({ a: S.string, b: S.optional(S.number, { exact: true }) })
+      const ac = S.struct({ a: S.string, c: S.optional(S.number, { exact: true }) })
       const schema = S.union(ab, ac)
       await Util.expectEncodeSuccess(
         schema,

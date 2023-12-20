@@ -16,7 +16,6 @@ import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
 import * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
-import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
 import * as N from "effect/Number"
 import * as Option from "effect/Option"
@@ -244,7 +243,7 @@ export {
  * @since 1.0.0
  */
 export const isSchema = (u: unknown): u is Schema<unknown, unknown> =>
-  Predicate.isObject(u) && TypeId in u && "ast" in u && "pipe" in u
+  Predicate.isObject(u) && TypeId in u && "ast" in u
 
 // ---------------------------------------------
 // constructors
@@ -442,11 +441,11 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
 ): Schema<InstanceType<A>, InstanceType<A>> => {
   return declare(
     [],
-    struct({}),
-    () => (input, _, ast) =>
-      input instanceof constructor ?
-        ParseResult.succeed(input)
-        : ParseResult.fail(ParseResult.type(ast, input)),
+    unknown,
+    () => (u, _, ast) =>
+      u instanceof constructor ?
+        ParseResult.succeed(u)
+        : ParseResult.fail(ParseResult.type(ast, u)),
     {
       [AST.TypeAnnotationId]: InstanceOfTypeId,
       [InstanceOfTypeId]: { constructor },
@@ -562,6 +561,22 @@ export const nullable = <From, To>(self: Schema<From, To>): Schema<From | null, 
  * @category combinators
  * @since 1.0.0
  */
+export const orUndefined = <From, To>(
+  self: Schema<From, To>
+): Schema<From | undefined, To | undefined> => union(_undefined, self)
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const nullish = <From, To>(
+  self: Schema<From, To>
+): Schema<From | null | undefined, To | null | undefined> => union(_null, _undefined, self)
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
 export const keyof = <I, A>(schema: Schema<I, A>): Schema<keyof A> => make(AST.keyof(schema.ast))
 
 /**
@@ -646,100 +661,227 @@ export const nonEmptyArray = <I, A>(
  * @since 1.0.0
  */
 export interface PropertySignature<From, FromIsOptional, To, ToIsOptional>
-  extends Schema.Variance<From, To>
+  extends Schema.Variance<From, To>, Pipeable
 {
   readonly FromIsOptional: FromIsOptional
   readonly ToIsOptional: ToIsOptional
 }
 
-/**
- * @since 1.0.0
- */
-export interface OptionalPropertySignature<From, FromIsOptional, To, ToIsOptional>
-  extends PropertySignature<From, FromIsOptional, To, ToIsOptional>
-{
-  readonly withDefault: (value: () => To) => PropertySignature<From, true, To, false>
-  readonly toOption: () => PropertySignature<From, true, Option.Option<To>, false>
-}
-
-type PropertySignatureConfig =
+type PropertySignatureAST =
   | {
-    readonly _tag: "PropertySignature"
-    readonly ast: AST.AST
-    readonly annotations: AST.Annotations
+    readonly _tag: "Declaration"
+    readonly from: AST.AST
+    readonly isOptional: boolean
+    readonly annotations?: AST.Annotations | undefined
   }
   | {
-    readonly _tag: "Optional"
-    readonly ast: AST.AST
-    readonly annotations: AST.Annotations | undefined
-  }
-  | {
-    readonly _tag: "Default"
-    readonly ast: AST.AST
-    readonly value: LazyArg<any>
-    readonly annotations: AST.Annotations | undefined
-  }
-  | {
-    readonly _tag: "Option"
-    readonly ast: AST.AST
-    readonly annotations: AST.Annotations | undefined
+    readonly _tag: "OptionalToRequired"
+    readonly from: AST.AST
+    readonly to: AST.AST
+    readonly decode: AST.FinalPropertySignatureTransformation["decode"]
+    readonly encode: AST.FinalPropertySignatureTransformation["encode"]
+    readonly annotations?: AST.Annotations | undefined
   }
 
 /** @internal */
 export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional> {
-  readonly [TypeId] = variance
+  readonly [TypeId]: {
+    readonly From: (_: From) => From
+    readonly To: (_: To) => To
+  } = variance
   readonly FromIsOptional!: FromIsOptional
   readonly ToIsOptional!: ToIsOptional
 
   constructor(
-    readonly config: PropertySignatureConfig
+    readonly propertySignatureAST: PropertySignatureAST
   ) {}
 
-  withDefault(value: () => To): PropertySignature<From, true, To, false> {
-    return new PropertySignatureImpl(
-      {
-        _tag: "Default",
-        ast: this.config.ast,
-        value,
-        annotations: this.config.annotations
-      }
-    )
-  }
-
-  toOption(): PropertySignature<From, true, Option.Option<To>, false> {
-    return new PropertySignatureImpl({
-      _tag: "Option",
-      ast: this.config.ast,
-      annotations: this.config.annotations
-    })
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 
 /**
  * @since 1.0.0
  */
-export const propertySignature = <I, A>(
-  schema: Schema<I, A>,
-  options: DocAnnotations
-): PropertySignature<I, false, A, false> =>
+export const propertySignatureAnnotations =
+  (annotations: DocAnnotations) =>
+  <S extends StructFields[PropertyKey]>(
+    self: S
+  ): S extends Schema<infer I, infer A> ? PropertySignature<I, false, A, false> : S => {
+    if (isSchema(self)) {
+      return new PropertySignatureImpl({
+        _tag: "Declaration",
+        from: self.ast,
+        isOptional: false,
+        annotations: toAnnotations(annotations)
+      }) as any
+    }
+    return new PropertySignatureImpl({
+      ...(self as any).propertySignatureAST,
+      annotations: toAnnotations(annotations)
+    }) as any
+  }
+
+/**
+ * @category optional
+ * @since 1.0.0
+ */
+export const optionalToRequired = <I, A, B>(
+  from: Schema<I, A>,
+  to: Schema<B>,
+  decode: (o: Option.Option<A>) => B, // `none` here means: the value is missing in the input
+  encode: (b: B) => Option.Option<A>, // `none` here means: the value will be missing in the output
+  options?: DocAnnotations
+): PropertySignature<I, true, B, false> =>
   new PropertySignatureImpl({
-    _tag: "PropertySignature",
-    ast: schema.ast,
+    _tag: "OptionalToRequired",
+    from: from.ast,
+    to: to.ast,
+    decode: (o) => Option.some(decode(o)),
+    encode: Option.flatMap(encode),
     annotations: toAnnotations(options)
   })
 
 /**
  * @since 1.0.0
  */
-export const optional = <I, A>(
+export const optional: {
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly exact: true; readonly default: () => A; readonly nullable: true }
+  ): PropertySignature<I | null, true, A, false>
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly exact: true; readonly default: () => A }
+  ): PropertySignature<I, true, A, false>
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly exact: true; readonly nullable: true; readonly as: "Option" }
+  ): PropertySignature<I | null, true, Option.Option<A>, false>
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly exact: true; readonly as: "Option" }
+  ): PropertySignature<I, true, Option.Option<A>, false>
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly exact: true }
+  ): PropertySignature<I, true, A, true>
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly default: () => A; readonly nullable: true }
+  ): PropertySignature<I | null | undefined, true, A, false>
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly default: () => A }
+  ): PropertySignature<I | undefined, true, A, false>
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly nullable: true; readonly as: "Option" }
+  ): PropertySignature<I | undefined | null, true, Option.Option<A>, false>
+  <I, A>(
+    schema: Schema<I, A>,
+    options: { readonly as: "Option" }
+  ): PropertySignature<I | undefined, true, Option.Option<A>, false>
+  <I, A>(schema: Schema<I, A>): PropertySignature<I | undefined, true, A | undefined, true>
+} = <I, A>(
   schema: Schema<I, A>,
-  options?: DocAnnotations
-): OptionalPropertySignature<I, true, A, true> =>
-  new PropertySignatureImpl({
-    _tag: "Optional",
-    ast: schema.ast,
-    annotations: toAnnotations(options)
-  })
+  options?: {
+    readonly exact?: true
+    readonly default?: () => A
+    readonly nullable?: true
+    readonly as?: "Option"
+  }
+): PropertySignature<any, any, any, any> => {
+  const isExact = options?.exact
+  const value = options?.default
+  const isNullable = options?.nullable
+  const asOption = options?.as == "Option"
+
+  if (isExact) {
+    if (value) {
+      if (isNullable) {
+        return optionalToRequired(
+          nullable(schema),
+          to(schema),
+          Option.match({ onNone: value, onSome: (a) => a === null ? value() : a }),
+          Option.some
+        )
+      } else {
+        return optionalToRequired(
+          schema,
+          to(schema),
+          Option.match({ onNone: value, onSome: identity }),
+          Option.some
+        )
+      }
+    } else {
+      if (asOption) {
+        if (isNullable) {
+          return optionalToRequired(
+            nullable(schema),
+            optionFromSelf(to(schema)),
+            Option.filter(Predicate.isNotNull),
+            identity
+          )
+        } else {
+          return optionalToRequired(
+            schema,
+            optionFromSelf(to(schema)),
+            identity,
+            identity
+          )
+        }
+      }
+      return new PropertySignatureImpl({
+        _tag: "Declaration",
+        from: schema.ast,
+        isOptional: true
+      })
+    }
+  } else {
+    if (value) {
+      if (isNullable) {
+        return optionalToRequired(
+          nullish(schema),
+          to(schema),
+          Option.match({ onNone: value, onSome: (a) => (a == null ? value() : a) }),
+          Option.some
+        )
+      } else {
+        return optionalToRequired(
+          orUndefined(schema),
+          to(schema),
+          Option.match({ onNone: value, onSome: (a) => (a === undefined ? value() : a) }),
+          Option.some
+        )
+      }
+    } else {
+      if (asOption) {
+        if (isNullable) {
+          return optionalToRequired(
+            nullish(schema),
+            optionFromSelf(to(schema)),
+            Option.filter((a: A | null | undefined): a is A => a != null),
+            identity
+          )
+        } else {
+          return optionalToRequired(
+            orUndefined(schema),
+            optionFromSelf(to(schema)),
+            Option.filter(Predicate.isNotUndefined),
+            identity
+          )
+        }
+      }
+      return new PropertySignatureImpl({
+        _tag: "Declaration",
+        from: orUndefined(schema).ast,
+        isOptional: true
+      })
+    }
+  }
+}
 
 /**
  * @since 1.0.0
@@ -790,79 +932,54 @@ export type ToStruct<Fields extends StructFields> =
  * @category combinators
  * @since 1.0.0
  */
-export const struct = <
-  Fields extends StructFields
->(
+export const struct = <Fields extends StructFields>(
   fields: Fields
-): Schema<
-  Simplify<FromStruct<Fields>>,
-  Simplify<ToStruct<Fields>>
-> => {
+): Schema<Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>> => {
   const ownKeys = Internal.ownKeys(fields)
   const pss: Array<AST.PropertySignature> = []
-  const froms: Array<AST.PropertySignature> = []
-  const tos: Array<AST.PropertySignature> = []
-  const propertySignatureTransformations: Array<AST.PropertySignatureTransform> = []
+  const pssFrom: Array<AST.PropertySignature> = []
+  const pssTo: Array<AST.PropertySignature> = []
+  const psTransformations: Array<AST.PropertySignatureTransform> = []
   for (let i = 0; i < ownKeys.length; i++) {
     const key = ownKeys[i]
     const field = fields[key] as any
-    if ("config" in field) {
-      const config: PropertySignatureConfig = field.config
-      const from = config.ast
-      const to = AST.to(from)
-      const annotations = config.annotations
-      switch (config._tag) {
-        case "PropertySignature":
-          pss.push(AST.createPropertySignature(key, from, false, true, annotations))
-          froms.push(AST.createPropertySignature(key, from, false, true))
-          tos.push(AST.createPropertySignature(key, to, false, true, annotations))
+    if ("propertySignatureAST" in field) {
+      const psAst: PropertySignatureAST = field.propertySignatureAST
+      const from = psAst.from
+      const annotations = psAst.annotations
+      switch (psAst._tag) {
+        case "Declaration":
+          pss.push(AST.createPropertySignature(key, from, psAst.isOptional, true, annotations))
+          pssFrom.push(AST.createPropertySignature(key, from, psAst.isOptional, true))
+          pssTo.push(
+            AST.createPropertySignature(key, AST.to(from), psAst.isOptional, true, annotations)
+          )
           break
-        case "Optional":
-          pss.push(AST.createPropertySignature(key, from, true, true, annotations))
-          froms.push(AST.createPropertySignature(key, from, true, true))
-          tos.push(AST.createPropertySignature(key, to, true, true, annotations))
-          break
-        case "Default":
-          froms.push(AST.createPropertySignature(key, from, true, true))
-          tos.push(AST.createPropertySignature(key, to, false, true, annotations))
-          propertySignatureTransformations.push(
+        case "OptionalToRequired":
+          pssFrom.push(AST.createPropertySignature(key, from, true, true))
+          pssTo.push(AST.createPropertySignature(key, psAst.to, false, true, annotations))
+          psTransformations.push(
             AST.createPropertySignatureTransform(
               key,
               key,
-              AST.createFinalPropertySignatureTransformation(
-                Option.orElse(() => Option.some(config.value())),
-                identity
-              )
-            )
-          )
-          break
-        case "Option":
-          froms.push(AST.createPropertySignature(key, from, true, true))
-          tos.push(
-            AST.createPropertySignature(key, optionFromSelf(make(to)).ast, false, true, annotations)
-          )
-          propertySignatureTransformations.push(
-            AST.createPropertySignatureTransform(
-              key,
-              key,
-              AST.createFinalPropertySignatureTransformation(Option.some, Option.flatten)
+              AST.createFinalPropertySignatureTransformation(psAst.decode, psAst.encode)
             )
           )
           break
       }
     } else {
       pss.push(AST.createPropertySignature(key, field.ast, false, true))
-      froms.push(AST.createPropertySignature(key, field.ast, false, true))
-      tos.push(AST.createPropertySignature(key, AST.to(field.ast), false, true))
+      pssFrom.push(AST.createPropertySignature(key, field.ast, false, true))
+      pssTo.push(AST.createPropertySignature(key, AST.to(field.ast), false, true))
     }
   }
-  if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
+  if (ReadonlyArray.isNonEmptyReadonlyArray(psTransformations)) {
     return make(
       AST.createTransform(
-        AST.createTypeLiteral(froms, []),
-        AST.createTypeLiteral(tos, []),
+        AST.createTypeLiteral(pssFrom, []),
+        AST.createTypeLiteral(pssTo, []),
         AST.createTypeLiteralTransformation(
-          propertySignatureTransformations
+          psTransformations
         )
       )
     )
@@ -2995,7 +3112,7 @@ export const BigintFromNumber: Schema<number, bigint> = bigintFromNumber(number)
  */
 export const SecretFromSelf: Schema<Secret.Secret> = declare(
   [],
-  struct({}),
+  string,
   () => (u, _, ast) =>
     Secret.isSecret(u) ?
       ParseResult.succeed(u)
@@ -3047,7 +3164,21 @@ export {
  */
 export const DurationFromSelf: Schema<Duration.Duration> = declare(
   [],
-  struct({}),
+  struct({
+    value: union(
+      struct({
+        _tag: literal("Millis"),
+        millis: number
+      }),
+      struct({
+        _tag: literal("Nanos"),
+        nanos: bigintFromSelf
+      }),
+      struct({
+        _tag: literal("Infinity")
+      })
+    )
+  }),
   () => (u, _, ast) =>
     Duration.isDuration(u) ?
       ParseResult.succeed(u)
@@ -3087,8 +3218,8 @@ export const durationFromHrTime = <I, A extends readonly [seconds: number, nanos
   transform(
     self,
     DurationFromSelf,
-    ([s, n]) => Duration.nanos(BigInt(s) * BigInt(1e9) + BigInt(n)),
-    (n) => Duration.toHrTime(n),
+    ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
+    (duration) => Duration.toHrTime(duration),
     { strict: false }
   )
 
@@ -3107,10 +3238,10 @@ export const durationFromNanos = <I, A extends bigint>(
     DurationFromSelf,
     (nanos) => ParseResult.succeed(Duration.nanos(nanos)),
     (duration, _, ast) =>
-      Duration.toNanos(duration).pipe(Option.match({
+      Option.match(Duration.toNanos(duration), {
         onNone: () => ParseResult.fail(ParseResult.type(ast, duration)),
         onSome: (val) => ParseResult.succeed(val)
-      })),
+      }),
     { strict: false }
   )
 
@@ -3340,7 +3471,7 @@ export const betweenDuration = <A extends Duration.Duration>(
  */
 export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   [],
-  struct({}),
+  array(number),
   () => (u, _, ast) =>
     Predicate.isUint8Array(u) ?
       ParseResult.succeed(u)
@@ -3371,7 +3502,7 @@ export const uint8ArrayFromNumbers = <I, A extends ReadonlyArray<number>>(
     self,
     Uint8ArrayFromSelf,
     (a) => Uint8Array.from(a),
-    (n) => Array.from(n),
+    (arr) => Array.from(arr),
     { strict: false }
   )
 
@@ -3624,7 +3755,9 @@ const datePretty = (): Pretty.Pretty<Date> => (date) => `new Date(${JSON.stringi
  */
 export const DateFromSelf: Schema<Date> = declare(
   [],
-  struct({}),
+  struct({
+    valueOf: number
+  }),
   () => (u, _, ast) =>
     Predicate.isDate(u) ?
       ParseResult.succeed(u)
@@ -3780,6 +3913,21 @@ export const optionFromNullable = <I, A>(
 ): Schema<I | null, Option.Option<A>> =>
   transform(nullable(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrNull)
 
+/**
+ * @category Option transformations
+ * @since 1.0.0
+ */
+export const optionFromNullish = <I, A>(
+  value: Schema<I, A>,
+  onNoneEncoding: null | undefined
+): Schema<I | null | undefined, Option.Option<A>> =>
+  transform(
+    nullish(value),
+    optionFromSelf(to(value)),
+    Option.fromNullable,
+    onNoneEncoding === null ? Option.getOrNull : Option.getOrUndefined
+  )
+
 // ---------------------------------------------
 // Either transformations
 // ---------------------------------------------
@@ -3926,7 +4074,8 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
   return declare(
     [key, value],
     struct({
-      size: number
+      size: number,
+      entries: array(tuple(key, value))
     }),
     (isDecoding, key, value) => {
       const items = array(tuple(key, value))
@@ -3991,7 +4140,8 @@ export const readonlySetFromSelf = <I, A>(
   return declare(
     [item],
     struct({
-      size: number
+      size: number,
+      values: array(item)
     }),
     (isDecoding, item) => {
       const items = array(item)
@@ -4038,7 +4188,10 @@ const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
  */
 export const BigDecimalFromSelf: Schema<BigDecimal.BigDecimal> = declare(
   [],
-  struct({}),
+  struct({
+    value: bigintFromSelf,
+    scale: number
+  }),
   () => (u, _, ast) =>
     BigDecimal.isBigDecimal(u) ?
       ParseResult.succeed(u)
@@ -4381,8 +4534,8 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
   return declare(
     [item],
     struct({
-      _id: uniqueSymbol(Symbol.for("effect/Chunk")),
-      length: number
+      length: number,
+      values: array(item)
     }),
     (isDecoding, item) => {
       const items = array(item)

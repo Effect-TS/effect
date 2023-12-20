@@ -53,7 +53,8 @@ describe("formatErrors", () => {
         S.union(
           S.struct({ type: S.literal("f"), f: S.string }),
           S.struct({ type: S.literal("g"), g: S.number })
-        )
+        ),
+        { exact: true }
       )
     })
     await Util.expectParseFailureTree(

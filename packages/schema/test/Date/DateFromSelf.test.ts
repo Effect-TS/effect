@@ -4,10 +4,6 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Date/DateFromSelf", () => {
-  it("keyof", () => {
-    expect(S.keyof(S.DateFromSelf)).toEqual(S.never)
-  })
-
   it("property tests", () => {
     Util.roundtrip(S.DateFromSelf)
   })

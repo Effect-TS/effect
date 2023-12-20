@@ -698,7 +698,10 @@ describe("JSONSchema", () => {
     })
 
     it("optional property signature", () => {
-      const schema = Schema.struct({ a: Schema.string, b: Schema.optional(JsonNumber) })
+      const schema = Schema.struct({
+        a: Schema.string,
+        b: Schema.optional(JsonNumber, { exact: true })
+      })
       const jsonSchema = JSONSchema.to(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1363,16 +1366,16 @@ describe("JSONSchema", () => {
 
     it("struct properties support", () => {
       const schema = Schema.struct({
-        foo: Schema.propertySignature(Schema.string, {
+        foo: Schema.string.pipe(Schema.propertySignatureAnnotations({
           description: "foo description",
           title: "foo title",
           examples: ["foo example"]
-        }),
-        bar: Schema.propertySignature(JsonNumber, {
+        })),
+        bar: JsonNumber.pipe(Schema.propertySignatureAnnotations({
           description: "bar description",
           title: "bar title",
           examples: ["bar example"]
-        })
+        }))
       })
       const jsonSchema = JSONSchema.to(schema)
       expect(jsonSchema).toEqual({

@@ -9,7 +9,7 @@ describe("Schema/PropertySignatureTransformations", () => {
   it("default", async () => {
     const transform: S.Schema<{ readonly a?: string }, { readonly a: number }> = S.make(
       AST.createTransform(
-        S.struct({ a: S.optional(S.NumberFromString) }).ast,
+        S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
         S.struct({ a: S.number }).ast,
         AST.createTypeLiteralTransformation(
           [
@@ -40,7 +40,7 @@ describe("Schema/PropertySignatureTransformations", () => {
   it("bidirectional default", async () => {
     const transform: S.Schema<{ readonly a?: string }, { readonly a: number }> = S.make(
       AST.createTransform(
-        S.struct({ a: S.optional(S.NumberFromString) }).ast,
+        S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
         S.struct({ a: S.number }).ast,
         AST.createTypeLiteralTransformation(
           [
@@ -72,7 +72,7 @@ describe("Schema/PropertySignatureTransformations", () => {
     const transform: S.Schema<{ readonly a?: string }, { readonly a: O.Option<number> }> = S
       .make(
         AST.createTransform(
-          S.struct({ a: S.optional(S.NumberFromString) }).ast,
+          S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
           S.struct({ a: S.optionFromSelf(S.number) }).ast,
           AST.createTypeLiteralTransformation(
             [
@@ -104,7 +104,7 @@ describe("Schema/PropertySignatureTransformations", () => {
     const transform: S.Schema<{ readonly a: string }, { readonly a?: string }> = S.make(
       AST.createTransform(
         S.struct({ a: S.string }).ast,
-        S.struct({ a: S.optional(S.string) }).ast,
+        S.struct({ a: S.optional(S.string, { exact: true }) }).ast,
         AST.createTypeLiteralTransformation(
           [
             AST.createPropertySignatureTransform(
@@ -179,7 +179,7 @@ describe("Schema/PropertySignatureTransformations", () => {
     const transform: S.Schema<{ readonly a: string }, { readonly a?: number }> = S.make(
       AST.createTransform(
         S.struct({ a: S.number }).ast,
-        S.struct({ a: S.optional(S.number) }).ast,
+        S.struct({ a: S.optional(S.number, { exact: true }) }).ast,
         AST.createTypeLiteralTransformation(
           [
             AST.createPropertySignatureTransform(

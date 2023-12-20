@@ -52,7 +52,7 @@ class PersonWithNick extends PersonWithAge.extend<PersonWithNick>()({
 class PersonWithTransform extends Person.transform<PersonWithTransform>()(
   {
     id: S.string,
-    thing: S.optional(S.struct({ id: S.number })).toOption()
+    thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
   },
   (input) =>
     PR.succeed({
@@ -70,7 +70,7 @@ class PersonWithTransform extends Person.transform<PersonWithTransform>()(
 class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFrom>()(
   {
     id: S.string,
-    thing: S.optional(S.struct({ id: S.number })).toOption()
+    thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
   },
   (input) =>
     PR.succeed({

@@ -65,7 +65,10 @@ describe("AST/createUnion", () => {
 
     it("1 required vs 2 optional", () => {
       const a = S.struct({ a: S.string })
-      const ab = S.struct({ a: S.optional(S.string), b: S.optional(S.number) })
+      const ab = S.struct({
+        a: S.optional(S.string, { exact: true }),
+        b: S.optional(S.number, { exact: true })
+      })
       const schema = S.union(a, ab)
       expect(schema.ast).toEqual({
         _tag: "Union",

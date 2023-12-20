@@ -76,7 +76,7 @@ describe("Schema/attachPropertySignature", () => {
   })
 
   it("with a transformation", async () => {
-    const From = S.struct({ radius: S.number, _isVisible: S.optional(S.boolean) })
+    const From = S.struct({ radius: S.number, _isVisible: S.optional(S.boolean, { exact: true }) })
     const To = S.struct({ radius: S.number, _isVisible: S.boolean })
 
     const schema = S.transformOrFail(

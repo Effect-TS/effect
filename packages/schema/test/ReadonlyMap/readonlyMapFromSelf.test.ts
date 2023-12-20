@@ -5,10 +5,6 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("ReadonlyMap/readonlyMapFromSelf", () => {
-  it("keyof", () => {
-    expect(S.keyof(S.readonlyMapFromSelf(S.number, S.string))).toEqual(S.literal("size"))
-  })
-
   it("property tests", () => {
     Util.roundtrip(S.readonlyMapFromSelf(S.number, S.string))
   })

@@ -90,14 +90,13 @@ type Options = {
 /** @internal */
 export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
   switch (ast._tag) {
-    case "Declaration":
-      return pipe(
-        getHook(ast),
-        Option.match({
-          onNone: () => go(ast.type, options),
-          onSome: (handler) => handler(...ast.typeParameters.map((p) => go(p, options)))
-        })
-      )
+    case "Declaration": {
+      const hook = getHook(ast)
+      if (Option.isSome(hook)) {
+        return hook.value(...ast.typeParameters.map((p) => go(p, options)))
+      }
+      throw new Error("cannot build an Arbitrary for a declaration without annotations")
+    }
     case "Literal":
       return (fc) => fc.constant(ast.literal)
     case "UniqueSymbol":

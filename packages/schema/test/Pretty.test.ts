@@ -168,7 +168,7 @@ describe("Pretty", () => {
   })
 
   it("struct/ should not output optional property signatures", () => {
-    const schema = S.struct({ a: S.optional(S.number) })
+    const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
     const pretty = P.to(schema)
     expect(pretty({})).toEqual("{}")
     expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -198,7 +198,7 @@ describe("Pretty", () => {
   })
 
   it("struct/ optional property signature", () => {
-    const schema = S.struct({ a: S.optional(S.number) })
+    const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
     const pretty = P.to(schema)
     expect(pretty({})).toEqual(`{}`)
     expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -207,7 +207,7 @@ describe("Pretty", () => {
   })
 
   it("struct/ optional property signature with undefined", () => {
-    const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+    const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined), { exact: true }) })
     const pretty = P.to(schema)
     expect(pretty({})).toEqual(`{}`)
     expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)

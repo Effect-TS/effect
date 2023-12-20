@@ -19,14 +19,14 @@ describe("class", () => {
 
   it("optional property signature", () => {
     class Class extends S.Class<Class>()({
-      a: S.optional(S.number)
+      a: S.optional(S.number, { exact: true })
     }) {}
     propertyTo(Class)
   })
 
   it("optional property signature with undefined", () => {
     class Class extends S.Class<Class>()({
-      a: S.optional(S.union(S.number, S.undefined))
+      a: S.optional(S.union(S.number, S.undefined), { exact: true })
     }) {}
     propertyTo(Class)
   })

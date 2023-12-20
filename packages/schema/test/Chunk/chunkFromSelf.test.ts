@@ -6,12 +6,6 @@ import * as C from "effect/Chunk"
 import { describe, expect, it } from "vitest"
 
 describe("Chunk/chunkFromSelf", () => {
-  it("keyof", () => {
-    expect(S.keyof(S.chunkFromSelf(S.string))).toEqual(
-      S.union(S.literal("_id"), S.literal("length"))
-    )
-  })
-
   it("property tests", () => {
     Util.roundtrip(S.chunkFromSelf(S.number))
   })

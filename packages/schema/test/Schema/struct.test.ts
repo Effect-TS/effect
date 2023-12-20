@@ -85,7 +85,7 @@ describe("Schema/struct", () => {
     })
 
     it("optional property signature", async () => {
-      const schema = S.struct({ a: S.optional(S.number) })
+      const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
       await Util.expectParseSuccess(schema, {})
       await Util.expectParseSuccess(schema, { a: 1 })
 
@@ -113,7 +113,7 @@ describe("Schema/struct", () => {
     })
 
     it("optional property signature with undefined", async () => {
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined), { exact: true }) })
       await Util.expectParseSuccess(schema, {})
       await Util.expectParseSuccess(schema, { a: 1 })
       await Util.expectParseSuccess(schema, { a: undefined })
@@ -137,7 +137,10 @@ describe("Schema/struct", () => {
     })
 
     it("should not add optional keys", async () => {
-      const schema = S.struct({ a: S.optional(S.string), b: S.optional(S.number) })
+      const schema = S.struct({
+        a: S.optional(S.string, { exact: true }),
+        b: S.optional(S.number, { exact: true })
+      })
       await Util.expectParseSuccess(schema, {})
     })
   })
@@ -180,7 +183,7 @@ describe("Schema/struct", () => {
     })
 
     it("optional property signature", async () => {
-      const schema = S.struct({ a: S.optional(S.number) })
+      const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
       await Util.expectEncodeSuccess(schema, {}, {})
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeFailure(
@@ -192,7 +195,7 @@ describe("Schema/struct", () => {
     })
 
     it("optional property signature with undefined", async () => {
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined), { exact: true }) })
       await Util.expectEncodeSuccess(schema, {}, {})
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })

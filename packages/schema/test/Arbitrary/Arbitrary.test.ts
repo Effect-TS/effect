@@ -1,4 +1,5 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { propertyFrom, propertyTo } from "@effect/schema/test/util"
 import * as fc from "fast-check"
@@ -7,6 +8,13 @@ import { describe, expect, it } from "vitest"
 describe("Arbitrary/Arbitrary", () => {
   it("exports", () => {
     expect(Arbitrary.ArbitraryHookId).exist
+  })
+
+  it("should throw on declarations without annotations", () => {
+    const schema = S.declare([], S.any, () => ParseResult.succeed)
+    expect(() => Arbitrary.go(schema.ast, {})).toThrow(
+      new Error("cannot build an Arbitrary for a declaration without annotations")
+    )
   })
 
   it("should throw on transformations", () => {
@@ -327,12 +335,12 @@ describe("Arbitrary/Arbitrary", () => {
     })
 
     it("optional property signature", () => {
-      const schema = S.struct({ a: S.optional(S.number) })
+      const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
       propertyTo(schema)
     })
 
     it("optional property signature with undefined", () => {
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined), { exact: true }) })
       propertyTo(schema)
     })
 

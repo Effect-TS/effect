@@ -4,10 +4,6 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Uint8Array/Uint8ArrayFromSelf", () => {
-  it("keyof", () => {
-    expect(S.keyof(S.Uint8ArrayFromSelf)).toEqual(S.never)
-  })
-
   it("property tests", () => {
     Util.roundtrip(S.Uint8ArrayFromSelf)
   })
