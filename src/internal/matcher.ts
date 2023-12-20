@@ -366,15 +366,10 @@ export const discriminators = <D extends string>(field: D) =>
 >(
   fields: P
 ) => {
-  const predicates: Array<When> = []
-  for (const key in fields) {
-    const pred = (_: any) => _[field] === key
-    const f = fields[key]
-    if (f) {
-      predicates.push(makeWhen(pred, f as any))
-    }
-  }
-  const len = predicates.length
+  const predicate = makeWhen(
+    (_: any) => _[field] in fields,
+    (data: any) => (fields as any)[data[field]](data)
+  )
 
   return <I, F, A, Pr>(
     self: Matcher<I, F, R, A, Pr>
@@ -384,13 +379,7 @@ export const discriminators = <D extends string>(field: D) =>
     Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, keyof P>>>>,
     A | ReturnType<P[keyof P] & {}>,
     Pr
-  > => {
-    let matcher: any = self
-    for (let i = 0; i < len; i++) {
-      matcher = matcher.add(predicates[i])
-    }
-    return matcher
-  }
+  > => (self as any).add(predicate)
 }
 
 /** @internal */
@@ -532,6 +521,17 @@ export const either: <I, F, R, A, Pr>(
     }
 
     const len = self.cases.length
+    if (len === 1) {
+      const _case = self.cases[0]
+      return (input: I): Either.Either<RA, A> => {
+        if (_case._tag === "When" && _case.guard(input) === true) {
+          return Either.right(_case.evaluate(input))
+        } else if (_case._tag === "Not" && _case.guard(input) === false) {
+          return Either.right(_case.evaluate(input))
+        }
+        return Either.left(input as any)
+      }
+    }
     return (input: I): Either.Either<RA, A> => {
       for (let i = 0; i < len; i++) {
         const _case = self.cases[i]
