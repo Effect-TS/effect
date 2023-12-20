@@ -16,34 +16,34 @@ import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 import * as Stream from "effect/Stream"
 import * as MP from "multipasta"
 import * as FileSystem from "../../FileSystem.js"
-import type * as FormData from "../../Http/FormData.js"
 import * as IncomingMessage from "../../Http/IncomingMessage.js"
+import type * as Multipart from "../../Http/Multipart.js"
 import * as Path from "../../Path.js"
 
 /** @internal */
-export const TypeId: FormData.TypeId = Symbol.for("@effect/platform/Http/FormData") as FormData.TypeId
+export const TypeId: Multipart.TypeId = Symbol.for("@effect/platform/Http/Multipart") as Multipart.TypeId
 
 /** @internal */
-export const ErrorTypeId: FormData.ErrorTypeId = Symbol.for(
-  "@effect/platform/Http/FormData/FormDataError"
-) as FormData.ErrorTypeId
+export const ErrorTypeId: Multipart.ErrorTypeId = Symbol.for(
+  "@effect/platform/Http/Multipart/MultipartError"
+) as Multipart.ErrorTypeId
 
 /** @internal */
-export const FormDataError = (reason: FormData.FormDataError["reason"], error: unknown): FormData.FormDataError =>
+export const MultipartError = (reason: Multipart.MultipartError["reason"], error: unknown): Multipart.MultipartError =>
   Data.struct({
     [ErrorTypeId]: ErrorTypeId,
-    _tag: "FormDataError",
+    _tag: "MultipartError",
     reason,
     error
   })
 
 /** @internal */
-export const isField = (u: unknown): u is FormData.Field =>
+export const isField = (u: unknown): u is Multipart.Field =>
   Predicate.hasProperty(u, TypeId) && Predicate.isTagged(u, "Field")
 
 /** @internal */
 export const maxParts: FiberRef.FiberRef<Option.Option<number>> = globalValue(
-  "@effect/platform/Http/FormData/maxParts",
+  "@effect/platform/Http/Multipart/maxParts",
   () => FiberRef.unsafeMake(Option.none<number>())
 )
 
@@ -55,7 +55,7 @@ export const withMaxParts = dual<
 
 /** @internal */
 export const maxFieldSize: FiberRef.FiberRef<FileSystem.Size> = globalValue(
-  "@effect/platform/Http/FormData/maxFieldSize",
+  "@effect/platform/Http/Multipart/maxFieldSize",
   () => FiberRef.unsafeMake(FileSystem.Size(10 * 1024 * 1024))
 )
 
@@ -67,7 +67,7 @@ export const withMaxFieldSize = dual<
 
 /** @internal */
 export const maxFileSize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = globalValue(
-  "@effect/platform/Http/FormData/maxFileSize",
+  "@effect/platform/Http/Multipart/maxFileSize",
   () => FiberRef.unsafeMake(Option.none<FileSystem.Size>())
 )
 
@@ -79,7 +79,7 @@ export const withMaxFileSize = dual<
 
 /** @internal */
 export const fieldMimeTypes: FiberRef.FiberRef<Chunk.Chunk<string>> = globalValue(
-  "@effect/platform/Http/FormData/fieldMimeTypes",
+  "@effect/platform/Http/Multipart/fieldMimeTypes",
   () => FiberRef.unsafeMake<Chunk.Chunk<string>>(Chunk.make("application/json"))
 )
 
@@ -90,56 +90,58 @@ export const withFieldMimeTypes = dual<
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
 /** @internal */
-export const filesSchema: Schema.Schema<ReadonlyArray<FormData.PersistedFile>, ReadonlyArray<FormData.PersistedFile>> =
-  Schema
-    .array(
-      pipe(
-        Schema.object,
-        Schema.filter(
-          (file): file is FormData.PersistedFile => TypeId in file && "_tag" in file && file._tag === "PersistedFile"
-        )
-      ) as any as Schema.Schema<FormData.PersistedFile, FormData.PersistedFile>
-    )
+export const filesSchema: Schema.Schema<
+  ReadonlyArray<Multipart.PersistedFile>,
+  ReadonlyArray<Multipart.PersistedFile>
+> = Schema
+  .array(
+    pipe(
+      Schema.object,
+      Schema.filter(
+        (file): file is Multipart.PersistedFile => TypeId in file && "_tag" in file && file._tag === "PersistedFile"
+      )
+    ) as any as Schema.Schema<Multipart.PersistedFile, Multipart.PersistedFile>
+  )
 
 /** @internal */
-export const schemaPersisted = <I extends FormData.PersistedFormData, A>(
+export const schemaPersisted = <I extends Multipart.Persisted, A>(
   schema: Schema.Schema<I, A>
 ) => {
   const parse = Schema.parse(schema)
-  return (formData: FormData.PersistedFormData) => parse(formData)
+  return (persisted: Multipart.Persisted) => parse(persisted)
 }
 
 /** @internal */
 export const schemaJson = <I, A>(schema: Schema.Schema<I, A>): {
   (
     field: string
-  ): (formData: FormData.PersistedFormData) => Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>
+  ): (persisted: Multipart.Persisted) => Effect.Effect<never, Multipart.MultipartError | ParseResult.ParseError, A>
   (
-    formData: FormData.PersistedFormData,
+    persisted: Multipart.Persisted,
     field: string
-  ): Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>
+  ): Effect.Effect<never, Multipart.MultipartError | ParseResult.ParseError, A>
 } => {
   const parse = Schema.parse(schema)
   return dual<
     (
       field: string
     ) => (
-      formData: FormData.PersistedFormData
-    ) => Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>,
+      persisted: Multipart.Persisted
+    ) => Effect.Effect<never, Multipart.MultipartError | ParseResult.ParseError, A>,
     (
-      formData: FormData.PersistedFormData,
+      persisted: Multipart.Persisted,
       field: string
-    ) => Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>
-  >(2, (formData, field) =>
+    ) => Effect.Effect<never, Multipart.MultipartError | ParseResult.ParseError, A>
+  >(2, (persisted, field) =>
     pipe(
-      Effect.succeed(formData[field]),
+      Effect.succeed(persisted[field]),
       Effect.filterOrFail(
         isField,
-        () => FormDataError("Parse", `schemaJson: was not a field`)
+        () => MultipartError("Parse", `schemaJson: was not a field`)
       ),
       Effect.tryMap({
         try: (field) => JSON.parse(field.value),
-        catch: (error) => FormDataError("Parse", `schemaJson: field was not valid json: ${error}`)
+        catch: (error) => MultipartError("Parse", `schemaJson: field was not valid json: ${error}`)
       }),
       Effect.flatMap(parse)
     ))
@@ -181,8 +183,8 @@ export const makeChannel = <IE>(
   IE,
   Chunk.Chunk<Uint8Array>,
   unknown,
-  FormData.FormDataError | IE,
-  Chunk.Chunk<FormData.Part>,
+  Multipart.MultipartError | IE,
+  Chunk.Chunk<Multipart.Part>,
   unknown
 > =>
   Channel.acquireUseRelease(
@@ -202,13 +204,13 @@ const makeFromQueue = <IE>(
   IE,
   Chunk.Chunk<Uint8Array>,
   unknown,
-  IE | FormData.FormDataError,
-  Chunk.Chunk<FormData.Part>,
+  IE | Multipart.MultipartError,
+  Chunk.Chunk<Multipart.Part>,
   unknown
 > =>
   Channel.suspend(() => {
-    let error = Option.none<Cause.Cause<IE | FormData.FormDataError>>()
-    let partsBuffer: Array<FormData.Part> = []
+    let error = Option.none<Cause.Cause<IE | Multipart.MultipartError>>()
+    let partsBuffer: Array<Multipart.Part> = []
     let partsFinished = false
 
     const input: AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array>, unknown> = {
@@ -293,8 +295,8 @@ const makeFromQueue = <IE>(
       unknown,
       unknown,
       unknown,
-      IE | FormData.FormDataError,
-      Chunk.Chunk<FormData.Part>,
+      IE | Multipart.MultipartError,
+      Chunk.Chunk<Multipart.Part>,
       void
     > = Channel.suspend(() => {
       if (error._tag === "Some") {
@@ -308,32 +310,32 @@ const makeFromQueue = <IE>(
     return Channel.embedInput(partsChannel, input)
   })
 
-function convertError(error: MP.MultipartError): FormData.FormDataError {
+function convertError(error: MP.MultipartError): Multipart.MultipartError {
   switch (error._tag) {
     case "ReachedLimit": {
       switch (error.limit) {
         case "MaxParts": {
-          return FormDataError("TooManyParts", error)
+          return MultipartError("TooManyParts", error)
         }
         case "MaxFieldSize": {
-          return FormDataError("FieldTooLarge", error)
+          return MultipartError("FieldTooLarge", error)
         }
         case "MaxPartSize": {
-          return FormDataError("FileTooLarge", error)
+          return MultipartError("FileTooLarge", error)
         }
         case "MaxTotalSize": {
-          return FormDataError("BodyTooLarge", error)
+          return MultipartError("BodyTooLarge", error)
         }
       }
     }
     default: {
-      return FormDataError("Parse", error)
+      return MultipartError("Parse", error)
     }
   }
 }
 
-class FieldImpl implements FormData.Field {
-  readonly [TypeId]: FormData.TypeId
+class FieldImpl implements Multipart.Field {
+  readonly [TypeId]: Multipart.TypeId
   readonly _tag = "Field"
 
   constructor(
@@ -345,13 +347,13 @@ class FieldImpl implements FormData.Field {
   }
 }
 
-class FileImpl implements FormData.File {
+class FileImpl implements Multipart.File {
   readonly _tag = "File"
-  readonly [TypeId]: FormData.TypeId
+  readonly [TypeId]: Multipart.TypeId
   readonly key: string
   readonly name: string
   readonly contentType: string
-  readonly content: Stream.Stream<never, FormData.FormDataError, Uint8Array>
+  readonly content: Stream.Stream<never, Multipart.MultipartError, Uint8Array>
 
   constructor(
     info: MP.PartInfo,
@@ -365,21 +367,21 @@ class FileImpl implements FormData.File {
   }
 }
 
-const defaultWriteFile = (path: string, file: FormData.File) =>
+const defaultWriteFile = (path: string, file: Multipart.File) =>
   Effect.flatMap(
     FileSystem.FileSystem,
     (fs) =>
       Effect.mapError(
         Stream.run(file.content, fs.sink(path)),
-        (error) => FormDataError("InternalError", error)
+        (error) => MultipartError("InternalError", error)
       )
   )
 
 /** @internal */
-export const formData = (
-  stream: Stream.Stream<never, FormData.FormDataError, FormData.Part>,
+export const toPersisted = (
+  stream: Stream.Stream<never, Multipart.MultipartError, Multipart.Part>,
   writeFile = defaultWriteFile
-): Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, FormData.FormDataError, FormData.PersistedFormData> =>
+): Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, Multipart.MultipartError, Multipart.Persisted> =>
   pipe(
     Effect.Do,
     Effect.bind("fs", () => FileSystem.FileSystem),
@@ -388,18 +390,18 @@ export const formData = (
     Effect.flatMap(({ dir, path: path_ }) =>
       Stream.runFoldEffect(
         stream,
-        Object.create(null) as Record<string, Array<FormData.PersistedFile> | string>,
-        (formData, part) => {
+        Object.create(null) as Record<string, Array<Multipart.PersistedFile> | string>,
+        (persisted, part) => {
           if (part._tag === "Field") {
-            formData[part.key] = part.value
-            return Effect.succeed(formData)
+            persisted[part.key] = part.value
+            return Effect.succeed(persisted)
           }
           const file = part
           const path = path_.join(dir, path_.basename(file.name).slice(-128))
-          if (!Array.isArray(formData[part.key])) {
-            formData[part.key] = []
+          if (!Array.isArray(persisted[part.key])) {
+            persisted[part.key] = []
           }
-          ;(formData[part.key] as Array<FormData.PersistedFile>).push(
+          ;(persisted[part.key] as Array<Multipart.PersistedFile>).push(
             new PersistedFileImpl(
               file.key,
               file.name,
@@ -407,18 +409,18 @@ export const formData = (
               path
             )
           )
-          return Effect.as(writeFile(path, file), formData)
+          return Effect.as(writeFile(path, file), persisted)
         }
       )
     ),
     Effect.catchTags({
-      SystemError: (err) => Effect.fail(FormDataError("InternalError", err)),
-      BadArgument: (err) => Effect.fail(FormDataError("InternalError", err))
+      SystemError: (err) => Effect.fail(MultipartError("InternalError", err)),
+      BadArgument: (err) => Effect.fail(MultipartError("InternalError", err))
     })
   )
 
-class PersistedFileImpl implements FormData.PersistedFile {
-  readonly [TypeId]: FormData.TypeId
+class PersistedFileImpl implements Multipart.PersistedFile {
+  readonly [TypeId]: Multipart.TypeId
   readonly _tag = "PersistedFile"
 
   constructor(

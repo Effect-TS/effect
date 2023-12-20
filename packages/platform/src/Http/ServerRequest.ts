@@ -10,10 +10,10 @@ import type * as Stream from "effect/Stream"
 import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/serverRequest.js"
 import type * as Path from "../Path.js"
-import type * as FormData from "./FormData.js"
 import type * as Headers from "./Headers.js"
 import type * as IncomingMessage from "./IncomingMessage.js"
 import type { Method } from "./Method.js"
+import type * as Multipart from "./Multipart.js"
 import type * as Error from "./ServerError.js"
 
 export {
@@ -47,12 +47,12 @@ export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.Req
   readonly originalUrl: string
   readonly method: Method
 
-  readonly formData: Effect.Effect<
+  readonly multipart: Effect.Effect<
     Scope.Scope | FileSystem.FileSystem | Path.Path,
-    FormData.FormDataError,
-    FormData.PersistedFormData
+    Multipart.MultipartError,
+    Multipart.Persisted
   >
-  readonly formDataStream: Stream.Stream<never, FormData.FormDataError, FormData.Part>
+  readonly multipartStream: Stream.Stream<never, Multipart.MultipartError, Multipart.Part>
 
   readonly modify: (
     options: {
@@ -73,11 +73,11 @@ export const ServerRequest: Context.Tag<ServerRequest, ServerRequest> = internal
  * @since 1.0.0
  * @category accessors
  */
-export const persistedFormData: Effect.Effect<
+export const persistedMultipart: Effect.Effect<
   Scope.Scope | FileSystem.FileSystem | Path.Path | ServerRequest,
-  FormData.FormDataError,
+  Multipart.MultipartError,
   unknown
-> = internal.persistedFormData
+> = internal.multipartPersisted
 
 /**
  * @since 1.0.0
@@ -99,6 +99,18 @@ export const schemaBodyJson: <I, A>(
  * @since 1.0.0
  * @category schema
  */
+export const schemaBodyForm: <I extends Multipart.Persisted, A>(
+  schema: Schema.Schema<I, A>
+) => Effect.Effect<
+  ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
+  Multipart.MultipartError | Error.RequestError | ParseResult.ParseError,
+  A
+> = internal.schemaBodyForm
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
 export const schemaBodyUrlParams: <I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<I, A>
 ) => Effect.Effect<ServerRequest, Error.RequestError | ParseResult.ParseError, A> = internal.schemaBodyUrlParams
@@ -107,27 +119,27 @@ export const schemaBodyUrlParams: <I extends Readonly<Record<string, string>>, A
  * @since 1.0.0
  * @category schema
  */
-export const schemaFormData: <I extends FormData.PersistedFormData, A>(
+export const schemaBodyMultipart: <I extends Multipart.Persisted, A>(
   schema: Schema.Schema<I, A>
 ) => Effect.Effect<
   ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
-  FormData.FormDataError | ParseResult.ParseError,
+  Multipart.MultipartError | ParseResult.ParseError,
   A
-> = internal.schemaFormData
+> = internal.schemaBodyMultipart
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaFormDataJson: <I, A>(
+export const schemaBodyMultipartJson: <I, A>(
   schema: Schema.Schema<I, A>
 ) => (
   field: string
 ) => Effect.Effect<
   ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
-  Error.RequestError | FormData.FormDataError | ParseResult.ParseError,
+  Error.RequestError | Multipart.MultipartError | ParseResult.ParseError,
   A
-> = internal.schemaFormDataJson
+> = internal.schemaBodyMultipartJson
 
 /**
  * @since 1.0.0

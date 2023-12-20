@@ -1,8 +1,8 @@
-import * as FormData from "@effect/platform/Http/FormData"
+import * as Multipart from "@effect/platform/Http/Multipart"
 import { Chunk, Effect, identity, Stream } from "effect"
 import { assert, describe, test } from "vitest"
 
-describe("FormData", () => {
+describe("Multipart", () => {
   test("it parses", () =>
     Effect.gen(function*(_) {
       const data = new globalThis.FormData()
@@ -13,7 +13,7 @@ describe("FormData", () => {
 
       const parts = yield* _(
         Stream.fromReadableStream(() => response.body!, identity),
-        Stream.pipeThroughChannel(FormData.makeChannel(Object.fromEntries(response.headers))),
+        Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(response.headers))),
         Stream.mapEffect((part) => {
           return Effect.unified(
             part._tag === "File" ?

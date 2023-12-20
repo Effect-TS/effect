@@ -176,7 +176,10 @@ export const raw = (body: unknown, options?: ServerResponse.Options): ServerResp
   )
 
 /** @internal */
-export const formData = (body: FormData, options?: ServerResponse.Options.WithContent): ServerResponse.ServerResponse =>
+export const formData = (
+  body: FormData,
+  options?: ServerResponse.Options.WithContent
+): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,

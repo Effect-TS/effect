@@ -1,4 +1,4 @@
-import * as FormData from "@effect/platform/Http/FormData"
+import * as Multipart from "@effect/platform/Http/Multipart"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
@@ -15,12 +15,12 @@ import * as NodeStream from "../stream.js"
 export const stream = (
   source: Readable,
   headers: IncomingHttpHeaders
-): Stream.Stream<never, FormData.FormDataError, FormData.Part> =>
+): Stream.Stream<never, Multipart.MultipartError, Multipart.Part> =>
   pipe(
-    FormData.makeConfig(headers as any),
+    Multipart.makeConfig(headers as any),
     Effect.map(
       (config) =>
-        NodeStream.fromReadable<FormData.FormDataError, MP.Part>(() => {
+        NodeStream.fromReadable<Multipart.MultipartError, MP.Part>(() => {
           const parser = MP.make(config)
           source.pipe(parser)
           return parser
@@ -31,21 +31,21 @@ export const stream = (
   )
 
 /** @internal */
-export const formData = (
+export const persisted = (
   source: Readable,
   headers: IncomingHttpHeaders
 ) =>
-  FormData.formData(stream(source, headers), (path, file) =>
+  Multipart.toPersisted(stream(source, headers), (path, file) =>
     Effect.tryPromise({
       try: (signal) => NodeStreamP.pipeline((file as FileImpl).file, NFS.createWriteStream(path), { signal }),
-      catch: (error) => FormData.FormDataError("InternalError", error)
+      catch: (error) => Multipart.MultipartError("InternalError", error)
     }))
 
-const convertPart = (part: MP.Part): FormData.Part =>
+const convertPart = (part: MP.Part): Multipart.Part =>
   part._tag === "Field" ? new FieldImpl(part.info, part.value) : new FileImpl(part)
 
-class FieldImpl implements FormData.Field {
-  readonly [FormData.TypeId]: FormData.TypeId
+class FieldImpl implements Multipart.Field {
+  readonly [Multipart.TypeId]: Multipart.TypeId
   readonly _tag = "Field"
   readonly key: string
   readonly contentType: string
@@ -55,53 +55,53 @@ class FieldImpl implements FormData.Field {
     info: PartInfo,
     value: Uint8Array
   ) {
-    this[FormData.TypeId] = FormData.TypeId
+    this[Multipart.TypeId] = Multipart.TypeId
     this.key = info.name
     this.contentType = info.contentType
     this.value = decodeField(info, value)
   }
 }
 
-class FileImpl implements FormData.File {
+class FileImpl implements Multipart.File {
   readonly _tag = "File"
-  readonly [FormData.TypeId]: FormData.TypeId
+  readonly [Multipart.TypeId]: Multipart.TypeId
   readonly key: string
   readonly name: string
   readonly contentType: string
-  readonly content: Stream.Stream<never, FormData.FormDataError, Uint8Array>
+  readonly content: Stream.Stream<never, Multipart.MultipartError, Uint8Array>
 
   constructor(readonly file: MP.FileStream) {
-    this[FormData.TypeId] = FormData.TypeId
+    this[Multipart.TypeId] = Multipart.TypeId
     this.key = file.info.name
     this.name = file.filename ?? file.info.name
     this.contentType = file.info.contentType
-    this.content = NodeStream.fromReadable(() => file, (error) => FormData.FormDataError("InternalError", error))
+    this.content = NodeStream.fromReadable(() => file, (error) => Multipart.MultipartError("InternalError", error))
   }
 }
 
 /** @internal */
-export const fileToReadable = (file: FormData.File): Readable => (file as FileImpl).file
+export const fileToReadable = (file: Multipart.File): Readable => (file as FileImpl).file
 
-function convertError(error: MultipartError): FormData.FormDataError {
+function convertError(error: MultipartError): Multipart.MultipartError {
   switch (error._tag) {
     case "ReachedLimit": {
       switch (error.limit) {
         case "MaxParts": {
-          return FormData.FormDataError("TooManyParts", error)
+          return Multipart.MultipartError("TooManyParts", error)
         }
         case "MaxFieldSize": {
-          return FormData.FormDataError("FieldTooLarge", error)
+          return Multipart.MultipartError("FieldTooLarge", error)
         }
         case "MaxPartSize": {
-          return FormData.FormDataError("FileTooLarge", error)
+          return Multipart.MultipartError("FileTooLarge", error)
         }
         case "MaxTotalSize": {
-          return FormData.FormDataError("BodyTooLarge", error)
+          return Multipart.MultipartError("BodyTooLarge", error)
         }
       }
     }
     default: {
-      return FormData.FormDataError("Parse", error)
+      return Multipart.MultipartError("Parse", error)
     }
   }
 }

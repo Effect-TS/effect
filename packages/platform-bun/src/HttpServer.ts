@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as etag from "@effect/platform-node/Http/Etag"
-import * as formData from "@effect/platform-node/Http/FormData"
+import * as multipart from "@effect/platform-node/Http/Multipart"
 import * as app from "@effect/platform/Http/App"
 import * as body from "@effect/platform/Http/Body"
 import * as headers from "@effect/platform/Http/Headers"
@@ -46,13 +46,6 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/FormData](https://effect-ts.github.io/platform/platform-node/Http/FormData.ts.html)
-   * - Module: `@effect/platform-node/Http/FormData`
-   */
-  formData,
-  /**
-   * @since 1.0.0
-   *
    * - Docs: [Http/Headers](https://effect-ts.github.io/platform/platform/Http/Headers.ts.html)
    * - Module: `@effect/platform/Http/Headers`
    */
@@ -64,6 +57,13 @@ export {
    * - Module: `@effect/platform/Http/Middleware`
    */
   middleware,
+  /**
+   * @since 1.0.0
+   *
+   * - Docs: [Http/Multipart](https://effect-ts.github.io/platform/platform-node/Http/Multipart.ts.html)
+   * - Module: `@effect/platform-node/Http/Multipart`
+   */
+  multipart,
   /**
    * @since 1.0.0
    *

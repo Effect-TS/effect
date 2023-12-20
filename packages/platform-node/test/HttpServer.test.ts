@@ -82,7 +82,7 @@ describe("HttpServer", () => {
           "/upload",
           Effect.gen(function*(_) {
             const request = yield* _(Http.request.ServerRequest)
-            const formData = yield* _(request.formData)
+            const formData = yield* _(request.multipart)
             const part = formData.file
             assert(typeof part !== "string")
             const file = part[0]
@@ -103,15 +103,15 @@ describe("HttpServer", () => {
       expect(result).toEqual({ ok: true })
     }).pipe(Effect.scoped, runPromise))
 
-  it("schemaFormData", () =>
+  it("schemaBodyForm", () =>
     Effect.gen(function*(_) {
       yield* _(
         Http.router.empty,
         Http.router.post(
           "/upload",
           Effect.gen(function*(_) {
-            const files = yield* _(Http.request.schemaFormData(Schema.struct({
-              file: Http.formData.filesSchema,
+            const files = yield* _(Http.request.schemaBodyForm(Schema.struct({
+              file: Http.multipart.filesSchema,
               test: Schema.string
             })))
             expect(files).toHaveProperty("file")
@@ -140,16 +140,16 @@ describe("HttpServer", () => {
           "/upload",
           Effect.gen(function*(_) {
             const request = yield* _(Http.request.ServerRequest)
-            yield* _(request.formData)
+            yield* _(request.multipart)
             return Http.response.empty()
           }).pipe(Effect.scoped)
         ),
-        Effect.catchTag("FormDataError", (error) =>
+        Effect.catchTag("MultipartError", (error) =>
           error.reason === "FileTooLarge" ?
             Http.response.empty({ status: 413 }) :
             Effect.fail(error)),
         Http.server.serveEffect(),
-        Http.formData.withMaxFileSize(Option.some(100))
+        Http.multipart.withMaxFileSize(Option.some(100))
       )
       const client = yield* _(makeClient)
       const formData = new FormData()
@@ -169,16 +169,16 @@ describe("HttpServer", () => {
           "/upload",
           Effect.gen(function*(_) {
             const request = yield* _(Http.request.ServerRequest)
-            yield* _(request.formData)
+            yield* _(request.multipart)
             return Http.response.empty()
           }).pipe(Effect.scoped)
         ),
-        Effect.catchTag("FormDataError", (error) =>
+        Effect.catchTag("MultipartError", (error) =>
           error.reason === "FieldTooLarge" ?
             Http.response.empty({ status: 413 }) :
             Effect.fail(error)),
         Http.server.serveEffect(),
-        Http.formData.withMaxFieldSize(100)
+        Http.multipart.withMaxFieldSize(100)
       )
       const client = yield* _(makeClient)
       const formData = new FormData()

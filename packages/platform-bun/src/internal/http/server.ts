@@ -1,5 +1,5 @@
 /// <reference types="bun-types" />
-import * as FormData from "@effect/platform-node/Http/FormData"
+import * as Multipart from "@effect/platform-node/Http/Multipart"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
 import * as Headers from "@effect/platform/Http/Headers"
@@ -278,29 +278,29 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       }))
   }
 
-  private formDataEffect:
+  private multipartEffect:
     | Effect.Effect<
       Scope.Scope | FileSystem.FileSystem | Path.Path,
-      FormData.FormDataError,
-      FormData.PersistedFormData
+      Multipart.MultipartError,
+      Multipart.Persisted
     >
     | undefined
-  get formData(): Effect.Effect<
+  get multipart(): Effect.Effect<
     Scope.Scope | FileSystem.FileSystem | Path.Path,
-    FormData.FormDataError,
-    FormData.PersistedFormData
+    Multipart.MultipartError,
+    Multipart.Persisted
   > {
-    if (this.formDataEffect) {
-      return this.formDataEffect
+    if (this.multipartEffect) {
+      return this.multipartEffect
     }
-    this.formDataEffect = Effect.runSync(Effect.cached(
-      FormData.formData(Readable.fromWeb(this.source.body! as any), this.headers)
+    this.multipartEffect = Effect.runSync(Effect.cached(
+      Multipart.persisted(Readable.fromWeb(this.source.body! as any), this.headers)
     ))
-    return this.formDataEffect
+    return this.multipartEffect
   }
 
-  get formDataStream(): Stream.Stream<never, FormData.FormDataError, FormData.Part> {
-    return FormData.stream(Readable.fromWeb(this.source.body! as any), this.headers)
+  get multipartStream(): Stream.Stream<never, Multipart.MultipartError, Multipart.Part> {
+    return Multipart.stream(Readable.fromWeb(this.source.body! as any), this.headers)
   }
 
   private arrayBufferEffect: Effect.Effect<never, Error.RequestError, ArrayBuffer> | undefined

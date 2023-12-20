@@ -13,7 +13,7 @@ import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type * as Multipasta from "multipasta"
 import type * as FileSystem from "../FileSystem.js"
-import * as internal from "../internal/http/formData.js"
+import * as internal from "../internal/http/multipart.js"
 import type * as Path from "../Path.js"
 
 /**
@@ -68,7 +68,7 @@ export interface File extends Part.Proto {
   readonly key: string
   readonly name: string
   readonly contentType: string
-  readonly content: Stream.Stream<never, FormDataError, Uint8Array>
+  readonly content: Stream.Stream<never, MultipartError, Uint8Array>
 }
 
 /**
@@ -87,7 +87,7 @@ export interface PersistedFile extends Part.Proto {
  * @since 1.0.0
  * @category models
  */
-export interface PersistedFormData {
+export interface Persisted {
   readonly [key: string]: ReadonlyArray<PersistedFile> | string
 }
 
@@ -107,9 +107,9 @@ export type ErrorTypeId = typeof ErrorTypeId
  * @since 1.0.0
  * @category errors
  */
-export interface FormDataError extends Data.Case {
+export interface MultipartError extends Data.Case {
   readonly [ErrorTypeId]: ErrorTypeId
-  readonly _tag: "FormDataError"
+  readonly _tag: "MultipartError"
   readonly reason: "FileTooLarge" | "FieldTooLarge" | "BodyTooLarge" | "TooManyParts" | "InternalError" | "Parse"
   readonly error: unknown
 }
@@ -118,10 +118,10 @@ export interface FormDataError extends Data.Case {
  * @since 1.0.0
  * @category errors
  */
-export const FormDataError: (
-  reason: FormDataError["reason"],
+export const MultipartError: (
+  reason: MultipartError["reason"],
   error: unknown
-) => FormDataError = internal.FormDataError
+) => MultipartError = internal.MultipartError
 
 /**
  * @since 1.0.0
@@ -203,17 +203,17 @@ export const filesSchema: Schema.Schema<ReadonlyArray<PersistedFile>, ReadonlyAr
 export const schemaJson: <I, A>(
   schema: Schema.Schema<I, A>
 ) => {
-  (field: string): (formData: PersistedFormData) => Effect.Effect<never, FormDataError | ParseResult.ParseError, A>
-  (formData: PersistedFormData, field: string): Effect.Effect<never, FormDataError | ParseResult.ParseError, A>
+  (field: string): (persisted: Persisted) => Effect.Effect<never, MultipartError | ParseResult.ParseError, A>
+  (persisted: Persisted, field: string): Effect.Effect<never, MultipartError | ParseResult.ParseError, A>
 } = internal.schemaJson
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaPersisted: <I extends PersistedFormData, A>(
+export const schemaPersisted: <I extends Persisted, A>(
   schema: Schema.Schema<I, A>
-) => (formData: PersistedFormData) => Effect.Effect<never, ParseResult.ParseError, A> = internal.schemaPersisted
+) => (persisted: Persisted) => Effect.Effect<never, ParseResult.ParseError, A> = internal.schemaPersisted
 
 /**
  * @since 1.0.0
@@ -222,7 +222,7 @@ export const schemaPersisted: <I extends PersistedFormData, A>(
 export const makeChannel: <IE>(
   headers: Record<string, string>,
   bufferSize?: number
-) => Channel.Channel<never, IE, Chunk.Chunk<Uint8Array>, unknown, FormDataError | IE, Chunk.Chunk<Part>, unknown> =
+) => Channel.Channel<never, IE, Chunk.Chunk<Uint8Array>, unknown, MultipartError | IE, Chunk.Chunk<Part>, unknown> =
   internal.makeChannel
 
 /**
@@ -236,8 +236,7 @@ export const makeConfig: (headers: Record<string, string>) => Effect.Effect<neve
  * @since 1.0.0
  * @category constructors
  */
-export const formData: (
-  stream: Stream.Stream<never, FormDataError, Part>,
-  writeFile?: (path: string, file: File) => Effect.Effect<FileSystem.FileSystem, FormDataError, void>
-) => Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, FormDataError, PersistedFormData> =
-  internal.formData
+export const toPersisted: (
+  stream: Stream.Stream<never, MultipartError, Part>,
+  writeFile?: (path: string, file: File) => Effect.Effect<FileSystem.FileSystem, MultipartError, void>
+) => Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, MultipartError, Persisted> = internal.toPersisted

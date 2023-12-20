@@ -1,10 +1,10 @@
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
-import type * as FormData from "@effect/platform/Http/FormData"
 import type * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
 import * as Middleware from "@effect/platform/Http/Middleware"
+import type * as Multipart from "@effect/platform/Http/Multipart"
 import * as Server from "@effect/platform/Http/Server"
 import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
@@ -24,8 +24,8 @@ import type * as Net from "node:net"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import * as NodeSink from "../../Sink.js"
-import * as internalFormData from "./formData.js"
 import { IncomingMessageImpl } from "./incomingMessage.js"
+import * as internalMultipart from "./multipart.js"
 import * as internalPlatform from "./platform.js"
 
 /** @internal */
@@ -207,29 +207,29 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
     return this.headersOverride
   }
 
-  private formDataEffect:
+  private multipartEffect:
     | Effect.Effect<
       Scope.Scope | FileSystem.FileSystem | Path.Path,
-      FormData.FormDataError,
-      FormData.PersistedFormData
+      Multipart.MultipartError,
+      Multipart.Persisted
     >
     | undefined
-  get formData(): Effect.Effect<
+  get multipart(): Effect.Effect<
     Scope.Scope | FileSystem.FileSystem | Path.Path,
-    FormData.FormDataError,
-    FormData.PersistedFormData
+    Multipart.MultipartError,
+    Multipart.Persisted
   > {
-    if (this.formDataEffect) {
-      return this.formDataEffect
+    if (this.multipartEffect) {
+      return this.multipartEffect
     }
-    this.formDataEffect = Effect.runSync(Effect.cached(
-      internalFormData.formData(this.source, this.source.headers)
+    this.multipartEffect = Effect.runSync(Effect.cached(
+      internalMultipart.persisted(this.source, this.source.headers)
     ))
-    return this.formDataEffect
+    return this.multipartEffect
   }
 
-  get formDataStream(): Stream.Stream<never, FormData.FormDataError, FormData.Part> {
-    return internalFormData.stream(this.source, this.source.headers)
+  get multipartStream(): Stream.Stream<never, Multipart.MultipartError, Multipart.Part> {
+    return internalMultipart.stream(this.source, this.source.headers)
   }
 
   toString(): string {

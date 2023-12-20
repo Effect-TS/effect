@@ -10,7 +10,7 @@ import * as error from "@effect/platform/Http/ServerError"
 import * as response from "@effect/platform/Http/ServerResponse"
 import * as urlParams from "@effect/platform/Http/UrlParams"
 import * as etag from "./Http/Etag.js"
-import * as formData from "./Http/FormData.js"
+import * as multipart from "./Http/Multipart.js"
 import * as server from "./Http/Server.js"
 import * as request from "./Http/ServerRequest.js"
 
@@ -46,13 +46,6 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/FormData](https://effect-ts.github.io/platform/platform-node/Http/FormData.ts.html)
-   * - Module: `@effect/platform-node/Http/FormData`
-   */
-  formData,
-  /**
-   * @since 1.0.0
-   *
    * - Docs: [Http/Headers](https://effect-ts.github.io/platform/platform/Http/Headers.ts.html)
    * - Module: `@effect/platform/Http/Headers`
    */
@@ -64,6 +57,13 @@ export {
    * - Module: `@effect/platform/Http/Middleware`
    */
   middleware,
+  /**
+   * @since 1.0.0
+   *
+   * - Docs: [Http/Multipart](https://effect-ts.github.io/platform/platform-node/Http/Multipart.ts.html)
+   * - Module: `@effect/platform-node/Http/Multipart`
+   */
+  multipart,
   /**
    * @since 1.0.0
    *
