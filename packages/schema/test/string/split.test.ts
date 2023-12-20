@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("string/split", () => {
   it("split (data-last)", async () => {
-    const schema = S.string.pipe(S.split(","))
+    const schema = S.split(",")
 
     Util.roundtrip(schema)
 
@@ -24,11 +24,5 @@ describe("string/split", () => {
     await Util.expectEncodeSuccess(schema, ["", "a"], ",a")
     await Util.expectEncodeSuccess(schema, ["a", ""], "a,")
     await Util.expectEncodeSuccess(schema, ["a", "b"], "a,b")
-  })
-
-  it("split (data-first)", async () => {
-    const schema = S.split(S.string, ",")
-
-    await Util.expectParseSuccess(schema, "a,b", ["a", "b"])
   })
 })

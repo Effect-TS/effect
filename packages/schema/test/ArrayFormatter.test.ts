@@ -126,8 +126,7 @@ describe("ArrayFormatter", () => {
   })
 
   it("real world example", () => {
-    const Name = S.string.pipe(
-      S.trim,
+    const Name = S.Trim.pipe(
       S.minLength(2, { message: () => "We expect a name of at least 2 characters" }),
       S.maxLength(100, { message: () => "We expect a name with a maximum of 100 characters" })
     )

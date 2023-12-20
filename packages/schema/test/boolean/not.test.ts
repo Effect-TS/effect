@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("boolean/not", () => {
-  const schema = S.boolean.pipe(S.not)
+  const schema = S.Not
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, true, false)
     await Util.expectParseSuccess(schema, false, true)

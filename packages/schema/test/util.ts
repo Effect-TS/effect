@@ -356,3 +356,7 @@ export const sample = <I, A>(schema: S.Schema<I, A>, n: number) => {
   const arb = arbitrary(fc)
   console.log(JSON.stringify(fc.sample(arb, n), null, 2))
 }
+
+export const NumberFromChar = S.string.pipe(S.length(1), S.compose(S.NumberFromString))
+
+export const Char = S.string.pipe(S.length(1))

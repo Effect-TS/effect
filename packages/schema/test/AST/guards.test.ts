@@ -23,7 +23,7 @@ describe("AST/guards", () => {
   })
 
   it("isTransform", () => {
-    expect(AST.isTransform(S.string.pipe(S.trim).ast)).toEqual(true)
+    expect(AST.isTransform(S.Trim.ast)).toEqual(true)
     expect(AST.isTransform(S.number.ast)).toEqual(false)
   })
 

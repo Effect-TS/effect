@@ -21,14 +21,14 @@ describe("string/uppercase", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.string.pipe(S.uppercase)
+    const schema = S.Uppercase
     await Util.expectParseSuccess(schema, "A", "A")
     await Util.expectParseSuccess(schema, "a ", "A ")
     await Util.expectParseSuccess(schema, " a ", " A ")
   })
 
   it("encoding", async () => {
-    const schema = S.string.pipe(S.uppercase)
+    const schema = S.Uppercase
     await Util.expectEncodeSuccess(schema, "", "")
     await Util.expectEncodeSuccess(schema, "A", "A")
 

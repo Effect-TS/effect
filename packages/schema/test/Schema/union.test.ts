@@ -99,11 +99,8 @@ describe("Schema/literal", () => {
   })
 
   describe("encoding", () => {
-    // raises an error while encoding from a number if the string is not a char
-    const NumberFromChar = S.string.pipe(S.length(1), S.numberFromString)
-
     it("union", async () => {
-      const schema = S.union(S.string, NumberFromChar)
+      const schema = S.union(S.string, Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, "a", "a")
       await Util.expectEncodeSuccess(schema, 1, "1")
     })

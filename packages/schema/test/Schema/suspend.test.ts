@@ -88,9 +88,6 @@ describe("Schema/suspend", () => {
   })
 
   describe("encoding", () => {
-    // raises an error while encoding from a number if the string is not a char
-    const NumberFromChar = S.string.pipe(S.length(1), S.numberFromString)
-
     it("suspend", async () => {
       interface A {
         readonly a: number
@@ -101,7 +98,7 @@ describe("Schema/suspend", () => {
         readonly as: ReadonlyArray<FromA>
       }
       const schema: S.Schema<FromA, A> = S.struct({
-        a: NumberFromChar,
+        a: Util.NumberFromChar,
         as: S.array(S.suspend(() => schema))
       })
       await Util.expectEncodeSuccess(schema, { a: 1, as: [] }, { a: "1", as: [] })

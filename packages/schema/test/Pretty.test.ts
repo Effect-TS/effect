@@ -381,7 +381,7 @@ describe("Pretty", () => {
   })
 
   it("Transform", () => {
-    const pretty = P.to(S.string.pipe(S.trim))
+    const pretty = P.to(S.Trim)
     expect(pretty("a")).toEqual(`"a"`)
   })
 

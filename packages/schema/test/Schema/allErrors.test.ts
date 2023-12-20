@@ -112,12 +112,6 @@ describe("Schema/allErrors option", () => {
   })
 
   describe("encoding", () => {
-    // raises an error while encoding from a number if the string is not a char
-    const NumberFromChar = S.string.pipe(S.length(1), S.numberFromString)
-
-    // raises an error while encoding if the string is not a char
-    const Char = S.string.pipe(S.length(1))
-
     describe("tuple", () => {
       it("unexpected indexes", async () => {
         const schema = S.tuple()
@@ -130,7 +124,7 @@ describe("Schema/allErrors option", () => {
       })
 
       it("wrong type for elements", async () => {
-        const schema = S.tuple(NumberFromChar, NumberFromChar)
+        const schema = S.tuple(Util.NumberFromChar, Util.NumberFromChar)
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
@@ -140,7 +134,7 @@ describe("Schema/allErrors option", () => {
       })
 
       it("wrong type for rest", async () => {
-        const schema = S.array(NumberFromChar)
+        const schema = S.array(Util.NumberFromChar)
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
@@ -150,7 +144,10 @@ describe("Schema/allErrors option", () => {
       })
 
       it("wrong type for values post rest elements", async () => {
-        const schema = S.array(S.string).pipe(S.element(NumberFromChar), S.element(NumberFromChar))
+        const schema = S.array(S.string).pipe(
+          S.element(Util.NumberFromChar),
+          S.element(Util.NumberFromChar)
+        )
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
@@ -162,7 +159,7 @@ describe("Schema/allErrors option", () => {
 
     describe("struct", () => {
       it("wrong type for values", async () => {
-        const schema = S.struct({ a: NumberFromChar, b: NumberFromChar })
+        const schema = S.struct({ a: Util.NumberFromChar, b: Util.NumberFromChar })
         await Util.expectEncodeFailure(
           schema,
           { a: 10, b: 10 },
@@ -174,7 +171,7 @@ describe("Schema/allErrors option", () => {
 
     describe("record", () => {
       it("all key errors", async () => {
-        const schema = S.record(Char, S.string)
+        const schema = S.record(Util.Char, S.string)
         await Util.expectEncodeFailure(
           schema,
           { aa: "a", bb: "bb" },
@@ -184,7 +181,7 @@ describe("Schema/allErrors option", () => {
       })
 
       it("all value errors", async () => {
-        const schema = S.record(S.string, Char)
+        const schema = S.record(S.string, Util.Char)
         await Util.expectEncodeFailure(
           schema,
           { a: "aa", b: "bb" },

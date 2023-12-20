@@ -223,10 +223,8 @@ describe("Schema/record", () => {
   })
 
   describe("encoding", () => {
-    const Char = S.string.pipe(S.length(1))
-
     it("key error", async () => {
-      const schema = S.record(Char, S.string)
+      const schema = S.record(Util.Char, S.string)
       await Util.expectEncodeFailure(
         schema,
         { aa: "a" },
@@ -236,7 +234,7 @@ describe("Schema/record", () => {
     })
 
     it("value error", async () => {
-      const schema = S.record(S.string, Char)
+      const schema = S.record(S.string, Util.Char)
       await Util.expectEncodeFailure(
         schema,
         { a: "aa" },

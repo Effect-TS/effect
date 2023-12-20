@@ -271,12 +271,9 @@ describe("Schema/extend", () => {
   })
 
   describe("encoding", () => {
-    // raises an error while encoding from a number if the string is not a char
-    const NumberFromChar = S.string.pipe(S.length(1), S.numberFromString)
-
     it("struct + record(string, NumberFromChar)", async () => {
       const schema = S.struct({ a: S.number }).pipe(
-        S.extend(S.record(S.string, NumberFromChar))
+        S.extend(S.record(S.string, Util.NumberFromChar))
       )
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: 1, b: 1 }, { a: 1, b: "1" })
@@ -285,7 +282,7 @@ describe("Schema/extend", () => {
     it("struct + record(symbol, NumberFromChar)", async () => {
       const b = Symbol.for("@effect/schema/test/b")
       const schema = S.struct({ a: S.number }).pipe(
-        S.extend(S.record(S.symbolFromSelf, NumberFromChar))
+        S.extend(S.record(S.symbolFromSelf, Util.NumberFromChar))
       )
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })

@@ -8,7 +8,7 @@ describe("Schema/pipe", () => {
     const positive = <I, A extends number>(self: S.Schema<I, A>) =>
       self.pipe(S.positive(), S.brand("Positive"))
 
-    const PositiveInt = S.string.pipe(S.numberFromString, int, positive)
+    const PositiveInt = S.NumberFromString.pipe(int, positive)
 
     expect(PositiveInt.is(1)).toEqual(true)
     expect(PositiveInt.is(-1)).toEqual(false)

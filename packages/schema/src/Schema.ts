@@ -43,10 +43,6 @@ import * as ParseResult from "./ParseResult.js"
 import * as Pretty from "./Pretty.js"
 import type * as Serializable from "./Serializable.js"
 
-// ---------------------------------------------
-// model
-// ---------------------------------------------
-
 /**
  * @since 1.0.0
  * @category symbol
@@ -112,10 +108,6 @@ export const from = <I, A>(schema: Schema<I, A>): Schema<I> => make(AST.from(sch
  * @since 1.0.0
  */
 export const to = <I, A>(schema: Schema<I, A>): Schema<A> => make(AST.to(schema.ast))
-
-// ---------------------------------------------
-// decoding / encoding / parsing / validating / asserts / guards
-// ---------------------------------------------
 
 /* c8 ignore start */
 export {
@@ -232,10 +224,6 @@ export {
 } from "./Parser.js"
 /* c8 ignore end */
 
-// ---------------------------------------------
-// guards
-// ---------------------------------------------
-
 /**
  * Tests if a value is a `Schema`.
  *
@@ -244,10 +232,6 @@ export {
  */
 export const isSchema = (u: unknown): u is Schema<unknown, unknown> =>
   Predicate.isObject(u) && TypeId in u && "ast" in u
-
-// ---------------------------------------------
-// constructors
-// ---------------------------------------------
 
 const variance = {
   From: (_: any) => _,
@@ -455,10 +439,6 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
   )
 }
 
-// ---------------------------------------------
-// primitives
-// ---------------------------------------------
-
 const _undefined: Schema<undefined> = make(AST.undefinedKeyword)
 
 const _void: Schema<void> = make(AST.voidKeyword)
@@ -536,10 +516,6 @@ export const symbolFromSelf: Schema<symbol> = make(AST.symbolKeyword)
  * @since 1.0.0
  */
 export const object: Schema<object> = make(AST.objectKeyword)
-
-// ---------------------------------------------
-// combinators
-// ---------------------------------------------
 
 /**
  * @category combinators
@@ -1539,10 +1515,6 @@ export const attachPropertySignature: {
     )
   )))
 
-// ---------------------------------------------
-// annotations
-// ---------------------------------------------
-
 const toAnnotations = <A>(
   options?: FilterAnnotations<A>
 ): Mutable<AST.Annotations> => {
@@ -1706,10 +1678,6 @@ export const equivalence =
   <A>(equivalence: Equivalence.Equivalence<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
     make(AST.setAnnotation(self.ast, hooks.EquivalenceHookId, () => equivalence))
 
-// ---------------------------------------------
-// property signature renaming
-// ---------------------------------------------
-
 type Rename<A, M> = {
   [
     K in keyof A as K extends keyof M ? M[K] extends PropertyKey ? M[K]
@@ -1756,10 +1724,6 @@ export const rename: {
     return make(AST.rename(self.ast, mapping))
   }
 )
-
-// ---------------------------------------------
-// string filters
-// ---------------------------------------------
 
 /**
  * @category type id
@@ -1974,10 +1938,7 @@ export const includes = <A extends string>(
 export const LowercasedTypeId = Symbol.for("@effect/schema/TypeId/Lowercased")
 
 /**
- * Verifies that a string is lowercased
- *
- * Note. This combinator does not make any transformations, it only validates.
- * If what you were looking for was a combinator to lowercase strings, then check out the `lowercase` combinator.
+ * Verifies that a string is lowercased.
  *
  * @category string filters
  * @since 1.0.0
@@ -1999,10 +1960,7 @@ export const lowercased =
 export const UppercasedTypeId = Symbol.for("@effect/schema/TypeId/Uppercased")
 
 /**
- * Verifies that a string is uppercased
- *
- * Note. This combinator does not make any transformations, it only validates.
- * If what you were looking for was a combinator to uppercase strings, then check out the `uppercase` combinator.
+ * Verifies that a string is uppercased.
  *
  * @category string filters
  * @since 1.0.0
@@ -2059,114 +2017,95 @@ export const nonEmpty = <A extends string>(
     ...options
   })
 
-// ---------------------------------------------
-// string transformations
-// ---------------------------------------------
-
 /**
- * This combinator converts a string to lowercase
+ * This schema converts a string to lowercase.
  *
  * @category string transformations
  * @since 1.0.0
  */
-export const lowercase = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
-  transform(
-    self,
-    to(self).pipe(lowercased()),
-    (s) => s.toLowerCase(),
-    identity,
-    { strict: false }
-  )
-
-/**
- * This combinator converts a string to lowercase
- *
- * @category string transformations
- * @since 1.0.0
- */
-export const Lowercase: Schema<string> = lowercase(string)
-
-/**
- * This combinator converts a string to uppercase
- *
- * @category string transformations
- * @since 1.0.0
- */
-export const uppercase = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
-  transform(
-    self,
-    to(self).pipe(uppercased()),
-    (s) => s.toUpperCase(),
-    identity,
-    { strict: false }
-  )
-
-/**
- * This combinator converts a string to uppercase
- *
- * @category string transformations
- * @since 1.0.0
- */
-export const Uppercase: Schema<string> = uppercase(string)
-
-/**
- * This combinator allows removing whitespaces from the beginning and end of a string.
- *
- * @category string transformations
- * @since 1.0.0
- */
-export const trim = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
-  transform(
-    self,
-    to(self).pipe(trimmed()),
-    (s) => s.trim(),
-    identity,
-    { strict: false }
-  )
-
-/**
- * This combinator allows splitting a string into an array of strings.
- *
- * @category string transformations
- * @since 1.0.0
- */
-export const split: {
-  (separator: string): <I, A extends string>(self: Schema<I, A>) => Schema<I, ReadonlyArray<string>>
-  <I, A extends string>(self: Schema<I, A>, separator: string): Schema<I, ReadonlyArray<string>>
-} = dual(
-  2,
-  <I, A extends string>(self: Schema<I, A>, separator: string): Schema<I, ReadonlyArray<string>> =>
-    transform(
-      self,
-      array(string),
-      S.split(separator),
-      ReadonlyArray.join(separator),
-      { strict: false }
-    )
+export const Lowercase: Schema<string> = transform(
+  string,
+  string.pipe(lowercased()),
+  (s) => s.toLowerCase(),
+  identity
 )
 
 /**
+ * This schema converts a string to uppercase.
+ *
+ * @category string transformations
  * @since 1.0.0
  */
-export type JsonOptions = {
+export const Uppercase: Schema<string> = transform(
+  string,
+  string.pipe(uppercased()),
+  (s) => s.toUpperCase(),
+  identity
+)
+
+/**
+ * This schema allows removing whitespaces from the beginning and end of a string.
+ *
+ * @category string transformations
+ * @since 1.0.0
+ */
+export const Trim: Schema<string> = transform(
+  string,
+  string.pipe(trimmed()),
+  (s) => s.trim(),
+  identity
+)
+
+/**
+ * Returns a achema that allows splitting a string into an array of strings.
+ *
+ * @category string transformations
+ * @since 1.0.0
+ */
+export const split = (separator: string): Schema<string, ReadonlyArray<string>> =>
+  transform(
+    string,
+    array(string),
+    S.split(separator),
+    ReadonlyArray.join(separator)
+  )
+
+/**
+ * @since 1.0.0
+ */
+export type ParseJsonOptions = {
   readonly reviver?: Parameters<typeof JSON.parse>[1]
   readonly replacer?: Parameters<typeof JSON.stringify>[1]
   readonly space?: Parameters<typeof JSON.stringify>[2]
 }
 
 /**
- * The `parseJson` combinator offers a method to convert JSON strings into the `unknown` type using the underlying
- * functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
+ * The `parseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
+ * functionality of `JSON.parse`. It also utilizes `JSON.stringify` for encoding.
+ *
+ * You can optionally provide a `ParseJsonOptions` to configure both `JSON.parse` and `JSON.stringify` executions.
+ *
+ * Optionally, you can pass a schema `Schema<I, A>` to obtain an `A` type instead of `unknown`.
+ *
+ * @example
+ * import * as S from "@effect/schema/Schema"
+ *
+ * assert.deepStrictEqual(S.parseSync(S.parseJson())(`{"a":"1"}`), { a: "1" })
+ * assert.deepStrictEqual(S.parseSync(S.parseJson(S.struct({ a: S.NumberFromString })))(`{"a":"1"}`), { a: 1 })
  *
  * @category string transformations
  * @since 1.0.0
  */
-export const parseJson = <I, A extends string>(
-  self: Schema<I, A>,
-  options?: JsonOptions
-): Schema<I, unknown> => {
+export const parseJson: {
+  <I, A>(schema: Schema<I, A>, options?: ParseJsonOptions): Schema<string, A>
+  (options?: ParseJsonOptions): Schema<string, unknown>
+} = <I, A>(schema?: Schema<I, A> | ParseJsonOptions, o?: ParseJsonOptions) => {
+  if (isSchema(schema)) {
+    return compose(parseJson(o), schema)
+  }
+  const options: ParseJsonOptions | undefined = schema as any
   return transformOrFail(
-    self,
+    string,
     unknown,
     (s, _, ast) =>
       ParseResult.try({
@@ -2177,26 +2116,9 @@ export const parseJson = <I, A extends string>(
       ParseResult.try({
         try: () => JSON.stringify(u, options?.replacer, options?.space),
         catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, u, e.message)])
-      }),
-    { strict: false }
+      })
   )
 }
-
-/**
- * The `fromJson` combinator offers a method to convert JSON strings into the `A` type using the underlying
- * functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
- *
- * @category string transformations
- * @since 1.0.0
- */
-export const fromJson = <I, A>(
-  schema: Schema<I, A>,
-  options?: JsonOptions
-): Schema<string, A> => compose(parseJson(string, options), schema)
-
-// ---------------------------------------------
-// string constructors
-// ---------------------------------------------
 
 /**
  * @category string constructors
@@ -2251,27 +2173,6 @@ export const ULID: Schema<string> = string.pipe(
     arbitrary: (): Arbitrary<string> => (fc) => fc.ulid()
   })
 )
-
-/**
- * This schema allows removing whitespaces from the beginning and end of a string.
- *
- * @category string constructors
- * @since 1.0.0
- */
-export const Trim: Schema<string> = trim(string)
-
-/**
- * The `ParseJson` schema offers a method to convert JSON strings into the `unknown` type using the underlying
- * functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
- *
- * @category string constructors
- * @since 1.0.0
- */
-export const ParseJson: Schema<string, unknown> = parseJson(string)
-
-// ---------------------------------------------
-// number filters
-// ---------------------------------------------
 
 /**
  * @category type id
@@ -2546,10 +2447,6 @@ export const nonNegative = <A extends number>(
   options?: FilterAnnotations<A>
 ): <I>(self: Schema<I, A>) => Schema<I, A> => greaterThanOrEqualTo(0, options)
 
-// ---------------------------------------------
-// number transformations
-// ---------------------------------------------
-
 /**
  * Clamps a number between a minimum and a maximum value.
  *
@@ -2567,47 +2464,38 @@ export const clamp =
     )
 
 /**
- * This combinator transforms a `string` into a `number` by parsing the string using the `Number` function.
+ * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
  *
  * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
  *
  * The following special string values are supported: "NaN", "Infinity", "-Infinity".
  *
- * @param self - The schema representing the input string
- *
- * @category number transformations
+ * @category number constructors
  * @since 1.0.0
  */
-export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, number> => {
-  return transformOrFail(
-    self,
-    number,
-    (s, _, ast) => {
-      if (s === "NaN") {
-        return ParseResult.succeed(NaN)
-      }
-      if (s === "Infinity") {
-        return ParseResult.succeed(Infinity)
-      }
-      if (s === "-Infinity") {
-        return ParseResult.succeed(-Infinity)
-      }
-      if (s.trim() === "") {
-        return ParseResult.fail(ParseResult.type(ast, s))
-      }
-      const n = Number(s)
-      return Number.isNaN(n)
-        ? ParseResult.fail(ParseResult.type(ast, s))
-        : ParseResult.succeed(n)
-    },
-    (n) => ParseResult.succeed(String(n)),
-    { strict: false }
-  )
-}
-
-// ---------------------------------------------
-// number constructors
-// ---------------------------------------------
+export const NumberFromString: Schema<string, number> = transformOrFail(
+  string,
+  number,
+  (s, _, ast) => {
+    if (s === "NaN") {
+      return ParseResult.succeed(NaN)
+    }
+    if (s === "Infinity") {
+      return ParseResult.succeed(Infinity)
+    }
+    if (s === "-Infinity") {
+      return ParseResult.succeed(-Infinity)
+    }
+    if (s.trim() === "") {
+      return ParseResult.fail(ParseResult.type(ast, s))
+    }
+    const n = Number(s)
+    return Number.isNaN(n)
+      ? ParseResult.fail(ParseResult.type(ast, s))
+      : ParseResult.succeed(n)
+  },
+  (n) => ParseResult.succeed(String(n))
+)
 
 /**
  * @category number constructors
@@ -2652,18 +2540,6 @@ export const NonPositive: Schema<number> = number.pipe(nonPositive())
 export const NonNegative: Schema<number> = number.pipe(nonNegative())
 
 /**
- * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
- *
- * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
- *
- * The following special string values are supported: "NaN", "Infinity", "-Infinity".
- *
- * @category number constructors
- * @since 1.0.0
- */
-export const NumberFromString: Schema<string, number> = numberFromString(string)
-
-/**
  * @category type id
  * @since 1.0.0
  */
@@ -2696,71 +2572,30 @@ export const JsonNumber: Schema<number> = number.pipe(
   })
 )
 
-// ---------------------------------------------
-// boolean transformations
-// ---------------------------------------------
-
 /**
- * Negates a boolean value
- *
  * @category boolean transformations
  * @since 1.0.0
  */
-export const not = <I>(self: Schema<I, boolean>): Schema<I, boolean> =>
-  transform(
-    self,
-    to(self),
-    (self) => !self,
-    (self) => !self
-  )
-
-// ---------------------------------------------
-// boolean constructors
-// ---------------------------------------------
-
-/**
- * @category boolean constructors
- * @since 1.0.0
- */
-export const Not: Schema<boolean> = not(boolean)
-
-// ---------------------------------------------
-// symbol transformations
-// ---------------------------------------------
-
-/**
- * This combinator transforms a `string` into a `symbol`.
- *
- * @param self - The schema representing the input string
- *
- * @category symbol transformations
- * @since 1.0.0
- */
-export const symbolFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, symbol> => {
-  return transform(
-    self,
-    symbolFromSelf,
-    (s) => Symbol.for(s),
-    (sym) => sym.description,
-    { strict: false }
-  )
-}
-
-// ---------------------------------------------
-// symbol constructors
-// ---------------------------------------------
+export const Not: Schema<boolean> = transform(
+  boolean,
+  boolean,
+  (self) => !self,
+  (self) => !self
+)
 
 /**
  * This schema transforms a `string` into a `symbol`.
  *
- * @category symbol constructors
+ * @category symbol transformations
  * @since 1.0.0
  */
-export const symbol: Schema<string, symbol> = symbolFromString(string)
-
-// ---------------------------------------------
-// bigint filters
-// ---------------------------------------------
+export const symbol: Schema<string, symbol> = transform(
+  string,
+  symbolFromSelf,
+  (s) => Symbol.for(s),
+  (sym) => sym.description,
+  { strict: false }
+)
 
 /**
  * @category type id
@@ -2943,10 +2778,6 @@ export const nonPositiveBigint = <A extends bigint>(
   options?: FilterAnnotations<A>
 ): <I>(self: Schema<I, A>) => Schema<I, A> => lessThanOrEqualToBigint(0n, options)
 
-// ---------------------------------------------
-// bigint transformations
-// ---------------------------------------------
-
 /**
  * Clamps a bigint between a minimum and a maximum value.
  *
@@ -2964,77 +2795,28 @@ export const clampBigint =
     )
 
 /**
- * This combinator transforms a `string` into a `bigint` by parsing the string using the `BigInt` function.
- *
- * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
- *
- * @param self - The schema representing the input string
- *
- * @category bigint transformations
- * @since 1.0.0
- */
-export const bigintFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, bigint> => {
-  return transformOrFail(
-    self,
-    bigintFromSelf,
-    (s, _, ast) => {
-      if (s.trim() === "") {
-        return ParseResult.fail(ParseResult.type(ast, s))
-      }
-
-      return ParseResult.try({
-        try: () => BigInt(s),
-        catch: () => ParseResult.parseError([ParseResult.type(ast, s)])
-      })
-    },
-    (n) => ParseResult.succeed(String(n)),
-    { strict: false }
-  )
-}
-
-/**
- * This combinator transforms a `number` into a `bigint` by parsing the number using the `BigInt` function.
- *
- * It returns an error if the value can't be safely encoded as a `number` due to being out of range.
- *
- * @param self - The schema representing the input number
- *
- * @category bigint transformations
- * @since 1.0.0
- */
-export const bigintFromNumber = <I, A extends number>(self: Schema<I, A>): Schema<I, bigint> => {
-  return transformOrFail(
-    self,
-    bigintFromSelf,
-    (n, _, ast) =>
-      ParseResult.try({
-        try: () => BigInt(n),
-        catch: () => ParseResult.parseError([ParseResult.type(ast, n)])
-      }),
-    (b, _, ast) => {
-      if (b > InternalBigInt.maxSafeInteger || b < InternalBigInt.minSafeInteger) {
-        return ParseResult.fail(ParseResult.type(ast, b))
-      }
-
-      return ParseResult.succeed(Number(b))
-    },
-    { strict: false }
-  )
-}
-
-// ---------------------------------------------
-// bigint constructors
-// ---------------------------------------------
-
-/**
  * This schema transforms a `string` into a `bigint` by parsing the string using the `BigInt` function.
  *
  * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
  *
- * @category bigint constructors
+ * @category bigint transformations
  * @since 1.0.0
  */
-export const bigint: Schema<string, bigint> = bigintFromString(string)
+export const bigint: Schema<string, bigint> = transformOrFail(
+  string,
+  bigintFromSelf,
+  (s, _, ast) => {
+    if (s.trim() === "") {
+      return ParseResult.fail(ParseResult.type(ast, s))
+    }
+
+    return ParseResult.try({
+      try: () => BigInt(s),
+      catch: () => ParseResult.parseError([ParseResult.type(ast, s)])
+    })
+  },
+  (n) => ParseResult.succeed(String(n))
+)
 
 /**
  * @category bigint constructors
@@ -3097,14 +2879,25 @@ export const NonNegativeBigint: Schema<string, bigint> = bigint.pipe(
  *
  * It returns an error if the value can't be safely encoded as a `number` due to being out of range.
  *
- * @category bigint constructors
+ * @category bigint transformations
  * @since 1.0.0
  */
-export const BigintFromNumber: Schema<number, bigint> = bigintFromNumber(number)
+export const BigintFromNumber: Schema<number, bigint> = transformOrFail(
+  number,
+  bigintFromSelf,
+  (n, _, ast) =>
+    ParseResult.try({
+      try: () => BigInt(n),
+      catch: () => ParseResult.parseError([ParseResult.type(ast, n)])
+    }),
+  (b, _, ast) => {
+    if (b > InternalBigInt.maxSafeInteger || b < InternalBigInt.minSafeInteger) {
+      return ParseResult.fail(ParseResult.type(ast, b))
+    }
 
-// ---------------------------------------------
-// Secret
-// ---------------------------------------------
+    return ParseResult.succeed(Number(b))
+  }
+)
 
 /**
  * @category Secret constructors
@@ -3125,38 +2918,23 @@ export const SecretFromSelf: Schema<Secret.Secret> = declare(
   }
 )
 
-/**
- * A combinator that transforms a `string` into a `Secret`.
- *
- * @category Secret transformations
- * @since 1.0.0
- */
-export const secret = <I, A extends string>(
-  self: Schema<I, A>
-): Schema<I, Secret.Secret> =>
-  transform(
-    self,
-    SecretFromSelf,
-    (str) => Secret.fromString(str),
-    (secret) => Secret.value(secret),
-    { strict: false }
-  )
-
-const _Secret: Schema<string, Secret.Secret> = secret(string)
+const _Secret: Schema<string, Secret.Secret> = transform(
+  string,
+  SecretFromSelf,
+  (str) => Secret.fromString(str),
+  (secret) => Secret.value(secret),
+  { strict: false }
+)
 
 export {
   /**
    * A schema that transforms a `string` into a `Secret`.
    *
-   * @category Secret constructors
+   * @category Secret transformations
    * @since 1.0.0
    */
   _Secret as Secret
 }
-
-// ---------------------------------------------
-// Duration constructors
-// ---------------------------------------------
 
 /**
  * @category Duration constructors
@@ -3202,90 +2980,43 @@ export const DurationFromSelf: Schema<Duration.Duration> = declare(
   }
 )
 
-// ---------------------------------------------
-// Duration transformations
-// ---------------------------------------------
-
-/**
- * A combinator that transforms a `[number, number]` tuple into a `Duration`.
- *
- * @category Duration transformations
- * @since 1.0.0
- */
-export const durationFromHrTime = <I, A extends readonly [seconds: number, nanos: number]>(
-  self: Schema<I, A>
-): Schema<I, Duration.Duration> =>
-  transform(
-    self,
-    DurationFromSelf,
-    ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
-    (duration) => Duration.toHrTime(duration),
-    { strict: false }
-  )
-
-/**
- * A combinator that transforms a `bigint` into a `Duration`.
- * Treats the value as the number of nanoseconds.
- *
- * @category Duration transformations
- * @since 1.0.0
- */
-export const durationFromNanos = <I, A extends bigint>(
-  self: Schema<I, A>
-): Schema<I, Duration.Duration> =>
-  transformOrFail(
-    self,
-    DurationFromSelf,
-    (nanos) => ParseResult.succeed(Duration.nanos(nanos)),
-    (duration, _, ast) =>
-      Option.match(Duration.toNanos(duration), {
-        onNone: () => ParseResult.fail(ParseResult.type(ast, duration)),
-        onSome: (val) => ParseResult.succeed(val)
-      }),
-    { strict: false }
-  )
-
 /**
  * A schema that transforms a `bigint` tuple into a `Duration`.
  * Treats the value as the number of nanoseconds.
  *
- * @category Duration constructors
+ * @category Duration transformations
  * @since 1.0.0
  */
 export const DurationFromNanos: Schema<
   bigint,
   Duration.Duration
-> = durationFromNanos(bigintFromSelf)
-
-/**
- * A combinator that transforms a `number` into a `Duration`.
- * Treats the value as the number of milliseconds.
- *
- * @category Duration transformations
- * @since 1.0.0
- */
-export const durationFromMillis = <I, A extends number>(
-  self: Schema<I, A>
-): Schema<I, Duration.Duration> =>
-  transform(
-    self,
-    DurationFromSelf,
-    (ms) => Duration.millis(ms),
-    (n) => Duration.toMillis(n),
-    { strict: false }
-  )
+> = transformOrFail(
+  bigintFromSelf,
+  DurationFromSelf,
+  (nanos) => ParseResult.succeed(Duration.nanos(nanos)),
+  (duration, _, ast) =>
+    Option.match(Duration.toNanos(duration), {
+      onNone: () => ParseResult.fail(ParseResult.type(ast, duration)),
+      onSome: (val) => ParseResult.succeed(val)
+    })
+)
 
 /**
  * A schema that transforms a `number` tuple into a `Duration`.
  * Treats the value as the number of milliseconds.
  *
- * @category Duration constructors
+ * @category Duration transformations
  * @since 1.0.0
  */
 export const DurationFromMillis: Schema<
   number,
   Duration.Duration
-> = durationFromMillis(number)
+> = transform(
+  number,
+  DurationFromSelf,
+  (ms) => Duration.millis(ms),
+  (n) => Duration.toMillis(n)
+)
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   NonNegative.pipe(
@@ -3307,14 +3038,18 @@ const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   [AST.DescriptionAnnotationId]: "a high resolution time tuple"
 }))
 
-const _Duration: Schema<readonly [seconds: number, nanos: number], Duration.Duration> =
-  durationFromHrTime(hrTime)
+const _Duration: Schema<readonly [seconds: number, nanos: number], Duration.Duration> = transform(
+  hrTime,
+  DurationFromSelf,
+  ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
+  (duration) => Duration.toHrTime(duration)
+)
 
 export {
   /**
    * A schema that transforms a `[number, number]` tuple into a `Duration`.
    *
-   * @category Duration constructors
+   * @category Duration transformations
    * @since 1.0.0
    */
   _Duration as Duration
@@ -3336,10 +3071,6 @@ export const clampDuration =
       identity,
       { strict: false }
     )
-
-// ---------------------------------------------
-// Duration filters
-// ---------------------------------------------
 
 /**
  * @category type id
@@ -3461,10 +3192,6 @@ export const betweenDuration = <A extends Duration.Duration>(
     })
   )
 
-// ---------------------------------------------
-// Uint8Array constructors
-// ---------------------------------------------
-
 /**
  * @category Uint8Array constructors
  * @since 1.0.0
@@ -3485,61 +3212,36 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   }
 )
 
-// ---------------------------------------------
-// Uint8Array transformations
-// ---------------------------------------------
-
-/**
- * A combinator that transforms a `number` array into a `Uint8Array`.
- *
- * @category Uint8Array transformations
- * @since 1.0.0
- */
-export const uint8ArrayFromNumbers = <I, A extends ReadonlyArray<number>>(
-  self: Schema<I, A>
-): Schema<I, Uint8Array> =>
-  transform(
-    self,
-    Uint8ArrayFromSelf,
-    (a) => Uint8Array.from(a),
-    (arr) => Array.from(arr),
-    { strict: false }
-  )
-
-const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = uint8ArrayFromNumbers(
+const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = transform(
   array(number.pipe(
     between(0, 255, {
       title: "8-bit unsigned integer",
       description: "a 8-bit unsigned integer"
     })
-  ))
+  )),
+  Uint8ArrayFromSelf,
+  (a) => Uint8Array.from(a),
+  (arr) => Array.from(arr)
 )
 
 export {
   /**
    * A schema that transforms a `number` array into a `Uint8Array`.
    *
-   * @category Uint8Array constructors
+   * @category Uint8Array transformations
    * @since 1.0.0
    */
   _Uint8Array as Uint8Array
 }
 
-// ---------------------------------------------
-// Encoding transformations
-// ---------------------------------------------
-
-const makeEncodingTransform = <A extends string>(
+const makeEncodingTransformation = (
   id: string,
-  decode: (s: A) => Either.Either<Encoding.DecodeException, Uint8Array>,
+  decode: (s: string) => Either.Either<Encoding.DecodeException, Uint8Array>,
   encode: (u: Uint8Array) => string,
   arbitrary: Arbitrary<Uint8Array>
-) =>
-<I, A2 extends A>(
-  self: Schema<I, A2>
-): Schema<I, Uint8Array> =>
+): Schema<string, Uint8Array> =>
   transformOrFail(
-    self,
+    string,
     Uint8ArrayFromSelf,
     (s, _, ast) =>
       Either.mapLeft(
@@ -3556,72 +3258,37 @@ const makeEncodingTransform = <A extends string>(
   }))
 
 /**
- * Transforms a base64 `string` into a `Uint8Array`.
- *
- * @category encoding transformations
+ * @category Encoding transformations
  * @since 1.0.0
  */
-export const base64: <I, A extends string>(self: Schema<I, A>) => Schema<I, Uint8Array> =
-  makeEncodingTransform(
-    "Base64",
-    Encoding.decodeBase64,
-    Encoding.encodeBase64,
-    (fc) => fc.base64String().map((s) => Either.getOrThrow(Encoding.decodeBase64(s)))
-  )
+export const Base64: Schema<string, Uint8Array> = makeEncodingTransformation(
+  "Base64",
+  Encoding.decodeBase64,
+  Encoding.encodeBase64,
+  (fc) => fc.base64String().map((s) => Either.getOrThrow(Encoding.decodeBase64(s)))
+)
 
 /**
- * Transforms a base64url `string` into a `Uint8Array`.
- *
- * @category encoding transformations
+ * @category Encoding transformations
  * @since 1.0.0
  */
-export const base64url: <I, A extends string>(self: Schema<I, A>) => Schema<I, Uint8Array> =
-  makeEncodingTransform(
-    "Base64Url",
-    Encoding.decodeBase64Url,
-    Encoding.encodeBase64Url,
-    (fc) => fc.base64String().map((s) => Either.getOrThrow(Encoding.decodeBase64Url(s)))
-  )
+export const Base64Url: Schema<string, Uint8Array> = makeEncodingTransformation(
+  "Base64Url",
+  Encoding.decodeBase64Url,
+  Encoding.encodeBase64Url,
+  (fc) => fc.base64String().map((s) => Either.getOrThrow(Encoding.decodeBase64Url(s)))
+)
 
 /**
- * Transforms a hex `string` into a `Uint8Array`.
- *
- * @category encoding transformations
+ * @category Encoding transformations
  * @since 1.0.0
  */
-export const hex: <I, A extends string>(self: Schema<I, A>) => Schema<I, Uint8Array> =
-  makeEncodingTransform(
-    "Hex",
-    Encoding.decodeHex,
-    Encoding.encodeHex,
-    (fc) => fc.hexaString().map((s) => Either.getOrThrow(Encoding.decodeHex(s)))
-  )
-
-// ---------------------------------------------
-// Encoding constructors
-// ---------------------------------------------
-
-/**
- * @category encoding constructors
- * @since 1.0.0
- */
-export const Base64: Schema<string, Uint8Array> = base64(string)
-
-/**
- * @category encoding constructors
- * @since 1.0.0
- */
-export const Base64Url: Schema<string, Uint8Array> = base64url(string)
-
-/**
- * @category encoding constructors
- * @since 1.0.0
- */
-export const Hex: Schema<string, Uint8Array> = hex(string)
-
-// ---------------------------------------------
-// ReadonlyArray filters
-// ---------------------------------------------
+export const Hex: Schema<string, Uint8Array> = makeEncodingTransformation(
+  "Hex",
+  Encoding.decodeHex,
+  Encoding.encodeHex,
+  (fc) => fc.hexaString().map((s) => Either.getOrThrow(Encoding.decodeHex(s)))
+)
 
 /**
  * @category type id
@@ -3713,10 +3380,6 @@ export const itemsCount = <A>(
     })
   )
 
-// ---------------------------------------------
-// Date filters
-// ---------------------------------------------
-
 /**
  * @category type id
  * @since 1.0.0
@@ -3738,10 +3401,6 @@ export const validDate =
         ...options
       })
     )
-
-// ---------------------------------------------
-// Date constructors
-// ---------------------------------------------
 
 const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date({ noInvalidDate: false })
 
@@ -3778,32 +3437,18 @@ export const DateFromSelf: Schema<Date> = declare(
  */
 export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(validDate())
 
-// ---------------------------------------------
-// Date transformations
-// ---------------------------------------------
-
 /**
- * A combinator that converts a `string` into a potentially **invalid** `Date` (e.g., `new Date("Invalid Date")` is not rejected).
+ * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
  *
  * @category Date transformations
  * @since 1.0.0
  */
-export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, Date> =>
-  transform(
-    self,
-    DateFromSelf,
-    (s) => new Date(s),
-    (n) => n.toISOString(),
-    { strict: false }
-  )
-
-/**
- * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
- *
- * @category Date constructors
- * @since 1.0.0
- */
-export const DateFromString: Schema<string, Date> = dateFromString(string)
+export const DateFromString: Schema<string, Date> = transform(
+  string,
+  DateFromSelf,
+  (s) => new Date(s),
+  (n) => n.toISOString()
+)
 
 const _Date: Schema<string, Date> = DateFromString.pipe(validDate())
 
@@ -3811,18 +3456,14 @@ export {
   /**
    * A schema that transforms a `string` into a **valid** `Date`, ensuring that invalid dates, such as `new Date("Invalid Date")`, are rejected.
    *
-   * @category Date constructors
+   * @category Date transformations
    * @since 1.0.0
    */
   _Date as Date
 }
 
-// ---------------------------------------------
-// Option transformations
-// ---------------------------------------------
-
 /**
- * @category Option transformations
+ * @category Option utils
  * @since 1.0.0
  */
 export type OptionFrom<I> =
@@ -3928,12 +3569,8 @@ export const optionFromNullish = <I, A>(
     onNoneEncoding === null ? Option.getOrNull : Option.getOrUndefined
   )
 
-// ---------------------------------------------
-// Either transformations
-// ---------------------------------------------
-
 /**
- * @category Either transformations
+ * @category Either utils
  * @since 1.0.0
  */
 export type EitherFrom<IE, IA> =
@@ -4029,10 +3666,6 @@ export const either = <IE, E, IA, A>(
     })
   )
 
-// ---------------------------------------------
-// ReadonlyMap transformations
-// ---------------------------------------------
-
 const isMap = (u: unknown): u is Map<unknown, unknown> => u instanceof Map
 
 const readonlyMapArbitrary = <K, V>(
@@ -4065,6 +3698,7 @@ const readonlyMapEquivalence = <K, V>(
 }
 
 /**
+ * @category ReadonlyMap transformations
  * @since 1.0.0
  */
 export const readonlyMapFromSelf = <IK, K, IV, V>(
@@ -4108,10 +3742,6 @@ export const readonlyMap = <IK, K, IV, V>(
     (as) => new Map(as),
     (map) => Array.from(map.entries())
   )
-
-// ---------------------------------------------
-// ReadonlySet transformations
-// ---------------------------------------------
 
 const isSet = (u: unknown): u is Set<unknown> => u instanceof Set
 
@@ -4172,10 +3802,6 @@ export const readonlySet = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, 
     (set) => Array.from(set)
   )
 
-// ---------------------------------------------
-// BigDecimal transformations
-// ---------------------------------------------
-
 const bigDecimalPretty = (): Pretty.Pretty<BigDecimal.BigDecimal> => (val) =>
   `BigDecimal(${BigDecimal.format(BigDecimal.normalize(val))})`
 
@@ -4204,50 +3830,20 @@ export const BigDecimalFromSelf: Schema<BigDecimal.BigDecimal> = declare(
   }
 )
 
-/**
- * A schema that transforms a `number` into a `BigDecimal`.
- * When encoding, this Schema will produce incorrect results if the BigDecimal exceeds the 64-bit range of a number.
- *
- * @category BigDecimal constructors
- * @since 1.0.0
- */
-export const bigDecimalFromNumber = <I, A extends number>(
-  self: Schema<I, A>
-): Schema<I, BigDecimal.BigDecimal> =>
-  transformOrFail(
-    self,
-    BigDecimalFromSelf,
-    (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
-    (val) => ParseResult.succeed(BigDecimal.unsafeToNumber(val)),
-    { strict: false }
-  )
-
-/**
- * A schema that transforms a `string` into a `BigDecimal`.
- *
- * @category BigDecimal constructors
- * @since 1.0.0
- */
-export const bigDecimalFromString = <I, A extends string>(
-  self: Schema<I, A>
-): Schema<I, BigDecimal.BigDecimal> =>
-  transformOrFail(
-    self,
-    BigDecimalFromSelf,
-    (num, _, ast) =>
-      BigDecimal.fromString(num).pipe(Option.match({
-        onNone: () => ParseResult.fail(ParseResult.type(ast, num)),
-        onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
-      })),
-    (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val))),
-    { strict: false }
-  )
-
-const _BigDecimal: Schema<string, BigDecimal.BigDecimal> = bigDecimalFromString(string)
+const _BigDecimal: Schema<string, BigDecimal.BigDecimal> = transformOrFail(
+  string,
+  BigDecimalFromSelf,
+  (num, _, ast) =>
+    BigDecimal.fromString(num).pipe(Option.match({
+      onNone: () => ParseResult.fail(ParseResult.type(ast, num)),
+      onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
+    })),
+  (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val)))
+)
 
 export {
   /**
-   * @category BigDecimal constructors
+   * @category BigDecimal transformations
    * @since 1.0.0
    */
   _BigDecimal as BigDecimal
@@ -4257,11 +3853,14 @@ export {
  * A schema that transforms a `number` into a `BigDecimal`.
  * When encoding, this Schema will produce incorrect results if the BigDecimal exceeds the 64-bit range of a number.
  *
- * @category BigDecimal constructors
+ * @category BigDecimal transformations
  * @since 1.0.0
  */
-export const BigDecimalFromNumber: Schema<number, BigDecimal.BigDecimal> = bigDecimalFromNumber(
-  number
+export const BigDecimalFromNumber: Schema<number, BigDecimal.BigDecimal> = transformOrFail(
+  number,
+  BigDecimalFromSelf,
+  (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
+  (val) => ParseResult.succeed(BigDecimal.unsafeToNumber(val))
 )
 
 /**
@@ -4516,10 +4115,6 @@ export const negateBigDecimal = <I, A extends BigDecimal.BigDecimal>(
     { strict: false }
   )
 
-// ---------------------------------------------
-// Chunk transformations
-// ---------------------------------------------
-
 const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc) =>
   fc.array(item(fc)).map(Chunk.fromIterable)
 
@@ -4568,10 +4163,6 @@ export const chunk = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, Chunk.
     (as) => as.length === 0 ? Chunk.empty() : Chunk.fromIterable(as),
     Chunk.toReadonlyArray
   )
-
-// ---------------------------------------------
-// Data transformations
-// ---------------------------------------------
 
 const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a: A): Data.Data<A> =>
   Array.isArray(a) ? Data.array(a) : Data.struct(a)
@@ -4632,10 +4223,6 @@ export const data = <
     (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a),
     { strict: false }
   )
-
-// ---------------------------------------------
-// classes
-// ---------------------------------------------
 
 type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
   `Missing \`Self\` generic - use \`class Self extends ${Usage}<Self>()(${Params}{ ... })\``
@@ -4928,10 +4515,6 @@ const makeClass = <I, A>(
   }
 }
 
-// ---------------------------------------------
-// FiberId
-// ---------------------------------------------
-
 /**
  * @category FiberId
  * @since 1.0.0
@@ -4990,7 +4573,7 @@ const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
 }
 
 /**
- * @category FiberId
+ * @category FiberId constructors
  * @since 1.0.0
  */
 export const FiberIdFromSelf: Schema<FiberId.FiberId, FiberId.FiberId> = declare(
@@ -5043,18 +4626,14 @@ const _FiberId: Schema<FiberIdFrom, FiberId.FiberId> = transform(
 
 export {
   /**
-   * @category FiberId
+   * @category FiberId transformations
    * @since 1.0.0
    */
   _FiberId as FiberId
 }
 
-// ---------------------------------------------
-// Cause
-// ---------------------------------------------
-
 /**
- * @category Cause
+ * @category Cause utils
  * @since 1.0.0
  */
 export type CauseFrom<E> =
@@ -5147,7 +4726,7 @@ const causePretty = <E>(error: Pretty.Pretty<E>): Pretty.Pretty<Cause.Cause<E>> 
 }
 
 /**
- * @category Cause
+ * @category Cause transformations
  * @since 1.0.0
  */
 export const causeFromSelf = <IE, E>(
@@ -5230,7 +4809,7 @@ const causeDefectPretty: Schema<unknown, unknown> = transform(
 )
 
 /**
- * @category Cause
+ * @category Cause transformations
  * @since 1.0.0
  */
 export const cause = <EI, E>(
@@ -5244,12 +4823,8 @@ export const cause = <EI, E>(
     causeEncode
   )
 
-// ---------------------------------------------
-// Exit
-// ---------------------------------------------
-
 /**
- * @category Exit
+ * @category Exit utils
  * @since 1.0.0
  */
 export type ExitFrom<E, A> =
@@ -5306,7 +4881,7 @@ const exitPretty =
       : `Exit.succeed(${value(exit.value)})`
 
 /**
- * @category Exit
+ * @category Exit transformations
  * @since 1.0.0
  */
 export const exitFromSelf = <IE, E, IA, A>(
@@ -5337,7 +4912,7 @@ export const exitFromSelf = <IE, E, IA, A>(
   )
 
 /**
- * @category Exit
+ * @category Exit transformations
  * @since 1.0.0
  */
 export const exit = <IE, E, IA, A>(

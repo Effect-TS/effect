@@ -197,16 +197,13 @@ describe("Schema/tuple", () => {
   })
 
   describe("encoding", () => {
-    // raises an error while encoding from a number if the string is not a char
-    const NumberFromChar = S.string.pipe(S.length(1), S.numberFromString)
-
     it("empty", async () => {
       const schema = S.tuple()
       await Util.expectEncodeSuccess(schema, [], [])
     })
 
     it("e", async () => {
-      const schema = S.tuple(NumberFromChar)
+      const schema = S.tuple(Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeFailure(
         schema,
@@ -217,14 +214,14 @@ describe("Schema/tuple", () => {
     })
 
     it("e with undefined", async () => {
-      const schema = S.tuple(S.union(NumberFromChar, S.undefined))
+      const schema = S.tuple(S.union(Util.NumberFromChar, S.undefined))
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, [undefined], [undefined])
       await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
     })
 
     it("e?", async () => {
-      const schema = S.tuple().pipe(S.optionalElement(NumberFromChar))
+      const schema = S.tuple().pipe(S.optionalElement(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeFailure(
@@ -236,7 +233,7 @@ describe("Schema/tuple", () => {
     })
 
     it("e? with undefined", async () => {
-      const schema = S.tuple().pipe(S.optionalElement(S.union(NumberFromChar, S.undefined)))
+      const schema = S.tuple().pipe(S.optionalElement(S.union(Util.NumberFromChar, S.undefined)))
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, [undefined], [undefined])
@@ -244,20 +241,20 @@ describe("Schema/tuple", () => {
     })
 
     it("e + e?", async () => {
-      const schema = S.tuple(S.string).pipe(S.optionalElement(NumberFromChar))
+      const schema = S.tuple(S.string).pipe(S.optionalElement(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
     })
 
     it("e + r", async () => {
-      const schema = S.tuple(S.string).pipe(S.rest(NumberFromChar))
+      const schema = S.tuple(S.string).pipe(S.rest(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
       await Util.expectEncodeSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
     })
 
     it("e? + r", async () => {
-      const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(NumberFromChar))
+      const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
@@ -265,7 +262,7 @@ describe("Schema/tuple", () => {
     })
 
     it("r", async () => {
-      const schema = S.array(NumberFromChar)
+      const schema = S.array(Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, [1, 2], ["1", "2"])
@@ -277,7 +274,7 @@ describe("Schema/tuple", () => {
     })
 
     it("r + e", async () => {
-      const schema = S.array(S.string).pipe(S.element(NumberFromChar))
+      const schema = S.array(S.string).pipe(S.element(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
       await Util.expectEncodeSuccess(schema, ["a", "b", 1], ["a", "b", "1"])
@@ -290,7 +287,7 @@ describe("Schema/tuple", () => {
     })
 
     it("e + r + e", async () => {
-      const schema = S.tuple(S.string).pipe(S.rest(NumberFromChar), S.element(S.boolean))
+      const schema = S.tuple(S.string).pipe(S.rest(Util.NumberFromChar), S.element(S.boolean))
       await Util.expectEncodeSuccess(schema, ["a", true], ["a", true])
       await Util.expectEncodeSuccess(schema, ["a", 1, true], ["a", "1", true])
       await Util.expectEncodeSuccess(schema, ["a", 1, 2, true], ["a", "1", "2", true])

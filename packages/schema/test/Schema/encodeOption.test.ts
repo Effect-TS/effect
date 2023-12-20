@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema/encodeOption", () => {
   it("should return none for invalid values", () => {
-    const schema = S.string.pipe(S.maxLength(1), S.numberFromString)
+    const schema = S.string.pipe(S.maxLength(1), S.compose(S.NumberFromString))
     expect(P.encodeOption(schema)(1)).toEqual(O.some("1"))
     expect(P.encodeOption(schema)(10)).toEqual(O.none())
   })

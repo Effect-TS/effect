@@ -21,14 +21,14 @@ describe("string/lowercase", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.string.pipe(S.lowercase)
+    const schema = S.Lowercase
     await Util.expectParseSuccess(schema, "a", "a")
     await Util.expectParseSuccess(schema, "A ", "a ")
     await Util.expectParseSuccess(schema, " A ", " a ")
   })
 
   it("encoding", async () => {
-    const schema = S.string.pipe(S.lowercase)
+    const schema = S.Lowercase
     await Util.expectEncodeSuccess(schema, "", "")
     await Util.expectEncodeSuccess(schema, "a", "a")
 

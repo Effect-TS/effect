@@ -21,16 +21,12 @@ describe("string/trim", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.string.pipe(S.minLength(1), S.trim)
+    const schema = S.string.pipe(S.minLength(1), S.compose(S.Trim))
     await Util.expectParseSuccess(schema, "a", "a")
     await Util.expectParseSuccess(schema, "a ", "a")
     await Util.expectParseSuccess(schema, " a ", "a")
+    await Util.expectParseSuccess(schema, " ", "")
 
-    await Util.expectParseFailure(
-      schema,
-      "  ",
-      `Expected a string at least 1 character(s) long, actual ""`
-    )
     await Util.expectParseFailure(
       schema,
       "",
@@ -39,7 +35,7 @@ describe("string/trim", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.string.pipe(S.minLength(1), S.trim)
+    const schema = S.string.pipe(S.minLength(1), S.compose(S.Trim))
     await Util.expectEncodeSuccess(schema, "a", "a")
 
     await Util.expectEncodeFailure(

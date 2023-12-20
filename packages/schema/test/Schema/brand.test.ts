@@ -54,7 +54,7 @@ describe("Schema/brand", () => {
   })
 
   it("the constructor should throw on invalid values", () => {
-    const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
+    const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
     expect(Int(1)).toEqual(1)
     expect(() => Int(1.2)).toThrow(
       new Error(`error(s) found
@@ -63,13 +63,13 @@ describe("Schema/brand", () => {
   })
 
   it("option", () => {
-    const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
+    const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
     expect(Int.option(1)).toEqual(Option.some(1))
     expect(Int.option(1.2)).toEqual(Option.none())
   })
 
   it("either", () => {
-    const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
+    const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
     expect(Int.either(1)).toEqual(Either.right(1))
     expect(Int.either(1.2)).toEqual(Either.left([{
       meta: [],
@@ -78,7 +78,7 @@ describe("Schema/brand", () => {
   })
 
   it("is", () => {
-    const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
+    const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
     expect(Int.is(1)).toEqual(true)
     expect(Int.is(1.2)).toEqual(false)
   })
@@ -89,7 +89,7 @@ describe("Schema/brand", () => {
     const positive = <I, A extends number>(self: S.Schema<I, A>) =>
       self.pipe(S.positive(), S.brand("Positive"))
 
-    const PositiveInt = S.string.pipe(S.numberFromString, int, positive)
+    const PositiveInt = S.NumberFromString.pipe(int, positive)
 
     expect(PositiveInt.is(1)).toEqual(true)
     expect(PositiveInt.is(-1)).toEqual(false)
@@ -98,7 +98,7 @@ describe("Schema/brand", () => {
 
   describe("decoding", () => {
     it("string brand", async () => {
-      const schema = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
+      const schema = S.NumberFromString.pipe(S.int(), S.brand("Int"))
       await Util.expectParseSuccess(schema, "1", 1 as any)
       await Util.expectParseFailure(
         schema,
@@ -109,7 +109,7 @@ describe("Schema/brand", () => {
 
     it("symbol brand", async () => {
       const Int = Symbol.for("Int")
-      const schema = S.string.pipe(S.numberFromString, S.int(), S.brand(Int))
+      const schema = S.NumberFromString.pipe(S.int(), S.brand(Int))
       await Util.expectParseSuccess(schema, "1", 1 as any)
       await Util.expectParseFailure(
         schema,
