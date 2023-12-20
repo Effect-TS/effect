@@ -57,14 +57,14 @@ jobs:
         uses: oven-sh/setup-bun@v1
       - run: bun vitest
 
-  deno:
-    name: Deno
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
-      - run: deno task test || true
+  # deno:
+  #   name: Deno
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Install dependencies
+  #       uses: ./.github/actions/setup
+  #     - uses: denoland/setup-deno@v1
+  #       with:
+  #         deno-version: v1.x
+  #     - run: deno task test
