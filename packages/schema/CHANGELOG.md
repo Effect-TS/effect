@@ -1,5 +1,55 @@
 # @effect/schema
 
+## 0.55.0
+
+### Minor Changes
+
+- [#649](https://github.com/Effect-TS/schema/pull/649) [`d80b933`](https://github.com/Effect-TS/schema/commit/d80b933d2e6b1e36f10f01323f2532826c8722c7) Thanks [@gcanti](https://github.com/gcanti)! - Arbitrary: should throw on declarations without annotations
+
+- [#669](https://github.com/Effect-TS/schema/pull/669) [`294dfad`](https://github.com/Effect-TS/schema/commit/294dfad1076f10da53096925e02821a69fbad60e) Thanks [@gcanti](https://github.com/gcanti)! - Schema: refactor `parseJson` to replace `ParseJson` and `fromJson`
+
+- [#649](https://github.com/Effect-TS/schema/pull/649) [`d80b933`](https://github.com/Effect-TS/schema/commit/d80b933d2e6b1e36f10f01323f2532826c8722c7) Thanks [@gcanti](https://github.com/gcanti)! - Schema: refactor `S.optional` API.
+
+  Upgrade Guide:
+
+  - `S.optional(schema, { exact: true })` replaces the old `S.optional(schema)`
+  - `S.optional(schema, { exact: true, default: () => A })` replaces the old `S.optional(schema).withDefault(() => A)`
+  - `S.optional(schema, { exact: true, as: "Option" })` replaces the old `S.optional(schema).toOption()`
+
+- [#649](https://github.com/Effect-TS/schema/pull/649) [`d80b933`](https://github.com/Effect-TS/schema/commit/d80b933d2e6b1e36f10f01323f2532826c8722c7) Thanks [@gcanti](https://github.com/gcanti)! - Schema: replace `propertySignature` constructor with `propertySignatureAnnotations` combinator
+
+- [#669](https://github.com/Effect-TS/schema/pull/669) [`294dfad`](https://github.com/Effect-TS/schema/commit/294dfad1076f10da53096925e02821a69fbad60e) Thanks [@gcanti](https://github.com/gcanti)! - Schema: simplify `split` parameters to only accept `separator`
+
+- [#669](https://github.com/Effect-TS/schema/pull/669) [`294dfad`](https://github.com/Effect-TS/schema/commit/294dfad1076f10da53096925e02821a69fbad60e) Thanks [@gcanti](https://github.com/gcanti)! - Schema: remove useless combinators
+
+  - `lowercase`
+  - `uppercase`
+  - `trim`
+  - `numberFromString`
+  - `symbolFromString`
+  - `bigintFromString`
+  - `bigintFromNumber`
+  - `secret`
+  - `durationFromHrTime`
+  - `durationFromMillis`
+  - `durationFromNanos`
+  - `uint8ArrayFromNumbers`
+  - `base64`
+  - `base64url`
+  - `hex`
+  - `dateFromString`
+  - `bigDecimalFromNumber`
+  - `bigDecimalFromString`
+  - `not`
+
+### Patch Changes
+
+- [#649](https://github.com/Effect-TS/schema/pull/649) [`d80b933`](https://github.com/Effect-TS/schema/commit/d80b933d2e6b1e36f10f01323f2532826c8722c7) Thanks [@gcanti](https://github.com/gcanti)! - Schema: fix declarations (`type` field)
+
+- [#649](https://github.com/Effect-TS/schema/pull/649) [`d80b933`](https://github.com/Effect-TS/schema/commit/d80b933d2e6b1e36f10f01323f2532826c8722c7) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add `nullish`
+
+- [#649](https://github.com/Effect-TS/schema/pull/649) [`d80b933`](https://github.com/Effect-TS/schema/commit/d80b933d2e6b1e36f10f01323f2532826c8722c7) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add `orUndefined`
+
 ## 0.54.1
 
 ### Patch Changes
