@@ -131,15 +131,15 @@ export const schemaBodyMultipart: <I extends Multipart.Persisted, A>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyMultipartJson: <I, A>(
+export const schemaBodyFormJson: <I, A>(
   schema: Schema.Schema<I, A>
 ) => (
   field: string
 ) => Effect.Effect<
   ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
-  Error.RequestError | Multipart.MultipartError | ParseResult.ParseError,
+  Error.RequestError | ParseResult.ParseError,
   A
-> = internal.schemaBodyMultipartJson
+> = internal.schemaBodyFormJson
 
 /**
  * @since 1.0.0

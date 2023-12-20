@@ -203,8 +203,8 @@ export const filesSchema: Schema.Schema<ReadonlyArray<PersistedFile>, ReadonlyAr
 export const schemaJson: <I, A>(
   schema: Schema.Schema<I, A>
 ) => {
-  (field: string): (persisted: Persisted) => Effect.Effect<never, MultipartError | ParseResult.ParseError, A>
-  (persisted: Persisted, field: string): Effect.Effect<never, MultipartError | ParseResult.ParseError, A>
+  (field: string): (persisted: Persisted) => Effect.Effect<never, ParseResult.ParseError, A>
+  (persisted: Persisted, field: string): Effect.Effect<never, ParseResult.ParseError, A>
 } = internal.schemaJson
 
 /**

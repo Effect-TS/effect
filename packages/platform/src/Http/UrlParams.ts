@@ -1,8 +1,11 @@
 /**
  * @since 1.0.0
  */
+import type * as ParseResult from "@effect/schema/ParseResult"
+import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
+import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 
 /**
@@ -33,6 +36,62 @@ export const fromInput = (input: Input): UrlParams => {
  * @category constructors
  */
 export const empty: UrlParams = []
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getAll: {
+  (key: string): (self: UrlParams) => ReadonlyArray<string>
+  (self: UrlParams, key: string): ReadonlyArray<string>
+} = dual<
+  (key: string) => (self: UrlParams) => ReadonlyArray<string>,
+  (self: UrlParams, key: string) => ReadonlyArray<string>
+>(2, (self, key) =>
+  ReadonlyArray.reduce(self, [] as Array<string>, (acc, [k, value]) => {
+    if (k === key) {
+      acc.push(value)
+    }
+    return acc
+  }))
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getFirst: {
+  (key: string): (self: UrlParams) => Option.Option<string>
+  (self: UrlParams, key: string): Option.Option<string>
+} = dual<
+  (key: string) => (self: UrlParams) => Option.Option<string>,
+  (self: UrlParams, key: string) => Option.Option<string>
+>(2, (self, key) =>
+  Option.map(
+    ReadonlyArray.findFirst(
+      self,
+      ([k]) => k === key
+    ),
+    ([, value]) => value
+  ))
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getLast: {
+  (key: string): (self: UrlParams) => Option.Option<string>
+  (self: UrlParams, key: string): Option.Option<string>
+} = dual<
+  (key: string) => (self: UrlParams) => Option.Option<string>,
+  (self: UrlParams, key: string) => Option.Option<string>
+>(2, (self, key) =>
+  Option.map(
+    ReadonlyArray.findLast(
+      self,
+      ([k]) => k === key
+    ),
+    ([, value]) => value
+  ))
 
 /**
  * @since 1.0.0
@@ -142,4 +201,24 @@ const baseUrl = (): string | undefined => {
     return location.origin + location.pathname
   }
   return undefined
+}
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
+export const schemaJson = <I, A>(schema: Schema.Schema<I, A>): {
+  (
+    field: string
+  ): (self: UrlParams) => Effect.Effect<never, ParseResult.ParseError, A>
+  (
+    self: UrlParams,
+    field: string
+  ): Effect.Effect<never, ParseResult.ParseError, A>
+} => {
+  const parse = Schema.parse(Schema.fromJson(schema))
+  return dual<
+    (field: string) => (self: UrlParams) => Effect.Effect<never, ParseResult.ParseError, A>,
+    (self: UrlParams, field: string) => Effect.Effect<never, ParseResult.ParseError, A>
+  >(2, (self, field) => parse(Option.getOrElse(getLast(self, field), () => "")))
 }

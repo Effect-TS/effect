@@ -36,6 +36,9 @@ export const schemaBodyJson = <I, A>(schema: Schema.Schema<I, A>) => {
   return Effect.flatMap(serverRequestTag, parse)
 }
 
+const isMultipart = (request: ServerRequest.ServerRequest) =>
+  request.headers["content-type"]?.toLowerCase().includes("multipart/form-data")
+
 /** @internal */
 export const schemaBodyForm = <I extends Multipart.Persisted, A>(
   schema: Schema.Schema<I, A>
@@ -47,7 +50,7 @@ export const schemaBodyForm = <I extends Multipart.Persisted, A>(
     Multipart.MultipartError | ParseResult.ParseError | Error.RequestError,
     A
   > => {
-    if (request.headers["content-type"]?.trim().toLowerCase().startsWith("multipart/form-data")) {
+    if (isMultipart(request)) {
       return Effect.flatMap(request.multipart, parseMultipart)
     }
     return parseUrlParams(request)
@@ -69,26 +72,33 @@ export const schemaBodyMultipart = <I extends Multipart.Persisted, A>(
 }
 
 /** @internal */
-export const schemaBodyMultipartJson = <I, A>(schema: Schema.Schema<I, A>) => {
-  const parse = Multipart.schemaJson(schema)
+export const schemaBodyFormJson = <I, A>(schema: Schema.Schema<I, A>) => {
+  const parseMultipart = Multipart.schemaJson(schema)
+  const parseUrlParams = UrlParams.schemaJson(schema)
   return (field: string) =>
-    Effect.flatMap(serverRequestTag, (request) =>
-      Effect.flatMap(
-        request.multipart,
-        (persisted) =>
-          Effect.catchTag(
-            parse(persisted, field),
-            "MultipartError",
-            (error) =>
-              Effect.fail(
-                Error.RequestError({
-                  reason: "Decode",
-                  request,
-                  error: error.error
-                })
-              )
+    Effect.flatMap(
+      serverRequestTag,
+      (
+        request
+      ): Effect.Effect<
+        FileSystem.FileSystem | Path.Path | Scope.Scope | ServerRequest.ServerRequest,
+        ParseResult.ParseError | Error.RequestError,
+        A
+      > => {
+        if (isMultipart(request)) {
+          return Effect.flatMap(
+            Effect.mapError(request.multipart, (error) =>
+              Error.RequestError({
+                request,
+                reason: "Decode",
+                error
+              })),
+            parseMultipart(field)
           )
-      ))
+        }
+        return Effect.flatMap(request.urlParamsBody, parseUrlParams(field))
+      }
+    )
 }
 
 /** @internal */

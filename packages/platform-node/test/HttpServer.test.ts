@@ -342,6 +342,98 @@ describe("HttpServer", () => {
       expect(response.status).toEqual(400)
     }).pipe(Effect.scoped, runPromise))
 
+  it("schemaBodyFormJson", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.post(
+          "/upload",
+          Effect.gen(function*(_) {
+            const result = yield* _(
+              Http.request.schemaBodyFormJson(Schema.struct({
+                test: Schema.string
+              }))("json")
+            )
+            expect(result.test).toEqual("content")
+            return Http.response.empty()
+          }).pipe(Effect.scoped)
+        ),
+        Effect.tapErrorCause(Effect.logError),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const formData = new FormData()
+      formData.append("json", JSON.stringify({ test: "content" }))
+      const response = yield* _(
+        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
+      )
+      expect(response.status).toEqual(204)
+    }).pipe(Effect.scoped, runPromise))
+
+  it("schemaBodyFormJson file", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.post(
+          "/upload",
+          Effect.gen(function*(_) {
+            const result = yield* _(
+              Http.request.schemaBodyFormJson(Schema.struct({
+                test: Schema.string
+              }))("json")
+            )
+            expect(result.test).toEqual("content")
+            return Http.response.empty()
+          }).pipe(Effect.scoped)
+        ),
+        Effect.tapErrorCause(Effect.logError),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const formData = new FormData()
+      formData.append(
+        "json",
+        new Blob([JSON.stringify({ test: "content" })], { type: "application/json" }),
+        "test.json"
+      )
+      const response = yield* _(
+        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
+      )
+      expect(response.status).toEqual(204)
+    }).pipe(Effect.scoped, runPromise))
+
+  it("schemaBodyFormJson url encoded", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.post(
+          "/upload",
+          Effect.gen(function*(_) {
+            const result = yield* _(
+              Http.request.schemaBodyFormJson(Schema.struct({
+                test: Schema.string
+              }))("json")
+            )
+            expect(result.test).toEqual("content")
+            return Http.response.empty()
+          }).pipe(Effect.scoped)
+        ),
+        Effect.tapErrorCause(Effect.logError),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const response = yield* _(
+        client(
+          HttpC.request.post("/upload", {
+            body: HttpC.body.urlParams(HttpC.urlParams.fromInput({
+              json: JSON.stringify({ test: "content" })
+            }))
+          })
+        )
+      )
+      expect(response.status).toEqual(204)
+    }).pipe(Effect.scoped, runPromise))
+
   it("tracing", () =>
     Effect.gen(function*(_) {
       yield* _(

@@ -89,19 +89,20 @@ export const withFieldMimeTypes = dual<
   <R, E, A>(effect: Effect.Effect<R, E, A>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<R, E, A>
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
+const fileSchema: Schema.Schema<Multipart.PersistedFile, Multipart.PersistedFile> = Schema.struct({
+  [TypeId]: Schema.uniqueSymbol(TypeId),
+  _tag: Schema.literal("PersistedFile"),
+  key: Schema.string,
+  name: Schema.string,
+  contentType: Schema.string,
+  path: Schema.string
+})
+
 /** @internal */
 export const filesSchema: Schema.Schema<
   ReadonlyArray<Multipart.PersistedFile>,
   ReadonlyArray<Multipart.PersistedFile>
-> = Schema
-  .array(
-    pipe(
-      Schema.object,
-      Schema.filter(
-        (file): file is Multipart.PersistedFile => TypeId in file && "_tag" in file && file._tag === "PersistedFile"
-      )
-    ) as any as Schema.Schema<Multipart.PersistedFile, Multipart.PersistedFile>
-  )
+> = Schema.array(fileSchema)
 
 /** @internal */
 export const schemaPersisted = <I extends Multipart.Persisted, A>(
@@ -115,35 +116,31 @@ export const schemaPersisted = <I extends Multipart.Persisted, A>(
 export const schemaJson = <I, A>(schema: Schema.Schema<I, A>): {
   (
     field: string
-  ): (persisted: Multipart.Persisted) => Effect.Effect<never, Multipart.MultipartError | ParseResult.ParseError, A>
+  ): (persisted: Multipart.Persisted) => Effect.Effect<never, ParseResult.ParseError, A>
   (
     persisted: Multipart.Persisted,
     field: string
-  ): Effect.Effect<never, Multipart.MultipartError | ParseResult.ParseError, A>
+  ): Effect.Effect<never, ParseResult.ParseError, A>
 } => {
-  const parse = Schema.parse(schema)
+  const fromJson = Schema.fromJson(schema)
   return dual<
     (
       field: string
     ) => (
       persisted: Multipart.Persisted
-    ) => Effect.Effect<never, Multipart.MultipartError | ParseResult.ParseError, A>,
+    ) => Effect.Effect<never, ParseResult.ParseError, A>,
     (
       persisted: Multipart.Persisted,
       field: string
-    ) => Effect.Effect<never, Multipart.MultipartError | ParseResult.ParseError, A>
+    ) => Effect.Effect<never, ParseResult.ParseError, A>
   >(2, (persisted, field) =>
-    pipe(
-      Effect.succeed(persisted[field]),
-      Effect.filterOrFail(
-        isField,
-        () => MultipartError("Parse", `schemaJson: was not a field`)
-      ),
-      Effect.tryMap({
-        try: (field) => JSON.parse(field.value),
-        catch: (error) => MultipartError("Parse", `schemaJson: field was not valid json: ${error}`)
-      }),
-      Effect.flatMap(parse)
+    Effect.map(
+      Schema.parse(
+        Schema.struct({
+          [field]: fromJson
+        })
+      )(persisted),
+      (_) => _[field]
     ))
 }
 

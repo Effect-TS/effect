@@ -6,6 +6,7 @@ import * as Stream_ from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
 import * as FileSystem from "../../FileSystem.js"
 import type * as Body from "../../Http/Body.js"
+import * as UrlParams from "../../Http/UrlParams.js"
 
 /** @internal */
 export const TypeId: Body.TypeId = Symbol.for(
@@ -68,13 +69,14 @@ class Uint8ArrayImpl implements Body.Uint8Array {
 export const uint8Array = (body: Uint8Array, contentType?: string): Body.Uint8Array =>
   new Uint8ArrayImpl(body, contentType ?? "application/octet-stream")
 
-/** @internal */
-export const text = (body: string, contentType?: string): Body.Uint8Array =>
-  uint8Array(new TextEncoder().encode(body), contentType ?? "text/plain")
+const encoder = new TextEncoder()
 
 /** @internal */
-export const unsafeJson = (body: unknown): Body.Uint8Array =>
-  uint8Array(new TextEncoder().encode(JSON.stringify(body)), "application/json")
+export const text = (body: string, contentType?: string): Body.Uint8Array =>
+  uint8Array(encoder.encode(body), contentType ?? "text/plain")
+
+/** @internal */
+export const unsafeJson = (body: unknown): Body.Uint8Array => text(JSON.stringify(body), "application/json")
 
 /** @internal */
 export const json = (body: unknown): Effect.Effect<never, Body.BodyError, Body.Uint8Array> =>
@@ -82,6 +84,10 @@ export const json = (body: unknown): Effect.Effect<never, Body.BodyError, Body.U
     try: () => unsafeJson(body),
     catch: (error) => BodyError({ _tag: "JsonError", error })
   })
+
+/** @internal */
+export const urlParams = (urlParams: UrlParams.UrlParams): Body.Uint8Array =>
+  text(UrlParams.toString(urlParams), "application/x-www-form-urlencoded")
 
 /** @internal */
 export const jsonSchema = <I, A>(schema: Schema.Schema<I, A>) => {

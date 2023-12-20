@@ -8,6 +8,7 @@ import type * as Effect from "effect/Effect"
 import type * as Stream_ from "effect/Stream"
 import type * as PlatformError from "../Error.js"
 import type * as FileSystem from "../FileSystem.js"
+import type * as UrlParams from "../Http/UrlParams.js"
 import * as internal from "../internal/http/body.js"
 
 /**
@@ -166,6 +167,12 @@ export const json: (body: unknown) => Effect.Effect<never, BodyError, Uint8Array
 export const jsonSchema: <I, A>(
   schema: Schema.Schema<I, A>
 ) => (body: A) => Effect.Effect<never, BodyError, Uint8Array> = internal.jsonSchema
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const urlParams: (urlParams: UrlParams.UrlParams) => Uint8Array = internal.urlParams
 
 /**
  * @since 1.0.0
