@@ -4,7 +4,6 @@ import { millis, seconds } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
-import { identity } from "effect/Function"
 import type { NativeSpan } from "effect/internal/tracer"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -12,14 +11,12 @@ import * as TestClock from "effect/TestClock"
 import type { Span } from "effect/Tracer"
 import { assert, describe } from "vitest"
 
-const currentSpan = Effect.flatMap(Effect.currentSpan, identity)
-
 describe("Tracer", () => {
   describe("withSpan", () => {
     it.effect("no parent", () =>
       Effect.gen(function*($) {
         const span = yield* $(
-          Effect.withSpan("A")(currentSpan)
+          Effect.withSpan("A")(Effect.currentSpan)
         )
 
         assert.deepEqual(span.name, "A")
@@ -30,7 +27,7 @@ describe("Tracer", () => {
       Effect.gen(function*($) {
         const span = yield* $(
           Effect.withSpan("B")(
-            Effect.withSpan("A")(currentSpan)
+            Effect.withSpan("A")(Effect.currentSpan)
           )
         )
 
@@ -41,7 +38,7 @@ describe("Tracer", () => {
     it.effect("parent when root is set", () =>
       Effect.gen(function*($) {
         const span = yield* $(
-          Effect.withSpan("B")(Effect.withSpan("A", { root: true })(currentSpan))
+          Effect.withSpan("B")(Effect.withSpan("A", { root: true })(Effect.currentSpan))
         )
 
         assert.deepEqual(span.name, "A")
@@ -59,7 +56,7 @@ describe("Tracer", () => {
               sampled: true,
               context: Context.empty()
             }
-          })(currentSpan)
+          })(Effect.currentSpan)
         )
         assert.deepEqual(span.name, "A")
         assert.deepEqual(Option.map(span.parent, (span) => span.spanId), Option.some("000"))
@@ -68,7 +65,7 @@ describe("Tracer", () => {
     it.effect("correct time", () =>
       Effect.gen(function*($) {
         const spanFiber = yield* $(
-          Effect.fork(Effect.withSpan("A")(Effect.delay(seconds(1))(currentSpan)))
+          Effect.fork(Effect.withSpan("A")(Effect.delay(seconds(1))(Effect.currentSpan)))
         )
 
         yield* $(TestClock.adjust(seconds(2)))
@@ -85,7 +82,7 @@ describe("Tracer", () => {
       Effect.gen(function*($) {
         const span = yield* $(
           Effect.annotateSpans(
-            Effect.withSpan("A")(currentSpan),
+            Effect.withSpan("A")(Effect.currentSpan),
             "key",
             "value"
           )
@@ -100,7 +97,7 @@ describe("Tracer", () => {
       Effect.gen(function*($) {
         const span = yield* $(
           Effect.annotateSpans(
-            Effect.withSpan("A")(currentSpan),
+            Effect.withSpan("A")(Effect.currentSpan),
             { key: "value", key2: "value2" }
           )
         )
@@ -115,7 +112,7 @@ describe("Tracer", () => {
 
         const [span, fiberId] = yield* $(
           Effect.log("event"),
-          Effect.zipRight(Effect.all([currentSpan, Effect.fiberId])),
+          Effect.zipRight(Effect.all([Effect.currentSpan, Effect.fiberId])),
           Effect.withSpan("A")
         )
 
@@ -132,7 +129,7 @@ describe("Tracer", () => {
         yield* $(TestClock.adjust(millis(1)))
 
         const span = yield* $(
-          Effect.withSpan("A")(currentSpan),
+          Effect.withSpan("A")(Effect.currentSpan),
           Effect.withTracerTiming(false)
         )
 
@@ -149,10 +146,7 @@ describe("Tracer", () => {
       Effect.gen(function*(_) {
         yield* _(Effect.annotateCurrentSpan("key", "value"))
         const span = yield* _(Effect.currentSpan)
-        assert.deepEqual(
-          Option.map(span, (span) => span.attributes.get("key")),
-          Option.some("value")
-        )
+        assert.deepEqual(span.attributes.get("key"), "value")
       }).pipe(
         Effect.withSpan("A")
       ))
@@ -161,8 +155,7 @@ describe("Tracer", () => {
       Effect.gen(function*(_) {
         const span = yield* _(Effect.currentSpan)
         assert.deepEqual(
-          span.pipe(
-            Option.flatMap((_) => _.parent),
+          span.parent.pipe(
             Option.map((_) => _.spanId)
           ),
           Option.some("456")
@@ -216,7 +209,6 @@ describe("Tracer", () => {
         let onEndCalled = false
         const span = yield* _(
           Effect.currentSpan,
-          Effect.flatten,
           Effect.provide(Layer.span("span", {
             onEnd: (span, _exit) =>
               Effect.sync(() => {
@@ -239,10 +231,7 @@ describe("Tracer", () => {
           Effect.linkSpans(childA)
         )
         assert.includeMembers(
-          currentSpan.pipe(
-            Option.map((span) => span.links.map((_) => _.span)),
-            Option.getOrElse(() => [])
-          ),
+          currentSpan.links.map((_) => _.span),
           [childB, childA]
         )
       }))
@@ -251,7 +240,7 @@ describe("Tracer", () => {
       Effect.gen(function*(_) {
         let onEndCalled = false
         const layer = Layer.effectDiscard(Effect.gen(function*(_) {
-          const span = yield* _(Effect.currentSpan, Effect.flatten)
+          const span = yield* _(Effect.currentSpan)
           assert.strictEqual(span.name, "span")
         })).pipe(
           Layer.withSpan("span", {
@@ -263,7 +252,7 @@ describe("Tracer", () => {
           })
         )
 
-        const span = yield* _(Effect.currentSpan, Effect.provide(layer))
+        const span = yield* _(Effect.currentSpan, Effect.provide(layer), Effect.option)
 
         assert.deepEqual(span, Option.none())
         assert.strictEqual(onEndCalled, true)

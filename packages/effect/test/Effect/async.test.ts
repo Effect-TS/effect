@@ -90,7 +90,7 @@ describe("Effect", () => {
         Effect.ensuring(Ref.update(unexpectedPlace, Chunk.prepend(2))),
         Effect.forkDaemon
       )
-      const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)))
+      const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
       const unexpected = yield* $(Ref.get(unexpectedPlace))
       assert.deepStrictEqual(unexpected, Chunk.empty())
       assert.deepStrictEqual(result, Option.none()) // the timeout should happen
@@ -118,7 +118,7 @@ describe("Effect", () => {
         Effect.uninterruptible,
         Effect.forkDaemon
       )
-      const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)))
+      const result = yield* $(Fiber.interrupt(fiber), Effect.timeout(Duration.seconds(1)), Effect.option)
       const unexpected = yield* $(Ref.get(unexpectedPlace))
       assert.deepStrictEqual(unexpected, Chunk.empty())
       assert.deepStrictEqual(result, Option.none()) // timeout should happen

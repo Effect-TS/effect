@@ -1,4 +1,5 @@
 import * as it from "effect-test/utils/extend"
+import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -203,7 +204,7 @@ describe("Stream", () => {
         ),
         Stream.withSpan("span"),
         Stream.runCollect,
-        Effect.map(ReadonlyArray.getSomes)
+        Effect.map(Chunk.toReadonlyArray)
       )
       expect(spans.length).toEqual(3)
       expect(pipe(
