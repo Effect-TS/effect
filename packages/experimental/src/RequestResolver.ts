@@ -68,6 +68,7 @@ export const dataLoader = dual<
           items.length >= options.maxBatchSize
       ),
       Effect.timeout(options.window),
+      Effect.ignore,
       Effect.zipRight(Ref.getAndSet(batch, ReadonlyArray.empty()))
     )
 
