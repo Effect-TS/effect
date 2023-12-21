@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.5.1
+
+### Patch Changes
+
+- [#37](https://github.com/Effect-TS/experimental/pull/37) [`9659fbe`](https://github.com/Effect-TS/experimental/commit/9659fbe13bec5270b0cc5e8035a89cfb17d4b6af) Thanks [@tim-smart](https://github.com/tim-smart)! - fix use of timeout
+
 ## 0.5.0
 
 ### Minor Changes
