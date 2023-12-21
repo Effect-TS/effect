@@ -1,11 +1,10 @@
-import { OtelSpan } from "@effect/opentelemetry/internal/tracer"
+import { currentOtelSpan, OtelSpan } from "@effect/opentelemetry/internal/tracer"
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as it from "@effect/opentelemetry/test/utils/extend"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
-import { identity } from "effect/Function"
 import { assert, describe, expect } from "vitest"
 
 const TracingLive = NodeSdk.layer(Effect.sync(() => ({
@@ -25,7 +24,7 @@ describe("Tracer", () => {
       Effect.provide(
         Effect.withSpan("ok")(
           Effect.gen(function*(_) {
-            const span = yield* _(Effect.flatMap(Effect.currentSpan, identity))
+            const span = yield* _(Effect.currentSpan)
             expect(span).instanceOf(OtelSpan)
           })
         ),
@@ -37,7 +36,6 @@ describe("Tracer", () => {
         const linkedSpan = yield* _(Effect.makeSpanScoped("B"))
         const span = yield* _(
           Effect.currentSpan,
-          Effect.flatten,
           Effect.withSpan("A"),
           Effect.linkSpans(linkedSpan)
         )
@@ -66,13 +64,25 @@ describe("Tracer", () => {
         Effect.withSpan("ok"),
         Effect.provide(TracingLive)
       ))
+
+    it.effect("currentOtelSpan", () =>
+      Effect.provide(
+        Effect.withSpan("ok")(
+          Effect.gen(function*(_) {
+            const span = yield* _(Effect.currentSpan)
+            const otelSpan = yield* _(currentOtelSpan)
+            expect((span as OtelSpan).span).toBe(otelSpan)
+          })
+        ),
+        TracingLive
+      ))
   })
 
   describe("not provided", () => {
     it.effect("withSpan", () =>
       Effect.withSpan("ok")(
         Effect.gen(function*(_) {
-          const span = yield* _(Effect.flatMap(Effect.currentSpan, identity))
+          const span = yield* _(Effect.currentSpan)
           expect(span).not.instanceOf(OtelSpan)
         })
       ))

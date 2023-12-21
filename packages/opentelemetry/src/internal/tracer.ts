@@ -9,8 +9,11 @@ import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
 import { Resource } from "../Resource.js"
 
+const OtelSpanTypeId = Symbol.for("@effect/opentelemetry/Tracer/OtelSpan")
+
 /** @internal */
 export class OtelSpan implements EffectTracer.Span {
+  readonly [OtelSpanTypeId]: typeof OtelSpanTypeId
   readonly _tag = "Span"
 
   readonly span: OtelApi.Span
@@ -29,6 +32,7 @@ export class OtelSpan implements EffectTracer.Span {
     readonly links: ReadonlyArray<EffectTracer.SpanLink>,
     startTime: bigint
   ) {
+    this[OtelSpanTypeId] = OtelSpanTypeId
     const active = contextApi.active()
     this.span = tracer.startSpan(
       name,
@@ -175,13 +179,14 @@ export const makeExternalSpan = (options: {
 }
 
 /** @internal */
-export const currentOtelSpan = Effect.map(
+export const currentOtelSpan = Effect.flatMap(
   Effect.currentSpan,
-  (span) =>
-    Option.map(
-      Option.filter(span, (span): span is OtelSpan => "span" in span),
-      (_) => _.span
-    )
+  (span) => {
+    if (OtelSpanTypeId in span) {
+      return Effect.succeed((span as OtelSpan).span)
+    }
+    return Effect.fail(new Cause.NoSuchElementException())
+  }
 )
 
 /** @internal */

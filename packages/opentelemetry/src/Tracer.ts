@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 import type * as Otel from "@opentelemetry/api"
+import type { NoSuchElementException } from "effect/Cause"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
-import type * as Option from "effect/Option"
 import type { ExternalSpan, Tracer as EffectTracer } from "effect/Tracer"
 import * as internal from "./internal/tracer.js"
 import type { Resource } from "./Resource.js"
@@ -33,7 +33,7 @@ export const makeExternalSpan: (
  * @since 1.0.0
  * @category accessors
  */
-export const currentOtelSpan: Effect<never, never, Option.Option<Otel.Span>> = internal.currentOtelSpan
+export const currentOtelSpan: Effect<never, NoSuchElementException, Otel.Span> = internal.currentOtelSpan
 
 /**
  * @since 1.0.0
