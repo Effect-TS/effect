@@ -423,11 +423,10 @@ const validateInternal = (
       return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.Date))
     }
     case "Float": {
-      const numberFromString = Schema.string.pipe(Schema.numberFromString)
-      return attempt(value, getTypeNameInternal(self), Schema.parse(numberFromString))
+      return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.NumberFromString))
     }
     case "Integer": {
-      const intFromString = Schema.string.pipe(Schema.numberFromString, Schema.int())
+      const intFromString = Schema.compose(Schema.NumberFromString, Schema.Int)
       return attempt(value, getTypeNameInternal(self), Schema.parse(intFromString))
     }
     case "Path": {
