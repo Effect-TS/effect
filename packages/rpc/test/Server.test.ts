@@ -38,8 +38,8 @@ const schema = RS.make({
   },
 
   encodeInput: {
-    input: S.dateFromString(S.string),
-    output: S.dateFromString(S.string)
+    input: S.DateFromString,
+    output: S.DateFromString
   },
 
   encodeDate: {

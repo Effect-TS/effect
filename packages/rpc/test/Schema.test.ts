@@ -112,7 +112,7 @@ describe("Schema", () => {
         },
 
         currentTime: {
-          output: S.dateFromString(S.string),
+          output: S.DateFromString,
           error: S.never
         }
       })

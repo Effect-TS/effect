@@ -63,7 +63,7 @@ const schema = RpcSchema.make({
   },
 
   currentTime: {
-    output: Schema.dateFromString(Schema.string)
+    output: Schema.DateFromString
   }
 })
 
