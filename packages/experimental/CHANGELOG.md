@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.5.0
+
+### Minor Changes
+
+- [#35](https://github.com/Effect-TS/experimental/pull/35) [`c9366db`](https://github.com/Effect-TS/experimental/commit/c9366db09b15b802a6272b6e81c5cfd2c7507595) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.4.0
 
 ### Minor Changes
