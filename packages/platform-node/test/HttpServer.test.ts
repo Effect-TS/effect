@@ -441,7 +441,7 @@ describe("HttpServer", () => {
         Http.router.get(
           "/",
           Effect.flatMap(
-            Effect.flatten(Effect.currentSpan),
+            Effect.currentSpan,
             (_) => Http.response.json({ spanId: _.spanId, parent: _.parent })
           )
         ),

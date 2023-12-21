@@ -4,7 +4,6 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
@@ -53,20 +52,17 @@ export const make = <R, E, A, R2, E2>(
 }
 
 const addB3Headers = (req: ClientRequest.ClientRequest) =>
-  Effect.map(
-    Effect.currentSpan,
-    Option.match({
-      onNone: () => req,
-      onSome: (span) =>
-        internalRequest.setHeader(
-          req,
-          "b3",
-          `${span.traceId}-${span.spanId}-${span.sampled ? "1" : "0"}${
-            span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
-          }`
-        )
-    })
-  )
+  Effect.match(Effect.currentSpan, {
+    onFailure: () => req,
+    onSuccess: (span) =>
+      internalRequest.setHeader(
+        req,
+        "b3",
+        `${span.traceId}-${span.spanId}-${span.sampled ? "1" : "0"}${
+          span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
+        }`
+      )
+  })
 
 /** @internal */
 export const makeDefault = (

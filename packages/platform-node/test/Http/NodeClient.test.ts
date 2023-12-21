@@ -100,7 +100,8 @@ describe("HttpClient", () => {
         Http.request.get("https://www.google.com/"),
         client,
         Effect.flatMap((_) => _.text),
-        Effect.timeout(1)
+        Effect.timeout(1),
+        Effect.optionFromOptional
       )
       expect(response._tag).toEqual("None")
     }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))

@@ -3,7 +3,6 @@ import { WorkerError } from "@effect/platform/WorkerError"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import type * as WorkerThreads from "node:worker_threads"
 
@@ -21,10 +20,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
             worker.postMessage([1])
           }),
           Effect.timeout(5000),
-          Effect.tap(Option.match({
-            onNone: () => Effect.promise(() => worker.terminate()),
-            onSome: (_) => Effect.unit
-          }))
+          Effect.orElse(() => Effect.sync(() => worker.terminate()))
         )
       ))
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())

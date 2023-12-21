@@ -3,7 +3,6 @@ import { WorkerError } from "@effect/platform/WorkerError"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 
 const platformWorkerImpl = Worker.PlatformWorker.of({
@@ -21,10 +20,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
           // TODO: make configurable
           // sometimes bun doesn't fire the close event
           Effect.timeout(1000),
-          Effect.tap(Option.match({
-            onNone: () => Effect.sync(() => port.terminate()),
-            onSome: (_) => Effect.unit
-          }))
+          Effect.orElse(() => Effect.sync(() => port.terminate()))
         )
       ))
 
