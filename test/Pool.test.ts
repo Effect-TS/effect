@@ -83,7 +83,8 @@ describe("Pool", () => {
       const result = yield* $(TestServices.provideLive(
         Effect.scoped(Pool.get(pool)).pipe(
           Effect.disconnect,
-          Effect.timeout(Duration.millis(1))
+          Effect.timeout(Duration.millis(1)),
+          Effect.option
         )
       ))
       expect(result).toEqual(Option.none())

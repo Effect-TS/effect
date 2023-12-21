@@ -399,12 +399,14 @@ export const supervised = dual<
 export const timeout = dual<
   (
     duration: Duration.DurationInput
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, duration: Duration.DurationInput) => Effect.Effect<R, E, Option.Option<A>>
+  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E | Cause.NoSuchElementException, A>,
+  <R, E, A>(
+    self: Effect.Effect<R, E, A>,
+    duration: Duration.DurationInput
+  ) => Effect.Effect<R, E | Cause.NoSuchElementException, A>
 >(2, (self, duration) =>
-  timeoutTo(self, {
-    onTimeout: Option.none,
-    onSuccess: Option.some,
+  timeoutFail(self, {
+    onTimeout: () => new core.NoSuchElementException(),
     duration
   }))
 

@@ -670,7 +670,8 @@ export const forEach: {
  * @since 2.0.0
  * @category collecting & elements
  */
-export const head: <R, E, A>(self: Effect<R, E, Iterable<A>>) => Effect<R, Option.Option<E>, A> = effect.head
+export const head: <R, E, A>(self: Effect<R, E, Iterable<A>>) => Effect<R, E | Cause.NoSuchElementException, A> =
+  effect.head
 
 /**
  * Merges an `Iterable<Effect<R, E, A>>` to a single effect, working
@@ -1403,7 +1404,9 @@ export const never: Effect<never, never, never> = core.never
  * @since 2.0.0
  * @category constructors
  */
-export const none: <R, E, A>(self: Effect<R, E, Option.Option<A>>) => Effect<R, Option.Option<E>, void> = effect.none
+export const none: <R, E, A>(
+  self: Effect<R, E, Option.Option<A>>
+) => Effect<R, E | Cause.NoSuchElementException, void> = effect.none
 
 /**
  * Like `tryPromise` but produces a defect in case of errors.
@@ -2940,8 +2943,8 @@ export const timedWith: {
  * @category delays & timeouts
  */
 export const timeout: {
-  (duration: Duration.DurationInput): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput): Effect<R, E, Option.Option<A>>
+  (duration: Duration.DurationInput): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E | Cause.NoSuchElementException, A>
+  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput): Effect<R, Cause.NoSuchElementException | E, A>
 } = circular.timeout
 
 /**
@@ -3208,8 +3211,15 @@ export const serviceMembers: <I, S>(tag: Context.Tag<I, S>) => {
  * @since 2.0.0
  * @category context
  */
-export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>> =
+export const serviceOption: <I, S>(tag: Context.Tag<I, S>) => Effect<never, never, Option.Option<S>> =
   effect.serviceOption
+
+/**
+ * @since 2.0.0
+ * @category context
+ */
+export const serviceOptional: <I, S>(tag: Context.Tag<I, S>) => Effect<never, Cause.NoSuchElementException, S> =
+  effect.serviceOptional
 
 /**
  * Updates the service with the required service entry.
@@ -5079,13 +5089,14 @@ export const annotateCurrentSpan: {
  * @since 2.0.0
  * @category tracing
  */
-export const currentSpan: Effect<never, never, Option.Option<Tracer.Span>> = effect.currentSpan
+export const currentSpan: Effect<never, Cause.NoSuchElementException, Tracer.Span> = effect.currentSpan
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const currentParentSpan: Effect<never, never, Option.Option<Tracer.ParentSpan>> = effect.currentParentSpan
+export const currentParentSpan: Effect<never, Cause.NoSuchElementException, Tracer.ParentSpan> =
+  effect.currentParentSpan
 
 /**
  * @since 2.0.0

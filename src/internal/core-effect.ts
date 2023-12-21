@@ -827,17 +827,14 @@ export const fiberRefs: Effect.Effect<never, never, FiberRefs.FiberRefs> = core.
 /* @internal */
 export const head = <R, E, A>(
   self: Effect.Effect<R, E, Iterable<A>>
-): Effect.Effect<R, Option.Option<E>, A> =>
-  core.matchEffect(self, {
-    onFailure: (e) => core.fail(Option.some(e)),
-    onSuccess: (as) => {
-      const iterator = as[Symbol.iterator]()
-      const next = iterator.next()
-      if (next.done) {
-        return core.fail(Option.none())
-      }
-      return core.succeed(next.value)
+): Effect.Effect<R, E | Cause.NoSuchElementException, A> =>
+  core.flatMap(self, (as) => {
+    const iterator = as[Symbol.iterator]()
+    const next = iterator.next()
+    if (next.done) {
+      return core.fail(new core.NoSuchElementException())
     }
+    return core.succeed(next.value)
   })
 
 /* @internal */
@@ -1109,17 +1106,14 @@ export const negate = <R, E>(self: Effect.Effect<R, E, boolean>): Effect.Effect<
 /* @internal */
 export const none = <R, E, A>(
   self: Effect.Effect<R, E, Option.Option<A>>
-): Effect.Effect<R, Option.Option<E>, void> =>
-  core.matchEffect(self, {
-    onFailure: (e) => core.fail(Option.some(e)),
-    onSuccess: (option) => {
-      switch (option._tag) {
-        case "None": {
-          return core.unit
-        }
-        case "Some": {
-          return core.fail(Option.none())
-        }
+): Effect.Effect<R, E | Cause.NoSuchElementException, void> =>
+  core.flatMap(self, (option) => {
+    switch (option._tag) {
+      case "None": {
+        return core.unit
+      }
+      case "Some": {
+        return core.fail(new core.NoSuchElementException())
       }
     }
   })
@@ -1899,6 +1893,10 @@ export const serviceMembers = <I, S>(tag: Context.Tag<I, S>): {
 /** @internal */
 export const serviceOption = <I, S>(tag: Context.Tag<I, S>) => core.map(core.context<never>(), Context.getOption(tag))
 
+/** @internal */
+export const serviceOptional = <I, S>(tag: Context.Tag<I, S>) =>
+  core.flatMap(core.context<never>(), Context.getOption(tag))
+
 // -----------------------------------------------------------------------------
 // tracing
 // -----------------------------------------------------------------------------
@@ -1909,21 +1907,19 @@ export const annotateCurrentSpan: {
   (values: Record<string, unknown>): Effect.Effect<never, never, void>
 } = function(): Effect.Effect<never, never, void> {
   const args = arguments
-  return core.flatMap(
+  return ignore(core.flatMap(
     currentSpan,
     (span) =>
-      span._tag === "Some"
-        ? core.sync(() => {
-          if (typeof args[0] === "string") {
-            span.value.attribute(args[0], args[1])
-          } else {
-            for (const key in args[0]) {
-              span.value.attribute(key, args[0][key])
-            }
+      core.sync(() => {
+        if (typeof args[0] === "string") {
+          span.attribute(args[0], args[1])
+        } else {
+          for (const key in args[0]) {
+            span.attribute(key, args[0][key])
           }
-        })
-        : core.unit
-  )
+        }
+      })
+  ))
 }
 
 /* @internal */
@@ -1957,16 +1953,18 @@ export const annotateSpans = dual<
 )
 
 /** @internal */
-export const currentParentSpan: Effect.Effect<never, never, Option.Option<Tracer.ParentSpan>> = serviceOption(
+export const currentParentSpan: Effect.Effect<never, Cause.NoSuchElementException, Tracer.ParentSpan> = serviceOptional(
   internalTracer.spanTag
 )
 
 /** @internal */
-export const currentSpan: Effect.Effect<never, never, Option.Option<Tracer.Span>> = core.map(
+export const currentSpan: Effect.Effect<never, Cause.NoSuchElementException, Tracer.Span> = core.flatMap(
   core.context<never>(),
   (context) => {
     const span = context.unsafeMap.get(internalTracer.spanTag) as Tracer.ParentSpan | undefined
-    return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
+    return span !== undefined && span._tag === "Span"
+      ? core.succeed(span)
+      : core.fail(new core.NoSuchElementException())
   }
 )
 
@@ -2015,43 +2013,47 @@ export const makeSpan = (
     readonly context?: Context.Context<never> | undefined
   }
 ) =>
-  tracerWith((tracer) =>
-    core.flatMap(
-      options?.parent
-        ? succeedSome(options.parent)
+  core.flatMap(fiberRefs, (fiberRefs) =>
+    core.sync(() => {
+      const context = FiberRefs.getOrDefault(fiberRefs, core.currentContext)
+      const services = FiberRefs.getOrDefault(fiberRefs, defaultServices.currentServices)
+
+      const tracer = Context.get(services, internalTracer.tracerTag)
+      const clock = Context.get(services, Clock.Clock)
+      const timingEnabled = FiberRefs.getOrDefault(fiberRefs, core.currentTracerTimingEnabled)
+      const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
+      const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
+
+      const parent = options?.parent
+        ? Option.some(options.parent)
         : options?.root
-        ? succeedNone
-        : currentParentSpan,
-      (parent) =>
-        core.flatMap(
-          core.fiberRefGet(core.currentTracerSpanAnnotations),
-          (annotations) =>
-            core.flatMap(
-              core.fiberRefGet(core.currentTracerSpanLinks),
-              (links) =>
-                core.flatMap(
-                  currentTimeNanosTracing,
-                  (startTime) =>
-                    core.sync(() => {
-                      const linksArray = options?.links
-                        ? [...Chunk.toReadonlyArray(links), ...options.links]
-                        : Chunk.toReadonlyArray(links)
-                      const span = tracer.span(
-                        name,
-                        parent,
-                        options?.context ?? Context.empty(),
-                        linksArray,
-                        startTime
-                      )
-                      HashMap.forEach(annotations, (value, key) => span.attribute(key, value))
-                      Object.entries(options?.attributes ?? {}).forEach(([k, v]) => span.attribute(k, v))
-                      return span
-                    })
-                )
-            )
-        )
-    )
-  )
+        ? Option.none()
+        : Context.getOption(context, internalTracer.spanTag)
+
+      const links = linksFromEnv._tag === "Some" ?
+        [
+          ...Chunk.toReadonlyArray(linksFromEnv.value),
+          ...(options?.links ?? [])
+        ] :
+        options?.links ?? []
+
+      const span = tracer.span(
+        name,
+        parent,
+        options?.context ?? Context.empty(),
+        links,
+        timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0
+      )
+
+      if (annotationsFromEnv._tag === "Some") {
+        HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
+      }
+      if (options?.attributes) {
+        Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
+      }
+
+      return span
+    }))
 
 /* @internal */
 export const spanAnnotations: Effect.Effect<never, never, HashMap.HashMap<string, unknown>> = core
