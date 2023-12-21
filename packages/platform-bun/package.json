@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-bun",
   "type": "module",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "description": "Unified interfaces for common platform-specific services",
   "publishConfig": {
     "access": "public",
