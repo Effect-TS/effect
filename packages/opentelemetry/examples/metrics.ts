@@ -1,6 +1,5 @@
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus"
-import * as Chunk from "effect/Chunk"
 import { millis, seconds } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -45,7 +44,7 @@ const summary = Metric.summary({
   maxAge: "1 days",
   maxSize: 1000,
   error: 0.01,
-  quantiles: Chunk.make(0.1, 0.5, 0.9)
+  quantiles: [0.1, 0.5, 0.9]
 })
 
 const summaryLoop = Effect.randomWith((_) => _.nextRange(100, 1000)).pipe(
@@ -56,7 +55,7 @@ const summaryLoop = Effect.randomWith((_) => _.nextRange(100, 1000)).pipe(
 
 const spawner = Effect.randomWith((_) => _.nextIntBetween(500, 1500)).pipe(
   Effect.flatMap((_) => Effect.fork(Effect.sleep(_))),
-  Effect.flatMap((_) => _.await()),
+  Effect.flatMap((_) => _.await),
   Effect.forever
 )
 
