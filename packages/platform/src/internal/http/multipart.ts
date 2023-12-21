@@ -122,7 +122,7 @@ export const schemaJson = <I, A>(schema: Schema.Schema<I, A>): {
     field: string
   ): Effect.Effect<never, ParseResult.ParseError, A>
 } => {
-  const fromJson = Schema.fromJson(schema)
+  const fromJson = Schema.parseJson(schema)
   return dual<
     (
       field: string

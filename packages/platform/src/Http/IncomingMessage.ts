@@ -108,7 +108,7 @@ export const schemaExternalSpan = flow(
         "x-b3-traceid": Schema.NonEmpty,
         "x-b3-spanid": Schema.NonEmpty,
         "x-b3-parentspanid": Schema.optional(Schema.NonEmpty),
-        "x-b3-sampled": Schema.optional(Schema.NonEmpty).withDefault(() => "1")
+        "x-b3-sampled": Schema.optional(Schema.NonEmpty, { default: () => "1" })
       }),
       SpanSchema,
       (_) => ({
