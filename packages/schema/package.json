@@ -48,7 +48,7 @@
     "coverage": "vitest run --coverage"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.61",
+    "effect": "2.0.0-next.62",
     "fast-check": "^3.13.2"
   },
   "devDependencies": {
@@ -64,12 +64,12 @@
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.1.0",
     "@types/node": "^20.10.5",
-    "@typescript-eslint/eslint-plugin": "^6.14.0",
-    "@typescript-eslint/parser": "^6.14.0",
-    "@vitest/coverage-v8": "^1.0.4",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vitest/coverage-v8": "^1.1.0",
     "ajv": "^8.12.0",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "effect": "2.0.0-next.61",
+    "effect": "2.0.0-next.62",
     "eslint": "^8.56.0",
     "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-codegen": "^0.21.0",
@@ -82,10 +82,10 @@
     "prettier": "^3.1.1",
     "rimraf": "^5.0.5",
     "tinybench": "^2.5.1",
-    "tsx": "^4.6.2",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.10",
-    "vitest": "^1.0.4",
+    "vitest": "^1.1.0",
     "zod": "^3.22.4"
   }
 }
