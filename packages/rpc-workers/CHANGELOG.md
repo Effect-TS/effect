@@ -1,5 +1,16 @@
 # @effect/rpc-workers
 
+## 0.24.0
+
+### Minor Changes
+
+- [#163](https://github.com/Effect-TS/rpc/pull/163) [`d2d851a`](https://github.com/Effect-TS/rpc/commit/d2d851a2b6f3fad5888e2a7bb16ec361af1ff3c9) Thanks [@fubhy](https://github.com/fubhy)! - Updated dependencies
+
+### Patch Changes
+
+- Updated dependencies [[`d2d851a`](https://github.com/Effect-TS/rpc/commit/d2d851a2b6f3fad5888e2a7bb16ec361af1ff3c9)]:
+  - @effect/rpc@0.24.0
+
 ## 0.23.0
 
 ### Minor Changes
