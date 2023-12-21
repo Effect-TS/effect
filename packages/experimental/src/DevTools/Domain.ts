@@ -170,7 +170,7 @@ export const metric = <Tag extends string, IS, S>(tag: Tag, state: Schema.Schema
   Schema.struct({
     _tag: Schema.literal(tag),
     name: Schema.string,
-    description: Schema.optional(Schema.string).toOption(),
+    description: Schema.optional(Schema.string, { as: "Option" }),
     tags: Schema.array(MetricLabel),
     state
   })
