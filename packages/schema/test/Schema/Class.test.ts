@@ -315,11 +315,9 @@ describe("Schema/Class", () => {
       Exit.succeed(123)
     )
   })
-})
 
-describe("classWithConstructorDefaults", () => {
-  it("required property signature", () => {
-    class Class extends S.ConstructorClass<Class>()({
+  it("with default constructor values", () => {
+    class Class extends S.Class<Class>()({
       a: S.withDefaultConstructor(S.number, () => 123),
       b: S.string
     }) {}

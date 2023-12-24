@@ -888,6 +888,7 @@ export type StructFields = Record<
   | Schema<never, never>
   | PropertySignature<any, boolean, any, boolean>
   | PropertySignature<never, boolean, never, boolean>
+  | ConstructorPropertyDescriptor<any> // TODO: variation for PropertySignature too
 >
 
 /**
@@ -4308,37 +4309,6 @@ export const Class = <Self>() =>
   : Class<
     Simplify<FromStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
-    Simplify<ToStruct<Fields>>,
-    Self
-  > => makeClass(struct(fields), fields, Data.Class)
-
-interface ConstructorPropertyDescriptor<From, To = From> extends Schema<From, To> {
-  make: () => To
-}
-
-export type StructFieldsWithConstructors = Record<
-  PropertyKey,
-  | Schema<any, any>
-  | Schema<never, never>
-  | PropertySignature<any, boolean, any, boolean>
-  | PropertySignature<never, boolean, never, boolean>
-  | ConstructorPropertyDescriptor<any> // TODO: variation for PropertySignature too
->
-
-export const withDefaultConstructor = <From, To>(
-  s: Schema<From, To>,
-  makeDefault: () => To
-): ConstructorPropertyDescriptor<From, To> => {
-  return Object.assign({}, s, { make: makeDefault })
-}
-
-export const ConstructorClass = <Self>() =>
-<Fields extends StructFieldsWithConstructors>(
-  fields: Fields
-): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
-  : Class<
-    Simplify<FromStruct<Fields>>,
-    Simplify<ToStruct<Fields>>,
     Simplify<ToStructConstructor<Fields>>,
     Self
   > =>
@@ -4357,12 +4327,23 @@ export const ConstructorClass = <Self>() =>
   } as any
 }
 
+interface ConstructorPropertyDescriptor<From, To = From> extends Schema<From, To> {
+  make: () => To
+}
+
+export const withDefaultConstructor = <From, To>(
+  s: Schema<From, To>,
+  makeDefault: () => To
+): ConstructorPropertyDescriptor<From, To> => {
+  return Object.assign({}, s, { make: makeDefault })
+}
+
 export type ToOptionalConstructorKeys<Fields> = {
   [K in keyof Fields]: Fields[K] extends ConstructorPropertyDescriptor<any, any> ? K
     : never
 }[keyof Fields]
 
-export type ToStructConstructor<Fields extends StructFieldsWithConstructors> =
+export type ToStructConstructor<Fields extends StructFields> =
   & {
     readonly [
       K in Exclude<keyof Fields, ToOptionalKeys<Fields> | ToOptionalConstructorKeys<Fields>>
