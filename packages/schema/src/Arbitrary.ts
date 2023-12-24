@@ -37,7 +37,7 @@ export type ArbitraryHookId = typeof ArbitraryHookId
 /** @internal */
 export const unsafe = <I, A>(
   schema: Schema.Schema<I, A>
-): (fc: typeof FastCheck) => FastCheck.Arbitrary<A> => go(schema.ast, {})
+): Arbitrary<A> => go(schema.ast, {})
 
 /**
  * @category arbitrary
@@ -45,7 +45,7 @@ export const unsafe = <I, A>(
  */
 export const to = <I, A>(
   schema: Schema.Schema<I, A>
-): (fc: typeof FastCheck) => FastCheck.Arbitrary<A> => go(AST.to(schema.ast), {})
+): Arbitrary<A> => go(AST.to(schema.ast), {})
 
 /**
  * @category arbitrary
@@ -53,7 +53,7 @@ export const to = <I, A>(
  */
 export const from = <I, A>(
   schema: Schema.Schema<I, A>
-): (fc: typeof FastCheck) => FastCheck.Arbitrary<I> => go(AST.from(schema.ast), {})
+): Arbitrary<I> => go(AST.from(schema.ast), {})
 
 const depthSize = 1
 
