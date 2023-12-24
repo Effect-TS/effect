@@ -4312,6 +4312,65 @@ export const Class = <Self>() =>
     Self
   > => makeClass(struct(fields), fields, Data.Class)
 
+interface ConstructorPropertyDescriptor<From, To = From> extends Schema<From, To> {
+  make: () => To
+}
+
+export type StructFieldsWithConstructors = Record<
+  PropertyKey,
+  | Schema<any, any>
+  | Schema<never, never>
+  | PropertySignature<any, boolean, any, boolean>
+  | PropertySignature<never, boolean, never, boolean>
+  | ConstructorPropertyDescriptor<any> // TODO: variation for PropertySignature too
+>
+
+export const withDefaultConstructor = <From, To>(
+  s: Schema<From, To>,
+  makeDefault: () => To
+): ConstructorPropertyDescriptor<From, To> => {
+  return Object.assign({}, s, { make: makeDefault })
+}
+
+export const ConstructorClass = <Self>() =>
+<Fields extends StructFieldsWithConstructors>(
+  fields: Fields
+): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
+  : Class<
+    Simplify<FromStruct<Fields>>,
+    Simplify<ToStruct<Fields>>,
+    Simplify<ToStructConstructor<Fields>>,
+    Self
+  > =>
+{
+  const Class = makeClass(struct(fields), fields, Data.Class)
+  return class extends Class {
+    constructor(props: any = {}, disableValidation = false) {
+      const p = { ...props }
+      Object.entries(fields).forEach(([k, v]) => {
+        if (p[k] === undefined && "make" in v) {
+          p[k] = v.make()
+        }
+      })
+      super(p, disableValidation)
+    }
+  } as any
+}
+
+export type ToOptionalConstructorKeys<Fields> = {
+  [K in keyof Fields]: Fields[K] extends ConstructorPropertyDescriptor<any, any> ? K
+    : never
+}[keyof Fields]
+
+export type ToStructConstructor<Fields extends StructFieldsWithConstructors> =
+  & {
+    readonly [
+      K in Exclude<keyof Fields, ToOptionalKeys<Fields> | ToOptionalConstructorKeys<Fields>>
+    ]: Schema.To<Fields[K]>
+  }
+  & { readonly [K in ToOptionalKeys<Fields>]?: Schema.To<Fields[K]> }
+  & { readonly [K in ToOptionalConstructorKeys<Fields>]?: Schema.To<Fields[K]> }
+
 /**
  * @category classes
  * @since 1.0.0
