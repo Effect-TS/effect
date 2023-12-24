@@ -320,11 +320,12 @@ describe("Schema/Class", () => {
 describe("classWithConstructorDefaults", () => {
   it("required property signature", () => {
     class Class extends S.ConstructorClass<Class>()({
-      a: S.withDefaultConstructor(S.number, () => 123)
+      a: S.withDefaultConstructor(S.number, () => 123),
+      b: S.string
     }) {}
-    const a = new Class({})
+    const a = new Class({ b: "hi" })
     expect(a.a).toBe(123)
-    expect(() => S.parseSync(Class)({})).toThrow(
+    expect(() => S.parseSync(Class)({ b: "hi" })).toThrow(
       new Error(`error(s) found
 └─ ["a"]
    └─ is missing`)
