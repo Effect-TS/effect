@@ -101,4 +101,22 @@ describe("Schema/attachPropertySignature", () => {
       radius: 10
     })
   })
+
+  it("annotations", async () => {
+    const schema1 = S.struct({
+      a: S.string
+    }).pipe(
+      S.attachPropertySignature("_tag", "a", { identifier: "MyIdentifier" })
+    )
+    await Util.expectEncodeFailure(schema1, null as any, "Expected MyIdentifier, actual null")
+    const schema2 = S.attachPropertySignature(
+      S.struct({
+        a: S.string
+      }),
+      "_tag",
+      "a",
+      { identifier: "MyIdentifier" }
+    )
+    await Util.expectEncodeFailure(schema2, null as any, "Expected MyIdentifier, actual null")
+  })
 })

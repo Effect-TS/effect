@@ -1481,39 +1481,47 @@ export const transformLiterals = <
 export const attachPropertySignature: {
   <K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     key: K,
-    value: V
+    value: V,
+    options?: DocAnnotations
   ): <I, A extends object>(
     schema: Schema<I, A>
   ) => Schema<I, Simplify<A & { readonly [k in K]: V }>>
   <I, A, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<I, A>,
     key: K,
-    value: V
+    value: V,
+    options?: DocAnnotations
   ): Schema<I, Simplify<A & { readonly [k in K]: V }>>
-} = dual(3, <I, A, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
-  schema: Schema<I, A>,
-  key: K,
-  value: V
-): Schema<I, Simplify<A & { readonly [k in K]: V }>> =>
-  make(AST.createTransform(
-    schema.ast,
-    extend(
+} = dual(
+  (args) => isSchema(args[0]),
+  <I, A, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
+    schema: Schema<I, A>,
+    key: K,
+    value: V,
+    options?: DocAnnotations
+  ): Schema<I, Simplify<A & { readonly [k in K]: V }>> => {
+    const attached = extend(
       to(schema),
       struct({ [key]: Predicate.isSymbol(value) ? uniqueSymbol(value) : literal(value) })
-    ).ast,
-    AST.createTypeLiteralTransformation(
-      [
-        AST.createPropertySignatureTransform(
-          key,
-          key,
-          AST.createFinalPropertySignatureTransformation(
-            () => Option.some(value),
-            () => Option.none()
+    ).ast
+    return make(AST.createTransform(
+      schema.ast,
+      options ? AST.mergeAnnotations(attached, toAnnotations(options)) : attached,
+      AST.createTypeLiteralTransformation(
+        [
+          AST.createPropertySignatureTransform(
+            key,
+            key,
+            AST.createFinalPropertySignatureTransformation(
+              () => Option.some(value),
+              () => Option.none()
+            )
           )
-        )
-      ]
-    )
-  )))
+        ]
+      )
+    ))
+  }
+)
 
 const toAnnotations = <A>(
   options?: FilterAnnotations<A>
