@@ -4331,6 +4331,10 @@ interface ConstructorPropertyDescriptor<From, To = From> extends Schema<From, To
   make: () => To
 }
 
+/**
+ * @category classes
+ * @since 1.0.0
+ */
 export const withDefaultConstructor = <From, To>(
   s: Schema<From, To>,
   makeDefault: () => To
@@ -4338,11 +4342,17 @@ export const withDefaultConstructor = <From, To>(
   return Object.assign({}, s, { make: makeDefault })
 }
 
+/**
+ * @since 1.0.0
+ */
 export type ToOptionalConstructorKeys<Fields> = {
   [K in keyof Fields]: Fields[K] extends ConstructorPropertyDescriptor<any, any> ? K
     : never
 }[keyof Fields]
 
+/**
+ * @since 1.0.0
+ */
 export type ToStructConstructor<Fields extends StructFields> =
   & {
     readonly [
