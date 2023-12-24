@@ -4327,7 +4327,9 @@ export const Class = <Self>() =>
   } as any
 }
 
-interface ConstructorPropertyDescriptor<From, To = From> extends Schema<From, To> {
+interface ConstructorPropertyDescriptor<From, To = From>
+  extends Schema.Variance<From, To>, Pipeable
+{
   make: () => To
 }
 
@@ -4337,9 +4339,9 @@ interface ConstructorPropertyDescriptor<From, To = From> extends Schema<From, To
  */
 export const withDefaultConstructor = <From, To>(
   s: Schema<From, To>,
-  makeDefault: () => To
+  make: () => To
 ): ConstructorPropertyDescriptor<From, To> => {
-  return Object.assign({}, s, { make: makeDefault })
+  return Object.assign({}, s, { make })
 }
 
 /**
