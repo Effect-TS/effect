@@ -62,7 +62,10 @@ export const make = (
                 })
             )
           ),
-          Effect.flatMap((socket) => Queue.offer(queue, socket)),
+          Effect.flatMap((socket) => {
+            ;(socket as any).source = conn
+            return Queue.offer(queue, socket)
+          }),
           Effect.runFork
         )
       })
@@ -155,7 +158,10 @@ export const makeWebSocket = (
                 })
             )
           ),
-          Effect.flatMap((socket) => Queue.offer(queue, socket)),
+          Effect.flatMap((socket) => {
+            ;(socket as any).source = conn
+            return Queue.offer(queue, socket)
+          }),
           Effect.runFork
         )
       })

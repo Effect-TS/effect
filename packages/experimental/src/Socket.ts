@@ -43,6 +43,7 @@ export interface Socket {
   readonly run: Effect.Effect<never, SocketError, void>
   readonly writer: Effect.Effect<Scope.Scope, never, (chunk: Uint8Array) => Effect.Effect<never, never, void>>
   readonly messages: Queue.Dequeue<Uint8Array>
+  readonly source?: unknown
 }
 
 /**
