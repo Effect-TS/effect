@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.56.1
+
+### Patch Changes
+
+- [#684](https://github.com/Effect-TS/schema/pull/684) [`6b9585b`](https://github.com/Effect-TS/schema/commit/6b9585b8aba659c5e86f2f8ebc01b1bf8d26143b) Thanks [@patroza](https://github.com/patroza)! - improve: Actually use Arbitrary interface in to/from/unsafe signature
+
+- [#679](https://github.com/Effect-TS/schema/pull/679) [`0f8a8f1`](https://github.com/Effect-TS/schema/commit/0f8a8f14e21a72b503ee3304a30aa4b6c2d6e1ff) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add annotations argument to `attachPropertySignature`
+
 ## 0.56.0
 
 ### Minor Changes
