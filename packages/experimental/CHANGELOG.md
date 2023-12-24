@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.5.2
+
+### Patch Changes
+
+- [#40](https://github.com/Effect-TS/experimental/pull/40) [`04b8b17`](https://github.com/Effect-TS/experimental/commit/04b8b17715ae35ef774109be0f2b86f9d6390792) Thanks [@tim-smart](https://github.com/tim-smart)! - add source to SocketServer sockets
+
 ## 0.5.1
 
 ### Patch Changes
