@@ -4327,7 +4327,10 @@ export const Class = <Self>() =>
   } as any
 }
 
-interface ConstructorPropertyDescriptor<From, To = From>
+/**
+ * @since 1.0.0
+ */
+export interface ConstructorPropertyDescriptor<From, To = From>
   extends Schema.Variance<From, To>, Pipeable
 {
   make: () => To
