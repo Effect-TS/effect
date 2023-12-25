@@ -4236,13 +4236,19 @@ export const data = <
 type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
   `Missing \`Self\` generic - use \`class Self extends ${Usage}<Self>()(${Params}{ ... })\``
 
+type _OptionalKeys<O> = {
+  [K in keyof O]-?: {} extends Pick<O, K> ? K
+    : never
+}[keyof O]
+type FilterOptionalKeys<A> = Omit<A, _OptionalKeys<A>>
+
 /**
  * @category classes
  * @since 1.0.0
  */
 export interface Class<I, A, C, Self, Inherited = Data.Case> extends Schema<I, Self> {
   new(
-    props: Equals<C, {}> extends true ? void | {} : C,
+    props: Equals<FilterOptionalKeys<C>, {}> extends true ? void | {} : C,
     disableValidation?: boolean
   ): A & Omit<Inherited, keyof A>
 
