@@ -4385,12 +4385,23 @@ export const TaggedClass = <Self>() =>
   : Class<
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
-    Simplify<ToStruct<Fields>>,
+    Simplify<ToStructConstructor<Fields>>,
     Self
   > =>
 {
   const fieldsWithTag = { ...fields, _tag: literal(tag) }
-  return makeClass(struct(fieldsWithTag), fieldsWithTag, Data.Class, { _tag: tag })
+  const Class = makeClass(struct(fieldsWithTag), fieldsWithTag, Data.Class, { _tag: tag })
+  return class extends Class {
+    constructor(props: any = {}, disableValidation = false) {
+      const p = { ...props }
+      Object.entries(fields).forEach(([k, v]) => {
+        if (p[k] === undefined && "make" in v) {
+          p[k] = v.make()
+        }
+      })
+      super(p, disableValidation)
+    }
+  } as any
 }
 
 /**
@@ -4405,18 +4416,29 @@ export const TaggedError = <Self>() =>
   : Class<
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
-    Simplify<ToStruct<Fields>>,
+    Simplify<ToStructConstructor<Fields>>,
     Self,
     Effect.Effect<never, Self, never> & globalThis.Error
   > =>
 {
   const fieldsWithTag = { ...fields, _tag: literal(tag) }
-  return makeClass(
+  const Class = makeClass(
     struct(fieldsWithTag),
     fieldsWithTag,
     Data.Error,
     { _tag: tag }
   )
+  return class extends Class {
+    constructor(props: any = {}, disableValidation = false) {
+      const p = { ...props }
+      Object.entries(fields).forEach(([k, v]) => {
+        if (p[k] === undefined && "make" in v) {
+          p[k] = v.make()
+        }
+      })
+      super(p, disableValidation)
+    }
+  } as any
 }
 
 /**
@@ -4459,7 +4481,7 @@ export const TaggedRequest =
     : Class<
       Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
       Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
-      Simplify<ToStruct<Fields>>,
+      Simplify<ToStructConstructor<Fields>>,
       Self,
       TaggedRequest<
         Tag,
@@ -4481,12 +4503,23 @@ export const TaggedRequest =
       }
     }
     const fieldsWithTag = { ...fields, _tag: literal(tag) }
-    return makeClass(
+    const Class = makeClass(
       struct(fieldsWithTag),
       fieldsWithTag,
       SerializableRequest,
       { _tag: tag }
     )
+    return class extends Class {
+      constructor(props: any = {}, disableValidation = false) {
+        const p = { ...props }
+        Object.entries(fields).forEach(([k, v]) => {
+          if (p[k] === undefined && "make" in v) {
+            p[k] = v.make()
+          }
+        })
+        super(p, disableValidation)
+      }
+    } as any
   }
 
 const makeClass = <I, A>(
