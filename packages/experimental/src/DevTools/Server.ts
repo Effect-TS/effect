@@ -15,8 +15,9 @@ import * as Domain from "./Domain.js"
  * @category models
  */
 export interface ServerImpl {
-  readonly run: Effect.Effect<never, SocketServer.SocketServerError, never>
-  readonly clients: Queue.Dequeue<Client>
+  readonly run: <R, E, _>(
+    handle: (client: Client) => Effect.Effect<R, E, _>
+  ) => Effect.Effect<R, SocketServer.SocketServerError | E, never>
 }
 
 /**
@@ -48,55 +49,43 @@ export const Server = Context.Tag<Server, ServerImpl>("@effect/experimental/DevT
  */
 export const make = Effect.gen(function*(_) {
   const server = yield* _(SocketServer.SocketServer)
-  const clients = yield* _(Effect.acquireRelease(
-    Queue.unbounded<Client>(),
-    Queue.shutdown
-  ))
 
-  const handle = (socket: Socket.Socket) =>
-    Effect.gen(function*(_) {
-      const responses = yield* _(Queue.unbounded<Domain.Response>())
-      const requests = yield* _(Queue.unbounded<Domain.Request.WithoutPing>())
+  const run = <R, E, _>(handle: (client: Client) => Effect.Effect<R, E, _>) =>
+    server.run((socket) =>
+      Effect.gen(function*(_) {
+        const responses = yield* _(Queue.unbounded<Domain.Response>())
+        const requests = yield* _(Queue.unbounded<Domain.Request.WithoutPing>())
 
-      const client: Client = {
-        queue: requests,
-        request: (res) => responses.offer(res)
-      }
+        const client: Client = {
+          queue: requests,
+          request: (res) => responses.offer(res)
+        }
 
-      yield* _(clients.offer(client))
+        yield* _(
+          Stream.fromQueue(responses),
+          Stream.pipeThroughChannel(
+            MsgPack.duplexSchema(Socket.toChannel(socket), {
+              inputSchema: Domain.Response,
+              outputSchema: Domain.Request
+            })
+          ),
+          Stream.runForEach((req) =>
+            req._tag === "Ping"
+              ? responses.offer({ _tag: "Pong" })
+              : requests.offer(req)
+          ),
+          Effect.ensuring(Effect.all([
+            requests.shutdown,
+            responses.shutdown
+          ])),
+          Effect.fork
+        )
 
-      yield* _(
-        Stream.fromQueue(responses),
-        Stream.pipeThroughChannel(
-          MsgPack.duplexSchema(Socket.toChannel(socket), {
-            inputSchema: Domain.Response,
-            outputSchema: Domain.Request
-          })
-        ),
-        Stream.runForEach((req) =>
-          req._tag === "Ping"
-            ? responses.offer({ _tag: "Pong" })
-            : requests.offer(req)
-        ),
-        Effect.ensuring(Effect.all([
-          requests.shutdown,
-          responses.shutdown
-        ]))
-      )
-    }).pipe(
-      Effect.catchAllCause(Effect.log),
-      Effect.fork
+        return yield* _(handle(client))
+      })
     )
 
-  yield* _(
-    server.sockets.take,
-    Effect.flatMap(handle),
-    Effect.forever,
-    Effect.forkScoped
-  )
-
   return {
-    run: server.run,
-    clients
+    run
   } satisfies ServerImpl
 })

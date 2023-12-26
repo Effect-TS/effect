@@ -4,7 +4,6 @@
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
-import type * as Queue from "effect/Queue"
 import type * as Socket from "./Socket.js"
 
 /**
@@ -34,8 +33,9 @@ export const SocketServer: Context.Tag<SocketServer, SocketServer> = Context.Tag
 export interface SocketServer {
   readonly [SocketServerTypeId]: SocketServerTypeId
   readonly address: Effect.Effect<never, never, Address>
-  readonly run: Effect.Effect<never, SocketServerError, never>
-  readonly sockets: Queue.Dequeue<Socket.Socket>
+  readonly run: <R, E, _>(
+    handler: (socket: Socket.Socket) => Effect.Effect<R, E, _>
+  ) => Effect.Effect<R, SocketServerError, never>
 }
 
 /**
