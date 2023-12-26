@@ -1,6 +1,6 @@
 {
   "name": "@effect/experimental",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "publishConfig": {
     "access": "public",
     "directory": "dist"

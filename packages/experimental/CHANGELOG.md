@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.5.3
+
+### Patch Changes
+
+- [#42](https://github.com/Effect-TS/experimental/pull/42) [`fcf22ce`](https://github.com/Effect-TS/experimental/commit/fcf22ce465439ee276fea654cb4e4b97393df6c6) Thanks [@tim-smart](https://github.com/tim-smart)! - switch to handler api for socket and socket server
+
 ## 0.5.2
 
 ### Patch Changes
