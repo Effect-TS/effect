@@ -888,15 +888,22 @@ export type StructFields = Record<
   | Schema<never, never>
   | PropertySignature<any, boolean, any, boolean>
   | PropertySignature<never, boolean, never, boolean>
-  | ConstructorPropertyDescriptor<any> // TODO: variation for PropertySignature too
+  | ConstructorPropertyDescriptor<any, any> // TODO: variation for PropertySignature too
+  | MapFromPropertyDescriptor<any, any, any>
 >
+
+type GetKey<K extends keyof T, T extends StructFields> = T[K] extends
+  MapFromPropertyDescriptor<any, any, any> ? T[K]["mapFrom"] : K
 
 /**
  * @since 1.0.0
  */
 export type FromStruct<Fields extends StructFields> =
-  & { readonly [K in Exclude<keyof Fields, FromOptionalKeys<Fields>>]: Schema.From<Fields[K]> }
-  & { readonly [K in FromOptionalKeys<Fields>]?: Schema.From<Fields[K]> }
+  & {
+    readonly [K in Exclude<keyof Fields, FromOptionalKeys<Fields>> as GetKey<K, Fields>]:
+      Schema.From<Fields[K]>
+  }
+  & { readonly [K in FromOptionalKeys<Fields> as GetKey<K, Fields>]?: Schema.From<Fields[K]> }
 
 /**
  * @since 1.0.0
@@ -917,9 +924,23 @@ export const struct = <Fields extends StructFields>(
   const pssFrom: Array<AST.PropertySignature> = []
   const pssTo: Array<AST.PropertySignature> = []
   const psTransformations: Array<AST.PropertySignatureTransform> = []
+  const map: Record<PropertyKey, PropertyKey> = {}
+  const map2: Record<PropertyKey, PropertyKey> = {}
   for (let i = 0; i < ownKeys.length; i++) {
     const key = ownKeys[i]
     const field = fields[key] as any
+    if (field.mapFrom) {
+      map[field.mapFrom] = key
+      map2[key] = field.mapFrom
+    }
+  }
+  const ren = Object.keys(map).length
+    ? <S extends Schema<any, any>>(s: S) => make(AST.rename(s.ast, map)) as S
+    : identity
+
+  for (let i = 0; i < ownKeys.length; i++) {
+    const key = map2[ownKeys[i]] ?? ownKeys[i]
+    const field = fields[ownKeys[i]] as any
     if ("propertySignatureAST" in field) {
       const psAst: PropertySignatureAST = field.propertySignatureAST
       const from = psAst.from
@@ -951,7 +972,7 @@ export const struct = <Fields extends StructFields>(
     }
   }
   if (ReadonlyArray.isNonEmptyReadonlyArray(psTransformations)) {
-    return make(
+    return ren(make(
       AST.createTransform(
         AST.createTypeLiteral(pssFrom, []),
         AST.createTypeLiteral(pssTo, []),
@@ -959,9 +980,9 @@ export const struct = <Fields extends StructFields>(
           psTransformations
         )
       )
-    )
+    ))
   }
-  return make(AST.createTypeLiteral(pss, []))
+  return ren(make(AST.createTypeLiteral(pss, [])))
 }
 
 /**
@@ -4336,10 +4357,19 @@ export const Class = <Self>() =>
 /**
  * @since 1.0.0
  */
-export interface ConstructorPropertyDescriptor<From, To = From>
+export interface ConstructorPropertyDescriptor<From, To>
   extends Schema.Variance<From, To>, Pipeable
 {
   make: () => To
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface MapFromPropertyDescriptor<From, To, FromKey extends PropertyKey = never>
+  extends Schema.Variance<From, To>, Pipeable
+{
+  mapFrom: FromKey
 }
 
 /**
@@ -4351,6 +4381,17 @@ export const withDefaultConstructor = <From, To>(
   make: () => To
 ): ConstructorPropertyDescriptor<From, To> => {
   return Object.assign({}, s, { make })
+}
+
+/**
+ * @category classes
+ * @since 1.0.0
+ */
+export const mapFrom = <S extends Schema<any, any>, FromKey extends PropertyKey>(
+  s: S,
+  from: FromKey
+): S & MapFromPropertyDescriptor<Schema.From<S>, Schema.To<S>, FromKey> => {
+  return Object.assign({}, s, { mapFrom: from })
 }
 
 /**
