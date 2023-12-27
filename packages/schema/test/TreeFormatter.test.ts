@@ -57,23 +57,28 @@ describe("formatErrors", () => {
     await Util.expectParseFailure(
       schema,
       { a: { b: { c: [{ d: null }] } } },
-      `["a"]["b"]["c"][0]["d"]
-└─ Expected string, actual null`
-    )
-    await Util.expectParseFailure(
-      schema,
-      { a: { b: { c: [{ d: null }, { d: 1 }] } } },
-      `["a"]["b"]["c"][0]["d"]
-└─ Expected string, actual null`
+      `["a"]["b"]["c"]
+└─ Tuple or array: <anonymous tuple or array schema>
+   └─ [0]["d"]
+      └─ Expected string, actual null`
     )
     await Util.expectParseFailure(
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
       `["a"]["b"]["c"]
-├─ [0]["d"]
-│  └─ Expected string, actual null
-└─ [1]["d"]
-   └─ Expected string, actual 1`,
+└─ Tuple or array: <anonymous tuple or array schema>
+   └─ [0]["d"]
+      └─ Expected string, actual null`
+    )
+    await Util.expectParseFailure(
+      schema,
+      { a: { b: { c: [{ d: null }, { d: 1 }] } } },
+      `["a"]["b"]["c"]
+└─ Tuple or array: <anonymous tuple or array schema>
+   ├─ [0]["d"]
+   │  └─ Expected string, actual null
+   └─ [1]["d"]
+      └─ Expected string, actual 1`,
       Util.allErrors
     )
     await Util.expectParseFailure(

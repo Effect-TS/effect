@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/pick", () => {
+describe("Schema > pick", () => {
   it("struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const schema = S.struct({ [a]: S.string, b: S.NumberFromString, c: S.boolean }).pipe(
@@ -73,8 +73,10 @@ describe("Schema/pick", () => {
     await Util.expectParseFailure(
       schema,
       { as: [{ as: [] }] },
-      `["as"][0]["a"]
-└─ is missing`
+      `["as"]
+└─ Tuple or array: <anonymous tuple or array schema>
+   └─ [0]["a"]
+      └─ is missing`
     )
   })
 

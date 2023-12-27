@@ -28,8 +28,9 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.tuple(S.string),
       ["a"],
-      `[0]
-└─ is forbidden`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [0]
+   └─ is forbidden`
     )
   })
 
@@ -37,8 +38,9 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.array(S.string),
       ["a"],
-      `[0]
-└─ is forbidden`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [0]
+   └─ is forbidden`
     )
   })
 

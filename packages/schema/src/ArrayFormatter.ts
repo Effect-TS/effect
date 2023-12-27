@@ -23,8 +23,6 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
       return [{ _tag, path, message: getMessage(self) }]
     case "Key":
       return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.key]))
-    case "Index":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.index]))
     case "Missing":
       return [{ _tag, path, message: "Missing key or index" }]
     case "Forbidden":
@@ -46,6 +44,11 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
             return ReadonlyArray.flatMap(e.errors, (e) => format(e, path))
         }
       })
+    case "Tuple":
+      return ReadonlyArray.flatMap(
+        self.errors,
+        (index) => ReadonlyArray.flatMap(index.errors, (e) => format(e, [...path, index.index]))
+      )
   }
 }
 

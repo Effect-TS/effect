@@ -15,24 +15,26 @@ describe("Duration", () => {
     await Util.expectParseFailure(
       schema,
       [-500, 0],
-      `[0]
-└─ Expected seconds, actual -500`
+      `Tuple or array: a high resolution time ([seconds: number, nanos: number])
+└─ [0]
+   └─ Expected seconds, actual -500`
     )
     await Util.expectParseFailure(
       schema,
       [0, -123],
-      `[1]
-└─ Expected nanos, actual -123`
+      `Tuple or array: a high resolution time ([seconds: number, nanos: number])
+└─ [1]
+   └─ Expected nanos, actual -123`
     )
     await Util.expectParseFailure(
       schema,
       123,
-      "Expected a high resolution time tuple, actual 123"
+      "Expected a high resolution time ([seconds: number, nanos: number]), actual 123"
     )
     await Util.expectParseFailure(
       schema,
       123n,
-      "Expected a high resolution time tuple, actual 123n"
+      "Expected a high resolution time ([seconds: number, nanos: number]), actual 123n"
     )
   })
 

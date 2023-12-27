@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/suspend", () => {
+describe("Schema > suspend", () => {
   describe("decoding", () => {
     it("baseline", async () => {
       interface A {
@@ -31,8 +31,12 @@ describe("Schema/suspend", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
-        `["as"][0]["as"][0]
-└─ Expected <anonymous type literal or record schema>, actual 1`
+        `["as"]
+└─ Tuple or array: <anonymous tuple or array schema>
+   └─ [0]["as"]
+      └─ Tuple or array: <anonymous tuple or array schema>
+         └─ [0]
+            └─ Expected <anonymous type literal or record schema>, actual 1`
       )
     })
 

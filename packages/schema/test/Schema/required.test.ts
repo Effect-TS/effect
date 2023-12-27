@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 const NumberFromString = S.NumberFromString
 
-describe("Schema/required", () => {
+describe("Schema > required", () => {
   it("string", () => {
     expect(S.required(S.string).ast).toEqual(S.string.ast)
   })
@@ -39,8 +39,9 @@ describe("Schema/required", () => {
     await Util.expectParseFailure(
       schema,
       [],
-      `[0]
-└─ is missing`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [0]
+   └─ is missing`
     )
   })
 
@@ -51,8 +52,9 @@ describe("Schema/required", () => {
     await Util.expectParseFailure(
       schema,
       ["0"],
-      `[1]
-└─ is missing`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [1]
+   └─ is missing`
     )
   })
 
@@ -70,14 +72,16 @@ describe("Schema/required", () => {
     await Util.expectParseFailure(
       schema,
       [],
-      `[0]
-└─ is missing`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [0]
+   └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       [""],
-      `[1]
-└─ is missing`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [1]
+   └─ is missing`
     )
   })
 
@@ -96,30 +100,34 @@ describe("Schema/required", () => {
     await Util.expectParseFailure(
       schema,
       [],
-      `[0]
-└─ is missing`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [0]
+   └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       [""],
-      `[1]
-└─ is missing`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [1]
+   └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       ["", true],
-      `[2]
-└─ is missing`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [2]
+   └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       ["", 0, "a"],
-      `[2]
-└─ Union (2 members): number or boolean
-   ├─ Union member: number
-   │  └─ Expected number, actual "a"
-   └─ Union member: boolean
-      └─ Expected boolean, actual "a"`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [2]
+   └─ Union (2 members): number or boolean
+      ├─ Union member: number
+      │  └─ Expected number, actual "a"
+      └─ Union member: boolean
+         └─ Expected boolean, actual "a"`
     )
   })
 

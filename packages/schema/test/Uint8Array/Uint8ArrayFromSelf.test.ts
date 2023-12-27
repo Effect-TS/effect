@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Uint8Array/Uint8ArrayFromSelf", () => {
+describe("Uint8Array > Uint8ArrayFromSelf", () => {
   it("property tests", () => {
     Util.roundtrip(S.Uint8ArrayFromSelf)
   })

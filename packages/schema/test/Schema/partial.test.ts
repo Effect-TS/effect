@@ -35,12 +35,13 @@ describe("Schema > partial", () => {
     await Util.expectParseFailure(
       schema,
       ["a"],
-      `[0]
-└─ Union (2 members): number or undefined
-   ├─ Union member: number
-   │  └─ Expected number, actual "a"
-   └─ Union member: undefined
-      └─ Expected undefined, actual "a"`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [0]
+   └─ Union (2 members): number or undefined
+      ├─ Union member: number
+      │  └─ Expected number, actual "a"
+      └─ Union member: undefined
+         └─ Expected undefined, actual "a"`
     )
   })
 
@@ -56,12 +57,13 @@ describe("Schema > partial", () => {
       ["a"],
       `Union (2 members): <anonymous tuple or array schema> or string
 ├─ Union member: <anonymous tuple or array schema>
-│  └─ [0]
-│     └─ Union (2 members): number or undefined
-│        ├─ Union member: number
-│        │  └─ Expected number, actual "a"
-│        └─ Union member: undefined
-│           └─ Expected undefined, actual "a"
+│  └─ Tuple or array: <anonymous tuple or array schema>
+│     └─ [0]
+│        └─ Union (2 members): number or undefined
+│           ├─ Union member: number
+│           │  └─ Expected number, actual "a"
+│           └─ Union member: undefined
+│              └─ Expected undefined, actual "a"
 └─ Union member: string
    └─ Expected string, actual ["a"]`
     )
@@ -73,7 +75,7 @@ describe("Schema > partial", () => {
     await Util.expectParseSuccess(schema, [], [])
   })
 
-  it("tuple/ e + r", async () => {
+  it("tuple/ e r", async () => {
     const schema = S.partial(S.tuple(NumberFromString).pipe(S.rest(NumberFromString)))
     await Util.expectParseSuccess(schema, ["1"], [1])
     await Util.expectParseSuccess(schema, [], [])

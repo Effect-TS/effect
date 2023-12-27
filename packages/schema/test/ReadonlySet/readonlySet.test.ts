@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("ReadonlySet/readonlySet", () => {
+describe("ReadonlySet > readonlySet", () => {
   it("property tests", () => {
     Util.roundtrip(S.readonlySet(S.number))
   })
@@ -20,8 +20,9 @@ describe("ReadonlySet/readonlySet", () => {
     await Util.expectParseFailure(
       schema,
       [1, "a"],
-      `[1]
-└─ Expected number, actual "a"`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [1]
+   └─ Expected number, actual "a"`
     )
   })
 

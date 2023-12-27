@@ -3045,8 +3045,7 @@ const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
     finite()
   )
 ).pipe(annotations({
-  [AST.TitleAnnotationId]: "a high resolution time tuple",
-  [AST.DescriptionAnnotationId]: "a high resolution time tuple"
+  [AST.DescriptionAnnotationId]: "a high resolution time ([seconds: number, nanos: number])"
 }))
 
 const _Duration: Schema<readonly [seconds: number, nanos: number], Duration.Duration> = transform(
@@ -3229,7 +3228,7 @@ const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = transform(
       title: "8-bit unsigned integer",
       description: "a 8-bit unsigned integer"
     })
-  )),
+  )).pipe(description("an array of 8-bit unsigned integers")),
   Uint8ArrayFromSelf,
   (a) => Uint8Array.from(a),
   (arr) => Array.from(arr)

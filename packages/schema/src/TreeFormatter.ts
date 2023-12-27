@@ -140,8 +140,11 @@ export const formatExpected = (ast: AST.AST): string => {
   }
 }
 
+const uncollapsible = { Union: true, Tuple: true }
+
 const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseIssue>): boolean =>
-  es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "Union"
+  es.length === 1 && es[0].forest.length !== 0 &&
+  !(errors[0]._tag in uncollapsible)
 
 /** @internal */
 export const getMessage = (e: Type) =>
@@ -159,13 +162,6 @@ const go = (e: ParseIssue): Tree<string> => {
       return make(getMessage(e))
     case "Forbidden":
       return make("is forbidden")
-    case "Index": {
-      const es = e.errors.map(go)
-      if (isCollapsible(es, e.errors)) {
-        return make(`[${e.index}]${es[0].value}`, es[0].forest)
-      }
-      return make(`[${e.index}]`, es)
-    }
     case "Unexpected":
       return make(
         "is unexpected" + (Option.isSome(e.ast) ? `, expected ${formatExpected(e.ast.value)}` : "")
@@ -190,6 +186,17 @@ const go = (e: ParseIssue): Tree<string> => {
             case "Member":
               return make(`Union member: ${formatExpected(e.ast)}`, e.errors.map(go))
           }
+        })
+      )
+    case "Tuple":
+      return make(
+        `Tuple or array: ` + formatExpected(e.ast),
+        e.errors.map((e) => {
+          const es = e.errors.map(go)
+          if (isCollapsible(es, e.errors)) {
+            return make(`[${e.index}]${es[0].value}`, es[0].forest)
+          }
+          return make(`[${e.index}]`, es)
         })
       )
   }

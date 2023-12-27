@@ -56,7 +56,7 @@ export const parseError = (
  */
 export type ParseIssue =
   // context
-  | Index
+  | Tuple
   | Key
   | Union
   // primitives
@@ -110,6 +110,25 @@ export interface Forbidden {
 export const forbidden: Forbidden = {
   _tag: "Forbidden"
 }
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface Tuple {
+  readonly _tag: "Tuple"
+  readonly ast: AST.Tuple
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const tuple = (
+  ast: AST.Tuple,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
+): Tuple => ({ _tag: "Tuple", ast, errors })
 
 /**
  * The `Index` decode error indicates that there was an error at a specific index in an array or tuple.

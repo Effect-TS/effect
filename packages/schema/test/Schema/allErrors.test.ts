@@ -10,7 +10,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           [true],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [1]
 │  └─ is missing
 └─ [0]
@@ -24,7 +24,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           [],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
 │  └─ is missing
 └─ [1]
@@ -38,7 +38,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           ["a", "b"],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
 │  └─ is unexpected
 └─ [1]
@@ -52,7 +52,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           [1, "b"],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
 │  └─ Expected string, actual 1
 └─ [1]
@@ -66,7 +66,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           ["a", "b", "c"],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [1]
 │  └─ Expected number, actual "b"
 └─ [2]
@@ -80,7 +80,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           ["a", "b"],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
 │  └─ Expected number, actual "a"
 └─ [1]
@@ -172,7 +172,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           [1, 1] as any,
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
 │  └─ is unexpected
 └─ [1]
@@ -186,7 +186,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
 │  └─ Expected a character, actual "10"
 └─ [1]
@@ -200,7 +200,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
 │  └─ Expected a character, actual "10"
 └─ [1]
@@ -217,7 +217,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
-          `error(s) found
+          `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
 │  └─ Expected a character, actual "10"
 └─ [1]

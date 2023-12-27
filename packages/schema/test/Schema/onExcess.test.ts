@@ -2,20 +2,22 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/onExcess", () => {
+describe("Schema > onExcess", () => {
   it("ignore should not change tuple behaviour", async () => {
     const schema = S.tuple(S.number)
     await Util.expectParseFailure(
       schema,
       [1, "b"],
-      `[1]
-└─ is unexpected`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [1]
+   └─ is unexpected`
     )
     await Util.expectEncodeFailure(
       schema,
       [1, "b"] as any,
-      `[1]
-└─ is unexpected`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [1]
+   └─ is unexpected`
     )
   })
 
@@ -66,22 +68,26 @@ describe("Schema/onExcess", () => {
         [1, "b", true],
         `Union (2 members): <anonymous tuple or array schema>
 ├─ Union member: <anonymous tuple or array schema>
-│  └─ [2]
-│     └─ is unexpected
+│  └─ Tuple or array: <anonymous tuple or array schema>
+│     └─ [2]
+│        └─ is unexpected
 └─ Union member: <anonymous tuple or array schema>
-   └─ [1]
-      └─ is unexpected`
+   └─ Tuple or array: <anonymous tuple or array schema>
+      └─ [1]
+         └─ is unexpected`
       )
       await Util.expectParseFailure(
         schema,
         [1, "b", true],
         `Union (2 members): <anonymous tuple or array schema>
 ├─ Union member: <anonymous tuple or array schema>
-│  └─ [2]
-│     └─ is unexpected
+│  └─ Tuple or array: <anonymous tuple or array schema>
+│     └─ [2]
+│        └─ is unexpected
 └─ Union member: <anonymous tuple or array schema>
-   └─ [1]
-      └─ is unexpected`,
+   └─ Tuple or array: <anonymous tuple or array schema>
+      └─ [1]
+         └─ is unexpected`,
         Util.onExcessPropertyError
       )
       await Util.expectEncodeSuccess(

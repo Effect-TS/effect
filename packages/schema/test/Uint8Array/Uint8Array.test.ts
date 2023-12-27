@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Uint8Array/Uint8Array", () => {
+describe("Uint8Array > Uint8Array", () => {
   const schema = S.Uint8Array
 
   it("property tests", () => {
@@ -18,8 +18,9 @@ describe("Uint8Array/Uint8Array", () => {
     await Util.expectParseFailure(
       schema,
       [12354],
-      `[0]
-└─ Expected 8-bit unsigned integer, actual 12354`
+      `Tuple or array: an array of 8-bit unsigned integers
+└─ [0]
+   └─ Expected 8-bit unsigned integer, actual 12354`
     )
   })
 

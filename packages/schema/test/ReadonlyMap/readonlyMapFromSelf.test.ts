@@ -4,7 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("ReadonlyMap/readonlyMapFromSelf", () => {
+describe("ReadonlyMap > readonlyMapFromSelf", () => {
   it("property tests", () => {
     Util.roundtrip(S.readonlyMapFromSelf(S.number, S.string))
   })
@@ -26,8 +26,11 @@ describe("ReadonlyMap/readonlyMapFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
-      `[1][0]
-└─ Expected a string <-> number transformation, actual "a"`
+      `Tuple or array: <anonymous tuple or array schema>
+└─ [1]
+   └─ Tuple or array: <anonymous tuple or array schema>
+      └─ [0]
+         └─ Expected a string <-> number transformation, actual "a"`
     )
   })
 
