@@ -43,7 +43,7 @@
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
@@ -51,7 +51,7 @@
     "@types/mime": "^3.0.4",
     "@types/node": "^20.10.5",
     "@types/tar": "^6.1.10",
-    "effect": "workspace:*",
+    "effect": "workspace:^",
     "tar": "^6.2.0"
   },
   "effect": {

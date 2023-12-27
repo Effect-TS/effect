@@ -40,12 +40,12 @@
   },
   "peerDependencies": {
     "@effect/schema": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/schema": "workspace:^",
     "@types/path-browserify": "^1.0.2",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "effect": {
     "generateExports": {

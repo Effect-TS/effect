@@ -38,10 +38,10 @@
     "dtslint": "dtslint dtslint"
   },
   "peerDependencies": {
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "devDependencies": {
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "effect": {
     "generateExports": {

@@ -36,10 +36,10 @@
   },
   "devDependencies": {
     "@effect/schema": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/schema": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   }
 }

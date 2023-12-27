@@ -36,10 +36,10 @@
   },
   "devDependencies": {
     "@effect/typeclass": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/typeclass": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   }
 }

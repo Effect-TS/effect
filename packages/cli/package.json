@@ -39,7 +39,7 @@
     "@effect/printer": "workspace:^",
     "@effect/printer-ansi": "workspace:^",
     "@effect/schema": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
@@ -48,7 +48,7 @@
     "@effect/printer-ansi": "workspace:^",
     "@effect/schema": "workspace:^",
     "@types/node": "^20.10.5",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "effect": {
     "generateExports": {

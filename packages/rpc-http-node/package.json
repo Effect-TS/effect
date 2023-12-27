@@ -44,6 +44,6 @@
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   }
 }

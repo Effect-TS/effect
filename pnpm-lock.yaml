@@ -143,7 +143,7 @@ importers:
         specifier: ^20.10.5
         version: 20.10.5
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 
@@ -157,7 +157,7 @@ importers:
   packages/opentelemetry:
     dependencies:
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     devDependencies:
       '@opentelemetry/api':
@@ -217,7 +217,7 @@ importers:
         specifier: ^1.0.2
         version: 1.0.2
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 
@@ -230,7 +230,7 @@ importers:
         specifier: workspace:^
         version: link:../schema/dist
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
       happy-dom:
         specifier: ^12.10.3
@@ -252,7 +252,7 @@ importers:
         specifier: 1.0.18-1
         version: 1.0.18-1
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 
@@ -281,7 +281,7 @@ importers:
         specifier: ^6.1.10
         version: 6.1.10
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
       tar:
         specifier: ^6.2.0
@@ -294,7 +294,7 @@ importers:
         specifier: workspace:^
         version: link:../typeclass/dist
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 
@@ -308,7 +308,7 @@ importers:
         specifier: workspace:^
         version: link:../typeclass/dist
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 
@@ -318,7 +318,7 @@ importers:
         specifier: workspace:^
         version: link:../schema/dist
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 
@@ -338,7 +338,7 @@ importers:
         specifier: workspace:^
         version: link:../schema/dist
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 
@@ -351,7 +351,7 @@ importers:
         specifier: workspace:^
         version: link:../rpc-http/dist
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     devDependencies:
       '@effect/platform':
@@ -378,7 +378,7 @@ importers:
         specifier: workspace:^
         version: link:../schema/dist
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
       next:
         specifier: ^14.0.4
@@ -401,7 +401,7 @@ importers:
         specifier: workspace:^
         version: link:../schema/dist
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 
@@ -411,7 +411,7 @@ importers:
         specifier: ^8.12.0
         version: 8.12.0
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
       fast-check:
         specifier: ^3.15.0
@@ -421,7 +421,7 @@ importers:
   packages/typeclass:
     devDependencies:
       effect:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../effect/dist
     publishDirectory: dist
 

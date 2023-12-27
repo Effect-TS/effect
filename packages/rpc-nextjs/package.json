@@ -41,12 +41,12 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
-    "effect": "workspace:*",
+    "effect": "workspace:^",
     "next": "^14.0.4"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
-    "effect": "workspace:*",
+    "effect": "workspace:^",
     "next": ">=13 <15"
   }
 }

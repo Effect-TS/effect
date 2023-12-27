@@ -36,12 +36,12 @@
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
-    "effect": "workspace:*",
+    "effect": "workspace:^",
     "happy-dom": "^12.10.3"
   },
   "effect": {

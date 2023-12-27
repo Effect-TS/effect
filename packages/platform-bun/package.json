@@ -37,14 +37,14 @@
   "peerDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
     "@effect/schema": "workspace:^",
     "bun-types": "1.0.18-1",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   },
   "effect": {
     "generateExports": {
