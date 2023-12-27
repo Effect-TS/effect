@@ -1,0 +1,39 @@
+{
+  "name": "@effect/rpc-workers",
+  "type": "module",
+  "version": "0.24.0",
+  "description": "",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/rpc.git"
+  },
+  "homepage": "https://github.com/effect-ts/rpc",
+  "author": "Effect contributors",
+  "license": "MIT",
+  "sideEffects": false,
+  "scripts": {
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
+  },
+  "dependencies": {
+    "@effect/rpc": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/platform": "^0.39.0",
+    "@effect/platform-browser": "^0.25.0",
+    "@effect/schema": "^0.56.0",
+    "effect": "2.0.0-next.62"
+  },
+  "peerDependencies": {
+    "@effect/platform": "^0.39.0",
+    "@effect/schema": "^0.56.0",
+    "effect": "2.0.0-next.62"
+  }
+}
