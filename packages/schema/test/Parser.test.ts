@@ -23,7 +23,7 @@ describe("Parser", () => {
     expect(P.parseSync(schema)("1")).toEqual(1)
     expect(() => P.parseSync(schema)("a")).toThrow(
       new Error(`error(s) found
-└─ Expected string <-> number, actual "a"`)
+└─ Expected <anonymous transformation string <-> number>, actual "a"`)
     )
   })
 
@@ -36,7 +36,9 @@ describe("Parser", () => {
   it("parseEither", () => {
     const schema = S.NumberFromString
     expect(P.parseEither(schema)("1")).toEqual(E.right(1))
-    expect(P.parseEither(schema)("a")).toEqual(E.left(PR.parseError([PR.type(schema.ast, "a")])))
+    expect(P.parseEither(schema)("a")).toEqual(
+      E.left(PR.parseError([PR.type(schema.ast, "a")]))
+    )
   })
 
   it("parsePromise", async () => {
@@ -60,7 +62,7 @@ describe("Parser", () => {
     expect(P.decodeSync(schema)("1")).toEqual(1)
     expect(() => P.decodeSync(schema)("a")).toThrow(
       new Error(`error(s) found
-└─ Expected string <-> number, actual "a"`)
+└─ Expected <anonymous transformation string <-> number>, actual "a"`)
     )
   })
 
@@ -73,7 +75,9 @@ describe("Parser", () => {
   it("decodeEither", () => {
     const schema = S.NumberFromString
     expect(P.decodeEither(schema)("1")).toEqual(E.right(1))
-    expect(P.decodeEither(schema)("a")).toEqual(E.left(PR.parseError([PR.type(schema.ast, "a")])))
+    expect(P.decodeEither(schema)("a")).toEqual(
+      E.left(PR.parseError([PR.type(schema.ast, "a")]))
+    )
   })
 
   it("decodePromise", async () => {

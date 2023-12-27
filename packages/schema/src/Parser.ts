@@ -843,7 +843,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         }
 
         for (let i = 0; i < candidates.length; i++) {
-          const pr = map.get(candidates[i])!(input, options)
+          const candidate = candidates[i]
+          const pr = map.get(candidate)!(input, options)
           // the members of a union are ordered based on which one should be decoded first,
           // therefore if one member has added a task, all subsequent members must
           // also add a task to the queue even if they are synchronous
@@ -852,7 +853,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             if (Either.isRight(eu)) {
               return ParseResult.succeed(eu.right)
             } else {
-              es.push([stepKey++, ParseResult.unionMember(eu.left.errors)])
+              es.push([stepKey++, ParseResult.member(candidate, eu.left.errors)])
             }
           } else {
             const nk = stepKey++
@@ -869,7 +870,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                       if (Either.isRight(t)) {
                         state.finalResult = ParseResult.succeed(t.right)
                       } else {
-                        state.es.push([nk, ParseResult.unionMember(t.left.errors)])
+                        state.es.push([nk, ParseResult.member(candidate, t.left.errors)])
                       }
                       return Effect.unit
                     })

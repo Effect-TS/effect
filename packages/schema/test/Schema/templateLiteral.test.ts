@@ -200,13 +200,13 @@ describe("Schema/templateLiteral", () => {
         schema,
         "_id",
         `error(s) found
-├─ union member
+├─ union member: "welcome_email_id"
 │  └─ Expected "welcome_email_id", actual "_id"
-├─ union member
+├─ union member: "email_heading_id"
 │  └─ Expected "email_heading_id", actual "_id"
-├─ union member
+├─ union member: "footer_title_id"
 │  └─ Expected "footer_title_id", actual "_id"
-└─ union member
+└─ union member: "footer_sendoff_id"
    └─ Expected "footer_sendoff_id", actual "_id"`
       )
     })

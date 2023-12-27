@@ -87,7 +87,7 @@ describe("formatErrors", () => {
       { a: { b: { c: [{ d: "d" }] } }, e: { type: "f" } },
       `error(s) found
 └─ ["e"]
-   └─ union member
+   └─ union member: <anonymous type literal or record schema>
       └─ ["f"]
          └─ is missing`
     )

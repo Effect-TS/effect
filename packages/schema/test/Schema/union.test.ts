@@ -18,9 +18,9 @@ describe("Schema/literal", () => {
         schema,
         null,
         `error(s) found
-├─ union member
+├─ union member: MyDataType1
 │  └─ Expected MyDataType1, actual null
-└─ union member
+└─ union member: MyDataType2
    └─ Expected MyDataType2, actual null`
       )
     })
@@ -38,7 +38,7 @@ describe("Schema/literal", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected <anonymous type literal schema>, actual null"
+        "Expected <anonymous type literal or record schema>, actual null"
       )
       await Util.expectParseFailure(schema, {}, "/a is missing, /b is missing")
       await Util.expectParseFailure(
@@ -58,7 +58,7 @@ describe("Schema/literal", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected <anonymous type literal schema>, actual null"
+        "Expected <anonymous type literal or record schema>, actual null"
       )
       await Util.expectParseFailure(schema, {}, "/category is missing, /tag is missing")
       await Util.expectParseFailure(

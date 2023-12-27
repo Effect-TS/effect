@@ -20,7 +20,7 @@ describe("Schema/suspend", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous type literal schema>, actual null`
+        `Expected <anonymous type literal or record schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -30,7 +30,7 @@ describe("Schema/suspend", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
-        "/as /0 /as /0 Expected <anonymous type literal schema>, actual 1"
+        "/as /0 /as /0 Expected <anonymous type literal or record schema>, actual 1"
       )
     })
 

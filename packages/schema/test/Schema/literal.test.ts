@@ -36,9 +36,9 @@ describe("Schema/literal", () => {
         schema,
         null,
         `error(s) found
-├─ union member
+├─ union member: 1
 │  └─ Expected 1, actual null
-└─ union member
+└─ union member: "a"
    └─ Expected "a", actual null`
       )
     })

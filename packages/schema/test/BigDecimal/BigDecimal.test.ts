@@ -25,7 +25,7 @@ describe("BigDecimal/BigDecimal", () => {
     await Util.expectParseFailure(
       schema,
       "abc",
-      `Expected string <-> BigDecimal, actual "abc"`
+      `Expected <anonymous transformation string <-> BigDecimal>, actual "abc"`
     )
   })
 

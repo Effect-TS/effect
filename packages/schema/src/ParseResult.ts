@@ -55,12 +55,14 @@ export const parseError = (
  * @since 1.0.0
  */
 export type ParseIssue =
-  | Type
+  // context
   | Index
   | Key
+  | Member
+  // primitives
+  | Type
   | Missing
   | Unexpected
-  | UnionMember
   | Forbidden
 
 /**
@@ -81,16 +83,6 @@ export interface Type {
 }
 
 /**
- * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Forbidden {
-  readonly _tag: "Forbidden"
-}
-
-/**
  * @category constructors
  * @since 1.0.0
  */
@@ -100,6 +92,16 @@ export const type = (expected: AST.AST, actual: unknown, message?: string): Type
   actual,
   message: Option.fromNullable(message)
 })
+
+/**
+ * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Forbidden {
+  readonly _tag: "Forbidden"
+}
 
 /**
  * @category constructors
@@ -199,8 +201,9 @@ export const unexpected = (
  * @category model
  * @since 1.0.0
  */
-export interface UnionMember {
-  readonly _tag: "UnionMember"
+export interface Member {
+  readonly _tag: "Member"
+  readonly ast: AST.AST
   readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 }
 
@@ -208,9 +211,10 @@ export interface UnionMember {
  * @category constructors
  * @since 1.0.0
  */
-export const unionMember = (
+export const member = (
+  ast: AST.AST,
   errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): UnionMember => ({ _tag: "UnionMember", errors })
+): Member => ({ _tag: "Member", ast, errors })
 
 /**
  * @category constructors

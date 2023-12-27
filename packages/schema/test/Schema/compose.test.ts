@@ -13,13 +13,21 @@ describe("Schema/compose", async () => {
   it("force decoding: (A U B) compose (B -> C)", async () => {
     const schema1 = S.compose(S.union(S.null, S.string), S.NumberFromString)
     await Util.expectParseSuccess(schema1, "1", 1)
-    await Util.expectParseFailure(schema1, "a", `Expected string <-> number, actual "a"`)
+    await Util.expectParseFailure(
+      schema1,
+      "a",
+      `Expected <anonymous transformation string <-> number>, actual "a"`
+    )
     await Util.expectParseFailure(schema1, null, "Expected string, actual null")
     const schema2 = S.union(S.null, S.string).pipe(
       S.compose(S.NumberFromString)
     )
     await Util.expectParseSuccess(schema2, "1", 1)
-    await Util.expectParseFailure(schema2, "a", `Expected string <-> number, actual "a"`)
+    await Util.expectParseFailure(
+      schema2,
+      "a",
+      `Expected <anonymous transformation string <-> number>, actual "a"`
+    )
     await Util.expectParseFailure(schema2, null, "Expected string, actual null")
   })
 

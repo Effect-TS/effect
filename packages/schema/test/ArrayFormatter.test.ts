@@ -103,7 +103,7 @@ describe("ArrayFormatter", () => {
     }])
   })
 
-  it("UnionMember", () => {
+  it("Member", () => {
     const schema = S.union(S.string, S.number)
     expectIssues(schema, null, [{
       _tag: "Type",

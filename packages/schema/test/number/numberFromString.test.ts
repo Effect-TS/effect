@@ -19,19 +19,35 @@ describe("number/NumberFromString", () => {
     await Util.expectParseSuccess(schema, "Infinity", Infinity)
     await Util.expectParseSuccess(schema, "-Infinity", -Infinity)
 
-    await Util.expectParseFailure(schema, "", `Expected string <-> number, actual ""`)
-    await Util.expectParseFailure(schema, " ", `Expected string <-> number, actual " "`)
-    await Util.expectParseFailure(schema, "1AB", `Expected string <-> number, actual "1AB"`)
-    await Util.expectParseFailure(schema, "AB1", `Expected string <-> number, actual "AB1"`)
+    await Util.expectParseFailure(
+      schema,
+      "",
+      `Expected <anonymous transformation string <-> number>, actual ""`
+    )
+    await Util.expectParseFailure(
+      schema,
+      " ",
+      `Expected <anonymous transformation string <-> number>, actual " "`
+    )
+    await Util.expectParseFailure(
+      schema,
+      "1AB",
+      `Expected <anonymous transformation string <-> number>, actual "1AB"`
+    )
+    await Util.expectParseFailure(
+      schema,
+      "AB1",
+      `Expected <anonymous transformation string <-> number>, actual "AB1"`
+    )
     await Util.expectParseFailure(
       schema,
       "a",
-      `Expected string <-> number, actual "a"`
+      `Expected <anonymous transformation string <-> number>, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       "a1",
-      `Expected string <-> number, actual "a1"`
+      `Expected <anonymous transformation string <-> number>, actual "a1"`
     )
   })
 

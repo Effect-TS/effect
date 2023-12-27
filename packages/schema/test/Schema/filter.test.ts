@@ -42,7 +42,11 @@ describe("Schema/filter", () => {
           : Option.some(
             ParseResult.parseError([
               ParseResult.key("b", [
-                ParseResult.type(S.literal(o.a).ast, o.b, `should be equal to a's value ("${o.a}")`)
+                ParseResult.type(
+                  S.literal(o.a).ast,
+                  o.b,
+                  `should be equal to a's value ("${o.a}")`
+                )
               ])
             ])
           )

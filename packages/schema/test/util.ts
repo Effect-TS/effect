@@ -67,10 +67,10 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
         effectifyAST(ast.to, mode),
         AST.createFinalTransformation(
           // I need to override with the original ast here in order to not change the error message
-          // --------------------------------------------------v
+          // ----------------------------------------------------------------v
           effectifyDecode(getFinalTransformation(ast.transformation, true), ast),
           // I need to override with the original ast here in order to not change the error message
-          // ---------------------------------------------------v
+          // -----------------------------------------------------------------v
           effectifyDecode(getFinalTransformation(ast.transformation, false), ast)
         ),
         ast.annotations
@@ -85,7 +85,11 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
     AST.createFinalTransformation(
       (a, options) => Effect.flatMap(sleep, () => decode(a, options)),
       (a, options) => Effect.flatMap(sleep, () => encode(a, options))
-    )
+    ),
+    {
+      // hack the descripiton to not change the error message
+      [AST.DescriptionAnnotationId]: formatExpected(ast)
+    }
   )
 }
 
@@ -281,7 +285,7 @@ const formatDecodeError = (e: PR.ParseIssue): string => {
     case "Unexpected":
       return "is unexpected" +
         (Option.isSome(e.ast) ? `, expected ${formatExpected(e.ast.value)}` : "")
-    case "UnionMember":
+    case "Member":
       return `union member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
   }
 }

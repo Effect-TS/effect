@@ -18,7 +18,7 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        "Expected <anonymous type literal schema>, actual []"
+        "Expected <anonymous type literal or record schema>, actual []"
       )
       await Util.expectParseFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
       const b = Symbol.for("@effect/schema/test/b")
@@ -40,7 +40,7 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        "Expected <anonymous type literal schema>, actual []"
+        "Expected <anonymous type literal or record schema>, actual []"
       )
       await Util.expectParseFailure(
         schema,

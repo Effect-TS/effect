@@ -13,7 +13,7 @@ describe("Schema/pick", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected <anonymous type literal schema>, actual null"
+      "Expected <anonymous type literal or record schema>, actual null"
     )
     await Util.expectParseFailure(schema, { [a]: "a" }, `/b is missing`)
     await Util.expectParseFailure(
@@ -38,7 +38,7 @@ describe("Schema/pick", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected <anonymous type literal schema>, actual null"
+      "Expected <anonymous type literal or record schema>, actual null"
     )
     await Util.expectParseFailure(schema, { a: "a" }, `/b is missing`)
   })

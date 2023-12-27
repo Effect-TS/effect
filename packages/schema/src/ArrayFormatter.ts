@@ -25,7 +25,7 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
       return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.key]))
     case "Index":
       return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.index]))
-    case "UnionMember":
+    case "Member":
       return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
     case "Missing":
       return [{ _tag, path, message: "Missing key or index" }]

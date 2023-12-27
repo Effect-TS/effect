@@ -115,11 +115,11 @@ export const formatExpected = (ast: AST.AST): string => {
     case "Tuple":
       return Option.getOrElse(getExpected(ast), () => "<anonymous tuple or array schema>")
     case "TypeLiteral":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous type literal schema>")
+      return Option.getOrElse(getExpected(ast), () => "<anonymous type literal or record schema>")
     case "Enums":
       return Option.getOrElse(
         getExpected(ast),
-        () => ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
+        () => `<anonymous enum ${ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
       )
     case "Suspend":
       return Option.getOrElse(getExpected(ast), () => "<anonymous suspended schema>")
@@ -130,13 +130,13 @@ export const formatExpected = (ast: AST.AST): string => {
     case "Transform":
       return Option.getOrElse(
         getExpected(ast),
-        () => `${formatExpected(ast.from)} <-> ${formatExpected(ast.to)}`
+        () => `<anonymous transformation ${formatExpected(ast.from)} <-> ${formatExpected(ast.to)}>`
       )
   }
 }
 
 const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseIssue>): boolean =>
-  es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "UnionMember"
+  es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "Member"
 
 /** @internal */
 export const getMessage = (e: Type) =>
@@ -174,7 +174,10 @@ const go = (e: ParseIssue): Tree<string> => {
     }
     case "Missing":
       return make("is missing")
-    case "UnionMember":
-      return make("union member", e.errors.map(go))
+    case "Member":
+      return make(
+        `union member: ${formatExpected(e.ast)}`,
+        e.errors.map(go)
+      )
   }
 }

@@ -26,7 +26,7 @@ describe("ReadonlyMap/readonlyMapFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
-      `/1 /0 Expected string <-> number, actual "a"`
+      `/1 /0 Expected <anonymous transformation string <-> number>, actual "a"`
     )
   })
 
