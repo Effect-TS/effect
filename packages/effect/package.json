@@ -1,0 +1,86 @@
+{
+  "name": "effect",
+  "version": "2.0.0-next.62",
+  "type": "module",
+  "packageManager": "pnpm@8.11.0",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "author": "Michael Arnaldi <michael.arnaldi@effectful.co>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "homepage": "https://github.com/Effect-TS/effect",
+  "description": "Functional programming in TypeScript",
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "scripts": {
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
+    "clean": "rimraf build dist coverage .tsbuildinfo",
+    "test": "vitest",
+    "check": "tsc -b tsconfig.json",
+    "coverage": "vitest --run --coverage related",
+    "coverage-all": "vitest --run --coverage",
+    "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
+    "update-version": "changeset version && pnpm install --no-frozen-lockfile && node scripts/version.mjs",
+    "lint": "eslint src test",
+    "lint-fix": "eslint src test --fix",
+    "docgen": "docgen",
+    "dtslint": "dtslint dtslint",
+    "dtslint-clean": "dtslint --installAll"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.23.4",
+    "@babel/core": "^7.23.5",
+    "@babel/plugin-transform-export-namespace-from": "^7.23.4",
+    "@babel/plugin-transform-modules-commonjs": "^7.23.3",
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.1",
+    "@edge-runtime/vm": "^3.1.7",
+    "@effect/build-utils": "^0.7.0",
+    "@effect/docgen": "^0.3.8",
+    "@effect/dtslint": "^0.0.4",
+    "@effect/eslint-plugin": "^0.1.2",
+    "@effect/language-service": "^0.1.0",
+    "@types/node": "^20.10.1",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "@vitest/browser": "1.0.4",
+    "@vitest/coverage-v8": "1.0.4",
+    "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "eslint": "^8.54.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-codegen": "^0.21.0",
+    "eslint-plugin-deprecation": "^2.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-sort-destructure-keys": "^1.5.0",
+    "fast-check": "^3.14.0",
+    "madge": "^6.1.0",
+    "playwright": "^1.40.1",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.6.1",
+    "typescript": "^5.3.2",
+    "vite": "^5.0.8",
+    "vitest": "1.0.4"
+  }
+}
