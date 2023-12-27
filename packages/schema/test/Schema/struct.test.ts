@@ -186,7 +186,8 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `/b is unexpected, expected "a"`,
+        `["b"]
+└─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -198,7 +199,8 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `/b is unexpected, expected "a"`,
+        `["b"]
+└─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -210,7 +212,8 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `/b is unexpected, expected "a"`,
+        `["b"]
+└─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -223,7 +226,8 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `/b is unexpected, expected "a"`,
+        `["b"]
+└─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })

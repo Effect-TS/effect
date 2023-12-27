@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("Schema > allErrors option", () => {
   describe("decoding", () => {
     describe("tuple", () => {
-      it("e + r + e", async () => {
+      it("e r e", async () => {
         const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
         await Util.expectParseFailure(
           schema,
@@ -172,7 +172,11 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           [1, 1] as any,
-          `/0 is unexpected, /1 is unexpected`,
+          `error(s) found
+├─ [0]
+│  └─ is unexpected
+└─ [1]
+   └─ is unexpected`,
           Util.allErrors
         )
       })
@@ -182,7 +186,11 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
-          `/0 Expected a character, actual "10", /1 Expected a character, actual "10"`,
+          `error(s) found
+├─ [0]
+│  └─ Expected a character, actual "10"
+└─ [1]
+   └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -192,7 +200,11 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
-          `/0 Expected a character, actual "10", /1 Expected a character, actual "10"`,
+          `error(s) found
+├─ [0]
+│  └─ Expected a character, actual "10"
+└─ [1]
+   └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -205,7 +217,11 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
-          `/0 Expected a character, actual "10", /1 Expected a character, actual "10"`,
+          `error(s) found
+├─ [0]
+│  └─ Expected a character, actual "10"
+└─ [1]
+   └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -217,7 +233,11 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           { a: 10, b: 10 },
-          `/a Expected a character, actual "10", /b Expected a character, actual "10"`,
+          `error(s) found
+├─ ["a"]
+│  └─ Expected a character, actual "10"
+└─ ["b"]
+   └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -229,7 +249,11 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           { aa: "a", bb: "bb" },
-          `/aa is unexpected, expected a character, /bb is unexpected, expected a character`,
+          `error(s) found
+├─ ["aa"]
+│  └─ is unexpected, expected a character
+└─ ["bb"]
+   └─ is unexpected, expected a character`,
           { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
@@ -239,7 +263,11 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           { a: "aa", b: "bb" },
-          `/a Expected a character, actual "aa", /b Expected a character, actual "bb"`,
+          `error(s) found
+├─ ["a"]
+│  └─ Expected a character, actual "aa"
+└─ ["b"]
+   └─ Expected a character, actual "bb"`,
           Util.allErrors
         )
       })

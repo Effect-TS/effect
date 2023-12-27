@@ -329,16 +329,27 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `/0 Expected a character, actual "10"`
+        `[0]
+└─ Expected a character, actual "10"`
       )
-      await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "b"] as any,
+        `[1]
+└─ is unexpected`
+      )
     })
 
     it("e with undefined", async () => {
       const schema = S.tuple(S.union(Util.NumberFromChar, S.undefined))
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, [undefined], [undefined])
-      await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "b"] as any,
+        `[1]
+└─ is unexpected`
+      )
     })
 
     it("e?", async () => {
@@ -348,9 +359,15 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `/0 Expected a character, actual "10"`
+        `[0]
+└─ Expected a character, actual "10"`
       )
-      await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "b"] as any,
+        `[1]
+└─ is unexpected`
+      )
     })
 
     it("e? with undefined", async () => {
@@ -358,7 +375,12 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, [undefined], [undefined])
-      await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "b"] as any,
+        `[1]
+└─ is unexpected`
+      )
     })
 
     it("e e?", async () => {
@@ -390,7 +412,8 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `/0 Expected a character, actual "10"`
+        `[0]
+└─ Expected a character, actual "10"`
       )
     })
 
@@ -399,11 +422,17 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
       await Util.expectEncodeSuccess(schema, ["a", "b", 1], ["a", "b", "1"])
-      await Util.expectEncodeFailure(schema, [] as any, `/0 is missing`)
+      await Util.expectEncodeFailure(
+        schema,
+        [] as any,
+        `[0]
+└─ is missing`
+      )
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `/0 Expected a character, actual "10"`
+        `[0]
+└─ Expected a character, actual "10"`
       )
     })
 

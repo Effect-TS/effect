@@ -14,7 +14,8 @@ describe("Schema/onExcess", () => {
     await Util.expectEncodeFailure(
       schema,
       [1, "b"] as any,
-      `/1 is unexpected`
+      `[1]
+└─ is unexpected`
     )
   })
 

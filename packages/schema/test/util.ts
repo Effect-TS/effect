@@ -4,13 +4,11 @@ import * as AST from "@effect/schema/AST"
 import { getFinalTransformation } from "@effect/schema/Parser"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import { formatActual, formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
+import { formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as RA from "effect/ReadonlyArray"
 import * as fc from "fast-check"
 import { expect } from "vitest"
@@ -216,64 +214,20 @@ export const expectEncodeFailure = async <I, A>(
 ) => {
   const actual = Either.mapLeft(
     Effect.runSync(Effect.either(S.encode(schema)(a, options))),
-    (e) => formatAll(e.errors)
+    (e) => formatErrors(e.errors)
   )
   expect(actual).toStrictEqual(Either.left(message))
   if (doEffectify) {
     const encodeEffectResult = Either.mapLeft(
       await Effect.runPromise(Effect.either(S.encode(effectify(schema, "all"))(a, options))),
-      (e) => formatAll(e.errors)
+      (e) => formatErrors(e.errors)
     )
     expect(encodeEffectResult).toStrictEqual(actual)
     const randomEncodeEffectResult = Either.mapLeft(
       await Effect.runPromise(Effect.either(S.encode(effectify(schema, "semi"))(a, options))),
-      (e) => formatAll(e.errors)
+      (e) => formatErrors(e.errors)
     )
     expect(randomEncodeEffectResult).toStrictEqual(actual)
-  }
-}
-
-export const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseIssue>): string =>
-  pipe(errors, RA.map(formatDecodeError), RA.join(", "))
-
-const getMessage = AST.getAnnotation<AST.MessageAnnotation<unknown>>(AST.MessageAnnotationId)
-
-const formatDecodeError = (e: PR.ParseIssue): string => {
-  switch (e._tag) {
-    case "Type":
-      return pipe(
-        getMessage(e.expected),
-        Option.map((f) => f(e.actual)),
-        Option.orElse(() => e.message),
-        Option.getOrElse(() =>
-          `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
-        )
-      )
-    case "Forbidden":
-      return "is forbidden"
-    case "Index":
-      return `/${e.index} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
-    case "Key":
-      return `/${String(e.key)} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
-    case "Missing":
-      return `is missing`
-    case "Unexpected":
-      return "is unexpected" +
-        (Option.isSome(e.ast) ? `, expected ${formatExpected(e.ast.value)}` : "")
-    case "Union":
-      return pipe(
-        e.errors,
-        RA.map((e) => {
-          switch (e._tag) {
-            case "Key":
-            case "Type":
-              return formatDecodeError(e)
-            case "Member":
-              return `Union member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
-          }
-        }),
-        RA.join(", ")
-      )
   }
 }
 

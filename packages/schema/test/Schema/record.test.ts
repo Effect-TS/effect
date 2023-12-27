@@ -352,7 +352,8 @@ describe("Schema/record", () => {
       await Util.expectEncodeFailure(
         schema,
         { aa: "a" },
-        `/aa is unexpected, expected a character`,
+        `["aa"]
+└─ is unexpected, expected a character`,
         Util.onExcessPropertyError
       )
     })
@@ -362,7 +363,8 @@ describe("Schema/record", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: "aa" },
-        `/a Expected a character, actual "aa"`
+        `["a"]
+└─ Expected a character, actual "aa"`
       )
     })
   })
