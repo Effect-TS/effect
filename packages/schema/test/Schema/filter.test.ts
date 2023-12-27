@@ -54,7 +54,7 @@ describe("Schema > filter", () => {
     )
 
     await Util.expectParseSuccess(schema, { a: "x", b: "x" })
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: "a", b: "b" },
       `["b"]

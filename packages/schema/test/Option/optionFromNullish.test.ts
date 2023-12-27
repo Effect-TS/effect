@@ -22,7 +22,13 @@ describe("Option/optionFromNullish", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      `Union member: Expected null, actual {}, Union member: Expected undefined, actual {}, Union member: Expected string, actual {}`
+      `Union (3 members): null or undefined or a string <-> number transformation
+├─ Union member: null
+│  └─ Expected null, actual {}
+├─ Union member: undefined
+│  └─ Expected undefined, actual {}
+└─ Union member: a string <-> number transformation
+   └─ Expected string, actual {}`
     )
   })
 

@@ -17,7 +17,12 @@ describe("ReadonlySet/readonlySet", () => {
       null,
       `Expected <anonymous tuple or array schema>, actual null`
     )
-    await Util.expectParseFailure(schema, [1, "a"], `/1 Expected number, actual "a"`)
+    await Util.expectParseFailure(
+      schema,
+      [1, "a"],
+      `[1]
+└─ Expected number, actual "a"`
+    )
   })
 
   it("encoding", async () => {

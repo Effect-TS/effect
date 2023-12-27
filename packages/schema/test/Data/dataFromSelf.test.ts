@@ -23,12 +23,12 @@ describe("Data/dataFromSelf", () => {
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: "ok", b: 0 },
       "Expected Data, actual {\"a\":\"ok\",\"b\":0}"
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       Data.struct({ a: "ok", b: "0" }),
       `["b"]

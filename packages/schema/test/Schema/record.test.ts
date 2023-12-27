@@ -20,13 +20,19 @@ describe("Schema/record", () => {
         [],
         "Expected <anonymous type literal or record schema>, actual []"
       )
-      await Util.expectParseFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
+      await Util.expectParseFailure(
+        schema,
+        { a: "a" },
+        `["a"]
+└─ Expected number, actual "a"`
+      )
       const b = Symbol.for("@effect/schema/test/b")
       await Util.expectParseSuccess(schema, { a: 1, [b]: "b" }, { a: 1 })
       await Util.expectParseFailure(
         schema,
         { a: 1, [b]: "b" },
-        "/Symbol(@effect/schema/test/b) is unexpected, expected string",
+        `[Symbol(@effect/schema/test/b)]
+└─ is unexpected, expected string`,
         Util.onExcessPropertyError
       )
     })
@@ -45,7 +51,8 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         { [a]: "a" },
-        `/Symbol(@effect/schema/test/a) Expected number, actual "a"`
+        `[Symbol(@effect/schema/test/a)]
+└─ Expected number, actual "a"`
       )
       await Util.expectParseSuccess(
         schema,
@@ -55,7 +62,8 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         { [a]: 1, b: "b" },
-        "/b is unexpected, expected symbol",
+        `["b"]
+└─ is unexpected, expected symbol`,
         Util.onExcessPropertyError
       )
     })
@@ -64,9 +72,24 @@ describe("Schema/record", () => {
       const schema = S.record(S.union(S.literal("a"), S.literal("b")), S.number)
       await Util.expectParseSuccess(schema, { a: 1, b: 2 })
 
-      await Util.expectParseFailure(schema, {}, `/a is missing`)
-      await Util.expectParseFailure(schema, { a: 1 }, `/b is missing`)
-      await Util.expectParseFailure(schema, { b: 2 }, `/a is missing`)
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `["a"]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { a: 1 },
+        `["b"]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { b: 2 },
+        `["a"]
+└─ is missing`
+      )
     })
 
     it("record('a' | `prefix-${string}`, number)", async () => {
@@ -77,11 +100,17 @@ describe("Schema/record", () => {
       await Util.expectParseSuccess(schema, { a: 1 })
       await Util.expectParseSuccess(schema, { a: 1, "prefix-b": 2 })
 
-      await Util.expectParseFailure(schema, {}, `/a is missing`)
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `["a"]
+└─ is missing`
+      )
       await Util.expectParseFailure(
         schema,
         { a: 1, "prefix-b": "b" },
-        `/prefix-b Expected number, actual "b"`
+        `["prefix-b"]
+└─ Expected number, actual "b"`
       )
     })
 
@@ -89,10 +118,30 @@ describe("Schema/record", () => {
       const schema = S.record(S.keyof(S.struct({ a: S.string, b: S.string })), S.number)
       await Util.expectParseSuccess(schema, { a: 1, b: 2 })
 
-      await Util.expectParseFailure(schema, {}, `/a is missing`)
-      await Util.expectParseFailure(schema, { a: 1 }, `/b is missing`)
-      await Util.expectParseFailure(schema, { b: 2 }, `/a is missing`)
-      await Util.expectParseFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `["a"]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { a: 1 },
+        `["b"]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { b: 2 },
+        `["a"]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { a: "a" },
+        `["a"]
+└─ Expected number, actual "a"`
+      )
     })
 
     it("record(keyof struct({ a, b } & Record<string, string>), number)", async () => {
@@ -107,7 +156,12 @@ describe("Schema/record", () => {
       await Util.expectParseSuccess(schema, { a: 1 })
       await Util.expectParseSuccess(schema, { b: 2 })
 
-      await Util.expectParseFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
+      await Util.expectParseFailure(
+        schema,
+        { a: "a" },
+        `["a"]
+└─ Expected number, actual "a"`
+      )
     })
 
     it("record(keyof struct({ a, b } & Record<symbol, string>), number)", async () => {
@@ -123,15 +177,36 @@ describe("Schema/record", () => {
       const c = Symbol.for("@effect/schema/test/c")
       await Util.expectParseSuccess(schema, { a: 1, b: 2, [c]: 3 })
 
-      await Util.expectParseFailure(schema, {}, `/a is missing`)
-      await Util.expectParseFailure(schema, { a: 1 }, `/b is missing`)
-      await Util.expectParseFailure(schema, { b: 2 }, `/a is missing`)
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `["a"]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { a: 1 },
+        `["b"]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { b: 2 },
+        `["a"]
+└─ is missing`
+      )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: 2, [c]: "c" },
-        `/Symbol(@effect/schema/test/c) Expected number, actual "c"`
+        `[Symbol(@effect/schema/test/c)]
+└─ Expected number, actual "c"`
       )
-      await Util.expectParseFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
+      await Util.expectParseFailure(
+        schema,
+        { a: "a" },
+        `["a"]
+└─ Expected number, actual "a"`
+      )
     })
 
     it("record(Symbol('a') | Symbol('b'), number)", async () => {
@@ -140,9 +215,24 @@ describe("Schema/record", () => {
       const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
       await Util.expectParseSuccess(schema, { [a]: 1, [b]: 2 })
 
-      await Util.expectParseFailure(schema, {}, `/Symbol(@effect/schema/test/a) is missing`)
-      await Util.expectParseFailure(schema, { [a]: 1 }, `/Symbol(@effect/schema/test/b) is missing`)
-      await Util.expectParseFailure(schema, { [b]: 2 }, `/Symbol(@effect/schema/test/a) is missing`)
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `[Symbol(@effect/schema/test/a)]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { [a]: 1 },
+        `[Symbol(@effect/schema/test/b)]
+└─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { [b]: 2 },
+        `[Symbol(@effect/schema/test/a)]
+└─ is missing`
+      )
     })
 
     it("record(${string}-${string}, number)", async () => {
@@ -156,15 +246,36 @@ describe("Schema/record", () => {
       await Util.expectParseSuccess(schema, { "a": 1 }, {})
       await Util.expectParseSuccess(schema, { "a": "a" }, {})
 
-      await Util.expectParseFailure(schema, { "-": "a" }, `/- Expected number, actual "a"`)
-      await Util.expectParseFailure(schema, { "a-": "a" }, `/a- Expected number, actual "a"`)
-      await Util.expectParseFailure(schema, { "-b": "b" }, `/-b Expected number, actual "b"`)
-      await Util.expectParseFailure(schema, { "a-b": "ab" }, `/a-b Expected number, actual "ab"`)
+      await Util.expectParseFailure(
+        schema,
+        { "-": "a" },
+        `["-"]
+└─ Expected number, actual "a"`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { "a-": "a" },
+        `["a-"]
+└─ Expected number, actual "a"`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { "-b": "b" },
+        `["-b"]
+└─ Expected number, actual "b"`
+      )
+      await Util.expectParseFailure(
+        schema,
+        { "a-b": "ab" },
+        `["a-b"]
+└─ Expected number, actual "ab"`
+      )
 
       await Util.expectParseFailure(
         schema,
         { "a": 1 },
-        "/a is unexpected, expected ${string}-${string}",
+        `["a"]
+└─ is unexpected, expected \${string}-\${string}`,
         Util.onExcessPropertyError
       )
     })
@@ -177,11 +288,17 @@ describe("Schema/record", () => {
       await Util.expectParseSuccess(schema, { "aa": 1 })
       await Util.expectParseSuccess(schema, { "aaa": 1 })
 
-      await Util.expectParseFailure(schema, { "aa": "aa" }, `/aa Expected number, actual "aa"`)
+      await Util.expectParseFailure(
+        schema,
+        { "aa": "aa" },
+        `["aa"]
+└─ Expected number, actual "aa"`
+      )
       await Util.expectParseFailure(
         schema,
         { "a": 1 },
-        "/a is unexpected, expected a string at least 2 character(s) long",
+        `["a"]
+└─ is unexpected, expected a string at least 2 character(s) long`,
         Util.onExcessPropertyError
       )
     })
@@ -197,12 +314,18 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         { "a-": "a" },
-        `/a- Expected number, actual "a"`
+        `["a-"]
+└─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { "a": true },
-        `/a Union member: Expected string, actual true, Union member: Expected number, actual true`
+        `["a"]
+└─ Union (2 members): string or number
+   ├─ Union member: string
+   │  └─ Expected string, actual true
+   └─ Union member: number
+      └─ Expected number, actual true`
       )
     })
 
@@ -216,7 +339,8 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         { "": 1 },
-        "/ is unexpected, expected a non empty string",
+        `[""]
+└─ is unexpected, expected a non empty string`,
         Util.onExcessPropertyError
       )
     })

@@ -24,7 +24,8 @@ describe("ReadonlyMap/readonlyMap", () => {
     await Util.expectParseFailure(
       schema,
       [[1, "a"], [2, 1]],
-      `/1 /1 Expected string, actual 1`
+      `[1][1]
+└─ Expected string, actual 1`
     )
   })
 

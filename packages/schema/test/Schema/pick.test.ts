@@ -15,11 +15,17 @@ describe("Schema/pick", () => {
       null,
       "Expected <anonymous type literal or record schema>, actual null"
     )
-    await Util.expectParseFailure(schema, { [a]: "a" }, `/b is missing`)
+    await Util.expectParseFailure(
+      schema,
+      { [a]: "a" },
+      `["b"]
+└─ is missing`
+    )
     await Util.expectParseFailure(
       schema,
       { b: 1 },
-      `/Symbol(@effect/schema/test/a) is missing`
+      `[Symbol(@effect/schema/test/a)]
+└─ is missing`
     )
   })
 
@@ -40,7 +46,12 @@ describe("Schema/pick", () => {
       null,
       "Expected <anonymous type literal or record schema>, actual null"
     )
-    await Util.expectParseFailure(schema, { a: "a" }, `/b is missing`)
+    await Util.expectParseFailure(
+      schema,
+      { a: "a" },
+      `["b"]
+└─ is missing`
+    )
   })
 
   it("suspend", async () => {
@@ -59,7 +70,12 @@ describe("Schema/pick", () => {
     await Util.expectParseSuccess(schema, { as: [] })
     await Util.expectParseSuccess(schema, { as: [{ a: "a", as: [] }] })
 
-    await Util.expectParseFailure(schema, { as: [{ as: [] }] }, `/as /0 /a is missing`)
+    await Util.expectParseFailure(
+      schema,
+      { as: [{ as: [] }] },
+      `["as"][0]["a"]
+└─ is missing`
+    )
   })
 
   it("struct with property signature transformations", async () => {

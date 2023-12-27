@@ -40,16 +40,23 @@ describe("Schema > struct", () => {
         null,
         `Expected <anonymous type literal or record schema>, actual null`
       )
-      await Util.expectParseFailure(schema, {}, "/a is missing")
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `["a"]
+└─ is missing`
+      )
       await Util.expectParseFailure(
         schema,
         { a: undefined },
-        "/a Expected number, actual undefined"
+        `["a"]
+└─ Expected number, actual undefined`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        `/b is unexpected, expected "a"`,
+        `["b"]
+└─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -64,16 +71,27 @@ describe("Schema > struct", () => {
         null,
         `Expected <anonymous type literal or record schema>, actual null`
       )
-      await Util.expectParseFailure(schema, {}, "/a is missing")
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `["a"]
+└─ is missing`
+      )
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `/a Union member: Expected number, actual "a", Union member: Expected undefined, actual "a"`
+        `["a"]
+└─ Union (2 members): number or undefined
+   ├─ Union member: number
+   │  └─ Expected number, actual "a"
+   └─ Union member: undefined
+      └─ Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        `/b is unexpected, expected "a"`,
+        `["b"]
+└─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -91,17 +109,20 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `/a Expected number, actual "a"`
+        `["a"]
+└─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { a: undefined },
-        `/a Expected number, actual undefined`
+        `["a"]
+└─ Expected number, actual undefined`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        `/b is unexpected, expected "a"`,
+        `["b"]
+└─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -120,12 +141,18 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `/a Union member: Expected number, actual "a", Union member: Expected undefined, actual "a"`
+        `["a"]
+└─ Union (2 members): number or undefined
+   ├─ Union member: number
+   │  └─ Expected number, actual "a"
+   └─ Union member: undefined
+      └─ Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        `/b is unexpected, expected "a"`,
+        `["b"]
+└─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })

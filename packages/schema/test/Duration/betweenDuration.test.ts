@@ -7,7 +7,7 @@ describe("Schema/betweenDuration", () => {
   const schema = S.DurationFromSelf.pipe(S.betweenDuration("5 seconds", "10 seconds"))
 
   it("decoding", async () => {
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       Duration.decode("4 seconds"),
       `Expected a Duration between Duration(5s) and Duration(10s), actual Duration(4s)`
@@ -19,7 +19,7 @@ describe("Schema/betweenDuration", () => {
       Duration.decode("7 seconds")
     )
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       Duration.decode("11 seconds"),
       `Expected a Duration between Duration(5s) and Duration(10s), actual Duration(11s)`

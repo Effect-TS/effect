@@ -19,12 +19,12 @@ describe("Chunk/chunkFromSelf", () => {
       C.fromIterable([1, 2, 3])
     )
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       null,
       `Expected Chunk, actual null`
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       C.fromIterable(["1", "a", "3"]),
       `[1]

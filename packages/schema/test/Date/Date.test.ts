@@ -15,7 +15,7 @@ describe("Date/Date", () => {
       "1970-01-01T00:00:00.000Z",
       new Date(0)
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       "a",
       `Expected a valid Date, actual Invalid Date`

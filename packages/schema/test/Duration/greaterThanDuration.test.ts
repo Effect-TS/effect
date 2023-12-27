@@ -13,13 +13,13 @@ describe("Schema/greaterThanDuration", () => {
       Duration.decode("6 seconds")
     )
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       Duration.decode("5 seconds"),
       `Expected a Duration greater than Duration(5s), actual Duration(5s)`
     )
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       Duration.decode("4 seconds"),
       `Expected a Duration greater than Duration(5s), actual Duration(4s)`

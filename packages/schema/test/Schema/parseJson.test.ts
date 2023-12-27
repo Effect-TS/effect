@@ -60,7 +60,12 @@ describe("Schema > parseJson", () => {
           ? `JSON Parse error: Expected ':' before value in object property definition`
           : `Expected ':' after property name in JSON at position 4`
       )
-      await Util.expectParseFailure(schema, `{"a":"b"}`, `/a Expected number, actual "b"`)
+      await Util.expectParseFailure(
+        schema,
+        `{"a":"b"}`,
+        `["a"]
+└─ Expected number, actual "b"`
+      )
     })
 
     it("encoding", async () => {

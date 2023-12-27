@@ -16,7 +16,7 @@ describe("Data/data", () => {
       { a: "ok", b: 0 },
       Data.struct({ a: "ok", b: 0 })
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: "ok", b: "0" },
       `["b"]

@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/allErrors option", () => {
+describe("Schema > allErrors option", () => {
   describe("decoding", () => {
     describe("tuple", () => {
       it("e + r + e", async () => {
@@ -10,14 +10,27 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           [true],
-          `/1 is missing, /0 Expected string, actual true`,
+          `error(s) found
+├─ [1]
+│  └─ is missing
+└─ [0]
+   └─ Expected string, actual true`,
           Util.allErrors
         )
       })
 
       it("missing element", async () => {
         const schema = S.tuple(S.string, S.number)
-        await Util.expectParseFailure(schema, [], `/0 is missing, /1 is missing`, Util.allErrors)
+        await Util.expectParseFailure(
+          schema,
+          [],
+          `error(s) found
+├─ [0]
+│  └─ is missing
+└─ [1]
+   └─ is missing`,
+          Util.allErrors
+        )
       })
 
       it("unexpected indexes", async () => {
@@ -25,7 +38,11 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           ["a", "b"],
-          `/0 is unexpected, /1 is unexpected`,
+          `error(s) found
+├─ [0]
+│  └─ is unexpected
+└─ [1]
+   └─ is unexpected`,
           Util.allErrors
         )
       })
@@ -35,7 +52,11 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           [1, "b"],
-          `/0 Expected string, actual 1, /1 Expected number, actual "b"`,
+          `error(s) found
+├─ [0]
+│  └─ Expected string, actual 1
+└─ [1]
+   └─ Expected number, actual "b"`,
           Util.allErrors
         )
       })
@@ -45,7 +66,11 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           ["a", "b", "c"],
-          `/1 Expected number, actual "b", /2 Expected number, actual "c"`,
+          `error(s) found
+├─ [1]
+│  └─ Expected number, actual "b"
+└─ [2]
+   └─ Expected number, actual "c"`,
           Util.allErrors
         )
       })
@@ -55,7 +80,11 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           ["a", "b"],
-          `/0 Expected number, actual "a", /1 Expected number, actual "b"`,
+          `error(s) found
+├─ [0]
+│  └─ Expected number, actual "a"
+└─ [1]
+   └─ Expected number, actual "b"`,
           Util.allErrors
         )
       })
@@ -64,7 +93,16 @@ describe("Schema/allErrors option", () => {
     describe("struct", () => {
       it("missing keys", async () => {
         const schema = S.struct({ a: S.string, b: S.number })
-        await Util.expectParseFailure(schema, {}, `/a is missing, /b is missing`, Util.allErrors)
+        await Util.expectParseFailure(
+          schema,
+          {},
+          `error(s) found
+├─ ["a"]
+│  └─ is missing
+└─ ["b"]
+   └─ is missing`,
+          Util.allErrors
+        )
       })
 
       it("wrong type for values", async () => {
@@ -72,7 +110,11 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: 1, b: "b" },
-          `/a Expected string, actual 1, /b Expected number, actual "b"`,
+          `error(s) found
+├─ ["a"]
+│  └─ Expected string, actual 1
+└─ ["b"]
+   └─ Expected number, actual "b"`,
           Util.allErrors
         )
       })
@@ -82,7 +124,11 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: 1, b: "b", c: "c" },
-          `/b is unexpected, expected "a", /c is unexpected, expected "a"`,
+          `error(s) found
+├─ ["b"]
+│  └─ is unexpected, expected "a"
+└─ ["c"]
+   └─ is unexpected, expected "a"`,
           { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
@@ -94,7 +140,11 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: 1, b: 2 },
-          `/a is unexpected, expected a string at least 2 character(s) long, /b is unexpected, expected a string at least 2 character(s) long`,
+          `error(s) found
+├─ ["a"]
+│  └─ is unexpected, expected a string at least 2 character(s) long
+└─ ["b"]
+   └─ is unexpected, expected a string at least 2 character(s) long`,
           { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
@@ -104,7 +154,11 @@ describe("Schema/allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: "a", b: "b" },
-          `/a Expected number, actual "a", /b Expected number, actual "b"`,
+          `error(s) found
+├─ ["a"]
+│  └─ Expected number, actual "a"
+└─ ["b"]
+   └─ Expected number, actual "b"`,
           Util.allErrors
         )
       })

@@ -25,12 +25,14 @@ describe("Schema/suspend", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a1" },
-        `/as is missing`
+        `["as"]
+└─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
-        "/as /0 /as /0 Expected <anonymous type literal or record schema>, actual 1"
+        `["as"][0]["as"][0]
+└─ Expected <anonymous type literal or record schema>, actual 1`
       )
     })
 

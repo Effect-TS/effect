@@ -18,7 +18,8 @@ describe("Uint8Array/Uint8Array", () => {
     await Util.expectParseFailure(
       schema,
       [12354],
-      "/0 Expected 8-bit unsigned integer, actual 12354"
+      `[0]
+└─ Expected 8-bit unsigned integer, actual 12354`
     )
   })
 

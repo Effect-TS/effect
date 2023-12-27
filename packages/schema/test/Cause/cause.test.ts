@@ -65,20 +65,20 @@ describe("Cause/cause", () => {
       Cause.interrupt(FiberId.composite(FiberId.runtime(1, 1000), FiberId.none))
     )
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       null,
       `Union (6 members): Cause (From)
 └─ Expected Cause (From), actual null`
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       {},
       `Union (6 members): Cause (From)
 └─ ["_tag"]
    └─ is missing`
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
       `Union (6 members): Cause (From)

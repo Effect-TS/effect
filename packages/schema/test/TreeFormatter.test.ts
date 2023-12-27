@@ -24,7 +24,7 @@ describe("formatErrors", () => {
 
   it("missing", async () => {
     const schema = S.struct({ a: S.string })
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       {},
       `["a"]
@@ -34,7 +34,7 @@ describe("formatErrors", () => {
 
   it("excess property", async () => {
     const schema = S.struct({ a: S.string })
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: "a", b: 1 },
       `["b"]
@@ -54,19 +54,19 @@ describe("formatErrors", () => {
         { exact: true }
       )
     })
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: { b: { c: [{ d: null }] } } },
       `["a"]["b"]["c"][0]["d"]
 └─ Expected string, actual null`
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
       `["a"]["b"]["c"][0]["d"]
 └─ Expected string, actual null`
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
       `["a"]["b"]["c"]
@@ -76,7 +76,7 @@ describe("formatErrors", () => {
    └─ Expected string, actual 1`,
       Util.allErrors
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: { b: { c: [{ d: "d" }] } }, e: { type: "f" } },
       `["e"]

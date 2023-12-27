@@ -13,12 +13,12 @@ describe("Chunk/chunk", () => {
     await Util.expectParseSuccess(schema, [], C.empty())
     await Util.expectParseSuccess(schema, [1, 2, 3], C.fromIterable([1, 2, 3]))
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       null,
       `Expected <anonymous tuple or array schema>, actual null`
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       [1, "a"],
       `[1]

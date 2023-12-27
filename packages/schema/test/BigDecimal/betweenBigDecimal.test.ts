@@ -9,7 +9,7 @@ const min = BigDecimal.make(-1n, 0)
 describe("BigDecimal/between", () => {
   const schema = S.BigDecimal.pipe(S.betweenBigDecimal(min, max))
   it("decoding", async () => {
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       "2",
       `Expected a BigDecimal between -1 and 1, actual BigDecimal(2)`

@@ -32,7 +32,7 @@ describe("Schema/literal", () => {
       await Util.expectParseSuccess(schema, 1)
       await Util.expectParseSuccess(schema, "a")
 
-      await Util.expectParseFailureTree(
+      await Util.expectParseFailure(
         schema,
         null,
         `Union (2 members): 1 or "a"

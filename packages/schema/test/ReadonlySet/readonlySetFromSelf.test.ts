@@ -22,7 +22,8 @@ describe("ReadonlySet/readonlySetFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       new Set(["1", "a", "3"]),
-      `/1 Expected a string <-> number transformation, actual "a"`
+      `[1]
+└─ Expected a string <-> number transformation, actual "a"`
     )
   })
 

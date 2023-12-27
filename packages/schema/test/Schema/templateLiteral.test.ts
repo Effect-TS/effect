@@ -196,7 +196,7 @@ describe("Schema > templateLiteral", () => {
       await Util.expectParseSuccess(schema, "footer_title_id", "footer_title_id")
       await Util.expectParseSuccess(schema, "footer_sendoff_id", "footer_sendoff_id")
 
-      await Util.expectParseFailureTree(
+      await Util.expectParseFailure(
         schema,
         "_id",
         `Union (4 members): "welcome_email_id" or "email_heading_id" or "footer_title_id" or "footer_sendoff_id"

@@ -22,7 +22,7 @@ describe("BigDecimal > BigDecimal", () => {
       "",
       BigDecimal.normalize(BigDecimal.make(0n, 0))
     )
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       "abc",
       `Expected a string <-> BigDecimal transformation, actual "abc"`
