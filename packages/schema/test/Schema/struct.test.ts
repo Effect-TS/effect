@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/struct", () => {
+describe("Schema > struct", () => {
   it("should allow a \"constructor\" field name", () => {
     const schema = S.struct({ constructor: S.string })
     expect(schema.ast._tag).toEqual("TypeLiteral")
@@ -15,12 +15,6 @@ describe("Schema/struct", () => {
         schema,
         null,
         `Expected MyDataType, actual null`
-      )
-      await Util.expectParseFailureTree(
-        schema,
-        null,
-        `error(s) found
-└─ Expected MyDataType, actual null`
       )
     })
 

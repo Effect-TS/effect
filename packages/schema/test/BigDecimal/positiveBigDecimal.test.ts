@@ -7,12 +7,12 @@ describe("BigDecimal/positiveBigDecimal", () => {
   const schema = S.BigDecimalFromSelf.pipe(S.positiveBigDecimal())
 
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(
       schema,
       BigDecimal.make(0n, 0),
       "Expected a positive BigDecimal, actual BigDecimal(0)"
     )
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(
       schema,
       BigDecimal.make(-2n, 0),
       "Expected a positive BigDecimal, actual BigDecimal(-2)"

@@ -15,16 +15,25 @@ describe("Cause/causeFromSelf", () => {
 
     await Util.expectParseSuccess(schema, Cause.fail("1"), Cause.fail(1))
 
-    await Util.expectParseFailure(schema, null, `Expected Cause, actual null`)
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(schema, null, `Expected Cause, actual null`)
+    await Util.expectParseFailureTree(
       schema,
       Cause.fail("a"),
-      `Union member: /error Expected <anonymous transformation string <-> number>, actual "a"`
+      `Union (6 members): Cause (From)
+└─ Union member: Fail (From)
+   └─ ["error"]
+      └─ Expected a string <-> number transformation, actual "a"`
     )
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
-      `Union member: /right Union member: /error Expected <anonymous transformation string <-> number>, actual "a"`
+      `Union (6 members): Cause (From)
+└─ Union member: Parallel (From)
+   └─ ["right"]
+      └─ Union (6 members): Cause (From)
+         └─ Union member: Fail (From)
+            └─ ["error"]
+               └─ Expected a string <-> number transformation, actual "a"`
     )
   })
 

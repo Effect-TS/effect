@@ -12,7 +12,7 @@ describe("Date/DateFromSelf", () => {
     await Util.expectParseSuccess(S.DateFromSelf, new Date(), new Date())
     await Util.expectParseSuccess(S.DateFromSelf, new Date("invalid"), new Date("invalid"))
 
-    await Util.expectParseFailure(S.DateFromSelf, null, `Expected Date, actual null`)
+    await Util.expectParseFailureTree(S.DateFromSelf, null, `Expected Date, actual null`)
   })
 
   it("encoding", async () => {

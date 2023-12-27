@@ -5,7 +5,7 @@ import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/brand", () => {
+describe("Schema > brand", () => {
   describe("annotations", () => {
     it("should move the brand annotations to the right end", async () => {
       const schema = Util.X2.pipe(S.brand("X2"))
@@ -57,8 +57,7 @@ describe("Schema/brand", () => {
     const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
     expect(Int(1)).toEqual(1)
     expect(() => Int(1.2)).toThrow(
-      new Error(`error(s) found
-└─ Expected integer, actual 1.2`)
+      new Error(`Expected integer, actual 1.2`)
     )
   })
 

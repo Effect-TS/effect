@@ -17,22 +17,22 @@ describe("bigint/bigintFromNumber", () => {
     await Util.expectParseFailure(
       schema,
       1.2,
-      `Expected <anonymous transformation number <-> bigint>, actual 1.2`
+      `Expected a number <-> bigint transformation, actual 1.2`
     )
     await Util.expectParseFailure(
       schema,
       NaN,
-      `Expected <anonymous transformation number <-> bigint>, actual NaN`
+      `Expected a number <-> bigint transformation, actual NaN`
     )
     await Util.expectParseFailure(
       schema,
       Infinity,
-      `Expected <anonymous transformation number <-> bigint>, actual Infinity`
+      `Expected a number <-> bigint transformation, actual Infinity`
     )
     await Util.expectParseFailure(
       schema,
       -Infinity,
-      `Expected <anonymous transformation number <-> bigint>, actual -Infinity`
+      `Expected a number <-> bigint transformation, actual -Infinity`
     )
   })
 
@@ -42,12 +42,12 @@ describe("bigint/bigintFromNumber", () => {
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MAX_SAFE_INTEGER) + 1n,
-      `Expected <anonymous transformation number <-> bigint>, actual 9007199254740992n`
+      `Expected a number <-> bigint transformation, actual 9007199254740992n`
     )
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MIN_SAFE_INTEGER) - 1n,
-      `Expected <anonymous transformation number <-> bigint>, actual -9007199254740992n`
+      `Expected a number <-> bigint transformation, actual -9007199254740992n`
     )
   })
 })

@@ -30,7 +30,7 @@ describe("Schema/PropertySignatureTransformations", () => {
     await Util.expectParseFailure(
       transform,
       { a: "a" },
-      `/a Expected <anonymous transformation string <-> number>, actual "a"`
+      `/a Expected a string <-> number transformation, actual "a"`
     )
 
     await Util.expectEncodeSuccess(transform, { a: 1 }, { a: "1" })
@@ -61,7 +61,7 @@ describe("Schema/PropertySignatureTransformations", () => {
     await Util.expectParseFailure(
       transform,
       { a: "a" },
-      `/a Expected <anonymous transformation string <-> number>, actual "a"`
+      `/a Expected a string <-> number transformation, actual "a"`
     )
 
     await Util.expectEncodeSuccess(transform, { a: 1 }, { a: "1" })
@@ -93,7 +93,7 @@ describe("Schema/PropertySignatureTransformations", () => {
     await Util.expectParseFailure(
       transform,
       { a: "a" },
-      `/a Expected <anonymous transformation string <-> number>, actual "a"`
+      `/a Expected a string <-> number transformation, actual "a"`
     )
 
     await Util.expectEncodeSuccess(transform, { a: O.some(1) }, { a: "1" })

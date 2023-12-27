@@ -16,10 +16,11 @@ describe("Data/data", () => {
       { a: "ok", b: 0 },
       Data.struct({ a: "ok", b: 0 })
     )
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(
       schema,
       { a: "ok", b: "0" },
-      "/b Expected number, actual \"0\""
+      `["b"]
+└─ Expected number, actual "0"`
     )
   })
 

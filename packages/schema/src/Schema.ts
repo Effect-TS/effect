@@ -1424,7 +1424,10 @@ export const transform: {
 export const transformLiteral = <From extends AST.LiteralValue, To extends AST.LiteralValue>(
   from: From,
   to: To
-): Schema<From, To> => transform(literal(from), literal(to), () => to, () => from)
+): Schema<From, To> =>
+  transform(literal(from), literal(to), () => to, () => from).pipe(
+    description(`a ${from} <-> ${to} transformation`)
+  )
 
 /**
  * Creates a new `Schema` which maps between corresponding literal values.
@@ -2036,7 +2039,7 @@ export const Lowercase: Schema<string> = transform(
   string.pipe(lowercased()),
   (s) => s.toLowerCase(),
   identity
-)
+).pipe(description("a string <-> lowercase transformation"))
 
 /**
  * This schema converts a string to uppercase.
@@ -2049,7 +2052,7 @@ export const Uppercase: Schema<string> = transform(
   string.pipe(uppercased()),
   (s) => s.toUpperCase(),
   identity
-)
+).pipe(description("a string <-> uppercase transformation"))
 
 /**
  * This schema allows removing whitespaces from the beginning and end of a string.
@@ -2062,7 +2065,7 @@ export const Trim: Schema<string> = transform(
   string.pipe(trimmed()),
   (s) => s.trim(),
   identity
-)
+).pipe(description("a string <-> trim transformation"))
 
 /**
  * Returns a achema that allows splitting a string into an array of strings.
@@ -2076,7 +2079,7 @@ export const split = (separator: string): Schema<string, ReadonlyArray<string>> 
     array(string),
     S.split(separator),
     ReadonlyArray.join(separator)
-  )
+  ).pipe(description(`a string <-> split(${JSON.stringify(separator)}) transformation`))
 
 /**
  * @since 1.0.0
@@ -2125,7 +2128,7 @@ export const parseJson: {
         try: () => JSON.stringify(u, options?.replacer, options?.space),
         catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, u, e.message)])
       })
-  )
+  ).pipe(description("a string <-> unknown transformation"))
 }
 
 /**
@@ -2469,7 +2472,7 @@ export const clamp =
       (self) => N.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
-    )
+    ).pipe(description(`a number <-> clamp(${minimum}, ${maximum}) transformation`))
 
 /**
  * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
@@ -2503,7 +2506,7 @@ export const NumberFromString: Schema<string, number> = transformOrFail(
       : ParseResult.succeed(n)
   },
   (n) => ParseResult.succeed(String(n))
-)
+).pipe(description("a string <-> number transformation"))
 
 /**
  * @category number constructors
@@ -2589,7 +2592,7 @@ export const Not: Schema<boolean> = transform(
   boolean,
   (self) => !self,
   (self) => !self
-)
+).pipe(description(`a boolean <-> not transformation`))
 
 /**
  * This schema transforms a `string` into a `symbol`.
@@ -2603,7 +2606,7 @@ export const symbol: Schema<string, symbol> = transform(
   (s) => Symbol.for(s),
   (sym) => sym.description,
   { strict: false }
-)
+).pipe(description(`a string <-> symbol transformation`))
 
 /**
  * @category type id
@@ -2800,7 +2803,7 @@ export const clampBigint =
       (self) => BigInt_.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
-    )
+    ).pipe(description(`a bigint <-> clamp(${minimum}n, ${maximum}n) transformation`))
 
 /**
  * This schema transforms a `string` into a `bigint` by parsing the string using the `BigInt` function.
@@ -2824,7 +2827,7 @@ export const bigint: Schema<string, bigint> = transformOrFail(
     })
   },
   (n) => ParseResult.succeed(String(n))
-)
+).pipe(description("a string <-> bigint transformation"))
 
 /**
  * @category bigint constructors
@@ -2905,7 +2908,7 @@ export const BigintFromNumber: Schema<number, bigint> = transformOrFail(
 
     return ParseResult.succeed(Number(b))
   }
-)
+).pipe(description("a number <-> bigint transformation"))
 
 /**
  * @category Secret constructors
@@ -2932,7 +2935,7 @@ const _Secret: Schema<string, Secret.Secret> = transform(
   (str) => Secret.fromString(str),
   (secret) => Secret.value(secret),
   { strict: false }
-)
+).pipe(description("a string <-> Secret transformation"))
 
 export {
   /**
@@ -3007,7 +3010,7 @@ export const DurationFromNanos: Schema<
       onNone: () => ParseResult.fail(ParseResult.type(ast, duration)),
       onSome: (val) => ParseResult.succeed(val)
     })
-)
+).pipe(description("a nanos <-> Duration transformation"))
 
 /**
  * A schema that transforms a `number` tuple into a `Duration`.
@@ -3024,7 +3027,7 @@ export const DurationFromMillis: Schema<
   DurationFromSelf,
   (ms) => Duration.millis(ms),
   (n) => Duration.toMillis(n)
-)
+).pipe(description("a millis <-> Duration transformation"))
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   NonNegative.pipe(
@@ -3051,7 +3054,7 @@ const _Duration: Schema<readonly [seconds: number, nanos: number], Duration.Dura
   DurationFromSelf,
   ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
   (duration) => Duration.toHrTime(duration)
-)
+).pipe(description("a [seconds, nanos] <-> Duration transformation"))
 
 export {
   /**
@@ -3078,7 +3081,7 @@ export const clampDuration =
       (self) => Duration.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
-    )
+    ).pipe(description(`a Duration <-> clamp(${minimum}, ${maximum}) transformation`))
 
 /**
  * @category type id
@@ -3230,7 +3233,7 @@ const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = transform(
   Uint8ArrayFromSelf,
   (a) => Uint8Array.from(a),
   (arr) => Array.from(arr)
-)
+).pipe(description("a ReadonlyArray<number> <-> Uint8Array transformation"))
 
 export {
   /**
@@ -3435,7 +3438,7 @@ export const DateFromSelf: Schema<Date> = declare(
     [hooks.ArbitraryHookId]: dateArbitrary,
     [hooks.EquivalenceHookId]: () => Equivalence.Date
   }
-)
+).pipe(description("a Date"))
 
 /**
  * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
@@ -3443,7 +3446,10 @@ export const DateFromSelf: Schema<Date> = declare(
  * @category Date constructors
  * @since 1.0.0
  */
-export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(validDate())
+export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(
+  validDate(),
+  description("a valid Date")
+)
 
 /**
  * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
@@ -3456,7 +3462,7 @@ export const DateFromString: Schema<string, Date> = transform(
   DateFromSelf,
   (s) => new Date(s),
   (n) => n.toISOString()
-)
+).pipe(description("a string <-> Date transformation"))
 
 const _Date: Schema<string, Date> = DateFromString.pipe(validDate())
 
@@ -3487,12 +3493,12 @@ const optionFrom = <I, A>(value: Schema<I, A>): Schema<OptionFrom<I>, OptionFrom
   union(
     struct({
       _tag: literal("None")
-    }),
+    }).pipe(description("None (From)")),
     struct({
       _tag: literal("Some"),
       value
-    })
-  )
+    }).pipe(description("Some (From)"))
+  ).pipe(description("Option (From)"))
 
 const optionDecode = <A>(input: OptionFrom<A>): Option.Option<A> =>
   input._tag === "None" ? Option.none() : Option.some(input.value)
@@ -3551,7 +3557,7 @@ export const option = <I, A>(
       onNone: () => ({ _tag: "None" }) as const,
       onSome: (value) => ({ _tag: "Some", value }) as const
     })
-  )
+  ).pipe(description("a OptionFrom<I> <-> Option<A> transformation"))
 
 /**
  * @category Option transformations
@@ -3560,7 +3566,9 @@ export const option = <I, A>(
 export const optionFromNullable = <I, A>(
   value: Schema<I, A>
 ): Schema<I | null, Option.Option<A>> =>
-  transform(nullable(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrNull)
+  transform(nullable(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrNull).pipe(
+    description("a I | null <-> Option<A> transformation")
+  )
 
 /**
  * @category Option transformations
@@ -3575,6 +3583,8 @@ export const optionFromNullish = <I, A>(
     optionFromSelf(to(value)),
     Option.fromNullable,
     onNoneEncoding === null ? Option.getOrNull : Option.getOrUndefined
+  ).pipe(
+    description("a I | null | undefined <-> Option<A> transformation")
   )
 
 /**
@@ -3599,12 +3609,12 @@ const eitherFrom = <IE, E, IA, A>(
     struct({
       _tag: literal("Left"),
       left
-    }),
+    }).pipe(description("Left (From)")),
     struct({
       _tag: literal("Right"),
       right
-    })
-  )
+    }).pipe(description("Right (From)"))
+  ).pipe(description("Either (From)"))
 
 const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<E, A> =>
   input._tag === "Left" ? Either.left(input.left) : Either.right(input.right)
@@ -3672,6 +3682,8 @@ export const either = <IE, E, IA, A>(
       onLeft: (left) => ({ _tag: "Left", left }) as const,
       onRight: (right) => ({ _tag: "Right", right }) as const
     })
+  ).pipe(
+    description("a EitherFrom<IE, IA> <-> Either.Either<E, A> transformation")
   )
 
 const isMap = (u: unknown): u is Map<unknown, unknown> => u instanceof Map
@@ -3749,7 +3761,7 @@ export const readonlyMap = <IK, K, IV, V>(
     readonlyMapFromSelf(to(key), to(value)),
     (as) => new Map(as),
     (map) => Array.from(map.entries())
-  )
+  ).pipe(description("a ReadonlyArray<readonly [IK, IV]> <-> ReadonlyMap<K, V> transformation"))
 
 const isSet = (u: unknown): u is Set<unknown> => u instanceof Set
 
@@ -3808,7 +3820,7 @@ export const readonlySet = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, 
     readonlySetFromSelf(to(item)),
     (as) => new Set(as),
     (set) => Array.from(set)
-  )
+  ).pipe(description("a ReadonlyArray<I> <-> ReadonlySet<A> transformation"))
 
 const bigDecimalPretty = (): Pretty.Pretty<BigDecimal.BigDecimal> => (val) =>
   `BigDecimal(${BigDecimal.format(BigDecimal.normalize(val))})`
@@ -3847,7 +3859,7 @@ const _BigDecimal: Schema<string, BigDecimal.BigDecimal> = transformOrFail(
       onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
     })),
   (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val)))
-)
+).pipe(description("a string <-> BigDecimal transformation"))
 
 export {
   /**
@@ -3869,7 +3881,7 @@ export const BigDecimalFromNumber: Schema<number, BigDecimal.BigDecimal> = trans
   BigDecimalFromSelf,
   (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
   (val) => ParseResult.succeed(BigDecimal.unsafeToNumber(val))
-)
+).pipe(description("a number <-> BigDecimal transformation"))
 
 /**
  * @category type id
@@ -4104,7 +4116,7 @@ export const clampBigDecimal =
       (self) => BigDecimal.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
-    )
+    ).pipe(description(`a BigDecimal <-> clamp(${minimum}, ${maximum}) transformation`))
 
 /**
  * Negates a `BigDecimal`.
@@ -4121,7 +4133,7 @@ export const negateBigDecimal = <I, A extends BigDecimal.BigDecimal>(
     (self) => BigDecimal.negate(self),
     (self) => BigDecimal.negate(self),
     { strict: false }
-  )
+  ).pipe(description("a BigDecimal <-> negate transformation"))
 
 const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc) =>
   fc.array(item(fc)).map(Chunk.fromIterable)
@@ -4170,7 +4182,7 @@ export const chunk = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, Chunk.
     chunkFromSelf(to(item)),
     (as) => as.length === 0 ? Chunk.empty() : Chunk.fromIterable(as),
     Chunk.toReadonlyArray
-  )
+  ).pipe(description("a ReadonlyArray<I> <-> Chunk<A> transformation"))
 
 const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a: A): Data.Data<A> =>
   Array.isArray(a) ? Data.array(a) : Data.struct(a)
@@ -4230,7 +4242,7 @@ export const data = <
     toData,
     (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a),
     { strict: false }
-  )
+  ).pipe(description("a I <-> Data<A> transformation"))
 
 type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
   `Missing \`Self\` generic - use \`class Self extends ${Usage}<Self>()(${Params}{ ... })\``
@@ -4547,10 +4559,10 @@ const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
     _tag: literal("Composite"),
     left: suspend(() => FiberIdFrom),
     right: suspend(() => FiberIdFrom)
-  }),
+  }).pipe(description("Composite (From)")),
   struct({
     _tag: literal("None")
-  }),
+  }).pipe(description("None (From)")),
   struct({
     _tag: literal("Runtime"),
     id: Int.pipe(nonNegative({
@@ -4561,8 +4573,8 @@ const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
       title: "startTimeMillis",
       description: "startTimeMillis"
     }))
-  })
-)
+  }).pipe(description("Runtime (From)"))
+).pipe(description("FiberId (From)"))
 
 const fiberIdFromArbitrary = arbitrary.unsafe(FiberIdFrom)
 
@@ -4679,29 +4691,29 @@ const causeFrom = <EI, E>(
     struct({
       _tag: literal("Die"),
       defect
-    }),
+    }).pipe(description("Die (From)")),
     struct({
       _tag: literal("Empty")
-    }),
+    }).pipe(description("Empty (From)")),
     struct({
       _tag: literal("Fail"),
       error
-    }),
+    }).pipe(description("Fail (From)")),
     struct({
       _tag: literal("Interrupt"),
       fiberId: FiberIdFrom
-    }),
+    }).pipe(description("Interrupt (From)")),
     struct({
       _tag: literal("Parallel"),
       left: suspend(() => out),
       right: suspend(() => out)
-    }),
+    }).pipe(description("Parallel (From)")),
     struct({
       _tag: literal("Sequential"),
       left: suspend(() => out),
       right: suspend(() => out)
-    })
-  )
+    }).pipe(description("Sequential (From)"))
+  ).pipe(description("Cause (From)"))
   return out
 }
 
@@ -4854,12 +4866,12 @@ const exitFrom = <EI, E, AI, A>(
     struct({
       _tag: literal("Failure"),
       cause: causeFrom(error, defect)
-    }),
+    }).pipe(description("Failure (From)")),
     struct({
       _tag: literal("Success"),
       value
-    })
-  )
+    }).pipe(description("Success (From)"))
+  ).pipe(description("Exit (From)"))
 
 const exitDecode = <E, A>(input: ExitFrom<E, A>): Exit.Exit<E, A> => {
   switch (input._tag) {

@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/literal", () => {
+describe("Schema > union", () => {
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
       const schema = S.union(
@@ -17,12 +17,11 @@ describe("Schema/literal", () => {
       await Util.expectParseFailureTree(
         schema,
         null,
-        `error(s) found
-└─ Union (2 members): MyDataType1 or MyDataType2
-   ├─ Union member: MyDataType1
-   │  └─ Expected MyDataType1, actual null
-   └─ Union member: MyDataType2
-      └─ Expected MyDataType2, actual null`
+        `Union (2 members): MyDataType1 or MyDataType2
+├─ Union member: MyDataType1
+│  └─ Expected MyDataType1, actual null
+└─ Union member: MyDataType2
+   └─ Expected MyDataType2, actual null`
       )
     })
 

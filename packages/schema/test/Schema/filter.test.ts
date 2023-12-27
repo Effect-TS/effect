@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/filter", () => {
+describe("Schema > filter", () => {
   it("filter/ annotation options", () => {
     const schema = S.string.pipe(
       S.filter((s): s is string => s.length === 1, {
@@ -57,9 +57,8 @@ describe("Schema/filter", () => {
     await Util.expectParseFailureTree(
       schema,
       { a: "a", b: "b" },
-      `error(s) found
-└─ ["b"]
-   └─ should be equal to a's value ("a")`
+      `["b"]
+└─ should be equal to a's value ("a")`
     )
   })
 })

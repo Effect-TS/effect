@@ -21,7 +21,7 @@ const PositiveInt = Brand.all(Int, Positive)
 type Eur = number & Brand.Brand<"Eur">
 const Eur = Brand.nominal<Eur>()
 
-describe("Schema/fromBrand", () => {
+describe("Schema > fromBrand", () => {
   it("property tests", () => {
     Util.roundtrip(S.number.pipe(S.fromBrand(Int))) // refined
     Util.roundtrip(S.number.pipe(S.fromBrand(Eur))) // nominal
@@ -36,8 +36,7 @@ describe("Schema/fromBrand", () => {
       "Expected -0.5 to be positive, Expected -0.5 to be an integer"
     )
     expect(() => S.parseSync(schema)(-0.5)).toThrow(
-      new Error(`error(s) found
-└─ Expected -0.5 to be positive, Expected -0.5 to be an integer`)
+      new Error(`Expected -0.5 to be positive, Expected -0.5 to be an integer`)
     )
     await Util.expectParseFailure(schema, -1, "Expected -1 to be positive")
     await Util.expectParseFailure(schema, 0, "Expected 0 to be positive")

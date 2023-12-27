@@ -13,8 +13,7 @@ describe("Parser", () => {
     const schema = S.string
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrow(
-      new Error(`error(s) found
-└─ Expected string, actual 1`)
+      new Error(`Expected string, actual 1`)
     )
   })
 
@@ -22,8 +21,7 @@ describe("Parser", () => {
     const schema = S.NumberFromString
     expect(P.parseSync(schema)("1")).toEqual(1)
     expect(() => P.parseSync(schema)("a")).toThrow(
-      new Error(`error(s) found
-└─ Expected <anonymous transformation string <-> number>, actual "a"`)
+      new Error(`Expected a string <-> number transformation, actual "a"`)
     )
   })
 
@@ -61,8 +59,7 @@ describe("Parser", () => {
     const schema = S.NumberFromString
     expect(P.decodeSync(schema)("1")).toEqual(1)
     expect(() => P.decodeSync(schema)("a")).toThrow(
-      new Error(`error(s) found
-└─ Expected <anonymous transformation string <-> number>, actual "a"`)
+      new Error(`Expected a string <-> number transformation, actual "a"`)
     )
   })
 
@@ -98,8 +95,7 @@ describe("Parser", () => {
     const schema = S.NumberFromString
     expect(P.validateSync(schema)(1)).toEqual(1)
     expect(() => P.validateSync(schema)("1")).toThrow(
-      new Error(`error(s) found
-└─ Expected number, actual "1"`)
+      new Error(`Expected number, actual "1"`)
     )
   })
 

@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, it } from "vitest"
 
-describe("Schema/Duration", () => {
+describe("Duration", () => {
   const schema = S.Duration
 
   it("property tests", () => {
@@ -12,10 +12,24 @@ describe("Schema/Duration", () => {
 
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, [555, 123456789], Duration.nanos(555123456789n))
-    await Util.expectParseFailure(schema, [-500, 0], "/0 Expected seconds, actual -500")
-    await Util.expectParseFailure(schema, [0, -123], "/1 Expected nanos, actual -123")
-    await Util.expectParseFailure(schema, 123, "Expected a high resolution time tuple, actual 123")
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(
+      schema,
+      [-500, 0],
+      `[0]
+└─ Expected seconds, actual -500`
+    )
+    await Util.expectParseFailureTree(
+      schema,
+      [0, -123],
+      `[1]
+└─ Expected nanos, actual -123`
+    )
+    await Util.expectParseFailureTree(
+      schema,
+      123,
+      "Expected a high resolution time tuple, actual 123"
+    )
+    await Util.expectParseFailureTree(
       schema,
       123n,
       "Expected a high resolution time tuple, actual 123n"

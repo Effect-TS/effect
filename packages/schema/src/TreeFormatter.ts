@@ -24,8 +24,10 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrors = (errors: NonEmptyReadonlyArray<ParseIssue>): string =>
-  drawTree(make(`error(s) found`, errors.map(go)))
+export const formatErrors = (errors: NonEmptyReadonlyArray<ParseIssue>): string => {
+  const forest = errors.map(go)
+  return drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, errors.map(go)))
+}
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 
@@ -109,7 +111,10 @@ export const formatExpected = (ast: AST.AST): string => {
     case "UniqueSymbol":
       return Option.getOrElse(getExpected(ast), () => formatActual(ast.symbol))
     case "Union":
-      return [...new Set(ast.types.map(formatExpected))].join(" or ")
+      return Option.getOrElse(
+        getExpected(ast),
+        () => [...new Set(ast.types.map(formatExpected))].join(" or ")
+      )
     case "TemplateLiteral":
       return Option.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
     case "Tuple":

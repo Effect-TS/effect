@@ -8,7 +8,7 @@ describe("BigDecimal/greaterThanOrEqualToBigDecimal", () => {
   const schema = S.BigDecimal.pipe(S.greaterThanOrEqualToBigDecimal(min))
 
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(
       schema,
       "0",
       "Expected a BigDecimal greater than or equal to 10, actual BigDecimal(0)"

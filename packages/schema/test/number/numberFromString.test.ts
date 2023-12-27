@@ -22,32 +22,32 @@ describe("number/NumberFromString", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected <anonymous transformation string <-> number>, actual ""`
+      `Expected a string <-> number transformation, actual ""`
     )
     await Util.expectParseFailure(
       schema,
       " ",
-      `Expected <anonymous transformation string <-> number>, actual " "`
+      `Expected a string <-> number transformation, actual " "`
     )
     await Util.expectParseFailure(
       schema,
       "1AB",
-      `Expected <anonymous transformation string <-> number>, actual "1AB"`
+      `Expected a string <-> number transformation, actual "1AB"`
     )
     await Util.expectParseFailure(
       schema,
       "AB1",
-      `Expected <anonymous transformation string <-> number>, actual "AB1"`
+      `Expected a string <-> number transformation, actual "AB1"`
     )
     await Util.expectParseFailure(
       schema,
       "a",
-      `Expected <anonymous transformation string <-> number>, actual "a"`
+      `Expected a string <-> number transformation, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       "a1",
-      `Expected <anonymous transformation string <-> number>, actual "a1"`
+      `Expected a string <-> number transformation, actual "a1"`
     )
   })
 

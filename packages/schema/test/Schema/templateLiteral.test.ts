@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/templateLiteral", () => {
+describe("Schema > templateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {
     expect(() => S.templateLiteral(S.boolean)).toThrow(
       new Error("templateLiteral: unsupported template literal span BooleanKeyword")
@@ -199,16 +199,15 @@ describe("Schema/templateLiteral", () => {
       await Util.expectParseFailureTree(
         schema,
         "_id",
-        `error(s) found
-└─ Union (4 members): "welcome_email_id" or "email_heading_id" or "footer_title_id" or "footer_sendoff_id"
-   ├─ Union member: "welcome_email_id"
-   │  └─ Expected "welcome_email_id", actual "_id"
-   ├─ Union member: "email_heading_id"
-   │  └─ Expected "email_heading_id", actual "_id"
-   ├─ Union member: "footer_title_id"
-   │  └─ Expected "footer_title_id", actual "_id"
-   └─ Union member: "footer_sendoff_id"
-      └─ Expected "footer_sendoff_id", actual "_id"`
+        `Union (4 members): "welcome_email_id" or "email_heading_id" or "footer_title_id" or "footer_sendoff_id"
+├─ Union member: "welcome_email_id"
+│  └─ Expected "welcome_email_id", actual "_id"
+├─ Union member: "email_heading_id"
+│  └─ Expected "email_heading_id", actual "_id"
+├─ Union member: "footer_title_id"
+│  └─ Expected "footer_title_id", actual "_id"
+└─ Union member: "footer_sendoff_id"
+   └─ Expected "footer_sendoff_id", actual "_id"`
       )
     })
   })

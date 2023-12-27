@@ -16,7 +16,7 @@ describe("Schema/compose", async () => {
     await Util.expectParseFailure(
       schema1,
       "a",
-      `Expected <anonymous transformation string <-> number>, actual "a"`
+      `Expected a string <-> number transformation, actual "a"`
     )
     await Util.expectParseFailure(schema1, null, "Expected string, actual null")
     const schema2 = S.union(S.null, S.string).pipe(
@@ -26,7 +26,7 @@ describe("Schema/compose", async () => {
     await Util.expectParseFailure(
       schema2,
       "a",
-      `Expected <anonymous transformation string <-> number>, actual "a"`
+      `Expected a string <-> number transformation, actual "a"`
     )
     await Util.expectParseFailure(schema2, null, "Expected string, actual null")
   })

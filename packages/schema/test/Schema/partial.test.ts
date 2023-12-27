@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 const NumberFromString = S.NumberFromString
 
-describe("Schema/partial", () => {
+describe("Schema > partial", () => {
   it("struct", async () => {
     const schema = S.partial(S.struct({ a: S.number }))
     await Util.expectParseSuccess(schema, {})
@@ -34,13 +34,12 @@ describe("Schema/partial", () => {
     await Util.expectParseFailureTree(
       schema,
       ["a"],
-      `error(s) found
-└─ [0]
-   └─ Union (2 members): number or undefined
-      ├─ Union member: number
-      │  └─ Expected number, actual "a"
-      └─ Union member: undefined
-         └─ Expected undefined, actual "a"`
+      `[0]
+└─ Union (2 members): number or undefined
+   ├─ Union member: number
+   │  └─ Expected number, actual "a"
+   └─ Union member: undefined
+      └─ Expected undefined, actual "a"`
     )
   })
 
@@ -54,17 +53,16 @@ describe("Schema/partial", () => {
     await Util.expectParseFailureTree(
       schema,
       ["a"],
-      `error(s) found
-└─ Union (2 members): <anonymous tuple or array schema> or string
-   ├─ Union member: <anonymous tuple or array schema>
-   │  └─ [0]
-   │     └─ Union (2 members): number or undefined
-   │        ├─ Union member: number
-   │        │  └─ Expected number, actual "a"
-   │        └─ Union member: undefined
-   │           └─ Expected undefined, actual "a"
-   └─ Union member: string
-      └─ Expected string, actual ["a"]`
+      `Union (2 members): <anonymous tuple or array schema> or string
+├─ Union member: <anonymous tuple or array schema>
+│  └─ [0]
+│     └─ Union (2 members): number or undefined
+│        ├─ Union member: number
+│        │  └─ Expected number, actual "a"
+│        └─ Union member: undefined
+│           └─ Expected undefined, actual "a"
+└─ Union member: string
+   └─ Expected string, actual ["a"]`
     )
   })
 

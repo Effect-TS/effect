@@ -19,15 +19,16 @@ describe("Chunk/chunkFromSelf", () => {
       C.fromIterable([1, 2, 3])
     )
 
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(
       schema,
       null,
       `Expected Chunk, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectParseFailureTree(
       schema,
       C.fromIterable(["1", "a", "3"]),
-      `/1 Expected <anonymous transformation string <-> number>, actual "a"`
+      `[1]
+└─ Expected a string <-> number transformation, actual "a"`
     )
   })
 

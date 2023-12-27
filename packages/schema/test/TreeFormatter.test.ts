@@ -17,9 +17,8 @@ describe("formatErrors", () => {
   it("forbidden", async () => {
     const schema = Util.effectify(S.struct({ a: S.string }), "all")
     expect(() => S.parseSync(schema)({ a: "a" })).toThrow(
-      new Error(`error(s) found
-└─ ["a"]
-   └─ is forbidden`)
+      new Error(`["a"]
+└─ is forbidden`)
     )
   })
 
@@ -28,9 +27,8 @@ describe("formatErrors", () => {
     await Util.expectParseFailureTree(
       schema,
       {},
-      `error(s) found
-└─ ["a"]
-   └─ is missing`
+      `["a"]
+└─ is missing`
     )
   })
 
@@ -39,9 +37,8 @@ describe("formatErrors", () => {
     await Util.expectParseFailureTree(
       schema,
       { a: "a", b: 1 },
-      `error(s) found
-└─ ["b"]
-   └─ is unexpected, expected "a"`,
+      `["b"]
+└─ is unexpected, expected "a"`,
       Util.onExcessPropertyError
     )
   })
@@ -60,37 +57,33 @@ describe("formatErrors", () => {
     await Util.expectParseFailureTree(
       schema,
       { a: { b: { c: [{ d: null }] } } },
-      `error(s) found
-└─ ["a"]["b"]["c"][0]["d"]
-   └─ Expected string, actual null`
+      `["a"]["b"]["c"][0]["d"]
+└─ Expected string, actual null`
     )
     await Util.expectParseFailureTree(
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
-      `error(s) found
-└─ ["a"]["b"]["c"][0]["d"]
-   └─ Expected string, actual null`
+      `["a"]["b"]["c"][0]["d"]
+└─ Expected string, actual null`
     )
     await Util.expectParseFailureTree(
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
-      `error(s) found
-└─ ["a"]["b"]["c"]
-   ├─ [0]["d"]
-   │  └─ Expected string, actual null
-   └─ [1]["d"]
-      └─ Expected string, actual 1`,
+      `["a"]["b"]["c"]
+├─ [0]["d"]
+│  └─ Expected string, actual null
+└─ [1]["d"]
+   └─ Expected string, actual 1`,
       Util.allErrors
     )
     await Util.expectParseFailureTree(
       schema,
       { a: { b: { c: [{ d: "d" }] } }, e: { type: "f" } },
-      `error(s) found
-└─ ["e"]
-   └─ Union (2 members): <anonymous type literal or record schema>
-      └─ Union member: <anonymous type literal or record schema>
-         └─ ["f"]
-            └─ is missing`
+      `["e"]
+└─ Union (2 members): <anonymous type literal or record schema>
+   └─ Union member: <anonymous type literal or record schema>
+      └─ ["f"]
+         └─ is missing`
     )
   })
 })

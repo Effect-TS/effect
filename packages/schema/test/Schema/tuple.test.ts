@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/tuple", () => {
+describe("Schema > tuple", () => {
   it("rest: should throw on unsupported schemas", () => {
     const schema = S.tuple().pipe(S.filter(() => true))
     expect(() => schema.pipe(S.rest(S.number))).toThrow(
@@ -31,12 +31,6 @@ describe("Schema/tuple", () => {
         schema,
         null,
         `Expected MyDataType, actual null`
-      )
-      await Util.expectParseFailureTree(
-        schema,
-        null,
-        `error(s) found
-└─ Expected MyDataType, actual null`
       )
     })
 
