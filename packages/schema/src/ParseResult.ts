@@ -58,7 +58,7 @@ export type ParseIssue =
   // context
   | Index
   | Key
-  | Member
+  | Union
   // primitives
   | Type
   | Missing
@@ -194,6 +194,27 @@ export interface Unexpected {
 export const unexpected = (
   ast: Option.Option<AST.AST>
 ): Unexpected => ({ _tag: "Unexpected", ast })
+
+/**
+ * Error that occurs when a union has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Union {
+  readonly _tag: "Union"
+  readonly ast: AST.Union
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Member | Key | Type>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const union = (
+  ast: AST.Union,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Member | Key | Type>
+): Union => ({ _tag: "Union", ast, errors })
 
 /**
  * Error that occurs when a member in a union has an error.

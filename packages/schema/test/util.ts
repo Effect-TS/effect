@@ -285,8 +285,20 @@ const formatDecodeError = (e: PR.ParseIssue): string => {
     case "Unexpected":
       return "is unexpected" +
         (Option.isSome(e.ast) ? `, expected ${formatExpected(e.ast.value)}` : "")
-    case "Member":
-      return `union member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
+    case "Union":
+      return pipe(
+        e.errors,
+        RA.map((e) => {
+          switch (e._tag) {
+            case "Key":
+            case "Type":
+              return formatDecodeError(e)
+            case "Member":
+              return `Union member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
+          }
+        }),
+        RA.join(", ")
+      )
   }
 }
 

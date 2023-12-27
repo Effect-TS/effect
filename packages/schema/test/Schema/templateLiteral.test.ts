@@ -200,14 +200,15 @@ describe("Schema/templateLiteral", () => {
         schema,
         "_id",
         `error(s) found
-├─ union member: "welcome_email_id"
-│  └─ Expected "welcome_email_id", actual "_id"
-├─ union member: "email_heading_id"
-│  └─ Expected "email_heading_id", actual "_id"
-├─ union member: "footer_title_id"
-│  └─ Expected "footer_title_id", actual "_id"
-└─ union member: "footer_sendoff_id"
-   └─ Expected "footer_sendoff_id", actual "_id"`
+└─ Union (4 members): "welcome_email_id" or "email_heading_id" or "footer_title_id" or "footer_sendoff_id"
+   ├─ Union member: "welcome_email_id"
+   │  └─ Expected "welcome_email_id", actual "_id"
+   ├─ Union member: "email_heading_id"
+   │  └─ Expected "email_heading_id", actual "_id"
+   ├─ Union member: "footer_title_id"
+   │  └─ Expected "footer_title_id", actual "_id"
+   └─ Union member: "footer_sendoff_id"
+      └─ Expected "footer_sendoff_id", actual "_id"`
       )
     })
   })

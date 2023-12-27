@@ -43,7 +43,7 @@ describe("Schema/Forbidden", () => {
     expectForbidden(
       S.union(S.string, S.string.pipe(S.minLength(2))),
       "a",
-      `union member: is forbidden, union member: is forbidden`
+      `Union member: is forbidden, Union member: is forbidden`
     )
   })
 

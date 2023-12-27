@@ -78,7 +78,7 @@ describe("Cause/cause", () => {
     await Util.expectParseFailure(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
-      `union member: /left union member: /error is missing`
+      `Union member: /left Union member: /error is missing`
     )
   })
 

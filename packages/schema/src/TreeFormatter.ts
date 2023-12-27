@@ -136,7 +136,7 @@ export const formatExpected = (ast: AST.AST): string => {
 }
 
 const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseIssue>): boolean =>
-  es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "Member"
+  es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "Union"
 
 /** @internal */
 export const getMessage = (e: Type) =>
@@ -174,10 +174,18 @@ const go = (e: ParseIssue): Tree<string> => {
     }
     case "Missing":
       return make("is missing")
-    case "Member":
+    case "Union":
       return make(
-        `union member: ${formatExpected(e.ast)}`,
-        e.errors.map(go)
+        `Union (${e.ast.types.length} members): ` + formatExpected(e.ast),
+        e.errors.map((e) => {
+          switch (e._tag) {
+            case "Key":
+            case "Type":
+              return go(e)
+            case "Member":
+              return make(`Union member: ${formatExpected(e.ast)}`, e.errors.map(go))
+          }
+        })
       )
   }
 }

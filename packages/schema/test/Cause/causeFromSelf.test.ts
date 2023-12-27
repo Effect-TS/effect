@@ -19,12 +19,12 @@ describe("Cause/causeFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       Cause.fail("a"),
-      `union member: /error Expected <anonymous transformation string <-> number>, actual "a"`
+      `Union member: /error Expected <anonymous transformation string <-> number>, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
-      `union member: /right union member: /error Expected <anonymous transformation string <-> number>, actual "a"`
+      `Union member: /right Union member: /error Expected <anonymous transformation string <-> number>, actual "a"`
     )
   })
 

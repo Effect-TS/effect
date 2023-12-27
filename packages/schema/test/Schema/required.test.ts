@@ -73,7 +73,7 @@ describe("Schema/required", () => {
     await Util.expectParseFailure(
       schema,
       ["", 0, "a"],
-      `/2 union member: Expected number, actual "a", union member: Expected boolean, actual "a"`
+      `/2 Union member: Expected number, actual "a", Union member: Expected boolean, actual "a"`
     )
   })
 
@@ -87,7 +87,7 @@ describe("Schema/required", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      "union member: /a is missing, union member: /b is missing"
+      "Union member: /a is missing, Union member: /b is missing"
     )
   })
 
@@ -107,7 +107,7 @@ describe("Schema/required", () => {
     await Util.expectParseFailure(
       schema,
       { a: {} },
-      "/a union member: /a is missing, union member: Expected null, actual {}"
+      "/a Union member: /a is missing, Union member: Expected null, actual {}"
     )
   })
 

@@ -36,10 +36,11 @@ describe("Schema/literal", () => {
         schema,
         null,
         `error(s) found
-├─ union member: 1
-│  └─ Expected 1, actual null
-└─ union member: "a"
-   └─ Expected "a", actual null`
+└─ Union (2 members): 1 or "a"
+   ├─ Union member: 1
+   │  └─ Expected 1, actual null
+   └─ Union member: "a"
+      └─ Expected "a", actual null`
       )
     })
   })

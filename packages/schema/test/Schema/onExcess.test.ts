@@ -29,7 +29,7 @@ describe("Schema/onExcess", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b", c: true },
-        `union member: /c is unexpected, expected "a" or "b", union member: /b is unexpected, expected "a"`,
+        `Union member: /c is unexpected, expected "a" or "b", Union member: /b is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
       await Util.expectEncodeSuccess(
@@ -52,12 +52,12 @@ describe("Schema/onExcess", () => {
       await Util.expectParseFailure(
         schema,
         [1, "b", true],
-        `union member: /2 is unexpected, union member: /1 is unexpected`
+        `Union member: /2 is unexpected, Union member: /1 is unexpected`
       )
       await Util.expectParseFailure(
         schema,
         [1, "b", true],
-        `union member: /2 is unexpected, union member: /1 is unexpected`,
+        `Union member: /2 is unexpected, Union member: /1 is unexpected`,
         Util.onExcessPropertyError
       )
       await Util.expectEncodeSuccess(

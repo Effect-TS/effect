@@ -25,8 +25,6 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
       return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.key]))
     case "Index":
       return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.index]))
-    case "Member":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
     case "Missing":
       return [{ _tag, path, message: "Missing key or index" }]
     case "Forbidden":
@@ -38,6 +36,16 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
         message: "Unexpected" +
           (Option.isSome(self.ast) ? `, expected ${formatExpected(self.ast.value)}` : "")
       }]
+    case "Union":
+      return ReadonlyArray.flatMap(self.errors, (e) => {
+        switch (e._tag) {
+          case "Key":
+          case "Type":
+            return format(e, path)
+          case "Member":
+            return ReadonlyArray.flatMap(e.errors, (e) => format(e, path))
+        }
+      })
   }
 }
 

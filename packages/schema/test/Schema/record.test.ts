@@ -202,7 +202,7 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         { "a": true },
-        `/a union member: Expected string, actual true, union member: Expected number, actual true`
+        `/a Union member: Expected string, actual true, Union member: Expected number, actual true`
       )
     })
 

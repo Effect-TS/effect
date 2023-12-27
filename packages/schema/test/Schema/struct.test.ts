@@ -74,7 +74,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `/a union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
+        `/a Union member: Expected number, actual "a", Union member: Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
@@ -126,7 +126,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `/a union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
+        `/a Union member: Expected number, actual "a", Union member: Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
         schema,

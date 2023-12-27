@@ -91,7 +91,7 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `/0 union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
+        `/0 Union member: Expected number, actual "a", Union member: Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(schema, [1, "b"], `/1 is unexpected`)
     })
@@ -128,7 +128,7 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `/0 union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
+        `/0 Union member: Expected number, actual "a", Union member: Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(schema, [1, "b"], `/1 is unexpected`)
     })

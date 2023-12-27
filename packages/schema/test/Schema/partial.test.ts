@@ -36,10 +36,11 @@ describe("Schema/partial", () => {
       ["a"],
       `error(s) found
 └─ [0]
-   ├─ union member: number
-   │  └─ Expected number, actual "a"
-   └─ union member: undefined
-      └─ Expected undefined, actual "a"`
+   └─ Union (2 members): number or undefined
+      ├─ Union member: number
+      │  └─ Expected number, actual "a"
+      └─ Union member: undefined
+         └─ Expected undefined, actual "a"`
     )
   })
 
@@ -54,14 +55,16 @@ describe("Schema/partial", () => {
       schema,
       ["a"],
       `error(s) found
-├─ union member: <anonymous tuple or array schema>
-│  └─ [0]
-│     ├─ union member: number
-│     │  └─ Expected number, actual "a"
-│     └─ union member: undefined
-│        └─ Expected undefined, actual "a"
-└─ union member: string
-   └─ Expected string, actual ["a"]`
+└─ Union (2 members): <anonymous tuple or array schema> or string
+   ├─ Union member: <anonymous tuple or array schema>
+   │  └─ [0]
+   │     └─ Union (2 members): number or undefined
+   │        ├─ Union member: number
+   │        │  └─ Expected number, actual "a"
+   │        └─ Union member: undefined
+   │           └─ Expected undefined, actual "a"
+   └─ Union member: string
+      └─ Expected string, actual ["a"]`
     )
   })
 
@@ -102,7 +105,7 @@ describe("Schema/partial", () => {
     await Util.expectParseFailure(
       schema,
       { a: 1 },
-      "/a union member: Expected <anonymous type literal or record schema>, actual 1, union member: Expected null, actual 1"
+      "/a Union member: Expected <anonymous type literal or record schema>, actual 1, Union member: Expected null, actual 1"
     )
   })
 
