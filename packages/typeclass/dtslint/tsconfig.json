@@ -1,22 +1,9 @@
 {
+  "extends": "../../../tsconfig.base.json",
+  "include": ["."],
   "compilerOptions": {
-    "noEmit": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noImplicitReturns": false,
-    "noUnusedLocals": false,
-    "noErrorTruncation": true,
-    "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
-    "module": "commonjs",
-    "target": "ES2021",
-    "lib": ["ES2021"],
-    "paths": {
-      "@effect/typeclass": ["../src/index.ts"],
-      "@effect/typeclass/test/*": ["../test/*"],
-      "@effect/typeclass/examples/*": ["../examples/*"],
-      "@effect/typeclass/*": ["../src/*"]
-    }
+    "incremental": false,
+    "composite": false,
+    "noUnusedLocals": false
   }
 }

@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.src.json",
+  "references": [
+    { "path": "../effect" },
+    { "path": "../schema" },
+    { "path": "../printer" },
+    { "path": "../printer-ansi" },
+    { "path": "../platform" },
+    { "path": "../platform-node" },
+  ],
+  "compilerOptions": {
+    "types": ["node"],
+    "tsBuildInfoFile": ".tsbuildinfo/build.tsbuildinfo",
+    "outDir": "build/esm",
+    "declarationDir": "build/dts",
+    "stripInternal": true,
+    "exactOptionalPropertyTypes": false
+  }
+}
