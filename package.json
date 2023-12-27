@@ -18,7 +18,7 @@
     "dtslint": "pnpm --recursive --parallel run dtslint",
     "dtslint-clean": "dtslint --installAll",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-release": "pnpm build && changeset publish"
+    "changeset-publish": "pnpm build && changeset publish"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.4",
