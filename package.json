@@ -1,0 +1,66 @@
+{
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@8.12.1",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel run build",
+    "circular": "madge --extensions ts --circular --no-color --no-spinner packages/*/src",
+    "test": "vitest",
+    "coverage": "vitest --coverage",
+    "check": "tsc -b tsconfig.json",
+    "lint": "eslint \"**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\"",
+    "lint-fix": "pnpm lint --fix",
+    "docgen": "pnpm --recursive --parallel exec docgen && node scripts/docs.mjs",
+    "dtslint": "pnpm --recursive --parallel run dtslint",
+    "dtslint-clean": "dtslint --installAll",
+    "changeset-version": "changeset version && node scripts/version.mjs",
+    "changeset-release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.23.4",
+    "@babel/core": "^7.23.6",
+    "@babel/plugin-transform-export-namespace-from": "^7.23.4",
+    "@babel/plugin-transform-modules-commonjs": "^7.23.3",
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.1",
+    "@edge-runtime/vm": "^3.1.7",
+    "@effect/build-utils": "^0.7.1",
+    "@effect/docgen": "^0.3.8",
+    "@effect/dtslint": "^0.0.4",
+    "@effect/eslint-plugin": "^0.1.2",
+    "@effect/language-service": "^0.1.0",
+    "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vitest/browser": "^1.1.0",
+    "@vitest/coverage-v8": "^1.1.0",
+    "@vitest/web-worker": "^1.1.0",
+    "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "eslint": "^8.56.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-codegen": "^0.21.0",
+    "eslint-plugin-deprecation": "^2.0.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-sort-destructure-keys": "^1.5.0",
+    "fast-check": "^3.15.0",
+    "glob": "^10.3.10",
+    "madge": "^6.1.0",
+    "playwright": "^1.40.1",
+    "prettier": "^3.1.1",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10",
+    "vitest": "^1.1.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@changesets/assemble-release-plan@6.0.0": "patches/@changesets__assemble-release-plan@6.0.0.patch"
+    }
+  }
+}

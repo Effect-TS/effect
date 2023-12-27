@@ -1,0 +1,10 @@
+coverage/
+*.tsbuildinfo
+node_modules/
+.DS_Store
+tmp/
+dist/
+build/
+docs/
+scratchpad/
+.direnv/

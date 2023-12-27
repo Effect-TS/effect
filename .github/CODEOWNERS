@@ -1,0 +1,18 @@
+*                               @mikearnaldi
+
+/packages/effect/               @mikearnaldi
+/packages/cli/                  @IMax153 @tim-smart
+/packages/opentelemetry/        @tim-smart @mikearnaldi
+/packages/platform/             @tim-smart
+/packages/platform-browser/     @tim-smart
+/packages/platform-bun/         @tim-smart
+/packages/platform-node/        @tim-smart
+/packages/printer/              @IMax153 @mikearnaldi
+/packages/printer-ansi/         @IMax153 @mikearnaldi
+/packages/rpc/                  @tim-smart
+/packages/rpc-http/             @tim-smart
+/packages/rpc-http-node/        @tim-smart
+/packages/rpc-nextjs/           @tim-smart
+/packages/rpc-workers/          @tim-smart
+/packages/schema/               @gcanti
+/packages/typeclass/            @tim-smart @gcanti

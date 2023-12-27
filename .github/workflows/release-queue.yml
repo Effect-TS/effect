@@ -1,0 +1,25 @@
+name: Release queue
+on:
+  pull_request_target:
+    branches: [main, next-minor, next-major]
+  push:
+    branches: [main, next-minor, next-major]
+
+jobs:
+  update:
+    if: github.repository_owner == 'Effect-Ts'
+    name: Update
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: gh pr checkout ${{ github.event.pull_request.number }}
+        if: github.event.pull_request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: tim-smart/next-release-action@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          packages: effect

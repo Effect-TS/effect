@@ -1,0 +1,42 @@
+diff --git a/dist/changesets-assemble-release-plan.cjs.js b/dist/changesets-assemble-release-plan.cjs.js
+index ee5c0f67fabadeb112e9f238d8b144a4d125830f..42afcbce044a2949d6242af0a6c5abffcd2a51ad 100644
+--- a/dist/changesets-assemble-release-plan.cjs.js
++++ b/dist/changesets-assemble-release-plan.cjs.js
+@@ -90,16 +90,6 @@ function determineDependents({
+         } of dependencyVersionRanges) {
+           if (nextRelease.type === "none") {
+             continue;
+-          } else if (shouldBumpMajor({
+-            dependent,
+-            depType,
+-            versionRange,
+-            releases,
+-            nextRelease,
+-            preInfo,
+-            onlyUpdatePeerDependentsWhenOutOfRange: config.___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH.onlyUpdatePeerDependentsWhenOutOfRange
+-          })) {
+-            type = "major";
+           } else if ((!releases.has(dependent) || releases.get(dependent).type === "none") && (config.___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH.updateInternalDependents === "always" || !semverSatisfies__default["default"](incrementVersion(nextRelease, preInfo), versionRange))) {
+             switch (depType) {
+               case "dependencies":
+diff --git a/dist/changesets-assemble-release-plan.esm.js b/dist/changesets-assemble-release-plan.esm.js
+index bf5202626a164a7780650d333983c3479b078689..27eea4d1d31c0e7ce8d56363c5a3437bbeb819a0 100644
+--- a/dist/changesets-assemble-release-plan.esm.js
++++ b/dist/changesets-assemble-release-plan.esm.js
+@@ -79,16 +79,6 @@ function determineDependents({
+         } of dependencyVersionRanges) {
+           if (nextRelease.type === "none") {
+             continue;
+-          } else if (shouldBumpMajor({
+-            dependent,
+-            depType,
+-            versionRange,
+-            releases,
+-            nextRelease,
+-            preInfo,
+-            onlyUpdatePeerDependentsWhenOutOfRange: config.___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH.onlyUpdatePeerDependentsWhenOutOfRange
+-          })) {
+-            type = "major";
+           } else if ((!releases.has(dependent) || releases.get(dependent).type === "none") && (config.___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH.updateInternalDependents === "always" || !semverSatisfies(incrementVersion(nextRelease, preInfo), versionRange))) {
+             switch (depType) {
+               case "dependencies":

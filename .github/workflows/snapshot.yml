@@ -1,0 +1,117 @@
+name: Snapshot
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  snapshot:
+    name: Snapshot
+    if: ${{ github.repository_owner == 'Effect-Ts' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/snapshot') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Enforce permission requirement
+        uses: prince-chrismc/check-actor-permissions-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          permission: write
+
+      - name: Extract snapshot command
+        id: command
+        env:
+          COMMENT: ${{ github.event.comment.body }}
+        run: |
+          if [[ $COMMENT =~ ^/snapshot([[:space:]]([a-z]{3,12}))?$ ]]; then
+            snapshot="${BASH_REMATCH[2]:-snapshot}"
+            echo "snapshot=$snapshot" >> $GITHUB_OUTPUT
+          else
+            exit 1
+          fi
+
+      - name: Initial comment
+        id: comment
+        uses: peter-evans/create-or-update-comment@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            **Alright @${{ github.actor }}, I'm working on the snapshot!**
+
+            You can follow the progress [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+
+      - name: Checkout default branch
+        uses: actions/checkout@v2
+
+      - name: Checkout pull request branch
+        run: gh pr checkout ${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current branch name
+        id: branch
+        run: echo "branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
+
+      - name: Retrieve changeset entries
+        if: ${{ steps.branch.outputs.branch == 'changeset-release/main' }}
+        run: git checkout origin/main
+
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+
+      - name: Exit pre-release mode
+        if: ${{ hashFiles('.changeset/pre.json') != '' }}
+        run: pnpm changeset pre exit
+
+      - name: Version snapshot
+        run: pnpm changeset version --snapshot ${{ steps.command.outputs.snapshot }} | grep -q "All files have been updated"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build snapshot
+        run: pnpm build
+
+      - name: Set registry config
+        run: pnpm config set --location project "//registry.npmjs.org/:_authToken" "${{ secrets.NPM_TOKEN }}"
+
+      - name: Publish snapshot
+        id: snapshot
+        run: |
+          # Publish and extract published tags from stdout.
+          output=$(pnpm changeset publish --tag ${{ steps.command.outputs.snapshot }} --no-git-tag)
+          output=$(echo "$output" | awk '/packages published successfully:/{flag=1; next} flag')
+          output=$(echo "$output" | grep -o '[^ ]*@[^ ]*' | awk '{print "\"" $0 "\""}' | paste -sd ',')
+          echo "tags=[$output]" >> $GITHUB_OUTPUT
+          # remove npm tag
+          npm dist-tag rm "$output" snapshot
+
+      - name: Update comment (success)
+        uses: actions/github-script@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          script: |
+            const commands = ${{ steps.snapshot.outputs.tags }}.map(tag => '```sh\n' + `pnpm add ${tag}` + '\n```')
+            const header = `**Good news @${{ github.actor }}, your snapshot has been published!**`
+            const footer = `You can review the build log [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).`
+
+            await github.rest.issues.updateComment({
+              comment_id: ${{ steps.comment.outputs.comment-id }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${header}\n\n${commands.join('\n')}\n\n${footer}`
+            })
+
+      - name: Update comment (failure)
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          comment-id: ${{ steps.comment.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            **Sorry @${{ github.actor }}, I failed to publish the snapshot!**
+
+            You can review the build log [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).

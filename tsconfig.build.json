@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [],
+  "references": [
+    { "path": "packages/effect/tsconfig.build.json" },
+    { "path": "packages/cli/tsconfig.build.json" },
+    { "path": "packages/opentelemetry/tsconfig.build.json" },
+    { "path": "packages/platform/tsconfig.build.json" },
+    { "path": "packages/platform-browser/tsconfig.build.json" },
+    { "path": "packages/platform-bun/tsconfig.build.json" },
+    { "path": "packages/platform-node/tsconfig.build.json" },
+    { "path": "packages/printer/tsconfig.build.json" },
+    { "path": "packages/printer-ansi/tsconfig.build.json" },
+    { "path": "packages/rpc/tsconfig.build.json" },
+    { "path": "packages/rpc-http/tsconfig.build.json" },
+    { "path": "packages/rpc-http-node/tsconfig.build.json" },
+    { "path": "packages/rpc-nextjs/tsconfig.build.json" },
+    { "path": "packages/rpc-workers/tsconfig.build.json" },
+    { "path": "packages/schema/tsconfig.build.json" },
+    { "path": "packages/typeclass/tsconfig.build.json" }
+  ]
+}
