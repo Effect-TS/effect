@@ -2,90 +2,50 @@
   "name": "@effect/schema",
   "version": "0.56.1",
   "type": "module",
-  "packageManager": "pnpm@8.10.0",
+  "license": "MIT",
+  "description": "Modeling the schema of data structures as first-class values",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/effect.git",
+    "directory": "packages/schema"
+  },
+  "bugs": {
+    "url": "https://github.com/effect-ts/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming",
+    "validation",
+    "schema"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming",
+    "validation",
+    "schema"
+  ],
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/effect-ts/schema.git"
-  },
-  "author": "Giulio Canti <giulio.canti@gmail.com>",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/effect-ts/schema/issues"
-  },
-  "homepage": "https://github.com/effect-ts/schema",
-  "description": "Modeling the schema of data structures as first-class values",
-  "tags": [
-    "typescript",
-    "schema",
-    "validation"
-  ],
-  "keywords": [
-    "typescript",
-    "schema",
-    "validation"
-  ],
   "scripts": {
     "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-prepare": "build-utils prepare-v2",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
-    "clean": "rimraf build dist coverage .tsbuildinfo",
-    "dtslint": "dtslint dtslint",
-    "dtslint-clean": "dtslint --installAll",
-    "lint": "eslint . --ext .ts,.tsx",
-    "lint-fix": "pnpm lint --fix",
-    "check": "tsc -b tsconfig.json",
-    "docgen": "docgen",
-    "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
-    "test": "vitest",
-    "test-all": "npm run circular && npm run lint && npm run dtslint && vitest run",
-    "test-heap": "vitest run --logHeapUsage",
-    "coverage": "vitest run --coverage"
+    "dtslint": "dtslint dtslint"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.62",
+    "effect": "workspace:*",
     "fast-check": "^3.13.2"
   },
   "devDependencies": {
-    "@babel/cli": "^7.23.4",
-    "@babel/core": "^7.23.6",
-    "@babel/plugin-transform-export-namespace-from": "^7.23.4",
-    "@babel/plugin-transform-modules-commonjs": "^7.23.3",
-    "@changesets/changelog-github": "^0.5.0",
-    "@changesets/cli": "^2.27.1",
-    "@effect/build-utils": "^0.7.1",
-    "@effect/docgen": "^0.3.8",
-    "@effect/dtslint": "^0.0.4",
-    "@effect/eslint-plugin": "^0.1.2",
-    "@effect/language-service": "^0.1.0",
-    "@types/node": "^20.10.5",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "@vitest/coverage-v8": "^1.1.0",
     "ajv": "^8.12.0",
-    "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "effect": "2.0.0-next.62",
-    "eslint": "^8.56.0",
-    "eslint-import-resolver-typescript": "^3.6.1",
-    "eslint-plugin-codegen": "^0.21.0",
-    "eslint-plugin-deprecation": "^2.0.0",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-simple-import-sort": "^10.0.0",
-    "eslint-plugin-sort-destructure-keys": "^1.5.0",
-    "fast-check": "^3.15.0",
-    "madge": "^6.1.0",
-    "prettier": "^3.1.1",
-    "rimraf": "^5.0.5",
-    "tinybench": "^2.5.1",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.10",
-    "vitest": "^1.1.0",
-    "zod": "^3.22.4"
+    "effect": "workspace:*",
+    "fast-check": "^3.15.0"
   }
 }

@@ -1,20 +1,32 @@
 {
   "name": "@effect/rpc",
-  "type": "module",
   "version": "0.24.0",
-  "description": "",
+  "type": "module",
+  "license": "MIT",
+  "description": "Functional programming in TypeScript",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/effect.git",
+    "directory": "packages/rpc"
+  },
+  "bugs": {
+    "url": "https://github.com/effect-ts/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/effect-ts/rpc.git"
-  },
-  "homepage": "https://github.com/effect-ts/rpc",
-  "author": "Effect contributors",
-  "license": "MIT",
-  "sideEffects": false,
   "scripts": {
     "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-prepare": "build-utils prepare-v2",
@@ -23,11 +35,11 @@
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
   },
   "devDependencies": {
-    "@effect/schema": "^0.56.0",
-    "effect": "2.0.0-next.62"
+    "@effect/schema": "workspace:^",
+    "effect": "workspace:*"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.56.0",
-    "effect": "2.0.0-next.62"
+    "@effect/schema": "workspace:^",
+    "effect": "workspace:*"
   }
 }

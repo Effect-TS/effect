@@ -2,29 +2,33 @@
   "name": "@effect/platform-node",
   "type": "module",
   "version": "0.39.0",
+  "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/effect.git",
+    "directory": "packages/platform-node"
+  },
+  "bugs": {
+    "url": "https://github.com/effect-ts/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/effect-ts/platform.git"
-  },
-  "homepage": "https://github.com/effect-ts/platform",
-  "author": "Effect contributors",
-  "license": "MIT",
-  "sideEffects": false,
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "Http/*.ts"
-      ]
-    }
   },
   "scripts": {
     "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
@@ -39,15 +43,23 @@
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
-    "effect": "2.0.0-next.62"
+    "effect": "workspace:*"
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/schema": "^0.56.0",
+    "@effect/schema": "workspace:^",
     "@types/mime": "^3.0.4",
     "@types/node": "^20.10.5",
     "@types/tar": "^6.1.10",
-    "effect": "2.0.0-next.62",
+    "effect": "workspace:*",
     "tar": "^6.2.0"
+  },
+  "effect": {
+    "generateExports": {
+      "include": [
+        "*.ts",
+        "Http/*.ts"
+      ]
+    }
   }
 }

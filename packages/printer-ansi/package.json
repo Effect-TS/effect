@@ -1,19 +1,18 @@
 {
   "name": "@effect/printer-ansi",
   "version": "0.30.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Unified interfaces for common platform-specific services",
+  "homepage": "https://effect.website",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Effect-TS/printer.git"
+    "url": "https://github.com/effect-ts/effect.git",
+    "directory": "packages/printer-ansi"
   },
-  "author": "Michael Arnaldi <ma@matechs.com>",
-  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Effect-TS/printer/issues"
+    "url": "https://github.com/effect-ts/effect/issues"
   },
-  "homepage": "https://github.com/Effect-TS/printer",
-  "description": "Functional programming in TypeScript",
-  "main": "dist/effect-printer-ansi.cjs.js",
-  "module": "dist/effect-printer-ansi.esm.js",
   "tags": [
     "typescript",
     "algebraic-data-types",
@@ -28,8 +27,6 @@
     "access": "public",
     "directory": "dist"
   },
-  "type": "module",
-  "sideEffects": false,
   "scripts": {
     "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-prepare": "build-utils prepare-v2",
@@ -41,11 +38,11 @@
     "@effect/printer": "workspace:^"
   },
   "devDependencies": {
-    "@effect/typeclass": "^0.21.0",
-    "effect": "2.0.0-next.62"
+    "@effect/typeclass": "workspace:^",
+    "effect": "workspace:*"
   },
   "peerDependencies": {
-    "@effect/typeclass": "^0.21.0",
-    "effect": "2.0.0-next.62"
+    "@effect/typeclass": "workspace:^",
+    "effect": "workspace:*"
   }
 }
