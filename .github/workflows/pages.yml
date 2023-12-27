@@ -21,17 +21,17 @@ jobs:
         uses: ./.github/actions/setup
       - run: pnpm docgen
       - name: Build pages Jekyll
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/jekyll-build-pages@v1
         with:
           source: ./docs
           destination: ./_site
       - name: Upload pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v2
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 10
