@@ -1,0 +1,51 @@
+{
+  "name": "@effect/printer-ansi",
+  "version": "0.30.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/printer.git"
+  },
+  "author": "Michael Arnaldi <ma@matechs.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Effect-TS/printer/issues"
+  },
+  "homepage": "https://github.com/Effect-TS/printer",
+  "description": "Functional programming in TypeScript",
+  "main": "dist/effect-printer-ansi.cjs.js",
+  "module": "dist/effect-printer-ansi.esm.js",
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
+  },
+  "dependencies": {
+    "@effect/printer": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/typeclass": "^0.21.0",
+    "effect": "2.0.0-next.62"
+  },
+  "peerDependencies": {
+    "@effect/typeclass": "^0.21.0",
+    "effect": "2.0.0-next.62"
+  }
+}
