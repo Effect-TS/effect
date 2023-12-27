@@ -255,8 +255,7 @@ export const choice = <A extends string, C extends ReadonlyArray.NonEmptyReadonl
 export const choiceWithValue = <const C extends ReadonlyArray.NonEmptyReadonlyArray<[string, any]>>(
   name: string,
   choices: C
-): Options.Options<C[number][1]> =>
-  makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.choice(choices))
+): Options.Options<C[number][1]> => makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.choice(choices))
 
 /** @internal */
 export const date = (name: string): Options.Options<Date> =>
@@ -390,24 +389,20 @@ export const between = dual<
 export const isBool = <A>(self: Options.Options<A>): boolean => isBoolInternal(self as Instruction)
 
 /** @internal */
-export const getHelp = <A>(self: Options.Options<A>): HelpDoc.HelpDoc =>
-  getHelpInternal(self as Instruction)
+export const getHelp = <A>(self: Options.Options<A>): HelpDoc.HelpDoc => getHelpInternal(self as Instruction)
 
 /** @internal */
 export const getIdentifier = <A>(self: Options.Options<A>): Option.Option<string> =>
   getIdentifierInternal(self as Instruction)
 
 /** @internal */
-export const getMinSize = <A>(self: Options.Options<A>): number =>
-  getMinSizeInternal(self as Instruction)
+export const getMinSize = <A>(self: Options.Options<A>): number => getMinSizeInternal(self as Instruction)
 
 /** @internal */
-export const getMaxSize = <A>(self: Options.Options<A>): number =>
-  getMaxSizeInternal(self as Instruction)
+export const getMaxSize = <A>(self: Options.Options<A>): number => getMaxSizeInternal(self as Instruction)
 
 /** @internal */
-export const getUsage = <A>(self: Options.Options<A>): Usage.Usage =>
-  getUsageInternal(self as Instruction)
+export const getUsage = <A>(self: Options.Options<A>): Usage.Usage => getUsageInternal(self as Instruction)
 
 /** @internal */
 export const map = dual<
@@ -701,8 +696,7 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
           const optionalDescription = Option.isOption(self.fallback)
             ? Option.match(self.fallback, {
               onNone: () => InternalHelpDoc.p("This setting is optional."),
-              onSome: () =>
-                InternalHelpDoc.p(`This setting is optional. Defaults to: ${self.fallback}`)
+              onSome: () => InternalHelpDoc.p(`This setting is optional. Defaults to: ${self.fallback}`)
             })
             : InternalHelpDoc.p("This setting is optional.")
           return [span, InternalHelpDoc.sequence(block, optionalDescription)]
@@ -893,8 +887,7 @@ const makeBoth = <A, B>(
   return op
 }
 
-const makeFullName = (str: string): [boolean, string] =>
-  str.length === 1 ? [true, `-${str}`] : [false, `--${str}`]
+const makeFullName = (str: string): [boolean, string] => str.length === 1 ? [true, `-${str}`] : [false, `--${str}`]
 
 const makeKeyValueMap = (
   argumentOption: Single
@@ -938,9 +931,7 @@ const makeSingle = <A>(
   op._tag = "Single"
   op.name = name
   op.fullName = makeFullName(name)[1]
-  op.placeholder = `${
-    Option.getOrElse(pseudoName, () => InternalPrimitive.getTypeName(primitiveType))
-  }`
+  op.placeholder = `${Option.getOrElse(pseudoName, () => InternalPrimitive.getTypeName(primitiveType))}`
   op.aliases = aliases
   op.primitiveType = primitiveType
   op.description = description

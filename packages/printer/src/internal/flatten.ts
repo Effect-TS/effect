@@ -15,8 +15,7 @@ export const FlattenTypeId: Flatten.FlattenTypeId = Symbol.for(
 ) as Flatten.FlattenTypeId
 
 const protoHash = {
-  Flattened: (self: Flatten.Flattened<any>) =>
-    Hash.combine(Hash.hash(self.value))(Hash.string(FlattenSymbolKey)),
+  Flattened: (self: Flatten.Flattened<any>) => Hash.combine(Hash.hash(self.value))(Hash.string(FlattenSymbolKey)),
   AlreadyFlat: (_: Flatten.AlreadyFlat<any>) =>
     Hash.combine(Hash.string("@effect/printer/Flattened/AlreadyFlat"))(
       Hash.string(FlattenSymbolKey)
@@ -28,10 +27,8 @@ const protoHash = {
 const protoEqual = {
   Flattened: (self: Flatten.Flattened<any>, that: unknown) =>
     isFlatten(that) && that._tag === "Flattened" && Equal.equals(self.value, that.value),
-  AlreadyFlat: (_: Flatten.AlreadyFlat<any>, that: unknown) =>
-    isFlatten(that) && that._tag === "AlreadyFlat",
-  NeverFlat: (_: Flatten.AlreadyFlat<any>, that: unknown) =>
-    isFlatten(that) && that._tag === "NeverFlat"
+  AlreadyFlat: (_: Flatten.AlreadyFlat<any>, that: unknown) => isFlatten(that) && that._tag === "AlreadyFlat",
+  NeverFlat: (_: Flatten.AlreadyFlat<any>, that: unknown) => isFlatten(that) && that._tag === "NeverFlat"
 }
 
 const proto = {
@@ -53,16 +50,14 @@ export const isFlatten = (u: unknown): u is Flatten.Flatten<unknown> =>
   typeof u === "object" && u != null && "_id" in u && FlattenTypeId in u
 
 /** @internal */
-export const isFlattened = <A>(self: Flatten.Flatten<A>): self is Flatten.Flattened<A> =>
-  self._tag === "Flattened"
+export const isFlattened = <A>(self: Flatten.Flatten<A>): self is Flatten.Flattened<A> => self._tag === "Flattened"
 
 /** @internal */
 export const isAlreadyFlat = <A>(self: Flatten.Flatten<A>): self is Flatten.AlreadyFlat<A> =>
   self._tag === "AlreadyFlat"
 
 /** @internal */
-export const isNeverFlat = <A>(a: Flatten.Flatten<A>): a is Flatten.NeverFlat<A> =>
-  a._tag === "NeverFlat"
+export const isNeverFlat = <A>(a: Flatten.Flatten<A>): a is Flatten.NeverFlat<A> => a._tag === "NeverFlat"
 
 // -----------------------------------------------------------------------------
 // Constructors

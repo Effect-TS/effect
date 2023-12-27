@@ -32,9 +32,7 @@ export type PromptTypeId = typeof PromptTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Prompt<Output>
-  extends Prompt.Variance<Output>, Pipeable, Effect<Terminal, QuitException, Output>
-{}
+export interface Prompt<Output> extends Prompt.Variance<Output>, Pipeable, Effect<Terminal, QuitException, Output> {}
 
 /**
  * @since 1.0.0
@@ -334,8 +332,8 @@ export declare namespace All {
   /**
    * @since 1.0.0
    */
-  export type ReturnIterable<T extends Iterable<PromptAny>> = [T] extends
-    [Iterable<Prompt.Variance<infer A>>] ? Prompt<Array<A>>
+  export type ReturnIterable<T extends Iterable<PromptAny>> = [T] extends [Iterable<Prompt.Variance<infer A>>] ?
+    Prompt<Array<A>>
     : never
 
   /**
@@ -349,8 +347,7 @@ export declare namespace All {
   /**
    * @since 1.0.0
    */
-  export type Return<Arg extends Iterable<PromptAny>> = [Arg] extends [ReadonlyArray<PromptAny>] ?
-    ReturnTuple<Arg>
+  export type Return<Arg extends Iterable<PromptAny>> = [Arg] extends [ReadonlyArray<PromptAny>] ? ReturnTuple<Arg>
     : [Arg] extends [Iterable<PromptAny>] ? ReturnIterable<Arg>
     : never
 }
@@ -373,8 +370,7 @@ export const all: <
  * @since 1.0.0
  * @category constructors
  */
-export const confirm: (options: Prompt.ConfirmOptions) => Prompt<boolean> =
-  InternalConfirmPrompt.confirm
+export const confirm: (options: Prompt.ConfirmOptions) => Prompt<boolean> = InternalConfirmPrompt.confirm
 
 /**
  * Creates a custom `Prompt` from the provided `render` and `process` functions
@@ -433,15 +429,13 @@ export const hidden: (options: Prompt.TextOptions) => Prompt<Secret> = InternalT
  * @since 1.0.0
  * @category constructors
  */
-export const integer: (options: Prompt.IntegerOptions) => Prompt<number> =
-  InternalNumberPrompt.integer
+export const integer: (options: Prompt.IntegerOptions) => Prompt<number> = InternalNumberPrompt.integer
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const list: (options: Prompt.ListOptions) => Prompt<ReadonlyArray<string>> =
-  InternalListPrompt.list
+export const list: (options: Prompt.ListOptions) => Prompt<ReadonlyArray<string>> = InternalListPrompt.list
 
 /**
  * @since 1.0.0
@@ -464,15 +458,13 @@ export const password: (options: Prompt.TextOptions) => Prompt<Secret> = Interna
  * @since 1.0.0
  * @category execution
  */
-export const run: <Output>(self: Prompt<Output>) => Effect<Terminal, QuitException, Output> =
-  InternalPrompt.run
+export const run: <Output>(self: Prompt<Output>) => Effect<Terminal, QuitException, Output> = InternalPrompt.run
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> =
-  InternalSelectPrompt.select
+export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> = InternalSelectPrompt.select
 
 /**
  * Creates a `Prompt` which immediately succeeds with the specified value.
@@ -495,5 +487,4 @@ export const text: (options: Prompt.TextOptions) => Prompt<string> = InternalTex
  * @since 1.0.0
  * @category constructors
  */
-export const toggle: (options: Prompt.ToggleOptions) => Prompt<boolean> =
-  InternalTogglePrompt.toggle
+export const toggle: (options: Prompt.ToggleOptions) => Prompt<boolean> = InternalTogglePrompt.toggle

@@ -176,8 +176,7 @@ export const isDocStream: (u: unknown) => u is DocStream<unknown> = internal.isD
  * @since 1.0.0
  * @category refinements
  */
-export const isFailedStream: <A>(self: DocStream<A>) => self is FailedStream<A> =
-  internal.isFailedStream
+export const isFailedStream: <A>(self: DocStream<A>) => self is FailedStream<A> = internal.isFailedStream
 
 /**
  * Returns `true` if the specified `DocStream` is a `EmptyStream`, `false` otherwise.
@@ -185,8 +184,7 @@ export const isFailedStream: <A>(self: DocStream<A>) => self is FailedStream<A> 
  * @since 1.0.0
  * @category refinements
  */
-export const isEmptyStream: <A>(self: DocStream<A>) => self is EmptyStream<A> =
-  internal.isEmptyStream
+export const isEmptyStream: <A>(self: DocStream<A>) => self is EmptyStream<A> = internal.isEmptyStream
 
 /**
  * Returns `true` if the specified `DocStream` is a `CharStream`, `false` otherwise.

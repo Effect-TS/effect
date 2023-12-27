@@ -1889,8 +1889,7 @@ export const flatten: <A>(self: Doc<A>) => Doc<A> = internal.flatten
  * @since 1.0.0
  * @category flattening
  */
-export const changesUponFlattening: <A>(self: Doc<A>) => Flatten<Doc<A>> =
-  internal.changesUponFlattening
+export const changesUponFlattening: <A>(self: Doc<A>) => Flatten<Doc<A>> = internal.changesUponFlattening
 
 // -----------------------------------------------------------------------------
 // Annotations

@@ -19,14 +19,11 @@ const DocSymbolKey = "@effect/printer/Doc"
 export const DocTypeId: Doc.DocTypeId = Symbol.for(DocSymbolKey) as Doc.DocTypeId
 
 const protoHash = {
-  Fail: (_: Doc.Fail<any>) =>
-    Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash("@effect/printer/Doc/Fail")),
-  Empty: (_: Doc.Empty<any>) =>
-    Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash("@effect/printer/Doc/Empty")),
+  Fail: (_: Doc.Fail<any>) => Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash("@effect/printer/Doc/Fail")),
+  Empty: (_: Doc.Empty<any>) => Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash("@effect/printer/Doc/Empty")),
   Char: (self: Doc.Char<any>) => Hash.combine(Hash.hash(DocSymbolKey))(Hash.string(self.char)),
   Text: (self: Doc.Text<any>) => Hash.combine(Hash.hash(DocSymbolKey))(Hash.string(self.text)),
-  Line: (_: Doc.Line<any>) =>
-    Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash("@effect/printer/Doc/Line")),
+  Line: (_: Doc.Line<any>) => Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash("@effect/printer/Doc/Line")),
   FlatAlt: (self: Doc.FlatAlt<any>) =>
     Hash.combine(Hash.hash(DocSymbolKey))(
       Hash.combine(Hash.hash(self.left))(Hash.hash(self.right))
@@ -44,8 +41,7 @@ const protoHash = {
       Hash.combine(Hash.hash(self.left))(Hash.hash(self.right))
     ),
   Column: (self: Doc.Column<any>) => Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash(self.react)),
-  WithPageWidth: (self: Doc.WithPageWidth<any>) =>
-    Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash(self.react)),
+  WithPageWidth: (self: Doc.WithPageWidth<any>) => Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash(self.react)),
   Nesting: (self: Doc.Nesting<any>) => Hash.combine(Hash.hash(DocSymbolKey))(Hash.hash(self.react)),
   Annotated: (self: Doc.Annotated<any>) =>
     Hash.combine(Hash.hash(DocSymbolKey))(
@@ -56,10 +52,8 @@ const protoHash = {
 const protoEqual = {
   Fail: (_: Doc.Fail<any>, that: unknown) => isDoc(that) && that._tag === "Fail",
   Empty: (_: Doc.Empty<any>, that: unknown) => isDoc(that) && that._tag === "Empty",
-  Char: (self: Doc.Char<any>, that: unknown) =>
-    isDoc(that) && that._tag === "Char" && self.char === that.char,
-  Text: (self: Doc.Text<any>, that: unknown) =>
-    isDoc(that) && that._tag === "Text" && self.text === that.text,
+  Char: (self: Doc.Char<any>, that: unknown) => isDoc(that) && that._tag === "Char" && self.char === that.char,
+  Text: (self: Doc.Text<any>, that: unknown) => isDoc(that) && that._tag === "Text" && self.text === that.text,
   Line: (_: Doc.Line<any>, that: unknown) => isDoc(that) && that._tag === "Line",
   FlatAlt: (self: Doc.FlatAlt<any>, that: unknown) =>
     isDoc(that) &&
@@ -118,8 +112,7 @@ const proto = {
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const isDoc = (u: unknown): u is Doc.Doc<unknown> =>
-  typeof u === "object" && u != null && DocTypeId in u
+export const isDoc = (u: unknown): u is Doc.Doc<unknown> => typeof u === "object" && u != null && DocTypeId in u
 
 /** @internal */
 export const isFail = <A>(self: Doc.Doc<A>): self is Doc.Fail<A> => self._tag === "Fail"
@@ -152,15 +145,13 @@ export const isUnion = <A>(self: Doc.Doc<A>): self is Doc.Union<A> => self._tag 
 export const isColumn = <A>(self: Doc.Doc<A>): self is Doc.Column<A> => self._tag === "Column"
 
 /** @internal */
-export const isWithPageWidth = <A>(self: Doc.Doc<A>): self is Doc.WithPageWidth<A> =>
-  self._tag === "WithPageWidth"
+export const isWithPageWidth = <A>(self: Doc.Doc<A>): self is Doc.WithPageWidth<A> => self._tag === "WithPageWidth"
 
 /** @internal */
 export const isNesting = <A>(self: Doc.Doc<A>): self is Doc.Nesting<A> => self._tag === "Nesting"
 
 /** @internal */
-export const isAnnotated = <A>(self: Doc.Doc<A>): self is Doc.Annotated<A> =>
-  self._tag === "Annotated"
+export const isAnnotated = <A>(self: Doc.Doc<A>): self is Doc.Annotated<A> => self._tag === "Annotated"
 
 // -----------------------------------------------------------------------------
 // Primitives
@@ -365,8 +356,7 @@ export const vcat = <A>(docs: Iterable<Doc.Doc<A>>): Doc.Doc<A> =>
   concatWith(docs, (left, right) => catWithLineBreak(left, right))
 
 /** @internal */
-export const hcat = <A>(docs: Iterable<Doc.Doc<A>>): Doc.Doc<A> =>
-  concatWith(docs, (left, right) => cat(left, right))
+export const hcat = <A>(docs: Iterable<Doc.Doc<A>>): Doc.Doc<A> => concatWith(docs, (left, right) => cat(left, right))
 
 /** @internal */
 export const fillCat = <A>(docs: Iterable<Doc.Doc<A>>): Doc.Doc<A> =>
@@ -849,8 +839,7 @@ export const parenthesized = <A>(self: Doc.Doc<A>): Doc.Doc<A> => surround(self,
 export const angleBracketed = <A>(self: Doc.Doc<A>): Doc.Doc<A> => surround(self, langle, rangle)
 
 /** @internal */
-export const squareBracketed = <A>(self: Doc.Doc<A>): Doc.Doc<A> =>
-  surround(self, lbracket, rbracket)
+export const squareBracketed = <A>(self: Doc.Doc<A>): Doc.Doc<A> => surround(self, lbracket, rbracket)
 
 /** @internal */
 export const curlyBraced = <A>(self: Doc.Doc<A>): Doc.Doc<A> => surround(self, lbrace, rbrace)
@@ -867,8 +856,7 @@ export const spaces = (n: number): Doc.Doc<never> => {
 }
 
 /** @internal */
-export const words = (s: string, char = " "): ReadonlyArray<Doc.Doc<never>> =>
-  s.split(char).map(string)
+export const words = (s: string, char = " "): ReadonlyArray<Doc.Doc<never>> => s.split(char).map(string)
 
 /** @internal */
 export const reflow = (s: string, char = " "): Doc.Doc<never> => fillSep(words(s, char))

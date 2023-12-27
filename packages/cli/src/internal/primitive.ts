@@ -99,8 +99,7 @@ export const isPrimitive = (u: unknown): u is Primitive.Primitive<unknown> =>
   typeof u === "object" && u != null && PrimitiveTypeId in u
 
 /** @internal */
-export const isBool = <A>(self: Primitive.Primitive<A>): boolean =>
-  isPrimitive(self) && isBoolType(self as Instruction)
+export const isBool = <A>(self: Primitive.Primitive<A>): boolean => isPrimitive(self) && isBoolType(self as Instruction)
 
 /** @internal */
 export const isBoolType = (self: Instruction): self is Bool => self._tag === "Bool"
@@ -216,12 +215,10 @@ export const getChoices = <A>(self: Primitive.Primitive<A>): Option.Option<strin
   getChoicesInternal(self as Instruction)
 
 /** @internal */
-export const getHelp = <A>(self: Primitive.Primitive<A>): Span.Span =>
-  getHelpInternal(self as Instruction)
+export const getHelp = <A>(self: Primitive.Primitive<A>): Span.Span => getHelpInternal(self as Instruction)
 
 /** @internal */
-export const getTypeName = <A>(self: Primitive.Primitive<A>): string =>
-  getTypeNameInternal(self as Instruction)
+export const getTypeName = <A>(self: Primitive.Primitive<A>): string => getTypeNameInternal(self as Instruction)
 
 /** @internal */
 export const validate = dual<
@@ -404,9 +401,7 @@ const validateInternal = (
         value,
         () => `Choice options to not have a default value`
       ).pipe(
-        Effect.flatMap((value) =>
-          ReadonlyArray.findFirst(self.alternatives, ([choice]) => choice === value)
-        ),
+        Effect.flatMap((value) => ReadonlyArray.findFirst(self.alternatives, ([choice]) => choice === value)),
         Effect.mapBoth({
           onFailure: () => {
             const choices = pipe(

@@ -50,8 +50,7 @@ const traverse = <F extends TypeLambda>(
 } =>
   dual(
     2,
-    <A, R, O, E, B>(self: Identity<A>, f: (a: A) => Kind<F, R, O, E, B>): Kind<F, R, O, E, B> =>
-      f(self)
+    <A, R, O, E, B>(self: Identity<A>, f: (a: A) => Kind<F, R, O, E, B>): Kind<F, R, O, E, B> => f(self)
   )
 
 /**

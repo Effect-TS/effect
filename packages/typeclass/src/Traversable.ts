@@ -36,8 +36,7 @@ export const traverseComposition = <T extends TypeLambda, G extends TypeLambda>(
 <TR, TO, TE, GR, GO, GE, A, R, O, E, B>(
   self: Kind<T, TR, TO, TE, Kind<G, GR, GO, GE, A>>,
   f: (a: A) => Kind<F, R, O, E, B>
-): Kind<F, R, O, E, Kind<T, TR, TO, TE, Kind<G, GR, GO, GE, B>>> =>
-  T.traverse(F)(self, G.traverse(F)(f))
+): Kind<F, R, O, E, Kind<T, TR, TO, TE, Kind<G, GR, GO, GE, B>>> => T.traverse(F)(self, G.traverse(F)(f))
 
 /**
  * Returns a default `sequence` implementation.
@@ -59,18 +58,17 @@ export const sequence =
  *
  * @since 1.0.0
  */
-export const traverseTap =
-  <T extends TypeLambda>(T: Traversable<T>) =>
-  <F extends TypeLambda>(F: Applicative<F>): {
-    <A, R, O, E, B>(
-      f: (a: A) => Kind<F, R, O, E, B>
-    ): <TR, TO, TE>(self: Kind<T, TR, TO, TE, A>) => Kind<F, R, O, E, Kind<T, TR, TO, TE, A>>
-    <TR, TO, TE, A, R, O, E, B>(
-      self: Kind<T, TR, TO, TE, A>,
-      f: (a: A) => Kind<F, R, O, E, B>
-    ): Kind<F, R, O, E, Kind<T, TR, TO, TE, A>>
-  } =>
-    dual(2, <TR, TO, TE, A, R, O, E, B>(
-      self: Kind<T, TR, TO, TE, A>,
-      f: (a: A) => Kind<F, R, O, E, B>
-    ): Kind<F, R, O, E, Kind<T, TR, TO, TE, A>> => T.traverse(F)(self, (a) => F.map(f(a), () => a)))
+export const traverseTap = <T extends TypeLambda>(T: Traversable<T>) =>
+<F extends TypeLambda>(F: Applicative<F>): {
+  <A, R, O, E, B>(
+    f: (a: A) => Kind<F, R, O, E, B>
+  ): <TR, TO, TE>(self: Kind<T, TR, TO, TE, A>) => Kind<F, R, O, E, Kind<T, TR, TO, TE, A>>
+  <TR, TO, TE, A, R, O, E, B>(
+    self: Kind<T, TR, TO, TE, A>,
+    f: (a: A) => Kind<F, R, O, E, B>
+  ): Kind<F, R, O, E, Kind<T, TR, TO, TE, A>>
+} =>
+  dual(2, <TR, TO, TE, A, R, O, E, B>(
+    self: Kind<T, TR, TO, TE, A>,
+    f: (a: A) => Kind<F, R, O, E, B>
+  ): Kind<F, R, O, E, Kind<T, TR, TO, TE, A>> => T.traverse(F)(self, (a) => F.map(f(a), () => a)))

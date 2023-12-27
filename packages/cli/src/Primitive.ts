@@ -87,15 +87,13 @@ export const isBool: <A>(self: Primitive<A>) => boolean = InternalPrimitive.isBo
  * @since 1.0.0
  * @category constructors
  */
-export const boolean: (defaultValue: Option<boolean>) => Primitive<boolean> =
-  InternalPrimitive.boolean
+export const boolean: (defaultValue: Option<boolean>) => Primitive<boolean> = InternalPrimitive.boolean
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const choice: <A>(alternatives: NonEmptyReadonlyArray<[string, A]>) => Primitive<A> =
-  InternalPrimitive.choice
+export const choice: <A>(alternatives: NonEmptyReadonlyArray<[string, A]>) => Primitive<A> = InternalPrimitive.choice
 
 /**
  * Represents a date in ISO-8601 format, such as `2007-12-03T10:15:30`.

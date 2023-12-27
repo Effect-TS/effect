@@ -287,8 +287,7 @@ export const SemiAlternative: semiAlternative.SemiAlternative<Either.EitherTypeL
 export const Foldable: foldable.Foldable<Either.EitherTypeLambda> = {
   reduce: dual(
     3,
-    <E, A, B>(self: Either.Either<E, A>, b: B, f: (b: B, a: A) => B): B =>
-      Either.isLeft(self) ? b : f(b, self.right)
+    <E, A, B>(self: Either.Either<E, A>, b: B, f: (b: B, a: A) => B): B => Either.isLeft(self) ? b : f(b, self.right)
   )
 }
 

@@ -305,5 +305,4 @@ export const password = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Secr
   basePrompt(options, "password").pipe(InternalPrompt.map(Secret.fromString))
 
 /** @internal */
-export const text = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<string> =>
-  basePrompt(options, "text")
+export const text = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<string> => basePrompt(options, "text")

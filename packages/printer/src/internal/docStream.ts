@@ -67,10 +67,8 @@ const protoHash = {
 }
 
 const protoEqual = {
-  FailedStream: (self: DocStream.FailedStream<any>, that: unknown) =>
-    isDocStream(that) && that._tag === "FailedStream",
-  EmptyStream: (self: DocStream.EmptyStream<any>, that: unknown) =>
-    isDocStream(that) && that._tag === "EmptyStream",
+  FailedStream: (self: DocStream.FailedStream<any>, that: unknown) => isDocStream(that) && that._tag === "FailedStream",
+  EmptyStream: (self: DocStream.EmptyStream<any>, that: unknown) => isDocStream(that) && that._tag === "EmptyStream",
   CharStream: (self: DocStream.CharStream<any>, that: unknown) =>
     isDocStream(that) &&
     that._tag === "CharStream" &&
@@ -263,9 +261,7 @@ const alterAnnotationSafe = <A, B>(
       const altered = f(self.annotation)
       if (Option.isSome(altered)) {
         return Effect.map(
-          Effect.suspend(() =>
-            alterAnnotationSafe(self.stream, f, List.prepend(stack, DontRemove))
-          ),
+          Effect.suspend(() => alterAnnotationSafe(self.stream, f, List.prepend(stack, DontRemove))),
           pushAnnotation(altered.value)
         )
       }

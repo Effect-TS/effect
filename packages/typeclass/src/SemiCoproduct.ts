@@ -25,11 +25,10 @@ export interface SemiCoproduct<F extends TypeLambda> extends Invariant<F> {
 /**
  * @since 1.0.0
  */
-export const getSemigroup =
-  <F extends TypeLambda>(F: SemiCoproduct<F>) =>
-  <R, O, E, A>(): Semigroup<
-    Kind<F, R, O, E, A>
-  > => ({
-    combine: F.coproduct,
-    combineMany: F.coproductMany
-  })
+export const getSemigroup = <F extends TypeLambda>(F: SemiCoproduct<F>) =>
+<R, O, E, A>(): Semigroup<
+  Kind<F, R, O, E, A>
+> => ({
+  combine: F.coproduct,
+  combineMany: F.coproductMany
+})

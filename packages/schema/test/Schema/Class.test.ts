@@ -282,11 +282,9 @@ describe("Schema/Class", () => {
   })
 
   it("TaggedRequest extends SerializableWithExit", () => {
-    class MyRequest
-      extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.NumberFromString, {
-        id: S.number
-      })
-    {}
+    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.NumberFromString, {
+      id: S.number
+    }) {}
 
     const req = new MyRequest({ id: 1 })
     assert.deepStrictEqual(

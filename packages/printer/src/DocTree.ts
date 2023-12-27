@@ -180,8 +180,7 @@ export const isLineTree: <A>(self: DocTree<A>) => self is LineTree<A> = internal
  * @since 1.0.0
  * @category refinements
  */
-export const isAnnotationTree: <A>(self: DocTree<A>) => self is AnnotationTree<A> =
-  internal.isAnnotationTree
+export const isAnnotationTree: <A>(self: DocTree<A>) => self is AnnotationTree<A> = internal.isAnnotationTree
 
 /**
  * Returns `true` if the specified `DocTree` is an `ConcatTree`, `false` otherwise.

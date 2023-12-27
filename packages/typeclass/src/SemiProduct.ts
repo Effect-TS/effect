@@ -130,8 +130,7 @@ export const appendElement = <F extends TypeLambda>(F: SemiProduct<F>): {
     self: Kind<F, R1, O1, E1, A>,
     that: Kind<F, R2, O2, E2, B>
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, [...A, B]> =>
-    F.imap(F.product(self, that), ([a, b]) => [...a, b], (ab) =>
-      [ab.slice(0, -1), ab[ab.length - 1]] as any))
+    F.imap(F.product(self, that), ([a, b]) => [...a, b], (ab) => [ab.slice(0, -1), ab[ab.length - 1]] as any))
 
 /**
  * @since 1.0.0

@@ -76,8 +76,7 @@ export const defaultLayer: Layer.Layer<never, never, CliConfig> = InternalCliCon
  * @since 1.0.0
  * @category context
  */
-export const layer: (config?: Partial<CliConfig>) => Layer.Layer<never, never, CliConfig> =
-  InternalCliConfig.layer
+export const layer: (config?: Partial<CliConfig>) => Layer.Layer<never, never, CliConfig> = InternalCliConfig.layer
 
 /**
  * @since 1.0.0

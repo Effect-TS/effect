@@ -110,8 +110,7 @@ export const isCommand = (u: unknown): u is Descriptor.Command<unknown> =>
 export const isStandard = (self: Instruction): self is Standard => self._tag === "Standard"
 
 /** @internal */
-export const isGetUserInput = (self: Instruction): self is GetUserInput =>
-  self._tag === "GetUserInput"
+export const isGetUserInput = (self: Instruction): self is GetUserInput => self._tag === "GetUserInput"
 
 /** @internal */
 export const isMap = (self: Instruction): self is Map => self._tag === "Map"
@@ -171,22 +170,19 @@ export const getNames = <A>(self: Descriptor.Command<A>): HashSet.HashSet<string
 export const getBashCompletions = <A>(
   self: Descriptor.Command<A>,
   programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
-  getBashCompletionsInternal(self as Instruction, programName)
+): Effect.Effect<never, never, ReadonlyArray<string>> => getBashCompletionsInternal(self as Instruction, programName)
 
 /** @internal */
 export const getFishCompletions = <A>(
   self: Descriptor.Command<A>,
   programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
-  getFishCompletionsInternal(self as Instruction, programName)
+): Effect.Effect<never, never, ReadonlyArray<string>> => getFishCompletionsInternal(self as Instruction, programName)
 
 /** @internal */
 export const getZshCompletions = <A>(
   self: Descriptor.Command<A>,
   programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
-  getZshCompletionsInternal(self as Instruction, programName)
+): Effect.Effect<never, never, ReadonlyArray<string>> => getZshCompletionsInternal(self as Instruction, programName)
 
 /** @internal */
 export const getSubcommands = <A>(
@@ -195,8 +191,7 @@ export const getSubcommands = <A>(
   HashMap.fromIterable(getSubcommandsInternal(self as Instruction))
 
 /** @internal */
-export const getUsage = <A>(self: Descriptor.Command<A>): Usage.Usage =>
-  getUsageInternal(self as Instruction)
+export const getUsage = <A>(self: Descriptor.Command<A>): Usage.Usage => getUsageInternal(self as Instruction)
 
 /** @internal */
 export const map = dual<
@@ -748,9 +743,7 @@ const parseInternal = (
                         const childNames = ReadonlyArray.map(subcommands, ([name]) => `'${name}'`)
                         const oneOf = childNames.length === 1 ? "" : " one of"
                         const error = InternalHelpDoc.p(
-                          `Invalid subcommand for ${parentName} - use${oneOf} ${
-                            ReadonlyArray.join(childNames, ", ")
-                          }`
+                          `Invalid subcommand for ${parentName} - use${oneOf} ${ReadonlyArray.join(childNames, ", ")}`
                         )
                         return InternalValidationError.commandMismatch(error)
                       }

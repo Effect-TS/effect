@@ -167,9 +167,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         const id = pipe(
           getIdentifier(ast),
           O.map((id) => ts.factory.createIdentifier(id)),
-          O.getOrThrowWith(() =>
-            new Error(`cannot find an indentifier for this unique symbol ${String(ast.symbol)}`)
-          )
+          O.getOrThrowWith(() => new Error(`cannot find an indentifier for this unique symbol ${String(ast.symbol)}`))
         )
         const typeNode = ts.factory.createTypeQueryNode(id)
         const declaration = ts.factory.createVariableDeclaration(

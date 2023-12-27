@@ -71,8 +71,7 @@ export const filterMapComposition = <F extends TypeLambda, G extends TypeLambda>
  */
 export const compact = <F extends TypeLambda>(
   F: Filterable<F>
-): <R, O, E, A>(self: Kind<F, R, O, E, Option.Option<A>>) => Kind<F, R, O, E, A> =>
-  F.filterMap(identity)
+): <R, O, E, A>(self: Kind<F, R, O, E, Option.Option<A>>) => Kind<F, R, O, E, A> => F.filterMap(identity)
 
 /**
  * @since 1.0.0

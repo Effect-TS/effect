@@ -14,8 +14,7 @@ export const cursorMove = (column: number, row?: number): AnsiDoc.AnsiDoc =>
   Doc.annotate(Doc.empty, InternalAnsi.cursorMove(column, row))
 
 /** @internal */
-export const cursorUp = (lines: number = 1): AnsiDoc.AnsiDoc =>
-  Doc.annotate(Doc.empty, InternalAnsi.cursorUp(lines))
+export const cursorUp = (lines: number = 1): AnsiDoc.AnsiDoc => Doc.annotate(Doc.empty, InternalAnsi.cursorUp(lines))
 
 /** @internal */
 export const cursorDown = (lines: number = 1): AnsiDoc.AnsiDoc =>
@@ -59,8 +58,7 @@ export const cursorHide: AnsiDoc.AnsiDoc = Doc.annotate(Doc.empty, InternalAnsi.
 export const cursorShow: AnsiDoc.AnsiDoc = Doc.annotate(Doc.empty, InternalAnsi.cursorShow)
 
 /** @internal */
-export const eraseLines = (rows: number): AnsiDoc.AnsiDoc =>
-  Doc.annotate(Doc.empty, InternalAnsi.eraseLines(rows))
+export const eraseLines = (rows: number): AnsiDoc.AnsiDoc => Doc.annotate(Doc.empty, InternalAnsi.eraseLines(rows))
 
 /** @internal */
 export const eraseEndLine: AnsiDoc.AnsiDoc = Doc.annotate(Doc.empty, InternalAnsi.eraseEndLine)

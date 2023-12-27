@@ -39,9 +39,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Command<Name extends string, R, E, A>
-  extends Pipeable, Effect<Command.Context<Name>, never, A>
-{
+export interface Command<Name extends string, R, E, A> extends Pipeable, Effect<Command.Context<Name>, never, A> {
   readonly [TypeId]: TypeId
   readonly descriptor: Descriptor.Command<A>
   readonly handler: (_: A) => Effect<R, E, void>
@@ -204,8 +202,7 @@ export const getSubcommands: <Name extends string, R, E, A>(
  * @since 1.0.0
  * @category accessors
  */
-export const getUsage: <Name extends string, R, E, A>(self: Command<Name, R, E, A>) => Usage =
-  Internal.getUsage
+export const getUsage: <Name extends string, R, E, A>(self: Command<Name, R, E, A>) => Usage = Internal.getUsage
 
 /**
  * @since 1.0.0

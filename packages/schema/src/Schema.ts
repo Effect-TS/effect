@@ -80,8 +80,9 @@ export declare module Schema {
   /**
    * @since 1.0.0
    */
-  export type From<S extends { readonly [TypeId]: { readonly From: (..._: any) => any } }> =
-    Parameters<S[TypeId]["From"]>[0]
+  export type From<S extends { readonly [TypeId]: { readonly From: (..._: any) => any } }> = Parameters<
+    S[TypeId]["From"]
+  >[0]
 
   /**
    * @since 1.0.0
@@ -523,15 +524,13 @@ export const object: Schema<object> = make(AST.objectKeyword)
  */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Schema<Schema.From<Members[number]>, Schema.To<Members[number]>> =>
-  make(AST.createUnion(members.map((m) => m.ast)))
+): Schema<Schema.From<Members[number]>, Schema.To<Members[number]>> => make(AST.createUnion(members.map((m) => m.ast)))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nullable = <From, To>(self: Schema<From, To>): Schema<From | null, To | null> =>
-  union(_null, self)
+export const nullable = <From, To>(self: Schema<From, To>): Schema<From | null, To | null> => union(_null, self)
 
 /**
  * @category combinators
@@ -577,31 +576,29 @@ export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
  * @category combinators
  * @since 1.0.0
  */
-export const rest =
-  <IR, R>(rest: Schema<IR, R>) =>
-  <I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
-    self: Schema<I, A>
-  ): Schema<readonly [...I, ...Array<IR>], readonly [...A, ...Array<R>]> => {
-    if (AST.isTuple(self.ast)) {
-      return make(AST.appendRestElement(self.ast, rest.ast))
-    }
-    throw new Error("`rest` is not supported on this schema")
+export const rest = <IR, R>(rest: Schema<IR, R>) =>
+<I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
+  self: Schema<I, A>
+): Schema<readonly [...I, ...Array<IR>], readonly [...A, ...Array<R>]> => {
+  if (AST.isTuple(self.ast)) {
+    return make(AST.appendRestElement(self.ast, rest.ast))
   }
+  throw new Error("`rest` is not supported on this schema")
+}
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const element =
-  <IE, E>(element: Schema<IE, E>) =>
-  <I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
-    self: Schema<I, A>
-  ): Schema<readonly [...I, IE], readonly [...A, E]> => {
-    if (AST.isTuple(self.ast)) {
-      return make(AST.appendElement(self.ast, AST.createElement(element.ast, false)))
-    }
-    throw new Error("`element` is not supported on this schema")
+export const element = <IE, E>(element: Schema<IE, E>) =>
+<I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
+  self: Schema<I, A>
+): Schema<readonly [...I, IE], readonly [...A, E]> => {
+  if (AST.isTuple(self.ast)) {
+    return make(AST.appendElement(self.ast, AST.createElement(element.ast, false)))
   }
+  throw new Error("`element` is not supported on this schema")
+}
 
 /**
  * @category combinators
@@ -636,9 +633,7 @@ export const nonEmptyArray = <I, A>(
 /**
  * @since 1.0.0
  */
-export interface PropertySignature<From, FromIsOptional, To, ToIsOptional>
-  extends Schema.Variance<From, To>, Pipeable
-{
+export interface PropertySignature<From, FromIsOptional, To, ToIsOptional> extends Schema.Variance<From, To>, Pipeable {
   readonly FromIsOptional: FromIsOptional
   readonly ToIsOptional: ToIsOptional
 }
@@ -680,24 +675,23 @@ export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional> {
 /**
  * @since 1.0.0
  */
-export const propertySignatureAnnotations =
-  (annotations: DocAnnotations) =>
-  <S extends StructFields[PropertyKey]>(
-    self: S
-  ): S extends Schema<infer I, infer A> ? PropertySignature<I, false, A, false> : S => {
-    if (isSchema(self)) {
-      return new PropertySignatureImpl({
-        _tag: "Declaration",
-        from: self.ast,
-        isOptional: false,
-        annotations: toAnnotations(annotations)
-      }) as any
-    }
+export const propertySignatureAnnotations = (annotations: DocAnnotations) =>
+<S extends StructFields[PropertyKey]>(
+  self: S
+): S extends Schema<infer I, infer A> ? PropertySignature<I, false, A, false> : S => {
+  if (isSchema(self)) {
     return new PropertySignatureImpl({
-      ...(self as any).propertySignatureAST,
+      _tag: "Declaration",
+      from: self.ast,
+      isOptional: false,
       annotations: toAnnotations(annotations)
     }) as any
   }
+  return new PropertySignatureImpl({
+    ...(self as any).propertySignatureAST,
+    annotations: toAnnotations(annotations)
+  }) as any
+}
 
 /**
  * @category optional
@@ -967,71 +961,67 @@ export const struct = <Fields extends StructFields>(
  * @category combinators
  * @since 1.0.0
  */
-export const pick =
-  <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  <I extends { [K in keyof A]?: any }>(
-    self: Schema<I, A>
-  ): Schema<Simplify<Pick<I, Keys[number]>>, Simplify<Pick<A, Keys[number]>>> => {
-    const ast = self.ast
-    if (AST.isTransform(ast)) {
-      if (AST.isTypeLiteralTransformation(ast.transformation)) {
-        const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
-          .filter((t) => (keys as ReadonlyArray<PropertyKey>).includes(t.to))
-        if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
-          return make(
-            AST.createTransform(
-              AST.pick(ast.from, keys),
-              AST.pick(ast.to, keys),
-              AST.createTypeLiteralTransformation(propertySignatureTransformations)
-            )
+export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
+<I extends { [K in keyof A]?: any }>(
+  self: Schema<I, A>
+): Schema<Simplify<Pick<I, Keys[number]>>, Simplify<Pick<A, Keys[number]>>> => {
+  const ast = self.ast
+  if (AST.isTransform(ast)) {
+    if (AST.isTypeLiteralTransformation(ast.transformation)) {
+      const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
+        .filter((t) => (keys as ReadonlyArray<PropertyKey>).includes(t.to))
+      if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
+        return make(
+          AST.createTransform(
+            AST.pick(ast.from, keys),
+            AST.pick(ast.to, keys),
+            AST.createTypeLiteralTransformation(propertySignatureTransformations)
           )
-        } else {
-          return make(AST.pick(ast.from, keys))
-        }
+        )
+      } else {
+        return make(AST.pick(ast.from, keys))
       }
-      throw new Error(`pick: cannot handle this kind of transformation`)
     }
-    return make(AST.pick(ast, keys))
+    throw new Error(`pick: cannot handle this kind of transformation`)
   }
+  return make(AST.pick(ast, keys))
+}
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const omit =
-  <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  <I extends { [K in keyof A]?: any }>(
-    self: Schema<I, A>
-  ): Schema<Simplify<Omit<I, Keys[number]>>, Simplify<Omit<A, Keys[number]>>> => {
-    const ast = self.ast
-    if (AST.isTransform(ast)) {
-      if (AST.isTypeLiteralTransformation(ast.transformation)) {
-        const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
-          .filter((t) => !(keys as ReadonlyArray<PropertyKey>).includes(t.to))
-        if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
-          return make(
-            AST.createTransform(
-              AST.omit(ast.from, keys),
-              AST.omit(ast.to, keys),
-              AST.createTypeLiteralTransformation(propertySignatureTransformations)
-            )
+export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
+<I extends { [K in keyof A]?: any }>(
+  self: Schema<I, A>
+): Schema<Simplify<Omit<I, Keys[number]>>, Simplify<Omit<A, Keys[number]>>> => {
+  const ast = self.ast
+  if (AST.isTransform(ast)) {
+    if (AST.isTypeLiteralTransformation(ast.transformation)) {
+      const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
+        .filter((t) => !(keys as ReadonlyArray<PropertyKey>).includes(t.to))
+      if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
+        return make(
+          AST.createTransform(
+            AST.omit(ast.from, keys),
+            AST.omit(ast.to, keys),
+            AST.createTypeLiteralTransformation(propertySignatureTransformations)
           )
-        } else {
-          return make(AST.omit(ast.from, keys))
-        }
+        )
+      } else {
+        return make(AST.omit(ast.from, keys))
       }
-      throw new Error(`omit: cannot handle this kind of transformation`)
     }
-    return make(AST.omit(ast, keys))
+    throw new Error(`omit: cannot handle this kind of transformation`)
   }
+  return make(AST.omit(ast, keys))
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface BrandSchema<From, To extends Brand.Brand<any>>
-  extends Schema<From, To>, Brand.Brand.Constructor<To>
-{}
+export interface BrandSchema<From, To extends Brand.Brand<any>> extends Schema<From, To>, Brand.Brand.Constructor<To> {}
 
 const appendBrandAnnotation = <B extends string | symbol>(
   ast: AST.AST,
@@ -1144,8 +1134,7 @@ export const mutable = <I, A>(
 export const record = <IK extends string | symbol, AK extends IK, IV, AV>(
   key: Schema<IK, AK>,
   value: Schema<IV, AV>
-): Schema<{ readonly [k in IK]: IV }, { readonly [k in AK]: AV }> =>
-  make(AST.createRecord(key.ast, value.ast, true))
+): Schema<{ readonly [k in IK]: IV }, { readonly [k in AK]: AV }> => make(AST.createRecord(key.ast, value.ast, true))
 
 /** @internal */
 export const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
@@ -1263,8 +1252,7 @@ export const compose: {
   <A, B, C, D>(ab: Schema<A, B>, cd: Schema<C, D>): Schema<A, D>
 } = dual(
   2,
-  <A, B, C, D>(ab: Schema<A, B>, cd: Schema<C, D>): Schema<A, D> =>
-    make(AST.compose(ab.ast, cd.ast))
+  <A, B, C, D>(ab: Schema<A, B>, cd: Schema<C, D>): Schema<A, D> => make(AST.compose(ab.ast, cd.ast))
 )
 
 /**
@@ -1447,8 +1435,7 @@ export const transformLiterals = <
   const A extends ReadonlyArray<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>
 >(
   ...pairs: A
-): Schema<A[number][0], A[number][1]> =>
-  union(...pairs.map(([from, to]) => transformLiteral(from, to)))
+): Schema<A[number][0], A[number][1]> => union(...pairs.map(([from, to]) => transformLiteral(from, to)))
 
 /**
  * Attaches a property signature with the specified key and value to the schema.
@@ -1600,25 +1587,22 @@ export interface FilterAnnotations<A> extends DocAnnotations {
  * @category annotations
  * @since 1.0.0
  */
-export const annotations =
-  (annotations: AST.Annotations) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
-    make(AST.mergeAnnotations(self.ast, annotations))
+export const annotations = (annotations: AST.Annotations) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.mergeAnnotations(self.ast, annotations))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const message =
-  (message: AST.MessageAnnotation<unknown>) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
-    make(AST.setAnnotation(self.ast, AST.MessageAnnotationId, message))
+export const message = (message: AST.MessageAnnotation<unknown>) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, AST.MessageAnnotationId, message))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const identifier =
-  (identifier: AST.IdentifierAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
-    make(AST.setAnnotation(self.ast, AST.IdentifierAnnotationId, identifier))
+export const identifier = (identifier: AST.IdentifierAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, AST.IdentifierAnnotationId, identifier))
 
 /**
  * @category annotations
@@ -1631,17 +1615,15 @@ export const title = (title: AST.TitleAnnotation) => <I, A>(self: Schema<I, A>):
  * @category annotations
  * @since 1.0.0
  */
-export const description =
-  (description: AST.DescriptionAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
-    make(AST.setAnnotation(self.ast, AST.DescriptionAnnotationId, description))
+export const description = (description: AST.DescriptionAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, AST.DescriptionAnnotationId, description))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const examples =
-  (examples: AST.ExamplesAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
-    make(AST.setAnnotation(self.ast, AST.ExamplesAnnotationId, examples))
+export const examples = (examples: AST.ExamplesAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, AST.ExamplesAnnotationId, examples))
 
 const _default = <A>(value: A) => <I>(self: Schema<I, A>): Schema<I, A> =>
   make(AST.setAnnotation(self.ast, AST.DefaultAnnotationId, value))
@@ -1658,9 +1640,8 @@ export {
  * @category annotations
  * @since 1.0.0
  */
-export const documentation =
-  (documentation: AST.DocumentationAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
-    make(AST.setAnnotation(self.ast, AST.DocumentationAnnotationId, documentation))
+export const documentation = (documentation: AST.DocumentationAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, AST.DocumentationAnnotationId, documentation))
 
 /**
  * Attaches a JSON Schema annotation to a schema that represents a refinement.
@@ -1670,21 +1651,19 @@ export const documentation =
  * @category annotations
  * @since 1.0.0
  */
-export const jsonSchema =
-  (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> => {
-    if (AST.isRefinement(self.ast)) {
-      return make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
-    }
-    throw new Error("JSON Schema annotations can be applied exclusively to refinements")
+export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> => {
+  if (AST.isRefinement(self.ast)) {
+    return make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
   }
+  throw new Error("JSON Schema annotations can be applied exclusively to refinements")
+}
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const equivalence =
-  <A>(equivalence: Equivalence.Equivalence<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
-    make(AST.setAnnotation(self.ast, hooks.EquivalenceHookId, () => equivalence))
+export const equivalence = <A>(equivalence: Equivalence.Equivalence<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, hooks.EquivalenceHookId, () => equivalence))
 
 type Rename<A, M> = {
   [
@@ -1748,15 +1727,14 @@ export const TrimmedTypeId = Symbol.for("@effect/schema/TypeId/Trimmed")
  * @category string filters
  * @since 1.0.0
  */
-export const trimmed =
-  <A extends string>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
-    self.pipe(
-      filter((a): a is A => a === a.trim(), {
-        typeId: TrimmedTypeId,
-        description: "a string with no leading or trailing whitespace",
-        ...options
-      })
-    )
+export const trimmed = <A extends string>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => a === a.trim(), {
+      typeId: TrimmedTypeId,
+      description: "a string with no leading or trailing whitespace",
+      ...options
+    })
+  )
 
 /**
  * @category type id
@@ -1951,15 +1929,14 @@ export const LowercasedTypeId = Symbol.for("@effect/schema/TypeId/Lowercased")
  * @category string filters
  * @since 1.0.0
  */
-export const lowercased =
-  <A extends string>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
-    self.pipe(
-      filter((a): a is A => a === a.toLowerCase(), {
-        typeId: LowercasedTypeId,
-        description: "a lowercase string",
-        ...options
-      })
-    )
+export const lowercased = <A extends string>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => a === a.toLowerCase(), {
+      typeId: LowercasedTypeId,
+      description: "a lowercase string",
+      ...options
+    })
+  )
 
 /**
  * @category type id
@@ -1973,15 +1950,14 @@ export const UppercasedTypeId = Symbol.for("@effect/schema/TypeId/Uppercased")
  * @category string filters
  * @since 1.0.0
  */
-export const uppercased =
-  <A extends string>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
-    self.pipe(
-      filter((a): a is A => a === a.toUpperCase(), {
-        typeId: UppercasedTypeId,
-        description: "an uppercase string",
-        ...options
-      })
-    )
+export const uppercased = <A extends string>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => a === a.toUpperCase(), {
+      typeId: UppercasedTypeId,
+      description: "an uppercase string",
+      ...options
+    })
+  )
 
 /**
  * @category type id
@@ -2192,15 +2168,14 @@ export const FiniteTypeId = Symbol.for("@effect/schema/TypeId/Finite")
  * @category number filters
  * @since 1.0.0
  */
-export const finite =
-  <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
-    self.pipe(
-      filter((a): a is A => Number.isFinite(a), {
-        typeId: FiniteTypeId,
-        description: "a finite number",
-        ...options
-      })
-    )
+export const finite = <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => Number.isFinite(a), {
+      typeId: FiniteTypeId,
+      description: "a finite number",
+      ...options
+    })
+  )
 
 /**
  * @category type id
@@ -2302,17 +2277,16 @@ export type IntTypeId = typeof IntTypeId
  * @category number filters
  * @since 1.0.0
  */
-export const int =
-  <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
-    self.pipe(
-      filter((a): a is A => Number.isSafeInteger(a), {
-        typeId: IntTypeId,
-        title: "integer",
-        description: "an integer",
-        jsonSchema: { type: "integer" },
-        ...options
-      })
-    )
+export const int = <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => Number.isSafeInteger(a), {
+      typeId: IntTypeId,
+      title: "integer",
+      description: "an integer",
+      jsonSchema: { type: "integer" },
+      ...options
+    })
+  )
 
 /**
  * @category type id
@@ -2331,8 +2305,7 @@ export type LessThanTypeId = typeof LessThanTypeId
  * @since 1.0.0
  */
 export const lessThan =
-  <A extends number>(max: number, options?: FilterAnnotations<A>) =>
-  <I>(self: Schema<I, A>): Schema<I, A> =>
+  <A extends number>(max: number, options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
     self.pipe(
       filter((a): a is A => a < max, {
         typeId: LessThanTypeId,
@@ -2413,15 +2386,14 @@ export const NonNaNTypeId = Symbol.for("@effect/schema/TypeId/NonNaN")
  * @category number filters
  * @since 1.0.0
  */
-export const nonNaN =
-  <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
-    self.pipe(
-      filter((a): a is A => !Number.isNaN(a), {
-        typeId: NonNaNTypeId,
-        description: "a number NaN excluded",
-        ...options
-      })
-    )
+export const nonNaN = <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => !Number.isNaN(a), {
+      typeId: NonNaNTypeId,
+      description: "a number NaN excluded",
+      ...options
+    })
+  )
 
 /**
  * @category number filters
@@ -2461,15 +2433,14 @@ export const nonNegative = <A extends number>(
  * @category number transformations
  * @since 1.0.0
  */
-export const clamp =
-  (minimum: number, maximum: number) => <I, A extends number>(self: Schema<I, A>): Schema<I, A> =>
-    transform(
-      self,
-      self.pipe(to, between(minimum, maximum)),
-      (self) => N.clamp(self, { minimum, maximum }),
-      identity,
-      { strict: false }
-    )
+export const clamp = (minimum: number, maximum: number) => <I, A extends number>(self: Schema<I, A>): Schema<I, A> =>
+  transform(
+    self,
+    self.pipe(to, between(minimum, maximum)),
+    (self) => N.clamp(self, { minimum, maximum }),
+    identity,
+    { strict: false }
+  )
 
 /**
  * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
@@ -2638,8 +2609,7 @@ export const greaterThanBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanOrEqualToBigintTypeId: unique symbol =
-  filters.GreaterThanOrEqualToBigintTypeId
+export const GreaterThanOrEqualToBigintTypeId: unique symbol = filters.GreaterThanOrEqualToBigintTypeId
 
 /**
  * @category type id
@@ -2921,8 +2891,7 @@ export const SecretFromSelf: Schema<Secret.Secret> = declare(
   {
     [AST.IdentifierAnnotationId]: "Secret",
     [hooks.PrettyHookId]: (): Pretty.Pretty<Secret.Secret> => (secret) => String(secret),
-    [hooks.ArbitraryHookId]: (): Arbitrary<Secret.Secret> => (fc) =>
-      fc.string().map((_) => Secret.fromString(_))
+    [hooks.ArbitraryHookId]: (): Arbitrary<Secret.Secret> => (fc) => fc.string().map((_) => Secret.fromString(_))
   }
 )
 
@@ -3254,8 +3223,7 @@ const makeEncodingTransformation = (
     (s, _, ast) =>
       Either.mapLeft(
         decode(s),
-        (decodeException) =>
-          ParseResult.parseError([ParseResult.type(ast, s, decodeException.message)])
+        (decodeException) => ParseResult.parseError([ParseResult.type(ast, s, decodeException.message)])
       ),
     (u) => ParseResult.succeed(encode(u)),
     { strict: false }
@@ -3400,15 +3368,14 @@ export const ValidDateTypeId = Symbol.for("@effect/schema/TypeId/ValidDate")
  * @category Date filters
  * @since 1.0.0
  */
-export const validDate =
-  (options?: FilterAnnotations<Date>) => <I>(self: Schema<I, Date>): Schema<I, Date> =>
-    self.pipe(
-      filter((a) => !Number.isNaN(a.getTime()), {
-        typeId: ValidDateTypeId,
-        description: "a valid Date",
-        ...options
-      })
-    )
+export const validDate = (options?: FilterAnnotations<Date>) => <I>(self: Schema<I, Date>): Schema<I, Date> =>
+  self.pipe(
+    filter((a) => !Number.isNaN(a.getTime()), {
+      typeId: ValidDateTypeId,
+      description: "a valid Date",
+      ...options
+    })
+  )
 
 const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date({ noInvalidDate: false })
 
@@ -3700,9 +3667,7 @@ const readonlyMapEquivalence = <K, V>(
   const arrayEquivalence = ReadonlyArray.getEquivalence(
     Equivalence.make<[K, V]>(([ka, va], [kb, vb]) => key(ka, kb) && value(va, vb))
   )
-  return Equivalence.make((a, b) =>
-    arrayEquivalence(Array.from(a.entries()), Array.from(b.entries()))
-  )
+  return Equivalence.make((a, b) => arrayEquivalence(Array.from(a.entries()), Array.from(b.entries())))
 }
 
 /**
@@ -3763,9 +3728,7 @@ const readonlySetEquivalence = <A>(
   item: Equivalence.Equivalence<A>
 ): Equivalence.Equivalence<ReadonlySet<A>> => {
   const arrayEquivalence = ReadonlyArray.getEquivalence(item)
-  return Equivalence.make((a, b) =>
-    arrayEquivalence(Array.from(a.values()), Array.from(b.values()))
-  )
+  return Equivalence.make((a, b) => arrayEquivalence(Array.from(a.values()), Array.from(b.values())))
 }
 
 /**
@@ -4082,9 +4045,7 @@ export const betweenBigDecimal = <A extends BigDecimal.BigDecimal>(
   self.pipe(
     filter((a): a is A => BigDecimal.between(a, { minimum, maximum }), {
       typeId: { id: BetweenBigDecimalTypeId, params: { maximum, minimum } },
-      description: `a BigDecimal between ${BigDecimal.format(minimum)} and ${
-        BigDecimal.format(maximum)
-      }`,
+      description: `a BigDecimal between ${BigDecimal.format(minimum)} and ${BigDecimal.format(maximum)}`,
       ...options
     })
   )
@@ -4386,47 +4347,45 @@ export declare namespace TaggedRequest {
  * @category classes
  * @since 1.0.0
  */
-export const TaggedRequest =
-  <Self>() =>
-  <Tag extends string, Fields extends StructFields, EI, EA, AI, AA>(
-    tag: Tag,
-    Failure: Schema<EI, EA>,
-    Success: Schema<AI, AA>,
-    fields: Fields
-  ): [unknown] extends [Self] ?
-    MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-    : Class<
+export const TaggedRequest = <Self>() =>
+<Tag extends string, Fields extends StructFields, EI, EA, AI, AA>(
+  tag: Tag,
+  Failure: Schema<EI, EA>,
+  Success: Schema<AI, AA>,
+  fields: Fields
+): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
+  : Class<
+    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+    Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
+    Simplify<ToStruct<Fields>>,
+    Self,
+    TaggedRequest<
+      Tag,
       Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
-      Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
-      Simplify<ToStruct<Fields>>,
       Self,
-      TaggedRequest<
-        Tag,
-        Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
-        Self,
-        EI,
-        EA,
-        AI,
-        AA
-      >
-    > =>
-  {
-    class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
-      get [InternalSerializable.symbol]() {
-        return this.constructor
-      }
-      get [InternalSerializable.symbolResult]() {
-        return { Failure, Success }
-      }
+      EI,
+      EA,
+      AI,
+      AA
+    >
+  > =>
+{
+  class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
+    get [InternalSerializable.symbol]() {
+      return this.constructor
     }
-    const fieldsWithTag = { ...fields, _tag: literal(tag) }
-    return makeClass(
-      struct(fieldsWithTag),
-      fieldsWithTag,
-      SerializableRequest,
-      { _tag: tag }
-    )
+    get [InternalSerializable.symbolResult]() {
+      return { Failure, Success }
+    }
   }
+  const fieldsWithTag = { ...fields, _tag: literal(tag) }
+  return makeClass(
+    struct(fieldsWithTag),
+    fieldsWithTag,
+    SerializableRequest,
+    { _tag: tag }
+  )
+}
 
 const makeClass = <I, A>(
   selfSchema: Schema<I, A>,
@@ -4463,10 +4422,8 @@ const makeClass = <I, A>(
             ParseResult.succeed(input)
             : ParseResult.fail(ParseResult.type(ast, input)), {
           [AST.DescriptionAnnotationId]: `an instance of ${this.name}`,
-          [hooks.PrettyHookId]: (struct: any) => (self: any) =>
-            `${self.constructor.name}(${struct(self)})`,
-          [hooks.ArbitraryHookId]: (struct: any) => (fc: any) =>
-            struct(fc).map((props: any) => new this(props))
+          [hooks.PrettyHookId]: (struct: any) => (self: any) => `${self.constructor.name}(${struct(self)})`,
+          [hooks.ArbitraryHookId]: (struct: any) => (fc: any) => struct(fc).map((props: any) => new this(props))
         }),
         (input) => new this(input, true),
         (input) => ({ ...input })
@@ -4566,8 +4523,7 @@ const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
 
 const fiberIdFromArbitrary = arbitrary.unsafe(FiberIdFrom)
 
-const fiberIdArbitrary: Arbitrary<FiberId.FiberId> = (fc) =>
-  fiberIdFromArbitrary(fc).map(fiberIdDecode)
+const fiberIdArbitrary: Arbitrary<FiberId.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
 
 const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
   switch (fiberId._tag) {
@@ -4881,12 +4837,10 @@ const exitArbitrary = <E, A>(
   return (fc) => arb(fc).map(exitDecode)
 }
 
-const exitPretty =
-  <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pretty.Pretty<Exit.Exit<E, A>> =>
-  (exit) =>
-    exit._tag === "Failure"
-      ? `Exit.failCause(${causePretty(error)(exit.cause)})`
-      : `Exit.succeed(${value(exit.value)})`
+const exitPretty = <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pretty.Pretty<Exit.Exit<E, A>> => (exit) =>
+  exit._tag === "Failure"
+    ? `Exit.failCause(${causePretty(error)(exit.cause)})`
+    : `Exit.succeed(${value(exit.value)})`
 
 /**
  * @category Exit transformations

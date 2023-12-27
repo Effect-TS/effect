@@ -156,8 +156,7 @@ export declare namespace ValidationError {
  * @since 1.0.0
  * @category refinements
  */
-export const isValidationError: (u: unknown) => u is ValidationError =
-  InternalValidationError.isValidationError
+export const isValidationError: (u: unknown) => u is ValidationError = InternalValidationError.isValidationError
 
 /**
  * @since 1.0.0
@@ -170,15 +169,13 @@ export const isCommandMismatch: (self: ValidationError) => self is CommandMismat
  * @since 1.0.0
  * @category refinements
  */
-export const isCorrectedFlag: (self: ValidationError) => self is CorrectedFlag =
-  InternalValidationError.isCorrectedFlag
+export const isCorrectedFlag: (self: ValidationError) => self is CorrectedFlag = InternalValidationError.isCorrectedFlag
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isHelpRequested: (self: ValidationError) => self is HelpRequested =
-  InternalValidationError.isHelpRequested
+export const isHelpRequested: (self: ValidationError) => self is HelpRequested = InternalValidationError.isHelpRequested
 
 /**
  * @since 1.0.0
@@ -191,8 +188,7 @@ export const isInvalidArgument: (self: ValidationError) => self is InvalidArgume
  * @since 1.0.0
  * @category refinements
  */
-export const isInvalidValue: (self: ValidationError) => self is InvalidValue =
-  InternalValidationError.isInvalidValue
+export const isInvalidValue: (self: ValidationError) => self is InvalidValue = InternalValidationError.isInvalidValue
 
 /**
  * @since 1.0.0
@@ -205,15 +201,13 @@ export const isMultipleValuesDetected: (self: ValidationError) => self is Multip
  * @since 1.0.0
  * @category refinements
  */
-export const isMissingFlag: (self: ValidationError) => self is MissingFlag =
-  InternalValidationError.isMissingFlag
+export const isMissingFlag: (self: ValidationError) => self is MissingFlag = InternalValidationError.isMissingFlag
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isMissingValue: (self: ValidationError) => self is MissingValue =
-  InternalValidationError.isMissingValue
+export const isMissingValue: (self: ValidationError) => self is MissingValue = InternalValidationError.isMissingValue
 
 /**
  * @since 1.0.0
@@ -240,36 +234,31 @@ export const isUnclusteredFlag: (self: ValidationError) => self is UnclusteredFl
  * @since 1.0.0
  * @category constructors
  */
-export const commandMismatch: (error: HelpDoc) => ValidationError =
-  InternalValidationError.commandMismatch
+export const commandMismatch: (error: HelpDoc) => ValidationError = InternalValidationError.commandMismatch
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const correctedFlag: (error: HelpDoc) => ValidationError =
-  InternalValidationError.correctedFlag
+export const correctedFlag: (error: HelpDoc) => ValidationError = InternalValidationError.correctedFlag
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const helpRequested: <A>(command: Command<A>) => ValidationError =
-  InternalCommand.helpRequestedError
+export const helpRequested: <A>(command: Command<A>) => ValidationError = InternalCommand.helpRequestedError
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const invalidArgument: (error: HelpDoc) => ValidationError =
-  InternalValidationError.invalidArgument
+export const invalidArgument: (error: HelpDoc) => ValidationError = InternalValidationError.invalidArgument
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const invalidValue: (error: HelpDoc) => ValidationError =
-  InternalValidationError.invalidValue
+export const invalidValue: (error: HelpDoc) => ValidationError = InternalValidationError.invalidValue
 
 /**
  * @since 1.0.0
@@ -290,22 +279,19 @@ export const missingFlag: (error: HelpDoc) => ValidationError = InternalValidati
  * @since 1.0.0
  * @category constructors
  */
-export const missingValue: (error: HelpDoc) => ValidationError =
-  InternalValidationError.missingValue
+export const missingValue: (error: HelpDoc) => ValidationError = InternalValidationError.missingValue
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const missingSubcommand: (error: HelpDoc) => ValidationError =
-  InternalValidationError.missingSubcommand
+export const missingSubcommand: (error: HelpDoc) => ValidationError = InternalValidationError.missingSubcommand
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const noBuiltInMatch: (error: HelpDoc) => ValidationError =
-  InternalValidationError.noBuiltInMatch
+export const noBuiltInMatch: (error: HelpDoc) => ValidationError = InternalValidationError.noBuiltInMatch
 
 /**
  * @since 1.0.0

@@ -6,13 +6,7 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import {
-  CoordinatesOccupiedError,
-  Mine,
-  Ship,
-  ShipExistsError,
-  ShipNotFoundError
-} from "./domain.js"
+import { CoordinatesOccupiedError, Mine, Ship, ShipExistsError, ShipNotFoundError } from "./domain.js"
 
 /**
  * Represents the storage layer for the Naval Fate command-line application.
@@ -49,8 +43,7 @@ export const make = Effect.gen(function*($) {
     Effect.map(Option.getOrElse<ReadonlyArray<Mine>>(() => [])),
     Effect.orDie
   )
-  const setShips = (ships: ReadonlyMap<string, Ship>) =>
-    shipsStore.set("ships", ships).pipe(Effect.orDie)
+  const setShips = (ships: ReadonlyMap<string, Ship>) => shipsStore.set("ships", ships).pipe(Effect.orDie)
   const setMines = (mines: ReadonlyArray<Mine>) => minesStore.set("mines", mines).pipe(Effect.orDie)
 
   const createShip: NavalFateStore["createShip"] = (name) =>

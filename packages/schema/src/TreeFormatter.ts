@@ -143,9 +143,7 @@ export const getMessage = (e: Type) =>
   AST.getMessageAnnotation(e.expected).pipe(
     Option.map((annotation) => annotation(e.actual)),
     Option.orElse(() => e.message),
-    Option.getOrElse(() =>
-      `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
-    )
+    Option.getOrElse(() => `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`)
   )
 
 const go = (e: ParseIssue): Tree<string> => {

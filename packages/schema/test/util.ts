@@ -266,9 +266,7 @@ const formatDecodeError = (e: PR.ParseIssue): string => {
         getMessage(e.expected),
         Option.map((f) => f(e.actual)),
         Option.orElse(() => e.message),
-        Option.getOrElse(() =>
-          `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
-        )
+        Option.getOrElse(() => `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`)
       )
     case "Forbidden":
       return "is forbidden"
@@ -290,8 +288,7 @@ export const printAST = <I, A>(schema: S.Schema<I, A>) => {
   console.log("%o", schema.ast)
 }
 
-export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A, A> =>
-  schema.pipe(S.compose(schema))
+export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A, A> => schema.pipe(S.compose(schema))
 
 export const X2 = S.transform(
   S.string,

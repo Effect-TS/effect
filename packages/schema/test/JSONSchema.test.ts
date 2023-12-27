@@ -746,9 +746,7 @@ describe("JSONSchema", () => {
     })
 
     it("record(refinement, number)", () => {
-      expect(() =>
-        JSONSchema.to(Schema.record(Schema.string.pipe(Schema.minLength(1)), JsonNumber))
-      ).toThrow(
+      expect(() => JSONSchema.to(Schema.record(Schema.string.pipe(Schema.minLength(1)), JsonNumber))).toThrow(
         new Error("Unsupported index signature parameter Refinement")
       )
     })
@@ -1524,10 +1522,9 @@ const decodeAST = (
       if (schema.items) {
         if (Array.isArray(schema.items)) {
           const minItems = schema.minItems ?? -1
-          const rest: AST.Tuple["rest"] =
-            schema.additionalItems && !Predicate.isBoolean(schema.additionalItems)
-              ? Option.some([decodeAST(schema.additionalItems, $defs)])
-              : Option.none()
+          const rest: AST.Tuple["rest"] = schema.additionalItems && !Predicate.isBoolean(schema.additionalItems)
+            ? Option.some([decodeAST(schema.additionalItems, $defs)])
+            : Option.none()
           return AST.createTuple(
             schema.items.map((item, i) => AST.createElement(decodeAST(item, $defs), i >= minItems)),
             rest,

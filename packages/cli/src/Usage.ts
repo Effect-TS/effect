@@ -126,8 +126,7 @@ export const mixed: Usage = InternalUsage.mixed
  * @since 1.0.0
  * @category constructors
  */
-export const named: (names: ReadonlyArray<string>, acceptedValues: Option<string>) => Usage =
-  InternalUsage.named
+export const named: (names: ReadonlyArray<string>, acceptedValues: Option<string>) => Usage = InternalUsage.named
 
 /**
  * @since 1.0.0

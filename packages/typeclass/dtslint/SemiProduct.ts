@@ -1,5 +1,5 @@
-import { OptionTypeLambda } from "effect/Option"
 import * as _ from "@effect/typeclass/SemiProduct"
+import type { OptionTypeLambda } from "effect/Option"
 
 export declare const SemiProduct: _.SemiProduct<OptionTypeLambda>
 

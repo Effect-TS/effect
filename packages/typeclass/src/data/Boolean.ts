@@ -76,9 +76,7 @@ export const SemigroupSome: semigroup.Semigroup<boolean> = semigroup.make(
  * @category instances
  * @since 1.0.0
  */
-export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, that) =>
-  self !== that
-)
+export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, that) => self !== that)
 
 /**
  * `boolean` semigroup under equivalence.
@@ -94,9 +92,7 @@ export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, 
  * @category instances
  * @since 1.0.0
  */
-export const SemigroupEqv: semigroup.Semigroup<boolean> = semigroup.make((self, that) =>
-  self === that
-)
+export const SemigroupEqv: semigroup.Semigroup<boolean> = semigroup.make((self, that) => self === that)
 
 /**
  * `boolean` monoid under conjunction, see also {@link SemigroupEvery}.

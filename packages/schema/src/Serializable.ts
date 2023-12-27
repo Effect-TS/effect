@@ -93,9 +93,7 @@ export const exitSchema = <IE, E, IA, A>(
  * @since 1.0.0
  * @category model
  */
-export interface SerializableWithResult<IS, S, IE, E, IA, A>
-  extends Serializable<IS, S>, WithResult<IE, E, IA, A>
-{}
+export interface SerializableWithResult<IS, S, IE, E, IA, A> extends Serializable<IS, S>, WithResult<IE, E, IA, A> {}
 
 /**
  * @since 1.0.0

@@ -58,8 +58,7 @@ export const bindTo = <F extends TypeLambda>(F: Invariant<F>): {
   dual(2, <R, O, E, A, N extends string>(
     self: Kind<F, R, O, E, A>,
     name: N
-  ): Kind<F, R, O, E, { [K in N]: A }> =>
-    F.imap(self, (a) => ({ [name]: a } as any), ({ [name]: a }) => a))
+  ): Kind<F, R, O, E, { [K in N]: A }> => F.imap(self, (a) => ({ [name]: a } as any), ({ [name]: a }) => a))
 
 /**
  * Convert a value in a singleton array in a given effect.
@@ -68,5 +67,4 @@ export const bindTo = <F extends TypeLambda>(F: Invariant<F>): {
  */
 export const tupled = <F extends TypeLambda>(
   F: Invariant<F>
-): <R, O, E, A>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, [A]> =>
-  F.imap((a) => [a], ([a]) => a)
+): <R, O, E, A>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, [A]> => F.imap((a) => [a], ([a]) => a)

@@ -49,8 +49,7 @@ export const flap = <F extends TypeLambda>(F: Covariant<F>): {
 } =>
   dual(
     2,
-    <A, R, O, E, B>(a: A, self: Kind<F, R, O, E, (a: A) => B>): Kind<F, R, O, E, B> =>
-      F.map(self, (f) => f(a))
+    <A, R, O, E, B>(a: A, self: Kind<F, R, O, E, (a: A) => B>): Kind<F, R, O, E, B> => F.map(self, (f) => f(a))
   )
 
 /**

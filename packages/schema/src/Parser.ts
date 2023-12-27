@@ -34,14 +34,12 @@ const getSync = (ast: AST.AST, isDecoding: boolean) => {
 
 const getOption = (ast: AST.AST, isDecoding: boolean) => {
   const parser = getEither(ast, isDecoding)
-  return (input: unknown, options?: AST.ParseOptions): Option.Option<any> =>
-    Option.getRight(parser(input, options))
+  return (input: unknown, options?: AST.ParseOptions): Option.Option<any> => Option.getRight(parser(input, options))
 }
 
 const getEffect = (ast: AST.AST, isDecoding: boolean) => {
   const parser = goMemo(ast, isDecoding)
-  return (input: unknown, options?: AST.ParseOptions) =>
-    parser(input, { ...options, isEffectAllowed: true })
+  return (input: unknown, options?: AST.ParseOptions) => parser(input, { ...options, isEffectAllowed: true })
 }
 
 const getPromise = (ast: AST.AST, isDecoding: boolean) => {
@@ -71,8 +69,7 @@ export const parseOption = <_, A>(
  */
 export const parseEither = <_, A>(
   schema: Schema.Schema<_, A>
-): (i: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, A> =>
-  getEither(schema.ast, true)
+): (i: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, A> => getEither(schema.ast, true)
 
 /**
  * @category parsing
@@ -145,8 +142,7 @@ export const validateSync = <_, A>(
  */
 export const validateOption = <_, A>(
   schema: Schema.Schema<_, A>
-): (a: unknown, options?: AST.ParseOptions) => Option.Option<A> =>
-  getOption(AST.to(schema.ast), true)
+): (a: unknown, options?: AST.ParseOptions) => Option.Option<A> => getOption(AST.to(schema.ast), true)
 
 /**
  * @category validation
@@ -216,8 +212,7 @@ export const encodeOption = <I, A>(
  */
 export const encodeEither = <I, A>(
   schema: Schema.Schema<I, A>
-): (a: A, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, I> =>
-  getEither(schema.ast, false)
+): (a: A, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, I> => getEither(schema.ast, false)
 
 /**
  * @category encoding
@@ -233,8 +228,7 @@ export const encodePromise = <I, A>(
  */
 export const encode = <I, A>(
   schema: Schema.Schema<I, A>
-): (a: A, options?: AST.ParseOptions) => Effect.Effect<never, ParseResult.ParseError, I> =>
-  getEffect(schema.ast, false)
+): (a: A, options?: AST.ParseOptions) => Effect.Effect<never, ParseResult.ParseError, I> => getEffect(schema.ast, false)
 
 interface ParseEffectOptions extends AST.ParseOptions {
   readonly isEffectAllowed?: boolean
@@ -916,9 +910,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
   }
 }
 
-const fromRefinement =
-  <A>(ast: AST.AST, refinement: (u: unknown) => u is A): Parser<unknown, A> => (u) =>
-    refinement(u) ? ParseResult.succeed(u) : ParseResult.fail(ParseResult.type(ast, u))
+const fromRefinement = <A>(ast: AST.AST, refinement: (u: unknown) => u is A): Parser<unknown, A> => (u) =>
+  refinement(u) ? ParseResult.succeed(u) : ParseResult.fail(ParseResult.type(ast, u))
 
 /** @internal */
 export const getLiterals = (
@@ -1008,8 +1001,7 @@ export const getSearchTree = (
   return { keys, otherwise }
 }
 
-const dropRightRefinement = (ast: AST.AST): AST.AST =>
-  AST.isRefinement(ast) ? dropRightRefinement(ast.from) : ast
+const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? dropRightRefinement(ast.from) : ast
 
 const handleForbidden = <A>(
   conditional: ParseResult.ParseResult<A>,

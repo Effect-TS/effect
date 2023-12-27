@@ -96,8 +96,7 @@ export const isPageWidth: (u: unknown) => u is PageWidth = internal.isPageWidth
  * @since 1.0.0
  * @category refinements
  */
-export const isAvailablePerLine: (self: PageWidth) => self is AvailablePerLine =
-  internal.isAvailablePerLine
+export const isAvailablePerLine: (self: PageWidth) => self is AvailablePerLine = internal.isAvailablePerLine
 
 /**
  * Returns `true` if the specified `PageWidth` is an `Unbounded`, `false`
@@ -116,8 +115,7 @@ export const isUnbounded: (self: PageWidth) => self is Unbounded = internal.isUn
  * @since 1.0.0
  * @category constructors
  */
-export const availablePerLine: (lineWidth: number, ribbonFraction: number) => PageWidth =
-  internal.availablePerLine
+export const availablePerLine: (lineWidth: number, ribbonFraction: number) => PageWidth = internal.availablePerLine
 
 /**
  * @since 1.0.0

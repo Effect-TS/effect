@@ -51,8 +51,7 @@ export const mapLeft = <F extends TypeLambda>(
 } =>
   dual(
     2,
-    <R, O, E, A, G>(self: Kind<F, R, O, E, A>, f: (e: E) => G): Kind<F, R, O, G, A> =>
-      F.bimap(self, f, identity)
+    <R, O, E, A, G>(self: Kind<F, R, O, E, A>, f: (e: E) => G): Kind<F, R, O, G, A> => F.bimap(self, f, identity)
   )
 
 /**
@@ -65,6 +64,5 @@ export const map = <F extends TypeLambda>(
 ): Covariant<F>["map"] =>
   dual(
     2,
-    <R, O, E, A, B>(self: Kind<F, R, O, E, A>, f: (a: A) => B): Kind<F, R, O, E, B> =>
-      F.bimap(self, identity, f)
+    <R, O, E, A, B>(self: Kind<F, R, O, E, A>, f: (a: A) => B): Kind<F, R, O, E, B> => F.bimap(self, identity, f)
   )

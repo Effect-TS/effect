@@ -286,12 +286,10 @@ export const cursorSavePosition: Ansi.Ansi = make({ commands: ReadonlyArray.of(`
 export const cursorRestorePosition: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}u`) })
 
 /** @internal */
-export const cursorNextLine = (rows: number = 1): Ansi.Ansi =>
-  make({ commands: ReadonlyArray.of(`${ESC}${rows}E`) })
+export const cursorNextLine = (rows: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${ESC}${rows}E`) })
 
 /** @internal */
-export const cursorPrevLine = (rows: number = 1): Ansi.Ansi =>
-  make({ commands: ReadonlyArray.of(`${ESC}${rows}F`) })
+export const cursorPrevLine = (rows: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${ESC}${rows}F`) })
 
 /** @internal */
 export const cursorHide: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}?25l`) })
@@ -350,8 +348,7 @@ export const combine = dual<
 // Internal
 // -----------------------------------------------------------------------------
 
-const combineInternal = (self: AnsiImpl, that: AnsiImpl): Ansi.Ansi =>
-  AnsiSemigroup.combine(self, that)
+const combineInternal = (self: AnsiImpl, that: AnsiImpl): Ansi.Ansi => AnsiSemigroup.combine(self, that)
 
 const stringifyInternal = (self: AnsiImpl): string => {
   const displaySequence = SGR.toEscapeSequence(

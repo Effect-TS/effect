@@ -159,8 +159,7 @@ const makeDerive = <Name extends string, R, E, A>(
   command.descriptor = options.descriptor ?? self.descriptor
   command.handler = options.handler ?? self.handler
   command.transform = options.transform
-    ? ((effect: Effect.Effect<R, E, void>, opts: A) =>
-      options.transform!(self.transform(effect, opts), opts))
+    ? ((effect: Effect.Effect<R, E, void>, opts: A) => options.transform!(self.transform(effect, opts), opts))
     : self.transform
   command.tag = self.tag
   return command
@@ -278,8 +277,7 @@ export const getZshCompletions = <Name extends string, R, E, A>(
 /** @internal */
 export const getSubcommands = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>
-): HashMap.HashMap<string, Descriptor.Command<unknown>> =>
-  InternalDescriptor.getSubcommands(self.descriptor)
+): HashMap.HashMap<string, Descriptor.Command<unknown>> => InternalDescriptor.getSubcommands(self.descriptor)
 
 /** @internal */
 export const getUsage = <Name extends string, R, E, A>(
@@ -349,8 +347,7 @@ export const provide = dual<
   ) => Command.Command<Name, Exclude<R, LA> | LR, E | LE, A>
 >(2, (self, layer) =>
   makeDerive(self, {
-    transform: (effect, config) =>
-      Effect.provide(effect, typeof layer === "function" ? layer(config) : layer)
+    transform: (effect, config) => Effect.provide(effect, typeof layer === "function" ? layer(config) : layer)
   }))
 
 /** @internal */

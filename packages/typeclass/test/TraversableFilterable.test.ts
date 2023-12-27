@@ -16,8 +16,7 @@ describe.concurrent("TraversableFilterable", () => {
       ...ReadonlyArrayInstances.Covariant,
       ...ReadonlyArrayInstances.Filterable
     })(OptionInstances.Applicative)
-    const f = (s: string) =>
-      s.length > 1 ? O.some(E.right(s)) : s.length > 0 ? O.some(E.left(s)) : O.none()
+    const f = (s: string) => s.length > 1 ? O.some(E.right(s)) : s.length > 0 ? O.some(E.left(s)) : O.none()
     expect(traversePartitionMap([], f)).toEqual(O.some([[], []]))
     expect(traversePartitionMap([""], f)).toEqual(O.none())
     expect(traversePartitionMap(["a"], f)).toEqual(O.some([["a"], []]))
@@ -34,8 +33,7 @@ describe.concurrent("TraversableFilterable", () => {
       ...ReadonlyArrayInstances.Traversable,
       ...ReadonlyArrayInstances.Filterable
     })(OptionInstances.Applicative)
-    const f = (s: string) =>
-      s.length > 1 ? O.some(O.some(s)) : s.length > 0 ? O.some(O.none()) : O.none()
+    const f = (s: string) => s.length > 1 ? O.some(O.some(s)) : s.length > 0 ? O.some(O.none()) : O.none()
     assert.deepStrictEqual(traverseFilterMap([], f), O.some([]))
     assert.deepStrictEqual(traverseFilterMap([""], f), O.none())
     assert.deepStrictEqual(traverseFilterMap(["a"], f), O.some([]))
@@ -51,9 +49,7 @@ describe.concurrent("TraversableFilterable", () => {
     const traverseFilter = _.traverseFilter(
       ReadonlyArrayInstances.TraversableFilterable
     )(OptionInstances.Applicative)
-    const f = traverseFilter((s: string) =>
-      s.length > 2 ? O.some(false) : s.length > 1 ? O.some(true) : O.none()
-    )
+    const f = traverseFilter((s: string) => s.length > 2 ? O.some(false) : s.length > 1 ? O.some(true) : O.none())
     U.deepStrictEqual(f([]), O.some([]))
     U.deepStrictEqual(f(["a"]), O.none())
     U.deepStrictEqual(f(["a", "aa"]), O.none())
@@ -66,9 +62,7 @@ describe.concurrent("TraversableFilterable", () => {
     const traversePartition = _.traversePartition(
       ReadonlyArrayInstances.TraversableFilterable
     )(OptionInstances.Applicative)
-    const f = traversePartition((s: string) =>
-      s.length > 2 ? O.some(false) : s.length > 1 ? O.some(true) : O.none()
-    )
+    const f = traversePartition((s: string) => s.length > 2 ? O.some(false) : s.length > 1 ? O.some(true) : O.none())
     expect(f([])).toEqual(O.some([[], []]))
     expect(f(["a"])).toEqual(O.none())
     expect(f(["a", "aa"])).toEqual(O.none())

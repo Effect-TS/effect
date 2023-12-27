@@ -33,8 +33,7 @@ export const wadlerLeijen = dual<
   ) => DocStream.DocStream<A>
 >(
   3,
-  (self, fits, options) =>
-    Effect.runSync(wadlerLeijenSafe(0, 0, pipeline.cons(0, self, pipeline.nil), fits, options))
+  (self, fits, options) => Effect.runSync(wadlerLeijenSafe(0, 0, pipeline.cons(0, self, pipeline.nil), fits, options))
 )
 
 const wadlerLeijenSafe = <A>(
@@ -169,8 +168,7 @@ const selectNicer = <A>(
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const compact = <A>(self: Doc.Doc<A>): DocStream.DocStream<A> =>
-  Effect.runSync(compactSafe(List.of(self), 0))
+export const compact = <A>(self: Doc.Doc<A>): DocStream.DocStream<A> => Effect.runSync(compactSafe(List.of(self), 0))
 
 const compactSafe = <A>(
   docs: List.List<Doc.Doc<A>>,

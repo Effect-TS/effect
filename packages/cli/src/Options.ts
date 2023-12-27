@@ -81,8 +81,8 @@ export declare namespace All {
   /**
    * @since 1.0.0
    */
-  export type ReturnIterable<T extends Iterable<OptionsAny>> = [T] extends
-    [Iterable<Options.Variance<infer A>>] ? Options<Array<A>>
+  export type ReturnIterable<T extends Iterable<OptionsAny>> = [T] extends [Iterable<Options.Variance<infer A>>] ?
+    Options<Array<A>>
     : never
 
   /**
@@ -221,8 +221,7 @@ export const directory: (name: string, config?: Options.PathOptionsConfig) => Op
  * @since 1.0.0
  * @category constructors
  */
-export const file: (name: string, config?: Options.PathOptionsConfig) => Options<string> =
-  InternalOptions.file
+export const file: (name: string, config?: Options.PathOptionsConfig) => Options<string> = InternalOptions.file
 
 /**
  * @since 1.0.0

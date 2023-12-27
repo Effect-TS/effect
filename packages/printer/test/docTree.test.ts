@@ -97,19 +97,16 @@ describe.concurrent("DocTree", () => {
         readonly level: number
       }
 
-      const bold = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> =>
-        Doc.annotate(doc, { _tag: "Bold" })
+      const bold = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> => Doc.annotate(doc, { _tag: "Bold" })
 
       const color = (
         doc: Doc.Doc<SimpleHtml>,
         color: "Red" | "Green" | "Blue"
       ): Doc.Doc<SimpleHtml> => Doc.annotate(doc, { _tag: "Color", color })
 
-      const italicized = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> =>
-        Doc.annotate(doc, { _tag: "Italicized" })
+      const italicized = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> => Doc.annotate(doc, { _tag: "Italicized" })
 
-      const paragraph = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> =>
-        Doc.annotate(doc, { _tag: "Paragraph" })
+      const paragraph = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> => Doc.annotate(doc, { _tag: "Paragraph" })
 
       const header = (doc: Doc.Doc<SimpleHtml>, level: number): Doc.Doc<SimpleHtml> =>
         Doc.annotate(doc, { _tag: "Header", level })
@@ -190,11 +187,9 @@ describe.concurrent("DocTree", () => {
         }
       }
 
-      const renderTree = (tree: DocTree.DocTree<SimpleHtml>): string =>
-        Effect.runSync(renderTreeSafe(tree))
+      const renderTree = (tree: DocTree.DocTree<SimpleHtml>): string => Effect.runSync(renderTreeSafe(tree))
 
-      const render = (stream: DocStream.DocStream<SimpleHtml>): string =>
-        renderTree(DocTree.treeForm(stream))
+      const render = (stream: DocStream.DocStream<SimpleHtml>): string => renderTree(DocTree.treeForm(stream))
 
       const document = Doc.vsep([
         header(Doc.text("Example document"), 1),

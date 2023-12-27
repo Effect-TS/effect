@@ -114,8 +114,7 @@ export interface WithFallbackConfig extends
 // =============================================================================
 
 /** @internal */
-export const isArgs = (u: unknown): u is Args.Args<unknown> =>
-  typeof u === "object" && u != null && ArgsTypeId in u
+export const isArgs = (u: unknown): u is Args.Args<unknown> => typeof u === "object" && u != null && ArgsTypeId in u
 
 /** @internal */
 export const isInstruction = <_>(self: Args.Args<_>): self is Instruction => self as any
@@ -227,8 +226,7 @@ export const path = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =
 /** @internal */
 export const secret = (
   config: Args.Args.BaseArgsConfig = {}
-): Args.Args<Secret.Secret> =>
-  makeSingle(Option.fromNullable(config.name), InternalPrimitive.secret)
+): Args.Args<Secret.Secret> => makeSingle(Option.fromNullable(config.name), InternalPrimitive.secret)
 
 /** @internal */
 export const text = (config: Args.Args.BaseArgsConfig = {}): Args.Args<string> =>
@@ -276,8 +274,7 @@ export const between = dual<
 >(3, (self, min, max) => makeVariadic(self, Option.some(min), Option.some(max)) as any)
 
 /** @internal */
-export const getHelp = <A>(self: Args.Args<A>): HelpDoc.HelpDoc =>
-  getHelpInternal(self as Instruction)
+export const getHelp = <A>(self: Args.Args<A>): HelpDoc.HelpDoc => getHelpInternal(self as Instruction)
 
 /** @internal */
 export const getIdentifier = <A>(self: Args.Args<A>): Option.Option<string> =>
@@ -290,8 +287,7 @@ export const getMinSize = <A>(self: Args.Args<A>): number => getMinSizeInternal(
 export const getMaxSize = <A>(self: Args.Args<A>): number => getMaxSizeInternal(self as Instruction)
 
 /** @internal */
-export const getUsage = <A>(self: Args.Args<A>): Usage.Usage =>
-  getUsageInternal(self as Instruction)
+export const getUsage = <A>(self: Args.Args<A>): Usage.Usage => getUsageInternal(self as Instruction)
 
 /** @internal */
 export const map = dual<
@@ -468,8 +464,7 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
           const optionalDescription = Option.isOption(self.fallback)
             ? Option.match(self.fallback, {
               onNone: () => InternalHelpDoc.p("This setting is optional."),
-              onSome: () =>
-                InternalHelpDoc.p(`This setting is optional. Defaults to: ${self.fallback}`)
+              onSome: () => InternalHelpDoc.p(`This setting is optional. Defaults to: ${self.fallback}`)
             })
             : InternalHelpDoc.p("This setting is optional.")
           return [span, InternalHelpDoc.sequence(block, optionalDescription)]
@@ -698,9 +693,7 @@ const validateInternal = (
             }
             if (Option.isSome(choices)) {
               return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
-                `Missing argument ${
-                  InternalPrimitive.getTypeName(self.primitiveType)
-                } with choices ${choices.value}`
+                `Missing argument ${InternalPrimitive.getTypeName(self.primitiveType)} with choices ${choices.value}`
               )))
             }
             return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
@@ -710,8 +703,7 @@ const validateInternal = (
           onNonEmpty: (head, tail) =>
             InternalPrimitive.validate(self.primitiveType, Option.some(head), config).pipe(
               Effect.mapBoth({
-                onFailure: (text) =>
-                  InternalValidationError.invalidArgument(InternalHelpDoc.p(text)),
+                onFailure: (text) => InternalValidationError.invalidArgument(InternalHelpDoc.p(text)),
                 onSuccess: (a) => [tail, a] as [ReadonlyArray<string>, any]
               })
             )

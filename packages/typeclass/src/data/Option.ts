@@ -237,8 +237,7 @@ export const Alternative: alternative.Alternative<Option.OptionTypeLambda> = {
 export const Foldable: foldable.Foldable<Option.OptionTypeLambda> = {
   reduce: dual(
     3,
-    <A, B>(self: Option.Option<A>, b: B, f: (b: B, a: A) => B): B =>
-      Option.isNone(self) ? b : f(b, self.value)
+    <A, B>(self: Option.Option<A>, b: B, f: (b: B, a: A) => B): B => Option.isNone(self) ? b : f(b, self.value)
   )
 }
 

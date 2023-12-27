@@ -45,12 +45,10 @@ export const beep: PromptAction<never, never> = InternalPromptAction.beep
  * @since 1.0.0
  * @category constructors
  */
-export const nextFrame: <State>(state: State) => PromptAction<State, never> =
-  InternalPromptAction.nextFrame
+export const nextFrame: <State>(state: State) => PromptAction<State, never> = InternalPromptAction.nextFrame
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const submit: <Output>(value: Output) => PromptAction<never, Output> =
-  InternalPromptAction.submit
+export const submit: <Output>(value: Output) => PromptAction<never, Output> = InternalPromptAction.submit

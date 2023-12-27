@@ -8,16 +8,13 @@ import type * as Span from "../HelpDoc/Span.js"
 import * as InternalSpan from "./helpDoc/span.js"
 
 /** @internal */
-export const isEmpty = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Empty =>
-  helpDoc._tag === "Empty"
+export const isEmpty = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Empty => helpDoc._tag === "Empty"
 
 /** @internal */
-export const isHeader = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Header =>
-  helpDoc._tag === "Header"
+export const isHeader = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Header => helpDoc._tag === "Header"
 
 /** @internal */
-export const isParagraph = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Paragraph =>
-  helpDoc._tag === "Paragraph"
+export const isParagraph = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Paragraph => helpDoc._tag === "Paragraph"
 
 /** @internal */
 export const isDescriptionList = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.DescriptionList =>
@@ -28,8 +25,7 @@ export const isEnumeration = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Enum
   helpDoc._tag === "Enumeration"
 
 /** @internal */
-export const isSequence = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Sequence =>
-  helpDoc._tag === "Sequence"
+export const isSequence = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Sequence => helpDoc._tag === "Sequence"
 
 /** @internal */
 export const empty: HelpDoc.HelpDoc = {
@@ -135,8 +131,7 @@ export const toAnsiDoc = (self: HelpDoc.HelpDoc): Doc.AnsiDoc =>
   Optimize.optimize(toAnsiDocInternal(self), Optimize.Deep)
 
 /** @internal */
-export const toAnsiText = (self: HelpDoc.HelpDoc): string =>
-  Doc.render(toAnsiDoc(self), { style: "pretty" })
+export const toAnsiText = (self: HelpDoc.HelpDoc): string => Doc.render(toAnsiDoc(self), { style: "pretty" })
 
 // =============================================================================
 // Internals

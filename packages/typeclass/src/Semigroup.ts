@@ -46,8 +46,7 @@ export const make = <A>(
  * @category constructors
  * @since 1.0.0
  */
-export const min = <A>(O: Order<A>): Semigroup<A> =>
-  make((self, that) => O(self, that) === -1 ? self : that)
+export const min = <A>(O: Order<A>): Semigroup<A> => make((self, that) => O(self, that) === -1 ? self : that)
 
 /**
  * `Semigroup` that returns last maximum of elements.
@@ -55,8 +54,7 @@ export const min = <A>(O: Order<A>): Semigroup<A> =>
  * @category constructors
  * @since 1.0.0
  */
-export const max = <A>(O: Order<A>): Semigroup<A> =>
-  make((self, that) => O(self, that) === 1 ? self : that)
+export const max = <A>(O: Order<A>): Semigroup<A> => make((self, that) => O(self, that) === 1 ? self : that)
 
 /**
  * @category constructors
@@ -100,8 +98,7 @@ export const intercalate: {
   <A>(S: Semigroup<A>, separator: A): Semigroup<A>
 } = dual(
   2,
-  <A>(S: Semigroup<A>, separator: A): Semigroup<A> =>
-    make((self, that) => S.combineMany(self, [separator, that]))
+  <A>(S: Semigroup<A>, separator: A): Semigroup<A> => make((self, that) => S.combineMany(self, [separator, that]))
 )
 
 /**
@@ -217,8 +214,7 @@ export const Product: product_.Product<SemigroupTypeLambda> = {
  */
 export const tuple: <T extends ReadonlyArray<Semigroup<any>>>(
   ...elements: T
-) => Semigroup<{ readonly [I in keyof T]: [T[I]] extends [Semigroup<infer A>] ? A : never }> =
-  product_.tuple(Product)
+) => Semigroup<{ readonly [I in keyof T]: [T[I]] extends [Semigroup<infer A>] ? A : never }> = product_.tuple(Product)
 
 /**
  * Given a type `A`, this function creates and returns a `Semigroup` for `ReadonlyArray<A>`.
@@ -240,5 +236,4 @@ export const array = <A>(): Semigroup<ReadonlyArray<A>> => make((self, that) => 
  */
 export const struct: <R extends { readonly [x: string]: Semigroup<any> }>(
   fields: R
-) => Semigroup<{ readonly [K in keyof R]: [R[K]] extends [Semigroup<infer A>] ? A : never }> =
-  product_.struct(Product)
+) => Semigroup<{ readonly [K in keyof R]: [R[K]] extends [Semigroup<infer A>] ? A : never }> = product_.struct(Product)

@@ -80,8 +80,8 @@ export declare namespace All {
   /**
    * @since 1.0.0
    */
-  export type ReturnIterable<T extends Iterable<ArgsAny>> = [T] extends
-    [Iterable<Args.Variance<infer A>>] ? Args<Array<A>>
+  export type ReturnIterable<T extends Iterable<ArgsAny>> = [T] extends [Iterable<Args.Variance<infer A>>] ?
+    Args<Array<A>>
     : never
 
   /**

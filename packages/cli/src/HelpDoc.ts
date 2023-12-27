@@ -99,15 +99,13 @@ export const isParagraph: (helpDoc: HelpDoc) => helpDoc is Paragraph = InternalH
  * @since 1.0.0
  * @category refinements
  */
-export const isDescriptionList: (helpDoc: HelpDoc) => helpDoc is DescriptionList =
-  InternalHelpDoc.isDescriptionList
+export const isDescriptionList: (helpDoc: HelpDoc) => helpDoc is DescriptionList = InternalHelpDoc.isDescriptionList
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isEnumeration: (helpDoc: HelpDoc) => helpDoc is Enumeration =
-  InternalHelpDoc.isEnumeration
+export const isEnumeration: (helpDoc: HelpDoc) => helpDoc is Enumeration = InternalHelpDoc.isEnumeration
 
 /**
  * @since 1.0.0
@@ -163,8 +161,7 @@ export const descriptionList: (
  * @since 1.0.0
  * @category constructors
  */
-export const enumeration: (elements: NonEmptyReadonlyArray<HelpDoc>) => HelpDoc =
-  InternalHelpDoc.enumeration
+export const enumeration: (elements: NonEmptyReadonlyArray<HelpDoc>) => HelpDoc = InternalHelpDoc.enumeration
 
 /**
  * @since 1.0.0

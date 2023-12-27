@@ -214,8 +214,7 @@ export const to = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root => goRoot
  * @category encoding
  * @since 1.0.0
  */
-export const from = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root =>
-  goRoot(AST.from(schema.ast))
+export const from = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root => goRoot(AST.from(schema.ast))
 
 const anyJsonSchema: JsonSchema7 = { $id: "/schemas/any" }
 

@@ -110,9 +110,7 @@ const optimizeSafe = <A>(
       }
       if (_doc.isNest(self.doc)) {
         const doc = self.doc
-        return Effect.suspend(() =>
-          optimizeSafe(_doc.nest(doc.doc, self.indent + doc.indent), depth)
-        )
+        return Effect.suspend(() => optimizeSafe(_doc.nest(doc.doc, self.indent + doc.indent), depth))
       }
       if (self.indent === 0) {
         return Effect.suspend(() => optimizeSafe(self.doc, depth))

@@ -32,8 +32,7 @@ export interface BoundedTypeLambda extends TypeLambda {
  * @category constructors
  * @since 1.0.0
  */
-export const min = <A>(B: Bounded<A>): Monoid<A> =>
-  monoid.fromSemigroup(semigroup.min(B.compare), B.maxBound)
+export const min = <A>(B: Bounded<A>): Monoid<A> => monoid.fromSemigroup(semigroup.min(B.compare), B.maxBound)
 
 /**
  * `Monoid` that returns last maximum of elements.
@@ -41,8 +40,7 @@ export const min = <A>(B: Bounded<A>): Monoid<A> =>
  * @category constructors
  * @since 1.0.0
  */
-export const max = <A>(B: Bounded<A>): Monoid<A> =>
-  monoid.fromSemigroup(semigroup.max(B.compare), B.minBound)
+export const max = <A>(B: Bounded<A>): Monoid<A> => monoid.fromSemigroup(semigroup.max(B.compare), B.minBound)
 
 /**
  * Checks if a value is between the lower and upper limit of a bound.

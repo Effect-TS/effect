@@ -87,22 +87,19 @@ export const isShowCompletions: (self: BuiltInOptions) => self is ShowCompletion
  * @since 1.0.0
  * @category refinements
  */
-export const isShowHelp: (self: BuiltInOptions) => self is ShowHelp =
-  InternalBuiltInOptions.isShowHelp
+export const isShowHelp: (self: BuiltInOptions) => self is ShowHelp = InternalBuiltInOptions.isShowHelp
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isShowWizard: (self: BuiltInOptions) => self is ShowWizard =
-  InternalBuiltInOptions.isShowWizard
+export const isShowWizard: (self: BuiltInOptions) => self is ShowWizard = InternalBuiltInOptions.isShowWizard
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isShowVersion: (self: BuiltInOptions) => self is ShowVersion =
-  InternalBuiltInOptions.isShowVersion
+export const isShowVersion: (self: BuiltInOptions) => self is ShowVersion = InternalBuiltInOptions.isShowVersion
 
 /**
  * @since 1.0.0
@@ -115,15 +112,13 @@ export const showCompletions: (shellType: BuiltInOptions.ShellType) => BuiltInOp
  * @since 1.0.0
  * @category constructors
  */
-export const showHelp: (usage: Usage, helpDoc: HelpDoc) => BuiltInOptions =
-  InternalBuiltInOptions.showHelp
+export const showHelp: (usage: Usage, helpDoc: HelpDoc) => BuiltInOptions = InternalBuiltInOptions.showHelp
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const showWizard: (command: Command<unknown>) => BuiltInOptions =
-  InternalBuiltInOptions.showWizard
+export const showWizard: (command: Command<unknown>) => BuiltInOptions = InternalBuiltInOptions.showWizard
 
 /**
  * @since 1.0.0

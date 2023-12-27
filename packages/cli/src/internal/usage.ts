@@ -223,8 +223,7 @@ const render = (self: Usage.Usage, config: CliConfig.CliConfig): ReadonlyArray<S
         : InternalSpan.empty
       return ReadonlyArray.flatMap(
         leftSpan,
-        (left) =>
-          ReadonlyArray.map(rightSpan, (right) => InternalSpan.spans([left, separator, right]))
+        (left) => ReadonlyArray.map(rightSpan, (right) => InternalSpan.spans([left, separator, right]))
       )
     }
   }

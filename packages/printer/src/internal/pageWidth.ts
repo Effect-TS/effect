@@ -35,8 +35,7 @@ const protoEqual = {
     that._tag === "AvailablePerLine" &&
     self.lineWidth === that.lineWidth &&
     self.ribbonFraction === that.ribbonFraction,
-  Unbounded: (self: PageWidth.Unbounded, that: unknown) =>
-    isPageWidth(that) && that._tag === "Unbounded"
+  Unbounded: (self: PageWidth.Unbounded, that: unknown) => isPageWidth(that) && that._tag === "Unbounded"
 }
 
 const proto = {
@@ -62,8 +61,7 @@ export const isAvailablePerLine = (self: PageWidth.PageWidth): self is PageWidth
   self._tag === "AvailablePerLine"
 
 /** @internal */
-export const isUnbounded = (self: PageWidth.PageWidth): self is PageWidth.Unbounded =>
-  self._tag === "AvailablePerLine"
+export const isUnbounded = (self: PageWidth.PageWidth): self is PageWidth.Unbounded => self._tag === "AvailablePerLine"
 
 // -----------------------------------------------------------------------------
 // Constructors

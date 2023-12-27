@@ -1,4 +1,4 @@
-import * as _ from "@effect/typeclass/SemiAlternative"
+import type * as _ from "@effect/typeclass/SemiAlternative"
 import type { TypeLambda } from "effect/HKT"
 
 interface RAW<R, E, A> {

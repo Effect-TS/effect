@@ -62,12 +62,11 @@ export declare namespace Command {
    * @since 1.0.0
    * @category models
    */
-  export type ParsedStandardCommand<Name extends string, OptionsType, ArgsType> =
-    Command.ComputeParsedType<{
-      readonly name: Name
-      readonly options: OptionsType
-      readonly args: ArgsType
-    }>
+  export type ParsedStandardCommand<Name extends string, OptionsType, ArgsType> = Command.ComputeParsedType<{
+    readonly name: Name
+    readonly options: OptionsType
+    readonly args: ArgsType
+  }>
 
   /**
    * @since 1.0.0
@@ -97,8 +96,7 @@ export declare namespace Command {
   export type Subcommands<
     A extends NonEmptyReadonlyArray<readonly [id: unknown, command: Command<any>]>
   > = {
-    [I in keyof A]: A[I] extends readonly [infer Id, Command<infer Value>]
-      ? readonly [id: Id, value: Value]
+    [I in keyof A]: A[I] extends readonly [infer Id, Command<infer Value>] ? readonly [id: Id, value: Value]
       : never
   }[number]
 }
@@ -146,8 +144,7 @@ export const getNames: <A>(self: Command<A>) => HashSet<string> = Internal.getNa
  * @since 1.0.0
  * @category combinators
  */
-export const getSubcommands: <A>(self: Command<A>) => HashMap<string, Command<unknown>> =
-  Internal.getSubcommands
+export const getSubcommands: <A>(self: Command<A>) => HashMap<string, Command<unknown>> = Internal.getSubcommands
 
 /**
  * @since 1.0.0
@@ -208,8 +205,7 @@ export const make: <Name extends string, OptionsType = void, ArgsType = void>(
   name: Name,
   options?: Options<OptionsType>,
   args?: Args<ArgsType>
-) => Command<{ readonly name: Name; readonly options: OptionsType; readonly args: ArgsType }> =
-  Internal.make
+) => Command<{ readonly name: Name; readonly options: OptionsType; readonly args: ArgsType }> = Internal.make
 
 /**
  * @since 1.0.0

@@ -1,6 +1,6 @@
-import * as Monoid from "@effect/typeclass/Monoid"
-import * as StringInstances from "@effect/typeclass/data/String"
 import * as NumberInstances from "@effect/typeclass/data/Number"
+import * as StringInstances from "@effect/typeclass/data/String"
+import * as Monoid from "@effect/typeclass/Monoid"
 
 //
 // tuple

@@ -19,8 +19,7 @@ const confirmPrompt = Prompt.confirm({
 
 const datePrompt = Prompt.date({
   message: "What's your birth day?",
-  dateMask:
-    "\"Year:\" YYYY, \"Month:\" MM, \"Day:\" DD \\\\\\\\||// \\Hour: HH, \\Minute: mm, \"Seconds:\" ss",
+  dateMask: "\"Year:\" YYYY, \"Month:\" MM, \"Day:\" DD \\\\\\\\||// \\Hour: HH, \\Minute: mm, \"Seconds:\" ss",
   validate: (date) =>
     date.getTime() > Date.now()
       ? Effect.fail("Your birth day can't be in the future")

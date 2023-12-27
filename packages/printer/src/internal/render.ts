@@ -64,8 +64,7 @@ export const pretty = dual<
 })
 
 /** @internal */
-export const prettyDefault = <A>(self: Doc.Doc<A>): string =>
-  render(layout.pretty(self, layout.defaultOptions))
+export const prettyDefault = <A>(self: Doc.Doc<A>): string => render(layout.pretty(self, layout.defaultOptions))
 
 /** @internal */
 export const prettyUnbounded = <A>(self: Doc.Doc<A>): string =>
@@ -82,8 +81,7 @@ export const smart = dual<
 })
 
 /** @internal */
-export const smartDefault = <A>(self: Doc.Doc<A>): string =>
-  render(layout.smart(self, layout.defaultOptions))
+export const smartDefault = <A>(self: Doc.Doc<A>): string => render(layout.smart(self, layout.defaultOptions))
 
 /** @internal */
 export const smartUnbounded = <A>(self: Doc.Doc<A>): string =>
