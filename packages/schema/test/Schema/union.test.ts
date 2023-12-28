@@ -12,19 +12,19 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Union (2 members): MyDataType1 or MyDataType2
-├─ Union member: MyDataType1
+        `MyDataType1 | MyDataType2
+├─ Union member
 │  └─ Expected MyDataType1, actual null
-└─ Union member: MyDataType2
+└─ Union member
    └─ Expected MyDataType2, actual null`
       )
       await Util.expectParseFailure(
         schema,
         null,
-        `Union (2 members): MyDataType1 or MyDataType2
-├─ Union member: MyDataType1
+        `MyDataType1 | MyDataType2
+├─ Union member
 │  └─ Expected MyDataType1, actual null
-└─ Union member: MyDataType2
+└─ Union member
    └─ Expected MyDataType2, actual null`
       )
     })
@@ -42,13 +42,12 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Union (2 members): <anonymous type literal or record schema>
-└─ Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema> | <type literal or record schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
         {},
-        `Union (2 members): <anonymous type literal or record schema>
+        `<type literal or record schema> | <type literal or record schema>
 ├─ ["a"]
 │  └─ is missing
 └─ ["b"]
@@ -57,7 +56,7 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         { a: null },
-        `Union (2 members): <anonymous type literal or record schema>
+        `<type literal or record schema> | <type literal or record schema>
 ├─ ["a"]
 │  └─ Expected 1, actual null
 └─ ["b"]
@@ -66,7 +65,7 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         { b: 3 },
-        `Union (2 members): <anonymous type literal or record schema>
+        `<type literal or record schema> | <type literal or record schema>
 ├─ ["a"]
 │  └─ is missing
 └─ ["b"]
@@ -83,13 +82,12 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Union (3 members): <anonymous type literal or record schema>
-└─ Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema> | <type literal or record schema> | <type literal or record schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
         {},
-        `Union (3 members): <anonymous type literal or record schema>
+        `<type literal or record schema> | <type literal or record schema> | <type literal or record schema>
 ├─ ["category"]
 │  └─ is missing
 └─ ["tag"]
@@ -98,7 +96,7 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         { category: null },
-        `Union (3 members): <anonymous type literal or record schema>
+        `<type literal or record schema> | <type literal or record schema> | <type literal or record schema>
 ├─ ["category"]
 │  └─ Expected "catA", actual null
 └─ ["tag"]
@@ -107,11 +105,11 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         { tag: "d" },
-        `Union (3 members): <anonymous type literal or record schema>
+        `<type literal or record schema> | <type literal or record schema> | <type literal or record schema>
 ├─ ["category"]
 │  └─ is missing
 └─ ["tag"]
-   └─ Expected "b" or "c", actual "d"`
+   └─ Expected "b" | "c", actual "d"`
       )
     })
 

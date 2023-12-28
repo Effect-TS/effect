@@ -41,24 +41,24 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [], actual null`
       )
       await Util.expectParseFailure(
         schema,
         {},
-        `Expected <anonymous tuple or array schema>, actual {}`
+        `Expected readonly [], actual {}`
       )
       await Util.expectParseFailure(
         schema,
         [undefined],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly []
 └─ [0]
    └─ is unexpected, expected never`
       )
       await Util.expectParseFailure(
         schema,
         [1],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly []
 └─ [0]
    └─ is unexpected, expected never`
       )
@@ -71,33 +71,33 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [number], actual null`
       )
       await Util.expectParseFailure(
         schema,
         [],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number]
 └─ [0]
    └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         [undefined],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number]
 └─ [0]
    └─ Expected number, actual undefined`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number]
 └─ [0]
    └─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         [1, "b"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number]
 └─ [1]
    └─ is unexpected, expected 0`
       )
@@ -111,30 +111,30 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [number | undefined], actual null`
       )
       await Util.expectParseFailure(
         schema,
         [],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number | undefined]
 └─ [0]
    └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number | undefined]
 └─ [0]
-   └─ Union (2 members): number or undefined
-      ├─ Union member: number
+   └─ number | undefined
+      ├─ Union member
       │  └─ Expected number, actual "a"
-      └─ Union member: undefined
+      └─ Union member
          └─ Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         [1, "b"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number | undefined]
 └─ [1]
    └─ is unexpected, expected 0`
       )
@@ -148,19 +148,19 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [number?], actual null`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number?]
 └─ [0]
    └─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         [1, "b"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number?]
 └─ [1]
    └─ is unexpected, expected 0`
       )
@@ -175,23 +175,23 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [number | undefined?], actual null`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number | undefined?]
 └─ [0]
-   └─ Union (2 members): number or undefined
-      ├─ Union member: number
+   └─ number | undefined
+      ├─ Union member
       │  └─ Expected number, actual "a"
-      └─ Union member: undefined
+      └─ Union member
          └─ Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         [1, "b"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [number | undefined?]
 └─ [1]
    └─ is unexpected, expected 0`
       )
@@ -205,14 +205,14 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         [1],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string, number?]
 └─ [0]
    └─ Expected string, actual 1`
       )
       await Util.expectParseFailure(
         schema,
         ["a", "b"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string, number?]
 └─ [1]
    └─ Expected number, actual "b"`
       )
@@ -227,7 +227,7 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string, ...number[]]
 └─ [0]
    └─ is missing`
       )
@@ -243,7 +243,7 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         [1],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string?, ...number[]]
 └─ [0]
    └─ Expected string, actual 1`
       )
@@ -258,14 +258,14 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `ReadonlyArray<number>
 └─ [0]
    └─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         [1, "a"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `ReadonlyArray<number>
 └─ [1]
    └─ Expected number, actual "a"`
       )
@@ -280,21 +280,21 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [...string[], number]
 └─ [0]
    └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [...string[], number]
 └─ [0]
    └─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         [1, 2],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [...string[], number]
 └─ [0]
    └─ Expected string, actual 1`
       )
@@ -309,35 +309,35 @@ describe("Schema > tuple", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string, ...number[], boolean]
 └─ [0]
    └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string, ...number[], boolean]
 └─ [1]
    └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         ["a", 1],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string, ...number[], boolean]
 └─ [1]
    └─ Expected boolean, actual 1`
       )
       await Util.expectParseFailure(
         schema,
         [1, true],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string, ...number[], boolean]
 └─ [0]
    └─ Expected string, actual 1`
       )
       await Util.expectParseFailure(
         schema,
         [true],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [string, ...number[], boolean]
 └─ [1]
    └─ is missing`
       )
@@ -356,14 +356,14 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [NumberFromChar]
 └─ [0]
    └─ Expected a character, actual "10"`
       )
       await Util.expectEncodeFailure(
         schema,
         [1, "b"] as any,
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [NumberFromChar]
 └─ [1]
    └─ is unexpected, expected 0`
       )
@@ -376,7 +376,7 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [1, "b"] as any,
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [NumberFromChar | undefined]
 └─ [1]
    └─ is unexpected, expected 0`
       )
@@ -389,14 +389,14 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [NumberFromChar?]
 └─ [0]
    └─ Expected a character, actual "10"`
       )
       await Util.expectEncodeFailure(
         schema,
         [1, "b"] as any,
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [NumberFromChar?]
 └─ [1]
    └─ is unexpected, expected 0`
       )
@@ -410,7 +410,7 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [1, "b"] as any,
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [NumberFromChar | undefined?]
 └─ [1]
    └─ is unexpected, expected 0`
       )
@@ -445,7 +445,7 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `Tuple or array: <anonymous tuple or array schema>
+        `ReadonlyArray<NumberFromChar>
 └─ [0]
    └─ Expected a character, actual "10"`
       )
@@ -459,14 +459,14 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [] as any,
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [...string[], NumberFromChar]
 └─ [0]
    └─ is missing`
       )
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `Tuple or array: <anonymous tuple or array schema>
+        `readonly [...string[], NumberFromChar]
 └─ [0]
    └─ Expected a character, actual "10"`
       )

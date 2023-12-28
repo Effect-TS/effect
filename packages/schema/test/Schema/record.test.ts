@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/record", () => {
+describe("Schema > record", () => {
   describe("decoding", () => {
     it("record(never, number)", async () => {
       const schema = S.record(S.never, S.number)
@@ -18,7 +18,7 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        "Expected <anonymous type literal or record schema>, actual []"
+        "Expected <type literal or record schema>, actual []"
       )
       await Util.expectParseFailure(
         schema,
@@ -46,7 +46,7 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        "Expected <anonymous type literal or record schema>, actual []"
+        "Expected <type literal or record schema>, actual []"
       )
       await Util.expectParseFailure(
         schema,
@@ -321,10 +321,10 @@ describe("Schema/record", () => {
         schema,
         { "a": true },
         `["a"]
-└─ Union (2 members): string or number
-   ├─ Union member: string
+└─ string | number
+   ├─ Union member
    │  └─ Expected string, actual true
-   └─ Union member: number
+   └─ Union member
       └─ Expected number, actual true`
       )
     })

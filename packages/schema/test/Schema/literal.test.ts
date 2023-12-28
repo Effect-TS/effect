@@ -35,10 +35,10 @@ describe("Schema/literal", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Union (2 members): 1 or "a"
-├─ Union member: 1
+        `1 | "a"
+├─ Union member
 │  └─ Expected 1, actual null
-└─ Union member: "a"
+└─ Union member
    └─ Expected "a", actual null`
       )
     })

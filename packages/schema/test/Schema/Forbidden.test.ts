@@ -28,7 +28,7 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.tuple(S.string),
       ["a"],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [string]
 └─ [0]
    └─ is forbidden`
     )
@@ -38,7 +38,7 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.array(S.string),
       ["a"],
-      `Tuple or array: <anonymous tuple or array schema>
+      `ReadonlyArray<string>
 └─ [0]
    └─ is forbidden`
     )
@@ -66,10 +66,10 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.union(S.string, S.string.pipe(S.minLength(2))),
       "a",
-      `Union (2 members): string
-├─ Union member: string
+      `string | string
+├─ Union member
 │  └─ is forbidden
-└─ Union member: string
+└─ Union member
    └─ is forbidden`
     )
   })

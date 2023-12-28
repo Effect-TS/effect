@@ -199,14 +199,14 @@ describe("Schema > templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         "_id",
-        `Union (4 members): "welcome_email_id" or "email_heading_id" or "footer_title_id" or "footer_sendoff_id"
-├─ Union member: "welcome_email_id"
+        `"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id"
+├─ Union member
 │  └─ Expected "welcome_email_id", actual "_id"
-├─ Union member: "email_heading_id"
+├─ Union member
 │  └─ Expected "email_heading_id", actual "_id"
-├─ Union member: "footer_title_id"
+├─ Union member
 │  └─ Expected "footer_title_id", actual "_id"
-└─ Union member: "footer_sendoff_id"
+└─ Union member
    └─ Expected "footer_sendoff_id", actual "_id"`
       )
     })

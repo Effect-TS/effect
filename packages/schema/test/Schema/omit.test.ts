@@ -13,7 +13,7 @@ describe("Schema > omit", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected <anonymous type literal or record schema>, actual null"
+      "Expected <type literal or record schema>, actual null"
     )
     await Util.expectParseFailure(
       schema,
@@ -44,7 +44,7 @@ describe("Schema > omit", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected <anonymous type literal or record schema>, actual null"
+      "Expected <type literal or record schema>, actual null"
     )
     await Util.expectParseFailure(
       schema,
@@ -74,7 +74,7 @@ describe("Schema > omit", () => {
       schema,
       { as: [{ as: [] }] },
       `["as"]
-└─ Tuple or array: <anonymous tuple or array schema>
+└─ ReadonlyArray<<suspended schema>>
    └─ [0]["a"]
       └─ is missing`
     )

@@ -46,10 +46,10 @@ describe("optional APIs", () => {
         schema,
         { a: "a" },
         `["a"]
-└─ Union (2 members): undefined or a string <-> number transformation
-   ├─ Union member: undefined
+└─ undefined | a string <-> number transformation
+   ├─ Union member
    │  └─ Expected undefined, actual "a"
-   └─ Union member: a string <-> number transformation
+   └─ Union member
       └─ Expected a string <-> number transformation, actual "a"`
       )
 
@@ -94,10 +94,10 @@ describe("optional APIs", () => {
           a: "a"
         },
         `["a"]
-└─ Union (2 members): null or a string <-> number transformation
-   ├─ Union member: null
+└─ null | a string <-> number transformation
+   ├─ Union member
    │  └─ Expected null, actual "a"
-   └─ Union member: a string <-> number transformation
+   └─ Union member
       └─ Expected a string <-> number transformation, actual "a"`
       )
 
@@ -118,10 +118,10 @@ describe("optional APIs", () => {
           a: "a"
         },
         `["a"]
-└─ Union (2 members): undefined or a string <-> number transformation
-   ├─ Union member: undefined
+└─ undefined | a string <-> number transformation
+   ├─ Union member
    │  └─ Expected undefined, actual "a"
-   └─ Union member: a string <-> number transformation
+   └─ Union member
       └─ Expected a string <-> number transformation, actual "a"`
       )
 
@@ -145,12 +145,12 @@ describe("optional APIs", () => {
           a: "a"
         },
         `["a"]
-└─ Union (3 members): null or undefined or a string <-> number transformation
-   ├─ Union member: null
+└─ null | undefined | a string <-> number transformation
+   ├─ Union member
    │  └─ Expected null, actual "a"
-   ├─ Union member: undefined
+   ├─ Union member
    │  └─ Expected undefined, actual "a"
-   └─ Union member: a string <-> number transformation
+   └─ Union member
       └─ Expected a string <-> number transformation, actual "a"`
       )
 
@@ -190,10 +190,10 @@ describe("optional APIs", () => {
         schema,
         { a: "a" },
         `["a"]
-└─ Union (2 members): undefined or a string <-> number transformation
-   ├─ Union member: undefined
+└─ undefined | a string <-> number transformation
+   ├─ Union member
    │  └─ Expected undefined, actual "a"
-   └─ Union member: a string <-> number transformation
+   └─ Union member
       └─ Expected a string <-> number transformation, actual "a"`
       )
 
@@ -215,12 +215,12 @@ describe("optional APIs", () => {
         schema,
         { a: "a" },
         `["a"]
-└─ Union (3 members): null or undefined or a string <-> number transformation
-   ├─ Union member: null
+└─ null | undefined | a string <-> number transformation
+   ├─ Union member
    │  └─ Expected null, actual "a"
-   ├─ Union member: undefined
+   ├─ Union member
    │  └─ Expected undefined, actual "a"
-   └─ Union member: a string <-> number transformation
+   └─ Union member
       └─ Expected a string <-> number transformation, actual "a"`
       )
 
@@ -241,10 +241,10 @@ describe("optional APIs", () => {
         schema,
         { a: "a" },
         `["a"]
-└─ Union (2 members): null or a string <-> number transformation
-   ├─ Union member: null
+└─ null | a string <-> number transformation
+   ├─ Union member
    │  └─ Expected null, actual "a"
-   └─ Union member: a string <-> number transformation
+   └─ Union member
       └─ Expected a string <-> number transformation, actual "a"`
       )
 

@@ -19,7 +19,7 @@ describe("Schema/enums", () => {
       await Util.expectParseFailure(
         schema,
         3,
-        `Expected <anonymous enum 0 | 1>, actual 3`
+        `Expected <enum 2 value(s): 0 | 1>, actual 3`
       )
     })
 
@@ -47,7 +47,7 @@ describe("Schema/enums", () => {
       await Util.expectParseFailure(
         schema,
         "Cantaloupe",
-        `Expected <anonymous enum 0 | 1 | 2>, actual "Cantaloupe"`
+        `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`
       )
     })
 
@@ -74,7 +74,7 @@ describe("Schema/enums", () => {
       await Util.expectParseFailure(
         schema,
         "Cantaloupe",
-        `Expected <anonymous enum 0 | 1 | 2>, actual "Cantaloupe"`
+        `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`
       )
     })
 

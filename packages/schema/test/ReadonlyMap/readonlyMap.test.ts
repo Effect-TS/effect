@@ -19,14 +19,14 @@ describe("ReadonlyMap > readonlyMap", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected <anonymous tuple or array schema>, actual null`
+      `Expected ReadonlyArray<readonly [number, string]>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       [[1, "a"], [2, 1]],
-      `Tuple or array: <anonymous tuple or array schema>
+      `ReadonlyArray<readonly [number, string]>
 └─ [1]
-   └─ Tuple or array: <anonymous tuple or array schema>
+   └─ readonly [number, string]
       └─ [1]
          └─ Expected string, actual 1`
     )

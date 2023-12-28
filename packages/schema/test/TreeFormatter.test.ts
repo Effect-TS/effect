@@ -4,12 +4,24 @@ import * as _ from "@effect/schema/TreeFormatter"
 import { describe, expect, it } from "vitest"
 
 describe("formatExpected", () => {
+  it("refinement", () => {
+    const schema = S.string.pipe(S.minLength(2))
+    expect(_.formatExpected(schema.ast)).toEqual("a string at least 2 character(s) long")
+  })
+
+  it("union", () => {
+    const schema = S.union(S.string, S.string.pipe(S.minLength(2)))
+    expect(_.formatExpected(schema.ast)).toEqual(
+      "a string at least 2 character(s) long | string"
+    )
+  })
+
   it("suspend", () => {
     type A = readonly [number, A | null]
     const schema: S.Schema<A> = S.suspend( // intended outer suspend
       () => S.tuple(S.number, S.union(schema, S.literal(null)))
     )
-    expect(_.formatExpected(schema.ast)).toEqual("<anonymous suspended schema>")
+    expect(_.formatExpected(schema.ast)).toEqual("<suspended schema>")
   })
 })
 
@@ -58,7 +70,7 @@ describe("formatErrors", () => {
       schema,
       { a: { b: { c: [{ d: null }] } } },
       `["a"]["b"]["c"]
-└─ Tuple or array: <anonymous tuple or array schema>
+└─ ReadonlyArray<<type literal or record schema>>
    └─ [0]["d"]
       └─ Expected string, actual null`
     )
@@ -66,7 +78,7 @@ describe("formatErrors", () => {
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
       `["a"]["b"]["c"]
-└─ Tuple or array: <anonymous tuple or array schema>
+└─ ReadonlyArray<<type literal or record schema>>
    └─ [0]["d"]
       └─ Expected string, actual null`
     )
@@ -74,7 +86,7 @@ describe("formatErrors", () => {
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
       `["a"]["b"]["c"]
-└─ Tuple or array: <anonymous tuple or array schema>
+└─ ReadonlyArray<<type literal or record schema>>
    ├─ [0]["d"]
    │  └─ Expected string, actual null
    └─ [1]["d"]
@@ -85,8 +97,8 @@ describe("formatErrors", () => {
       schema,
       { a: { b: { c: [{ d: "d" }] } }, e: { type: "f" } },
       `["e"]
-└─ Union (2 members): <anonymous type literal or record schema>
-   └─ Union member: <anonymous type literal or record schema>
+└─ <type literal or record schema> | <type literal or record schema>
+   └─ Union member
       └─ ["f"]
          └─ is missing`
     )

@@ -8,14 +8,14 @@ describe("Schema > onExcess", () => {
     await Util.expectParseFailure(
       schema,
       [1, "b"],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [number]
 └─ [1]
    └─ is unexpected, expected 0`
     )
     await Util.expectEncodeFailure(
       schema,
       [1, "b"] as any,
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [number]
 └─ [1]
    └─ is unexpected, expected 0`
     )
@@ -37,11 +37,11 @@ describe("Schema > onExcess", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b", c: true },
-        `Union (2 members): <anonymous type literal or record schema>
-├─ Union member: <anonymous type literal or record schema>
+        `<type literal or record schema> | <type literal or record schema>
+├─ Union member
 │  └─ ["c"]
-│     └─ is unexpected, expected "a" or "b"
-└─ Union member: <anonymous type literal or record schema>
+│     └─ is unexpected, expected "a" | "b"
+└─ Union member
    └─ ["b"]
       └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -66,26 +66,26 @@ describe("Schema > onExcess", () => {
       await Util.expectParseFailure(
         schema,
         [1, "b", true],
-        `Union (2 members): <anonymous tuple or array schema>
-├─ Union member: <anonymous tuple or array schema>
-│  └─ Tuple or array: <anonymous tuple or array schema>
+        `readonly [number, string?] | readonly [number]
+├─ Union member
+│  └─ readonly [number, string?]
 │     └─ [2]
-│        └─ is unexpected, expected 0 or 1
-└─ Union member: <anonymous tuple or array schema>
-   └─ Tuple or array: <anonymous tuple or array schema>
+│        └─ is unexpected, expected 0 | 1
+└─ Union member
+   └─ readonly [number]
       └─ [1]
          └─ is unexpected, expected 0`
       )
       await Util.expectParseFailure(
         schema,
         [1, "b", true],
-        `Union (2 members): <anonymous tuple or array schema>
-├─ Union member: <anonymous tuple or array schema>
-│  └─ Tuple or array: <anonymous tuple or array schema>
+        `readonly [number, string?] | readonly [number]
+├─ Union member
+│  └─ readonly [number, string?]
 │     └─ [2]
-│        └─ is unexpected, expected 0 or 1
-└─ Union member: <anonymous tuple or array schema>
-   └─ Tuple or array: <anonymous tuple or array schema>
+│        └─ is unexpected, expected 0 | 1
+└─ Union member
+   └─ readonly [number]
       └─ [1]
          └─ is unexpected, expected 0`,
         Util.onExcessPropertyError

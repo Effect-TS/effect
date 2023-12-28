@@ -18,7 +18,7 @@ describe("Uint8Array > Uint8Array", () => {
     await Util.expectParseFailure(
       schema,
       [12354],
-      `Tuple or array: an array of 8-bit unsigned integers
+      `an array of 8-bit unsigned integers
 └─ [0]
    └─ Expected 8-bit unsigned integer, actual 12354`
     )

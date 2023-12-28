@@ -26,9 +26,9 @@ describe("ReadonlyMap > readonlyMapFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
-      `Tuple or array: <anonymous tuple or array schema>
+      `ReadonlyArray<readonly [a string <-> number transformation, string]>
 └─ [1]
-   └─ Tuple or array: <anonymous tuple or array schema>
+   └─ readonly [a string <-> number transformation, string]
       └─ [0]
          └─ Expected a string <-> number transformation, actual "a"`
     )

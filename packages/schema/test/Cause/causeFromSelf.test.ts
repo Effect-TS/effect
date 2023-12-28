@@ -19,19 +19,19 @@ describe("Cause/causeFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       Cause.fail("a"),
-      `Union (6 members): Cause (From)
-└─ Union member: Fail (From)
+      `Cause (From)
+└─ Union member
    └─ ["error"]
       └─ Expected a string <-> number transformation, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
-      `Union (6 members): Cause (From)
-└─ Union member: Parallel (From)
+      `Cause (From)
+└─ Union member
    └─ ["right"]
-      └─ Union (6 members): Cause (From)
-         └─ Union member: Fail (From)
+      └─ Cause (From)
+         └─ Union member
             └─ ["error"]
                └─ Expected a string <-> number transformation, actual "a"`
     )

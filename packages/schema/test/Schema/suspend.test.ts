@@ -20,7 +20,7 @@ describe("Schema > suspend", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -32,11 +32,11 @@ describe("Schema > suspend", () => {
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
         `["as"]
-└─ Tuple or array: <anonymous tuple or array schema>
+└─ ReadonlyArray<<suspended schema>>
    └─ [0]["as"]
-      └─ Tuple or array: <anonymous tuple or array schema>
+      └─ ReadonlyArray<<suspended schema>>
          └─ [0]
-            └─ Expected <anonymous type literal or record schema>, actual 1`
+            └─ Expected <type literal or record schema>, actual 1`
       )
     })
 

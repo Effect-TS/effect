@@ -68,24 +68,23 @@ describe("Cause/cause", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Union (6 members): Cause (From)
-└─ Expected Cause (From), actual null`
+      `Expected Cause (From), actual null`
     )
     await Util.expectParseFailure(
       schema,
       {},
-      `Union (6 members): Cause (From)
+      `Cause (From)
 └─ ["_tag"]
    └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
-      `Union (6 members): Cause (From)
-└─ Union member: Parallel (From)
+      `Cause (From)
+└─ Union member
    └─ ["left"]
-      └─ Union (6 members): Cause (From)
-         └─ Union member: Fail (From)
+      └─ Cause (From)
+         └─ Union member
             └─ ["error"]
                └─ is missing`
     )

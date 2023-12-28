@@ -91,21 +91,63 @@ const getExpected = (ast: AST.AST): Option.Option<string> =>
     Option.orElse(() => AST.getDescriptionAnnotation(ast))
   )
 
+const getTuple = (ast: AST.Tuple): string => {
+  const formattedElements = ast.elements.map((element) =>
+    formatExpected(element.type) + (element.isOptional ? "?" : "")
+  ).join(", ")
+  return Option.match(ast.rest, {
+    onNone: () => "readonly [" + formattedElements + "]",
+    onSome: ([head, ...tail]) => {
+      const formattedHead = formatExpected(head)
+      const wrappedHead = formattedHead.includes(" | ") ? "(" + formattedHead + ")" : formattedHead
+
+      if (tail.length > 0) {
+        const formattedTail = tail.map(formatExpected).join(", ")
+        if (ast.elements.length > 0) {
+          return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
+        } else {
+          return `readonly [...${wrappedHead}[], ${formattedTail}]`
+        }
+      } else {
+        if (ast.elements.length > 0) {
+          return `readonly [${formattedElements}, ...${wrappedHead}[]]`
+        } else {
+          return `ReadonlyArray<${formattedHead}>`
+        }
+      }
+    }
+  })
+}
+
+const getTypeLiteral = (_ast: AST.TypeLiteral): string => {
+  return "<type literal or record schema>"
+}
+
 /** @internal */
 export const formatExpected = (ast: AST.AST): string => {
   switch (ast._tag) {
     case "StringKeyword":
+      return Option.getOrElse(getExpected(ast), () => "string")
     case "NumberKeyword":
+      return Option.getOrElse(getExpected(ast), () => "number")
     case "BooleanKeyword":
+      return Option.getOrElse(getExpected(ast), () => "boolean")
     case "BigIntKeyword":
+      return Option.getOrElse(getExpected(ast), () => "bigint")
     case "UndefinedKeyword":
+      return Option.getOrElse(getExpected(ast), () => "undefined")
     case "SymbolKeyword":
+      return Option.getOrElse(getExpected(ast), () => "symbol")
     case "ObjectKeyword":
+      return Option.getOrElse(getExpected(ast), () => "object")
     case "AnyKeyword":
+      return Option.getOrElse(getExpected(ast), () => "any")
     case "UnknownKeyword":
+      return Option.getOrElse(getExpected(ast), () => "unknown")
     case "VoidKeyword":
+      return Option.getOrElse(getExpected(ast), () => "void")
     case "NeverKeyword":
-      return Option.getOrElse(getExpected(ast), () => ast._tag)
+      return Option.getOrElse(getExpected(ast), () => "never")
     case "Literal":
       return Option.getOrElse(getExpected(ast), () => formatActual(ast.literal))
     case "UniqueSymbol":
@@ -113,29 +155,32 @@ export const formatExpected = (ast: AST.AST): string => {
     case "Union":
       return Option.getOrElse(
         getExpected(ast),
-        () => [...new Set(ast.types.map(formatExpected))].join(" or ")
+        () => ast.types.map((member) => formatExpected(member)).join(" | ")
       )
     case "TemplateLiteral":
       return Option.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
     case "Tuple":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous tuple or array schema>")
+      return Option.getOrElse(getExpected(ast), () => getTuple(ast))
     case "TypeLiteral":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous type literal or record schema>")
+      return Option.getOrElse(getExpected(ast), () => getTypeLiteral(ast))
     case "Enums":
       return Option.getOrElse(
         getExpected(ast),
-        () => `<anonymous enum ${ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
+        () =>
+          `<enum ${ast.enums.length} value(s): ${
+            ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
+          }>`
       )
     case "Suspend":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous suspended schema>")
+      return Option.getOrElse(getExpected(ast), () => "<suspended schema>")
     case "Declaration":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous declaration schema>")
+      return Option.getOrElse(getExpected(ast), () => "<declaration schema>")
     case "Refinement":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous refinement schema>")
+      return Option.getOrElse(getExpected(ast), () => "<refinement schema>")
     case "Transform":
       return Option.getOrElse(
         getExpected(ast),
-        () => `<anonymous transformation ${formatExpected(ast.from)} <-> ${formatExpected(ast.to)}>`
+        () => `<transformation ${formatExpected(ast.from)} <-> ${formatExpected(ast.to)}>`
       )
   }
 }
@@ -177,20 +222,20 @@ const go = (e: ParseIssue): Tree<string> => {
       return make("is missing")
     case "Union":
       return make(
-        `Union (${e.ast.types.length} members): ` + formatExpected(e.ast),
+        formatExpected(e.ast),
         e.errors.map((e) => {
           switch (e._tag) {
             case "Key":
             case "Type":
               return go(e)
             case "Member":
-              return make(`Union member: ${formatExpected(e.ast)}`, e.errors.map(go))
+              return make(`Union member`, e.errors.map(go))
           }
         })
       )
     case "Tuple":
       return make(
-        `Tuple or array: ` + formatExpected(e.ast),
+        formatExpected(e.ast),
         e.errors.map((e) => {
           const es = e.errors.map(go)
           if (isCollapsible(es, e.errors)) {

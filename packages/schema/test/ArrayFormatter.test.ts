@@ -139,7 +139,7 @@ describe("ArrayFormatter", () => {
       {
         _tag: "Unexpected",
         path: ["a"],
-        message: `Unexpected, expected "age" or "name" or "tags"`
+        message: `Unexpected, expected "age" | "name" | "tags"`
       },
       {
         _tag: "Missing",

@@ -16,12 +16,12 @@ describe("Chunk > chunk", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected <anonymous tuple or array schema>, actual null`
+      `Expected ReadonlyArray<number>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       [1, "a"],
-      `Tuple or array: <anonymous tuple or array schema>
+      `ReadonlyArray<number>
 └─ [1]
    └─ Expected number, actual "a"`
     )

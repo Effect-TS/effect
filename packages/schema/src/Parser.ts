@@ -886,7 +886,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = (es: State["es"]) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            ParseResult.fail(ParseResult.union(ast, sortByIndex(es))) :
+            es.length === 1 && es[0][1]._tag === "Type" ?
+              ParseResult.fail(es[0][1]) :
+              ParseResult.fail(ParseResult.union(ast, sortByIndex(es))) :
             // this should never happen
             ParseResult.fail(ParseResult.type(AST.neverKeyword, input))
 

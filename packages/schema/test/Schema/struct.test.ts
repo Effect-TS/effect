@@ -27,7 +27,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema>, actual null`
       )
     })
 
@@ -38,7 +38,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -69,7 +69,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -81,10 +81,10 @@ describe("Schema > struct", () => {
         schema,
         { a: "a" },
         `["a"]
-└─ Union (2 members): number or undefined
-   ├─ Union member: number
+└─ number | undefined
+   ├─ Union member
    │  └─ Expected number, actual "a"
-   └─ Union member: undefined
+   └─ Union member
       └─ Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
@@ -104,7 +104,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -136,16 +136,16 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a" },
         `["a"]
-└─ Union (2 members): number or undefined
-   ├─ Union member: number
+└─ number | undefined
+   ├─ Union member
    │  └─ Expected number, actual "a"
-   └─ Union member: undefined
+   └─ Union member
       └─ Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
@@ -176,7 +176,7 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         null as any,
-        `Expected <anonymous type literal or record schema>, actual null`
+        `Expected <type literal or record schema>, actual null`
       )
     })
 

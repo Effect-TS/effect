@@ -39,7 +39,7 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       [],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [a string <-> number transformation]
 └─ [0]
    └─ is missing`
     )
@@ -52,7 +52,7 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       ["0"],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [a string <-> number transformation, string]
 └─ [1]
    └─ is missing`
     )
@@ -72,14 +72,14 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       [],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [string, ...(number | boolean)[], number | boolean]
 └─ [0]
    └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       [""],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [string, ...(number | boolean)[], number | boolean]
 └─ [1]
    └─ is missing`
     )
@@ -100,33 +100,33 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       [],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
 └─ [0]
    └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       [""],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
 └─ [1]
    └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       ["", true],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
 └─ [2]
    └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       ["", 0, "a"],
-      `Tuple or array: <anonymous tuple or array schema>
+      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
 └─ [2]
-   └─ Union (2 members): number or boolean
-      ├─ Union member: number
+   └─ number | boolean
+      ├─ Union member
       │  └─ Expected number, actual "a"
-      └─ Union member: boolean
+      └─ Union member
          └─ Expected boolean, actual "a"`
     )
   })
@@ -141,11 +141,11 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      `Union (2 members): <anonymous type literal or record schema>
-├─ Union member: <anonymous type literal or record schema>
+      `<type literal or record schema> | <type literal or record schema>
+├─ Union member
 │  └─ ["a"]
 │     └─ is missing
-└─ Union member: <anonymous type literal or record schema>
+└─ Union member
    └─ ["b"]
       └─ is missing`
     )
@@ -173,11 +173,11 @@ describe("Schema > required", () => {
       schema,
       { a: {} },
       `["a"]
-└─ Union (2 members): <anonymous suspended schema> or null
-   ├─ Union member: <anonymous suspended schema>
+└─ <suspended schema> | null
+   ├─ Union member
    │  └─ ["a"]
    │     └─ is missing
-   └─ Union member: null
+   └─ Union member
       └─ Expected null, actual {}`
     )
   })
