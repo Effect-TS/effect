@@ -13,7 +13,7 @@ describe("Schema > pick", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected <type literal or record schema>, actual null"
+      "Expected { Symbol(@effect/schema/test/a): string; b: a string <-> number transformation }, actual null"
     )
     await Util.expectParseFailure(
       schema,
@@ -44,7 +44,7 @@ describe("Schema > pick", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected <type literal or record schema>, actual null"
+      "Expected { a?: string; b: a string <-> number transformation }, actual null"
     )
     await Util.expectParseFailure(
       schema,

@@ -27,7 +27,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <type literal or record schema>, actual null`
+        `Expected {}, actual null`
       )
     })
 
@@ -38,7 +38,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <type literal or record schema>, actual null`
+        `Expected { a: number }, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -69,7 +69,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <type literal or record schema>, actual null`
+        `Expected { a: number | undefined }, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -104,7 +104,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <type literal or record schema>, actual null`
+        `Expected { a?: number }, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -136,7 +136,7 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <type literal or record schema>, actual null`
+        `Expected { a?: number | undefined }, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -176,7 +176,7 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         null as any,
-        `Expected <type literal or record schema>, actual null`
+        `Expected {}, actual null`
       )
     })
 

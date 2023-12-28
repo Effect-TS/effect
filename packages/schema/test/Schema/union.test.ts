@@ -42,12 +42,12 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <type literal or record schema> | <type literal or record schema>, actual null`
+        `Expected { a: 1; c: string } | { b: 2; d: number }, actual null`
       )
       await Util.expectParseFailure(
         schema,
         {},
-        `<type literal or record schema> | <type literal or record schema>
+        `{ a: 1; c: string } | { b: 2; d: number }
 ├─ ["a"]
 │  └─ is missing
 └─ ["b"]
@@ -56,7 +56,7 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         { a: null },
-        `<type literal or record schema> | <type literal or record schema>
+        `{ a: 1; c: string } | { b: 2; d: number }
 ├─ ["a"]
 │  └─ Expected 1, actual null
 └─ ["b"]
@@ -65,7 +65,7 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         { b: 3 },
-        `<type literal or record schema> | <type literal or record schema>
+        `{ a: 1; c: string } | { b: 2; d: number }
 ├─ ["a"]
 │  └─ is missing
 └─ ["b"]
@@ -82,12 +82,12 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <type literal or record schema> | <type literal or record schema> | <type literal or record schema>, actual null`
+        `Expected { category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }, actual null`
       )
       await Util.expectParseFailure(
         schema,
         {},
-        `<type literal or record schema> | <type literal or record schema> | <type literal or record schema>
+        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
 ├─ ["category"]
 │  └─ is missing
 └─ ["tag"]
@@ -96,7 +96,7 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         { category: null },
-        `<type literal or record schema> | <type literal or record schema> | <type literal or record schema>
+        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
 ├─ ["category"]
 │  └─ Expected "catA", actual null
 └─ ["tag"]
@@ -105,7 +105,7 @@ describe("Schema > union", () => {
       await Util.expectParseFailure(
         schema,
         { tag: "d" },
-        `<type literal or record schema> | <type literal or record schema> | <type literal or record schema>
+        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
 ├─ ["category"]
 │  └─ is missing
 └─ ["tag"]

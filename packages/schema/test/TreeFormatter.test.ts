@@ -6,12 +6,12 @@ import { describe, expect, it } from "vitest"
 describe("formatExpected", () => {
   it("refinement", () => {
     const schema = S.string.pipe(S.minLength(2))
-    expect(_.formatExpected(schema.ast)).toEqual("a string at least 2 character(s) long")
+    expect(_.formatAST(schema.ast)).toEqual("a string at least 2 character(s) long")
   })
 
   it("union", () => {
     const schema = S.union(S.string, S.string.pipe(S.minLength(2)))
-    expect(_.formatExpected(schema.ast)).toEqual(
+    expect(_.formatAST(schema.ast)).toEqual(
       "a string at least 2 character(s) long | string"
     )
   })
@@ -21,7 +21,7 @@ describe("formatExpected", () => {
     const schema: S.Schema<A> = S.suspend( // intended outer suspend
       () => S.tuple(S.number, S.union(schema, S.literal(null)))
     )
-    expect(_.formatExpected(schema.ast)).toEqual("<suspended schema>")
+    expect(_.formatAST(schema.ast)).toEqual("<suspended schema>")
   })
 })
 
@@ -70,7 +70,7 @@ describe("formatErrors", () => {
       schema,
       { a: { b: { c: [{ d: null }] } } },
       `["a"]["b"]["c"]
-└─ ReadonlyArray<<type literal or record schema>>
+└─ ReadonlyArray<{ d: string }>
    └─ [0]["d"]
       └─ Expected string, actual null`
     )
@@ -78,7 +78,7 @@ describe("formatErrors", () => {
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
       `["a"]["b"]["c"]
-└─ ReadonlyArray<<type literal or record schema>>
+└─ ReadonlyArray<{ d: string }>
    └─ [0]["d"]
       └─ Expected string, actual null`
     )
@@ -86,7 +86,7 @@ describe("formatErrors", () => {
       schema,
       { a: { b: { c: [{ d: null }, { d: 1 }] } } },
       `["a"]["b"]["c"]
-└─ ReadonlyArray<<type literal or record schema>>
+└─ ReadonlyArray<{ d: string }>
    ├─ [0]["d"]
    │  └─ Expected string, actual null
    └─ [1]["d"]
@@ -97,7 +97,7 @@ describe("formatErrors", () => {
       schema,
       { a: { b: { c: [{ d: "d" }] } }, e: { type: "f" } },
       `["e"]
-└─ <type literal or record schema> | <type literal or record schema>
+└─ { type: "f"; f: string } | { type: "g"; g: number }
    └─ Union member
       └─ ["f"]
          └─ is missing`

@@ -3,7 +3,7 @@
  */
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { ParseIssue } from "./ParseResult.js"
-import { formatExpected, getMessage } from "./TreeFormatter.js"
+import { formatAST, getMessage } from "./TreeFormatter.js"
 
 /**
  * @category model
@@ -30,7 +30,7 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
       return [{
         _tag,
         path,
-        message: `Unexpected, expected ${formatExpected(self.expected)}`
+        message: `Unexpected, expected ${formatAST(self.expected)}`
       }]
     case "Union":
       return ReadonlyArray.flatMap(self.errors, (e) => {

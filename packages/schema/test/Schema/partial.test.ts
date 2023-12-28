@@ -109,7 +109,7 @@ describe("Schema > partial", () => {
       `["a"]
 └─ <suspended schema> | null
    ├─ Union member
-   │  └─ Expected <type literal or record schema>, actual 1
+   │  └─ Expected { a?: <suspended schema> | null }, actual 1
    └─ Union member
       └─ Expected null, actual 1`
     )

@@ -18,7 +18,7 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        "Expected <type literal or record schema>, actual []"
+        "Expected { [x: string]: number }, actual []"
       )
       await Util.expectParseFailure(
         schema,
@@ -46,7 +46,7 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        "Expected <type literal or record schema>, actual []"
+        "Expected { [x: symbol]: number }, actual []"
       )
       await Util.expectParseFailure(
         schema,

@@ -37,7 +37,7 @@ describe("Schema > onExcess", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b", c: true },
-        `<type literal or record schema> | <type literal or record schema>
+        `{ a?: number; b?: string } | { a?: number }
 ├─ Union member
 │  └─ ["c"]
 │     └─ is unexpected, expected "a" | "b"

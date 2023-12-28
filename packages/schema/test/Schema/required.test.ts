@@ -141,7 +141,7 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      `<type literal or record schema> | <type literal or record schema>
+      `{ a: string } | { b: number }
 ├─ Union member
 │  └─ ["a"]
 │     └─ is missing

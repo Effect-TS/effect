@@ -4,7 +4,7 @@ import * as AST from "@effect/schema/AST"
 import { getFinalTransformation } from "@effect/schema/Parser"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import { formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
+import { formatAST, formatErrors } from "@effect/schema/TreeFormatter"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -86,7 +86,7 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
     ),
     {
       // hack the descripiton to not change the error message
-      [AST.DescriptionAnnotationId]: formatExpected(ast)
+      [AST.DescriptionAnnotationId]: formatAST(ast)
     }
   )
 }

@@ -91,18 +91,18 @@ const getExpected = (ast: AST.AST): Option.Option<string> =>
     Option.orElse(() => AST.getDescriptionAnnotation(ast))
   )
 
-const getTuple = (ast: AST.Tuple): string => {
+const formatTuple = (ast: AST.Tuple): string => {
   const formattedElements = ast.elements.map((element) =>
-    formatExpected(element.type) + (element.isOptional ? "?" : "")
+    formatAST(element.type) + (element.isOptional ? "?" : "")
   ).join(", ")
   return Option.match(ast.rest, {
     onNone: () => "readonly [" + formattedElements + "]",
     onSome: ([head, ...tail]) => {
-      const formattedHead = formatExpected(head)
+      const formattedHead = formatAST(head)
       const wrappedHead = formattedHead.includes(" | ") ? "(" + formattedHead + ")" : formattedHead
 
       if (tail.length > 0) {
-        const formattedTail = tail.map(formatExpected).join(", ")
+        const formattedTail = tail.map(formatAST).join(", ")
         if (ast.elements.length > 0) {
           return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
         } else {
@@ -119,12 +119,30 @@ const getTuple = (ast: AST.Tuple): string => {
   })
 }
 
-const getTypeLiteral = (_ast: AST.TypeLiteral): string => {
-  return "<type literal or record schema>"
+const formatTypeLiteral = (ast: AST.TypeLiteral): string => {
+  const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
+    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + formatAST(ps.type)
+  ).join("; ")
+  if (ast.indexSignatures.length > 0) {
+    const formattedIndexSignatures = ast.indexSignatures.map((is) =>
+      `[x: ${formatAST(AST.getParameterBase(is.parameter))}]: ${formatAST(is.type)}`
+    ).join(" ")
+    if (ast.propertySignatures.length > 0) {
+      return `{ ${formattedPropertySignatures}, ${formattedIndexSignatures} }`
+    } else {
+      return `{ ${formattedIndexSignatures} }`
+    }
+  } else {
+    if (ast.propertySignatures.length > 0) {
+      return `{ ${formattedPropertySignatures} }`
+    } else {
+      return "{}"
+    }
+  }
 }
 
 /** @internal */
-export const formatExpected = (ast: AST.AST): string => {
+export const formatAST = (ast: AST.AST): string => {
   switch (ast._tag) {
     case "StringKeyword":
       return Option.getOrElse(getExpected(ast), () => "string")
@@ -155,14 +173,14 @@ export const formatExpected = (ast: AST.AST): string => {
     case "Union":
       return Option.getOrElse(
         getExpected(ast),
-        () => ast.types.map((member) => formatExpected(member)).join(" | ")
+        () => ast.types.map((member) => formatAST(member)).join(" | ")
       )
     case "TemplateLiteral":
       return Option.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
     case "Tuple":
-      return Option.getOrElse(getExpected(ast), () => getTuple(ast))
+      return Option.getOrElse(getExpected(ast), () => formatTuple(ast))
     case "TypeLiteral":
-      return Option.getOrElse(getExpected(ast), () => getTypeLiteral(ast))
+      return Option.getOrElse(getExpected(ast), () => formatTypeLiteral(ast))
     case "Enums":
       return Option.getOrElse(
         getExpected(ast),
@@ -180,7 +198,7 @@ export const formatExpected = (ast: AST.AST): string => {
     case "Transform":
       return Option.getOrElse(
         getExpected(ast),
-        () => `<transformation ${formatExpected(ast.from)} <-> ${formatExpected(ast.to)}>`
+        () => `<transformation ${formatAST(ast.from)} <-> ${formatAST(ast.to)}>`
       )
   }
 }
@@ -196,9 +214,7 @@ export const getMessage = (e: Type) =>
   AST.getMessageAnnotation(e.expected).pipe(
     Option.map((annotation) => annotation(e.actual)),
     Option.orElse(() => e.message),
-    Option.getOrElse(() =>
-      `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
-    )
+    Option.getOrElse(() => `Expected ${formatAST(e.expected)}, actual ${formatActual(e.actual)}`)
   )
 
 const go = (e: ParseIssue): Tree<string> => {
@@ -209,7 +225,7 @@ const go = (e: ParseIssue): Tree<string> => {
       return make("is forbidden")
     case "Unexpected":
       return make(
-        `is unexpected, expected ${formatExpected(e.expected)}`
+        `is unexpected, expected ${formatAST(e.expected)}`
       )
     case "Key": {
       const es = e.errors.map(go)
@@ -222,7 +238,7 @@ const go = (e: ParseIssue): Tree<string> => {
       return make("is missing")
     case "Union":
       return make(
-        formatExpected(e.ast),
+        formatAST(e.ast),
         e.errors.map((e) => {
           switch (e._tag) {
             case "Key":
@@ -235,7 +251,7 @@ const go = (e: ParseIssue): Tree<string> => {
       )
     case "Tuple":
       return make(
-        formatExpected(e.ast),
+        formatAST(e.ast),
         e.errors.map((e) => {
           const es = e.errors.map(go)
           if (isCollapsible(es, e.errors)) {
