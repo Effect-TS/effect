@@ -94,7 +94,7 @@ describe("Schedule", () => {
       const schedule = Schedule.recurs(5).pipe(Schedule.resetAfter("5 seconds"))
       const retriesCounter = yield* $(Ref.make(-1))
       const latch = yield* $(Deferred.make<never, void>())
-      const fiber = yield* $(io(retriesCounter, latch), Effect.retry(schedule), Effect.fork)
+      const fiber = yield* $(io(retriesCounter, latch), Effect.retrySchedule(schedule), Effect.fork)
       yield* $(Deferred.await(latch))
       yield* $(TestClock.adjust("10 seconds"))
       yield* $(Fiber.join(fiber))
@@ -369,7 +369,7 @@ describe("Schedule", () => {
         }).pipe(
           Effect.flatMap(() => i < 5 ? Effect.fail("KeepTryingError") : Effect.succeed(i))
         )
-        const result = yield* $(io, Effect.retry(strategy))
+        const result = yield* $(io, Effect.retrySchedule(strategy))
         assert.strictEqual(result, 5)
       }))
     it.effect("retry exactly one time for `once` when second time succeeds - retryOrElse", () =>
@@ -398,7 +398,7 @@ describe("Schedule", () => {
     it.effect("retry 0 time for `once` when first time succeeds", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
-        yield* $(Ref.update(ref, (n) => n + 1), Effect.retry(Schedule.once))
+        yield* $(Ref.update(ref, (n) => n + 1), Effect.retrySchedule(Schedule.once))
         const result = yield* $(Ref.get(ref))
         assert.strictEqual(result, 1)
       }))
@@ -407,7 +407,7 @@ describe("Schedule", () => {
         const ref = yield* $(Ref.make(0))
         const result = yield* $(
           alwaysFail(ref).pipe(
-            Effect.retry(Schedule.recurs(0)),
+            Effect.retrySchedule(Schedule.recurs(0)),
             Effect.flip
           )
         )
@@ -418,7 +418,7 @@ describe("Schedule", () => {
         const ref = yield* $(Ref.make(0) // One retry on failure
         )
         // One retry on failure
-        yield* $(failOn0(ref), Effect.retry(Schedule.once))
+        yield* $(failOn0(ref), Effect.retrySchedule(Schedule.once))
         const result = yield* $(Ref.get(ref))
         assert.strictEqual(result, 2)
       }))
@@ -429,7 +429,7 @@ describe("Schedule", () => {
         // No more than one retry on retry `once`
         const result = yield* $(
           alwaysFail(ref).pipe(
-            Effect.retry(Schedule.once),
+            Effect.retrySchedule(Schedule.once),
             Effect.flip
           )
         )
@@ -559,7 +559,7 @@ describe("Schedule", () => {
         const deferred = yield* $(Deferred.make<never, void>())
         const value = yield* $(
           Effect.fail("oh no").pipe(
-            Effect.retry(Schedule.recurs(2)),
+            Effect.retrySchedule(Schedule.recurs(2)),
             Effect.ensuring(Deferred.succeed(deferred, void 0)),
             Effect.option
           )

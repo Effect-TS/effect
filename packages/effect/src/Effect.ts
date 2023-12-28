@@ -1761,16 +1761,64 @@ export const sandbox: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Cause.Cause<
 /**
  * Retries with the specified retry policy. Retries are done following the
  * failure of the original `io` (up to a fixed maximum with `once` or `recurs`
- * for example), so that that `io.retry(Schedule.once)` means "execute `io`
+ * for example), so that that `io.retrySchedule(Schedule.once)` means "execute `io`
  * and in case of failure, try again once".
  *
  * @since 2.0.0
  * @category error handling
  */
-export const retry: {
+export const retrySchedule: {
   <R1, E extends E0, E0, B>(policy: Schedule.Schedule<R1, E0, B>): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E, A>
   <R, E extends E0, E0, A, R1, B>(self: Effect<R, E, A>, policy: Schedule.Schedule<R1, E0, B>): Effect<R | R1, E, A>
 } = _schedule.retry_Effect
+
+/**
+ * @since 2.0.0
+ * @category error handling
+ */
+export declare namespace Retry {
+  /**
+   * @since 2.0.0
+   * @category error handling
+   */
+  export type Return<R, A, E, O extends Options<E>> = Effect<
+    | R
+    | (O extends { schedule: Schedule.Schedule<infer X, any, any> } ? X : never)
+    | (O extends { while: (...args: Array<any>) => Effect<infer X, any, any> } ? X : never)
+    | (O extends { until: (...args: Array<any>) => Effect<infer X, any, any> } ? X : never),
+    E,
+    A
+  > extends infer Z ? Z : never
+
+  /**
+   * @since 2.0.0
+   * @category error handling
+   */
+  export interface Options<E> {
+    while?: (error: E) => boolean | Effect<any, never, boolean>
+    until?: (error: E) => boolean | Effect<any, never, boolean>
+    times?: number
+    schedule?: Schedule.Schedule<any, E, any>
+  }
+}
+
+/**
+ * Retries according to the options provided
+ *
+ * @since 2.0.0
+ * @category error handling
+ */
+export const retry: {
+  <E, O extends Retry.Options<E>>(
+    options: O
+  ): <R, A>(
+    self: Effect<R, E, A>
+  ) => Retry.Return<R, A, E, O>
+  <R, A, E, O extends Retry.Options<E>>(
+    self: Effect<R, E, A>,
+    options: O
+  ): Retry.Return<R, A, E, O>
+} = _schedule.retry_combined
 
 /**
  * Retries this effect the specified number of times.

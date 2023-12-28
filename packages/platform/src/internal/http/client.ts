@@ -522,7 +522,7 @@ export const retry: {
   <R, E extends E0, E0, A, R1, B>(
     self: Client.Client<R, E, A>,
     policy: Schedule.Schedule<R1, E0, B>
-  ): Client.Client<R | R1, E, A> => transformResponse(self, Effect.retry(policy))
+  ): Client.Client<R | R1, E, A> => transformResponse(self, Effect.retrySchedule(policy))
 )
 
 /** @internal */

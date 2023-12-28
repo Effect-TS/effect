@@ -1949,6 +1949,42 @@ export const retry_Effect = dual<
 >(2, (self, policy) => retryOrElse_Effect(self, policy, (e, _) => core.fail(e)))
 
 /** @internal */
+export const retry_combined = dual<{
+  <E, O extends Effect.Retry.Options<E>>(
+    options: O
+  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Retry.Return<R, A, E, O>
+}, {
+  <R, A, E, O extends Effect.Retry.Options<E>>(
+    self: Effect.Effect<R, E, A>,
+    options: O
+  ): Effect.Retry.Return<R, A, E, O>
+}>(2, (self, options) => {
+  const base = options.schedule ?? forever
+  const withWhile = options.while ?
+    whileInputEffect(base, (e) => {
+      const applied = options.while!(e)
+      if (typeof applied === "boolean") {
+        return core.succeed(applied)
+      }
+      return applied
+    }) :
+    base
+  const withUntil = options.until ?
+    untilInputEffect(withWhile, (e) => {
+      const applied = options.until!(e)
+      if (typeof applied === "boolean") {
+        return core.succeed(applied)
+      }
+      return applied
+    }) :
+    withWhile
+  const withTimes = options.times ?
+    intersect(withUntil, recurs(options.times)) :
+    withUntil
+  return retry_Effect(self, withTimes)
+})
+
+/** @internal */
 export const retryN_Effect = dual<
   (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, n: number) => Effect.Effect<R, E, A>
