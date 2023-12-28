@@ -40,9 +40,9 @@ describe("Schema > allErrors option", () => {
           ["a", "b"],
           `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
-│  └─ is unexpected
+│  └─ is unexpected, expected never
 └─ [1]
-   └─ is unexpected`,
+   └─ is unexpected, expected never`,
           Util.allErrors
         )
       })
@@ -174,9 +174,9 @@ describe("Schema > allErrors option", () => {
           [1, 1] as any,
           `Tuple or array: <anonymous tuple or array schema>
 ├─ [0]
-│  └─ is unexpected
+│  └─ is unexpected, expected never
 └─ [1]
-   └─ is unexpected`,
+   └─ is unexpected, expected never`,
           Util.allErrors
         )
       })

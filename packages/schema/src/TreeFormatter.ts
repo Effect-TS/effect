@@ -164,7 +164,7 @@ const go = (e: ParseIssue): Tree<string> => {
       return make("is forbidden")
     case "Unexpected":
       return make(
-        "is unexpected" + (Option.isSome(e.ast) ? `, expected ${formatExpected(e.ast.value)}` : "")
+        `is unexpected, expected ${formatExpected(e.expected)}`
       )
     case "Key": {
       const es = e.errors.map(go)

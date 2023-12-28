@@ -10,14 +10,14 @@ describe("Schema > onExcess", () => {
       [1, "b"],
       `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
     )
     await Util.expectEncodeFailure(
       schema,
       [1, "b"] as any,
       `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
     )
   })
 
@@ -70,11 +70,11 @@ describe("Schema > onExcess", () => {
 ├─ Union member: <anonymous tuple or array schema>
 │  └─ Tuple or array: <anonymous tuple or array schema>
 │     └─ [2]
-│        └─ is unexpected
+│        └─ is unexpected, expected 0 or 1
 └─ Union member: <anonymous tuple or array schema>
    └─ Tuple or array: <anonymous tuple or array schema>
       └─ [1]
-         └─ is unexpected`
+         └─ is unexpected, expected 0`
       )
       await Util.expectParseFailure(
         schema,
@@ -83,11 +83,11 @@ describe("Schema > onExcess", () => {
 ├─ Union member: <anonymous tuple or array schema>
 │  └─ Tuple or array: <anonymous tuple or array schema>
 │     └─ [2]
-│        └─ is unexpected
+│        └─ is unexpected, expected 0 or 1
 └─ Union member: <anonymous tuple or array schema>
    └─ Tuple or array: <anonymous tuple or array schema>
       └─ [1]
-         └─ is unexpected`,
+         └─ is unexpected, expected 0`,
         Util.onExcessPropertyError
       )
       await Util.expectEncodeSuccess(

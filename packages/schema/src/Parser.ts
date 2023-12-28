@@ -357,6 +357,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       if (Option.isSome(ast.rest)) {
         requiredLen += ast.rest.value.length - 1
       }
+      const expectedAST = AST.createUnion(ast.elements.map((_, i) => AST.createLiteral(i)))
       return (input: unknown, options) => {
         if (!Array.isArray(input)) {
           return ParseResult.fail(ParseResult.type(ast, input))
@@ -383,7 +384,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         if (Option.isNone(ast.rest)) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = ParseResult.index(i, [ParseResult.unexpected(Option.none())])
+            const e = ParseResult.index(i, [ParseResult.unexpected(expectedAST)])
             if (allErrors) {
               es.push([stepKey++, e])
               continue
@@ -614,7 +615,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           for (const key of Internal.ownKeys(input)) {
             const eu = ParseResult.eitherOrUndefined(expected(key, options))
             if (eu && Either.isLeft(eu)) {
-              const e = ParseResult.key(key, [ParseResult.unexpected(Option.some(expectedAST))])
+              const e = ParseResult.key(key, [ParseResult.unexpected(expectedAST)])
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue

@@ -203,7 +203,7 @@ export const missing: Missing = { _tag: "Missing" }
  */
 export interface Unexpected {
   readonly _tag: "Unexpected"
-  readonly ast: Option.Option<AST.AST>
+  readonly expected: AST.AST
 }
 
 /**
@@ -211,8 +211,8 @@ export interface Unexpected {
  * @since 1.0.0
  */
 export const unexpected = (
-  ast: Option.Option<AST.AST>
-): Unexpected => ({ _tag: "Unexpected", ast })
+  expected: AST.AST
+): Unexpected => ({ _tag: "Unexpected", expected })
 
 /**
  * Error that occurs when a union has an error.

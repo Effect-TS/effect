@@ -53,14 +53,14 @@ describe("Schema > tuple", () => {
         [undefined],
         `Tuple or array: <anonymous tuple or array schema>
 └─ [0]
-   └─ is unexpected`
+   └─ is unexpected, expected never`
       )
       await Util.expectParseFailure(
         schema,
         [1],
         `Tuple or array: <anonymous tuple or array schema>
 └─ [0]
-   └─ is unexpected`
+   └─ is unexpected, expected never`
       )
     })
 
@@ -99,7 +99,7 @@ describe("Schema > tuple", () => {
         [1, "b"],
         `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
       )
     })
 
@@ -136,7 +136,7 @@ describe("Schema > tuple", () => {
         [1, "b"],
         `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
       )
     })
 
@@ -162,7 +162,7 @@ describe("Schema > tuple", () => {
         [1, "b"],
         `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
       )
     })
 
@@ -193,7 +193,7 @@ describe("Schema > tuple", () => {
         [1, "b"],
         `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
       )
     })
 
@@ -365,7 +365,7 @@ describe("Schema > tuple", () => {
         [1, "b"] as any,
         `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
       )
     })
 
@@ -378,7 +378,7 @@ describe("Schema > tuple", () => {
         [1, "b"] as any,
         `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
       )
     })
 
@@ -398,7 +398,7 @@ describe("Schema > tuple", () => {
         [1, "b"] as any,
         `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
       )
     })
 
@@ -412,7 +412,7 @@ describe("Schema > tuple", () => {
         [1, "b"] as any,
         `Tuple or array: <anonymous tuple or array schema>
 └─ [1]
-   └─ is unexpected`
+   └─ is unexpected, expected 0`
       )
     })
 

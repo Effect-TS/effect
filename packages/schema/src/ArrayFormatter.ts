@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { ParseIssue } from "./ParseResult.js"
 import { formatExpected, getMessage } from "./TreeFormatter.js"
@@ -31,8 +30,7 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
       return [{
         _tag,
         path,
-        message: "Unexpected" +
-          (Option.isSome(self.ast) ? `, expected ${formatExpected(self.ast.value)}` : "")
+        message: `Unexpected, expected ${formatExpected(self.expected)}`
       }]
     case "Union":
       return ReadonlyArray.flatMap(self.errors, (e) => {

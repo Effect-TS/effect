@@ -81,7 +81,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, ["a", 1], [{
       _tag: "Unexpected",
       path: [1],
-      message: "Unexpected"
+      message: "Unexpected, expected 0"
     }])
   })
 
