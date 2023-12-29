@@ -96,7 +96,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           {},
-          `error(s) found
+          `{ a: string; b: number }
 ├─ ["a"]
 │  └─ is missing
 └─ ["b"]
@@ -110,7 +110,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: 1, b: "b" },
-          `error(s) found
+          `{ a: string; b: number }
 ├─ ["a"]
 │  └─ Expected string, actual 1
 └─ ["b"]
@@ -124,7 +124,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: 1, b: "b", c: "c" },
-          `error(s) found
+          `{ a: number }
 ├─ ["b"]
 │  └─ is unexpected, expected "a"
 └─ ["c"]
@@ -140,7 +140,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: 1, b: 2 },
-          `error(s) found
+          `{ [x: string]: number }
 ├─ ["a"]
 │  └─ is unexpected, expected a string at least 2 character(s) long
 └─ ["b"]
@@ -154,7 +154,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectParseFailure(
           schema,
           { a: "a", b: "b" },
-          `error(s) found
+          `{ [x: string]: number }
 ├─ ["a"]
 │  └─ Expected number, actual "a"
 └─ ["b"]
@@ -233,7 +233,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           { a: 10, b: 10 },
-          `error(s) found
+          `{ a: NumberFromChar; b: NumberFromChar }
 ├─ ["a"]
 │  └─ Expected a character, actual "10"
 └─ ["b"]
@@ -249,7 +249,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           { aa: "a", bb: "bb" },
-          `error(s) found
+          `{ [x: string]: string }
 ├─ ["aa"]
 │  └─ is unexpected, expected a character
 └─ ["bb"]
@@ -263,7 +263,7 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           { a: "aa", b: "bb" },
-          `error(s) found
+          `{ [x: string]: a character }
 ├─ ["a"]
 │  └─ Expected a character, actual "aa"
 └─ ["b"]

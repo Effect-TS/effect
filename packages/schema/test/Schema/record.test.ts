@@ -23,16 +23,18 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `["a"]
-└─ Expected number, actual "a"`
+        `{ [x: string]: number }
+└─ ["a"]
+   └─ Expected number, actual "a"`
       )
       const b = Symbol.for("@effect/schema/test/b")
       await Util.expectParseSuccess(schema, { a: 1, [b]: "b" }, { a: 1 })
       await Util.expectParseFailure(
         schema,
         { a: 1, [b]: "b" },
-        `[Symbol(@effect/schema/test/b)]
-└─ is unexpected, expected string`,
+        `{ [x: string]: number }
+└─ [Symbol(@effect/schema/test/b)]
+   └─ is unexpected, expected string`,
         Util.onExcessPropertyError
       )
     })
@@ -51,8 +53,9 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         { [a]: "a" },
-        `[Symbol(@effect/schema/test/a)]
-└─ Expected number, actual "a"`
+        `{ [x: symbol]: number }
+└─ [Symbol(@effect/schema/test/a)]
+   └─ Expected number, actual "a"`
       )
       await Util.expectParseSuccess(
         schema,
@@ -62,8 +65,9 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         { [a]: 1, b: "b" },
-        `["b"]
-└─ is unexpected, expected symbol`,
+        `{ [x: symbol]: number }
+└─ ["b"]
+   └─ is unexpected, expected symbol`,
         Util.onExcessPropertyError
       )
     })
@@ -75,20 +79,23 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         {},
-        `["a"]
-└─ is missing`
+        `{ a: number; b: number }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1 },
-        `["b"]
-└─ is missing`
+        `{ a: number; b: number }
+└─ ["b"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { b: 2 },
-        `["a"]
-└─ is missing`
+        `{ a: number; b: number }
+└─ ["a"]
+   └─ is missing`
       )
     })
 
@@ -103,14 +110,16 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         {},
-        `["a"]
-└─ is missing`
+        `{ a: number; [x: \`prefix-\${string}\`]: number }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, "prefix-b": "b" },
-        `["prefix-b"]
-└─ Expected number, actual "b"`
+        `{ a: number; [x: \`prefix-\${string}\`]: number }
+└─ ["prefix-b"]
+   └─ Expected number, actual "b"`
       )
     })
 
@@ -121,26 +130,30 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         {},
-        `["a"]
-└─ is missing`
+        `{ a: number; b: number }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1 },
-        `["b"]
-└─ is missing`
+        `{ a: number; b: number }
+└─ ["b"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { b: 2 },
-        `["a"]
-└─ is missing`
+        `{ a: number; b: number }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `["a"]
-└─ Expected number, actual "a"`
+        `{ a: number; b: number }
+└─ ["a"]
+   └─ Expected number, actual "a"`
       )
     })
 
@@ -159,8 +172,9 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `["a"]
-└─ Expected number, actual "a"`
+        `{ [x: string]: number }
+└─ ["a"]
+   └─ Expected number, actual "a"`
       )
     })
 
@@ -180,32 +194,37 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         {},
-        `["a"]
-└─ is missing`
+        `{ a: number; b: number; [x: symbol]: number }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1 },
-        `["b"]
-└─ is missing`
+        `{ a: number; b: number; [x: symbol]: number }
+└─ ["b"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { b: 2 },
-        `["a"]
-└─ is missing`
+        `{ a: number; b: number; [x: symbol]: number }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: 2, [c]: "c" },
-        `[Symbol(@effect/schema/test/c)]
-└─ Expected number, actual "c"`
+        `{ a: number; b: number; [x: symbol]: number }
+└─ [Symbol(@effect/schema/test/c)]
+   └─ Expected number, actual "c"`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `["a"]
-└─ Expected number, actual "a"`
+        `{ a: number; b: number; [x: symbol]: number }
+└─ ["a"]
+   └─ Expected number, actual "a"`
       )
     })
 
@@ -218,20 +237,23 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         {},
-        `[Symbol(@effect/schema/test/a)]
-└─ is missing`
+        `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+└─ [Symbol(@effect/schema/test/a)]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { [a]: 1 },
-        `[Symbol(@effect/schema/test/b)]
-└─ is missing`
+        `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+└─ [Symbol(@effect/schema/test/b)]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { [b]: 2 },
-        `[Symbol(@effect/schema/test/a)]
-└─ is missing`
+        `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+└─ [Symbol(@effect/schema/test/a)]
+   └─ is missing`
       )
     })
 
@@ -249,33 +271,38 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         { "-": "a" },
-        `["-"]
-└─ Expected number, actual "a"`
+        `{ [x: \`\${string}-\${string}\`]: number }
+└─ ["-"]
+   └─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { "a-": "a" },
-        `["a-"]
-└─ Expected number, actual "a"`
+        `{ [x: \`\${string}-\${string}\`]: number }
+└─ ["a-"]
+   └─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { "-b": "b" },
-        `["-b"]
-└─ Expected number, actual "b"`
+        `{ [x: \`\${string}-\${string}\`]: number }
+└─ ["-b"]
+   └─ Expected number, actual "b"`
       )
       await Util.expectParseFailure(
         schema,
         { "a-b": "ab" },
-        `["a-b"]
-└─ Expected number, actual "ab"`
+        `{ [x: \`\${string}-\${string}\`]: number }
+└─ ["a-b"]
+   └─ Expected number, actual "ab"`
       )
 
       await Util.expectParseFailure(
         schema,
         { "a": 1 },
-        `["a"]
-└─ is unexpected, expected \${string}-\${string}`,
+        `{ [x: \`\${string}-\${string}\`]: number }
+└─ ["a"]
+   └─ is unexpected, expected \`\${string}-\${string}\``,
         Util.onExcessPropertyError
       )
     })
@@ -291,14 +318,16 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         { "aa": "aa" },
-        `["aa"]
-└─ Expected number, actual "aa"`
+        `{ [x: string]: number }
+└─ ["aa"]
+   └─ Expected number, actual "aa"`
       )
       await Util.expectParseFailure(
         schema,
         { "a": 1 },
-        `["a"]
-└─ is unexpected, expected a string at least 2 character(s) long`,
+        `{ [x: string]: number }
+└─ ["a"]
+   └─ is unexpected, expected a string at least 2 character(s) long`,
         Util.onExcessPropertyError
       )
     })
@@ -314,18 +343,20 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         { "a-": "a" },
-        `["a-"]
-└─ Expected number, actual "a"`
+        `{ [x: \`\${string}-\${string}\`]: number; [x: string]: string | number }
+└─ ["a-"]
+   └─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { "a": true },
-        `["a"]
-└─ string | number
-   ├─ Union member
-   │  └─ Expected string, actual true
-   └─ Union member
-      └─ Expected number, actual true`
+        `{ [x: \`\${string}-\${string}\`]: number; [x: string]: string | number }
+└─ ["a"]
+   └─ string | number
+      ├─ Union member
+      │  └─ Expected string, actual true
+      └─ Union member
+         └─ Expected number, actual true`
       )
     })
 
@@ -339,8 +370,9 @@ describe("Schema > record", () => {
       await Util.expectParseFailure(
         schema,
         { "": 1 },
-        `[""]
-└─ is unexpected, expected a non empty string`,
+        `{ [x: string]: number }
+└─ [""]
+   └─ is unexpected, expected a non empty string`,
         Util.onExcessPropertyError
       )
     })
@@ -352,8 +384,9 @@ describe("Schema > record", () => {
       await Util.expectEncodeFailure(
         schema,
         { aa: "a" },
-        `["aa"]
-└─ is unexpected, expected a character`,
+        `{ [x: string]: string }
+└─ ["aa"]
+   └─ is unexpected, expected a character`,
         Util.onExcessPropertyError
       )
     })
@@ -363,8 +396,9 @@ describe("Schema > record", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: "aa" },
-        `["a"]
-└─ Expected a character, actual "aa"`
+        `{ [x: string]: a character }
+└─ ["a"]
+   └─ Expected a character, actual "aa"`
       )
     })
   })

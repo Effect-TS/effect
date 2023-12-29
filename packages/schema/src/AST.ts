@@ -963,8 +963,7 @@ export const createRefinement = <From extends AST>(
     return createTransform(
       from.from,
       createRefinement(from.to, filter, annotations),
-      from.transformation,
-      from.annotations
+      from.transformation
     )
   }
   return { _tag: "Refinement", from, filter, annotations }

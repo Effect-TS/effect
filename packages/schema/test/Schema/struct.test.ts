@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Schema > struct", () => {
-  it("should allow a \"constructor\" field name", () => {
+  it(`should allow a "constructor" field name`, () => {
     const schema = S.struct({ constructor: S.string })
     expect(schema.ast._tag).toEqual("TypeLiteral")
   })
@@ -43,20 +43,23 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         {},
-        `["a"]
-└─ is missing`
+        `{ a: number }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: undefined },
-        `["a"]
-└─ Expected number, actual undefined`
+        `{ a: number }
+└─ ["a"]
+   └─ Expected number, actual undefined`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        `["b"]
-└─ is unexpected, expected "a"`,
+        `{ a: number }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -74,24 +77,27 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         {},
-        `["a"]
-└─ is missing`
+        `{ a: number | undefined }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `["a"]
-└─ number | undefined
-   ├─ Union member
-   │  └─ Expected number, actual "a"
-   └─ Union member
-      └─ Expected undefined, actual "a"`
+        `{ a: number | undefined }
+└─ ["a"]
+   └─ number | undefined
+      ├─ Union member
+      │  └─ Expected number, actual "a"
+      └─ Union member
+         └─ Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        `["b"]
-└─ is unexpected, expected "a"`,
+        `{ a: number | undefined }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -109,20 +115,23 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `["a"]
-└─ Expected number, actual "a"`
+        `{ a?: number }
+└─ ["a"]
+   └─ Expected number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { a: undefined },
-        `["a"]
-└─ Expected number, actual undefined`
+        `{ a?: number }
+└─ ["a"]
+   └─ Expected number, actual undefined`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        `["b"]
-└─ is unexpected, expected "a"`,
+        `{ a?: number }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -141,18 +150,20 @@ describe("Schema > struct", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a" },
-        `["a"]
-└─ number | undefined
-   ├─ Union member
-   │  └─ Expected number, actual "a"
-   └─ Union member
-      └─ Expected undefined, actual "a"`
+        `{ a?: number | undefined }
+└─ ["a"]
+   └─ number | undefined
+      ├─ Union member
+      │  └─ Expected number, actual "a"
+      └─ Union member
+         └─ Expected undefined, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b" },
-        `["b"]
-└─ is unexpected, expected "a"`,
+        `{ a?: number | undefined }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -186,8 +197,9 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `["b"]
-└─ is unexpected, expected "a"`,
+        `{ a: number }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -199,8 +211,9 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `["b"]
-└─ is unexpected, expected "a"`,
+        `{ a: number | undefined }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -212,8 +225,9 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `["b"]
-└─ is unexpected, expected "a"`,
+        `{ a?: number }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -226,8 +240,9 @@ describe("Schema > struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `["b"]
-└─ is unexpected, expected "a"`,
+        `{ a?: number | undefined }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })

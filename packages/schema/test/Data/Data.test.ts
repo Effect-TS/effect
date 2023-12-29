@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import * as Data from "effect/Data"
 import { describe, it } from "vitest"
 
-describe("Data/data", () => {
+describe("Data > data", () => {
   it("property tests", () => {
     Util.roundtrip(S.data(S.struct({ a: S.string, b: S.number })))
     Util.roundtrip(S.data(S.array(S.number)))
@@ -19,8 +19,9 @@ describe("Data/data", () => {
     await Util.expectParseFailure(
       schema,
       { a: "ok", b: "0" },
-      `["b"]
-└─ Expected number, actual "0"`
+      `{ a: string; b: number }
+└─ ["b"]
+   └─ Expected number, actual "0"`
     )
   })
 

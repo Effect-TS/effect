@@ -94,12 +94,12 @@ describe("Schema > templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected a${string}, actual null"
+        "Expected `a${string}`, actual null"
       )
       await Util.expectParseFailure(
         schema,
         "",
-        "Expected a${string}, actual \"\""
+        "Expected `a${string}`, actual \"\""
       )
     })
 
@@ -125,17 +125,17 @@ describe("Schema > templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected a${number}, actual null"
+        "Expected `a${number}`, actual null"
       )
       await Util.expectParseFailure(
         schema,
         "",
-        "Expected a${number}, actual \"\""
+        "Expected `a${number}`, actual \"\""
       )
       await Util.expectParseFailure(
         schema,
         "aa",
-        "Expected a${number}, actual \"aa\""
+        "Expected `a${number}`, actual \"aa\""
       )
     })
 
@@ -154,17 +154,17 @@ describe("Schema > templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         "",
-        "Expected a${string}b, actual \"\""
+        "Expected `a${string}b`, actual \"\""
       )
       await Util.expectParseFailure(
         schema,
         "a",
-        "Expected a${string}b, actual \"a\""
+        "Expected `a${string}b`, actual \"a\""
       )
       await Util.expectParseFailure(
         schema,
         "b",
-        "Expected a${string}b, actual \"b\""
+        "Expected `a${string}b`, actual \"b\""
       )
       await Util.expectEncodeSuccess(schema, "acb", "acb")
     })
@@ -178,12 +178,12 @@ describe("Schema > templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         "a",
-        "Expected a${string}b${string}, actual \"a\""
+        "Expected `a${string}b${string}`, actual \"a\""
       )
       await Util.expectParseFailure(
         schema,
         "b",
-        "Expected a${string}b${string}, actual \"b\""
+        "Expected `a${string}b${string}`, actual \"b\""
       )
     })
 

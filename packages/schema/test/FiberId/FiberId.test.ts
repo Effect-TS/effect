@@ -28,10 +28,11 @@ describe("FiberId", () => {
       { _tag: "Composite", left: { _tag: "None" }, right: { _tag: "-" } },
       `FiberId (From)
 └─ Union member
-   └─ ["right"]
-      └─ FiberId (From)
-         └─ ["_tag"]
-            └─ Expected "Composite" | "Runtime" | "None", actual "-"`
+   └─ Composite (From)
+      └─ ["right"]
+         └─ FiberId (From)
+            └─ ["_tag"]
+               └─ Expected "Composite" | "Runtime" | "None", actual "-"`
     )
   })
 })

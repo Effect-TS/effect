@@ -47,6 +47,11 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
         self.errors,
         (index) => ReadonlyArray.flatMap(index.errors, (e) => format(e, [...path, index.index]))
       )
+    case "TypeLiteral":
+      return ReadonlyArray.flatMap(
+        self.errors,
+        (key) => ReadonlyArray.flatMap(key.errors, (e) => format(e, [...path, key.key]))
+      )
   }
 }
 

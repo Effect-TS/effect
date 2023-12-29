@@ -25,18 +25,22 @@ describe("Schema > suspend", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a1" },
-        `["as"]
-└─ is missing`
+        `{ a: string; as: ReadonlyArray<<suspended schema>> }
+└─ ["as"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
-        `["as"]
-└─ ReadonlyArray<<suspended schema>>
-   └─ [0]["as"]
-      └─ ReadonlyArray<<suspended schema>>
-         └─ [0]
-            └─ Expected { a: string; as: ReadonlyArray<<suspended schema>> }, actual 1`
+        `{ a: string; as: ReadonlyArray<<suspended schema>> }
+└─ ["as"]
+   └─ ReadonlyArray<<suspended schema>>
+      └─ [0]
+         └─ { a: string; as: ReadonlyArray<<suspended schema>> }
+            └─ ["as"]
+               └─ ReadonlyArray<<suspended schema>>
+                  └─ [0]
+                     └─ Expected { a: string; as: ReadonlyArray<<suspended schema>> }, actual 1`
       )
     })
 

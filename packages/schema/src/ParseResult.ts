@@ -58,6 +58,7 @@ export type ParseIssue =
   // context
   | Tuple
   | Key
+  | TypeLiteral
   | Union
   // primitives
   | Type
@@ -129,6 +130,25 @@ export const tuple = (
   ast: AST.Tuple,
   errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
 ): Tuple => ({ _tag: "Tuple", ast, errors })
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface TypeLiteral {
+  readonly _tag: "TypeLiteral"
+  readonly ast: AST.TypeLiteral
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const typeLiteral = (
+  ast: AST.TypeLiteral,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
+): TypeLiteral => ({ _tag: "TypeLiteral", ast, errors })
 
 /**
  * The `Index` decode error indicates that there was an error at a specific index in an array or tuple.

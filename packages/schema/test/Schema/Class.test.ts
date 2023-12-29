@@ -101,8 +101,9 @@ describe("Schema > Class", () => {
     expect(john.upperName).toEqual("JOHN")
     expect(typeof john.upperName).toEqual("string")
     expect(() => new Person({ id: 1, name: "" })).toThrow(
-      new Error(`["name"]
-└─ Expected a non empty string, actual ""`)
+      new Error(`{ id: number; name: a non empty string }
+└─ ["name"]
+   └─ Expected a non empty string, actual ""`)
     )
   })
 
@@ -161,8 +162,9 @@ describe("Schema > Class", () => {
 
   it("extends error", () => {
     expect(() => S.parseSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
-      new Error(`["age"]
-└─ is missing`)
+      new Error(`{ id: number; age: number; name: a non empty string }
+└─ ["age"]
+   └─ is missing`)
     )
   })
 
@@ -226,8 +228,9 @@ describe("Schema > Class", () => {
     expect(person.upperName).toEqual("JOHN")
 
     expect(() => S.parseSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
-      new Error(`["_tag"]
-└─ is missing`)
+      new Error(`{ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string }
+└─ ["_tag"]
+   └─ is missing`)
     )
     person = S.parseSync(TaggedPersonWithAge)({
       _tag: "TaggedPerson",

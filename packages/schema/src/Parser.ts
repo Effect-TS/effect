@@ -604,7 +604,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           return ParseResult.fail(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
-        const es: Array<[number, ParseResult.ParseIssue]> = []
+        const es: Array<[number, ParseResult.Key]> = []
         let stepKey = 0
 
         // ---------------------------------------------
@@ -620,7 +620,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return ParseResult.fail(e)
+                return ParseResult.fail(ParseResult.typeLiteral(ast, [e]))
               }
             }
           }
@@ -653,7 +653,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return ParseResult.fail(e)
+                  return ParseResult.fail(ParseResult.typeLiteral(ast, [e]))
                 }
               }
               output[name] = eu.right
@@ -673,7 +673,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                         es.push([nk, e])
                         return Effect.unit
                       } else {
-                        return ParseResult.fail(e)
+                        return ParseResult.fail(ParseResult.typeLiteral(ast, [e]))
                       }
                     }
                     output[index] = t.right
@@ -691,7 +691,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return ParseResult.fail(e)
+                return ParseResult.fail(ParseResult.typeLiteral(ast, [e]))
               }
             }
           }
@@ -723,7 +723,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return ParseResult.fail(e)
+                    return ParseResult.fail(ParseResult.typeLiteral(ast, [e]))
                   }
                 } else {
                   if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -747,7 +747,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                             es.push([nk, e])
                             return Effect.unit
                           } else {
-                            return ParseResult.fail(e)
+                            return ParseResult.fail(ParseResult.typeLiteral(ast, [e]))
                           }
                         } else {
                           if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -767,7 +767,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            ParseResult.fail(sortByIndex(es)) :
+            ParseResult.fail(ParseResult.typeLiteral(ast, sortByIndex(es))) :
             ParseResult.succeed(output)
         if (queue && queue.length > 0) {
           const cqueue = queue

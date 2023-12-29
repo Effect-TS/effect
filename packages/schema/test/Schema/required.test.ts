@@ -19,14 +19,16 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      `["a"]
-└─ is missing`
+      `{ a: <transformation string <-> a positive number> }
+└─ ["a"]
+   └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { a: "-1" },
-      `["a"]
-└─ Expected a positive number, actual -1`
+      `{ a: <transformation string <-> a positive number> }
+└─ ["a"]
+   └─ Expected a positive number, actual -1`
     )
   })
 
@@ -143,11 +145,13 @@ describe("Schema > required", () => {
       {},
       `{ a: string } | { b: number }
 ├─ Union member
-│  └─ ["a"]
-│     └─ is missing
+│  └─ { a: string }
+│     └─ ["a"]
+│        └─ is missing
 └─ Union member
-   └─ ["b"]
-      └─ is missing`
+   └─ { b: number }
+      └─ ["b"]
+         └─ is missing`
     )
   })
 
@@ -166,19 +170,22 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      `["a"]
-└─ is missing`
+      `{ a: <suspended schema> | null }
+└─ ["a"]
+   └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { a: {} },
-      `["a"]
-└─ <suspended schema> | null
-   ├─ Union member
-   │  └─ ["a"]
-   │     └─ is missing
-   └─ Union member
-      └─ Expected null, actual {}`
+      `{ a: <suspended schema> | null }
+└─ ["a"]
+   └─ <suspended schema> | null
+      ├─ Union member
+      │  └─ { a: <suspended schema> | null }
+      │     └─ ["a"]
+      │        └─ is missing
+      └─ Union member
+         └─ Expected null, actual {}`
     )
   })
 

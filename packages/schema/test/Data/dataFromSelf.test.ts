@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import * as Data from "effect/Data"
 import { describe, expect, it } from "vitest"
 
-describe("Data/dataFromSelf", () => {
+describe("Data > dataFromSelf", () => {
   it("keyof", () => {
     const schema1 = S.keyof(S.dataFromSelf(S.struct({ a: S.string, b: S.string })))
     expect(schema1).toEqual(S.union(S.literal("a"), S.literal("b")))
@@ -31,8 +31,9 @@ describe("Data/dataFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       Data.struct({ a: "ok", b: "0" }),
-      `["b"]
-└─ Expected number, actual "0"`
+      `{ a: string; b: number }
+└─ ["b"]
+   └─ Expected number, actual "0"`
     )
   })
 

@@ -83,7 +83,9 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 }
 
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
-  ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
+  "`" + ast.head + ast.spans.map((span) =>
+    formatTemplateLiteralSpan(span) + span.literal
+  ).join("") + "`"
 
 const getExpected = (ast: AST.AST): Option.Option<string> =>
   AST.getIdentifierAnnotation(ast).pipe(
@@ -126,9 +128,9 @@ const formatTypeLiteral = (ast: AST.TypeLiteral): string => {
   if (ast.indexSignatures.length > 0) {
     const formattedIndexSignatures = ast.indexSignatures.map((is) =>
       `[x: ${formatAST(AST.getParameterBase(is.parameter))}]: ${formatAST(is.type)}`
-    ).join(" ")
+    ).join("; ")
     if (ast.propertySignatures.length > 0) {
-      return `{ ${formattedPropertySignatures}, ${formattedIndexSignatures} }`
+      return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
     } else {
       return `{ ${formattedIndexSignatures} }`
     }
@@ -203,7 +205,7 @@ export const formatAST = (ast: AST.AST): string => {
   }
 }
 
-const uncollapsible = { Union: true, Tuple: true }
+const uncollapsible = { Union: true, Tuple: true, TypeLiteral: true }
 
 const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseIssue>): boolean =>
   es.length === 1 && es[0].forest.length !== 0 &&
@@ -260,5 +262,7 @@ const go = (e: ParseIssue): Tree<string> => {
           return make(`[${e.index}]`, es)
         })
       )
+    case "TypeLiteral":
+      return make(formatAST(e.ast), e.errors.map(go))
   }
 }

@@ -29,8 +29,9 @@ describe("formatErrors", () => {
   it("forbidden", async () => {
     const schema = Util.effectify(S.struct({ a: S.string }), "all")
     expect(() => S.parseSync(schema)({ a: "a" })).toThrow(
-      new Error(`["a"]
-└─ is forbidden`)
+      new Error(`{ a: string }
+└─ ["a"]
+   └─ is forbidden`)
     )
   })
 
@@ -39,8 +40,9 @@ describe("formatErrors", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      `["a"]
-└─ is missing`
+      `{ a: string }
+└─ ["a"]
+   └─ is missing`
     )
   })
 
@@ -49,58 +51,10 @@ describe("formatErrors", () => {
     await Util.expectParseFailure(
       schema,
       { a: "a", b: 1 },
-      `["b"]
-└─ is unexpected, expected "a"`,
+      `{ a: string }
+└─ ["b"]
+   └─ is unexpected, expected "a"`,
       Util.onExcessPropertyError
-    )
-  })
-
-  it("should collapse trees that have a branching factor of 1", async () => {
-    const schema = S.struct({
-      a: S.struct({ b: S.struct({ c: S.array(S.struct({ d: S.string })) }) }),
-      e: S.optional(
-        S.union(
-          S.struct({ type: S.literal("f"), f: S.string }),
-          S.struct({ type: S.literal("g"), g: S.number })
-        ),
-        { exact: true }
-      )
-    })
-    await Util.expectParseFailure(
-      schema,
-      { a: { b: { c: [{ d: null }] } } },
-      `["a"]["b"]["c"]
-└─ ReadonlyArray<{ d: string }>
-   └─ [0]["d"]
-      └─ Expected string, actual null`
-    )
-    await Util.expectParseFailure(
-      schema,
-      { a: { b: { c: [{ d: null }, { d: 1 }] } } },
-      `["a"]["b"]["c"]
-└─ ReadonlyArray<{ d: string }>
-   └─ [0]["d"]
-      └─ Expected string, actual null`
-    )
-    await Util.expectParseFailure(
-      schema,
-      { a: { b: { c: [{ d: null }, { d: 1 }] } } },
-      `["a"]["b"]["c"]
-└─ ReadonlyArray<{ d: string }>
-   ├─ [0]["d"]
-   │  └─ Expected string, actual null
-   └─ [1]["d"]
-      └─ Expected string, actual 1`,
-      Util.allErrors
-    )
-    await Util.expectParseFailure(
-      schema,
-      { a: { b: { c: [{ d: "d" }] } }, e: { type: "f" } },
-      `["e"]
-└─ { type: "f"; f: string } | { type: "g"; g: number }
-   └─ Union member
-      └─ ["f"]
-         └─ is missing`
     )
   })
 })

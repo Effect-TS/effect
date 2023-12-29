@@ -44,9 +44,9 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
     case "TypeLiteral":
       return AST.createTypeLiteral(
         ast.propertySignatures.map((p) => ({ ...p, type: effectifyAST(p.type, mode) })),
-        ast.indexSignatures.map((is) =>
-          AST.createIndexSignature(is.parameter, effectifyAST(is.type, mode), is.isReadonly)
-        ),
+        ast.indexSignatures.map((is) => {
+          return AST.createIndexSignature(is.parameter, effectifyAST(is.type, mode), is.isReadonly)
+        }),
         ast.annotations
       )
     case "Union":
@@ -54,10 +54,16 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
     case "Suspend":
       return AST.createSuspend(() => effectifyAST(ast.f(), mode), ast.annotations)
     case "Refinement":
-      return AST.createRefinement(
-        effectifyAST(ast.from, mode),
-        ast.filter,
-        ast.annotations
+      return AST.mergeAnnotations(
+        AST.createRefinement(
+          effectifyAST(ast.from, mode),
+          ast.filter,
+          ast.annotations
+        ),
+        {
+          // hack the descripiton to not change the error message
+          [AST.DescriptionAnnotationId]: formatAST(ast)
+        }
       )
     case "Transform":
       return AST.createTransform(

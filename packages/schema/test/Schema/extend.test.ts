@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/extend", () => {
+describe("Schema > extend", () => {
   describe("decoding", () => {
     it(`struct extend struct (dual)`, async () => {
       const schema = S.extend(S.struct({ a: S.string }), S.struct({ b: S.number }))
@@ -202,26 +202,30 @@ describe("Schema/extend", () => {
       await Util.expectParseFailure(
         schema,
         {},
-        `["a"]
-└─ is missing`
+        `{ a: string; [x: string]: string }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { b: "b" },
-        `["a"]
-└─ is missing`
+        `{ a: string; [x: string]: string }
+└─ ["a"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: 1 },
-        `["a"]
-└─ Expected string, actual 1`
+        `{ a: string; [x: string]: string }
+└─ ["a"]
+   └─ Expected string, actual 1`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a", b: 1 },
-        `["b"]
-└─ Expected string, actual 1`
+        `{ a: string; [x: string]: string }
+└─ ["b"]
+   └─ Expected string, actual 1`
       )
     })
 

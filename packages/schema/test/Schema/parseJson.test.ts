@@ -63,8 +63,9 @@ describe("Schema > parseJson", () => {
       await Util.expectParseFailure(
         schema,
         `{"a":"b"}`,
-        `["a"]
-└─ Expected number, actual "b"`
+        `{ a: number }
+└─ ["a"]
+   └─ Expected number, actual "b"`
       )
     })
 

@@ -14,8 +14,9 @@ describe("Schema > partial", () => {
     await Util.expectParseFailure(
       schema,
       { a: undefined },
-      `["a"]
-└─ Expected number, actual undefined`
+      `{ a?: number }
+└─ ["a"]
+   └─ Expected number, actual undefined`
     )
   })
 
@@ -106,12 +107,13 @@ describe("Schema > partial", () => {
     await Util.expectParseFailure(
       schema,
       { a: 1 },
-      `["a"]
-└─ <suspended schema> | null
-   ├─ Union member
-   │  └─ Expected { a?: <suspended schema> | null }, actual 1
-   └─ Union member
-      └─ Expected null, actual 1`
+      `{ a?: <suspended schema> | null }
+└─ ["a"]
+   └─ <suspended schema> | null
+      ├─ Union member
+      │  └─ Expected { a?: <suspended schema> | null }, actual 1
+      └─ Union member
+         └─ Expected null, actual 1`
     )
   })
 

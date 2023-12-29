@@ -48,8 +48,9 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.struct({ a: S.string }),
       { a: "a" },
-      `["a"]
-└─ is forbidden`
+      `{ a: string }
+└─ ["a"]
+   └─ is forbidden`
     )
   })
 
@@ -57,8 +58,9 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.record(S.string, S.string),
       { a: "a" },
-      `["a"]
-└─ is forbidden`
+      `{ [x: string]: string }
+└─ ["a"]
+   └─ is forbidden`
     )
   })
 
@@ -66,7 +68,7 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.union(S.string, S.string.pipe(S.minLength(2))),
       "a",
-      `string | string
+      `a string at least 2 character(s) long | string
 ├─ Union member
 │  └─ is forbidden
 └─ Union member

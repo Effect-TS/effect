@@ -119,4 +119,11 @@ describe("Schema/attachPropertySignature", () => {
     )
     await Util.expectEncodeFailure(schema2, null as any, "Expected MyIdentifier, actual null")
   })
+
+  it.todo("decoding error message", async () => {
+    const schema = S.struct({
+      a: S.string
+    }).pipe(S.attachPropertySignature("_tag", "a"), S.identifier("MyIdentifier"))
+    await Util.expectParseFailure(schema, null, "Expected MyIdentifier, actual null")
+  })
 })

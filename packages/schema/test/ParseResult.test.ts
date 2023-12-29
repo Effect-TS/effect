@@ -11,8 +11,9 @@ describe("ParseResult", () => {
   it("toString()", () => {
     const schema = S.struct({ a: S.string })
     expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
-      Either.left(`["a"]
-└─ is missing`)
+      Either.left(`{ a: string }
+└─ ["a"]
+   └─ is missing`)
     )
   })
 
@@ -22,8 +23,9 @@ describe("ParseResult", () => {
       .toStrictEqual(
         Either.left({
           _id: "ParseError",
-          message: `["a"]
-└─ is missing`
+          message: `{ a: string }
+└─ ["a"]
+   └─ is missing`
         })
       )
   })
@@ -34,8 +36,9 @@ describe("ParseResult", () => {
       .toStrictEqual(
         Either.left(inspect({
           _id: "ParseError",
-          message: `["a"]
-└─ is missing`
+          message: `{ a: string }
+└─ ["a"]
+   └─ is missing`
         }))
       )
   })

@@ -18,14 +18,16 @@ describe("Schema > omit", () => {
     await Util.expectParseFailure(
       schema,
       { [a]: "a" },
-      `["b"]
-└─ is missing`
+      `{ Symbol(@effect/schema/test/a): string; b: a string <-> number transformation }
+└─ ["b"]
+   └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { b: 1 },
-      `[Symbol(@effect/schema/test/a)]
-└─ is missing`
+      `{ Symbol(@effect/schema/test/a): string; b: a string <-> number transformation }
+└─ [Symbol(@effect/schema/test/a)]
+   └─ is missing`
     )
   })
 
@@ -49,8 +51,9 @@ describe("Schema > omit", () => {
     await Util.expectParseFailure(
       schema,
       { a: "a" },
-      `["b"]
-└─ is missing`
+      `{ a?: string; b: a string <-> number transformation }
+└─ ["b"]
+   └─ is missing`
     )
   })
 
@@ -73,10 +76,13 @@ describe("Schema > omit", () => {
     await Util.expectParseFailure(
       schema,
       { as: [{ as: [] }] },
-      `["as"]
-└─ ReadonlyArray<<suspended schema>>
-   └─ [0]["a"]
-      └─ is missing`
+      `{ as: ReadonlyArray<<suspended schema>> }
+└─ ["as"]
+   └─ ReadonlyArray<<suspended schema>>
+      └─ [0]
+         └─ { a: string; as: ReadonlyArray<<suspended schema>> }
+            └─ ["a"]
+               └─ is missing`
     )
   })
 

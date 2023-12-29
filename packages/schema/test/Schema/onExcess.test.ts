@@ -39,11 +39,13 @@ describe("Schema > onExcess", () => {
         { a: 1, b: "b", c: true },
         `{ a?: number; b?: string } | { a?: number }
 ├─ Union member
-│  └─ ["c"]
-│     └─ is unexpected, expected "a" | "b"
+│  └─ { a?: number; b?: string }
+│     └─ ["c"]
+│        └─ is unexpected, expected "a" | "b"
 └─ Union member
-   └─ ["b"]
-      └─ is unexpected, expected "a"`,
+   └─ { a?: number }
+      └─ ["b"]
+         └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
       await Util.expectEncodeSuccess(

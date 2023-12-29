@@ -82,11 +82,13 @@ describe("Cause/cause", () => {
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
       `Cause (From)
 └─ Union member
-   └─ ["left"]
-      └─ Cause (From)
-         └─ Union member
-            └─ ["error"]
-               └─ is missing`
+   └─ Parallel (From)
+      └─ ["left"]
+         └─ Cause (From)
+            └─ Union member
+               └─ Fail (From)
+                  └─ ["error"]
+                     └─ is missing`
     )
   })
 
