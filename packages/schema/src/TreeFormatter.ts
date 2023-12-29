@@ -205,12 +205,6 @@ export const formatAST = (ast: AST.AST): string => {
   }
 }
 
-const uncollapsible = { Union: true, Tuple: true, TypeLiteral: true }
-
-const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseIssue>): boolean =>
-  es.length === 1 && es[0].forest.length !== 0 &&
-  !(errors[0]._tag in uncollapsible)
-
 /** @internal */
 export const getMessage = (e: Type) =>
   AST.getMessageAnnotation(e.expected).pipe(
@@ -229,13 +223,8 @@ const go = (e: ParseIssue): Tree<string> => {
       return make(
         `is unexpected, expected ${formatAST(e.expected)}`
       )
-    case "Key": {
-      const es = e.errors.map(go)
-      if (isCollapsible(es, e.errors)) {
-        return make(`[${formatActual(e.key)}]${es[0].value}`, es[0].forest)
-      }
-      return make(`[${formatActual(e.key)}]`, es)
-    }
+    case "Key":
+      return make(`[${formatActual(e.key)}]`, e.errors.map(go))
     case "Missing":
       return make("is missing")
     case "Union":
@@ -254,13 +243,7 @@ const go = (e: ParseIssue): Tree<string> => {
     case "Tuple":
       return make(
         formatAST(e.ast),
-        e.errors.map((e) => {
-          const es = e.errors.map(go)
-          if (isCollapsible(es, e.errors)) {
-            return make(`[${e.index}]${es[0].value}`, es[0].forest)
-          }
-          return make(`[${e.index}]`, es)
-        })
+        e.errors.map((e) => make(`[${e.index}]`, e.errors.map(go)))
       )
     case "TypeLiteral":
       return make(formatAST(e.ast), e.errors.map(go))
