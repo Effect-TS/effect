@@ -1832,62 +1832,64 @@ export const withMetric = dual<
 >(2, (self, metric) => metric(self))
 
 /** @internal */
-export const serviceFunctionEffect = <T extends Context.Tag<any, any>, Args extends Array<any>, R, E, A>(
-  service: T,
-  f: (_: Context.Tag.Service<T>) => (...args: Args) => Effect.Effect<R, E, A>
+export const serviceFunctionEffect = <T extends Effect.Effect<any, any, any>, Args extends Array<any>, R, E, A>(
+  getService: T,
+  f: (_: Effect.Effect.Success<T>) => (...args: Args) => Effect.Effect<R, E, A>
 ) =>
-(...args: Args): Effect.Effect<R | Context.Tag.Identifier<T>, E, A> => core.flatMap(service, (a) => f(a)(...args))
+(...args: Args): Effect.Effect<R | Effect.Effect.Context<T>, E | Effect.Effect.Error<T>, A> =>
+  core.flatMap(getService, (a) => f(a)(...args))
 
 /** @internal */
-export const serviceFunction = <T extends Context.Tag<any, any>, Args extends Array<any>, A>(
-  service: T,
-  f: (_: Context.Tag.Service<T>) => (...args: Args) => A
+export const serviceFunction = <T extends Effect.Effect<any, any, any>, Args extends Array<any>, A>(
+  getService: T,
+  f: (_: Effect.Effect.Success<T>) => (...args: Args) => A
 ) =>
-(...args: Args): Effect.Effect<Context.Tag.Identifier<T>, never, A> => core.map(service, (a) => f(a)(...args))
+(...args: Args): Effect.Effect<Effect.Effect.Context<T>, Effect.Effect.Error<T>, A> =>
+  core.map(getService, (a) => f(a)(...args))
 
 /** @internal */
-export const serviceFunctions = <I, S>(
-  tag: Context.Tag<I, S>
+export const serviceFunctions = <SR, SE, S>(
+  getService: Effect.Effect<SR, SE, S>
 ): {
   [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect.Effect<any, any, any> ? k : never }[keyof S]]:
     S[k] extends (...args: infer Args) => Effect.Effect<infer R, infer E, infer A>
-      ? (...args: Args) => Effect.Effect<R | I, E, A>
+      ? (...args: Args) => Effect.Effect<R | SR, E | SE, A>
       : never
 } =>
   new Proxy({} as any, {
     get(_target: any, prop: any, _receiver) {
-      return (...args: Array<any>) => core.flatMap(tag, (s: any) => s[prop](...args))
+      return (...args: Array<any>) => core.flatMap(getService, (s: any) => s[prop](...args))
     }
   })
 
 /** @internal */
-export const serviceConstants = <I, S>(
-  tag: Context.Tag<I, S>
+export const serviceConstants = <SR, SE, S>(
+  getService: Effect.Effect<SR, SE, S>
 ): {
   [k in { [k in keyof S]: S[k] extends Effect.Effect<any, any, any> ? k : never }[keyof S]]: S[k] extends
-    Effect.Effect<infer R, infer E, infer A> ? Effect.Effect<R | I, E, A> : never
+    Effect.Effect<infer R, infer E, infer A> ? Effect.Effect<R | SR, E | SE, A> : never
 } =>
   new Proxy({} as any, {
     get(_target: any, prop: any, _receiver) {
-      return core.flatMap(tag, (s: any) => s[prop])
+      return core.flatMap(getService, (s: any) => s[prop])
     }
   })
 
 /** @internal */
-export const serviceMembers = <I, S>(tag: Context.Tag<I, S>): {
+export const serviceMembers = <SR, SE, S>(getService: Effect.Effect<SR, SE, S>): {
   functions: {
     [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect.Effect<any, any, any> ? k : never }[keyof S]]:
       S[k] extends (...args: infer Args) => Effect.Effect<infer R, infer E, infer A>
-        ? (...args: Args) => Effect.Effect<R | I, E, A>
+        ? (...args: Args) => Effect.Effect<R | SR, E | SE, A>
         : never
   }
   constants: {
     [k in { [k in keyof S]: S[k] extends Effect.Effect<any, any, any> ? k : never }[keyof S]]: S[k] extends
-      Effect.Effect<infer R, infer E, infer A> ? Effect.Effect<R | I, E, A> : never
+      Effect.Effect<infer R, infer E, infer A> ? Effect.Effect<R | SR, E | SE, A> : never
   }
 } => ({
-  functions: serviceFunctions(tag),
-  constants: serviceConstants(tag)
+  functions: serviceFunctions(getService),
+  constants: serviceConstants(getService)
 })
 
 /** @internal */
