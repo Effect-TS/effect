@@ -957,15 +957,7 @@ export const createRefinement = <From extends AST>(
   from: From,
   filter: Refinement["filter"],
   annotations: Annotated["annotations"] = {}
-): Refinement<From> | Transform => {
-  if (isTransform(from)) {
-    // recurse right
-    return createTransform(
-      from.from,
-      createRefinement(from.to, filter, annotations),
-      from.transformation
-    )
-  }
+): Refinement<From> => {
   return { _tag: "Refinement", from, filter, annotations }
 }
 

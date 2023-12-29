@@ -19,14 +19,14 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      `{ a: <transformation string <-> a positive number> }
+      `{ a: a positive number }
 └─ ["a"]
    └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { a: "-1" },
-      `{ a: <transformation string <-> a positive number> }
+      `{ a: a positive number }
 └─ ["a"]
    └─ Expected a positive number, actual -1`
     )
