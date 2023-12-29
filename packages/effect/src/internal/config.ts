@@ -256,6 +256,30 @@ export const integer = (name?: string): Config.Config<number> => {
 }
 
 /** @internal */
+export type LiteralValue = string | number | boolean | null | bigint
+
+/** @internal */
+export const literal = <Literals extends ReadonlyArray<LiteralValue>>(...literals: Literals) =>
+(
+  name?: string
+): Config.Config<Literals[number]> => {
+  const valuesString = literals.map(String).join(", ")
+  const config = primitive(`one of (${valuesString})`, (text) => {
+    const found = literals.find((value) => String(value) === text)
+    if (found === undefined) {
+      return Either.left(
+        configError.InvalidData(
+          [],
+          `Expected one of (${valuesString}) but received ${text}`
+        )
+      )
+    }
+    return Either.right(found)
+  })
+  return name === undefined ? config : nested(config, name)
+}
+
+/** @internal */
 export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
   const config = mapOrFail(string(), (value) => {
     const label = value.toUpperCase()

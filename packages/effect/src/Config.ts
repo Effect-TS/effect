@@ -152,6 +152,19 @@ export const number: (name?: string) => Config<number> = internal.number
 export const integer: (name?: string) => Config<number> = internal.integer
 
 /**
+ * Constructs a config for a literal value.
+ *
+ * @example
+ * const config = Config.literal("http", "https")("PROTOCOL")
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const literal: <Literals extends ReadonlyArray<internal.LiteralValue>>(...literals: Literals) => (
+  name?: string
+) => Config<Literals[number]> = internal.literal
+
+/**
  * Constructs a config for a `LogLevel` value.
  *
  * @since 2.0.0

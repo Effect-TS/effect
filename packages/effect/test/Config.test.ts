@@ -93,6 +93,35 @@ describe("Config", () => {
     })
   })
 
+  describe("literal", () => {
+    it("name = undefined", () => {
+      const config = Config.array(Config.literal("a", "b")(), "ITEMS")
+      assertSuccess(config, [["ITEMS", "a"]], ["a"])
+      assertFailure(
+        config,
+        [["ITEMS", "value"]],
+        ConfigError.InvalidData(["ITEMS"], "Expected one of (a, b) but received value")
+      )
+    })
+
+    it("name != undefined", () => {
+      const config = Config.literal("a", 0, -0.3, BigInt(5), false, null)("LITERAL")
+      assertSuccess(config, [["LITERAL", "a"]], "a")
+      assertSuccess(config, [["LITERAL", "0"]], 0)
+      assertSuccess(config, [["LITERAL", "-0.3"]], -0.3)
+      assertSuccess(config, [["LITERAL", "5"]], BigInt(5))
+      assertSuccess(config, [["LITERAL", "false"]], false)
+      assertSuccess(config, [["LITERAL", "null"]], null)
+
+      assertFailure(config, [], ConfigError.MissingData(["LITERAL"], "Expected LITERAL to exist in the provided map"))
+      assertFailure(
+        config,
+        [["LITERAL", "value"]],
+        ConfigError.InvalidData(["LITERAL"], "Expected one of (a, 0, -0.3, 5, false, null) but received value")
+      )
+    })
+  })
+
   describe("date", () => {
     it("name = undefined", () => {
       const config = Config.date()
