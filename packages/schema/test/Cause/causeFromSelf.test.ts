@@ -5,7 +5,7 @@ import * as Cause from "effect/Cause"
 import * as FiberId from "effect/FiberId"
 import { describe, expect, it } from "vitest"
 
-describe("Cause/causeFromSelf", () => {
+describe("Cause > causeFromSelf", () => {
   it("property tests", () => {
     Util.roundtrip(S.causeFromSelf(S.NumberFromString))
   })
@@ -19,22 +19,22 @@ describe("Cause/causeFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       Cause.fail("a"),
-      `Cause (From)
+      `CauseFrom
 └─ Union member
-   └─ Fail (From)
+   └─ CauseFailFrom
       └─ ["error"]
          └─ Expected a string <-> number transformation, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
-      `Cause (From)
+      `CauseFrom
 └─ Union member
-   └─ Parallel (From)
+   └─ CauseParallelFrom
       └─ ["right"]
-         └─ Cause (From)
+         └─ CauseFrom
             └─ Union member
-               └─ Fail (From)
+               └─ CauseFailFrom
                   └─ ["error"]
                      └─ Expected a string <-> number transformation, actual "a"`
     )

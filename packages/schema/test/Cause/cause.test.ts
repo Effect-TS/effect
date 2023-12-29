@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Cause, FiberId } from "effect"
 import { assert, describe, it } from "vitest"
 
-describe("Cause/cause", () => {
+describe("Cause > cause", () => {
   it("property tests", () => {
     Util.roundtrip(S.cause(S.NumberFromString, S.unknown))
   })
@@ -68,25 +68,25 @@ describe("Cause/cause", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected Cause (From), actual null`
+      `Expected CauseFrom, actual null`
     )
     await Util.expectParseFailure(
       schema,
       {},
-      `Cause (From)
+      `CauseFrom
 └─ ["_tag"]
    └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
-      `Cause (From)
+      `CauseFrom
 └─ Union member
-   └─ Parallel (From)
+   └─ CauseParallelFrom
       └─ ["left"]
-         └─ Cause (From)
+         └─ CauseFrom
             └─ Union member
-               └─ Fail (From)
+               └─ CauseFailFrom
                   └─ ["error"]
                      └─ is missing`
     )

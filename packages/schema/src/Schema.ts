@@ -2947,6 +2947,20 @@ export {
   _Secret as Secret
 }
 
+const DurationMillis = struct({
+  _tag: literal("Millis"),
+  millis: number
+}).pipe(description("DurationMillis"))
+
+const DurationNanos = struct({
+  _tag: literal("Nanos"),
+  nanos: bigintFromSelf
+}).pipe(description("DurationNanos"))
+
+const DurationInfinity = struct({
+  _tag: literal("Infinity")
+}).pipe(description("DurationInfinity"))
+
 /**
  * @category Duration constructors
  * @since 1.0.0
@@ -2955,17 +2969,9 @@ export const DurationFromSelf: Schema<Duration.Duration> = declare(
   [],
   struct({
     value: union(
-      struct({
-        _tag: literal("Millis"),
-        millis: number
-      }),
-      struct({
-        _tag: literal("Nanos"),
-        nanos: bigintFromSelf
-      }),
-      struct({
-        _tag: literal("Infinity")
-      })
+      DurationMillis,
+      DurationNanos,
+      DurationInfinity
     )
   }),
   () => (u, _, ast) =>
@@ -3488,16 +3494,21 @@ export type OptionFrom<I> =
     readonly value: I
   }
 
+const OptionNoneFrom = struct({
+  _tag: literal("None")
+}).pipe(description("OptionNoneFrom"))
+
+const optionSomeFrom = <I, A>(value: Schema<I, A>) =>
+  struct({
+    _tag: literal("Some"),
+    value
+  }).pipe(description("OptionSomeFrom"))
+
 const optionFrom = <I, A>(value: Schema<I, A>): Schema<OptionFrom<I>, OptionFrom<A>> =>
   union(
-    struct({
-      _tag: literal("None")
-    }).pipe(description("None (From)")),
-    struct({
-      _tag: literal("Some"),
-      value
-    }).pipe(description("Some (From)"))
-  ).pipe(description("Option (From)"))
+    OptionNoneFrom,
+    optionSomeFrom(value)
+  ).pipe(description("OptionFrom"))
 
 const optionDecode = <A>(input: OptionFrom<A>): Option.Option<A> =>
   input._tag === "None" ? Option.none() : Option.some(input.value)
@@ -3600,20 +3611,26 @@ export type EitherFrom<IE, IA> =
     readonly right: IA
   }
 
+const rightFrom = <IA, A>(right: Schema<IA, A>) =>
+  struct({
+    _tag: literal("Right"),
+    right
+  }).pipe(description("RightFrom"))
+
+const leftFrom = <IE, E>(left: Schema<IE, E>) =>
+  struct({
+    _tag: literal("Left"),
+    left
+  }).pipe(description("LeftFrom"))
+
 const eitherFrom = <IE, E, IA, A>(
   left: Schema<IE, E>,
   right: Schema<IA, A>
 ): Schema<EitherFrom<IE, IA>, EitherFrom<E, A>> =>
   union(
-    struct({
-      _tag: literal("Left"),
-      left
-    }).pipe(description("Left (From)")),
-    struct({
-      _tag: literal("Right"),
-      right
-    }).pipe(description("Right (From)"))
-  ).pipe(description("Either (From)"))
+    rightFrom(right),
+    leftFrom(left)
+  ).pipe(description("EitherFrom"))
 
 const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<E, A> =>
   input._tag === "Left" ? Either.left(input.left) : Either.right(input.right)
@@ -4553,27 +4570,33 @@ export type FiberIdFrom =
     readonly startTimeMillis: number
   }
 
+const FiberIdCompositeFrom = struct({
+  _tag: literal("Composite"),
+  left: suspend(() => FiberIdFrom),
+  right: suspend(() => FiberIdFrom)
+}).pipe(description("FiberIdCompositeFrom"))
+
+const FiberIdNoneFrom = struct({
+  _tag: literal("None")
+}).pipe(description("FiberIdNoneFrom"))
+
+const FiberIdRuntimeFrom = struct({
+  _tag: literal("Runtime"),
+  id: Int.pipe(nonNegative({
+    title: "id",
+    description: "id"
+  })),
+  startTimeMillis: Int.pipe(nonNegative({
+    title: "startTimeMillis",
+    description: "startTimeMillis"
+  }))
+}).pipe(description("FiberIdRuntimeFrom"))
+
 const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
-  struct({
-    _tag: literal("Composite"),
-    left: suspend(() => FiberIdFrom),
-    right: suspend(() => FiberIdFrom)
-  }).pipe(description("Composite (From)")),
-  struct({
-    _tag: literal("None")
-  }).pipe(description("None (From)")),
-  struct({
-    _tag: literal("Runtime"),
-    id: Int.pipe(nonNegative({
-      title: "id",
-      description: "id"
-    })),
-    startTimeMillis: Int.pipe(nonNegative({
-      title: "startTimeMillis",
-      description: "startTimeMillis"
-    }))
-  }).pipe(description("Runtime (From)"))
-).pipe(description("FiberId (From)"))
+  FiberIdCompositeFrom,
+  FiberIdNoneFrom,
+  FiberIdRuntimeFrom
+).pipe(description("FiberIdFrom"))
 
 const fiberIdFromArbitrary = arbitrary.unsafe(FiberIdFrom)
 
@@ -4682,37 +4705,53 @@ export type CauseFrom<E> =
     readonly right: CauseFrom<E>
   }
 
+const causeDieFrom = (defect: Schema<unknown, unknown>) =>
+  struct({
+    _tag: literal("Die"),
+    defect
+  }).pipe(description("CauseDieFrom"))
+
+const CauseEmptyFrom = struct({
+  _tag: literal("Empty")
+}).pipe(description("CauseEmptyFrom"))
+
+const causeFailFrom = <EI, E>(error: Schema<EI, E>) =>
+  struct({
+    _tag: literal("Fail"),
+    error
+  }).pipe(description("CauseFailFrom"))
+
+const CauseInterruptFrom = struct({
+  _tag: literal("Interrupt"),
+  fiberId: FiberIdFrom
+}).pipe(description("CauseInterruptFrom"))
+
+const causeParallelFrom = <EI, E>(causeFrom: () => Schema<CauseFrom<EI>, CauseFrom<E>>) =>
+  struct({
+    _tag: literal("Parallel"),
+    left: suspend(causeFrom),
+    right: suspend(causeFrom)
+  }).pipe(description("CauseParallelFrom"))
+
+const causeSequentialFrom = <EI, E>(causeFrom: () => Schema<CauseFrom<EI>, CauseFrom<E>>) =>
+  struct({
+    _tag: literal("Sequential"),
+    left: suspend(causeFrom),
+    right: suspend(causeFrom)
+  }).pipe(description("CauseSequentialFrom"))
+
 const causeFrom = <EI, E>(
   error: Schema<EI, E>,
   defect: Schema<unknown, unknown>
 ): Schema<CauseFrom<EI>, CauseFrom<E>> => {
   const out: Schema<CauseFrom<EI>, CauseFrom<E>> = union(
-    struct({
-      _tag: literal("Die"),
-      defect
-    }).pipe(description("Die (From)")),
-    struct({
-      _tag: literal("Empty")
-    }).pipe(description("Empty (From)")),
-    struct({
-      _tag: literal("Fail"),
-      error
-    }).pipe(description("Fail (From)")),
-    struct({
-      _tag: literal("Interrupt"),
-      fiberId: FiberIdFrom
-    }).pipe(description("Interrupt (From)")),
-    struct({
-      _tag: literal("Parallel"),
-      left: suspend(() => out),
-      right: suspend(() => out)
-    }).pipe(description("Parallel (From)")),
-    struct({
-      _tag: literal("Sequential"),
-      left: suspend(() => out),
-      right: suspend(() => out)
-    }).pipe(description("Sequential (From)"))
-  ).pipe(description("Cause (From)"))
+    causeDieFrom(defect),
+    CauseEmptyFrom,
+    causeFailFrom(error),
+    CauseInterruptFrom,
+    causeParallelFrom(() => out),
+    causeSequentialFrom(() => out)
+  ).pipe(description("CauseFrom"))
   return out
 }
 
@@ -4856,21 +4895,32 @@ export type ExitFrom<E, A> =
     readonly value: A
   }
 
+const exitFailureFrom = <EI, E>(
+  error: Schema<EI, E>,
+  defect: Schema<unknown, unknown>
+) =>
+  struct({
+    _tag: literal("Failure"),
+    cause: causeFrom(error, defect)
+  }).pipe(description("ExitFailureFrom"))
+
+const exitSuccessFrom = <AI, A>(
+  value: Schema<AI, A>
+) =>
+  struct({
+    _tag: literal("Success"),
+    value
+  }).pipe(description("ExitSuccessFrom"))
+
 const exitFrom = <EI, E, AI, A>(
   error: Schema<EI, E>,
   value: Schema<AI, A>,
   defect: Schema<unknown, unknown>
 ): Schema<ExitFrom<EI, AI>, ExitFrom<E, A>> =>
   union(
-    struct({
-      _tag: literal("Failure"),
-      cause: causeFrom(error, defect)
-    }).pipe(description("Failure (From)")),
-    struct({
-      _tag: literal("Success"),
-      value
-    }).pipe(description("Success (From)"))
-  ).pipe(description("Exit (From)"))
+    exitFailureFrom(error, defect),
+    exitSuccessFrom(value)
+  ).pipe(description("ExitFrom"))
 
 const exitDecode = <E, A>(input: ExitFrom<E, A>): Exit.Exit<E, A> => {
   switch (input._tag) {
