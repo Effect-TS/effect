@@ -156,10 +156,12 @@ const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest
       nodeRequest.off("error", onError)
       resume(Effect.succeed(response))
     }
+    nodeRequest.on("upgrade", onResponse)
     nodeRequest.on("response", onResponse)
 
     return Effect.sync(() => {
       nodeRequest.off("error", onError)
+      nodeRequest.off("upgrade", onResponse)
       nodeRequest.off("response", onResponse)
     })
   })
