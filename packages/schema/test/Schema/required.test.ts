@@ -28,7 +28,9 @@ describe("Schema > required", () => {
       { a: "-1" },
       `{ a: a positive number }
 └─ ["a"]
-   └─ Expected a positive number, actual -1`
+   └─ a positive number
+      └─ Predicate refinement failure
+         └─ Expected a positive number, actual -1`
     )
   })
 
@@ -127,9 +129,9 @@ describe("Schema > required", () => {
 └─ [2]
    └─ number | boolean
       ├─ Union member
-      │  └─ Expected number, actual "a"
+      │  └─ Expected a number, actual "a"
       └─ Union member
-         └─ Expected boolean, actual "a"`
+         └─ Expected a boolean, actual "a"`
     )
   })
 

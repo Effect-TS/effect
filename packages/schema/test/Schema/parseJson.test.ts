@@ -93,7 +93,7 @@ describe("Schema > parseJson", () => {
 └─ To side transformation failure
    └─ { a: number }
       └─ ["a"]
-         └─ Expected number, actual "b"`
+         └─ Expected a number, actual "b"`
       )
     })
 

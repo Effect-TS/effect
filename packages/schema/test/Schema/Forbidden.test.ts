@@ -70,7 +70,9 @@ describe("Schema > Forbidden", () => {
       "a",
       `a string at least 2 character(s) long | (string <-> string)
 ├─ Union member
-│  └─ is forbidden
+│  └─ a string at least 2 character(s) long
+│     └─ From side refinement failure
+│        └─ is forbidden
 └─ Union member
    └─ is forbidden`
     )

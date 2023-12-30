@@ -13,7 +13,7 @@ describe("Parser", () => {
     const schema = S.string
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrow(
-      new Error(`Expected string, actual 1`)
+      new Error(`Expected a string, actual 1`)
     )
   })
 
@@ -115,7 +115,7 @@ describe("Parser", () => {
     const schema = S.NumberFromString
     expect(P.validateSync(schema)(1)).toEqual(1)
     expect(() => P.validateSync(schema)("1")).toThrow(
-      new Error(`Expected number, actual "1"`)
+      new Error(`Expected a number, actual "1"`)
     )
   })
 

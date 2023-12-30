@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, it } from "vitest"
 
-describe("Schema/greaterThanOrEqualToDuration", () => {
+describe("Duration > greaterThanOrEqualToDuration", () => {
   const schema = S.DurationFromSelf.pipe(S.greaterThanOrEqualToDuration("5 seconds"))
 
   it("decoding", async () => {
@@ -22,7 +22,9 @@ describe("Schema/greaterThanOrEqualToDuration", () => {
     await Util.expectParseFailure(
       schema,
       Duration.decode("4 seconds"),
-      `Expected a Duration greater than or equal to Duration(5s), actual Duration(4s)`
+      `a Duration greater than or equal to Duration(5s)
+└─ Predicate refinement failure
+   └─ Expected a Duration greater than or equal to Duration(5s), actual Duration(4s)`
     )
   })
 

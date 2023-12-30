@@ -56,6 +56,7 @@ export const parseError = (
  */
 export type ParseIssue =
   // context
+  | Refinement
   | Tuple
   | TypeLiteral
   | Union
@@ -104,7 +105,7 @@ export const transform = (
  */
 export interface Type {
   readonly _tag: "Type"
-  readonly expected: AST.AST
+  readonly ast: AST.AST
   readonly actual: unknown
   readonly message: Option.Option<string>
 }
@@ -113,9 +114,9 @@ export interface Type {
  * @category constructors
  * @since 1.0.0
  */
-export const type = (expected: AST.AST, actual: unknown, message?: string): Type => ({
+export const type = (ast: AST.AST, actual: unknown, message?: string): Type => ({
   _tag: "Type",
-  expected,
+  ast,
   actual,
   message: Option.fromNullable(message)
 })
@@ -137,6 +138,29 @@ export interface Forbidden {
 export const forbidden: Forbidden = {
   _tag: "Forbidden"
 }
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface Refinement {
+  readonly _tag: "Refinement"
+  readonly ast: AST.Refinement
+  readonly actual: unknown
+  readonly kind: "From" | "Predicate"
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const refinement = (
+  ast: AST.Refinement,
+  actual: unknown,
+  kind: "From" | "Predicate",
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+): Refinement => ({ _tag: "Refinement", ast, actual, kind, errors })
 
 /**
  * @category model

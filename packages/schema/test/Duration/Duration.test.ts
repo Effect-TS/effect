@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, it } from "vitest"
 
-describe("Duration", () => {
+describe("Duration > Duration", () => {
   const schema = S.Duration
 
   it("property tests", () => {
@@ -19,7 +19,11 @@ describe("Duration", () => {
 └─ From side transformation failure
    └─ readonly [seconds, nanos]
       └─ [0]
-         └─ Expected a non-negative number, actual -500`
+         └─ seconds
+            └─ From side refinement failure
+               └─ NonNegative
+                  └─ Predicate refinement failure
+                     └─ Expected a non-negative number, actual -500`
     )
     await Util.expectParseFailure(
       schema,
@@ -28,7 +32,11 @@ describe("Duration", () => {
 └─ From side transformation failure
    └─ readonly [seconds, nanos]
       └─ [1]
-         └─ Expected a non-negative number, actual -123`
+         └─ nanos
+            └─ From side refinement failure
+               └─ NonNegative
+                  └─ Predicate refinement failure
+                     └─ Expected a non-negative number, actual -123`
     )
     await Util.expectParseFailure(
       schema,

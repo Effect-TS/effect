@@ -27,7 +27,7 @@ describe("Chunk > chunk", () => {
 └─ From side transformation failure
    └─ ReadonlyArray<number>
       └─ [1]
-         └─ Expected number, actual "a"`
+         └─ Expected a number, actual "a"`
     )
   })
 

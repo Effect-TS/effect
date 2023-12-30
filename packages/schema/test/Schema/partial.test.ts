@@ -16,7 +16,7 @@ describe("Schema > partial", () => {
       { a: undefined },
       `{ a?: number }
 └─ ["a"]
-   └─ Expected number, actual undefined`
+   └─ Expected a number, actual undefined`
     )
   })
 
@@ -40,7 +40,7 @@ describe("Schema > partial", () => {
 └─ [0]
    └─ number | undefined
       ├─ Union member
-      │  └─ Expected number, actual "a"
+      │  └─ Expected a number, actual "a"
       └─ Union member
          └─ Expected undefined, actual "a"`
     )
@@ -62,11 +62,11 @@ describe("Schema > partial", () => {
 │     └─ [0]
 │        └─ number | undefined
 │           ├─ Union member
-│           │  └─ Expected number, actual "a"
+│           │  └─ Expected a number, actual "a"
 │           └─ Union member
 │              └─ Expected undefined, actual "a"
 └─ Union member
-   └─ Expected string, actual ["a"]`
+   └─ Expected a string, actual ["a"]`
     )
   })
 

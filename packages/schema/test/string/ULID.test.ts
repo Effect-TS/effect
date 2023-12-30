@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("string/ULID", () => {
+describe("string > ULID", () => {
   it("property tests", () => {
     Util.roundtrip(S.ULID)
   })
@@ -13,7 +13,9 @@ describe("string/ULID", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected ULID, actual ""`
+      `ULID
+└─ Predicate refinement failure
+   └─ Expected a ULID, actual ""`
     )
   })
 })

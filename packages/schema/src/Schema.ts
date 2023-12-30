@@ -1963,6 +1963,12 @@ export const lowercased =
     )
 
 /**
+ * @category string constructors
+ * @since 1.0.0
+ */
+export const Lowercased: Schema<string> = string.pipe(lowercased({ identifier: "Lowercased" }))
+
+/**
  * @category type id
  * @since 1.0.0
  */
@@ -1983,6 +1989,12 @@ export const uppercased =
         ...options
       })
     )
+
+/**
+ * @category string constructors
+ * @since 1.0.0
+ */
+export const Uppercased: Schema<string> = string.pipe(uppercased({ identifier: "Uppercased" }))
 
 /**
  * @category type id
@@ -2034,7 +2046,7 @@ export const nonEmpty = <A extends string>(
  */
 export const Lowercase: Schema<string> = transform(
   string,
-  string.pipe(lowercased()),
+  Lowercased,
   (s) => s.toLowerCase(),
   identity
 ).pipe(identifier("Lowercase"))
@@ -2047,10 +2059,16 @@ export const Lowercase: Schema<string> = transform(
  */
 export const Uppercase: Schema<string> = transform(
   string,
-  string.pipe(uppercased()),
+  Uppercased,
   (s) => s.toUpperCase(),
   identity
 ).pipe(identifier("Uppercase"))
+
+/**
+ * @category string constructors
+ * @since 1.0.0
+ */
+export const Trimmed: Schema<string> = string.pipe(trimmed({ identifier: "Trimmed" }))
 
 /**
  * This schema allows removing whitespaces from the beginning and end of a string.
@@ -2060,7 +2078,7 @@ export const Uppercase: Schema<string> = transform(
  */
 export const Trim: Schema<string> = transform(
   string,
-  string.pipe(trimmed()),
+  Trimmed,
   (s) => s.trim(),
   identity
 ).pipe(identifier("Trim"))
@@ -2139,13 +2157,7 @@ export const parseJson: {
  * @category string constructors
  * @since 1.0.0
  */
-export const NonEmpty: Schema<string> = string.pipe(nonEmpty())
-
-/**
- * @category string constructors
- * @since 1.0.0
- */
-export const Trimmed: Schema<string> = string.pipe(trimmed())
+export const NonEmpty: Schema<string> = string.pipe(nonEmpty({ identifier: "NonEmpty" }))
 
 /**
  * @category type id
@@ -2162,6 +2174,7 @@ const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
 export const UUID: Schema<string> = string.pipe(
   pattern(uuidRegex, {
     typeId: UUIDTypeId,
+    identifier: "UUID",
     title: "UUID",
     description: "a UUID",
     arbitrary: (): Arbitrary<string> => (fc) => fc.uuid()
@@ -2183,6 +2196,7 @@ const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
 export const ULID: Schema<string> = string.pipe(
   pattern(ulidRegex, {
     typeId: ULIDTypeId,
+    identifier: "ULID",
     title: "ULID",
     description: "a ULID",
     arbitrary: (): Arbitrary<string> => (fc) => fc.ulid()
@@ -2516,43 +2530,43 @@ export const NumberFromString: Schema<string, number> = transformOrFail(
  * @category number constructors
  * @since 1.0.0
  */
-export const Finite: Schema<number> = number.pipe(finite())
+export const Finite: Schema<number> = number.pipe(finite({ identifier: "Finite" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Int: Schema<number> = number.pipe(int())
+export const Int: Schema<number> = number.pipe(int({ identifier: "Int" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNaN: Schema<number> = number.pipe(nonNaN())
+export const NonNaN: Schema<number> = number.pipe(nonNaN({ identifier: "NonNaN" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Positive: Schema<number> = number.pipe(positive())
+export const Positive: Schema<number> = number.pipe(positive({ identifier: "Positive" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Negative: Schema<number> = number.pipe(negative())
+export const Negative: Schema<number> = number.pipe(negative({ identifier: "Negative" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonPositive: Schema<number> = number.pipe(nonPositive())
+export const NonPositive: Schema<number> = number.pipe(nonPositive({ identifier: "NonPositive" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNegative: Schema<number> = number.pipe(nonNegative())
+export const NonNegative: Schema<number> = number.pipe(nonNegative({ identifier: "NonNegative" }))
 
 /**
  * @category type id
@@ -2581,6 +2595,7 @@ export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
 export const JsonNumber: Schema<number> = number.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
+    identifier: "JsonNumber",
     title: "JsonNumber",
     description: "a JSON number",
     jsonSchema: { type: "number" }
@@ -2837,32 +2852,40 @@ export const bigint: Schema<string, bigint> = transformOrFail(
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(positiveBigint())
+export const PositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
+  positiveBigint({ identifier: "PositiveBigintFromSelf" })
+)
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigint: Schema<string, bigint> = bigint.pipe(positiveBigint())
+export const PositiveBigint: Schema<string, bigint> = bigint.pipe(
+  positiveBigint({ identifier: "PositiveBigint" })
+)
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(negativeBigint())
+export const NegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
+  negativeBigint({ identifier: "NegativeBigintFromSelf" })
+)
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NegativeBigint: Schema<string, bigint> = bigint.pipe(negativeBigint())
+export const NegativeBigint: Schema<string, bigint> = bigint.pipe(
+  negativeBigint({ identifier: "NegativeBigint" })
+)
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
 export const NonPositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  nonPositiveBigint()
+  nonPositiveBigint({ identifier: "NonPositiveBigintFromSelf" })
 )
 
 /**
@@ -2870,7 +2893,7 @@ export const NonPositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
  * @since 1.0.0
  */
 export const NonPositiveBigint: Schema<string, bigint> = bigint.pipe(
-  nonPositiveBigint()
+  nonPositiveBigint({ identifier: "NonPositiveBigint" })
 )
 
 /**
@@ -2878,7 +2901,7 @@ export const NonPositiveBigint: Schema<string, bigint> = bigint.pipe(
  * @since 1.0.0
  */
 export const NonNegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  nonNegativeBigint()
+  nonNegativeBigint({ identifier: "NonNegativeBigintFromSelf" })
 )
 
 /**
@@ -2886,7 +2909,7 @@ export const NonNegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
  * @since 1.0.0
  */
 export const NonNegativeBigint: Schema<string, bigint> = bigint.pipe(
-  nonNegativeBigint()
+  nonNegativeBigint({ identifier: "NonNegativeBigint" })
 )
 
 /**
@@ -3468,7 +3491,7 @@ export const DateFromString: Schema<string, Date> = transform(
   (n) => n.toISOString()
 ).pipe(identifier("DateFromString"))
 
-const _Date: Schema<string, Date> = DateFromString.pipe(validDate())
+const _Date: Schema<string, Date> = DateFromString.pipe(validDate({ identifier: "Date" }))
 
 export {
   /**
@@ -4017,6 +4040,14 @@ export const positiveBigDecimal = <A extends BigDecimal.BigDecimal>(
   )
 
 /**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const PositiveBigDecimalFromSelf = BigDecimalFromSelf.pipe(
+  positiveBigDecimal({ identifier: "PositiveBigDecimalFromSelf" })
+)
+
+/**
  * @category type id
  * @since 1.0.0
  */
@@ -4039,6 +4070,14 @@ export const nonNegativeBigDecimal = <A extends BigDecimal.BigDecimal>(
       ...options
     })
   )
+
+/**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const NonNegativeBigDecimalFromSelf = BigDecimalFromSelf.pipe(
+  nonNegativeBigDecimal({ identifier: "NonNegativeBigDecimalFromSelf" })
+)
 
 /**
  * @category type id
@@ -4065,6 +4104,14 @@ export const negativeBigDecimal = <A extends BigDecimal.BigDecimal>(
   )
 
 /**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const NegativeBigDecimalFromSelf = BigDecimalFromSelf.pipe(
+  negativeBigDecimal({ identifier: "NegativeBigDecimalFromSelf" })
+)
+
+/**
  * @category type id
  * @since 1.0.0
  */
@@ -4087,6 +4134,14 @@ export const nonPositiveBigDecimal = <A extends BigDecimal.BigDecimal>(
       ...options
     })
   )
+
+/**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const NonPositiveBigDecimalFromSelf = BigDecimalFromSelf.pipe(
+  nonPositiveBigDecimal({ identifier: "NonPositiveBigDecimalFromSelf" })
+)
 
 /**
  * @category type id

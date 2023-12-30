@@ -10,7 +10,7 @@ describe("symbol > symbolFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected symbol, actual null`
+      `Expected a symbol, actual null`
     )
   })
 

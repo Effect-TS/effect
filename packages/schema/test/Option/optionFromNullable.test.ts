@@ -27,7 +27,7 @@ describe("Option > optionFromNullable", () => {
       └─ Union member
          └─ NumberFromString
             └─ From side transformation failure
-               └─ Expected string, actual undefined`
+               └─ Expected a string, actual undefined`
     )
     await Util.expectParseFailure(
       schema,
@@ -40,7 +40,7 @@ describe("Option > optionFromNullable", () => {
       └─ Union member
          └─ NumberFromString
             └─ From side transformation failure
-               └─ Expected string, actual {}`
+               └─ Expected a string, actual {}`
     )
   })
 

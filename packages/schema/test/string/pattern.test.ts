@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("string/pattern", () => {
+describe("string > pattern", () => {
   it("is", () => {
     const schema = S.string.pipe(S.pattern(/^abb+$/))
     const is = S.is(schema)
@@ -28,12 +28,16 @@ describe("string/pattern", () => {
     await Util.expectParseFailure(
       schema,
       "ab",
-      `Expected a string matching the pattern ^abb+$, actual "ab"`
+      `a string matching the pattern ^abb+$
+└─ Predicate refinement failure
+   └─ Expected a string matching the pattern ^abb+$, actual "ab"`
     )
     await Util.expectParseFailure(
       schema,
       "a",
-      `Expected a string matching the pattern ^abb+$, actual "a"`
+      `a string matching the pattern ^abb+$
+└─ Predicate refinement failure
+   └─ Expected a string matching the pattern ^abb+$, actual "a"`
     )
   })
 })

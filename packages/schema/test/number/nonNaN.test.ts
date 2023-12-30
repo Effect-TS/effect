@@ -4,8 +4,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("number/nonNaN", () => {
-  const schema = S.number.pipe(S.nonNaN())
+describe("number > NonNaN", () => {
+  const schema = S.NonNaN
 
   it("property tests", () => {
     Util.roundtrip(schema)
@@ -19,7 +19,13 @@ describe("number/nonNaN", () => {
 
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(schema, NaN, `Expected a number NaN excluded, actual NaN`)
+    await Util.expectParseFailure(
+      schema,
+      NaN,
+      `NonNaN
+└─ Predicate refinement failure
+   └─ Expected a number NaN excluded, actual NaN`
+    )
   })
 
   it("pretty", () => {

@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { BigDecimal } from "effect"
 import { describe, it } from "vitest"
 
-describe("BigDecimal/greaterThanBigDecimal", () => {
+describe("BigDecimal > greaterThanBigDecimal", () => {
   const min = BigDecimal.fromNumber(10)
   const schema = S.BigDecimal.pipe(S.greaterThanBigDecimal(min))
 
@@ -11,12 +11,16 @@ describe("BigDecimal/greaterThanBigDecimal", () => {
     await Util.expectParseFailure(
       schema,
       "0",
-      "Expected a BigDecimal greater than 10, actual BigDecimal(0)"
+      `a BigDecimal greater than 10
+└─ Predicate refinement failure
+   └─ Expected a BigDecimal greater than 10, actual BigDecimal(0)`
     )
     await Util.expectParseFailure(
       schema,
       "10",
-      "Expected a BigDecimal greater than 10, actual BigDecimal(10)"
+      `a BigDecimal greater than 10
+└─ Predicate refinement failure
+   └─ Expected a BigDecimal greater than 10, actual BigDecimal(10)`
     )
   })
 

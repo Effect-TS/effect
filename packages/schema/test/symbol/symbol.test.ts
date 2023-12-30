@@ -16,7 +16,7 @@ describe("symbol > symbol", () => {
       null,
       `(string <-> symbol)
 └─ From side transformation failure
-   └─ Expected string, actual null`
+   └─ Expected a string, actual null`
     )
   })
 
@@ -27,7 +27,7 @@ describe("symbol > symbol", () => {
       Symbol(),
       `(string <-> symbol)
 └─ From side transformation failure
-   └─ Expected string, actual undefined`
+   └─ Expected a string, actual undefined`
     )
   })
 })

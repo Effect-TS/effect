@@ -2,20 +2,21 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("number > NonPositive", () => {
-  const schema = S.NonPositive
+describe("bigint > NonPositiveBigintFromSelf", () => {
+  const schema = S.NonPositiveBigintFromSelf
+
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0, 0)
+    await Util.expectParseSuccess(schema, 0n)
     await Util.expectParseFailure(
       schema,
-      1,
-      `NonPositive
+      1n,
+      `NonPositiveBigintFromSelf
 └─ Predicate refinement failure
-   └─ Expected a non-positive number, actual 1`
+   └─ Expected a non-positive bigint, actual 1n`
     )
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, -1, -1)
+    await Util.expectEncodeSuccess(schema, -1n, -1n)
   })
 })

@@ -53,8 +53,11 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
         self.errors,
         (key) => ReadonlyArray.flatMap(key.errors, (e) => format(e, [...path, key.key]))
       )
+    case "Transform":
+      return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
+    case "Refinement":
+      return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
   }
-  return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
 }
 
 /**

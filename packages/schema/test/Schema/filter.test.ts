@@ -57,8 +57,10 @@ describe("Schema > filter", () => {
     await Util.expectParseFailure(
       schema,
       { a: "a", b: "b" },
-      `["b"]
-└─ should be equal to a's value ("a")`
+      `<refinement schema>
+└─ Predicate refinement failure
+   └─ ["b"]
+      └─ should be equal to a's value ("a")`
     )
   })
 })

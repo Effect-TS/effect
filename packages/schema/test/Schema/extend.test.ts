@@ -218,14 +218,14 @@ describe("Schema > extend", () => {
         { a: 1 },
         `{ a: string; [x: string]: string }
 └─ ["a"]
-   └─ Expected string, actual 1`
+   └─ Expected a string, actual 1`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a", b: 1 },
         `{ a: string; [x: string]: string }
 └─ ["b"]
-   └─ Expected string, actual 1`
+   └─ Expected a string, actual 1`
       )
     })
 

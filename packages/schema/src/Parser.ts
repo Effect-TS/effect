@@ -277,13 +277,20 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         return (i, options) =>
           handleForbidden(
             ParseResult.flatMap(
-              from(i, options),
+              ParseResult.mapLeft(from(i, options), (e) =>
+                ParseResult.parseError([ParseResult.refinement(ast, i, "From", e.errors)])),
               (a) =>
                 Option.match(
                   ast.filter(a, options ?? defaultParseOption, ast),
                   {
-                    onNone: () => ParseResult.succeed(a),
-                    onSome: ParseResult.fail
+                    onNone: () =>
+                      ParseResult.succeed(a),
+                    onSome: (e) =>
+                      ParseResult.fail(
+                        ParseResult.parseError([
+                          ParseResult.refinement(ast, i, "Predicate", e.errors)
+                        ])
+                      )
                   }
                 )
             ),

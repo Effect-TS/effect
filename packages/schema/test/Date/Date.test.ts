@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Date/Date", () => {
+describe("Date > Date", () => {
   const schema = S.Date
 
   it("property tests", () => {
@@ -18,7 +18,9 @@ describe("Date/Date", () => {
     await Util.expectParseFailure(
       schema,
       "a",
-      `Expected a valid Date, actual Invalid Date`
+      `Date
+└─ Predicate refinement failure
+   └─ Expected a valid Date, actual Invalid Date`
     )
   })
 
@@ -27,7 +29,9 @@ describe("Date/Date", () => {
     await Util.expectEncodeFailure(
       schema,
       new Date("fail"),
-      "Expected a valid Date, actual Invalid Date"
+      `Date
+└─ Predicate refinement failure
+   └─ Expected a valid Date, actual Invalid Date`
     )
   })
 })

@@ -4,9 +4,9 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-const schema = S.Int
+describe("number > Int", () => {
+  const schema = S.Int
 
-describe("number/int", () => {
   it("property tests", () => {
     Util.roundtrip(schema)
   })
@@ -23,7 +23,13 @@ describe("number/int", () => {
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, 0)
     await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(schema, 0.5, `Expected integer, actual 0.5`)
+    await Util.expectParseFailure(
+      schema,
+      0.5,
+      `Int
+└─ Predicate refinement failure
+   └─ Expected an integer, actual 0.5`
+    )
   })
 
   it("pretty", () => {

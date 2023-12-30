@@ -2,20 +2,24 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("string/length", () => {
+describe("string > length", () => {
   it("decoding", async () => {
-    const schema = S.string.pipe(S.length(1))
+    const schema = S.string.pipe(S.length(1), S.identifier("Char"))
     await Util.expectParseSuccess(schema, "a")
 
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected a character, actual ""`
+      `Char
+└─ Predicate refinement failure
+   └─ Expected a character, actual ""`
     )
     await Util.expectParseFailure(
       schema,
       "aa",
-      `Expected a character, actual "aa"`
+      `Char
+└─ Predicate refinement failure
+   └─ Expected a character, actual "aa"`
     )
   })
 })

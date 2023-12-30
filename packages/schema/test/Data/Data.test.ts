@@ -23,7 +23,7 @@ describe("Data > data", () => {
 └─ From side transformation failure
    └─ { a: string; b: number }
       └─ ["b"]
-         └─ Expected number, actual "0"`
+         └─ Expected a number, actual "0"`
     )
   })
 

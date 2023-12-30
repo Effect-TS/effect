@@ -27,7 +27,7 @@ describe("BigDecimal > BigDecimalFromNumber", () => {
       "abc",
       `BigDecimalFromNumber
 └─ From side transformation failure
-   └─ Expected number, actual "abc"`
+   └─ Expected a number, actual "abc"`
     )
   })
 

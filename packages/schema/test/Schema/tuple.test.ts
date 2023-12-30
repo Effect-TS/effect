@@ -85,14 +85,14 @@ describe("Schema > tuple", () => {
         [undefined],
         `readonly [number]
 └─ [0]
-   └─ Expected number, actual undefined`
+   └─ Expected a number, actual undefined`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
         `readonly [number]
 └─ [0]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
@@ -127,7 +127,7 @@ describe("Schema > tuple", () => {
 └─ [0]
    └─ number | undefined
       ├─ Union member
-      │  └─ Expected number, actual "a"
+      │  └─ Expected a number, actual "a"
       └─ Union member
          └─ Expected undefined, actual "a"`
       )
@@ -155,7 +155,7 @@ describe("Schema > tuple", () => {
         ["a"],
         `readonly [number?]
 └─ [0]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
@@ -184,7 +184,7 @@ describe("Schema > tuple", () => {
 └─ [0]
    └─ number | undefined
       ├─ Union member
-      │  └─ Expected number, actual "a"
+      │  └─ Expected a number, actual "a"
       └─ Union member
          └─ Expected undefined, actual "a"`
       )
@@ -207,14 +207,14 @@ describe("Schema > tuple", () => {
         [1],
         `readonly [string, number?]
 └─ [0]
-   └─ Expected string, actual 1`
+   └─ Expected a string, actual 1`
       )
       await Util.expectParseFailure(
         schema,
         ["a", "b"],
         `readonly [string, number?]
 └─ [1]
-   └─ Expected number, actual "b"`
+   └─ Expected a number, actual "b"`
       )
     })
 
@@ -245,7 +245,7 @@ describe("Schema > tuple", () => {
         [1],
         `readonly [string?, ...number[]]
 └─ [0]
-   └─ Expected string, actual 1`
+   └─ Expected a string, actual 1`
       )
     })
 
@@ -260,14 +260,14 @@ describe("Schema > tuple", () => {
         ["a"],
         `ReadonlyArray<number>
 └─ [0]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         [1, "a"],
         `ReadonlyArray<number>
 └─ [1]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
     })
 
@@ -289,14 +289,14 @@ describe("Schema > tuple", () => {
         ["a"],
         `readonly [...string[], number]
 └─ [0]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         [1, 2],
         `readonly [...string[], number]
 └─ [0]
-   └─ Expected string, actual 1`
+   └─ Expected a string, actual 1`
       )
     })
 
@@ -325,14 +325,14 @@ describe("Schema > tuple", () => {
         ["a", 1],
         `readonly [string, ...number[], boolean]
 └─ [1]
-   └─ Expected boolean, actual 1`
+   └─ Expected a boolean, actual 1`
       )
       await Util.expectParseFailure(
         schema,
         [1, true],
         `readonly [string, ...number[], boolean]
 └─ [0]
-   └─ Expected string, actual 1`
+   └─ Expected a string, actual 1`
       )
       await Util.expectParseFailure(
         schema,
@@ -360,7 +360,9 @@ describe("Schema > tuple", () => {
 └─ [0]
    └─ NumberFromChar
       └─ From side transformation failure
-         └─ Expected a character, actual "10"`
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected a character, actual "10"`
       )
       await Util.expectEncodeFailure(
         schema,
@@ -395,7 +397,9 @@ describe("Schema > tuple", () => {
 └─ [0]
    └─ NumberFromChar
       └─ From side transformation failure
-         └─ Expected a character, actual "10"`
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected a character, actual "10"`
       )
       await Util.expectEncodeFailure(
         schema,
@@ -453,7 +457,9 @@ describe("Schema > tuple", () => {
 └─ [0]
    └─ NumberFromChar
       └─ From side transformation failure
-         └─ Expected a character, actual "10"`
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected a character, actual "10"`
       )
     })
 
@@ -476,7 +482,9 @@ describe("Schema > tuple", () => {
 └─ [0]
    └─ NumberFromChar
       └─ From side transformation failure
-         └─ Expected a character, actual "10"`
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected a character, actual "10"`
       )
     })
 

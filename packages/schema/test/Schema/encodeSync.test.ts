@@ -9,7 +9,9 @@ describe("Schema > encodeSync", () => {
     expect(() => P.encodeSync(schema)(10)).toThrow(
       new Error(`NumberFromChar
 └─ From side transformation failure
-   └─ Expected a character, actual "10"`)
+   └─ Char
+      └─ Predicate refinement failure
+         └─ Expected a character, actual "10"`)
     )
   })
 })

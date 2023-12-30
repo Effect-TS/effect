@@ -4,7 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("number/lessThan", () => {
+describe("number > lessThan", () => {
   it("property tests", () => {
     Util.roundtrip(S.lessThan(0)(S.number))
   })
@@ -19,8 +19,20 @@ describe("number/lessThan", () => {
   it("decoding", async () => {
     const schema = S.lessThan(0)(S.number)
     await Util.expectParseSuccess(schema, -1)
-    await Util.expectParseFailure(schema, 0, `Expected a negative number, actual 0`)
-    await Util.expectParseFailure(schema, 1, `Expected a negative number, actual 1`)
+    await Util.expectParseFailure(
+      schema,
+      0,
+      `a negative number
+└─ Predicate refinement failure
+   └─ Expected a negative number, actual 0`
+    )
+    await Util.expectParseFailure(
+      schema,
+      1,
+      `a negative number
+└─ Predicate refinement failure
+   └─ Expected a negative number, actual 1`
+    )
   })
 
   it("pretty", () => {

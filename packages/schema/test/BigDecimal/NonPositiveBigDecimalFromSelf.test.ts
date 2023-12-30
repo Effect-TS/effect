@@ -3,19 +3,21 @@ import * as Util from "@effect/schema/test/util"
 import { BigDecimal } from "effect"
 import { describe, it } from "vitest"
 
-describe("BigDecimal/negativeBigDecimal", () => {
-  const schema = S.BigDecimalFromSelf.pipe(S.negativeBigDecimal())
+describe("BigDecimal > NonPositiveBigDecimalFromSelf", () => {
+  const schema = S.NonPositiveBigDecimalFromSelf
 
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectParseSuccess(
       schema,
       BigDecimal.make(0n, 0),
-      "Expected a negative BigDecimal, actual BigDecimal(0)"
+      BigDecimal.make(0n, 0)
     )
     await Util.expectParseFailure(
       schema,
       BigDecimal.make(2n, 0),
-      "Expected a negative BigDecimal, actual BigDecimal(2)"
+      `NonPositiveBigDecimalFromSelf
+└─ Predicate refinement failure
+   └─ Expected a non-positive BigDecimal, actual BigDecimal(2)`
     )
     await Util.expectParseSuccess(
       schema,

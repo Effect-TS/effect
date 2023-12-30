@@ -25,7 +25,7 @@ describe("Schema > record", () => {
         { a: "a" },
         `{ [x: string]: number }
 └─ ["a"]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       const b = Symbol.for("@effect/schema/test/b")
       await Util.expectParseSuccess(schema, { a: 1, [b]: "b" }, { a: 1 })
@@ -34,7 +34,7 @@ describe("Schema > record", () => {
         { a: 1, [b]: "b" },
         `{ [x: string]: number }
 └─ [Symbol(@effect/schema/test/b)]
-   └─ is unexpected, expected string`,
+   └─ is unexpected, expected a string`,
         Util.onExcessPropertyError
       )
     })
@@ -55,7 +55,7 @@ describe("Schema > record", () => {
         { [a]: "a" },
         `{ [x: symbol]: number }
 └─ [Symbol(@effect/schema/test/a)]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       await Util.expectParseSuccess(
         schema,
@@ -67,7 +67,7 @@ describe("Schema > record", () => {
         { [a]: 1, b: "b" },
         `{ [x: symbol]: number }
 └─ ["b"]
-   └─ is unexpected, expected symbol`,
+   └─ is unexpected, expected a symbol`,
         Util.onExcessPropertyError
       )
     })
@@ -119,7 +119,7 @@ describe("Schema > record", () => {
         { a: 1, "prefix-b": "b" },
         `{ a: number; [x: \`prefix-\${string}\`]: number }
 └─ ["prefix-b"]
-   └─ Expected number, actual "b"`
+   └─ Expected a number, actual "b"`
       )
     })
 
@@ -153,7 +153,7 @@ describe("Schema > record", () => {
         { a: "a" },
         `{ a: number; b: number }
 └─ ["a"]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
     })
 
@@ -174,7 +174,7 @@ describe("Schema > record", () => {
         { a: "a" },
         `{ [x: string]: number }
 └─ ["a"]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
     })
 
@@ -217,14 +217,14 @@ describe("Schema > record", () => {
         { a: 1, b: 2, [c]: "c" },
         `{ a: number; b: number; [x: symbol]: number }
 └─ [Symbol(@effect/schema/test/c)]
-   └─ Expected number, actual "c"`
+   └─ Expected a number, actual "c"`
       )
       await Util.expectParseFailure(
         schema,
         { a: "a" },
         `{ a: number; b: number; [x: symbol]: number }
 └─ ["a"]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
     })
 
@@ -273,28 +273,28 @@ describe("Schema > record", () => {
         { "-": "a" },
         `{ [x: \`\${string}-\${string}\`]: number }
 └─ ["-"]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { "a-": "a" },
         `{ [x: \`\${string}-\${string}\`]: number }
 └─ ["a-"]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         { "-b": "b" },
         `{ [x: \`\${string}-\${string}\`]: number }
 └─ ["-b"]
-   └─ Expected number, actual "b"`
+   └─ Expected a number, actual "b"`
       )
       await Util.expectParseFailure(
         schema,
         { "a-b": "ab" },
         `{ [x: \`\${string}-\${string}\`]: number }
 └─ ["a-b"]
-   └─ Expected number, actual "ab"`
+   └─ Expected a number, actual "ab"`
       )
 
       await Util.expectParseFailure(
@@ -320,7 +320,7 @@ describe("Schema > record", () => {
         { "aa": "aa" },
         `{ [x: string]: number }
 └─ ["aa"]
-   └─ Expected number, actual "aa"`
+   └─ Expected a number, actual "aa"`
       )
       await Util.expectParseFailure(
         schema,
@@ -345,7 +345,7 @@ describe("Schema > record", () => {
         { "a-": "a" },
         `{ [x: \`\${string}-\${string}\`]: number; [x: string]: string | number }
 └─ ["a-"]
-   └─ Expected number, actual "a"`
+   └─ Expected a number, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
@@ -354,9 +354,9 @@ describe("Schema > record", () => {
 └─ ["a"]
    └─ string | number
       ├─ Union member
-      │  └─ Expected string, actual true
+      │  └─ Expected a string, actual true
       └─ Union member
-         └─ Expected number, actual true`
+         └─ Expected a number, actual true`
       )
     })
 
@@ -396,9 +396,11 @@ describe("Schema > record", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: "aa" },
-        `{ [x: string]: a character }
+        `{ [x: string]: Char }
 └─ ["a"]
-   └─ Expected a character, actual "aa"`
+   └─ Char
+      └─ Predicate refinement failure
+         └─ Expected a character, actual "aa"`
       )
     })
   })

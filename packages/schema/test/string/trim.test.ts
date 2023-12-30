@@ -20,7 +20,9 @@ describe("string > trim", () => {
       "",
       `MySchema
 └─ From side transformation failure
-   └─ Expected a string at least 1 character(s) long, actual ""`
+   └─ a string at least 1 character(s) long
+      └─ Predicate refinement failure
+         └─ Expected a string at least 1 character(s) long, actual ""`
     )
   })
 
@@ -33,7 +35,9 @@ describe("string > trim", () => {
       "",
       `MySchema
 └─ From side transformation failure
-   └─ Expected a string at least 1 character(s) long, actual ""`
+   └─ a string at least 1 character(s) long
+      └─ Predicate refinement failure
+         └─ Expected a string at least 1 character(s) long, actual ""`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -42,7 +46,9 @@ describe("string > trim", () => {
 └─ To side transformation failure
    └─ Trim
       └─ To side transformation failure
-         └─ Expected a string with no leading or trailing whitespace, actual " a"`
+         └─ Trimmed
+            └─ Predicate refinement failure
+               └─ Expected a string with no leading or trailing whitespace, actual " a"`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -51,7 +57,9 @@ describe("string > trim", () => {
 └─ To side transformation failure
    └─ Trim
       └─ To side transformation failure
-         └─ Expected a string with no leading or trailing whitespace, actual "a "`
+         └─ Trimmed
+            └─ Predicate refinement failure
+               └─ Expected a string with no leading or trailing whitespace, actual "a "`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -60,7 +68,9 @@ describe("string > trim", () => {
 └─ To side transformation failure
    └─ Trim
       └─ To side transformation failure
-         └─ Expected a string with no leading or trailing whitespace, actual " a "`
+         └─ Trimmed
+            └─ Predicate refinement failure
+               └─ Expected a string with no leading or trailing whitespace, actual " a "`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -69,7 +79,9 @@ describe("string > trim", () => {
 └─ To side transformation failure
    └─ Trim
       └─ To side transformation failure
-         └─ Expected a string with no leading or trailing whitespace, actual " "`
+         └─ Trimmed
+            └─ Predicate refinement failure
+               └─ Expected a string with no leading or trailing whitespace, actual " "`
     )
   })
 })

@@ -103,7 +103,9 @@ describe("Schema > Class", () => {
     expect(() => new Person({ id: 1, name: "" })).toThrow(
       new Error(`{ id: number; name: a non empty string }
 └─ ["name"]
-   └─ Expected a non empty string, actual ""`)
+   └─ a non empty string
+      └─ Predicate refinement failure
+         └─ Expected a non empty string, actual ""`)
     )
   })
 

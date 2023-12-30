@@ -16,7 +16,7 @@ export const formatSchema = <I, A>(schema: Schema.Schema<I, A>): string => forma
  * @category formatting
  * @since 1.0.0
  */
-export const formatAST = (ast: AST.AST): string => {
+export const formatAST = (ast: AST.AST, verbose: boolean = false): string => {
   switch (ast._tag) {
     case "StringKeyword":
     case "NumberKeyword":
@@ -29,39 +29,39 @@ export const formatAST = (ast: AST.AST): string => {
     case "UnknownKeyword":
     case "VoidKeyword":
     case "NeverKeyword":
-      return Option.getOrElse(getExpected(ast), () => ast._tag)
+      return Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
     case "Literal":
-      return Option.getOrElse(getExpected(ast), () => format(ast.literal))
+      return Option.getOrElse(getExpected(ast, verbose), () => format(ast.literal))
     case "UniqueSymbol":
-      return Option.getOrElse(getExpected(ast), () => format(ast.symbol))
+      return Option.getOrElse(getExpected(ast, verbose), () => format(ast.symbol))
     case "Union":
       return Option.getOrElse(
-        getExpected(ast),
+        getExpected(ast, verbose),
         () => ast.types.map((member) => formatAST(member)).join(" | ")
       )
     case "TemplateLiteral":
-      return Option.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTemplateLiteral(ast))
     case "Tuple":
-      return Option.getOrElse(getExpected(ast), () => formatTuple(ast))
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTuple(ast))
     case "TypeLiteral":
-      return Option.getOrElse(getExpected(ast), () => formatTypeLiteral(ast))
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTypeLiteral(ast))
     case "Enums":
       return Option.getOrElse(
-        getExpected(ast),
+        getExpected(ast, verbose),
         () =>
           `<enum ${ast.enums.length} value(s): ${
             ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
           }>`
       )
     case "Suspend":
-      return Option.getOrElse(getExpected(ast), () => "<suspended schema>")
+      return Option.getOrElse(getExpected(ast, verbose), () => "<suspended schema>")
     case "Declaration":
-      return Option.getOrElse(getExpected(ast), () => "<declaration schema>")
+      return Option.getOrElse(getExpected(ast, verbose), () => "<declaration schema>")
     case "Refinement":
-      return Option.getOrElse(getExpected(ast), () => "<refinement schema>")
+      return Option.getOrElse(getExpected(ast, verbose), () => "<refinement schema>")
     case "Transform":
       return Option.getOrElse(
-        getExpected(ast),
+        getExpected(ast, verbose),
         () => formatTransformation(formatAST(ast.from), formatAST(ast.to))
       )
   }
@@ -107,11 +107,16 @@ const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
     formatTemplateLiteralSpan(span) + span.literal
   ).join("") + "`"
 
-const getExpected = (ast: AST.AST): Option.Option<string> =>
-  AST.getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => AST.getTitleAnnotation(ast)),
-    Option.orElse(() => AST.getDescriptionAnnotation(ast))
-  )
+const getExpected = (ast: AST.AST, verbose: boolean): Option.Option<string> =>
+  verbose ?
+    AST.getDescriptionAnnotation(ast).pipe(
+      Option.orElse(() => AST.getTitleAnnotation(ast)),
+      Option.orElse(() => AST.getIdentifierAnnotation(ast))
+    ) :
+    AST.getIdentifierAnnotation(ast).pipe(
+      Option.orElse(() => AST.getTitleAnnotation(ast)),
+      Option.orElse(() => AST.getDescriptionAnnotation(ast))
+    )
 
 const formatTuple = (ast: AST.Tuple): string => {
   const formattedElements = ast.elements.map((element) =>
@@ -124,7 +129,7 @@ const formatTuple = (ast: AST.Tuple): string => {
       const wrappedHead = formattedHead.includes(" | ") ? "(" + formattedHead + ")" : formattedHead
 
       if (tail.length > 0) {
-        const formattedTail = tail.map(formatAST).join(", ")
+        const formattedTail = tail.map((ast) => formatAST(ast)).join(", ")
         if (ast.elements.length > 0) {
           return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
         } else {

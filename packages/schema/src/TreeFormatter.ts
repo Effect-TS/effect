@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
 import * as Format from "./Format.js"
-import type { ParseIssue, Transform, Type } from "./ParseResult.js"
+import type { ParseIssue, Refinement, Transform, Type } from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -44,7 +44,7 @@ const draw = (indentation: string, forest: Forest<string>): string => {
   return r
 }
 
-const formatKind = (kind: Transform["kind"]): string => {
+const formatTransformationKind = (kind: Transform["kind"]): string => {
   switch (kind) {
     case "From":
       return "From side transformation failure"
@@ -55,19 +55,42 @@ const formatKind = (kind: Transform["kind"]): string => {
   }
 }
 
-const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string> =>
-  AST.getMessageAnnotation(ast).pipe(
+const formatRefinementKind = (kind: Refinement["kind"]): string => {
+  switch (kind) {
+    case "From":
+      return "From side refinement failure"
+    case "Predicate":
+      return "Predicate refinement failure"
+  }
+}
+
+const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string> => {
+  return AST.getMessageAnnotation(ast).pipe(
     Option.map((annotation) => annotation(actual))
   )
+}
 
 /** @internal */
 export const formatMessage = (e: Type): string =>
-  getMessage(e.expected, e.actual).pipe(
+  getMessage(e.ast, e.actual).pipe(
     Option.orElse(() => e.message),
     Option.getOrElse(() =>
-      `Expected ${Format.formatAST(e.expected)}, actual ${Format.format(e.actual)}`
+      `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.format(e.actual)}`
     )
   )
+
+const getRefinementMessage = (e: Refinement, actual: unknown): Option.Option<string> => {
+  const message = getMessage(e.ast, actual)
+  if (e.kind === "From" && e.errors.length === 1) {
+    const err = e.errors[0]
+    if (err._tag === "Refinement") {
+      return Option.orElse(getRefinementMessage(err, err.actual), () => message)
+    } else if ("ast" in err) {
+      return Option.orElse(getMessage(err.ast, err.actual), () => message)
+    }
+  }
+  return message
+}
 
 const go = (e: ParseIssue): Tree<string> => {
   switch (e._tag) {
@@ -76,7 +99,7 @@ const go = (e: ParseIssue): Tree<string> => {
     case "Forbidden":
       return make("is forbidden")
     case "Unexpected":
-      return make(`is unexpected, expected ${Format.formatAST(e.expected)}`)
+      return make(`is unexpected, expected ${Format.formatAST(e.expected, true)}`)
     case "Key":
       return make(`[${Format.format(e.key)}]`, e.errors.map(go))
     case "Missing":
@@ -114,8 +137,18 @@ const go = (e: ParseIssue): Tree<string> => {
       })
     case "Transform":
       return Option.match(getMessage(e.ast, e.actual), {
-        onNone: () => make(Format.formatAST(e.ast), [make(formatKind(e.kind), e.errors.map(go))]),
+        onNone: () =>
+          make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), e.errors.map(go))]),
         onSome: make
       })
+    case "Refinement": {
+      return Option.match(getRefinementMessage(e, e.actual), {
+        onNone: () =>
+          make(Format.formatAST(e.ast), [
+            make(formatRefinementKind(e.kind), e.errors.map(go))
+          ]),
+        onSome: make
+      })
+    }
   }
 }

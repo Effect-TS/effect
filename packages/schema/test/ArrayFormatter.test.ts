@@ -21,7 +21,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, null, [{
       _tag: "Type",
       path: [],
-      message: "Expected string, actual null"
+      message: "Expected a string, actual null"
     }])
   })
 
@@ -54,7 +54,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, { a: null }, [{
       _tag: "Type",
       path: ["a"],
-      message: "Expected string, actual null"
+      message: "Expected a string, actual null"
     }])
   })
 
@@ -63,7 +63,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, [null], [{
       _tag: "Type",
       path: [0],
-      message: "Expected string, actual null"
+      message: "Expected a string, actual null"
     }])
   })
 
@@ -108,11 +108,11 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, null, [{
       _tag: "Type",
       path: [],
-      message: "Expected string, actual null"
+      message: "Expected a string, actual null"
     }, {
       _tag: "Type",
       path: [],
-      message: "Expected number, actual null"
+      message: "Expected a number, actual null"
     }])
   })
 
@@ -154,7 +154,7 @@ describe("ArrayFormatter", () => {
       {
         _tag: "Type",
         path: ["tags", 1],
-        message: "Expected string, actual null"
+        message: "Expected a string, actual null"
       }
     ])
   })

@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, it } from "vitest"
 
-describe("Schema/DurationFromBigint", () => {
+describe("Duration > DurationFromNanos", () => {
   const schema = S.DurationFromNanos
 
   it("property tests", () => {

@@ -618,8 +618,8 @@ export interface ObjectKeyword extends Annotated {
 export const objectKeyword: ObjectKeyword = {
   _tag: "ObjectKeyword",
   annotations: {
-    [TitleAnnotationId]: "object",
-    [DescriptionAnnotationId]: "an object"
+    [IdentifierAnnotationId]: "object",
+    [TitleAnnotationId]: "object"
   }
 }
 

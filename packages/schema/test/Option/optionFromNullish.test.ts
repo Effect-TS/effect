@@ -32,7 +32,7 @@ describe("Option > optionFromNullish", () => {
       └─ Union member
          └─ NumberFromString
             └─ From side transformation failure
-               └─ Expected string, actual {}`
+               └─ Expected a string, actual {}`
     )
   })
 

@@ -14,7 +14,7 @@ describe("Schema > allErrors option", () => {
 ├─ [1]
 │  └─ is missing
 └─ [0]
-   └─ Expected string, actual true`,
+   └─ Expected a string, actual true`,
           Util.allErrors
         )
       })
@@ -54,9 +54,9 @@ describe("Schema > allErrors option", () => {
           [1, "b"],
           `readonly [string, number]
 ├─ [0]
-│  └─ Expected string, actual 1
+│  └─ Expected a string, actual 1
 └─ [1]
-   └─ Expected number, actual "b"`,
+   └─ Expected a number, actual "b"`,
           Util.allErrors
         )
       })
@@ -68,9 +68,9 @@ describe("Schema > allErrors option", () => {
           ["a", "b", "c"],
           `readonly [string, ...number[]]
 ├─ [1]
-│  └─ Expected number, actual "b"
+│  └─ Expected a number, actual "b"
 └─ [2]
-   └─ Expected number, actual "c"`,
+   └─ Expected a number, actual "c"`,
           Util.allErrors
         )
       })
@@ -82,9 +82,9 @@ describe("Schema > allErrors option", () => {
           ["a", "b"],
           `readonly [...boolean[], number, number]
 ├─ [0]
-│  └─ Expected number, actual "a"
+│  └─ Expected a number, actual "a"
 └─ [1]
-   └─ Expected number, actual "b"`,
+   └─ Expected a number, actual "b"`,
           Util.allErrors
         )
       })
@@ -112,9 +112,9 @@ describe("Schema > allErrors option", () => {
           { a: 1, b: "b" },
           `{ a: string; b: number }
 ├─ ["a"]
-│  └─ Expected string, actual 1
+│  └─ Expected a string, actual 1
 └─ ["b"]
-   └─ Expected number, actual "b"`,
+   └─ Expected a number, actual "b"`,
           Util.allErrors
         )
       })
@@ -156,9 +156,9 @@ describe("Schema > allErrors option", () => {
           { a: "a", b: "b" },
           `{ [x: string]: number }
 ├─ ["a"]
-│  └─ Expected number, actual "a"
+│  └─ Expected a number, actual "a"
 └─ ["b"]
-   └─ Expected number, actual "b"`,
+   └─ Expected a number, actual "b"`,
           Util.allErrors
         )
       })
@@ -190,11 +190,15 @@ describe("Schema > allErrors option", () => {
 ├─ [0]
 │  └─ NumberFromChar
 │     └─ From side transformation failure
-│        └─ Expected a character, actual "10"
+│        └─ Char
+│           └─ Predicate refinement failure
+│              └─ Expected a character, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ From side transformation failure
-         └─ Expected a character, actual "10"`,
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -208,11 +212,15 @@ describe("Schema > allErrors option", () => {
 ├─ [0]
 │  └─ NumberFromChar
 │     └─ From side transformation failure
-│        └─ Expected a character, actual "10"
+│        └─ Char
+│           └─ Predicate refinement failure
+│              └─ Expected a character, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ From side transformation failure
-         └─ Expected a character, actual "10"`,
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -229,11 +237,15 @@ describe("Schema > allErrors option", () => {
 ├─ [0]
 │  └─ NumberFromChar
 │     └─ From side transformation failure
-│        └─ Expected a character, actual "10"
+│        └─ Char
+│           └─ Predicate refinement failure
+│              └─ Expected a character, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ From side transformation failure
-         └─ Expected a character, actual "10"`,
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -249,11 +261,15 @@ describe("Schema > allErrors option", () => {
 ├─ ["a"]
 │  └─ NumberFromChar
 │     └─ From side transformation failure
-│        └─ Expected a character, actual "10"
+│        └─ Char
+│           └─ Predicate refinement failure
+│              └─ Expected a character, actual "10"
 └─ ["b"]
    └─ NumberFromChar
       └─ From side transformation failure
-         └─ Expected a character, actual "10"`,
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -279,11 +295,15 @@ describe("Schema > allErrors option", () => {
         await Util.expectEncodeFailure(
           schema,
           { a: "aa", b: "bb" },
-          `{ [x: string]: a character }
+          `{ [x: string]: Char }
 ├─ ["a"]
-│  └─ Expected a character, actual "aa"
+│  └─ Char
+│     └─ Predicate refinement failure
+│        └─ Expected a character, actual "aa"
 └─ ["b"]
-   └─ Expected a character, actual "bb"`,
+   └─ Char
+      └─ Predicate refinement failure
+         └─ Expected a character, actual "bb"`,
           Util.allErrors
         )
       })

@@ -21,24 +21,30 @@ describe("number > multipleOf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.multipleOf(2)(S.number)
+    const schema = S.number.pipe(S.multipleOf(2), S.identifier("Even"))
     await Util.expectParseSuccess(schema, -4)
     await Util.expectParseFailure(
       schema,
       -3,
-      `Expected a number divisible by 2, actual -3`
+      `Even
+└─ Predicate refinement failure
+   └─ Expected a number divisible by 2, actual -3`
     )
     await Util.expectParseSuccess(schema, 0)
     await Util.expectParseSuccess(schema, 2)
     await Util.expectParseFailure(
       schema,
       2.5,
-      `Expected a number divisible by 2, actual 2.5`
+      `Even
+└─ Predicate refinement failure
+   └─ Expected a number divisible by 2, actual 2.5`
     )
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected number, actual ""`
+      `Even
+└─ From side refinement failure
+   └─ Expected a number, actual ""`
     )
   })
 })
