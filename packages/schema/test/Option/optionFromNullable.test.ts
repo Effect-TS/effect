@@ -19,20 +19,28 @@ describe("Option > optionFromNullable", () => {
     await Util.expectParseFailure(
       schema,
       undefined,
-      `null | a string <-> number transformation
-├─ Union member
-│  └─ Expected null, actual undefined
-└─ Union member
-   └─ Expected string, actual undefined`
+      `(null | NumberFromString <-> Option<number>)
+└─ From side transformation failure
+   └─ null | NumberFromString
+      ├─ Union member
+      │  └─ Expected null, actual undefined
+      └─ Union member
+         └─ NumberFromString
+            └─ From side transformation failure
+               └─ Expected string, actual undefined`
     )
     await Util.expectParseFailure(
       schema,
       {},
-      `null | a string <-> number transformation
-├─ Union member
-│  └─ Expected null, actual {}
-└─ Union member
-   └─ Expected string, actual {}`
+      `(null | NumberFromString <-> Option<number>)
+└─ From side transformation failure
+   └─ null | NumberFromString
+      ├─ Union member
+      │  └─ Expected null, actual {}
+      └─ Union member
+         └─ NumberFromString
+            └─ From side transformation failure
+               └─ Expected string, actual {}`
     )
   })
 

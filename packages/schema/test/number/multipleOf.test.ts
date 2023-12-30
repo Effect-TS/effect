@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("number/multipleOf", () => {
+describe("number > multipleOf", () => {
   it("property tests", () => {
     Util.roundtrip(S.multipleOf(2)(S.number))
   })

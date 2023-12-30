@@ -20,7 +20,7 @@ export const expectForbidden = <I, A>(
   u: unknown,
   message: string
 ) => {
-  expectMessage(Util.effectify(schema, "all"), u, message)
+  expectMessage(Util.effectify(schema), u, message)
 }
 
 describe("Schema > Forbidden", () => {
@@ -28,7 +28,7 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.tuple(S.string),
       ["a"],
-      `readonly [string]
+      `readonly [(string <-> string)]
 └─ [0]
    └─ is forbidden`
     )
@@ -38,7 +38,7 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.array(S.string),
       ["a"],
-      `ReadonlyArray<string>
+      `ReadonlyArray<(string <-> string)>
 └─ [0]
    └─ is forbidden`
     )
@@ -48,7 +48,7 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.struct({ a: S.string }),
       { a: "a" },
-      `{ a: string }
+      `{ a: (string <-> string) }
 └─ ["a"]
    └─ is forbidden`
     )
@@ -58,7 +58,7 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.record(S.string, S.string),
       { a: "a" },
-      `{ [x: string]: string }
+      `{ [x: string]: (string <-> string) }
 └─ ["a"]
    └─ is forbidden`
     )
@@ -68,7 +68,7 @@ describe("Schema > Forbidden", () => {
     expectForbidden(
       S.union(S.string, S.string.pipe(S.minLength(2))),
       "a",
-      `a string at least 2 character(s) long | string
+      `a string at least 2 character(s) long | (string <-> string)
 ├─ Union member
 │  └─ is forbidden
 └─ Union member
@@ -80,7 +80,7 @@ describe("Schema > Forbidden", () => {
     const transform = S.declare(
       [],
       S.number,
-      () => S.parse(Util.effectify(S.number, "all"))
+      () => S.parse(Util.effectify(S.number))
     )
     expectMessage(
       transform,
@@ -104,7 +104,9 @@ describe("Schema > Forbidden", () => {
     expectMessage(
       transform,
       "a",
-      "is forbidden"
+      `(string <-> (string <-> string))
+└─ To side transformation failure
+   └─ is forbidden`
     )
   })
 })

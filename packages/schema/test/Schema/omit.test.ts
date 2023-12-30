@@ -13,19 +13,19 @@ describe("Schema > omit", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected { Symbol(@effect/schema/test/a): string; b: a string <-> number transformation }, actual null"
+      "Expected { Symbol(@effect/schema/test/a): string; b: NumberFromString }, actual null"
     )
     await Util.expectParseFailure(
       schema,
       { [a]: "a" },
-      `{ Symbol(@effect/schema/test/a): string; b: a string <-> number transformation }
+      `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
 └─ ["b"]
    └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { b: 1 },
-      `{ Symbol(@effect/schema/test/a): string; b: a string <-> number transformation }
+      `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
 └─ [Symbol(@effect/schema/test/a)]
    └─ is missing`
     )
@@ -46,12 +46,12 @@ describe("Schema > omit", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected { a?: string; b: a string <-> number transformation }, actual null"
+      "Expected { a?: string; b: NumberFromString }, actual null"
     )
     await Util.expectParseFailure(
       schema,
       { a: "a" },
-      `{ a?: string; b: a string <-> number transformation }
+      `{ a?: string; b: NumberFromString }
 └─ ["b"]
    └─ is missing`
     )

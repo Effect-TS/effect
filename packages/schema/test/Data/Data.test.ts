@@ -19,9 +19,11 @@ describe("Data > data", () => {
     await Util.expectParseFailure(
       schema,
       { a: "ok", b: "0" },
-      `{ a: string; b: number }
-└─ ["b"]
-   └─ Expected number, actual "0"`
+      `({ a: string; b: number } <-> Data<{ a: string; b: number }>)
+└─ From side transformation failure
+   └─ { a: string; b: number }
+      └─ ["b"]
+         └─ Expected number, actual "0"`
     )
   })
 

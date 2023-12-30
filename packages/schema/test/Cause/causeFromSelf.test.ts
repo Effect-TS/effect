@@ -15,28 +15,32 @@ describe("Cause > causeFromSelf", () => {
 
     await Util.expectParseSuccess(schema, Cause.fail("1"), Cause.fail(1))
 
-    await Util.expectParseFailure(schema, null, `Expected Cause, actual null`)
+    await Util.expectParseFailure(schema, null, `Expected Cause<NumberFromString>, actual null`)
     await Util.expectParseFailure(
       schema,
       Cause.fail("a"),
-      `CauseFrom
+      `CauseFrom<NumberFromString>
 └─ Union member
-   └─ CauseFailFrom
+   └─ { _tag: "Fail"; error: NumberFromString }
       └─ ["error"]
-         └─ Expected a string <-> number transformation, actual "a"`
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Expected NumberFromString, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
-      `CauseFrom
+      `CauseFrom<NumberFromString>
 └─ Union member
-   └─ CauseParallelFrom
+   └─ { _tag: "Parallel"; left: CauseFrom<NumberFromString>; right: CauseFrom<NumberFromString> }
       └─ ["right"]
-         └─ CauseFrom
+         └─ CauseFrom<NumberFromString>
             └─ Union member
-               └─ CauseFailFrom
+               └─ { _tag: "Fail"; error: NumberFromString }
                   └─ ["error"]
-                     └─ Expected a string <-> number transformation, actual "a"`
+                     └─ NumberFromString
+                        └─ Transformation process failure
+                           └─ Expected NumberFromString, actual "a"`
     )
   })
 

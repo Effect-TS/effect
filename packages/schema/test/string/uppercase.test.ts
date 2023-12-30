@@ -1,23 +1,11 @@
-import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
-describe("string/uppercase", () => {
+describe("string > Uppercase", () => {
   it("property tests", () => {
     const schema = S.Uppercase
     Util.roundtrip(schema)
-  })
-
-  it("Guard", () => {
-    const schema = S.Uppercase
-    const is = P.is(schema)
-    expect(is("A")).toEqual(true)
-    expect(is(" A ")).toEqual(true)
-    expect(is("")).toEqual(true)
-    expect(is(" ")).toEqual(true)
-    expect(is("a")).toEqual(false)
-    expect(is(" a ")).toEqual(false)
   })
 
   it("decoding", async () => {
@@ -35,7 +23,9 @@ describe("string/uppercase", () => {
     await Util.expectEncodeFailure(
       schema,
       "a",
-      `Expected an uppercase string, actual "a"`
+      `Uppercase
+└─ To side transformation failure
+   └─ Expected an uppercase string, actual "a"`
     )
   })
 })

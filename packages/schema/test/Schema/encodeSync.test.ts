@@ -7,7 +7,9 @@ describe("Schema > encodeSync", () => {
     const schema = Util.NumberFromChar
     expect(P.encodeSync(schema)(1)).toEqual("1")
     expect(() => P.encodeSync(schema)(10)).toThrow(
-      new Error(`Expected a character, actual "10"`)
+      new Error(`NumberFromChar
+└─ From side transformation failure
+   └─ Expected a character, actual "10"`)
     )
   })
 })

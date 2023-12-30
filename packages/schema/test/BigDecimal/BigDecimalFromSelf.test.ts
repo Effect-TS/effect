@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import { BigDecimal } from "effect"
 import { describe, expect, it } from "vitest"
 
-describe("BigDecimal/BigDecimalFromSelf", () => {
+describe("BigDecimal > BigDecimalFromSelf", () => {
   const schema = S.BigDecimalFromSelf
 
   it("property tests", () => {

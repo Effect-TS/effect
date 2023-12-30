@@ -15,26 +15,34 @@ describe("Duration", () => {
     await Util.expectParseFailure(
       schema,
       [-500, 0],
-      `a high resolution time ([seconds: number, nanos: number])
-└─ [0]
-   └─ Expected seconds, actual -500`
+      `Duration
+└─ From side transformation failure
+   └─ readonly [seconds, nanos]
+      └─ [0]
+         └─ Expected a non-negative number, actual -500`
     )
     await Util.expectParseFailure(
       schema,
       [0, -123],
-      `a high resolution time ([seconds: number, nanos: number])
-└─ [1]
-   └─ Expected nanos, actual -123`
+      `Duration
+└─ From side transformation failure
+   └─ readonly [seconds, nanos]
+      └─ [1]
+         └─ Expected a non-negative number, actual -123`
     )
     await Util.expectParseFailure(
       schema,
       123,
-      "Expected a high resolution time ([seconds: number, nanos: number]), actual 123"
+      `Duration
+└─ From side transformation failure
+   └─ Expected readonly [seconds, nanos], actual 123`
     )
     await Util.expectParseFailure(
       schema,
       123n,
-      "Expected a high resolution time ([seconds: number, nanos: number]), actual 123n"
+      `Duration
+└─ From side transformation failure
+   └─ Expected readonly [seconds, nanos], actual 123n`
     )
   })
 

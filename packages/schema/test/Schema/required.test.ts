@@ -41,7 +41,7 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       [],
-      `readonly [a string <-> number transformation]
+      `readonly [NumberFromString]
 └─ [0]
    └─ is missing`
     )
@@ -54,7 +54,7 @@ describe("Schema > required", () => {
     await Util.expectParseFailure(
       schema,
       ["0"],
-      `readonly [a string <-> number transformation, string]
+      `readonly [NumberFromString, string]
 └─ [1]
    └─ is missing`
     )

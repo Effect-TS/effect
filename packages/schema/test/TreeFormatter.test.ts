@@ -3,33 +3,11 @@ import * as Util from "@effect/schema/test/util"
 import * as _ from "@effect/schema/TreeFormatter"
 import { describe, expect, it } from "vitest"
 
-describe("formatExpected", () => {
-  it("refinement", () => {
-    const schema = S.string.pipe(S.minLength(2))
-    expect(_.formatAST(schema.ast)).toEqual("a string at least 2 character(s) long")
-  })
-
-  it("union", () => {
-    const schema = S.union(S.string, S.string.pipe(S.minLength(2)))
-    expect(_.formatAST(schema.ast)).toEqual(
-      "a string at least 2 character(s) long | string"
-    )
-  })
-
-  it("suspend", () => {
-    type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.suspend( // intended outer suspend
-      () => S.tuple(S.number, S.union(schema, S.literal(null)))
-    )
-    expect(_.formatAST(schema.ast)).toEqual("<suspended schema>")
-  })
-})
-
 describe("formatErrors", () => {
   it("forbidden", async () => {
-    const schema = Util.effectify(S.struct({ a: S.string }), "all")
+    const schema = Util.effectify(S.struct({ a: S.string }))
     expect(() => S.parseSync(schema)({ a: "a" })).toThrow(
-      new Error(`{ a: string }
+      new Error(`{ a: (string <-> string) }
 └─ ["a"]
    └─ is forbidden`)
     )
@@ -57,25 +35,40 @@ describe("formatErrors", () => {
       Util.onExcessPropertyError
     )
   })
-})
 
-describe("formatActual", () => {
-  it("should handle unexpected errors", () => {
-    const circular: any = { a: null }
-    circular.a = circular
-    expect(_.formatActual(circular)).toEqual("[object Object]")
+  it("no identifiers", async () => {
+    const schema = S.struct({
+      a: S.string,
+      b: S.string
+    })
+
+    await Util.expectParseFailure(
+      schema,
+      { a: 1, b: 2 },
+      `{ a: string; b: string }
+├─ ["a"]
+│  └─ Expected string, actual 1
+└─ ["b"]
+   └─ Expected string, actual 2`,
+      Util.allErrors
+    )
   })
 
-  it("should detect data types with a custom `toString` implementation", () => {
-    const noToString = { a: 1 }
-    expect(_.formatActual(noToString)).toEqual(`{"a":1}`)
-    const ToString = Object.create({
-      toString() {
-        return "toString custom implementation"
-      }
-    })
-    expect(_.formatActual(ToString)).toEqual("toString custom implementation")
-    // should not detect arrays
-    expect(_.formatActual([1, 2, 3])).toEqual("[1,2,3]")
+  it("with identifiers", async () => {
+    const schema = S.struct({
+      a: S.string.pipe(S.identifier("MyString1")),
+      b: S.string.pipe(S.identifier("MyString2"))
+    }).pipe(S.identifier("MySchema"))
+
+    await Util.expectParseFailure(
+      schema,
+      { a: 1, b: 2 },
+      `MySchema
+├─ ["a"]
+│  └─ Expected MyString1, actual 1
+└─ ["b"]
+   └─ Expected MyString2, actual 2`,
+      Util.allErrors
+    )
   })
 })

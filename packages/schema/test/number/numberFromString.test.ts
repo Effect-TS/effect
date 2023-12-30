@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("number/NumberFromString", () => {
+describe("number > NumberFromString", () => {
   const schema = S.NumberFromString
 
   it("property tests", () => {
@@ -22,32 +22,44 @@ describe("number/NumberFromString", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected a string <-> number transformation, actual ""`
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual ""`
     )
     await Util.expectParseFailure(
       schema,
       " ",
-      `Expected a string <-> number transformation, actual " "`
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual " "`
     )
     await Util.expectParseFailure(
       schema,
       "1AB",
-      `Expected a string <-> number transformation, actual "1AB"`
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "1AB"`
     )
     await Util.expectParseFailure(
       schema,
       "AB1",
-      `Expected a string <-> number transformation, actual "AB1"`
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "AB1"`
     )
     await Util.expectParseFailure(
       schema,
       "a",
-      `Expected a string <-> number transformation, actual "a"`
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       "a1",
-      `Expected a string <-> number transformation, actual "a1"`
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "a1"`
     )
   })
 

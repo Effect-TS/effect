@@ -162,9 +162,13 @@ describe("Schema > Class", () => {
 
   it("extends error", () => {
     expect(() => S.parseSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
-      new Error(`{ id: number; age: number; name: a non empty string }
-└─ ["age"]
-   └─ is missing`)
+      new Error(
+        `({ id: number; age: number; name: a non empty string } <-> an instance of PersonWithAge)
+└─ From side transformation failure
+   └─ { id: number; age: number; name: a non empty string }
+      └─ ["age"]
+         └─ is missing`
+      )
     )
   })
 
@@ -228,9 +232,13 @@ describe("Schema > Class", () => {
     expect(person.upperName).toEqual("JOHN")
 
     expect(() => S.parseSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
-      new Error(`{ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string }
-└─ ["_tag"]
-   └─ is missing`)
+      new Error(
+        `({ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string } <-> an instance of TaggedPersonWithAge)
+└─ From side transformation failure
+   └─ { _tag: "TaggedPerson"; id: number; age: number; name: a non empty string }
+      └─ ["_tag"]
+         └─ is missing`
+      )
     )
     person = S.parseSync(TaggedPersonWithAge)({
       _tag: "TaggedPerson",

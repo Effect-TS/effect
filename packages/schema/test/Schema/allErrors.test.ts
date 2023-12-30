@@ -188,9 +188,13 @@ describe("Schema > allErrors option", () => {
           [10, 10],
           `readonly [NumberFromChar, NumberFromChar]
 ├─ [0]
-│  └─ Expected a character, actual "10"
+│  └─ NumberFromChar
+│     └─ From side transformation failure
+│        └─ Expected a character, actual "10"
 └─ [1]
-   └─ Expected a character, actual "10"`,
+   └─ NumberFromChar
+      └─ From side transformation failure
+         └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -202,9 +206,13 @@ describe("Schema > allErrors option", () => {
           [10, 10],
           `ReadonlyArray<NumberFromChar>
 ├─ [0]
-│  └─ Expected a character, actual "10"
+│  └─ NumberFromChar
+│     └─ From side transformation failure
+│        └─ Expected a character, actual "10"
 └─ [1]
-   └─ Expected a character, actual "10"`,
+   └─ NumberFromChar
+      └─ From side transformation failure
+         └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -219,9 +227,13 @@ describe("Schema > allErrors option", () => {
           [10, 10],
           `readonly [...string[], NumberFromChar, NumberFromChar]
 ├─ [0]
-│  └─ Expected a character, actual "10"
+│  └─ NumberFromChar
+│     └─ From side transformation failure
+│        └─ Expected a character, actual "10"
 └─ [1]
-   └─ Expected a character, actual "10"`,
+   └─ NumberFromChar
+      └─ From side transformation failure
+         └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })
@@ -235,9 +247,13 @@ describe("Schema > allErrors option", () => {
           { a: 10, b: 10 },
           `{ a: NumberFromChar; b: NumberFromChar }
 ├─ ["a"]
-│  └─ Expected a character, actual "10"
+│  └─ NumberFromChar
+│     └─ From side transformation failure
+│        └─ Expected a character, actual "10"
 └─ ["b"]
-   └─ Expected a character, actual "10"`,
+   └─ NumberFromChar
+      └─ From side transformation failure
+         └─ Expected a character, actual "10"`,
           Util.allErrors
         )
       })

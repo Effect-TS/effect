@@ -3,10 +3,10 @@
  */
 
 import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import type { ParseIssue, Type } from "./ParseResult.js"
+import * as Format from "./Format.js"
+import type { ParseIssue, Transform, Type } from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -44,208 +44,78 @@ const draw = (indentation: string, forest: Forest<string>): string => {
   return r
 }
 
-/** @internal */
-export const formatActual = (actual: unknown): string => {
-  if (Predicate.isString(actual)) {
-    return JSON.stringify(actual)
-  } else if (
-    Predicate.isNumber(actual)
-    || actual == null
-    || Predicate.isBoolean(actual)
-    || Predicate.isSymbol(actual)
-    || Predicate.isDate(actual)
-  ) {
-    return String(actual)
-  } else if (Predicate.isBigInt(actual)) {
-    return String(actual) + "n"
-  } else if (
-    !Array.isArray(actual)
-    && Predicate.hasProperty(actual, "toString")
-    && Predicate.isFunction(actual["toString"])
-    && actual["toString"] !== Object.prototype.toString
-  ) {
-    return actual["toString"]()
-  }
-  try {
-    return JSON.stringify(actual)
-  } catch (e) {
-    return String(actual)
+const formatKind = (kind: Transform["kind"]): string => {
+  switch (kind) {
+    case "From":
+      return "From side transformation failure"
+    case "Transformation":
+      return "Transformation process failure"
+    case "To":
+      return "To side transformation failure"
   }
 }
 
-const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
-  switch (span.type._tag) {
-    case "StringKeyword":
-      return "${string}"
-    case "NumberKeyword":
-      return "${number}"
-  }
-}
-
-const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
-  "`" + ast.head + ast.spans.map((span) =>
-    formatTemplateLiteralSpan(span) + span.literal
-  ).join("") + "`"
-
-const getExpected = (ast: AST.AST): Option.Option<string> =>
-  AST.getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => AST.getTitleAnnotation(ast)),
-    Option.orElse(() => AST.getDescriptionAnnotation(ast))
+const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string> =>
+  AST.getMessageAnnotation(ast).pipe(
+    Option.map((annotation) => annotation(actual))
   )
 
-const formatTuple = (ast: AST.Tuple): string => {
-  const formattedElements = ast.elements.map((element) =>
-    formatAST(element.type) + (element.isOptional ? "?" : "")
-  ).join(", ")
-  return Option.match(ast.rest, {
-    onNone: () => "readonly [" + formattedElements + "]",
-    onSome: ([head, ...tail]) => {
-      const formattedHead = formatAST(head)
-      const wrappedHead = formattedHead.includes(" | ") ? "(" + formattedHead + ")" : formattedHead
-
-      if (tail.length > 0) {
-        const formattedTail = tail.map(formatAST).join(", ")
-        if (ast.elements.length > 0) {
-          return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
-        } else {
-          return `readonly [...${wrappedHead}[], ${formattedTail}]`
-        }
-      } else {
-        if (ast.elements.length > 0) {
-          return `readonly [${formattedElements}, ...${wrappedHead}[]]`
-        } else {
-          return `ReadonlyArray<${formattedHead}>`
-        }
-      }
-    }
-  })
-}
-
-const formatTypeLiteral = (ast: AST.TypeLiteral): string => {
-  const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
-    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + formatAST(ps.type)
-  ).join("; ")
-  if (ast.indexSignatures.length > 0) {
-    const formattedIndexSignatures = ast.indexSignatures.map((is) =>
-      `[x: ${formatAST(AST.getParameterBase(is.parameter))}]: ${formatAST(is.type)}`
-    ).join("; ")
-    if (ast.propertySignatures.length > 0) {
-      return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
-    } else {
-      return `{ ${formattedIndexSignatures} }`
-    }
-  } else {
-    if (ast.propertySignatures.length > 0) {
-      return `{ ${formattedPropertySignatures} }`
-    } else {
-      return "{}"
-    }
-  }
-}
-
 /** @internal */
-export const formatAST = (ast: AST.AST): string => {
-  switch (ast._tag) {
-    case "StringKeyword":
-      return Option.getOrElse(getExpected(ast), () => "string")
-    case "NumberKeyword":
-      return Option.getOrElse(getExpected(ast), () => "number")
-    case "BooleanKeyword":
-      return Option.getOrElse(getExpected(ast), () => "boolean")
-    case "BigIntKeyword":
-      return Option.getOrElse(getExpected(ast), () => "bigint")
-    case "UndefinedKeyword":
-      return Option.getOrElse(getExpected(ast), () => "undefined")
-    case "SymbolKeyword":
-      return Option.getOrElse(getExpected(ast), () => "symbol")
-    case "ObjectKeyword":
-      return Option.getOrElse(getExpected(ast), () => "object")
-    case "AnyKeyword":
-      return Option.getOrElse(getExpected(ast), () => "any")
-    case "UnknownKeyword":
-      return Option.getOrElse(getExpected(ast), () => "unknown")
-    case "VoidKeyword":
-      return Option.getOrElse(getExpected(ast), () => "void")
-    case "NeverKeyword":
-      return Option.getOrElse(getExpected(ast), () => "never")
-    case "Literal":
-      return Option.getOrElse(getExpected(ast), () => formatActual(ast.literal))
-    case "UniqueSymbol":
-      return Option.getOrElse(getExpected(ast), () => formatActual(ast.symbol))
-    case "Union":
-      return Option.getOrElse(
-        getExpected(ast),
-        () => ast.types.map((member) => formatAST(member)).join(" | ")
-      )
-    case "TemplateLiteral":
-      return Option.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
-    case "Tuple":
-      return Option.getOrElse(getExpected(ast), () => formatTuple(ast))
-    case "TypeLiteral":
-      return Option.getOrElse(getExpected(ast), () => formatTypeLiteral(ast))
-    case "Enums":
-      return Option.getOrElse(
-        getExpected(ast),
-        () =>
-          `<enum ${ast.enums.length} value(s): ${
-            ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
-          }>`
-      )
-    case "Suspend":
-      return Option.getOrElse(getExpected(ast), () => "<suspended schema>")
-    case "Declaration":
-      return Option.getOrElse(getExpected(ast), () => "<declaration schema>")
-    case "Refinement":
-      return Option.getOrElse(getExpected(ast), () => "<refinement schema>")
-    case "Transform":
-      return Option.getOrElse(
-        getExpected(ast),
-        () => `<transformation ${formatAST(ast.from)} <-> ${formatAST(ast.to)}>`
-      )
-  }
-}
-
-/** @internal */
-export const getMessage = (e: Type) =>
-  AST.getMessageAnnotation(e.expected).pipe(
-    Option.map((annotation) => annotation(e.actual)),
+export const formatMessage = (e: Type): string =>
+  getMessage(e.expected, e.actual).pipe(
     Option.orElse(() => e.message),
-    Option.getOrElse(() => `Expected ${formatAST(e.expected)}, actual ${formatActual(e.actual)}`)
+    Option.getOrElse(() =>
+      `Expected ${Format.formatAST(e.expected)}, actual ${Format.format(e.actual)}`
+    )
   )
 
 const go = (e: ParseIssue): Tree<string> => {
   switch (e._tag) {
     case "Type":
-      return make(getMessage(e))
+      return make(formatMessage(e))
     case "Forbidden":
       return make("is forbidden")
     case "Unexpected":
-      return make(
-        `is unexpected, expected ${formatAST(e.expected)}`
-      )
+      return make(`is unexpected, expected ${Format.formatAST(e.expected)}`)
     case "Key":
-      return make(`[${formatActual(e.key)}]`, e.errors.map(go))
+      return make(`[${Format.format(e.key)}]`, e.errors.map(go))
     case "Missing":
       return make("is missing")
     case "Union":
-      return make(
-        formatAST(e.ast),
-        e.errors.map((e) => {
-          switch (e._tag) {
-            case "Key":
-            case "Type":
-              return go(e)
-            case "Member":
-              return make(`Union member`, e.errors.map(go))
-          }
-        })
-      )
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          make(
+            Format.formatAST(e.ast),
+            e.errors.map((e) => {
+              switch (e._tag) {
+                case "Key":
+                case "Type":
+                  return go(e)
+                case "Member":
+                  return make(`Union member`, e.errors.map(go))
+              }
+            })
+          ),
+        onSome: make
+      })
     case "Tuple":
-      return make(
-        formatAST(e.ast),
-        e.errors.map((e) => make(`[${e.index}]`, e.errors.map(go)))
-      )
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          make(
+            Format.formatAST(e.ast),
+            e.errors.map((e) => make(`[${e.index}]`, e.errors.map(go)))
+          ),
+        onSome: make
+      })
     case "TypeLiteral":
-      return make(formatAST(e.ast), e.errors.map(go))
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () => make(Format.formatAST(e.ast), e.errors.map(go)),
+        onSome: make
+      })
+    case "Transform":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () => make(Format.formatAST(e.ast), [make(formatKind(e.kind), e.errors.map(go))]),
+        onSome: make
+      })
   }
 }

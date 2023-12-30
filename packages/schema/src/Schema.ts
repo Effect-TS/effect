@@ -32,6 +32,7 @@ import * as arbitrary from "./Arbitrary.js"
 import * as ArrayFormatter from "./ArrayFormatter.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
+import * as Format from "./Format.js"
 import * as Internal from "./internal/ast.js"
 import * as InternalBigInt from "./internal/bigint.js"
 import * as filters from "./internal/filters.js"
@@ -1424,10 +1425,7 @@ export const transform: {
 export const transformLiteral = <From extends AST.LiteralValue, To extends AST.LiteralValue>(
   from: From,
   to: To
-): Schema<From, To> =>
-  transform(literal(from), literal(to), () => to, () => from).pipe(
-    description(`a ${from} <-> ${to} transformation`)
-  )
+): Schema<From, To> => transform(literal(from), literal(to), () => to, () => from)
 
 /**
  * Creates a new `Schema` which maps between corresponding literal values.
@@ -2039,7 +2037,7 @@ export const Lowercase: Schema<string> = transform(
   string.pipe(lowercased()),
   (s) => s.toLowerCase(),
   identity
-).pipe(description("a string <-> lowercase transformation"))
+).pipe(identifier("Lowercase"))
 
 /**
  * This schema converts a string to uppercase.
@@ -2052,7 +2050,7 @@ export const Uppercase: Schema<string> = transform(
   string.pipe(uppercased()),
   (s) => s.toUpperCase(),
   identity
-).pipe(description("a string <-> uppercase transformation"))
+).pipe(identifier("Uppercase"))
 
 /**
  * This schema allows removing whitespaces from the beginning and end of a string.
@@ -2065,7 +2063,7 @@ export const Trim: Schema<string> = transform(
   string.pipe(trimmed()),
   (s) => s.trim(),
   identity
-).pipe(description("a string <-> trim transformation"))
+).pipe(identifier("Trim"))
 
 /**
  * Returns a achema that allows splitting a string into an array of strings.
@@ -2079,7 +2077,7 @@ export const split = (separator: string): Schema<string, ReadonlyArray<string>> 
     array(string),
     S.split(separator),
     ReadonlyArray.join(separator)
-  ).pipe(description(`a string <-> split(${JSON.stringify(separator)}) transformation`))
+  )
 
 /**
  * @since 1.0.0
@@ -2089,6 +2087,12 @@ export type ParseJsonOptions = {
   readonly replacer?: Parameters<typeof JSON.stringify>[1]
   readonly space?: Parameters<typeof JSON.stringify>[2]
 }
+
+const JsonString = string.pipe(annotations({
+  [AST.IdentifierAnnotationId]: "JsonString",
+  [AST.TitleAnnotationId]: "JsonString",
+  [AST.DescriptionAnnotationId]: "a JSON string"
+}))
 
 /**
  * The `parseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
@@ -2116,7 +2120,7 @@ export const parseJson: {
   }
   const options: ParseJsonOptions | undefined = schema as any
   return transformOrFail(
-    string,
+    JsonString,
     unknown,
     (s, _, ast) =>
       ParseResult.try({
@@ -2128,7 +2132,7 @@ export const parseJson: {
         try: () => JSON.stringify(u, options?.replacer, options?.space),
         catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, u, e.message)])
       })
-  ).pipe(description("a string <-> unknown transformation"))
+  )
 }
 
 /**
@@ -2472,7 +2476,7 @@ export const clamp =
       (self) => N.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
-    ).pipe(description(`a number <-> clamp(${minimum}, ${maximum}) transformation`))
+    )
 
 /**
  * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
@@ -2506,7 +2510,7 @@ export const NumberFromString: Schema<string, number> = transformOrFail(
       : ParseResult.succeed(n)
   },
   (n) => ParseResult.succeed(String(n))
-).pipe(description("a string <-> number transformation"))
+).pipe(identifier("NumberFromString"))
 
 /**
  * @category number constructors
@@ -2592,7 +2596,7 @@ export const Not: Schema<boolean> = transform(
   boolean,
   (self) => !self,
   (self) => !self
-).pipe(description(`a boolean <-> not transformation`))
+)
 
 /**
  * This schema transforms a `string` into a `symbol`.
@@ -2606,7 +2610,7 @@ export const symbol: Schema<string, symbol> = transform(
   (s) => Symbol.for(s),
   (sym) => sym.description,
   { strict: false }
-).pipe(description(`a string <-> symbol transformation`))
+)
 
 /**
  * @category type id
@@ -2803,7 +2807,7 @@ export const clampBigint =
       (self) => BigInt_.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
-    ).pipe(description(`a bigint <-> clamp(${minimum}n, ${maximum}n) transformation`))
+    )
 
 /**
  * This schema transforms a `string` into a `bigint` by parsing the string using the `BigInt` function.
@@ -2827,7 +2831,7 @@ export const bigint: Schema<string, bigint> = transformOrFail(
     })
   },
   (n) => ParseResult.succeed(String(n))
-).pipe(description("a string <-> bigint transformation"))
+).pipe(identifier("bigint"))
 
 /**
  * @category bigint constructors
@@ -2905,10 +2909,9 @@ export const BigintFromNumber: Schema<number, bigint> = transformOrFail(
     if (b > InternalBigInt.maxSafeInteger || b < InternalBigInt.minSafeInteger) {
       return ParseResult.fail(ParseResult.type(ast, b))
     }
-
     return ParseResult.succeed(Number(b))
   }
-).pipe(description("a number <-> bigint transformation"))
+).pipe(identifier("BigintFromNumber"))
 
 /**
  * @category Secret constructors
@@ -2935,7 +2938,7 @@ const _Secret: Schema<string, Secret.Secret> = transform(
   (str) => Secret.fromString(str),
   (secret) => Secret.value(secret),
   { strict: false }
-).pipe(description("a string <-> Secret transformation"))
+).pipe(identifier("Secret"))
 
 export {
   /**
@@ -2950,16 +2953,16 @@ export {
 const DurationMillis = struct({
   _tag: literal("Millis"),
   millis: number
-}).pipe(description("DurationMillis"))
+}).pipe(identifier("DurationMillis"))
 
 const DurationNanos = struct({
   _tag: literal("Nanos"),
   nanos: bigintFromSelf
-}).pipe(description("DurationNanos"))
+}).pipe(identifier("DurationNanos"))
 
 const DurationInfinity = struct({
   _tag: literal("Infinity")
-}).pipe(description("DurationInfinity"))
+}).pipe(identifier("DurationInfinity"))
 
 /**
  * @category Duration constructors
@@ -3016,7 +3019,7 @@ export const DurationFromNanos: Schema<
       onNone: () => ParseResult.fail(ParseResult.type(ast, duration)),
       onSome: (val) => ParseResult.succeed(val)
     })
-).pipe(description("a nanos <-> Duration transformation"))
+).pipe(identifier("DurationFromNanos"))
 
 /**
  * A schema that transforms a `number` tuple into a `Duration`.
@@ -3033,33 +3036,29 @@ export const DurationFromMillis: Schema<
   DurationFromSelf,
   (ms) => Duration.millis(ms),
   (n) => Duration.toMillis(n)
-).pipe(description("a millis <-> Duration transformation"))
+).pipe(identifier("DurationFromMillis"))
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   NonNegative.pipe(
-    annotations({
+    finite({
       [AST.TitleAnnotationId]: "seconds",
       [AST.DescriptionAnnotationId]: "seconds"
-    }),
-    finite()
+    })
   ),
   NonNegative.pipe(
-    annotations({
+    finite({
       [AST.TitleAnnotationId]: "nanos",
       [AST.DescriptionAnnotationId]: "nanos"
-    }),
-    finite()
+    })
   )
-).pipe(annotations({
-  [AST.DescriptionAnnotationId]: "a high resolution time ([seconds: number, nanos: number])"
-}))
+)
 
 const _Duration: Schema<readonly [seconds: number, nanos: number], Duration.Duration> = transform(
   hrTime,
   DurationFromSelf,
   ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
   (duration) => Duration.toHrTime(duration)
-).pipe(description("a [seconds, nanos] <-> Duration transformation"))
+).pipe(identifier("Duration"))
 
 export {
   /**
@@ -3086,7 +3085,7 @@ export const clampDuration =
       (self) => Duration.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
-    ).pipe(description(`a Duration <-> clamp(${minimum}, ${maximum}) transformation`))
+    )
 
 /**
  * @category type id
@@ -3238,7 +3237,7 @@ const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = transform(
   Uint8ArrayFromSelf,
   (a) => Uint8Array.from(a),
   (arr) => Array.from(arr)
-).pipe(description("a ReadonlyArray<number> <-> Uint8Array transformation"))
+).pipe(identifier("Uint8Array"))
 
 export {
   /**
@@ -3443,7 +3442,7 @@ export const DateFromSelf: Schema<Date> = declare(
     [hooks.ArbitraryHookId]: dateArbitrary,
     [hooks.EquivalenceHookId]: () => Equivalence.Date
   }
-).pipe(description("a Date"))
+).pipe(identifier("DateFromSelf"))
 
 /**
  * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
@@ -3453,7 +3452,7 @@ export const DateFromSelf: Schema<Date> = declare(
  */
 export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(
   validDate(),
-  description("a valid Date")
+  identifier("ValidDateFromSelf")
 )
 
 /**
@@ -3467,7 +3466,7 @@ export const DateFromString: Schema<string, Date> = transform(
   DateFromSelf,
   (s) => new Date(s),
   (n) => n.toISOString()
-).pipe(description("a string <-> Date transformation"))
+).pipe(identifier("DateFromString"))
 
 const _Date: Schema<string, Date> = DateFromString.pipe(validDate())
 
@@ -3496,19 +3495,19 @@ export type OptionFrom<I> =
 
 const OptionNoneFrom = struct({
   _tag: literal("None")
-}).pipe(description("OptionNoneFrom"))
+})
 
 const optionSomeFrom = <I, A>(value: Schema<I, A>) =>
   struct({
     _tag: literal("Some"),
     value
-  }).pipe(description("OptionSomeFrom"))
+  })
 
 const optionFrom = <I, A>(value: Schema<I, A>): Schema<OptionFrom<I>, OptionFrom<A>> =>
   union(
     OptionNoneFrom,
     optionSomeFrom(value)
-  ).pipe(description("OptionFrom"))
+  )
 
 const optionDecode = <A>(input: OptionFrom<A>): Option.Option<A> =>
   input._tag === "None" ? Option.none() : Option.some(input.value)
@@ -3544,7 +3543,7 @@ export const optionFromSelf = <I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "Option",
+      [AST.DescriptionAnnotationId]: `Option<${Format.formatSchema(value)}>`,
       [hooks.PrettyHookId]: optionPretty,
       [hooks.ArbitraryHookId]: optionArbitrary,
       [hooks.EquivalenceHookId]: Option.getEquivalence
@@ -3567,7 +3566,7 @@ export const option = <I, A>(
       onNone: () => ({ _tag: "None" }) as const,
       onSome: (value) => ({ _tag: "Some", value }) as const
     })
-  ).pipe(description("a OptionFrom<I> <-> Option<A> transformation"))
+  )
 
 /**
  * @category Option transformations
@@ -3576,9 +3575,7 @@ export const option = <I, A>(
 export const optionFromNullable = <I, A>(
   value: Schema<I, A>
 ): Schema<I | null, Option.Option<A>> =>
-  transform(nullable(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrNull).pipe(
-    description("a I | null <-> Option<A> transformation")
-  )
+  transform(nullable(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrNull)
 
 /**
  * @category Option transformations
@@ -3593,8 +3590,6 @@ export const optionFromNullish = <I, A>(
     optionFromSelf(to(value)),
     Option.fromNullable,
     onNoneEncoding === null ? Option.getOrNull : Option.getOrUndefined
-  ).pipe(
-    description("a I | null | undefined <-> Option<A> transformation")
   )
 
 /**
@@ -3615,13 +3610,13 @@ const rightFrom = <IA, A>(right: Schema<IA, A>) =>
   struct({
     _tag: literal("Right"),
     right
-  }).pipe(description("RightFrom"))
+  })
 
 const leftFrom = <IE, E>(left: Schema<IE, E>) =>
   struct({
     _tag: literal("Left"),
     left
-  }).pipe(description("LeftFrom"))
+  })
 
 const eitherFrom = <IE, E, IA, A>(
   left: Schema<IE, E>,
@@ -3630,7 +3625,7 @@ const eitherFrom = <IE, E, IA, A>(
   union(
     rightFrom(right),
     leftFrom(left)
-  ).pipe(description("EitherFrom"))
+  )
 
 const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<E, A> =>
   input._tag === "Left" ? Either.left(input.left) : Either.right(input.right)
@@ -3674,7 +3669,9 @@ export const eitherFromSelf = <IE, E, IA, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "Either",
+      [AST.DescriptionAnnotationId]: `Either<${Format.formatSchema(left)}, ${
+        Format.formatSchema(right)
+      }>`,
       [hooks.PrettyHookId]: eitherPretty,
       [hooks.ArbitraryHookId]: eitherArbitrary,
       [hooks.EquivalenceHookId]: Either.getEquivalence
@@ -3698,8 +3695,6 @@ export const either = <IE, E, IA, A>(
       onLeft: (left) => ({ _tag: "Left", left }) as const,
       onRight: (right) => ({ _tag: "Right", right }) as const
     })
-  ).pipe(
-    description("a EitherFrom<IE, IA> <-> Either.Either<E, A> transformation")
   )
 
 const isMap = (u: unknown): u is Map<unknown, unknown> => u instanceof Map
@@ -3756,7 +3751,9 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "ReadonlyMap",
+      [AST.IdentifierAnnotationId]: `ReadonlyMap<${Format.formatSchema(key)}, ${
+        Format.formatSchema(value)
+      }>`,
       [hooks.PrettyHookId]: readonlyMapPretty,
       [hooks.ArbitraryHookId]: readonlyMapArbitrary,
       [hooks.EquivalenceHookId]: readonlyMapEquivalence
@@ -3777,7 +3774,7 @@ export const readonlyMap = <IK, K, IV, V>(
     readonlyMapFromSelf(to(key), to(value)),
     (as) => new Map(as),
     (map) => Array.from(map.entries())
-  ).pipe(description("a ReadonlyArray<readonly [IK, IV]> <-> ReadonlyMap<K, V> transformation"))
+  )
 
 const isSet = (u: unknown): u is Set<unknown> => u instanceof Set
 
@@ -3818,7 +3815,7 @@ export const readonlySetFromSelf = <I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "ReadonlySet",
+      [AST.DescriptionAnnotationId]: `ReadonlySet<${Format.formatSchema(item)}>`,
       [hooks.PrettyHookId]: readonlySetPretty,
       [hooks.ArbitraryHookId]: readonlySetArbitrary,
       [hooks.EquivalenceHookId]: readonlySetEquivalence
@@ -3836,7 +3833,7 @@ export const readonlySet = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, 
     readonlySetFromSelf(to(item)),
     (as) => new Set(as),
     (set) => Array.from(set)
-  ).pipe(description("a ReadonlyArray<I> <-> ReadonlySet<A> transformation"))
+  )
 
 const bigDecimalPretty = (): Pretty.Pretty<BigDecimal.BigDecimal> => (val) =>
   `BigDecimal(${BigDecimal.format(BigDecimal.normalize(val))})`
@@ -3875,7 +3872,7 @@ const _BigDecimal: Schema<string, BigDecimal.BigDecimal> = transformOrFail(
       onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
     })),
   (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val)))
-).pipe(description("a string <-> BigDecimal transformation"))
+).pipe(identifier("BigDecimal"))
 
 export {
   /**
@@ -3897,7 +3894,7 @@ export const BigDecimalFromNumber: Schema<number, BigDecimal.BigDecimal> = trans
   BigDecimalFromSelf,
   (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
   (val) => ParseResult.succeed(BigDecimal.unsafeToNumber(val))
-).pipe(description("a number <-> BigDecimal transformation"))
+).pipe(identifier("BigDecimalFromNumber"))
 
 /**
  * @category type id
@@ -4132,7 +4129,7 @@ export const clampBigDecimal =
       (self) => BigDecimal.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
-    ).pipe(description(`a BigDecimal <-> clamp(${minimum}, ${maximum}) transformation`))
+    )
 
 /**
  * Negates a `BigDecimal`.
@@ -4149,7 +4146,7 @@ export const negateBigDecimal = <I, A extends BigDecimal.BigDecimal>(
     (self) => BigDecimal.negate(self),
     (self) => BigDecimal.negate(self),
     { strict: false }
-  ).pipe(description("a BigDecimal <-> negate transformation"))
+  )
 
 const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc) =>
   fc.array(item(fc)).map(Chunk.fromIterable)
@@ -4180,7 +4177,7 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
       }
     },
     {
-      [AST.IdentifierAnnotationId]: "Chunk",
+      [AST.DescriptionAnnotationId]: `Chunk<${Format.formatSchema(item)}>`,
       [hooks.PrettyHookId]: chunkPretty,
       [hooks.ArbitraryHookId]: chunkArbitrary,
       [hooks.EquivalenceHookId]: Chunk.getEquivalence
@@ -4198,7 +4195,7 @@ export const chunk = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, Chunk.
     chunkFromSelf(to(item)),
     (as) => as.length === 0 ? Chunk.empty() : Chunk.fromIterable(as),
     Chunk.toReadonlyArray
-  ).pipe(description("a ReadonlyArray<I> <-> Chunk<A> transformation"))
+  )
 
 const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a: A): Data.Data<A> =>
   Array.isArray(a) ? Data.array(a) : Data.struct(a)
@@ -4234,7 +4231,7 @@ export const dataFromSelf = <
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "Data",
+      [AST.DescriptionAnnotationId]: `Data<${Format.formatSchema(item)}>`,
       [hooks.PrettyHookId]: dataPretty,
       [hooks.ArbitraryHookId]: dataArbitrary,
       [hooks.EquivalenceHookId]: () => Equal.equals
@@ -4258,7 +4255,7 @@ export const data = <
     toData,
     (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a),
     { strict: false }
-  ).pipe(description("a I <-> Data<A> transformation"))
+  )
 
 type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
   `Missing \`Self\` generic - use \`class Self extends ${Usage}<Self>()(${Params}{ ... })\``
@@ -4574,11 +4571,11 @@ const FiberIdCompositeFrom = struct({
   _tag: literal("Composite"),
   left: suspend(() => FiberIdFrom),
   right: suspend(() => FiberIdFrom)
-}).pipe(description("FiberIdCompositeFrom"))
+}).pipe(identifier("FiberIdCompositeFrom"))
 
 const FiberIdNoneFrom = struct({
   _tag: literal("None")
-}).pipe(description("FiberIdNoneFrom"))
+}).pipe(identifier("FiberIdNoneFrom"))
 
 const FiberIdRuntimeFrom = struct({
   _tag: literal("Runtime"),
@@ -4590,13 +4587,13 @@ const FiberIdRuntimeFrom = struct({
     title: "startTimeMillis",
     description: "startTimeMillis"
   }))
-}).pipe(description("FiberIdRuntimeFrom"))
+}).pipe(identifier("FiberIdRuntimeFrom"))
 
 const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
   FiberIdCompositeFrom,
   FiberIdNoneFrom,
   FiberIdRuntimeFrom
-).pipe(description("FiberIdFrom"))
+).pipe(identifier("FiberIdFrom"))
 
 const fiberIdFromArbitrary = arbitrary.unsafe(FiberIdFrom)
 
@@ -4709,49 +4706,51 @@ const causeDieFrom = (defect: Schema<unknown, unknown>) =>
   struct({
     _tag: literal("Die"),
     defect
-  }).pipe(description("CauseDieFrom"))
+  })
 
 const CauseEmptyFrom = struct({
   _tag: literal("Empty")
-}).pipe(description("CauseEmptyFrom"))
+})
 
 const causeFailFrom = <EI, E>(error: Schema<EI, E>) =>
   struct({
     _tag: literal("Fail"),
     error
-  }).pipe(description("CauseFailFrom"))
+  })
 
 const CauseInterruptFrom = struct({
   _tag: literal("Interrupt"),
   fiberId: FiberIdFrom
-}).pipe(description("CauseInterruptFrom"))
+})
 
-const causeParallelFrom = <EI, E>(causeFrom: () => Schema<CauseFrom<EI>, CauseFrom<E>>) =>
+const causeParallelFrom = <EI, E>(causeFrom: Schema<CauseFrom<EI>, CauseFrom<E>>) =>
   struct({
     _tag: literal("Parallel"),
-    left: suspend(causeFrom),
-    right: suspend(causeFrom)
-  }).pipe(description("CauseParallelFrom"))
+    left: causeFrom,
+    right: causeFrom
+  })
 
-const causeSequentialFrom = <EI, E>(causeFrom: () => Schema<CauseFrom<EI>, CauseFrom<E>>) =>
+const causeSequentialFrom = <EI, E>(causeFrom: Schema<CauseFrom<EI>, CauseFrom<E>>) =>
   struct({
     _tag: literal("Sequential"),
-    left: suspend(causeFrom),
-    right: suspend(causeFrom)
-  }).pipe(description("CauseSequentialFrom"))
+    left: causeFrom,
+    right: causeFrom
+  })
 
 const causeFrom = <EI, E>(
   error: Schema<EI, E>,
   defect: Schema<unknown, unknown>
 ): Schema<CauseFrom<EI>, CauseFrom<E>> => {
+  const desc = `CauseFrom<${Format.formatSchema(error)}>`
+  const recur = suspend(() => out).pipe(description(desc))
   const out: Schema<CauseFrom<EI>, CauseFrom<E>> = union(
     causeDieFrom(defect),
     CauseEmptyFrom,
     causeFailFrom(error),
     CauseInterruptFrom,
-    causeParallelFrom(() => out),
-    causeSequentialFrom(() => out)
-  ).pipe(description("CauseFrom"))
+    causeParallelFrom(recur),
+    causeSequentialFrom(recur)
+  ).pipe(description(desc))
   return out
 }
 
@@ -4804,7 +4803,7 @@ export const causeFromSelf = <IE, E>(
       }
     },
     {
-      [AST.IdentifierAnnotationId]: "Cause",
+      [AST.DescriptionAnnotationId]: `Cause<${Format.formatSchema(error)}>`,
       [hooks.PrettyHookId]: causePretty,
       [hooks.ArbitraryHookId]: causeArbitrary,
       [hooks.EquivalenceHookId]: () => Equal.equals
@@ -4902,7 +4901,7 @@ const exitFailureFrom = <EI, E>(
   struct({
     _tag: literal("Failure"),
     cause: causeFrom(error, defect)
-  }).pipe(description("ExitFailureFrom"))
+  })
 
 const exitSuccessFrom = <AI, A>(
   value: Schema<AI, A>
@@ -4910,7 +4909,7 @@ const exitSuccessFrom = <AI, A>(
   struct({
     _tag: literal("Success"),
     value
-  }).pipe(description("ExitSuccessFrom"))
+  })
 
 const exitFrom = <EI, E, AI, A>(
   error: Schema<EI, E>,
@@ -4920,7 +4919,7 @@ const exitFrom = <EI, E, AI, A>(
   union(
     exitFailureFrom(error, defect),
     exitSuccessFrom(value)
-  ).pipe(description("ExitFrom"))
+  )
 
 const exitDecode = <E, A>(input: ExitFrom<E, A>): Exit.Exit<E, A> => {
   switch (input._tag) {

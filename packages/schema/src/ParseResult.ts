@@ -57,14 +57,40 @@ export const parseError = (
 export type ParseIssue =
   // context
   | Tuple
-  | Key
   | TypeLiteral
   | Union
+  | Key
+  | Transform
   // primitives
   | Type
   | Missing
   | Unexpected
   | Forbidden
+
+/**
+ * Error that occurs when a transformation has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Transform {
+  readonly _tag: "Transform"
+  readonly ast: AST.Transform
+  readonly actual: unknown
+  readonly kind: "From" | "Transformation" | "To"
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const transform = (
+  ast: AST.Transform,
+  actual: unknown,
+  kind: "From" | "Transformation" | "To",
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+): Transform => ({ _tag: "Transform", ast, actual, kind, errors })
 
 /**
  * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
@@ -119,6 +145,7 @@ export const forbidden: Forbidden = {
 export interface Tuple {
   readonly _tag: "Tuple"
   readonly ast: AST.Tuple
+  readonly actual: unknown
   readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
 }
 
@@ -128,8 +155,9 @@ export interface Tuple {
  */
 export const tuple = (
   ast: AST.Tuple,
+  actual: unknown,
   errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
-): Tuple => ({ _tag: "Tuple", ast, errors })
+): Tuple => ({ _tag: "Tuple", ast, actual, errors })
 
 /**
  * @category model
@@ -138,6 +166,7 @@ export const tuple = (
 export interface TypeLiteral {
   readonly _tag: "TypeLiteral"
   readonly ast: AST.TypeLiteral
+  readonly actual: unknown
   readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
 }
 
@@ -147,8 +176,9 @@ export interface TypeLiteral {
  */
 export const typeLiteral = (
   ast: AST.TypeLiteral,
+  actual: unknown,
   errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
-): TypeLiteral => ({ _tag: "TypeLiteral", ast, errors })
+): TypeLiteral => ({ _tag: "TypeLiteral", ast, actual, errors })
 
 /**
  * The `Index` decode error indicates that there was an error at a specific index in an array or tuple.
@@ -243,6 +273,7 @@ export const unexpected = (
 export interface Union {
   readonly _tag: "Union"
   readonly ast: AST.Union
+  readonly actual: unknown
   readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Member | Key | Type>
 }
 
@@ -252,8 +283,9 @@ export interface Union {
  */
 export const union = (
   ast: AST.Union,
+  actual: unknown,
   errors: ReadonlyArray.NonEmptyReadonlyArray<Member | Key | Type>
-): Union => ({ _tag: "Union", ast, errors })
+): Union => ({ _tag: "Union", ast, actual, errors })
 
 /**
  * Error that occurs when a member in a union has an error.

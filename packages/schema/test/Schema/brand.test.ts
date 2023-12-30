@@ -102,7 +102,9 @@ describe("Schema > brand", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected string, actual null`
+        `NumberFromString
+└─ From side transformation failure
+   └─ Expected string, actual null`
       )
     })
 
@@ -113,7 +115,9 @@ describe("Schema > brand", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected string, actual null`
+        `NumberFromString
+└─ From side transformation failure
+   └─ Expected string, actual null`
       )
     })
   })

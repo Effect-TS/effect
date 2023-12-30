@@ -68,27 +68,33 @@ describe("Cause > cause", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected CauseFrom, actual null`
+      `(CauseFrom<NumberFromString> <-> Cause<number>)
+└─ From side transformation failure
+   └─ Expected CauseFrom<NumberFromString>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       {},
-      `CauseFrom
-└─ ["_tag"]
-   └─ is missing`
+      `(CauseFrom<NumberFromString> <-> Cause<number>)
+└─ From side transformation failure
+   └─ CauseFrom<NumberFromString>
+      └─ ["_tag"]
+         └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
-      `CauseFrom
-└─ Union member
-   └─ CauseParallelFrom
-      └─ ["left"]
-         └─ CauseFrom
-            └─ Union member
-               └─ CauseFailFrom
-                  └─ ["error"]
-                     └─ is missing`
+      `(CauseFrom<NumberFromString> <-> Cause<number>)
+└─ From side transformation failure
+   └─ CauseFrom<NumberFromString>
+      └─ Union member
+         └─ { _tag: "Parallel"; left: CauseFrom<NumberFromString>; right: CauseFrom<NumberFromString> }
+            └─ ["left"]
+               └─ CauseFrom<NumberFromString>
+                  └─ Union member
+                     └─ { _tag: "Fail"; error: NumberFromString }
+                        └─ ["error"]
+                           └─ is missing`
     )
   })
 

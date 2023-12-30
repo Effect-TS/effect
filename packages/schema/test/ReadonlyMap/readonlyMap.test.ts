@@ -19,16 +19,20 @@ describe("ReadonlyMap > readonlyMap", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected ReadonlyArray<readonly [number, string]>, actual null`
+      `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
+└─ From side transformation failure
+   └─ Expected ReadonlyArray<readonly [number, string]>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       [[1, "a"], [2, 1]],
-      `ReadonlyArray<readonly [number, string]>
-└─ [1]
-   └─ readonly [number, string]
+      `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
+└─ From side transformation failure
+   └─ ReadonlyArray<readonly [number, string]>
       └─ [1]
-         └─ Expected string, actual 1`
+         └─ readonly [number, string]
+            └─ [1]
+               └─ Expected string, actual 1`
     )
   })
 

@@ -2,8 +2,9 @@
  * @since 1.0.0
  */
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Format from "./Format.js"
 import type { ParseIssue } from "./ParseResult.js"
-import { formatAST, getMessage } from "./TreeFormatter.js"
+import { formatMessage } from "./TreeFormatter.js"
 
 /**
  * @category model
@@ -19,7 +20,7 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
   const _tag = self._tag
   switch (_tag) {
     case "Type":
-      return [{ _tag, path, message: getMessage(self) }]
+      return [{ _tag, path, message: formatMessage(self) }]
     case "Key":
       return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.key]))
     case "Missing":
@@ -30,7 +31,7 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
       return [{
         _tag,
         path,
-        message: `Unexpected, expected ${formatAST(self.expected)}`
+        message: `Unexpected, expected ${Format.formatAST(self.expected)}`
       }]
     case "Union":
       return ReadonlyArray.flatMap(self.errors, (e) => {
@@ -53,6 +54,7 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
         (key) => ReadonlyArray.flatMap(key.errors, (e) => format(e, [...path, key.key]))
       )
   }
+  return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
 }
 
 /**

@@ -17,14 +17,16 @@ describe("ReadonlySet > readonlySetFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected ReadonlySet, actual null`
+      `Expected ReadonlySet<NumberFromString>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       new Set(["1", "a", "3"]),
-      `ReadonlyArray<a string <-> number transformation>
+      `ReadonlyArray<NumberFromString>
 └─ [1]
-   └─ Expected a string <-> number transformation, actual "a"`
+   └─ NumberFromString
+      └─ Transformation process failure
+         └─ Expected NumberFromString, actual "a"`
     )
   })
 

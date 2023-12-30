@@ -117,7 +117,7 @@ describe("ArrayFormatter", () => {
   })
 
   it("Forbidden", () => {
-    const schema = Util.effectify(S.string, "all")
+    const schema = Util.effectify(S.string)
     expectIssues(schema, "", [{
       _tag: "Forbidden",
       path: [],

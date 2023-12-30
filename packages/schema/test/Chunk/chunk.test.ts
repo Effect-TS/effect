@@ -16,14 +16,18 @@ describe("Chunk > chunk", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected ReadonlyArray<number>, actual null`
+      `(ReadonlyArray<number> <-> Chunk<number>)
+└─ From side transformation failure
+   └─ Expected ReadonlyArray<number>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       [1, "a"],
-      `ReadonlyArray<number>
-└─ [1]
-   └─ Expected number, actual "a"`
+      `(ReadonlyArray<number> <-> Chunk<number>)
+└─ From side transformation failure
+   └─ ReadonlyArray<number>
+      └─ [1]
+         └─ Expected number, actual "a"`
     )
   })
 

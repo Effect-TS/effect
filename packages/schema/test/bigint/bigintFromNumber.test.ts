@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("bigint/bigintFromNumber", () => {
+describe("bigint > bigintFromNumber", () => {
   const schema = S.BigintFromNumber
 
   it("property tests", () => {
@@ -17,22 +17,30 @@ describe("bigint/bigintFromNumber", () => {
     await Util.expectParseFailure(
       schema,
       1.2,
-      `Expected a number <-> bigint transformation, actual 1.2`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual 1.2`
     )
     await Util.expectParseFailure(
       schema,
       NaN,
-      `Expected a number <-> bigint transformation, actual NaN`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual NaN`
     )
     await Util.expectParseFailure(
       schema,
       Infinity,
-      `Expected a number <-> bigint transformation, actual Infinity`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual Infinity`
     )
     await Util.expectParseFailure(
       schema,
       -Infinity,
-      `Expected a number <-> bigint transformation, actual -Infinity`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual -Infinity`
     )
   })
 
@@ -42,12 +50,16 @@ describe("bigint/bigintFromNumber", () => {
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MAX_SAFE_INTEGER) + 1n,
-      `Expected a number <-> bigint transformation, actual 9007199254740992n`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual 9007199254740992n`
     )
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MIN_SAFE_INTEGER) - 1n,
-      `Expected a number <-> bigint transformation, actual -9007199254740992n`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual -9007199254740992n`
     )
   })
 })
