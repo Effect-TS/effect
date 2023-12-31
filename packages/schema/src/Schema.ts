@@ -3614,7 +3614,7 @@ export const optionFromSelf = <I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Option<${Format.formatSchema(value)}>`,
+      [AST.DescriptionAnnotationId]: `Option<${Format.format(value)}>`,
       [hooks.PrettyHookId]: optionPretty,
       [hooks.ArbitraryHookId]: optionArbitrary,
       [hooks.EquivalenceHookId]: Option.getEquivalence
@@ -3740,9 +3740,7 @@ export const eitherFromSelf = <IE, E, IA, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Either<${Format.formatSchema(left)}, ${
-        Format.formatSchema(right)
-      }>`,
+      [AST.DescriptionAnnotationId]: `Either<${Format.format(left)}, ${Format.format(right)}>`,
       [hooks.PrettyHookId]: eitherPretty,
       [hooks.ArbitraryHookId]: eitherArbitrary,
       [hooks.EquivalenceHookId]: Either.getEquivalence
@@ -3822,9 +3820,7 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: `ReadonlyMap<${Format.formatSchema(key)}, ${
-        Format.formatSchema(value)
-      }>`,
+      [AST.IdentifierAnnotationId]: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
       [hooks.PrettyHookId]: readonlyMapPretty,
       [hooks.ArbitraryHookId]: readonlyMapArbitrary,
       [hooks.EquivalenceHookId]: readonlyMapEquivalence
@@ -3886,7 +3882,7 @@ export const readonlySetFromSelf = <I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `ReadonlySet<${Format.formatSchema(item)}>`,
+      [AST.DescriptionAnnotationId]: `ReadonlySet<${Format.format(item)}>`,
       [hooks.PrettyHookId]: readonlySetPretty,
       [hooks.ArbitraryHookId]: readonlySetArbitrary,
       [hooks.EquivalenceHookId]: readonlySetEquivalence
@@ -4292,7 +4288,7 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
       }
     },
     {
-      [AST.DescriptionAnnotationId]: `Chunk<${Format.formatSchema(item)}>`,
+      [AST.DescriptionAnnotationId]: `Chunk<${Format.format(item)}>`,
       [hooks.PrettyHookId]: chunkPretty,
       [hooks.ArbitraryHookId]: chunkArbitrary,
       [hooks.EquivalenceHookId]: Chunk.getEquivalence
@@ -4346,7 +4342,7 @@ export const dataFromSelf = <
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Data<${Format.formatSchema(item)}>`,
+      [AST.DescriptionAnnotationId]: `Data<${Format.format(item)}>`,
       [hooks.PrettyHookId]: dataPretty,
       [hooks.ArbitraryHookId]: dataArbitrary,
       [hooks.EquivalenceHookId]: () => Equal.equals
@@ -4856,8 +4852,8 @@ const causeFrom = <EI, E>(
   error: Schema<EI, E>,
   defect: Schema<unknown, unknown>
 ): Schema<CauseFrom<EI>, CauseFrom<E>> => {
-  const desc = `CauseFrom<${Format.formatSchema(error)}>`
-  const recur = suspend(() => out).pipe(description(desc))
+  const desc = `CauseFrom<${Format.format(error)}>`
+  const recur = suspend(() => out)
   const out: Schema<CauseFrom<EI>, CauseFrom<E>> = union(
     causeDieFrom(defect),
     CauseEmptyFrom,
@@ -4918,7 +4914,7 @@ export const causeFromSelf = <IE, E>(
       }
     },
     {
-      [AST.DescriptionAnnotationId]: `Cause<${Format.formatSchema(error)}>`,
+      [AST.DescriptionAnnotationId]: `Cause<${Format.format(error)}>`,
       [hooks.PrettyHookId]: causePretty,
       [hooks.ArbitraryHookId]: causeArbitrary,
       [hooks.EquivalenceHookId]: () => Equal.equals

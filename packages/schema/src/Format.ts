@@ -10,7 +10,7 @@ import type * as Schema from "./Schema.js"
  * @category formatting
  * @since 1.0.0
  */
-export const formatSchema = <I, A>(schema: Schema.Schema<I, A>): string => formatAST(schema.ast)
+export const format = <I, A>(schema: Schema.Schema<I, A>): string => formatAST(schema.ast)
 
 /**
  * @category formatting
@@ -31,9 +31,9 @@ export const formatAST = (ast: AST.AST, verbose: boolean = false): string => {
     case "NeverKeyword":
       return Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
     case "Literal":
-      return Option.getOrElse(getExpected(ast, verbose), () => format(ast.literal))
+      return Option.getOrElse(getExpected(ast, verbose), () => formatUnknown(ast.literal))
     case "UniqueSymbol":
-      return Option.getOrElse(getExpected(ast, verbose), () => format(ast.symbol))
+      return Option.getOrElse(getExpected(ast, verbose), () => formatUnknown(ast.symbol))
     case "Union":
       return Option.getOrElse(
         getExpected(ast, verbose),
@@ -54,7 +54,10 @@ export const formatAST = (ast: AST.AST, verbose: boolean = false): string => {
           }>`
       )
     case "Suspend":
-      return Option.getOrElse(getExpected(ast, verbose), () => "<suspended schema>")
+      return getExpected(ast, verbose).pipe(
+        Option.orElse(() => getExpected(ast.f(), verbose)),
+        Option.getOrElse(() => "<suspended schema>")
+      )
     case "Declaration":
       return Option.getOrElse(getExpected(ast, verbose), () => "<declaration schema>")
     case "Refinement":
@@ -74,7 +77,7 @@ export const formatTransformation = (from: string, to: string): string => `(${fr
  * @category formatting
  * @since 1.0.0
  */
-export const format = (u: unknown): string => {
+export const formatUnknown = (u: unknown): string => {
   if (Predicate.isString(u)) {
     return JSON.stringify(u)
   } else if (

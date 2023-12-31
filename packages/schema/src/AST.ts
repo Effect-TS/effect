@@ -1181,20 +1181,24 @@ export const isTypeLiteralTransformation = (
  *
  * @since 1.0.0
  */
-export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]): AST => ({
-  ...ast,
-  annotations: { ...ast.annotations, ...annotations }
-})
+export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]): AST => {
+  return {
+    ...ast,
+    annotations: { ...ast.annotations, ...annotations }
+  }
+}
 
 /**
  * Adds an annotation, potentially overwriting the existing annotation with the specified id.
  *
  * @since 1.0.0
  */
-export const setAnnotation = (ast: AST, sym: symbol, value: unknown): AST => ({
-  ...ast,
-  annotations: { ...ast.annotations, [sym]: value }
-})
+export const setAnnotation = (ast: AST, sym: symbol, value: unknown): AST => {
+  return {
+    ...ast,
+    annotations: { ...ast.annotations, [sym]: value }
+  }
+}
 
 /**
  * Adds a rest element to the end of a tuple, or throws an exception if the rest element is already present.

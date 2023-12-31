@@ -112,6 +112,57 @@ describe("TreeFormatter", () => {
         )
       })
     })
+
+    describe("suspend", () => {
+      it("outer", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+          () => S.tuple(S.number, S.union(schema, S.literal(null)))
+        )
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `Expected readonly [number, <suspended schema> | null], actual null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `readonly [number, <suspended schema> | null]
+└─ [1]
+   └─ <suspended schema> | null
+      ├─ Union member
+      │  └─ Expected readonly [number, <suspended schema> | null], actual undefined
+      └─ Union member
+         └─ Expected null, actual undefined`
+        )
+      })
+
+      it("inner", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.tuple(
+          S.number,
+          S.union(S.suspend(() => schema), S.literal(null))
+        )
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `Expected readonly [number, <suspended schema> | null], actual null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `readonly [number, <suspended schema> | null]
+└─ [1]
+   └─ <suspended schema> | null
+      ├─ Union member
+      │  └─ Expected readonly [number, <suspended schema> | null], actual undefined
+      └─ Union member
+         └─ Expected null, actual undefined`
+        )
+      })
+    })
   })
 
   describe("handle identifiers", () => {
@@ -131,6 +182,82 @@ describe("TreeFormatter", () => {
    └─ Expected MyString2 (a string), actual 2`,
         Util.allErrors
       )
+    })
+
+    describe("suspend", () => {
+      it("outer", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+          () => S.tuple(S.number, S.union(schema, S.literal(null)))
+        ).pipe(S.identifier("A"))
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `Expected A, actual null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `A
+└─ [1]
+   └─ A | null
+      ├─ Union member
+      │  └─ Expected A, actual undefined
+      └─ Union member
+         └─ Expected null, actual undefined`
+        )
+      })
+
+      it("inner/outer", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.tuple(
+          S.number,
+          S.union(S.suspend(() => schema), S.literal(null))
+        ).pipe(S.identifier("A"))
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `Expected A, actual null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `A
+└─ [1]
+   └─ A | null
+      ├─ Union member
+      │  └─ Expected A, actual undefined
+      └─ Union member
+         └─ Expected null, actual undefined`
+        )
+      })
+
+      it("inner/inner", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.tuple(
+          S.number,
+          S.union(S.suspend(() => schema).pipe(S.identifier("A")), S.literal(null))
+        )
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `Expected readonly [number, A | null], actual null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `readonly [number, A | null]
+└─ [1]
+   └─ A | null
+      ├─ Union member
+      │  └─ Expected A, actual undefined
+      └─ Union member
+         └─ Expected null, actual undefined`
+        )
+      })
     })
   })
 
@@ -246,7 +373,7 @@ describe("TreeFormatter", () => {
       )
     })
 
-    it("unions", async () => {
+    it("union", async () => {
       const schema = S.union(S.string, S.number).pipe(
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
@@ -258,7 +385,7 @@ describe("TreeFormatter", () => {
       )
     })
 
-    it("transformations", async () => {
+    it("transformation", async () => {
       const schema = S.NumberFromString.pipe(
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
@@ -273,6 +400,107 @@ describe("TreeFormatter", () => {
         "a",
         `my custom message "a"`
       )
+    })
+
+    describe("suspend", () => {
+      it("outer", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+          () => S.tuple(S.number, S.union(schema, S.literal(null)))
+        ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `my custom message null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `my custom message [1,null]`
+        )
+      })
+
+      it("inner/outer", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.tuple(
+          S.number,
+          S.union(S.suspend(() => schema), S.literal(null))
+        ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `my custom message null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `my custom message [1,null]`
+        )
+      })
+
+      it("inner/inner", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.tuple(
+          S.number,
+          S.union(
+            S.suspend(() => schema).pipe(
+              S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+            ),
+            S.literal(null)
+          )
+        )
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `Expected readonly [number, <suspended schema> | null], actual null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `readonly [number, <suspended schema> | null]
+└─ [1]
+   └─ <suspended schema> | null
+      ├─ Union member
+      │  └─ my custom message undefined
+      └─ Union member
+         └─ Expected null, actual undefined`
+        )
+      })
+
+      it("inner/inner/inner", async () => {
+        type A = readonly [number, A | null]
+        const schema: S.Schema<A> = S.tuple(
+          S.number,
+          S.union(
+            S.suspend(() =>
+              schema.pipe(
+                S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+              )
+            ),
+            S.literal(null)
+          )
+        )
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `Expected readonly [number, <suspended schema> | null], actual null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          [1, undefined],
+          `readonly [number, <suspended schema> | null]
+└─ [1]
+   └─ <suspended schema> | null
+      ├─ Union member
+      │  └─ my custom message undefined
+      └─ Union member
+         └─ Expected null, actual undefined`
+        )
+      })
     })
   })
 })

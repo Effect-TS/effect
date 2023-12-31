@@ -75,7 +75,7 @@ export const formatMessage = (e: Type): string =>
   getMessage(e.ast, e.actual).pipe(
     Option.orElse(() => e.message),
     Option.getOrElse(() =>
-      `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.format(e.actual)}`
+      `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`
     )
   )
 
@@ -101,7 +101,7 @@ const go = (e: ParseIssue): Tree<string> => {
     case "Unexpected":
       return make(`is unexpected, expected ${Format.formatAST(e.expected, true)}`)
     case "Key":
-      return make(`[${Format.format(e.key)}]`, e.errors.map(go))
+      return make(`[${Format.formatUnknown(e.key)}]`, e.errors.map(go))
     case "Missing":
       return make("is missing")
     case "Union":
@@ -141,7 +141,7 @@ const go = (e: ParseIssue): Tree<string> => {
           make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), e.errors.map(go))]),
         onSome: make
       })
-    case "Refinement": {
+    case "Refinement":
       return Option.match(getRefinementMessage(e, e.actual), {
         onNone: () =>
           make(Format.formatAST(e.ast), [
@@ -149,6 +149,5 @@ const go = (e: ParseIssue): Tree<string> => {
           ]),
         onSome: make
       })
-    }
   }
 }
