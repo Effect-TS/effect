@@ -111,6 +111,7 @@ export type RouteContextTypeId = typeof RouteContextTypeId
 export interface RouteContext {
   readonly [RouteContextTypeId]: RouteContextTypeId
   readonly params: Readonly<Record<string, string | undefined>>
+  readonly route: Route<unknown, unknown>
   readonly searchParams: Readonly<Record<string, string>>
 }
 
