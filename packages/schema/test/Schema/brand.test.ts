@@ -54,12 +54,16 @@ describe("Schema > brand", () => {
   })
 
   it("the constructor should throw on invalid values", () => {
-    const Int = S.NumberFromString.pipe(S.int(), S.identifier("IntegerFromString"), S.brand("Int"))
-    expect(Int(1)).toEqual(1)
-    expect(() => Int(1.2)).toThrow(
+    const IntegerFromString = S.NumberFromString.pipe(
+      S.int(),
+      S.identifier("IntegerFromString"),
+      S.brand("Int")
+    )
+    expect(IntegerFromString(1)).toEqual(1)
+    expect(() => IntegerFromString(1.2)).toThrow(
       new Error(`IntegerFromString
 └─ Predicate refinement failure
-   └─ Expected an integer, actual 1.2`)
+   └─ Expected IntegerFromString (an integer), actual 1.2`)
     )
   })
 

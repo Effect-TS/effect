@@ -16,14 +16,14 @@ describe("number > Finite", () => {
       Infinity,
       `Finite
 └─ Predicate refinement failure
-   └─ Expected a finite number, actual Infinity`
+   └─ Expected Finite (a finite number), actual Infinity`
     )
     await Util.expectParseFailure(
       schema,
       -Infinity,
       `Finite
 └─ Predicate refinement failure
-   └─ Expected a finite number, actual -Infinity`
+   └─ Expected Finite (a finite number), actual -Infinity`
     )
   })
 })

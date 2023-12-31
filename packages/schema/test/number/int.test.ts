@@ -28,7 +28,7 @@ describe("number > Int", () => {
       0.5,
       `Int
 └─ Predicate refinement failure
-   └─ Expected an integer, actual 0.5`
+   └─ Expected Int (an integer), actual 0.5`
     )
   })
 

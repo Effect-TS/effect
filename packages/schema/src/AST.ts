@@ -319,8 +319,7 @@ export const isLiteral = (ast: AST): ast is Literal => ast._tag === "Literal"
 
 /** @internal */
 export const _null = createLiteral(null, {
-  [IdentifierAnnotationId]: "null",
-  [DescriptionAnnotationId]: "null"
+  [IdentifierAnnotationId]: "null"
 })
 
 /**
@@ -619,7 +618,8 @@ export const objectKeyword: ObjectKeyword = {
   _tag: "ObjectKeyword",
   annotations: {
     [IdentifierAnnotationId]: "object",
-    [TitleAnnotationId]: "object"
+    [TitleAnnotationId]: "object",
+    [DescriptionAnnotationId]: "an object in the TypeScript meaning, i.e. the `object` type"
   }
 }
 

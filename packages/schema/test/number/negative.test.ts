@@ -10,14 +10,14 @@ describe("number > Negative", () => {
       0,
       `Negative
 └─ Predicate refinement failure
-   └─ Expected a negative number, actual 0`
+   └─ Expected Negative (a negative number), actual 0`
     )
     await Util.expectParseFailure(
       schema,
       1,
       `Negative
 └─ Predicate refinement failure
-   └─ Expected a negative number, actual 1`
+   └─ Expected Negative (a negative number), actual 1`
     )
   })
 

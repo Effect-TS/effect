@@ -13,14 +13,14 @@ describe("number > JsonNumber", () => {
       NaN,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected a JSON number, actual NaN`
+   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual NaN`
     )
     await Util.expectParseFailure(
       S.JsonNumber,
       Number.NaN,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected a JSON number, actual NaN`
+   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual NaN`
     )
   })
 
@@ -30,28 +30,28 @@ describe("number > JsonNumber", () => {
       Infinity,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected a JSON number, actual Infinity`
+   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual Infinity`
     )
     await Util.expectParseFailure(
       S.JsonNumber,
       -Infinity,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected a JSON number, actual -Infinity`
+   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual -Infinity`
     )
     await Util.expectParseFailure(
       S.JsonNumber,
       Number.POSITIVE_INFINITY,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected a JSON number, actual Infinity`
+   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual Infinity`
     )
     await Util.expectParseFailure(
       S.JsonNumber,
       Number.NEGATIVE_INFINITY,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected a JSON number, actual -Infinity`
+   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual -Infinity`
     )
   })
 })

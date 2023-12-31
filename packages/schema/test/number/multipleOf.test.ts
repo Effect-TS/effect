@@ -28,7 +28,7 @@ describe("number > multipleOf", () => {
       -3,
       `Even
 └─ Predicate refinement failure
-   └─ Expected a number divisible by 2, actual -3`
+   └─ Expected Even (a number divisible by 2), actual -3`
     )
     await Util.expectParseSuccess(schema, 0)
     await Util.expectParseSuccess(schema, 2)
@@ -37,7 +37,7 @@ describe("number > multipleOf", () => {
       2.5,
       `Even
 └─ Predicate refinement failure
-   └─ Expected a number divisible by 2, actual 2.5`
+   └─ Expected Even (a number divisible by 2), actual 2.5`
     )
     await Util.expectParseFailure(
       schema,

@@ -12,7 +12,7 @@ describe("bigint > NonPositiveBigintFromSelf", () => {
       1n,
       `NonPositiveBigintFromSelf
 └─ Predicate refinement failure
-   └─ Expected a non-positive bigint, actual 1n`
+   └─ Expected NonPositiveBigintFromSelf (a non-positive bigint), actual 1n`
     )
   })
 

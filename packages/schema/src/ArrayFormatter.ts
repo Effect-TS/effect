@@ -31,7 +31,7 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
       return [{
         _tag,
         path,
-        message: `Unexpected, expected ${Format.formatAST(self.expected)}`
+        message: `Unexpected, expected ${Format.formatAST(self.expected, true)}`
       }]
     case "Union":
       return ReadonlyArray.flatMap(self.errors, (e) => {

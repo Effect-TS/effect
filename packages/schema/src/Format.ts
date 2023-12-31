@@ -107,16 +107,25 @@ const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
     formatTemplateLiteralSpan(span) + span.literal
   ).join("") + "`"
 
-const getExpected = (ast: AST.AST, verbose: boolean): Option.Option<string> =>
-  verbose ?
-    AST.getDescriptionAnnotation(ast).pipe(
-      Option.orElse(() => AST.getTitleAnnotation(ast)),
-      Option.orElse(() => AST.getIdentifierAnnotation(ast))
-    ) :
-    AST.getIdentifierAnnotation(ast).pipe(
-      Option.orElse(() => AST.getTitleAnnotation(ast)),
-      Option.orElse(() => AST.getDescriptionAnnotation(ast))
+const getExpected = (ast: AST.AST, verbose: boolean): Option.Option<string> => {
+  if (verbose) {
+    const description = AST.getDescriptionAnnotation(ast).pipe(
+      Option.orElse(() => AST.getTitleAnnotation(ast))
     )
+    return Option.match(AST.getIdentifierAnnotation(ast), {
+      onNone: () => description,
+      onSome: (identifier) =>
+        Option.match(description, {
+          onNone: () => Option.some(identifier),
+          onSome: (description) => Option.some(`${identifier} (${description})`)
+        })
+    })
+  }
+  return AST.getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => AST.getTitleAnnotation(ast)),
+    Option.orElse(() => AST.getDescriptionAnnotation(ast))
+  )
+}
 
 const formatTuple = (ast: AST.Tuple): string => {
   const formattedElements = ast.elements.map((element) =>

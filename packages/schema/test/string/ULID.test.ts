@@ -15,7 +15,7 @@ describe("string > ULID", () => {
       "",
       `ULID
 └─ Predicate refinement failure
-   └─ Expected a ULID, actual ""`
+   └─ Expected ULID (a Universally Unique Lexicographically Sortable Identifier), actual ""`
     )
   })
 })

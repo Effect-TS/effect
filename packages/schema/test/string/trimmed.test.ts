@@ -32,21 +32,21 @@ describe("string/trimmed", () => {
       "a ",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected a string with no leading or trailing whitespace, actual "a "`
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
     )
     await Util.expectParseFailure(
       schema,
       " a",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected a string with no leading or trailing whitespace, actual " a"`
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
     )
     await Util.expectParseFailure(
       schema,
       " a ",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected a string with no leading or trailing whitespace, actual " a "`
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a "`
     )
   })
 
@@ -58,21 +58,21 @@ describe("string/trimmed", () => {
       "a ",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected a string with no leading or trailing whitespace, actual "a "`
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
     )
     await Util.expectEncodeFailure(
       schema,
       " a",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected a string with no leading or trailing whitespace, actual " a"`
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
     )
     await Util.expectEncodeFailure(
       schema,
       " a ",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected a string with no leading or trailing whitespace, actual " a "`
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a "`
     )
   })
 

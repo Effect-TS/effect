@@ -126,9 +126,9 @@ describe("TreeFormatter", () => {
         { a: 1, b: 2 },
         `MySchema
 ├─ ["a"]
-│  └─ Expected a string, actual 1
+│  └─ Expected MyString1 (a string), actual 1
 └─ ["b"]
-   └─ Expected a string, actual 2`,
+   └─ Expected MyString2 (a string), actual 2`,
         Util.allErrors
       )
     })

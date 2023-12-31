@@ -11,14 +11,14 @@ describe("bigint > PositiveBigintFromSelf", () => {
       -1n,
       `PositiveBigintFromSelf
 └─ Predicate refinement failure
-   └─ Expected a positive bigint, actual -1n`
+   └─ Expected PositiveBigintFromSelf (a positive bigint), actual -1n`
     )
     await Util.expectParseFailure(
       schema,
       0n,
       `PositiveBigintFromSelf
 └─ Predicate refinement failure
-   └─ Expected a positive bigint, actual 0n`
+   └─ Expected PositiveBigintFromSelf (a positive bigint), actual 0n`
     )
   })
 

@@ -11,7 +11,7 @@ describe("Schema > encodeSync", () => {
 └─ From side transformation failure
    └─ Char
       └─ Predicate refinement failure
-         └─ Expected a character, actual "10"`)
+         └─ Expected Char (a single character), actual "10"`)
     )
   })
 })

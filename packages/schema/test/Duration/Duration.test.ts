@@ -23,7 +23,7 @@ describe("Duration > Duration", () => {
             └─ From side refinement failure
                └─ NonNegative
                   └─ Predicate refinement failure
-                     └─ Expected a non-negative number, actual -500`
+                     └─ Expected NonNegative (a non-negative number), actual -500`
     )
     await Util.expectParseFailure(
       schema,
@@ -36,7 +36,7 @@ describe("Duration > Duration", () => {
             └─ From side refinement failure
                └─ NonNegative
                   └─ Predicate refinement failure
-                     └─ Expected a non-negative number, actual -123`
+                     └─ Expected NonNegative (a non-negative number), actual -123`
     )
     await Util.expectParseFailure(
       schema,

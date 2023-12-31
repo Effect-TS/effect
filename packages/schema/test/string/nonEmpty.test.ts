@@ -13,7 +13,7 @@ describe("string > nonEmpty", () => {
       "",
       `NonEmpty
 └─ Predicate refinement failure
-   └─ Expected a non empty string, actual ""`
+   └─ Expected NonEmpty (a non empty string), actual ""`
     )
   })
 })

@@ -12,14 +12,14 @@ describe("string > length", () => {
       "",
       `Char
 └─ Predicate refinement failure
-   └─ Expected a character, actual ""`
+   └─ Expected Char (a single character), actual ""`
     )
     await Util.expectParseFailure(
       schema,
       "aa",
       `Char
 └─ Predicate refinement failure
-   └─ Expected a character, actual "aa"`
+   └─ Expected Char (a single character), actual "aa"`
     )
   })
 })

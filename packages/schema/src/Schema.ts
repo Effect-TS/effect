@@ -1966,7 +1966,9 @@ export const lowercased =
  * @category string constructors
  * @since 1.0.0
  */
-export const Lowercased: Schema<string> = string.pipe(lowercased({ identifier: "Lowercased" }))
+export const Lowercased: Schema<string> = string.pipe(
+  lowercased({ identifier: "Lowercased", title: "Lowercased" })
+)
 
 /**
  * @category type id
@@ -1994,7 +1996,9 @@ export const uppercased =
  * @category string constructors
  * @since 1.0.0
  */
-export const Uppercased: Schema<string> = string.pipe(uppercased({ identifier: "Uppercased" }))
+export const Uppercased: Schema<string> = string.pipe(
+  uppercased({ identifier: "Uppercased", title: "Uppercased" })
+)
 
 /**
  * @category type id
@@ -2020,11 +2024,19 @@ export const length = <A extends string>(
   self.pipe(
     filter((a): a is A => a.length === length, {
       typeId: LengthTypeId,
-      description: length === 1 ? `a character` : `a string ${length} character(s) long`,
+      description: length === 1 ? `a single character` : `a string ${length} character(s) long`,
       jsonSchema: { minLength: length, maxLength: length },
       ...options
     })
   )
+
+/**
+ * A schema representing a single character.
+ *
+ * @category string constructors
+ * @since 1.0.0
+ */
+export const Char = string.pipe(length(1), identifier("Char"))
 
 /**
  * @category string filters
@@ -2068,7 +2080,9 @@ export const Uppercase: Schema<string> = transform(
  * @category string constructors
  * @since 1.0.0
  */
-export const Trimmed: Schema<string> = string.pipe(trimmed({ identifier: "Trimmed" }))
+export const Trimmed: Schema<string> = string.pipe(
+  trimmed({ identifier: "Trimmed", title: "Trimmed" })
+)
 
 /**
  * This schema allows removing whitespaces from the beginning and end of a string.
@@ -2157,7 +2171,9 @@ export const parseJson: {
  * @category string constructors
  * @since 1.0.0
  */
-export const NonEmpty: Schema<string> = string.pipe(nonEmpty({ identifier: "NonEmpty" }))
+export const NonEmpty: Schema<string> = string.pipe(
+  nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
+)
 
 /**
  * @category type id
@@ -2168,6 +2184,10 @@ export const UUIDTypeId = Symbol.for("@effect/schema/TypeId/UUID")
 const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
 
 /**
+ * Represents a Universally Unique Identifier (UUID).
+ *
+ * This schema ensures that the provided string adheres to the standard UUID format.
+ *
  * @category string constructors
  * @since 1.0.0
  */
@@ -2176,7 +2196,7 @@ export const UUID: Schema<string> = string.pipe(
     typeId: UUIDTypeId,
     identifier: "UUID",
     title: "UUID",
-    description: "a UUID",
+    description: "a Universally Unique Identifier",
     arbitrary: (): Arbitrary<string> => (fc) => fc.uuid()
   })
 )
@@ -2190,6 +2210,11 @@ export const ULIDTypeId = Symbol.for("@effect/schema/TypeId/ULID")
 const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
 
 /**
+ * Represents a Universally Unique Lexicographically Sortable Identifier (ULID).
+ *
+ * ULIDs are designed to be compact, URL-safe, and ordered, making them suitable for use as identifiers.
+ * This schema ensures that the provided string adheres to the standard ULID format.
+ *
  * @category string constructors
  * @since 1.0.0
  */
@@ -2198,7 +2223,7 @@ export const ULID: Schema<string> = string.pipe(
     typeId: ULIDTypeId,
     identifier: "ULID",
     title: "ULID",
-    description: "a ULID",
+    description: "a Universally Unique Lexicographically Sortable Identifier",
     arbitrary: (): Arbitrary<string> => (fc) => fc.ulid()
   })
 )
@@ -2210,6 +2235,10 @@ export const ULID: Schema<string> = string.pipe(
 export const FiniteTypeId = Symbol.for("@effect/schema/TypeId/Finite")
 
 /**
+ * Ensures that the provided value is a finite number.
+ *
+ * This schema filters out non-finite numeric values, allowing only finite numbers to pass through.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2236,6 +2265,8 @@ export const GreaterThanTypeId: unique symbol = filters.GreaterThanTypeId
 export type GreaterThanTypeId = typeof GreaterThanTypeId
 
 /**
+ * This filter checks whether the provided number is greater than the specified minimum.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2266,6 +2297,8 @@ export const GreaterThanOrEqualToTypeId: unique symbol = filters.GreaterThanOrEq
 export type GreaterThanOrEqualToTypeId = typeof GreaterThanOrEqualToTypeId
 
 /**
+ * This filter checks whether the provided number is greater than or equal to the specified minimum.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2348,6 +2381,8 @@ export const LessThanTypeId: unique symbol = filters.LessThanTypeId
 export type LessThanTypeId = typeof LessThanTypeId
 
 /**
+ * This filter checks whether the provided number is less than the specified maximum.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2376,6 +2411,8 @@ export const LessThanOrEqualToTypeId: unique symbol = filters.LessThanOrEqualToT
 export type LessThanOrEqualToTypeId = typeof LessThanOrEqualToTypeId
 
 /**
+ * This schema checks whether the provided number is less than or equal to the specified maximum.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2406,6 +2443,8 @@ export const BetweenTypeId: unique symbol = filters.BetweenTypeId
 export type BetweenTypeId = typeof BetweenTypeId
 
 /**
+ * This filter checks whether the provided number falls within the specified minimum and maximum values.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2439,7 +2478,7 @@ export const nonNaN =
     self.pipe(
       filter((a): a is A => !Number.isNaN(a), {
         typeId: NonNaNTypeId,
-        description: "a number NaN excluded",
+        description: "a number excluding NaN",
         ...options
       })
     )
@@ -2530,43 +2569,51 @@ export const NumberFromString: Schema<string, number> = transformOrFail(
  * @category number constructors
  * @since 1.0.0
  */
-export const Finite: Schema<number> = number.pipe(finite({ identifier: "Finite" }))
+export const Finite: Schema<number> = number.pipe(finite({ identifier: "Finite", title: "Finite" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Int: Schema<number> = number.pipe(int({ identifier: "Int" }))
+export const Int: Schema<number> = number.pipe(int({ identifier: "Int", title: "Int" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNaN: Schema<number> = number.pipe(nonNaN({ identifier: "NonNaN" }))
+export const NonNaN: Schema<number> = number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Positive: Schema<number> = number.pipe(positive({ identifier: "Positive" }))
+export const Positive: Schema<number> = number.pipe(
+  positive({ identifier: "Positive", title: "Positive" })
+)
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Negative: Schema<number> = number.pipe(negative({ identifier: "Negative" }))
+export const Negative: Schema<number> = number.pipe(
+  negative({ identifier: "Negative", title: "Negative" })
+)
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonPositive: Schema<number> = number.pipe(nonPositive({ identifier: "NonPositive" }))
+export const NonPositive: Schema<number> = number.pipe(
+  nonPositive({ identifier: "NonPositive", title: "NonPositive" })
+)
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNegative: Schema<number> = number.pipe(nonNegative({ identifier: "NonNegative" }))
+export const NonNegative: Schema<number> = number.pipe(
+  nonNegative({ identifier: "NonNegative", title: "NonNegative" })
+)
 
 /**
  * @category type id
@@ -2596,8 +2643,8 @@ export const JsonNumber: Schema<number> = number.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
     identifier: "JsonNumber",
-    title: "JsonNumber",
-    description: "a JSON number",
+    title: "JSON-compatible number",
+    description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
     jsonSchema: { type: "number" }
   })
 )
@@ -2853,7 +2900,7 @@ export const bigint: Schema<string, bigint> = transformOrFail(
  * @since 1.0.0
  */
 export const PositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  positiveBigint({ identifier: "PositiveBigintFromSelf" })
+  positiveBigint({ identifier: "PositiveBigintFromSelf", title: "PositiveBigintFromSelf" })
 )
 
 /**
@@ -2861,7 +2908,7 @@ export const PositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
  * @since 1.0.0
  */
 export const PositiveBigint: Schema<string, bigint> = bigint.pipe(
-  positiveBigint({ identifier: "PositiveBigint" })
+  positiveBigint({ identifier: "PositiveBigint", title: "PositiveBigint" })
 )
 
 /**
@@ -2869,7 +2916,7 @@ export const PositiveBigint: Schema<string, bigint> = bigint.pipe(
  * @since 1.0.0
  */
 export const NegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  negativeBigint({ identifier: "NegativeBigintFromSelf" })
+  negativeBigint({ identifier: "NegativeBigintFromSelf", title: "NegativeBigintFromSelf" })
 )
 
 /**
@@ -2877,7 +2924,7 @@ export const NegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
  * @since 1.0.0
  */
 export const NegativeBigint: Schema<string, bigint> = bigint.pipe(
-  negativeBigint({ identifier: "NegativeBigint" })
+  negativeBigint({ identifier: "NegativeBigint", title: "NegativeBigint" })
 )
 
 /**
@@ -2885,7 +2932,7 @@ export const NegativeBigint: Schema<string, bigint> = bigint.pipe(
  * @since 1.0.0
  */
 export const NonPositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  nonPositiveBigint({ identifier: "NonPositiveBigintFromSelf" })
+  nonPositiveBigint({ identifier: "NonPositiveBigintFromSelf", title: "NonPositiveBigintFromSelf" })
 )
 
 /**
@@ -2893,7 +2940,7 @@ export const NonPositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
  * @since 1.0.0
  */
 export const NonPositiveBigint: Schema<string, bigint> = bigint.pipe(
-  nonPositiveBigint({ identifier: "NonPositiveBigint" })
+  nonPositiveBigint({ identifier: "NonPositiveBigint", title: "NonPositiveBigint" })
 )
 
 /**
@@ -2901,7 +2948,7 @@ export const NonPositiveBigint: Schema<string, bigint> = bigint.pipe(
  * @since 1.0.0
  */
 export const NonNegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  nonNegativeBigint({ identifier: "NonNegativeBigintFromSelf" })
+  nonNegativeBigint({ identifier: "NonNegativeBigintFromSelf", title: "NonNegativeBigintFromSelf" })
 )
 
 /**
@@ -2909,7 +2956,7 @@ export const NonNegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
  * @since 1.0.0
  */
 export const NonNegativeBigint: Schema<string, bigint> = bigint.pipe(
-  nonNegativeBigint({ identifier: "NonNegativeBigint" })
+  nonNegativeBigint({ identifier: "NonNegativeBigint", title: "NonNegativeBigint" })
 )
 
 /**
@@ -3460,12 +3507,12 @@ export const DateFromSelf: Schema<Date> = declare(
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
-    [AST.IdentifierAnnotationId]: "Date",
+    [AST.IdentifierAnnotationId]: "DateFromSelf",
     [hooks.PrettyHookId]: datePretty,
     [hooks.ArbitraryHookId]: dateArbitrary,
     [hooks.EquivalenceHookId]: () => Equivalence.Date
   }
-).pipe(identifier("DateFromSelf"))
+)
 
 /**
  * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
@@ -3474,8 +3521,7 @@ export const DateFromSelf: Schema<Date> = declare(
  * @since 1.0.0
  */
 export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(
-  validDate(),
-  identifier("ValidDateFromSelf")
+  validDate({ identifier: "ValidDateFromSelf" })
 )
 
 /**
@@ -3491,7 +3537,9 @@ export const DateFromString: Schema<string, Date> = transform(
   (n) => n.toISOString()
 ).pipe(identifier("DateFromString"))
 
-const _Date: Schema<string, Date> = DateFromString.pipe(validDate({ identifier: "Date" }))
+const _Date: Schema<string, Date> = DateFromString.pipe(
+  validDate({ identifier: "Date" })
+)
 
 export {
   /**
@@ -4044,7 +4092,10 @@ export const positiveBigDecimal = <A extends BigDecimal.BigDecimal>(
  * @since 1.0.0
  */
 export const PositiveBigDecimalFromSelf = BigDecimalFromSelf.pipe(
-  positiveBigDecimal({ identifier: "PositiveBigDecimalFromSelf" })
+  positiveBigDecimal({
+    identifier: "PositiveBigDecimalFromSelf",
+    title: "PositiveBigDecimalFromSelf"
+  })
 )
 
 /**
@@ -4076,7 +4127,10 @@ export const nonNegativeBigDecimal = <A extends BigDecimal.BigDecimal>(
  * @since 1.0.0
  */
 export const NonNegativeBigDecimalFromSelf = BigDecimalFromSelf.pipe(
-  nonNegativeBigDecimal({ identifier: "NonNegativeBigDecimalFromSelf" })
+  nonNegativeBigDecimal({
+    identifier: "NonNegativeBigDecimalFromSelf",
+    title: "NonNegativeBigDecimalFromSelf"
+  })
 )
 
 /**
@@ -4108,7 +4162,10 @@ export const negativeBigDecimal = <A extends BigDecimal.BigDecimal>(
  * @since 1.0.0
  */
 export const NegativeBigDecimalFromSelf = BigDecimalFromSelf.pipe(
-  negativeBigDecimal({ identifier: "NegativeBigDecimalFromSelf" })
+  negativeBigDecimal({
+    identifier: "NegativeBigDecimalFromSelf",
+    title: "NegativeBigDecimalFromSelf"
+  })
 )
 
 /**
@@ -4140,7 +4197,10 @@ export const nonPositiveBigDecimal = <A extends BigDecimal.BigDecimal>(
  * @since 1.0.0
  */
 export const NonPositiveBigDecimalFromSelf = BigDecimalFromSelf.pipe(
-  nonPositiveBigDecimal({ identifier: "NonPositiveBigDecimalFromSelf" })
+  nonPositiveBigDecimal({
+    identifier: "NonPositiveBigDecimalFromSelf",
+    title: "NonPositiveBigDecimalFromSelf"
+  })
 )
 
 /**
