@@ -576,7 +576,7 @@ const LF = 0x0a
  *
  * @since 2.0.0
  */
-// export const linesIterator = (self: string): LinesIterator => linesSeparated(self, true)
+export const linesIterator = (self: string): LinesIterator => linesSeparated(self, true)
 
 /**
  * Returns an `IterableIterator` which yields each line contained within the
