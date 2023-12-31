@@ -272,4 +272,12 @@ describe("String", () => {
       deepStrictEqual(Array.from(result), ["\n", "$\n", "    $Hello,\r\n", "    $World!\n", " $"])
     })
   })
+
+  describe("linesIterator", () => {
+    it("should split a string into lines", () => {
+      const string = "\n$\n    $Hello,\r\n    $World!\n $"
+      const result = S.linesIterator(string)
+      deepStrictEqual(Array.from(result), ["", "$", "    $Hello,", "    $World!", " $"])
+    })
+  })
 })
