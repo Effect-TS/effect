@@ -13,7 +13,6 @@
     "types": ["node"],
     "outDir": "build/src",
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
-    "rootDir": "src",
-    "exactOptionalPropertyTypes": false
+    "rootDir": "src"
   }
 }
