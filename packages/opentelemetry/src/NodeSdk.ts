@@ -44,7 +44,7 @@ export const layerTracerProvider = (
         Effect.acquireRelease(
           Effect.sync(() => {
             const provider = new NodeTracerProvider({
-              ...(config ?? {}),
+              ...(config ?? undefined),
               resource
             })
             provider.addSpanProcessor(processor)
