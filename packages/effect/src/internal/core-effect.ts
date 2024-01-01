@@ -2033,11 +2033,13 @@ export const makeSpan = (
         : Context.getOption(context, internalTracer.spanTag)
 
       const links = linksFromEnv._tag === "Some" ?
-        [
-          ...Chunk.toReadonlyArray(linksFromEnv.value),
-          ...(options?.links ?? [])
-        ] :
-        options?.links ?? []
+        options?.links !== undefined ?
+          [
+            ...Chunk.toReadonlyArray(linksFromEnv.value),
+            ...options?.links ?? []
+          ] :
+          Chunk.toReadonlyArray(linksFromEnv.value) :
+        options?.links ?? ReadonlyArray.empty()
 
       const span = tracer.span(
         name,
