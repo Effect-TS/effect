@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -274,25 +273,20 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
     case "Refinement": {
       const constraints = combineConstraints(options.constraints, getConstraints(ast))
       const from = go(ast.from, constraints ? { ...options, constraints } : options)
-      return pipe(
-        getHook(ast),
-        Option.match({
-          onNone: () => (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast))),
-          onSome: (handler) => handler(from)
-        })
-      )
+      return Option.match(getHook(ast), {
+        onNone: () => (fc) =>
+          from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast))),
+        onSome: (handler) => handler(from)
+      })
     }
     case "Suspend": {
-      return pipe(
-        getHook(ast),
-        Option.match({
-          onNone: () => {
-            const get = Internal.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
-            return (fc) => fc.constant(null).chain(() => get()(fc))
-          },
-          onSome: (handler) => handler()
-        })
-      )
+      return Option.match(getHook(ast), {
+        onNone: () => {
+          const get = Internal.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
+          return (fc) => fc.constant(null).chain(() => get()(fc))
+        },
+        onSome: (handler) => handler()
+      })
     }
     case "Transform":
       throw new Error("cannot build an Arbitrary for transformations")

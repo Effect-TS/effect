@@ -4,7 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("string/includes", () => {
+describe("string > includes", () => {
   const schema = S.includes("a")(S.string)
 
   it("property tests", () => {
@@ -28,7 +28,9 @@ describe("string/includes", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected a string including "a", actual ""`
+      `a string including "a"
+└─ Predicate refinement failure
+   └─ Expected a string including "a", actual ""`
     )
   })
 

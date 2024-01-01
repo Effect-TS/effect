@@ -2,9 +2,9 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-const schema = S.number.pipe(S.finite())
+describe("number > Finite", () => {
+  const schema = S.Finite
 
-describe("number/finite", () => {
   it("property tests", () => {
     Util.roundtrip(schema)
   })
@@ -14,12 +14,16 @@ describe("number/finite", () => {
     await Util.expectParseFailure(
       schema,
       Infinity,
-      `Expected a finite number, actual Infinity`
+      `Finite
+└─ Predicate refinement failure
+   └─ Expected Finite (a finite number), actual Infinity`
     )
     await Util.expectParseFailure(
       schema,
       -Infinity,
-      `Expected a finite number, actual -Infinity`
+      `Finite
+└─ Predicate refinement failure
+   └─ Expected Finite (a finite number), actual -Infinity`
     )
   })
 })

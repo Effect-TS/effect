@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, it } from "vitest"
 
-describe("Schema/clampDuration", () => {
+describe("Duration > clampDuration", () => {
   it("decoding", async () => {
     const schema = S.DurationFromSelf.pipe(S.clampDuration("5 seconds", "10 seconds"))
 

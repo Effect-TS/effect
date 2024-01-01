@@ -2,24 +2,23 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("bigint > betweenBigint", () => {
-  const schema = S.bigintFromSelf.pipe(S.betweenBigint(-1n, 1n), S.title("[-1n, -1n] interval"))
+describe("bigint > PositiveBigintFromSelf", () => {
+  const schema = S.PositiveBigintFromSelf
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0n, 0n)
     await Util.expectParseFailure(
       schema,
-      -2n,
-      `[-1n, -1n] interval
+      -1n,
+      `PositiveBigintFromSelf
 └─ Predicate refinement failure
-   └─ Expected a bigint between -1n and 1n, actual -2n`
+   └─ Expected PositiveBigintFromSelf (a positive bigint), actual -1n`
     )
     await Util.expectParseFailure(
       schema,
-      2n,
-      `[-1n, -1n] interval
+      0n,
+      `PositiveBigintFromSelf
 └─ Predicate refinement failure
-   └─ Expected a bigint between -1n and 1n, actual 2n`
+   └─ Expected PositiveBigintFromSelf (a positive bigint), actual 0n`
     )
   })
 

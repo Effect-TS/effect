@@ -21,7 +21,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, null, [{
       _tag: "Type",
       path: [],
-      message: "Expected string, actual null"
+      message: "Expected a string, actual null"
     }])
   })
 
@@ -54,7 +54,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, { a: null }, [{
       _tag: "Type",
       path: ["a"],
-      message: "Expected string, actual null"
+      message: "Expected a string, actual null"
     }])
   })
 
@@ -63,7 +63,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, [null], [{
       _tag: "Type",
       path: [0],
-      message: "Expected string, actual null"
+      message: "Expected a string, actual null"
     }])
   })
 
@@ -81,7 +81,7 @@ describe("ArrayFormatter", () => {
     expectIssues(schema, ["a", 1], [{
       _tag: "Unexpected",
       path: [1],
-      message: "Unexpected"
+      message: "Unexpected, expected 0"
     }])
   })
 
@@ -103,21 +103,21 @@ describe("ArrayFormatter", () => {
     }])
   })
 
-  it("UnionMember", () => {
+  it("Member", () => {
     const schema = S.union(S.string, S.number)
     expectIssues(schema, null, [{
       _tag: "Type",
       path: [],
-      message: "Expected string, actual null"
+      message: "Expected a string, actual null"
     }, {
       _tag: "Type",
       path: [],
-      message: "Expected number, actual null"
+      message: "Expected a number, actual null"
     }])
   })
 
   it("Forbidden", () => {
-    const schema = Util.effectify(S.string, "all")
+    const schema = Util.effectify(S.string)
     expectIssues(schema, "", [{
       _tag: "Forbidden",
       path: [],
@@ -139,7 +139,7 @@ describe("ArrayFormatter", () => {
       {
         _tag: "Unexpected",
         path: ["a"],
-        message: `Unexpected, expected "age" or "name" or "tags"`
+        message: `Unexpected, expected "age" | "name" | "tags"`
       },
       {
         _tag: "Missing",
@@ -154,7 +154,7 @@ describe("ArrayFormatter", () => {
       {
         _tag: "Type",
         path: ["tags", 1],
-        message: "Expected string, actual null"
+        message: "Expected a string, actual null"
       }
     ])
   })

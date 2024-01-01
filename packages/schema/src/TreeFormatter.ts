@@ -3,10 +3,10 @@
  */
 
 import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import type { ParseIssue, Type } from "./ParseResult.js"
+import * as Format from "./Format.js"
+import type { ParseIssue, Refinement, Transform, Type } from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -24,8 +24,10 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrors = (errors: NonEmptyReadonlyArray<ParseIssue>): string =>
-  drawTree(make(`error(s) found`, errors.map(go)))
+export const formatErrors = (errors: NonEmptyReadonlyArray<ParseIssue>): string => {
+  const forest = errors.map(go)
+  return drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, errors.map(go)))
+}
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 
@@ -42,137 +44,110 @@ const draw = (indentation: string, forest: Forest<string>): string => {
   return r
 }
 
-/** @internal */
-export const formatActual = (actual: unknown): string => {
-  if (Predicate.isString(actual)) {
-    return JSON.stringify(actual)
-  } else if (
-    Predicate.isNumber(actual)
-    || actual == null
-    || Predicate.isBoolean(actual)
-    || Predicate.isSymbol(actual)
-    || Predicate.isDate(actual)
-  ) {
-    return String(actual)
-  } else if (Predicate.isBigInt(actual)) {
-    return String(actual) + "n"
-  } else if (
-    !Array.isArray(actual)
-    && Predicate.hasProperty(actual, "toString")
-    && Predicate.isFunction(actual["toString"])
-    && actual["toString"] !== Object.prototype.toString
-  ) {
-    return actual["toString"]()
-  }
-  try {
-    return JSON.stringify(actual)
-  } catch (e) {
-    return String(actual)
+const formatTransformationKind = (kind: Transform["kind"]): string => {
+  switch (kind) {
+    case "From":
+      return "From side transformation failure"
+    case "Transformation":
+      return "Transformation process failure"
+    case "To":
+      return "To side transformation failure"
   }
 }
 
-const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
-  switch (span.type._tag) {
-    case "StringKeyword":
-      return "${string}"
-    case "NumberKeyword":
-      return "${number}"
+const formatRefinementKind = (kind: Refinement["kind"]): string => {
+  switch (kind) {
+    case "From":
+      return "From side refinement failure"
+    case "Predicate":
+      return "Predicate refinement failure"
   }
 }
 
-const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
-  ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
-
-const getExpected = (ast: AST.AST): Option.Option<string> =>
-  AST.getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => AST.getTitleAnnotation(ast)),
-    Option.orElse(() => AST.getDescriptionAnnotation(ast))
+const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string> => {
+  return AST.getMessageAnnotation(ast).pipe(
+    Option.map((annotation) => annotation(actual))
   )
-
-/** @internal */
-export const formatExpected = (ast: AST.AST): string => {
-  switch (ast._tag) {
-    case "StringKeyword":
-    case "NumberKeyword":
-    case "BooleanKeyword":
-    case "BigIntKeyword":
-    case "UndefinedKeyword":
-    case "SymbolKeyword":
-    case "ObjectKeyword":
-    case "AnyKeyword":
-    case "UnknownKeyword":
-    case "VoidKeyword":
-    case "NeverKeyword":
-      return Option.getOrElse(getExpected(ast), () => ast._tag)
-    case "Literal":
-      return Option.getOrElse(getExpected(ast), () => formatActual(ast.literal))
-    case "UniqueSymbol":
-      return Option.getOrElse(getExpected(ast), () => formatActual(ast.symbol))
-    case "Union":
-      return [...new Set(ast.types.map(formatExpected))].join(" or ")
-    case "TemplateLiteral":
-      return Option.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
-    case "Tuple":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous tuple or array schema>")
-    case "TypeLiteral":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous type literal schema>")
-    case "Enums":
-      return Option.getOrElse(
-        getExpected(ast),
-        () => ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
-      )
-    case "Suspend":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous suspended schema>")
-    case "Declaration":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous declaration schema>")
-    case "Refinement":
-      return Option.getOrElse(getExpected(ast), () => "<anonymous refinement schema>")
-    case "Transform":
-      return Option.getOrElse(
-        getExpected(ast),
-        () => `${formatExpected(ast.from)} <-> ${formatExpected(ast.to)}`
-      )
-  }
 }
 
-const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseIssue>): boolean =>
-  es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "UnionMember"
-
 /** @internal */
-export const getMessage = (e: Type) =>
-  AST.getMessageAnnotation(e.expected).pipe(
-    Option.map((annotation) => annotation(e.actual)),
+export const formatMessage = (e: Type): string =>
+  getMessage(e.ast, e.actual).pipe(
     Option.orElse(() => e.message),
-    Option.getOrElse(() => `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`)
+    Option.getOrElse(() =>
+      `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`
+    )
   )
+
+const getRefinementMessage = (e: Refinement, actual: unknown): Option.Option<string> => {
+  const message = getMessage(e.ast, actual)
+  if (e.kind === "From" && e.errors.length === 1) {
+    const err = e.errors[0]
+    if (err._tag === "Refinement") {
+      return Option.orElse(getRefinementMessage(err, err.actual), () => message)
+    } else if ("ast" in err) {
+      return Option.orElse(getMessage(err.ast, err.actual), () => message)
+    }
+  }
+  return message
+}
 
 const go = (e: ParseIssue): Tree<string> => {
   switch (e._tag) {
     case "Type":
-      return make(getMessage(e))
+      return make(formatMessage(e))
     case "Forbidden":
       return make("is forbidden")
-    case "Index": {
-      const es = e.errors.map(go)
-      if (isCollapsible(es, e.errors)) {
-        return make(`[${e.index}]${es[0].value}`, es[0].forest)
-      }
-      return make(`[${e.index}]`, es)
-    }
     case "Unexpected":
-      return make(
-        "is unexpected" + (Option.isSome(e.ast) ? `, expected ${formatExpected(e.ast.value)}` : "")
-      )
-    case "Key": {
-      const es = e.errors.map(go)
-      if (isCollapsible(es, e.errors)) {
-        return make(`[${formatActual(e.key)}]${es[0].value}`, es[0].forest)
-      }
-      return make(`[${formatActual(e.key)}]`, es)
-    }
+      return make(`is unexpected, expected ${Format.formatAST(e.expected, true)}`)
+    case "Key":
+      return make(`[${Format.formatUnknown(e.key)}]`, e.errors.map(go))
     case "Missing":
       return make("is missing")
-    case "UnionMember":
-      return make("union member", e.errors.map(go))
+    case "Union":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          make(
+            Format.formatAST(e.ast),
+            e.errors.map((e) => {
+              switch (e._tag) {
+                case "Key":
+                case "Type":
+                  return go(e)
+                case "Member":
+                  return make(`Union member`, e.errors.map(go))
+              }
+            })
+          ),
+        onSome: make
+      })
+    case "Tuple":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          make(
+            Format.formatAST(e.ast),
+            e.errors.map((e) => make(`[${e.index}]`, e.errors.map(go)))
+          ),
+        onSome: make
+      })
+    case "TypeLiteral":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () => make(Format.formatAST(e.ast), e.errors.map(go)),
+        onSome: make
+      })
+    case "Transform":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), e.errors.map(go))]),
+        onSome: make
+      })
+    case "Refinement":
+      return Option.match(getRefinementMessage(e, e.actual), {
+        onNone: () =>
+          make(Format.formatAST(e.ast), [
+            make(formatRefinementKind(e.kind), e.errors.map(go))
+          ]),
+        onSome: make
+      })
   }
 }

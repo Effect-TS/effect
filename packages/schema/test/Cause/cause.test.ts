@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Cause, FiberId } from "effect"
 import { assert, describe, it } from "vitest"
 
-describe("Cause/cause", () => {
+describe("Cause > cause", () => {
   it("property tests", () => {
     Util.roundtrip(S.cause(S.NumberFromString, S.unknown))
   })
@@ -68,17 +68,33 @@ describe("Cause/cause", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected <anonymous type literal schema>, actual null`
+      `(CauseFrom<NumberFromString> <-> Cause<number>)
+└─ From side transformation failure
+   └─ Expected CauseFrom<NumberFromString>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       {},
-      `/_tag is missing`
+      `(CauseFrom<NumberFromString> <-> Cause<number>)
+└─ From side transformation failure
+   └─ CauseFrom<NumberFromString>
+      └─ ["_tag"]
+         └─ is missing`
     )
     await Util.expectParseFailure(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
-      `union member: /left union member: /error is missing`
+      `(CauseFrom<NumberFromString> <-> Cause<number>)
+└─ From side transformation failure
+   └─ CauseFrom<NumberFromString>
+      └─ Union member
+         └─ { _tag: "Parallel"; left: CauseFrom<NumberFromString>; right: CauseFrom<NumberFromString> }
+            └─ ["left"]
+               └─ CauseFrom<NumberFromString>
+                  └─ Union member
+                     └─ { _tag: "Fail"; error: NumberFromString }
+                        └─ ["error"]
+                           └─ is missing`
     )
   })
 

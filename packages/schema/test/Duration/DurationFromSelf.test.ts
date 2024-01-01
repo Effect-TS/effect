@@ -4,7 +4,7 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/DurationFromSelf", () => {
+describe("Duration > DurationFromSelf", () => {
   const schema = S.DurationFromSelf
 
   it("property tests", () => {

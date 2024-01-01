@@ -55,13 +55,43 @@ export const parseError = (
  * @since 1.0.0
  */
 export type ParseIssue =
-  | Type
-  | Index
+  // context
+  | Refinement
+  | Tuple
+  | TypeLiteral
+  | Union
   | Key
+  | Transform
+  // primitives
+  | Type
   | Missing
   | Unexpected
-  | UnionMember
   | Forbidden
+
+/**
+ * Error that occurs when a transformation has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Transform {
+  readonly _tag: "Transform"
+  readonly ast: AST.Transform
+  readonly actual: unknown
+  readonly kind: "From" | "Transformation" | "To"
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const transform = (
+  ast: AST.Transform,
+  actual: unknown,
+  kind: "From" | "Transformation" | "To",
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+): Transform => ({ _tag: "Transform", ast, actual, kind, errors })
 
 /**
  * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
@@ -75,10 +105,21 @@ export type ParseIssue =
  */
 export interface Type {
   readonly _tag: "Type"
-  readonly expected: AST.AST
+  readonly ast: AST.AST
   readonly actual: unknown
   readonly message: Option.Option<string>
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const type = (ast: AST.AST, actual: unknown, message?: string): Type => ({
+  _tag: "Type",
+  ast,
+  actual,
+  message: Option.fromNullable(message)
+})
 
 /**
  * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
@@ -94,20 +135,74 @@ export interface Forbidden {
  * @category constructors
  * @since 1.0.0
  */
-export const type = (expected: AST.AST, actual: unknown, message?: string): Type => ({
-  _tag: "Type",
-  expected,
-  actual,
-  message: Option.fromNullable(message)
-})
+export const forbidden: Forbidden = {
+  _tag: "Forbidden"
+}
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface Refinement {
+  readonly _tag: "Refinement"
+  readonly ast: AST.Refinement
+  readonly actual: unknown
+  readonly kind: "From" | "Predicate"
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+}
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const forbidden: Forbidden = {
-  _tag: "Forbidden"
+export const refinement = (
+  ast: AST.Refinement,
+  actual: unknown,
+  kind: "From" | "Predicate",
+  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+): Refinement => ({ _tag: "Refinement", ast, actual, kind, errors })
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface Tuple {
+  readonly _tag: "Tuple"
+  readonly ast: AST.Tuple
+  readonly actual: unknown
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const tuple = (
+  ast: AST.Tuple,
+  actual: unknown,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
+): Tuple => ({ _tag: "Tuple", ast, actual, errors })
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface TypeLiteral {
+  readonly _tag: "TypeLiteral"
+  readonly ast: AST.TypeLiteral
+  readonly actual: unknown
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const typeLiteral = (
+  ast: AST.TypeLiteral,
+  actual: unknown,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
+): TypeLiteral => ({ _tag: "TypeLiteral", ast, actual, errors })
 
 /**
  * The `Index` decode error indicates that there was an error at a specific index in an array or tuple.
@@ -182,7 +277,7 @@ export const missing: Missing = { _tag: "Missing" }
  */
 export interface Unexpected {
   readonly _tag: "Unexpected"
-  readonly ast: Option.Option<AST.AST>
+  readonly expected: AST.AST
 }
 
 /**
@@ -190,8 +285,31 @@ export interface Unexpected {
  * @since 1.0.0
  */
 export const unexpected = (
-  ast: Option.Option<AST.AST>
-): Unexpected => ({ _tag: "Unexpected", ast })
+  expected: AST.AST
+): Unexpected => ({ _tag: "Unexpected", expected })
+
+/**
+ * Error that occurs when a union has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Union {
+  readonly _tag: "Union"
+  readonly ast: AST.Union
+  readonly actual: unknown
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Member | Key | Type>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const union = (
+  ast: AST.Union,
+  actual: unknown,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Member | Key | Type>
+): Union => ({ _tag: "Union", ast, actual, errors })
 
 /**
  * Error that occurs when a member in a union has an error.
@@ -199,8 +317,9 @@ export const unexpected = (
  * @category model
  * @since 1.0.0
  */
-export interface UnionMember {
-  readonly _tag: "UnionMember"
+export interface Member {
+  readonly _tag: "Member"
+  readonly ast: AST.AST
   readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
 }
 
@@ -208,9 +327,10 @@ export interface UnionMember {
  * @category constructors
  * @since 1.0.0
  */
-export const unionMember = (
+export const member = (
+  ast: AST.AST,
   errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): UnionMember => ({ _tag: "UnionMember", errors })
+): Member => ({ _tag: "Member", ast, errors })
 
 /**
  * @category constructors

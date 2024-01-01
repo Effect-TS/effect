@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("bigint/bigintFromNumber", () => {
+describe("bigint > BigintFromNumber", () => {
   const schema = S.BigintFromNumber
 
   it("property tests", () => {
@@ -14,21 +14,33 @@ describe("bigint/bigintFromNumber", () => {
     await Util.expectParseSuccess(schema, -0, -0n)
     await Util.expectParseSuccess(schema, 1, 1n)
 
-    await Util.expectParseFailure(schema, 1.2, `Expected number <-> bigint, actual 1.2`)
+    await Util.expectParseFailure(
+      schema,
+      1.2,
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual 1.2`
+    )
     await Util.expectParseFailure(
       schema,
       NaN,
-      `Expected number <-> bigint, actual NaN`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual NaN`
     )
     await Util.expectParseFailure(
       schema,
       Infinity,
-      `Expected number <-> bigint, actual Infinity`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual Infinity`
     )
     await Util.expectParseFailure(
       schema,
       -Infinity,
-      `Expected number <-> bigint, actual -Infinity`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual -Infinity`
     )
   })
 
@@ -38,12 +50,16 @@ describe("bigint/bigintFromNumber", () => {
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MAX_SAFE_INTEGER) + 1n,
-      `Expected number <-> bigint, actual 9007199254740992n`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual 9007199254740992n`
     )
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MIN_SAFE_INTEGER) - 1n,
-      `Expected number <-> bigint, actual -9007199254740992n`
+      `BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual -9007199254740992n`
     )
   })
 })

@@ -7,7 +7,7 @@ describe("Schema/boolean", () => {
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, true, true)
     await Util.expectParseSuccess(schema, false, false)
-    await Util.expectParseFailure(schema, 1, `Expected boolean, actual 1`)
+    await Util.expectParseFailure(schema, 1, `Expected a boolean, actual 1`)
   })
 
   it("encoding", async () => {

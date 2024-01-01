@@ -13,7 +13,9 @@ describe("string/UUID", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected UUID, actual ""`
+      `UUID
+└─ Predicate refinement failure
+   └─ Expected UUID (a Universally Unique Identifier), actual ""`
     )
   })
 })

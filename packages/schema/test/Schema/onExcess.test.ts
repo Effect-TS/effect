@@ -2,14 +2,22 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/onExcess", () => {
+describe("Schema > onExcess", () => {
   it("ignore should not change tuple behaviour", async () => {
     const schema = S.tuple(S.number)
-    await Util.expectParseFailure(schema, [1, "b"], "/1 is unexpected")
+    await Util.expectParseFailure(
+      schema,
+      [1, "b"],
+      `readonly [number]
+└─ [1]
+   └─ is unexpected, expected 0`
+    )
     await Util.expectEncodeFailure(
       schema,
       [1, "b"] as any,
-      `/1 is unexpected`
+      `readonly [number]
+└─ [1]
+   └─ is unexpected, expected 0`
     )
   })
 
@@ -29,7 +37,15 @@ describe("Schema/onExcess", () => {
       await Util.expectParseFailure(
         schema,
         { a: 1, b: "b", c: true },
-        `union member: /c is unexpected, expected "a" or "b", union member: /b is unexpected, expected "a"`,
+        `{ a?: number; b?: string } | { a?: number }
+├─ Union member
+│  └─ { a?: number; b?: string }
+│     └─ ["c"]
+│        └─ is unexpected, expected "a" | "b"
+└─ Union member
+   └─ { a?: number }
+      └─ ["b"]
+         └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
       await Util.expectEncodeSuccess(
@@ -52,12 +68,28 @@ describe("Schema/onExcess", () => {
       await Util.expectParseFailure(
         schema,
         [1, "b", true],
-        `union member: /2 is unexpected, union member: /1 is unexpected`
+        `readonly [number, string?] | readonly [number]
+├─ Union member
+│  └─ readonly [number, string?]
+│     └─ [2]
+│        └─ is unexpected, expected 0 | 1
+└─ Union member
+   └─ readonly [number]
+      └─ [1]
+         └─ is unexpected, expected 0`
       )
       await Util.expectParseFailure(
         schema,
         [1, "b", true],
-        `union member: /2 is unexpected, union member: /1 is unexpected`,
+        `readonly [number, string?] | readonly [number]
+├─ Union member
+│  └─ readonly [number, string?]
+│     └─ [2]
+│        └─ is unexpected, expected 0 | 1
+└─ Union member
+   └─ readonly [number]
+      └─ [1]
+         └─ is unexpected, expected 0`,
         Util.onExcessPropertyError
       )
       await Util.expectEncodeSuccess(

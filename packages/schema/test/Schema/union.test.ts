@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/literal", () => {
+describe("Schema > union", () => {
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
       const schema = S.union(
@@ -12,15 +12,19 @@ describe("Schema/literal", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `union member: Expected MyDataType1, actual null, union member: Expected MyDataType2, actual null`
+        `MyDataType1 | MyDataType2
+├─ Union member
+│  └─ Expected MyDataType1, actual null
+└─ Union member
+   └─ Expected MyDataType2, actual null`
       )
-      await Util.expectParseFailureTree(
+      await Util.expectParseFailure(
         schema,
         null,
-        `error(s) found
-├─ union member
+        `MyDataType1 | MyDataType2
+├─ Union member
 │  └─ Expected MyDataType1, actual null
-└─ union member
+└─ Union member
    └─ Expected MyDataType2, actual null`
       )
     })
@@ -38,15 +42,35 @@ describe("Schema/literal", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected <anonymous type literal schema>, actual null"
+        `Expected { a: 1; c: string } | { b: 2; d: number }, actual null`
       )
-      await Util.expectParseFailure(schema, {}, "/a is missing, /b is missing")
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `{ a: 1; c: string } | { b: 2; d: number }
+├─ ["a"]
+│  └─ is missing
+└─ ["b"]
+   └─ is missing`
+      )
       await Util.expectParseFailure(
         schema,
         { a: null },
-        `/a Expected 1, actual null, /b is missing`
+        `{ a: 1; c: string } | { b: 2; d: number }
+├─ ["a"]
+│  └─ Expected 1, actual null
+└─ ["b"]
+   └─ is missing`
       )
-      await Util.expectParseFailure(schema, { b: 3 }, `/a is missing, /b Expected 2, actual 3`)
+      await Util.expectParseFailure(
+        schema,
+        { b: 3 },
+        `{ a: 1; c: string } | { b: 2; d: number }
+├─ ["a"]
+│  └─ is missing
+└─ ["b"]
+   └─ Expected 2, actual 3`
+      )
     })
 
     it("members with multiple tags", async () => {
@@ -58,18 +82,34 @@ describe("Schema/literal", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected <anonymous type literal schema>, actual null"
+        `Expected { category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }, actual null`
       )
-      await Util.expectParseFailure(schema, {}, "/category is missing, /tag is missing")
+      await Util.expectParseFailure(
+        schema,
+        {},
+        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
+├─ ["category"]
+│  └─ is missing
+└─ ["tag"]
+   └─ is missing`
+      )
       await Util.expectParseFailure(
         schema,
         { category: null },
-        `/category Expected "catA", actual null, /tag is missing`
+        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
+├─ ["category"]
+│  └─ Expected "catA", actual null
+└─ ["tag"]
+   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { tag: "d" },
-        `/category is missing, /tag Expected "b" or "c", actual "d"`
+        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
+├─ ["category"]
+│  └─ is missing
+└─ ["tag"]
+   └─ Expected "b" | "c", actual "d"`
       )
     })
 

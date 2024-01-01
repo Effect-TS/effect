@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Format from "./Format.js"
 import type { ParseIssue } from "./ParseResult.js"
-import { formatExpected, getMessage } from "./TreeFormatter.js"
+import { formatMessage } from "./TreeFormatter.js"
 
 /**
  * @category model
@@ -20,13 +20,9 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
   const _tag = self._tag
   switch (_tag) {
     case "Type":
-      return [{ _tag, path, message: getMessage(self) }]
+      return [{ _tag, path, message: formatMessage(self) }]
     case "Key":
       return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.key]))
-    case "Index":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.index]))
-    case "UnionMember":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
     case "Missing":
       return [{ _tag, path, message: "Missing key or index" }]
     case "Forbidden":
@@ -35,9 +31,31 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
       return [{
         _tag,
         path,
-        message: "Unexpected" +
-          (Option.isSome(self.ast) ? `, expected ${formatExpected(self.ast.value)}` : "")
+        message: `Unexpected, expected ${Format.formatAST(self.expected, true)}`
       }]
+    case "Union":
+      return ReadonlyArray.flatMap(self.errors, (e) => {
+        switch (e._tag) {
+          case "Key":
+          case "Type":
+            return format(e, path)
+          case "Member":
+            return ReadonlyArray.flatMap(e.errors, (e) => format(e, path))
+        }
+      })
+    case "Tuple":
+      return ReadonlyArray.flatMap(
+        self.errors,
+        (index) => ReadonlyArray.flatMap(index.errors, (e) => format(e, [...path, index.index]))
+      )
+    case "TypeLiteral":
+      return ReadonlyArray.flatMap(
+        self.errors,
+        (key) => ReadonlyArray.flatMap(key.errors, (e) => format(e, [...path, key.key]))
+      )
+    case "Transform":
+    case "Refinement":
+      return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
   }
 }
 

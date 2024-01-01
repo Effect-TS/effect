@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/omit", () => {
+describe("Schema > omit", () => {
   it("struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const schema = S.struct({ [a]: S.string, b: S.NumberFromString, c: S.boolean }).pipe(
@@ -13,13 +13,21 @@ describe("Schema/omit", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected <anonymous type literal schema>, actual null"
+      "Expected { Symbol(@effect/schema/test/a): string; b: NumberFromString }, actual null"
     )
-    await Util.expectParseFailure(schema, { [a]: "a" }, `/b is missing`)
+    await Util.expectParseFailure(
+      schema,
+      { [a]: "a" },
+      `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
+└─ ["b"]
+   └─ is missing`
+    )
     await Util.expectParseFailure(
       schema,
       { b: 1 },
-      `/Symbol(@effect/schema/test/a) is missing`
+      `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
+└─ [Symbol(@effect/schema/test/a)]
+   └─ is missing`
     )
   })
 
@@ -38,9 +46,15 @@ describe("Schema/omit", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected <anonymous type literal schema>, actual null"
+      "Expected { a?: string; b: NumberFromString }, actual null"
     )
-    await Util.expectParseFailure(schema, { a: "a" }, `/b is missing`)
+    await Util.expectParseFailure(
+      schema,
+      { a: "a" },
+      `{ a?: string; b: NumberFromString }
+└─ ["b"]
+   └─ is missing`
+    )
   })
 
   it("suspend", async () => {
@@ -59,7 +73,17 @@ describe("Schema/omit", () => {
     await Util.expectParseSuccess(schema, { as: [] })
     await Util.expectParseSuccess(schema, { as: [{ a: "a", as: [] }] })
 
-    await Util.expectParseFailure(schema, { as: [{ as: [] }] }, `/as /0 /a is missing`)
+    await Util.expectParseFailure(
+      schema,
+      { as: [{ as: [] }] },
+      `{ as: ReadonlyArray<<suspended schema>> }
+└─ ["as"]
+   └─ ReadonlyArray<<suspended schema>>
+      └─ [0]
+         └─ { a: string; as: ReadonlyArray<<suspended schema>> }
+            └─ ["a"]
+               └─ is missing`
+    )
   })
 
   it("struct with property signature transformations", async () => {
