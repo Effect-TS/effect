@@ -74,8 +74,7 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
   )
 }
 
-export const effectify = <I, A>(schema: S.Schema<I, A>): S.Schema<I, A> =>
-  S.make(effectifyAST(schema.ast))
+export const effectify = <I, A>(schema: S.Schema<I, A>): S.Schema<I, A> => S.make(effectifyAST(schema.ast))
 
 export const roundtrip = <I, A>(schema: S.Schema<I, A>) => {
   if (!doRoundtrip) {

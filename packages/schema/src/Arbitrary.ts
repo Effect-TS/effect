@@ -274,8 +274,7 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
       const constraints = combineConstraints(options.constraints, getConstraints(ast))
       const from = go(ast.from, constraints ? { ...options, constraints } : options)
       return Option.match(getHook(ast), {
-        onNone: () => (fc) =>
-          from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast))),
+        onNone: () => (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast))),
         onSome: (handler) => handler(from)
       })
     }

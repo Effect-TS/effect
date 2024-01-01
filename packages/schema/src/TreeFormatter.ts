@@ -74,9 +74,7 @@ const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string> => {
 export const formatMessage = (e: Type): string =>
   getMessage(e.ast, e.actual).pipe(
     Option.orElse(() => e.message),
-    Option.getOrElse(() =>
-      `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`
-    )
+    Option.getOrElse(() => `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`)
   )
 
 const getRefinementMessage = (e: Refinement, actual: unknown): Option.Option<string> => {
@@ -137,8 +135,7 @@ const go = (e: ParseIssue): Tree<string> => {
       })
     case "Transform":
       return Option.match(getMessage(e.ast, e.actual), {
-        onNone: () =>
-          make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), e.errors.map(go))]),
+        onNone: () => make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), e.errors.map(go))]),
         onSome: make
       })
     case "Refinement":

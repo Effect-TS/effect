@@ -2446,15 +2446,14 @@ export const NonNaNTypeId = Symbol.for("@effect/schema/TypeId/NonNaN")
  * @category number filters
  * @since 1.0.0
  */
-export const nonNaN =
-  <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
-    self.pipe(
-      filter((a): a is A => !Number.isNaN(a), {
-        typeId: NonNaNTypeId,
-        description: "a number excluding NaN",
-        ...options
-      })
-    )
+export const nonNaN = <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => !Number.isNaN(a), {
+      typeId: NonNaNTypeId,
+      description: "a number excluding NaN",
+      ...options
+    })
+  )
 
 /**
  * @category number filters

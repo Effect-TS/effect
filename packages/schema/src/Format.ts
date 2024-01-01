@@ -48,10 +48,7 @@ export const formatAST = (ast: AST.AST, verbose: boolean = false): string => {
     case "Enums":
       return Option.getOrElse(
         getExpected(ast, verbose),
-        () =>
-          `<enum ${ast.enums.length} value(s): ${
-            ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
-          }>`
+        () => `<enum ${ast.enums.length} value(s): ${ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
       )
     case "Suspend":
       return getExpected(ast, verbose).pipe(
@@ -106,9 +103,8 @@ export const formatUnknown = (u: unknown): string => {
 }
 
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
-  "`" + ast.head + ast.spans.map((span) =>
-    formatTemplateLiteralSpan(span) + span.literal
-  ).join("") + "`"
+  "`" + ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("") +
+  "`"
 
 const getExpected = (ast: AST.AST, verbose: boolean): Option.Option<string> => {
   if (verbose) {
@@ -131,9 +127,8 @@ const getExpected = (ast: AST.AST, verbose: boolean): Option.Option<string> => {
 }
 
 const formatTuple = (ast: AST.Tuple): string => {
-  const formattedElements = ast.elements.map((element) =>
-    formatAST(element.type) + (element.isOptional ? "?" : "")
-  ).join(", ")
+  const formattedElements = ast.elements.map((element) => formatAST(element.type) + (element.isOptional ? "?" : ""))
+    .join(", ")
   return Option.match(ast.rest, {
     onNone: () => "readonly [" + formattedElements + "]",
     onSome: ([head, ...tail]) => {

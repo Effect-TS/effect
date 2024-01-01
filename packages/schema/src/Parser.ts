@@ -928,9 +928,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       }
     }
     case "Suspend": {
-      const get = Internal.memoizeThunk(() =>
-        goMemo(AST.mergeAnnotations(ast.f(), ast.annotations), isDecoding)
-      )
+      const get = Internal.memoizeThunk(() => goMemo(AST.mergeAnnotations(ast.f(), ast.annotations), isDecoding))
       return (a, options) => get()(a, options)
     }
   }
