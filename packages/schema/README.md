@@ -2771,6 +2771,20 @@ parse([
 ]); // new Map([[1, "a"], [2, "b"], [3, "c"]])
 ```
 
+# Useful Examples
+
+## Email
+
+Since there are various different definitions of what constitutes a valid email address depending on the environment and use case, `@effect/schema` does not provide a built-in combinator for parsing email addresses. However, it is easy to define a custom combinator that can be used to parse email addresses.
+
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+// see https://stackoverflow.com/questions/46155/how-can-i-validate-an-email-address-in-javascript/46181#46181
+const Email = S.pattern(/^(?!\.)(?!.*\.\.)([A-Z0-9_+-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i);
+```
+
 # Technical overview
 
 ## Understanding Schemas
