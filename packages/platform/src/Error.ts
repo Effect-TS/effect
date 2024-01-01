@@ -82,7 +82,7 @@ export type SystemErrorReason =
 export interface SystemError extends PlatformError.Base {
   readonly _tag: "SystemError"
   readonly reason: SystemErrorReason
-  readonly syscall?: string
+  readonly syscall?: string | undefined
   readonly pathOrDescriptor: string | number
 }
 
