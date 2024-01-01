@@ -313,4 +313,18 @@ describe("Schema/Class", () => {
       Exit.succeed(123)
     )
   })
+
+  it("with default constructor values", () => {
+    class Class extends S.Class<Class>()({
+      a: S.withDefaultConstructor(S.number, () => 123),
+      b: S.string
+    }) {}
+    const a = new Class({ b: "hi" })
+    expect(a.a).toBe(123)
+    expect(() => S.parseSync(Class)({ b: "hi" })).toThrow(
+      new Error(`error(s) found
+└─ ["a"]
+   └─ is missing`)
+    )
+  })
 })
