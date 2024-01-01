@@ -88,43 +88,39 @@ export const make = (
   })
 
 const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse): Response => {
+  const fields: {
+    headers?: Headers.Headers
+    status?: number
+    statusText?: string
+  } = {}
+
+  if (response.headers !== undefined) {
+    fields.headers = response.headers
+  }
+  if (response.status !== undefined) {
+    fields.status = response.status
+  }
+  if (response.statusText !== undefined) {
+    fields.statusText = response.statusText
+  }
+
   if (request.method === "HEAD") {
-    return new Response(undefined, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers
-    })
+    return new Response(undefined, fields)
   }
   const body = response.body
   switch (body._tag) {
     case "Empty": {
-      return new Response(undefined, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      })
+      return new Response(undefined, fields)
     }
     case "Uint8Array":
     case "Raw": {
-      return new Response(body.body as any, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      })
+      return new Response(body.body as any, fields)
     }
     case "FormData": {
-      return new Response(body.formData as any, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      })
+      return new Response(body.formData as any, fields)
     }
     case "Stream": {
-      return new Response(Stream.toReadableStream(body.stream), {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      })
+      return new Response(Stream.toReadableStream(body.stream), fields)
     }
   }
 }

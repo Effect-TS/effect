@@ -71,10 +71,10 @@ export const make: <
   resolver: Resolver,
   ...initAndOptions: [S] extends [RpcService.DefinitionWithSetup] ? [
       init: RpcSchema.Input<S["__setup"]>,
-      options?: client.RpcClientOptions
+      options?: client.RpcClientOptions | undefined
     ] :
     [
-      options?: client.RpcClientOptions
+      options?: client.RpcClientOptions | undefined
     ]
 ) => [S] extends [RpcService.DefinitionWithSetup] ? Effect.Effect<
     never,

@@ -38,8 +38,8 @@ export const schemasToUnion = (
 /** @internal */
 export const methodSchemaTransform = <A>(
   f: (schema: {
-    input?: Schema.Schema<any>
-    output?: Schema.Schema<any>
+    input?: Schema.Schema<any> | undefined
+    output?: Schema.Schema<any> | undefined
     error: Schema.Schema<any>
   }) => A
 ) =>
