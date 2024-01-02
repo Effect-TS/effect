@@ -37,7 +37,7 @@ describe("TreeFormatter", () => {
       )
     })
 
-    describe("refinement", async () => {
+    describe("refinement", () => {
       it("1 refinement", async () => {
         const schema = S.string.pipe(S.minLength(1))
 
@@ -262,6 +262,42 @@ describe("TreeFormatter", () => {
   })
 
   describe("messages", () => {
+    it("declaration", async () => {
+      const schema = S.optionFromSelf(S.number).pipe(
+        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+      )
+
+      await Util.expectParseFailure(
+        schema,
+        null,
+        `my custom message null`
+      )
+    })
+
+    it("literal", async () => {
+      const schema = S.literal("a").pipe(
+        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+      )
+
+      await Util.expectParseFailure(
+        schema,
+        null,
+        `my custom message null`
+      )
+    })
+
+    it("uniqueSymbol", async () => {
+      const schema = S.uniqueSymbol(Symbol.for("@effect/schema/test/a")).pipe(
+        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+      )
+
+      await Util.expectParseFailure(
+        schema,
+        null,
+        `my custom message null`
+      )
+    })
+
     it("string", async () => {
       const schema = S.string.pipe(
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
@@ -274,7 +310,35 @@ describe("TreeFormatter", () => {
       )
     })
 
-    describe("refinement", async () => {
+    it("enums", async () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      const schema = S.enums(Fruits).pipe(
+        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+      )
+
+      await Util.expectParseFailure(
+        schema,
+        null,
+        `my custom message null`
+      )
+    })
+
+    it("templateLiteral", async () => {
+      const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b")).pipe(
+        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+      )
+
+      await Util.expectParseFailure(
+        schema,
+        null,
+        `my custom message null`
+      )
+    })
+
+    describe("refinement", () => {
       it("top level message", async () => {
         const schema = S.string.pipe(
           S.minLength(1),

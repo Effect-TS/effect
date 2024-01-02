@@ -1,10 +1,12 @@
 /**
  * @since 1.0.0
  */
+
+import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Format from "./Format.js"
 import type { ParseIssue } from "./ParseResult.js"
-import { formatMessage } from "./TreeFormatter.js"
+import { formatMessage, getMessage, getRefinementMessage } from "./TreeFormatter.js"
 
 /**
  * @category model
@@ -16,46 +18,61 @@ export interface Issue {
   readonly message: string
 }
 
-const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Issue> => {
-  const _tag = self._tag
+const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Issue> => {
+  const _tag = e._tag
   switch (_tag) {
     case "Type":
-      return [{ _tag, path, message: formatMessage(self) }]
-    case "Key":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.key]))
-    case "Missing":
-      return [{ _tag, path, message: "Missing key or index" }]
+      return [{ _tag, path, message: formatMessage(e) }]
     case "Forbidden":
-      return [{ _tag, path, message: "Forbidden" }]
+      return [{ _tag, path, message: "is forbidden" }]
     case "Unexpected":
-      return [{
-        _tag,
-        path,
-        message: `Unexpected, expected ${Format.formatAST(self.expected, true)}`
-      }]
+      return [{ _tag, path, message: `is unexpected, expected ${Format.formatAST(e.expected, true)}` }]
+    case "Key":
+      return ReadonlyArray.flatMap(e.errors, (key) => format(key, [...path, e.key]))
+    case "Missing":
+      return [{ _tag, path, message: "is missing" }]
     case "Union":
-      return ReadonlyArray.flatMap(self.errors, (e) => {
-        switch (e._tag) {
-          case "Key":
-          case "Type":
-            return format(e, path)
-          case "Member":
-            return ReadonlyArray.flatMap(e.errors, (e) => format(e, path))
-        }
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          ReadonlyArray.flatMap(e.errors, (e) => {
+            switch (e._tag) {
+              case "Key":
+              case "Type":
+                return format(e, path)
+              case "Member":
+                return ReadonlyArray.flatMap(e.errors, (e) => format(e, path))
+            }
+          }),
+        onSome: (message) => [{ _tag, path, message }]
       })
     case "Tuple":
-      return ReadonlyArray.flatMap(
-        self.errors,
-        (index) => ReadonlyArray.flatMap(index.errors, (e) => format(e, [...path, index.index]))
-      )
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          ReadonlyArray.flatMap(
+            e.errors,
+            (index) => ReadonlyArray.flatMap(index.errors, (e) => format(e, [...path, index.index]))
+          ),
+        onSome: (message) => [{ _tag, path, message }]
+      })
     case "TypeLiteral":
-      return ReadonlyArray.flatMap(
-        self.errors,
-        (key) => ReadonlyArray.flatMap(key.errors, (e) => format(e, [...path, key.key]))
-      )
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          ReadonlyArray.flatMap(
+            e.errors,
+            (key) => ReadonlyArray.flatMap(key.errors, (e) => format(e, [...path, key.key]))
+          ),
+        onSome: (message) => [{ _tag, path, message }]
+      })
     case "Transform":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () => ReadonlyArray.flatMap(e.errors, (e) => format(e, path)),
+        onSome: (message) => [{ _tag, path, message }]
+      })
     case "Refinement":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
+      return Option.match(getRefinementMessage(e, e.actual), {
+        onNone: () => ReadonlyArray.flatMap(e.errors, (e) => format(e, path)),
+        onSome: (message) => [{ _tag, path, message }]
+      })
   }
 }
 

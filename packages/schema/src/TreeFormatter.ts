@@ -64,7 +64,8 @@ const formatRefinementKind = (kind: Refinement["kind"]): string => {
   }
 }
 
-const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string> => {
+/** @internal */
+export const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string> => {
   return AST.getMessageAnnotation(ast).pipe(
     Option.map((annotation) => annotation(actual))
   )
@@ -77,7 +78,8 @@ export const formatMessage = (e: Type): string =>
     Option.getOrElse(() => `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`)
   )
 
-const getRefinementMessage = (e: Refinement, actual: unknown): Option.Option<string> => {
+/** @internal */
+export const getRefinementMessage = (e: Refinement, actual: unknown): Option.Option<string> => {
   const message = getMessage(e.ast, actual)
   if (e.kind === "From" && e.errors.length === 1) {
     const err = e.errors[0]
