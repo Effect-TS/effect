@@ -173,6 +173,11 @@ export * as Context from "./Context.js"
 /**
  * @since 2.0.0
  */
+export * as Cron from "./Cron.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as Data from "./Data.js"
 
 /**
