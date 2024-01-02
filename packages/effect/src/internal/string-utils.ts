@@ -65,7 +65,7 @@ const pascalCaseTransform = (input: string, index: number): string => {
 }
 
 /** @internal */
-export const pascalCase = (input: string, options: Options = {}): string =>
+export const pascalCase = (input: string, options?: Options): string =>
   noCase(input, {
     delimiter: "",
     transform: pascalCaseTransform,
@@ -78,14 +78,14 @@ const camelCaseTransform = (input: string, index: number): string =>
     : pascalCaseTransform(input, index)
 
 /** @internal */
-export const camelCase = (input: string, options: Options = {}): string =>
+export const camelCase = (input: string, options?: Options): string =>
   pascalCase(input, {
     transform: camelCaseTransform,
     ...options
   })
 
 /** @internal */
-export const constantCase = (input: string, options: Options = {}): string =>
+export const constantCase = (input: string, options?: Options): string =>
   noCase(input, {
     delimiter: "_",
     transform: upperCase,
@@ -93,14 +93,14 @@ export const constantCase = (input: string, options: Options = {}): string =>
   })
 
 /** @internal */
-export const kebabCase = (input: string, options: Options = {}) =>
+export const kebabCase = (input: string, options?: Options) =>
   noCase(input, {
     delimiter: "-",
     ...options
   })
 
 /** @internal */
-export const snakeCase = (input: string, options: Options = {}) =>
+export const snakeCase = (input: string, options?: Options) =>
   noCase(input, {
     delimiter: "_",
     ...options

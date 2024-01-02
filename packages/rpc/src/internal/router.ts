@@ -14,10 +14,10 @@ export const make = <
 >(
   schema: S,
   handlers: H,
-  optionsPartial: Partial<RpcRouter.Options> = {}
+  optionsPartial?: Partial<RpcRouter.Options>
 ): RpcRouter<S, H> => {
   const options: RpcRouter.Options = {
-    spanPrefix: optionsPartial.spanPrefix ?? "RpcServer"
+    spanPrefix: optionsPartial?.spanPrefix ?? "RpcServer"
   }
   return {
     schema,
