@@ -220,7 +220,7 @@ export const fromReadableChannel = <E, A = Uint8Array>(
 export const writeInput = <IE, A>(
   writable: Writable | NodeJS.WritableStream,
   onFailure: (cause: Cause.Cause<IE>) => Effect.Effect<never, never, void>,
-  { encoding, endOnDone = true }: FromWritableOptions,
+  { encoding, endOnDone = true }: FromWritableOptions = {},
   onDone = Effect.unit
 ): AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<A>, unknown> => {
   const write = writeEffect(writable, encoding)
