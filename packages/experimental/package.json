@@ -1,0 +1,74 @@
+{
+  "name": "@effect/experimental",
+  "version": "0.5.3",
+  "type": "module",
+  "license": "MIT",
+  "description": "Functional programming in TypeScript",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/effect.git",
+    "directory": "packages/experimental"
+  },
+  "bugs": {
+    "url": "https://github.com/effect-ts/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "scripts": {
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "isomorphic-ws": "^5.0.0",
+    "msgpackr": "^1.10.0"
+  },
+  "peerDependencies": {
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@effect/schema": "workspace:^",
+    "effect": "workspace:^",
+    "ws": "^8.14"
+  },
+  "peerDependenciesMeta": {
+    "@effect/platform-node": {
+      "optional": true
+    },
+    "ws": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.10",
+    "vitest-websocket-mock": "^0.3.0",
+    "ws": "^8.15.1"
+  },
+  "effect": {
+    "generateExports": {
+      "include": [
+        "*.ts",
+        "DevTools/*.ts",
+        "Socket/*.ts",
+        "SocketServer/*.ts"
+      ]
+    }
+  }
+}
