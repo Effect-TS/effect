@@ -180,7 +180,7 @@ export const boolean = (config?: Args.Args.BaseArgsConfig): Args.Args<boolean> =
 /** @internal */
 export const choice = <A>(
   choices: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>,
-  config: Args.Args.BaseArgsConfig
+  config?: Args.Args.BaseArgsConfig
 ): Args.Args<A> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.choice(choices))
 
 /** @internal */
