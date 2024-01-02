@@ -8,15 +8,15 @@ import type { Either } from "./Either.js"
 import * as E from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
-import { dual, identity } from "./Function.js"
 import type { LazyArg } from "./Function.js"
+import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as readonlyArray from "./internal/readonlyArray.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import * as Order from "./Order.js"
-import { not } from "./Predicate.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import { not } from "./Predicate.js"
 import * as RR from "./ReadonlyRecord.js"
 import * as Tuple from "./Tuple.js"
 
@@ -734,6 +734,53 @@ export const findLast: {
   }
   return O.none()
 })
+
+/**
+ * Find and transform the first element for which a value could be produced.
+ *
+ * @category elements
+ * @since 2.0.0
+ */
+export const findFirstMap: {
+  <A, B>(predicate: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  <A, B>(self: Iterable<A>, predicate: (a: A, i: number) => Option<B>): Option<B>
+} = dual(
+  2,
+  <A, B>(self: Iterable<A>, predicate: (a: A, i: number) => Option<B>): Option<B> => {
+    let i = 0
+    for (const a of self) {
+      const o = predicate(a, i)
+      if (O.isSome(o)) {
+        return o
+      }
+      i++
+    }
+    return O.none()
+  }
+)
+
+/**
+ * Find and transform the last element for which a value could be produced.
+ *
+ * @category elements
+ * @since 2.0.0
+ */
+export const findLastMap: {
+  <A, B>(predicate: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  <A, B>(self: Iterable<A>, predicate: (a: A, i: number) => Option<B>): Option<B>
+} = dual(
+  2,
+  <A, B>(self: Iterable<A>, predicate: (a: A, i: number) => Option<B>): Option<B> => {
+    const input = fromIterable(self)
+    for (let i = input.length - 1; i >= 0; i--) {
+      const o = predicate(input[i], i)
+      if (O.isSome(o)) {
+        return o
+      }
+    }
+    return O.none()
+  }
+)
 
 /**
  * Insert an element at the specified index, creating a new `NonEmptyArray`,

@@ -307,6 +307,56 @@ describe("ReadonlyArray", () => {
       deepStrictEqual(pipe(new Set([1, 2, 3, 4]), RA.findLast((n) => n % 2 === 0)), O.some(4))
     })
 
+    it("findFirstMap", () => {
+      deepStrictEqual(pipe([], RA.findFirstMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())), O.none())
+      deepStrictEqual(
+        pipe([1, 2, 3], RA.findFirstMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.some([2, 1])
+      )
+      deepStrictEqual(
+        pipe([1, 2, 3, 4], RA.findFirstMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.some([2, 1])
+      )
+
+      deepStrictEqual(
+        pipe(new Set<number>(), RA.findFirstMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.none()
+      )
+      deepStrictEqual(
+        pipe(new Set([1, 2, 3]), RA.findFirstMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.some([2, 1])
+      )
+      deepStrictEqual(
+        pipe(new Set([1, 2, 3, 4]), RA.findFirstMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.some([2, 1])
+      )
+    })
+
+    it("findLastMap", () => {
+      deepStrictEqual(pipe([], RA.findLastMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())), O.none())
+      deepStrictEqual(
+        pipe([1, 2, 3], RA.findLastMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.some([2, 1])
+      )
+      deepStrictEqual(
+        pipe([1, 2, 3, 4], RA.findLastMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.some([4, 3])
+      )
+
+      deepStrictEqual(
+        pipe(new Set<number>(), RA.findLastMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.none()
+      )
+      deepStrictEqual(
+        pipe(new Set([1, 2, 3]), RA.findLastMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.some([2, 1])
+      )
+      deepStrictEqual(
+        pipe(new Set([1, 2, 3, 4]), RA.findLastMap((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+        O.some([4, 3])
+      )
+    })
+
     it("insertAt", () => {
       deepStrictEqual(RA.insertAt(1, 1)([]), O.none())
       deepStrictEqual(RA.insertAt(0, 1)([]), O.some([1]))
