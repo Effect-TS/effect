@@ -29,8 +29,8 @@ export const toString = <E>(
   readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options: {
     readonly onFailure: (error: unknown) => E
-    readonly encoding?: BufferEncoding
-    readonly maxBytes?: SizeInput
+    readonly encoding?: BufferEncoding | undefined
+    readonly maxBytes?: SizeInput | undefined
   }
 ): Effect.Effect<never, E, string> => {
   const maxBytesNumber = options.maxBytes ? Number(options.maxBytes) : undefined
@@ -73,7 +73,7 @@ export const toUint8Array = <E>(
   readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options: {
     readonly onFailure: (error: unknown) => E
-    readonly maxBytes?: SizeInput
+    readonly maxBytes?: SizeInput | undefined
   }
 ): Effect.Effect<never, E, Uint8Array> => {
   const maxBytesNumber = options.maxBytes ? Number(options.maxBytes) : undefined
