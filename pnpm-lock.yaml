@@ -157,16 +157,16 @@ importers:
   packages/experimental:
     dependencies:
       '@effect/platform':
-        specifier: ^0.39.0
+        specifier: workspace:^
         version: link:../platform/dist
       '@effect/platform-node':
-        specifier: ^0.39.0
+        specifier: workspace:^
         version: link:../platform-node/dist
       '@effect/schema':
-        specifier: ^0.56.0
+        specifier: workspace:^
         version: link:../schema/dist
       effect:
-        specifier: 2.0.0-next.62
+        specifier: workspace:^
         version: link:../effect/dist
       isomorphic-ws:
         specifier: ^5.0.0

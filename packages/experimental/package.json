@@ -42,10 +42,10 @@
     "msgpackr": "^1.10.0"
   },
   "peerDependencies": {
-    "@effect/platform": "^0.39.0",
-    "@effect/platform-node": "^0.39.0",
-    "@effect/schema": "^0.56.0",
-    "effect": "2.0.0-next.62",
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@effect/schema": "workspace:^",
+    "effect": "workspace:^",
     "ws": "^8.14"
   },
   "peerDependenciesMeta": {
@@ -60,5 +60,15 @@
     "@types/ws": "^8.5.10",
     "vitest-websocket-mock": "^0.3.0",
     "ws": "^8.15.1"
+  },
+  "effect": {
+    "generateExports": {
+      "include": [
+        "*.ts",
+        "DevTools/*.ts",
+        "Socket/*.ts",
+        "SocketServer/*.ts"
+      ]
+    }
   }
 }
