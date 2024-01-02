@@ -839,8 +839,8 @@ interface Category {
 
 const schema: S.Schema<Category> = S.struct({
   name: S.string,
-  categories: S.array(S.suspend(() => schema).pipe(S.identifier("Category"))),
-});
+  categories: S.array(S.suspend(() => schema)),
+}).pipe(S.identifier("Category"));
 
 const jsonSchema = JSONSchema.to(schema);
 
