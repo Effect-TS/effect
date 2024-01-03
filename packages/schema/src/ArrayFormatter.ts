@@ -26,7 +26,7 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
     case "Forbidden":
       return [{ _tag, path, message: "is forbidden" }]
     case "Unexpected":
-      return [{ _tag, path, message: `is unexpected, expected ${Format.formatAST(e.expected, true)}` }]
+      return [{ _tag, path, message: `is unexpected, expected ${Format.formatAST(e.ast, true)}` }]
     case "Key":
       return ReadonlyArray.flatMap(e.errors, (key) => format(key, [...path, e.key]))
     case "Missing":

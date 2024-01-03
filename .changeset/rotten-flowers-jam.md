@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-add Format module
+Schema: add Format module

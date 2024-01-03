@@ -83,10 +83,15 @@ export const getRefinementMessage = (e: Refinement, actual: unknown): Option.Opt
   const message = getMessage(e.ast, actual)
   if (e.kind === "From" && e.errors.length === 1) {
     const err = e.errors[0]
-    if (err._tag === "Refinement") {
-      return Option.orElse(getRefinementMessage(err, err.actual), () => message)
-    } else if ("ast" in err) {
-      return Option.orElse(getMessage(err.ast, err.actual), () => message)
+    switch (err._tag) {
+      case "Refinement":
+        return Option.orElse(getRefinementMessage(err, err.actual), () => message)
+      case "Tuple":
+      case "TypeLiteral":
+      case "Union":
+      case "Transform":
+      case "Type":
+        return Option.orElse(getMessage(err.ast, err.actual), () => message)
     }
   }
   return message
@@ -99,7 +104,7 @@ const go = (e: ParseIssue): Tree<string> => {
     case "Forbidden":
       return make("is forbidden")
     case "Unexpected":
-      return make(`is unexpected, expected ${Format.formatAST(e.expected, true)}`)
+      return make(`is unexpected, expected ${Format.formatAST(e.ast, true)}`)
     case "Key":
       return make(`[${Format.formatUnknown(e.key)}]`, e.errors.map(go))
     case "Missing":

@@ -2,4 +2,4 @@
 "@effect/schema": minor
 ---
 
-AST: simplify `createRefinement` return type
+Schema: simplify `AST.createRefinement` return type
