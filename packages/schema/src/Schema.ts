@@ -400,11 +400,7 @@ export const fromBrand = <C extends Brand.Brand<string | symbol>>(
     (a: A, _: ParseOptions, ast: AST.AST): Option.Option<ParseResult.ParseError> => {
       const e = constructor.either(a)
       return Either.isLeft(e) ?
-        Option.some(
-          ParseResult.parseError([
-            ParseResult.type(ast, a, e.left.map((v) => v.message).join(", "))
-          ])
-        ) :
+        Option.some(ParseResult.parseError(ParseResult.type(ast, a, e.left.map((v) => v.message).join(", ")))) :
         Option.none()
     },
     toAnnotations({ typeId: { id: BrandTypeId, params: { constructor } }, ...options })
@@ -1081,7 +1077,7 @@ export const brand = <B extends string | symbol, A>(
       Either.mapLeft(
         validateEither(input),
         (e) =>
-          ArrayFormatter.formatErrors(e.errors).map((err) => ({
+          ArrayFormatter.formatErrors([e.error]).map((err) => ({
             meta: err.path,
             message: err.message
           }))
@@ -1295,7 +1291,7 @@ export function filter<A>(
         if (Predicate.isBoolean(out)) {
           return out
             ? Option.none()
-            : Option.some(ParseResult.parseError([ParseResult.type(ast, a)]))
+            : Option.some(ParseResult.parseError(ParseResult.type(ast, a)))
         }
         return out
       },
@@ -2133,12 +2129,12 @@ export const parseJson: {
     (s, _, ast) =>
       ParseResult.try({
         try: () => JSON.parse(s, options?.reviver),
-        catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, s, e.message)])
+        catch: (e: any) => ParseResult.parseError(ParseResult.type(ast, s, e.message))
       }),
     (u, _, ast) =>
       ParseResult.try({
         try: () => JSON.stringify(u, options?.replacer, options?.space),
-        catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, u, e.message)])
+        catch: (e: any) => ParseResult.parseError(ParseResult.type(ast, u, e.message))
       })
   )
 }
@@ -2859,7 +2855,7 @@ export const bigint: Schema<string, bigint> = transformOrFail(
 
     return ParseResult.try({
       try: () => BigInt(s),
-      catch: () => ParseResult.parseError([ParseResult.type(ast, s)])
+      catch: () => ParseResult.parseError(ParseResult.type(ast, s))
     })
   },
   (n) => ParseResult.succeed(String(n))
@@ -2943,7 +2939,7 @@ export const BigintFromNumber: Schema<number, bigint> = transformOrFail(
   (n, _, ast) =>
     ParseResult.try({
       try: () => BigInt(n),
-      catch: () => ParseResult.parseError([ParseResult.type(ast, n)])
+      catch: () => ParseResult.parseError(ParseResult.type(ast, n))
     }),
   (b, _, ast) => {
     if (b > InternalBigInt.maxSafeInteger || b < InternalBigInt.minSafeInteger) {
@@ -2965,7 +2961,7 @@ export const SecretFromSelf: Schema<Secret.Secret> = declare(
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
-    [AST.IdentifierAnnotationId]: "Secret",
+    [AST.IdentifierAnnotationId]: "SecretFromSelf",
     [hooks.PrettyHookId]: (): Pretty.Pretty<Secret.Secret> => (secret) => String(secret),
     [hooks.ArbitraryHookId]: (): Arbitrary<Secret.Secret> => (fc) => fc.string().map((_) => Secret.fromString(_))
   }
@@ -3300,7 +3296,7 @@ const makeEncodingTransformation = (
     (s, _, ast) =>
       Either.mapLeft(
         decode(s),
-        (decodeException) => ParseResult.parseError([ParseResult.type(ast, s, decodeException.message)])
+        (decodeException) => ParseResult.parseError(ParseResult.type(ast, s, decodeException.message))
       ),
     (u) => ParseResult.succeed(encode(u)),
     { strict: false }

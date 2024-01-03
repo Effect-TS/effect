@@ -29,6 +29,14 @@ export const formatErrors = (errors: NonEmptyReadonlyArray<ParseIssue>): string 
   return drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, errors.map(go)))
 }
 
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatError = (error: ParseIssue): string => {
+  return formatErrors([error])
+}
+
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 
 const draw = (indentation: string, forest: Forest<string>): string => {
@@ -81,17 +89,16 @@ export const formatMessage = (e: Type): string =>
 /** @internal */
 export const getRefinementMessage = (e: Refinement, actual: unknown): Option.Option<string> => {
   const message = getMessage(e.ast, actual)
-  if (e.kind === "From" && e.errors.length === 1) {
-    const err = e.errors[0]
-    switch (err._tag) {
+  if (e.kind === "From") {
+    switch (e.error._tag) {
       case "Refinement":
-        return Option.orElse(getRefinementMessage(err, err.actual), () => message)
+        return Option.orElse(getRefinementMessage(e.error, e.error.actual), () => message)
       case "Tuple":
       case "TypeLiteral":
       case "Union":
       case "Transform":
       case "Type":
-        return Option.orElse(getMessage(err.ast, err.actual), () => message)
+        return Option.orElse(getMessage(e.error.ast, e.error.actual), () => message)
     }
   }
   return message
@@ -106,7 +113,7 @@ const go = (e: ParseIssue): Tree<string> => {
     case "Unexpected":
       return make(`is unexpected, expected ${Format.formatAST(e.ast, true)}`)
     case "Key":
-      return make(`[${Format.formatUnknown(e.key)}]`, e.errors.map(go))
+      return make(`[${Format.formatUnknown(e.key)}]`, [go(e.error)])
     case "Missing":
       return make("is missing")
     case "Union":
@@ -120,7 +127,7 @@ const go = (e: ParseIssue): Tree<string> => {
                 case "Type":
                   return go(e)
                 case "Member":
-                  return make(`Union member`, e.errors.map(go))
+                  return make(`Union member`, [go(e.error)])
               }
             })
           ),
@@ -131,7 +138,7 @@ const go = (e: ParseIssue): Tree<string> => {
         onNone: () =>
           make(
             Format.formatAST(e.ast),
-            e.errors.map((e) => make(`[${e.index}]`, e.errors.map(go)))
+            e.errors.map((e) => make(`[${e.index}]`, [go(e.error)]))
           ),
         onSome: make
       })
@@ -142,14 +149,14 @@ const go = (e: ParseIssue): Tree<string> => {
       })
     case "Transform":
       return Option.match(getMessage(e.ast, e.actual), {
-        onNone: () => make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), e.errors.map(go))]),
+        onNone: () => make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), [go(e.error)])]),
         onSome: make
       })
     case "Refinement":
       return Option.match(getRefinementMessage(e, e.actual), {
         onNone: () =>
           make(Format.formatAST(e.ast), [
-            make(formatRefinementKind(e.kind), e.errors.map(go))
+            make(formatRefinementKind(e.kind), [go(e.error)])
           ]),
         onSome: make
       })

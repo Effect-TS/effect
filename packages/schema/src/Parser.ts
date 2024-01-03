@@ -26,7 +26,7 @@ const getSync = (ast: AST.AST, isDecoding: boolean) => {
   return (input: unknown, options?: AST.ParseOptions) => {
     const result = parser(input, options)
     if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatErrors(result.left.errors))
+      throw new Error(TreeFormatter.formatError(result.left.error))
     }
     return result.right
   }
@@ -272,7 +272,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           handleForbidden(
             ParseResult.flatMap(
               ParseResult.mapLeft(from(i, options), (e) =>
-                ParseResult.parseError([ParseResult.refinement(ast, i, "From", e.errors)])),
+                ParseResult.parseError(ParseResult.refinement(ast, i, "From", e.error))),
               (a) =>
                 Option.match(
                   ast.filter(a, options ?? defaultParseOption, ast),
@@ -281,9 +281,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                       ParseResult.succeed(a),
                     onSome: (e) =>
                       ParseResult.fail(
-                        ParseResult.parseError([
-                          ParseResult.refinement(ast, i, "Predicate", e.errors)
-                        ])
+                        ParseResult.refinement(ast, i, "Predicate", e.error)
                       )
                   }
                 )
@@ -307,23 +305,23 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         handleForbidden(
           ParseResult.flatMap(
             ParseResult.mapLeft(from(i1, options), (e) =>
-              ParseResult.parseError([
-                ParseResult.transform(ast, i1, isDecoding ? "From" : "To", e.errors)
-              ])),
+              ParseResult.parseError(
+                ParseResult.transform(ast, i1, isDecoding ? "From" : "To", e.error)
+              )),
             (a) =>
               ParseResult.flatMap(
                 ParseResult.mapLeft(
                   transform(a, options ?? defaultParseOption, ast),
                   (e) =>
-                    ParseResult.parseError([
-                      ParseResult.transform(ast, a, "Transformation", e.errors)
-                    ])
+                    ParseResult.parseError(
+                      ParseResult.transform(ast, a, "Transformation", e.error)
+                    )
                 ),
                 (i2) =>
                   ParseResult.mapLeft(to(i2, options), (e) =>
-                    ParseResult.parseError([
-                      ParseResult.transform(ast, i2, isDecoding ? "To" : "From", e.errors)
-                    ]))
+                    ParseResult.parseError(
+                      ParseResult.transform(ast, i2, isDecoding ? "To" : "From", e.error)
+                    ))
               )
           ),
           options
@@ -384,7 +382,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const len = input.length
         for (let i = len; i <= requiredLen - 1; i++) {
-          const e = ParseResult.index(i, [ParseResult.missing])
+          const e = ParseResult.index(i, ParseResult.missing)
           if (allErrors) {
             es.push([stepKey++, e])
             continue
@@ -398,7 +396,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         if (Option.isNone(ast.rest)) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = ParseResult.index(i, [ParseResult.unexpected(expectedAST)])
+            const e = ParseResult.index(i, ParseResult.unexpected(expectedAST))
             if (allErrors) {
               es.push([stepKey++, e])
               continue
@@ -434,7 +432,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             if (eu) {
               if (Either.isLeft(eu)) {
                 // the input element is present but is not valid
-                const e = ParseResult.index(i, eu.left.errors)
+                const e = ParseResult.index(i, eu.left.error)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
@@ -453,7 +451,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 Effect.flatMap(Effect.either(te), (t) => {
                   if (Either.isLeft(t)) {
                     // the input element is present but is not valid
-                    const e = ParseResult.index(index, t.left.errors)
+                    const e = ParseResult.index(index, t.left.error)
                     if (allErrors) {
                       es.push([nk, e])
                       return Effect.unit
@@ -478,7 +476,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             const eu = ParseResult.eitherOrUndefined(te)
             if (eu) {
               if (Either.isLeft(eu)) {
-                const e = ParseResult.index(i, eu.left.errors)
+                const e = ParseResult.index(i, eu.left.error)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
@@ -498,7 +496,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 ({ es, output }: State) =>
                   Effect.flatMap(Effect.either(te), (t) => {
                     if (Either.isLeft(t)) {
-                      const e = ParseResult.index(index, t.left.errors)
+                      const e = ParseResult.index(index, t.left.error)
                       if (allErrors) {
                         es.push([nk, e])
                         return Effect.unit
@@ -526,7 +524,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               if (eu) {
                 if (Either.isLeft(eu)) {
                   // the input element is present but is not valid
-                  const e = ParseResult.index(i, eu.left.errors)
+                  const e = ParseResult.index(i, eu.left.error)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
@@ -546,7 +544,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                     Effect.flatMap(Effect.either(te), (t) => {
                       if (Either.isLeft(t)) {
                         // the input element is present but is not valid
-                        const e = ParseResult.index(index, t.left.errors)
+                        const e = ParseResult.index(index, t.left.error)
                         if (allErrors) {
                           es.push([nk, e])
                           return Effect.unit
@@ -629,7 +627,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           for (const key of Internal.ownKeys(input)) {
             const eu = ParseResult.eitherOrUndefined(expected(key, options))
             if (eu && Either.isLeft(eu)) {
-              const e = ParseResult.key(key, [ParseResult.unexpected(expectedAST)])
+              const e = ParseResult.key(key, ParseResult.unexpected(expectedAST))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -662,7 +660,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             if (eu) {
               if (Either.isLeft(eu)) {
                 // the input key is present but is not valid
-                const e = ParseResult.key(name, eu.left.errors)
+                const e = ParseResult.key(name, eu.left.error)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
@@ -682,7 +680,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   Effect.flatMap(Effect.either(te), (t) => {
                     if (Either.isLeft(t)) {
                       // the input key is present but is not valid
-                      const e = ParseResult.key(index, t.left.errors)
+                      const e = ParseResult.key(index, t.left.error)
                       if (allErrors) {
                         es.push([nk, e])
                         return Effect.unit
@@ -700,7 +698,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             // handle missing keys
             // ---------------------------------------------
             if (!ps.isOptional) {
-              const e = ParseResult.key(name, [ParseResult.missing])
+              const e = ParseResult.key(name, ParseResult.missing)
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -732,7 +730,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               const veu = ParseResult.eitherOrUndefined(vpr)
               if (veu) {
                 if (Either.isLeft(veu)) {
-                  const e = ParseResult.key(key, veu.left.errors)
+                  const e = ParseResult.key(key, veu.left.error)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
@@ -756,7 +754,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                       Effect.either(vpr),
                       (tv) => {
                         if (Either.isLeft(tv)) {
-                          const e = ParseResult.key(index, tv.left.errors)
+                          const e = ParseResult.key(index, tv.left.error)
                           if (allErrors) {
                             es.push([nk, e])
                             return Effect.unit
@@ -830,14 +828,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 } else {
                   es.push([
                     stepKey++,
-                    ParseResult.key(name, [ParseResult.type(
-                      searchTree.keys[name].ast,
-                      input[name]
-                    )])
+                    ParseResult.key(name, ParseResult.type(searchTree.keys[name].ast, input[name]))
                   ])
                 }
               } else {
-                es.push([stepKey++, ParseResult.key(name, [ParseResult.missing])])
+                es.push([stepKey++, ParseResult.key(name, ParseResult.missing)])
               }
             }
           } else {
@@ -868,7 +863,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             if (Either.isRight(eu)) {
               return ParseResult.succeed(eu.right)
             } else {
-              es.push([stepKey++, ParseResult.member(candidate, eu.left.errors)])
+              es.push([stepKey++, ParseResult.member(candidate, eu.left.error)])
             }
           } else {
             const nk = stepKey++
@@ -885,7 +880,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                       if (Either.isRight(t)) {
                         state.finalResult = ParseResult.succeed(t.right)
                       } else {
-                        state.es.push([nk, ParseResult.member(candidate, t.left.errors)])
+                        state.es.push([nk, ParseResult.member(candidate, t.left.error)])
                       }
                       return Effect.unit
                     })

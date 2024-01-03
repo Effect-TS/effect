@@ -4,7 +4,7 @@ import * as AST from "@effect/schema/AST"
 import { getFinalTransformation } from "@effect/schema/Parser"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import { formatErrors } from "@effect/schema/TreeFormatter"
+import { formatError } from "@effect/schema/TreeFormatter"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -141,7 +141,7 @@ export const expectParseFailure = async <I, A>(
 ) => {
   const actual = Either.mapLeft(
     Effect.runSync(Effect.either(S.parse(schema)(input, options))),
-    (e) => formatErrors(e.errors)
+    (e) => formatError(e.error)
   )
   expect(actual).toEqual(Either.left(message))
 }
@@ -164,7 +164,7 @@ export const expectEncodeFailure = async <I, A>(
 ) => {
   const actual = Either.mapLeft(
     Effect.runSync(Effect.either(S.encode(schema)(a, options))),
-    (e) => formatErrors(e.errors)
+    (e) => formatError(e.error)
   )
   expect(actual).toStrictEqual(Either.left(message))
 }

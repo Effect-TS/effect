@@ -10,7 +10,7 @@ const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
 const expectIssues = <I, A>(schema: S.Schema<I, A>, input: unknown, issues: Array<_.Issue>) => {
   const result = S.parseEither(schema)(input, options).pipe(
-    Either.mapLeft((e) => _.formatErrors(e.errors))
+    Either.mapLeft((e) => _.formatErrors([e.error]))
   )
   expect(result).toStrictEqual(Either.left(issues))
 }

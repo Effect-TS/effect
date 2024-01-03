@@ -5,8 +5,8 @@ import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe("ParseResult", () => {
-  const forbiddenParseError = ParseResult.parseError([ParseResult.forbidden])
-  const missingParseError = ParseResult.parseError([ParseResult.missing])
+  const forbiddenParseError = ParseResult.parseError(ParseResult.forbidden)
+  const missingParseError = ParseResult.parseError(ParseResult.missing)
 
   it("toString()", () => {
     const schema = S.struct({ a: S.string })

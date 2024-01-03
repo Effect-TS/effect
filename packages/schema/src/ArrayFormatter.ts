@@ -28,7 +28,7 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
     case "Unexpected":
       return [{ _tag, path, message: `is unexpected, expected ${Format.formatAST(e.ast, true)}` }]
     case "Key":
-      return ReadonlyArray.flatMap(e.errors, (key) => format(key, [...path, e.key]))
+      return format(e.error, path)
     case "Missing":
       return [{ _tag, path, message: "is missing" }]
     case "Union":
@@ -40,7 +40,7 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
               case "Type":
                 return format(e, path)
               case "Member":
-                return ReadonlyArray.flatMap(e.errors, (e) => format(e, path))
+                return format(e.error, path)
             }
           }),
         onSome: (message) => [{ _tag, path, message }]
@@ -50,7 +50,7 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
         onNone: () =>
           ReadonlyArray.flatMap(
             e.errors,
-            (index) => ReadonlyArray.flatMap(index.errors, (e) => format(e, [...path, index.index]))
+            (index) => format(index.error, [...path, index.index])
           ),
         onSome: (message) => [{ _tag, path, message }]
       })
@@ -59,18 +59,18 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
         onNone: () =>
           ReadonlyArray.flatMap(
             e.errors,
-            (key) => ReadonlyArray.flatMap(key.errors, (e) => format(e, [...path, key.key]))
+            (key) => format(key, [...path, key.key])
           ),
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Transform":
       return Option.match(getMessage(e.ast, e.actual), {
-        onNone: () => ReadonlyArray.flatMap(e.errors, (e) => format(e, path)),
+        onNone: () => format(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Refinement":
       return Option.match(getRefinementMessage(e, e.actual), {
-        onNone: () => ReadonlyArray.flatMap(e.errors, (e) => format(e, path)),
+        onNone: () => format(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })
   }

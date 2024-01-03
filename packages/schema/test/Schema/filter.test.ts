@@ -40,15 +40,16 @@ describe("Schema > filter", () => {
         o.b === o.a
           ? Option.none()
           : Option.some(
-            ParseResult.parseError([
-              ParseResult.key("b", [
+            ParseResult.parseError(
+              ParseResult.key(
+                "b",
                 ParseResult.type(
                   S.literal(o.a).ast,
                   o.b,
                   `should be equal to a's value ("${o.a}")`
                 )
-              ])
-            ])
+              )
+            )
           )
       )
     )

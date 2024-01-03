@@ -38,9 +38,9 @@ describe("Parser", () => {
     expect(P.parseEither(schema)("1")).toEqual(E.right(1))
     expect(P.parseEither(schema)("a")).toEqual(
       E.left(
-        PR.parseError([
-          PR.transform(schema.ast as any, "a", "Transformation", [PR.type(schema.ast, "a")])
-        ])
+        PR.parseError(
+          PR.transform(schema.ast as any, "a", "Transformation", PR.type(schema.ast, "a"))
+        )
       )
     )
   })
@@ -58,9 +58,9 @@ describe("Parser", () => {
     )
     expect(await Effect.runPromise(Effect.either(P.parse(schema)("a")))).toEqual(
       E.left(
-        PR.parseError([
-          PR.transform(schema.ast as any, "a", "Transformation", [PR.type(schema.ast, "a")])
-        ])
+        PR.parseError(
+          PR.transform(schema.ast as any, "a", "Transformation", PR.type(schema.ast, "a"))
+        )
       )
     )
   })
@@ -86,9 +86,9 @@ describe("Parser", () => {
     expect(P.decodeEither(schema)("1")).toEqual(E.right(1))
     expect(P.decodeEither(schema)("a")).toEqual(
       E.left(
-        PR.parseError([
-          PR.transform(schema.ast as any, "a", "Transformation", [PR.type(schema.ast, "a")])
-        ])
+        PR.parseError(
+          PR.transform(schema.ast as any, "a", "Transformation", PR.type(schema.ast, "a"))
+        )
       )
     )
   })
@@ -104,9 +104,9 @@ describe("Parser", () => {
     expect(await Effect.runPromise(Effect.either(P.decode(schema)("1")))).toEqual(E.right(1))
     expect(await Effect.runPromise(Effect.either(P.decode(schema)("a")))).toEqual(
       E.left(
-        PR.parseError([
-          PR.transform(schema.ast as any, "a", "Transformation", [PR.type(schema.ast, "a")])
-        ])
+        PR.parseError(
+          PR.transform(schema.ast as any, "a", "Transformation", PR.type(schema.ast, "a"))
+        )
       )
     )
   })
@@ -129,7 +129,7 @@ describe("Parser", () => {
     const schema = S.NumberFromString
     expect(P.validateEither(schema)(1)).toEqual(E.right(1))
     expect(P.validateEither(schema)("1")).toEqual(
-      E.left(PR.parseError([PR.type(S.number.ast, "1")]))
+      E.left(PR.parseError(PR.type(S.number.ast, "1")))
     )
   })
 
@@ -144,7 +144,7 @@ describe("Parser", () => {
     const schema = S.NumberFromString
     expect(await Effect.runPromise(Effect.either(P.validate(schema)(1)))).toEqual(E.right(1))
     expect(await Effect.runPromise(Effect.either(P.validate(schema)("1")))).toEqual(
-      E.left(PR.parseError([PR.type(S.number.ast, "1")]))
+      E.left(PR.parseError(PR.type(S.number.ast, "1")))
     )
   })
 
