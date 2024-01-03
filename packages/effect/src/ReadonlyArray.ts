@@ -15,7 +15,7 @@ import * as readonlyArray from "./internal/readonlyArray.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import * as Order from "./Order.js"
-import { not } from "./Predicate.js"
+import { isBoolean, not } from "./Predicate.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import * as RR from "./ReadonlyRecord.js"
 import * as Tuple from "./Tuple.js"
@@ -700,19 +700,32 @@ export const findLastIndex: {
  * @since 2.0.0
  */
 export const findFirst: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Option<B>
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Option<B>
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A>
-} = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A> => {
-  const input = fromIterable(self)
-  for (let i = 0; i < input.length; i++) {
-    if (predicate(input[i])) {
-      return O.some(input[i])
+  <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Option<B>
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Option<B>
+  <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
+} = dual(
+  2,
+  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<A> => {
+    let i = 0
+    for (const a of self) {
+      const o = f(a, i)
+      if (isBoolean(o)) {
+        if (o) {
+          return O.some(a)
+        }
+      } else {
+        if (O.isSome(o)) {
+          return o
+        }
+      }
+      i++
     }
+    return O.none()
   }
-  return O.none()
-})
+)
 
 /**
  * Find the last element for which a predicate holds.
@@ -721,19 +734,32 @@ export const findFirst: {
  * @since 2.0.0
  */
 export const findLast: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Option<B>
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Option<B>
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A>
-} = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A> => {
-  const input = fromIterable(self)
-  for (let i = input.length - 1; i >= 0; i--) {
-    if (predicate(input[i])) {
-      return O.some(input[i])
+  <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Option<B>
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Option<B>
+  <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
+} = dual(
+  2,
+  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<A> => {
+    const input = fromIterable(self)
+    for (let i = input.length - 1; i >= 0; i--) {
+      const a = input[i]
+      const o = f(a, i)
+      if (isBoolean(o)) {
+        if (o) {
+          return O.some(a)
+        }
+      } else {
+        if (O.isSome(o)) {
+          return o
+        }
+      }
     }
+    return O.none()
   }
-  return O.none()
-})
+)
 
 /**
  * Insert an element at the specified index, creating a new `NonEmptyArray`,
