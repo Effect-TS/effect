@@ -137,8 +137,8 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  *   minutes: [0],
  *   hours: [4],
  *   days: [8, 9, 10, 11, 12, 13, 14],
- *   months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
- *   weekdays: [0, 1, 2, 3, 4, 5, 6]
+ *   months: [],
+ *   weekdays: []
  * })))
  *
  * @since 2.0.0
