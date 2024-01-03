@@ -323,7 +323,7 @@ export const mapTryCatch = dual<
 
 /** @internal */
 export const optional = <A>(self: Args.Args<A>): Args.Args<Option.Option<A>> =>
-  makeWithDefault(self as Instruction, Option.none())
+  makeWithDefault(map(self, Option.some), Option.none())
 
 /** @internal */
 export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>

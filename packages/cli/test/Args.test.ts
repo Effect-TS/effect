@@ -5,6 +5,7 @@ import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Path from "@effect/platform-node/Path"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import { describe, expect, it } from "vitest"
 
@@ -20,6 +21,20 @@ describe("Args", () => {
         Args.validate(args, ReadonlyArray.empty(), CliConfig.defaultConfig)
       )
       expect(result).toEqual([ReadonlyArray.empty(), 0])
+    }).pipe(runEffect))
+
+  it("validates an valid optional argument", () =>
+    Effect.gen(function*(_) {
+      const args = Args.integer().pipe(Args.optional)
+      let result = yield* _(
+        Args.validate(args, ReadonlyArray.empty(), CliConfig.defaultConfig)
+      )
+      expect(result).toEqual([ReadonlyArray.empty(), Option.none()])
+
+      result = yield* _(
+        Args.validate(args, ["123"], CliConfig.defaultConfig)
+      )
+      expect(result).toEqual([ReadonlyArray.empty(), Option.some(123)])
     }).pipe(runEffect))
 
   it("does not validate an invalid argument even when there is a default", () =>
