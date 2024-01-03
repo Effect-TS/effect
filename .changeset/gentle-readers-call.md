@@ -1,5 +1,7 @@
 ---
 "@effect/schema": minor
+"@effect/experimental": minor
+"@effect/rpc": minor
 ---
 
 Schema: refactor `ParseResult` module:
