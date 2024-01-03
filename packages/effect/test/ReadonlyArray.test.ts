@@ -287,24 +287,78 @@ describe("ReadonlyArray", () => {
       deepStrictEqual(pipe(new Set([1, 2, 3, 4]), RA.findLastIndex((n) => n % 2 === 0)), O.some(3))
     })
 
-    it("findFirst", () => {
-      deepStrictEqual(pipe([], RA.findFirst((n) => n % 2 === 0)), O.none())
-      deepStrictEqual(pipe([1, 2, 3], RA.findFirst((n) => n % 2 === 0)), O.some(2))
-      deepStrictEqual(pipe([1, 2, 3, 4], RA.findFirst((n) => n % 2 === 0)), O.some(2))
+    describe("findFirst", () => {
+      it("boolean-returning overloads", () => {
+        deepStrictEqual(pipe([], RA.findFirst((n) => n % 2 === 0)), O.none())
+        deepStrictEqual(pipe([1, 2, 3], RA.findFirst((n) => n % 2 === 0)), O.some(2))
+        deepStrictEqual(pipe([1, 2, 3, 4], RA.findFirst((n) => n % 2 === 0)), O.some(2))
 
-      deepStrictEqual(pipe(new Set<number>(), RA.findFirst((n) => n % 2 === 0)), O.none())
-      deepStrictEqual(pipe(new Set([1, 2, 3]), RA.findFirst((n) => n % 2 === 0)), O.some(2))
-      deepStrictEqual(pipe(new Set([1, 2, 3, 4]), RA.findFirst((n) => n % 2 === 0)), O.some(2))
+        deepStrictEqual(pipe(new Set<number>(), RA.findFirst((n) => n % 2 === 0)), O.none())
+        deepStrictEqual(pipe(new Set([1, 2, 3]), RA.findFirst((n) => n % 2 === 0)), O.some(2))
+        deepStrictEqual(pipe(new Set([1, 2, 3, 4]), RA.findFirst((n) => n % 2 === 0)), O.some(2))
+      })
+
+      it("Option-returning overloads", () => {
+        deepStrictEqual(pipe([], RA.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())), O.none())
+        deepStrictEqual(
+          pipe([1, 2, 3], RA.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.some([2, 1])
+        )
+        deepStrictEqual(
+          pipe([1, 2, 3, 4], RA.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.some([2, 1])
+        )
+
+        deepStrictEqual(
+          pipe(new Set<number>(), RA.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.none()
+        )
+        deepStrictEqual(
+          pipe(new Set([1, 2, 3]), RA.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.some([2, 1])
+        )
+        deepStrictEqual(
+          pipe(new Set([1, 2, 3, 4]), RA.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.some([2, 1])
+        )
+      })
     })
 
-    it("findLast", () => {
-      deepStrictEqual(pipe([], RA.findLast((n) => n % 2 === 0)), O.none())
-      deepStrictEqual(pipe([1, 2, 3], RA.findLast((n) => n % 2 === 0)), O.some(2))
-      deepStrictEqual(pipe([1, 2, 3, 4], RA.findLast((n) => n % 2 === 0)), O.some(4))
+    describe("findLast", () => {
+      it("boolean-returning overloads", () => {
+        deepStrictEqual(pipe([], RA.findLast((n) => n % 2 === 0)), O.none())
+        deepStrictEqual(pipe([1, 2, 3], RA.findLast((n) => n % 2 === 0)), O.some(2))
+        deepStrictEqual(pipe([1, 2, 3, 4], RA.findLast((n) => n % 2 === 0)), O.some(4))
 
-      deepStrictEqual(pipe(new Set<number>(), RA.findLast((n) => n % 2 === 0)), O.none())
-      deepStrictEqual(pipe(new Set([1, 2, 3]), RA.findLast((n) => n % 2 === 0)), O.some(2))
-      deepStrictEqual(pipe(new Set([1, 2, 3, 4]), RA.findLast((n) => n % 2 === 0)), O.some(4))
+        deepStrictEqual(pipe(new Set<number>(), RA.findLast((n) => n % 2 === 0)), O.none())
+        deepStrictEqual(pipe(new Set([1, 2, 3]), RA.findLast((n) => n % 2 === 0)), O.some(2))
+        deepStrictEqual(pipe(new Set([1, 2, 3, 4]), RA.findLast((n) => n % 2 === 0)), O.some(4))
+      })
+
+      it("Option-returning overloads", () => {
+        deepStrictEqual(pipe([], RA.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())), O.none())
+        deepStrictEqual(
+          pipe([1, 2, 3], RA.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.some([2, 1])
+        )
+        deepStrictEqual(
+          pipe([1, 2, 3, 4], RA.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.some([4, 3])
+        )
+
+        deepStrictEqual(
+          pipe(new Set<number>(), RA.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.none()
+        )
+        deepStrictEqual(
+          pipe(new Set([1, 2, 3]), RA.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.some([2, 1])
+        )
+        deepStrictEqual(
+          pipe(new Set([1, 2, 3, 4]), RA.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
+          O.some([4, 3])
+        )
+      })
     })
 
     it("insertAt", () => {
