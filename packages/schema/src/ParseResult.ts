@@ -356,9 +356,9 @@ export {
  * @category optimisation
  * @since 1.0.0
  */
-export const eitherOrUndefined = <A>(
-  self: ParseResult<A>
-): Either.Either<ParseError, A> | undefined => {
+export const eitherOrUndefined = <E, A>(
+  self: Effect.Effect<never, E, A>
+): Either.Either<E, A> | undefined => {
   const s: any = self
   if (s["_tag"] === "Left" || s["_tag"] === "Right") {
     return s
@@ -369,10 +369,10 @@ export const eitherOrUndefined = <A>(
  * @category optimisation
  * @since 1.0.0
  */
-export const flatMap = <A, B>(
-  self: ParseResult<A>,
-  f: (self: A) => ParseResult<B>
-): ParseResult<B> => {
+export const flatMap = <E1, A, E2, B>(
+  self: Effect.Effect<never, E1, A>,
+  f: (self: A) => Effect.Effect<never, E2, B>
+): Effect.Effect<never, E1 | E2, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -402,10 +402,10 @@ export const map = <A, B>(self: ParseResult<A>, f: (self: A) => B): ParseResult<
  * @category optimisation
  * @since 1.0.0
  */
-export const mapLeft = <A>(
-  self: ParseResult<A>,
-  f: (error: ParseError) => ParseError
-): ParseResult<A> => {
+export const mapLeft = <E1, A, E2>(
+  self: Effect.Effect<never, E1, A>,
+  f: (error: E1) => E2
+): Effect.Effect<never, E2, A> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(f(s.left))

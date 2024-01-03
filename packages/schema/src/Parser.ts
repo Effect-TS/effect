@@ -18,7 +18,7 @@ import * as TreeFormatter from "./TreeFormatter.js"
 export const getEither = (
   ast: AST.AST,
   isDecoding: boolean
-): (i: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, any> =>
+): (i: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, any> =>
   goMemo(ast, isDecoding) as any
 
 const getSync = (ast: AST.AST, isDecoding: boolean) => {
@@ -26,7 +26,7 @@ const getSync = (ast: AST.AST, isDecoding: boolean) => {
   return (input: unknown, options?: AST.ParseOptions) => {
     const result = parser(input, options)
     if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatError(result.left.error))
+      throw new Error(TreeFormatter.formatError(result.left))
     }
     return result.right
   }
@@ -39,7 +39,8 @@ const getOption = (ast: AST.AST, isDecoding: boolean) => {
 
 const getEffect = (ast: AST.AST, isDecoding: boolean) => {
   const parser = goMemo(ast, isDecoding)
-  return (input: unknown, options?: AST.ParseOptions) => parser(input, { ...options, isEffectAllowed: true })
+  return (input: unknown, options?: AST.ParseOptions) =>
+    ParseResult.mapLeft(parser(input, { ...options, isEffectAllowed: true }), ParseResult.parseError)
 }
 
 const getPromise = (ast: AST.AST, isDecoding: boolean) => {
@@ -69,7 +70,11 @@ export const parseOption = <_, A>(
  */
 export const parseEither = <_, A>(
   schema: Schema.Schema<_, A>
-): (i: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, A> => getEither(schema.ast, true)
+) => {
+  const parser = getEither(schema.ast, true)
+  return (i: unknown, options?: AST.ParseOptions): Either.Either<ParseResult.ParseError, A> =>
+    Either.mapLeft(parser(i, options), ParseResult.parseError)
+}
 
 /**
  * @category parsing
@@ -150,8 +155,11 @@ export const validateOption = <_, A>(
  */
 export const validateEither = <_, A>(
   schema: Schema.Schema<_, A>
-): (a: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, A> =>
-  getEither(AST.to(schema.ast), true)
+) => {
+  const parser = getEither(AST.to(schema.ast), true)
+  return (a: unknown, options?: AST.ParseOptions): Either.Either<ParseResult.ParseError, A> =>
+    Either.mapLeft(parser(a, options), ParseResult.parseError)
+}
 
 /**
  * @category validation
@@ -212,7 +220,11 @@ export const encodeOption = <I, A>(
  */
 export const encodeEither = <I, A>(
   schema: Schema.Schema<I, A>
-): (a: A, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, I> => getEither(schema.ast, false)
+) => {
+  const parser = getEither(schema.ast, false)
+  return (a: A, options?: AST.ParseOptions): Either.Either<ParseResult.ParseError, I> =>
+    Either.mapLeft(parser(a, options), ParseResult.parseError)
+}
 
 /**
  * @category encoding
@@ -235,7 +247,7 @@ interface ParseEffectOptions extends AST.ParseOptions {
 }
 
 interface Parser<I, A> {
-  (i: I, options?: ParseEffectOptions): ParseResult.ParseResult<A>
+  (i: I, options?: ParseEffectOptions): Effect.Effect<never, ParseResult.ParseIssue, A>
 }
 
 /**
@@ -271,18 +283,13 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         return (i, options) =>
           handleForbidden(
             ParseResult.flatMap(
-              ParseResult.mapLeft(from(i, options), (e) =>
-                ParseResult.parseError(ParseResult.refinement(ast, i, "From", e.error))),
+              ParseResult.mapLeft(from(i, options), (e) => ParseResult.refinement(ast, i, "From", e)),
               (a) =>
                 Option.match(
                   ast.filter(a, options ?? defaultParseOption, ast),
                   {
-                    onNone: () =>
-                      ParseResult.succeed(a),
-                    onSome: (e) =>
-                      ParseResult.fail(
-                        ParseResult.refinement(ast, i, "Predicate", e.error)
-                      )
+                    onNone: () => Either.right(a),
+                    onSome: (e) => Either.left(ParseResult.refinement(ast, i, "Predicate", e.error))
                   }
                 )
             ),
@@ -304,24 +311,19 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       return (i1, options) =>
         handleForbidden(
           ParseResult.flatMap(
-            ParseResult.mapLeft(from(i1, options), (e) =>
-              ParseResult.parseError(
-                ParseResult.transform(ast, i1, isDecoding ? "From" : "To", e.error)
-              )),
+            ParseResult.mapLeft(
+              from(i1, options),
+              (e) => ParseResult.transform(ast, i1, isDecoding ? "From" : "To", e)
+            ),
             (a) =>
               ParseResult.flatMap(
                 ParseResult.mapLeft(
                   transform(a, options ?? defaultParseOption, ast),
-                  (e) =>
-                    ParseResult.parseError(
-                      ParseResult.transform(ast, a, "Transformation", e.error)
-                    )
+                  (e) => ParseResult.transform(ast, a, "Transformation", e.error)
                 ),
                 (i2) =>
                   ParseResult.mapLeft(to(i2, options), (e) =>
-                    ParseResult.parseError(
-                      ParseResult.transform(ast, i2, isDecoding ? "To" : "From", e.error)
-                    ))
+                    ParseResult.transform(ast, i2, isDecoding ? "To" : "From", e))
               )
           ),
           options
@@ -329,7 +331,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
     }
     case "Declaration": {
       const parse = ast.decode(isDecoding, ...ast.typeParameters)
-      return (i, options) => handleForbidden(parse(i, options ?? defaultParseOption, ast), options)
+      return (i, options) =>
+        handleForbidden(ParseResult.mapLeft(parse(i, options ?? defaultParseOption, ast), (e) => e.error), options)
     }
     case "Literal":
       return fromRefinement(ast, (u): u is typeof ast.literal => u === ast.literal)
@@ -343,7 +346,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       return fromRefinement(ast, Predicate.isNever)
     case "UnknownKeyword":
     case "AnyKeyword":
-      return ParseResult.succeed
+      return Either.right
     case "StringKeyword":
       return fromRefinement(ast, Predicate.isString)
     case "NumberKeyword":
@@ -372,7 +375,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       const expectedAST = AST.createUnion(ast.elements.map((_, i) => AST.createLiteral(i)))
       return (input: unknown, options) => {
         if (!Array.isArray(input)) {
-          return ParseResult.fail(ParseResult.type(ast, input))
+          return Either.left(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
         const es: Array<[number, ParseResult.Index]> = []
@@ -387,7 +390,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             es.push([stepKey++, e])
             continue
           } else {
-            return ParseResult.fail(ParseResult.tuple(ast, input, [e]))
+            return Either.left(ParseResult.tuple(ast, input, [e]))
           }
         }
 
@@ -401,7 +404,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               es.push([stepKey++, e])
               continue
             } else {
-              return ParseResult.fail(ParseResult.tuple(ast, input, [e]))
+              return Either.left(ParseResult.tuple(ast, input, [e]))
             }
           }
         }
@@ -413,7 +416,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           output: typeof output
         }
         let queue:
-          | Array<(_: State) => Effect.Effect<never, ParseResult.ParseError, void>>
+          | Array<(_: State) => Effect.Effect<never, ParseResult.ParseIssue, void>>
           | undefined = undefined
 
         // ---------------------------------------------
@@ -432,12 +435,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             if (eu) {
               if (Either.isLeft(eu)) {
                 // the input element is present but is not valid
-                const e = ParseResult.index(i, eu.left.error)
+                const e = ParseResult.index(i, eu.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return ParseResult.fail(ParseResult.tuple(ast, input, [e]))
+                  return Either.left(ParseResult.tuple(ast, input, [e]))
                 }
               }
               output.push([stepKey++, eu.right])
@@ -451,12 +454,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 Effect.flatMap(Effect.either(te), (t) => {
                   if (Either.isLeft(t)) {
                     // the input element is present but is not valid
-                    const e = ParseResult.index(index, t.left.error)
+                    const e = ParseResult.index(index, t.left)
                     if (allErrors) {
                       es.push([nk, e])
                       return Effect.unit
                     } else {
-                      return ParseResult.fail(ParseResult.tuple(ast, input, [e]))
+                      return Either.left(ParseResult.tuple(ast, input, [e]))
                     }
                   }
                   output.push([nk, t.right])
@@ -476,12 +479,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             const eu = ParseResult.eitherOrUndefined(te)
             if (eu) {
               if (Either.isLeft(eu)) {
-                const e = ParseResult.index(i, eu.left.error)
+                const e = ParseResult.index(i, eu.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return ParseResult.fail(ParseResult.tuple(ast, input, [e]))
+                  return Either.left(ParseResult.tuple(ast, input, [e]))
                 }
               } else {
                 output.push([stepKey++, eu.right])
@@ -496,12 +499,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 ({ es, output }: State) =>
                   Effect.flatMap(Effect.either(te), (t) => {
                     if (Either.isLeft(t)) {
-                      const e = ParseResult.index(index, t.left.error)
+                      const e = ParseResult.index(index, t.left)
                       if (allErrors) {
                         es.push([nk, e])
                         return Effect.unit
                       } else {
-                        return ParseResult.fail(ParseResult.tuple(ast, input, [e]))
+                        return Either.left(ParseResult.tuple(ast, input, [e]))
                       }
                     } else {
                       output.push([nk, t.right])
@@ -524,12 +527,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               if (eu) {
                 if (Either.isLeft(eu)) {
                   // the input element is present but is not valid
-                  const e = ParseResult.index(i, eu.left.error)
+                  const e = ParseResult.index(i, eu.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return ParseResult.fail(ParseResult.tuple(ast, input, [e]))
+                    return Either.left(ParseResult.tuple(ast, input, [e]))
                   }
                 }
                 output.push([stepKey++, eu.right])
@@ -544,12 +547,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                     Effect.flatMap(Effect.either(te), (t) => {
                       if (Either.isLeft(t)) {
                         // the input element is present but is not valid
-                        const e = ParseResult.index(index, t.left.error)
+                        const e = ParseResult.index(index, t.left)
                         if (allErrors) {
                           es.push([nk, e])
                           return Effect.unit
                         } else {
-                          return ParseResult.fail(ParseResult.tuple(ast, input, [e]))
+                          return Either.left(ParseResult.tuple(ast, input, [e]))
                         }
                       }
                       output.push([nk, t.right])
@@ -566,8 +569,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            ParseResult.fail(ParseResult.tuple(ast, input, sortByIndex(es))) :
-            ParseResult.succeed(sortByIndex(output))
+            Either.left(ParseResult.tuple(ast, input, sortByIndex(es))) :
+            Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
@@ -613,7 +616,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
 
       return (input: unknown, options) => {
         if (!Predicate.isRecord(input)) {
-          return ParseResult.fail(ParseResult.type(ast, input))
+          return Either.left(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
         const es: Array<[number, ParseResult.Key]> = []
@@ -632,7 +635,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return ParseResult.fail(ParseResult.typeLiteral(ast, input, [e]))
+                return Either.left(ParseResult.typeLiteral(ast, input, [e]))
               }
             }
           }
@@ -647,7 +650,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           output: typeof output
         }
         let queue:
-          | Array<(state: State) => Effect.Effect<never, ParseResult.ParseError, void>>
+          | Array<(state: State) => Effect.Effect<never, ParseResult.ParseIssue, void>>
           | undefined = undefined
 
         for (let i = 0; i < propertySignatures.length; i++) {
@@ -660,12 +663,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             if (eu) {
               if (Either.isLeft(eu)) {
                 // the input key is present but is not valid
-                const e = ParseResult.key(name, eu.left.error)
+                const e = ParseResult.key(name, eu.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return ParseResult.fail(ParseResult.typeLiteral(ast, input, [e]))
+                  return Either.left(ParseResult.typeLiteral(ast, input, [e]))
                 }
               }
               output[name] = eu.right
@@ -680,12 +683,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   Effect.flatMap(Effect.either(te), (t) => {
                     if (Either.isLeft(t)) {
                       // the input key is present but is not valid
-                      const e = ParseResult.key(index, t.left.error)
+                      const e = ParseResult.key(index, t.left)
                       if (allErrors) {
                         es.push([nk, e])
                         return Effect.unit
                       } else {
-                        return ParseResult.fail(ParseResult.typeLiteral(ast, input, [e]))
+                        return Either.left(ParseResult.typeLiteral(ast, input, [e]))
                       }
                     }
                     output[index] = t.right
@@ -703,7 +706,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return ParseResult.fail(ParseResult.typeLiteral(ast, input, [e]))
+                return Either.left(ParseResult.typeLiteral(ast, input, [e]))
               }
             }
           }
@@ -730,12 +733,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               const veu = ParseResult.eitherOrUndefined(vpr)
               if (veu) {
                 if (Either.isLeft(veu)) {
-                  const e = ParseResult.key(key, veu.left.error)
+                  const e = ParseResult.key(key, veu.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return ParseResult.fail(ParseResult.typeLiteral(ast, input, [e]))
+                    return Either.left(ParseResult.typeLiteral(ast, input, [e]))
                   }
                 } else {
                   if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -754,12 +757,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                       Effect.either(vpr),
                       (tv) => {
                         if (Either.isLeft(tv)) {
-                          const e = ParseResult.key(index, tv.left.error)
+                          const e = ParseResult.key(index, tv.left)
                           if (allErrors) {
                             es.push([nk, e])
                             return Effect.unit
                           } else {
-                            return ParseResult.fail(ParseResult.typeLiteral(ast, input, [e]))
+                            return Either.left(ParseResult.typeLiteral(ast, input, [e]))
                           }
                         } else {
                           if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -779,8 +782,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            ParseResult.fail(ParseResult.typeLiteral(ast, input, sortByIndex(es))) :
-            ParseResult.succeed(output)
+            Either.left(ParseResult.typeLiteral(ast, input, sortByIndex(es))) :
+            Either.right(output)
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
@@ -844,7 +847,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         }
 
         let queue:
-          | Array<(state: State) => Effect.Effect<never, ParseResult.ParseError, unknown>>
+          | Array<(state: State) => Effect.Effect<never, ParseResult.ParseIssue, unknown>>
           | undefined = undefined
 
         type State = {
@@ -861,9 +864,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           const eu = !queue || queue.length === 0 ? ParseResult.eitherOrUndefined(pr) : undefined
           if (eu) {
             if (Either.isRight(eu)) {
-              return ParseResult.succeed(eu.right)
+              return Either.right(eu.right)
             } else {
-              es.push([stepKey++, ParseResult.member(candidate, eu.left.error)])
+              es.push([stepKey++, ParseResult.member(candidate, eu.left)])
             }
           } else {
             const nk = stepKey++
@@ -880,7 +883,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                       if (Either.isRight(t)) {
                         state.finalResult = ParseResult.succeed(t.right)
                       } else {
-                        state.es.push([nk, ParseResult.member(candidate, t.left.error)])
+                        state.es.push([nk, ParseResult.member(candidate, t.left)])
                       }
                       return Effect.unit
                     })
@@ -896,10 +899,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         const computeResult = (es: State["es"]) =>
           ReadonlyArray.isNonEmptyArray(es) ?
             es.length === 1 && es[0][1]._tag === "Type" ?
-              ParseResult.fail(es[0][1]) :
-              ParseResult.fail(ParseResult.union(ast, input, sortByIndex(es))) :
+              Either.left(es[0][1]) :
+              Either.left(ParseResult.union(ast, input, sortByIndex(es))) :
             // this should never happen
-            ParseResult.fail(ParseResult.type(AST.neverKeyword, input))
+            Either.left(ParseResult.type(AST.neverKeyword, input))
 
         if (queue && queue.length > 0) {
           const cqueue = queue
@@ -930,7 +933,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
 }
 
 const fromRefinement = <A>(ast: AST.AST, refinement: (u: unknown) => u is A): Parser<unknown, A> => (u) =>
-  refinement(u) ? ParseResult.succeed(u) : ParseResult.fail(ParseResult.type(ast, u))
+  refinement(u) ? Either.right(u) : Either.left(ParseResult.type(ast, u))
 
 /** @internal */
 export const getLiterals = (
@@ -1023,15 +1026,15 @@ export const getSearchTree = (
 const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? dropRightRefinement(ast.from) : ast
 
 const handleForbidden = <A>(
-  conditional: ParseResult.ParseResult<A>,
+  effect: Effect.Effect<never, ParseResult.ParseIssue, A>,
   options?: ParseEffectOptions
-): ParseResult.ParseResult<A> => {
-  const eu = ParseResult.eitherOrUndefined(conditional)
+): Effect.Effect<never, ParseResult.ParseIssue, A> => {
+  const eu = ParseResult.eitherOrUndefined(effect)
   return eu
     ? eu
     : options?.isEffectAllowed === true
-    ? conditional
-    : ParseResult.fail(ParseResult.forbidden)
+    ? effect
+    : Either.left(ParseResult.forbidden)
 }
 
 /** @internal */
