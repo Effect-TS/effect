@@ -12,14 +12,14 @@ import { writeInput } from "./stream.js"
 export const fromWritable = <E, A = Uint8Array | string>(
   evaluate: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => E,
-  options: FromWritableOptions = {}
+  options?: FromWritableOptions
 ): Sink.Sink<never, E, A, never, void> => Sink.fromChannel(fromWritableChannel(evaluate, onError, options))
 
 /** @internal */
 export const fromWritableChannel = <IE, OE, A>(
   writable: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => OE,
-  options: FromWritableOptions = {}
+  options?: FromWritableOptions
 ): Channel.Channel<never, IE, Chunk.Chunk<A>, unknown, IE | OE, Chunk.Chunk<never>, void> =>
   Channel.flatMap(
     Effect.zip(

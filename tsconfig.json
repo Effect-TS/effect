@@ -4,6 +4,7 @@
   "references": [
     { "path": "packages/effect" },
     { "path": "packages/cli" },
+    { "path": "packages/experimental" },
     { "path": "packages/opentelemetry" },
     { "path": "packages/platform" },
     { "path": "packages/platform-browser" },
