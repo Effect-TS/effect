@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
 import * as Format from "./Format.js"
-import type { ParseIssue, Refinement, Transform, Type } from "./ParseResult.js"
+import type { Missing, ParseIssue, Refinement, Transform, Type, Unexpected } from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -33,9 +33,7 @@ export const formatErrors = (errors: NonEmptyReadonlyArray<ParseIssue>): string 
  * @category formatting
  * @since 1.0.0
  */
-export const formatError = (error: ParseIssue): string => {
-  return formatErrors([error])
-}
+export const formatError = (error: ParseIssue): string => formatErrors([error])
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 
@@ -104,7 +102,7 @@ export const getRefinementMessage = (e: Refinement, actual: unknown): Option.Opt
   return message
 }
 
-const go = (e: ParseIssue): Tree<string> => {
+const go = (e: ParseIssue | Missing | Unexpected): Tree<string> => {
   switch (e._tag) {
     case "Type":
       return make(formatMessage(e))
@@ -112,8 +110,6 @@ const go = (e: ParseIssue): Tree<string> => {
       return make("is forbidden")
     case "Unexpected":
       return make(`is unexpected, expected ${Format.formatAST(e.ast, true)}`)
-    case "Key":
-      return make(`[${Format.formatUnknown(e.key)}]`, [go(e.error)])
     case "Missing":
       return make("is missing")
     case "Union":
@@ -123,11 +119,10 @@ const go = (e: ParseIssue): Tree<string> => {
             Format.formatAST(e.ast),
             e.errors.map((e) => {
               switch (e._tag) {
-                case "Key":
-                case "Type":
-                  return go(e)
                 case "Member":
                   return make(`Union member`, [go(e.error)])
+                default:
+                  return go(e)
               }
             })
           ),
@@ -138,13 +133,17 @@ const go = (e: ParseIssue): Tree<string> => {
         onNone: () =>
           make(
             Format.formatAST(e.ast),
-            e.errors.map((e) => make(`[${e.index}]`, [go(e.error)]))
+            e.errors.map((index) => make(`[${index.index}]`, [go(index.error)]))
           ),
         onSome: make
       })
     case "TypeLiteral":
       return Option.match(getMessage(e.ast, e.actual), {
-        onNone: () => make(Format.formatAST(e.ast), e.errors.map(go)),
+        onNone: () =>
+          make(
+            Format.formatAST(e.ast),
+            e.errors.map((key) => make(`[${Format.formatUnknown(key.key)}]`, [go(key.error)]))
+          ),
         onSome: make
       })
     case "Transform":

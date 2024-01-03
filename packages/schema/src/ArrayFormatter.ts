@@ -5,7 +5,7 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Format from "./Format.js"
-import type { ParseIssue } from "./ParseResult.js"
+import type { Missing, ParseIssue, Unexpected } from "./ParseResult.js"
 import { formatMessage, getMessage, getRefinementMessage } from "./TreeFormatter.js"
 
 /**
@@ -13,12 +13,12 @@ import { formatMessage, getMessage, getRefinementMessage } from "./TreeFormatter
  * @since 1.0.0
  */
 export interface Issue {
-  readonly _tag: ParseIssue["_tag"]
+  readonly _tag: ParseIssue["_tag"] | Missing["_tag"] | Unexpected["_tag"]
   readonly path: ReadonlyArray<PropertyKey>
   readonly message: string
 }
 
-const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Issue> => {
+const go = (e: ParseIssue | Missing | Unexpected, path: ReadonlyArray<PropertyKey> = []): Array<Issue> => {
   const _tag = e._tag
   switch (_tag) {
     case "Type":
@@ -27,8 +27,6 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
       return [{ _tag, path, message: "is forbidden" }]
     case "Unexpected":
       return [{ _tag, path, message: `is unexpected, expected ${Format.formatAST(e.ast, true)}` }]
-    case "Key":
-      return format(e.error, path)
     case "Missing":
       return [{ _tag, path, message: "is missing" }]
     case "Union":
@@ -36,11 +34,10 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
         onNone: () =>
           ReadonlyArray.flatMap(e.errors, (e) => {
             switch (e._tag) {
-              case "Key":
-              case "Type":
-                return format(e, path)
               case "Member":
-                return format(e.error, path)
+                return go(e.error, path)
+              default:
+                return go(e, path)
             }
           }),
         onSome: (message) => [{ _tag, path, message }]
@@ -50,7 +47,7 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
         onNone: () =>
           ReadonlyArray.flatMap(
             e.errors,
-            (index) => format(index.error, [...path, index.index])
+            (index) => go(index.error, [...path, index.index])
           ),
         onSome: (message) => [{ _tag, path, message }]
       })
@@ -59,18 +56,18 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
         onNone: () =>
           ReadonlyArray.flatMap(
             e.errors,
-            (key) => format(key, [...path, key.key])
+            (key) => go(key.error, [...path, key.key])
           ),
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Transform":
       return Option.match(getMessage(e.ast, e.actual), {
-        onNone: () => format(e.error, path),
+        onNone: () => go(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Refinement":
       return Option.match(getRefinementMessage(e, e.actual), {
-        onNone: () => format(e.error, path),
+        onNone: () => go(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })
   }
@@ -80,6 +77,11 @@ const format = (e: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Iss
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrors = (
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): Array<Issue> => ReadonlyArray.flatMap(errors, (e) => format(e))
+export const formatErrors = (errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>): Array<Issue> =>
+  ReadonlyArray.flatMap(errors, (e) => go(e))
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatError = (error: ParseIssue): Array<Issue> => formatErrors([error])

@@ -69,17 +69,12 @@ export const fail = (error: ParseIssue): ParseResult<never> => Either.left(parse
  * @since 1.0.0
  */
 export type ParseIssue =
-  // context
   | Refinement
   | Tuple
   | TypeLiteral
   | Union
-  | Key
   | Transform
-  // primitives
   | Type
-  | Missing
-  | Unexpected
   | Forbidden
 
 /**
@@ -230,7 +225,7 @@ export const typeLiteral = (
 export interface Index {
   readonly _tag: "Index"
   readonly index: number
-  readonly error: ParseIssue
+  readonly error: ParseIssue | Missing | Unexpected
 }
 
 /**
@@ -239,7 +234,7 @@ export interface Index {
  */
 export const index = (
   index: number,
-  error: ParseIssue
+  error: ParseIssue | Missing | Unexpected
 ): Index => ({ _tag: "Index", index, error })
 
 /**
@@ -251,7 +246,7 @@ export const index = (
 export interface Key {
   readonly _tag: "Key"
   readonly key: PropertyKey
-  readonly error: ParseIssue
+  readonly error: ParseIssue | Missing | Unexpected
 }
 
 /**
@@ -260,7 +255,7 @@ export interface Key {
  */
 export const key = (
   key: PropertyKey,
-  error: ParseIssue
+  error: ParseIssue | Missing | Unexpected
 ): Key => ({ _tag: "Key", key, error })
 
 /**
@@ -308,7 +303,7 @@ export interface Union {
   readonly _tag: "Union"
   readonly ast: AST.Union
   readonly actual: unknown
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Member | Key | Type>
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
 }
 
 /**
@@ -318,7 +313,7 @@ export interface Union {
 export const union = (
   ast: AST.Union,
   actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<Member | Key | Type>
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
 ): Union => ({ _tag: "Union", ast, actual, errors })
 
 /**

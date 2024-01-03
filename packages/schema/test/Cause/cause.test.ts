@@ -78,8 +78,9 @@ describe("Cause > cause", () => {
       `(CauseFrom<NumberFromString> <-> Cause<number>)
 └─ From side transformation failure
    └─ CauseFrom<NumberFromString>
-      └─ ["_tag"]
-         └─ is missing`
+      └─ { _tag: "Parallel" | "Sequential" | "Die" | "Fail" | "Interrupt" | "Empty" }
+         └─ ["_tag"]
+            └─ is missing`
     )
     await Util.expectParseFailure(
       schema,

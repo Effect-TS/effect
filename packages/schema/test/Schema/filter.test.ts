@@ -41,13 +41,10 @@ describe("Schema > filter", () => {
           ? Option.none()
           : Option.some(
             ParseResult.parseError(
-              ParseResult.key(
-                "b",
-                ParseResult.type(
-                  S.literal(o.a).ast,
-                  o.b,
-                  `should be equal to a's value ("${o.a}")`
-                )
+              ParseResult.type(
+                S.literal(o.a).ast,
+                o.b,
+                `b should be equal to a's value ("${o.a}")`
               )
             )
           )
@@ -60,8 +57,7 @@ describe("Schema > filter", () => {
       { a: "a", b: "b" },
       `<refinement schema>
 └─ Predicate refinement failure
-   └─ ["b"]
-      └─ should be equal to a's value ("a")`
+   └─ b should be equal to a's value ("a")`
     )
   })
 })

@@ -48,28 +48,34 @@ describe("Schema > union", () => {
         schema,
         {},
         `{ a: 1; c: string } | { b: 2; d: number }
-├─ ["a"]
-│  └─ is missing
-└─ ["b"]
-   └─ is missing`
+├─ { a: 1 }
+│  └─ ["a"]
+│     └─ is missing
+└─ { b: 2 }
+   └─ ["b"]
+      └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { a: null },
         `{ a: 1; c: string } | { b: 2; d: number }
-├─ ["a"]
-│  └─ Expected 1, actual null
-└─ ["b"]
-   └─ is missing`
+├─ { a: 1 }
+│  └─ ["a"]
+│     └─ Expected 1, actual null
+└─ { b: 2 }
+   └─ ["b"]
+      └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { b: 3 },
         `{ a: 1; c: string } | { b: 2; d: number }
-├─ ["a"]
-│  └─ is missing
-└─ ["b"]
-   └─ Expected 2, actual 3`
+├─ { a: 1 }
+│  └─ ["a"]
+│     └─ is missing
+└─ { b: 2 }
+   └─ ["b"]
+      └─ Expected 2, actual 3`
       )
     })
 
@@ -88,28 +94,34 @@ describe("Schema > union", () => {
         schema,
         {},
         `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
-├─ ["category"]
-│  └─ is missing
-└─ ["tag"]
-   └─ is missing`
+├─ { category: "catA" }
+│  └─ ["category"]
+│     └─ is missing
+└─ { tag: "b" | "c" }
+   └─ ["tag"]
+      └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { category: null },
         `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
-├─ ["category"]
-│  └─ Expected "catA", actual null
-└─ ["tag"]
-   └─ is missing`
+├─ { category: "catA" }
+│  └─ ["category"]
+│     └─ Expected "catA", actual null
+└─ { tag: "b" | "c" }
+   └─ ["tag"]
+      └─ is missing`
       )
       await Util.expectParseFailure(
         schema,
         { tag: "d" },
         `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
-├─ ["category"]
-│  └─ is missing
-└─ ["tag"]
-   └─ Expected "b" | "c", actual "d"`
+├─ { category: "catA" }
+│  └─ ["category"]
+│     └─ is missing
+└─ { tag: "b" | "c" }
+   └─ ["tag"]
+      └─ Expected "b" | "c", actual "d"`
       )
     })
 

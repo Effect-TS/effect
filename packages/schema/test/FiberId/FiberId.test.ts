@@ -33,8 +33,9 @@ describe("FiberId", () => {
          └─ FiberIdCompositeFrom
             └─ ["right"]
                └─ FiberIdFrom
-                  └─ ["_tag"]
-                     └─ Expected "Composite" | "Runtime" | "None", actual "-"`
+                  └─ { _tag: "Composite" | "Runtime" | "None" }
+                     └─ ["_tag"]
+                        └─ Expected "Composite" | "Runtime" | "None", actual "-"`
     )
   })
 })
