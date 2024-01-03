@@ -19,3 +19,4 @@ Schema: refactor `ParseResult` module:
 - `Key` replace `errors` field with `error` field
 - `Member` replace `errors` field with `error` field
 - `ParseError` replace `errors` field with `error` field
+- make `ParseError` a `Data.TaggedError`

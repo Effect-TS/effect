@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import type { LazyArg } from "effect/Function"
@@ -19,14 +20,7 @@ export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
 /**
  * @since 1.0.0
  */
-export interface ParseError {
-  readonly _tag: "ParseError"
-  readonly error: ParseIssue
-}
-
-class ParseErrorImpl implements Inspectable.Inspectable {
-  readonly _tag = "ParseError"
-  constructor(readonly error: ParseIssue) {}
+export class ParseError extends TaggedError("ParseError")<{ readonly error: ParseIssue }> {
   toString() {
     return TreeFormatter.formatError(this.error)
   }
@@ -45,7 +39,7 @@ class ParseErrorImpl implements Inspectable.Inspectable {
  * @category constructors
  * @since 1.0.0
  */
-export const parseError = (error: ParseIssue): ParseError => new ParseErrorImpl(error)
+export const parseError = (error: ParseIssue): ParseError => new ParseError({ error })
 
 /**
  * @category constructors

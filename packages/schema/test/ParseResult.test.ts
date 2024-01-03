@@ -8,6 +8,8 @@ describe("ParseResult", () => {
   const forbiddenParseError = ParseResult.parseError(ParseResult.forbidden)
   const missingParseError = ParseResult.parseError(ParseResult.missing)
 
+  console.log(forbiddenParseError.message)
+
   it("toString()", () => {
     const schema = S.struct({ a: S.string })
     expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
