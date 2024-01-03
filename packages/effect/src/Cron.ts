@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import * as Either from "./Either.js"
+import { pipe } from "./Function.js"
 import * as N from "./Number.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
@@ -26,11 +27,11 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface Segments {
-  readonly minutes: ReadonlyArray.NonEmptyReadonlyArray<number>
-  readonly hours: ReadonlyArray.NonEmptyReadonlyArray<number>
-  readonly days: ReadonlyArray.NonEmptyReadonlyArray<number>
-  readonly months: ReadonlyArray.NonEmptyReadonlyArray<number>
-  readonly weekdays: ReadonlyArray.NonEmptyReadonlyArray<number>
+  readonly minutes: ReadonlyArray<number>
+  readonly hours: ReadonlyArray<number>
+  readonly days: ReadonlyArray<number>
+  readonly months: ReadonlyArray<number>
+  readonly weekdays: ReadonlyArray<number>
 }
 
 /**
@@ -159,6 +160,51 @@ export const parse = (cron: string): Either.Either<ParseError, Cron> => {
   }).pipe(Either.map((segments) => make(segments)))
 }
 
+/**
+ * Checks if a given date matches the `Cron` instance.
+ *
+ * @param cron - The `Cron` instance.
+ * @param date - The date to check.
+ *
+ * @since 2.0.0
+ */
+export const match = (cron: Cron, date: Date): boolean => {
+  const {
+    segments: { days, hours, minutes, months, weekdays }
+  } = cron
+
+  const minute = date.getMinutes()
+  if (minutes.length !== 0 && minutes.indexOf(minute) === -1) {
+    return false
+  }
+
+  const hour = date.getHours()
+  if (hours.length !== 0 && hours.indexOf(hour) === -1) {
+    return false
+  }
+
+  const month = date.getMonth() + 1
+  if (months.length !== 0 && months.indexOf(month) === -1) {
+    return false
+  }
+
+  if (days.length === 0 && weekdays.length === 0) {
+    return true
+  }
+
+  const day = date.getDate()
+  if (weekdays.length === 0) {
+    return days.indexOf(day) !== -1
+  }
+
+  const weekday = date.getDay()
+  if (days.length === 0) {
+    return weekdays.indexOf(weekday) !== -1
+  }
+
+  return days.indexOf(day) !== -1 || weekdays.indexOf(weekday) !== -1
+}
+
 interface SegmentOptions {
   segment: string
   min: number
@@ -222,12 +268,17 @@ const weekdayOptions: SegmentOptions = {
 const parseSegment = (
   input: string,
   options: SegmentOptions
-): Either.Either<ParseError, ReadonlyArray.NonEmptyReadonlyArray<number>> => {
+): Either.Either<ParseError, ReadonlyArray<number>> => {
+  const capacity = options.max - options.min + 1
   const values = new Set<number>()
   const fields = input.split(",")
 
   for (const field of fields) {
     const [raw, step] = splitStep(field)
+    if (raw === "*" && step === undefined) {
+      return Either.right(ReadonlyArray.empty())
+    }
+
     if (step !== undefined) {
       if (!Number.isInteger(step)) {
         return Either.left(ParseError(`Expected step value to be a positive integer`, input))
@@ -271,12 +322,16 @@ const parseSegment = (
         }
       }
     }
+
+    if (values.size >= capacity) {
+      return Either.right(ReadonlyArray.empty())
+    }
   }
 
-  return ReadonlyArray.match(ReadonlyArray.fromIterable(values), {
-    onEmpty: () => Either.left(ParseError(`Expected at least one ${options.segment}`, input)),
-    onNonEmpty: (values) => Either.right(ReadonlyArray.sort(values, N.Order))
-  })
+  return Either.right(pipe(
+    ReadonlyArray.fromIterable(values),
+    ReadonlyArray.sort(N.Order)
+  ))
 }
 
 const splitStep = (input: string): [string, number | undefined] => {
