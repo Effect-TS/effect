@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 import * as Either from "./Either.js"
-import { pipe } from "./Function.js"
 import * as N from "./Number.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
@@ -27,11 +26,11 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface Segments {
-  readonly minutes: ReadonlyArray<number>
-  readonly hours: ReadonlyArray<number>
-  readonly days: ReadonlyArray<number>
-  readonly months: ReadonlyArray<number>
-  readonly weekdays: ReadonlyArray<number>
+  readonly minutes: ReadonlyArray.NonEmptyReadonlyArray<number>
+  readonly hours: ReadonlyArray.NonEmptyReadonlyArray<number>
+  readonly days: ReadonlyArray.NonEmptyReadonlyArray<number>
+  readonly months: ReadonlyArray.NonEmptyReadonlyArray<number>
+  readonly weekdays: ReadonlyArray.NonEmptyReadonlyArray<number>
 }
 
 /**
@@ -99,7 +98,7 @@ export interface ParseError {
   readonly input?: string
 }
 
-const ParseErrorProto: Omit<ParseError, "segment" | "input" | "message"> = {
+const ParseErrorProto: Omit<ParseError, "input" | "message"> = {
   _tag: "ParseError",
   [ParseErrorTypeId]: ParseErrorTypeId
 }
@@ -147,7 +146,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
 export const parse = (cron: string): Either.Either<ParseError, Cron> => {
   const segments = cron.split(" ").filter(String.isNonEmpty)
   if (segments.length !== 5) {
-    return Either.left(ParseError(`Invalid cron`, cron))
+    return Either.left(ParseError(`Invalid cron expression`, cron))
   }
 
   const [minutes, hours, days, months, weekdays] = segments
@@ -220,7 +219,10 @@ const weekdayOptions: SegmentOptions = {
   }
 }
 
-const parseSegment = (input: string, options: SegmentOptions): Either.Either<ParseError, ReadonlyArray<number>> => {
+const parseSegment = (
+  input: string,
+  options: SegmentOptions
+): Either.Either<ParseError, ReadonlyArray.NonEmptyReadonlyArray<number>> => {
   const values = new Set<number>()
   const fields = input.split(",")
 
@@ -261,7 +263,7 @@ const parseSegment = (input: string, options: SegmentOptions): Either.Either<Par
           return Either.left(ParseError(`Expected a value between ${options.min} and ${options.max}`, input))
         }
         if (left > right) {
-          return Either.left(ParseError(`Invalid range`, input))
+          return Either.left(ParseError(`Invalid value range`, input))
         }
 
         for (let i = left; i <= right; i += step ?? 1) {
@@ -271,7 +273,10 @@ const parseSegment = (input: string, options: SegmentOptions): Either.Either<Par
     }
   }
 
-  return Either.right(pipe(ReadonlyArray.fromIterable(values), ReadonlyArray.sort(N.Order)))
+  return ReadonlyArray.match(ReadonlyArray.fromIterable(values), {
+    onEmpty: () => Either.left(ParseError(`Expected at least one ${options.segment}`, input)),
+    onNonEmpty: (values) => Either.right(ReadonlyArray.sort(values, N.Order))
+  })
 }
 
 const splitStep = (input: string): [string, number | undefined] => {
