@@ -99,7 +99,7 @@ export const fromFlat = (flat: ConfigProvider.ConfigProvider.Flat): ConfigProvid
 
 /** @internal */
 export const fromEnv = (
-  config: Partial<ConfigProvider.ConfigProvider.FromEnvConfig> = {}
+  config?: Partial<ConfigProvider.ConfigProvider.FromEnvConfig>
 ): ConfigProvider.ConfigProvider => {
   const { pathDelim, seqDelim } = Object.assign({}, { pathDelim: "_", seqDelim: "," }, config)
   const makePathString = (path: ReadonlyArray<string>): string => pipe(path, ReadonlyArray.join(pathDelim))
@@ -149,7 +149,7 @@ export const fromEnv = (
 /** @internal */
 export const fromMap = (
   map: Map<string, string>,
-  config: Partial<ConfigProvider.ConfigProvider.FromMapConfig> = {}
+  config?: Partial<ConfigProvider.ConfigProvider.FromMapConfig>
 ): ConfigProvider.ConfigProvider => {
   const { pathDelim, seqDelim } = Object.assign({ seqDelim: ",", pathDelim: "." }, config)
   const makePathString = (path: ReadonlyArray<string>): string => pipe(path, ReadonlyArray.join(pathDelim))
