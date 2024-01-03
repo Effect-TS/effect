@@ -21,15 +21,24 @@ export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
  * @since 1.0.0
  */
 export class ParseError extends TaggedError("ParseError")<{ readonly error: ParseIssue }> {
+  /**
+   * @since 1.0.0
+   */
   toString() {
     return TreeFormatter.formatError(this.error)
   }
+  /**
+   * @since 1.0.0
+   */
   toJSON() {
     return {
       _id: "ParseError",
       message: this.toString()
     }
   }
+  /**
+   * @since 1.0.0
+   */
   [Inspectable.NodeInspectSymbol]() {
     return this.toJSON()
   }
