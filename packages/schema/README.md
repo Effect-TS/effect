@@ -2785,6 +2785,37 @@ import * as S from "@effect/schema/Schema";
 const Email = S.pattern(/^(?!\.)(?!.*\.\.)([A-Z0-9_+-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i);
 ```
 
+## Url
+
+Multiple environments like the Browser or Node provide a built-in `URL` class that can be used to validate URLs. Here we demonstrate how to leverage it to validate if a string is a valid URL while the returned value is still a string.
+
+```ts
+import * as S from "@effect/schema/Schema";
+import * as ParseResult from "@effect/schema/ParseResult";
+
+const Url: S.Schema<string, string> = S.transformOrFail(
+  S.string,
+  S.string,
+  (value, _, ast) =>
+    ParseResult.try({
+      try: () => new URL(value).toString(),
+      catch: (err) => {
+        return ParseResult.parseError([
+          ParseResult.type(
+            ast,
+            value,
+            err instanceof Error ? err.message : undefined,
+          ),
+        ]);
+      },
+    }),
+  (value) => ParseResult.succeed(value),
+);
+
+const parser = S.parseSync(Url);
+const validUrlString = parser("https://www.effect.website/");
+```
+
 # Technical overview
 
 ## Understanding Schemas
