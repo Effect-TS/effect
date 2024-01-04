@@ -4,6 +4,7 @@
 import * as Either from "./Either.js"
 import { pipe } from "./Function.js"
 import * as N from "./Number.js"
+import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 import * as ReadonlyArray from "./ReadonlyArray.js"
@@ -129,11 +130,11 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  * @param cron - The cron expression to parse.
  *
  * @example
- * import { parse, make } from "effect/Cron"
- * import { right } from "effect/Either"
+ * import * as Cron from "effect/Cron"
+ * import * as Either from "effect/Either"
  *
  * // At 04:00 on every day-of-month from 8 through 14.
- * assert.deepStrictEqual(parse("0 4 8-14 * *"), right(make({
+ * assert.deepStrictEqual(Cron.parse("0 4 8-14 * *"), Either.right(Cron.make({
  *   minutes: [0],
  *   hours: [4],
  *   days: [8, 9, 10, 11, 12, 13, 14],
@@ -164,7 +165,15 @@ export const parse = (cron: string): Either.Either<ParseError, Cron> => {
  * Checks if a given date matches the `Cron` instance.
  *
  * @param cron - The `Cron` instance.
- * @param date - The date to check.
+ * @param date - The `Date` to check against.
+ *
+ * @example
+ * import * as Cron from "effect/Cron"
+ * import * as Either from "effect/Either"
+ *
+ * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
+ * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 04:00:00")), true)
+ * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 05:00:00")), false)
  *
  * @since 2.0.0
  */
@@ -203,6 +212,86 @@ export const match = (cron: Cron, date: Date): boolean => {
   }
 
   return days.indexOf(day) !== -1 || weekdays.indexOf(weekday) !== -1
+}
+
+/**
+ * Returns the next date that matches the `Cron` instance.
+ *
+ * If no date is provided, the current date is used.
+ *
+ * If no date can be found, `Option.none()` is returned. This should be a
+ * no-op, but it's possible that the cron expression is invalid.
+ *
+ * @example
+ * import * as Cron from "effect/Cron"
+ * import * as Either from "effect/Either"
+ * import * as Option from "effect/Option"
+ *
+ * const after = new Date("2021-01-01 00:00:00")
+ * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
+ * assert.deepStrictEqual(Cron.next(cron, after), Option.some(new Date("2021-01-08 04:00:00")))
+ *
+ * @param cron - The `Cron` instance.
+ * @param after - The `Date` to start searching from.
+ *
+ * @since 2.0.0
+ */
+export const next = (cron: Cron, after?: Date): Option.Option<Date> => {
+  const {
+    segments: { days, hours, minutes, months, weekdays }
+  } = cron
+
+  const restrictMinutes = minutes.length !== 0
+  const restrictHours = hours.length !== 0
+  const restrictDays = days.length !== 0
+  const restrictMonths = months.length !== 0
+  const restrictWeekdays = weekdays.length !== 0
+
+  const current = after ? new Date(after.getTime()) : new Date()
+  // Increment by one minute to ensure we don't match the current date.
+  current.setMinutes(current.getMinutes() + 1)
+  current.setSeconds(0)
+
+  // Only search 8 years into the future.
+  const limit = new Date(current).setFullYear(current.getFullYear() + 8)
+  while (current.getTime() <= limit) {
+    if (restrictMonths && months.indexOf(current.getMonth() + 1) === -1) {
+      current.setMonth(current.getMonth() + 1)
+      current.setDate(1)
+      current.setHours(0)
+      current.setMinutes(0)
+      continue
+    }
+
+    if (restrictDays && days.indexOf(current.getDate()) === -1) {
+      current.setDate(current.getDate() + 1)
+      current.setHours(0)
+      current.setMinutes(0)
+      continue
+    }
+
+    if (restrictWeekdays && weekdays.indexOf(current.getDay()) === -1) {
+      current.setDate(current.getDate() + 1)
+      current.setHours(0)
+      current.setMinutes(0)
+      continue
+    }
+
+    if (restrictHours && hours.indexOf(current.getHours()) === -1) {
+      current.setHours(current.getHours() + 1)
+      current.setMinutes(0)
+      continue
+    }
+
+    if (restrictMinutes && minutes.indexOf(current.getMinutes()) === -1) {
+      current.setMinutes(current.getMinutes() + 1)
+      continue
+    }
+
+    return Option.some(current)
+  }
+
+  return Option.none()
 }
 
 interface SegmentOptions {
