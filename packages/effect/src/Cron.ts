@@ -155,7 +155,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
 export const parse = (cron: string): Either.Either<ParseError, Cron> => {
   const segments = cron.split(" ").filter(String.isNonEmpty)
   if (segments.length !== 5) {
-    return Either.left(ParseError(`Invalid cron expression`, cron))
+    return Either.left(ParseError(`Invalid number of segments in cron expression`, cron))
   }
 
   const [minutes, hours, days, months, weekdays] = segments
@@ -237,11 +237,11 @@ export const match = (cron: Cron, date: Date): boolean => {
  * assert.deepStrictEqual(Cron.next(cron, after), Option.some(new Date("2021-01-08 04:00:00")))
  *
  * @param cron - The `Cron` instance.
- * @param after - The `Date` to start searching from.
+ * @param now - The `Date` to start searching from.
  *
  * @since 2.0.0
  */
-export const next = (cron: Cron, after?: Date): Option.Option<Date> => {
+export const next = (cron: Cron, now?: Date): Option.Option<Date> => {
   const { days, hours, minutes, months, weekdays } = cron
 
   const restrictMinutes = minutes.size !== 0
@@ -250,10 +250,11 @@ export const next = (cron: Cron, after?: Date): Option.Option<Date> => {
   const restrictMonths = months.size !== 0
   const restrictWeekdays = weekdays.size !== 0
 
-  const current = after ? new Date(after.getTime()) : new Date()
+  const current = now ? new Date(now.getTime()) : new Date()
   // Increment by one minute to ensure we don't match the current date.
   current.setMinutes(current.getMinutes() + 1)
   current.setSeconds(0)
+  current.setMilliseconds(0)
 
   // Only search 8 years into the future.
   const limit = new Date(current).setFullYear(current.getFullYear() + 8)

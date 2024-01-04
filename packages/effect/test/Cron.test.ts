@@ -3,7 +3,6 @@ import * as Cron from "effect/Cron"
 import * as Either from "effect/Either"
 import { identity } from "effect/Function"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import { describe, it } from "vitest"
 
 const parse = (input: string) => Either.getOrThrowWith(Cron.parse(input), identity)
@@ -19,7 +18,7 @@ describe("Cron", () => {
       Either.right(Cron.make({
         minutes: [0],
         hours: [4],
-        days: ReadonlyArray.range(8, 14),
+        days: [8, 9, 10, 11, 12, 13, 14],
         months: [],
         weekdays: []
       }))
