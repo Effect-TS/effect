@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.1
+
+### Patch Changes
+
+- [#1859](https://github.com/Effect-TS/effect/pull/1859) [`16bd87d`](https://github.com/Effect-TS/effect/commit/16bd87d32611b966dc42ea4fc979764f97a49071) Thanks [@sukovanej](https://github.com/sukovanej)! - Include Config.LiteralValue in dts.
+
 ## 2.0.0
 
 ### Minor Changes
