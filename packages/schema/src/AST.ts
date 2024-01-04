@@ -971,9 +971,9 @@ export const isRefinement = (ast: AST): ast is Refinement => ast._tag === "Refin
  */
 export interface ParseOptions {
   /** default "first" */
-  readonly errors?: "first" | "all"
+  readonly errors?: "first" | "all" | undefined
   /** default "ignore" */
-  readonly onExcessProperty?: "ignore" | "error"
+  readonly onExcessProperty?: "ignore" | "error" | undefined
 }
 
 /**

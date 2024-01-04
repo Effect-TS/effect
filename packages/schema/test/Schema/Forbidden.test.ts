@@ -1,7 +1,7 @@
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { formatError } from "@effect/schema/TreeFormatter"
+import { formatIssue } from "@effect/schema/TreeFormatter"
 import * as E from "effect/Either"
 import { describe, expect, it } from "vitest"
 
@@ -10,7 +10,7 @@ const expectMessage = <I, A>(
   u: unknown,
   message: string
 ) => {
-  expect(E.mapLeft(S.parseEither(schema)(u), (e) => formatError(e.error))).toEqual(
+  expect(E.mapLeft(S.parseEither(schema)(u), (e) => formatIssue(e.error))).toEqual(
     E.left(message)
   )
 }

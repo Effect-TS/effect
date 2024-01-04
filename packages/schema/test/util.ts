@@ -2,7 +2,7 @@ import * as A from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
 import { getFinalTransformation } from "@effect/schema/Parser"
-import * as PR from "@effect/schema/ParseResult"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { formatError } from "@effect/schema/TreeFormatter"
 import * as Duration from "effect/Duration"
@@ -19,9 +19,9 @@ const doRoundtrip = true
 export const sleep = Effect.sleep(Duration.millis(10))
 
 const effectifyDecode = (
-  decode: (input: any, options: ParseOptions, self: AST.AST) => PR.ParseResult<any>
-): (input: any, options: ParseOptions, self: AST.AST) => PR.ParseResult<any> =>
-(input, options, ast) => PR.flatMap(sleep, () => decode(input, options, ast))
+  decode: (input: any, options: ParseOptions, self: AST.AST) => ParseResult.ParseResult<any>
+): (input: any, options: ParseOptions, self: AST.AST) => ParseResult.ParseResult<any> =>
+(input, options, ast) => ParseResult.flatMap(sleep, () => decode(input, options, ast))
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
   switch (ast._tag) {
@@ -141,7 +141,7 @@ export const expectParseFailure = async <I, A>(
 ) => {
   const actual = Either.mapLeft(
     Effect.runSync(Effect.either(S.parse(schema)(input, options))),
-    (e) => formatError(e.error)
+    formatError
   )
   expect(actual).toEqual(Either.left(message))
 }
@@ -164,7 +164,7 @@ export const expectEncodeFailure = async <I, A>(
 ) => {
   const actual = Either.mapLeft(
     Effect.runSync(Effect.either(S.encode(schema)(a, options))),
-    (e) => formatError(e.error)
+    formatError
   )
   expect(actual).toStrictEqual(Either.left(message))
 }
@@ -242,3 +242,34 @@ export const sample = <I, A>(schema: S.Schema<I, A>, n: number) => {
 export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).pipe(
   S.identifier("NumberFromChar")
 )
+
+export const expectEffectFailure = async <A>(
+  effect: Effect.Effect<never, ParseResult.ParseError, A>,
+  message: string
+) => {
+  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatError)))).toStrictEqual(
+    Either.left(message)
+  )
+}
+
+export const expectEffectSuccess = async <A>(effect: Effect.Effect<never, ParseResult.ParseError, A>, a: A) => {
+  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatError)))).toStrictEqual(
+    Either.right(a)
+  )
+}
+
+export const expectEitherLeft = <A>(e: Either.Either<ParseResult.ParseError, A>, message: string) => {
+  expect(Either.mapLeft(e, formatError)).toStrictEqual(Either.left(message))
+}
+
+export const expectEitherRight = <A>(e: Either.Either<ParseResult.ParseError, A>, a: A) => {
+  expect(e).toStrictEqual(Either.right(a))
+}
+
+export const expectNone = <A>(o: Option.Option<A>) => {
+  expect(o).toStrictEqual(Option.none())
+}
+
+export const expectSome = <A>(o: Option.Option<A>, a: A) => {
+  expect(o).toStrictEqual(Option.some(a))
+}

@@ -1077,7 +1077,7 @@ export const brand = <B extends string | symbol, A>(
       Either.mapLeft(
         validateEither(input),
         (e) =>
-          ArrayFormatter.formatErrors([e.error]).map((err) => ({
+          ArrayFormatter.formatIssues([e.error]).map((err) => ({
             meta: err.path,
             message: err.message
           }))

@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
 import * as Format from "./Format.js"
-import type { Missing, ParseIssue, Refinement, Transform, Type, Unexpected } from "./ParseResult.js"
+import type { Missing, ParseError, ParseIssue, Refinement, Transform, Type, Unexpected } from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -24,16 +24,22 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrors = (errors: NonEmptyReadonlyArray<ParseIssue>): string => {
-  const forest = errors.map(go)
-  return drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, errors.map(go)))
+export const formatIssues = (issues: NonEmptyReadonlyArray<ParseIssue>): string => {
+  const forest = issues.map(go)
+  return drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, issues.map(go)))
 }
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatError = (error: ParseIssue): string => formatErrors([error])
+export const formatIssue = (issue: ParseIssue): string => formatIssues([issue])
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatError = (error: ParseError): string => formatIssue(error.error)
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 

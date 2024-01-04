@@ -2,12 +2,12 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > encodeSync", () => {
+describe("Schema > parseSync", () => {
   const schema = S.struct({ a: Util.NumberFromChar })
 
   it("should throw on invalid values", () => {
-    expect(S.encodeSync(schema)({ a: 1 })).toEqual({ a: "1" })
-    expect(() => S.encodeSync(schema)({ a: 10 })).toThrow(
+    expect(S.parseSync(schema)({ a: "1" })).toEqual({ a: 1 })
+    expect(() => S.parseSync(schema)({ a: "10" })).toThrow(
       new Error(`{ a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
@@ -19,18 +19,18 @@ describe("Schema > encodeSync", () => {
   })
 
   it("should respect outer/inner options", () => {
-    const input = { a: 1, b: "b" }
-    expect(() => S.encodeSync(schema)(input, { onExcessProperty: "error" })).toThrow(
+    const input = { a: "1", b: "b" }
+    expect(() => S.parseSync(schema)(input, { onExcessProperty: "error" })).toThrow(
       new Error(`{ a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )
-    expect(() => S.encodeSync(schema, { onExcessProperty: "error" })(input)).toThrow(
+    expect(() => S.parseSync(schema, { onExcessProperty: "error" })(input)).toThrow(
       new Error(`{ a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )
-    expect(S.encodeSync(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
-      .toEqual({ a: "1" })
+    expect(S.parseSync(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
+      .toEqual({ a: 1 })
   })
 })

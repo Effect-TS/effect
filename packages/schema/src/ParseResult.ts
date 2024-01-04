@@ -25,7 +25,7 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
    * @since 1.0.0
    */
   toString() {
-    return TreeFormatter.formatError(this.error)
+    return TreeFormatter.formatIssue(this.error)
   }
   /**
    * @since 1.0.0

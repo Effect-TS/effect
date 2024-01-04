@@ -5,7 +5,7 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Format from "./Format.js"
-import type { Missing, ParseIssue, Unexpected } from "./ParseResult.js"
+import type { Missing, ParseError, ParseIssue, Unexpected } from "./ParseResult.js"
 import { formatMessage, getMessage, getRefinementMessage } from "./TreeFormatter.js"
 
 /**
@@ -77,11 +77,17 @@ const go = (e: ParseIssue | Missing | Unexpected, path: ReadonlyArray<PropertyKe
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrors = (errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>): Array<Issue> =>
-  ReadonlyArray.flatMap(errors, (e) => go(e))
+export const formatIssues = (issues: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>): Array<Issue> =>
+  ReadonlyArray.flatMap(issues, (e) => go(e))
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatError = (error: ParseIssue): Array<Issue> => formatErrors([error])
+export const formatIssue = (error: ParseIssue): Array<Issue> => formatIssues([error])
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatError = (error: ParseError): Array<Issue> => formatIssue(error.error)
