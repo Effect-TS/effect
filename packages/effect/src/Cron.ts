@@ -2,6 +2,9 @@
  * @since 2.0.0
  */
 import * as Either from "./Either.js"
+import * as Equal from "./Equal.js"
+import { pipe } from "./Function.js"
+import * as Hash from "./Hash.js"
 import * as N from "./Number.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
@@ -25,7 +28,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Cron extends Pipeable {
+export interface Cron extends Pipeable, Equal.Equal {
   readonly [TypeId]: TypeId
   readonly minutes: ReadonlySet<number>
   readonly hours: ReadonlySet<number>
@@ -36,6 +39,19 @@ export interface Cron extends Pipeable {
 
 const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"> = {
   [TypeId]: TypeId,
+  [Equal.symbol](this: Cron, that: unknown) {
+    return isCron(that) && Equal.equals(this, that)
+  },
+  [Hash.symbol](this: Cron): number {
+    return pipe(
+      Hash.hash(TypeId),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.minutes.values()))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.hours.values()))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.days.values()))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.months.values()))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.weekdays.values())))
+    )
+  },
   pipe() {
     return pipeArguments(this, arguments)
   }
