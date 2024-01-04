@@ -135,15 +135,17 @@ export const type = (ast: AST.AST, actual: unknown, message?: string): Type => (
  */
 export interface Forbidden {
   readonly _tag: "Forbidden"
+  readonly actual: unknown
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const forbidden: Forbidden = {
-  _tag: "Forbidden"
-}
+export const forbidden = (actual: unknown): Forbidden => ({
+  _tag: "Forbidden",
+  actual
+})
 
 /**
  * Error that occurs when a refinement has an error.

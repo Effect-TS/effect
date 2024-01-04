@@ -336,15 +336,13 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   }
                 )
             ),
+            i,
             options
           )
       } else {
         const from = goMemo(AST.to(ast), true)
         const to = goMemo(dropRightRefinement(ast.from), false)
-        return (
-          i,
-          options
-        ) => handleForbidden(ParseResult.flatMap(from(i, options), (a) => to(a, options)), options)
+        return (i, options) => handleForbidden(ParseResult.flatMap(from(i, options), (a) => to(a, options)), i, options)
       }
     }
     case "Transform": {
@@ -369,13 +367,14 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                     ParseResult.transform(ast, i2, isDecoding ? "To" : "From", e))
               )
           ),
+          i1,
           options
         )
     }
     case "Declaration": {
       const parse = ast.decode(isDecoding, ...ast.typeParameters)
       return (i, options) =>
-        handleForbidden(ParseResult.mapLeft(parse(i, options ?? defaultParseOption, ast), (e) => e.error), options)
+        handleForbidden(ParseResult.mapLeft(parse(i, options ?? defaultParseOption, ast), (e) => e.error), i, options)
     }
     case "Literal":
       return fromRefinement(ast, (u): u is typeof ast.literal => u === ast.literal)
@@ -1085,6 +1084,7 @@ const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? d
 
 const handleForbidden = <A>(
   effect: Effect.Effect<never, ParseResult.ParseIssue, A>,
+  actual: unknown,
   options?: ParseEffectOptions
 ): Effect.Effect<never, ParseResult.ParseIssue, A> => {
   const eu = ParseResult.eitherOrUndefined(effect)
@@ -1092,7 +1092,7 @@ const handleForbidden = <A>(
     ? eu
     : options?.isEffectAllowed === true
     ? effect
-    : Either.left(ParseResult.forbidden)
+    : Either.left(ParseResult.forbidden(actual))
 }
 
 /** @internal */
