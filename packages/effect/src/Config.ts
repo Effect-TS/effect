@@ -77,6 +77,12 @@ export declare namespace Config {
 }
 
 /**
+ * @since 2.0.0
+ * @category models
+ */
+export type LiteralValue = string | number | boolean | null | bigint
+
+/**
  * Constructs a config from a tuple / struct / arguments of configs.
  *
  * @since 2.0.0
@@ -162,7 +168,7 @@ export const integer: (name?: string) => Config<number> = internal.integer
  * @since 2.0.0
  * @category constructors
  */
-export const literal: <Literals extends ReadonlyArray<internal.LiteralValue>>(...literals: Literals) => (
+export const literal: <Literals extends ReadonlyArray<LiteralValue>>(...literals: Literals) => (
   name?: string
 ) => Config<Literals[number]> = internal.literal
 
