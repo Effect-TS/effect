@@ -25,6 +25,46 @@ export * as FileSystem from "./FileSystem.js"
 
 /**
  * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/Http/Etag`](https://effect-ts.github.io/platform/platform/Http/Etag.ts.html).
+ */
+export * as Etag from "./Http/Etag.js"
+
+/**
+ * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/Http/Multipart`](https://effect-ts.github.io/platform/platform/Http/Multipart.ts.html).
+ */
+export * as Multipart from "./Http/Multipart.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeClient from "./Http/NodeClient.js"
+
+/**
+ * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/Http/Platform`](https://effect-ts.github.io/platform/platform/Http/Platform.ts.html).
+ */
+export * as Platform from "./Http/Platform.js"
+
+/**
+ * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/platform/platform/Http/Server.ts.html).
+ */
+export * as Server from "./Http/Server.js"
+
+/**
+ * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/Http/ServerRequest`](https://effect-ts.github.io/platform/platform/Http/ServerRequest.ts.html).
+ */
+export * as ServerRequest from "./Http/ServerRequest.js"
+
+/**
+ * @since 1.0.0
  */
 export * as HttpClient from "./HttpClient.js"
 
