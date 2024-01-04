@@ -5,7 +5,7 @@ import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe("ParseResult", () => {
-  const forbiddenParseError = ParseResult.parseError(ParseResult.forbidden)
+  const forbiddenParseError = ParseResult.parseError(ParseResult.forbidden(null))
   const typeParseError = ParseResult.parseError(ParseResult.type(S.string.ast, null))
 
   it("toString()", () => {
