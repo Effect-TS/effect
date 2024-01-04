@@ -75,4 +75,13 @@ describe("Cron", () => {
     deepStrictEqual(next("5 4 * * SUN", after), new Date("2024-01-07 04:05:00"))
     deepStrictEqual(next("5 4 * DEC SUN", after), new Date("2024-12-01 04:05:00"))
   })
+
+  it("sequence", () => {
+    const generator = Cron.sequence(parse("23 0-20/2 * * 0"))
+    deepStrictEqual(generator.next().value, new Date("2024-01-07 00:23:00"))
+    deepStrictEqual(generator.next().value, new Date("2024-01-07 02:23:00"))
+    deepStrictEqual(generator.next().value, new Date("2024-01-07 04:23:00"))
+    deepStrictEqual(generator.next().value, new Date("2024-01-07 06:23:00"))
+    deepStrictEqual(generator.next().value, new Date("2024-01-07 08:23:00"))
+  })
 })

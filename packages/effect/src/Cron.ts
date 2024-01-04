@@ -326,6 +326,20 @@ export const next = (cron: Cron, now?: Date): Date => {
   throw new Error("Unable to find next cron date")
 }
 
+/**
+ * Returns an `IterableIterator` which yields the sequence of `Date`s that match the `Cron` instance.
+ *
+ * @param cron - The `Cron` instance.
+ * @param now - The `Date` to start searching from.
+ *
+ * @since 2.0.0
+ */
+export const sequence = function*(cron: Cron, now?: Date): IterableIterator<Date> {
+  while (true) {
+    yield now = next(cron, now)
+  }
+}
+
 interface SegmentOptions {
   segment: string
   min: number
