@@ -10,6 +10,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import * as RA from "effect/ReadonlyArray"
+import * as Runtime from "effect/Runtime"
 import * as fc from "fast-check"
 import { expect } from "vitest"
 
@@ -128,46 +129,28 @@ export const expectParseSuccess = async <I, A>(
   input: unknown,
   expected: A = input as any,
   options?: ParseOptions
-) => {
-  const actual = Effect.runSync(Effect.either(S.parse(schema)(input, options)))
-  expect(actual).toStrictEqual(Either.right(expected))
-}
+) => expectSuccess(S.parse(schema)(input, options), expected)
 
 export const expectParseFailure = async <I, A>(
   schema: S.Schema<I, A>,
   input: unknown,
   message: string,
   options?: ParseOptions
-) => {
-  const actual = Either.mapLeft(
-    Effect.runSync(Effect.either(S.parse(schema)(input, options))),
-    formatError
-  )
-  expect(actual).toEqual(Either.left(message))
-}
+) => expectFailure(S.parse(schema)(input, options), message)
 
 export const expectEncodeSuccess = async <I, A>(
   schema: S.Schema<I, A>,
   a: A,
   expected: unknown,
   options?: ParseOptions
-) => {
-  const actual = Effect.runSync(Effect.either(S.encode(schema)(a, options)))
-  expect(actual).toStrictEqual(Either.right(expected))
-}
+) => expectSuccess(S.encode(schema)(a, options), expected)
 
 export const expectEncodeFailure = async <I, A>(
   schema: S.Schema<I, A>,
   a: A,
   message: string,
   options?: ParseOptions
-) => {
-  const actual = Either.mapLeft(
-    Effect.runSync(Effect.either(S.encode(schema)(a, options))),
-    formatError
-  )
-  expect(actual).toStrictEqual(Either.left(message))
-}
+) => expectFailure(S.encode(schema)(a, options), message)
 
 export const printAST = <I, A>(schema: S.Schema<I, A>) => {
   console.log("%o", schema.ast)
@@ -215,7 +198,7 @@ export const propertyFrom = <I, A>(schema: S.Schema<I, A>) => {
 
 export const isBun = "Bun" in globalThis
 
-export const resolves = async <A>(promise: Promise<A>, a: A) => {
+export const expectPromiseSuccess = async <A>(promise: Promise<A>, a: A) => {
   try {
     const actual = await promise
     expect(actual).toStrictEqual(a)
@@ -224,12 +207,16 @@ export const resolves = async <A>(promise: Promise<A>, a: A) => {
   }
 }
 
-export const rejects = async <A>(promise: Promise<A>) => {
+export const expectPromiseFailure = async <A>(promise: Promise<A>, message: string) => {
   try {
     await promise
     throw new Error(`Promise didn't reject`)
-  } catch (_e) {
-    // ok
+  } catch (e: any) {
+    if (Runtime.isFiberFailure(e)) {
+      expect((e.toJSON() as any).cause.failure.message).toStrictEqual(message)
+    } else {
+      throw new Error(`Promise didn't reject`)
+    }
   }
 }
 
@@ -243,6 +230,28 @@ export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).pipe(
   S.identifier("NumberFromChar")
 )
 
+export const expectFailure = async <A>(
+  effect: Either.Either<ParseResult.ParseError, A> | Effect.Effect<never, ParseResult.ParseError, A>,
+  message: string
+) => {
+  if (Either.isEither(effect)) {
+    expectEitherLeft(effect, message)
+  } else {
+    expectEffectFailure(effect, message)
+  }
+}
+
+export const expectSuccess = async <E, A>(
+  effect: Either.Either<E, A> | Effect.Effect<never, E, A>,
+  a: A
+) => {
+  if (Either.isEither(effect)) {
+    expectEitherRight(effect, a)
+  } else {
+    expectEffectSuccess(effect, a)
+  }
+}
+
 export const expectEffectFailure = async <A>(
   effect: Effect.Effect<never, ParseResult.ParseError, A>,
   message: string
@@ -252,8 +261,8 @@ export const expectEffectFailure = async <A>(
   )
 }
 
-export const expectEffectSuccess = async <A>(effect: Effect.Effect<never, ParseResult.ParseError, A>, a: A) => {
-  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatError)))).toStrictEqual(
+export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<never, E, A>, a: A) => {
+  expect(await Effect.runPromise(Effect.either(effect))).toStrictEqual(
     Either.right(a)
   )
 }
@@ -262,7 +271,7 @@ export const expectEitherLeft = <A>(e: Either.Either<ParseResult.ParseError, A>,
   expect(Either.mapLeft(e, formatError)).toStrictEqual(Either.left(message))
 }
 
-export const expectEitherRight = <A>(e: Either.Either<ParseResult.ParseError, A>, a: A) => {
+export const expectEitherRight = <E, A>(e: Either.Either<E, A>, a: A) => {
   expect(e).toStrictEqual(Either.right(a))
 }
 

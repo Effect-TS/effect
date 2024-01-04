@@ -6,15 +6,30 @@ describe("Schema > validatePromise", () => {
   const schema = S.struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", async () => {
-    await Util.resolves(S.validatePromise(schema)({ a: 1 }), { a: 1 })
-    await Util.rejects(S.validatePromise(schema)({ a: null }))
+    await Util.expectPromiseSuccess(S.validatePromise(schema)({ a: 1 }), { a: 1 })
+    await Util.expectPromiseFailure(
+      S.validatePromise(schema)({ a: null }),
+      `{ a: number }
+└─ ["a"]
+   └─ Expected a number, actual null`
+    )
   })
 
   it("should respect outer/inner options", async () => {
     const input = { a: 1, b: "b" }
-    await Util.rejects(S.validatePromise(schema)(input, { onExcessProperty: "error" }))
-    await Util.rejects(S.validatePromise(schema, { onExcessProperty: "error" })(input))
-    await Util.resolves(
+    await Util.expectPromiseFailure(
+      S.validatePromise(schema)(input, { onExcessProperty: "error" }),
+      `{ a: number }
+└─ ["b"]
+   └─ is unexpected, expected "a"`
+    )
+    await Util.expectPromiseFailure(
+      S.validatePromise(schema, { onExcessProperty: "error" })(input),
+      `{ a: number }
+└─ ["b"]
+   └─ is unexpected, expected "a"`
+    )
+    await Util.expectPromiseSuccess(
       S.validatePromise(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),
       {
         a: 1
