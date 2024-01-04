@@ -3,7 +3,6 @@
  */
 import * as Either from "./Either.js"
 import * as N from "./Number.js"
-import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 import * as ReadonlyArray from "./ReadonlyArray.js"
