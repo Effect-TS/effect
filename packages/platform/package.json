@@ -57,12 +57,6 @@
         "*.ts",
         "Http/*.ts"
       ]
-    },
-    "generateIndex": {
-      "include": [
-        "*.ts",
-        "Http/*.ts"
-      ]
     }
   }
 }
