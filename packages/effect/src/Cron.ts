@@ -224,24 +224,20 @@ export const match = (cron: Cron, date: Date): boolean => {
  *
  * If no date is provided, the current date is used.
  *
- * If no date can be found, `Option.none()` is returned. This should be a
- * no-op, but it's possible that the cron expression is invalid.
- *
  * @example
  * import * as Cron from "effect/Cron"
  * import * as Either from "effect/Either"
- * import * as Option from "effect/Option"
  *
  * const after = new Date("2021-01-01 00:00:00")
  * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
- * assert.deepStrictEqual(Cron.next(cron, after), Option.some(new Date("2021-01-08 04:00:00")))
+ * assert.deepStrictEqual(Cron.next(cron, after), new Date("2021-01-08 04:00:00"))
  *
  * @param cron - The `Cron` instance.
  * @param now - The `Date` to start searching from.
  *
  * @since 2.0.0
  */
-export const next = (cron: Cron, now?: Date): Option.Option<Date> => {
+export const next = (cron: Cron, now?: Date): Date => {
   const { days, hours, minutes, months, weekdays } = cron
 
   const restrictMinutes = minutes.size !== 0
@@ -292,10 +288,10 @@ export const next = (cron: Cron, now?: Date): Option.Option<Date> => {
       continue
     }
 
-    return Option.some(current)
+    return current
   }
 
-  return Option.none()
+  throw new Error("Unable to find next cron date")
 }
 
 interface SegmentOptions {

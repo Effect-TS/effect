@@ -2,13 +2,11 @@ import { assertFalse, assertTrue, deepStrictEqual } from "effect-test/util"
 import * as Cron from "effect/Cron"
 import * as Either from "effect/Either"
 import { identity } from "effect/Function"
-import * as Option from "effect/Option"
 import { describe, it } from "vitest"
 
 const parse = (input: string) => Either.getOrThrowWith(Cron.parse(input), identity)
 const match = (input: string, date: Date) => Cron.match(parse(input), date)
-const next = (input: string, after?: Date) =>
-  Option.getOrThrowWith(Cron.next(parse(input), after), () => new Error("No next date found for"))
+const next = (input: string, after?: Date) => Cron.next(parse(input), after)
 
 describe("Cron", () => {
   it("parse", () => {
