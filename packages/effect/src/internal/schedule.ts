@@ -423,32 +423,35 @@ export const mapInputEffect = dual<
 /** @internal */
 export const cron = (expression: string): Schedule.Schedule<never, unknown, Date> => {
   const parsed = Cron.parse(expression)
-  return makeWithState<[boolean, number], never, unknown, Date>([true, 0], (now, _, [initial, previous]) => {
-    if (now < previous) {
-      const interval = Interval.make(beginningOfMinute(previous), endOfMinute(previous))
-      return core.succeed([[false, previous], new Date(previous), ScheduleDecision.continueWith(interval)])
+  return makeWithState<[boolean, number], never, unknown, Date>(
+    [true, Number.MIN_SAFE_INTEGER],
+    (now, _, [initial, previous]) => {
+      if (now < previous) {
+        const interval = Interval.make(beginningOfMinute(previous), endOfMinute(previous))
+        return core.succeed([[false, previous], new Date(previous), ScheduleDecision.continueWith(interval)])
+      }
+
+      if (Either.isLeft(parsed)) {
+        return core.dieSync(() => parsed.left)
+      }
+
+      const cron = parsed.right
+      const date = new Date(now)
+
+      let next: number
+      if (initial && Cron.match(cron, date)) {
+        next = now
+      } else {
+        const result = Cron.next(cron, date)
+        next = result.getTime()
+      }
+
+      const start = beginningOfMinute(next)
+      const end = endOfMinute(next)
+      const interval = Interval.make(start, end)
+      return core.succeed([[false, next], new Date(next), ScheduleDecision.continueWith(interval)])
     }
-
-    if (Either.isLeft(parsed)) {
-      return core.dieSync(() => parsed.left)
-    }
-
-    const cron = parsed.right
-    const date = new Date(now)
-
-    let next: number
-    if (initial && Cron.match(cron, date)) {
-      next = now
-    } else {
-      const result = Cron.next(cron, date)
-      next = result.getTime()
-    }
-
-    const start = beginningOfMinute(next)
-    const end = endOfMinute(next)
-    const interval = Interval.make(start, end)
-    return core.succeed([[false, next], new Date(next), ScheduleDecision.continueWith(interval)])
-  })
+  )
 }
 
 /** @internal */
