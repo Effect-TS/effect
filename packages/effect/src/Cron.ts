@@ -3,7 +3,8 @@
  */
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
-import { pipe } from "./Function.js"
+import * as equivalence from "./Equivalence.js"
+import { dual, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import { format, type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
 import * as N from "./Number.js"
@@ -41,16 +42,16 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
 const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"> = {
   [TypeId]: TypeId,
   [Equal.symbol](this: Cron, that: unknown) {
-    return isCron(that) && Equal.equals(this, that)
+    return isCron(that) && equals(this, that)
   },
   [Hash.symbol](this: Cron): number {
     return pipe(
       Hash.hash(TypeId),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.minutes.values()))),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.hours.values()))),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.days.values()))),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.months.values()))),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.weekdays.values())))
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.minutes))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.hours))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.days))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.months))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.weekdays)))
     )
   },
   toString(this: Cron) {
@@ -59,11 +60,11 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
   toJSON(this: Cron) {
     return {
       _id: "Cron",
-      minutes: ReadonlyArray.fromIterable(this.minutes.values()),
-      hours: ReadonlyArray.fromIterable(this.hours.values()),
-      days: ReadonlyArray.fromIterable(this.days.values()),
-      months: ReadonlyArray.fromIterable(this.months.values()),
-      weekdays: ReadonlyArray.fromIterable(this.weekdays.values())
+      minutes: ReadonlyArray.fromIterable(this.minutes),
+      hours: ReadonlyArray.fromIterable(this.hours),
+      days: ReadonlyArray.fromIterable(this.days),
+      months: ReadonlyArray.fromIterable(this.months),
+      weekdays: ReadonlyArray.fromIterable(this.weekdays)
     }
   },
   [NodeInspectSymbol](this: Cron) {
@@ -339,6 +340,42 @@ export const sequence = function*(cron: Cron, now?: Date): IterableIterator<Date
     yield now = next(cron, now)
   }
 }
+
+/**
+ * @category instances
+ * @since 2.0.0
+ */
+export const Equivalence: equivalence.Equivalence<Cron> = equivalence.make((self, that) => {
+  const eq = equivalence.array(equivalence.number)
+  if (!eq(ReadonlyArray.fromIterable(self.minutes), ReadonlyArray.fromIterable(that.minutes))) {
+    return false
+  }
+  if (!eq(ReadonlyArray.fromIterable(self.hours), ReadonlyArray.fromIterable(that.hours))) {
+    return false
+  }
+  if (!eq(ReadonlyArray.fromIterable(self.days), ReadonlyArray.fromIterable(that.days))) {
+    return false
+  }
+  if (!eq(ReadonlyArray.fromIterable(self.months), ReadonlyArray.fromIterable(that.months))) {
+    return false
+  }
+  if (!eq(ReadonlyArray.fromIterable(self.weekdays), ReadonlyArray.fromIterable(that.weekdays))) {
+    return false
+  }
+
+  return true
+})
+
+/**
+ * Checks if two `Cron`s are equal.
+ *
+ * @since 2.0.0
+ * @category predicates
+ */
+export const equals: {
+  (that: Cron): (self: Cron) => boolean
+  (self: Cron, that: Cron): boolean
+} = dual(2, (self: Cron, that: Cron): boolean => Equivalence(self, that))
 
 interface SegmentOptions {
   segment: string

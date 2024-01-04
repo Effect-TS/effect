@@ -1,6 +1,7 @@
 import { assertFalse, assertTrue, deepStrictEqual } from "effect-test/util"
 import * as Cron from "effect/Cron"
 import * as Either from "effect/Either"
+import * as Equal from "effect/Equal"
 import { identity } from "effect/Function"
 import { describe, it } from "vitest"
 
@@ -83,5 +84,14 @@ describe("Cron", () => {
     deepStrictEqual(generator.next().value, new Date("2024-01-07 04:23:00"))
     deepStrictEqual(generator.next().value, new Date("2024-01-07 06:23:00"))
     deepStrictEqual(generator.next().value, new Date("2024-01-07 08:23:00"))
+  })
+
+  it("equal", () => {
+    const cron = parse("23 0-20/2 * * 0")
+    assertTrue(Equal.equals(cron, cron))
+    assertTrue(Equal.equals(cron, parse("23 0-20/2 * * 0")))
+    assertFalse(Equal.equals(cron, parse("23 0-20/2 * * 1")))
+    assertFalse(Equal.equals(cron, parse("23 0-20/2 * * 0-6")))
+    assertFalse(Equal.equals(cron, parse("23 0-20/2 1 * 0")))
   })
 })
