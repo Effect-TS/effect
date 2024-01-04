@@ -63,7 +63,7 @@ export const succeed: <A>(a: A) => ParseResult<A> = Either.right
 export const fail = (error: ParseIssue): ParseResult<never> => Either.left(parseError(error))
 
 /**
- * `ParseErrors` is a type that represents the different types of errors that can occur when decoding/encoding a value.
+ * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
  *
  * @category model
  * @since 1.0.0
@@ -420,11 +420,11 @@ export const mapLeft = <E1, A, E2>(
  * @category optimisation
  * @since 1.0.0
  */
-export const bimap = <A, B>(
-  self: ParseResult<A>,
-  f: (error: ParseError) => ParseError,
+export const bimap = <E1, A, E2, B>(
+  self: Effect.Effect<never, E1, A>,
+  f: (error: E1) => E2,
   g: (a: A) => B
-): ParseResult<B> => {
+): Effect.Effect<never, E2, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(f(s.left))
@@ -439,10 +439,10 @@ export const bimap = <A, B>(
  * @category optimisation
  * @since 1.0.0
  */
-export const orElse = <A>(
-  self: ParseResult<A>,
-  f: (error: ParseError) => ParseResult<A>
-): ParseResult<A> => {
+export const orElse = <E1, A, E2, B>(
+  self: Effect.Effect<never, E1, A>,
+  f: (error: E1) => Effect.Effect<never, E2, B>
+): Effect.Effect<never, E2, A | B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return f(s.left)
