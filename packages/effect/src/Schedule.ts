@@ -406,6 +406,15 @@ export const mapInputEffect: {
 export const count: Schedule<never, unknown, number> = internal.count
 
 /**
+ * Cron schedule that recurs every `minute` that matches the schedule.
+ * 
+ * It triggers at zero second of the minute. Producing a count of repeats: 0, 1, 2.
+ * 
+ * NOTE: `expression` parameter is validated lazily. Must be a valid cron expression.
+ */
+export const cron: (expression: string) => Schedule<never, unknown, Date> = internal.cron
+
+/**
  * Cron-like schedule that recurs every specified `day` of month. Won't recur
  * on months containing less days than specified in `day` param.
  *
