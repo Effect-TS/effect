@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 import * as Either from "./Either.js"
-import { pipe } from "./Function.js"
 import * as N from "./Number.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
@@ -27,24 +26,16 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Segments {
-  readonly minutes: ReadonlyArray<number>
-  readonly hours: ReadonlyArray<number>
-  readonly days: ReadonlyArray<number>
-  readonly months: ReadonlyArray<number>
-  readonly weekdays: ReadonlyArray<number>
-}
-
-/**
- * @since 2.0.0
- * @category models
- */
 export interface Cron extends Pipeable {
   readonly [TypeId]: TypeId
-  readonly segments: Segments
+  readonly minutes: ReadonlySet<number>
+  readonly hours: ReadonlySet<number>
+  readonly days: ReadonlySet<number>
+  readonly months: ReadonlySet<number>
+  readonly weekdays: ReadonlySet<number>
 }
 
-const CronProto: Omit<Cron, "segments"> = {
+const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"> = {
   [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
@@ -64,14 +55,30 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
 /**
  * Creates a `Cron` instance from.
  *
- * @param segments - The cron segments.
+ * @param constraints - The cron constraints.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const make = (segments: Segments): Cron => {
-  const o = Object.create(CronProto)
-  o.segments = segments
+export const make = ({
+  days,
+  hours,
+  minutes,
+  months,
+  weekdays
+}: {
+  readonly minutes: Iterable<number>
+  readonly hours: Iterable<number>
+  readonly days: Iterable<number>
+  readonly months: Iterable<number>
+  readonly weekdays: Iterable<number>
+}): Cron => {
+  const o: Mutable<Cron> = Object.create(CronProto)
+  o.minutes = new Set(ReadonlyArray.sort(minutes, N.Order))
+  o.hours = new Set(ReadonlyArray.sort(hours, N.Order))
+  o.days = new Set(ReadonlyArray.sort(days, N.Order))
+  o.months = new Set(ReadonlyArray.sort(months, N.Order))
+  o.weekdays = new Set(ReadonlyArray.sort(weekdays, N.Order))
   return o
 }
 
@@ -178,40 +185,38 @@ export const parse = (cron: string): Either.Either<ParseError, Cron> => {
  * @since 2.0.0
  */
 export const match = (cron: Cron, date: Date): boolean => {
-  const {
-    segments: { days, hours, minutes, months, weekdays }
-  } = cron
+  const { days, hours, minutes, months, weekdays } = cron
 
   const minute = date.getMinutes()
-  if (minutes.length !== 0 && minutes.indexOf(minute) === -1) {
+  if (minutes.size !== 0 && !minutes.has(minute)) {
     return false
   }
 
   const hour = date.getHours()
-  if (hours.length !== 0 && hours.indexOf(hour) === -1) {
+  if (hours.size !== 0 && !hours.has(hour)) {
     return false
   }
 
   const month = date.getMonth() + 1
-  if (months.length !== 0 && months.indexOf(month) === -1) {
+  if (months.size !== 0 && !months.has(month)) {
     return false
   }
 
-  if (days.length === 0 && weekdays.length === 0) {
+  if (days.size === 0 && weekdays.size === 0) {
     return true
   }
 
   const day = date.getDate()
-  if (weekdays.length === 0) {
-    return days.indexOf(day) !== -1
+  if (weekdays.size === 0) {
+    return days.has(day)
   }
 
   const weekday = date.getDay()
-  if (days.length === 0) {
-    return weekdays.indexOf(weekday) !== -1
+  if (days.size === 0) {
+    return weekdays.has(weekday)
   }
 
-  return days.indexOf(day) !== -1 || weekdays.indexOf(weekday) !== -1
+  return days.has(day) || weekdays.has(weekday)
 }
 
 /**
@@ -237,15 +242,13 @@ export const match = (cron: Cron, date: Date): boolean => {
  * @since 2.0.0
  */
 export const next = (cron: Cron, after?: Date): Option.Option<Date> => {
-  const {
-    segments: { days, hours, minutes, months, weekdays }
-  } = cron
+  const { days, hours, minutes, months, weekdays } = cron
 
-  const restrictMinutes = minutes.length !== 0
-  const restrictHours = hours.length !== 0
-  const restrictDays = days.length !== 0
-  const restrictMonths = months.length !== 0
-  const restrictWeekdays = weekdays.length !== 0
+  const restrictMinutes = minutes.size !== 0
+  const restrictHours = hours.size !== 0
+  const restrictDays = days.size !== 0
+  const restrictMonths = months.size !== 0
+  const restrictWeekdays = weekdays.size !== 0
 
   const current = after ? new Date(after.getTime()) : new Date()
   // Increment by one minute to ensure we don't match the current date.
@@ -255,7 +258,7 @@ export const next = (cron: Cron, after?: Date): Option.Option<Date> => {
   // Only search 8 years into the future.
   const limit = new Date(current).setFullYear(current.getFullYear() + 8)
   while (current.getTime() <= limit) {
-    if (restrictMonths && months.indexOf(current.getMonth() + 1) === -1) {
+    if (restrictMonths && !months.has(current.getMonth() + 1)) {
       current.setMonth(current.getMonth() + 1)
       current.setDate(1)
       current.setHours(0)
@@ -263,27 +266,27 @@ export const next = (cron: Cron, after?: Date): Option.Option<Date> => {
       continue
     }
 
-    if (restrictDays && days.indexOf(current.getDate()) === -1) {
+    if (restrictDays && !days.has(current.getDate())) {
       current.setDate(current.getDate() + 1)
       current.setHours(0)
       current.setMinutes(0)
       continue
     }
 
-    if (restrictWeekdays && weekdays.indexOf(current.getDay()) === -1) {
+    if (restrictWeekdays && !weekdays.has(current.getDay())) {
       current.setDate(current.getDate() + 1)
       current.setHours(0)
       current.setMinutes(0)
       continue
     }
 
-    if (restrictHours && hours.indexOf(current.getHours()) === -1) {
+    if (restrictHours && !hours.has(current.getHours())) {
       current.setHours(current.getHours() + 1)
       current.setMinutes(0)
       continue
     }
 
-    if (restrictMinutes && minutes.indexOf(current.getMinutes()) === -1) {
+    if (restrictMinutes && !minutes.has(current.getMinutes())) {
       current.setMinutes(current.getMinutes() + 1)
       continue
     }
@@ -357,7 +360,7 @@ const weekdayOptions: SegmentOptions = {
 const parseSegment = (
   input: string,
   options: SegmentOptions
-): Either.Either<ParseError, ReadonlyArray<number>> => {
+): Either.Either<ParseError, ReadonlySet<number>> => {
   const capacity = options.max - options.min + 1
   const values = new Set<number>()
   const fields = input.split(",")
@@ -365,7 +368,7 @@ const parseSegment = (
   for (const field of fields) {
     const [raw, step] = splitStep(field)
     if (raw === "*" && step === undefined) {
-      return Either.right(ReadonlyArray.empty())
+      return Either.right(new Set())
     }
 
     if (step !== undefined) {
@@ -413,14 +416,11 @@ const parseSegment = (
     }
 
     if (values.size >= capacity) {
-      return Either.right(ReadonlyArray.empty())
+      return Either.right(new Set())
     }
   }
 
-  return Either.right(pipe(
-    ReadonlyArray.fromIterable(values),
-    ReadonlyArray.sort(N.Order)
-  ))
+  return Either.right(values)
 }
 
 const splitStep = (input: string): [string, number | undefined] => {
