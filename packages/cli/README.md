@@ -178,6 +178,9 @@ const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbo
 })
 
 // minigit clone [--depth <depth>] [--] <repository> [<directory>]
+const repository = Args.text({ name: 'repository' })
+const directory = Args.text({ name: 'directory' }).pipe(Args.optional)
+const depth = Options.integer('depth').pipe(Options.optional)
 const minigitClone = Command.make("clone", { repository, directory, depth }, (config) => {
   const depth = Option.map(config.depth, (depth) => `--depth ${depth}`)
   const repository = Option.some(config.repository)
