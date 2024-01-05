@@ -18,21 +18,21 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/App](https://effect-ts.github.io/platform/platform/Http/App.ts.html)
+   * - Docs: [Http/App](https://effect-ts.github.io/effect/platform/Http/App.ts.html)
    * - Module: `@effect/platform/Http/App`
    */
   app,
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/Body](https://effect-ts.github.io/platform/platform/Http/Body.ts.html)
+   * - Docs: [Http/Body](https://effect-ts.github.io/effect/platform/Http/Body.ts.html)
    * - Module: `@effect/platform/Http/Body`
    */
   body,
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/ServerError](https://effect-ts.github.io/platform/platform/Http/ServerError.ts.html)
+   * - Docs: [Http/ServerError](https://effect-ts.github.io/effect/platform/Http/ServerError.ts.html)
    * - Module: `@effect/platform/Http/ServerError`
    */
   error,
@@ -46,14 +46,14 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/Headers](https://effect-ts.github.io/platform/platform/Http/Headers.ts.html)
+   * - Docs: [Http/Headers](https://effect-ts.github.io/effect/platform/Http/Headers.ts.html)
    * - Module: `@effect/platform/Http/Headers`
    */
   headers,
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/Middleware](https://effect-ts.github.io/platform/platform/Http/Middleware.ts.html)
+   * - Docs: [Http/Middleware](https://effect-ts.github.io/effect/platform/Http/Middleware.ts.html)
    * - Module: `@effect/platform/Http/Middleware`
    */
   middleware,
@@ -74,14 +74,14 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/ServerResponse](https://effect-ts.github.io/platform/platform/Http/ServerResponse.ts.html)
+   * - Docs: [Http/ServerResponse](https://effect-ts.github.io/effect/platform/Http/ServerResponse.ts.html)
    * - Module: `@effect/platform/Http/ServerResponse`
    */
   response,
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/Router](https://effect-ts.github.io/platform/platform/Http/Router.ts.html)
+   * - Docs: [Http/Router](https://effect-ts.github.io/effect/platform/Http/Router.ts.html)
    * - Module: `@effect/platform/Http/Router`
    */
   router,
@@ -95,7 +95,7 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/UrlParams](https://effect-ts.github.io/platform/platform/Http/UrlParams.ts.html)
+   * - Docs: [Http/UrlParams](https://effect-ts.github.io/effect/platform/Http/UrlParams.ts.html)
    * - Module: `@effect/platform/Http/UrlParams`
    */
   urlParams

@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/Http/Multipart`](https://effect-ts.github.io/platform/platform/Http/Multipart.ts.html).
+ * Also includes exports from [`@effect/platform/Http/Multipart`](https://effect-ts.github.io/effect/platform/Http/Multipart.ts.html).
  */
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Multipart from "@effect/platform/Http/Multipart"
