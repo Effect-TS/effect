@@ -201,7 +201,7 @@ export const parse = (cron: string): Either.Either<ParseError, Cron> => {
 }
 
 /**
- * Checks if a given date matches the `Cron` instance.
+ * Checks if a given `Date` falls within an active `Cron` time window.
  *
  * @param cron - The `Cron` instance.
  * @param date - The `Date` to check against.
