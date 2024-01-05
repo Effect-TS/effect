@@ -252,9 +252,9 @@ export const match = (cron: Cron, date: Date): boolean => {
 }
 
 /**
- * Returns the next date that matches the `Cron` instance.
+ * Returns the next run `Date` for the given `Cron` instance.
  *
- * If no date is provided, the current date is used.
+ * Uses the current time as a starting point if no value is provided for `now`.
  *
  * @example
  * import * as Cron from "effect/Cron"
@@ -295,18 +295,27 @@ export const next = (cron: Cron, now?: Date): Date => {
       continue
     }
 
-    if (restrictDays && !days.has(current.getDate())) {
-      current.setDate(current.getDate() + 1)
-      current.setHours(0)
-      current.setMinutes(0)
-      continue
-    }
-
-    if (restrictWeekdays && !weekdays.has(current.getDay())) {
-      current.setDate(current.getDate() + 1)
-      current.setHours(0)
-      current.setMinutes(0)
-      continue
+    if (restrictDays && restrictWeekdays) {
+      if (!days.has(current.getDate()) && !weekdays.has(current.getDay())) {
+        current.setDate(current.getDate() + 1)
+        current.setHours(0)
+        current.setMinutes(0)
+        continue
+      }
+    } else if (restrictDays) {
+      if (!days.has(current.getDate())) {
+        current.setDate(current.getDate() + 1)
+        current.setHours(0)
+        current.setMinutes(0)
+        continue
+      }
+    } else if (restrictWeekdays) {
+      if (!weekdays.has(current.getDay())) {
+        current.setDate(current.getDate() + 1)
+        current.setHours(0)
+        current.setMinutes(0)
+        continue
+      }
     }
 
     if (restrictHours && !hours.has(current.getHours())) {

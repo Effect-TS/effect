@@ -435,7 +435,7 @@ export const cron = (expression: string): Schedule.Schedule<never, unknown, [num
       }
 
       if (Either.isLeft(parsed)) {
-        return core.dieSync(() => parsed.left)
+        return core.die(parsed.left)
       }
 
       const cron = parsed.right
