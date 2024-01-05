@@ -421,14 +421,19 @@ export const mapInputEffect = dual<
     )))
 
 /** @internal */
-export const cron = (expression: string): Schedule.Schedule<never, unknown, Date> => {
+export const cron = (expression: string): Schedule.Schedule<never, unknown, number> => {
   const parsed = Cron.parse(expression)
-  return makeWithState<[boolean, number], never, unknown, Date>(
-    [true, Number.MIN_SAFE_INTEGER],
+  return makeWithState<[initial: boolean, previous: [number, number, number]], never, unknown, number>(
+    [true, [Number.MIN_SAFE_INTEGER, 0, 0]],
     (now, _, [initial, previous]) => {
-      if (now < previous) {
-        const interval = Interval.make(beginningOfMinute(previous), endOfMinute(previous))
-        return core.succeed([[false, previous], new Date(previous), ScheduleDecision.continueWith(interval)])
+      if (now < previous[0]) {
+        const [next, start, end] = previous
+        const interval = Interval.make(start, end)
+        return core.succeed([
+          [false, next],
+          next,
+          ScheduleDecision.continueWith(interval)
+        ])
       }
 
       if (Either.isLeft(parsed)) {
@@ -449,7 +454,11 @@ export const cron = (expression: string): Schedule.Schedule<never, unknown, Date
       const start = beginningOfMinute(next)
       const end = endOfMinute(next)
       const interval = Interval.make(start, end)
-      return core.succeed([[false, next], new Date(next), ScheduleDecision.continueWith(interval)])
+      return core.succeed([
+        [false, [next, start, end]],
+        next,
+        ScheduleDecision.continueWith(interval)
+      ])
     }
   )
 }
