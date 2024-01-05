@@ -46,8 +46,7 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
   },
   [Hash.symbol](this: Cron): number {
     return pipe(
-      Hash.hash(TypeId),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.minutes))),
+      Hash.array(ReadonlyArray.fromIterable(this.minutes)),
       Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.hours))),
       Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.days))),
       Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.months))),
