@@ -927,3 +927,31 @@ export const decodeSingleSchema = (schema: JsonSchema7Root | JsonSchema7): Schem
   }
   return decodeWithReferences(schema, initialReferences)
 }
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const decodeMultiSchema = (schema: JsonSchema7Root): Record<string, UnknownSchema> => {
+  const a = isJsonSchema7Root(schema) ? (Object.values(schema.$defs || {}).map(traverse)) : [Stream.empty]
+  const allReferences = Stream.mergeAll([traverse(schema), ...a], { "concurrency": "unbounded" }).pipe(
+    Stream.filter(isJsonSchema7Ref),
+    Stream.map((a) => a.$ref),
+    Stream.runCollect,
+    Effect.orDie,
+    Effect.runSync,
+    Chunk.map((ref) => ref.replace(DEFINITION_PREFIX, "")),
+    Chunk.dedupe,
+    Chunk.toArray
+  )
+
+  const initialReferences: Record<string, UnknownSchema> = Object.fromEntries(
+    allReferences.map((name) => [name, Function.unsafeCoerce(undefined)])
+  )
+
+  for (const [name, json] of Object.entries(schema.$defs ?? {}).reverse()) {
+    initialReferences[name] = decodeWithReferences(json, initialReferences)
+  }
+
+  return initialReferences
+}

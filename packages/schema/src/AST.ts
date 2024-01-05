@@ -8,7 +8,6 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Stream from "effect/Stream"
 import * as Internal from "./internal/ast.js"
 import type * as ParseResult from "./ParseResult.js"
 
@@ -921,7 +920,7 @@ export const createSuspend = (
   annotations: Annotated["annotations"] = {}
 ): Suspend => ({
   _tag: "Suspend",
-  f,
+  f: Internal.memoizeThunk(f),
   annotations
 })
 
@@ -1751,124 +1750,4 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
       return compose(ast, rename(to(ast), mapping))
   }
   throw new Error(`cannot rename ${ast._tag}`)
-}
-
-/** @internal */
-export const traverse = (ast: AST): Stream.Stream<never, never, AST> => {
-  switch (ast._tag) {
-    // Trivial/base cases
-    case "Literal":
-    case "UniqueSymbol":
-    case "UndefinedKeyword":
-    case "VoidKeyword":
-    case "NeverKeyword":
-    case "UnknownKeyword":
-    case "AnyKeyword":
-    case "StringKeyword":
-    case "NumberKeyword":
-    case "BooleanKeyword":
-    case "BigIntKeyword":
-    case "SymbolKeyword":
-    case "ObjectKeyword":
-    case "Enums":
-    case "TemplateLiteral": {
-      return Stream.fromIterable([ast])
-    }
-    // Non-trivial cases
-    case "Suspend": {
-      return Stream.fromIterable([ast.f()])
-    }
-    case "Transform": {
-      return Stream.fromIterable([ast.from, ast.to])
-    }
-    // Recursive cases
-    case "Declaration": {
-      return Stream.mergeAll([Stream.fromIterable([ast.type]), ...ast.typeParameters.map(traverse)], {
-        concurrency: "unbounded"
-      })
-    }
-    case "Refinement": {
-      return Stream.merge(Stream.fromIterable([ast]), traverse(ast.from))
-    }
-    case "Tuple": {
-      const restStream = Option.map(ast.rest, ReadonlyArray.map(traverse)).pipe(Option.getOrElse(() => [Stream.empty]))
-      return Stream.mergeAll([Stream.fromIterable([ast]), ...restStream], { concurrency: "unbounded" })
-    }
-    case "Union": {
-      return Stream.mergeAll(ast.types.map(traverse), { concurrency: "unbounded" })
-    }
-    case "TypeLiteral": {
-      const indexSignatureStreams = ast.indexSignatures.map((is) => traverse(is.type))
-      const propertySignatureStreams = ast.propertySignatures.map((ps) => traverse(ps.type))
-      return Stream.mergeAll([Stream.fromIterable([ast]), ...indexSignatureStreams, ...propertySignatureStreams], {
-        concurrency: "unbounded"
-      })
-    }
-  }
-}
-
-/** @internal */
-export const map = (ast: AST, f: (ast: AST) => AST): AST => {
-  const newAst = f(ast)
-
-  switch (ast._tag) {
-    // Trivial/base cases
-    case "Literal":
-    case "UniqueSymbol":
-    case "UndefinedKeyword":
-    case "VoidKeyword":
-    case "NeverKeyword":
-    case "UnknownKeyword":
-    case "AnyKeyword":
-    case "StringKeyword":
-    case "NumberKeyword":
-    case "BooleanKeyword":
-    case "BigIntKeyword":
-    case "SymbolKeyword":
-    case "ObjectKeyword":
-    case "Enums":
-    case "TemplateLiteral": {
-      return newAst
-    }
-    // Non-trivial cases
-    case "Suspend": {
-      return newAst === ast ? createSuspend(() => map(newAst, f), ast.annotations) : newAst
-    }
-    case "Transform": {
-      return newAst === ast
-        ? createTransform(map(ast.from, f), map(ast.to, f), ast.transformation, ast.annotations)
-        : newAst
-    }
-    // Recursive cases
-    case "Declaration": {
-      return newAst === ast
-        ? createDeclaration(ast.typeParameters.map((tp) => map(tp, f)), map(ast.type, f), ast.decode, ast.annotations)
-        : newAst
-    }
-    case "Refinement": {
-      return newAst === ast ? createRefinement(map(ast.from, f), ast.filter, ast.annotations) : newAst
-    }
-    case "Tuple": {
-      return newAst === ast
-        ? createTuple(
-          ast.elements,
-          Option.map(ast.rest, ReadonlyArray.map((rest) => map(rest, f))),
-          ast.isReadonly,
-          ast.annotations
-        )
-        : newAst
-    }
-    case "Union": {
-      return newAst === ast ? createUnion(ast.types.map((t) => map(t, f)), ast.annotations) : newAst
-    }
-    case "TypeLiteral": {
-      return newAst === ast
-        ? createTypeLiteral(
-          ast.propertySignatures.map(({ type, ...rest }) => ({ ...rest, type: map(type, f) })),
-          ast.indexSignatures.map(({ type, ...rest }) => ({ ...rest, type: map(type, f) })),
-          ast.annotations
-        )
-        : newAst
-    }
-  }
 }
