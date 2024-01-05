@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Match from "effect/Match"
@@ -655,13 +656,76 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
 type UnknownSchema = Schema.Schema<unknown, unknown>
 type UnknownSchemaIdentity = (_: UnknownSchema) => UnknownSchema
 
-/**
- * Decodes a single definition (not a root schema) into an Effect Schema.
- * Will NOT handle references! References must be updated to their AST values
- * using a second post processing step once all definitions have been decoded.
- * Instead, this will temporarily generate unique symbols for references.
- */
-const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unknown> =>
+/** @internal */
+export const traverse = (json: JsonSchema7 | JsonSchema7Root): Stream.Stream<never, Error, JsonSchema7> =>
+  Function.pipe(
+    Match.value(json),
+    Match.whenOr(
+      isJsonSchema7Any,
+      isJsonSchema7object,
+      isJsonSchema7Unknown,
+      isJsonSchema7Boolean,
+      isJsonSchema7Empty,
+      isJsonSchema7Const,
+      isJsonSchema7Enum,
+      isJsonSchema7Enums,
+      isJsonSchema7Number,
+      isJsonSchema7Integer,
+      isJsonSchema7String,
+      isJsonSchema7Ref,
+      () => {
+        return Stream.fromIterable([json])
+      }
+    ),
+    Match.when(
+      isJsonSchema7AnyOf,
+      ({ anyOf }) =>
+        Stream.mergeAll([Stream.fromIterable([json]), ...anyOf.map(traverse)], { "concurrency": "unbounded" })
+    ),
+    Match.when(
+      isJsonSchema7OneOf,
+      ({ oneOf }) =>
+        Stream.mergeAll([Stream.fromIterable([json]), ...oneOf.map(traverse)], { "concurrency": "unbounded" })
+    ),
+    Match.when(isJsonSchema7Object, ({ additionalProperties, patternProperties, properties }) => {
+      const propertiesStream = Stream.mergeAll(Object.values(properties).map(traverse), { concurrency: "unbounded" })
+
+      const additionalPropertiesStream =
+        !Predicate.isBoolean(additionalProperties) && Predicate.isNotUndefined(additionalProperties)
+          ? traverse(additionalProperties)
+          : Stream.empty
+
+      const patternPropertiesStream = patternProperties && Object.keys(patternProperties).length
+        ? Stream.mergeAll(Object.values(patternProperties).map(traverse), { "concurrency": "unbounded" })
+        : Stream.empty
+
+      return Stream.mergeAll([
+        Stream.fromIterable([json]),
+        additionalPropertiesStream,
+        patternPropertiesStream,
+        propertiesStream
+      ], { concurrency: "unbounded" })
+    }),
+    Match.when(isJsonSchema7Array, ({ additionalItems, items }) => {
+      const additionalItemsStream = !Predicate.isBoolean(additionalItems) && Predicate.isNotUndefined(additionalItems)
+        ? traverse(additionalItems)
+        : Stream.empty
+
+      const itemsStream = Array.isArray(items)
+        ? Stream.mergeAll(items.map(traverse), { concurrency: "unbounded" })
+        : Predicate.isNotUndefined(items)
+        ? traverse(items)
+        : Stream.empty
+
+      return Stream.mergeAll([Stream.fromIterable([json]), additionalItemsStream, itemsStream], {
+        concurrency: "unbounded"
+      })
+    }),
+    Match.orElse(() => Stream.fail(new Error(`Cannot traverse ${JSON.stringify(json)}`)))
+  )
+
+/** @internal */
+const decodeWithReferences = (input: JsonSchema7, references: Record<string, UnknownSchema>): UnknownSchema =>
   Function.pipe(
     Match.value(input),
     // ---------------------------------------------
@@ -676,12 +740,13 @@ const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unkn
     // ---------------------------------------------
     // Handle enums
     // ---------------------------------------------
-    Match.when(isJsonSchema7Enum, ({ enum: enum_ }) =>
-      Schema.union(...ReadonlyArray.map(enum_, (a) => Schema.literal(a)))),
+    Match.when(
+      isJsonSchema7Enum,
+      ({ enum: enum_ }) => Schema.union(...ReadonlyArray.map(enum_, (a) => Schema.literal(a)))
+    ),
     Match.when(
       isJsonSchema7Enums,
-      ({ oneOf }) =>
-        Schema.enums(Object.assign({}, ...oneOf.map(({ const: const_, title }) => ({ [title]: const_ }))))
+      ({ oneOf }) => Schema.enums(Object.assign({}, ...oneOf.map(({ const: const_, title }) => ({ [title]: const_ }))))
     ),
     // ---------------------------------------------
     // Hndle numberic types
@@ -714,7 +779,7 @@ const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unkn
     Match.when(isJsonSchema7Object, ({ additionalProperties, patternProperties, properties, required }) => {
       const fields = Object.entries(properties).map(([name, property]) => {
         const isRequired = required.includes(name)
-        const decodedProperty = decodeSingleDefinition(property)
+        const decodedProperty = decodeWithReferences(property, references)
         const withOptional = isRequired
           ? Schema.required(decodedProperty)
           : Schema.optional(decodedProperty, { exact: true }) // FIXME: How do I know if this is "exact" / will it always be "exact" here?
@@ -731,7 +796,7 @@ const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unkn
         ? Schema.extend(
           Schema.record(
             Schema.string.pipe(Schema.pattern(new RegExp(Object.keys(patternProperties)[0]!))),
-            decodeSingleDefinition(patternProperties[Object.keys(patternProperties)[0]!])
+            decodeWithReferences(patternProperties[Object.keys(patternProperties)[0]!], references)
           )
         ) as UnknownSchemaIdentity
         : Function.identity as UnknownSchemaIdentity
@@ -742,7 +807,7 @@ const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unkn
 
       const withKnownAdditional = hasKnownAdditionalProperties
         ? Schema.extend(
-          Schema.record(Schema.string, decodeSingleDefinition(additionalProperties))
+          Schema.record(Schema.string, decodeWithReferences(additionalProperties, references))
         ) as UnknownSchemaIdentity
         : Function.identity as UnknownSchemaIdentity
 
@@ -758,12 +823,12 @@ const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unkn
 
       const itemsArray = Array.isArray(items) ? items : [items]
       if (Predicate.isUndefined(minItems)) {
-        return Schema.array(decodeSingleDefinition(itemsArray[0]))
+        return Schema.array(decodeWithReferences(itemsArray[0], references))
       }
 
       const [elements, optionalElements] = Function.pipe(
         itemsArray,
-        ReadonlyArray.map(decodeSingleDefinition),
+        ReadonlyArray.map((a) => decodeWithReferences(a, references)),
         ReadonlyArray.splitAt(minItems ?? 0)
       )
 
@@ -779,7 +844,7 @@ const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unkn
       const applyRest: (_: Schema.Schema<any, any>) => Schema.Schema<any, any> = additionalItems === true
         ? Schema.rest(Schema.unknown)
         : additionalItems
-        ? Schema.rest(decodeSingleDefinition(additionalItems))
+        ? Schema.rest(decodeWithReferences(additionalItems, references))
         : Function.identity
 
       return Schema.tuple(...elements).pipe(applyOptionalElements).pipe(applyRest)
@@ -787,15 +852,23 @@ const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unkn
     // ---------------------------------------------
     // Handle unions (will do recursive calls for the inner types)
     // ---------------------------------------------
-    Match.when(isJsonSchema7AnyOf, ({ anyOf }) => Schema.union(...anyOf.map((x) => decodeSingleDefinition(x)))),
-    Match.when(isJsonSchema7OneOf, ({ oneOf }) => Schema.union(...oneOf.map(decodeSingleDefinition))),
+    Match.when(
+      isJsonSchema7AnyOf,
+      ({ anyOf }) => Schema.union(...anyOf.map((x) => decodeWithReferences(x, references)))
+    ),
+    Match.when(
+      isJsonSchema7OneOf,
+      ({ oneOf }) => Schema.union(...oneOf.map((x) => decodeWithReferences(x, references)))
+    ),
     // ---------------------------------------------
-    // Handle references (we will update this later)
+    // Handle references
     // ---------------------------------------------
-    // TODO: This feels a bit hacky, can you think of any better ways to do this?
     Match.when(
       isJsonSchema7Ref,
-      ({ $ref }) => Schema.uniqueSymbol(Symbol.for($ref.replace(DEFINITION_PREFIX, "")))
+      ({ $ref }) => {
+        const reference = String($ref.replace(DEFINITION_PREFIX, ""))
+        return Schema.identifier(reference)(Schema.suspend(() => references[reference]))
+      }
     ),
     // ---------------------------------------------
     // Handle unknowns (malformed json schemas that can't be parsed)
@@ -820,92 +893,37 @@ const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unkn
   )
 
 /**
- * Traverses the AST and updates any references to their decoded values.
- * FIXME: This feels a bit hacky since we're messing with references but
- * I can't think of any other way to make this work. What do you think?
- */
-const updateAllReferencesInPlace = (
-  definitions: Record<string, Schema.Schema<unknown, unknown>>
-) => {
-  for (const [name, schema] of Object.entries(definitions)) {
-    // @ts-expect-error
-    schema.ast = AST.map(
-      schema.ast,
-      (ast) =>
-        AST.isUniqueSymbol(ast) && ast.symbol.description !== name
-          ? AST.setAnnotation(
-            AST.createSuspend(() => definitions[String(ast.symbol.description)].ast),
-            AST.IdentifierAnnotationId,
-            String(ast.symbol.description)
-          )
-          : AST.isUniqueSymbol(ast) && ast.symbol.description === name
-          ? AST.setAnnotation(
-            AST.createSuspend(() => definitions[String(ast.symbol.description)].ast),
-            AST.IdentifierAnnotationId,
-            name
-          )
-          : ast
-    )
-  }
-}
-
-/**
- * @category decoding
- * @since 1.0.0
- */
-export const decodeMultiSchema = (schema: JsonSchema7Root): Record<string, Schema.Schema<unknown, unknown>> => {
-  const definitionSchemas = Object.fromEntries(
-    Object.entries(schema.$defs ?? {}).map(([name, schema]) => [name, decodeSingleDefinition(schema)] as const)
-  )
-  updateAllReferencesInPlace(definitionSchemas)
-  return definitionSchemas
-}
-
-/**
  * @category decoding
  * @since 1.0.0
  */
 export const decodeSingleSchema = (schema: JsonSchema7Root | JsonSchema7): Schema.Schema<unknown, unknown> => {
-  // Trivial case (shouldn't contain any references since it's not a root schema)
-  if (!isJsonSchema7Root(schema)) {
-    const generatedSchema = decodeSingleDefinition(schema)
-    const numberOfUniqueSymbols = AST.traverse(generatedSchema.ast).pipe(
-      Stream.filter(AST.isUniqueSymbol),
-      Stream.runCount,
-      Effect.runSync
-    )
-
-    if (numberOfUniqueSymbols > 0) {
-      throw new Error("Cannot decode a single schema with references")
-    } else {
-      return generatedSchema
-    }
-  }
-
-  // Case where schema is a root schema and the top level is a definition
-  const topLevelSchema = decodeSingleDefinition(schema) // This will throw if the top level is not a parsable definition
-  const definitionSchemas = decodeMultiSchema(schema)
-
-  // Short circuit if the top level schema was itself a reference
-  // (nested references will already be handled in decodeMultiSchema)
-  if (AST.isUniqueSymbol(topLevelSchema.ast)) {
-    const reference = String(topLevelSchema.ast.symbol.description)
-    const newSchema = Schema.suspend(() => definitionSchemas[reference]).pipe(Schema.identifier(reference))
-    return newSchema
-  }
-
-  // @ts-expect-error
-  topLevelSchema.ast = AST.map(
-    topLevelSchema.ast,
-    (ast) =>
-      AST.isUniqueSymbol(ast)
-        ? AST.setAnnotation(
-          AST.createSuspend(() => definitionSchemas[String(ast.symbol.description)].ast),
-          AST.IdentifierAnnotationId,
-          String(ast.symbol.description)
-        )
-        : ast
+  const a = isJsonSchema7Root(schema) ? (Object.values(schema.$defs || {}).map(traverse)) : [Stream.empty]
+  const allReferences = Stream.mergeAll([traverse(schema), ...a], { "concurrency": "unbounded" }).pipe(
+    Stream.filter(isJsonSchema7Ref),
+    Stream.map((a) => a.$ref),
+    Stream.runCollect,
+    Effect.orDie,
+    Effect.runSync,
+    Chunk.map((ref) => ref.replace(DEFINITION_PREFIX, "")),
+    Chunk.dedupe,
+    Chunk.toArray
   )
 
-  return topLevelSchema
+  const initialReferences: Record<string, UnknownSchema> = Object.fromEntries(
+    allReferences.map((name) => [name, Function.unsafeCoerce(undefined)])
+  )
+
+  // Trivial case when schema is not a root obejct (shouldn't contain any references since it's not a root schema)
+  if (!isJsonSchema7Root(schema)) {
+    if (allReferences.length > 0) {
+      throw new Error("Cannot decode a single schema with references")
+    }
+    return decodeWithReferences(schema, {})
+  }
+
+  // Non trivial case when schema is a root object
+  for (const [name, json] of Object.entries(schema.$defs ?? {}).reverse()) {
+    initialReferences[name] = decodeWithReferences(json, initialReferences)
+  }
+  return decodeWithReferences(schema, initialReferences)
 }

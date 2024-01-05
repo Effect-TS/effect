@@ -921,7 +921,7 @@ export const createSuspend = (
   annotations: Annotated["annotations"] = {}
 ): Suspend => ({
   _tag: "Suspend",
-  f: Internal.memoizeThunk(f),
+  f,
   annotations
 })
 
@@ -1345,7 +1345,7 @@ export const partial = (ast: AST): AST => {
     case "Union":
       return createUnion(ast.types.map((member) => partial(member)))
     case "Suspend":
-      return createSuspend(() => partial(ast.f()))
+      return createSuspend(() => partial(ast.f()), preserveIdentifierAnnotation(ast))
     case "Declaration":
       throw new Error("`partial` cannot handle declarations")
     case "Refinement":
@@ -1384,7 +1384,7 @@ export const required = (ast: AST): AST => {
     case "Union":
       return createUnion(ast.types.map((member) => required(member)))
     case "Suspend":
-      return createSuspend(() => required(ast.f()))
+      return createSuspend(() => required(ast.f()), preserveIdentifierAnnotation(ast))
     case "Declaration":
       throw new Error("`required` cannot handle declarations")
     case "Refinement":

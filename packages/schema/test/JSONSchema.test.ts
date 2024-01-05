@@ -3,10 +3,10 @@ import * as AST from "@effect/schema/AST"
 import * as JSONSchema from "@effect/schema/JSONSchema"
 import * as Schema from "@effect/schema/Schema"
 import AjvNonEsm from "ajv"
-import * as Effect from "effect/Effect"
+// import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as Stream from "effect/Stream"
+// import * as Stream from "effect/Stream"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -32,13 +32,12 @@ const propertyTo = <I, A>(schema: Schema.Schema<I, A>, options?: {
   const jsonSchema = JSONSchema.to(schema)
   // console.log(JSON.stringify(jsonSchema, null, 2))
   const decodedSchema = JSONSchema.decodeSingleSchema(jsonSchema)
-  // console.log(JSON.stringify(decodedSchema.ast, null, 2))
   const decodedIs = Schema.is(decodedSchema)
-  const numberOfJsonSchemaAnnotation = AST.traverse(schema.ast).pipe(
-    Stream.filter((ast) => Option.isSome(AST.getJSONSchemaAnnotation(ast))),
-    Stream.runCount,
-    Effect.runSync
-  )
+  // const numberOfJsonSchemaAnnotation = AST.traverse(schema.ast).pipe(
+  //   Stream.filter((ast) => Option.isSome(AST.getJSONSchemaAnnotation(ast))),
+  //   Stream.runCount,
+  //   Effect.runSync
+  // )
   const validate = new Ajv({ strictTuples: false, allowUnionTypes: true }).compile(
     jsonSchema
   )
@@ -50,10 +49,12 @@ const propertyTo = <I, A>(schema: Schema.Schema<I, A>, options?: {
       (a) =>
         is(a)
         && validate(a)
-        && (numberOfJsonSchemaAnnotation > 0 ? true : decodedIs(a))
+        && decodedIs(a)
     ),
     options?.params
   )
+  // console.log(JSON.stringify(jsonSchema, null, 2))
+  // console.log(JSON.stringify(JSONSchema.to(decodedSchema), null, 2))
   expect(JSONSchema.to(decodedSchema)).toStrictEqual(jsonSchema)
 }
 
