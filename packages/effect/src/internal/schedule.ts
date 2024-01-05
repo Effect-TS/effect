@@ -427,12 +427,10 @@ export const cron = (expression: string): Schedule.Schedule<never, unknown, numb
     [true, [Number.MIN_SAFE_INTEGER, 0, 0]],
     (now, _, [initial, previous]) => {
       if (now < previous[0]) {
-        const [next, start, end] = previous
-        const interval = Interval.make(start, end)
         return core.succeed([
-          [false, [next, start, end]],
-          next,
-          ScheduleDecision.continueWith(interval)
+          [false, previous],
+          previous[0],
+          ScheduleDecision.continueWith(Interval.make(previous[1], previous[2]))
         ])
       }
 
