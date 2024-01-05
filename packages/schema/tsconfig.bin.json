@@ -1,0 +1,22 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "include": [
+        "bin"
+    ],
+    "references": [
+        {
+            "path": "../effect"
+        },
+        {
+            "path": "../platform-node",
+        },
+        {
+            "path": "../cli"
+        }
+    ],
+    "compilerOptions": {
+        "outDir": "build/bin",
+        "tsBuildInfoFile": ".tsbuildinfo/bin.tsbuildinfo",
+        "rootDir": "bin"
+    }
+}

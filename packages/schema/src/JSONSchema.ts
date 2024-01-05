@@ -2,13 +2,17 @@
  * @since 1.0.0
  */
 
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Match from "effect/Match"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
+import * as Stream from "effect/Stream"
 import * as AST from "./AST.js"
 import * as Parser from "./Parser.js"
-import type * as Schema from "./Schema.js"
+import * as Schema from "./Schema.js"
 
 /**
  * @category model
@@ -19,12 +23,26 @@ export interface JsonSchema7Any {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Any = (schema: JsonSchema7): schema is JsonSchema7Any =>
+  (schema as unknown as Record<string, unknown>).$id === "/schemas/any"
+
+/**
  * @category model
  * @since 1.0.0
  */
 export interface JsonSchema7Unknown {
   $id: "/schemas/unknown"
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Unknown = (schema: JsonSchema7): schema is JsonSchema7Unknown =>
+  (schema as unknown as Record<string, unknown>).$id === "/schemas/unknown"
 
 /**
  * @category model
@@ -42,6 +60,13 @@ export interface JsonSchema7object {
  * @category model
  * @since 1.0.0
  */
+export const isJsonSchema7object = (schema: JsonSchema7): schema is JsonSchema7object =>
+  (schema as unknown as Record<string, unknown>).$id === "/schemas/object"
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface JsonSchema7empty {
   $id: "/schemas/{}"
   oneOf: [
@@ -54,9 +79,23 @@ export interface JsonSchema7empty {
  * @category model
  * @since 1.0.0
  */
+export const isJsonSchema7Empty = (schema: JsonSchema7): schema is JsonSchema7empty =>
+  (schema as unknown as Record<string, unknown>).$id === "/schemas/{}"
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface JsonSchema7Ref {
   $ref: string
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Ref = (schema: JsonSchema7): schema is JsonSchema7Ref =>
+  (schema as unknown as Record<string, unknown>).$ref !== undefined
 
 /**
  * @category model
@@ -65,6 +104,13 @@ export interface JsonSchema7Ref {
 export interface JsonSchema7Const {
   const: AST.LiteralValue
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Const = (schema: JsonSchema7): schema is JsonSchema7Const =>
+  (schema as unknown as Record<string, unknown>).const !== undefined
 
 /**
  * @category model
@@ -77,6 +123,13 @@ export interface JsonSchema7String {
   pattern?: string
   description?: string
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7String = (schema: JsonSchema7): schema is JsonSchema7String =>
+  (schema as unknown as Record<string, unknown>).type === "string"
 
 /**
  * @category model
@@ -98,6 +151,13 @@ export interface JsonSchema7Number extends JsonSchema7Numeric {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Number = (schema: JsonSchema7): schema is JsonSchema7Number =>
+  (schema as unknown as Record<string, unknown>).type === "number"
+
+/**
  * @category model
  * @since 1.0.0
  */
@@ -106,12 +166,26 @@ export interface JsonSchema7Integer extends JsonSchema7Numeric {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Integer = (schema: JsonSchema7): schema is JsonSchema7Integer =>
+  (schema as unknown as Record<string, unknown>).type === "integer"
+
+/**
  * @category model
  * @since 1.0.0
  */
 export interface JsonSchema7Boolean {
   type: "boolean"
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Boolean = (schema: JsonSchema7): schema is JsonSchema7Boolean =>
+  (schema as unknown as Record<string, unknown>).type === "boolean"
 
 /**
  * @category model
@@ -126,6 +200,13 @@ export interface JsonSchema7Array {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Array = (schema: JsonSchema7): schema is JsonSchema7Array =>
+  (schema as unknown as Record<string, unknown>).type === "array"
+
+/**
  * @category model
  * @since 1.0.0
  */
@@ -134,12 +215,26 @@ export interface JsonSchema7OneOf {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7OneOf = (schema: JsonSchema7): schema is JsonSchema7OneOf =>
+  (schema as unknown as Record<string, unknown>).oneOf !== undefined
+
+/**
  * @category model
  * @since 1.0.0
  */
 export interface JsonSchema7Enum {
   enum: Array<AST.LiteralValue>
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Enum = (schema: JsonSchema7): schema is JsonSchema7Enum =>
+  (schema as unknown as Record<string, unknown>).enum !== undefined
 
 /**
  * @category model
@@ -154,12 +249,26 @@ export interface JsonSchema7Enums {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Enums = (schema: JsonSchema7): schema is JsonSchema7Enums =>
+  (schema as unknown as Record<string, unknown>).$comment === "/schemas/enums"
+
+/**
  * @category model
  * @since 1.0.0
  */
 export interface JsonSchema7AnyOf {
   anyOf: Array<JsonSchema7>
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7AnyOf = (schema: JsonSchema7): schema is JsonSchema7AnyOf =>
+  (schema as unknown as Record<string, unknown>).anyOf !== undefined
 
 /**
  * @category model
@@ -172,6 +281,13 @@ export interface JsonSchema7Object {
   additionalProperties?: boolean | JsonSchema7
   patternProperties?: Record<string, JsonSchema7>
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Object = (schema: JsonSchema7): schema is JsonSchema7Object =>
+  (schema as unknown as Record<string, unknown>).type === "object"
 
 /**
  * @category model
@@ -203,6 +319,13 @@ export type JsonSchema7Root = JsonSchema7 & {
   $schema?: string
   $defs?: Record<string, JsonSchema7>
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isJsonSchema7Root = (schema: JsonSchema7 | JsonSchema7Root): schema is JsonSchema7Root =>
+  (schema as unknown as Record<string, unknown>).$defs !== undefined
 
 /**
  * @category encoding
@@ -322,7 +445,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
     case "StringKeyword":
       return { type: "string" }
     case "NumberKeyword":
-      return { type: "number" }
+      return { type: Option.getOrElse(AST.getAnnotation(ast, AST.TypeAnnotationId), () => "number") as "number" }
     case "BooleanKeyword":
       return { type: "boolean" }
     case "BigIntKeyword":
@@ -436,6 +559,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
           // ---------------------------------------------
           if (!ast.propertySignatures[i].isOptional) {
             output.required.push(name)
+            output.required.sort((a, b) => a.length - b.length)
           }
         } else {
           throw new Error(`Cannot encode ${String(name)} key to JSON Schema`)
@@ -525,4 +649,263 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
     case "Transform":
       throw new Error("cannot build a JSON Schema for transformations")
   }
+}
+
+// Deocding utility types
+type UnknownSchema = Schema.Schema<unknown, unknown>
+type UnknownSchemaIdentity = (_: UnknownSchema) => UnknownSchema
+
+/**
+ * Decodes a single definition (not a root schema) into an Effect Schema.
+ * Will NOT handle references! References must be updated to their AST values
+ * using a second post processing step once all definitions have been decoded.
+ * Instead, this will temporarily generate unique symbols for references.
+ */
+const decodeSingleDefinition = (input: JsonSchema7): Schema.Schema<unknown, unknown> =>
+  Function.pipe(
+    Match.value(input),
+    // ---------------------------------------------
+    // Trivial cases
+    // ---------------------------------------------
+    Match.when(isJsonSchema7Any, () => Schema.any),
+    Match.when(isJsonSchema7object, () => Schema.object),
+    Match.when(isJsonSchema7Unknown, () => Schema.unknown),
+    Match.when(isJsonSchema7Boolean, () => Schema.boolean),
+    Match.when(isJsonSchema7Empty, () => Schema.struct({})),
+    Match.when(isJsonSchema7Const, ({ const: const_ }) => Schema.literal(const_)),
+    // ---------------------------------------------
+    // Handle enums
+    // ---------------------------------------------
+    Match.when(isJsonSchema7Enum, ({ enum: enum_ }) =>
+      Schema.union(...ReadonlyArray.map(enum_, (a) => Schema.literal(a)))),
+    Match.when(
+      isJsonSchema7Enums,
+      ({ oneOf }) =>
+        Schema.enums(Object.assign({}, ...oneOf.map(({ const: const_, title }) => ({ [title]: const_ }))))
+    ),
+    // ---------------------------------------------
+    // Hndle numberic types
+    // ---------------------------------------------
+    Match.whenOr(
+      isJsonSchema7Number,
+      isJsonSchema7Integer,
+      ({ exclusiveMaximum: exclusiveMax, exclusiveMinimum: exclusiveMin, maximum: max, minimum: min }) => {
+        const number = isJsonSchema7Integer(input) ? Schema.int()(Schema.number) : Schema.number
+        const lessThanOrEqualTo = Predicate.isNullable(min) ? Function.identity : Schema.greaterThanOrEqualTo(min)
+        const greaterThanOrEqualTo = Predicate.isNullable(max) ? Function.identity : Schema.lessThanOrEqualTo(max)
+        const lessThan = Predicate.isNullable(exclusiveMin) ? Function.identity : Schema.greaterThan(exclusiveMin)
+        const greaterThan = Predicate.isNullable(exclusiveMax) ? Function.identity : Schema.lessThan(exclusiveMax)
+        return Function.flow(lessThanOrEqualTo, greaterThanOrEqualTo, lessThan, greaterThan)(number)
+      }
+    ),
+    // ---------------------------------------------
+    // Handle string types
+    // ---------------------------------------------
+    Match.when(isJsonSchema7String, ({ description, maxLength, minLength, pattern }) => {
+      const withMaxLength = Predicate.isNullable(maxLength) ? Function.identity : Schema.maxLength(maxLength)
+      const withMinLength = Predicate.isNullable(minLength) ? Function.identity : Schema.minLength(minLength)
+      const withPattern = Predicate.isNullable(pattern) ? Function.identity : Schema.pattern(new RegExp(pattern))
+      const withDescription = Predicate.isNullable(description) ? Function.identity : Schema.description(description)
+      return Function.flow(withMaxLength, withMinLength, withPattern, withDescription)(Schema.string)
+    }),
+    // ---------------------------------------------
+    // Handle objects (will do recursive calls for the properties)
+    // ---------------------------------------------
+    Match.when(isJsonSchema7Object, ({ additionalProperties, patternProperties, properties, required }) => {
+      const fields = Object.entries(properties).map(([name, property]) => {
+        const isRequired = required.includes(name)
+        const decodedProperty = decodeSingleDefinition(property)
+        const withOptional = isRequired
+          ? Schema.required(decodedProperty)
+          : Schema.optional(decodedProperty, { exact: true }) // FIXME: How do I know if this is "exact" / will it always be "exact" here?
+        return [name, withOptional] as const
+      })
+
+      const initialStruct = Schema.struct(Object.fromEntries(fields)) as UnknownSchema
+      const hasPatternProperties = Predicate.isNotNullable(patternProperties) && Object.keys(patternProperties).length
+      const hasUnknownAdditionalProperties = additionalProperties === true
+      const hasKnownAdditionalProperties = Predicate.isNotUndefined(additionalProperties) &&
+        !Predicate.isBoolean(additionalProperties) && Object.keys(additionalProperties).length
+
+      const withPattern: UnknownSchemaIdentity = hasPatternProperties
+        ? Schema.extend(
+          Schema.record(
+            Schema.string.pipe(Schema.pattern(new RegExp(Object.keys(patternProperties)[0]!))),
+            decodeSingleDefinition(patternProperties[Object.keys(patternProperties)[0]!])
+          )
+        ) as UnknownSchemaIdentity
+        : Function.identity as UnknownSchemaIdentity
+
+      const withUnknownAdditional = hasUnknownAdditionalProperties
+        ? Schema.extend(Schema.record(Schema.string, Schema.unknown)) as UnknownSchemaIdentity
+        : Function.identity as UnknownSchemaIdentity
+
+      const withKnownAdditional = hasKnownAdditionalProperties
+        ? Schema.extend(
+          Schema.record(Schema.string, decodeSingleDefinition(additionalProperties))
+        ) as UnknownSchemaIdentity
+        : Function.identity as UnknownSchemaIdentity
+
+      return Function.flow(withPattern, withUnknownAdditional, withKnownAdditional)(initialStruct)
+    }),
+    // ---------------------------------------------
+    // Handle arrays and tuples (will do recursive call for the inner type)
+    // ---------------------------------------------
+    Match.when(isJsonSchema7Array, ({ additionalItems, items, maxItems: _maxItems, minItems }) => {
+      if (!items) {
+        return Schema.tuple()
+      }
+
+      const itemsArray = Array.isArray(items) ? items : [items]
+      if (Predicate.isUndefined(minItems)) {
+        return Schema.array(decodeSingleDefinition(itemsArray[0]))
+      }
+
+      const [elements, optionalElements] = Function.pipe(
+        itemsArray,
+        ReadonlyArray.map(decodeSingleDefinition),
+        ReadonlyArray.splitAt(minItems ?? 0)
+      )
+
+      const applyOptionalElements = Stream.fromIterable(optionalElements).pipe(
+        Stream.map(Schema.optionalElement),
+        Stream.runFold(
+          Function.identity as (_: Schema.Schema<any, any>) => Schema.Schema<any, any>,
+          (state, a) => Function.compose(state, a)
+        ),
+        Effect.runSync
+      )
+
+      const applyRest: (_: Schema.Schema<any, any>) => Schema.Schema<any, any> = additionalItems === true
+        ? Schema.rest(Schema.unknown)
+        : additionalItems
+        ? Schema.rest(decodeSingleDefinition(additionalItems))
+        : Function.identity
+
+      return Schema.tuple(...elements).pipe(applyOptionalElements).pipe(applyRest)
+    }),
+    // ---------------------------------------------
+    // Handle unions (will do recursive calls for the inner types)
+    // ---------------------------------------------
+    Match.when(isJsonSchema7AnyOf, ({ anyOf }) => Schema.union(...anyOf.map((x) => decodeSingleDefinition(x)))),
+    Match.when(isJsonSchema7OneOf, ({ oneOf }) => Schema.union(...oneOf.map(decodeSingleDefinition))),
+    // ---------------------------------------------
+    // Handle references (we will update this later)
+    // ---------------------------------------------
+    // TODO: This feels a bit hacky, can you think of any better ways to do this?
+    Match.when(
+      isJsonSchema7Ref,
+      ({ $ref }) => Schema.uniqueSymbol(Symbol.for($ref.replace(DEFINITION_PREFIX, "")))
+    ),
+    // ---------------------------------------------
+    // Handle unknowns (malformed json schemas that can't be parsed)
+    // ---------------------------------------------
+    Match.orElse(() => {
+      throw new Error(`Cannot convert ${JSON.stringify(input)} to Effect Schema`)
+    }),
+    // ---------------------------------------------
+    // Add description and example annotations
+    // ---------------------------------------------
+    (schema) => {
+      const record = input as unknown as Record<string, unknown>
+      const withDescription = Predicate.isNotNullable(record.description) && Predicate.isString(record.description)
+        ? Schema.description(record.description)
+        : Function.identity
+      const withExamples = Predicate.isNotNullable(record.examples) && Predicate.isString(record.examples)
+        ? Schema.examples([record.examples])
+        : Function.identity
+
+      return Function.flow(withDescription, withExamples)(schema as UnknownSchema)
+    }
+  )
+
+/**
+ * Traverses the AST and updates any references to their decoded values.
+ * FIXME: This feels a bit hacky since we're messing with references but
+ * I can't think of any other way to make this work. What do you think?
+ */
+const updateAllReferencesInPlace = (
+  definitions: Record<string, Schema.Schema<unknown, unknown>>
+) => {
+  for (const [name, schema] of Object.entries(definitions)) {
+    // @ts-expect-error
+    schema.ast = AST.map(
+      schema.ast,
+      (ast) =>
+        AST.isUniqueSymbol(ast) && ast.symbol.description !== name
+          ? AST.setAnnotation(
+            AST.createSuspend(() => definitions[String(ast.symbol.description)].ast),
+            AST.IdentifierAnnotationId,
+            String(ast.symbol.description)
+          )
+          : AST.isUniqueSymbol(ast) && ast.symbol.description === name
+          ? AST.setAnnotation(
+            AST.createSuspend(() => definitions[String(ast.symbol.description)].ast),
+            AST.IdentifierAnnotationId,
+            name
+          )
+          : ast
+    )
+  }
+}
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const decodeMultiSchema = (schema: JsonSchema7Root): Record<string, Schema.Schema<unknown, unknown>> => {
+  const definitionSchemas = Object.fromEntries(
+    Object.entries(schema.$defs ?? {}).map(([name, schema]) => [name, decodeSingleDefinition(schema)] as const)
+  )
+  updateAllReferencesInPlace(definitionSchemas)
+  return definitionSchemas
+}
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const decodeSingleSchema = (schema: JsonSchema7Root | JsonSchema7): Schema.Schema<unknown, unknown> => {
+  // Trivial case (shouldn't contain any references since it's not a root schema)
+  if (!isJsonSchema7Root(schema)) {
+    const generatedSchema = decodeSingleDefinition(schema)
+    const numberOfUniqueSymbols = AST.traverse(generatedSchema.ast).pipe(
+      Stream.filter(AST.isUniqueSymbol),
+      Stream.runCount,
+      Effect.runSync
+    )
+
+    if (numberOfUniqueSymbols > 0) {
+      throw new Error("Cannot decode a single schema with references")
+    } else {
+      return generatedSchema
+    }
+  }
+
+  // Case where schema is a root schema and the top level is a definition
+  const topLevelSchema = decodeSingleDefinition(schema) // This will throw if the top level is not a parsable definition
+  const definitionSchemas = decodeMultiSchema(schema)
+
+  // Short circuit if the top level schema was itself a reference
+  // (nested references will already be handled in decodeMultiSchema)
+  if (AST.isUniqueSymbol(topLevelSchema.ast)) {
+    const reference = String(topLevelSchema.ast.symbol.description)
+    const newSchema = Schema.suspend(() => definitionSchemas[reference]).pipe(Schema.identifier(reference))
+    return newSchema
+  }
+
+  // @ts-expect-error
+  topLevelSchema.ast = AST.map(
+    topLevelSchema.ast,
+    (ast) =>
+      AST.isUniqueSymbol(ast)
+        ? AST.setAnnotation(
+          AST.createSuspend(() => definitionSchemas[String(ast.symbol.description)].ast),
+          AST.IdentifierAnnotationId,
+          String(ast.symbol.description)
+        )
+        : ast
+  )
+
+  return topLevelSchema
 }

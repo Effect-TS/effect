@@ -407,6 +407,12 @@ importers:
 
   packages/schema:
     devDependencies:
+      '@effect/cli':
+        specifier: workspace:^
+        version: link:../cli/dist
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node/dist
       ajv:
         specifier: ^8.12.0
         version: 8.12.0
