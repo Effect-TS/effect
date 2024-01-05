@@ -421,15 +421,15 @@ export const mapInputEffect = dual<
     )))
 
 /** @internal */
-export const cron = (expression: string): Schedule.Schedule<never, unknown, number> => {
+export const cron = (expression: string): Schedule.Schedule<never, unknown, [number, number]> => {
   const parsed = Cron.parse(expression)
-  return makeWithState<[initial: boolean, previous: [number, number, number]], never, unknown, number>(
+  return makeWithState<[boolean, [number, number, number]], never, unknown, [number, number]>(
     [true, [Number.MIN_SAFE_INTEGER, 0, 0]],
     (now, _, [initial, previous]) => {
       if (now < previous[0]) {
         return core.succeed([
           [false, previous],
-          previous[0],
+          [previous[1], previous[2]],
           ScheduleDecision.continueWith(Interval.make(previous[1], previous[2]))
         ])
       }
@@ -454,7 +454,7 @@ export const cron = (expression: string): Schedule.Schedule<never, unknown, numb
       const interval = Interval.make(start, end)
       return core.succeed([
         [false, [next, start, end]],
-        next,
+        [start, end],
         ScheduleDecision.continueWith(interval)
       ])
     }

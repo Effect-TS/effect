@@ -408,14 +408,14 @@ export const count: Schedule<never, unknown, number> = internal.count
 /**
  * Cron schedule that recurs every `minute` that matches the schedule.
  *
- * It triggers at zero second of the minute. Producing the timestamp of the cron window.
+ * It triggers at zero second of the minute. Producing the timestamps of the cron window.
  *
  * NOTE: `expression` parameter is validated lazily. Must be a valid cron expression.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const cron: (expression: string) => Schedule<never, unknown, number> = internal.cron
+export const cron: (expression: string) => Schedule<never, unknown, [number, number]> = internal.cron
 
 /**
  * Cron-like schedule that recurs every specified `day` of month. Won't recur
