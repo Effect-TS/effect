@@ -578,7 +578,7 @@ describe("Schedule", () => {
         const schedule = Schedule.cron("30 4 5,15 * WED")
         yield* $(
           TestClock.currentTimeMillis,
-          Effect.tap((instant) => Ref.update(ref, ReadonlyArray.append(cronTime(new Date(instant))))),
+          Effect.tap((instant) => Ref.update(ref, ReadonlyArray.append(format(instant)))),
           Effect.repeat(schedule),
           Effect.fork
         )
@@ -778,12 +778,12 @@ describe("Schedule", () => {
   })
 })
 
-const cronTime = (value: Date): string => {
-  const date = value.toDateString()
-  const hours = `0${value.getHours()}`.slice(-2)
-  const minutes = `0${value.getMinutes()}`.slice(-2)
-  const seconds = `0${value.getSeconds()}`.slice(-2)
-  return `${date} ${hours}:${minutes}:${seconds}`
+const format = (value: number): string => {
+  const date = new Date(value)
+  const hours = `0${date.getHours()}`.slice(-2)
+  const minutes = `0${date.getMinutes()}`.slice(-2)
+  const seconds = `0${date.getSeconds()}`.slice(-2)
+  return `${date.toDateString()} ${hours}:${minutes}:${seconds}`
 }
 
 const ioSucceed = () => Effect.succeed("OrElse")
