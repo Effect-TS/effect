@@ -13,7 +13,7 @@ Welcome to the documentation for `@effect/schema`, **a library for defining and 
 | Arbitraries     | Generate arbitraries for [fast-check](https://github.com/dubzzz/fast-check) testing.                            |
 | Pretty printing | Support pretty printing for data structures.                                                                    |
 | JSON Schemas    | Create JSON Schemas based on defined schemas.                                                                   |
-| Equivalence     | Create [Equivalences](https://effect-ts.github.io/effect/modules/Equivalence.ts.html) based on defined schemas. |
+| Equivalence     | Create [Equivalences](https://effect-ts.github.io/schema/modules/Equivalence.ts.html) based on defined schemas. |
 
 If you're eager to learn how to define your first schema, jump straight to the [**Basic usage**](#basic-usage) section!
 
