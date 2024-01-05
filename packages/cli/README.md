@@ -59,7 +59,7 @@ All Effect CLI programs ship with several built-in options:
 
 ## API Reference
 
-- https://effect-ts.github.io/cli/docs/modules
+- https://effect-ts.github.io/effect/docs/cli
 
 ## Tutorial
 

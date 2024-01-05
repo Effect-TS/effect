@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/KeyValueStore`](https://effect-ts.github.io/platform/platform/KeyValueStore.ts.html).
+ * Also includes exports from [`@effect/platform/KeyValueStore`](https://effect-ts.github.io/effect/platform/KeyValueStore.ts.html).
  */
 import * as internal from "./internal/keyValueStore.js"
 
