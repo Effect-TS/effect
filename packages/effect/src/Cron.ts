@@ -345,26 +345,17 @@ export const sequence = function*(cron: Cron, now?: Date): IterableIterator<Date
  * @category instances
  * @since 2.0.0
  */
-export const Equivalence: equivalence.Equivalence<Cron> = equivalence.make((self, that) => {
-  const eq = equivalence.array(equivalence.number)
-  if (!eq(ReadonlyArray.fromIterable(self.minutes), ReadonlyArray.fromIterable(that.minutes))) {
-    return false
-  }
-  if (!eq(ReadonlyArray.fromIterable(self.hours), ReadonlyArray.fromIterable(that.hours))) {
-    return false
-  }
-  if (!eq(ReadonlyArray.fromIterable(self.days), ReadonlyArray.fromIterable(that.days))) {
-    return false
-  }
-  if (!eq(ReadonlyArray.fromIterable(self.months), ReadonlyArray.fromIterable(that.months))) {
-    return false
-  }
-  if (!eq(ReadonlyArray.fromIterable(self.weekdays), ReadonlyArray.fromIterable(that.weekdays))) {
-    return false
-  }
+export const Equivalence: equivalence.Equivalence<Cron> = equivalence.make((self, that) =>
+  restrictionsEquals(self.minutes, that.minutes) &&
+  restrictionsEquals(self.hours, that.hours) &&
+  restrictionsEquals(self.days, that.days) &&
+  restrictionsEquals(self.months, that.months) &&
+  restrictionsEquals(self.weekdays, that.weekdays)
+)
 
-  return true
-})
+const restrictionsArrayEquals = equivalence.array(equivalence.number)
+const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>): boolean =>
+  restrictionsArrayEquals(ReadonlyArray.fromIterable(self), ReadonlyArray.fromIterable(that))
 
 /**
  * Checks if two `Cron`s are equal.
