@@ -920,7 +920,7 @@ As seen in the example, the JSON Schema annotations are merged with the base JSO
 
 ## Generating Equivalences
 
-The `to` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/effect/modules/Equivalence.ts.html) based on a schema definition:
+The `to` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/schema/modules/Equivalence.ts.html) based on a schema definition:
 
 ```ts
 import * as S from "@effect/schema/Schema";
