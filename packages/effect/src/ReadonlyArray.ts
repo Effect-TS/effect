@@ -559,9 +559,9 @@ export const takeRight: {
  * @since 2.0.0
  */
 export const takeWhile: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Array<B>
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Array<B>
   <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Array<B>
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Array<B>
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Array<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A>
 } = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A> => {
   let i = 0
@@ -598,10 +598,13 @@ const spanIndex = <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean
  */
 export const span: {
   <C extends A, B extends A, A = C>(
-    refinement: Refinement<A, B>
+    refinement: (a: A, i: number) => a is B
   ): (self: Iterable<C>) => [init: Array<B>, rest: Array<Exclude<C, B>>]
   <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [init: Array<B>, rest: Array<B>]
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: Array<B>, rest: Array<Exclude<A, B>>]
+  <A, B extends A>(
+    self: Iterable<A>,
+    refinement: (a: A, i: number) => a is B
+  ): [init: Array<B>, rest: Array<Exclude<A, B>>]
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [init: Array<A>, rest: Array<A>]
 } = dual(
   2,
@@ -1851,9 +1854,9 @@ export const liftEither = <A extends Array<unknown>, E, B>(
  * @since 2.0.0
  */
 export const every: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: ReadonlyArray<A>) => self is ReadonlyArray<B>
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: ReadonlyArray<A>) => self is ReadonlyArray<B>
   <A>(predicate: (a: A, i: number) => boolean): (self: ReadonlyArray<A>) => boolean
-  <A, B extends A>(self: ReadonlyArray<A>, refinement: Refinement<A, B>): self is ReadonlyArray<B>
+  <A, B extends A>(self: ReadonlyArray<A>, refinement: (a: A, i: number) => a is B): self is ReadonlyArray<B>
   <A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): boolean
 } = dual(
   2,
