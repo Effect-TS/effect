@@ -2785,6 +2785,65 @@ import * as S from "@effect/schema/Schema";
 const Email = S.pattern(/^(?!\.)(?!.*\.\.)([A-Z0-9_+-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i);
 ```
 
+## Url
+
+Multiple environments like the Browser or Node provide a built-in `URL` class that can be used to validate URLs. Here we demonstrate how to leverage it to validate if a string is a valid URL.
+
+```ts
+import * as S from "@effect/schema/Schema";
+import * as ParseResult from "@effect/schema/ParseResult";
+
+const UrlString: S.Schema<string, string> = S.string.pipe(
+  S.filter((value) => {
+    try {
+      new URL(value);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }),
+);
+
+const parser = S.parseSync(UrlString);
+const validUrlString = parser("https://www.effect.website");
+```
+
+In case you prefer to normalize URLs you can combine `transformOrFail` with `URL`:
+
+```ts
+const NormalizedUrlString: S.Schema<string, string> = S.string.pipe(
+  S.filter((value) => {
+    try {
+      return new URL(value).toString() === value;
+    } catch (_) {
+      return false;
+    }
+  }),
+);
+
+const NormalizeUrlString: S.Schema<string, string> = S.transformOrFail(
+  S.string,
+  NormalizedUrlString,
+  (value, _, ast) =>
+    ParseResult.try({
+      try: () => new URL(value).toString(),
+      catch: (err) =>
+        ParseResult.parseError([
+          ParseResult.type(
+            ast,
+            value,
+            err instanceof Error ? err.message : undefined,
+          ),
+        ]),
+    }),
+  ParseResult.succeed,
+);
+
+const parser = S.parseSync(NormalizeUrlString);
+const validUrlString = parser("https://www.effect.website");
+// validUrlString will be "https://www.effect.website/"
+```
+
 # Technical overview
 
 ## Understanding Schemas
