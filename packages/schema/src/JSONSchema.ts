@@ -446,6 +446,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
     case "StringKeyword":
       return { type: "string" }
     case "NumberKeyword":
+      // Becuase number could be either an integer -> { type: "integer" } or a number -> { type: "number" }
       return { type: Option.getOrElse(AST.getAnnotation(ast, AST.TypeAnnotationId), () => "number") as "number" }
     case "BooleanKeyword":
       return { type: "boolean" }
@@ -673,9 +674,7 @@ export const traverse = (json: JsonSchema7 | JsonSchema7Root): Stream.Stream<nev
       isJsonSchema7Integer,
       isJsonSchema7String,
       isJsonSchema7Ref,
-      () => {
-        return Stream.fromIterable([json])
-      }
+      () => Stream.fromIterable([json])
     ),
     Match.when(
       isJsonSchema7AnyOf,
@@ -721,7 +720,8 @@ export const traverse = (json: JsonSchema7 | JsonSchema7Root): Stream.Stream<nev
         concurrency: "unbounded"
       })
     }),
-    Match.orElse(() => Stream.fail(new Error(`Cannot traverse ${JSON.stringify(json)}`)))
+    Match.when(isJsonSchema7Root, () => Stream.empty),
+    Match.orElse(() => Stream.fail(new Error(`Cannot traverse ${json}`)))
   )
 
 /** @internal */
@@ -781,7 +781,7 @@ const decodeWithReferences = (input: JsonSchema7, references: Record<string, Unk
         const isRequired = required.includes(name)
         const decodedProperty = decodeWithReferences(property, references)
         const withOptional = isRequired
-          ? Schema.required(decodedProperty)
+          ? decodedProperty
           : Schema.optional(decodedProperty, { exact: true }) // FIXME: How do I know if this is "exact" / will it always be "exact" here?
         return [name, withOptional] as const
       })
@@ -892,15 +892,15 @@ const decodeWithReferences = (input: JsonSchema7, references: Record<string, Unk
     }
   )
 
-/**
- * @category decoding
- * @since 1.0.0
- */
-export const decodeSingleSchema = (schema: JsonSchema7Root | JsonSchema7): Schema.Schema<unknown, unknown> => {
-  const a = isJsonSchema7Root(schema) ? (Object.values(schema.$defs || {}).map(traverse)) : [Stream.empty]
-  const allReferences = Stream.mergeAll([traverse(schema), ...a], { "concurrency": "unbounded" }).pipe(
+/** @internal */
+const getAllReferencedSchemaNames = (schema: JsonSchema7 | JsonSchema7Root): Array<string> => {
+  const referencesFromTopLevel = traverse(schema)
+  const referencesFromDefs = isJsonSchema7Root(schema) ? (Object.values(schema.$defs ?? {}).map(traverse)) : []
+  const allReferences = Stream.mergeAll([referencesFromTopLevel, ...referencesFromDefs], { "concurrency": "unbounded" })
+
+  return allReferences.pipe(
     Stream.filter(isJsonSchema7Ref),
-    Stream.map((a) => a.$ref),
+    Stream.map(({ $ref }) => $ref),
     Stream.runCollect,
     Effect.orDie,
     Effect.runSync,
@@ -908,24 +908,6 @@ export const decodeSingleSchema = (schema: JsonSchema7Root | JsonSchema7): Schem
     Chunk.dedupe,
     Chunk.toArray
   )
-
-  const initialReferences: Record<string, UnknownSchema> = Object.fromEntries(
-    allReferences.map((name) => [name, Function.unsafeCoerce(undefined)])
-  )
-
-  // Trivial case when schema is not a root obejct (shouldn't contain any references since it's not a root schema)
-  if (!isJsonSchema7Root(schema)) {
-    if (allReferences.length > 0) {
-      throw new Error("Cannot decode a single schema with references")
-    }
-    return decodeWithReferences(schema, {})
-  }
-
-  // Non trivial case when schema is a root object
-  for (const [name, json] of Object.entries(schema.$defs ?? {}).reverse()) {
-    initialReferences[name] = decodeWithReferences(json, initialReferences)
-  }
-  return decodeWithReferences(schema, initialReferences)
 }
 
 /**
@@ -933,25 +915,33 @@ export const decodeSingleSchema = (schema: JsonSchema7Root | JsonSchema7): Schem
  * @since 1.0.0
  */
 export const decodeMultiSchema = (schema: JsonSchema7Root): Record<string, UnknownSchema> => {
-  const a = isJsonSchema7Root(schema) ? (Object.values(schema.$defs || {}).map(traverse)) : [Stream.empty]
-  const allReferences = Stream.mergeAll([traverse(schema), ...a], { "concurrency": "unbounded" }).pipe(
-    Stream.filter(isJsonSchema7Ref),
-    Stream.map((a) => a.$ref),
-    Stream.runCollect,
-    Effect.orDie,
-    Effect.runSync,
-    Chunk.map((ref) => ref.replace(DEFINITION_PREFIX, "")),
-    Chunk.dedupe,
-    Chunk.toArray
-  )
-
+  const allReferences = getAllReferencedSchemaNames(schema)
   const initialReferences: Record<string, UnknownSchema> = Object.fromEntries(
     allReferences.map((name) => [name, Function.unsafeCoerce(undefined)])
   )
 
-  for (const [name, json] of Object.entries(schema.$defs ?? {}).reverse()) {
+  for (const [name, json] of Object.entries(schema.$defs ?? {})) {
     initialReferences[name] = decodeWithReferences(json, initialReferences)
   }
 
   return initialReferences
+}
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const decodeSingleSchema = (schema: JsonSchema7Root | JsonSchema7): Schema.Schema<unknown, unknown> => {
+  // Trivial case when schema is not a root obejct (shouldn't contain any references since it's not a root schema)
+  if (!isJsonSchema7Root(schema)) {
+    const allReferences = getAllReferencedSchemaNames(schema)
+    if (allReferences.length > 0) {
+      throw new Error("Cannot decode a single schema with references")
+    }
+    return decodeWithReferences(schema, {})
+  }
+
+  // Non trivial case when schema is a root object
+  const initialReferences = decodeMultiSchema(schema)
+  return decodeWithReferences(schema, initialReferences)
 }

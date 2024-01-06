@@ -6,6 +6,8 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Match from "effect/Match"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
+import * as String from "effect/String"
 import * as AST from "../src/AST.js"
 import * as JsonSchema from "../src/JSONSchema.js"
 
@@ -18,12 +20,15 @@ import * as JsonSchema from "../src/JSONSchema.js"
  * in your JSON schema. To solve this, we keep track of any JSON schema references
  * as dependencies and then we can sort all the generated schemas later
  */
-const AstToTs = (ast: AST.AST): readonly [thisLevel: string, dependencies: Set<string>] =>
+const AstToTs = (ast: AST.AST): { code: string; dependencies?: Set<string> | undefined } =>
   Function.pipe(
     Match.value(ast),
-    // These translate directly
+    // ---------------------------------------------
+    // Trivial cases
+    // ---------------------------------------------
     Match.whenOr(
       AST.isAnyKeyword,
+      AST.isVoidKeyword,
       AST.isNeverKeyword,
       AST.isBigIntKeyword,
       AST.isNumberKeyword,
@@ -32,61 +37,62 @@ const AstToTs = (ast: AST.AST): readonly [thisLevel: string, dependencies: Set<s
       AST.isSymbolKeyword,
       AST.isBooleanKeyword,
       AST.isUnknownKeyword,
-      (ast_) => [`S.${Option.getOrThrow(AST.getTitleAnnotation(ast_))}`, new Set<string>()] as const
+      AST.isUndefinedKeyword,
+      (ast_) => ({ code: `S.${Option.getOrThrow(AST.getTitleAnnotation(ast_))}` })
     ),
+    // ---------------------------------------------
+    // Non-trivial cases
+    // ---------------------------------------------
+    Match.when(AST.isTransform, () => ({ code: "transform" })),
+    Match.when(AST.isDeclaration, () => ({ code: "declaration" })),
+    Match.when(AST.isTemplateLiteral, () => ({ code: "templateLiteral" })),
+    Match.when(AST.isEnums, ({ enums: _enums }) => ({ code: "enums" })),
+    Match.when(AST.isUniqueSymbol, ({ symbol: _symbol }) => ({ code: "uniqueSymbol" })),
+    Match.when(AST.isLiteral, ({ literal }) => {
+      if (Predicate.isString(literal)) return { code: `S.literal("${literal}")` }
+      else if (Predicate.isBigInt(literal)) return { code: `S.literal(${literal}n)` }
+      else return { code: `S.literal(${literal})` }
+    }),
+    Match.when(AST.isSuspend, () => {
+      const identifier = AST.getIdentifierAnnotation(ast).pipe(Option.getOrThrow)
+      return { code: `S.suspend(() => ${identifier})`, dependencies: new Set([identifier]) }
+    }),
+    Match.when(AST.isRefinement, () => {
+      if (AST.getTitleAnnotation(ast).pipe(Option.isSome)) {
+        return { code: `S.${AST.getTitleAnnotation(ast).pipe(Option.getOrThrow)}` }
+      }
+      return { code: "S.unknown" }
+    }),
+    // ---------------------------------------------
+    // Recusive cases
+    // ---------------------------------------------
     Match.when(
       AST.isUnion,
-      // (union) => [`S.union(${union.types.map(AstToTs).join(", ")})`, new Set<string>()] as const
-      () => ["S.unknown", new Set<string>()] as const
+      (union) => {
+        const nested = union.types.map((_) => AstToTs(_))
+        return {
+          code: `S.union(${nested.map(({ code }) => code).join(", ")})`,
+          dependencies: new Set(nested.flatMap(({ dependencies }) => [...(dependencies ?? [])]))
+        }
+      }
     ),
-    // This really just does arrays right now.
-    // TODO: I think I should be handling the tuple.elements somehow?
     Match.when(
       AST.isTuple,
       (tuple) => {
         if (tuple.elements.length > 0) {
-          throw new Error("Tuples are not supported")
+          return { "code": "S.tuple()" }
         }
-        const a = Option.getOrThrow(tuple.rest).map(AstToTs).map((x) => ({ code: x[0], deps: x[1] }))
-        const nestedCode = a.map((x) => x.code).join(", ")
-        const nestedDependencies = new Set(...a.map((x) => x.deps))
-        return [`S.array(${nestedCode})`, nestedDependencies] as const
+        const nestedRest = Option.getOrThrow(tuple.rest).map((_) => AstToTs(_))
+        return {
+          code: `S.array(${nestedRest.map(({ code }) => code).join(", ")})`,
+          dependencies: new Set(nestedRest.flatMap(({ dependencies }) => [...(dependencies ?? [])]))
+        }
       }
     ),
-    // FIXME: How should this be hadnled?
-    Match.whenOr(
-      AST.isVoidKeyword,
-      AST.isUndefinedKeyword,
-      () => {
-        throw new Error("void and undefined are not supported")
-      }
-    ),
-    // Literals could be references to other schemas, in which case we need to add them as a dependency
-    Match.when(AST.isLiteral, ({ literal }) => {
-      const isRef = literal !== null && literal.toString().startsWith(JsonSchema.DEFINITION_PREFIX)
-      return isRef
-        ? [
-          `${literal.toString().replace(JsonSchema.DEFINITION_PREFIX, "")}`,
-          new Set<string>([literal.toString().replace(JsonSchema.DEFINITION_PREFIX, "")])
-        ] as const
-        : [
-          `S.literal(${literal})`,
-          new Set<string>()
-        ] as const
-    }),
-    Match.when(AST.isEnums, () => ["enums", new Set<string>()] as const),
-    Match.when(AST.isSuspend, () => ["suspend", new Set<string>()] as const),
-    Match.when(AST.isTransform, () => ["transform", new Set<string>()] as const),
-    Match.when(AST.isRefinement, () => ["refinement", new Set<string>()] as const),
-    Match.when(AST.isDeclaration, () => ["declaration", new Set<string>()] as const),
-    Match.when(AST.isUniqueSymbol, () => ["uniqueSymbol", new Set<string>()] as const),
-    Match.when(AST.isTemplateLiteral, () => ["templateLiteral", new Set<string>()] as const),
-    // This is the recursive case where we need to combine the dependencies and hoisted values from the children
-    Match.when(AST.isTypeLiteral, (ast_) => {
-      const asts = ast_.propertySignatures.map((property) => [property, ...AstToTs(property.type)] as const)
+    Match.when(AST.isTypeLiteral, ({ indexSignatures: _indexSignatures, propertySignatures }) => {
+      const asts = propertySignatures.map((property) => ({ property, ...AstToTs(property.type) }))
 
-      const allDependencies = new Set(asts.flatMap((x) => [...x[2]]))
-      const allFields = asts.flatMap(([property, code]) =>
+      const allFields = asts.flatMap(({ code, property }) =>
         `/** ${Option.getOrUndefined(AST.getDescriptionAnnotation(property.type))} */\n${
           property.name.toString().includes(".") || property.name.toString().includes("-")
             ? `"${property.name.toString()}"`
@@ -94,7 +100,12 @@ const AstToTs = (ast: AST.AST): readonly [thisLevel: string, dependencies: Set<s
         }: ${code}`
       )
 
-      return [`S.struct({\n${allFields.join(",\n")}\n})`, allDependencies] as const
+      const a = [...String.linesIterator(allFields.join(",\n"))].map((x) => `${" ".repeat(2)}${x}`).join("\n")
+
+      return {
+        code: `S.struct({\n${a}\n})`,
+        dependencies: new Set(asts.flatMap(({ dependencies }) => [...(dependencies ?? [])]))
+      }
     }),
     Match.exhaustive
   )
@@ -138,14 +149,19 @@ const command = Cli.Command.make(
 
       const data = yield* _(fs.readFileString(file))
       const jsonSchema7: JsonSchema.JsonSchema7Root = JSON.parse(data) as unknown as JsonSchema.JsonSchema7Root
-      const asts = Object.entries(jsonSchema7.$defs!).map(([key, value]) => [key, JsonSchema.decode(value)] as const)
+      const schemaEntries = Object.entries(JsonSchema.decodeMultiSchema(jsonSchema7)) // .filter(([name]) => name === "GenericResources")
 
-      const test = asts.map(([definitionName, ast]) => [definitionName, AstToTs(ast.ast)] as const).map((
-        [definitionName, [code, dependencies]]
-      ) => ({ name: definitionName, code, dependencies }))
-      const test2 = orderSchemas(test).map((x) => `export const ${x.name} = ${x.code}`).join("\n\n")
+      const schemas = schemaEntries.map(([definitionName, schema]) => ({
+        name: definitionName,
+        ...AstToTs(schema.ast)
+      })).map(({ dependencies, ...rest }) => ({ dependencies: dependencies ?? new Set(), ...rest }))
+      const orderedSchemas = orderSchemas(schemas).map((x) =>
+        x.code.startsWith("S.struct")
+          ? `export class ${x.name} extends S.Class<${x.name}>()${x.code.slice("S.struct".length)} {}`
+          : `export const ${x.name} = ${x.code}`
+      ).join("\n\n")
 
-      yield* _(fs.writeFileString("./bin/test.ts", "import * as S from \"../src/Schema.js\"\n\n" + test2))
+      yield* _(fs.writeFileString("./bin/test.ts", "import * as S from \"../src/Schema.js\"\n\n" + orderedSchemas))
     })
 )
 
