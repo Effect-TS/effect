@@ -3,6 +3,7 @@ import * as Equal from "../Equal.js"
 import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import type * as Ordering from "../Ordering.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as TR from "../Trie.js"
@@ -142,6 +143,8 @@ export const insert = dual<
 >(3, <V>(self: TR.Trie<V>, key: string, value: V) => {
   if (key.length === 0) return self
 
+  // -1:left | 0:mid | 1:right
+  const d_stack: Array<Ordering.Ordering> = []
   const n_stack: Array<Node.Node<V>> = []
   let n: Node.Node<V> = (self as TrieImpl<V>)._root ?? new Node.Node(key[0])
   let cIndex = 0
@@ -150,18 +153,16 @@ export const insert = dual<
     const c = key[cIndex]
     n_stack.push(n)
     if (c > n.key) {
+      d_stack.push(1)
       if (n.right == null) {
-        const newNode = new Node.Node<V>(c)
-        n.right = newNode // ⛔️
-        n = newNode
+        n = new Node.Node<V>(c)
       } else {
         n = n.right
       }
     } else if (c < n.key) {
+      d_stack.push(-1)
       if (n.left == null) {
-        const newNode = new Node.Node<V>(c)
-        n.left = newNode // ⛔️
-        n = newNode
+        n = new Node.Node<V>(c)
       } else {
         n = n.left
       }
@@ -169,14 +170,48 @@ export const insert = dual<
       if (cIndex === key.length - 1) {
         n.value = value
       } else if (n.mid == null) {
-        const newNode = new Node.Node<V>(key[cIndex + 1])
-        n.mid = newNode // ⛔️
-        n = newNode
+        d_stack.push(0)
+        n = new Node.Node<V>(key[cIndex + 1])
       } else {
+        d_stack.push(0)
         n = n.mid
       }
 
       cIndex += 1
+    }
+  }
+
+  // Rebuild path to leaf node (Path-copying immutability)
+  for (let s = n_stack.length - 2; s >= 0; --s) {
+    const n2 = n_stack[s]
+    const d = d_stack[s]
+    if (d === -1) {
+      // left
+      n_stack[s] = new Node.Node(
+        n2.key,
+        n2.value,
+        n_stack[s + 1],
+        n2.mid,
+        n2.right
+      )
+    } else if (d === 1) {
+      // right
+      n_stack[s] = new Node.Node(
+        n2.key,
+        n2.value,
+        n2.left,
+        n2.mid,
+        n_stack[s + 1]
+      )
+    } else {
+      // mid
+      n_stack[s] = new Node.Node(
+        n2.key,
+        n2.value,
+        n2.right,
+        n_stack[s + 1],
+        n2.right
+      )
     }
   }
 

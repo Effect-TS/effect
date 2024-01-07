@@ -61,17 +61,21 @@ describe("Trie", () => {
     expect(Array.from(trie).length).toBe(0)
   })
 
-  // it("Immutable", () => {
-  //   const trie1 = pipe(
-  //     Trie.empty<number>(),
-  //     Trie.insert("a", 0)
-  //   )
+  it("Immutable", () => {
+    const trie1 = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0)
+    )
 
-  //   const trie2 = trie1.pipe(Trie.insert("b", 1))
+    const trie2 = trie1.pipe(Trie.insert("me", 1))
+    const trie3 = trie2.pipe(Trie.insert("mind", 2))
+    const trie4 = trie3.pipe(Trie.insert("mid", 3))
 
-  //   expect(Array.from(trie1).length).toBe(1)
-  //   expect(Array.from(trie2).length).toBe(2)
-  // })
+    expect(Array.from(trie1).length).toBe(1)
+    expect(Array.from(trie2).length).toBe(2)
+    expect(Array.from(trie3).length).toBe(3)
+    expect(Array.from(trie4).length).toBe(4)
+  })
 
   it("fromIterable [empty]", () => {
     const iterable = [] as const
