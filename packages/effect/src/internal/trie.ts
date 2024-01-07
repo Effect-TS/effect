@@ -1,4 +1,3 @@
-import * as Brand from "../Brand.js"
 import * as Equal from "../Equal.js"
 import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
@@ -15,14 +14,9 @@ const TrieSymbolKey = "effect/Trie"
 export const TrieTypeId: TR.TypeId = Symbol.for(TrieSymbolKey) as TR.TypeId
 
 /** @internal */
-export type TrieKey = string & Brand.Brand<"TrieKey">
-
-/** @internal */
-export const TrieKey = Brand.nominal<TrieKey>()
-
-/** @internal */
 export interface TrieImpl<out V> extends TR.Trie<V> {
   readonly _root: Node.Node<V> | undefined
+  readonly _count: number
 }
 
 const trieVariance = {
@@ -34,7 +28,7 @@ const trieVariance = {
 
 const TrieProto: TR.Trie<unknown> = {
   [TrieTypeId]: trieVariance,
-  [Symbol.iterator]<V>(this: TrieImpl<V>): Iterator<[TrieKey, V]> {
+  [Symbol.iterator]<V>(this: TrieImpl<V>): Iterator<[string, V]> {
     return new TrieIterator(this)
   },
   [Hash.symbol](): number {
@@ -74,10 +68,11 @@ const TrieProto: TR.Trie<unknown> = {
 const makeImpl = <V>(root: Node.Node<V> | undefined): TrieImpl<V> => {
   const trie = Object.create(TrieProto)
   trie._root = root
+  trie._count = root?.count ?? 0
   return trie
 }
 
-class TrieIterator<in out V> implements IterableIterator<[TrieKey, V]> {
+class TrieIterator<in out V> implements IterableIterator<[string, V]> {
   stack: Array<[Node.Node<V>, string]> = []
 
   constructor(readonly trie: TrieImpl<V>) {
@@ -87,14 +82,14 @@ class TrieIterator<in out V> implements IterableIterator<[TrieKey, V]> {
     }
   }
 
-  next(): IteratorResult<[TrieKey, V]> {
+  next(): IteratorResult<[string, V]> {
     while (this.stack.length > 0) {
       const [node, keyString] = this.stack.pop()!
 
       this.addToStack(node, keyString)
 
       if (node.value != null) {
-        return { done: false, value: [TrieKey(keyString + node.key), node.value] }
+        return { done: false, value: [keyString + node.key, node.value] }
       }
     }
 
@@ -113,7 +108,7 @@ class TrieIterator<in out V> implements IterableIterator<[TrieKey, V]> {
     }
   }
 
-  [Symbol.iterator](): IterableIterator<[TrieKey, V]> {
+  [Symbol.iterator](): IterableIterator<[string, V]> {
     return new TrieIterator(this.trie)
   }
 }
@@ -146,7 +141,8 @@ export const insert = dual<
   // -1:left | 0:mid | 1:right
   const d_stack: Array<Ordering.Ordering> = []
   const n_stack: Array<Node.Node<V>> = []
-  let n: Node.Node<V> = (self as TrieImpl<V>)._root ?? new Node.Node(key[0])
+  let n: Node.Node<V> = (self as TrieImpl<V>)._root ?? new Node.Node(key[0], 0)
+  const count = n.count + 1
   let cIndex = 0
 
   while (cIndex < key.length) {
@@ -155,14 +151,14 @@ export const insert = dual<
     if (c > n.key) {
       d_stack.push(1)
       if (n.right == null) {
-        n = new Node.Node<V>(c)
+        n = new Node.Node<V>(c, count)
       } else {
         n = n.right
       }
     } else if (c < n.key) {
       d_stack.push(-1)
       if (n.left == null) {
-        n = new Node.Node<V>(c)
+        n = new Node.Node<V>(c, count)
       } else {
         n = n.left
       }
@@ -171,7 +167,7 @@ export const insert = dual<
         n.value = value
       } else if (n.mid == null) {
         d_stack.push(0)
-        n = new Node.Node<V>(key[cIndex + 1])
+        n = new Node.Node<V>(key[cIndex + 1], count)
       } else {
         d_stack.push(0)
         n = n.mid
@@ -189,6 +185,7 @@ export const insert = dual<
       // left
       n_stack[s] = new Node.Node(
         n2.key,
+        count,
         n2.value,
         n_stack[s + 1],
         n2.mid,
@@ -198,6 +195,7 @@ export const insert = dual<
       // right
       n_stack[s] = new Node.Node(
         n2.key,
+        count,
         n2.value,
         n2.left,
         n2.mid,
@@ -207,6 +205,7 @@ export const insert = dual<
       // mid
       n_stack[s] = new Node.Node(
         n2.key,
+        count,
         n2.value,
         n2.right,
         n_stack[s + 1],
@@ -215,5 +214,9 @@ export const insert = dual<
     }
   }
 
+  n_stack[0].count = count
   return makeImpl(n_stack[0])
 })
+
+/** @internal */
+export const size = <V>(self: TR.Trie<V>): number => (self as TrieImpl<V>)._root?.count ?? 0

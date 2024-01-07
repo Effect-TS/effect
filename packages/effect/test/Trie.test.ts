@@ -1,6 +1,7 @@
+import { deepStrictEqual } from "effect-test/util"
 import { pipe } from "effect/Function"
 import * as Trie from "effect/Trie"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 describe("Trie", () => {
   it("toString", () => {
@@ -53,12 +54,11 @@ describe("Trie", () => {
     expect(inspect(trie)).toEqual(inspect({ _id: "Trie", values: [["a", 0], ["b", 1]] }))
   })
 
-  it("Iterable", () => {
-    const trie = pipe(
-      Trie.empty<string>()
-    )
+  it("iterable empty", () => {
+    const trie = pipe(Trie.empty<string>())
 
-    expect(Array.from(trie).length).toBe(0)
+    assert.strictEqual(Trie.size(trie), 0)
+    deepStrictEqual(Array.from(trie), [])
   })
 
   it("Immutable", () => {
@@ -77,39 +77,48 @@ describe("Trie", () => {
     expect(Array.from(trie4).length).toBe(4)
   })
 
-  it("fromIterable [empty]", () => {
-    const iterable = [] as const
+  it("fromIterable empty", () => {
+    const iterable: Array<[string, number]> = []
     const trie = Trie.fromIterable(iterable)
-    expect(Array.from(trie)).toStrictEqual(iterable)
+    deepStrictEqual(Array.from(trie), iterable)
   })
 
   it("fromIterable [1]", () => {
-    const iterable = [["ca", 0], ["me", 1]] as const
+    const iterable: Array<[string, number]> = [["ca", 0], ["me", 1]]
     const trie = Trie.fromIterable(iterable)
-    expect(Array.from(trie)).toStrictEqual(iterable)
+    deepStrictEqual(Array.from(trie), iterable)
   })
 
   it("fromIterable [2]", () => {
-    const iterable = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]] as const
+    const iterable: Array<[string, number]> = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]]
     const trie = Trie.fromIterable(iterable)
-    expect(Array.from(trie)).toStrictEqual(iterable)
+    deepStrictEqual(Array.from(trie), iterable)
   })
 
   it("fromIterable [3]", () => {
-    const iterable = [["a", 0], ["b", 1]] as const
+    const iterable: Array<[string, number]> = [["a", 0], ["b", 1]]
     const trie = Trie.fromIterable(iterable)
-    expect(Array.from(trie)).toStrictEqual(iterable)
+    deepStrictEqual(Array.from(trie), iterable)
   })
 
   it("fromIterable [4]", () => {
-    const iterable = [["a", 0]] as const
+    const iterable: Array<[string, number]> = [["a", 0]]
     const trie = Trie.fromIterable(iterable)
-    expect(Array.from(trie)).toStrictEqual(iterable)
+    deepStrictEqual(Array.from(trie), iterable)
   })
 
   it("fromIterable [5]", () => {
-    const iterable = [["shells", 0], ["she", 1]] as const
+    const iterable: Array<[string, number]> = [["shells", 0], ["she", 1]]
     const trie = Trie.fromIterable(iterable)
-    expect(Array.from(trie)).toStrictEqual([["she", 1], ["shells", 0]])
+    deepStrictEqual(Array.from(trie), [["she", 1], ["shells", 0]])
+  })
+
+  it("size", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("a", 0),
+      Trie.insert("b", 1)
+    )
+    expect(Trie.size(trie)).toBe(2)
   })
 })

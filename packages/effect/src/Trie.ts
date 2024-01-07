@@ -21,9 +21,9 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Trie<out Value> extends Iterable<[TR.TrieKey, Value]>, Equal, Pipeable, Inspectable {
+export interface Trie<out Value> extends Iterable<[string, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _Key: Types.Invariant<TR.TrieKey>
+    readonly _Key: Types.Invariant<string>
     readonly _Value: Types.Covariant<Value>
   }
 }
@@ -54,3 +54,11 @@ export const insert: {
   <V>(key: string, value: V): (self: Trie<V>) => Trie<V>
   <V>(self: Trie<V>, key: string, value: V): Trie<V>
 } = TR.insert
+
+/**
+ * Returns the size of the tree.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const size: <V>(self: Trie<V>) => number = TR.size
