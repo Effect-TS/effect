@@ -4,6 +4,7 @@
 import type { Equal } from "./Equal.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as TR from "./internal/trie.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Types from "./Types.js"
 
@@ -62,3 +63,14 @@ export const insert: {
  * @category getters
  */
 export const size: <V>(self: Trie<V>) => number = TR.size
+
+/**
+ * Safely lookup the value for the specified key in the `Trie`.
+ *
+ * @since 2.0.0
+ * @category elements
+ */
+export const get: {
+  (key: string): <V>(self: Trie<V>) => Option<V>
+  <V>(self: Trie<V>, key: string): Option<V>
+} = TR.get

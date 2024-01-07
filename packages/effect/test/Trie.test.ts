@@ -1,5 +1,6 @@
 import { deepStrictEqual } from "effect-test/util"
 import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 import * as Trie from "effect/Trie"
 import { assert, describe, expect, it } from "vitest"
 
@@ -120,5 +121,23 @@ describe("Trie", () => {
       Trie.insert("b", 1)
     )
     expect(Trie.size(trie)).toBe(2)
+  })
+
+  it("get", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0),
+      Trie.insert("me", 1),
+      Trie.insert("mind", 2),
+      Trie.insert("mid", 3)
+    )
+    deepStrictEqual(Trie.get(trie, "call"), Option.some(0))
+    deepStrictEqual(Trie.get(trie, "me"), Option.some(1))
+    deepStrictEqual(Trie.get(trie, "mind"), Option.some(2))
+    deepStrictEqual(Trie.get(trie, "mid"), Option.some(3))
+    deepStrictEqual(Trie.get(trie, "cale"), Option.none())
+    deepStrictEqual(Trie.get(trie, "ma"), Option.none())
+    deepStrictEqual(Trie.get(trie, "midn"), Option.none())
+    deepStrictEqual(Trie.get(trie, "mea"), Option.none())
   })
 })

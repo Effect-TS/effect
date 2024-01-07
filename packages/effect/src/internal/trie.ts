@@ -2,6 +2,7 @@ import * as Equal from "../Equal.js"
 import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import * as Option from "../Option.js"
 import type * as Ordering from "../Ordering.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
@@ -220,3 +221,46 @@ export const insert = dual<
 
 /** @internal */
 export const size = <V>(self: TR.Trie<V>): number => (self as TrieImpl<V>)._root?.count ?? 0
+
+/** @internal */
+export const get = dual<
+  (key: string) => <V>(self: TR.Trie<V>) => Option.Option<V>,
+  <V>(self: TR.Trie<V>, key: string) => Option.Option<V>
+>(
+  2,
+  <V>(self: TR.Trie<V>, key: string) => {
+    let n: Node.Node<V> | undefined = (self as TrieImpl<V>)._root
+    if (n == null || key.length === 0) return Option.none()
+    let cIndex = 0
+    while (cIndex < key.length) {
+      const c = key[cIndex]
+      if (c > n.key) {
+        if (n.right == null) {
+          return Option.none()
+        } else {
+          n = n.right
+        }
+      } else if (c < n.key) {
+        if (n.left == null) {
+          return Option.none()
+        } else {
+          n = n.left
+        }
+      } else {
+        if (cIndex === key.length - 1) {
+          if (n.value != null) {
+            return Option.some(n.value)
+          }
+        } else {
+          if (n.mid == null) {
+            return Option.none()
+          } else {
+            n = n.mid
+            cIndex += 1
+          }
+        }
+      }
+    }
+    return Option.none()
+  }
+)
