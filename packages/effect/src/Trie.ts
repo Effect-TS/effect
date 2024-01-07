@@ -74,3 +74,14 @@ export const get: {
   (key: string): <V>(self: Trie<V>) => Option<V>
   <V>(self: Trie<V>, key: string): Option<V>
 } = TR.get
+
+/**
+ * Unsafely lookup the value for the specified key in the `Trie`.
+ *
+ * @since 2.0.0
+ * @category unsafe
+ */
+export const unsafeGet: {
+  (key: string): <V>(self: Trie<V>) => V
+  <V>(self: Trie<V>, key: string): V
+} = TR.unsafeGet

@@ -264,3 +264,15 @@ export const get = dual<
     return Option.none()
   }
 )
+
+/** @internal */
+export const unsafeGet = dual<
+  (key: string) => <V>(self: TR.Trie<V>) => V,
+  <V>(self: TR.Trie<V>, key: string) => V
+>(2, (self, key) => {
+  const element = get(self, key)
+  if (Option.isNone(element)) {
+    throw new Error("Error: Expected trie to contain key")
+  }
+  return element.value
+})

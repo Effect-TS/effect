@@ -140,4 +140,14 @@ describe("Trie", () => {
     deepStrictEqual(Trie.get(trie, "midn"), Option.none())
     deepStrictEqual(Trie.get(trie, "mea"), Option.none())
   })
+
+  it("unsafeGet", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0),
+      Trie.insert("me", 1)
+    )
+
+    assert.throws(() => Trie.unsafeGet(trie, "mae"))
+  })
 })
