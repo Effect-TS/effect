@@ -44,7 +44,7 @@ export const make = <I, R, E, O>(
             return Effect.succeed(req)
           }
 
-          return Effect.map(options.decode!(req[2]), (data) => [req[0], req[1], data])
+          return Effect.map(options.decode!(req[2]), (data) => [req[0], req[1], data, req[3]])
         }) :
         identity,
       Effect.tap((req) => {
@@ -57,7 +57,7 @@ export const make = <I, R, E, O>(
 
         const stream = process(req[2])
 
-        const effect = Effect.isEffect(stream) ?
+        let effect = Effect.isEffect(stream) ?
           Effect.matchCauseEffect(stream, {
             onFailure: (cause) =>
               Either.match(Cause.failureOrCause(cause), {
@@ -118,6 +118,17 @@ export const make = <I, R, E, O>(
               onSuccess: () => backing.send([id, 1])
             })
           )
+
+        if (req[3]) {
+          const [traceId, spanId, sampled] = req[3]
+          effect = Effect.withParentSpan(effect, {
+            _tag: "ExternalSpan",
+            traceId,
+            spanId,
+            sampled,
+            context: Context.empty()
+          })
+        }
 
         return pipe(
           effect,
