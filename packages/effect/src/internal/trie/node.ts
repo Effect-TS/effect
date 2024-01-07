@@ -2,9 +2,9 @@
 export class Node<out V> {
   constructor(
     public key: string, // TODO
-    public value: V,
-    public left: Node<V> | undefined,
-    public mid: Node<V> | undefined,
-    public right: Node<V> | undefined
+    public value: V | undefined = undefined,
+    public left: Node<V> | undefined = undefined,
+    public mid: Node<V> | undefined = undefined,
+    public right: Node<V> | undefined = undefined
   ) {}
 }
