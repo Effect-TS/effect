@@ -2,12 +2,14 @@
  * @since 1.0.0
  */
 
-import { dual, identity, pipe } from "effect/Function"
+import * as Function from "effect/Function"
+import * as EffectMatch from "effect/Match"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as EffectString from "effect/String"
 import * as Internal from "./internal/ast.js"
 import type * as ParseResult from "./ParseResult.js"
 
@@ -139,6 +141,18 @@ export const DocumentationAnnotationId = Symbol.for("@effect/schema/annotation/D
  * @category annotations
  * @since 1.0.0
  */
+export type CodegenAnnotation = string
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const CodegenAnnotationId = Symbol.for("@effect/schema/annotation/Codegen")
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
 export interface Annotations {
   readonly [_: symbol]: unknown
 }
@@ -158,7 +172,7 @@ export interface Annotated {
 export const getAnnotation: {
   <A>(key: symbol): (annotated: Annotated) => Option.Option<A>
   <A>(annotated: Annotated, key: symbol): Option.Option<A>
-} = dual(
+} = Function.dual(
   2,
   <A>(annotated: Annotated, key: symbol): Option.Option<A> =>
     Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
@@ -220,6 +234,14 @@ export const getDefaultAnnotation = getAnnotation<DefaultAnnotation>(
  */
 export const getJSONSchemaAnnotation = getAnnotation<JSONSchemaAnnotation>(
   JSONSchemaAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getCodegenAnnotation = getAnnotation<CodegenAnnotation>(
+  CodegenAnnotationId
 )
 
 // -------------------------------------------------------------------------------------
@@ -1229,7 +1251,7 @@ export const appendElement = (
   if (ast.elements.some((e) => e.isOptional) && !newElement.isOptional) {
     throw new Error("A required element cannot follow an optional element. ts(1257)")
   }
-  return pipe(
+  return Function.pipe(
     ast.rest,
     Option.match({
       onNone: () => createTuple([...ast.elements, newElement], Option.none(), ast.isReadonly),
@@ -1330,7 +1352,7 @@ export const partial = (ast: AST): AST => {
     case "Tuple":
       return createTuple(
         ast.elements.map((e) => createElement(e.type, true)),
-        pipe(
+        Function.pipe(
           ast.rest,
           Option.map((rest) => [createUnion([...rest, undefinedKeyword])])
         ),
@@ -1366,7 +1388,7 @@ export const required = (ast: AST): AST => {
     case "Tuple":
       return createTuple(
         ast.elements.map((e) => createElement(e.type, false)),
-        pipe(
+        Function.pipe(
           ast.rest,
           Option.map((rest) => {
             const u = createUnion([...rest])
@@ -1576,7 +1598,7 @@ export const getCardinality = (ast: AST): number => {
 }
 
 const sortPropertySignatures = ReadonlyArray.sort(
-  pipe(Number.Order, Order.mapInput((ps: PropertySignature) => getCardinality(ps.type)))
+  Function.pipe(Number.Order, Order.mapInput((ps: PropertySignature) => getCardinality(ps.type)))
 )
 
 type Weight = readonly [number, number, number]
@@ -1635,7 +1657,7 @@ const sortUnionMembers: (self: Members<AST>) => Members<AST> = ReadonlyArray.sor
 ) as any
 
 const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
-  let out = pipe(
+  let out = Function.pipe(
     candidates,
     ReadonlyArray.flatMap((ast: AST): ReadonlyArray<AST> => {
       switch (ast._tag) {
@@ -1717,8 +1739,8 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
             key,
             name,
             createFinalPropertySignatureTransformation(
-              identity,
-              identity
+              Function.identity,
+              Function.identity
             )
           ))
         }
@@ -1750,4 +1772,478 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
       return compose(ast, rename(to(ast), mapping))
   }
   throw new Error(`cannot rename ${ast._tag}`)
+}
+
+/**
+ * A core part of generating TS code from the AST is being able to
+ * walk/traverse the AST - after all, we need to know what the AST
+ * looks like in order to generate the code. Since the AST can be
+ * circular, traversing the AST unconstrained becomes unsafe and can
+ * lead to infinite loops. To avoid this, we define "boundries"
+ * in the AST. A boundry is a node in the AST where, once "crossed",
+ * it is possible to reference a previously visited node. If you follow
+ * the rules of TS, it is currently only possible to create this type
+ * of circular reference using a suspend node so that becomes our base
+ * boundry case. We will also define an additional boundry case, when a
+ * node has an identifier annotation, which will come in handy later.
+ *
+ * @internal
+ */
+export const isBoundry = Predicate.or(isSuspend, Function.compose(getIdentifierAnnotation, Option.isSome))
+
+/**
+ * safely walks as far as it can through the AST which means stopping
+ * at suspend nodes and nodes with an identifier annotation. Additionally,
+ * the "perimiter" nodes can be omited from the returned nodes using a flag
+ *
+ * @internal
+ */
+export const traverseToBoundries = (
+  ast: AST,
+  options?:
+    | {
+      ignoreTopLevelIdentifierBoundry?: boolean | undefined
+    }
+    | undefined
+): ReadonlyArray<AST> => {
+  const traverseToBoundries_ = (ast_: AST): ReadonlyArray<AST> => {
+    const atTopLevel = ast_ === ast
+    const isIdentifierBoundry = Predicate.and(isBoundry, Predicate.not(isSuspend))(ast_)
+    const skipTopLevelIdentifierBoundry = options?.ignoreTopLevelIdentifierBoundry ?? false
+    const selfEmit = isIdentifierBoundry && atTopLevel && skipTopLevelIdentifierBoundry ? [] : [ast_]
+
+    if (
+      (isIdentifierBoundry && !atTopLevel) ||
+      (isIdentifierBoundry && atTopLevel && !skipTopLevelIdentifierBoundry)
+    ) {
+      return [ast_]
+    }
+
+    switch (ast_._tag) {
+      // ---------------------------------------------
+      // Trivial/base cases
+      // ---------------------------------------------
+      case "Literal":
+      case "UniqueSymbol":
+      case "UndefinedKeyword":
+      case "VoidKeyword":
+      case "NeverKeyword":
+      case "UnknownKeyword":
+      case "AnyKeyword":
+      case "StringKeyword":
+      case "NumberKeyword":
+      case "BooleanKeyword":
+      case "BigIntKeyword":
+      case "SymbolKeyword":
+      case "ObjectKeyword":
+      case "Enums":
+      case "TemplateLiteral": {
+        return selfEmit
+      }
+      // ---------------------------------------------
+      // Non-trivial cases
+      // ---------------------------------------------
+      case "Transform": {
+        return [...selfEmit, ...traverseToBoundries_(ast_.from), ...traverseToBoundries_(ast_.to)]
+      }
+      // ---------------------------------------------
+      // Recursive cases
+      // ---------------------------------------------
+      case "Declaration": {
+        const selfArray = [...selfEmit, ...traverseToBoundries_(ast_.type)]
+        const parameterArrays = ast_.typeParameters.flatMap(traverseToBoundries_)
+        return [...selfArray, ...parameterArrays]
+      }
+      case "Refinement": {
+        return [...selfEmit, ...traverseToBoundries_(ast_.from)]
+      }
+      case "Tuple": {
+        const elementArrays = ast_.elements.flatMap(({ type }) => traverseToBoundries_(type))
+        const restArrays = Option.map(ast_.rest, ReadonlyArray.flatMap(traverseToBoundries_)).pipe(
+          Option.getOrElse(() => [])
+        )
+        return [...selfEmit, ...elementArrays, ...restArrays]
+      }
+      case "Union": {
+        const innerTypesArray = ast_.types.flatMap(traverseToBoundries_)
+        return [...selfEmit, ...innerTypesArray]
+      }
+      case "TypeLiteral": {
+        const indexSignatureArrays = ast_.indexSignatures.flatMap(({ type }) => traverseToBoundries_(type))
+        const propertySignatureArrays = ast_.propertySignatures.flatMap(({ type }) => traverseToBoundries_(type))
+        return [...selfEmit, ...indexSignatureArrays, ...propertySignatureArrays]
+      }
+      // ---------------------------------------------
+      // DANGER CASE: traversing the `f` function could result in infinite recursion
+      // ---------------------------------------------
+      case "Suspend": {
+        return selfEmit
+      }
+    }
+  }
+
+  return traverseToBoundries_(ast)
+}
+
+/**
+ * Retrieves all nodes that are interior nodes between this section of
+ * an ast and other sections. Answers the question: "what nodes are
+ * part of the current boundry section?"
+ *
+ * @internal
+ */
+export const getInteriorNodes = (
+  ast: AST,
+  options?: { ignoreTopLevelIdentifierBoundry?: boolean | undefined }
+): ReadonlyArray<AST> => [
+  ...(options?.ignoreTopLevelIdentifierBoundry && isBoundry(ast) && !isSuspend(ast) ? [ast] : []),
+  ...traverseToBoundries(ast, options).filter(Predicate.not(isBoundry))
+]
+
+/**
+ * Retrieves all nodes that are boundry nodes between this section of
+ * an ast and other sections. Answers the question: "what are the
+ * boundry nodes at the edge of the current boundry section?"
+ *
+ * @internal
+ */
+export const getPerimeterNodes = (ast: AST): ReadonlyArray<AST> =>
+  Function.pipe(
+    traverseToBoundries(ast, { ignoreTopLevelIdentifierBoundry: true }),
+    ReadonlyArray.filter(isBoundry),
+    ReadonlyArray.dedupeWith((a, b) => a === b)
+  )
+
+/**
+ * Safely retrieves all nodes in the ast by traversing boundries only once
+ *
+ * @internal
+ */
+export const getAllVerticies = (ast: AST): Set<AST> => {
+  const verticies: Set<AST> = new Set()
+
+  const verticies_ = (ast_: AST) => {
+    const boundriesGoingToCrossInto = Function.pipe(
+      getPerimeterNodes(ast_),
+      ReadonlyArray.map(crossBoundry),
+      ReadonlyArray.filter((boundry) => !verticies.has(boundry))
+    )
+
+    for (const vertex of getPerimeterNodes(ast_)) {
+      verticies.add(vertex)
+    }
+    for (const vertex of getInteriorNodes(ast_, { ignoreTopLevelIdentifierBoundry: true })) {
+      verticies.add(vertex)
+    }
+    for (const nextBoundry of boundriesGoingToCrossInto) {
+      verticies_(nextBoundry)
+    }
+  }
+
+  verticies_(ast)
+  return verticies
+}
+
+/**
+ * Attempts to cross over a boundry node into the other section of the ast
+ *
+ * @internal
+ */
+export const crossBoundry = (ast: AST): AST => {
+  switch (ast._tag) {
+    // case "Tuple":
+    // case "Union":
+    // case "Transform":
+    // case "Declaration":
+    // case "Refinement":
+    // case "TypeLiteral":
+    //   return Option.some(ast)
+    case "Suspend":
+      return ast.f()
+    default:
+      return ast
+  }
+}
+
+/**
+ * Determines if any lower section of the ast refers to anything in this
+ * boundry section. Answers the question: "Are there any nodes in lower
+ * sections of the ast that refer to anything in this boundry section?"
+ *
+ * @internal
+ */
+export const isSelfReferencial = (ast: AST): boolean => {
+  const visitedBoundries: Set<AST> = new Set([ast])
+  const interiorNodes = isBoundry(ast) ? [crossBoundry(ast)] : getInteriorNodes(ast)
+
+  const isSelfReferencial_ = (ast_: AST): boolean => {
+    const boundriesGoingToCrossInto = ReadonlyArray.map(getPerimeterNodes(ast_), crossBoundry).flat()
+
+    // Base case when this ast does not have any boundries that it will cross
+    if (boundriesGoingToCrossInto.length === 0) {
+      return false
+    }
+
+    // Recursive case and we found an interior node from the starting ast
+    if (boundriesGoingToCrossInto.some((boundry) => interiorNodes.includes(boundry))) {
+      return true
+    }
+
+    // Recursive case but we haven't found an interior node yet
+    const boundriesStillNeedToTraverse = boundriesGoingToCrossInto.filter((node) => !visitedBoundries.has(node))
+    for (const nextBoundry of boundriesStillNeedToTraverse) {
+      visitedBoundries.add(nextBoundry)
+    }
+    return boundriesStillNeedToTraverse.some(isSelfReferencial_)
+  }
+
+  return isSelfReferencial_(ast)
+}
+
+/**
+ * Retrieves the set of nodes that are strongly connected to this node
+ * as well as the set of nodes that are not strongly connected
+ *
+ * @see https://en.wikipedia.org/wiki/Strongly_connected_component
+ * @see https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+ * @internal */
+export const stronglyConnectedComponents = (
+  ast: AST
+): ReadonlyArray<ReadonlyArray.NonEmptyReadonlyArray<AST>> => {
+  let index = 0
+  const stack: Array<AST> = []
+  const onStack = new Map<AST, boolean>()
+  const indicies = new Map<AST, number>()
+  const lowLinks = new Map<AST, number>()
+  const stronglyConnected: Array<ReadonlyArray.NonEmptyReadonlyArray<AST>> = []
+
+  const tarjan = (vertex: AST) => {
+    indicies.set(vertex, index)
+    lowLinks.set(vertex, index)
+    index += 1
+    stack.push(vertex)
+    onStack.set(vertex, true)
+
+    const boundriesGoingToCrossInto = getPerimeterNodes(isBoundry(vertex) ? crossBoundry(vertex) : vertex)
+
+    for (const nextBoundry of boundriesGoingToCrossInto) {
+      if (indicies.get(nextBoundry) === undefined) {
+        tarjan(nextBoundry)
+        lowLinks.set(vertex, Math.min(lowLinks.get(vertex)!, lowLinks.get(nextBoundry)!))
+      } else if (onStack.get(nextBoundry)) {
+        lowLinks.set(vertex, Math.min(lowLinks.get(vertex)!, indicies.get(nextBoundry)!))
+      }
+    }
+
+    if (lowLinks.get(vertex) === indicies.get(vertex)) {
+      const generating: Array<AST> = []
+      let nextVertex: AST
+      do {
+        nextVertex = stack.pop()!
+        onStack.set(nextVertex, false)
+        generating.push(nextVertex)
+      } while (nextVertex !== vertex)
+      stronglyConnected.push(generating as ReadonlyArray.NonEmptyArray<AST>)
+    }
+  }
+
+  for (const vertex of getAllVerticies(ast)) {
+    if (indicies.get(vertex) === undefined) {
+      tarjan(vertex)
+    }
+  }
+
+  return stronglyConnected
+}
+
+/** A partition is a group of self referencial sub trees */
+type Partition = ReadonlyArray.NonEmptyReadonlyArray<{
+  readonly ast: AST
+  readonly identifier: string
+}>
+
+/**
+ * Depending on if this ast is self referencial or not will determine how
+ * we treat boundries. For self referencial schemas, boundries will be
+ * defined at the top level so we want to include them in the sub-partitions.
+ * For non-self referencial schemas, boundries will be defined at the inner
+ * level, so we want to exclude them from the sub-partitions. In order to
+ * achieve this desired behavior, the partitioning algorithm will greedily
+ * consume unvisited boundries one at a time for self referencial ASTs. However,
+ * for non-self referencial ASTs, the algorithm will consume all unvisited
+ * boundries at once since there would be no overlap
+ *
+ * @internal
+ */
+export const partition = (
+  ast: AST
+): ReadonlyArray.NonEmptyReadonlyArray<Partition> => {
+  const interiorNodes = isBoundry(ast) ? [ast] : getInteriorNodes(ast)
+
+  const topLevelStronglyConnected = Function.pipe(
+    stronglyConnectedComponents(ast),
+    ReadonlyArray.filter((stronlyConnectedComponent) =>
+      (stronlyConnectedComponent.some((node) => isSelfReferencial(node)) &&
+        stronlyConnectedComponent.some((node) => isSuspend(node))) ||
+      stronlyConnectedComponent.some((node) => interiorNodes.includes(node)) ||
+      (stronlyConnectedComponent.length === 1 && isSuspend(stronlyConnectedComponent[0]))
+    ),
+    ReadonlyArray.map((stronglyConnectedComponent) =>
+      stronglyConnectedComponent.length === 1 && isSuspend(stronglyConnectedComponent[0]) &&
+        !isSelfReferencial(stronglyConnectedComponent[0].f())
+        ? [{
+          ast: stronglyConnectedComponent[0].f(),
+          identifier: getIdentifierAnnotation(stronglyConnectedComponent[0].f()).pipe(
+            Option.getOrElse(() => getIdentifierAnnotation(stronglyConnectedComponent[0]).pipe(Option.getOrThrow))
+          )
+        }]
+        : stronglyConnectedComponent.map((ast) => ({
+          ast,
+          identifier: getIdentifierAnnotation(ast).pipe(Option.getOrElse(() => "BAD"))
+        }))
+    ),
+    ReadonlyArray.dedupeWith((a, b) =>
+      a.length === 1 && b.length === 1 && a[0].identifier === b[0].identifier && a[0].ast._tag === b[0].ast._tag
+    )
+  )
+
+  return topLevelStronglyConnected as any
+}
+
+/** @internal */
+export const codegen = (
+  ast: AST,
+  schemaModuleImportIdentifier: string = "S",
+  indentationSize: number = 2
+): string => {
+  const partitions: ReadonlyArray.NonEmptyReadonlyArray<Partition> = partition(ast)
+
+  const codegen_ = (ast_: AST, generateInnerSuspends: boolean): string => {
+    // Short circuit base case
+    if (isBoundry(ast_) && !isSuspend(ast_)) {
+      return getIdentifierAnnotation(ast_).pipe(Option.getOrThrow)
+    }
+
+    return Function.pipe(
+      EffectMatch.value(ast_),
+      // ---------------------------------------------
+      // Trivial cases
+      // We abuse the fact that the Schema module exports functions with the same name as the title tags for these nodes
+      // ---------------------------------------------
+      EffectMatch.whenOr(
+        isAnyKeyword,
+        isVoidKeyword,
+        isNeverKeyword,
+        isNumberKeyword,
+        isStringKeyword,
+        isObjectKeyword,
+        isBooleanKeyword,
+        isUnknownKeyword,
+        isUndefinedKeyword,
+        Function.compose(getTitleAnnotation, Option.getOrThrow)
+      ),
+      EffectMatch.when(isBigIntKeyword, () => "bigintFromSelf"),
+      EffectMatch.when(isSymbolKeyword, () => "symbolFromSelf"),
+      // ---------------------------------------------
+      // Non-trivial cases (we will use the codegen annotation to help us most of the time)
+      // ---------------------------------------------
+      EffectMatch.when(isLiteral, ({ literal }) => {
+        if (Predicate.isString(literal)) return `literal("${literal}")`
+        else if (Predicate.isBigInt(literal)) return `literal(${literal}n)`
+        else return `literal(${literal})`
+      }),
+      EffectMatch.when(isTransform, () => {
+        const maybeCodegenAnnotation = getCodegenAnnotation(ast_)
+        if (Option.isNone(maybeCodegenAnnotation)) {
+          throw new Error("Can not codegen a transform without a codegen annotation")
+        }
+        return maybeCodegenAnnotation.value
+      }),
+      EffectMatch.when(isUniqueSymbol, ({ symbol: _symbol }) => {
+        const maybeVariableName = getIdentifierAnnotation(ast_)
+        if (Option.isNone(maybeVariableName)) {
+          throw new Error("Can not codegen a unique symbol without an identifier annotation")
+        }
+        return `uniqueSymbol(${maybeVariableName.value})`
+      }),
+      EffectMatch.when(isDeclaration, () => "declaration"),
+      EffectMatch.when(isTemplateLiteral, () => "templateLiteral"),
+      EffectMatch.when(isEnums, ({ enums: _enums }) => "enums"),
+      EffectMatch.when(isRefinement, () => {
+        if (getTitleAnnotation(ast_).pipe(Option.isSome)) {
+          return `${getTitleAnnotation(ast_).pipe(Option.getOrThrow)}`
+        }
+        return `unknown`
+      }),
+      // ---------------------------------------------
+      // Recusive cases
+      // ---------------------------------------------
+      EffectMatch.when(isSuspend, ({ f }) => {
+        const maybeIdentifierAnnotation = getIdentifierAnnotation(ast_)
+        if (Option.isNone(maybeIdentifierAnnotation)) {
+          throw new Error("Can not codegen a suspend without an identifier annotation")
+        }
+
+        return generateInnerSuspends
+          ? `suspend(() => ${maybeIdentifierAnnotation.value})`
+          : codegen_(f(), true)
+      }),
+      EffectMatch.when(isUnion, (union) => {
+        const nested = union.types.map((_) => codegen_(_, generateInnerSuspends))
+        return `union(${nested.join(", ")})`
+      }),
+      EffectMatch.when(
+        isTuple,
+        (tuple) => {
+          if (tuple.elements.length > 0) {
+            return `tuple()`
+          }
+          const nestedRest = Option.getOrThrow(tuple.rest).map((_) => codegen_(_, generateInnerSuspends))
+          return `array(${nestedRest.join(", ")})`
+        }
+      ),
+      EffectMatch.when(isTypeLiteral, ({ indexSignatures: _indexSignatures, propertySignatures }) => {
+        const asts = propertySignatures.map((property) => ({
+          property,
+          code: codegen_(property.type, generateInnerSuspends)
+        }))
+
+        const allFields = asts.flatMap(({ code, property }) =>
+          `/** ${Option.getOrUndefined(getDescriptionAnnotation(property.type))} */\n${
+            property.name.toString().includes(".") || property.name.toString().includes("-")
+              ? `"${property.name.toString()}"`
+              : property.name.toString()
+          }: ${code}`
+        )
+
+        const a = [...EffectString.linesIterator(allFields.join(",\n"))].map((x) =>
+          `${" ".repeat(indentationSize)}${x}`
+        )
+          .join("\n")
+        return `struct({\n${a}\n})`
+      }),
+      EffectMatch.exhaustive,
+      (code) => `${schemaModuleImportIdentifier}.${code}`
+    )
+  }
+
+  const output = partitions.flatMap((partition) =>
+    partition.map((ast, _index, array) => `export const ${ast.identifier} = ${codegen_(ast.ast, array.length === 1)}`)
+  ).join("\n\n")
+
+  // const hoistedValues = traverseToBoundries(ast).pipe(
+  //   Stream.filterMap((node) => {
+  //     if (isUniqueSymbol(node)) {
+  //       const variableName = getIdentifierAnnotation(node).pipe(Option.getOrThrow)
+  //       return Option.some(`export const ${variableName} = Symbol.for("${node.symbol.description}")`)
+  //     }
+  //     return Option.none()
+  //   }),
+  //   Stream.runCollect,
+  //   Effect.runSync,
+  //   Chunk.join("\n\n")
+  // )
+
+  // return EffectString.isEmpty(hoistedValues) ? output : `${hoistedValues}\n\n${output}`
+  return `import * as ${schemaModuleImportIdentifier} from "effect/schema/Schema"\n\n${output}`
 }
