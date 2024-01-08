@@ -770,6 +770,11 @@ export * as TRef from "./TRef.js"
 /**
  * @since 2.0.0
  */
+export * as Trie from "./Trie.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as TSemaphore from "./TSemaphore.js"
 
 /**
