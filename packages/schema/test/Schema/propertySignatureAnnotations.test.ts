@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/propertySignatureAnnotations", () => {
+describe("Schema > propertySignatureAnnotations", () => {
   it("should add property signature annotations to a schema", () => {
     const schema = S.struct({
       a: S.string.pipe(S.propertySignatureAnnotations({

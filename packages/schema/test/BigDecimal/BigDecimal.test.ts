@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { BigDecimal } from "effect"
 import { describe, it } from "vitest"
 
-describe("BigDecimal/BigDecimal", () => {
+describe("BigDecimal > BigDecimal", () => {
   const schema = S.BigDecimal
 
   it("decoding", async () => {
@@ -25,7 +25,9 @@ describe("BigDecimal/BigDecimal", () => {
     await Util.expectParseFailure(
       schema,
       "abc",
-      `Expected string <-> BigDecimal, actual "abc"`
+      `BigDecimal
+└─ Transformation process failure
+   └─ Expected BigDecimal, actual "abc"`
     )
   })
 

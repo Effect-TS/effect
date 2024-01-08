@@ -4,7 +4,7 @@ import * as Layer from "effect/Layer"
 import type * as CliConfig from "../CliConfig.js"
 
 /** @internal */
-export const make = (params: Partial<CliConfig.CliConfig> = {}): CliConfig.CliConfig => ({
+export const make = (params?: Partial<CliConfig.CliConfig>): CliConfig.CliConfig => ({
   ...defaultConfig,
   ...params
 })
@@ -30,7 +30,7 @@ export const defaultLayer: Layer.Layer<never, never, CliConfig.CliConfig> = Laye
 
 /** @internal */
 export const layer = (
-  config: Partial<CliConfig.CliConfig> = {}
+  config?: Partial<CliConfig.CliConfig>
 ): Layer.Layer<never, never, CliConfig.CliConfig> => Layer.succeed(Tag, make(config))
 
 /** @internal */

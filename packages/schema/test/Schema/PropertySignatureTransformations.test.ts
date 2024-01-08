@@ -5,7 +5,7 @@ import { identity } from "effect/Function"
 import * as O from "effect/Option"
 import { describe, it } from "vitest"
 
-describe("Schema/PropertySignatureTransformations", () => {
+describe("Schema > PropertySignatureTransformations", () => {
   it("default", async () => {
     const transform: S.Schema<{ readonly a?: string }, { readonly a: number }> = S.make(
       AST.createTransform(
@@ -30,7 +30,13 @@ describe("Schema/PropertySignatureTransformations", () => {
     await Util.expectParseFailure(
       transform,
       { a: "a" },
-      `/a Expected string <-> number, actual "a"`
+      `({ a?: NumberFromString } <-> { a: number })
+└─ From side transformation failure
+   └─ { a?: NumberFromString }
+      └─ ["a"]
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Expected NumberFromString, actual "a"`
     )
 
     await Util.expectEncodeSuccess(transform, { a: 1 }, { a: "1" })
@@ -61,7 +67,13 @@ describe("Schema/PropertySignatureTransformations", () => {
     await Util.expectParseFailure(
       transform,
       { a: "a" },
-      `/a Expected string <-> number, actual "a"`
+      `({ a?: NumberFromString } <-> { a: number })
+└─ From side transformation failure
+   └─ { a?: NumberFromString }
+      └─ ["a"]
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Expected NumberFromString, actual "a"`
     )
 
     await Util.expectEncodeSuccess(transform, { a: 1 }, { a: "1" })
@@ -93,7 +105,13 @@ describe("Schema/PropertySignatureTransformations", () => {
     await Util.expectParseFailure(
       transform,
       { a: "a" },
-      `/a Expected string <-> number, actual "a"`
+      `({ a?: NumberFromString } <-> { a: Option<number> })
+└─ From side transformation failure
+   └─ { a?: NumberFromString }
+      └─ ["a"]
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Expected NumberFromString, actual "a"`
     )
 
     await Util.expectEncodeSuccess(transform, { a: O.some(1) }, { a: "1" })

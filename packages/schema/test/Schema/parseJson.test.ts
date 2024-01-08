@@ -12,21 +12,35 @@ describe("Schema > parseJson", () => {
       await Util.expectParseFailure(
         schema,
         "",
-        Util.isBun ? `JSON Parse error: Unexpected EOF` : `Unexpected end of JSON input`
+        Util.isBun ?
+          `(JsonString <-> unknown)
+└─ Transformation process failure
+    └─ JSON Parse error: Unexpected EOF` :
+          `(JsonString <-> unknown)
+└─ Transformation process failure
+   └─ Unexpected end of JSON input`
       )
       await Util.expectParseFailure(
         schema,
         "a",
         Util.isBun
-          ? `JSON Parse error: Unexpected identifier "a"`
-          : `Unexpected token 'a', "a" is not valid JSON`
+          ? `(JsonString <-> unknown)
+└─ Transformation process failure
+    └─ JSON Parse error: Unexpected identifier "a"`
+          : `(JsonString <-> unknown)
+└─ Transformation process failure
+   └─ Unexpected token 'a', "a" is not valid JSON`
       )
       await Util.expectParseFailure(
         schema,
         "{",
         Util.isBun
-          ? `JSON Parse error: Expected '}'`
-          : `Expected property name or '}' in JSON at position 1`
+          ? `(JsonString <-> unknown)
+└─ Transformation process failure
+    └─ JSON Parse error: Expected '}'`
+          : `(JsonString <-> unknown)
+└─ Transformation process failure
+   └─ Expected property name or '}' in JSON at position 1`
       )
     })
 
@@ -41,8 +55,12 @@ describe("Schema > parseJson", () => {
         schema,
         bad,
         Util.isBun ?
-          `JSON.stringify cannot serialize cyclic structures.` :
-          `Converting circular structure to JSON
+          `(JsonString <-> unknown)
+└─ Transformation process failure
+    └─ JSON.stringify cannot serialize cyclic structures.` :
+          `(JsonString <-> unknown)
+└─ Transformation process failure
+   └─ Converting circular structure to JSON
     --> starting at object with constructor 'Object'
     --- property 'a' closes the circle`
       )
@@ -57,10 +75,26 @@ describe("Schema > parseJson", () => {
         schema,
         `{"a"}`,
         Util.isBun
-          ? `JSON Parse error: Expected ':' before value in object property definition`
-          : `Expected ':' after property name in JSON at position 4`
+          ? `((JsonString <-> unknown) <-> { a: number })
+└─ From side transformation failure
+    └─ (JsonString <-> unknown)
+      └─ Transformation process failure
+          └─ JSON Parse error: Expected ':' before value in object property definition`
+          : `((JsonString <-> unknown) <-> { a: number })
+└─ From side transformation failure
+   └─ (JsonString <-> unknown)
+      └─ Transformation process failure
+         └─ Expected ':' after property name in JSON at position 4`
       )
-      await Util.expectParseFailure(schema, `{"a":"b"}`, `/a Expected number, actual "b"`)
+      await Util.expectParseFailure(
+        schema,
+        `{"a":"b"}`,
+        `((JsonString <-> unknown) <-> { a: number })
+└─ To side transformation failure
+   └─ { a: number }
+      └─ ["a"]
+         └─ Expected a number, actual "b"`
+      )
     })
 
     it("encoding", async () => {

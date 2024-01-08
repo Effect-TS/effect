@@ -134,10 +134,27 @@ if (ReadonlyArray.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
 }
 
+ReadonlyArray.every(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+ReadonlyArray.every(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+) => true)
+
 pipe(
   numbersOrStrings,
   ReadonlyArray.every((
     _item // $ExpectType string | number
+  ) => true)
+)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.every((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
   ) => true)
 )
 
@@ -259,10 +276,23 @@ ReadonlyArray.takeWhile(numbersOrStrings, (
   _item // $ExpectType string | number
 ) => true)
 
+ReadonlyArray.takeWhile(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+) => true)
+
 pipe(
   numbersOrStrings,
   ReadonlyArray.takeWhile((
     _item // $ExpectType string | number
+  ) => true)
+)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.takeWhile((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
   ) => true)
 )
 
@@ -292,11 +322,54 @@ ReadonlyArray.findFirst(numbersOrStrings, (
   _item // $ExpectType string | number
 ) => true)
 
+ReadonlyArray.findFirst(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+) => true)
+
+// $ExpectType Option<number>
+ReadonlyArray.findFirst(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+): _item is number => true)
+
+// $ExpectType Option<boolean>
+ReadonlyArray.findFirst(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+) => Option.some(true))
+
 pipe(
   numbersOrStrings,
   ReadonlyArray.findFirst((
     _item // $ExpectType string | number
   ) => true)
+)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findFirst((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => true)
+)
+
+// $ExpectType Option<number>
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findFirst((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ): _item is number => true)
+)
+
+// $ExpectType Option<boolean>
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findFirst((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => Option.some(true))
 )
 
 // $ExpectType Option<string | number>
@@ -319,11 +392,54 @@ ReadonlyArray.findLast(numbersOrStrings, (
   _item // $ExpectType string | number
 ) => true)
 
+ReadonlyArray.findLast(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+) => true)
+
+// $ExpectType Option<number>
+ReadonlyArray.findLast(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+): _item is number => true)
+
+// $ExpectType Option<boolean>
+ReadonlyArray.findLast(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+) => Option.some(true))
+
 pipe(
   numbersOrStrings,
   ReadonlyArray.findLast((
     _item // $ExpectType string | number
   ) => true)
+)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findLast((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => true)
+)
+
+// $ExpectType Option<number>
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findLast((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ): _item is number => true)
+)
+
+// $ExpectType Option<boolean>
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findLast((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => Option.some(true))
 )
 
 // $ExpectType Option<string | number>
@@ -378,10 +494,23 @@ ReadonlyArray.span(numbersOrStrings, (
   _item // $ExpectType string | number
 ) => true)
 
+ReadonlyArray.span(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _i // $ExpectType number
+) => true)
+
 pipe(
   numbersOrStrings,
   ReadonlyArray.span((
     _item // $ExpectType string | number
+  ) => true)
+)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.span((
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
   ) => true)
 )
 

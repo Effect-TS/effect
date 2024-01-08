@@ -174,40 +174,40 @@ export const all: <
 }
 
 /** @internal */
-export const boolean = (config: Args.Args.BaseArgsConfig = {}): Args.Args<boolean> =>
-  makeSingle(Option.fromNullable(config.name), InternalPrimitive.boolean(Option.none()))
+export const boolean = (config?: Args.Args.BaseArgsConfig): Args.Args<boolean> =>
+  makeSingle(Option.fromNullable(config?.name), InternalPrimitive.boolean(Option.none()))
 
 /** @internal */
 export const choice = <A>(
   choices: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>,
-  config: Args.Args.BaseArgsConfig = {}
-): Args.Args<A> => makeSingle(Option.fromNullable(config.name), InternalPrimitive.choice(choices))
+  config?: Args.Args.BaseArgsConfig
+): Args.Args<A> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.choice(choices))
 
 /** @internal */
-export const date = (config: Args.Args.BaseArgsConfig = {}): Args.Args<globalThis.Date> =>
-  makeSingle(Option.fromNullable(config.name), InternalPrimitive.date)
+export const date = (config?: Args.Args.BaseArgsConfig): Args.Args<globalThis.Date> =>
+  makeSingle(Option.fromNullable(config?.name), InternalPrimitive.date)
 
 /** @internal */
-export const directory = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
+export const directory = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
   makeSingle(
-    Option.fromNullable(config.name),
-    InternalPrimitive.path("directory", config.exists || "either")
+    Option.fromNullable(config?.name),
+    InternalPrimitive.path("directory", config?.exists || "either")
   )
 
 /** @internal */
-export const file = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
+export const file = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
   makeSingle(
-    Option.fromNullable(config.name),
-    InternalPrimitive.path("file", config.exists || "either")
+    Option.fromNullable(config?.name),
+    InternalPrimitive.path("file", config?.exists || "either")
   )
 
 /** @internal */
-export const float = (config: Args.Args.BaseArgsConfig = {}): Args.Args<number> =>
-  makeSingle(Option.fromNullable(config.name), InternalPrimitive.float)
+export const float = (config?: Args.Args.BaseArgsConfig): Args.Args<number> =>
+  makeSingle(Option.fromNullable(config?.name), InternalPrimitive.float)
 
 /** @internal */
-export const integer = (config: Args.Args.BaseArgsConfig = {}): Args.Args<number> =>
-  makeSingle(Option.fromNullable(config.name), InternalPrimitive.integer)
+export const integer = (config?: Args.Args.BaseArgsConfig): Args.Args<number> =>
+  makeSingle(Option.fromNullable(config?.name), InternalPrimitive.integer)
 
 /** @internal */
 export const none: Args.Args<void> = (() => {
@@ -217,20 +217,20 @@ export const none: Args.Args<void> = (() => {
 })()
 
 /** @internal */
-export const path = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
+export const path = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
   makeSingle(
-    Option.fromNullable(config.name),
-    InternalPrimitive.path("either", config.exists || "either")
+    Option.fromNullable(config?.name),
+    InternalPrimitive.path("either", config?.exists || "either")
   )
 
 /** @internal */
 export const secret = (
-  config: Args.Args.BaseArgsConfig = {}
-): Args.Args<Secret.Secret> => makeSingle(Option.fromNullable(config.name), InternalPrimitive.secret)
+  config?: Args.Args.BaseArgsConfig
+): Args.Args<Secret.Secret> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.secret)
 
 /** @internal */
-export const text = (config: Args.Args.BaseArgsConfig = {}): Args.Args<string> =>
-  makeSingle(Option.fromNullable(config.name), InternalPrimitive.text)
+export const text = (config?: Args.Args.BaseArgsConfig): Args.Args<string> =>
+  makeSingle(Option.fromNullable(config?.name), InternalPrimitive.text)
 
 // =============================================================================
 // Combinators
@@ -323,7 +323,7 @@ export const mapTryCatch = dual<
 
 /** @internal */
 export const optional = <A>(self: Args.Args<A>): Args.Args<Option.Option<A>> =>
-  makeWithDefault(self as Instruction, Option.none())
+  makeWithDefault(map(self, Option.some), Option.none())
 
 /** @internal */
 export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>

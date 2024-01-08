@@ -25,7 +25,7 @@ type Json =
 const propertyTo = <I, A>(schema: Schema.Schema<I, A>, options?: {
   params?: fc.Parameters<[A]>
 }) => {
-  const arbitrary = A.to(schema)
+  const arbitrary = A.make(schema)
   const is = Schema.is(schema)
   const jsonSchema = JSONSchema.to(schema)
   // console.log(JSON.stringify(jsonSchema, null, 2))
@@ -50,7 +50,7 @@ const propertyTo = <I, A>(schema: Schema.Schema<I, A>, options?: {
 }
 
 const propertyFrom = <I, A>(schema: Schema.Schema<I, A>) => {
-  const arbitrary = A.from(schema)
+  const arbitrary = A.make(Schema.from(schema))
   const is = Schema.is(Schema.from(schema))
   const validate = new Ajv({ strictTuples: false, allowUnionTypes: true }).compile(
     JSONSchema.from(schema)
@@ -1091,7 +1091,7 @@ describe("JSONSchema", () => {
       propertyTo(schema)
     })
 
-    it("should support inner suspended schemas", () => {
+    it("should support inner suspended schemas with inner identifier annotation", () => {
       interface A {
         readonly a: string
         readonly as: ReadonlyArray<A>
@@ -1155,6 +1155,63 @@ describe("JSONSchema", () => {
       ).toEqual(true)
       expect(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
+      ).toEqual(false)
+      propertyTo(schema)
+    })
+
+    it("should support inner suspended schemas with outer identifier annotation", () => {
+      interface Category {
+        readonly name: string
+        readonly categories: ReadonlyArray<Category>
+      }
+      const schema: Schema.Schema<Category> = Schema.struct({
+        name: Schema.string,
+        categories: Schema.array(Schema.suspend(() => schema))
+      }).pipe(Schema.identifier("Category"))
+      const jsonSchema = JSONSchema.to(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "$ref": "#/$defs/Category",
+        "$defs": {
+          "Category": {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "a string",
+                "title": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Category"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      })
+      const validate = new Ajv().compile(jsonSchema)
+      expect(validate({ name: "a1", categories: [] })).toEqual(true)
+      expect(validate({ name: "a1", categories: [{ name: "a2", categories: [] }] })).toEqual(true)
+      expect(validate({ name: "a1", categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [] }] }))
+        .toEqual(true)
+      expect(
+        validate({
+          name: "a1",
+          categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [{ name: "a4", categories: [] }] }]
+        })
+      ).toEqual(true)
+      expect(
+        validate({
+          name: "a1",
+          categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [{ name: "a4", categories: [1] }] }]
+        })
       ).toEqual(false)
       propertyTo(schema)
     })
@@ -1431,9 +1488,14 @@ describe("JSONSchema", () => {
       const jsonSchema = JSONSchema.to(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "a string",
-        "title": "string",
-        "type": "string"
+        "$ref": "#/$defs/Name",
+        "$defs": {
+          "Name": {
+            "type": "string",
+            "description": "a string",
+            "title": "string"
+          }
+        }
       })
     })
 

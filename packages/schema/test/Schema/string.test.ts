@@ -6,7 +6,7 @@ describe("Schema/string", () => {
   const schema = S.string
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, "a", "a")
-    await Util.expectParseFailure(schema, 1, "Expected string, actual 1")
+    await Util.expectParseFailure(schema, 1, "Expected a string, actual 1")
   })
 
   it("encoding", async () => {

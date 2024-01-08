@@ -27,5 +27,20 @@ export class SetName extends Schema.TaggedRequest<SetName>()("SetName", Schema.n
   }
 }
 
-export type WorkerMessage = GetUserById | GetPersonById | SetName
-export const WorkerMessage = Schema.union(GetUserById, GetPersonById, SetName)
+export class GetSpan extends Schema.TaggedRequest<GetSpan>()(
+  "GetSpan",
+  Schema.never,
+  Schema.struct({
+    name: Schema.string,
+    traceId: Schema.string,
+    spanId: Schema.string,
+    parent: Schema.option(Schema.struct({
+      traceId: Schema.string,
+      spanId: Schema.string
+    }))
+  }),
+  {}
+) {}
+
+export const WorkerMessage = Schema.union(GetUserById, GetPersonById, SetName, GetSpan)
+export type WorkerMessage = Schema.Schema.To<typeof WorkerMessage>

@@ -5,7 +5,7 @@ import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/brand", () => {
+describe("Schema > brand", () => {
   describe("annotations", () => {
     it("should move the brand annotations to the right end", async () => {
       const schema = Util.X2.pipe(S.brand("X2"))
@@ -54,11 +54,16 @@ describe("Schema/brand", () => {
   })
 
   it("the constructor should throw on invalid values", () => {
-    const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
-    expect(Int(1)).toEqual(1)
-    expect(() => Int(1.2)).toThrow(
-      new Error(`error(s) found
-└─ Expected integer, actual 1.2`)
+    const IntegerFromString = S.NumberFromString.pipe(
+      S.int(),
+      S.identifier("IntegerFromString"),
+      S.brand("Int")
+    )
+    expect(IntegerFromString(1)).toEqual(1)
+    expect(() => IntegerFromString(1.2)).toThrow(
+      new Error(`IntegerFromString
+└─ Predicate refinement failure
+   └─ Expected IntegerFromString (an integer), actual 1.2`)
     )
   })
 
@@ -73,7 +78,7 @@ describe("Schema/brand", () => {
     expect(Int.either(1)).toEqual(Either.right(1))
     expect(Int.either(1.2)).toEqual(Either.left([{
       meta: [],
-      message: "Expected integer, actual 1.2"
+      message: "Expected an integer, actual 1.2"
     }]))
   })
 
@@ -97,23 +102,39 @@ describe("Schema/brand", () => {
 
   describe("decoding", () => {
     it("string brand", async () => {
-      const schema = S.NumberFromString.pipe(S.int(), S.brand("Int"))
+      const schema = S.NumberFromString.pipe(
+        S.int(),
+        S.brand("Int"),
+        S.identifier("IntegerFromString")
+      )
       await Util.expectParseSuccess(schema, "1", 1 as any)
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected string, actual null`
+        `IntegerFromString
+└─ From side refinement failure
+   └─ NumberFromString
+      └─ From side transformation failure
+         └─ Expected a string, actual null`
       )
     })
 
     it("symbol brand", async () => {
       const Int = Symbol.for("Int")
-      const schema = S.NumberFromString.pipe(S.int(), S.brand(Int))
+      const schema = S.NumberFromString.pipe(
+        S.int(),
+        S.brand(Int),
+        S.identifier("IntegerFromString")
+      )
       await Util.expectParseSuccess(schema, "1", 1 as any)
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected string, actual null`
+        `IntegerFromString
+└─ From side refinement failure
+   └─ NumberFromString
+      └─ From side transformation failure
+         └─ Expected a string, actual null`
       )
     })
   })

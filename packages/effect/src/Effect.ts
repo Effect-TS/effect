@@ -3154,29 +3154,30 @@ export const provideServiceEffect: {
  * @since 2.0.0
  * @category context
  */
-export const serviceFunction: <T extends Context.Tag<any, any>, Args extends Array<any>, A>(
-  service: T,
-  f: (_: Context.Tag.Service<T>) => (...args: Args) => A
-) => (...args: Args) => Effect<Context.Tag.Identifier<T>, never, A> = effect.serviceFunction
+export const serviceFunction: <T extends Effect<any, any, any>, Args extends Array<any>, A>(
+  getService: T,
+  f: (_: Effect.Success<T>) => (...args: Args) => A
+) => (...args: Args) => Effect<Effect.Context<T>, Effect.Error<T>, A> = effect.serviceFunction
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const serviceFunctionEffect: <T extends Context.Tag<any, any>, Args extends Array<any>, R, E, A>(
-  service: T,
-  f: (_: Context.Tag.Service<T>) => (...args: Args) => Effect<R, E, A>
-) => (...args: Args) => Effect<R | Context.Tag.Identifier<T>, E, A> = effect.serviceFunctionEffect
+export const serviceFunctionEffect: <T extends Effect<any, any, any>, Args extends Array<any>, R, E, A>(
+  getService: T,
+  f: (_: Effect.Success<T>) => (...args: Args) => Effect<R, E, A>
+) => (...args: Args) => Effect<R | Effect.Context<T>, E | Effect.Error<T>, A> = effect.serviceFunctionEffect
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const serviceFunctions: <I, S>(
-  tag: Context.Tag<I, S>
+export const serviceFunctions: <SR, SE, S>(
+  getService: Effect<SR, SE, S>
 ) => {
   [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never }[keyof S]]:
-    S[k] extends (...args: infer Args) => Effect<infer R, infer E, infer A> ? (...args: Args) => Effect<R | I, E, A> :
+    S[k] extends (...args: infer Args) => Effect<infer R, infer E, infer A> ?
+      (...args: Args) => Effect<R | SR, E | SE, A> :
       never
 } = effect.serviceFunctions
 
@@ -3184,26 +3185,27 @@ export const serviceFunctions: <I, S>(
  * @since 2.0.0
  * @category context
  */
-export const serviceConstants: <I, S>(
-  tag: Context.Tag<I, S>
+export const serviceConstants: <SR, SE, S>(
+  getService: Effect<SR, SE, S>
 ) => {
   [k in { [k in keyof S]: S[k] extends Effect<any, any, any> ? k : never }[keyof S]]: S[k] extends
-    Effect<infer R, infer E, infer A> ? Effect<R | I, E, A> : never
+    Effect<infer R, infer E, infer A> ? Effect<R | SR, E | SE, A> : never
 } = effect.serviceConstants
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const serviceMembers: <I, S>(tag: Context.Tag<I, S>) => {
+export const serviceMembers: <SR, SE, S>(getService: Effect<SR, SE, S>) => {
   functions: {
     [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never }[keyof S]]:
-      S[k] extends (...args: infer Args) => Effect<infer R, infer E, infer A> ? (...args: Args) => Effect<R | I, E, A> :
+      S[k] extends (...args: infer Args) => Effect<infer R, infer E, infer A> ?
+        (...args: Args) => Effect<R | SR, E | SE, A> :
         never
   }
   constants: {
     [k in { [k in keyof S]: S[k] extends Effect<any, any, any> ? k : never }[keyof S]]: S[k] extends
-      Effect<infer R, infer E, infer A> ? Effect<R | I, E, A> : never
+      Effect<infer R, infer E, infer A> ? Effect<R | SR, E | SE, A> : never
   }
 } = effect.serviceMembers
 

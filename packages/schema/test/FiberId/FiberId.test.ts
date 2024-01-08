@@ -26,7 +26,16 @@ describe("FiberId", () => {
     await Util.expectParseFailure(
       schema,
       { _tag: "Composite", left: { _tag: "None" }, right: { _tag: "-" } },
-      `union member: /right /_tag Expected "Composite" or "Runtime" or "None", actual "-"`
+      `(FiberIdFrom <-> FiberId)
+└─ From side transformation failure
+   └─ FiberIdFrom
+      └─ Union member
+         └─ FiberIdCompositeFrom
+            └─ ["right"]
+               └─ FiberIdFrom
+                  └─ { _tag: "Composite" | "Runtime" | "None" }
+                     └─ ["_tag"]
+                        └─ Expected "Composite" | "Runtime" | "None", actual "-"`
     )
   })
 })

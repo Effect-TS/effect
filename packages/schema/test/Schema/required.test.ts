@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 const NumberFromString = S.NumberFromString
 
-describe("Schema/required", () => {
+describe("Schema > required", () => {
   it("string", () => {
     expect(S.required(S.string).ast).toEqual(S.string.ast)
   })
@@ -16,11 +16,21 @@ describe("Schema/required", () => {
     }))
 
     await Util.expectParseSuccess(schema, { a: "1" }, { a: 1 })
-    await Util.expectParseFailure(schema, {}, "/a is missing")
+    await Util.expectParseFailure(
+      schema,
+      {},
+      `{ a: a positive number }
+└─ ["a"]
+   └─ is missing`
+    )
     await Util.expectParseFailure(
       schema,
       { a: "-1" },
-      "/a Expected a positive number, actual -1"
+      `{ a: a positive number }
+└─ ["a"]
+   └─ a positive number
+      └─ Predicate refinement failure
+         └─ Expected a positive number, actual -1`
     )
   })
 
@@ -30,17 +40,29 @@ describe("Schema/required", () => {
     const schema = S.required(S.tuple().pipe(S.optionalElement(NumberFromString)))
 
     await Util.expectParseSuccess(schema, ["1"], [1])
-    await Util.expectParseFailure(schema, [], "/0 is missing")
+    await Util.expectParseFailure(
+      schema,
+      [],
+      `readonly [NumberFromString]
+└─ [0]
+   └─ is missing`
+    )
   })
 
-  it("tuple/ e + e?", async () => {
+  it("tuple/ e e?", async () => {
     const schema = S.required(S.tuple(NumberFromString).pipe(S.optionalElement(S.string)))
 
     await Util.expectParseSuccess(schema, ["0", ""], [0, ""])
-    await Util.expectParseFailure(schema, ["0"], "/1 is missing")
+    await Util.expectParseFailure(
+      schema,
+      ["0"],
+      `readonly [NumberFromString, string]
+└─ [1]
+   └─ is missing`
+    )
   })
 
-  it("tuple/ e + r + e", async () => {
+  it("tuple/ e r e", async () => {
     // type A = readonly [string, ...Array<number>, boolean]
     // type B = Required<A> // [string, ...(number | boolean)[], number | boolean]
 
@@ -51,11 +73,23 @@ describe("Schema/required", () => {
     await Util.expectParseSuccess(schema, ["", true, 0], ["", true, 0])
     await Util.expectParseSuccess(schema, ["", 0, true], ["", 0, true])
 
-    await Util.expectParseFailure(schema, [], "/0 is missing")
-    await Util.expectParseFailure(schema, [""], "/1 is missing")
+    await Util.expectParseFailure(
+      schema,
+      [],
+      `readonly [string, ...(number | boolean)[], number | boolean]
+└─ [0]
+   └─ is missing`
+    )
+    await Util.expectParseFailure(
+      schema,
+      [""],
+      `readonly [string, ...(number | boolean)[], number | boolean]
+└─ [1]
+   └─ is missing`
+    )
   })
 
-  it("tuple/ e + r + 2e", async () => {
+  it("tuple/ e r 2e", async () => {
     // type A = readonly [string, ...Array<number>, boolean, boolean]
     // type B = Required<A> // [string, ...(number | boolean)[], number | boolean, number | boolean]
 
@@ -67,13 +101,37 @@ describe("Schema/required", () => {
     await Util.expectParseSuccess(schema, ["", 0, true, false])
     await Util.expectParseSuccess(schema, ["", 0, 1, 2, 3, true, false])
 
-    await Util.expectParseFailure(schema, [], "/0 is missing")
-    await Util.expectParseFailure(schema, [""], "/1 is missing")
-    await Util.expectParseFailure(schema, ["", true], "/2 is missing")
+    await Util.expectParseFailure(
+      schema,
+      [],
+      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
+└─ [0]
+   └─ is missing`
+    )
+    await Util.expectParseFailure(
+      schema,
+      [""],
+      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
+└─ [1]
+   └─ is missing`
+    )
+    await Util.expectParseFailure(
+      schema,
+      ["", true],
+      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
+└─ [2]
+   └─ is missing`
+    )
     await Util.expectParseFailure(
       schema,
       ["", 0, "a"],
-      `/2 union member: Expected number, actual "a", union member: Expected boolean, actual "a"`
+      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
+└─ [2]
+   └─ number | boolean
+      ├─ Union member
+      │  └─ Expected a number, actual "a"
+      └─ Union member
+         └─ Expected a boolean, actual "a"`
     )
   })
 
@@ -87,7 +145,15 @@ describe("Schema/required", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      "union member: /a is missing, union member: /b is missing"
+      `{ a: string } | { b: number }
+├─ Union member
+│  └─ { a: string }
+│     └─ ["a"]
+│        └─ is missing
+└─ Union member
+   └─ { b: number }
+      └─ ["b"]
+         └─ is missing`
     )
   })
 
@@ -103,11 +169,25 @@ describe("Schema/required", () => {
     ))
     await Util.expectParseSuccess(schema, { a: null })
     await Util.expectParseSuccess(schema, { a: { a: null } })
-    await Util.expectParseFailure(schema, {}, "/a is missing")
+    await Util.expectParseFailure(
+      schema,
+      {},
+      `{ a: <suspended schema> | null }
+└─ ["a"]
+   └─ is missing`
+    )
     await Util.expectParseFailure(
       schema,
       { a: {} },
-      "/a union member: /a is missing, union member: Expected null, actual {}"
+      `{ a: <suspended schema> | null }
+└─ ["a"]
+   └─ <suspended schema> | null
+      ├─ Union member
+      │  └─ { a: <suspended schema> | null }
+      │     └─ ["a"]
+      │        └─ is missing
+      └─ Union member
+         └─ Expected null, actual {}`
     )
   })
 

@@ -24,7 +24,7 @@ const proto = {
     _Output: (_: never) => _
   },
   commit(): Effect.Effect<Terminal.Terminal, Terminal.QuitException, unknown> {
-    return run(this as Prompt.Prompt<unknown>)
+    return run(this as any)
   },
   pipe() {
     return Pipeable.pipeArguments(this, arguments)

@@ -1,12 +1,21 @@
-import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
-import * as O from "effect/Option"
-import { describe, expect, it } from "vitest"
+import * as Util from "@effect/schema/test/util"
+import { describe, it } from "vitest"
 
-describe("Schema/encodeOption", () => {
-  it("should return none for invalid values", () => {
-    const schema = S.string.pipe(S.maxLength(1), S.compose(S.NumberFromString))
-    expect(P.encodeOption(schema)(1)).toEqual(O.some("1"))
-    expect(P.encodeOption(schema)(10)).toEqual(O.none())
+describe("Schema > encodeOption", () => {
+  const schema = S.struct({ a: Util.NumberFromChar })
+
+  it("should return None on invalid values", () => {
+    Util.expectSome(S.encodeOption(schema)({ a: 1 }), { a: "1" })
+    Util.expectNone(S.encodeOption(schema)({ a: 10 }))
+  })
+
+  it("should respect outer/inner options", () => {
+    const input = { a: 1, b: "b" }
+    Util.expectNone(S.encodeOption(schema)(input, { onExcessProperty: "error" }))
+    Util.expectNone(S.encodeOption(schema, { onExcessProperty: "error" })(input))
+    Util.expectSome(S.encodeOption(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }), {
+      a: "1"
+    })
   })
 })

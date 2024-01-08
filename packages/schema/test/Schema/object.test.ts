@@ -7,10 +7,26 @@ describe("Schema/object", () => {
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, {})
     await Util.expectParseSuccess(schema, [])
-    await Util.expectParseFailure(schema, null, `Expected object, actual null`)
-    await Util.expectParseFailure(schema, "a", `Expected object, actual "a"`)
-    await Util.expectParseFailure(schema, 1, `Expected object, actual 1`)
-    await Util.expectParseFailure(schema, true, `Expected object, actual true`)
+    await Util.expectParseFailure(
+      schema,
+      null,
+      `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual null`
+    )
+    await Util.expectParseFailure(
+      schema,
+      "a",
+      `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual "a"`
+    )
+    await Util.expectParseFailure(
+      schema,
+      1,
+      `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual 1`
+    )
+    await Util.expectParseFailure(
+      schema,
+      true,
+      `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual true`
+    )
   })
 
   it("encoding", async () => {

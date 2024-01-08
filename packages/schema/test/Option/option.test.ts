@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import * as O from "effect/Option"
 import { describe, it } from "vitest"
 
-describe("Option/option", () => {
+describe("Option > option", () => {
   it("property tests", () => {
     Util.roundtrip(S.option(S.number))
   })

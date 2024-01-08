@@ -8,14 +8,14 @@ import { RpcDecodeFailure, RpcEncodeFailure } from "../Error.js"
 export const decodeEither = <I, A>(schema: Schema.Schema<I, A>) => {
   const decode = Schema.parseEither(schema)
   return (input: unknown): Either.Either<RpcDecodeFailure, A> =>
-    Either.mapLeft(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ errors: error.errors }))
+    Either.mapLeft(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ error: error.error }))
 }
 
 /** @internal */
 export const decode = <I, A>(schema: Schema.Schema<I, A>) => {
   const decode = Schema.parse(schema)
   return (input: unknown): Effect.Effect<never, RpcDecodeFailure, A> =>
-    Effect.mapError(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ errors: error.errors }))
+    Effect.mapError(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ error: error.error }))
 }
 
 /** @internal */
@@ -26,7 +26,7 @@ export const encode: <I, A>(
 ) => {
   const encode = Schema.encode(schema)
   return (input: A) =>
-    Effect.mapError(encode(input, { errors: "all" }), (error) => RpcEncodeFailure({ errors: error.errors }))
+    Effect.mapError(encode(input, { errors: "all" }), (error) => RpcEncodeFailure({ error: error.error }))
 }
 
 /** @internal */
@@ -37,5 +37,5 @@ export const encodeEither: <I, A>(
 ) => {
   const encode = Schema.encodeEither(schema)
   return (input: A) =>
-    Either.mapLeft(encode(input, { errors: "all" }), (error) => RpcEncodeFailure({ errors: error.errors }))
+    Either.mapLeft(encode(input, { errors: "all" }), (error) => RpcEncodeFailure({ error: error.error }))
 }

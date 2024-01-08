@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import type { LazyArg } from "effect/Function"
@@ -19,66 +20,112 @@ export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
 /**
  * @since 1.0.0
  */
-export interface ParseError {
-  readonly _tag: "ParseError"
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-}
-
-class ParseErrorImpl implements Inspectable.Inspectable {
-  readonly _tag = "ParseError"
-  constructor(readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>) {}
+export class ParseError extends TaggedError("ParseError")<{ readonly error: ParseIssue }> {
+  /**
+   * @since 1.0.0
+   */
   toString() {
-    return TreeFormatter.formatErrors(this.errors)
+    return TreeFormatter.formatIssue(this.error)
   }
+  /**
+   * @since 1.0.0
+   */
   toJSON() {
     return {
       _id: "ParseError",
       message: this.toString()
     }
   }
+  /**
+   * @since 1.0.0
+   */
   [Inspectable.NodeInspectSymbol]() {
     return this.toJSON()
   }
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
-export const parseError = (
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): ParseError => new ParseErrorImpl(errors)
+export const parseError = (error: ParseIssue): ParseError => new ParseError({ error })
 
 /**
- * `ParseErrors` is a type that represents the different types of errors that can occur when decoding a value.
+ * @category constructors
+ * @since 1.0.0
+ */
+export const succeed: <A>(a: A) => ParseResult<A> = Either.right
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const fail = (error: ParseIssue): ParseResult<never> => Either.left(parseError(error))
+
+/**
+ * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
  *
  * @category model
  * @since 1.0.0
  */
 export type ParseIssue =
+  | Refinement
+  | Tuple
+  | TypeLiteral
+  | Union
+  | Transform
   | Type
-  | Index
-  | Key
-  | Missing
-  | Unexpected
-  | UnionMember
   | Forbidden
 
 /**
+ * Error that occurs when a transformation has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Transform {
+  readonly _tag: "Transform"
+  readonly ast: AST.Transform
+  readonly actual: unknown
+  readonly kind: "From" | "Transformation" | "To"
+  readonly error: ParseIssue
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const transform = (
+  ast: AST.Transform,
+  actual: unknown,
+  kind: "From" | "Transformation" | "To",
+  error: ParseIssue
+): Transform => ({ _tag: "Transform", ast, actual, kind, error })
+
+/**
  * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
- * The `expected` field specifies the expected type, and the `actual` field contains the value that caused the error.
- * This error can occur when trying to decode a value using a schema that is only able to decode values of a specific type,
- * and the actual value is not of that type. For example, if you are using a schema to decode a string value and the actual value
- * is a number, a `Type` decode error would be returned.
+ * The `ast` field specifies the expected type, and the `actual` field contains the value that caused the error.
  *
  * @category model
  * @since 1.0.0
  */
 export interface Type {
   readonly _tag: "Type"
-  readonly expected: AST.AST
+  readonly ast: AST.AST
   readonly actual: unknown
   readonly message: Option.Option<string>
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const type = (ast: AST.AST, actual: unknown, message?: string): Type => ({
+  _tag: "Type",
+  ast,
+  actual,
+  message: Option.fromNullable(message)
+})
 
 /**
  * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
@@ -88,32 +135,91 @@ export interface Type {
  */
 export interface Forbidden {
   readonly _tag: "Forbidden"
+  readonly actual: unknown
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const type = (expected: AST.AST, actual: unknown, message?: string): Type => ({
-  _tag: "Type",
-  expected,
-  actual,
-  message: Option.fromNullable(message)
+export const forbidden = (actual: unknown): Forbidden => ({
+  _tag: "Forbidden",
+  actual
 })
 
 /**
- * @category constructors
+ * Error that occurs when a refinement has an error.
+ *
+ * @category model
  * @since 1.0.0
  */
-export const forbidden: Forbidden = {
-  _tag: "Forbidden"
+export interface Refinement {
+  readonly _tag: "Refinement"
+  readonly ast: AST.Refinement
+  readonly actual: unknown
+  readonly kind: "From" | "Predicate"
+  readonly error: ParseIssue
 }
 
 /**
- * The `Index` decode error indicates that there was an error at a specific index in an array or tuple.
- * The `errors` field contains the decode errors for that index. This error is typically used when decoding an array or tuple
- * with a schema that has constraints on the elements. For example, you might use an `Index` decode error to indicate
- * that a specific element in an array did not match the expected type or value.
+ * @category constructors
+ * @since 1.0.0
+ */
+export const refinement = (
+  ast: AST.Refinement,
+  actual: unknown,
+  kind: "From" | "Predicate",
+  error: ParseIssue
+): Refinement => ({ _tag: "Refinement", ast, actual, kind, error })
+
+/**
+ * Error that occurs when an array or tuple has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Tuple {
+  readonly _tag: "Tuple"
+  readonly ast: AST.Tuple
+  readonly actual: unknown
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const tuple = (
+  ast: AST.Tuple,
+  actual: unknown,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
+): Tuple => ({ _tag: "Tuple", ast, actual, errors })
+
+/**
+ * Error that occurs when a type literal or record has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface TypeLiteral {
+  readonly _tag: "TypeLiteral"
+  readonly ast: AST.TypeLiteral
+  readonly actual: unknown
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const typeLiteral = (
+  ast: AST.TypeLiteral,
+  actual: unknown,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
+): TypeLiteral => ({ _tag: "TypeLiteral", ast, actual, errors })
+
+/**
+ * The `Index` error indicates that there was an error at a specific index in an array or tuple.
  *
  * @category model
  * @since 1.0.0
@@ -121,7 +227,7 @@ export const forbidden: Forbidden = {
 export interface Index {
   readonly _tag: "Index"
   readonly index: number
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+  readonly error: ParseIssue | Missing | Unexpected
 }
 
 /**
@@ -130,15 +236,11 @@ export interface Index {
  */
 export const index = (
   index: number,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): Index => ({ _tag: "Index", index, errors })
+  error: ParseIssue | Missing | Unexpected
+): Index => ({ _tag: "Index", index, error })
 
 /**
- * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in an object is invalid.
- * This error typically occurs when the `actual` value is not a valid key type (e.g. a string or number)
- * or when the key is not present in the object being decoded. In either case, the `key` field of the error will contain
- * the invalid key value. This error is typically used in combination with the `Unexpected` error,
- * which indicates that an unexpected key was found in the object being decoded.
+ * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in a type literal or record is invalid.
  *
  * @category model
  * @since 1.0.0
@@ -146,7 +248,7 @@ export const index = (
 export interface Key {
   readonly _tag: "Key"
   readonly key: PropertyKey
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+  readonly error: ParseIssue | Missing | Unexpected
 }
 
 /**
@@ -155,8 +257,8 @@ export interface Key {
  */
 export const key = (
   key: PropertyKey,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): Key => ({ _tag: "Key", key, errors })
+  error: ParseIssue | Missing | Unexpected
+): Key => ({ _tag: "Key", key, error })
 
 /**
  * Error that occurs when a required key or index is missing.
@@ -182,7 +284,7 @@ export const missing: Missing = { _tag: "Missing" }
  */
 export interface Unexpected {
   readonly _tag: "Unexpected"
-  readonly ast: Option.Option<AST.AST>
+  readonly ast: AST.AST
 }
 
 /**
@@ -190,8 +292,31 @@ export interface Unexpected {
  * @since 1.0.0
  */
 export const unexpected = (
-  ast: Option.Option<AST.AST>
+  ast: AST.AST
 ): Unexpected => ({ _tag: "Unexpected", ast })
+
+/**
+ * Error that occurs when a union has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Union {
+  readonly _tag: "Union"
+  readonly ast: AST.Union
+  readonly actual: unknown
+  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const union = (
+  ast: AST.Union,
+  actual: unknown,
+  errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
+): Union => ({ _tag: "Union", ast, actual, errors })
 
 /**
  * Error that occurs when a member in a union has an error.
@@ -199,24 +324,20 @@ export const unexpected = (
  * @category model
  * @since 1.0.0
  */
-export interface UnionMember {
-  readonly _tag: "UnionMember"
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
+export interface Member {
+  readonly _tag: "Member"
+  readonly ast: AST.AST
+  readonly error: ParseIssue
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const unionMember = (
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): UnionMember => ({ _tag: "UnionMember", errors })
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const succeed: <A>(a: A) => ParseResult<A> = Either.right
+export const member = (
+  ast: AST.AST,
+  error: ParseIssue
+): Member => ({ _tag: "Member", ast, error })
 
 const _try: <A>(options: {
   try: LazyArg<A>
@@ -232,26 +353,12 @@ export {
 }
 
 /**
- * @category constructors
- * @since 1.0.0
- */
-export const fail = (
-  error: ParseError | ParseIssue | ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): ParseResult<never> => {
-  const e = error
-  if ("_tag" in e) {
-    return e._tag === "ParseError" ? Either.left(e) : Either.left(parseError([e]))
-  }
-  return Either.left(parseError(e))
-}
-
-/**
  * @category optimisation
  * @since 1.0.0
  */
-export const eitherOrUndefined = <A>(
-  self: ParseResult<A>
-): Either.Either<ParseError, A> | undefined => {
+export const eitherOrUndefined = <E, A>(
+  self: Effect.Effect<never, E, A>
+): Either.Either<E, A> | undefined => {
   const s: any = self
   if (s["_tag"] === "Left" || s["_tag"] === "Right") {
     return s
@@ -262,10 +369,10 @@ export const eitherOrUndefined = <A>(
  * @category optimisation
  * @since 1.0.0
  */
-export const flatMap = <A, B>(
-  self: ParseResult<A>,
-  f: (self: A) => ParseResult<B>
-): ParseResult<B> => {
+export const flatMap = <E1, A, E2, B>(
+  self: Effect.Effect<never, E1, A>,
+  f: (self: A) => Effect.Effect<never, E2, B>
+): Effect.Effect<never, E1 | E2, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -295,10 +402,10 @@ export const map = <A, B>(self: ParseResult<A>, f: (self: A) => B): ParseResult<
  * @category optimisation
  * @since 1.0.0
  */
-export const mapLeft = <A>(
-  self: ParseResult<A>,
-  f: (error: ParseError) => ParseError
-): ParseResult<A> => {
+export const mapLeft = <E1, A, E2>(
+  self: Effect.Effect<never, E1, A>,
+  f: (error: E1) => E2
+): Effect.Effect<never, E2, A> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(f(s.left))
@@ -313,11 +420,11 @@ export const mapLeft = <A>(
  * @category optimisation
  * @since 1.0.0
  */
-export const bimap = <A, B>(
-  self: ParseResult<A>,
-  f: (error: ParseError) => ParseError,
+export const bimap = <E1, A, E2, B>(
+  self: Effect.Effect<never, E1, A>,
+  f: (error: E1) => E2,
   g: (a: A) => B
-): ParseResult<B> => {
+): Effect.Effect<never, E2, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(f(s.left))
@@ -332,10 +439,10 @@ export const bimap = <A, B>(
  * @category optimisation
  * @since 1.0.0
  */
-export const orElse = <A>(
-  self: ParseResult<A>,
-  f: (error: ParseError) => ParseResult<A>
-): ParseResult<A> => {
+export const orElse = <E1, A, E2, B>(
+  self: Effect.Effect<never, E1, A>,
+  f: (error: E1) => Effect.Effect<never, E2, B>
+): Effect.Effect<never, E2, A | B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return f(s.left)

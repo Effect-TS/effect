@@ -9,7 +9,7 @@ describe("Schema/number", () => {
     await Util.expectParseSuccess(schema, NaN, NaN)
     await Util.expectParseSuccess(schema, Infinity, Infinity)
     await Util.expectParseSuccess(schema, -Infinity, -Infinity)
-    await Util.expectParseFailure(schema, "a", `Expected number, actual "a"`)
+    await Util.expectParseFailure(schema, "a", `Expected a number, actual "a"`)
   })
 
   it("encoding", async () => {

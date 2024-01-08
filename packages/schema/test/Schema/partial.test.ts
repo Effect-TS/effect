@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 const NumberFromString = S.NumberFromString
 
-describe("Schema/partial", () => {
+describe("Schema > partial", () => {
   it("struct", async () => {
     const schema = S.partial(S.struct({ a: S.number }))
     await Util.expectParseSuccess(schema, {})
@@ -14,7 +14,9 @@ describe("Schema/partial", () => {
     await Util.expectParseFailure(
       schema,
       { a: undefined },
-      `/a Expected number, actual undefined`
+      `{ a?: number }
+└─ ["a"]
+   └─ Expected a number, actual undefined`
     )
   })
 
@@ -31,15 +33,16 @@ describe("Schema/partial", () => {
     await Util.expectParseSuccess(schema, [1])
     await Util.expectParseSuccess(schema, [undefined])
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       ["a"],
-      `error(s) found
+      `ReadonlyArray<number | undefined>
 └─ [0]
-   ├─ union member
-   │  └─ Expected number, actual "a"
-   └─ union member
-      └─ Expected undefined, actual "a"`
+   └─ number | undefined
+      ├─ Union member
+      │  └─ Expected a number, actual "a"
+      └─ Union member
+         └─ Expected undefined, actual "a"`
     )
   })
 
@@ -50,18 +53,20 @@ describe("Schema/partial", () => {
     await Util.expectParseSuccess(schema, [1])
     await Util.expectParseSuccess(schema, [undefined])
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       ["a"],
-      `error(s) found
-├─ union member
-│  └─ [0]
-│     ├─ union member
-│     │  └─ Expected number, actual "a"
-│     └─ union member
-│        └─ Expected undefined, actual "a"
-└─ union member
-   └─ Expected string, actual ["a"]`
+      `ReadonlyArray<number | undefined> | string
+├─ Union member
+│  └─ ReadonlyArray<number | undefined>
+│     └─ [0]
+│        └─ number | undefined
+│           ├─ Union member
+│           │  └─ Expected a number, actual "a"
+│           └─ Union member
+│              └─ Expected undefined, actual "a"
+└─ Union member
+   └─ Expected a string, actual ["a"]`
     )
   })
 
@@ -71,7 +76,7 @@ describe("Schema/partial", () => {
     await Util.expectParseSuccess(schema, [], [])
   })
 
-  it("tuple/ e + r", async () => {
+  it("tuple/ e r", async () => {
     const schema = S.partial(S.tuple(NumberFromString).pipe(S.rest(NumberFromString)))
     await Util.expectParseSuccess(schema, ["1"], [1])
     await Util.expectParseSuccess(schema, [], [])
@@ -102,7 +107,13 @@ describe("Schema/partial", () => {
     await Util.expectParseFailure(
       schema,
       { a: 1 },
-      "/a union member: Expected <anonymous type literal schema>, actual 1, union member: Expected null, actual 1"
+      `{ a?: <suspended schema> | null }
+└─ ["a"]
+   └─ <suspended schema> | null
+      ├─ Union member
+      │  └─ Expected { a?: <suspended schema> | null }, actual 1
+      └─ Union member
+         └─ Expected null, actual 1`
     )
   })
 

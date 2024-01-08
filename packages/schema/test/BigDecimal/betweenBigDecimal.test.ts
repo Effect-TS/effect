@@ -6,13 +6,15 @@ import { describe, it } from "vitest"
 const max = BigDecimal.make(1n, 0)
 const min = BigDecimal.make(-1n, 0)
 
-describe("BigDecimal/between", () => {
+describe("BigDecimal > between", () => {
   const schema = S.BigDecimal.pipe(S.betweenBigDecimal(min, max))
   it("decoding", async () => {
     await Util.expectParseFailure(
       schema,
       "2",
-      `Expected a BigDecimal between -1 and 1, actual BigDecimal(2)`
+      `a BigDecimal between -1 and 1
+└─ Predicate refinement failure
+   └─ Expected a BigDecimal between -1 and 1, actual BigDecimal(2)`
     )
     await Util.expectParseSuccess(schema, "0", BigDecimal.normalize(BigDecimal.make(0n, 0)))
     await Util.expectParseSuccess(

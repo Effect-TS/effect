@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/tuple", () => {
+describe("Schema > tuple", () => {
   it("rest: should throw on unsupported schemas", () => {
     const schema = S.tuple().pipe(S.filter(() => true))
     expect(() => schema.pipe(S.rest(S.number))).toThrow(
@@ -32,12 +32,6 @@ describe("Schema/tuple", () => {
         null,
         `Expected MyDataType, actual null`
       )
-      await Util.expectParseFailureTree(
-        schema,
-        null,
-        `error(s) found
-└─ Expected MyDataType, actual null`
-      )
     })
 
     it("empty", async () => {
@@ -47,37 +41,69 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [], actual null`
       )
       await Util.expectParseFailure(
         schema,
         {},
-        `Expected <anonymous tuple or array schema>, actual {}`
+        `Expected readonly [], actual {}`
       )
-      await Util.expectParseFailure(schema, [undefined], `/0 is unexpected`)
-      await Util.expectParseFailure(schema, [1], `/0 is unexpected`)
+      await Util.expectParseFailure(
+        schema,
+        [undefined],
+        `readonly []
+└─ [0]
+   └─ is unexpected, expected never`
+      )
+      await Util.expectParseFailure(
+        schema,
+        [1],
+        `readonly []
+└─ [0]
+   └─ is unexpected, expected never`
+      )
     })
 
-    it("required element", async () => {
+    it("element", async () => {
       const schema = S.tuple(S.number)
       await Util.expectParseSuccess(schema, [1])
 
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [number], actual null`
       )
-      await Util.expectParseFailure(schema, [], `/0 is missing`)
+      await Util.expectParseFailure(
+        schema,
+        [],
+        `readonly [number]
+└─ [0]
+   └─ is missing`
+      )
       await Util.expectParseFailure(
         schema,
         [undefined],
-        `/0 Expected number, actual undefined`
+        `readonly [number]
+└─ [0]
+   └─ Expected a number, actual undefined`
       )
-      await Util.expectParseFailure(schema, ["a"], `/0 Expected number, actual "a"`)
-      await Util.expectParseFailure(schema, [1, "b"], `/1 is unexpected`)
+      await Util.expectParseFailure(
+        schema,
+        ["a"],
+        `readonly [number]
+└─ [0]
+   └─ Expected a number, actual "a"`
+      )
+      await Util.expectParseFailure(
+        schema,
+        [1, "b"],
+        `readonly [number]
+└─ [1]
+   └─ is unexpected, expected 0`
+      )
     })
 
-    it("required element with undefined", async () => {
+    it("element with undefined", async () => {
       const schema = S.tuple(S.union(S.number, S.undefined))
       await Util.expectParseSuccess(schema, [1])
       await Util.expectParseSuccess(schema, [undefined])
@@ -85,15 +111,33 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [number | undefined], actual null`
       )
-      await Util.expectParseFailure(schema, [], `/0 is missing`)
+      await Util.expectParseFailure(
+        schema,
+        [],
+        `readonly [number | undefined]
+└─ [0]
+   └─ is missing`
+      )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `/0 union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
+        `readonly [number | undefined]
+└─ [0]
+   └─ number | undefined
+      ├─ Union member
+      │  └─ Expected a number, actual "a"
+      └─ Union member
+         └─ Expected undefined, actual "a"`
       )
-      await Util.expectParseFailure(schema, [1, "b"], `/1 is unexpected`)
+      await Util.expectParseFailure(
+        schema,
+        [1, "b"],
+        `readonly [number | undefined]
+└─ [1]
+   └─ is unexpected, expected 0`
+      )
     })
 
     it("optional element", async () => {
@@ -104,14 +148,22 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [number?], actual null`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `/0 Expected number, actual "a"`
+        `readonly [number?]
+└─ [0]
+   └─ Expected a number, actual "a"`
       )
-      await Util.expectParseFailure(schema, [1, "b"], `/1 is unexpected`)
+      await Util.expectParseFailure(
+        schema,
+        [1, "b"],
+        `readonly [number?]
+└─ [1]
+   └─ is unexpected, expected 0`
+      )
     })
 
     it("optional element with undefined", async () => {
@@ -123,76 +175,172 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected <anonymous tuple or array schema>, actual null`
+        `Expected readonly [number | undefined?], actual null`
       )
       await Util.expectParseFailure(
         schema,
         ["a"],
-        `/0 union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
+        `readonly [number | undefined?]
+└─ [0]
+   └─ number | undefined
+      ├─ Union member
+      │  └─ Expected a number, actual "a"
+      └─ Union member
+         └─ Expected undefined, actual "a"`
       )
-      await Util.expectParseFailure(schema, [1, "b"], `/1 is unexpected`)
+      await Util.expectParseFailure(
+        schema,
+        [1, "b"],
+        `readonly [number | undefined?]
+└─ [1]
+   └─ is unexpected, expected 0`
+      )
     })
 
-    it("e e?", async () => {
+    it("element / optional element", async () => {
       const schema = S.tuple(S.string).pipe(S.optionalElement(S.number))
       await Util.expectParseSuccess(schema, ["a"])
       await Util.expectParseSuccess(schema, ["a", 1])
 
-      await Util.expectParseFailure(schema, [1], `/0 Expected string, actual 1`)
-      await Util.expectParseFailure(schema, ["a", "b"], `/1 Expected number, actual "b"`)
+      await Util.expectParseFailure(
+        schema,
+        [1],
+        `readonly [string, number?]
+└─ [0]
+   └─ Expected a string, actual 1`
+      )
+      await Util.expectParseFailure(
+        schema,
+        ["a", "b"],
+        `readonly [string, number?]
+└─ [1]
+   └─ Expected a number, actual "b"`
+      )
     })
 
-    it("e r", async () => {
+    it("element / rest", async () => {
       const schema = S.tuple(S.string).pipe(S.rest(S.number))
       await Util.expectParseSuccess(schema, ["a"])
       await Util.expectParseSuccess(schema, ["a", 1])
       await Util.expectParseSuccess(schema, ["a", 1, 2])
 
-      await Util.expectParseFailure(schema, [], `/0 is missing`)
+      await Util.expectParseFailure(
+        schema,
+        [],
+        `readonly [string, ...number[]]
+└─ [0]
+   └─ is missing`
+      )
     })
 
-    it("e? r", async () => {
+    it("optional element rest", async () => {
       const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(S.number))
       await Util.expectParseSuccess(schema, [])
       await Util.expectParseSuccess(schema, ["a"])
       await Util.expectParseSuccess(schema, ["a", 1])
       await Util.expectParseSuccess(schema, ["a", 1, 2])
 
-      await Util.expectParseFailure(schema, [1], `/0 Expected string, actual 1`)
+      await Util.expectParseFailure(
+        schema,
+        [1],
+        `readonly [string?, ...number[]]
+└─ [0]
+   └─ Expected a string, actual 1`
+      )
     })
 
-    it("r", async () => {
+    it("rest", async () => {
       const schema = S.array(S.number)
       await Util.expectParseSuccess(schema, [])
       await Util.expectParseSuccess(schema, [1])
       await Util.expectParseSuccess(schema, [1, 2])
 
-      await Util.expectParseFailure(schema, ["a"], `/0 Expected number, actual "a"`)
-      await Util.expectParseFailure(schema, [1, "a"], `/1 Expected number, actual "a"`)
+      await Util.expectParseFailure(
+        schema,
+        ["a"],
+        `ReadonlyArray<number>
+└─ [0]
+   └─ Expected a number, actual "a"`
+      )
+      await Util.expectParseFailure(
+        schema,
+        [1, "a"],
+        `ReadonlyArray<number>
+└─ [1]
+   └─ Expected a number, actual "a"`
+      )
     })
 
-    it("r e", async () => {
+    it("rest / element", async () => {
       const schema = S.array(S.string).pipe(S.element(S.number))
       await Util.expectParseSuccess(schema, [1])
       await Util.expectParseSuccess(schema, ["a", 1])
       await Util.expectParseSuccess(schema, ["a", "b", 1])
 
-      await Util.expectParseFailure(schema, [], `/0 is missing`)
-      await Util.expectParseFailure(schema, ["a"], `/0 Expected number, actual "a"`)
-      await Util.expectParseFailure(schema, [1, 2], `/0 Expected string, actual 1`)
+      await Util.expectParseFailure(
+        schema,
+        [],
+        `readonly [...string[], number]
+└─ [0]
+   └─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        ["a"],
+        `readonly [...string[], number]
+└─ [0]
+   └─ Expected a number, actual "a"`
+      )
+      await Util.expectParseFailure(
+        schema,
+        [1, 2],
+        `readonly [...string[], number]
+└─ [0]
+   └─ Expected a string, actual 1`
+      )
     })
 
-    it("e r e", async () => {
+    it("element / rest / element", async () => {
       const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
       await Util.expectParseSuccess(schema, ["a", true])
       await Util.expectParseSuccess(schema, ["a", 1, true])
       await Util.expectParseSuccess(schema, ["a", 1, 2, true])
 
-      await Util.expectParseFailure(schema, [], `/0 is missing`)
-      await Util.expectParseFailure(schema, ["a"], `/1 is missing`)
-      await Util.expectParseFailure(schema, ["a", 1], `/1 Expected boolean, actual 1`)
-      await Util.expectParseFailure(schema, [1, true], `/0 Expected string, actual 1`)
-      await Util.expectParseFailure(schema, [true], `/1 is missing`)
+      await Util.expectParseFailure(
+        schema,
+        [],
+        `readonly [string, ...number[], boolean]
+└─ [0]
+   └─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        ["a"],
+        `readonly [string, ...number[], boolean]
+└─ [1]
+   └─ is missing`
+      )
+      await Util.expectParseFailure(
+        schema,
+        ["a", 1],
+        `readonly [string, ...number[], boolean]
+└─ [1]
+   └─ Expected a boolean, actual 1`
+      )
+      await Util.expectParseFailure(
+        schema,
+        [1, true],
+        `readonly [string, ...number[], boolean]
+└─ [0]
+   └─ Expected a string, actual 1`
+      )
+      await Util.expectParseFailure(
+        schema,
+        [true],
+        `readonly [string, ...number[], boolean]
+└─ [1]
+   └─ is missing`
+      )
     })
   })
 
@@ -202,58 +350,94 @@ describe("Schema/tuple", () => {
       await Util.expectEncodeSuccess(schema, [], [])
     })
 
-    it("e", async () => {
+    it("element", async () => {
       const schema = S.tuple(Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `/0 Expected a character, actual "10"`
+        `readonly [NumberFromChar]
+└─ [0]
+   └─ NumberFromChar
+      └─ From side transformation failure
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected Char (a single character), actual "10"`
       )
-      await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "b"] as any,
+        `readonly [NumberFromChar]
+└─ [1]
+   └─ is unexpected, expected 0`
+      )
     })
 
-    it("e with undefined", async () => {
+    it("element with undefined", async () => {
       const schema = S.tuple(S.union(Util.NumberFromChar, S.undefined))
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, [undefined], [undefined])
-      await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "b"] as any,
+        `readonly [NumberFromChar | undefined]
+└─ [1]
+   └─ is unexpected, expected 0`
+      )
     })
 
-    it("e?", async () => {
+    it("optional element", async () => {
       const schema = S.tuple().pipe(S.optionalElement(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `/0 Expected a character, actual "10"`
+        `readonly [NumberFromChar?]
+└─ [0]
+   └─ NumberFromChar
+      └─ From side transformation failure
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected Char (a single character), actual "10"`
       )
-      await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "b"] as any,
+        `readonly [NumberFromChar?]
+└─ [1]
+   └─ is unexpected, expected 0`
+      )
     })
 
-    it("e? with undefined", async () => {
+    it("optional element with undefined", async () => {
       const schema = S.tuple().pipe(S.optionalElement(S.union(Util.NumberFromChar, S.undefined)))
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, [undefined], [undefined])
-      await Util.expectEncodeFailure(schema, [1, "b"] as any, `/1 is unexpected`)
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "b"] as any,
+        `readonly [NumberFromChar | undefined?]
+└─ [1]
+   └─ is unexpected, expected 0`
+      )
     })
 
-    it("e + e?", async () => {
+    it("element / optional element", async () => {
       const schema = S.tuple(S.string).pipe(S.optionalElement(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
     })
 
-    it("e + r", async () => {
+    it("element / rest", async () => {
       const schema = S.tuple(S.string).pipe(S.rest(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
       await Util.expectEncodeSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
     })
 
-    it("e? + r", async () => {
+    it("optional element / rest", async () => {
       const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
@@ -261,7 +445,7 @@ describe("Schema/tuple", () => {
       await Util.expectEncodeSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
     })
 
-    it("r", async () => {
+    it("rest", async () => {
       const schema = S.array(Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, [1], ["1"])
@@ -269,24 +453,42 @@ describe("Schema/tuple", () => {
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `/0 Expected a character, actual "10"`
+        `ReadonlyArray<NumberFromChar>
+└─ [0]
+   └─ NumberFromChar
+      └─ From side transformation failure
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected Char (a single character), actual "10"`
       )
     })
 
-    it("r + e", async () => {
+    it("rest / element", async () => {
       const schema = S.array(S.string).pipe(S.element(Util.NumberFromChar))
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
       await Util.expectEncodeSuccess(schema, ["a", "b", 1], ["a", "b", "1"])
-      await Util.expectEncodeFailure(schema, [] as any, `/0 is missing`)
+      await Util.expectEncodeFailure(
+        schema,
+        [] as any,
+        `readonly [...string[], NumberFromChar]
+└─ [0]
+   └─ is missing`
+      )
       await Util.expectEncodeFailure(
         schema,
         [10],
-        `/0 Expected a character, actual "10"`
+        `readonly [...string[], NumberFromChar]
+└─ [0]
+   └─ NumberFromChar
+      └─ From side transformation failure
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected Char (a single character), actual "10"`
       )
     })
 
-    it("e + r + e", async () => {
+    it("element / rest / element", async () => {
       const schema = S.tuple(S.string).pipe(S.rest(Util.NumberFromChar), S.element(S.boolean))
       await Util.expectEncodeSuccess(schema, ["a", true], ["a", true])
       await Util.expectEncodeSuccess(schema, ["a", 1, true], ["a", "1", true])

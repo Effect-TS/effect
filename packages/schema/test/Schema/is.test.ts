@@ -1,8 +1,9 @@
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/is", () => {
+describe("Schema > is", () => {
   it("never", () => {
     const is = P.is(S.never)
     expect(is(1)).toEqual(false)
@@ -573,5 +574,14 @@ describe("Schema/is", () => {
     expect(is("aa")).toEqual(true)
 
     expect(is("")).toEqual(false)
+  })
+
+  it("should respect outer/inner options", () => {
+    const schema = S.struct({ a: Util.NumberFromChar })
+    const input = { a: 1, b: "b" }
+    expect(S.is(schema)(input, { onExcessProperty: "error" })).toEqual(false)
+    expect(S.is(schema, { onExcessProperty: "error" })(input)).toEqual(false)
+    expect(S.is(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
+      .toEqual(true)
   })
 })

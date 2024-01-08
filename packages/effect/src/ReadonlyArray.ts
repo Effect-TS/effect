@@ -8,15 +8,15 @@ import type { Either } from "./Either.js"
 import * as E from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
-import { dual, identity } from "./Function.js"
 import type { LazyArg } from "./Function.js"
+import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as readonlyArray from "./internal/readonlyArray.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import * as Order from "./Order.js"
-import { not } from "./Predicate.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import { isBoolean } from "./Predicate.js"
 import * as RR from "./ReadonlyRecord.js"
 import * as Tuple from "./Tuple.js"
 
@@ -559,25 +559,27 @@ export const takeRight: {
  * @since 2.0.0
  */
 export const takeWhile: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Array<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Array<B>
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Array<B>
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A>
-} = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A> => {
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Array<B>
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Array<B>
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Array<B>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A>
+} = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A> => {
+  let i = 0
   const out: Array<A> = []
   for (const a of self) {
-    if (!predicate(a)) {
+    if (!predicate(a, i)) {
       break
     }
     out.push(a)
+    i++
   }
   return out
 })
 
-const spanIndex = <A>(self: Iterable<A>, predicate: Predicate<A>): number => {
+const spanIndex = <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): number => {
   let i = 0
   for (const a of self) {
-    if (!predicate(a)) {
+    if (!predicate(a, i)) {
       break
     }
     i++
@@ -596,14 +598,17 @@ const spanIndex = <A>(self: Iterable<A>, predicate: Predicate<A>): number => {
  */
 export const span: {
   <C extends A, B extends A, A = C>(
-    refinement: Refinement<A, B>
+    refinement: (a: A, i: number) => a is B
   ): (self: Iterable<C>) => [init: Array<B>, rest: Array<Exclude<C, B>>]
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => [init: Array<B>, rest: Array<B>]
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: Array<B>, rest: Array<Exclude<A, B>>]
-  <A>(self: Iterable<A>, predicate: Predicate<A>): [init: Array<A>, rest: Array<A>]
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [init: Array<B>, rest: Array<B>]
+  <A, B extends A>(
+    self: Iterable<A>,
+    refinement: (a: A, i: number) => a is B
+  ): [init: Array<B>, rest: Array<Exclude<A, B>>]
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [init: Array<A>, rest: Array<A>]
 } = dual(
   2,
-  <A>(self: Iterable<A>, predicate: Predicate<A>): [init: Array<A>, rest: Array<A>] =>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [init: Array<A>, rest: Array<A>] =>
     splitAt(self, spanIndex(self, predicate))
 )
 
@@ -646,11 +651,12 @@ export const dropRight: {
  * @since 2.0.0
  */
 export const dropWhile: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Array<B>
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A>
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Array<B>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A>
 } = dual(
   2,
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A> => fromIterable(self).slice(spanIndex(self, predicate))
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A> =>
+    fromIterable(self).slice(spanIndex(self, predicate))
 )
 
 /**
@@ -660,12 +666,12 @@ export const dropWhile: {
  * @since 2.0.0
  */
 export const findFirstIndex: {
-  <A>(predicate: Predicate<A>): (self: Iterable<A>) => Option<number>
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Option<number>
-} = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Option<number> => {
+  <A>(predicate: (a: A, i: number) => boolean): (self: Iterable<A>) => Option<number>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<number>
+} = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<number> => {
   let i = 0
   for (const a of self) {
-    if (predicate(a)) {
+    if (predicate(a, i)) {
       return O.some(i)
     }
     i++
@@ -680,12 +686,12 @@ export const findFirstIndex: {
  * @since 2.0.0
  */
 export const findLastIndex: {
-  <A>(predicate: Predicate<A>): (self: Iterable<A>) => Option<number>
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Option<number>
-} = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Option<number> => {
+  <A>(predicate: (a: A, i: number) => boolean): (self: Iterable<A>) => Option<number>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<number>
+} = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<number> => {
   const input = fromIterable(self)
   for (let i = input.length - 1; i >= 0; i--) {
-    if (predicate(input[i])) {
+    if (predicate(input[i], i)) {
       return O.some(i)
     }
   }
@@ -700,19 +706,32 @@ export const findLastIndex: {
  * @since 2.0.0
  */
 export const findFirst: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Option<B>
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Option<B>
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A>
-} = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A> => {
-  const input = fromIterable(self)
-  for (let i = 0; i < input.length; i++) {
-    if (predicate(input[i])) {
-      return O.some(input[i])
+  <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Option<B>
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Option<B>
+  <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
+} = dual(
+  2,
+  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<A> => {
+    let i = 0
+    for (const a of self) {
+      const o = f(a, i)
+      if (isBoolean(o)) {
+        if (o) {
+          return O.some(a)
+        }
+      } else {
+        if (O.isSome(o)) {
+          return o
+        }
+      }
+      i++
     }
+    return O.none()
   }
-  return O.none()
-})
+)
 
 /**
  * Find the last element for which a predicate holds.
@@ -721,19 +740,32 @@ export const findFirst: {
  * @since 2.0.0
  */
 export const findLast: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Option<B>
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Option<B>
-  <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A>
-} = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A> => {
-  const input = fromIterable(self)
-  for (let i = input.length - 1; i >= 0; i--) {
-    if (predicate(input[i])) {
-      return O.some(input[i])
+  <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Option<B>
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Option<B>
+  <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
+} = dual(
+  2,
+  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<A> => {
+    const input = fromIterable(self)
+    for (let i = input.length - 1; i >= 0; i--) {
+      const a = input[i]
+      const o = f(a, i)
+      if (isBoolean(o)) {
+        if (o) {
+          return O.some(a)
+        }
+      } else {
+        if (O.isSome(o)) {
+          return o
+        }
+      }
     }
+    return O.none()
   }
-  return O.none()
-})
+)
 
 /**
  * Insert an element at the specified index, creating a new `NonEmptyArray`,
@@ -1204,12 +1236,14 @@ export const split: {
  * @since 2.0.0
  */
 export const splitWhere: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => [beforeMatch: Array<B>, fromMatch: Array<B>]
-  <A>(self: Iterable<A>, predicate: Predicate<A>): [beforeMatch: Array<A>, fromMatch: Array<A>]
+  <B extends A, A = B>(
+    predicate: (a: A, i: number) => boolean
+  ): (self: Iterable<B>) => [beforeMatch: Array<B>, fromMatch: Array<B>]
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [beforeMatch: Array<A>, fromMatch: Array<A>]
 } = dual(
   2,
-  <A>(self: Iterable<A>, predicate: Predicate<A>): [beforeMatch: Array<A>, fromMatch: Array<A>] =>
-    span(self, not(predicate))
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [beforeMatch: Array<A>, fromMatch: Array<A>] =>
+    span(self, (a: A, i: number) => !predicate(a, i))
 )
 
 /**
@@ -1552,17 +1586,19 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const filterMapWhile: {
-  <A, B>(f: (a: A) => Option<B>): (self: Iterable<A>) => Array<B>
-  <A, B>(self: Iterable<A>, f: (a: A) => Option<B>): Array<B>
-} = dual(2, <A, B>(self: Iterable<A>, f: (a: A) => Option<B>) => {
+  <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Array<B>
+  <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Array<B>
+} = dual(2, <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>) => {
+  let i = 0
   const out: Array<B> = []
   for (const a of self) {
-    const b = f(a)
+    const b = f(a, i)
     if (O.isSome(b)) {
       out.push(b.value)
     } else {
       break
     }
+    i++
   }
   return out
 })
@@ -1818,13 +1854,13 @@ export const liftEither = <A extends Array<unknown>, E, B>(
  * @since 2.0.0
  */
 export const every: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: ReadonlyArray<A>) => self is ReadonlyArray<B>
-  <A>(predicate: Predicate<A>): (self: ReadonlyArray<A>) => boolean
-  <A, B extends A>(self: ReadonlyArray<A>, refinement: Refinement<A, B>): self is ReadonlyArray<B>
-  <A>(self: ReadonlyArray<A>, predicate: Predicate<A>): boolean
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: ReadonlyArray<A>) => self is ReadonlyArray<B>
+  <A>(predicate: (a: A, i: number) => boolean): (self: ReadonlyArray<A>) => boolean
+  <A, B extends A>(self: ReadonlyArray<A>, refinement: (a: A, i: number) => a is B): self is ReadonlyArray<B>
+  <A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): boolean
 } = dual(
   2,
-  <A, B extends A>(self: ReadonlyArray<A>, refinement: Refinement<A, B>): self is ReadonlyArray<B> =>
+  <A, B extends A>(self: ReadonlyArray<A>, refinement: (a: A, i: number) => a is B): self is ReadonlyArray<B> =>
     self.every(refinement)
 )
 
@@ -1835,11 +1871,14 @@ export const every: {
  * @since 2.0.0
  */
 export const some: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: ReadonlyArray<B>) => self is NonEmptyReadonlyArray<B>
-  <A>(self: ReadonlyArray<A>, predicate: Predicate<A>): self is NonEmptyReadonlyArray<A>
+  <B extends A, A = B>(
+    predicate: (a: A, i: number) => boolean
+  ): (self: ReadonlyArray<B>) => self is NonEmptyReadonlyArray<B>
+  <A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): self is NonEmptyReadonlyArray<A>
 } = dual(
   2,
-  <A>(self: ReadonlyArray<A>, predicate: Predicate<A>): self is NonEmptyReadonlyArray<A> => self.some(predicate)
+  <A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): self is NonEmptyReadonlyArray<A> =>
+    self.some(predicate)
 )
 
 /**
@@ -2000,18 +2039,26 @@ export const join: {
  * @category folding
  */
 export const mapAccum: {
-  <S, A, B>(s: S, f: (s: S, a: A) => readonly [S, B]): (self: Iterable<A>) => [state: S, mappedArray: Array<B>]
-  <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A) => readonly [S, B]): [state: S, mappedArray: Array<B>]
-} = dual(3, <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A) => [S, B]): [state: S, mappedArray: Array<B>] => {
-  let s1 = s
-  const out: Array<B> = []
-  for (const a of self) {
-    const r = f(s1, a)
-    s1 = r[0]
-    out.push(r[1])
+  <S, A, B>(
+    s: S,
+    f: (s: S, a: A, i: number) => readonly [S, B]
+  ): (self: Iterable<A>) => [state: S, mappedArray: Array<B>]
+  <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A, i: number) => readonly [S, B]): [state: S, mappedArray: Array<B>]
+} = dual(
+  3,
+  <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A, i: number) => [S, B]): [state: S, mappedArray: Array<B>] => {
+    let i = 0
+    let s1 = s
+    const out: Array<B> = []
+    for (const a of self) {
+      const r = f(s1, a, i)
+      s1 = r[0]
+      out.push(r[1])
+      i++
+    }
+    return [s1, out]
   }
-  return [s1, out]
-})
+)
 
 /**
  * Zips this chunk crosswise with the specified chunk using the specified combiner.

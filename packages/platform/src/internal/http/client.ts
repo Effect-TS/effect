@@ -81,7 +81,7 @@ export const Fetch = Context.Tag<Client.Fetch, typeof globalThis.fetch>(
 )
 
 /** @internal */
-export const fetch = (options: RequestInit = {}): Client.Client.Default =>
+export const fetch = (options?: RequestInit): Client.Client.Default =>
   makeDefault((request) =>
     Effect.flatMap(
       UrlParams.makeUrl(request.url, request.urlParams, (_) =>
@@ -138,7 +138,7 @@ const convertBody = (body: Body.Body): BodyInit | undefined => {
 }
 
 /** @internal */
-export const fetchOk = (options: RequestInit = {}): Client.Client.Default => filterStatusOk(fetch(options))
+export const fetchOk = (options?: RequestInit): Client.Client.Default => filterStatusOk(fetch(options))
 
 /** @internal */
 export const layer = Layer.succeed(tag, fetch())

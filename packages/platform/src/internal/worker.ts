@@ -1,5 +1,6 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
+import { Tracer } from "effect"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -10,6 +11,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -23,9 +25,9 @@ import { WorkerError } from "../WorkerError.js"
 /** @internal */
 export const defaultQueue = <I>() =>
   Effect.map(
-    Queue.unbounded<readonly [id: number, item: I]>(),
+    Queue.unbounded<readonly [id: number, item: I, span: Option.Option<Tracer.Span>]>(),
     (queue): Worker.WorkerQueue<I> => ({
-      offer: (id, item) => Queue.offer(queue, [id, item]),
+      offer: (id, item, span) => Queue.offer(queue, [id, item, span]),
       take: Queue.take(queue),
       shutdown: Queue.shutdown(queue)
     })
@@ -170,12 +172,16 @@ export const makeManager = Effect.gen(function*(_) {
             Effect.all([
               Effect.sync(() => requestIdCounter++),
               Queue.unbounded<Exit.Exit<E | WorkerError, ReadonlyArray<O>>>(),
-              Deferred.make<never, void>()
+              Deferred.make<never, void>(),
+              Effect.map(
+                Effect.serviceOption(Tracer.ParentSpan),
+                Option.filter((span): span is Tracer.Span => span._tag === "Span")
+              )
             ]),
-            ([id, queue, deferred]) =>
+            ([id, queue, deferred, span]) =>
               Effect.suspend(() => {
                 requestMap.set(id, [queue, deferred])
-                return outbound.offer(id, request)
+                return outbound.offer(id, request, span)
               })
           )
 
@@ -183,7 +189,8 @@ export const makeManager = Effect.gen(function*(_) {
           [id, , deferred]: [
             number,
             Queue.Queue<Exit.Exit<E | WorkerError, ReadonlyArray<O>>>,
-            Deferred.Deferred<never, void>
+            Deferred.Deferred<never, void>,
+            Option.Option<Tracer.Span>
           ],
           exit: Exit.Exit<unknown, unknown>
         ) => {
@@ -225,16 +232,19 @@ export const makeManager = Effect.gen(function*(_) {
         yield* _(
           semaphore.take(1),
           Effect.zipRight(outbound.take),
-          Effect.flatMap(([id, request]) =>
+          Effect.flatMap(([id, request, span]) =>
             pipe(
               Effect.suspend(() => {
                 const result = requestMap.get(id)
                 if (!result) return Effect.unit
                 const transferables = transfers(request)
+                const spanTuple = Option.getOrUndefined(
+                  Option.map(span, (span) => [span.traceId, span.spanId, span.sampled] as const)
+                )
                 return pipe(
                   Effect.flatMap(
                     encode ? encode(request) : Effect.succeed(request),
-                    (payload) => sendQueue.offer([[id, 0, payload], transferables])
+                    (payload) => sendQueue.offer([[id, 0, payload, spanTuple], transferables])
                   ),
                   Effect.catchAllCause((cause) => Queue.offer(result[0], Exit.failCause(cause))),
                   Effect.zipRight(Deferred.await(result[1]))

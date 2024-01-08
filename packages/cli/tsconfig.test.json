@@ -14,7 +14,6 @@
     "types": ["node"],
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
     "rootDir": "test",
-    "noEmit": true,
-    "exactOptionalPropertyTypes": false
+    "noEmit": true
   }
 }

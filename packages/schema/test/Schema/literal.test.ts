@@ -32,13 +32,13 @@ describe("Schema/literal", () => {
       await Util.expectParseSuccess(schema, 1)
       await Util.expectParseSuccess(schema, "a")
 
-      await Util.expectParseFailureTree(
+      await Util.expectParseFailure(
         schema,
         null,
-        `error(s) found
-├─ union member
+        `1 | "a"
+├─ Union member
 │  └─ Expected 1, actual null
-└─ union member
+└─ Union member
    └─ Expected "a", actual null`
       )
     })

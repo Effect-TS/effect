@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("number/NumberFromString", () => {
+describe("number > NumberFromString", () => {
   const schema = S.NumberFromString
 
   it("property tests", () => {
@@ -19,19 +19,47 @@ describe("number/NumberFromString", () => {
     await Util.expectParseSuccess(schema, "Infinity", Infinity)
     await Util.expectParseSuccess(schema, "-Infinity", -Infinity)
 
-    await Util.expectParseFailure(schema, "", `Expected string <-> number, actual ""`)
-    await Util.expectParseFailure(schema, " ", `Expected string <-> number, actual " "`)
-    await Util.expectParseFailure(schema, "1AB", `Expected string <-> number, actual "1AB"`)
-    await Util.expectParseFailure(schema, "AB1", `Expected string <-> number, actual "AB1"`)
+    await Util.expectParseFailure(
+      schema,
+      "",
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual ""`
+    )
+    await Util.expectParseFailure(
+      schema,
+      " ",
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual " "`
+    )
+    await Util.expectParseFailure(
+      schema,
+      "1AB",
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "1AB"`
+    )
+    await Util.expectParseFailure(
+      schema,
+      "AB1",
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "AB1"`
+    )
     await Util.expectParseFailure(
       schema,
       "a",
-      `Expected string <-> number, actual "a"`
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       "a1",
-      `Expected string <-> number, actual "a1"`
+      `NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "a1"`
     )
   })
 

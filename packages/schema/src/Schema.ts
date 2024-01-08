@@ -32,6 +32,7 @@ import * as arbitrary from "./Arbitrary.js"
 import * as ArrayFormatter from "./ArrayFormatter.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
+import * as Format from "./Format.js"
 import * as Internal from "./internal/ast.js"
 import * as InternalBigInt from "./internal/bigint.js"
 import * as filters from "./internal/filters.js"
@@ -399,11 +400,7 @@ export const fromBrand = <C extends Brand.Brand<string | symbol>>(
     (a: A, _: ParseOptions, ast: AST.AST): Option.Option<ParseResult.ParseError> => {
       const e = constructor.either(a)
       return Either.isLeft(e) ?
-        Option.some(
-          ParseResult.parseError([
-            ParseResult.type(ast, a, e.left.map((v) => v.message).join(", "))
-          ])
-        ) :
+        Option.some(ParseResult.parseError(ParseResult.type(ast, a, e.left.map((v) => v.message).join(", ")))) :
         Option.none()
     },
     toAnnotations({ typeId: { id: BrandTypeId, params: { constructor } }, ...options })
@@ -1080,7 +1077,7 @@ export const brand = <B extends string | symbol, A>(
       Either.mapLeft(
         validateEither(input),
         (e) =>
-          ArrayFormatter.formatErrors(e.errors).map((err) => ({
+          ArrayFormatter.formatIssues([e.error]).map((err) => ({
             meta: err.path,
             message: err.message
           }))
@@ -1294,7 +1291,7 @@ export function filter<A>(
         if (Predicate.isBoolean(out)) {
           return out
             ? Option.none()
-            : Option.some(ParseResult.parseError([ParseResult.type(ast, a)]))
+            : Option.some(ParseResult.parseError(ParseResult.type(ast, a)))
         }
         return out
       },
@@ -1999,6 +1996,14 @@ export const lowercased = <A extends string>(options?: FilterAnnotations<A>) => 
   )
 
 /**
+ * @category string constructors
+ * @since 1.0.0
+ */
+export const Lowercased: Schema<string> = string.pipe(
+  lowercased({ identifier: "Lowercased", title: "Lowercased" })
+)
+
+/**
  * @category type id
  * @since 1.0.0
  */
@@ -2018,6 +2023,14 @@ export const uppercased = <A extends string>(options?: FilterAnnotations<A>) => 
       ...options
     })
   )
+
+/**
+ * @category string constructors
+ * @since 1.0.0
+ */
+export const Uppercased: Schema<string> = string.pipe(
+  uppercased({ identifier: "Uppercased", title: "Uppercased" })
+)
 
 /**
  * @category type id
@@ -2043,11 +2056,19 @@ export const length = <A extends string>(
   self.pipe(
     filter((a): a is A => a.length === length, {
       typeId: LengthTypeId,
-      description: length === 1 ? `a character` : `a string ${length} character(s) long`,
+      description: length === 1 ? `a single character` : `a string ${length} character(s) long`,
       jsonSchema: { minLength: length, maxLength: length },
       ...options
     })
   )
+
+/**
+ * A schema representing a single character.
+ *
+ * @category string constructors
+ * @since 1.0.0
+ */
+export const Char = string.pipe(length(1), identifier("Char"))
 
 /**
  * @category string filters
@@ -2069,10 +2090,10 @@ export const nonEmpty = <A extends string>(
  */
 export const Lowercase: Schema<string> = transform(
   string,
-  string.pipe(lowercased()),
+  Lowercased,
   (s) => s.toLowerCase(),
   identity
-)
+).pipe(identifier("Lowercase"))
 
 /**
  * This schema converts a string to uppercase.
@@ -2082,9 +2103,17 @@ export const Lowercase: Schema<string> = transform(
  */
 export const Uppercase: Schema<string> = transform(
   string,
-  string.pipe(uppercased()),
+  Uppercased,
   (s) => s.toUpperCase(),
   identity
+).pipe(identifier("Uppercase"))
+
+/**
+ * @category string constructors
+ * @since 1.0.0
+ */
+export const Trimmed: Schema<string> = string.pipe(
+  trimmed({ identifier: "Trimmed", title: "Trimmed" })
 )
 
 /**
@@ -2095,10 +2124,10 @@ export const Uppercase: Schema<string> = transform(
  */
 export const Trim: Schema<string> = transform(
   string,
-  string.pipe(trimmed()),
+  Trimmed,
   (s) => s.trim(),
   identity
-)
+).pipe(identifier("Trim"))
 
 /**
  * Returns a achema that allows splitting a string into an array of strings.
@@ -2122,6 +2151,12 @@ export type ParseJsonOptions = {
   readonly replacer?: Parameters<typeof JSON.stringify>[1]
   readonly space?: Parameters<typeof JSON.stringify>[2]
 }
+
+const JsonString = string.pipe(annotations({
+  [AST.IdentifierAnnotationId]: "JsonString",
+  [AST.TitleAnnotationId]: "JsonString",
+  [AST.DescriptionAnnotationId]: "a JSON string"
+}))
 
 /**
  * The `parseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
@@ -2149,17 +2184,17 @@ export const parseJson: {
   }
   const options: ParseJsonOptions | undefined = schema as any
   return transformOrFail(
-    string,
+    JsonString,
     unknown,
     (s, _, ast) =>
       ParseResult.try({
         try: () => JSON.parse(s, options?.reviver),
-        catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, s, e.message)])
+        catch: (e: any) => ParseResult.parseError(ParseResult.type(ast, s, e.message))
       }),
     (u, _, ast) =>
       ParseResult.try({
         try: () => JSON.stringify(u, options?.replacer, options?.space),
-        catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, u, e.message)])
+        catch: (e: any) => ParseResult.parseError(ParseResult.type(ast, u, e.message))
       })
   )
 }
@@ -2168,13 +2203,9 @@ export const parseJson: {
  * @category string constructors
  * @since 1.0.0
  */
-export const NonEmpty: Schema<string> = string.pipe(nonEmpty())
-
-/**
- * @category string constructors
- * @since 1.0.0
- */
-export const Trimmed: Schema<string> = string.pipe(trimmed())
+export const NonEmpty: Schema<string> = string.pipe(
+  nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
+)
 
 /**
  * @category type id
@@ -2185,14 +2216,19 @@ export const UUIDTypeId = Symbol.for("@effect/schema/TypeId/UUID")
 const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
 
 /**
+ * Represents a Universally Unique Identifier (UUID).
+ *
+ * This schema ensures that the provided string adheres to the standard UUID format.
+ *
  * @category string constructors
  * @since 1.0.0
  */
 export const UUID: Schema<string> = string.pipe(
   pattern(uuidRegex, {
     typeId: UUIDTypeId,
+    identifier: "UUID",
     title: "UUID",
-    description: "a UUID",
+    description: "a Universally Unique Identifier",
     arbitrary: (): Arbitrary<string> => (fc) => fc.uuid()
   })
 )
@@ -2206,14 +2242,20 @@ export const ULIDTypeId = Symbol.for("@effect/schema/TypeId/ULID")
 const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
 
 /**
+ * Represents a Universally Unique Lexicographically Sortable Identifier (ULID).
+ *
+ * ULIDs are designed to be compact, URL-safe, and ordered, making them suitable for use as identifiers.
+ * This schema ensures that the provided string adheres to the standard ULID format.
+ *
  * @category string constructors
  * @since 1.0.0
  */
 export const ULID: Schema<string> = string.pipe(
   pattern(ulidRegex, {
     typeId: ULIDTypeId,
+    identifier: "ULID",
     title: "ULID",
-    description: "a ULID",
+    description: "a Universally Unique Lexicographically Sortable Identifier",
     arbitrary: (): Arbitrary<string> => (fc) => fc.ulid()
   })
 )
@@ -2225,6 +2267,10 @@ export const ULID: Schema<string> = string.pipe(
 export const FiniteTypeId = Symbol.for("@effect/schema/TypeId/Finite")
 
 /**
+ * Ensures that the provided value is a finite number.
+ *
+ * This schema filters out non-finite numeric values, allowing only finite numbers to pass through.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2250,6 +2296,8 @@ export const GreaterThanTypeId: unique symbol = filters.GreaterThanTypeId
 export type GreaterThanTypeId = typeof GreaterThanTypeId
 
 /**
+ * This filter checks whether the provided number is greater than the specified minimum.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2280,6 +2328,8 @@ export const GreaterThanOrEqualToTypeId: unique symbol = filters.GreaterThanOrEq
 export type GreaterThanOrEqualToTypeId = typeof GreaterThanOrEqualToTypeId
 
 /**
+ * This filter checks whether the provided number is greater than or equal to the specified minimum.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2361,6 +2411,8 @@ export const LessThanTypeId: unique symbol = filters.LessThanTypeId
 export type LessThanTypeId = typeof LessThanTypeId
 
 /**
+ * This filter checks whether the provided number is less than the specified maximum.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2388,6 +2440,8 @@ export const LessThanOrEqualToTypeId: unique symbol = filters.LessThanOrEqualToT
 export type LessThanOrEqualToTypeId = typeof LessThanOrEqualToTypeId
 
 /**
+ * This schema checks whether the provided number is less than or equal to the specified maximum.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2418,6 +2472,8 @@ export const BetweenTypeId: unique symbol = filters.BetweenTypeId
 export type BetweenTypeId = typeof BetweenTypeId
 
 /**
+ * This filter checks whether the provided number falls within the specified minimum and maximum values.
+ *
  * @category number filters
  * @since 1.0.0
  */
@@ -2450,7 +2506,7 @@ export const nonNaN = <A extends number>(options?: FilterAnnotations<A>) => <I>(
   self.pipe(
     filter((a): a is A => !Number.isNaN(a), {
       typeId: NonNaNTypeId,
-      description: "a number NaN excluded",
+      description: "a number excluding NaN",
       ...options
     })
   )
@@ -2534,49 +2590,57 @@ export const NumberFromString: Schema<string, number> = transformOrFail(
       : ParseResult.succeed(n)
   },
   (n) => ParseResult.succeed(String(n))
+).pipe(identifier("NumberFromString"))
+
+/**
+ * @category number constructors
+ * @since 1.0.0
+ */
+export const Finite: Schema<number> = number.pipe(finite({ identifier: "Finite", title: "Finite" }))
+
+/**
+ * @category number constructors
+ * @since 1.0.0
+ */
+export const Int: Schema<number> = number.pipe(int({ identifier: "Int", title: "Int" }))
+
+/**
+ * @category number constructors
+ * @since 1.0.0
+ */
+export const NonNaN: Schema<number> = number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
+
+/**
+ * @category number constructors
+ * @since 1.0.0
+ */
+export const Positive: Schema<number> = number.pipe(
+  positive({ identifier: "Positive", title: "Positive" })
 )
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Finite: Schema<number> = number.pipe(finite())
+export const Negative: Schema<number> = number.pipe(
+  negative({ identifier: "Negative", title: "Negative" })
+)
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Int: Schema<number> = number.pipe(int())
+export const NonPositive: Schema<number> = number.pipe(
+  nonPositive({ identifier: "NonPositive", title: "NonPositive" })
+)
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNaN: Schema<number> = number.pipe(nonNaN())
-
-/**
- * @category number constructors
- * @since 1.0.0
- */
-export const Positive: Schema<number> = number.pipe(positive())
-
-/**
- * @category number constructors
- * @since 1.0.0
- */
-export const Negative: Schema<number> = number.pipe(negative())
-
-/**
- * @category number constructors
- * @since 1.0.0
- */
-export const NonPositive: Schema<number> = number.pipe(nonPositive())
-
-/**
- * @category number constructors
- * @since 1.0.0
- */
-export const NonNegative: Schema<number> = number.pipe(nonNegative())
+export const NonNegative: Schema<number> = number.pipe(
+  nonNegative({ identifier: "NonNegative", title: "NonNegative" })
+)
 
 /**
  * @category type id
@@ -2605,8 +2669,9 @@ export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
 export const JsonNumber: Schema<number> = number.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
-    title: "JsonNumber",
-    description: "a JSON number",
+    identifier: "JsonNumber",
+    title: "JSON-compatible number",
+    description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
     jsonSchema: { type: "number" }
   })
 )
@@ -2851,43 +2916,51 @@ export const bigint: Schema<string, bigint> = transformOrFail(
 
     return ParseResult.try({
       try: () => BigInt(s),
-      catch: () => ParseResult.parseError([ParseResult.type(ast, s)])
+      catch: () => ParseResult.parseError(ParseResult.type(ast, s))
     })
   },
   (n) => ParseResult.succeed(String(n)),
   { [AST.CodegenAnnotationId]: "bigint" }
+).pipe(identifier("bigint"))
+
+/**
+ * @category bigint constructors
+ * @since 1.0.0
+ */
+export const PositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
+  positiveBigint({ identifier: "PositiveBigintFromSelf", title: "PositiveBigintFromSelf" })
 )
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(positiveBigint())
+export const PositiveBigint: Schema<string, bigint> = bigint.pipe(
+  positiveBigint({ identifier: "PositiveBigint", title: "PositiveBigint" })
+)
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigint: Schema<string, bigint> = bigint.pipe(positiveBigint())
+export const NegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
+  negativeBigint({ identifier: "NegativeBigintFromSelf", title: "NegativeBigintFromSelf" })
+)
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(negativeBigint())
-
-/**
- * @category bigint constructors
- * @since 1.0.0
- */
-export const NegativeBigint: Schema<string, bigint> = bigint.pipe(negativeBigint())
+export const NegativeBigint: Schema<string, bigint> = bigint.pipe(
+  negativeBigint({ identifier: "NegativeBigint", title: "NegativeBigint" })
+)
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
 export const NonPositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  nonPositiveBigint()
+  nonPositiveBigint({ identifier: "NonPositiveBigintFromSelf", title: "NonPositiveBigintFromSelf" })
 )
 
 /**
@@ -2895,7 +2968,7 @@ export const NonPositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
  * @since 1.0.0
  */
 export const NonPositiveBigint: Schema<string, bigint> = bigint.pipe(
-  nonPositiveBigint()
+  nonPositiveBigint({ identifier: "NonPositiveBigint", title: "NonPositiveBigint" })
 )
 
 /**
@@ -2903,7 +2976,7 @@ export const NonPositiveBigint: Schema<string, bigint> = bigint.pipe(
  * @since 1.0.0
  */
 export const NonNegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  nonNegativeBigint()
+  nonNegativeBigint({ identifier: "NonNegativeBigintFromSelf", title: "NonNegativeBigintFromSelf" })
 )
 
 /**
@@ -2911,7 +2984,7 @@ export const NonNegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
  * @since 1.0.0
  */
 export const NonNegativeBigint: Schema<string, bigint> = bigint.pipe(
-  nonNegativeBigint()
+  nonNegativeBigint({ identifier: "NonNegativeBigint", title: "NonNegativeBigint" })
 )
 
 /**
@@ -2928,16 +3001,15 @@ export const BigintFromNumber: Schema<number, bigint> = transformOrFail(
   (n, _, ast) =>
     ParseResult.try({
       try: () => BigInt(n),
-      catch: () => ParseResult.parseError([ParseResult.type(ast, n)])
+      catch: () => ParseResult.parseError(ParseResult.type(ast, n))
     }),
   (b, _, ast) => {
     if (b > InternalBigInt.maxSafeInteger || b < InternalBigInt.minSafeInteger) {
       return ParseResult.fail(ParseResult.type(ast, b))
     }
-
     return ParseResult.succeed(Number(b))
   }
-)
+).pipe(identifier("BigintFromNumber"))
 
 /**
  * @category Secret constructors
@@ -2951,7 +3023,7 @@ export const SecretFromSelf: Schema<Secret.Secret> = declare(
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
-    [AST.IdentifierAnnotationId]: "Secret",
+    [AST.IdentifierAnnotationId]: "SecretFromSelf",
     [hooks.PrettyHookId]: (): Pretty.Pretty<Secret.Secret> => (secret) => String(secret),
     [hooks.ArbitraryHookId]: (): Arbitrary<Secret.Secret> => (fc) => fc.string().map((_) => Secret.fromString(_))
   }
@@ -2963,7 +3035,7 @@ const _Secret: Schema<string, Secret.Secret> = transform(
   (str) => Secret.fromString(str),
   (secret) => Secret.value(secret),
   { strict: false }
-)
+).pipe(identifier("Secret"))
 
 export {
   /**
@@ -2975,6 +3047,20 @@ export {
   _Secret as Secret
 }
 
+const DurationMillis = struct({
+  _tag: literal("Millis"),
+  millis: number
+}).pipe(identifier("DurationMillis"))
+
+const DurationNanos = struct({
+  _tag: literal("Nanos"),
+  nanos: bigintFromSelf
+}).pipe(identifier("DurationNanos"))
+
+const DurationInfinity = struct({
+  _tag: literal("Infinity")
+}).pipe(identifier("DurationInfinity"))
+
 /**
  * @category Duration constructors
  * @since 1.0.0
@@ -2983,17 +3069,9 @@ export const DurationFromSelf: Schema<Duration.Duration> = declare(
   [],
   struct({
     value: union(
-      struct({
-        _tag: literal("Millis"),
-        millis: number
-      }),
-      struct({
-        _tag: literal("Nanos"),
-        nanos: bigintFromSelf
-      }),
-      struct({
-        _tag: literal("Infinity")
-      })
+      DurationMillis,
+      DurationNanos,
+      DurationInfinity
     )
   }),
   () => (u, _, ast) =>
@@ -3038,7 +3116,7 @@ export const DurationFromNanos: Schema<
       onNone: () => ParseResult.fail(ParseResult.type(ast, duration)),
       onSome: (val) => ParseResult.succeed(val)
     })
-)
+).pipe(identifier("DurationFromNanos"))
 
 /**
  * A schema that transforms a `number` tuple into a `Duration`.
@@ -3055,34 +3133,29 @@ export const DurationFromMillis: Schema<
   DurationFromSelf,
   (ms) => Duration.millis(ms),
   (n) => Duration.toMillis(n)
-)
+).pipe(identifier("DurationFromMillis"))
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   NonNegative.pipe(
-    annotations({
+    finite({
       [AST.TitleAnnotationId]: "seconds",
       [AST.DescriptionAnnotationId]: "seconds"
-    }),
-    finite()
+    })
   ),
   NonNegative.pipe(
-    annotations({
+    finite({
       [AST.TitleAnnotationId]: "nanos",
       [AST.DescriptionAnnotationId]: "nanos"
-    }),
-    finite()
+    })
   )
-).pipe(annotations({
-  [AST.TitleAnnotationId]: "a high resolution time tuple",
-  [AST.DescriptionAnnotationId]: "a high resolution time tuple"
-}))
+)
 
 const _Duration: Schema<readonly [seconds: number, nanos: number], Duration.Duration> = transform(
   hrTime,
   DurationFromSelf,
   ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
   (duration) => Duration.toHrTime(duration)
-)
+).pipe(identifier("Duration"))
 
 export {
   /**
@@ -3257,11 +3330,11 @@ const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = transform(
       title: "8-bit unsigned integer",
       description: "a 8-bit unsigned integer"
     })
-  )),
+  )).pipe(description("an array of 8-bit unsigned integers")),
   Uint8ArrayFromSelf,
   (a) => Uint8Array.from(a),
   (arr) => Array.from(arr)
-)
+).pipe(identifier("Uint8Array"))
 
 export {
   /**
@@ -3276,8 +3349,7 @@ export {
 const makeEncodingTransformation = (
   id: string,
   decode: (s: string) => Either.Either<Encoding.DecodeException, Uint8Array>,
-  encode: (u: Uint8Array) => string,
-  arbitrary: Arbitrary<Uint8Array>
+  encode: (u: Uint8Array) => string
 ): Schema<string, Uint8Array> =>
   transformOrFail(
     string,
@@ -3285,15 +3357,11 @@ const makeEncodingTransformation = (
     (s, _, ast) =>
       Either.mapLeft(
         decode(s),
-        (decodeException) => ParseResult.parseError([ParseResult.type(ast, s, decodeException.message)])
+        (decodeException) => ParseResult.parseError(ParseResult.type(ast, s, decodeException.message))
       ),
     (u) => ParseResult.succeed(encode(u)),
     { strict: false }
-  ).pipe(annotations({
-    [AST.IdentifierAnnotationId]: id,
-    [hooks.PrettyHookId]: (): Pretty.Pretty<Uint8Array> => (u) => `${id}(${encode(u)})`,
-    [hooks.ArbitraryHookId]: () => arbitrary
-  }))
+  ).pipe(identifier(id))
 
 /**
  * @category Encoding transformations
@@ -3302,8 +3370,7 @@ const makeEncodingTransformation = (
 export const Base64: Schema<string, Uint8Array> = makeEncodingTransformation(
   "Base64",
   Encoding.decodeBase64,
-  Encoding.encodeBase64,
-  (fc) => fc.base64String().map((s) => Either.getOrThrow(Encoding.decodeBase64(s)))
+  Encoding.encodeBase64
 )
 
 /**
@@ -3313,8 +3380,7 @@ export const Base64: Schema<string, Uint8Array> = makeEncodingTransformation(
 export const Base64Url: Schema<string, Uint8Array> = makeEncodingTransformation(
   "Base64Url",
   Encoding.decodeBase64Url,
-  Encoding.encodeBase64Url,
-  (fc) => fc.base64String().map((s) => Either.getOrThrow(Encoding.decodeBase64Url(s)))
+  Encoding.encodeBase64Url
 )
 
 /**
@@ -3324,8 +3390,7 @@ export const Base64Url: Schema<string, Uint8Array> = makeEncodingTransformation(
 export const Hex: Schema<string, Uint8Array> = makeEncodingTransformation(
   "Hex",
   Encoding.decodeHex,
-  Encoding.encodeHex,
-  (fc) => fc.hexaString().map((s) => Either.getOrThrow(Encoding.decodeHex(s)))
+  Encoding.encodeHex
 )
 
 /**
@@ -3459,7 +3524,7 @@ export const DateFromSelf: Schema<Date> = declare(
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
-    [AST.IdentifierAnnotationId]: "Date",
+    [AST.IdentifierAnnotationId]: "DateFromSelf",
     [hooks.PrettyHookId]: datePretty,
     [hooks.ArbitraryHookId]: dateArbitrary,
     [hooks.EquivalenceHookId]: () => Equivalence.Date
@@ -3472,7 +3537,9 @@ export const DateFromSelf: Schema<Date> = declare(
  * @category Date constructors
  * @since 1.0.0
  */
-export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(validDate())
+export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(
+  validDate({ identifier: "ValidDateFromSelf" })
+)
 
 /**
  * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
@@ -3485,9 +3552,11 @@ export const DateFromString: Schema<string, Date> = transform(
   DateFromSelf,
   (s) => new Date(s),
   (n) => n.toISOString()
-)
+).pipe(identifier("DateFromString"))
 
-const _Date: Schema<string, Date> = DateFromString.pipe(validDate())
+const _Date: Schema<string, Date> = DateFromString.pipe(
+  validDate({ identifier: "Date" })
+)
 
 export {
   /**
@@ -3512,15 +3581,20 @@ export type OptionFrom<I> =
     readonly value: I
   }
 
+const OptionNoneFrom = struct({
+  _tag: literal("None")
+})
+
+const optionSomeFrom = <I, A>(value: Schema<I, A>) =>
+  struct({
+    _tag: literal("Some"),
+    value
+  })
+
 const optionFrom = <I, A>(value: Schema<I, A>): Schema<OptionFrom<I>, OptionFrom<A>> =>
   union(
-    struct({
-      _tag: literal("None")
-    }),
-    struct({
-      _tag: literal("Some"),
-      value
-    })
+    OptionNoneFrom,
+    optionSomeFrom(value)
   )
 
 const optionDecode = <A>(input: OptionFrom<A>): Option.Option<A> =>
@@ -3557,7 +3631,7 @@ export const optionFromSelf = <I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "Option",
+      [AST.DescriptionAnnotationId]: `Option<${Format.format(value)}>`,
       [hooks.PrettyHookId]: optionPretty,
       [hooks.ArbitraryHookId]: optionArbitrary,
       [hooks.EquivalenceHookId]: Option.getEquivalence
@@ -3620,19 +3694,25 @@ export type EitherFrom<IE, IA> =
     readonly right: IA
   }
 
+const rightFrom = <IA, A>(right: Schema<IA, A>) =>
+  struct({
+    _tag: literal("Right"),
+    right
+  })
+
+const leftFrom = <IE, E>(left: Schema<IE, E>) =>
+  struct({
+    _tag: literal("Left"),
+    left
+  })
+
 const eitherFrom = <IE, E, IA, A>(
   left: Schema<IE, E>,
   right: Schema<IA, A>
 ): Schema<EitherFrom<IE, IA>, EitherFrom<E, A>> =>
   union(
-    struct({
-      _tag: literal("Left"),
-      left
-    }),
-    struct({
-      _tag: literal("Right"),
-      right
-    })
+    rightFrom(right),
+    leftFrom(left)
   )
 
 const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<E, A> =>
@@ -3677,7 +3757,7 @@ export const eitherFromSelf = <IE, E, IA, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "Either",
+      [AST.DescriptionAnnotationId]: `Either<${Format.format(left)}, ${Format.format(right)}>`,
       [hooks.PrettyHookId]: eitherPretty,
       [hooks.ArbitraryHookId]: eitherArbitrary,
       [hooks.EquivalenceHookId]: Either.getEquivalence
@@ -3755,7 +3835,7 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "ReadonlyMap",
+      [AST.IdentifierAnnotationId]: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
       [hooks.PrettyHookId]: readonlyMapPretty,
       [hooks.ArbitraryHookId]: readonlyMapArbitrary,
       [hooks.EquivalenceHookId]: readonlyMapEquivalence
@@ -3815,7 +3895,7 @@ export const readonlySetFromSelf = <I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "ReadonlySet",
+      [AST.DescriptionAnnotationId]: `ReadonlySet<${Format.format(item)}>`,
       [hooks.PrettyHookId]: readonlySetPretty,
       [hooks.ArbitraryHookId]: readonlySetArbitrary,
       [hooks.EquivalenceHookId]: readonlySetEquivalence
@@ -3872,7 +3952,7 @@ const _BigDecimal: Schema<string, BigDecimal.BigDecimal> = transformOrFail(
       onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
     })),
   (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val)))
-)
+).pipe(identifier("BigDecimal"))
 
 export {
   /**
@@ -3894,7 +3974,7 @@ export const BigDecimalFromNumber: Schema<number, BigDecimal.BigDecimal> = trans
   BigDecimalFromSelf,
   (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
   (val) => ParseResult.succeed(BigDecimal.unsafeToNumber(val))
-)
+).pipe(identifier("BigDecimalFromNumber"))
 
 /**
  * @category type id
@@ -4017,6 +4097,17 @@ export const positiveBigDecimal = <A extends BigDecimal.BigDecimal>(
   )
 
 /**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const PositiveBigDecimalFromSelf = BigDecimalFromSelf.pipe(
+  positiveBigDecimal({
+    identifier: "PositiveBigDecimalFromSelf",
+    title: "PositiveBigDecimalFromSelf"
+  })
+)
+
+/**
  * @category type id
  * @since 1.0.0
  */
@@ -4039,6 +4130,17 @@ export const nonNegativeBigDecimal = <A extends BigDecimal.BigDecimal>(
       ...options
     })
   )
+
+/**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const NonNegativeBigDecimalFromSelf = BigDecimalFromSelf.pipe(
+  nonNegativeBigDecimal({
+    identifier: "NonNegativeBigDecimalFromSelf",
+    title: "NonNegativeBigDecimalFromSelf"
+  })
+)
 
 /**
  * @category type id
@@ -4065,6 +4167,17 @@ export const negativeBigDecimal = <A extends BigDecimal.BigDecimal>(
   )
 
 /**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const NegativeBigDecimalFromSelf = BigDecimalFromSelf.pipe(
+  negativeBigDecimal({
+    identifier: "NegativeBigDecimalFromSelf",
+    title: "NegativeBigDecimalFromSelf"
+  })
+)
+
+/**
  * @category type id
  * @since 1.0.0
  */
@@ -4087,6 +4200,17 @@ export const nonPositiveBigDecimal = <A extends BigDecimal.BigDecimal>(
       ...options
     })
   )
+
+/**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const NonPositiveBigDecimalFromSelf = BigDecimalFromSelf.pipe(
+  nonPositiveBigDecimal({
+    identifier: "NonPositiveBigDecimalFromSelf",
+    title: "NonPositiveBigDecimalFromSelf"
+  })
+)
 
 /**
  * @category type id
@@ -4175,7 +4299,7 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
       }
     },
     {
-      [AST.IdentifierAnnotationId]: "Chunk",
+      [AST.DescriptionAnnotationId]: `Chunk<${Format.format(item)}>`,
       [hooks.PrettyHookId]: chunkPretty,
       [hooks.ArbitraryHookId]: chunkArbitrary,
       [hooks.EquivalenceHookId]: Chunk.getEquivalence
@@ -4229,7 +4353,7 @@ export const dataFromSelf = <
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "Data",
+      [AST.DescriptionAnnotationId]: `Data<${Format.format(item)}>`,
       [hooks.PrettyHookId]: dataPretty,
       [hooks.ArbitraryHookId]: dataArbitrary,
       [hooks.EquivalenceHookId]: () => Equal.equals
@@ -4458,7 +4582,7 @@ const makeClass = <I, A>(
   const validator = Parser.validateSync(selfSchema)
 
   return class extends Base {
-    constructor(props: any = {}, disableValidation = false) {
+    constructor(props?: any, disableValidation = false) {
       if (disableValidation !== true) {
         props = validator(additionalProps ? { ...props, ...additionalProps } : props)
       }
@@ -4562,27 +4686,33 @@ export type FiberIdFrom =
     readonly startTimeMillis: number
   }
 
+const FiberIdCompositeFrom = struct({
+  _tag: literal("Composite"),
+  left: suspend(() => FiberIdFrom),
+  right: suspend(() => FiberIdFrom)
+}).pipe(identifier("FiberIdCompositeFrom"))
+
+const FiberIdNoneFrom = struct({
+  _tag: literal("None")
+}).pipe(identifier("FiberIdNoneFrom"))
+
+const FiberIdRuntimeFrom = struct({
+  _tag: literal("Runtime"),
+  id: Int.pipe(nonNegative({
+    title: "id",
+    description: "id"
+  })),
+  startTimeMillis: Int.pipe(nonNegative({
+    title: "startTimeMillis",
+    description: "startTimeMillis"
+  }))
+}).pipe(identifier("FiberIdRuntimeFrom"))
+
 const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
-  struct({
-    _tag: literal("Composite"),
-    left: suspend(() => FiberIdFrom),
-    right: suspend(() => FiberIdFrom)
-  }),
-  struct({
-    _tag: literal("None")
-  }),
-  struct({
-    _tag: literal("Runtime"),
-    id: Int.pipe(nonNegative({
-      title: "id",
-      description: "id"
-    })),
-    startTimeMillis: Int.pipe(nonNegative({
-      title: "startTimeMillis",
-      description: "startTimeMillis"
-    }))
-  })
-)
+  FiberIdCompositeFrom,
+  FiberIdNoneFrom,
+  FiberIdRuntimeFrom
+).pipe(identifier("FiberIdFrom"))
 
 const fiberIdFromArbitrary = arbitrary.unsafe(FiberIdFrom)
 
@@ -4690,37 +4820,55 @@ export type CauseFrom<E> =
     readonly right: CauseFrom<E>
   }
 
+const causeDieFrom = (defect: Schema<unknown, unknown>) =>
+  struct({
+    _tag: literal("Die"),
+    defect
+  })
+
+const CauseEmptyFrom = struct({
+  _tag: literal("Empty")
+})
+
+const causeFailFrom = <EI, E>(error: Schema<EI, E>) =>
+  struct({
+    _tag: literal("Fail"),
+    error
+  })
+
+const CauseInterruptFrom = struct({
+  _tag: literal("Interrupt"),
+  fiberId: FiberIdFrom
+})
+
+const causeParallelFrom = <EI, E>(causeFrom: Schema<CauseFrom<EI>, CauseFrom<E>>) =>
+  struct({
+    _tag: literal("Parallel"),
+    left: causeFrom,
+    right: causeFrom
+  })
+
+const causeSequentialFrom = <EI, E>(causeFrom: Schema<CauseFrom<EI>, CauseFrom<E>>) =>
+  struct({
+    _tag: literal("Sequential"),
+    left: causeFrom,
+    right: causeFrom
+  })
+
 const causeFrom = <EI, E>(
   error: Schema<EI, E>,
   defect: Schema<unknown, unknown>
 ): Schema<CauseFrom<EI>, CauseFrom<E>> => {
+  const desc = `CauseFrom<${Format.format(error)}>`
+  const recur = suspend(() => out)
   const out: Schema<CauseFrom<EI>, CauseFrom<E>> = union(
-    struct({
-      _tag: literal("Die"),
-      defect
-    }),
-    struct({
-      _tag: literal("Empty")
-    }),
-    struct({
-      _tag: literal("Fail"),
-      error
-    }),
-    struct({
-      _tag: literal("Interrupt"),
-      fiberId: FiberIdFrom
-    }),
-    struct({
-      _tag: literal("Parallel"),
-      left: suspend(() => out),
-      right: suspend(() => out)
-    }),
-    struct({
-      _tag: literal("Sequential"),
-      left: suspend(() => out),
-      right: suspend(() => out)
-    })
-  )
+    causeDieFrom(defect),
+    CauseEmptyFrom,
+    causeFailFrom(error),
+    CauseInterruptFrom,
+    causeParallelFrom(recur),
+    causeSequentialFrom(recur)
+  ).pipe(description(desc))
   return out
 }
 
@@ -4773,7 +4921,7 @@ export const causeFromSelf = <IE, E>(
       }
     },
     {
-      [AST.IdentifierAnnotationId]: "Cause",
+      [AST.DescriptionAnnotationId]: `Cause<${Format.format(error)}>`,
       [hooks.PrettyHookId]: causePretty,
       [hooks.ArbitraryHookId]: causeArbitrary,
       [hooks.EquivalenceHookId]: () => Equal.equals
@@ -4864,20 +5012,31 @@ export type ExitFrom<E, A> =
     readonly value: A
   }
 
+const exitFailureFrom = <EI, E>(
+  error: Schema<EI, E>,
+  defect: Schema<unknown, unknown>
+) =>
+  struct({
+    _tag: literal("Failure"),
+    cause: causeFrom(error, defect)
+  })
+
+const exitSuccessFrom = <AI, A>(
+  value: Schema<AI, A>
+) =>
+  struct({
+    _tag: literal("Success"),
+    value
+  })
+
 const exitFrom = <EI, E, AI, A>(
   error: Schema<EI, E>,
   value: Schema<AI, A>,
   defect: Schema<unknown, unknown>
 ): Schema<ExitFrom<EI, AI>, ExitFrom<E, A>> =>
   union(
-    struct({
-      _tag: literal("Failure"),
-      cause: causeFrom(error, defect)
-    }),
-    struct({
-      _tag: literal("Success"),
-      value
-    })
+    exitFailureFrom(error, defect),
+    exitSuccessFrom(value)
   )
 
 const exitDecode = <E, A>(input: ExitFrom<E, A>): Exit.Exit<E, A> => {

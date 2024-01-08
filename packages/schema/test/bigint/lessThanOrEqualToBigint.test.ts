@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("bigint/lessThanOrEqualToBigint", () => {
+describe("bigint > lessThanOrEqualToBigint", () => {
   const schema = S.bigintFromSelf.pipe(S.lessThanOrEqualToBigint(0n))
 
   it("decoding", async () => {
@@ -10,7 +10,9 @@ describe("bigint/lessThanOrEqualToBigint", () => {
     await Util.expectParseFailure(
       schema,
       1n,
-      "Expected a non-positive bigint, actual 1n"
+      `a non-positive bigint
+└─ Predicate refinement failure
+   └─ Expected a non-positive bigint, actual 1n`
     )
   })
 
