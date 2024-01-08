@@ -44,13 +44,13 @@ We welcome contributions via pull requests! Here are some guidelines to help you
 3. Ensure you have the required dependencies installed by running: `pnpm install` (assuming pnpm version `8.x`).
 4. Make your desired changes and, if applicable, include tests to validate your modifications.
 5. Run the following commands to ensure the integrity of your changes:
+   - `pnpm codegen`: Re-generate the package entrypoints in case you have changed the structure of a package or introduced a new module.
    - `pnpm check`: Verify that the code compiles.
    - `pnpm test`: Execute the tests.
    - `pnpm circular`: Confirm there are no circular imports.
    - `pnpm lint`: Check for code style adherence (if you happen to encounter any errors during this process, you can use `pnpm lint-fix` to automatically fix some of these style issues).
    - `pnpm dtslint`: Run type-level tests.
    - `pnpm docgen`: Check the integrity of the generated documentation.
-   - `pnpm build`: Re-generate the package entrypoints in case you have changed the structure of a package or introduced a new module.
 6. Create a changeset for your changes: before committing your changes, create a changeset to document the modifications. This helps in tracking and communicating the changes effectively. To create a changeset, run the following command: `pnpm changeset`. Always choose the `patch` option when prompted (please note that we are currently in pre-release mode).
 7. Commit your changes: after creating the changeset, commit your changes with a descriptive commit message: `git commit -am 'Add some feature'`.
 8. Push your changes to your fork: `git push origin my-new-feature`.

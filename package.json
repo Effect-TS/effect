@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "clean": "node scripts/clean.mjs",
+    "codegen": "pnpm --recursive --parallel run codegen",
     "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel run build",
     "circular": "madge --extensions ts --circular --no-color --no-spinner packages/*/src",
     "test": "vitest",
