@@ -208,7 +208,7 @@ export const insert = dual<
         n2.key,
         count,
         n2.value,
-        n2.right,
+        n2.left,
         n_stack[s + 1],
         n2.right
       )
@@ -276,3 +276,112 @@ export const unsafeGet = dual<
   }
   return element.value
 })
+
+/** @internal */
+export const remove = dual<
+  (key: string) => <V>(self: TR.Trie<V>) => TR.Trie<V>,
+  <V>(self: TR.Trie<V>, key: string) => TR.Trie<V>
+>(
+  2,
+  <V>(self: TR.Trie<V>, key: string) => {
+    let n: Node.Node<V> | undefined = (self as TrieImpl<V>)._root
+    if (n == null || key.length === 0) return self
+
+    const count = n.count - 1
+    const n_stack: Array<Node.Node<V>> = []
+    const d_stack: Array<Ordering.Ordering> = []
+
+    let cIndex = 0
+    while (cIndex < key.length) {
+      const c = key[cIndex]
+      if (c > n.key) {
+        if (n.right == null) {
+          return self
+        } else {
+          n_stack.push(n)
+          d_stack.push(1)
+          n = n.right
+        }
+      } else if (c < n.key) {
+        if (n.left == null) {
+          return self
+        } else {
+          n_stack.push(n)
+          d_stack.push(-1)
+          n = n.left
+        }
+      } else {
+        if (cIndex === key.length - 1) {
+          if (n.value != null) {
+            n_stack.push(n)
+            d_stack.push(0)
+            cIndex += 1
+          } else {
+            return self
+          }
+        } else {
+          if (n.mid == null) {
+            return self
+          } else {
+            n_stack.push(n)
+            d_stack.push(0)
+            n = n.mid
+            cIndex += 1
+          }
+        }
+      }
+    }
+
+    const removeNode = n_stack[n_stack.length - 1]
+    n_stack[n_stack.length - 1] = new Node.Node(
+      removeNode.key,
+      count,
+      undefined, // Remove
+      removeNode.left,
+      removeNode.mid,
+      removeNode.right
+    )
+
+    // Rebuild path to leaf node (Path-copying immutability)
+    for (let s = n_stack.length - 2; s >= 0; --s) {
+      const n2 = n_stack[s]
+      const d = d_stack[s]
+      const child = n_stack[s + 1]
+      const nc = child.left == null && child.mid == null && child.right == null ? undefined : child
+      if (d === -1) {
+        // left
+        n_stack[s] = new Node.Node(
+          n2.key,
+          count,
+          n2.value,
+          nc,
+          n2.mid,
+          n2.right
+        )
+      } else if (d === 1) {
+        // right
+        n_stack[s] = new Node.Node(
+          n2.key,
+          count,
+          n2.value,
+          n2.left,
+          n2.mid,
+          nc
+        )
+      } else {
+        // mid
+        n_stack[s] = new Node.Node(
+          n2.key,
+          count,
+          n2.value,
+          n2.left,
+          nc,
+          n2.right
+        )
+      }
+    }
+
+    n_stack[0].count = count
+    return makeImpl(n_stack[0])
+  }
+)

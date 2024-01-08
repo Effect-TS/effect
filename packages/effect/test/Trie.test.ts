@@ -62,7 +62,7 @@ describe("Trie", () => {
     deepStrictEqual(Array.from(trie), [])
   })
 
-  it("Immutable", () => {
+  it("insert", () => {
     const trie1 = pipe(
       Trie.empty<number>(),
       Trie.insert("call", 0)
@@ -72,10 +72,10 @@ describe("Trie", () => {
     const trie3 = trie2.pipe(Trie.insert("mind", 2))
     const trie4 = trie3.pipe(Trie.insert("mid", 3))
 
-    expect(Array.from(trie1).length).toBe(1)
-    expect(Array.from(trie2).length).toBe(2)
-    expect(Array.from(trie3).length).toBe(3)
-    expect(Array.from(trie4).length).toBe(4)
+    deepStrictEqual(Array.from(trie1), [["call", 0]])
+    deepStrictEqual(Array.from(trie2), [["call", 0], ["me", 1]])
+    deepStrictEqual(Array.from(trie3), [["call", 0], ["me", 1], ["mind", 2]])
+    deepStrictEqual(Array.from(trie4), [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]])
   })
 
   it("fromIterable empty", () => {
@@ -149,5 +149,26 @@ describe("Trie", () => {
     )
 
     assert.throws(() => Trie.unsafeGet(trie, "mae"))
+  })
+
+  it("remove", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0),
+      Trie.insert("me", 1),
+      Trie.insert("mind", 2),
+      Trie.insert("mid", 3)
+    )
+
+    const trie1 = trie.pipe(Trie.remove("call"))
+    const trie2 = trie1.pipe(Trie.remove("mea"))
+
+    deepStrictEqual(Trie.get(trie, "call"), Option.some(0))
+    deepStrictEqual(Trie.get(trie1, "call"), Option.none())
+    deepStrictEqual(Trie.get(trie2, "call"), Option.none())
+
+    deepStrictEqual(Array.from(trie), [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]])
+    deepStrictEqual(Array.from(trie1), [["me", 1], ["mind", 2], ["mid", 3]])
+    deepStrictEqual(Array.from(trie2), [["me", 1], ["mind", 2], ["mid", 3]])
   })
 })

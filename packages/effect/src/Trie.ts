@@ -85,3 +85,13 @@ export const unsafeGet: {
   (key: string): <V>(self: Trie<V>) => V
   <V>(self: Trie<V>, key: string): V
 } = TR.unsafeGet
+
+/**
+ * Remove the entry for the specified key in the `Trie`.
+ *
+ * @since 2.0.0
+ */
+export const remove: {
+  <V>(key: string): (self: Trie<V>) => Trie<V>
+  <V>(self: Trie<V>, key: string): Trie<V>
+} = TR.remove
