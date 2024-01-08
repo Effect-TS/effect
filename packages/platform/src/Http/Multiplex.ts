@@ -123,6 +123,24 @@ export const headerStartsWith: {
  * @since 1.0.0
  * @category combinators
  */
+export const headerEndsWith: {
+  <R2, E2>(
+    header: string,
+    suffix: string,
+    app: App.Default<R2, E2>
+  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+  <R, E, R2, E2>(
+    self: Multiplex<R, E>,
+    header: string,
+    suffix: string,
+    app: App.Default<R2, E2>
+  ): Multiplex<R | R2, E | E2>
+} = internal.headerEndsWith
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const hostExact: {
   <R2, E2>(host: string, app: App.Default<R2, E2>): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
   <R, E, R2, E2>(self: Multiplex<R, E>, host: string, app: App.Default<R2, E2>): Multiplex<R | R2, E | E2>
@@ -145,3 +163,12 @@ export const hostStartsWith: {
   <R2, E2>(prefix: string, app: App.Default<R2, E2>): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
   <R, E, R2, E2>(self: Multiplex<R, E>, prefix: string, app: App.Default<R2, E2>): Multiplex<R | R2, E | E2>
 } = internal.hostStartsWith
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const hostEndsWith: {
+  <R2, E2>(suffix: string, app: App.Default<R2, E2>): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+  <R, E, R2, E2>(self: Multiplex<R, E>, suffix: string, app: App.Default<R2, E2>): Multiplex<R | R2, E | E2>
+} = internal.hostEndsWith
