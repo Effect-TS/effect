@@ -1846,6 +1846,56 @@ export const repeat_Effect = dual<
 >(2, (self, schedule) => repeatOrElse_Effect(self, schedule, (e, _) => core.fail(e)))
 
 /** @internal */
+export const repeat_combined = dual<{
+  <A, O extends Effect.Repeat.Options<A>>(
+    options: O
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Repeat.Return<R, E, A, O>
+  <R1, A extends A0, A0, B>(
+    schedule: Schedule.Schedule<R1, A, B>
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E, B>
+}, {
+  <R, E, A, O extends Effect.Repeat.Options<A>>(
+    self: Effect.Effect<R, E, A>,
+    options: O
+  ): Effect.Repeat.Return<R, E, A, O>
+  <R, E, A extends A0, A0, R1, B>(
+    self: Effect.Effect<R, E, A>,
+    schedule: Schedule.Schedule<R1, A0, B>
+  ): Effect.Effect<R | R1, E, B>
+}>(
+  2,
+  (self: Effect.Effect<any, any, any>, options: Effect.Repeat.Options<any> | Schedule.Schedule<any, any, any>) => {
+    if (isSchedule(options)) {
+      return repeat_Effect(self, options)
+    }
+
+    const base = options.schedule ?? passthrough(forever)
+    const withWhile = options.while ?
+      whileInputEffect(base, (a) => {
+        const applied = options.while!(a)
+        if (typeof applied === "boolean") {
+          return core.succeed(applied)
+        }
+        return applied
+      }) :
+      base
+    const withUntil = options.until ?
+      untilInputEffect(withWhile, (a) => {
+        const applied = options.until!(a)
+        if (typeof applied === "boolean") {
+          return core.succeed(applied)
+        }
+        return applied
+      }) :
+      withWhile
+    const withTimes = options.times ?
+      intersect(withUntil, recurs(options.times)) :
+      withUntil
+    return repeat_Effect(self, withTimes)
+  }
+)
+
+/** @internal */
 export const repeatOrElse_Effect = dual<
   <R2, A extends A0, A0, B, E, R3, E2>(
     schedule: Schedule.Schedule<R2, A, B>,

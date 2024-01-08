@@ -1767,7 +1767,7 @@ export declare namespace Retry {
    * @since 2.0.0
    * @category error handling
    */
-  export type Return<R, E, A, O extends Options<any>> = Effect<
+  export type Return<R, E, A, O extends Options<E>> = Effect<
     | R
     | (O extends { schedule: Schedule.Schedule<infer X, infer _I, infer _O> } ? X : never)
     | (O extends { while: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never)
@@ -4031,6 +4031,36 @@ export const loop: {
 } = effect.loop
 
 /**
+ * @since 2.0.0
+ * @category repetition / recursion
+ */
+export declare namespace Repeat {
+  /**
+   * @since 2.0.0
+   * @category repetition / recursion
+   */
+  export type Return<R, E, A, O extends Options<A>> = Effect<
+    | R
+    | (O extends { schedule: Schedule.Schedule<infer X, infer _I, infer _O> } ? X : never)
+    | (O extends { while: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never)
+    | (O extends { until: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never),
+    E,
+    (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer Out> } ? Out : A)
+  > extends infer Z ? Z : never
+
+  /**
+   * @since 2.0.0
+   * @category repetition / recursion
+   */
+  export interface Options<A> {
+    while?: (_: A) => boolean | Effect<any, never, boolean>
+    until?: (_: A) => boolean | Effect<any, never, boolean>
+    times?: number
+    schedule?: Schedule.Schedule<any, A, any>
+  }
+}
+
+/**
  * Returns a new effect that repeats this effect according to the specified
  * schedule or until the first failure. Scheduled recurrences are in addition
  * to the first execution, so that `io.repeat(Schedule.once)` yields an effect
@@ -4041,11 +4071,20 @@ export const loop: {
  * @category repetition / recursion
  */
 export const repeat: {
+  <A, O extends Repeat.Options<A>>(
+    options: O
+  ): <R, E>(
+    self: Effect<R, E, A>
+  ) => Repeat.Return<R, E, A, O>
   <R1, A extends A0, A0, B>(
     schedule: Schedule.Schedule<R1, A, B>
   ): <R, E>(self: Effect<R, E, A>) => Effect<R1 | R, E, B>
+  <R, E, A, O extends Repeat.Options<A>>(
+    self: Effect<R, E, A>,
+    options: O
+  ): Repeat.Return<R, E, A, O>
   <R, E, A extends A0, A0, R1, B>(self: Effect<R, E, A>, schedule: Schedule.Schedule<R1, A0, B>): Effect<R | R1, E, B>
-} = _schedule.repeat_Effect
+} = _schedule.repeat_combined
 
 /**
  * Returns a new effect that repeats this effect the specified number of times
