@@ -770,11 +770,6 @@ export * as TRef from "./TRef.js"
 /**
  * @since 2.0.0
  */
-export * as Trie from "./Trie.js"
-
-/**
- * @since 2.0.0
- */
 export * as TSemaphore from "./TSemaphore.js"
 
 /**
@@ -836,6 +831,11 @@ export * as TestSized from "./TestSized.js"
  * @since 2.0.0
  */
 export * as Tracer from "./Tracer.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as Trie from "./Trie.js"
 
 /**
  * This module provides utility functions for working with tuples in TypeScript.
