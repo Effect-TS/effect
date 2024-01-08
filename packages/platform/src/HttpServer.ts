@@ -6,6 +6,7 @@ import * as body from "./Http/Body.js"
 import * as headers from "./Http/Headers.js"
 import * as middleware from "./Http/Middleware.js"
 import * as multipart from "./Http/Multipart.js"
+import * as multiplex from "./Http/Multiplex.js"
 import * as router from "./Http/Router.js"
 import * as error from "./Http/ServerError.js"
 import * as request from "./Http/ServerRequest.js"
@@ -55,6 +56,13 @@ export {
    * - Module: `@effect/platform/Http/Multipart`
    */
   multipart,
+  /**
+   * @since 1.0.0
+   *
+   * - Docs: [Http/Multiplex](https://effect-ts.github.io/effect/platform/Http/Multiplex.html)
+   * - Module: `@effect/platform/Http/Multiplex`
+   */
+  multiplex,
   /**
    * @since 1.0.0
    *

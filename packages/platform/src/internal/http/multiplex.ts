@@ -1,0 +1,116 @@
+import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
+import { dual } from "effect/Function"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import type * as App from "../../Http/App.js"
+import type * as Multiplex from "../../Http/Multiplex.js"
+import * as Error from "../../Http/ServerError.js"
+import * as ServerRequest from "../../Http/ServerRequest.js"
+import type * as ServerResponse from "../../Http/ServerResponse.js"
+
+/** @internal */
+export const TypeId: Multiplex.TypeId = Symbol.for("@effect/platform/Http/Multiplex") as Multiplex.TypeId
+
+class MultiplexImpl<R, E>
+  extends Effectable.Class<R | ServerRequest.ServerRequest, E | Error.RouteNotFound, ServerResponse.ServerResponse>
+  implements Multiplex.Multiplex<R, E>
+{
+  readonly [TypeId]: Multiplex.TypeId
+
+  constructor(
+    readonly apps: ReadonlyArray<
+      readonly [
+        predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R, E, boolean>,
+        app: App.Default<R, E>
+      ]
+    >
+  ) {
+    super()
+    this[TypeId] = TypeId
+
+    this.execute = Effect.flatMap(
+      ServerRequest.ServerRequest,
+      (request) =>
+        Effect.flatMap(
+          Effect.findFirst(this.apps, ([predicate]) => predicate(request)),
+          (_): App.Default<R, E | Error.RouteNotFound> =>
+            _._tag === "Some" ? _.value[1] : Effect.fail(Error.RouteNotFound({ request }))
+        )
+    )
+  }
+
+  execute: App.Default<R, E | Error.RouteNotFound>
+
+  commit() {
+    return this.execute
+  }
+}
+
+/** @internal */
+export const empty: Multiplex.Multiplex<never, never> = new MultiplexImpl([])
+
+/** @internal */
+export const make = <R, E>(
+  apps: Iterable<
+    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R, E, boolean>, app: App.Default<R, E>]
+  >
+): Multiplex.Multiplex<R, E> => new MultiplexImpl(ReadonlyArray.fromIterable(apps))
+
+/** @internal */
+export const add = dual<
+  <R2, E2, R3, E3>(
+    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R2, E2, boolean>,
+    app: App.Default<R3, E3>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2 | R3, E | E2 | E3>,
+  <R, E, R2, E2, R3, E3>(
+    self: Multiplex.Multiplex<R, E>,
+    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R2, E2, boolean>,
+    app: App.Default<R3, E3>
+  ) => Multiplex.Multiplex<R | R2 | R3, E | E2 | E3>
+>(
+  3,
+  (self, predicate, app) =>
+    make([
+      ...self.apps,
+      [predicate, app]
+    ] as any)
+)
+
+/** @internal */
+export const hostRegex = dual<
+  <R2, E2>(
+    regex: RegExp,
+    app: App.Default<R2, E2>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+  <R, E, R2, E2>(
+    self: Multiplex.Multiplex<R, E>,
+    regex: RegExp,
+    app: App.Default<R2, E2>
+  ) => Multiplex.Multiplex<R | R2, E | E2>
+>(3, (self, regex, app) => add(self, (req) => Effect.succeed(regex.test(req.headers.host ?? "")), app))
+
+/** @internal */
+export const hostStartsWith = dual<
+  <R2, E2>(
+    prefix: string,
+    app: App.Default<R2, E2>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+  <R, E, R2, E2>(
+    self: Multiplex.Multiplex<R, E>,
+    prefix: string,
+    app: App.Default<R2, E2>
+  ) => Multiplex.Multiplex<R | R2, E | E2>
+>(3, (self, prefix, app) => add(self, (req) => Effect.succeed((req.headers.host ?? "").startsWith(prefix)), app))
+
+/** @internal */
+export const hostExact = dual<
+  <R2, E2>(
+    host: string,
+    app: App.Default<R2, E2>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+  <R, E, R2, E2>(
+    self: Multiplex.Multiplex<R, E>,
+    host: string,
+    app: App.Default<R2, E2>
+  ) => Multiplex.Multiplex<R | R2, E | E2>
+>(3, (self, host, app) => add(self, (req) => Effect.succeed((req.headers.host ?? "") === host), app))
