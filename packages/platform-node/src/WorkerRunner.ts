@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/WorkerRunner`](https://effect-ts.github.io/platform/platform/WorkerRunner.ts.html).
+ * Also includes exports from [`@effect/platform/WorkerRunner`](https://effect-ts.github.io/effect/platform/WorkerRunner.ts.html).
  */
 import type { WorkerError } from "@effect/platform/WorkerError"
 import type * as Runner from "@effect/platform/WorkerRunner"

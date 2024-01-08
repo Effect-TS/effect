@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
+ * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/effect/platform/Worker.ts.html).
  */
 import type * as Worker from "@effect/platform/Worker"
 import type * as Schema from "@effect/schema/Schema"

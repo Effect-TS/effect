@@ -1,9 +1,9 @@
 import * as EffectWorker from "@effect/platform-browser/Worker"
 import "@vitest/web-worker"
-import { Cause, Chunk, Effect, Exit, Stream } from "effect"
+import { Cause, Chunk, Effect, Exit, Option, Stream } from "effect"
 import { assert, describe, it } from "vitest"
 import type { WorkerMessage } from "./fixtures/schema.js"
-import { GetPersonById, GetUserById, Person, SetName, User } from "./fixtures/schema.js"
+import { GetPersonById, GetSpan, GetUserById, Person, SetName, User } from "./fixtures/schema.js"
 
 const runPromiseExit = <E, A>(effect: Effect.Effect<never, E, A>) =>
   Effect.runPromiseExit(effect).then((exit) => {
@@ -64,6 +64,28 @@ describe.sequential("Worker", () => {
         new Person({ id: 123, name: "ing" })
       ])
     }).pipe(
+      Effect.scoped,
+      Effect.provide(EffectWorker.layerManager),
+      runPromiseExit
+    ))
+
+  it("tracing", () =>
+    Effect.gen(function*(_) {
+      const parentSpan = yield* _(Effect.currentSpan)
+      const pool = yield* _(EffectWorker.makePoolSerialized({
+        spawn: () => new globalThis.Worker(new URL("./fixtures/serializedWorker.ts", import.meta.url)),
+        size: 1
+      }))
+      const span = yield* _(pool.executeEffect(new GetSpan()))
+      assert.deepStrictEqual(
+        span.parent,
+        Option.some({
+          traceId: parentSpan.traceId,
+          spanId: parentSpan.spanId
+        })
+      )
+    }).pipe(
+      Effect.withSpan("test"),
       Effect.scoped,
       Effect.provide(EffectWorker.layerManager),
       runPromiseExit

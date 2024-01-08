@@ -43,21 +43,16 @@ export const get = (u: unknown): ReadonlyArray<globalThis.Transferable> => {
  * @category schema
  */
 export const schema: {
-  <A>(
-    f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A & Transferable>
-  <I, A>(
-    self: Schema.Schema<I, A>,
-    f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ): Schema.Schema<I, A & Transferable>
+  <A>(f: (_: A) => ReadonlyArray<globalThis.Transferable>): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>
+  <I, A>(self: Schema.Schema<I, A>, f: (_: A) => ReadonlyArray<globalThis.Transferable>): Schema.Schema<I, A>
 } = dual<
   <A>(
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ) => <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A & Transferable>,
+  ) => <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>,
   <I, A>(
     self: Schema.Schema<I, A>,
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ) => Schema.Schema<I, A & Transferable>
+  ) => Schema.Schema<I, A>
 >(2, <I, A>(
   self: Schema.Schema<I, A>,
   f: (_: A) => ReadonlyArray<globalThis.Transferable>
@@ -71,7 +66,7 @@ export const schema: {
         [symbol]() {
           return f(this as any)
         }
-      }) as A & Transferable,
+      }) as A,
     (output) => output as A
   ))
 
@@ -81,7 +76,7 @@ export const schema: {
  */
 export const schemaFromSelf = <I, A>(
   item: Schema.Schema<I, A>
-): Schema.Schema<I & Transferable, A & Transferable> => {
+): Schema.Schema<I, A> => {
   return Schema.declare(
     [item],
     item,

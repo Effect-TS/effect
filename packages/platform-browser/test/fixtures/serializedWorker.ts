@@ -1,5 +1,5 @@
 import * as Runner from "@effect/platform-browser/WorkerRunner"
-import { Context, Effect, Layer, Stream } from "effect"
+import { Context, Effect, Layer, Option, Stream } from "effect"
 import { Person, User, WorkerMessage } from "./schema.js"
 
 interface Name {
@@ -14,7 +14,20 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
       new Person({ id: req.id, name: "ing" })
     ),
   GetUserById: (req) => Effect.map(Name, (name) => new User({ id: req.id, name })),
-  SetName: (req) => Layer.succeed(Name, req.name)
+  SetName: (req) => Layer.succeed(Name, req.name),
+  GetSpan: (_) =>
+    Effect.gen(function*(_) {
+      const span = yield* _(Effect.currentSpan, Effect.orDie)
+      return {
+        traceId: span.traceId,
+        spanId: span.spanId,
+        name: span.name,
+        parent: Option.map(span.parent, (span) => ({
+          traceId: span.traceId,
+          spanId: span.spanId
+        }))
+      }
+    }).pipe(Effect.withSpan("GetSpan"))
 })
   .pipe(
     Layer.provide(Runner.layerPlatform)

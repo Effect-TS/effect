@@ -4,16 +4,16 @@ Welcome to the documentation for `@effect/schema`, **a library for defining and 
 
 `@effect/schema` allows you to define a `Schema<I, A>` that provides a blueprint for describing the structure and data types of your data. Once defined, you can leverage this schema to perform a range of operations, including:
 
-| Operation       | Description                                                                                                     |
-| --------------- | --------------------------------------------------------------------------------------------------------------- |
-| Parsing         | Convert from `unknown` value to output type `A`.                                                                |
-| Decoding        | Transforming data from an input type `I` to an output type `A`.                                                 |
-| Encoding        | Converting data from an output type `A` back to an input type `I`.                                              |
-| Asserting       | Verifying that a value adheres to the schema's output type `A`.                                                 |
-| Arbitraries     | Generate arbitraries for [fast-check](https://github.com/dubzzz/fast-check) testing.                            |
-| Pretty printing | Support pretty printing for data structures.                                                                    |
-| JSON Schemas    | Create JSON Schemas based on defined schemas.                                                                   |
-| Equivalence     | Create [Equivalences](https://effect-ts.github.io/effect/modules/Equivalence.ts.html) based on defined schemas. |
+| Operation       | Description                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| Parsing         | Convert from `unknown` value to output type `A`.                                                               |
+| Decoding        | Transforming data from an input type `I` to an output type `A`.                                                |
+| Encoding        | Converting data from an output type `A` back to an input type `I`.                                             |
+| Asserting       | Verifying that a value adheres to the schema's output type `A`.                                                |
+| Arbitraries     | Generate arbitraries for [fast-check](https://github.com/dubzzz/fast-check) testing.                           |
+| Pretty printing | Support pretty printing for data structures.                                                                   |
+| JSON Schemas    | Create JSON Schemas based on defined schemas.                                                                  |
+| Equivalence     | Create [Equivalences](https://effect-ts.github.io/effect/schema/Equivalence.ts.html) based on defined schemas. |
 
 If you're eager to learn how to define your first schema, jump straight to the [**Basic usage**](#basic-usage) section!
 
@@ -920,7 +920,7 @@ As seen in the example, the JSON Schema annotations are merged with the base JSO
 
 ## Generating Equivalences
 
-The `to` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/effect/modules/Equivalence.ts.html) based on a schema definition:
+The `to` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/effect/schema/Equivalence.ts.html) based on a schema definition:
 
 ```ts
 import * as S from "@effect/schema/Schema";
@@ -2279,41 +2279,40 @@ parse(" ABc "); // " abc "
 
 **Note**. If you were looking for a combinator to check if a string is lowercased, check out the `lowercased` combinator.
 
-#### ParseJson
+#### Parse JSON
 
-The `ParseJson` schema offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
+The `parseJson` constructor offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<string, unknown>
-const schema = S.ParseJson;
+const schema = S.parseJson();
 const parse = S.parseSync(schema);
 
-parse("{}"); // {}
-parse(`{"a":"b"}`); // { "a": "b" }
-parse(""); // throws Unexpected end of JSON input
+// Parse valid JSON strings
+console.log(parse("{}")); // Output: {}
+console.log(parse(`{"a":"b"}`)); // Output: { a: "b" }
+
+// Attempting to parse an empty string results in an error
+parse("");
+/*
+throws:
+Error: error(s) found
+└─ Unexpected end of JSON input
+*/
 ```
 
-You can also compose the `ParseJson` schema with other schemas to refine the parsing result:
+Additionally, you can refine the parsing result by providing a schema to the `parseJson` constructor:
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<string, { readonly a: number; }>
-const schema = S.ParseJson.pipe(S.compose(S.struct({ a: S.number })));
+const schema = S.parseJson(S.struct({ a: S.number }));
 ```
 
-In this example, we've composed the `ParseJson` schema with a struct schema to ensure that the result will have a specific shape, including an object with a numeric property "a".
-
-Alternatively, you can achieve the same result by using the equivalent built-in combinator `fromJson`:
-
-```ts
-import * as S from "@effect/schema/Schema";
-
-// $ExpectType Schema<string, { readonly a: number; }>
-const schema = S.fromJson(S.struct({ a: S.number }));
-```
+In this example, we've used `parseJson` with a struct schema to ensure that the parsed result has a specific structure, including an object with a numeric property "a". This helps in handling JSON data with predefined shapes.
 
 ### Number transformations
 
@@ -2777,12 +2776,72 @@ parse([
 
 Since there are various different definitions of what constitutes a valid email address depending on the environment and use case, `@effect/schema` does not provide a built-in combinator for parsing email addresses. However, it is easy to define a custom combinator that can be used to parse email addresses.
 
-
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // see https://stackoverflow.com/questions/46155/how-can-i-validate-an-email-address-in-javascript/46181#46181
-const Email = S.pattern(/^(?!\.)(?!.*\.\.)([A-Z0-9_+-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i);
+const Email = S.pattern(
+  /^(?!\.)(?!.*\.\.)([A-Z0-9_+-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i
+);
+```
+
+## Url
+
+Multiple environments like the Browser or Node provide a built-in `URL` class that can be used to validate URLs. Here we demonstrate how to leverage it to validate if a string is a valid URL.
+
+```ts
+import * as S from "@effect/schema/Schema";
+import * as ParseResult from "@effect/schema/ParseResult";
+
+const UrlString: S.Schema<string, string> = S.string.pipe(
+  S.filter((value) => {
+    try {
+      new URL(value);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  })
+);
+
+const parser = S.parseSync(UrlString);
+const validUrlString = parser("https://www.effect.website");
+```
+
+In case you prefer to normalize URLs you can combine `transformOrFail` with `URL`:
+
+```ts
+const NormalizedUrlString: S.Schema<string, string> = S.string.pipe(
+  S.filter((value) => {
+    try {
+      return new URL(value).toString() === value;
+    } catch (_) {
+      return false;
+    }
+  })
+);
+
+const NormalizeUrlString: S.Schema<string, string> = S.transformOrFail(
+  S.string,
+  NormalizedUrlString,
+  (value, _, ast) =>
+    ParseResult.try({
+      try: () => new URL(value).toString(),
+      catch: (err) =>
+        ParseResult.parseError([
+          ParseResult.type(
+            ast,
+            value,
+            err instanceof Error ? err.message : undefined
+          ),
+        ]),
+    }),
+  ParseResult.succeed
+);
+
+const parser = S.parseSync(NormalizeUrlString);
+const validUrlString = parser("https://www.effect.website");
+// validUrlString will be "https://www.effect.website/"
 ```
 
 # Technical overview
