@@ -1,5 +1,14 @@
 # @effect/rpc-http-node
 
+## 0.25.3
+
+### Patch Changes
+
+- Updated dependencies [[`7b2f874`](https://github.com/Effect-TS/effect/commit/7b2f8743d96753c3e24ac4cc6715a4a7f4a2ca0c), [`92c0322`](https://github.com/Effect-TS/effect/commit/92c0322a58bf7e5b8dbb602186030839e89df5af)]:
+  - @effect/rpc@0.26.0
+  - @effect/platform@0.40.3
+  - @effect/rpc-http@0.25.3
+
 ## 0.25.2
 
 ### Patch Changes

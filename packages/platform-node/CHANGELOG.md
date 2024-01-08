@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.40.3
+
+### Patch Changes
+
+- [#1879](https://github.com/Effect-TS/effect/pull/1879) [`92c0322`](https://github.com/Effect-TS/effect/commit/92c0322a58bf7e5b8dbb602186030839e89df5af) Thanks [@tim-smart](https://github.com/tim-smart)! - add http Multiplex module
+
+- Updated dependencies [[`92c0322`](https://github.com/Effect-TS/effect/commit/92c0322a58bf7e5b8dbb602186030839e89df5af)]:
+  - @effect/platform@0.40.3
+
 ## 0.40.2
 
 ### Patch Changes
