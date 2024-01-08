@@ -39,20 +39,14 @@ export const unsafe = <I, A>(
 ): Arbitrary<A> => go(schema.ast, {})
 
 /**
+ * Returns a fast-check Arbitrary for the `A` type of the provided schema.
+ *
  * @category arbitrary
  * @since 1.0.0
  */
-export const to = <I, A>(
+export const make = <I, A>(
   schema: Schema.Schema<I, A>
-): Arbitrary<A> => go(AST.to(schema.ast), {})
-
-/**
- * @category arbitrary
- * @since 1.0.0
- */
-export const from = <I, A>(
-  schema: Schema.Schema<I, A>
-): Arbitrary<I> => go(AST.from(schema.ast), {})
+): Arbitrary<A> => go(schema.ast, {})
 
 const depthSize = 1
 
@@ -99,12 +93,9 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
         return hook.value(...ast.typeParameters.map((p) => go(p, options)))
       case "Refinement":
         return hook.value(getRefinementFromArbitrary(ast, options))
-      case "Suspend":
+      default:
         return hook.value()
     }
-    throw new Error(
-      "Arbitrary annotations are only managed in the following three scenarios: Declarations, Refinements, Suspensions"
-    )
   }
   switch (ast._tag) {
     case "Declaration": {
@@ -293,7 +284,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
       return (fc) => fc.constant(null).chain(() => get()(fc))
     }
     case "Transform":
-      throw new Error("cannot build an Arbitrary for transformations")
+      return go(ast.to, options)
   }
 }
 

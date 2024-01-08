@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Encoding/Base64", () => {
+describe("Encoding > Base64", () => {
   const schema = S.Base64
   const encoder = new TextEncoder()
 

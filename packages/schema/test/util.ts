@@ -81,7 +81,7 @@ export const roundtrip = <I, A>(schema: S.Schema<I, A>) => {
   if (!doRoundtrip) {
     return
   }
-  const arb = A.to(schema)
+  const arb = A.make(schema)
   const is = S.is(schema)
   const encode = S.encode(schema)
   const decode = S.decode(schema)
@@ -174,26 +174,13 @@ export const X3 = S.transform(
 
 const doProperty = true
 
-export const propertyTo = <I, A>(schema: S.Schema<I, A>, params?: fc.Parameters<[A]>) => {
+export const expectValidArbitrary = <I, A>(schema: S.Schema<I, A>, params?: fc.Parameters<[A]>) => {
   if (!doProperty) {
     return
   }
-  const arbitrary = A.to(schema)
-  const arb = arbitrary(fc)
-  // console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
+  const arb = A.make(schema)(fc)
   const is = S.is(schema)
   fc.assert(fc.property(arb, (a) => is(a)), params)
-}
-
-export const propertyFrom = <I, A>(schema: S.Schema<I, A>) => {
-  if (!doProperty) {
-    return
-  }
-  const arbitrary = A.from(schema)
-  const arb = arbitrary(fc)
-  // console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
-  const is = S.is(S.from(schema))
-  fc.assert(fc.property(arb, (a) => is(a)))
 }
 
 export const isBun = "Bun" in globalThis
@@ -221,7 +208,7 @@ export const expectPromiseFailure = async <A>(promise: Promise<A>, message: stri
 }
 
 export const sample = <I, A>(schema: S.Schema<I, A>, n: number) => {
-  const arbitrary = A.to(schema)
+  const arbitrary = A.make(schema)
   const arb = arbitrary(fc)
   console.log(JSON.stringify(fc.sample(arb, n), null, 2))
 }

@@ -25,7 +25,7 @@ type Json =
 const propertyTo = <I, A>(schema: Schema.Schema<I, A>, options?: {
   params?: fc.Parameters<[A]>
 }) => {
-  const arbitrary = A.to(schema)
+  const arbitrary = A.make(schema)
   const is = Schema.is(schema)
   const jsonSchema = JSONSchema.to(schema)
   // console.log(JSON.stringify(jsonSchema, null, 2))
@@ -51,7 +51,7 @@ const propertyTo = <I, A>(schema: Schema.Schema<I, A>, options?: {
 }
 
 const propertyFrom = <I, A>(schema: Schema.Schema<I, A>) => {
-  const arbitrary = A.from(schema)
+  const arbitrary = A.make(Schema.from(schema))
   const is = Schema.is(Schema.from(schema))
   const validate = new Ajv({ strictTuples: false, allowUnionTypes: true }).compile(
     JSONSchema.from(schema)
