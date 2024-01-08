@@ -267,4 +267,18 @@ describe("Trie", () => {
     const result = Trie.toEntriesWithPrefix(trie, "she")
     deepStrictEqual(result, [["she", 3], ["shells", 0]])
   })
+
+  it("longestPrefixOf", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("she", 2)
+    )
+
+    deepStrictEqual(Trie.longestPrefixOf(trie, "sell"), Option.none())
+    deepStrictEqual(Trie.longestPrefixOf(trie, "sells"), Option.some(["sells", 1]))
+    deepStrictEqual(Trie.longestPrefixOf(trie, "shell"), Option.some(["she", 2]))
+    deepStrictEqual(Trie.longestPrefixOf(trie, "shellsort"), Option.some(["shells", 0]))
+  })
 })

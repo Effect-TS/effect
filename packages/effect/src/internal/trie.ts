@@ -351,8 +351,9 @@ export const remove = dual<
     if (n == null || key.length === 0) return self
 
     const count = n.count - 1
-    const n_stack: Array<Node.Node<V>> = []
+    // -1:left | 0:mid | 1:right
     const d_stack: Array<Ordering.Ordering> = []
+    const n_stack: Array<Node.Node<V>> = []
 
     let cIndex = 0
     while (cIndex < key.length) {
@@ -446,5 +447,48 @@ export const remove = dual<
 
     n_stack[0].count = count
     return makeImpl(n_stack[0])
+  }
+)
+
+/** @internal */
+export const longestPrefixOf = dual<
+  (key: string) => <V>(self: TR.Trie<V>) => Option.Option<[string, V]>,
+  <V>(self: TR.Trie<V>, key: string) => Option.Option<[string, V]>
+>(
+  2,
+  <V>(self: TR.Trie<V>, key: string) => {
+    let n: Node.Node<V> | undefined = (self as TrieImpl<V>)._root
+    if (n == null || key.length === 0) return Option.none()
+    let longestPrefixNode: [string, V] | undefined = undefined
+    let cIndex = 0
+    while (cIndex < key.length) {
+      const c = key[cIndex]
+      if (n.value != null) {
+        longestPrefixNode = [key.slice(0, cIndex + 1), n.value]
+      }
+
+      if (c > n.key) {
+        if (n.right == null) {
+          break
+        } else {
+          n = n.right
+        }
+      } else if (c < n.key) {
+        if (n.left == null) {
+          break
+        } else {
+          n = n.left
+        }
+      } else {
+        if (n.mid == null) {
+          break
+        } else {
+          n = n.mid
+          cIndex += 1
+        }
+      }
+    }
+
+    return Option.fromNullable(longestPrefixNode)
   }
 )

@@ -136,6 +136,18 @@ export const toEntriesWithPrefix: {
 } = TR.toEntriesWithPrefix
 
 /**
+ * Returns the longest key and value in the `Trie`
+ * that is a prefix of that `key`
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const longestPrefixOf: {
+  <V>(key: string): (self: Trie<V>) => Option<[string, V]>
+  <V>(self: Trie<V>, key: string): Option<[string, V]>
+} = TR.longestPrefixOf
+
+/**
  * Returns the size of the tree.
  *
  * @since 2.0.0
