@@ -29,13 +29,7 @@ export type EquivalenceHookId = typeof EquivalenceHookId
  * @category Equivalence
  * @since 1.0.0
  */
-export const to = <I, A>(schema: Schema.Schema<I, A>): Equivalence.Equivalence<A> => go(AST.to(schema.ast))
-
-/**
- * @category Equivalence
- * @since 1.0.0
- */
-export const from = <I, A>(schema: Schema.Schema<I, A>): Equivalence.Equivalence<I> => go(AST.from(schema.ast))
+export const make = <I, A>(schema: Schema.Schema<I, A>): Equivalence.Equivalence<A> => go(schema.ast)
 
 const getHook = AST.getAnnotation<
   (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<any>
@@ -51,7 +45,12 @@ const is = (ast: AST.AST) => {
 const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
-    return AST.isDeclaration(ast) ? hook.value(...ast.typeParameters.map(go)) : hook.value()
+    switch (ast._tag) {
+      case "Declaration":
+        return hook.value(...ast.typeParameters.map(go))
+      default:
+        return hook.value()
+    }
   }
   switch (ast._tag) {
     case "NeverKeyword":

@@ -43,7 +43,7 @@ describe("BigDecimal > BigDecimalFromSelf", () => {
 
   it("equivalence", () => {
     const schema = S.BigDecimalFromSelf
-    const equivalence = Equivalence.to(schema)
+    const equivalence = Equivalence.make(schema)
 
     expect(equivalence(BigDecimal.fromNumber(1), BigDecimal.unsafeFromString("1"))).to.be.true
     expect(equivalence(BigDecimal.fromNumber(2), BigDecimal.unsafeFromString("1"))).to.be.false
