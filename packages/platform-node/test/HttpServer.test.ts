@@ -474,4 +474,56 @@ describe("HttpServer", () => {
       const cause = yield* _(Deferred.await(latch), Effect.sandbox, Effect.flip)
       expect(ServerError.isClientAbortCause(cause)).toEqual(true)
     }).pipe(Effect.scoped, runPromise))
+
+  it("multiplex", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.multiplex.empty,
+        Http.multiplex.hostExact("a.example.com", Http.response.text("A")),
+        Http.multiplex.hostStartsWith("b.", Http.response.text("B")),
+        Http.multiplex.hostRegex(/^c\.example/, Http.response.text("C")),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      expect(
+        yield* _(
+          client(
+            HttpC.request.get("/").pipe(
+              HttpC.request.setHeader("host", "a.example.com")
+            )
+          ),
+          Effect.flatMap((_) => _.text)
+        )
+      ).toEqual("A")
+      expect(
+        yield* _(
+          client(
+            HttpC.request.get("/").pipe(
+              HttpC.request.setHeader("host", "b.example.com")
+            )
+          ),
+          Effect.flatMap((_) => _.text)
+        )
+      ).toEqual("B")
+      expect(
+        yield* _(
+          client(
+            HttpC.request.get("/").pipe(
+              HttpC.request.setHeader("host", "b.org")
+            )
+          ),
+          Effect.flatMap((_) => _.text)
+        )
+      ).toEqual("B")
+      expect(
+        yield* _(
+          client(
+            HttpC.request.get("/").pipe(
+              HttpC.request.setHeader("host", "c.example.com")
+            )
+          ),
+          Effect.flatMap((_) => _.text)
+        )
+      ).toEqual("C")
+    }).pipe(Effect.scoped, runPromise))
 })
