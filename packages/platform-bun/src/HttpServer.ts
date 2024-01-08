@@ -68,7 +68,7 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/Multiplex](https://effect-ts.github.io/effect/platform/Http/Multiplex.html)
+   * - Docs: [Http/Multiplex](https://effect-ts.github.io/effect/platform/Http/Multiplex.ts.html)
    * - Module: `@effect/platform/Http/Multiplex`
    */
   multiplex,
