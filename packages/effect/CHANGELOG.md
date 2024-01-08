@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.2
+
+### Patch Changes
+
+- [#1850](https://github.com/Effect-TS/effect/pull/1850) [`d5a1949`](https://github.com/Effect-TS/effect/commit/d5a19499aac7c1d147674a35ac69992177c7536c) Thanks [@matheuspuel](https://github.com/matheuspuel)! - add index argument to many functions in ReadonlyArray
+
 ## 2.0.1
 
 ### Patch Changes
