@@ -208,13 +208,7 @@ export type JsonSchema7Root = JsonSchema7 & {
  * @category encoding
  * @since 1.0.0
  */
-export const to = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root => goRoot(AST.to(schema.ast))
-
-/**
- * @category encoding
- * @since 1.0.0
- */
-export const from = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root => goRoot(AST.from(schema.ast))
+export const make = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root => goRoot(schema.ast)
 
 const anyJsonSchema: JsonSchema7 = { $id: "/schemas/any" }
 
@@ -287,6 +281,14 @@ const goWithMetaData = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonS
 export const DEFINITION_PREFIX = "#/$defs/"
 
 const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
+  const hook = AST.getJSONSchemaAnnotation(ast)
+  if (Option.isSome(hook)) {
+    switch (ast._tag) {
+      case "Refinement":
+        return { ...goWithIdentifier(ast.from, $defs), ...hook.value }
+    }
+    return hook.value as any
+  }
   switch (ast._tag) {
     case "Declaration": {
       throw new Error("cannot convert a declaration to JSON Schema")
@@ -395,13 +397,13 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
             break
           }
           case "Refinement": {
-            const annotation = AST.getJSONSchemaAnnotation(parameter)
+            const hook = AST.getJSONSchemaAnnotation(parameter)
             if (
-              Option.isSome(annotation) && "pattern" in annotation.value &&
-              Predicate.isString(annotation.value.pattern)
+              Option.isSome(hook) && "pattern" in hook.value &&
+              Predicate.isString(hook.value.pattern)
             ) {
               patternProperties = {
-                [annotation.value.pattern]: goWithIdentifier(
+                [hook.value.pattern]: goWithIdentifier(
                   is.type,
                   $defs
                 )
@@ -489,11 +491,6 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       }
     }
     case "Refinement": {
-      const from = goWithIdentifier(ast.from, $defs)
-      const annotation = AST.getJSONSchemaAnnotation(ast)
-      if (Option.isSome(annotation)) {
-        return { ...from, ...annotation.value }
-      }
       throw new Error(
         "cannot build a JSON Schema for refinements without a JSON Schema annotation"
       )
@@ -516,6 +513,6 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       return goWithIdentifier(ast.f(), $defs)
     }
     case "Transform":
-      throw new Error("cannot build a JSON Schema for transformations")
+      return goWithIdentifier(ast.to, $defs)
   }
 }
