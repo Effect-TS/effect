@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Encoding/Hex", () => {
+describe("Encoding > Hex", () => {
   const schema = S.Hex
   const encoder = new TextEncoder()
 

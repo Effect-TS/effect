@@ -17,7 +17,7 @@ export const propertyTo = <I, A>(
   schema: S.Schema<I, A>,
   params?: fc.Parameters<[A, ...Array<A>]>
 ) => {
-  const arb = A.to(schema)(fc)
+  const arb = A.make(schema)(fc)
   // console.log(fc.sample(arb, 10))
   const equivalence = E.to(schema)
 

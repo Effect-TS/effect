@@ -3287,8 +3287,7 @@ export {
 const makeEncodingTransformation = (
   id: string,
   decode: (s: string) => Either.Either<Encoding.DecodeException, Uint8Array>,
-  encode: (u: Uint8Array) => string,
-  arbitrary: Arbitrary<Uint8Array>
+  encode: (u: Uint8Array) => string
 ): Schema<string, Uint8Array> =>
   transformOrFail(
     string,
@@ -3300,11 +3299,7 @@ const makeEncodingTransformation = (
       ),
     (u) => ParseResult.succeed(encode(u)),
     { strict: false }
-  ).pipe(annotations({
-    [AST.IdentifierAnnotationId]: id,
-    [hooks.PrettyHookId]: (): Pretty.Pretty<Uint8Array> => (u) => `${id}(${encode(u)})`,
-    [hooks.ArbitraryHookId]: () => arbitrary
-  }))
+  ).pipe(identifier(id))
 
 /**
  * @category Encoding transformations
@@ -3313,8 +3308,7 @@ const makeEncodingTransformation = (
 export const Base64: Schema<string, Uint8Array> = makeEncodingTransformation(
   "Base64",
   Encoding.decodeBase64,
-  Encoding.encodeBase64,
-  (fc) => fc.base64String().map((s) => Either.getOrThrow(Encoding.decodeBase64(s)))
+  Encoding.encodeBase64
 )
 
 /**
@@ -3324,8 +3318,7 @@ export const Base64: Schema<string, Uint8Array> = makeEncodingTransformation(
 export const Base64Url: Schema<string, Uint8Array> = makeEncodingTransformation(
   "Base64Url",
   Encoding.decodeBase64Url,
-  Encoding.encodeBase64Url,
-  (fc) => fc.base64String().map((s) => Either.getOrThrow(Encoding.decodeBase64Url(s)))
+  Encoding.encodeBase64Url
 )
 
 /**
@@ -3335,8 +3328,7 @@ export const Base64Url: Schema<string, Uint8Array> = makeEncodingTransformation(
 export const Hex: Schema<string, Uint8Array> = makeEncodingTransformation(
   "Hex",
   Encoding.decodeHex,
-  Encoding.encodeHex,
-  (fc) => fc.hexaString().map((s) => Either.getOrThrow(Encoding.decodeHex(s)))
+  Encoding.encodeHex
 )
 
 /**
