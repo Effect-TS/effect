@@ -85,8 +85,8 @@ class TrieIterator<in out V, out T> implements IterableIterator<T> {
     readonly f: TraversalMap<string, V, T>,
     readonly filter: TraversalFilter<string, V>
   ) {
-    const root = trie._root != null ? trie._root : undefined
-    if (root != null) {
+    const root = trie._root !== undefined ? trie._root : undefined
+    if (root !== undefined) {
       this.stack.push([root, ""])
     }
   }
@@ -98,7 +98,7 @@ class TrieIterator<in out V, out T> implements IterableIterator<T> {
       this.addToStack(node, keyString)
 
       const value = node.value
-      if (value != null) {
+      if (value !== undefined) {
         const key = keyString + node.key
         if (this.filter(key, value)) {
           return { done: false, value: this.f(key, value) }
@@ -110,13 +110,13 @@ class TrieIterator<in out V, out T> implements IterableIterator<T> {
   }
 
   addToStack(node: Node.Node<V>, keyString: string) {
-    if (node.right != null) {
+    if (node.right !== undefined) {
       this.stack.push([node.right, keyString])
     }
-    if (node.left != null) {
+    if (node.left !== undefined) {
       this.stack.push([node.left, keyString])
     }
-    if (node.mid != null) {
+    if (node.mid !== undefined) {
       this.stack.push([node.mid, keyString + node.key])
     }
   }
@@ -170,14 +170,14 @@ export const insert = dual<
     n_stack.push(n)
     if (c > n.key) {
       d_stack.push(1)
-      if (n.right == null) {
+      if (n.right === undefined) {
         n = new Node.Node<V>(c, count)
       } else {
         n = n.right
       }
     } else if (c < n.key) {
       d_stack.push(-1)
-      if (n.left == null) {
+      if (n.left === undefined) {
         n = new Node.Node<V>(c, count)
       } else {
         n = n.left
@@ -185,7 +185,7 @@ export const insert = dual<
     } else {
       if (cIndex === key.length - 1) {
         n.value = value
-      } else if (n.mid == null) {
+      } else if (n.mid === undefined) {
         d_stack.push(0)
         n = new Node.Node<V>(key[cIndex + 1], count)
       } else {
@@ -300,29 +300,29 @@ export const get = dual<
   2,
   <V>(self: TR.Trie<V>, key: string) => {
     let n: Node.Node<V> | undefined = (self as TrieImpl<V>)._root
-    if (n == null || key.length === 0) return Option.none()
+    if (n === undefined || key.length === 0) return Option.none()
     let cIndex = 0
     while (cIndex < key.length) {
       const c = key[cIndex]
       if (c > n.key) {
-        if (n.right == null) {
+        if (n.right === undefined) {
           return Option.none()
         } else {
           n = n.right
         }
       } else if (c < n.key) {
-        if (n.left == null) {
+        if (n.left === undefined) {
           return Option.none()
         } else {
           n = n.left
         }
       } else {
         if (cIndex === key.length - 1) {
-          if (n.value != null) {
+          if (n.value !== undefined) {
             return Option.some(n.value)
           }
         } else {
-          if (n.mid == null) {
+          if (n.mid === undefined) {
             return Option.none()
           } else {
             n = n.mid
@@ -355,7 +355,7 @@ export const remove = dual<
   2,
   <V>(self: TR.Trie<V>, key: string) => {
     let n: Node.Node<V> | undefined = (self as TrieImpl<V>)._root
-    if (n == null || key.length === 0) return self
+    if (n === undefined || key.length === 0) return self
 
     const count = n.count - 1
     // -1:left | 0:mid | 1:right
@@ -366,7 +366,7 @@ export const remove = dual<
     while (cIndex < key.length) {
       const c = key[cIndex]
       if (c > n.key) {
-        if (n.right == null) {
+        if (n.right === undefined) {
           return self
         } else {
           n_stack.push(n)
@@ -374,7 +374,7 @@ export const remove = dual<
           n = n.right
         }
       } else if (c < n.key) {
-        if (n.left == null) {
+        if (n.left === undefined) {
           return self
         } else {
           n_stack.push(n)
@@ -383,7 +383,7 @@ export const remove = dual<
         }
       } else {
         if (cIndex === key.length - 1) {
-          if (n.value != null) {
+          if (n.value !== undefined) {
             n_stack.push(n)
             d_stack.push(0)
             cIndex += 1
@@ -391,7 +391,7 @@ export const remove = dual<
             return self
           }
         } else {
-          if (n.mid == null) {
+          if (n.mid === undefined) {
             return self
           } else {
             n_stack.push(n)
@@ -418,7 +418,7 @@ export const remove = dual<
       const n2 = n_stack[s]
       const d = d_stack[s]
       const child = n_stack[s + 1]
-      const nc = child.left == null && child.mid == null && child.right == null ? undefined : child
+      const nc = child.left === undefined && child.mid === undefined && child.right === undefined ? undefined : child
       if (d === -1) {
         // left
         n_stack[s] = new Node.Node(
@@ -465,29 +465,29 @@ export const longestPrefixOf = dual<
   2,
   <V>(self: TR.Trie<V>, key: string) => {
     let n: Node.Node<V> | undefined = (self as TrieImpl<V>)._root
-    if (n == null || key.length === 0) return Option.none()
+    if (n === undefined || key.length === 0) return Option.none()
     let longestPrefixNode: [string, V] | undefined = undefined
     let cIndex = 0
     while (cIndex < key.length) {
       const c = key[cIndex]
-      if (n.value != null) {
+      if (n.value !== undefined) {
         longestPrefixNode = [key.slice(0, cIndex + 1), n.value]
       }
 
       if (c > n.key) {
-        if (n.right == null) {
+        if (n.right === undefined) {
           break
         } else {
           n = n.right
         }
       } else if (c < n.key) {
-        if (n.left == null) {
+        if (n.left === undefined) {
           break
         } else {
           n = n.left
         }
       } else {
-        if (n.mid == null) {
+        if (n.mid === undefined) {
           break
         } else {
           n = n.mid
