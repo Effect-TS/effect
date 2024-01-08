@@ -486,6 +486,16 @@ describe("TreeFormatter", () => {
           null,
           "please enter a string"
         )
+        await Util.expectParseFailure(
+          schema,
+          "1.2",
+          "please enter an integer"
+        )
+        await Util.expectParseFailure(
+          schema,
+          "a",
+          "please enter a parseable string"
+        )
       })
     })
 

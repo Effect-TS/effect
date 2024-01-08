@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-Schema: add more descriptions
+Schema: add more description annotations to built-in schemas
