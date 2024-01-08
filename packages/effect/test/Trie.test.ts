@@ -1,4 +1,5 @@
 import { deepStrictEqual } from "effect-test/util"
+import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Trie from "effect/Trie"
@@ -280,5 +281,17 @@ describe("Trie", () => {
     deepStrictEqual(Trie.longestPrefixOf(trie, "sells"), Option.some(["sells", 1]))
     deepStrictEqual(Trie.longestPrefixOf(trie, "shell"), Option.some(["she", 2]))
     deepStrictEqual(Trie.longestPrefixOf(trie, "shellsort"), Option.some(["shells", 0]))
+  })
+
+  it("Equal.symbol", () => {
+    expect(
+      Equal.equals(Trie.empty<number>(), Trie.empty<number>())
+    ).toBe(true)
+    expect(
+      Equal.equals(
+        Trie.make(["call", 0], ["me", 1]),
+        Trie.make(["call", 0], ["me", 1])
+      )
+    ).toBe(true)
   })
 })

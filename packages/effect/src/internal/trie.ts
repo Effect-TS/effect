@@ -14,7 +14,7 @@ const TrieSymbolKey = "effect/Trie"
 /** @internal */
 export const TrieTypeId: TR.TypeId = Symbol.for(TrieSymbolKey) as TR.TypeId
 
-type TraversalFn<K, V, A> = (k: K, v: V) => A
+type TraversalMap<K, V, A> = (k: K, v: V) => A
 
 type TraversalFilter<K, V> = (k: K, v: V) => boolean
 
@@ -82,7 +82,7 @@ class TrieIterator<in out V, out T> implements IterableIterator<T> {
 
   constructor(
     readonly trie: TrieImpl<V>,
-    readonly f: TraversalFn<string, V, T>,
+    readonly f: TraversalMap<string, V, T>,
     readonly filter: TraversalFilter<string, V>
   ) {
     const root = trie._root != null ? trie._root : undefined
@@ -142,6 +142,13 @@ export const fromIterable = <V>(entries: Iterable<readonly [string, V]>) => {
     trie = insert(trie, key, value)
   }
   return trie
+}
+
+/** @internal */
+export const make = <Entries extends Array<readonly [string, any]>>(...entries: Entries): TR.Trie<
+  Entries[number] extends readonly [any, infer V] ? V : never
+> => {
+  return fromIterable(entries)
 }
 
 /** @internal */

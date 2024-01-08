@@ -46,6 +46,16 @@ export const empty: <V = never>() => Trie<V> = TR.empty
 export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Trie<V> = TR.fromIterable
 
 /**
+ * Constructs a new `Trie` from the specified entries.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const make: <Entries extends Array<readonly [string, any]>>(
+  ...entries: Entries
+) => Trie<Entries[number] extends readonly [any, infer V] ? V : never> = TR.make
+
+/**
  * Creates an empty `Trie`.
  *
  * @since 2.0.0
