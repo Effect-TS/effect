@@ -90,22 +90,32 @@ export const formatMessage = (e: Type): string =>
     Option.getOrElse(() => `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`)
   )
 
+const getParseIsssueMessage = (issue: ParseIssue, orElse: () => Option.Option<string>): Option.Option<string> => {
+  switch (issue._tag) {
+    case "Refinement":
+      return Option.orElse(getRefinementMessage(issue, issue.actual), orElse)
+    case "Transform":
+      return Option.orElse(getTransformMessage(issue, issue.actual), orElse)
+    case "Tuple":
+    case "TypeLiteral":
+    case "Union":
+    case "Type":
+      return Option.orElse(getMessage(issue.ast, issue.actual), orElse)
+  }
+  return orElse()
+}
+
 /** @internal */
 export const getRefinementMessage = (e: Refinement, actual: unknown): Option.Option<string> => {
-  const message = getMessage(e.ast, actual)
   if (e.kind === "From") {
-    switch (e.error._tag) {
-      case "Refinement":
-        return Option.orElse(getRefinementMessage(e.error, e.error.actual), () => message)
-      case "Tuple":
-      case "TypeLiteral":
-      case "Union":
-      case "Transform":
-      case "Type":
-        return Option.orElse(getMessage(e.error.ast, e.error.actual), () => message)
-    }
+    return getParseIsssueMessage(e.error, () => getMessage(e.ast, actual))
   }
-  return message
+  return getMessage(e.ast, actual)
+}
+
+/** @internal */
+export const getTransformMessage = (e: Transform, actual: unknown): Option.Option<string> => {
+  return getParseIsssueMessage(e.error, () => getMessage(e.ast, actual))
 }
 
 const go = (e: ParseIssue | Missing | Unexpected): Tree<string> => {
@@ -153,7 +163,7 @@ const go = (e: ParseIssue | Missing | Unexpected): Tree<string> => {
         onSome: make
       })
     case "Transform":
-      return Option.match(getMessage(e.ast, e.actual), {
+      return Option.match(getTransformMessage(e, e.actual), {
         onNone: () => make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), [go(e.error)])]),
         onSome: make
       })

@@ -3153,6 +3153,313 @@ console.log(isDeprecated(S.string)); // false
 console.log(isDeprecated(schema)); // true
 ```
 
+## Error messages
+
+### Default Error Messages
+
+When a parsing, decoding, or encoding process encounters a failure, a default error message is automatically generated for you. Let's explore some examples:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.string,
+  age: S.number,
+});
+
+S.parseSync(schema)(null);
+/*
+throws:
+Error: Expected { name: string; age: number }, actual null
+*/
+
+S.parseSync(schema)({}, { errors: "all" });
+/*
+throws:
+Error: { name: string; age: number }
+├─ ["name"]
+│  └─ is missing
+└─ ["age"]
+   └─ is missing
+*/
+```
+
+### Identifiers in Error Messages
+
+When you include an identifier annotation, it will be incorporated into the default error message, followed by a description if provided:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.string.pipe(S.identifier("Name")),
+  age: S.number.pipe(S.identifier("Age")),
+}).pipe(S.identifier("Person"));
+
+S.parseSync(schema)(null);
+/*
+throws:
+Error: Expected Person, actual null
+*/
+
+S.parseSync(schema)({}, { errors: "all" });
+/*
+throws:
+Error: Person
+├─ ["name"]
+│  └─ is missing
+└─ ["age"]
+   └─ is missing
+*/
+
+S.parseSync(schema)({ name: null, age: null }, { errors: "all" });
+/*
+throws:
+Error: Person
+├─ ["name"]
+│  └─ Expected Name (a string), actual null
+└─ ["age"]
+   └─ Expected Age (a number), actual null
+*/
+```
+
+### Refinements
+
+When a refinement fails, the default error message indicates whether the failure occurred in the "from" part or within the predicate defining the refinement:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.NonEmpty.pipe(S.identifier("Name")), // refinement
+  age: S.Positive.pipe(S.int(), S.identifier("Age")), // refinement
+}).pipe(S.identifier("Person"));
+
+// "from" failure
+S.parseSync(schema)({ name: null, age: 18 });
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name
+      └─ From side refinement failure
+         └─ Expected a string, actual null
+*/
+
+// predicate failure
+S.parseSync(schema)({ name: "", age: 18 });
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name
+      └─ Predicate refinement failure
+         └─ Expected Name (a non empty string), actual ""
+*/
+```
+
+In the first example, the error message indicates a "from" side refinement failure in the "Name" property, specifying that a string was expected but received null. In the second example, a predicate refinement failure is reported, indicating that a non-empty string was expected for "Name," but an empty string was provided.
+
+### Refinements overrides
+
+You have the option to customize error messages for refinements using the `S.message` annotation:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.NonEmpty.pipe(
+    S.identifier("Name"),
+    S.message(() => "Name: a required non empty string")
+  ),
+  age: S.Positive.pipe(
+    S.int(),
+    S.identifier("Age"),
+    S.message(() => "Age: a positive integer")
+  ),
+}).pipe(S.identifier("Person"));
+
+S.parseSync(schema)({ name: null, age: 18 });
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name: a required non empty string
+*/
+
+S.parseSync(schema)({ name: "", age: 18 });
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name: a required non empty string
+*/
+```
+
+When setting multiple override messages, the one corresponding to the **first** failed predicate is used, starting from the innermost refinement to the outermost:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.NonEmpty,
+  age: S.number.pipe(
+    S.message(() => "please enter a number"),
+    S.positive({ message: () => "please enter a positive number" }),
+    S.int({ message: () => "please enter an integer" })
+  ),
+}).pipe(S.identifier("Person"));
+
+S.parseSync(schema)({ name: "John", age: null });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a number
+*/
+
+S.parseSync(schema)({ name: "John", age: -1 });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a positive number
+*/
+
+S.parseSync(schema)({ name: "John", age: 1.2 });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter an integer
+*/
+
+S.parseSync(schema)({ name: "John", age: -1.2 });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a positive number
+*/
+```
+
+### Transformations
+
+When a transformation encounters an error, the default error message provides information on whether the failure happened in the "from" part, the "to" part, or within the transformation process itself:
+
+```ts
+import * as ParseResult from "@effect/schema/ParseResult";
+import * as S from "@effect/schema/Schema";
+
+const IntFromString = S.transformOrFail(
+  S.string,
+  S.Int,
+  (s, _, ast) => {
+    const n = Number(s);
+    return Number.isNaN(n)
+      ? ParseResult.fail(ParseResult.type(ast, s))
+      : ParseResult.succeed(n);
+  },
+  (n) => ParseResult.succeed(String(n))
+).pipe(S.identifier("IntFromString"));
+
+const schema = S.struct({
+  name: S.NonEmpty,
+  age: IntFromString,
+}).pipe(S.identifier("Person"));
+
+// "from" failure
+S.parseSync(schema)({ name: "John", age: null });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ IntFromString
+      └─ From side transformation failure
+         └─ Expected a string, actual null
+*/
+
+// "to" failure
+S.parseSync(schema)({ name: "John", age: "1.2" });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ IntFromString
+      └─ To side transformation failure
+         └─ Int
+            └─ Predicate refinement failure
+               └─ Expected Int (an integer), actual 1.2
+*/
+
+// "transformation" failure
+S.parseSync(schema)({ name: "John", age: "a" });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ IntFromString
+      └─ Transformation process failure
+         └─ Expected IntFromString, actual "a"
+*/
+```
+
+### Transformations overrides
+
+You have the option to customize error messages for transformations using the `S.message` annotation:
+
+```ts
+import * as ParseResult from "@effect/schema/ParseResult";
+import * as S from "@effect/schema/Schema";
+
+const IntFromString = S.transformOrFail(
+  S.string.pipe(S.message(() => "please enter a string")),
+  S.Int.pipe(S.message(() => "please enter an integer")),
+  (s, _, ast) => {
+    const n = Number(s);
+    return Number.isNaN(n)
+      ? ParseResult.fail(ParseResult.type(ast, s))
+      : ParseResult.succeed(n);
+  },
+  (n) => ParseResult.succeed(String(n))
+).pipe(
+  S.identifier("IntFromString"),
+  S.message(() => "please enter a parseable string")
+);
+
+const schema = S.struct({
+  name: S.NonEmpty,
+  age: IntFromString,
+}).pipe(S.identifier("Person"));
+
+// "from" failure
+S.parseSync(schema)({ name: "John", age: null });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a string
+*/
+
+// "to" failure
+S.parseSync(schema)({ name: "John", age: "1.2" });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter an integer
+*/
+
+// "transformation" failure
+S.parseSync(schema)({ name: "John", age: "a" });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a parseable string
+*/
+```
+
 # Documentation
 
 - [API Reference](https://effect-ts.github.io/schema/)

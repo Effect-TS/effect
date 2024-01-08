@@ -1,3 +1,4 @@
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as _ from "@effect/schema/TreeFormatter"
@@ -449,21 +450,43 @@ describe("TreeFormatter", () => {
       )
     })
 
-    it("transformation", async () => {
-      const schema = S.NumberFromString.pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
-      )
+    describe("transformation", () => {
+      it("top level message", async () => {
+        const schema = S.NumberFromString.pipe(
+          S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        )
 
-      await Util.expectParseFailure(
-        schema,
-        null,
-        `my custom message null`
-      )
-      await Util.expectParseFailure(
-        schema,
-        "a",
-        `my custom message "a"`
-      )
+        await Util.expectParseFailure(
+          schema,
+          null,
+          `my custom message null`
+        )
+        await Util.expectParseFailure(
+          schema,
+          "a",
+          `my custom message "a"`
+        )
+      })
+
+      it("inner messages", async () => {
+        const schema = S.transformOrFail(
+          S.string.pipe(S.message(() => "please enter a string")),
+          S.Int.pipe(S.message(() => "please enter an integer")),
+          (s, _, ast) => {
+            const n = Number(s)
+            return Number.isNaN(n)
+              ? ParseResult.fail(ParseResult.type(ast, s))
+              : ParseResult.succeed(n)
+          },
+          (n) => ParseResult.succeed(String(n))
+        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a parseable string"))
+
+        await Util.expectParseFailure(
+          schema,
+          null,
+          "please enter a string"
+        )
+      })
     })
 
     describe("suspend", () => {

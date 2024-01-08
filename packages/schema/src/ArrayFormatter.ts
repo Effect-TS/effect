@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Format from "./Format.js"
 import type { Missing, ParseError, ParseIssue, Unexpected } from "./ParseResult.js"
-import { formatMessage, getMessage, getRefinementMessage } from "./TreeFormatter.js"
+import { formatMessage, getMessage, getRefinementMessage, getTransformMessage } from "./TreeFormatter.js"
 
 /**
  * @category model
@@ -61,7 +61,7 @@ const go = (e: ParseIssue | Missing | Unexpected, path: ReadonlyArray<PropertyKe
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Transform":
-      return Option.match(getMessage(e.ast, e.actual), {
+      return Option.match(getTransformMessage(e, e.actual), {
         onNone: () => go(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })

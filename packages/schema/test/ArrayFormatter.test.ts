@@ -321,21 +321,53 @@ describe("ArrayFormatter", () => {
       }])
     })
 
-    it("transformation", () => {
-      const schema = S.NumberFromString.pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
-      )
+    describe("transformation", () => {
+      it("top level message", () => {
+        const schema = S.NumberFromString.pipe(
+          S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        )
 
-      expectIssues(schema, null, [{
-        _tag: "Transform",
-        path: [],
-        message: "my custom message null"
-      }])
-      expectIssues(schema, "a", [{
-        _tag: "Transform",
-        path: [],
-        message: `my custom message "a"`
-      }])
+        expectIssues(schema, null, [{
+          _tag: "Transform",
+          path: [],
+          message: "my custom message null"
+        }])
+        expectIssues(schema, "a", [{
+          _tag: "Transform",
+          path: [],
+          message: `my custom message "a"`
+        }])
+      })
+
+      it("inner messages", () => {
+        const schema = S.transformOrFail(
+          S.string.pipe(S.message(() => "please enter a string")),
+          S.Int.pipe(S.message(() => "please enter an integer")),
+          (s, _, ast) => {
+            const n = Number(s)
+            return Number.isNaN(n)
+              ? ParseResult.fail(ParseResult.type(ast, s))
+              : ParseResult.succeed(n)
+          },
+          (n) => ParseResult.succeed(String(n))
+        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a parseable string"))
+
+        expectIssues(schema, null, [{
+          _tag: "Transform",
+          path: [],
+          message: "please enter a string"
+        }])
+        expectIssues(schema, "1.2", [{
+          _tag: "Transform",
+          path: [],
+          message: "please enter an integer"
+        }])
+        expectIssues(schema, "a", [{
+          _tag: "Transform",
+          path: [],
+          message: "please enter a parseable string"
+        }])
+      })
     })
 
     describe("suspend", () => {
