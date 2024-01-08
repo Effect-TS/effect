@@ -105,7 +105,7 @@ export const toEntries = <V>(self: Trie<V>): Array<[string, V]> => Array.from(en
  * @category getters
  */
 export const keysWithPrefix: {
-  <V>(prefix: string): (self: Trie<V>) => IterableIterator<string>
+  (prefix: string): <V>(self: Trie<V>) => IterableIterator<string>
   <V>(self: Trie<V>, prefix: string): IterableIterator<string>
 } = TR.keysWithPrefix
 
@@ -117,7 +117,7 @@ export const keysWithPrefix: {
  * @category getters
  */
 export const valuesWithPrefix: {
-  <V>(prefix: string): (self: Trie<V>) => IterableIterator<V>
+  (prefix: string): <V>(self: Trie<V>) => IterableIterator<V>
   <V>(self: Trie<V>, prefix: string): IterableIterator<V>
 } = TR.valuesWithPrefix
 
@@ -129,7 +129,7 @@ export const valuesWithPrefix: {
  * @category getters
  */
 export const entriesWithPrefix: {
-  <V>(prefix: string): (self: Trie<V>) => IterableIterator<[string, V]>
+  (prefix: string): <V>(self: Trie<V>) => IterableIterator<[string, V]>
   <V>(self: Trie<V>, prefix: string): IterableIterator<[string, V]>
 } = TR.entriesWithPrefix
 
@@ -141,7 +141,7 @@ export const entriesWithPrefix: {
  * @category getters
  */
 export const toEntriesWithPrefix: {
-  <V>(prefix: string): (self: Trie<V>) => Array<[string, V]>
+  (prefix: string): <V>(self: Trie<V>) => Array<[string, V]>
   <V>(self: Trie<V>, prefix: string): Array<[string, V]>
 } = TR.toEntriesWithPrefix
 
@@ -153,7 +153,7 @@ export const toEntriesWithPrefix: {
  * @category getters
  */
 export const longestPrefixOf: {
-  <V>(key: string): (self: Trie<V>) => Option<[string, V]>
+  (key: string): <V>(self: Trie<V>) => Option<[string, V]>
   <V>(self: Trie<V>, key: string): Option<[string, V]>
 } = TR.longestPrefixOf
 
@@ -193,6 +193,6 @@ export const unsafeGet: {
  * @since 2.0.0
  */
 export const remove: {
-  <V>(key: string): (self: Trie<V>) => Trie<V>
+  (key: string): <V>(self: Trie<V>) => Trie<V>
   <V>(self: Trie<V>, key: string): Trie<V>
 } = TR.remove
