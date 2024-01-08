@@ -1,23 +1,11 @@
-import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
-describe("string/lowercase", () => {
+describe("string > Lowercase", () => {
   it("property tests", () => {
     const schema = S.Lowercase
     Util.roundtrip(schema)
-  })
-
-  it("Guard", () => {
-    const schema = S.Lowercase
-    const is = P.is(schema)
-    expect(is("a")).toEqual(true)
-    expect(is(" a ")).toEqual(true)
-    expect(is("")).toEqual(true)
-    expect(is(" ")).toEqual(true)
-    expect(is("A")).toEqual(false)
-    expect(is(" A ")).toEqual(false)
   })
 
   it("decoding", async () => {
@@ -35,7 +23,11 @@ describe("string/lowercase", () => {
     await Util.expectEncodeFailure(
       schema,
       "A",
-      `Expected a lowercase string, actual "A"`
+      `Lowercase
+└─ To side transformation failure
+   └─ Lowercased
+      └─ Predicate refinement failure
+         └─ Expected Lowercased (a lowercase string), actual "A"`
     )
   })
 })

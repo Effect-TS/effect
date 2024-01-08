@@ -2,11 +2,23 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("number/positive", () => {
-  const schema = S.number.pipe(S.positive())
+describe("number > Positive", () => {
+  const schema = S.Positive
   it("decoding", async () => {
-    await Util.expectParseFailure(schema, -1, "Expected a positive number, actual -1")
-    await Util.expectParseFailure(schema, 0, "Expected a positive number, actual 0")
+    await Util.expectParseFailure(
+      schema,
+      -1,
+      `Positive
+└─ Predicate refinement failure
+   └─ Expected Positive (a positive number), actual -1`
+    )
+    await Util.expectParseFailure(
+      schema,
+      0,
+      `Positive
+└─ Predicate refinement failure
+   └─ Expected Positive (a positive number), actual 0`
+    )
   })
 
   it("encoding", async () => {

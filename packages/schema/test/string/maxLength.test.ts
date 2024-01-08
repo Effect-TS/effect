@@ -4,7 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("string/maxLength", () => {
+describe("string > maxLength", () => {
   it("property tests", () => {
     Util.roundtrip(S.maxLength(0)(S.string))
   })
@@ -23,7 +23,9 @@ describe("string/maxLength", () => {
     await Util.expectParseFailure(
       schema,
       "aa",
-      `Expected a string at most 1 character(s) long, actual "aa"`
+      `a string at most 1 character(s) long
+└─ Predicate refinement failure
+   └─ Expected a string at most 1 character(s) long, actual "aa"`
     )
   })
 

@@ -29,17 +29,23 @@ describe("Encoding/Hex", () => {
     await Util.expectParseFailure(
       schema,
       "0",
-      "Length must be a multiple of 2, but is 1"
+      `Hex
+└─ Transformation process failure
+   └─ Length must be a multiple of 2, but is 1`
     )
     await Util.expectParseFailure(
       schema,
       "zd4aa",
-      "Length must be a multiple of 2, but is 5"
+      `Hex
+└─ Transformation process failure
+   └─ Length must be a multiple of 2, but is 5`
     )
     await Util.expectParseFailure(
       schema,
       "0\x01",
-      "Invalid input"
+      `Hex
+└─ Transformation process failure
+   └─ Invalid input`
     )
   })
 

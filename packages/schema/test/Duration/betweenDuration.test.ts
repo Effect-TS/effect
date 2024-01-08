@@ -3,14 +3,19 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, it } from "vitest"
 
-describe("Schema/betweenDuration", () => {
-  const schema = S.DurationFromSelf.pipe(S.betweenDuration("5 seconds", "10 seconds"))
+describe("Duration > betweenDuration", () => {
+  const schema = S.DurationFromSelf.pipe(
+    S.betweenDuration("5 seconds", "10 seconds"),
+    S.title("[5 seconds, 10 seconds] interval")
+  )
 
   it("decoding", async () => {
     await Util.expectParseFailure(
       schema,
       Duration.decode("4 seconds"),
-      `Expected a Duration between Duration(5s) and Duration(10s), actual Duration(4s)`
+      `[5 seconds, 10 seconds] interval
+└─ Predicate refinement failure
+   └─ Expected a Duration between Duration(5s) and Duration(10s), actual Duration(4s)`
     )
 
     await Util.expectParseSuccess(
@@ -22,7 +27,9 @@ describe("Schema/betweenDuration", () => {
     await Util.expectParseFailure(
       schema,
       Duration.decode("11 seconds"),
-      `Expected a Duration between Duration(5s) and Duration(10s), actual Duration(11s)`
+      `[5 seconds, 10 seconds] interval
+└─ Predicate refinement failure
+   └─ Expected a Duration between Duration(5s) and Duration(10s), actual Duration(11s)`
     )
   })
 

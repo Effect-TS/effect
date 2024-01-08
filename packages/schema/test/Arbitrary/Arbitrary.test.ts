@@ -5,22 +5,37 @@ import { propertyFrom, propertyTo } from "@effect/schema/test/util"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-describe("Arbitrary/Arbitrary", () => {
+describe("Arbitrary > Arbitrary", () => {
   it("exports", () => {
     expect(Arbitrary.ArbitraryHookId).exist
   })
 
   it("should throw on declarations without annotations", () => {
     const schema = S.declare([], S.any, () => ParseResult.succeed)
-    expect(() => Arbitrary.go(schema.ast, {})).toThrow(
+    expect(() => Arbitrary.unsafe(schema)).toThrow(
       new Error("cannot build an Arbitrary for a declaration without annotations")
     )
   })
 
   it("should throw on transformations", () => {
     const schema = S.NumberFromString
-    expect(() => Arbitrary.go(schema.ast, {})).toThrow(
+    expect(() => Arbitrary.unsafe(schema)).toThrow(
       new Error("cannot build an Arbitrary for transformations")
+    )
+  })
+
+  it("should throw on wrong annotations", () => {
+    expect(() => {
+      const schema = S.string.pipe(
+        S.annotations({
+          [Arbitrary.ArbitraryHookId]: (): Arbitrary.Arbitrary<string> => (fc) => fc.string()
+        })
+      )
+      Arbitrary.to(schema)
+    }).toThrow(
+      new Error(
+        "Arbitrary annotations are only managed in the following three scenarios: Declarations, Refinements, Suspensions"
+      )
     )
   })
 

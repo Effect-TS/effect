@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import * as C from "effect/Chunk"
 import { describe, expect, it } from "vitest"
 
-describe("Chunk/chunkFromSelf", () => {
+describe("Chunk > chunkFromSelf", () => {
   it("property tests", () => {
     Util.roundtrip(S.chunkFromSelf(S.number))
   })
@@ -22,12 +22,16 @@ describe("Chunk/chunkFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected Chunk, actual null`
+      `Expected Chunk<NumberFromString>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       C.fromIterable(["1", "a", "3"]),
-      `/1 Expected string <-> number, actual "a"`
+      `ReadonlyArray<NumberFromString>
+└─ [1]
+   └─ NumberFromString
+      └─ Transformation process failure
+         └─ Expected NumberFromString, actual "a"`
     )
   })
 

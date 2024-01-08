@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -87,14 +86,28 @@ type Options = {
   readonly isSuspend?: boolean
 }
 
-/** @internal */
-export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
+const getRefinementFromArbitrary = (ast: AST.Refinement, options: Options) => {
+  const constraints = combineConstraints(options.constraints, getConstraints(ast))
+  return go(ast.from, constraints ? { ...options, constraints } : options)
+}
+
+const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
+  const hook = getHook(ast)
+  if (Option.isSome(hook)) {
+    switch (ast._tag) {
+      case "Declaration":
+        return hook.value(...ast.typeParameters.map((p) => go(p, options)))
+      case "Refinement":
+        return hook.value(getRefinementFromArbitrary(ast, options))
+      case "Suspend":
+        return hook.value()
+    }
+    throw new Error(
+      "Arbitrary annotations are only managed in the following three scenarios: Declarations, Refinements, Suspensions"
+    )
+  }
   switch (ast._tag) {
     case "Declaration": {
-      const hook = getHook(ast)
-      if (Option.isSome(hook)) {
-        return hook.value(...ast.typeParameters.map((p) => go(p, options)))
-      }
       throw new Error("cannot build an Arbitrary for a declaration without annotations")
     }
     case "Literal":
@@ -272,27 +285,12 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
       return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
     }
     case "Refinement": {
-      const constraints = combineConstraints(options.constraints, getConstraints(ast))
-      const from = go(ast.from, constraints ? { ...options, constraints } : options)
-      return pipe(
-        getHook(ast),
-        Option.match({
-          onNone: () => (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast))),
-          onSome: (handler) => handler(from)
-        })
-      )
+      const from = getRefinementFromArbitrary(ast, options)
+      return (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast)))
     }
     case "Suspend": {
-      return pipe(
-        getHook(ast),
-        Option.match({
-          onNone: () => {
-            const get = Internal.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
-            return (fc) => fc.constant(null).chain(() => get()(fc))
-          },
-          onSome: (handler) => handler()
-        })
-      )
+      const get = Internal.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
+      return (fc) => fc.constant(null).chain(() => get()(fc))
     }
     case "Transform":
       throw new Error("cannot build an Arbitrary for transformations")

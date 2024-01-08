@@ -318,7 +318,9 @@ export const createLiteral = (
 export const isLiteral = (ast: AST): ast is Literal => ast._tag === "Literal"
 
 /** @internal */
-export const _null = createLiteral(null)
+export const _null = createLiteral(null, {
+  [IdentifierAnnotationId]: "null"
+})
 
 /**
  * @category model
@@ -614,8 +616,9 @@ export interface ObjectKeyword extends Annotated {
 export const objectKeyword: ObjectKeyword = {
   _tag: "ObjectKeyword",
   annotations: {
+    [IdentifierAnnotationId]: "object",
     [TitleAnnotationId]: "object",
-    [DescriptionAnnotationId]: "an object"
+    [DescriptionAnnotationId]: "an object in the TypeScript meaning, i.e. the `object` type"
   }
 }
 
@@ -952,16 +955,7 @@ export const createRefinement = <From extends AST>(
   from: From,
   filter: Refinement["filter"],
   annotations: Annotated["annotations"] = {}
-): Refinement<From> | Transform => {
-  if (isTransform(from)) {
-    // recurse right
-    return createTransform(
-      from.from,
-      createRefinement(from.to, filter, annotations),
-      from.transformation,
-      from.annotations
-    )
-  }
+): Refinement<From> => {
   return { _tag: "Refinement", from, filter, annotations }
 }
 
@@ -977,9 +971,9 @@ export const isRefinement = (ast: AST): ast is Refinement => ast._tag === "Refin
  */
 export interface ParseOptions {
   /** default "first" */
-  readonly errors?: "first" | "all"
+  readonly errors?: "first" | "all" | undefined
   /** default "ignore" */
-  readonly onExcessProperty?: "ignore" | "error"
+  readonly onExcessProperty?: "ignore" | "error" | undefined
 }
 
 /**
@@ -1184,20 +1178,24 @@ export const isTypeLiteralTransformation = (
  *
  * @since 1.0.0
  */
-export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]): AST => ({
-  ...ast,
-  annotations: { ...ast.annotations, ...annotations }
-})
+export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]): AST => {
+  return {
+    ...ast,
+    annotations: { ...ast.annotations, ...annotations }
+  }
+}
 
 /**
  * Adds an annotation, potentially overwriting the existing annotation with the specified id.
  *
  * @since 1.0.0
  */
-export const setAnnotation = (ast: AST, sym: symbol, value: unknown): AST => ({
-  ...ast,
-  annotations: { ...ast.annotations, [sym]: value }
-})
+export const setAnnotation = (ast: AST, sym: symbol, value: unknown): AST => {
+  return {
+    ...ast,
+    annotations: { ...ast.annotations, [sym]: value }
+  }
+}
 
 /**
  * Adds a rest element to the end of a tuple, or throws an exception if the rest element is already present.

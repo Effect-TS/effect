@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("string/trimmed", () => {
-  const schema = S.string.pipe(S.trimmed())
+  const schema = S.Trimmed
 
   it("property tests", () => {
     Util.roundtrip(schema)
@@ -30,17 +30,23 @@ describe("string/trimmed", () => {
     await Util.expectParseFailure(
       schema,
       "a ",
-      `Expected a string with no leading or trailing whitespace, actual "a "`
+      `Trimmed
+└─ Predicate refinement failure
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
     )
     await Util.expectParseFailure(
       schema,
       " a",
-      `Expected a string with no leading or trailing whitespace, actual " a"`
+      `Trimmed
+└─ Predicate refinement failure
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
     )
     await Util.expectParseFailure(
       schema,
       " a ",
-      `Expected a string with no leading or trailing whitespace, actual " a "`
+      `Trimmed
+└─ Predicate refinement failure
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a "`
     )
   })
 
@@ -50,17 +56,23 @@ describe("string/trimmed", () => {
     await Util.expectEncodeFailure(
       schema,
       "a ",
-      `Expected a string with no leading or trailing whitespace, actual "a "`
+      `Trimmed
+└─ Predicate refinement failure
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
     )
     await Util.expectEncodeFailure(
       schema,
       " a",
-      `Expected a string with no leading or trailing whitespace, actual " a"`
+      `Trimmed
+└─ Predicate refinement failure
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
     )
     await Util.expectEncodeFailure(
       schema,
       " a ",
-      `Expected a string with no leading or trailing whitespace, actual " a "`
+      `Trimmed
+└─ Predicate refinement failure
+   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a "`
     )
   })
 

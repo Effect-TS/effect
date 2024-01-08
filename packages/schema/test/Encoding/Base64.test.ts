@@ -19,17 +19,23 @@ describe("Encoding/Base64", () => {
     await Util.expectParseFailure(
       schema,
       "Zm9vY",
-      "Length must be a multiple of 4, but is 5"
+      `Base64
+└─ Transformation process failure
+   └─ Length must be a multiple of 4, but is 5`
     )
     await Util.expectParseFailure(
       schema,
       "Zm9vYmF-",
-      "Invalid character -"
+      `Base64
+└─ Transformation process failure
+   └─ Invalid character -`
     )
     await Util.expectParseFailure(
       schema,
       "=Zm9vYmF",
-      "Found a '=' character, but it is not at the end"
+      `Base64
+└─ Transformation process failure
+   └─ Found a '=' character, but it is not at the end`
     )
   })
 

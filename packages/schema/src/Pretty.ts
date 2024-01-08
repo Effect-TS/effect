@@ -4,12 +4,12 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
+import * as Format from "./Format.js"
 import * as Internal from "./internal/ast.js"
 import * as hooks from "./internal/hooks.js"
 import * as InternalSchema from "./internal/schema.js"
 import * as Parser from "./Parser.js"
 import type * as Schema from "./Schema.js"
-import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
  * @category model
@@ -51,8 +51,6 @@ const toString = () => String
 
 const stringify = () => (a: any) => JSON.stringify(a)
 
-const format = () => TreeFormatter.formatActual
-
 /**
  * @since 1.0.0
  */
@@ -74,9 +72,9 @@ export const match: AST.Match<Pretty<any>> = {
   "UniqueSymbol": toString,
   "TemplateLiteral": stringify,
   "UndefinedKeyword": toString,
-  "UnknownKeyword": format,
-  "AnyKeyword": format,
-  "ObjectKeyword": format,
+  "UnknownKeyword": () => Format.formatUnknown,
+  "AnyKeyword": () => Format.formatUnknown,
+  "ObjectKeyword": () => Format.formatUnknown,
   "StringKeyword": stringify,
   "NumberKeyword": toString,
   "BooleanKeyword": toString,

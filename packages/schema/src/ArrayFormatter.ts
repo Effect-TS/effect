@@ -1,43 +1,75 @@
 /**
  * @since 1.0.0
  */
+
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type { ParseIssue } from "./ParseResult.js"
-import { formatExpected, getMessage } from "./TreeFormatter.js"
+import * as Format from "./Format.js"
+import type { Missing, ParseError, ParseIssue, Unexpected } from "./ParseResult.js"
+import { formatMessage, getMessage, getRefinementMessage, getTransformMessage } from "./TreeFormatter.js"
 
 /**
  * @category model
  * @since 1.0.0
  */
 export interface Issue {
-  readonly _tag: ParseIssue["_tag"]
+  readonly _tag: ParseIssue["_tag"] | Missing["_tag"] | Unexpected["_tag"]
   readonly path: ReadonlyArray<PropertyKey>
   readonly message: string
 }
 
-const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<Issue> => {
-  const _tag = self._tag
+const go = (e: ParseIssue | Missing | Unexpected, path: ReadonlyArray<PropertyKey> = []): Array<Issue> => {
+  const _tag = e._tag
   switch (_tag) {
     case "Type":
-      return [{ _tag, path, message: getMessage(self) }]
-    case "Key":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.key]))
-    case "Index":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, [...path, self.index]))
-    case "UnionMember":
-      return ReadonlyArray.flatMap(self.errors, (e) => format(e, path))
-    case "Missing":
-      return [{ _tag, path, message: "Missing key or index" }]
+      return [{ _tag, path, message: formatMessage(e) }]
     case "Forbidden":
-      return [{ _tag, path, message: "Forbidden" }]
+      return [{ _tag, path, message: "is forbidden" }]
     case "Unexpected":
-      return [{
-        _tag,
-        path,
-        message: "Unexpected" +
-          (Option.isSome(self.ast) ? `, expected ${formatExpected(self.ast.value)}` : "")
-      }]
+      return [{ _tag, path, message: `is unexpected, expected ${Format.formatAST(e.ast, true)}` }]
+    case "Missing":
+      return [{ _tag, path, message: "is missing" }]
+    case "Union":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          ReadonlyArray.flatMap(e.errors, (e) => {
+            switch (e._tag) {
+              case "Member":
+                return go(e.error, path)
+              default:
+                return go(e, path)
+            }
+          }),
+        onSome: (message) => [{ _tag, path, message }]
+      })
+    case "Tuple":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          ReadonlyArray.flatMap(
+            e.errors,
+            (index) => go(index.error, [...path, index.index])
+          ),
+        onSome: (message) => [{ _tag, path, message }]
+      })
+    case "TypeLiteral":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () =>
+          ReadonlyArray.flatMap(
+            e.errors,
+            (key) => go(key.error, [...path, key.key])
+          ),
+        onSome: (message) => [{ _tag, path, message }]
+      })
+    case "Transform":
+      return Option.match(getTransformMessage(e, e.actual), {
+        onNone: () => go(e.error, path),
+        onSome: (message) => [{ _tag, path, message }]
+      })
+    case "Refinement":
+      return Option.match(getRefinementMessage(e, e.actual), {
+        onNone: () => go(e.error, path),
+        onSome: (message) => [{ _tag, path, message }]
+      })
   }
 }
 
@@ -45,6 +77,17 @@ const format = (self: ParseIssue, path: ReadonlyArray<PropertyKey> = []): Array<
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrors = (
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>
-): Array<Issue> => ReadonlyArray.flatMap(errors, (e) => format(e))
+export const formatIssues = (issues: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>): Array<Issue> =>
+  ReadonlyArray.flatMap(issues, (e) => go(e))
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatIssue = (error: ParseIssue): Array<Issue> => formatIssues([error])
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatError = (error: ParseError): Array<Issue> => formatIssue(error.error)

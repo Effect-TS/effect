@@ -241,7 +241,7 @@ const $schema = "http://json-schema.org/draft-07/schema#"
 /** @internal */
 export const goRoot = (ast: AST.AST): JsonSchema7Root => {
   const $defs = {}
-  const jsonSchema = goWithMetaData(ast, $defs)
+  const jsonSchema = goWithIdentifier(ast, $defs)
   const out: JsonSchema7Root = {
     $schema,
     ...jsonSchema
@@ -257,13 +257,12 @@ const goWithIdentifier = (ast: AST.AST, $defs: Record<string, JsonSchema7>): Jso
   return Option.match(identifier, {
     onNone: () => goWithMetaData(ast, $defs),
     onSome: (id) => {
+      const out = { $ref: `${DEFINITION_PREFIX}${id}` }
       if (!ReadonlyRecord.has($defs, id)) {
-        const jsonSchema = goWithMetaData(ast, $defs)
-        if (!ReadonlyRecord.has($defs, id)) {
-          $defs[id] = jsonSchema
-        }
+        $defs[id] = out
+        $defs[id] = goWithMetaData(ast, $defs)
       }
-      return { $ref: `#/$defs/${id}` }
+      return out
     }
   })
 }
@@ -508,19 +507,13 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       }
     }
     case "Suspend": {
-      const identifier = AST.getIdentifierAnnotation(ast)
+      const identifier = Option.orElse(AST.getIdentifierAnnotation(ast), () => AST.getIdentifierAnnotation(ast.f()))
       if (Option.isNone(identifier)) {
         throw new Error(
           "Generating a JSON Schema for suspended schemas requires an identifier annotation"
         )
       }
-      const id = identifier.value
-      if (!ReadonlyRecord.has($defs, id)) {
-        $defs[id] = anyJsonSchema
-        const jsonSchema = goWithIdentifier(ast.f(), $defs)
-        $defs[id] = jsonSchema
-      }
-      return { $ref: `${DEFINITION_PREFIX}${id}` }
+      return goWithIdentifier(ast.f(), $defs)
     }
     case "Transform":
       throw new Error("cannot build a JSON Schema for transformations")

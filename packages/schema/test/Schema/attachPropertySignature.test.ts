@@ -4,7 +4,7 @@ import * as E from "effect/Either"
 import { describe, it } from "vitest"
 
 describe("Schema/attachPropertySignature", () => {
-  it("string keys + literal values", async () => {
+  it("string keys literal values", async () => {
     const Circle = S.struct({ radius: S.number })
     const Square = S.struct({ sideLength: S.number })
     const schema = S.union(
@@ -18,7 +18,7 @@ describe("Schema/attachPropertySignature", () => {
     await Util.expectEncodeSuccess(schema, { kind: "square", sideLength: 10 }, { sideLength: 10 })
   })
 
-  it("symbol keys + literal values", async () => {
+  it("symbol keys literal values", async () => {
     const Circle = S.struct({ radius: S.number })
     const Square = S.struct({ sideLength: S.number })
     const kind = Symbol.for("@effect/schema/test/kind")
@@ -33,7 +33,7 @@ describe("Schema/attachPropertySignature", () => {
     await Util.expectEncodeSuccess(schema, { [kind]: "square", sideLength: 10 }, { sideLength: 10 })
   })
 
-  it("string keys + unique symbols", async () => {
+  it("string keys unique symbols", async () => {
     const Circle = S.struct({ radius: S.number })
     const Square = S.struct({ sideLength: S.number })
     const kind = Symbol.for("@effect/schema/test/kind")
@@ -50,7 +50,7 @@ describe("Schema/attachPropertySignature", () => {
     await Util.expectEncodeSuccess(schema, { [kind]: square, sideLength: 10 }, { sideLength: 10 })
   })
 
-  it("symbol keys + unique symbols", async () => {
+  it("symbol keys unique symbols", async () => {
     const Circle = S.struct({ radius: S.number })
     const Square = S.struct({ sideLength: S.number })
     const circle = Symbol.for("@effect/schema/test/circle")
@@ -106,17 +106,45 @@ describe("Schema/attachPropertySignature", () => {
     const schema1 = S.struct({
       a: S.string
     }).pipe(
-      S.attachPropertySignature("_tag", "a", { identifier: "MyIdentifier" })
+      S.attachPropertySignature("_tag", "a", { identifier: "AttachedProperty" })
     )
-    await Util.expectEncodeFailure(schema1, null as any, "Expected MyIdentifier, actual null")
+    await Util.expectEncodeFailure(
+      schema1,
+      null as any,
+      `({ a: string } <-> AttachedProperty)
+└─ To side transformation failure
+   └─ Expected AttachedProperty, actual null`
+    )
     const schema2 = S.attachPropertySignature(
       S.struct({
         a: S.string
       }),
       "_tag",
       "a",
-      { identifier: "MyIdentifier" }
+      { identifier: "AttachedProperty" }
     )
-    await Util.expectEncodeFailure(schema2, null as any, "Expected MyIdentifier, actual null")
+    await Util.expectEncodeFailure(
+      schema2,
+      null as any,
+      `({ a: string } <-> AttachedProperty)
+└─ To side transformation failure
+   └─ Expected AttachedProperty, actual null`
+    )
+  })
+
+  it("decoding error message", async () => {
+    const schema = S.struct({
+      a: S.string
+    }).pipe(
+      S.attachPropertySignature("_tag", "a"),
+      S.identifier("AttachedProperty")
+    )
+    await Util.expectParseFailure(
+      schema,
+      null,
+      `AttachedProperty
+└─ From side transformation failure
+   └─ Expected { a: string }, actual null`
+    )
   })
 })

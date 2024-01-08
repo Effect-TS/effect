@@ -1,169 +1,31 @@
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
-import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
-import * as Effect from "effect/Effect"
-import * as E from "effect/Either"
-import * as O from "effect/Option"
 import { describe, expect, it } from "vitest"
 
 describe("Parser", () => {
+  it("mergeParseOptions", () => {
+    expect(P.mergeParseOptions(undefined, undefined)).toStrictEqual(undefined)
+    expect(P.mergeParseOptions({}, undefined)).toStrictEqual({})
+    expect(P.mergeParseOptions(undefined, {})).toStrictEqual({})
+    expect(P.mergeParseOptions({ errors: undefined }, undefined)).toStrictEqual({ errors: undefined })
+    expect(P.mergeParseOptions(undefined, { errors: undefined })).toStrictEqual({ errors: undefined })
+    expect(P.mergeParseOptions({ errors: "all" }, { errors: "first" })).toStrictEqual({
+      errors: "first",
+      onExcessProperty: undefined
+    })
+    expect(P.mergeParseOptions({ onExcessProperty: "ignore" }, { onExcessProperty: "error" })).toStrictEqual({
+      onExcessProperty: "error",
+      errors: undefined
+    })
+  })
+
   it("asserts", () => {
     const schema = S.string
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrow(
-      new Error(`error(s) found
-└─ Expected string, actual 1`)
+      new Error(`Expected a string, actual 1`)
     )
-  })
-
-  it("parseSync", () => {
-    const schema = S.NumberFromString
-    expect(P.parseSync(schema)("1")).toEqual(1)
-    expect(() => P.parseSync(schema)("a")).toThrow(
-      new Error(`error(s) found
-└─ Expected string <-> number, actual "a"`)
-    )
-  })
-
-  it("parseOption", () => {
-    const schema = S.NumberFromString
-    expect(P.parseOption(schema)("1")).toEqual(O.some(1))
-    expect(P.parseOption(schema)("a")).toEqual(O.none())
-  })
-
-  it("parseEither", () => {
-    const schema = S.NumberFromString
-    expect(P.parseEither(schema)("1")).toEqual(E.right(1))
-    expect(P.parseEither(schema)("a")).toEqual(E.left(PR.parseError([PR.type(schema.ast, "a")])))
-  })
-
-  it("parsePromise", async () => {
-    const schema = S.NumberFromString
-    await Util.resolves(P.parsePromise(schema)("1"), 1)
-    await Util.rejects(P.parsePromise(schema)("a"))
-  })
-
-  it("parse", async () => {
-    const schema = S.NumberFromString
-    expect(await Effect.runPromise(Effect.either(P.parse(schema)("1")))).toEqual(
-      E.right(1)
-    )
-    expect(await Effect.runPromise(Effect.either(P.parse(schema)("a")))).toEqual(
-      E.left(PR.parseError([PR.type(schema.ast, "a")]))
-    )
-  })
-
-  it("decode", () => {
-    const schema = S.NumberFromString
-    expect(P.decodeSync(schema)("1")).toEqual(1)
-    expect(() => P.decodeSync(schema)("a")).toThrow(
-      new Error(`error(s) found
-└─ Expected string <-> number, actual "a"`)
-    )
-  })
-
-  it("decodeOption", () => {
-    const schema = S.NumberFromString
-    expect(P.decodeOption(schema)("1")).toEqual(O.some(1))
-    expect(P.decodeOption(schema)("a")).toEqual(O.none())
-  })
-
-  it("decodeEither", () => {
-    const schema = S.NumberFromString
-    expect(P.decodeEither(schema)("1")).toEqual(E.right(1))
-    expect(P.decodeEither(schema)("a")).toEqual(E.left(PR.parseError([PR.type(schema.ast, "a")])))
-  })
-
-  it("decodePromise", async () => {
-    const schema = S.NumberFromString
-    await Util.resolves(P.decodePromise(schema)("1"), 1)
-    await Util.rejects(P.decodePromise(schema)("a"))
-  })
-
-  it("decode", async () => {
-    const schema = S.NumberFromString
-    expect(await Effect.runPromise(Effect.either(P.decode(schema)("1")))).toEqual(E.right(1))
-    expect(await Effect.runPromise(Effect.either(P.decode(schema)("a")))).toEqual(
-      E.left(PR.parseError([PR.type(schema.ast, "a")]))
-    )
-  })
-
-  it("validateSync", () => {
-    const schema = S.NumberFromString
-    expect(P.validateSync(schema)(1)).toEqual(1)
-    expect(() => P.validateSync(schema)("1")).toThrow(
-      new Error(`error(s) found
-└─ Expected number, actual "1"`)
-    )
-  })
-
-  it("validateOption", () => {
-    const schema = S.NumberFromString
-    expect(P.validateOption(schema)(1)).toEqual(O.some(1))
-    expect(P.validateOption(schema)("1")).toEqual(O.none())
-  })
-
-  it("validateEither", () => {
-    const schema = S.NumberFromString
-    expect(P.validateEither(schema)(1)).toEqual(E.right(1))
-    expect(P.validateEither(schema)("1")).toEqual(
-      E.left(PR.parseError([PR.type(S.number.ast, "1")]))
-    )
-  })
-
-  it("validatePromise", async () => {
-    const schema = S.NumberFromString
-    await Util.resolves(P.validatePromise(schema)(1), 1)
-    await Util.rejects(P.validatePromise(schema)("1"))
-    await Util.rejects(P.validatePromise(schema)("a"))
-  })
-
-  it("validate", async () => {
-    const schema = S.NumberFromString
-    expect(await Effect.runPromise(Effect.either(P.validate(schema)(1)))).toEqual(E.right(1))
-    expect(await Effect.runPromise(Effect.either(P.validate(schema)("1")))).toEqual(
-      E.left(PR.parseError([PR.type(S.number.ast, "1")]))
-    )
-  })
-
-  it("encodeEither", () => {
-    const schema = S.NumberFromString
-    expect(P.encodeEither(schema)(1)).toEqual(E.right("1"))
-    expect(
-      P.encodeEither(
-        S.union(
-          S.transform(
-            S.struct({ _tag: S.literal("a") }),
-            S.struct({ _tag: S.literal("b") }),
-            () => ({ _tag: "b" as const }),
-            () => ({ _tag: "a" as const })
-          ),
-          S.struct({ _tag: S.literal("c") })
-        )
-      )({ _tag: "b" })
-    ).toEqual(E.right({ _tag: "a" }))
-    expect(
-      P.encodeEither(
-        S.union(
-          S.struct({
-            _tag: S.transform(
-              S.literal("a"),
-              S.literal("b"),
-              () => "b" as const,
-              () => "a" as const
-            )
-          }),
-          S.struct({ _tag: S.literal("c") })
-        )
-      )({ _tag: "b" })
-    ).toEqual(E.right({ _tag: "a" }))
-  })
-
-  it("encodePromise", async () => {
-    const schema = S.NumberFromString
-    await Util.resolves(P.encodePromise(schema)(1), "1")
   })
 
   it("getLiterals", () => {

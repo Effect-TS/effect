@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import * as C from "effect/Chunk"
 import { describe, it } from "vitest"
 
-describe("Chunk/chunk", () => {
+describe("Chunk > chunk", () => {
   it("property tests", () => {
     Util.roundtrip(S.chunk(S.number))
   })
@@ -16,9 +16,19 @@ describe("Chunk/chunk", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected <anonymous tuple or array schema>, actual null`
+      `(ReadonlyArray<number> <-> Chunk<number>)
+└─ From side transformation failure
+   └─ Expected ReadonlyArray<number>, actual null`
     )
-    await Util.expectParseFailure(schema, [1, "a"], `/1 Expected number, actual "a"`)
+    await Util.expectParseFailure(
+      schema,
+      [1, "a"],
+      `(ReadonlyArray<number> <-> Chunk<number>)
+└─ From side transformation failure
+   └─ ReadonlyArray<number>
+      └─ [1]
+         └─ Expected a number, actual "a"`
+    )
   })
 
   it("encoding", async () => {
