@@ -215,4 +215,56 @@ describe("Trie", () => {
     const result = Trie.toEntries(trie)
     deepStrictEqual(result, [["call", 0], ["me", 1]])
   })
+
+  it("keysWithPrefix", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("sea", 2),
+      Trie.insert("she", 3)
+    )
+
+    const result = Array.from(Trie.keysWithPrefix(trie, "she"))
+    deepStrictEqual(result, ["she", "shells"])
+  })
+
+  it("valuesWithPrefix", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("sea", 2),
+      Trie.insert("she", 3)
+    )
+
+    const result = Array.from(Trie.valuesWithPrefix(trie, "she"))
+    deepStrictEqual(result, [3, 0])
+  })
+
+  it("entriesWithPrefix", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("sea", 2),
+      Trie.insert("she", 3)
+    )
+
+    const result = Array.from(Trie.entriesWithPrefix(trie, "she"))
+    deepStrictEqual(result, [["she", 3], ["shells", 0]])
+  })
+
+  it("toEntriesWithPrefix", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("sea", 2),
+      Trie.insert("she", 3)
+    )
+
+    const result = Trie.toEntriesWithPrefix(trie, "she")
+    deepStrictEqual(result, [["she", 3], ["shells", 0]])
+  })
 })

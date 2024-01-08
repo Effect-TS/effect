@@ -16,6 +16,8 @@ export const TrieTypeId: TR.TypeId = Symbol.for(TrieSymbolKey) as TR.TypeId
 
 type TraversalFn<K, V, A> = (k: K, v: V) => A
 
+type TraversalFilter<K, V> = (k: K, v: V) => boolean
+
 /** @internal */
 export interface TrieImpl<out V> extends TR.Trie<V> {
   readonly _root: Node.Node<V> | undefined
@@ -32,7 +34,7 @@ const trieVariance = {
 const TrieProto: TR.Trie<unknown> = {
   [TrieTypeId]: trieVariance,
   [Symbol.iterator]<V>(this: TrieImpl<V>): Iterator<[string, V]> {
-    return new TrieIterator(this, (k, v) => [k, v])
+    return new TrieIterator(this, (k, v) => [k, v], () => true)
   },
   [Hash.symbol](): number {
     let hash = Hash.hash(TrieSymbolKey)
@@ -78,7 +80,11 @@ const makeImpl = <V>(root: Node.Node<V> | undefined): TrieImpl<V> => {
 class TrieIterator<in out V, out T> implements IterableIterator<T> {
   stack: Array<[Node.Node<V>, string]> = []
 
-  constructor(readonly trie: TrieImpl<V>, readonly f: TraversalFn<string, V, T>) {
+  constructor(
+    readonly trie: TrieImpl<V>,
+    readonly f: TraversalFn<string, V, T>,
+    readonly filter: TraversalFilter<string, V>
+  ) {
     const root = trie._root != null ? trie._root : undefined
     if (root != null) {
       this.stack.push([root, ""])
@@ -91,8 +97,12 @@ class TrieIterator<in out V, out T> implements IterableIterator<T> {
 
       this.addToStack(node, keyString)
 
-      if (node.value != null) {
-        return { done: false, value: this.f(keyString + node.key, node.value) }
+      const value = node.value
+      if (value != null) {
+        const key = keyString + node.key
+        if (this.filter(key, value)) {
+          return { done: false, value: this.f(key, value) }
+        }
       }
     }
 
@@ -112,7 +122,7 @@ class TrieIterator<in out V, out T> implements IterableIterator<T> {
   }
 
   [Symbol.iterator](): IterableIterator<T> {
-    return new TrieIterator(this.trie, this.f)
+    return new TrieIterator(this.trie, this.f, this.filter)
   }
 }
 
@@ -226,15 +236,54 @@ export const size = <V>(self: TR.Trie<V>): number => (self as TrieImpl<V>)._root
 
 /** @internal */
 export const keys = <V>(self: TR.Trie<V>): IterableIterator<string> =>
-  new TrieIterator(self as TrieImpl<V>, (key) => key)
+  new TrieIterator(self as TrieImpl<V>, (key) => key, () => true)
 
 /** @internal */
 export const values = <V>(self: TR.Trie<V>): IterableIterator<V> =>
-  new TrieIterator(self as TrieImpl<V>, (_, value) => value)
+  new TrieIterator(self as TrieImpl<V>, (_, value) => value, () => true)
 
 /** @internal */
 export const entries = <V>(self: TR.Trie<V>): IterableIterator<[string, V]> =>
-  new TrieIterator(self as TrieImpl<V>, (key, value) => [key, value])
+  new TrieIterator(self as TrieImpl<V>, (key, value) => [key, value], () => true)
+
+/** @internal */
+export const keysWithPrefix = dual<
+  (prefix: string) => <V>(self: TR.Trie<V>) => IterableIterator<string>,
+  <V>(self: TR.Trie<V>, prefix: string) => IterableIterator<string>
+>(
+  2,
+  <V>(self: TR.Trie<V>, prefix: string): IterableIterator<string> =>
+    new TrieIterator(self as TrieImpl<V>, (key) => key, (key) => key.startsWith(prefix))
+)
+
+/** @internal */
+export const valuesWithPrefix = dual<
+  (prefix: string) => <V>(self: TR.Trie<V>) => IterableIterator<V>,
+  <V>(self: TR.Trie<V>, prefix: string) => IterableIterator<V>
+>(
+  2,
+  <V>(self: TR.Trie<V>, prefix: string): IterableIterator<V> =>
+    new TrieIterator(self as TrieImpl<V>, (_, value) => value, (key) => key.startsWith(prefix))
+)
+
+/** @internal */
+export const entriesWithPrefix = dual<
+  (prefix: string) => <V>(self: TR.Trie<V>) => IterableIterator<[string, V]>,
+  <V>(self: TR.Trie<V>, prefix: string) => IterableIterator<[string, V]>
+>(
+  2,
+  <V>(self: TR.Trie<V>, prefix: string): IterableIterator<[string, V]> =>
+    new TrieIterator(self as TrieImpl<V>, (key, value) => [key, value], (key) => key.startsWith(prefix))
+)
+
+/** @internal */
+export const toEntriesWithPrefix = dual<
+  (prefix: string) => <V>(self: TR.Trie<V>) => Array<[string, V]>,
+  <V>(self: TR.Trie<V>, prefix: string) => Array<[string, V]>
+>(
+  2,
+  <V>(self: TR.Trie<V>, prefix: string): Array<[string, V]> => Array.from(entriesWithPrefix(self, prefix))
+)
 
 /** @internal */
 export const get = dual<

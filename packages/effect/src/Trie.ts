@@ -50,7 +50,6 @@ export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Trie<
  *
  * @since 2.0.0
  */
-
 export const insert: {
   <V>(key: string, value: V): (self: Trie<V>) => Trie<V>
   <V>(self: Trie<V>, key: string, value: V): Trie<V>
@@ -87,6 +86,54 @@ export const entries: <V>(self: Trie<V>) => IterableIterator<[string, V]> = TR.e
  * @category getters
  */
 export const toEntries = <V>(self: Trie<V>): Array<[string, V]> => Array.from(entries(self))
+
+/**
+ * Returns an `IterableIterator` of the keys within the `Trie`
+ * that have `prefix` as prefix.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const keysWithPrefix: {
+  <V>(prefix: string): (self: Trie<V>) => IterableIterator<string>
+  <V>(self: Trie<V>, prefix: string): IterableIterator<string>
+} = TR.keysWithPrefix
+
+/**
+ * Returns an `IterableIterator` of the values within the `Trie`
+ * that have `prefix` as prefix.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const valuesWithPrefix: {
+  <V>(prefix: string): (self: Trie<V>) => IterableIterator<V>
+  <V>(self: Trie<V>, prefix: string): IterableIterator<V>
+} = TR.valuesWithPrefix
+
+/**
+ * Returns an `IterableIterator` of the entries within the `Trie`
+ * that have `prefix` as prefix.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const entriesWithPrefix: {
+  <V>(prefix: string): (self: Trie<V>) => IterableIterator<[string, V]>
+  <V>(self: Trie<V>, prefix: string): IterableIterator<[string, V]>
+} = TR.entriesWithPrefix
+
+/**
+ * Returns `Array<[K, V]>` of the entries within the `Trie`
+ * that have `prefix` as prefix.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const toEntriesWithPrefix: {
+  <V>(prefix: string): (self: Trie<V>) => Array<[string, V]>
+  <V>(self: Trie<V>, prefix: string): Array<[string, V]>
+} = TR.toEntriesWithPrefix
 
 /**
  * Returns the size of the tree.
