@@ -114,7 +114,7 @@ export const makeManager = Effect.gen(function*(_) {
           Effect.onError((cause) =>
             Effect.forEach(requestMap.values(), ([queue]) => Queue.offer(queue, Exit.failCause(cause)))
           ),
-          Effect.retrySchedule(
+          Effect.retry(
             Schedule.exponential("250 millis").pipe(
               Schedule.union(Schedule.spaced("30 seconds"))
             )

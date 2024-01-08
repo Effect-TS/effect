@@ -93,7 +93,7 @@ export const flakyTest = <R, E, A>(
 ) => {
   return pipe(
     Effect.catchAllDefect(self, Effect.fail),
-    Effect.retrySchedule(
+    Effect.retry(
       pipe(
         Schedule.recurs(10),
         Schedule.compose(Schedule.elapsed),

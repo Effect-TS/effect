@@ -11,7 +11,7 @@ import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import type { Predicate, Refinement } from "../Predicate.js"
+import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import * as Random from "../Random.js"
 import type * as Ref from "../Ref.js"
 import type * as Schedule from "../Schedule.js"
@@ -29,6 +29,9 @@ const ScheduleSymbolKey = "effect/Schedule"
 export const ScheduleTypeId: Schedule.ScheduleTypeId = Symbol.for(
   ScheduleSymbolKey
 ) as Schedule.ScheduleTypeId
+
+/** @internal */
+export const isSchedule = (u: unknown): u is Schedule.Schedule<any, any, any> => hasProperty(u, ScheduleTypeId)
 
 /** @internal */
 const ScheduleDriverSymbolKey = "effect/ScheduleDriver"
@@ -1952,37 +1955,51 @@ export const retry_Effect = dual<
 export const retry_combined = dual<{
   <E, O extends Effect.Retry.Options<E>>(
     options: O
-  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Retry.Return<R, A, E, O>
+  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Retry.Return<R, E, A, O>
+  <R1, E extends E0, E0, B>(
+    policy: Schedule.Schedule<R1, E0, B>
+  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E, A>
 }, {
   <R, A, E, O extends Effect.Retry.Options<E>>(
     self: Effect.Effect<R, E, A>,
     options: O
-  ): Effect.Retry.Return<R, A, E, O>
-}>(2, (self, options) => {
-  const base = options.schedule ?? forever
-  const withWhile = options.while ?
-    whileInputEffect(base, (e) => {
-      const applied = options.while!(e)
-      if (typeof applied === "boolean") {
-        return core.succeed(applied)
-      }
-      return applied
-    }) :
-    base
-  const withUntil = options.until ?
-    untilInputEffect(withWhile, (e) => {
-      const applied = options.until!(e)
-      if (typeof applied === "boolean") {
-        return core.succeed(applied)
-      }
-      return applied
-    }) :
-    withWhile
-  const withTimes = options.times ?
-    intersect(withUntil, recurs(options.times)) :
-    withUntil
-  return retry_Effect(self, withTimes)
-})
+  ): Effect.Retry.Return<R, E, A, O>
+  <R, E extends E0, E0, A, R1, B>(
+    self: Effect.Effect<R, E, A>,
+    policy: Schedule.Schedule<R1, E0, B>
+  ): Effect.Effect<R | R1, E, A>
+}>(
+  2,
+  (self: Effect.Effect<any, any, any>, options: Effect.Retry.Options<any> | Schedule.Schedule<any, any, any>) => {
+    if (isSchedule(options)) {
+      return retry_Effect(self, options)
+    }
+
+    const base = options.schedule ?? forever
+    const withWhile = options.while ?
+      whileInputEffect(base, (e) => {
+        const applied = options.while!(e)
+        if (typeof applied === "boolean") {
+          return core.succeed(applied)
+        }
+        return applied
+      }) :
+      base
+    const withUntil = options.until ?
+      untilInputEffect(withWhile, (e) => {
+        const applied = options.until!(e)
+        if (typeof applied === "boolean") {
+          return core.succeed(applied)
+        }
+        return applied
+      }) :
+      withWhile
+    const withTimes = options.times ?
+      intersect(withUntil, recurs(options.times)) :
+      withUntil
+    return retry_Effect(self, withTimes)
+  }
+)
 
 /** @internal */
 export const retryN_Effect = dual<
