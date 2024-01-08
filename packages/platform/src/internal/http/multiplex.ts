@@ -28,15 +28,20 @@ class MultiplexImpl<R, E>
     super()
     this[TypeId] = TypeId
 
-    this.execute = Effect.flatMap(
-      ServerRequest.ServerRequest,
-      (request) =>
+    let execute: (request: ServerRequest.ServerRequest) => App.Default<R, E | Error.RouteNotFound> = (request) =>
+      Effect.fail(Error.RouteNotFound({ request }))
+
+    for (let i = apps.length - 1; i >= 0; i--) {
+      const [predicate, app] = apps[i]
+      const previous = execute
+      execute = (request) =>
         Effect.flatMap(
-          Effect.findFirst(this.apps, ([predicate]) => predicate(request)),
-          (_): App.Default<R, E | Error.RouteNotFound> =>
-            _._tag === "Some" ? _.value[1] : Effect.fail(Error.RouteNotFound({ request }))
+          predicate(request),
+          (match) => match ? app : previous(request)
         )
-    )
+    }
+
+    this.execute = Effect.flatMap(ServerRequest.ServerRequest, execute)
   }
 
   execute: App.Default<R, E | Error.RouteNotFound>
