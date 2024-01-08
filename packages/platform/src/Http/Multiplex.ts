@@ -69,6 +69,60 @@ export const add: {
  * @since 1.0.0
  * @category combinators
  */
+export const headerExact: {
+  <R2, E2>(
+    header: string,
+    value: string,
+    app: App.Default<R2, E2>
+  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+  <R, E, R2, E2>(
+    self: Multiplex<R, E>,
+    header: string,
+    value: string,
+    app: App.Default<R2, E2>
+  ): Multiplex<R | R2, E | E2>
+} = internal.headerExact
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const headerRegex: {
+  <R2, E2>(
+    header: string,
+    regex: RegExp,
+    app: App.Default<R2, E2>
+  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+  <R, E, R2, E2>(
+    self: Multiplex<R, E>,
+    header: string,
+    regex: RegExp,
+    app: App.Default<R2, E2>
+  ): Multiplex<R | R2, E | E2>
+} = internal.headerRegex
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const headerStartsWith: {
+  <R2, E2>(
+    header: string,
+    prefix: string,
+    app: App.Default<R2, E2>
+  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+  <R, E, R2, E2>(
+    self: Multiplex<R, E>,
+    header: string,
+    prefix: string,
+    app: App.Default<R2, E2>
+  ): Multiplex<R | R2, E | E2>
+} = internal.headerStartsWith
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const hostExact: {
   <R2, E2>(host: string, app: App.Default<R2, E2>): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
   <R, E, R2, E2>(self: Multiplex<R, E>, host: string, app: App.Default<R2, E2>): Multiplex<R | R2, E | E2>

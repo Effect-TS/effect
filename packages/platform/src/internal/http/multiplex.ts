@@ -82,6 +82,94 @@ export const add = dual<
 )
 
 /** @internal */
+export const headerExact = dual<
+  <R2, E2>(
+    header: string,
+    value: string,
+    app: App.Default<R2, E2>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+  <R, E, R2, E2>(
+    self: Multiplex.Multiplex<R, E>,
+    header: string,
+    value: string,
+    app: App.Default<R2, E2>
+  ) => Multiplex.Multiplex<R | R2, E | E2>
+>(
+  4,
+  (self, header, value, app) =>
+    add(self, (req) =>
+      req.headers[header] !== undefined
+        ? Effect.succeed(req.headers[header] === value)
+        : Effect.succeed(false), app)
+)
+
+/** @internal */
+export const headerRegex = dual<
+  <R2, E2>(
+    header: string,
+    regex: RegExp,
+    app: App.Default<R2, E2>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+  <R, E, R2, E2>(
+    self: Multiplex.Multiplex<R, E>,
+    header: string,
+    regex: RegExp,
+    app: App.Default<R2, E2>
+  ) => Multiplex.Multiplex<R | R2, E | E2>
+>(
+  4,
+  (self, header, regex, app) =>
+    add(self, (req) =>
+      req.headers[header] !== undefined
+        ? Effect.succeed(regex.test(req.headers[header]))
+        : Effect.succeed(false), app)
+)
+
+/** @internal */
+export const headerStartsWith = dual<
+  <R2, E2>(
+    header: string,
+    prefix: string,
+    app: App.Default<R2, E2>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+  <R, E, R2, E2>(
+    self: Multiplex.Multiplex<R, E>,
+    header: string,
+    prefix: string,
+    app: App.Default<R2, E2>
+  ) => Multiplex.Multiplex<R | R2, E | E2>
+>(
+  4,
+  (self, header, prefix, app) =>
+    add(self, (req) =>
+      req.headers[header] !== undefined
+        ? Effect.succeed(req.headers[header].startsWith(prefix))
+        : Effect.succeed(false), app)
+)
+
+/** @internal */
+export const headerEndsWith = dual<
+  <R2, E2>(
+    header: string,
+    suffix: string,
+    app: App.Default<R2, E2>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+  <R, E, R2, E2>(
+    self: Multiplex.Multiplex<R, E>,
+    header: string,
+    suffix: string,
+    app: App.Default<R2, E2>
+  ) => Multiplex.Multiplex<R | R2, E | E2>
+>(
+  4,
+  (self, header, suffix, app) =>
+    add(self, (req) =>
+      req.headers[header] !== undefined
+        ? Effect.succeed(req.headers[header].endsWith(suffix))
+        : Effect.succeed(false), app)
+)
+
+/** @internal */
 export const hostRegex = dual<
   <R2, E2>(
     regex: RegExp,
@@ -92,7 +180,7 @@ export const hostRegex = dual<
     regex: RegExp,
     app: App.Default<R2, E2>
   ) => Multiplex.Multiplex<R | R2, E | E2>
->(3, (self, regex, app) => add(self, (req) => Effect.succeed(regex.test(req.headers.host ?? "")), app))
+>(3, (self, regex, app) => headerRegex(self, "host", regex, app))
 
 /** @internal */
 export const hostStartsWith = dual<
@@ -105,7 +193,20 @@ export const hostStartsWith = dual<
     prefix: string,
     app: App.Default<R2, E2>
   ) => Multiplex.Multiplex<R | R2, E | E2>
->(3, (self, prefix, app) => add(self, (req) => Effect.succeed((req.headers.host ?? "").startsWith(prefix)), app))
+>(3, (self, prefix, app) => headerStartsWith(self, "host", prefix, app))
+
+/** @internal */
+export const hostEndsWith = dual<
+  <R2, E2>(
+    suffix: string,
+    app: App.Default<R2, E2>
+  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+  <R, E, R2, E2>(
+    self: Multiplex.Multiplex<R, E>,
+    suffix: string,
+    app: App.Default<R2, E2>
+  ) => Multiplex.Multiplex<R | R2, E | E2>
+>(3, (self, suffix, app) => headerEndsWith(self, "host", suffix, app))
 
 /** @internal */
 export const hostExact = dual<
@@ -118,4 +219,4 @@ export const hostExact = dual<
     host: string,
     app: App.Default<R2, E2>
   ) => Multiplex.Multiplex<R | R2, E | E2>
->(3, (self, host, app) => add(self, (req) => Effect.succeed((req.headers.host ?? "") === host), app))
+>(3, (self, host, app) => headerExact(self, "host", host, app))
