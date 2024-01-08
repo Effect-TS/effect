@@ -57,6 +57,38 @@ export const insert: {
 } = TR.insert
 
 /**
+ * Returns an `IterableIterator` of the keys within the `Trie`.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const keys: <V>(self: Trie<V>) => IterableIterator<string> = TR.keys
+
+/**
+ * Returns an `IterableIterator` of the values within the `Trie`.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const values: <V>(self: Trie<V>) => IterableIterator<V> = TR.values
+
+/**
+ * Returns an `IterableIterator` of the entries within the `Trie`.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const entries: <V>(self: Trie<V>) => IterableIterator<[string, V]> = TR.entries
+
+/**
+ * Returns an `Array<[K, V]>` of the entries within the `Trie`.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const toEntries = <V>(self: Trie<V>): Array<[string, V]> => Array.from(entries(self))
+
+/**
  * Returns the size of the tree.
  *
  * @since 2.0.0

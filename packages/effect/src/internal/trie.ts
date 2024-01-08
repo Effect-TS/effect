@@ -14,6 +14,8 @@ const TrieSymbolKey = "effect/Trie"
 /** @internal */
 export const TrieTypeId: TR.TypeId = Symbol.for(TrieSymbolKey) as TR.TypeId
 
+type TraversalFn<K, V, A> = (k: K, v: V) => A
+
 /** @internal */
 export interface TrieImpl<out V> extends TR.Trie<V> {
   readonly _root: Node.Node<V> | undefined
@@ -30,7 +32,7 @@ const trieVariance = {
 const TrieProto: TR.Trie<unknown> = {
   [TrieTypeId]: trieVariance,
   [Symbol.iterator]<V>(this: TrieImpl<V>): Iterator<[string, V]> {
-    return new TrieIterator(this)
+    return new TrieIterator(this, (k, v) => [k, v])
   },
   [Hash.symbol](): number {
     let hash = Hash.hash(TrieSymbolKey)
@@ -73,24 +75,24 @@ const makeImpl = <V>(root: Node.Node<V> | undefined): TrieImpl<V> => {
   return trie
 }
 
-class TrieIterator<in out V> implements IterableIterator<[string, V]> {
+class TrieIterator<in out V, out T> implements IterableIterator<T> {
   stack: Array<[Node.Node<V>, string]> = []
 
-  constructor(readonly trie: TrieImpl<V>) {
+  constructor(readonly trie: TrieImpl<V>, readonly f: TraversalFn<string, V, T>) {
     const root = trie._root != null ? trie._root : undefined
     if (root != null) {
       this.stack.push([root, ""])
     }
   }
 
-  next(): IteratorResult<[string, V]> {
+  next(): IteratorResult<T> {
     while (this.stack.length > 0) {
       const [node, keyString] = this.stack.pop()!
 
       this.addToStack(node, keyString)
 
       if (node.value != null) {
-        return { done: false, value: [keyString + node.key, node.value] }
+        return { done: false, value: this.f(keyString + node.key, node.value) }
       }
     }
 
@@ -109,8 +111,8 @@ class TrieIterator<in out V> implements IterableIterator<[string, V]> {
     }
   }
 
-  [Symbol.iterator](): IterableIterator<[string, V]> {
-    return new TrieIterator(this.trie)
+  [Symbol.iterator](): IterableIterator<T> {
+    return new TrieIterator(this.trie, this.f)
   }
 }
 
@@ -221,6 +223,18 @@ export const insert = dual<
 
 /** @internal */
 export const size = <V>(self: TR.Trie<V>): number => (self as TrieImpl<V>)._root?.count ?? 0
+
+/** @internal */
+export const keys = <V>(self: TR.Trie<V>): IterableIterator<string> =>
+  new TrieIterator(self as TrieImpl<V>, (key) => key)
+
+/** @internal */
+export const values = <V>(self: TR.Trie<V>): IterableIterator<V> =>
+  new TrieIterator(self as TrieImpl<V>, (_, value) => value)
+
+/** @internal */
+export const entries = <V>(self: TR.Trie<V>): IterableIterator<[string, V]> =>
+  new TrieIterator(self as TrieImpl<V>, (key, value) => [key, value])
 
 /** @internal */
 export const get = dual<

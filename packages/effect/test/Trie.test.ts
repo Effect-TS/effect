@@ -171,4 +171,48 @@ describe("Trie", () => {
     deepStrictEqual(Array.from(trie1), [["me", 1], ["mind", 2], ["mid", 3]])
     deepStrictEqual(Array.from(trie2), [["me", 1], ["mind", 2], ["mid", 3]])
   })
+
+  it("keys", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0),
+      Trie.insert("me", 1)
+    )
+
+    const result = Array.from(Trie.keys(trie))
+    deepStrictEqual(result, ["call", "me"])
+  })
+
+  it("values", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0),
+      Trie.insert("me", 1)
+    )
+
+    const result = Array.from(Trie.values(trie))
+    deepStrictEqual(result, [0, 1])
+  })
+
+  it("entries", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0),
+      Trie.insert("me", 1)
+    )
+
+    const result = Array.from(Trie.entries(trie))
+    deepStrictEqual(result, [["call", 0], ["me", 1]])
+  })
+
+  it("toEntries", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0),
+      Trie.insert("me", 1)
+    )
+
+    const result = Trie.toEntries(trie)
+    deepStrictEqual(result, [["call", 0], ["me", 1]])
+  })
 })
