@@ -22,7 +22,13 @@ describe("Either/eitherFromUnion", () => {
     await Util.expectParseFailure(
       schema,
       undefined,
-      `union member: Expected string, actual undefined, union member: Expected number, actual undefined`
+      `(string | number <-> Either<number, string>)
+└─ From side transformation failure
+   └─ string | number
+      ├─ Union member
+      │  └─ Expected a string, actual undefined
+      └─ Union member
+         └─ Expected a number, actual undefined`
     )
   })
 
@@ -45,12 +51,24 @@ describe("Either/eitherFromUnion", () => {
     await Util.expectEncodeFailure(
       schema,
       E.left(undefined),
-      `Expected Date, actual undefined`
+      `(string <-> Either<unknown, unknown>)
+└─ Transformation process failure
+   └─ (DateFromString <-> unknown)
+      └─ From side transformation failure
+         └─ DateFromString
+            └─ To side transformation failure
+               └─ Expected DateFromSelf, actual undefined`
     )
     await Util.expectEncodeFailure(
       schema,
       E.right(undefined),
-      `Expected number, actual undefined`
+      `(string <-> Either<unknown, unknown>)
+└─ Transformation process failure
+   └─ (NumberFromString <-> unknown)
+      └─ From side transformation failure
+         └─ NumberFromString
+            └─ To side transformation failure
+               └─ Expected a number, actual undefined`
     )
   })
 
@@ -62,12 +80,24 @@ describe("Either/eitherFromUnion", () => {
     await Util.expectEncodeFailure(
       schema,
       E.left(1),
-      `Expected Date, actual 1`
+      `(string <-> Either<unknown, unknown>)
+└─ Transformation process failure
+   └─ (DateFromString <-> unknown)
+      └─ From side transformation failure
+         └─ DateFromString
+            └─ To side transformation failure
+               └─ Expected DateFromSelf, actual 1`
     )
     await Util.expectEncodeFailure(
       schema,
       E.right(new Date(0)),
-      `Expected number, actual ${new Date(0).toString()}`
+      `(string <-> Either<unknown, unknown>)
+└─ Transformation process failure
+   └─ (NumberFromString <-> unknown)
+      └─ From side transformation failure
+         └─ NumberFromString
+            └─ To side transformation failure
+               └─ Expected a number, actual ${new Date(0).toString()}`
     )
   })
 })
