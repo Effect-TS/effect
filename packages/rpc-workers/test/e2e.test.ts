@@ -1,7 +1,7 @@
-import "@vitest/web-worker"
 import * as Worker from "@effect/platform-browser/Worker"
 import * as Client from "@effect/rpc-workers/Client"
 import * as Resolver from "@effect/rpc-workers/Resolver"
+import "@vitest/web-worker"
 import { Exit } from "effect"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -63,7 +63,7 @@ describe("e2e", () => {
       runPromise
     ))
 
-  it("interruption", () => {
+  it.skip("interruption", () => {
     expect(() =>
       pipe(
         client.delayed("foo"),

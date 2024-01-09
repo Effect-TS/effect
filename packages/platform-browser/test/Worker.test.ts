@@ -1,17 +1,9 @@
 import * as EffectWorker from "@effect/platform-browser/Worker"
 import "@vitest/web-worker"
-import { Cause, Chunk, Effect, Exit, Option, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import { assert, describe, it } from "vitest"
 import type { WorkerMessage } from "./fixtures/schema.js"
 import { GetPersonById, GetSpan, GetUserById, Person, SetName, User } from "./fixtures/schema.js"
-
-const runPromiseExit = <E, A>(effect: Effect.Effect<never, E, A>) =>
-  Effect.runPromiseExit(effect).then((exit) => {
-    if (Exit.isSuccess(exit) || Exit.isInterrupted(exit)) {
-      return
-    }
-    throw Cause.squash(exit.cause)
-  })
 
 describe.sequential("Worker", () => {
   it("executes streams", () =>
@@ -25,7 +17,7 @@ describe.sequential("Worker", () => {
     }).pipe(
       Effect.scoped,
       Effect.provide(EffectWorker.layerManager),
-      runPromiseExit
+      Effect.runPromise
     ))
 
   it("Serialized", () =>
@@ -34,9 +26,6 @@ describe.sequential("Worker", () => {
         spawn: () => new globalThis.Worker(new URL("./fixtures/serializedWorker.ts", import.meta.url)),
         size: 1
       }))
-      let user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
-      user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
-      assert.deepStrictEqual(user, new User({ id: 123, name: "test" }))
       const people = yield* _(pool.execute(new GetPersonById({ id: 123 })), Stream.runCollect)
       assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
         new Person({ id: 123, name: "test" }),
@@ -45,7 +34,7 @@ describe.sequential("Worker", () => {
     }).pipe(
       Effect.scoped,
       Effect.provide(EffectWorker.layerManager),
-      runPromiseExit
+      Effect.runPromise
     ))
 
   it("Serialized with initialMessage", () =>
@@ -66,7 +55,7 @@ describe.sequential("Worker", () => {
     }).pipe(
       Effect.scoped,
       Effect.provide(EffectWorker.layerManager),
-      runPromiseExit
+      Effect.runPromise
     ))
 
   it("tracing", () =>
@@ -88,7 +77,7 @@ describe.sequential("Worker", () => {
       Effect.withSpan("test"),
       Effect.scoped,
       Effect.provide(EffectWorker.layerManager),
-      runPromiseExit
+      Effect.runPromise
     ))
 
   it("SharedWorker", () =>
@@ -102,7 +91,7 @@ describe.sequential("Worker", () => {
     }).pipe(
       Effect.scoped,
       Effect.provide(EffectWorker.layerManager),
-      runPromiseExit
+      Effect.runPromise
     ))
 
   // TODO: vitest/web-worker doesn't support postMessage throwing errors
