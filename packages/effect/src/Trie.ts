@@ -238,6 +238,19 @@ export const map: {
 } = TR.map
 
 /**
+ * Filters entries out of a `Trie` using the specified predicate.
+ *
+ * @since 2.0.0
+ * @category filtering
+ */
+export const filter: {
+  <A, B extends A>(f: (a: A, k: string) => a is B): (self: Trie<A>) => Trie<B>
+  <B extends A, A = B>(f: (a: A, k: string) => boolean): (self: Trie<B>) => Trie<B>
+  <A, B extends A>(self: Trie<A>, f: (a: A, k: string) => a is B): Trie<B>
+  <A>(self: Trie<A>, f: (a: A, k: string) => boolean): Trie<A>
+} = TR.filter
+
+/**
  * Applies the specified function to the entries of the `Trie`.
  *
  * @since 2.0.0

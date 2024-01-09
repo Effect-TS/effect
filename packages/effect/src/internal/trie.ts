@@ -277,8 +277,24 @@ export const map = dual<
   reduce(
     self,
     empty(),
-    (map, value, key) => insert(map, key, f(value, key))
+    (trie, value, key) => insert(trie, key, f(value, key))
   ))
+
+/** @internal */
+export const filter: {
+  <A, B extends A>(f: (a: A, k: string) => a is B): (self: TR.Trie<A>) => TR.Trie<B>
+  <B extends A, A = B>(f: (a: A, k: string) => boolean): (self: TR.Trie<B>) => TR.Trie<B>
+  <A, B extends A>(self: TR.Trie<A>, f: (a: A, k: string) => a is B): TR.Trie<B>
+  <A>(self: TR.Trie<A>, f: (a: A, k: string) => boolean): TR.Trie<A>
+} = dual(
+  2,
+  <A>(self: TR.Trie<A>, f: (a: A, k: string) => boolean): TR.Trie<A> =>
+    reduce(
+      self,
+      empty(),
+      (trie, value, key) => f(value, key) ? insert(trie, key, value) : trie
+    )
+)
 
 /** @internal */
 export const forEach = dual<
