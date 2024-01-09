@@ -188,11 +188,11 @@ describe("Schema > Class", () => {
     expect(Equal.equals(person, person2)).toEqual(true)
 
     const person3 = new Person({ id: 2, name: "John" })
-    expect(!Equal.equals(person, person3)).toEqual(true)
+    expect(Equal.equals(person, person3)).toEqual(false)
   })
 
   it("Pretty/to", () => {
-    const pretty = Pretty.to(Person)
+    const pretty = Pretty.make(Person)
     expect(pretty(new Person({ id: 1, name: "John" }))).toEqual(
       `Person({ "id": 1, "name": "John" })`
     )

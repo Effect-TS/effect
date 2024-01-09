@@ -114,6 +114,6 @@ describe("Schema > annotations", () => {
     const AFromSelf = S.instanceOf(A, {
       pretty: prettyA
     })
-    expect(Pretty.to(AFromSelf)(new A("value"))).toEqual(`new A("value")`)
+    expect(Pretty.make(AFromSelf)(new A("value"))).toEqual(`new A("value")`)
   })
 })

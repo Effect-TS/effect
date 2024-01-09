@@ -23,7 +23,7 @@ describe("Uint8Array > Uint8ArrayFromSelf", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(S.Uint8ArrayFromSelf)
+    const pretty = Pretty.make(S.Uint8ArrayFromSelf)
     expect(pretty(Uint8Array.from([0, 1, 2, 3]))).toEqual("new Uint8Array([0,1,2,3])")
   })
 })

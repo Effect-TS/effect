@@ -28,7 +28,7 @@ describe("Schema/SecretFromSelf", () => {
   })
 
   it("Pretty", () => {
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(Secret.fromString("keep me safe"))).toEqual(`Secret(<redacted>)`)
   })
 })

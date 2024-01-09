@@ -35,21 +35,23 @@ export type PrettyHookId = typeof PrettyHookId
  * @category prettify
  * @since 1.0.0
  */
-export const to = <I, A>(schema: Schema.Schema<I, A>): (a: A) => string => compile(schema.ast)
-
-/**
- * @category prettify
- * @since 1.0.0
- */
-export const from = <I, A>(schema: Schema.Schema<I, A>): (i: I) => string => compile(AST.from(schema.ast))
+export const make = <I, A>(schema: Schema.Schema<I, A>): (a: A) => string => compile(schema.ast)
 
 const getHook = AST.getAnnotation<(...args: ReadonlyArray<Pretty<any>>) => Pretty<any>>(
   PrettyHookId
 )
 
-const toString = () => String
+const getMatcher = (defaultPretty: Pretty<any>) => (ast: AST.AST): Pretty<any> =>
+  Option.match(getHook(ast), {
+    onNone: () => defaultPretty,
+    onSome: (handler) => handler()
+  })
 
-const stringify = () => (a: any) => JSON.stringify(a)
+const toString = getMatcher((a) => String(a))
+
+const stringify = getMatcher((a) => JSON.stringify(a))
+
+const formatUnknown = getMatcher(Format.formatUnknown)
 
 /**
  * @since 1.0.0
@@ -60,27 +62,32 @@ export const match: AST.Match<Pretty<any>> = {
       onNone: () => go(ast.type),
       onSome: (handler) => handler(...ast.typeParameters.map(go))
     }),
-  "VoidKeyword": () => () => "void(0)",
-  "NeverKeyword": () => () => {
+  "VoidKeyword": getMatcher(() => "void(0)"),
+  "NeverKeyword": getMatcher(() => {
     throw new Error("cannot pretty print a `never` value")
-  },
-  "Literal": () => (literal: AST.LiteralValue): string =>
+  }),
+  "Literal": getMatcher((literal: AST.LiteralValue): string =>
     typeof literal === "bigint" ?
       `${String(literal)}n` :
-      JSON.stringify(literal),
+      JSON.stringify(literal)
+  ),
   "SymbolKeyword": toString,
   "UniqueSymbol": toString,
   "TemplateLiteral": stringify,
   "UndefinedKeyword": toString,
-  "UnknownKeyword": () => Format.formatUnknown,
-  "AnyKeyword": () => Format.formatUnknown,
-  "ObjectKeyword": () => Format.formatUnknown,
+  "UnknownKeyword": formatUnknown,
+  "AnyKeyword": formatUnknown,
+  "ObjectKeyword": formatUnknown,
   "StringKeyword": stringify,
   "NumberKeyword": toString,
   "BooleanKeyword": toString,
-  "BigIntKeyword": () => (a) => `${String(a)}n`,
+  "BigIntKeyword": getMatcher((a) => `${String(a)}n`),
   "Enums": stringify,
   "Tuple": (ast, go) => {
+    const hook = getHook(ast)
+    if (Option.isSome(hook)) {
+      return hook.value()
+    }
     const elements = ast.elements.map((e) => go(e.type))
     const rest = Option.map(ast.rest, ReadonlyArray.map(go))
     return (input: ReadonlyArray<unknown>) => {
@@ -119,6 +126,10 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "TypeLiteral": (ast, go) => {
+    const hook = getHook(ast)
+    if (Option.isSome(hook)) {
+      return hook.value()
+    }
     const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
     const indexSignatureTypes = ast.indexSignatures.map((is) => go(is.type))
     const expectedKeys: any = {}
@@ -160,6 +171,10 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Union": (ast, go) => {
+    const hook = getHook(ast)
+    if (Option.isSome(hook)) {
+      return hook.value()
+    }
     const types = ast.types.map((ast) => [Parser.is(InternalSchema.make(ast)), go(ast)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
@@ -167,11 +182,26 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Suspend": (ast, go) => {
-    const get = Internal.memoizeThunk(() => go(ast.f()))
-    return (a) => get()(a)
+    return Option.match(getHook(ast), {
+      onNone: () => {
+        const get = Internal.memoizeThunk(() => go(ast.f()))
+        return (a) => get()(a)
+      },
+      onSome: (handler) => handler()
+    })
   },
-  "Refinement": (ast, go) => go(ast.from),
-  "Transform": (ast, go) => go(ast.to)
+  "Refinement": (ast, go) => {
+    return Option.match(getHook(ast), {
+      onNone: () => go(ast.from),
+      onSome: (handler) => handler()
+    })
+  },
+  "Transform": (ast, go) => {
+    return Option.match(getHook(ast), {
+      onNone: () => go(ast.to),
+      onSome: (handler) => handler()
+    })
+  }
 }
 
 const compile = AST.getCompiler(match)

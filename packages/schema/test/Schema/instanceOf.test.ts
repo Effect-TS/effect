@@ -28,7 +28,7 @@ describe("Schema/instanceOf", () => {
 
   it("pretty", () => {
     const schema = S.instanceOf(Set)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(new Set())).toEqual("{}")
   })
 

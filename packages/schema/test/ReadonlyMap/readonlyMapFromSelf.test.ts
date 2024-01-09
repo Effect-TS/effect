@@ -63,7 +63,7 @@ describe("ReadonlyMap > readonlyMapFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.readonlyMapFromSelf(S.number, S.string)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(new Map())).toEqual("new Map([])")
     expect(pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
       `new Map([[1, "a"], [2, "b"]])`

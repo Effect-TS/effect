@@ -49,7 +49,7 @@ describe("ReadonlySet > readonlySetFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.readonlySetFromSelf(S.string)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(new Set())).toEqual("new Set([])")
     expect(pretty(new Set(["a", "b"]))).toEqual(
       `new Set(["a", "b"])`

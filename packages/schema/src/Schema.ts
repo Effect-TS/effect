@@ -4530,7 +4530,7 @@ const makeClass = <I, A>(
     static [TypeId] = variance
 
     toString() {
-      return Pretty.to(this.constructor as any)(this)
+      return Pretty.make(this.constructor as any)(this)
     }
 
     static pipe() {

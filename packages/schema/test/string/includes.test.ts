@@ -35,7 +35,7 @@ describe("string > includes", () => {
   })
 
   it("Pretty", () => {
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty("a")).toEqual(`"a"`)
   })
 })

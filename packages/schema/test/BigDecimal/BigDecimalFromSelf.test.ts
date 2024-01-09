@@ -34,7 +34,7 @@ describe("BigDecimal > BigDecimalFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.BigDecimalFromSelf
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
 
     expect(pretty(BigDecimal.fromNumber(123))).toEqual("BigDecimal(123)")
     expect(pretty(BigDecimal.unsafeFromString("123.100"))).toEqual("BigDecimal(123.1)")
