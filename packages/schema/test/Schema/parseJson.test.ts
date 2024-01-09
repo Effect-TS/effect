@@ -1,5 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as Exit from "effect/Exit"
 import { describe, it } from "vitest"
 
 describe("Schema > parseJson", () => {
@@ -100,6 +101,14 @@ describe("Schema > parseJson", () => {
     it("encoding", async () => {
       const schema = S.parseJson(S.struct({ a: S.number }))
       await Util.expectEncodeSuccess(schema, { a: 1 }, `{"a":1}`)
+    })
+
+    describe("roundtrip", () => {
+      it("Exit", async () => {
+        const schema = S.parseJson(S.exit(S.never, S.void))
+        const encoding = S.encodeSync(schema)(Exit.unit)
+        await Util.expectParseSuccess(schema, encoding, Exit.unit)
+      })
     })
   })
 
