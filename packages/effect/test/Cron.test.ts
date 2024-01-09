@@ -78,7 +78,8 @@ describe("Cron", () => {
   })
 
   it("sequence", () => {
-    const generator = Cron.sequence(parse("23 0-20/2 * * 0"))
+    const start = new Date("2024-01-01 00:00:00")
+    const generator = Cron.sequence(parse("23 0-20/2 * * 0"), start)
     deepStrictEqual(generator.next().value, new Date("2024-01-07 00:23:00"))
     deepStrictEqual(generator.next().value, new Date("2024-01-07 02:23:00"))
     deepStrictEqual(generator.next().value, new Date("2024-01-07 04:23:00"))
