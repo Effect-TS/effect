@@ -263,6 +263,14 @@ export const filterMap: {
 } = TR.filterMap
 
 /**
+ * Filters out `None` values from a `Trie` of `Options`s.
+ *
+ * @since 2.0.0
+ * @category filtering
+ */
+export const compact: <A>(self: Trie<Option<A>>) => Trie<A> = TR.compact
+
+/**
  * Applies the specified function to the entries of the `Trie`.
  *
  * @since 2.0.0

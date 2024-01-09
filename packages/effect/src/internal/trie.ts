@@ -1,5 +1,5 @@
 import * as Equal from "../Equal.js"
-import { dual, pipe } from "../Function.js"
+import { dual, identity, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
@@ -311,6 +311,9 @@ export const filterMap = dual<
       return Option.isSome(option) ? insert(trie, key, option.value) : trie
     }
   ))
+
+/** @internal */
+export const compact = <A>(self: TR.Trie<Option.Option<A>>) => filterMap(self, identity)
 
 /** @internal */
 export const forEach = dual<

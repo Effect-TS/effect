@@ -385,6 +385,23 @@ describe("Trie", () => {
     )
   })
 
+  it("compact", () => {
+    const trie = pipe(
+      Trie.empty<Option.Option<number>>(),
+      Trie.insert("shells", Option.some(0)),
+      Trie.insert("sells", Option.none()),
+      Trie.insert("she", Option.some(2))
+    )
+
+    const trieMapV = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("she", 2)
+    )
+
+    assert.equal(Equal.equals(Trie.compact(trie), trieMapV), true)
+  })
+
   it("reduce", () => {
     const trie = pipe(
       Trie.empty<number>(),
