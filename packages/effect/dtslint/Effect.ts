@@ -2,9 +2,11 @@ import type { Cause } from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
+import * as Schedule from "effect/Schedule"
 
 declare const string: Effect.Effect<"dep-1", "err-1", string>
 declare const number: Effect.Effect<"dep-2", "err-2", number>
+declare const boolean: Effect.Effect<"dep-3", never, boolean>
 declare const stringArray: Array<Effect.Effect<"dep-3", "err-3", string>>
 declare const numberRecord: Record<string, Effect.Effect<"dep-4", "err-4", number>>
 
@@ -700,3 +702,143 @@ string.pipe(Effect.andThen(Promise.resolve(123)))
 
 // $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
 string.pipe(Effect.andThen(() => Promise.resolve(123)))
+
+// -------------------------------------------------------------------------------------
+// retry
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<"dep-1", "err-1", string>
+Effect.retry(string, Schedule.forever)
+
+// $ExpectType Effect<"dep-1", "err-1", string>
+string.pipe(Effect.retry(Schedule.forever))
+
+// $ExpectType Effect<"dep-1", "err-1", string>
+Effect.retry(string, { schedule: Schedule.forever })
+
+// $ExpectType Effect<"dep-1", "err-1", string>
+string.pipe(Effect.retry({ schedule: Schedule.forever }))
+
+// $ExpectType Effect<"dep-1", "err-1", string>
+Effect.retry(string, {
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType "err-1"
+  ) => true
+})
+
+// $ExpectType Effect<"dep-1", "err-1", string>
+string.pipe(Effect.retry({
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType "err-1"
+  ) => true
+}))
+
+// $ExpectType Effect<"dep-1" | "dep-3", "err-1", string>
+Effect.retry(string, {
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType "err-1"
+  ) => boolean
+})
+
+// $ExpectType Effect<"dep-1" | "dep-3", "err-1", string>
+string.pipe(Effect.retry({
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType "err-1"
+  ) => boolean
+}))
+
+// $ExpectType Effect<never, "err", never>
+Effect.retry(Effect.fail(""), {
+  until: (
+    _ // $ExpectType string
+  ): _ is "err" => true
+})
+
+// $ExpectType Effect<never, "err", never>
+Effect.fail("").pipe(Effect.retry({
+  until: (
+    _ // $ExpectType string
+  ): _ is "err" => true
+}))
+
+// $ExpectType Effect<never, string, never>
+Effect.retry(Effect.fail(""), {
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType string
+  ): _ is "err" => true
+})
+
+// -------------------------------------------------------------------------------------
+// repeat
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<"dep-1", "err-1", number>
+Effect.repeat(string, Schedule.forever)
+
+// $ExpectType Effect<"dep-1", "err-1", number>
+string.pipe(Effect.repeat(Schedule.forever))
+
+// $ExpectType Effect<"dep-1", "err-1", number>
+Effect.repeat(string, { schedule: Schedule.forever })
+
+// $ExpectType Effect<"dep-1", "err-1", number>
+string.pipe(Effect.repeat({ schedule: Schedule.forever }))
+
+// $ExpectType Effect<"dep-1", "err-1", number>
+Effect.repeat(string, {
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType string
+  ) => true
+})
+
+// $ExpectType Effect<"dep-1", "err-1", number>
+string.pipe(Effect.repeat({
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType string
+  ) => true
+}))
+
+// $ExpectType Effect<"dep-1" | "dep-3", "err-1", number>
+Effect.repeat(string, {
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType string
+  ) => boolean
+})
+
+// $ExpectType Effect<"dep-1" | "dep-3", "err-1", number>
+string.pipe(Effect.repeat({
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType string
+  ) => boolean
+}))
+
+// $ExpectType Effect<never, never, 123>
+Effect.repeat(Effect.succeed(123), {
+  until: (
+    _ // $ExpectType number
+  ): _ is 123 => true
+})
+
+// $ExpectType Effect<never, never, 123>
+Effect.succeed(123).pipe(Effect.repeat({
+  until: (
+    _ // $ExpectType number
+  ): _ is 123 => true
+}))
+
+// $ExpectType Effect<never, never, number>
+Effect.repeat(Effect.succeed(""), {
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType string
+  ): _ is "hello" => true
+})

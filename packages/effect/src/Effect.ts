@@ -1772,7 +1772,9 @@ export declare namespace Retry {
     | (O extends { schedule: Schedule.Schedule<infer X, infer _I, infer _O> } ? X : never)
     | (O extends { while: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never)
     | (O extends { until: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never),
-    E,
+    (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer _O> } ? E
+      : O extends { until: Refinement<E, infer E2> } ? E2
+      : E),
     A
   > extends infer Z ? Z : never
 
@@ -4045,7 +4047,9 @@ export declare namespace Repeat {
     | (O extends { while: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never)
     | (O extends { until: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never),
     E,
-    (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer Out> } ? Out : A)
+    (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer Out> } ? Out
+      : O extends { until: Refinement<A, infer B> } ? B
+      : A)
   > extends infer Z ? Z : never
 
   /**
