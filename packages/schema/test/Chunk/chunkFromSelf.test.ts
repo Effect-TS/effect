@@ -57,7 +57,7 @@ describe("Chunk > chunkFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.chunkFromSelf(S.string)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(C.empty())).toEqual("Chunk()")
     expect(pretty(C.fromIterable(["a", "b"]))).toEqual(
       `Chunk("a", "b")`

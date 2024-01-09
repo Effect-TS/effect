@@ -30,7 +30,7 @@ describe("string > maxLength", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(S.maxLength(0)(S.string))
+    const pretty = Pretty.make(S.maxLength(0)(S.string))
     expect(pretty("a")).toEqual(`"a"`)
   })
 })

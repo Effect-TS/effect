@@ -56,7 +56,7 @@ describe("Data > dataFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(Data.struct({ a: "ok", b: 0 }))).toEqual("Data({ \"a\": \"ok\", \"b\": 0 })")
   })
 })

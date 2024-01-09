@@ -33,7 +33,7 @@ describe("number > Int", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(1)).toEqual("1")
   })
 })

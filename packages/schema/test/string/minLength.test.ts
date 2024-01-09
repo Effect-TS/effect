@@ -30,7 +30,7 @@ describe("string > minLength", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(S.minLength(0)(S.string))
+    const pretty = Pretty.make(S.minLength(0)(S.string))
     expect(pretty("a")).toEqual(`"a"`)
   })
 })

@@ -30,7 +30,7 @@ describe("number > lessThanOrEqualTo", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(S.lessThanOrEqualTo(0)(S.number))
+    const pretty = Pretty.make(S.lessThanOrEqualTo(0)(S.number))
     expect(pretty(1)).toEqual("1")
   })
 })

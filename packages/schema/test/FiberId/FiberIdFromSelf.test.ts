@@ -21,7 +21,7 @@ describe("FiberIdFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.FiberIdFromSelf
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(FiberId.none)).toEqual(`FiberId.none`)
     expect(pretty(FiberId.runtime(1, 100))).toEqual(`FiberId.runtime(1, 100)`)
     expect(pretty(FiberId.composite(FiberId.none, FiberId.none))).toEqual(

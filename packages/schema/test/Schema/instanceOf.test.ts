@@ -5,7 +5,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/instanceOf", () => {
+describe("Schema > instanceOf", () => {
   it("is", () => {
     const schema = S.instanceOf(Set)
     const is = P.is(schema)
@@ -28,8 +28,8 @@ describe("Schema/instanceOf", () => {
 
   it("pretty", () => {
     const schema = S.instanceOf(Set)
-    const pretty = Pretty.to(schema)
-    expect(pretty(new Set())).toEqual("{}")
+    const pretty = Pretty.make(schema)
+    expect(pretty(new Set())).toEqual("Set(...args: any)")
   })
 
   it("Custom message", async () => {
