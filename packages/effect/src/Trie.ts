@@ -280,3 +280,13 @@ export const forEach: {
   <V>(f: (value: V, key: string) => void): (self: Trie<V>) => void
   <V>(self: Trie<V>, f: (value: V, key: string) => void): void
 } = TR.forEach
+
+/**
+ * Updates the value of the specified key within the `Trie` if it exists.
+ *
+ * @since 2.0.0
+ */
+export const modify: {
+  <V>(key: string, f: (v: V) => V): (self: Trie<V>) => Trie<V>
+  <V>(self: Trie<V>, key: string, f: (v: V) => V): Trie<V>
+} = TR.modify

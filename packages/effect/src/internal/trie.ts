@@ -532,6 +532,117 @@ export const remove = dual<
 )
 
 /** @internal */
+export const modify = dual<
+  <V>(key: string, f: (v: V) => V) => (self: TR.Trie<V>) => TR.Trie<V>,
+  <V>(self: TR.Trie<V>, key: string, f: (v: V) => V) => TR.Trie<V>
+>(
+  3,
+  <V>(self: TR.Trie<V>, key: string, f: (v: V) => V): TR.Trie<V> => {
+    let n: Node.Node<V> | undefined = (self as TrieImpl<V>)._root
+    if (n === undefined || key.length === 0) return self
+
+    // -1:left | 0:mid | 1:right
+    const d_stack: Array<Ordering.Ordering> = []
+    const n_stack: Array<Node.Node<V>> = []
+
+    let cIndex = 0
+    while (cIndex < key.length) {
+      const c = key[cIndex]
+      if (c > n.key) {
+        if (n.right === undefined) {
+          return self
+        } else {
+          n_stack.push(n)
+          d_stack.push(1)
+          n = n.right
+        }
+      } else if (c < n.key) {
+        if (n.left === undefined) {
+          return self
+        } else {
+          n_stack.push(n)
+          d_stack.push(-1)
+          n = n.left
+        }
+      } else {
+        if (cIndex === key.length - 1) {
+          if (n.value !== undefined) {
+            n_stack.push(n)
+            d_stack.push(0)
+            cIndex += 1
+          } else {
+            return self
+          }
+        } else {
+          if (n.mid === undefined) {
+            return self
+          } else {
+            n_stack.push(n)
+            d_stack.push(0)
+            n = n.mid
+            cIndex += 1
+          }
+        }
+      }
+    }
+
+    const updateNode = n_stack[n_stack.length - 1]
+    if (updateNode.value === undefined) {
+      return self
+    }
+
+    n_stack[n_stack.length - 1] = new Node.Node(
+      updateNode.key,
+      updateNode.count,
+      f(updateNode.value), // Update
+      updateNode.left,
+      updateNode.mid,
+      updateNode.right
+    )
+
+    // Rebuild path to leaf node (Path-copying immutability)
+    for (let s = n_stack.length - 2; s >= 0; --s) {
+      const n2 = n_stack[s]
+      const d = d_stack[s]
+      const child = n_stack[s + 1]
+      if (d === -1) {
+        // left
+        n_stack[s] = new Node.Node(
+          n2.key,
+          n2.count,
+          n2.value,
+          child,
+          n2.mid,
+          n2.right
+        )
+      } else if (d === 1) {
+        // right
+        n_stack[s] = new Node.Node(
+          n2.key,
+          n2.count,
+          n2.value,
+          n2.left,
+          n2.mid,
+          child
+        )
+      } else {
+        // mid
+        n_stack[s] = new Node.Node(
+          n2.key,
+          n2.count,
+          n2.value,
+          n2.left,
+          child,
+          n2.right
+        )
+      }
+    }
+
+    return makeImpl(n_stack[0])
+  }
+)
+
+/** @internal */
 export const longestPrefixOf = dual<
   (key: string) => <V>(self: TR.Trie<V>) => Option.Option<[string, V]>,
   <V>(self: TR.Trie<V>, key: string) => Option.Option<[string, V]>

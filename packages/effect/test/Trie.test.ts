@@ -402,6 +402,18 @@ describe("Trie", () => {
     assert.equal(Equal.equals(Trie.compact(trie), trieMapV), true)
   })
 
+  it("modify", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("she", 2)
+    )
+
+    deepStrictEqual(trie.pipe(Trie.modify("she", (v) => v + 10), Trie.get("she")), Option.some(12))
+    assert.equal(Equal.equals(trie.pipe(Trie.modify("me", (v) => v)), trie), true)
+  })
+
   it("reduce", () => {
     const trie = pipe(
       Trie.empty<number>(),
