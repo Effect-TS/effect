@@ -1,5 +1,14 @@
 # @effect/rpc-http-node
 
+## 0.25.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.40.4
+  - @effect/rpc@0.26.1
+  - @effect/rpc-http@0.25.4
+
 ## 0.25.3
 
 ### Patch Changes
