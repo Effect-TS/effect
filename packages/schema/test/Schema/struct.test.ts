@@ -68,18 +68,12 @@ describe("Schema > struct", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
       await Util.expectParseSuccess(schema, { a: 1 })
       await Util.expectParseSuccess(schema, { a: undefined })
+      await Util.expectParseSuccess(schema, {}, { a: undefined })
 
       await Util.expectParseFailure(
         schema,
         null,
         `Expected { a: number | undefined }, actual null`
-      )
-      await Util.expectParseFailure(
-        schema,
-        {},
-        `{ a: number | undefined }
-└─ ["a"]
-   └─ is missing`
       )
       await Util.expectParseFailure(
         schema,

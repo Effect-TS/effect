@@ -284,8 +284,8 @@ describe("Schema > is", () => {
       expect(is({ a: undefined })).toEqual(true)
       expect(is({ a: 1, b: "b" })).toEqual(true)
 
-      expect(is(null)).toEqual(false)
       expect(is({})).toEqual(false)
+      expect(is(null)).toEqual(false)
       expect(is({ a: "a" })).toEqual(false)
     })
 
