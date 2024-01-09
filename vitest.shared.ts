@@ -20,6 +20,7 @@ const config: UserConfig = {
       "effect-test": path.join(__dirname, "packages/effect/test"),
       "effect": path.join(__dirname, "packages/effect/src"),
       ...alias("cli"),
+      ...alias("experimental"),
       ...alias("opentelemetry"),
       ...alias("platform"),
       ...alias("platform-node"),

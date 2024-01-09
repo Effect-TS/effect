@@ -1,6 +1,6 @@
 {
   "name": "@effect/typeclass",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "type": "module",
   "license": "MIT",
   "description": "A collection of reusable typeclasses for the Effect ecosystem",
@@ -35,7 +35,10 @@
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
-    "dtslint": "dtslint dtslint"
+    "dtslint": "dtslint dtslint",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
   },
   "peerDependencies": {
     "effect": "workspace:^"

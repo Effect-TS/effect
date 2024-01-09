@@ -38,8 +38,8 @@ export const make = <A>(config: {
   name: string
   version: string
   command: Command.Command<A>
-  summary?: Span.Span
-  footer?: HelpDoc.HelpDoc
+  summary?: Span.Span | undefined
+  footer?: HelpDoc.HelpDoc | undefined
 }): CliApp.CliApp<A> => {
   const op = Object.create(proto)
   op.name = config.name

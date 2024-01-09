@@ -1,6 +1,6 @@
 {
   "name": "@effect/schema",
-  "version": "0.56.1",
+  "version": "0.57.0",
   "type": "module",
   "license": "MIT",
   "description": "Modeling the schema of data structures as first-class values",
@@ -37,7 +37,10 @@
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
-    "dtslint": "dtslint dtslint"
+    "dtslint": "dtslint dtslint",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
   },
   "peerDependencies": {
     "effect": "workspace:^",

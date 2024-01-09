@@ -216,7 +216,7 @@ const defaultBooleanOptions = {
 /** @internal */
 export const boolean = (
   name: string,
-  options: Options.Options.BooleanOptionsConfig = {}
+  options?: Options.Options.BooleanOptionsConfig
 ): Options.Options<boolean> => {
   const { aliases, ifPresent, negationNames } = { ...defaultBooleanOptions, ...options }
   const option = makeSingle(
@@ -264,23 +264,23 @@ export const date = (name: string): Options.Options<Date> =>
 /** @internal */
 export const directory = (
   name: string,
-  config: Options.Options.PathOptionsConfig = {}
+  config?: Options.Options.PathOptionsConfig
 ): Options.Options<string> =>
   makeSingle(
     name,
     ReadonlyArray.empty(),
-    InternalPrimitive.path("directory", config.exists || "either")
+    InternalPrimitive.path("directory", config?.exists ?? "either")
   )
 
 /** @internal */
 export const file = (
   name: string,
-  config: Options.Options.PathOptionsConfig = {}
+  config?: Options.Options.PathOptionsConfig
 ): Options.Options<string> =>
   makeSingle(
     name,
     ReadonlyArray.empty(),
-    InternalPrimitive.path("file", config.exists || "either")
+    InternalPrimitive.path("file", config?.exists ?? "either")
   )
 
 /** @internal */

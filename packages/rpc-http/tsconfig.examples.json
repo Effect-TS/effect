@@ -12,7 +12,6 @@
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/examples.tsbuildinfo",
     "rootDir": "examples",
-    "noEmit": true,
-    "exactOptionalPropertyTypes": false
+    "noEmit": true
   }
 }

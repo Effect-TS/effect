@@ -41,11 +41,11 @@ export interface ServerResponse extends Effect.Effect<never, never, ServerRespon
  * @category models
  */
 export interface Options {
-  readonly status?: number
-  readonly statusText?: string
-  readonly headers?: Headers.Headers
-  readonly contentType?: string
-  readonly contentLength?: number
+  readonly status?: number | undefined
+  readonly statusText?: string | undefined
+  readonly headers?: Headers.Headers | undefined
+  readonly contentType?: string | undefined
+  readonly contentLength?: number | undefined
 }
 
 /**

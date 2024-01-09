@@ -55,7 +55,7 @@ export const make: {
   modify(empty, {
     method,
     url,
-    ...(options ?? {})
+    ...(options ?? undefined)
   })
 
 /** @internal */

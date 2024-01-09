@@ -4429,7 +4429,7 @@ const makeClass = <I, A>(
   const validator = Parser.validateSync(selfSchema)
 
   return class extends Base {
-    constructor(props: any = {}, disableValidation = false) {
+    constructor(props?: any, disableValidation = false) {
       if (disableValidation !== true) {
         props = validator(additionalProps ? { ...props, ...additionalProps } : props)
       }

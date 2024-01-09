@@ -30,7 +30,7 @@ export const layer = (config: {
   readonly attributes?: Resources.ResourceAttributes
 }) => {
   const attributes = {
-    ...(config.attributes ?? {}),
+    ...(config.attributes ?? undefined),
     [SemanticResourceAttributes.SERVICE_NAME]: config.serviceName,
     [SemanticResourceAttributes.TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
     [SemanticResourceAttributes.TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"

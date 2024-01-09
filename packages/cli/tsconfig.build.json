@@ -13,7 +13,6 @@
     "tsBuildInfoFile": ".tsbuildinfo/build.tsbuildinfo",
     "outDir": "build/esm",
     "declarationDir": "build/dts",
-    "stripInternal": true,
-    "exactOptionalPropertyTypes": false
+    "stripInternal": true
   }
 }

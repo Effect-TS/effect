@@ -137,7 +137,7 @@ const toHttpApp = <R, E>(
           Context.add(
             Context.add(context, ServerRequest.ServerRequest, request),
             RouteContext,
-            new RouteContextImpl(result!.params, result!.searchParams)
+            new RouteContextImpl(route, result!.params, result!.searchParams)
           ) as Context.Context<R>
       )
     }
@@ -164,6 +164,7 @@ class RouteImpl<R, E> implements Router.Route<R, E> {
 class RouteContextImpl implements Router.RouteContext {
   readonly [RouteContextTypeId]: Router.RouteContextTypeId
   constructor(
+    readonly route: Router.Route<unknown, unknown>,
     readonly params: Readonly<Record<string, string | undefined>>,
     readonly searchParams: Readonly<Record<string, string>>
   ) {
