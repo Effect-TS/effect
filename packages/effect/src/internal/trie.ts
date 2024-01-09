@@ -242,6 +242,9 @@ export const insert = dual<
 export const size = <V>(self: TR.Trie<V>): number => (self as TrieImpl<V>)._root?.count ?? 0
 
 /** @internal */
+export const isEmpty = <V>(self: TR.Trie<V>): boolean => size(self) === 0
+
+/** @internal */
 export const keys = <V>(self: TR.Trie<V>): IterableIterator<string> =>
   new TrieIterator(self as TrieImpl<V>, (key) => key, () => true)
 

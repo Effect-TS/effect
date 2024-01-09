@@ -188,6 +188,14 @@ export const has: {
 } = TR.has
 
 /**
+ * Checks if the `Trie` contains any entries.
+ *
+ * @since 2.0.0
+ * @category elements
+ */
+export const isEmpty: <V>(self: Trie<V>) => boolean = TR.isEmpty
+
+/**
  * Unsafely lookup the value for the specified key in the `Trie`.
  *
  * @since 2.0.0

@@ -121,7 +121,16 @@ describe("Trie", () => {
       Trie.insert("a", 0),
       Trie.insert("b", 1)
     )
-    expect(Trie.size(trie)).toBe(2)
+    assert.equal(Trie.size(trie), 2)
+  })
+
+  it("isEmpty", () => {
+    const trie = pipe(
+      Trie.empty<number>()
+    )
+    const trie1 = trie.pipe(Trie.insert("ma", 0))
+    assert.equal(Trie.isEmpty(trie), true)
+    assert.equal(Trie.isEmpty(trie1), false)
   })
 
   it("get", () => {
@@ -140,6 +149,24 @@ describe("Trie", () => {
     deepStrictEqual(Trie.get(trie, "ma"), Option.none())
     deepStrictEqual(Trie.get(trie, "midn"), Option.none())
     deepStrictEqual(Trie.get(trie, "mea"), Option.none())
+  })
+
+  it("has", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("call", 0),
+      Trie.insert("me", 1),
+      Trie.insert("mind", 2),
+      Trie.insert("mid", 3)
+    )
+    assert.equal(Trie.has(trie, "call"), true)
+    assert.equal(Trie.has(trie, "me"), true)
+    assert.equal(Trie.has(trie, "mind"), true)
+    assert.equal(Trie.has(trie, "mid"), true)
+    assert.equal(Trie.has(trie, "cale"), false)
+    assert.equal(Trie.has(trie, "ma"), false)
+    assert.equal(Trie.has(trie, "midn"), false)
+    assert.equal(Trie.has(trie, "mea"), false)
   })
 
   it("unsafeGet", () => {
@@ -284,14 +311,16 @@ describe("Trie", () => {
   })
 
   it("Equal.symbol", () => {
-    expect(
-      Equal.equals(Trie.empty<number>(), Trie.empty<number>())
-    ).toBe(true)
-    expect(
+    assert.equal(
+      Equal.equals(Trie.empty<number>(), Trie.empty<number>()),
+      true
+    )
+    assert.equal(
       Equal.equals(
         Trie.make(["call", 0], ["me", 1]),
         Trie.make(["call", 0], ["me", 1])
-      )
-    ).toBe(true)
+      ),
+      true
+    )
   })
 })
