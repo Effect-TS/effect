@@ -1,5 +1,23 @@
 # @effect/schema
 
+## 0.59.0
+
+### Minor Changes
+
+- [#1878](https://github.com/Effect-TS/effect/pull/1878) [`c4b84f7`](https://github.com/Effect-TS/effect/commit/c4b84f724ae809f3450d71c3ea5d629205fc479f) Thanks [@gcanti](https://github.com/gcanti)! - Schema: remove `from`/`to` API in favour of `make` in:
+
+  - Equivalence
+  - JSONSchema
+  - Pretty
+
+### Patch Changes
+
+- [#1878](https://github.com/Effect-TS/effect/pull/1878) [`c4b84f7`](https://github.com/Effect-TS/effect/commit/c4b84f724ae809f3450d71c3ea5d629205fc479f) Thanks [@gcanti](https://github.com/gcanti)! - Schema: Pretty add `pretty` annotation API
+
+- [#1878](https://github.com/Effect-TS/effect/pull/1878) [`c4b84f7`](https://github.com/Effect-TS/effect/commit/c4b84f724ae809f3450d71c3ea5d629205fc479f) Thanks [@gcanti](https://github.com/gcanti)! - Schema: Arbitrary add `arbitrary` annotation
+
+- [#1878](https://github.com/Effect-TS/effect/pull/1878) [`c4b84f7`](https://github.com/Effect-TS/effect/commit/c4b84f724ae809f3450d71c3ea5d629205fc479f) Thanks [@gcanti](https://github.com/gcanti)! - Schema: Equivalence add `equivalence` annotation
+
 ## 0.58.0
 
 ### Minor Changes
