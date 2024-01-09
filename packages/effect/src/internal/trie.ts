@@ -336,6 +336,12 @@ export const get = dual<
 )
 
 /** @internal */
+export const has = dual<
+  (key: string) => <V>(self: TR.Trie<V>) => boolean,
+  <V>(self: TR.Trie<V>, key: string) => boolean
+>(2, (self, key) => Option.isSome(get(self, key)))
+
+/** @internal */
 export const unsafeGet = dual<
   (key: string) => <V>(self: TR.Trie<V>) => V,
   <V>(self: TR.Trie<V>, key: string) => V

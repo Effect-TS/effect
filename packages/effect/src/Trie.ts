@@ -177,6 +177,17 @@ export const get: {
 } = TR.get
 
 /**
+ * Finds the item with key, if it exists.
+ *
+ * @since 2.0.0
+ * @category elements
+ */
+export const has: {
+  (key: string): <V>(self: Trie<V>) => boolean
+  <V>(self: Trie<V>, key: string): boolean
+} = TR.has
+
+/**
  * Unsafely lookup the value for the specified key in the `Trie`.
  *
  * @since 2.0.0
