@@ -290,3 +290,13 @@ export const modify: {
   <V>(key: string, f: (v: V) => V): (self: Trie<V>) => Trie<V>
   <V>(self: Trie<V>, key: string, f: (v: V) => V): Trie<V>
 } = TR.modify
+
+/**
+ * Removes all entries in the `Trie` which have the specified keys.
+ *
+ * @since 2.0.0
+ */
+export const removeMany: {
+  (keys: Iterable<string>): <V>(self: Trie<V>) => Trie<V>
+  <V>(self: Trie<V>, keys: Iterable<string>): Trie<V>
+} = TR.removeMany

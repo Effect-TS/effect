@@ -414,6 +414,20 @@ describe("Trie", () => {
     assert.equal(Equal.equals(trie.pipe(Trie.modify("me", (v) => v)), trie), true)
   })
 
+  it("removeMany", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("she", 2)
+    )
+
+    assert.equal(
+      Equal.equals(trie.pipe(Trie.removeMany(["she", "sells"])), Trie.empty<number>().pipe(Trie.insert("shells", 0))),
+      true
+    )
+  })
+
   it("reduce", () => {
     const trie = pipe(
       Trie.empty<number>(),

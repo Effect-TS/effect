@@ -532,6 +532,18 @@ export const remove = dual<
 )
 
 /** @internal */
+export const removeMany = dual<
+  (keys: Iterable<string>) => <V>(self: TR.Trie<V>) => TR.Trie<V>,
+  <V>(self: TR.Trie<V>, keys: Iterable<string>) => TR.Trie<V>
+>(2, (self, keys) => {
+  let trie = self
+  for (const key of keys) {
+    trie = remove(key)(trie)
+  }
+  return trie
+})
+
+/** @internal */
 export const modify = dual<
   <V>(key: string, f: (v: V) => V) => (self: TR.Trie<V>) => TR.Trie<V>,
   <V>(self: TR.Trie<V>, key: string, f: (v: V) => V) => TR.Trie<V>
