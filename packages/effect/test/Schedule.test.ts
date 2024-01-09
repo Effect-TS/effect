@@ -570,6 +570,31 @@ describe("Schedule", () => {
       }))
   })
   describe("cron-like scheduling - repeats at point of time (minute of hour, day of week, ...)", () => {
+    it.effect("recur at time matching cron expression", () =>
+      Effect.gen(function*($) {
+        const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+        yield* $(TestClock.setTime(new Date(2024, 0, 1, 0, 0, 0).getTime()))
+        // At 04:30 on day-of-month 5 and 15 and on Wednesday.
+        const schedule = Schedule.cron("30 4 5,15 * WED")
+        yield* $(
+          TestClock.currentTimeMillis,
+          Effect.tap((instant) => Ref.update(ref, ReadonlyArray.append(format(instant)))),
+          Effect.repeat(schedule),
+          Effect.fork
+        )
+        yield* $(TestClock.adjust("4 weeks"))
+        const result = yield* $(Ref.get(ref))
+        const expected = [
+          "Mon Jan 01 2024 00:00:00",
+          "Wed Jan 03 2024 04:30:00",
+          "Fri Jan 05 2024 04:30:00",
+          "Wed Jan 10 2024 04:30:00",
+          "Mon Jan 15 2024 04:30:00",
+          "Wed Jan 17 2024 04:30:00",
+          "Wed Jan 24 2024 04:30:00"
+        ]
+        assert.deepStrictEqual(result, expected)
+      }))
     it.effect("recur at 01 second of each minute", () =>
       Effect.gen(function*($) {
         const originOffset = new Date(new Date(new Date().setMinutes(0)).setSeconds(0)).setMilliseconds(0)
@@ -752,6 +777,15 @@ describe("Schedule", () => {
       }))
   })
 })
+
+const format = (value: number): string => {
+  const date = new Date(value)
+  const hours = `0${date.getHours()}`.slice(-2)
+  const minutes = `0${date.getMinutes()}`.slice(-2)
+  const seconds = `0${date.getSeconds()}`.slice(-2)
+  return `${date.toDateString()} ${hours}:${minutes}:${seconds}`
+}
+
 const ioSucceed = () => Effect.succeed("OrElse")
 const ioFail = () => Effect.fail("OrElseFailed")
 const failOn0 = (ref: Ref.Ref<number>): Effect.Effect<never, string, number> => {
