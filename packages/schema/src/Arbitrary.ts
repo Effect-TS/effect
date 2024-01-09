@@ -10,6 +10,7 @@ import * as AST from "./AST.js"
 import * as Internal from "./internal/ast.js"
 import * as filters from "./internal/filters.js"
 import * as hooks from "./internal/hooks.js"
+import * as InternalSchema from "./internal/schema.js"
 import * as Parser from "./Parser.js"
 import type * as Schema from "./Schema.js"
 
@@ -32,6 +33,15 @@ export const ArbitraryHookId: unique symbol = hooks.ArbitraryHookId
  * @since 1.0.0
  */
 export type ArbitraryHookId = typeof ArbitraryHookId
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const arbitrary =
+  <A>(handler: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<A>) =>
+  <I>(self: Schema.Schema<I, A>): Schema.Schema<I, A> =>
+    InternalSchema.make(AST.setAnnotation(self.ast, ArbitraryHookId, handler))
 
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
