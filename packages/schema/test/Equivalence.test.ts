@@ -665,4 +665,108 @@ describe("Equivalence", () => {
       // propertyTo(Operation, { numRuns: 5 })
     })
   })
+
+  describe("should handle annotations", () => {
+    const expectHook = <I, A>(source: S.Schema<I, A>) => {
+      const schema = source.pipe(E.equivalence(() => () => true))
+      const eq = E.make(schema)
+      expect(eq("a" as any, "b" as any)).toEqual(true)
+    }
+
+    it("void", () => {
+      expectHook(S.void)
+    })
+
+    it("never", () => {
+      expectHook(S.never)
+    })
+
+    it("literal", () => {
+      expectHook(S.literal("a"))
+    })
+
+    it("symbol", () => {
+      expectHook(S.symbol)
+    })
+
+    it("uniqueSymbol", () => {
+      expectHook(S.uniqueSymbol(Symbol.for("effect/schema/test/a")))
+    })
+
+    it("templateLiteral", () => {
+      expectHook(S.templateLiteral(S.literal("a"), S.string, S.literal("b")))
+    })
+
+    it("undefined", () => {
+      expectHook(S.undefined)
+    })
+
+    it("unknown", () => {
+      expectHook(S.unknown)
+    })
+
+    it("any", () => {
+      expectHook(S.any)
+    })
+
+    it("object", () => {
+      expectHook(S.any)
+    })
+
+    it("string", () => {
+      expectHook(S.string)
+    })
+
+    it("number", () => {
+      expectHook(S.number)
+    })
+
+    it("bigintFromSelf", () => {
+      expectHook(S.bigintFromSelf)
+    })
+
+    it("boolean", () => {
+      expectHook(S.boolean)
+    })
+
+    it("enums", () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      expectHook(S.enums(Fruits))
+    })
+
+    it("tuple", () => {
+      expectHook(S.tuple(S.string, S.number))
+    })
+
+    it("struct", () => {
+      expectHook(S.struct({ a: S.string, b: S.number }))
+    })
+
+    it("union", () => {
+      expectHook(S.union(S.string, S.number))
+    })
+
+    it("suspend", () => {
+      interface A {
+        readonly a: string
+        readonly as: ReadonlyArray<A>
+      }
+      const schema: S.Schema<A> = S.struct({
+        a: S.string,
+        as: S.array(S.suspend(() => schema))
+      })
+      expectHook(schema)
+    })
+
+    it("refinement", () => {
+      expectHook(S.Int)
+    })
+
+    it("transformation", () => {
+      expectHook(S.NumberFromString)
+    })
+  })
 })

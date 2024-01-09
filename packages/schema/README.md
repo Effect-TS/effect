@@ -971,7 +971,7 @@ const Person = S.struct({
 });
 
 // $ExpectType Equivalence<{ readonly name: string; readonly age: number; }>
-const PersonEquivalence = Equivalence.to(Person);
+const PersonEquivalence = Equivalence.make(Person);
 
 const john = { name: "John", age: 23 };
 const alice = { name: "Alice", age: 30 };
