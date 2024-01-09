@@ -226,3 +226,14 @@ export const reduce: {
   <Z, V>(zero: Z, f: (accumulator: Z, value: V, key: string) => Z): (self: Trie<V>) => Z
   <Z, V>(self: Trie<V>, zero: Z, f: (accumulator: Z, value: V, key: string) => Z): Z
 } = TR.reduce
+
+/**
+ * Applies the specified function to the entries of the `Trie`.
+ *
+ * @since 2.0.0
+ * @category traversing
+ */
+export const forEach: {
+  <V>(f: (value: V, key: string) => void): (self: Trie<V>) => void
+  <V>(self: Trie<V>, f: (value: V, key: string) => void): void
+} = TR.forEach

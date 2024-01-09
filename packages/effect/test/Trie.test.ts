@@ -338,6 +338,21 @@ describe("Trie", () => {
     )
   })
 
+  it("forEach", () => {
+    let value = 0
+    pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("she", 2),
+      Trie.forEach((n, key) => {
+        value += n + key.length
+      })
+    )
+
+    assert.equal(value, 17)
+  })
+
   it("Equal.symbol", () => {
     assert.equal(
       Equal.equals(Trie.empty<number>(), Trie.empty<number>()),
