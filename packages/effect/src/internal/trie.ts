@@ -19,16 +19,14 @@ type TraversalMap<K, V, A> = (k: K, v: V) => A
 type TraversalFilter<K, V> = (k: K, v: V) => boolean
 
 /** @internal */
-export interface TrieImpl<out V> extends TR.Trie<V> {
+export interface TrieImpl<in out V> extends TR.Trie<V> {
   readonly _root: Node.Node<V> | undefined
   readonly _count: number
 }
 
 const trieVariance = {
   /* c8 ignore next */
-  _Key: (_: any) => _,
-  /* c8 ignore next */
-  _Value: (_: never) => _
+  _Value: (_: unknown) => _
 }
 
 const TrieProto: TR.Trie<unknown> = {
@@ -270,6 +268,17 @@ export const reduce = dual<
   }
   return accumulator
 })
+
+/** @internal */
+export const map = dual<
+  <A, V>(f: (value: V, key: string) => A) => (self: TR.Trie<V>) => TR.Trie<A>,
+  <V, A>(self: TR.Trie<V>, f: (value: V, key: string) => A) => TR.Trie<A>
+>(2, (self, f) =>
+  reduce(
+    self,
+    empty(),
+    (map, value, key) => insert(map, key, f(value, key))
+  ))
 
 /** @internal */
 export const forEach = dual<

@@ -22,10 +22,9 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Trie<out Value> extends Iterable<[string, Value]>, Equal, Pipeable, Inspectable {
+export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _Key: Types.Invariant<string>
-    readonly _Value: Types.Covariant<Value>
+    readonly _Value: Types.Invariant<Value>
   }
 }
 
@@ -226,6 +225,17 @@ export const reduce: {
   <Z, V>(zero: Z, f: (accumulator: Z, value: V, key: string) => Z): (self: Trie<V>) => Z
   <Z, V>(self: Trie<V>, zero: Z, f: (accumulator: Z, value: V, key: string) => Z): Z
 } = TR.reduce
+
+/**
+ * Maps over the entries of the `Trie` using the specified function.
+ *
+ * @since 2.0.0
+ * @category folding
+ */
+export const map: {
+  <A, V>(f: (value: V, key: string) => A): (self: Trie<V>) => Trie<A>
+  <V, A>(self: Trie<V>, f: (value: V, key: string) => A): Trie<A>
+} = TR.map
 
 /**
  * Applies the specified function to the entries of the `Trie`.

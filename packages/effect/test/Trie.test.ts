@@ -310,6 +310,32 @@ describe("Trie", () => {
     deepStrictEqual(Trie.longestPrefixOf(trie, "shellsort"), Option.some(["shells", 0]))
   })
 
+  it("map", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("she", 2)
+    )
+
+    const trieMapV = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 1),
+      Trie.insert("sells", 2),
+      Trie.insert("she", 3)
+    )
+
+    const trieMapK = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 6),
+      Trie.insert("sells", 5),
+      Trie.insert("she", 3)
+    )
+
+    assert.equal(Equal.equals(Trie.map(trie, (v) => v + 1), trieMapV), true)
+    assert.equal(Equal.equals(Trie.map(trie, (_, k) => k.length), trieMapK), true)
+  })
+
   it("reduce", () => {
     const trie = pipe(
       Trie.empty<number>(),
