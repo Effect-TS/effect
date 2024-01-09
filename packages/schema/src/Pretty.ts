@@ -32,6 +32,15 @@ export const PrettyHookId: unique symbol = hooks.PrettyHookId
 export type PrettyHookId = typeof PrettyHookId
 
 /**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const pretty =
+  <A>(handler: (...args: ReadonlyArray<Pretty<any>>) => Pretty<A>) =>
+  <I>(self: Schema.Schema<I, A>): Schema.Schema<I, A> =>
+    InternalSchema.make(AST.setAnnotation(self.ast, PrettyHookId, handler))
+
+/**
  * @category prettify
  * @since 1.0.0
  */
@@ -57,11 +66,13 @@ const formatUnknown = getMatcher(Format.formatUnknown)
  * @since 1.0.0
  */
 export const match: AST.Match<Pretty<any>> = {
-  "Declaration": (ast, go) =>
-    Option.match(getHook(ast), {
-      onNone: () => go(ast.type),
-      onSome: (handler) => handler(...ast.typeParameters.map(go))
-    }),
+  "Declaration": (ast, go) => {
+    const hook = getHook(ast)
+    if (Option.isSome(hook)) {
+      return hook.value(...ast.typeParameters.map(go))
+    }
+    throw new Error("cannot build an Pretty for a declaration without annotations")
+  },
   "VoidKeyword": getMatcher(() => "void(0)"),
   "NeverKeyword": getMatcher(() => {
     throw new Error("cannot pretty print a `never` value")

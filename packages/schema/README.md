@@ -755,7 +755,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-const PersonPretty = Pretty.to(Person);
+const PersonPretty = Pretty.make(Person);
 
 // returns a string representation of the object
 console.log(PersonPretty({ name: "Alice", age: 30 }));
