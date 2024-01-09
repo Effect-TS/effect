@@ -3723,30 +3723,27 @@ export const either = <IE, E, IA, A>(
  * import * as Schema from "@effect/schema/Schema"
  *
  * // Schema<"A" | "E", Either<"E", "A">>
- * Schema.eitherFromUnion({
- *   right: Schema.literal("A"),
- *   left: Schema.literal("E")
- * })
+ * Schema.eitherFromUnion(Schema.literal("A"), Schema.literal("E"))
  *
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromUnion = <EI, EA, AI, AA>(schemas: {
-  left: Schema<EI, EA>
+export const eitherFromUnion = <EI, EA, AI, AA>(
+  left: Schema<EI, EA>,
   right: Schema<AI, AA>
-}): Schema<EI | AI, Either.Either<EA, AA>> => {
+): Schema<EI | AI, Either.Either<EA, AA>> => {
   return transformOrFail(
-    union(from(schemas.right), from(schemas.left)),
-    eitherFromSelf(to(schemas.left), to(schemas.right)),
+    union(from(right), from(left)),
+    eitherFromSelf(to(left), to(right)),
     (value, options) =>
-      ParseResult.orElse<Either.Either<EA, AA>>(
-        ParseResult.map(Parser.parse(schemas.right)(value, options), Either.right),
-        () => ParseResult.map(Parser.parse(schemas.left)(value, options), Either.left)
+      ParseResult.orElse(
+        ParseResult.map(Parser.parse(right)(value, options), Either.right),
+        () => ParseResult.map(Parser.parse(left)(value, options), Either.left)
       ),
-    (value, options): ParseResult.ParseResult<EI | AI> =>
+    (value, options) =>
       Either.match(value, {
-        onLeft: (_) => Parser.encode(schemas.left)(_, options),
-        onRight: (_) => Parser.encode(schemas.right)(_, options)
+        onLeft: (_) => Parser.encode(left)(_, options),
+        onRight: (_) => Parser.encode(right)(_, options)
       })
   )
 }
