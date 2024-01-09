@@ -52,7 +52,7 @@ describe("Cause > causeFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.causeFromSelf(S.string)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(Cause.die("error"))).toEqual(`Cause.die(Error: error)`)
     expect(pretty(Cause.empty)).toEqual(`Cause.empty`)
     expect(pretty(Cause.fail("error"))).toEqual(`Cause.fail("error")`)

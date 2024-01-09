@@ -77,7 +77,7 @@ describe("string/trimmed", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty("a")).toEqual(`"a"`)
     expect(pretty("")).toEqual(`""`)
   })

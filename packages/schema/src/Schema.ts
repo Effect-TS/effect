@@ -432,6 +432,7 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
       [AST.TypeAnnotationId]: InstanceOfTypeId,
       [InstanceOfTypeId]: { constructor },
       [AST.DescriptionAnnotationId]: `an instance of ${constructor.name}`,
+      [hooks.PrettyHookId]: (): Pretty.Pretty<A> => () => `${constructor.name}(...args: any)`,
       ...toAnnotations(options)
     }
   )
@@ -1648,12 +1649,8 @@ export const documentation = (documentation: AST.DocumentationAnnotation) => <I,
  * @category annotations
  * @since 1.0.0
  */
-export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> => {
-  if (AST.isRefinement(self.ast)) {
-    return make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
-  }
-  throw new Error("JSON Schema annotations can be applied exclusively to refinements")
-}
+export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
 
 /**
  * @category annotations
@@ -3539,7 +3536,7 @@ const optionDecode = <A>(input: OptionFrom<A>): Option.Option<A> =>
   input._tag === "None" ? Option.none() : Option.some(input.value)
 
 const optionArbitrary = <A>(value: Arbitrary<A>): Arbitrary<Option.Option<A>> => {
-  const arb = arbitrary.unsafe(optionFrom(schemaFromArbitrary(value)))
+  const arb = arbitrary.make(optionFrom(schemaFromArbitrary(value)))
   return (fc) => arb(fc).map(optionDecode)
 }
 
@@ -3660,7 +3657,7 @@ const eitherArbitrary = <E, A>(
   left: Arbitrary<E>,
   right: Arbitrary<A>
 ): Arbitrary<Either.Either<E, A>> => {
-  const arb = arbitrary.unsafe(eitherFrom(schemaFromArbitrary(left), schemaFromArbitrary(right)))
+  const arb = arbitrary.make(eitherFrom(schemaFromArbitrary(left), schemaFromArbitrary(right)))
   return (fc) => arb(fc).map(eitherDecode)
 }
 
@@ -4530,7 +4527,7 @@ const makeClass = <I, A>(
     static [TypeId] = variance
 
     toString() {
-      return Pretty.to(this.constructor as any)(this)
+      return Pretty.make(this.constructor as any)(this)
     }
 
     static pipe() {
@@ -4651,7 +4648,7 @@ const FiberIdFrom: Schema<FiberIdFrom, FiberIdFrom> = union(
   FiberIdRuntimeFrom
 ).pipe(identifier("FiberIdFrom"))
 
-const fiberIdFromArbitrary = arbitrary.unsafe(FiberIdFrom)
+const fiberIdFromArbitrary = arbitrary.make(FiberIdFrom)
 
 const fiberIdArbitrary: Arbitrary<FiberId.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
 
@@ -4813,7 +4810,7 @@ const causeArbitrary = <E>(
   error: Arbitrary<E>,
   defect: Arbitrary<unknown>
 ): Arbitrary<Cause.Cause<E>> => {
-  const arb = arbitrary.unsafe(causeFrom(schemaFromArbitrary(error), schemaFromArbitrary(defect)))
+  const arb = arbitrary.make(causeFrom(schemaFromArbitrary(error), schemaFromArbitrary(defect)))
   return (fc) => arb(fc).map(causeDecode)
 }
 
@@ -4990,7 +4987,7 @@ const exitArbitrary = <E, A>(
   value: Arbitrary<A>,
   defect: Arbitrary<unknown>
 ): Arbitrary<Exit.Exit<E, A>> => {
-  const arb = arbitrary.unsafe(
+  const arb = arbitrary.make(
     exitFrom(schemaFromArbitrary(error), schemaFromArbitrary(value), schemaFromArbitrary(defect))
   )
   return (fc) => arb(fc).map(exitDecode)

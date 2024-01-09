@@ -755,7 +755,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-const PersonPretty = Pretty.to(Person);
+const PersonPretty = Pretty.make(Person);
 
 // returns a string representation of the object
 console.log(PersonPretty({ name: "Alice", age: 30 }));
@@ -778,7 +778,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-const jsonSchema = JSONSchema.to(Person);
+const jsonSchema = JSONSchema.make(Person);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -824,7 +824,7 @@ const Person = S.struct({
   age: Age,
 });
 
-const jsonSchema = JSONSchema.to(Person);
+const jsonSchema = JSONSchema.make(Person);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -881,7 +881,7 @@ const schema: S.Schema<Category> = S.struct({
   categories: S.array(S.suspend(() => schema)),
 }).pipe(S.identifier("Category"));
 
-const jsonSchema = JSONSchema.to(schema);
+const jsonSchema = JSONSchema.make(schema);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -941,7 +941,7 @@ const schema = Positive.pipe(
   })
 );
 
-console.log(JSONSchema.to(schema));
+console.log(JSONSchema.make(schema));
 /*
 Output:
 {
@@ -971,7 +971,7 @@ const Person = S.struct({
 });
 
 // $ExpectType Equivalence<{ readonly name: string; readonly age: number; }>
-const PersonEquivalence = Equivalence.to(Person);
+const PersonEquivalence = Equivalence.make(Person);
 
 const john = { name: "John", age: 23 };
 const alice = { name: "Alice", age: 30 };

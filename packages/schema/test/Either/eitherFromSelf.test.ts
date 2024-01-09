@@ -31,7 +31,7 @@ describe("Either/eitherFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.eitherFromSelf(S.string, S.number)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(E.left("a"))).toEqual(`left("a")`)
     expect(pretty(E.right(1))).toEqual("right(1)")
   })

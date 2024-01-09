@@ -12,7 +12,7 @@ describe("Arbitrary > Arbitrary", () => {
 
   it("should throw on declarations without annotations", () => {
     const schema = S.declare([], S.any, () => ParseResult.succeed)
-    expect(() => Arbitrary.unsafe(schema)).toThrow(
+    expect(() => Arbitrary.make(schema)).toThrow(
       new Error("cannot build an Arbitrary for a declaration without annotations")
     )
   })
@@ -238,9 +238,9 @@ describe("Arbitrary > Arbitrary", () => {
       })).root
       const schema: S.Schema<A> = S.struct({
         a: S.string,
-        as: S.array(S.suspend(() => schema, {
-          [Arbitrary.ArbitraryHookId]: () => () => arb
-        }))
+        as: S.array(
+          S.suspend(() => schema).pipe(Arbitrary.arbitrary(() => () => arb))
+        )
       })
       expectValidArbitrary(schema)
     })
@@ -497,6 +497,110 @@ describe("Arbitrary > Arbitrary", () => {
     it("between", () => {
       const schema = S.bigint.pipe(S.betweenBigint(BigInt(1), BigInt(10)))
       expectValidArbitrary(schema)
+    })
+  })
+
+  describe("should handle annotations", () => {
+    const expectHook = <I, A>(source: S.Schema<I, A>) => {
+      const schema = source.pipe(Arbitrary.arbitrary(() => (fc) => fc.constant("custom arbitrary") as any))
+      const arb = Arbitrary.make(schema)(fc)
+      expect(fc.sample(arb, 1)[0]).toEqual("custom arbitrary")
+    }
+
+    it("void", () => {
+      expectHook(S.void)
+    })
+
+    it("never", () => {
+      expectHook(S.never)
+    })
+
+    it("literal", () => {
+      expectHook(S.literal("a"))
+    })
+
+    it("symbol", () => {
+      expectHook(S.symbol)
+    })
+
+    it("uniqueSymbol", () => {
+      expectHook(S.uniqueSymbol(Symbol.for("effect/schema/test/a")))
+    })
+
+    it("templateLiteral", () => {
+      expectHook(S.templateLiteral(S.literal("a"), S.string, S.literal("b")))
+    })
+
+    it("undefined", () => {
+      expectHook(S.undefined)
+    })
+
+    it("unknown", () => {
+      expectHook(S.unknown)
+    })
+
+    it("any", () => {
+      expectHook(S.any)
+    })
+
+    it("object", () => {
+      expectHook(S.object)
+    })
+
+    it("string", () => {
+      expectHook(S.string)
+    })
+
+    it("number", () => {
+      expectHook(S.number)
+    })
+
+    it("bigintFromSelf", () => {
+      expectHook(S.bigintFromSelf)
+    })
+
+    it("boolean", () => {
+      expectHook(S.boolean)
+    })
+
+    it("enums", () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      expectHook(S.enums(Fruits))
+    })
+
+    it("tuple", () => {
+      expectHook(S.tuple(S.string, S.number))
+    })
+
+    it("struct", () => {
+      expectHook(S.struct({ a: S.string, b: S.number }))
+    })
+
+    it("union", () => {
+      expectHook(S.union(S.string, S.number))
+    })
+
+    it("suspend", () => {
+      interface A {
+        readonly a: string
+        readonly as: ReadonlyArray<A>
+      }
+      const schema: S.Schema<A> = S.struct({
+        a: S.string,
+        as: S.array(S.suspend(() => schema))
+      })
+      expectHook(schema)
+    })
+
+    it("refinement", () => {
+      expectHook(S.Int)
+    })
+
+    it("transformation", () => {
+      expectHook(S.NumberFromString)
     })
   })
 })
