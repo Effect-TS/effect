@@ -257,6 +257,21 @@ export const entries = <V>(self: TR.Trie<V>): IterableIterator<[string, V]> =>
   new TrieIterator(self as TrieImpl<V>, (key, value) => [key, value], () => true)
 
 /** @internal */
+export const reduce = dual<
+  <Z, V>(
+    zero: Z,
+    f: (accumulator: Z, value: V, key: string) => Z
+  ) => (self: TR.Trie<V>) => Z,
+  <Z, V>(self: TR.Trie<V>, zero: Z, f: (accumulator: Z, value: V, key: string) => Z) => Z
+>(3, (self, zero, f) => {
+  let accumulator = zero
+  for (const entry of self) {
+    accumulator = f(accumulator, entry[1], entry[0])
+  }
+  return accumulator
+})
+
+/** @internal */
 export const keysWithPrefix = dual<
   (prefix: string) => <V>(self: TR.Trie<V>) => IterableIterator<string>,
   <V>(self: TR.Trie<V>, prefix: string) => IterableIterator<string>

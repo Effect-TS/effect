@@ -215,3 +215,14 @@ export const remove: {
   (key: string): <V>(self: Trie<V>) => Trie<V>
   <V>(self: Trie<V>, key: string): Trie<V>
 } = TR.remove
+
+/**
+ * Reduce a state over the entries of the tree.
+ *
+ * @since 2.0.0
+ * @category folding
+ */
+export const reduce: {
+  <Z, V>(zero: Z, f: (accumulator: Z, value: V, key: string) => Z): (self: Trie<V>) => Z
+  <Z, V>(self: Trie<V>, zero: Z, f: (accumulator: Z, value: V, key: string) => Z): Z
+} = TR.reduce
