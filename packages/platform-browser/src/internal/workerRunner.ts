@@ -1,4 +1,3 @@
-import * as Runtime from "@effect/platform/Runtime"
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
 import type * as Schema from "@effect/schema/Schema"
@@ -23,14 +22,15 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           }, { once: true, signal })
         })))
       const queue = yield* _(Queue.unbounded<I>())
-      yield* _(
+      const parentId = yield* _(Effect.fiberId)
+      const fiber = yield* _(
         Effect.async<never, WorkerError, never>((resume) => {
           function onMessage(event: MessageEvent) {
             const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
-              Effect.runFork(Effect.flatMap(Effect.fiberId, Runtime.interruptAll))
+              fiber.unsafeInterruptAsFork(parentId)
             }
           }
           function onMessageError(error: ErrorEvent) {
