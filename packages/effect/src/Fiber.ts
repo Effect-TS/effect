@@ -148,6 +148,13 @@ export interface RuntimeFiber<out E, out A> extends Fiber<E, A>, Fiber.RuntimeVa
    * already done.
    */
   unsafePoll(): Exit.Exit<E, A> | null
+
+  /**
+   * In the background, interrupts the fiber as if interrupted from the
+   * specified fiber. If the fiber has already exited, the returned effect will
+   * resume immediately. Otherwise, the effect will resume when the fiber exits.
+   */
+  unsafeInterruptAsFork(fiberId: FiberId.FiberId): void
 }
 
 /**

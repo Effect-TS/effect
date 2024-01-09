@@ -1,4 +1,4 @@
-import { defaultTeardown, interruptAll, type RunMain } from "@effect/platform/Runtime"
+import { defaultTeardown, type RunMain } from "@effect/platform/Runtime"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 
@@ -7,6 +7,8 @@ export const runMain: RunMain = <E, A>(
   effect: Effect.Effect<never, E, A>,
   teardown = defaultTeardown
 ) => {
+  const keepAlive = setInterval(() => {}, Number.MAX_SAFE_INTEGER)
+
   const fiber = Effect.runFork(
     Effect.tapErrorCause(effect, (cause) => {
       if (Cause.isInterruptedOnly(cause)) {
@@ -16,18 +18,17 @@ export const runMain: RunMain = <E, A>(
     })
   )
 
-  fiber.addObserver((exit) =>
+  fiber.addObserver((exit) => {
+    clearInterval(keepAlive)
     teardown(exit, (code) => {
-      Effect.runCallback(interruptAll(fiber.id()), () => {
-        process.exit(code)
-      })
+      process.exit(code)
     })
-  )
+  })
 
   function onSigint() {
     process.removeListener("SIGINT", onSigint)
     process.removeListener("SIGTERM", onSigint)
-    Effect.runFork(fiber.interruptAsFork(fiber.id()))
+    fiber.unsafeInterruptAsFork(fiber.id())
   }
 
   process.once("SIGINT", onSigint)

@@ -1,4 +1,3 @@
-import * as Runtime from "@effect/platform/Runtime"
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
 import type * as Schema from "@effect/schema/Schema"
@@ -12,7 +11,7 @@ declare const self: Worker
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>() {
+  start<I, O>(shutdown: Effect.Effect<never, never, void>) {
     return Effect.gen(function*(_) {
       if (!("postMessage" in self)) {
         return yield* _(Effect.die("not in a worker"))
@@ -26,7 +25,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
-              Effect.runFork(Effect.flatMap(Effect.fiberId, Runtime.interruptAll))
+              Effect.runFork(shutdown)
             }
           }
           function onError(error: ErrorEvent) {

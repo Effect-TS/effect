@@ -2,11 +2,8 @@
  * @since 1.0.0
  */
 import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import { equals } from "effect/Equal"
+import type * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import type * as FiberId from "effect/FiberId"
 
 /**
  * @category model
@@ -37,25 +34,3 @@ export interface RunMain {
     teardown?: Teardown
   ): void
 }
-
-/**
- * @since 1.0.0
- */
-export const interruptAll = (id: FiberId.FiberId): Effect.Effect<never, never, void> =>
-  Effect.flatMap(rootWithoutSelf, (roots) => {
-    if (roots.length === 0) {
-      return Effect.unit
-    }
-    return Effect.flatMap(
-      Fiber.interruptAllAs(roots, id),
-      () =>
-        Effect.flatMap(
-          rootWithoutSelf,
-          (postInterruptRoots) => postInterruptRoots.length > 0 ? interruptAll(id) : Effect.unit
-        )
-    )
-  })
-
-const rootWithoutSelf = Effect.fiberIdWith((selfId) =>
-  Effect.map(Fiber.roots, (roots) => roots.filter((fiber) => !equals(fiber.id(), selfId)))
-)

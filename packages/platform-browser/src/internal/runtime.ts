@@ -1,4 +1,3 @@
-import * as Runtime from "@effect/platform/Runtime"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 
@@ -14,10 +13,6 @@ export const runMain = <E, A>(
       return Effect.logError(cause)
     })
   )
-
-  fiber.addObserver(() => {
-    Effect.runFork(Runtime.interruptAll(fiber.id()))
-  })
 
   addEventListener("beforeunload", () => {
     Effect.runFork(fiber.interruptAsFork(fiber.id()))

@@ -51,7 +51,9 @@ export type PlatformRunnerTypeId = typeof PlatformRunnerTypeId
  */
 export interface PlatformRunner {
   readonly [PlatformRunnerTypeId]: PlatformRunnerTypeId
-  readonly start: <I, O>() => Effect.Effect<Scope.Scope, WorkerError, BackingRunner<I, O>>
+  readonly start: <I, O>(
+    shutdown: Effect.Effect<never, never, void>
+  ) => Effect.Effect<Scope.Scope, WorkerError, BackingRunner<I, O>>
 }
 
 /**

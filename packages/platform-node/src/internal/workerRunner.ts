@@ -1,4 +1,3 @@
-import * as Runtime from "@effect/platform/Runtime"
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
 import type * as Schema from "@effect/schema/Schema"
@@ -11,7 +10,7 @@ import * as WorkerThreads from "node:worker_threads"
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>() {
+  start<I, O>(shutdown: Effect.Effect<never, never, void>) {
     return Effect.gen(function*(_) {
       if (!WorkerThreads.parentPort) {
         return yield* _(Effect.fail(WorkerError("spawn", "not in worker")))
@@ -24,7 +23,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
-              Effect.runFork(Effect.flatMap(Effect.fiberId, Runtime.interruptAll))
+              Effect.runFork(shutdown)
             }
           })
           port.on("messageerror", (error) => {
