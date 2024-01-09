@@ -672,13 +672,12 @@ const Person = S.struct({
 });
 
 /*
-Arbitrary for the To type:
 fc.Arbitrary<{
     readonly name: string;
     readonly age: number;
 }>
 */
-const PersonArbitraryTo = Arbitrary.to(Person)(fc);
+const PersonArbitraryTo = Arbitrary.make(Person)(fc);
 
 console.log(fc.sample(PersonArbitraryTo, 2));
 /*
@@ -687,13 +686,13 @@ Output:
 */
 
 /*
-Arbitrary for the From type:
+Arbitrary for the "From" type:
 fc.Arbitrary<{
     readonly name: string;
     readonly age: string;
 }>
 */
-const PersonArbitraryFrom = Arbitrary.from(Person)(fc);
+const PersonArbitraryFrom = Arbitrary.make(S.from(Person))(fc);
 
 console.log(fc.sample(PersonArbitraryFrom, 2));
 /*
@@ -711,7 +710,7 @@ import * as S from "@effect/schema/Schema";
 import * as Arbitrary from "@effect/schema/Arbitrary";
 import * as fc from "fast-check";
 
-const arb = Arbitrary.to(S.string)(fc);
+const arb = Arbitrary.make(S.string)(fc);
 /*
 ...more lines...
   Types have separate declarations of a private property 'internalRng'.
