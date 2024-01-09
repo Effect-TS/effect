@@ -3,9 +3,7 @@ import * as Runner from "@effect/platform/WorkerRunner"
 import type * as Schema from "@effect/schema/Schema"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import type * as Stream from "effect/Stream"
 
@@ -13,14 +11,13 @@ declare const self: Worker
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>() {
+  start<I, O>(shutdown: Effect.Effect<never, never, void>) {
     return Effect.gen(function*(_) {
       if (!("postMessage" in self)) {
         return yield* _(Effect.die("not in a worker"))
       }
       const port = self
       const queue = yield* _(Queue.unbounded<I>())
-      const parent = Option.getOrThrow(Fiber.getCurrentFiber())
       yield* _(
         Effect.async<never, WorkerError, never>((resume) => {
           function onMessage(event: MessageEvent) {
@@ -28,7 +25,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
-              parent.unsafeInterruptAsFork(parent.id())
+              Effect.runFork(shutdown)
             }
           }
           function onError(error: ErrorEvent) {

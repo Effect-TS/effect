@@ -11,7 +11,6 @@ const router = Router.make(schemaWithSetup, {
     Layer.scoped(
       Name,
       Effect.gen(function*(_) {
-        console.log("setup", port)
         yield* _(
           Effect.addFinalizer(() => Effect.sync(() => port.postMessage("closed")))
         )

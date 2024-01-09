@@ -5,11 +5,14 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import * as ExecutionStrategy from "effect/ExecutionStrategy"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
@@ -32,8 +35,17 @@ export const make = <I, R, E, O>(
   options?: WorkerRunner.Runner.Options<I, E, O>
 ) =>
   Effect.gen(function*(_) {
+    const scope = yield* _(Scope.fork(yield* _(Effect.scope), ExecutionStrategy.parallel))
+    const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+    const shutdown = Effect.zipRight(
+      Scope.close(scope, Exit.unit),
+      Fiber.interruptFork(fiber)
+    )
     const platform = yield* _(PlatformRunner)
-    const backing = yield* _(platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>())
+    const backing = yield* _(
+      platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>(shutdown),
+      Scope.extend(scope)
+    )
     const fiberMap = new Map<number, Fiber.Fiber<never, void>>()
 
     yield* _(
@@ -138,7 +150,7 @@ export const make = <I, R, E, O>(
         )
       }),
       Effect.forever,
-      Effect.forkScoped
+      Effect.forkIn(scope)
     )
   })
 

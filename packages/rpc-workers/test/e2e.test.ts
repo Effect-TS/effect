@@ -77,12 +77,10 @@ describe("e2e", () => {
     ).rejects.toEqual(new Error("boom"))
   })
 
-  it.skip("setup", async () => {
+  it("setup", async () => {
     const channel = new MessageChannel()
     const closedPromise = new Promise<string>((resolve) => {
       channel.port1.onmessage = (e) => {
-        console.log(e)
-
         resolve(e.data)
       }
     })
@@ -107,4 +105,4 @@ describe("e2e", () => {
       Effect.provide(SharedPoolLive),
       runPromise
     ))
-}, 10000)
+}, 30000)

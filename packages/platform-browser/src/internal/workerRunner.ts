@@ -10,7 +10,7 @@ import type { WorkerRunner } from "../index.js"
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>() {
+  start<I, O>(shutdown: Effect.Effect<never, never, void>) {
     return Effect.gen(function*(_) {
       const port = "postMessage" in self ?
         self :
@@ -22,15 +22,14 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           }, { once: true, signal })
         })))
       const queue = yield* _(Queue.unbounded<I>())
-      const parentId = yield* _(Effect.fiberId)
-      const fiber = yield* _(
+      yield* _(
         Effect.async<never, WorkerError, never>((resume) => {
           function onMessage(event: MessageEvent) {
             const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
-              fiber.unsafeInterruptAsFork(parentId)
+              Effect.runFork(shutdown)
             }
           }
           function onMessageError(error: ErrorEvent) {

@@ -3,30 +3,27 @@ import * as Runner from "@effect/platform/WorkerRunner"
 import type * as Schema from "@effect/schema/Schema"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import type * as Stream from "effect/Stream"
 import * as WorkerThreads from "node:worker_threads"
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>() {
+  start<I, O>(shutdown: Effect.Effect<never, never, void>) {
     return Effect.gen(function*(_) {
       if (!WorkerThreads.parentPort) {
         return yield* _(Effect.fail(WorkerError("spawn", "not in worker")))
       }
       const port = WorkerThreads.parentPort
       const queue = yield* _(Queue.unbounded<I>())
-      const parent = Option.getOrThrow(Fiber.getCurrentFiber())
       yield* _(
         Effect.async<never, WorkerError, never>((resume) => {
           port.on("message", (message: Runner.BackingRunner.Message<I>) => {
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
-              parent.unsafeInterruptAsFork(parent.id())
+              Effect.runFork(shutdown)
             }
           })
           port.on("messageerror", (error) => {
