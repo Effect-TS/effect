@@ -471,7 +471,7 @@ describe("Pretty", () => {
     })
 
     it("object", () => {
-      expectHook(S.any)
+      expectHook(S.object)
     })
 
     it("string", () => {

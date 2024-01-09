@@ -778,7 +778,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-const jsonSchema = JSONSchema.to(Person);
+const jsonSchema = JSONSchema.make(Person);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -824,7 +824,7 @@ const Person = S.struct({
   age: Age,
 });
 
-const jsonSchema = JSONSchema.to(Person);
+const jsonSchema = JSONSchema.make(Person);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -881,7 +881,7 @@ const schema: S.Schema<Category> = S.struct({
   categories: S.array(S.suspend(() => schema)),
 }).pipe(S.identifier("Category"));
 
-const jsonSchema = JSONSchema.to(schema);
+const jsonSchema = JSONSchema.make(schema);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -941,7 +941,7 @@ const schema = Positive.pipe(
   })
 );
 
-console.log(JSONSchema.to(schema));
+console.log(JSONSchema.make(schema));
 /*
 Output:
 {

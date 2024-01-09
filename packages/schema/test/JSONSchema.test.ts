@@ -1,7 +1,7 @@
 import * as A from "@effect/schema/Arbitrary"
 import * as AST from "@effect/schema/AST"
 import * as JSONSchema from "@effect/schema/JSONSchema"
-import * as Schema from "@effect/schema/Schema"
+import * as S from "@effect/schema/Schema"
 import AjvNonEsm from "ajv"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -22,11 +22,11 @@ type Json =
   | JsonArray
   | JsonObject
 
-const propertyTo = <I, A>(schema: Schema.Schema<I, A>, options?: {
+const propertyTo = <I, A>(schema: S.Schema<I, A>, options?: {
   params?: fc.Parameters<[A]>
 }) => {
   const arbitrary = A.make(schema)
-  const is = Schema.is(schema)
+  const is = S.is(schema)
   const jsonSchema = JSONSchema.make(schema)
   // console.log(JSON.stringify(jsonSchema, null, 2))
   // const decodedSchema = JSONSchema.decode<A>(jsonSchema)
@@ -50,66 +50,66 @@ const propertyTo = <I, A>(schema: Schema.Schema<I, A>, options?: {
   // expect(JSONSchema.to(decodedSchema)).toStrictEqual(jsonSchema)
 }
 
-const JsonNumber = Schema.number.pipe(
-  Schema.filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
+const JsonNumber = S.number.pipe(
+  S.filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     jsonSchema: { type: "number" }
   })
 )
 
 describe("JSONSchema", () => {
   it("declaration should raise an error", () => {
-    const schema = Schema.chunk(JsonNumber)
+    const schema = S.chunk(JsonNumber)
     expect(() => JSONSchema.make(schema)).toThrow(
-      new Error("cannot convert a declaration to JSON Schema")
+      new Error("cannot build a JSON Schema for a declaration without a JSON Schema annotation")
     )
   })
 
   it("bigint should raise an error", () => {
-    expect(() => JSONSchema.make(Schema.bigint)).toThrow(
-      new Error("cannot convert `bigint` to JSON Schema")
+    expect(() => JSONSchema.make(S.bigint)).toThrow(
+      new Error("cannot build a JSON Schema for `bigint` without a JSON Schema annotation")
     )
   })
 
   it("symbol should raise an error", () => {
-    expect(() => JSONSchema.make(Schema.symbol)).toThrow(
-      new Error("cannot convert `symbol` to JSON Schema")
+    expect(() => JSONSchema.make(S.symbol)).toThrow(
+      new Error("cannot build a JSON Schema for `symbol` without a JSON Schema annotation")
     )
   })
 
   it("a unique symbol should raise an error", () => {
-    expect(() => JSONSchema.make(Schema.uniqueSymbol(Symbol.for("@effect/schema/test/a")))).toThrow(
-      new Error("cannot convert a unique symbol to JSON Schema")
+    expect(() => JSONSchema.make(S.uniqueSymbol(Symbol.for("@effect/schema/test/a")))).toThrow(
+      new Error("cannot build a JSON Schema for a unique symbol without a JSON Schema annotation")
     )
   })
 
   it("undefined should raise an error", () => {
-    expect(() => JSONSchema.make(Schema.undefined)).toThrow(
-      new Error("cannot convert `undefined` to JSON Schema")
+    expect(() => JSONSchema.make(S.undefined)).toThrow(
+      new Error("cannot build a JSON Schema for `undefined` without a JSON Schema annotation")
     )
   })
 
   it("void should raise an error", () => {
-    expect(() => JSONSchema.make(Schema.void)).toThrow(
-      new Error("cannot convert `void` to JSON Schema")
+    expect(() => JSONSchema.make(S.void)).toThrow(
+      new Error("cannot build a JSON Schema for `void` without a JSON Schema annotation")
     )
   })
 
   it("never should raise an error", () => {
-    expect(() => JSONSchema.make(Schema.never)).toThrow(
-      new Error("cannot convert `never` to JSON Schema")
+    expect(() => JSONSchema.make(S.never)).toThrow(
+      new Error("cannot build a JSON Schema for `never` without a JSON Schema annotation")
     )
   })
 
   it("any", () => {
-    propertyTo(Schema.any)
+    propertyTo(S.any)
   })
 
   it("unknown", () => {
-    propertyTo(Schema.unknown)
+    propertyTo(S.unknown)
   })
 
   it("object", () => {
-    const schema = Schema.object
+    const schema = S.object
     const jsonSchema = JSONSchema.make(schema)
     const validate = new Ajv().compile(jsonSchema)
     expect(validate({})).toEqual(true)
@@ -118,11 +118,11 @@ describe("JSONSchema", () => {
     expect(validate("a")).toEqual(false)
     expect(validate(1)).toEqual(false)
     expect(validate(true)).toEqual(false)
-    propertyTo(Schema.object)
+    propertyTo(S.object)
   })
 
   it("string", () => {
-    propertyTo(Schema.string)
+    propertyTo(S.string)
   })
 
   it("JsonNumber", () => {
@@ -130,16 +130,16 @@ describe("JSONSchema", () => {
   })
 
   it("boolean", () => {
-    propertyTo(Schema.boolean)
+    propertyTo(S.boolean)
   })
 
   describe("literal", () => {
     it("null", () => {
-      propertyTo(Schema.null)
+      propertyTo(S.null)
     })
 
     it("string", () => {
-      const schema = Schema.literal("a")
+      const schema = S.literal("a")
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -149,7 +149,7 @@ describe("JSONSchema", () => {
     })
 
     it("number", () => {
-      const schema = Schema.literal(1)
+      const schema = S.literal(1)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -159,19 +159,19 @@ describe("JSONSchema", () => {
     })
 
     it("boolean", () => {
-      const schema = Schema.literal(true)
+      const schema = S.literal(true)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "const": true
       })
-      propertyTo(Schema.literal(true))
-      propertyTo(Schema.literal(false))
+      propertyTo(S.literal(true))
+      propertyTo(S.literal(false))
     })
 
     it("bigint should raise an error", () => {
-      expect(() => JSONSchema.make(Schema.literal(1n))).toThrow(
-        new Error("cannot convert `bigint` to JSON Schema")
+      expect(() => JSONSchema.make(S.literal(1n))).toThrow(
+        new Error("cannot build a JSON Schema for a bigint literal without a JSON Schema annotation")
       )
     })
   })
@@ -182,7 +182,7 @@ describe("JSONSchema", () => {
         Apple,
         Banana
       }
-      const schema = Schema.enums(Fruits)
+      const schema = S.enums(Fruits)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -206,7 +206,7 @@ describe("JSONSchema", () => {
         Apple = "apple",
         Banana = "banana"
       }
-      const schema = Schema.enums(Fruits)
+      const schema = S.enums(Fruits)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -231,7 +231,7 @@ describe("JSONSchema", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = Schema.enums(Fruits)
+      const schema = S.enums(Fruits)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -260,7 +260,7 @@ describe("JSONSchema", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = Schema.enums(Fruits)
+      const schema = S.enums(Fruits)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -286,7 +286,7 @@ describe("JSONSchema", () => {
 
   describe("unions", () => {
     it("string | number", () => {
-      const schema = Schema.union(Schema.string, JsonNumber)
+      const schema = S.union(S.string, JsonNumber)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -307,7 +307,7 @@ describe("JSONSchema", () => {
     })
 
     it(`1 | "a"`, () => {
-      const schema = Schema.literal(1, 2)
+      const schema = S.literal(1, 2)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -317,7 +317,7 @@ describe("JSONSchema", () => {
     })
 
     it(`1 | true | string`, () => {
-      const schema = Schema.union(Schema.literal(1, true), Schema.string)
+      const schema = S.union(S.literal(1, true), S.string)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -334,10 +334,10 @@ describe("JSONSchema", () => {
     })
 
     it(`1 | true(with description) | string`, () => {
-      const schema = Schema.union(
-        Schema.literal(1),
-        Schema.literal(true).pipe(Schema.description("description")),
-        Schema.string
+      const schema = S.union(
+        S.literal(1),
+        S.literal(true).pipe(S.description("description")),
+        S.string
       )
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
@@ -356,10 +356,10 @@ describe("JSONSchema", () => {
     })
 
     it(`1 | 2 | true(with description) | string`, () => {
-      const schema = Schema.union(
-        Schema.literal(1, 2),
-        Schema.literal(true).pipe(Schema.description("description")),
-        Schema.string
+      const schema = S.union(
+        S.literal(1, 2),
+        S.literal(true).pipe(S.description("description")),
+        S.string
       )
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
@@ -378,9 +378,9 @@ describe("JSONSchema", () => {
     })
 
     it("union of literals with descriptions", () => {
-      const schema = Schema.union(
-        Schema.literal("foo").pipe(Schema.description("I'm a foo")),
-        Schema.literal("bar").pipe(Schema.description("I'm a bar"))
+      const schema = S.union(
+        S.literal("foo").pipe(S.description("I'm a foo")),
+        S.literal("bar").pipe(S.description("I'm a bar"))
       )
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
@@ -399,9 +399,9 @@ describe("JSONSchema", () => {
     })
 
     it("union of literals with identifier", () => {
-      const schema = Schema.union(
-        Schema.literal("foo").pipe(Schema.description("I'm a foo"), Schema.identifier("foo")),
-        Schema.literal("bar").pipe(Schema.description("I'm a bar"), Schema.identifier("bar"))
+      const schema = S.union(
+        S.literal("foo").pipe(S.description("I'm a foo"), S.identifier("foo")),
+        S.literal("bar").pipe(S.description("I'm a bar"), S.identifier("bar"))
       )
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
@@ -430,7 +430,7 @@ describe("JSONSchema", () => {
 
   describe("tuple", () => {
     it("e?", () => {
-      const schema = Schema.tuple().pipe(Schema.optionalElement(JsonNumber))
+      const schema = S.tuple().pipe(S.optionalElement(JsonNumber))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -454,7 +454,7 @@ describe("JSONSchema", () => {
     })
 
     it("e + e?", () => {
-      const schema = Schema.tuple(Schema.string).pipe(Schema.optionalElement(JsonNumber))
+      const schema = S.tuple(S.string).pipe(S.optionalElement(JsonNumber))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -484,9 +484,9 @@ describe("JSONSchema", () => {
     })
 
     it("e? + r", () => {
-      const schema = Schema.tuple().pipe(
-        Schema.optionalElement(Schema.string),
-        Schema.rest(JsonNumber)
+      const schema = S.tuple().pipe(
+        S.optionalElement(S.string),
+        S.rest(JsonNumber)
       )
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
@@ -517,7 +517,7 @@ describe("JSONSchema", () => {
     })
 
     it("r + e should raise an error", () => {
-      const schema = Schema.array(JsonNumber).pipe(Schema.element(Schema.string))
+      const schema = S.array(JsonNumber).pipe(S.element(S.string))
       expect(() => JSONSchema.make(schema)).toThrow(
         new Error(
           "Generating a JSON Schema for post-rest elements is not currently supported. You're welcome to contribute by submitting a Pull Request."
@@ -526,7 +526,7 @@ describe("JSONSchema", () => {
     })
 
     it("empty", () => {
-      const schema = Schema.tuple()
+      const schema = S.tuple()
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -539,7 +539,7 @@ describe("JSONSchema", () => {
     })
 
     it("e", () => {
-      const schema = Schema.tuple(JsonNumber)
+      const schema = S.tuple(JsonNumber)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -561,7 +561,7 @@ describe("JSONSchema", () => {
     })
 
     it("e + r", () => {
-      const schema = Schema.tuple(Schema.string).pipe(Schema.rest(JsonNumber))
+      const schema = S.tuple(S.string).pipe(S.rest(JsonNumber))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -606,7 +606,7 @@ describe("JSONSchema", () => {
     })
 
     it("r", () => {
-      const schema = Schema.array(JsonNumber)
+      const schema = S.array(JsonNumber)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -630,7 +630,7 @@ describe("JSONSchema", () => {
 
   describe("struct", () => {
     it("empty", () => {
-      const schema = Schema.struct({})
+      const schema = S.struct({})
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$id": "/schemas/{}",
@@ -652,7 +652,7 @@ describe("JSONSchema", () => {
     })
 
     it("struct", () => {
-      const schema = Schema.struct({ a: Schema.string, b: JsonNumber })
+      const schema = S.struct({ a: S.string, b: JsonNumber })
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -682,9 +682,9 @@ describe("JSONSchema", () => {
     })
 
     it("optional property signature", () => {
-      const schema = Schema.struct({
-        a: Schema.string,
-        b: Schema.optional(JsonNumber, { exact: true })
+      const schema = S.struct({
+        a: S.string,
+        b: S.optional(JsonNumber, { exact: true })
       })
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
@@ -716,7 +716,7 @@ describe("JSONSchema", () => {
 
     it("should raise an error if there is a property named with a symbol", () => {
       const a = Symbol.for("@effect/schema/test/a")
-      expect(() => JSONSchema.make(Schema.struct({ [a]: Schema.string }))).toThrow(
+      expect(() => JSONSchema.make(S.struct({ [a]: S.string }))).toThrow(
         new Error("Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema")
       )
     })
@@ -724,19 +724,19 @@ describe("JSONSchema", () => {
 
   describe("record", () => {
     it("record(symbol, number)", () => {
-      expect(() => JSONSchema.make(Schema.record(Schema.symbolFromSelf, JsonNumber))).toThrow(
+      expect(() => JSONSchema.make(S.record(S.symbolFromSelf, JsonNumber))).toThrow(
         new Error("Unsupported index signature parameter SymbolKeyword")
       )
     })
 
     it("record(refinement, number)", () => {
-      expect(() => JSONSchema.make(Schema.record(Schema.string.pipe(Schema.minLength(1)), JsonNumber))).toThrow(
+      expect(() => JSONSchema.make(S.record(S.string.pipe(S.minLength(1)), JsonNumber))).toThrow(
         new Error("Unsupported index signature parameter Refinement")
       )
     })
 
     it("record(string, number)", () => {
-      const schema = Schema.record(Schema.string, JsonNumber)
+      const schema = S.record(S.string, JsonNumber)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -756,8 +756,8 @@ describe("JSONSchema", () => {
     })
 
     it("record('a' | 'b', number)", () => {
-      const schema = Schema.record(
-        Schema.union(Schema.literal("a"), Schema.literal("b")),
+      const schema = S.record(
+        S.union(S.literal("a"), S.literal("b")),
         JsonNumber
       )
       const jsonSchema = JSONSchema.make(schema)
@@ -783,8 +783,8 @@ describe("JSONSchema", () => {
     })
 
     it("record(${string}-${string}, number)", () => {
-      const schema = Schema.record(
-        Schema.templateLiteral(Schema.string, Schema.literal("-"), Schema.string),
+      const schema = S.record(
+        S.templateLiteral(S.string, S.literal("-"), S.string),
         JsonNumber
       )
       const jsonSchema = JSONSchema.make(schema)
@@ -814,8 +814,8 @@ describe("JSONSchema", () => {
     })
 
     it("record(pattern, number)", () => {
-      const schema = Schema.record(
-        Schema.string.pipe(Schema.pattern(new RegExp("^.*-.*$"))),
+      const schema = S.record(
+        S.string.pipe(S.pattern(new RegExp("^.*-.*$"))),
         JsonNumber
       )
       const jsonSchema = JSONSchema.make(schema)
@@ -846,8 +846,8 @@ describe("JSONSchema", () => {
   })
 
   it("struct + record", () => {
-    const schema = Schema.struct({ a: Schema.string }).pipe(
-      Schema.extend(Schema.record(Schema.string, Schema.string))
+    const schema = S.struct({ a: S.string }).pipe(
+      S.extend(S.record(S.string, S.string))
     )
     const jsonSchema = JSONSchema.make(schema)
     expect(jsonSchema).toStrictEqual({
@@ -881,14 +881,14 @@ describe("JSONSchema", () => {
 
   describe("refinement", () => {
     it("should raise an error when an annotation doesn't exist", () => {
-      const schema = Schema.string.pipe(Schema.filter(() => true))
+      const schema = S.string.pipe(S.filter(() => true))
       expect(() => JSONSchema.make(schema)).toThrow(
-        new Error("cannot build a JSON Schema for refinements without a JSON Schema annotation")
+        new Error("cannot build a JSON Schema for a refinement without a JSON Schema annotation")
       )
     })
 
     it("minLength", () => {
-      const schema = Schema.string.pipe(Schema.minLength(1))
+      const schema = S.string.pipe(S.minLength(1))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -901,7 +901,7 @@ describe("JSONSchema", () => {
     })
 
     it("maxLength", () => {
-      const schema = Schema.string.pipe(Schema.maxLength(1))
+      const schema = S.string.pipe(S.maxLength(1))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -914,7 +914,7 @@ describe("JSONSchema", () => {
     })
 
     it("greaterThan", () => {
-      const schema = JsonNumber.pipe(Schema.greaterThan(1))
+      const schema = JsonNumber.pipe(S.greaterThan(1))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -927,7 +927,7 @@ describe("JSONSchema", () => {
     })
 
     it("greaterThanOrEqualTo", () => {
-      const schema = JsonNumber.pipe(Schema.greaterThanOrEqualTo(1))
+      const schema = JsonNumber.pipe(S.greaterThanOrEqualTo(1))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -940,7 +940,7 @@ describe("JSONSchema", () => {
     })
 
     it("lessThan", () => {
-      const schema = JsonNumber.pipe(Schema.lessThan(1))
+      const schema = JsonNumber.pipe(S.lessThan(1))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -953,7 +953,7 @@ describe("JSONSchema", () => {
     })
 
     it("lessThanOrEqualTo", () => {
-      const schema = JsonNumber.pipe(Schema.lessThanOrEqualTo(1))
+      const schema = JsonNumber.pipe(S.lessThanOrEqualTo(1))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -966,7 +966,7 @@ describe("JSONSchema", () => {
     })
 
     it("pattern", () => {
-      const schema = Schema.string.pipe(Schema.pattern(/^abb+$/))
+      const schema = S.string.pipe(S.pattern(/^abb+$/))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -979,7 +979,7 @@ describe("JSONSchema", () => {
     })
 
     it("integer", () => {
-      const schema = JsonNumber.pipe(Schema.int())
+      const schema = JsonNumber.pipe(S.int())
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -992,7 +992,7 @@ describe("JSONSchema", () => {
   })
 
   it("TemplateLiteral", () => {
-    const schema = Schema.templateLiteral(Schema.literal("a"), Schema.number)
+    const schema = S.templateLiteral(S.literal("a"), S.number)
     const jsonSchema = JSONSchema.make(schema)
     expect(jsonSchema).toEqual({
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1013,9 +1013,9 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: Schema.Schema<A> = Schema.struct({
-        a: Schema.string,
-        as: Schema.array(Schema.suspend(() => schema))
+      const schema: S.Schema<A> = S.struct({
+        a: S.string,
+        as: S.array(S.suspend(() => schema))
       })
       expect(() => JSONSchema.make(schema)).toThrow(
         new Error(
@@ -1029,12 +1029,12 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: Schema.Schema<A> = Schema.suspend(() =>
-        Schema.struct({
-          a: Schema.string,
-          as: Schema.array(schema)
+      const schema: S.Schema<A> = S.suspend(() =>
+        S.struct({
+          a: S.string,
+          as: S.array(schema)
         })
-      ).pipe(Schema.identifier("A"))
+      ).pipe(S.identifier("A"))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1081,9 +1081,9 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: Schema.Schema<A> = Schema.struct({
-        a: Schema.string,
-        as: Schema.array(Schema.suspend(() => schema).pipe(Schema.identifier("A")))
+      const schema: S.Schema<A> = S.struct({
+        a: S.string,
+        as: S.array(S.suspend(() => schema).pipe(S.identifier("A")))
       })
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
@@ -1149,10 +1149,10 @@ describe("JSONSchema", () => {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
       }
-      const schema: Schema.Schema<Category> = Schema.struct({
-        name: Schema.string,
-        categories: Schema.array(Schema.suspend(() => schema))
-      }).pipe(Schema.identifier("Category"))
+      const schema: S.Schema<Category> = S.struct({
+        name: S.string,
+        categories: S.array(S.suspend(() => schema))
+      }).pipe(S.identifier("Category"))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1214,21 +1214,21 @@ describe("JSONSchema", () => {
         readonly right: Expression
       }
 
-      const Expression: Schema.Schema<Expression> = Schema.suspend(() =>
-        Schema.struct({
-          type: Schema.literal("expression"),
-          value: Schema.union(JsonNumber, Operation)
+      const Expression: S.Schema<Expression> = S.suspend(() =>
+        S.struct({
+          type: S.literal("expression"),
+          value: S.union(JsonNumber, Operation)
         })
-      ).pipe(Schema.identifier("Expression"))
+      ).pipe(S.identifier("Expression"))
 
-      const Operation: Schema.Schema<Operation> = Schema.suspend(() =>
-        Schema.struct({
-          type: Schema.literal("operation"),
-          operator: Schema.union(Schema.literal("+"), Schema.literal("-")),
+      const Operation: S.Schema<Operation> = S.suspend(() =>
+        S.struct({
+          type: S.literal("operation"),
+          operator: S.union(S.literal("+"), S.literal("-")),
           left: Expression,
           right: Expression
         })
-      ).pipe(Schema.identifier("Operation"))
+      ).pipe(S.identifier("Operation"))
 
       const jsonSchema = JSONSchema.make(Operation)
       expect(jsonSchema).toEqual({
@@ -1319,11 +1319,11 @@ describe("JSONSchema", () => {
         readonly categories: ReadonlyArray<Category>
       }
 
-      const schema: Schema.Schema<Category> = Schema.struct({
-        name: Schema.string,
-        categories: Schema.array(Schema.suspend(() => schema).pipe(Schema.identifier("Category")))
+      const schema: S.Schema<Category> = S.struct({
+        name: S.string,
+        categories: S.array(S.suspend(() => schema).pipe(S.identifier("Category")))
       })
-      const jsonSchema = JSONSchema.make(Schema.from(schema))
+      const jsonSchema = JSONSchema.make(S.from(schema))
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -1374,7 +1374,7 @@ describe("JSONSchema", () => {
 
   describe("annotations", () => {
     it("examples support", () => {
-      const schema = Schema.string.pipe(Schema.examples(["a", "b"]))
+      const schema = S.string.pipe(S.examples(["a", "b"]))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1386,7 +1386,7 @@ describe("JSONSchema", () => {
     })
 
     it("default support", () => {
-      const schema = Schema.string.pipe(Schema.default(""))
+      const schema = S.string.pipe(S.default(""))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1398,13 +1398,13 @@ describe("JSONSchema", () => {
     })
 
     it("struct properties support", () => {
-      const schema = Schema.struct({
-        foo: Schema.string.pipe(Schema.propertySignatureAnnotations({
+      const schema = S.struct({
+        foo: S.string.pipe(S.propertySignatureAnnotations({
           description: "foo description",
           title: "foo title",
           examples: ["foo example"]
         })),
-        bar: JsonNumber.pipe(Schema.propertySignatureAnnotations({
+        bar: JsonNumber.pipe(S.propertySignatureAnnotations({
           description: "bar description",
           title: "bar title",
           examples: ["bar example"]
@@ -1442,8 +1442,8 @@ describe("JSONSchema", () => {
   })
 
   it("should support Classes", () => {
-    class A extends Schema.Class<A>()({ a: Schema.string }) {}
-    const jsonSchema = JSONSchema.make(Schema.from(A))
+    class A extends S.Class<A>()({ a: S.string }) {}
+    const jsonSchema = JSONSchema.make(S.from(A))
     expect(jsonSchema).toEqual({
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
@@ -1463,7 +1463,7 @@ describe("JSONSchema", () => {
 
   describe("identifier annotations support", () => {
     it("on root level schema", () => {
-      const schema = Schema.string.pipe(Schema.identifier("Name"))
+      const schema = S.string.pipe(S.identifier("Name"))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1479,12 +1479,12 @@ describe("JSONSchema", () => {
     })
 
     it("on nested schemas", () => {
-      const Name = Schema.string.pipe(
-        Schema.identifier("Name"),
-        Schema.description("a name"),
-        Schema.title("Name")
+      const Name = S.string.pipe(
+        S.identifier("Name"),
+        S.description("a name"),
+        S.title("Name")
       )
-      const schema = Schema.struct({ a: Name, b: Schema.struct({ c: Name }) })
+      const schema = S.struct({ a: Name, b: S.struct({ c: Name }) })
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1524,10 +1524,265 @@ describe("JSONSchema", () => {
       expect(validate({ a: 1 })).toEqual(false)
     })
   })
+
+  describe("should handle annotations", () => {
+    it("void", () => {
+      const schema = S.void.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "title": "void"
+      })
+    })
+
+    it("never", () => {
+      const schema = S.never.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "title": "never"
+      })
+    })
+
+    it("literal", () => {
+      const schema = S.literal("a").pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema"
+      })
+    })
+
+    it("symbol", () => {
+      const schema = S.symbol.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema"
+      })
+    })
+
+    it("uniqueSymbol", () => {
+      const schema = S.uniqueSymbol(Symbol.for("effect/schema/test/a")).pipe(
+        S.jsonSchema({ "type": "custom JSON Schema" })
+      )
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema"
+      })
+    })
+
+    it("templateLiteral", () => {
+      const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b")).pipe(
+        S.jsonSchema({ "type": "custom JSON Schema" })
+      )
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema"
+      })
+    })
+
+    it("undefined", () => {
+      const schema = S.undefined.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "title": "undefined"
+      })
+    })
+
+    it("unknown", () => {
+      const schema = S.unknown.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "title": "unknown"
+      })
+    })
+
+    it("any", () => {
+      const schema = S.any.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "title": "any"
+      })
+    })
+
+    it("object", () => {
+      const schema = S.object.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "$ref": "#/$defs/object",
+        "$defs": {
+          "object": {
+            "type": "custom JSON Schema",
+            "description": "an object in the TypeScript meaning, i.e. the `object` type",
+            "title": "object"
+          }
+        }
+      })
+    })
+
+    it("string", () => {
+      const schema = S.string.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "description": "a string",
+        "title": "string"
+      })
+    })
+
+    it("number", () => {
+      const schema = S.number.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "description": "a number",
+        "title": "number"
+      })
+    })
+
+    it("bigintFromSelf", () => {
+      const schema = S.bigintFromSelf.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "description": "a bigint",
+        "title": "bigint"
+      })
+    })
+
+    it("boolean", () => {
+      const schema = S.boolean.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema",
+        "description": "a boolean",
+        "title": "boolean"
+      })
+    })
+
+    it("enums", () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      const schema = S.enums(Fruits).pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema"
+      })
+    })
+
+    it("tuple", () => {
+      const schema = S.tuple(S.string, S.number).pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema"
+      })
+    })
+
+    it("struct", () => {
+      const schema = S.struct({ a: S.string, b: S.number }).pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema"
+      })
+    })
+
+    it("union", () => {
+      const schema = S.union(S.string, S.number).pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "custom JSON Schema"
+      })
+    })
+
+    it("suspend", () => {
+      interface A {
+        readonly a: string
+        readonly as: ReadonlyArray<A>
+      }
+      const schema: S.Schema<A> = S.struct({
+        a: S.string,
+        as: S.array(S.suspend(() => schema).pipe(S.jsonSchema({ "type": "custom JSON Schema" })))
+      })
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "a",
+          "as"
+        ],
+        "properties": {
+          "a": {
+            "type": "string",
+            "description": "a string",
+            "title": "string"
+          },
+          "as": {
+            "type": "array",
+            "items": {
+              "type": "custom JSON Schema"
+            }
+          }
+        },
+        "additionalProperties": false
+      })
+    })
+
+    it("refinement", () => {
+      const schema = S.Int.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "$ref": "#/$defs/Int",
+        "$defs": {
+          "Int": {
+            "description": "an integer",
+            "title": "Int",
+            "type": "custom JSON Schema"
+          }
+        }
+      })
+    })
+
+    it("transformation", () => {
+      const schema = S.NumberFromString.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "$ref": "#/$defs/NumberFromString",
+        "$defs": {
+          "NumberFromString": {
+            "type": "custom JSON Schema"
+          }
+        }
+      })
+    })
+  })
 })
 
-export const decode = <A>(schema: JSONSchema.JsonSchema7Root): Schema.Schema<A> =>
-  Schema.make(decodeAST(schema, schema.$defs))
+export const decode = <A>(schema: JSONSchema.JsonSchema7Root): S.Schema<A> => S.make(decodeAST(schema, schema.$defs))
 
 const emptyTypeLiteralAST = AST.createTypeLiteral([], [])
 
@@ -1603,7 +1858,7 @@ const decodeAST = (
         for (const pattern in schema.patternProperties) {
           indexSignatures.push(
             AST.createIndexSignature(
-              Schema.string.pipe(Schema.pattern(new RegExp(pattern))).ast,
+              S.string.pipe(S.pattern(new RegExp(pattern))).ast,
               decodeAST(schema.patternProperties[pattern], $defs),
               true
             )

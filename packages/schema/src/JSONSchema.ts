@@ -270,9 +270,8 @@ const getMetaData = (annotated: AST.Annotated) =>
   })
 
 const goWithMetaData = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
-  const jsonSchema = go(ast, $defs)
   return {
-    ...jsonSchema,
+    ...go(ast, $defs),
     ...getMetaData(ast)
   }
 }
@@ -291,7 +290,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
   }
   switch (ast._tag) {
     case "Declaration": {
-      throw new Error("cannot convert a declaration to JSON Schema")
+      throw new Error("cannot build a JSON Schema for a declaration without a JSON Schema annotation")
     }
     case "Literal": {
       const literal = ast.literal
@@ -304,16 +303,16 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       } else if (Predicate.isBoolean(literal)) {
         return { const: literal }
       }
-      throw new Error("cannot convert `bigint` to JSON Schema")
+      throw new Error("cannot build a JSON Schema for a bigint literal without a JSON Schema annotation")
     }
     case "UniqueSymbol":
-      throw new Error("cannot convert a unique symbol to JSON Schema")
+      throw new Error("cannot build a JSON Schema for a unique symbol without a JSON Schema annotation")
     case "UndefinedKeyword":
-      throw new Error("cannot convert `undefined` to JSON Schema")
+      throw new Error("cannot build a JSON Schema for `undefined` without a JSON Schema annotation")
     case "VoidKeyword":
-      throw new Error("cannot convert `void` to JSON Schema")
+      throw new Error("cannot build a JSON Schema for `void` without a JSON Schema annotation")
     case "NeverKeyword":
-      throw new Error("cannot convert `never` to JSON Schema")
+      throw new Error("cannot build a JSON Schema for `never` without a JSON Schema annotation")
     case "UnknownKeyword":
       return { ...unknownJsonSchema }
     case "AnyKeyword":
@@ -327,9 +326,9 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
     case "BooleanKeyword":
       return { type: "boolean" }
     case "BigIntKeyword":
-      throw new Error("cannot convert `bigint` to JSON Schema")
+      throw new Error("cannot build a JSON Schema for `bigint` without a JSON Schema annotation")
     case "SymbolKeyword":
-      throw new Error("cannot convert `symbol` to JSON Schema")
+      throw new Error("cannot build a JSON Schema for `symbol` without a JSON Schema annotation")
     case "Tuple": {
       const elements = ast.elements.map((e) => goWithIdentifier(e.type, $defs))
       const rest = Option.map(
@@ -491,9 +490,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       }
     }
     case "Refinement": {
-      throw new Error(
-        "cannot build a JSON Schema for refinements without a JSON Schema annotation"
-      )
+      throw new Error("cannot build a JSON Schema for a refinement without a JSON Schema annotation")
     }
     case "TemplateLiteral": {
       const regex = Parser.getTemplateLiteralRegex(ast)

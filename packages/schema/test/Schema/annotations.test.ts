@@ -65,14 +65,6 @@ describe("Schema > annotations", () => {
     expect(S.isSchema(schema)).toEqual(true)
   })
 
-  describe("jsonSchema", () => {
-    it("should raise an error on non refinements", () => {
-      expect(() => S.string.pipe(S.jsonSchema({ type: "number" }))).toThrow(
-        new Error("JSON Schema annotations can be applied exclusively to refinements")
-      )
-    })
-  })
-
   it("message as annotation options", async () => {
     const schema =
       // initial schema, a string

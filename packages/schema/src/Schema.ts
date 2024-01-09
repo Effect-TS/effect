@@ -432,6 +432,7 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
       [AST.TypeAnnotationId]: InstanceOfTypeId,
       [InstanceOfTypeId]: { constructor },
       [AST.DescriptionAnnotationId]: `an instance of ${constructor.name}`,
+      [hooks.PrettyHookId]: (): Pretty.Pretty<A> => () => `${constructor.name}(...args: any)`,
       ...toAnnotations(options)
     }
   )
@@ -1648,12 +1649,8 @@ export const documentation = (documentation: AST.DocumentationAnnotation) => <I,
  * @category annotations
  * @since 1.0.0
  */
-export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> => {
-  if (AST.isRefinement(self.ast)) {
-    return make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
-  }
-  throw new Error("JSON Schema annotations can be applied exclusively to refinements")
-}
+export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
 
 /**
  * @category annotations
