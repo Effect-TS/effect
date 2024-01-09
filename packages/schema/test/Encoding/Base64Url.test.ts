@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Encoding/Base64Url", () => {
+describe("Encoding > Base64Url", () => {
   const schema = S.Base64Url
   const encoder = new TextEncoder()
 
@@ -24,12 +24,16 @@ describe("Encoding/Base64Url", () => {
     await Util.expectParseFailure(
       schema,
       "Zm9vY",
-      "Length should be a multiple of 4, but is 5"
+      `Base64Url
+└─ Transformation process failure
+   └─ Length should be a multiple of 4, but is 5`
     )
     await Util.expectParseFailure(
       schema,
       "Pj8/ZD+Dnw",
-      "Invalid input"
+      `Base64Url
+└─ Transformation process failure
+   └─ Invalid input`
     )
   })
 

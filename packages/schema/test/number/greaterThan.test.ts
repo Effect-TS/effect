@@ -4,7 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("number/greaterThan", () => {
+describe("number > greaterThan", () => {
   const schema = S.greaterThan(0)(S.number)
 
   it("property tests", () => {
@@ -20,12 +20,24 @@ describe("number/greaterThan", () => {
 
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(schema, 0, `Expected a positive number, actual 0`)
-    await Util.expectParseFailure(schema, -1, `Expected a positive number, actual -1`)
+    await Util.expectParseFailure(
+      schema,
+      0,
+      `a positive number
+└─ Predicate refinement failure
+   └─ Expected a positive number, actual 0`
+    )
+    await Util.expectParseFailure(
+      schema,
+      -1,
+      `a positive number
+└─ Predicate refinement failure
+   └─ Expected a positive number, actual -1`
+    )
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(1)).toEqual("1")
   })
 })

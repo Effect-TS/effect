@@ -4,7 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/annotations", () => {
+describe("Schema > annotations", () => {
   it("annotations", () => {
     const schema = S.string.pipe(S.annotations({
       [AST.TitleAnnotationId]: "MyString",
@@ -65,14 +65,6 @@ describe("Schema/annotations", () => {
     expect(S.isSchema(schema)).toEqual(true)
   })
 
-  describe("jsonSchema", () => {
-    it("should raise an error on non refinements", () => {
-      expect(() => S.string.pipe(S.jsonSchema({ type: "number" }))).toThrow(
-        new Error("JSON Schema annotations can be applied exclusively to refinements")
-      )
-    })
-  })
-
   it("message as annotation options", async () => {
     const schema =
       // initial schema, a string
@@ -114,6 +106,6 @@ describe("Schema/annotations", () => {
     const AFromSelf = S.instanceOf(A, {
       pretty: prettyA
     })
-    expect(Pretty.to(AFromSelf)(new A("value"))).toEqual(`new A("value")`)
+    expect(Pretty.make(AFromSelf)(new A("value"))).toEqual(`new A("value")`)
   })
 })

@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/templateLiteral", () => {
+describe("Schema > templateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {
     expect(() => S.templateLiteral(S.boolean)).toThrow(
       new Error("templateLiteral: unsupported template literal span BooleanKeyword")
@@ -94,12 +94,12 @@ describe("Schema/templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected a${string}, actual null"
+        "Expected `a${string}`, actual null"
       )
       await Util.expectParseFailure(
         schema,
         "",
-        "Expected a${string}, actual \"\""
+        "Expected `a${string}`, actual \"\""
       )
     })
 
@@ -125,17 +125,17 @@ describe("Schema/templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected a${number}, actual null"
+        "Expected `a${number}`, actual null"
       )
       await Util.expectParseFailure(
         schema,
         "",
-        "Expected a${number}, actual \"\""
+        "Expected `a${number}`, actual \"\""
       )
       await Util.expectParseFailure(
         schema,
         "aa",
-        "Expected a${number}, actual \"aa\""
+        "Expected `a${number}`, actual \"aa\""
       )
     })
 
@@ -154,17 +154,17 @@ describe("Schema/templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         "",
-        "Expected a${string}b, actual \"\""
+        "Expected `a${string}b`, actual \"\""
       )
       await Util.expectParseFailure(
         schema,
         "a",
-        "Expected a${string}b, actual \"a\""
+        "Expected `a${string}b`, actual \"a\""
       )
       await Util.expectParseFailure(
         schema,
         "b",
-        "Expected a${string}b, actual \"b\""
+        "Expected `a${string}b`, actual \"b\""
       )
       await Util.expectEncodeSuccess(schema, "acb", "acb")
     })
@@ -178,12 +178,12 @@ describe("Schema/templateLiteral", () => {
       await Util.expectParseFailure(
         schema,
         "a",
-        "Expected a${string}b${string}, actual \"a\""
+        "Expected `a${string}b${string}`, actual \"a\""
       )
       await Util.expectParseFailure(
         schema,
         "b",
-        "Expected a${string}b${string}, actual \"b\""
+        "Expected `a${string}b${string}`, actual \"b\""
       )
     })
 
@@ -196,17 +196,17 @@ describe("Schema/templateLiteral", () => {
       await Util.expectParseSuccess(schema, "footer_title_id", "footer_title_id")
       await Util.expectParseSuccess(schema, "footer_sendoff_id", "footer_sendoff_id")
 
-      await Util.expectParseFailureTree(
+      await Util.expectParseFailure(
         schema,
         "_id",
-        `error(s) found
-├─ union member
+        `"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id"
+├─ Union member
 │  └─ Expected "welcome_email_id", actual "_id"
-├─ union member
+├─ Union member
 │  └─ Expected "email_heading_id", actual "_id"
-├─ union member
+├─ Union member
 │  └─ Expected "footer_title_id", actual "_id"
-└─ union member
+└─ Union member
    └─ Expected "footer_sendoff_id", actual "_id"`
       )
     })

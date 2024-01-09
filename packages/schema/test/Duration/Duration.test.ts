@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, it } from "vitest"
 
-describe("Schema/Duration", () => {
+describe("Duration > Duration", () => {
   const schema = S.Duration
 
   it("property tests", () => {
@@ -12,13 +12,45 @@ describe("Schema/Duration", () => {
 
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, [555, 123456789], Duration.nanos(555123456789n))
-    await Util.expectParseFailure(schema, [-500, 0], "/0 Expected seconds, actual -500")
-    await Util.expectParseFailure(schema, [0, -123], "/1 Expected nanos, actual -123")
-    await Util.expectParseFailure(schema, 123, "Expected a high resolution time tuple, actual 123")
+    await Util.expectParseFailure(
+      schema,
+      [-500, 0],
+      `Duration
+└─ From side transformation failure
+   └─ readonly [seconds, nanos]
+      └─ [0]
+         └─ seconds
+            └─ From side refinement failure
+               └─ NonNegative
+                  └─ Predicate refinement failure
+                     └─ Expected NonNegative (a non-negative number), actual -500`
+    )
+    await Util.expectParseFailure(
+      schema,
+      [0, -123],
+      `Duration
+└─ From side transformation failure
+   └─ readonly [seconds, nanos]
+      └─ [1]
+         └─ nanos
+            └─ From side refinement failure
+               └─ NonNegative
+                  └─ Predicate refinement failure
+                     └─ Expected NonNegative (a non-negative number), actual -123`
+    )
+    await Util.expectParseFailure(
+      schema,
+      123,
+      `Duration
+└─ From side transformation failure
+   └─ Expected readonly [seconds, nanos], actual 123`
+    )
     await Util.expectParseFailure(
       schema,
       123n,
-      "Expected a high resolution time tuple, actual 123n"
+      `Duration
+└─ From side transformation failure
+   └─ Expected readonly [seconds, nanos], actual 123n`
     )
   })
 

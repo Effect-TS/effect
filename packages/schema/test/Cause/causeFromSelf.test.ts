@@ -5,7 +5,7 @@ import * as Cause from "effect/Cause"
 import * as FiberId from "effect/FiberId"
 import { describe, expect, it } from "vitest"
 
-describe("Cause/causeFromSelf", () => {
+describe("Cause > causeFromSelf", () => {
   it("property tests", () => {
     Util.roundtrip(S.causeFromSelf(S.NumberFromString))
   })
@@ -15,16 +15,32 @@ describe("Cause/causeFromSelf", () => {
 
     await Util.expectParseSuccess(schema, Cause.fail("1"), Cause.fail(1))
 
-    await Util.expectParseFailure(schema, null, `Expected Cause, actual null`)
+    await Util.expectParseFailure(schema, null, `Expected Cause<NumberFromString>, actual null`)
     await Util.expectParseFailure(
       schema,
       Cause.fail("a"),
-      `union member: /error Expected string <-> number, actual "a"`
+      `CauseFrom<NumberFromString>
+└─ Union member
+   └─ { _tag: "Fail"; error: NumberFromString }
+      └─ ["error"]
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Expected NumberFromString, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
-      `union member: /right union member: /error Expected string <-> number, actual "a"`
+      `CauseFrom<NumberFromString>
+└─ Union member
+   └─ { _tag: "Parallel"; left: CauseFrom<NumberFromString>; right: CauseFrom<NumberFromString> }
+      └─ ["right"]
+         └─ CauseFrom<NumberFromString>
+            └─ Union member
+               └─ { _tag: "Fail"; error: NumberFromString }
+                  └─ ["error"]
+                     └─ NumberFromString
+                        └─ Transformation process failure
+                           └─ Expected NumberFromString, actual "a"`
     )
   })
 
@@ -36,7 +52,7 @@ describe("Cause/causeFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.causeFromSelf(S.string)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(Cause.die("error"))).toEqual(`Cause.die(Error: error)`)
     expect(pretty(Cause.empty)).toEqual(`Cause.empty`)
     expect(pretty(Cause.fail("error"))).toEqual(`Cause.fail("error")`)

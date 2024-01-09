@@ -4,7 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("ReadonlyMap/readonlyMapFromSelf", () => {
+describe("ReadonlyMap > readonlyMapFromSelf", () => {
   it("property tests", () => {
     Util.roundtrip(S.readonlyMapFromSelf(S.number, S.string))
   })
@@ -21,12 +21,18 @@ describe("ReadonlyMap/readonlyMapFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected ReadonlyMap, actual null`
+      `Expected ReadonlyMap<NumberFromString, string>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
-      `/1 /0 Expected string <-> number, actual "a"`
+      `ReadonlyArray<readonly [NumberFromString, string]>
+└─ [1]
+   └─ readonly [NumberFromString, string]
+      └─ [0]
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Expected NumberFromString, actual "a"`
     )
   })
 
@@ -57,7 +63,7 @@ describe("ReadonlyMap/readonlyMapFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.readonlyMapFromSelf(S.number, S.string)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(new Map())).toEqual("new Map([])")
     expect(pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
       `new Map([[1, "a"], [2, "b"]])`

@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import * as O from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("Option/optionFromSelf", () => {
+describe("Option > optionFromSelf", () => {
   it("property tests", () => {
     Util.roundtrip(S.optionFromSelf(S.NumberFromString))
   })
@@ -30,7 +30,7 @@ describe("Option/optionFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.optionFromSelf(S.number)
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
     expect(pretty(O.none())).toEqual("none()")
     expect(pretty(O.some(1))).toEqual("some(1)")
   })

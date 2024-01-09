@@ -256,10 +256,7 @@ export const integer = (name?: string): Config.Config<number> => {
 }
 
 /** @internal */
-export type LiteralValue = string | number | boolean | null | bigint
-
-/** @internal */
-export const literal = <Literals extends ReadonlyArray<LiteralValue>>(...literals: Literals) =>
+export const literal = <Literals extends ReadonlyArray<Config.LiteralValue>>(...literals: Literals) =>
 (
   name?: string
 ): Config.Config<Literals[number]> => {

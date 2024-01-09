@@ -4,16 +4,16 @@ Welcome to the documentation for `@effect/schema`, **a library for defining and 
 
 `@effect/schema` allows you to define a `Schema<I, A>` that provides a blueprint for describing the structure and data types of your data. Once defined, you can leverage this schema to perform a range of operations, including:
 
-| Operation       | Description                                                                                                     |
-| --------------- | --------------------------------------------------------------------------------------------------------------- |
-| Parsing         | Convert from `unknown` value to output type `A`.                                                                |
-| Decoding        | Transforming data from an input type `I` to an output type `A`.                                                 |
-| Encoding        | Converting data from an output type `A` back to an input type `I`.                                              |
-| Asserting       | Verifying that a value adheres to the schema's output type `A`.                                                 |
-| Arbitraries     | Generate arbitraries for [fast-check](https://github.com/dubzzz/fast-check) testing.                            |
-| Pretty printing | Support pretty printing for data structures.                                                                    |
-| JSON Schemas    | Create JSON Schemas based on defined schemas.                                                                   |
-| Equivalence     | Create [Equivalences](https://effect-ts.github.io/effect/modules/Equivalence.ts.html) based on defined schemas. |
+| Operation       | Description                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| Parsing         | Convert from `unknown` value to output type `A`.                                                               |
+| Decoding        | Transforming data from an input type `I` to an output type `A`.                                                |
+| Encoding        | Converting data from an output type `A` back to an input type `I`.                                             |
+| Asserting       | Verifying that a value adheres to the schema's output type `A`.                                                |
+| Arbitraries     | Generate arbitraries for [fast-check](https://github.com/dubzzz/fast-check) testing.                           |
+| Pretty printing | Support pretty printing for data structures.                                                                   |
+| JSON Schemas    | Create JSON Schemas based on defined schemas.                                                                  |
+| Equivalence     | Create [Equivalences](https://effect-ts.github.io/effect/schema/Equivalence.ts.html) based on defined schemas. |
 
 If you're eager to learn how to define your first schema, jump straight to the [**Basic usage**](#basic-usage) section!
 
@@ -97,7 +97,13 @@ const schema = S.struct({
   }),
 });
 
-S.decodeSync(schema)({ myfield: undefined }); // Error: Type 'undefined' is not assignable to type 'string'.ts(2379)
+S.decodeSync(schema)({ myfield: undefined });
+/*
+TypeScript Error:
+Argument of type '{ myfield: undefined; }' is not assignable to parameter of type '{ readonly myfield?: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'myfield' are incompatible.
+    Type 'undefined' is not assignable to type 'string'.ts(2379)
+*/
 ```
 
 Here, notice that the type of `myfield` is strict (`string`), which means the type checker will catch any attempt to assign an invalid value (like `undefined`).
@@ -124,9 +130,11 @@ const schema = S.struct({
 
 S.decodeSync(schema)({ myfield: undefined }); // No type error, but a decoding failure occurs
 /*
-Error: error(s) found
-└─ ["a"]
-   └─ Expected string, actual undefined
+Error: { myfield?: a non empty string }
+└─ ["myfield"]
+   └─ a non empty string
+      └─ From side refinement failure
+         └─ Expected a string, actual undefined
 */
 ```
 
@@ -298,7 +306,7 @@ if (Either.isLeft(result2)) {
   Output:
   {
     _id: 'ParseError',
-    message: 'error(s) found\n└─ Expected <anonymous type literal schema>, actual null'
+    message: 'Expected { name: string; age: number }, actual null'
   }
   */
 }
@@ -309,18 +317,24 @@ The `parsePerson` function returns an `Either<ParseError, A>`, where `ParseError
 ```ts
 interface ParseError {
   readonly _tag: "ParseError";
-  // A non-empty list of errors
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseIssue>;
+  readonly error: ParseIssue;
 }
 ```
 
-`ParseError` represents a list of errors that may have occurred during the parsing process, and `A` is the inferred data type described by the `Schema`. A successful parse results in a `Right` value, containing the parsed data `A`. In the case of a failed parse, the result will be a `Left` value containing a non-empty list of `ParseIssue`.
+Here, `ParseIssue` represents an error that might occur during the parsing process. It is wrapped in a tagged error to make it easier to catch errors using `Effect.catchTag`. The result `Either<ParseError, A>` contains the inferred data type described by the schema. A successful parse yields a `Right` value with the parsed data `A`, while a failed parse results in a `Left` value containing a `ParseError`.
 
 Now, let's see another example using the `parseSync` function.
 
 The `parseSync` function is used to parse a value and throw an error if the parsing fails. This is especially useful when you want to ensure that the parsed value adheres to the correct format and are ready to throw an error if it does not.
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
+const Person = S.struct({
+  name: S.string,
+  age: S.number,
+});
+
 try {
   const person = S.parseSync(Person)({});
   console.log(person);
@@ -330,7 +344,7 @@ try {
 }
 /*
 Parsing failed:
-Error: error(s) found
+Error: { name: string; age: number }
 └─ ["name"]
    └─ is missing
   ...stack...
@@ -345,7 +359,7 @@ When your schema involves asynchronous transformations, neither the `parseSync` 
 
 ```ts
 import * as S from "@effect/schema/Schema";
-import { Effect } from "effect";
+import * as Effect from "effect/Effect";
 
 const PersonId = S.number;
 
@@ -376,7 +390,7 @@ Output:
   "_tag": "Left",
   "left": {
     "_id": "ParseError",
-    "message": "error(s) found\n└─ is forbidden"
+    "message": "is forbidden"
   }
 }
 */
@@ -460,11 +474,11 @@ S.parseSync(Person)(
 );
 /*
 throws
-Error: error(s) found
+Error: { name: string; age: number }
 ├─ ["email"]
-│  └─ is unexpected, expected "name" or "age"
+│  └─ is unexpected, expected "name" | "age"
 └─ ["age"]
-   └─ Expected number, actual "abc"
+   └─ Expected a number, actual "abc"
 */
 ```
 
@@ -508,7 +522,7 @@ Here's an example of how it works:
 
 ```ts
 import * as S from "@effect/schema/Schema";
-import { formatErrors } from "@effect/schema/TreeFormatter";
+import { formatError } from "@effect/schema/TreeFormatter";
 import * as Either from "effect/Either";
 
 const Person = S.struct({
@@ -519,11 +533,11 @@ const Person = S.struct({
 const result = S.parseEither(Person)({});
 if (Either.isLeft(result)) {
   console.error("Parsing failed:");
-  console.error(formatErrors(result.left.errors));
+  console.error(formatError(result.left));
 }
 /*
 Parsing failed:
-error(s) found
+{ name: string; age: number }
 └─ ["name"]
    └─ is missing
 */
@@ -534,8 +548,17 @@ error(s) found
 The `ArrayFormatter` is an alternative way to format errors, presenting them as an array of issues. Each issue contains properties such as `_tag`, `path`, and `message`:
 
 ```ts
-interface Issue {
-  readonly _tag: ParseErrors["_tag"];
+export interface Issue {
+  readonly _tag:
+    | "Refinement"
+    | "Tuple"
+    | "TypeLiteral"
+    | "Union"
+    | "Transform"
+    | "Type"
+    | "Forbidden"
+    | "Missing"
+    | "Unexpected";
   readonly path: ReadonlyArray<PropertyKey>;
   readonly message: string;
 }
@@ -544,7 +567,7 @@ interface Issue {
 Here's an example of how it works:
 
 ```ts
-import { formatErrors } from "@effect/schema/ArrayFormatter";
+import { formatError } from "@effect/schema/ArrayFormatter";
 import * as S from "@effect/schema/Schema";
 import * as Either from "effect/Either";
 
@@ -559,7 +582,7 @@ const result = S.parseEither(Person)(
 );
 if (Either.isLeft(result)) {
   console.error("Parsing failed:");
-  console.error(formatErrors(result.left.errors));
+  console.error(formatError(result.left));
 }
 /*
 Parsing failed:
@@ -567,14 +590,14 @@ Parsing failed:
   {
     _tag: 'Unexpected',
     path: [ 'foo' ],
-    message: 'Unexpected, expected "name" or "age"'
+    message: 'is unexpected, expected "name" | "age"'
   },
   {
     _tag: 'Type',
     path: [ 'name' ],
-    message: 'Expected string, actual 1'
+    message: 'Expected a string, actual 1'
   },
-  { _tag: 'Missing', path: [ 'age' ], message: 'Missing key or index' }
+  { _tag: 'Missing', path: [ 'age' ], message: 'is missing' }
 ]
 */
 ```
@@ -591,7 +614,12 @@ const Person = S.struct({
   age: S.number,
 });
 
-// const isPerson: (u: unknown) => u is Person
+/*
+const isPerson: (a: unknown, options?: ParseOptions | undefined) => a is {
+    readonly name: string;
+    readonly age: number;
+}
+*/
 const isPerson = S.is(Person);
 
 console.log(isPerson({ name: "Alice", age: 30 })); // true
@@ -620,9 +648,9 @@ try {
 }
 /*
 The input does not match the schema:
-Error: error(s) found
+Error: { name: string; age: number }
 └─ ["age"]
-   └─ Expected number, actual "30"
+   └─ Expected a number, actual "30"
 */
 
 // this will not throw an error
@@ -640,11 +668,16 @@ import * as fc from "fast-check";
 
 const Person = S.struct({
   name: S.string,
-  age: S.string.pipe(S.numberFromString, S.int()),
+  age: S.string.pipe(S.compose(S.NumberFromString), S.int()),
 });
 
-// Arbitrary for the To type
-const PersonArbitraryTo = Arbitrary.to(Person)(fc);
+/*
+fc.Arbitrary<{
+    readonly name: string;
+    readonly age: number;
+}>
+*/
+const PersonArbitraryTo = Arbitrary.make(Person)(fc);
 
 console.log(fc.sample(PersonArbitraryTo, 2));
 /*
@@ -652,8 +685,14 @@ Output:
 [ { name: 'iP=!', age: -6 }, { name: '', age: 14 } ]
 */
 
-// Arbitrary for the From type
-const PersonArbitraryFrom = Arbitrary.from(Person)(fc);
+/*
+Arbitrary for the "From" type:
+fc.Arbitrary<{
+    readonly name: string;
+    readonly age: string;
+}>
+*/
+const PersonArbitraryFrom = Arbitrary.make(S.from(Person))(fc);
 
 console.log(fc.sample(PersonArbitraryFrom, 2));
 /*
@@ -671,7 +710,7 @@ import * as S from "@effect/schema/Schema";
 import * as Arbitrary from "@effect/schema/Arbitrary";
 import * as fc from "fast-check";
 
-const arb = Arbitrary.to(S.string)(fc);
+const arb = Arbitrary.make(S.string)(fc);
 /*
 ...more lines...
   Types have separate declarations of a private property 'internalRng'.
@@ -716,13 +755,13 @@ const Person = S.struct({
   age: S.number,
 });
 
-const PersonPretty = Pretty.to(Person);
+const PersonPretty = Pretty.make(Person);
 
 // returns a string representation of the object
 console.log(PersonPretty({ name: "Alice", age: 30 }));
 /*
 Output:
-{ "name": "Alice", "age": 30 }
+'{ "name": "Alice", "age": 30 }'
 */
 ```
 
@@ -739,7 +778,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-const jsonSchema = JSONSchema.to(Person);
+const jsonSchema = JSONSchema.make(Person);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -785,7 +824,7 @@ const Person = S.struct({
   age: Age,
 });
 
-const jsonSchema = JSONSchema.to(Person);
+const jsonSchema = JSONSchema.make(Person);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -839,10 +878,10 @@ interface Category {
 
 const schema: S.Schema<Category> = S.struct({
   name: S.string,
-  categories: S.array(S.suspend(() => schema).pipe(S.identifier("Category"))),
-});
+  categories: S.array(S.suspend(() => schema)),
+}).pipe(S.identifier("Category"));
 
-const jsonSchema = JSONSchema.to(schema);
+const jsonSchema = JSONSchema.make(schema);
 
 console.log(JSON.stringify(jsonSchema, null, 2));
 /*
@@ -902,7 +941,7 @@ const schema = Positive.pipe(
   })
 );
 
-console.log(JSONSchema.to(schema));
+console.log(JSONSchema.make(schema));
 /*
 Output:
 {
@@ -920,7 +959,7 @@ As seen in the example, the JSON Schema annotations are merged with the base JSO
 
 ## Generating Equivalences
 
-The `to` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/effect/modules/Equivalence.ts.html) based on a schema definition:
+The `to` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/effect/schema/Equivalence.ts.html) based on a schema definition:
 
 ```ts
 import * as S from "@effect/schema/Schema";
@@ -932,7 +971,7 @@ const Person = S.struct({
 });
 
 // $ExpectType Equivalence<{ readonly name: string; readonly age: number; }>
-const PersonEquivalence = Equivalence.to(Person);
+const PersonEquivalence = Equivalence.make(Person);
 
 const john = { name: "John", age: 23 };
 const alice = { name: "Alice", age: 30 };
@@ -1000,7 +1039,6 @@ S.unknown;
 // allows no values
 S.never;
 
-S.json;
 S.UUID;
 S.ULID;
 ```
@@ -1008,6 +1046,8 @@ S.ULID;
 ## Literals
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 S.null; // same as S.literal(null)
 S.literal("a");
 S.literal("a", "b", "c"); // union of literals
@@ -1021,6 +1061,8 @@ S.literal(true);
 The `templateLiteral` combinator allows you to create a schema for a TypeScript template literal type.
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<`a${string}`>
 S.templateLiteral(S.literal("a"), S.string);
 
@@ -1050,14 +1092,16 @@ const LongString = S.string.pipe(
 console.log(S.parseSync(LongString)("a"));
 /*
 throws:
-error(s) found
-└─ a string at least 10 characters long
+Error: a string at least 10 characters long
+  ...stack...
 */
 ```
 
 It's recommended to include as much metadata as possible for later introspection of the schema, such as an identifier, JSON schema representation, and a description:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 const LongString = S.string.pipe(
   S.filter((s) => s.length >= 10, {
     message: () => "a string at least 10 characters long",
@@ -1074,31 +1118,30 @@ For more complex scenarios, you can return an `Option<ParseError>` type instead 
 ```ts
 import * as ParseResult from "@effect/schema/ParseResult";
 import * as S from "@effect/schema/Schema";
+import * as Option from "effect/Option";
 
 const schema = S.struct({ a: S.string, b: S.string }).pipe(
   S.filter((o) =>
     o.b === o.a
       ? Option.none()
       : Option.some(
-          ParseResult.parseError([
-            ParseResult.key("b", [
-              ParseResult.type(
-                S.literal(o.a).ast,
-                o.b,
-                `should be equal to a's value ("${o.a}")`
-              ),
-            ]),
-          ])
+          ParseResult.parseError(
+            ParseResult.type(
+              S.literal(o.a).ast,
+              o.b,
+              `b ("${o.b}") should be equal to a ("${o.a}")`
+            )
+          )
         )
   )
 );
 
-console.log(S.parseSync(schema)({ a: "a", b: "b" }));
+console.log(S.parseSync(schema)({ a: "foo", b: "bar" }));
 /*
 throws:
-error(s) found
-└─ ["b"]
-   └─ should be equal to a's value ("a")
+Error: <refinement schema>
+└─ Predicate refinement failure
+   └─ b ("bar") should be equal to a ("foo")
 */
 ```
 
@@ -1108,9 +1151,11 @@ error(s) found
 ### String filters
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 S.string.pipe(S.maxLength(5));
 S.string.pipe(S.minLength(5));
-S.string.pipe(nonEmpty()); // same as S.minLength(1)
+S.NonEmpty; // same as S.string.pipe(S.maxLength(1))
 S.string.pipe(S.length(5));
 S.string.pipe(S.pattern(regex));
 S.string.pipe(S.startsWith(string));
@@ -1125,6 +1170,8 @@ S.string.pipe(S.lowercased()); // verifies that a string is lowercased
 ### Number filters
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 S.number.pipe(S.greaterThan(5));
 S.number.pipe(S.greaterThanOrEqualTo(5));
 S.number.pipe(S.lessThan(5));
@@ -1185,7 +1232,6 @@ S.BigDecimal.pipe(S.nonPositiveBigDecimal());
 
 ```ts
 import * as S from "@effect/schema/Schema";
-import * as Duration from "effect/BigDecimal";
 
 S.Duration.pipe(S.greaterThanDuration("5 seconds"));
 S.Duration.pipe(S.greaterThanOrEqualToDuration("5 seconds"));
@@ -1284,6 +1330,8 @@ const UserIdSchema = S.string.pipe(S.fromBrand(UserId));
 ## Native enums
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 enum Fruits {
   Apple,
   Banana,
@@ -1296,8 +1344,13 @@ S.enums(Fruits);
 ## Nullables
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<string | null>
 S.nullable(S.string);
+
+// $ExpectType Schema<string | null | undefined>
+S.nullish(S.string);
 ```
 
 ## Unions
@@ -1305,6 +1358,8 @@ S.nullable(S.string);
 `@effect/schema/Schema` includes a built-in `union` combinator for composing "OR" types.
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<string | number>
 S.union(S.string, S.number);
 ```
@@ -1314,6 +1369,8 @@ S.union(S.string, S.number);
 While the following is perfectly acceptable:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<"a" | "b" | "c">
 const schema = S.union(S.literal("a"), S.literal("b"), S.literal("c"));
 ```
@@ -1321,6 +1378,8 @@ const schema = S.union(S.literal("a"), S.literal("b"), S.literal("c"));
 It is possible to use `literal` and pass multiple literals, which is less cumbersome:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<"a" | "b" | "c">
 const schema = S.literal("a", "b", "c");
 ```
@@ -1399,6 +1458,7 @@ To achieve this, you can add a special property to each member of the union, whi
 
 ```ts
 import * as S from "@effect/schema/Schema";
+import * as assert from "node:assert";
 
 const Circle = S.struct({
   radius: S.number,
@@ -1425,12 +1485,12 @@ const DiscriminatedShape = S.union(
   )
 );
 
-expect(S.parseSync(DiscriminatedShape)({ radius: 10 })).toEqual({
+assert.deepStrictEqual(S.parseSync(DiscriminatedShape)({ radius: 10 }), {
   kind: "circle",
   radius: 10,
 });
 
-expect(S.parseSync(DiscriminatedShape)({ sideLength: 10 })).toEqual({
+assert.deepStrictEqual(S.parseSync(DiscriminatedShape)({ sideLength: 10 }), {
   kind: "square",
   sideLength: 10,
 });
@@ -1443,6 +1503,9 @@ However, when we use the schema to encode a value, we want the output to match t
 The previous solution works perfectly and shows how we can add and remove properties to our schema at will, making it easier to consume the result within our domain model. However, it requires a lot of boilerplate. Fortunately, there is an API called `attachPropertySignature` designed specifically for this use case, which allows us to achieve the same result with much less effort:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+import * as assert from "node:assert";
+
 const Circle = S.struct({ radius: S.number });
 const Square = S.struct({ sideLength: S.number });
 const DiscriminatedShape = S.union(
@@ -1451,23 +1514,26 @@ const DiscriminatedShape = S.union(
 );
 
 // parsing
-expect(S.parseSync(DiscriminatedShape)({ radius: 10 })).toEqual({
+assert.deepStrictEqual(S.parseSync(DiscriminatedShape)({ radius: 10 }), {
   kind: "circle",
   radius: 10,
 });
 
 // encoding
-expect(
+assert.deepStrictEqual(
   S.encodeSync(DiscriminatedShape)({
     kind: "circle",
     radius: 10,
-  })
-).toEqual({ radius: 10 });
+  }),
+  { radius: 10 }
+);
 ```
 
 ## Tuples
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<readonly [string, number]>
 S.tuple(S.string, S.number);
 ```
@@ -1475,6 +1541,8 @@ S.tuple(S.string, S.number);
 ### Append a required element
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<readonly [string, number, boolean]>
 S.tuple(S.string, S.number).pipe(S.element(S.boolean));
 ```
@@ -1482,6 +1550,8 @@ S.tuple(S.string, S.number).pipe(S.element(S.boolean));
 ### Append an optional element
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<readonly [string, number, boolean?]>
 S.tuple(S.string, S.number).pipe(S.optionalElement(S.boolean));
 ```
@@ -1489,6 +1559,8 @@ S.tuple(S.string, S.number).pipe(S.optionalElement(S.boolean));
 ### Append a rest element
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<readonly [string, number, ...boolean[]]>
 S.tuple(S.string, S.number).pipe(S.rest(S.boolean));
 ```
@@ -1496,6 +1568,8 @@ S.tuple(S.string, S.number).pipe(S.rest(S.boolean));
 ## Arrays
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<readonly number[]>
 S.array(S.number);
 ```
@@ -1505,6 +1579,8 @@ S.array(S.number);
 By default, when you use `S.array`, it generates a type marked as readonly. The `mutable` combinator is a useful function for creating a new schema with a mutable type in a **shallow** manner:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<number[]>
 S.mutable(S.array(S.number));
 ```
@@ -1512,6 +1588,8 @@ S.mutable(S.array(S.number));
 ### Non empty arrays
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<readonly [number, ...number[]]>
 S.nonEmptyArray(S.number);
 ```
@@ -1519,6 +1597,8 @@ S.nonEmptyArray(S.number);
 ## Structs
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }>
 S.struct({ a: S.string, b: S.number });
 ```
@@ -1528,6 +1608,8 @@ S.struct({ a: S.string, b: S.number });
 By default, when you use `S.struct`, it generates a type with properties that are marked as readonly. The `mutable` combinator is a useful function for creating a new schema with properties made mutable in a **shallow** manner:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ a: string; b: number; }>
 S.mutable(S.struct({ a: S.string, b: S.number }));
 ```
@@ -1668,7 +1750,8 @@ const originalSchema = S.struct({ a: S.string, b: S.number });
 // Renaming the "a" property to "c"
 const renamedSchema = S.rename(originalSchema, { a: "c" });
 
-S.parseSync(renamedSchema)({ a: "a", b: 1 }); // Output: { c: "a", b: 1 }
+console.log(S.parseSync(renamedSchema)({ a: "a", b: 1 }));
+// Output: { c: "a", b: 1 }
 ```
 
 In the example above, we have an original schema with properties "a" and "b." Using the `rename` API, we create a new schema where we rename the "a" property to "c." The resulting schema, when used with `S.parseSync`, transforms the input object by renaming the specified property.
@@ -1710,9 +1793,11 @@ Keep in mind that it throws an error for invalid properties:
 ```ts
 new Person({ id: 1, name: "" });
 /* throws
-error(s) found
+Error: { id: number; name: a non empty string }
 └─ ["name"]
-   └─ Expected a non empty string, actual ""
+   └─ a non empty string
+      └─ Predicate refinement failure
+         └─ Expected a non empty string, actual ""
 */
 ```
 
@@ -1742,8 +1827,14 @@ console.log(john.upperName); // "JOHN"
 The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.struct` property, which can be used when the class prototype is not required.
 
 ```ts
-// $ExpectType Schema<{ readonly id: number; name: string; }, Person>
-S.suspend(() => Person);
+import * as S from "@effect/schema/Schema";
+
+class Person extends S.Class<Person>()({
+  id: S.number,
+  name: S.string.pipe(S.nonEmpty()),
+}) {}
+
+console.log(S.isSchema(Person)); // true
 
 // $ExpectType Schema<{ readonly id: number; name: string; }, { readonly id: number; name: string; }>
 Person.struct;
@@ -1824,14 +1915,14 @@ function getAge(id: number): Effect.Effect<never, Error, number> {
 
 export class PersonWithTransform extends Person.transform<PersonWithTransform>()(
   {
-    age: S.optional(S.number), { exact: true, as: "Option" }),
+    age: S.optional(S.number, { exact: true, as: "Option" }),
   },
   (input) =>
     Effect.mapBoth(getAge(input.id), {
       onFailure: (e) =>
-        ParseResult.parseError([
-          ParseResult.type(S.string.ast, input.id, e.message),
-        ]),
+        ParseResult.parseError(
+          ParseResult.type(S.string.ast, input.id, e.message)
+        ),
       // must return { age: Option<number> }
       onSuccess: (age) => ({ ...input, age: Option.some(age) }),
     }),
@@ -1855,9 +1946,9 @@ export class PersonWithTransformFrom extends Person.transformFrom<PersonWithTran
   (input) =>
     Effect.mapBoth(getAge(input.id), {
       onFailure: (e) =>
-        ParseResult.parseError([
-          ParseResult.type(S.string.ast, input, e.message),
-        ]),
+        ParseResult.parseError(
+          ParseResult.type(S.string.ast, input, e.message)
+        ),
       // must return { age?: number }
       onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input }),
     }),
@@ -1924,6 +2015,8 @@ S.struct({ a: S.string, b: S.number, c: S.boolean }).pipe(S.omit("a", "c"));
 The `partial` operation makes all properties within a schema optional.
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ readonly a?: string; readonly b?: number; }>
 S.partial(S.struct({ a: S.string, b: S.number }));
 ```
@@ -1933,6 +2026,8 @@ S.partial(S.struct({ a: S.string, b: S.number }));
 The `required` operation ensures that all properties in a schema are mandatory.
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }>
 S.required(
   S.struct({
@@ -1947,6 +2042,8 @@ S.required(
 ### String keys
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ readonly [x: string]: string; }>
 S.record(S.string, S.string);
 
@@ -1957,6 +2054,8 @@ S.record(S.union(S.literal("a"), S.literal("b")), S.string);
 ### Keys refinements
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ readonly [x: string]: string; }>
 S.record(S.string.pipe(S.minLength(2)), S.string);
 ```
@@ -1964,6 +2063,8 @@ S.record(S.string.pipe(S.minLength(2)), S.string);
 ### Symbol keys
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ readonly [x: symbol]: string; }>
 S.record(S.symbolFromSelf, S.string);
 ```
@@ -1971,6 +2072,8 @@ S.record(S.symbolFromSelf, S.string);
 ### Template literal keys
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }>
 S.record(S.templateLiteral(S.literal("a"), S.string), S.string);
 ```
@@ -1980,6 +2083,8 @@ S.record(S.templateLiteral(S.literal("a"), S.string), S.string);
 By default, when you use `S.record`, it generates a type marked as readonly. The `mutable` combinator is a useful function for creating a new schema with a mutable type in a **shallow** manner:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ [x: string]: string; }>
 S.mutable(S.record(S.string, S.string););
 ```
@@ -1989,6 +2094,8 @@ S.mutable(S.record(S.string, S.string););
 The `extend` combinator allows you to add additional fields or index signatures to an existing `Schema`.
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
 S.struct({ a: S.string, b: S.string }).pipe(
   S.extend(S.struct({ c: S.string })), // <= you can add more fields
@@ -2001,8 +2108,10 @@ S.struct({ a: S.string, b: S.string }).pipe(
 Combining and reusing schemas is a common requirement, the `compose` combinator allows you to do just that. It enables you to combine two schemas, `Schema<A, B>` and `Schema<B, C>`, into a single schema `Schema<A, C>`:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 // $ExpectType Schema<string, readonly string[]>
-const schema1 = S.split(S.string, ",");
+const schema1 = S.split(",");
 
 // $ExpectType Schema<readonly string[], readonly number[]>
 const schema2 = S.array(S.NumberFromString);
@@ -2020,6 +2129,8 @@ Now, by using the `compose` combinator, we can create a new schema, `composedSch
 In the following section, we demonstrate how to use the `instanceOf` combinator to create a `Schema` for a class instance.
 
 ```ts
+import * as S from "@effect/schema/Schema";
+
 class Test {
   constructor(readonly name: string) {}
 }
@@ -2190,7 +2301,7 @@ const PeopleIdFromString = S.transformOrFail(
   (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
       onFailure: (e) =>
-        ParseResult.parseError([ParseResult.type(ast, s, e.message)]),
+        ParseResult.parseError(ParseResult.type(ast, s, e.message)),
       onSuccess: () => s,
     }),
   ParseResult.succeed
@@ -2198,7 +2309,7 @@ const PeopleIdFromString = S.transformOrFail(
 
 const parse = (id: string) =>
   Effect.mapError(S.parse(PeopleIdFromString)(id), (e) =>
-    TreeFormatter.formatErrors(e.errors)
+    TreeFormatter.formatError(e)
   );
 
 Effect.runPromiseExit(parse("1")).then(console.log);
@@ -2216,7 +2327,7 @@ Output:
   cause: {
     _id: 'Cause',
     _tag: 'Fail',
-    failure: 'error(s) found\n└─ Error: 404'
+    failure: '(string <-> string)\n└─ Transformation process failure\n   └─ Error: 404'
   }
 }
 */
@@ -2232,13 +2343,13 @@ The `split` combinator allows splitting a string into an array of strings.
 import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<string, string[]>
-const schema = S.string.pipe(S.split(","));
+const schema = S.split(",");
 const parse = S.parseSync(schema);
 
-parse(""); // [""]
-parse(","); // ["", ""]
-parse("a,"); // ["a", ""]
-parse("a,b"); // ["a", "b"]
+console.log(parse("")); // [""]
+console.log(parse(",")); // ["", ""]
+console.log(parse("a,")); // ["a", ""]
+console.log(parse("a,b")); // ["a", "b"]
 ```
 
 #### Trim
@@ -2252,10 +2363,10 @@ import * as S from "@effect/schema/Schema";
 const schema = S.Trim;
 const parse = S.parseSync(schema);
 
-parse("a"); // "a"
-parse(" a"); // "a"
-parse("a "); // "a"
-parse(" a "); // "a"
+console.log(parse("a")); // "a"
+console.log(parse(" a")); // "a"
+console.log(parse("a ")); // "a"
+console.log(parse(" a ")); // "a"
 ```
 
 **Note**. If you were looking for a combinator to check if a string is trimmed, check out the `trimmed` combinator.
@@ -2271,49 +2382,49 @@ import * as S from "@effect/schema/Schema";
 const schema = S.Lowercase;
 const parse = S.parseSync(schema);
 
-parse("A"); // "a"
-parse(" AB"); // " ab"
-parse("Ab "); // "ab "
-parse(" ABc "); // " abc "
+console.log(parse("A")); // "a"
+console.log(parse(" AB")); // " ab"
+console.log(parse("Ab ")); // "ab "
+console.log(parse(" ABc ")); // " abc "
 ```
 
 **Note**. If you were looking for a combinator to check if a string is lowercased, check out the `lowercased` combinator.
 
-#### ParseJson
+#### Parse JSON
 
-The `ParseJson` schema offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
+The `parseJson` constructor offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<string, unknown>
-const schema = S.ParseJson;
+const schema = S.parseJson();
 const parse = S.parseSync(schema);
 
-parse("{}"); // {}
-parse(`{"a":"b"}`); // { "a": "b" }
-parse(""); // throws Unexpected end of JSON input
+// Parse valid JSON strings
+console.log(parse("{}")); // Output: {}
+console.log(parse(`{"a":"b"}`)); // Output: { a: "b" }
+
+// Attempting to parse an empty string results in an error
+parse("");
+/*
+throws:
+Error: (JsonString <-> unknown)
+└─ Transformation process failure
+   └─ Unexpected end of JSON input
+*/
 ```
 
-You can also compose the `ParseJson` schema with other schemas to refine the parsing result:
+Additionally, you can refine the parsing result by providing a schema to the `parseJson` constructor:
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<string, { readonly a: number; }>
-const schema = S.ParseJson.pipe(S.compose(S.struct({ a: S.number })));
+const schema = S.parseJson(S.struct({ a: S.number }));
 ```
 
-In this example, we've composed the `ParseJson` schema with a struct schema to ensure that the result will have a specific shape, including an object with a numeric property "a".
-
-Alternatively, you can achieve the same result by using the equivalent built-in combinator `fromJson`:
-
-```ts
-import * as S from "@effect/schema/Schema";
-
-// $ExpectType Schema<string, { readonly a: number; }>
-const schema = S.fromJson(S.struct({ a: S.number }));
-```
+In this example, we've used `parseJson` with a struct schema to ensure that the parsed result has a specific structure, including an object with a numeric property "a". This helps in handling JSON data with predefined shapes.
 
 ### Number transformations
 
@@ -2331,15 +2442,21 @@ const schema = S.NumberFromString;
 const parse = S.parseSync(schema);
 
 // success cases
-parse("1"); // 1
-parse("-1"); // -1
-parse("1.5"); // 1.5
-parse("NaN"); // NaN
-parse("Infinity"); // Infinity
-parse("-Infinity"); // -Infinity
+console.log(parse("1")); // 1
+console.log(parse("-1")); // -1
+console.log(parse("1.5")); // 1.5
+console.log(parse("NaN")); // NaN
+console.log(parse("Infinity")); // Infinity
+console.log(parse("-Infinity")); // -Infinity
 
 // failure cases
-parse("a"); // throws
+parse("a");
+/*
+throws:
+Error: NumberFromString
+└─ Transformation process failure
+   └─ Expected NumberFromString, actual "a"
+*/
 ```
 
 #### clamp
@@ -2353,9 +2470,10 @@ import * as S from "@effect/schema/Schema";
 const schema = S.number.pipe(S.clamp(-1, 1)); // clamps the input to -1 <= x <= 1
 
 const parse = S.parseSync(schema);
-parse(-3); // -1
-parse(0); // 0
-parse(3); // 1
+
+console.log(parse(-3)); // -1
+console.log(parse(0)); // 0
+console.log(parse(3)); // 1
 ```
 
 ### BigDecimal transformations
@@ -2371,7 +2489,7 @@ import * as S from "@effect/schema/Schema";
 const schema = S.BigDecimal;
 const parse = S.parseSync(schema);
 
-parse(".124"); // BigDecimal(.124)
+console.log(parse(".124")); // { _id: 'BigDecimal', value: '124', scale: 3 }
 ```
 
 #### BigDecimalFromNumber
@@ -2388,7 +2506,7 @@ import * as S from "@effect/schema/Schema";
 const schema = S.BigDecimalFromNumber;
 const parse = S.parseSync(schema);
 
-parse(0.111); // BigDecimal(.111)
+console.log(parse(0.111)); // { _id: 'BigDecimal', value: '111', scale: 3 }
 ```
 
 #### clampBigDecimal
@@ -2399,15 +2517,16 @@ Clamps a `BigDecimal` between a minimum and a maximum value.
 import * as S from "@effect/schema/Schema";
 import * as BigDecimal from "effect/BigDecimal";
 
-// $ExpectType Schema<BigDecimal.BigDecimal, BigDecimal.BigDecimal>
+// $ExpectType Schema<string, BigDecimal.BigDecimal>
 const schema = S.BigDecimal.pipe(
   S.clampBigDecimal(BigDecimal.fromNumber(-1), BigDecimal.fromNumber(1))
 );
 
 const parse = S.parseSync(schema);
-parse("-2"); // BigDecimal(-1)
-parse("0"); // BigDecimal(0)
-parse("3"); // BigDecimal(1)
+
+console.log(parse("-2")); // { _id: 'BigDecimal', value: '-1', scale: 0 }
+console.log(parse("0")); // { _id: 'BigDecimal', value: '0', scale: 0 }
+console.log(parse("3")); // { _id: 'BigDecimal', value: '1', scale: 0 }
 ```
 
 #### negateBigDecimal
@@ -2416,15 +2535,15 @@ Negates a `BigDecimal`.
 
 ```ts
 import * as S from "@effect/schema/Schema";
-import * as BigDecimal from "effect/BigDecimal";
 
-// $ExpectType Schema<BigDecimal.BigDecimal, BigDecimal.BigDecimal>
+// $ExpectType Schema<string, BigDecimal.BigDecimal>
 const schema = S.BigDecimal.pipe(S.negateBigDecimal);
 
 const parse = S.parseSync(schema);
-parse("-2"); // BigDecimal(2)
-parse("0"); // BigDecimal(0)
-parse("3"); // BigDecimal(-3)
+
+console.log(parse("-2")); // { _id: 'BigDecimal', value: '2', scale: 0 }
+console.log(parse("0")); // { _id: 'BigDecimal', value: '0', scale: 0 }
+console.log(parse("3")); // { _id: 'BigDecimal', value: '-3', scale: 0 }
 ```
 
 ### Duration transformations
@@ -2435,46 +2554,46 @@ Converts an hrtime(i.e. `[seconds: number, nanos: number]`) into a `Duration`.
 
 ```ts
 import * as S from "@effect/schema/Schema";
-import * as Duration from "effect/Duration";
 
 // $ExpectType Schema<number, Duration>
 const schema = S.Duration;
 
 const parse = S.parseSync(schema);
-parse([0, 0]); // 0 seconds
-parse([5000, 0]); // 5 seconds
+
+console.log(parse([0, 0])); // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 0, 0 ] }
+console.log(parse([5000, 0])); // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 5000, 0 ] }
 ```
 
-#### DurationFromNumber
+#### DurationFromMillis
 
 Converts a `number` into a `Duration` where the number represents the number of milliseconds.
 
 ```ts
 import * as S from "@effect/schema/Schema";
-import * as Duration from "effect/Duration";
 
 // $ExpectType Schema<number, Duration>
-const schema = S.DurationFromNumber;
+const schema = S.DurationFromMillis;
 
 const parse = S.parseSync(schema);
-parse(0); // 0 seconds
-parse(5000); // 5 seconds
+
+console.log(parse(0)); // { _id: 'Duration', _tag: 'Millis', millis: 0 }
+console.log(parse(5000)); // { _id: 'Duration', _tag: 'Millis', millis: 5000 }
 ```
 
-#### DurationFromBigint
+#### DurationFromNanos
 
 Converts a `bigint` into a `Duration` where the number represents the number of nanoseconds.
 
 ```ts
 import * as S from "@effect/schema/Schema";
-import * as Duration from "effect/Duration";
 
 // $ExpectType Schema<bigint, Duration>
-const schema = S.DurationFromBigint;
+const schema = S.DurationFromNanos;
 
 const parse = S.parseSync(schema);
-parse(0n); // 0 seconds
-parse(5000000000n); // 5 seconds
+
+console.log(parse(0n)); // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 0, 0 ] }
+console.log(parse(5000000000n)); // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 5, 0 ] }
 ```
 
 #### clampDuration
@@ -2491,9 +2610,10 @@ const schema = S.DurationFromSelf.pipe(
 );
 
 const parse = S.parseSync(schema);
-parse(Duration.decode("2 seconds")); // 5 seconds
-parse(Duration.decode("6 seconds")); // 6 seconds
-parse(Duration.decode("11 seconds")); // 10 seconds
+
+console.log(parse(Duration.decode("2 seconds"))); // { _id: 'Duration', _tag: 'Millis', millis: 5000 }
+console.log(parse(Duration.decode("6 seconds"))); // { _id: 'Duration', _tag: 'Millis', millis: 6000 }
+console.log(parse(Duration.decode("11 seconds"))); // { _id: 'Duration', _tag: 'Millis', millis: 10000 }
 ```
 
 ### Secret transformations
@@ -2504,13 +2624,13 @@ Converts a `string` into a `Secret`.
 
 ```ts
 import * as S from "@effect/schema/Schema";
-import * as Secret from "effect/Secret";
 
 // $ExpectType Schema<string, Secret>
 const schema = S.Secret;
 
 const parse = S.parseSync(schema);
-parse("keep it secret, keep it safe"); // Secret
+
+console.log(parse("keep it secret, keep it safe")); // {}
 ```
 
 ### Symbol transformations
@@ -2526,7 +2646,7 @@ import * as S from "@effect/schema/Schema";
 const schema = S.symbol;
 const parse = S.parseSync(schema);
 
-parse("a"); // Symbol.for("a")
+console.log(parse("a")); // Symbol(a)
 ```
 
 ### Bigint transformations
@@ -2543,11 +2663,17 @@ const schema = S.bigint;
 const parse = S.parseSync(schema);
 
 // success cases
-parse("1"); // 1n
-parse("-1"); // -1n
+console.log(parse("1")); // 1n
+console.log(parse("-1")); // -1n
 
 // failure cases
-parse("a"); // throws
+parse("a");
+/*
+throws:
+Error: bigint
+└─ Transformation process failure
+   └─ Expected bigint, actual "a"
+*/
 parse("1.5"); // throws
 parse("NaN"); // throws
 parse("Infinity"); // throws
@@ -2567,13 +2693,19 @@ const parse = S.parseSync(schema);
 const encode = S.encodeSync(schema);
 
 // success cases
-parse(1); // 1n
-parse(-1); // -1n
-encode(1n); // 1
-encode(-1n); // -1
+console.log(parse(1)); // 1n
+console.log(parse(-1)); // -1n
+console.log(encode(1n)); // 1
+console.log(encode(-1n)); // -1
 
 // failure cases
-parse(1.5); // throws
+parse(1.5);
+/*
+throws:
+Error: BigintFromNumber
+└─ Transformation process failure
+   └─ Expected BigintFromNumber, actual 1.5
+*/
 parse(NaN); // throws
 parse(Infinity); // throws
 parse(-Infinity); // throws
@@ -2589,17 +2721,18 @@ Clamps a `bigint` between a minimum and a maximum value.
 import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<bigint, bigint>
-const schema = S.bigint.pipe(S.clampBigint(-1n, 1n)); // clamps the input to -1n <= x <= 1n
+const schema = S.bigintFromSelf.pipe(S.clampBigint(-1n, 1n)); // clamps the input to -1n <= x <= 1n
 
 const parse = S.parseSync(schema);
-parse(-3n); // -1n
-parse(0n); // 0n
-parse(3n); // 1n
+
+console.log(parse(-3n)); // -1n
+console.log(parse(0n)); // 0n
+console.log(parse(3n)); // 1n
 ```
 
 ### Boolean transformations
 
-#### not
+#### Not
 
 Negates a boolean value.
 
@@ -2607,11 +2740,12 @@ Negates a boolean value.
 import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<boolean, boolean>
-const schema = S.boolean.pipe(S.not);
+const schema = S.Not;
 
 const parse = S.parseSync(schema);
-parse(true); // false
-parse(false); // true
+
+console.log(parse(true)); // false
+console.log(parse(false)); // true
 ```
 
 ### Date transformations
@@ -2627,14 +2761,26 @@ import * as S from "@effect/schema/Schema";
 const schema = S.Date;
 const parse = S.parseSync(schema);
 
-parse("1970-01-01T00:00:00.000Z"); // new Date(0)
+console.log(parse("1970-01-01T00:00:00.000Z")); // 1970-01-01T00:00:00.000Z
 
-parse("a"); // throws
+parse("a");
+/*
+throws:
+Error: Date
+└─ Predicate refinement failure
+   └─ Expected Date (a valid Date), actual Invalid Date
+*/
 
 const validate = S.validateSync(schema);
 
-validate(new Date(0)); // new Date(0)
-validate(new Date("Invalid Date")); // throws
+console.log(validate(new Date(0))); // 1970-01-01T00:00:00.000Z
+validate(new Date("Invalid Date"));
+/*
+throws:
+Error: Date
+└─ Predicate refinement failure
+   └─ Expected Date (a valid Date), actual Invalid Date
+*/
 ```
 
 ## Interop with `effect/Data`
@@ -2654,6 +2800,9 @@ console.log(Equal.equals(person1, person2)); // true
 You can use the `Schema.data(schema)` combinator to build a schema from an existing schema that can decode a value `A` to a value `Data<A>`:
 
 ```ts
+import * as S from "@effect/schema/Schema";
+import * as Equal from "effect/Equal";
+
 /*
 S.Schema<{
     readonly name: string;
@@ -2750,7 +2899,7 @@ import * as S from "@effect/schema/Schema";
 const schema = S.readonlySet(S.number); // define a schema for ReadonlySet with number values
 const parse = S.parseSync(schema);
 
-parse([1, 2, 3]); // new Set([1, 2, 3])
+console.log(parse([1, 2, 3])); // Set(3) { 1, 2, 3 }
 ```
 
 ## ReadonlyMap
@@ -2764,11 +2913,13 @@ import * as S from "@effect/schema/Schema";
 const schema = S.readonlyMap(S.number, S.string); // define the schema for ReadonlyMap with number keys and string values
 const parse = S.parseSync(schema);
 
-parse([
-  [1, "a"],
-  [2, "b"],
-  [3, "c"],
-]); // new Map([[1, "a"], [2, "b"], [3, "c"]])
+console.log(
+  parse([
+    [1, "a"],
+    [2, "b"],
+    [3, "c"],
+  ])
+); // Map(3) { 1 => 'a', 2 => 'b', 3 => 'c' }
 ```
 
 # Useful Examples
@@ -2777,12 +2928,75 @@ parse([
 
 Since there are various different definitions of what constitutes a valid email address depending on the environment and use case, `@effect/schema` does not provide a built-in combinator for parsing email addresses. However, it is easy to define a custom combinator that can be used to parse email addresses.
 
-
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // see https://stackoverflow.com/questions/46155/how-can-i-validate-an-email-address-in-javascript/46181#46181
-const Email = S.pattern(/^(?!\.)(?!.*\.\.)([A-Z0-9_+-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i);
+const Email = S.pattern(
+  /^(?!\.)(?!.*\.\.)([A-Z0-9_+-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i
+);
+```
+
+## Url
+
+Multiple environments like the Browser or Node provide a built-in `URL` class that can be used to validate URLs. Here we demonstrate how to leverage it to validate if a string is a valid URL.
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const UrlString: S.Schema<string, string> = S.string.pipe(
+  S.filter((value) => {
+    try {
+      new URL(value);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  })
+);
+
+const parse = S.parseSync(UrlString);
+
+console.log(parse("https://www.effect.website")); // https://www.effect.website
+```
+
+In case you prefer to normalize URLs you can combine `transformOrFail` with `URL`:
+
+```ts
+import * as ParseResult from "@effect/schema/ParseResult";
+import * as S from "@effect/schema/Schema";
+
+const NormalizedUrlString: S.Schema<string, string> = S.string.pipe(
+  S.filter((value) => {
+    try {
+      return new URL(value).toString() === value;
+    } catch (_) {
+      return false;
+    }
+  })
+);
+
+const NormalizeUrlString: S.Schema<string, string> = S.transformOrFail(
+  S.string,
+  NormalizedUrlString,
+  (value, _, ast) =>
+    ParseResult.try({
+      try: () => new URL(value).toString(),
+      catch: (err) =>
+        ParseResult.parseError(
+          ParseResult.type(
+            ast,
+            value,
+            err instanceof Error ? err.message : undefined
+          )
+        ),
+    }),
+  ParseResult.succeed
+);
+
+const parse = S.parseSync(NormalizeUrlString);
+
+console.log(parse("https://www.effect.website")); // "https://www.effect.website/"
 ```
 
 # Technical overview
@@ -2916,7 +3130,18 @@ Output:
 Annotations can be read using the `getAnnotation` helper, here's an example:
 
 ```ts
+import * as AST from "@effect/schema/AST";
+import * as S from "@effect/schema/Schema";
 import * as Option from "effect/Option";
+
+const DeprecatedId = Symbol.for(
+  "some/unique/identifier/for/the/custom/annotation"
+);
+
+const deprecated = <I, A>(self: S.Schema<I, A>): S.Schema<I, A> =>
+  S.make(AST.setAnnotation(self.ast, DeprecatedId, true));
+
+const schema = deprecated(S.string);
 
 const isDeprecated = <A>(schema: S.Schema<A>): boolean =>
   AST.getAnnotation<boolean>(DeprecatedId)(schema.ast).pipe(
@@ -2925,6 +3150,313 @@ const isDeprecated = <A>(schema: S.Schema<A>): boolean =>
 
 console.log(isDeprecated(S.string)); // false
 console.log(isDeprecated(schema)); // true
+```
+
+## Error messages
+
+### Default Error Messages
+
+When a parsing, decoding, or encoding process encounters a failure, a default error message is automatically generated for you. Let's explore some examples:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.string,
+  age: S.number,
+});
+
+S.parseSync(schema)(null);
+/*
+throws:
+Error: Expected { name: string; age: number }, actual null
+*/
+
+S.parseSync(schema)({}, { errors: "all" });
+/*
+throws:
+Error: { name: string; age: number }
+├─ ["name"]
+│  └─ is missing
+└─ ["age"]
+   └─ is missing
+*/
+```
+
+### Identifiers in Error Messages
+
+When you include an identifier annotation, it will be incorporated into the default error message, followed by a description if provided:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.string.pipe(S.identifier("Name")),
+  age: S.number.pipe(S.identifier("Age")),
+}).pipe(S.identifier("Person"));
+
+S.parseSync(schema)(null);
+/*
+throws:
+Error: Expected Person, actual null
+*/
+
+S.parseSync(schema)({}, { errors: "all" });
+/*
+throws:
+Error: Person
+├─ ["name"]
+│  └─ is missing
+└─ ["age"]
+   └─ is missing
+*/
+
+S.parseSync(schema)({ name: null, age: null }, { errors: "all" });
+/*
+throws:
+Error: Person
+├─ ["name"]
+│  └─ Expected Name (a string), actual null
+└─ ["age"]
+   └─ Expected Age (a number), actual null
+*/
+```
+
+### Refinements
+
+When a refinement fails, the default error message indicates whether the failure occurred in the "from" part or within the predicate defining the refinement:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.NonEmpty.pipe(S.identifier("Name")), // refinement
+  age: S.Positive.pipe(S.int(), S.identifier("Age")), // refinement
+}).pipe(S.identifier("Person"));
+
+// "from" failure
+S.parseSync(schema)({ name: null, age: 18 });
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name
+      └─ From side refinement failure
+         └─ Expected a string, actual null
+*/
+
+// predicate failure
+S.parseSync(schema)({ name: "", age: 18 });
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name
+      └─ Predicate refinement failure
+         └─ Expected Name (a non empty string), actual ""
+*/
+```
+
+In the first example, the error message indicates a "from" side refinement failure in the "Name" property, specifying that a string was expected but received null. In the second example, a predicate refinement failure is reported, indicating that a non-empty string was expected for "Name," but an empty string was provided.
+
+### Refinements overrides
+
+You have the option to customize error messages for refinements using the `S.message` annotation:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.NonEmpty.pipe(
+    S.identifier("Name"),
+    S.message(() => "Name: a required non empty string")
+  ),
+  age: S.Positive.pipe(
+    S.int(),
+    S.identifier("Age"),
+    S.message(() => "Age: a positive integer")
+  ),
+}).pipe(S.identifier("Person"));
+
+S.parseSync(schema)({ name: null, age: 18 });
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name: a required non empty string
+*/
+
+S.parseSync(schema)({ name: "", age: 18 });
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name: a required non empty string
+*/
+```
+
+When setting multiple override messages, the one corresponding to the **first** failed predicate is used, starting from the innermost refinement to the outermost:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  name: S.NonEmpty,
+  age: S.number.pipe(
+    S.message(() => "please enter a number"),
+    S.positive({ message: () => "please enter a positive number" }),
+    S.int({ message: () => "please enter an integer" })
+  ),
+}).pipe(S.identifier("Person"));
+
+S.parseSync(schema)({ name: "John", age: null });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a number
+*/
+
+S.parseSync(schema)({ name: "John", age: -1 });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a positive number
+*/
+
+S.parseSync(schema)({ name: "John", age: 1.2 });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter an integer
+*/
+
+S.parseSync(schema)({ name: "John", age: -1.2 });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a positive number
+*/
+```
+
+### Transformations
+
+When a transformation encounters an error, the default error message provides information on whether the failure happened in the "from" part, the "to" part, or within the transformation process itself:
+
+```ts
+import * as ParseResult from "@effect/schema/ParseResult";
+import * as S from "@effect/schema/Schema";
+
+const IntFromString = S.transformOrFail(
+  S.string,
+  S.Int,
+  (s, _, ast) => {
+    const n = Number(s);
+    return Number.isNaN(n)
+      ? ParseResult.fail(ParseResult.type(ast, s))
+      : ParseResult.succeed(n);
+  },
+  (n) => ParseResult.succeed(String(n))
+).pipe(S.identifier("IntFromString"));
+
+const schema = S.struct({
+  name: S.NonEmpty,
+  age: IntFromString,
+}).pipe(S.identifier("Person"));
+
+// "from" failure
+S.parseSync(schema)({ name: "John", age: null });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ IntFromString
+      └─ From side transformation failure
+         └─ Expected a string, actual null
+*/
+
+// "to" failure
+S.parseSync(schema)({ name: "John", age: "1.2" });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ IntFromString
+      └─ To side transformation failure
+         └─ Int
+            └─ Predicate refinement failure
+               └─ Expected Int (an integer), actual 1.2
+*/
+
+// "transformation" failure
+S.parseSync(schema)({ name: "John", age: "a" });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ IntFromString
+      └─ Transformation process failure
+         └─ Expected IntFromString, actual "a"
+*/
+```
+
+### Transformations overrides
+
+You have the option to customize error messages for transformations using the `S.message` annotation:
+
+```ts
+import * as ParseResult from "@effect/schema/ParseResult";
+import * as S from "@effect/schema/Schema";
+
+const IntFromString = S.transformOrFail(
+  S.string.pipe(S.message(() => "please enter a string")),
+  S.Int.pipe(S.message(() => "please enter an integer")),
+  (s, _, ast) => {
+    const n = Number(s);
+    return Number.isNaN(n)
+      ? ParseResult.fail(ParseResult.type(ast, s))
+      : ParseResult.succeed(n);
+  },
+  (n) => ParseResult.succeed(String(n))
+).pipe(
+  S.identifier("IntFromString"),
+  S.message(() => "please enter a parseable string")
+);
+
+const schema = S.struct({
+  name: S.NonEmpty,
+  age: IntFromString,
+}).pipe(S.identifier("Person"));
+
+// "from" failure
+S.parseSync(schema)({ name: "John", age: null });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a string
+*/
+
+// "to" failure
+S.parseSync(schema)({ name: "John", age: "1.2" });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter an integer
+*/
+
+// "transformation" failure
+S.parseSync(schema)({ name: "John", age: "a" });
+/*
+throws:
+Error: Person
+└─ ["age"]
+   └─ please enter a parseable string
+*/
 ```
 
 # Documentation

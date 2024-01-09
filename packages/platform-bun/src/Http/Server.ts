@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/platform/platform/Http/Server.ts.html).
+ * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/effect/platform/Http/Server.ts.html).
  */
 import type * as Server from "@effect/platform/Http/Server"
 import type { ServeOptions } from "bun"

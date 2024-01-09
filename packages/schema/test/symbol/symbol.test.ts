@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("symbol/symbol", () => {
+describe("symbol > symbol", () => {
   const schema = S.symbol
 
   it("property tests", () => {
@@ -14,12 +14,20 @@ describe("symbol/symbol", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected string, actual null`
+      `(string <-> symbol)
+└─ From side transformation failure
+   └─ Expected a string, actual null`
     )
   })
 
   it("encoding", async () => {
     await Util.expectEncodeSuccess(schema, Symbol.for("a"), "a")
-    await Util.expectEncodeFailure(schema, Symbol(), "Expected string, actual undefined")
+    await Util.expectEncodeFailure(
+      schema,
+      Symbol(),
+      `(string <-> symbol)
+└─ From side transformation failure
+   └─ Expected a string, actual undefined`
+    )
   })
 })

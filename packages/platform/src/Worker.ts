@@ -10,10 +10,12 @@ import type * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
+import type * as Option from "effect/Option"
 import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
+import type * as Tracer from "effect/Tracer"
 import * as internal from "./internal/worker.js"
 import type { WorkerError } from "./WorkerError.js"
 
@@ -98,7 +100,15 @@ export declare namespace Worker {
    * @since 1.0.0
    * @category models
    */
-  export type Request<I = unknown> = readonly [id: number, data: 0, I] | readonly [id: number, interrupt: 1]
+  export type Request<I = unknown> =
+    | readonly [id: number, data: 0, I, trace?: Span]
+    | readonly [id: number, interrupt: 1]
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Span = readonly [traceId: string, spanId: string, sampled: boolean]
 
   /**
    * @since 1.0.0
@@ -150,8 +160,8 @@ export declare namespace WorkerPool {
  * @since 1.0.0
  */
 export interface WorkerQueue<I> {
-  readonly offer: (id: number, item: I) => Effect.Effect<never, never, void>
-  readonly take: Effect.Effect<never, never, readonly [id: number, item: I]>
+  readonly offer: (id: number, item: I, span: Option.Option<Tracer.Span>) => Effect.Effect<never, never, void>
+  readonly take: Effect.Effect<never, never, readonly [id: number, item: I, span: Option.Option<Tracer.Span>]>
   readonly shutdown: Effect.Effect<never, never, void>
 }
 

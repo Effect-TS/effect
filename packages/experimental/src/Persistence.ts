@@ -25,7 +25,7 @@ export type PersistenceError = PersistenceSchemaError | PersistenceBackingError
  */
 export class PersistenceSchemaError extends Data.TaggedError("PersistenceSchemaError")<{
   readonly method: string
-  readonly errors: ParseResult.ParseError["errors"]
+  readonly error: ParseResult.ParseError["error"]
 }> {}
 
 /**
@@ -155,14 +155,14 @@ export const layerResult = Layer.effect(
           const storage = yield* _(backing.make(storeId))
           const parse = <IE, E, IA, A>(method: string, key: ResultPersistence.Key<IE, E, IA, A>, value: unknown) =>
             Effect.mapError(Serializable.deserializeExit(key, value), (_) =>
-              new PersistenceSchemaError({ method, errors: _.errors }))
+              new PersistenceSchemaError({ method, error: _.error }))
           const encode = <IE, E, IA, A>(
             method: string,
             key: ResultPersistence.Key<IE, E, IA, A>,
             value: Exit.Exit<E, A>
           ) =>
             Effect.mapError(Serializable.serializeExit(key, value), (_) =>
-              new PersistenceSchemaError({ method, errors: _.errors }))
+              new PersistenceSchemaError({ method, error: _.error }))
           const makeKey = <IE, E, IA, A>(
             key: ResultPersistence.Key<IE, E, IA, A>
           ) =>

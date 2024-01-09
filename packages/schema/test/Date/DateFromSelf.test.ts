@@ -12,7 +12,7 @@ describe("Date/DateFromSelf", () => {
     await Util.expectParseSuccess(S.DateFromSelf, new Date(), new Date())
     await Util.expectParseSuccess(S.DateFromSelf, new Date("invalid"), new Date("invalid"))
 
-    await Util.expectParseFailure(S.DateFromSelf, null, `Expected Date, actual null`)
+    await Util.expectParseFailure(S.DateFromSelf, null, `Expected DateFromSelf, actual null`)
   })
 
   it("encoding", async () => {
@@ -22,7 +22,7 @@ describe("Date/DateFromSelf", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(S.DateFromSelf)
+    const pretty = Pretty.make(S.DateFromSelf)
     expect(pretty(new Date(0))).toEqual("new Date(\"1970-01-01T00:00:00.000Z\")")
   })
 })

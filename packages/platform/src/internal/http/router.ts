@@ -65,15 +65,15 @@ class RouterImpl<R, E> extends Effectable.StructuralClass<
   ) {
     super()
     this[TypeId] = TypeId
+    this.httpApp = toHttpApp(this) as any
   }
-  private httpApp:
-    | Effect.Effect<Exclude<R, Router.RouteContext>, E | Error.RouteNotFound, ServerResponse.ServerResponse>
-    | undefined
+  private httpApp: Effect.Effect<
+    Exclude<R, Router.RouteContext>,
+    E | Error.RouteNotFound,
+    ServerResponse.ServerResponse
+  >
   commit() {
-    if (this.httpApp === undefined) {
-      this.httpApp = toHttpApp(this) as any
-    }
-    return this.httpApp!
+    return this.httpApp
   }
   toJSON() {
     return {

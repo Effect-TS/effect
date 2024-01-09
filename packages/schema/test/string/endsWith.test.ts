@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("string/endsWith", () => {
+describe("string > endsWith", () => {
   it("is", () => {
     const schema = S.string.pipe(S.endsWith("a"))
     const is = P.is(schema)
@@ -22,12 +22,16 @@ describe("string/endsWith", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected a string ending with "a", actual ""`
+      `a string ending with "a"
+└─ Predicate refinement failure
+   └─ Expected a string ending with "a", actual ""`
     )
     await Util.expectParseFailure(
       schema,
       "b",
-      `Expected a string ending with "a", actual "b"`
+      `a string ending with "a"
+└─ Predicate refinement failure
+   └─ Expected a string ending with "a", actual "b"`
     )
   })
 })

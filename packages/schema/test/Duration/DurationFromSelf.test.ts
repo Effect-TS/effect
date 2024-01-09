@@ -4,7 +4,7 @@ import * as Util from "@effect/schema/test/util"
 import { Duration } from "effect"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/DurationFromSelf", () => {
+describe("Duration > DurationFromSelf", () => {
   const schema = S.DurationFromSelf
 
   it("property tests", () => {
@@ -23,7 +23,7 @@ describe("Schema/DurationFromSelf", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
 
     expect(pretty(Duration.millis(500))).toEqual("Duration(500ms)")
     expect(pretty(Duration.seconds(30))).toEqual("Duration(30s)")

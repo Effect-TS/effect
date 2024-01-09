@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("ReadonlyMap/readonlyMap", () => {
+describe("ReadonlyMap > readonlyMap", () => {
   it("property tests", () => {
     Util.roundtrip(S.readonlyMap(S.number, S.string))
   })
@@ -19,12 +19,20 @@ describe("ReadonlyMap/readonlyMap", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected <anonymous tuple or array schema>, actual null`
+      `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
+└─ From side transformation failure
+   └─ Expected ReadonlyArray<readonly [number, string]>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       [[1, "a"], [2, 1]],
-      `/1 /1 Expected string, actual 1`
+      `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
+└─ From side transformation failure
+   └─ ReadonlyArray<readonly [number, string]>
+      └─ [1]
+         └─ readonly [number, string]
+            └─ [1]
+               └─ Expected a string, actual 1`
     )
   })
 

@@ -89,8 +89,8 @@ export const schemaExternalSpan = flow(
         b3: Schema.NonEmpty
       }),
       SpanSchema,
-      (_) => {
-        const parts = _.b3.split("-")
+      (input, _, ast) => {
+        const parts = input.b3.split("-")
         if (parts.length >= 2) {
           return ParseResult.succeed({
             traceId: parts[0],
@@ -99,7 +99,7 @@ export const schemaExternalSpan = flow(
             parentSpanId: parts[3]
           })
         }
-        return ParseResult.fail(ParseResult.missing)
+        return ParseResult.fail(ParseResult.type(ast, input))
       },
       (_) => ParseResult.succeed({ b3: "" })
     ),

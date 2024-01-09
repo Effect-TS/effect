@@ -85,7 +85,7 @@ class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFr
     })
 ) {}
 
-describe("Schema/Class", () => {
+describe("Schema > Class", () => {
   it("should be a Schema", () => {
     expect(S.isSchema(Person)).toEqual(true)
     const schema = Person.pipe(S.title("Person"))
@@ -101,9 +101,11 @@ describe("Schema/Class", () => {
     expect(john.upperName).toEqual("JOHN")
     expect(typeof john.upperName).toEqual("string")
     expect(() => new Person({ id: 1, name: "" })).toThrow(
-      new Error(`error(s) found
+      new Error(`{ id: number; name: a non empty string }
 └─ ["name"]
-   └─ Expected a non empty string, actual ""`)
+   └─ a non empty string
+      └─ Predicate refinement failure
+         └─ Expected a non empty string, actual ""`)
     )
   })
 
@@ -162,9 +164,13 @@ describe("Schema/Class", () => {
 
   it("extends error", () => {
     expect(() => S.parseSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
-      new Error(`error(s) found
-└─ ["age"]
-   └─ is missing`)
+      new Error(
+        `({ id: number; age: number; name: a non empty string } <-> an instance of PersonWithAge)
+└─ From side transformation failure
+   └─ { id: number; age: number; name: a non empty string }
+      └─ ["age"]
+         └─ is missing`
+      )
     )
   })
 
@@ -182,11 +188,11 @@ describe("Schema/Class", () => {
     expect(Equal.equals(person, person2)).toEqual(true)
 
     const person3 = new Person({ id: 2, name: "John" })
-    expect(!Equal.equals(person, person3)).toEqual(true)
+    expect(Equal.equals(person, person3)).toEqual(false)
   })
 
   it("Pretty/to", () => {
-    const pretty = Pretty.to(Person)
+    const pretty = Pretty.make(Person)
     expect(pretty(new Person({ id: 1, name: "John" }))).toEqual(
       `Person({ "id": 1, "name": "John" })`
     )
@@ -228,9 +234,13 @@ describe("Schema/Class", () => {
     expect(person.upperName).toEqual("JOHN")
 
     expect(() => S.parseSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
-      new Error(`error(s) found
-└─ ["_tag"]
-   └─ is missing`)
+      new Error(
+        `({ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string } <-> an instance of TaggedPersonWithAge)
+└─ From side transformation failure
+   └─ { _tag: "TaggedPerson"; id: number; age: number; name: a non empty string }
+      └─ ["_tag"]
+         └─ is missing`
+      )
     )
     person = S.parseSync(TaggedPersonWithAge)({
       _tag: "TaggedPerson",

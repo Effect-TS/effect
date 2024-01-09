@@ -41,7 +41,7 @@ export * as HttpServer from "./HttpServer.js"
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/KeyValueStore`](https://effect-ts.github.io/platform/platform/KeyValueStore.ts.html).
+ * Also includes exports from [`@effect/platform/KeyValueStore`](https://effect-ts.github.io/effect/platform/KeyValueStore.ts.html).
  */
 export * as KeyValueStore from "./KeyValueStore.js"
 
@@ -73,20 +73,20 @@ export * as Terminal from "./Terminal.js"
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/Transferable`](https://effect-ts.github.io/platform/platform/Transferable.ts.html).
+ * Also includes exports from [`@effect/platform/Transferable`](https://effect-ts.github.io/effect/platform/Transferable.ts.html).
  */
 export * as Transferable from "./Transferable.js"
 
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
+ * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/effect/platform/Worker.ts.html).
  */
 export * as Worker from "./Worker.js"
 
 /**
  * @since 1.0.0
  *
- * Also includes exports from [`@effect/platform/WorkerRunner`](https://effect-ts.github.io/platform/platform/WorkerRunner.ts.html).
+ * Also includes exports from [`@effect/platform/WorkerRunner`](https://effect-ts.github.io/effect/platform/WorkerRunner.ts.html).
  */
 export * as WorkerRunner from "./WorkerRunner.js"

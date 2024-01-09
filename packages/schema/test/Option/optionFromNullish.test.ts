@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import * as O from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("Option/optionFromNullish", () => {
+describe("Option > optionFromNullish", () => {
   it("property tests", () => {
     Util.roundtrip(S.optionFromNullish(S.number, null))
     Util.roundtrip(S.optionFromNullish(S.number, undefined))
@@ -22,7 +22,17 @@ describe("Option/optionFromNullish", () => {
     await Util.expectParseFailure(
       schema,
       {},
-      `union member: Expected null, actual {}, union member: Expected undefined, actual {}, union member: Expected string, actual {}`
+      `(null | undefined | NumberFromString <-> Option<number>)
+└─ From side transformation failure
+   └─ null | undefined | NumberFromString
+      ├─ Union member
+      │  └─ Expected null, actual {}
+      ├─ Union member
+      │  └─ Expected undefined, actual {}
+      └─ Union member
+         └─ NumberFromString
+            └─ From side transformation failure
+               └─ Expected a string, actual {}`
     )
   })
 

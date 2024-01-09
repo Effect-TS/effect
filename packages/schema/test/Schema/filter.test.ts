@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/filter", () => {
+describe("Schema > filter", () => {
   it("filter/ annotation options", () => {
     const schema = S.string.pipe(
       S.filter((s): s is string => s.length === 1, {
@@ -40,22 +40,24 @@ describe("Schema/filter", () => {
         o.b === o.a
           ? Option.none()
           : Option.some(
-            ParseResult.parseError([
-              ParseResult.key("b", [
-                ParseResult.type(S.literal(o.a).ast, o.b, `should be equal to a's value ("${o.a}")`)
-              ])
-            ])
+            ParseResult.parseError(
+              ParseResult.type(
+                S.literal(o.a).ast,
+                o.b,
+                `b should be equal to a's value ("${o.a}")`
+              )
+            )
           )
       )
     )
 
     await Util.expectParseSuccess(schema, { a: "x", b: "x" })
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
       { a: "a", b: "b" },
-      `error(s) found
-└─ ["b"]
-   └─ should be equal to a's value ("a")`
+      `<refinement schema>
+└─ Predicate refinement failure
+   └─ b should be equal to a's value ("a")`
     )
   })
 })

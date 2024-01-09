@@ -4,7 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("string/minLength", () => {
+describe("string > minLength", () => {
   it("property tests", () => {
     Util.roundtrip(S.minLength(0)(S.string))
   })
@@ -23,12 +23,14 @@ describe("string/minLength", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected a string at least 1 character(s) long, actual ""`
+      `a string at least 1 character(s) long
+└─ Predicate refinement failure
+   └─ Expected a string at least 1 character(s) long, actual ""`
     )
   })
 
   it("pretty", () => {
-    const pretty = Pretty.to(S.minLength(0)(S.string))
+    const pretty = Pretty.make(S.minLength(0)(S.string))
     expect(pretty("a")).toEqual(`"a"`)
   })
 })

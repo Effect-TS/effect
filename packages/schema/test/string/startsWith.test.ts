@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("string/startsWith", () => {
+describe("string > startsWith", () => {
   it("is", () => {
     const schema = S.string.pipe(S.startsWith("a"))
     const is = P.is(schema)
@@ -22,12 +22,16 @@ describe("string/startsWith", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected a string starting with "a", actual ""`
+      `a string starting with "a"
+└─ Predicate refinement failure
+   └─ Expected a string starting with "a", actual ""`
     )
     await Util.expectParseFailure(
       schema,
       "b",
-      `Expected a string starting with "a", actual "b"`
+      `a string starting with "a"
+└─ Predicate refinement failure
+   └─ Expected a string starting with "a", actual "b"`
     )
   })
 })

@@ -1,5 +1,5 @@
 import * as S from "@effect/schema/Schema"
-import { propertyTo } from "@effect/schema/test/util"
+import { expectValidArbitrary } from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("class", () => {
@@ -7,28 +7,28 @@ describe("class", () => {
     class Class extends S.Class<Class>()({
       a: S.number
     }) {}
-    propertyTo(Class)
+    expectValidArbitrary(Class)
   })
 
   it("required property signature with undefined", () => {
     class Class extends S.Class<Class>()({
       a: S.union(S.number, S.undefined)
     }) {}
-    propertyTo(Class)
+    expectValidArbitrary(Class)
   })
 
   it("optional property signature", () => {
     class Class extends S.Class<Class>()({
       a: S.optional(S.number, { exact: true })
     }) {}
-    propertyTo(Class)
+    expectValidArbitrary(Class)
   })
 
   it("optional property signature with undefined", () => {
     class Class extends S.Class<Class>()({
       a: S.optional(S.union(S.number, S.undefined), { exact: true })
     }) {}
-    propertyTo(Class)
+    expectValidArbitrary(Class)
   })
 
   it("baseline", () => {
@@ -36,6 +36,6 @@ describe("class", () => {
       a: S.string,
       b: S.NumberFromString
     }) {}
-    propertyTo(Class)
+    expectValidArbitrary(Class)
   })
 })

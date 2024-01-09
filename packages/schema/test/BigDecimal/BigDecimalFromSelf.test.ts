@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import { BigDecimal } from "effect"
 import { describe, expect, it } from "vitest"
 
-describe("BigDecimal/BigDecimalFromSelf", () => {
+describe("BigDecimal > BigDecimalFromSelf", () => {
   const schema = S.BigDecimalFromSelf
 
   it("property tests", () => {
@@ -34,7 +34,7 @@ describe("BigDecimal/BigDecimalFromSelf", () => {
 
   it("pretty", () => {
     const schema = S.BigDecimalFromSelf
-    const pretty = Pretty.to(schema)
+    const pretty = Pretty.make(schema)
 
     expect(pretty(BigDecimal.fromNumber(123))).toEqual("BigDecimal(123)")
     expect(pretty(BigDecimal.unsafeFromString("123.100"))).toEqual("BigDecimal(123.1)")
@@ -43,7 +43,7 @@ describe("BigDecimal/BigDecimalFromSelf", () => {
 
   it("equivalence", () => {
     const schema = S.BigDecimalFromSelf
-    const equivalence = Equivalence.to(schema)
+    const equivalence = Equivalence.make(schema)
 
     expect(equivalence(BigDecimal.fromNumber(1), BigDecimal.unsafeFromString("1"))).to.be.true
     expect(equivalence(BigDecimal.fromNumber(2), BigDecimal.unsafeFromString("1"))).to.be.false

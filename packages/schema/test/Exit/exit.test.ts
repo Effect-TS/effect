@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { Exit } from "effect"
 import { describe, it } from "vitest"
 
-describe("Exit/exit", () => {
+describe("Exit > exit", () => {
   it("property tests", () => {
     Util.roundtrip(S.exit(S.string, S.number))
   })

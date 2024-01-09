@@ -1,5 +1,41 @@
 # @effect/platform-bun
 
+## 0.28.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.40.4
+  - @effect/platform-node@0.40.4
+
+## 0.28.3
+
+### Patch Changes
+
+- [#1879](https://github.com/Effect-TS/effect/pull/1879) [`92c0322`](https://github.com/Effect-TS/effect/commit/92c0322a58bf7e5b8dbb602186030839e89df5af) Thanks [@tim-smart](https://github.com/tim-smart)! - add http Multiplex module
+
+- Updated dependencies [[`92c0322`](https://github.com/Effect-TS/effect/commit/92c0322a58bf7e5b8dbb602186030839e89df5af)]:
+  - @effect/platform-node@0.40.3
+  - @effect/platform@0.40.3
+
+## 0.28.2
+
+### Patch Changes
+
+- Updated dependencies [[`4c90c54`](https://github.com/Effect-TS/effect/commit/4c90c54d87c91f75f3ad114926cdf3b0c25df091), [`d5a1949`](https://github.com/Effect-TS/effect/commit/d5a19499aac7c1d147674a35ac69992177c7536c), [`d3d3bda`](https://github.com/Effect-TS/effect/commit/d3d3bda74c794153def9027e0c40896e72cd5d14)]:
+  - @effect/platform@0.40.2
+  - effect@2.0.2
+  - @effect/platform-node@0.40.2
+
+## 0.28.1
+
+### Patch Changes
+
+- Updated dependencies [[`16bd87d`](https://github.com/Effect-TS/effect/commit/16bd87d32611b966dc42ea4fc979764f97a49071)]:
+  - effect@2.0.1
+  - @effect/platform@0.40.1
+  - @effect/platform-node@0.40.1
+
 ## 0.28.0
 
 ### Minor Changes
