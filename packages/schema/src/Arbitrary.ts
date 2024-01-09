@@ -33,11 +33,6 @@ export const ArbitraryHookId: unique symbol = hooks.ArbitraryHookId
  */
 export type ArbitraryHookId = typeof ArbitraryHookId
 
-/** @internal */
-export const unsafe = <I, A>(
-  schema: Schema.Schema<I, A>
-): Arbitrary<A> => go(schema.ast, {})
-
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
  *
