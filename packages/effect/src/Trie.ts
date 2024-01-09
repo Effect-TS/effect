@@ -300,3 +300,13 @@ export const removeMany: {
   (keys: Iterable<string>): <V>(self: Trie<V>) => Trie<V>
   <V>(self: Trie<V>, keys: Iterable<string>): Trie<V>
 } = TR.removeMany
+
+/**
+ * Insert multiple entries in the `Trie` at once.
+ *
+ * @since 2.0.0
+ */
+export const insertMany: {
+  <V>(iter: Iterable<[string, V]>): (self: Trie<V>) => Trie<V>
+  <V>(self: Trie<V>, iter: Iterable<[string, V]>): Trie<V>
+} = TR.insertMany

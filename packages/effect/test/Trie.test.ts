@@ -428,6 +428,28 @@ describe("Trie", () => {
     )
   })
 
+  it("insertMany", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("she", 2)
+    )
+
+    const trieInsert = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insertMany(
+        [["sells", 1], ["she", 2]]
+      )
+    )
+
+    assert.equal(
+      Equal.equals(trie, trieInsert),
+      true
+    )
+  })
+
   it("reduce", () => {
     const trie = pipe(
       Trie.empty<number>(),
