@@ -297,6 +297,22 @@ export const filter: {
 )
 
 /** @internal */
+export const filterMap = dual<
+  <A, B>(
+    f: (value: A, key: string) => Option.Option<B>
+  ) => (self: TR.Trie<A>) => TR.Trie<B>,
+  <A, B>(self: TR.Trie<A>, f: (value: A, key: string) => Option.Option<B>) => TR.Trie<B>
+>(2, (self, f) =>
+  reduce(
+    self,
+    empty(),
+    (trie, value, key) => {
+      const option = f(value, key)
+      return Option.isSome(option) ? insert(trie, key, option.value) : trie
+    }
+  ))
+
+/** @internal */
 export const forEach = dual<
   <V>(f: (value: V, key: string) => void) => (self: TR.Trie<V>) => void,
   <V>(self: TR.Trie<V>, f: (value: V, key: string) => void) => void

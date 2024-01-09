@@ -359,6 +359,32 @@ describe("Trie", () => {
     assert.equal(Equal.equals(Trie.filter(trie, (_, k) => k.length > 3), trieMapK), true)
   })
 
+  it("filterMap", () => {
+    const trie = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("she", 2)
+    )
+
+    const trieMapV = pipe(
+      Trie.empty<number>(),
+      Trie.insert("she", 2)
+    )
+
+    const trieMapK = pipe(
+      Trie.empty<number>(),
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1)
+    )
+
+    assert.equal(Equal.equals(Trie.filterMap(trie, (v) => v > 1 ? Option.some(v) : Option.none()), trieMapV), true)
+    assert.equal(
+      Equal.equals(Trie.filterMap(trie, (v, k) => k.length > 3 ? Option.some(v) : Option.none()), trieMapK),
+      true
+    )
+  })
+
   it("reduce", () => {
     const trie = pipe(
       Trie.empty<number>(),
