@@ -3718,6 +3718,36 @@ export const either = <IE, E, IA, A>(
     })
   )
 
+/**
+ * @example
+ * import * as Schema from "@effect/schema/Schema"
+ *
+ * // Schema<"A" | "E", Either<"E", "A">>
+ * Schema.eitherFromUnion(Schema.literal("A"), Schema.literal("E"))
+ *
+ * @category Either transformations
+ * @since 1.0.0
+ */
+export const eitherFromUnion = <EI, EA, AI, AA>(
+  left: Schema<EI, EA>,
+  right: Schema<AI, AA>
+): Schema<EI | AI, Either.Either<EA, AA>> => {
+  return transformOrFail(
+    union(from(right), from(left)),
+    eitherFromSelf(to(left), to(right)),
+    (value, options) =>
+      ParseResult.orElse(
+        ParseResult.map(Parser.parse(right)(value, options), Either.right),
+        () => ParseResult.map(Parser.parse(left)(value, options), Either.left)
+      ),
+    (value, options) =>
+      Either.match(value, {
+        onLeft: (_) => Parser.encode(left)(_, options),
+        onRight: (_) => Parser.encode(right)(_, options)
+      })
+  )
+}
+
 const isMap = (u: unknown): u is Map<unknown, unknown> => u instanceof Map
 
 const readonlyMapArbitrary = <K, V>(
