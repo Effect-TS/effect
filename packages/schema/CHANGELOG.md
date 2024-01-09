@@ -1,5 +1,39 @@
 # @effect/schema
 
+## 0.58.0
+
+### Minor Changes
+
+- [#1877](https://github.com/Effect-TS/effect/pull/1877) [`a904a73`](https://github.com/Effect-TS/effect/commit/a904a739459bfd0fa7844b00b902d2fa984fb014) Thanks [@gcanti](https://github.com/gcanti)! - Schema: Arbitrary remove `from`/`to` API in favour of `make`
+
+- [#1842](https://github.com/Effect-TS/effect/pull/1842) [`7b2f874`](https://github.com/Effect-TS/effect/commit/7b2f8743d96753c3e24ac4cc6715a4a7f4a2ca0c) Thanks [@fubhy](https://github.com/fubhy)! - Schema: simplify `AST.createRefinement` return type
+
+- [#1842](https://github.com/Effect-TS/effect/pull/1842) [`7b2f874`](https://github.com/Effect-TS/effect/commit/7b2f8743d96753c3e24ac4cc6715a4a7f4a2ca0c) Thanks [@fubhy](https://github.com/fubhy)! - Schema: refactor `ParseResult` module:
+
+  - add `Union` issue, and replace `UnionMember` with `Union`
+  - add `Tuple` issue, and replace `Index` with `Tuple`
+  - add `TypeLiteral` issue
+  - add `Transform` issue
+  - add `Refinement` issue
+  - add `ast` field to `Member`
+  - rename `UnionMember` to `Member`
+  - `Type`: rename `expected` to `ast`
+  - `ParseError` replace `errors` field with `error` field and refactor `parseError` constructor accordingly
+  - `Index` replace `errors` field with `error` field
+  - `Key` replace `errors` field with `error` field
+  - `Member` replace `errors` field with `error` field
+  - `ParseError` replace `errors` field with `error` field
+  - make `ParseError` a `Data.TaggedError`
+  - `Forbidden`: add `actual` field
+
+### Patch Changes
+
+- [#1842](https://github.com/Effect-TS/effect/pull/1842) [`7b2f874`](https://github.com/Effect-TS/effect/commit/7b2f8743d96753c3e24ac4cc6715a4a7f4a2ca0c) Thanks [@fubhy](https://github.com/fubhy)! - Schema: add more description annotations to built-in schemas
+
+- [#1842](https://github.com/Effect-TS/effect/pull/1842) [`7b2f874`](https://github.com/Effect-TS/effect/commit/7b2f8743d96753c3e24ac4cc6715a4a7f4a2ca0c) Thanks [@fubhy](https://github.com/fubhy)! - Schema: add `Format` module
+
+- [#1842](https://github.com/Effect-TS/effect/pull/1842) [`7b2f874`](https://github.com/Effect-TS/effect/commit/7b2f8743d96753c3e24ac4cc6715a4a7f4a2ca0c) Thanks [@fubhy](https://github.com/fubhy)! - Schema: add outer `option` arg to parse/decode/encode/validation/asserts/is APIs
+
 ## 0.57.2
 
 ### Patch Changes
