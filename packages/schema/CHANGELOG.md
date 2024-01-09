@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.59.1
+
+### Patch Changes
+
+- [#1888](https://github.com/Effect-TS/effect/pull/1888) [`5b46e99`](https://github.com/Effect-TS/effect/commit/5b46e996d30e2497eb23095e2c21eee04438edf5) Thanks [@gcanti](https://github.com/gcanti)! - Schema: treat missing properties as `undefined` (excluding `is` and `asserts`), closes #1882
+
+- [#1794](https://github.com/Effect-TS/effect/pull/1794) [`210d27e`](https://github.com/Effect-TS/effect/commit/210d27e999e066ea9b907301150c65f9ff080b39) Thanks [@matheuspuel](https://github.com/matheuspuel)! - add eitherFromUnion
+
+- Updated dependencies [[`87f7ef2`](https://github.com/Effect-TS/effect/commit/87f7ef28a3c27e2e4f2fcfa465f85bb2a45a3d6b), [`1d3a06b`](https://github.com/Effect-TS/effect/commit/1d3a06bb58ad1ac123ae8f9d42b4345f9c9c53c0)]:
+  - effect@2.0.3
+
 ## 0.59.0
 
 ### Minor Changes
