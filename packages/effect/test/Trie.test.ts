@@ -76,7 +76,7 @@ describe("Trie", () => {
     deepStrictEqual(Array.from(trie1), [["call", 0]])
     deepStrictEqual(Array.from(trie2), [["call", 0], ["me", 1]])
     deepStrictEqual(Array.from(trie3), [["call", 0], ["me", 1], ["mind", 2]])
-    deepStrictEqual(Array.from(trie4), [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]])
+    deepStrictEqual(Array.from(trie4), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
   })
 
   it("fromIterable empty", () => {
@@ -94,7 +94,7 @@ describe("Trie", () => {
   it("fromIterable [2]", () => {
     const iterable: Array<[string, number]> = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]]
     const trie = Trie.fromIterable(iterable)
-    deepStrictEqual(Array.from(trie), iterable)
+    deepStrictEqual(Array.from(trie), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
   })
 
   it("fromIterable [3]", () => {
@@ -195,9 +195,9 @@ describe("Trie", () => {
     deepStrictEqual(Trie.get(trie1, "call"), Option.none())
     deepStrictEqual(Trie.get(trie2, "call"), Option.none())
 
-    deepStrictEqual(Array.from(trie), [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]])
-    deepStrictEqual(Array.from(trie1), [["me", 1], ["mind", 2], ["mid", 3]])
-    deepStrictEqual(Array.from(trie2), [["me", 1], ["mind", 2], ["mid", 3]])
+    deepStrictEqual(Array.from(trie), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
+    deepStrictEqual(Array.from(trie1), [["me", 1], ["mid", 3], ["mind", 2]])
+    deepStrictEqual(Array.from(trie2), [["me", 1], ["mid", 3], ["mind", 2]])
   })
 
   it("keys", () => {
@@ -209,6 +209,43 @@ describe("Trie", () => {
 
     const result = Array.from(Trie.keys(trie))
     deepStrictEqual(result, ["call", "me"])
+  })
+
+  it("keys alphabetical order", () => {
+    const trie = Trie.make(
+      ["abc", 0],
+      ["bac", 0],
+      ["b", 0],
+      ["ca", 0],
+      ["cac", 0],
+      ["c", 0],
+      ["abb", 0],
+      ["ba", 0],
+      ["a", 0],
+      ["bca", 0],
+      ["cab", 0],
+      ["dca", 0],
+      ["ab", 0],
+      ["adc", 0]
+    )
+
+    const result = Array.from(Trie.keys(trie))
+    deepStrictEqual(result, [
+      "a",
+      "ab",
+      "abb",
+      "abc",
+      "adc",
+      "b",
+      "ba",
+      "bac",
+      "bca",
+      "c",
+      "ca",
+      "cab",
+      "cac",
+      "dca"
+    ])
   })
 
   it("values", () => {
@@ -474,7 +511,7 @@ describe("Trie", () => {
       trie.pipe(
         Trie.reduce("", (acc, _, key) => acc + key)
       ),
-      "sheshellssells"
+      "sellssheshells"
     )
   })
 

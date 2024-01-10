@@ -76,7 +76,7 @@ const makeImpl = <V>(root: Node.Node<V> | undefined): TrieImpl<V> => {
 }
 
 class TrieIterator<in out V, out T> implements IterableIterator<T> {
-  stack: Array<[Node.Node<V>, string]> = []
+  stack: Array<[Node.Node<V>, string, boolean]> = []
 
   constructor(
     readonly trie: TrieImpl<V>,
@@ -85,22 +85,24 @@ class TrieIterator<in out V, out T> implements IterableIterator<T> {
   ) {
     const root = trie._root !== undefined ? trie._root : undefined
     if (root !== undefined) {
-      this.stack.push([root, ""])
+      this.stack.push([root, "", false])
     }
   }
 
   next(): IteratorResult<T> {
     while (this.stack.length > 0) {
-      const [node, keyString] = this.stack.pop()!
+      const [node, keyString, isAdded] = this.stack.pop()!
 
-      this.addToStack(node, keyString)
-
-      const value = node.value
-      if (value !== undefined) {
-        const key = keyString + node.key
-        if (this.filter(key, value)) {
-          return { done: false, value: this.f(key, value) }
+      if (isAdded) {
+        const value = node.value
+        if (value !== undefined) {
+          const key = keyString + node.key
+          if (this.filter(key, value)) {
+            return { done: false, value: this.f(key, value) }
+          }
         }
+      } else {
+        this.addToStack(node, keyString)
       }
     }
 
@@ -109,13 +111,14 @@ class TrieIterator<in out V, out T> implements IterableIterator<T> {
 
   addToStack(node: Node.Node<V>, keyString: string) {
     if (node.right !== undefined) {
-      this.stack.push([node.right, keyString])
-    }
-    if (node.left !== undefined) {
-      this.stack.push([node.left, keyString])
+      this.stack.push([node.right, keyString, false])
     }
     if (node.mid !== undefined) {
-      this.stack.push([node.mid, keyString + node.key])
+      this.stack.push([node.mid, keyString + node.key, false])
+    }
+    this.stack.push([node, keyString, true])
+    if (node.left !== undefined) {
+      this.stack.push([node.left, keyString, false])
     }
   }
 
