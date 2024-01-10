@@ -1772,9 +1772,11 @@ export declare namespace Retry {
     | (O extends { schedule: Schedule.Schedule<infer X, infer _I, infer _O> } ? X : never)
     | (O extends { while: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never)
     | (O extends { until: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never),
-    (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer _O> } ? E
+    | (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer _O> } ? E
       : O extends { until: Refinement<E, infer E2> } ? E2
-      : E),
+      : E)
+    | (O extends { while: (...args: Array<any>) => Effect<infer _R, infer X, infer _A> } ? X : never)
+    | (O extends { until: (...args: Array<any>) => Effect<infer _R, infer X, infer _A> } ? X : never),
     A
   > extends infer Z ? Z : never
 
@@ -1783,8 +1785,8 @@ export declare namespace Retry {
    * @category error handling
    */
   export interface Options<E> {
-    while?: (error: E) => boolean | Effect<any, never, boolean>
-    until?: (error: E) => boolean | Effect<any, never, boolean>
+    while?: (error: E) => boolean | Effect<any, any, boolean>
+    until?: (error: E) => boolean | Effect<any, any, boolean>
     times?: number
     schedule?: Schedule.Schedule<any, E, any>
   }
@@ -4046,7 +4048,9 @@ export declare namespace Repeat {
     | (O extends { schedule: Schedule.Schedule<infer X, infer _I, infer _O> } ? X : never)
     | (O extends { while: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never)
     | (O extends { until: (...args: Array<any>) => Effect<infer X, infer _E, infer _A> } ? X : never),
-    E,
+    | E
+    | (O extends { while: (...args: Array<any>) => Effect<infer _R, infer X, infer _A> } ? X : never)
+    | (O extends { until: (...args: Array<any>) => Effect<infer _R, infer X, infer _A> } ? X : never),
     (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer Out> } ? Out
       : O extends { until: Refinement<A, infer B> } ? B
       : A)
@@ -4057,8 +4061,8 @@ export declare namespace Repeat {
    * @category repetition / recursion
    */
   export interface Options<A> {
-    while?: (_: A) => boolean | Effect<any, never, boolean>
-    until?: (_: A) => boolean | Effect<any, never, boolean>
+    while?: (_: A) => boolean | Effect<any, any, boolean>
+    until?: (_: A) => boolean | Effect<any, any, boolean>
     times?: number
     schedule?: Schedule.Schedule<any, A, any>
   }

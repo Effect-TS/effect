@@ -210,6 +210,19 @@ describe("Effect", () => {
       assert.strictEqual(result, 3)
     }))
 
+  it.effect("retry/schedule + until error", () =>
+    Effect.gen(function*($) {
+      const ref = yield* $(Ref.make(0))
+      const result = yield* $(
+        Ref.updateAndGet(ref, (n) => n + 1),
+        Effect.flipWith(Effect.retry({
+          schedule: Schedule.recurs(3),
+          until: (_n) => Effect.fail("err" as const)
+        }))
+      )
+      assert.strictEqual(result, "err")
+    }))
+
   it.effect("retry/schedule + while", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
@@ -222,6 +235,19 @@ describe("Effect", () => {
       )
       const result = yield* $(Ref.get(ref))
       assert.strictEqual(result, 3)
+    }))
+
+  it.effect("retry/schedule + while error", () =>
+    Effect.gen(function*($) {
+      const ref = yield* $(Ref.make(0))
+      const result = yield* $(
+        Ref.updateAndGet(ref, (n) => n + 1),
+        Effect.flipWith(Effect.retry({
+          schedule: Schedule.recurs(3),
+          while: (_n) => Effect.fail("err" as const)
+        }))
+      )
+      assert.strictEqual(result, "err")
     }))
 
   it.effect("retry/schedule + while effect", () =>
