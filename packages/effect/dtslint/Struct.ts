@@ -1,4 +1,4 @@
-import { pipe } from "effect/Function"
+import { hole, pipe } from "effect/Function"
 import * as S from "effect/Struct"
 
 const asym = Symbol.for("effect/dtslint/a")
@@ -9,6 +9,7 @@ const dsym = Symbol.for("effect/dtslint/d")
 declare const stringNumberRecord: Record<string, number>
 declare const symbolNumberRecord: Record<symbol, number>
 declare const numberNumberRecord: Record<number, number>
+declare const templateLiteralNumberRecord: Record<`a${string}`, number>
 
 const stringStruct = { a: "a", b: 1, c: true }
 const symbolStruct = { [asym]: "a", [bsym]: 1, [csym]: true }
@@ -67,6 +68,15 @@ pipe(numberNumberRecord, S.get(1))
 // $ExpectType <S extends Record<1, any>>(s: S) => MatchRecord<S, S[1] | undefined, S[1]>
 S.get(1)
 
+// $ExpectType number | undefined
+pipe(templateLiteralNumberRecord, S.get("ab"))
+
+// $ExpectType boolean
+pipe(hole<Record<string, number> & { a: boolean }>(), S.get("a"))
+
+// @ts-expect-error
+pipe(hole<Record<string, number> & { a: boolean }>(), S.get("b"))
+
 // -------------------------------------------------------------------------------------
 // pick
 // -------------------------------------------------------------------------------------
@@ -115,6 +125,15 @@ S.pick(4 as number)(numberStruct)
 
 // $ExpectType { 2: number | undefined; 1: number | undefined; }
 pipe(numberNumberRecord, S.pick(1, 2))
+
+// $ExpectType { ab: number | undefined; aa: number | undefined; }
+pipe(templateLiteralNumberRecord, S.pick("aa", "ab"))
+
+// $ExpectType { a: boolean; }
+pipe(hole<Record<string, number> & { a: boolean }>(), S.pick("a"))
+
+// @ts-expect-error
+pipe(hole<Record<string, number> & { a: boolean }>(), S.pick("b"))
 
 // -------------------------------------------------------------------------------------
 // omit
