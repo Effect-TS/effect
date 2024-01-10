@@ -3,7 +3,7 @@ import "@vitest/web-worker"
 import { Chunk, Effect, Option, Stream } from "effect"
 import { assert, describe, it } from "vitest"
 import type { WorkerMessage } from "./fixtures/schema.js"
-import { GetPersonById, GetSpan, GetUserById, Person, SetName, User } from "./fixtures/schema.js"
+import { GetPersonById, GetSpan, GetUserById, InitialMessage, Person, User } from "./fixtures/schema.js"
 
 describe.sequential("Worker", () => {
   it("executes streams", () =>
@@ -42,7 +42,7 @@ describe.sequential("Worker", () => {
       const pool = yield* _(EffectWorker.makePoolSerialized<WorkerMessage>({
         spawn: () => new globalThis.Worker(new URL("./fixtures/serializedWorker.ts", import.meta.url)),
         size: 1,
-        initialMessage: () => new SetName({ name: "custom" })
+        initialMessage: () => new InitialMessage({ name: "custom" })
       }))
       let user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
       user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))

@@ -19,9 +19,11 @@ export class GetPersonById extends Schema.TaggedRequest<GetPersonById>()("GetPer
   id: Schema.number
 }) {}
 
-export class SetName extends Schema.TaggedRequest<SetName>()("SetName", Schema.never, Schema.void, {
-  name: Schema.string
-}) {
+export class InitialMessage
+  extends Schema.TaggedRequest<InitialMessage>()("InitialMessage", Schema.never, Schema.void, {
+    name: Schema.string
+  })
+{
   [Transferable.symbol]() {
     return [new Uint8Array([1, 2, 3]).buffer]
   }
@@ -42,5 +44,5 @@ export class GetSpan extends Schema.TaggedRequest<GetSpan>()(
   {}
 ) {}
 
-export const WorkerMessage = Schema.union(GetUserById, GetPersonById, SetName, GetSpan)
+export const WorkerMessage = Schema.union(GetUserById, GetPersonById, InitialMessage, GetSpan)
 export type WorkerMessage = Schema.Schema.To<typeof WorkerMessage>

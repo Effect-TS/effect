@@ -125,13 +125,23 @@ export declare namespace SerializedRunner {
       {
         [K in keyof Handlers]: ReturnType<Handlers[K]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never
       }[keyof Handlers],
-      {
-        [K in keyof Handlers]: ReturnType<Handlers[K]> extends Layer.Layer<infer _R, infer _E, infer A> ? A : never
-      }[keyof Handlers]
+      InitialContext<Handlers>
     >
-    | {
-      [K in keyof Handlers]: ReturnType<Handlers[K]> extends Layer.Layer<infer R, infer _E, infer _A> ? R : never
-    }[keyof Handlers]
+    | InitialEnv<Handlers>
+
+  /**
+   * @since 1.0.0
+   */
+  type InitialContext<Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>> =
+    Handlers["InitialMessage"] extends (...args: ReadonlyArray<any>) => Layer.Layer<infer _R, infer _E, infer A> ? A
+      : never
+
+  /**
+   * @since 1.0.0
+   */
+  type InitialEnv<Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>> =
+    Handlers["InitialMessage"] extends (...args: ReadonlyArray<any>) => Layer.Layer<infer R, infer _E, infer _A> ? R
+      : never
 }
 
 /**
