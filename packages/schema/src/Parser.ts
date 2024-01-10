@@ -368,11 +368,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               ParseResult.flatMap(
                 ParseResult.mapLeft(
                   transform(a, options ?? defaultParseOption, ast),
-                  (e) => ParseResult.transform(ast, a, "Transformation", e.error)
+                  (e) => ParseResult.transform(ast, i1, "Transformation", e.error)
                 ),
                 (i2) =>
                   ParseResult.mapLeft(to(i2, options), (e) =>
-                    ParseResult.transform(ast, i2, isDecoding ? "To" : "From", e))
+                    ParseResult.transform(ast, i1, isDecoding ? "To" : "From", e))
               )
           ),
           i1,

@@ -125,3 +125,43 @@ describe("ParseResult", () => {
     ).toStrictEqual(Exit.succeed(2))
   })
 })
+
+describe("ParseIssue.actual", () => {
+  it("transform decode", () => {
+    const result = S.decodeEither(S.transformOrFail(
+      S.NumberFromString,
+      S.boolean,
+      (_) => ParseResult.fail(ParseResult.forbidden(_)),
+      (_) => ParseResult.fail(ParseResult.forbidden(_))
+    ))("1")
+    if (Either.isRight(result)) throw new Error("Expected failure")
+    expect(result.left.error.actual).toEqual("1")
+    expect((result.left.error as ParseResult.Transform).error.actual).toEqual(1)
+  })
+
+  it("transform encode", () => {
+    const result = S.encodeEither(S.transformOrFail(
+      S.boolean,
+      S.NumberFromString,
+      (_) => ParseResult.fail(ParseResult.forbidden(_)),
+      (_) => ParseResult.fail(ParseResult.forbidden(_))
+    ))(1)
+    if (Either.isRight(result)) throw new Error("Expected failure")
+    expect(result.left.error.actual).toEqual(1)
+    expect((result.left.error as ParseResult.Transform).error.actual).toEqual("1")
+  })
+
+  it("compose decode", () => {
+    const result = S.decodeEither(S.compose(S.NumberFromString, S.negative()(S.number)))("1")
+    if (Either.isRight(result)) throw new Error("Expected failure")
+    expect(result.left.error.actual).toEqual("1")
+    expect((result.left.error as ParseResult.Transform).error.actual).toEqual(1)
+  })
+
+  it("compose encode", () => {
+    const result = S.encodeEither(S.compose(S.length(5)(S.string), S.NumberFromString))(1)
+    if (Either.isRight(result)) throw new Error("Expected failure")
+    expect(result.left.error.actual).toEqual(1)
+    expect((result.left.error as ParseResult.Transform).error.actual).toEqual("1")
+  })
+})
