@@ -40,6 +40,5 @@
   "editor.suggestSelection": "recentlyUsed",
   "editor.wordBasedSuggestions": "matchingDocuments",
   "editor.parameterHints.enabled": true,
-  "files.insertFinalNewline": true,
-  "typescript.tsserver.experimental.enableProjectDiagnostics": false
+  "files.insertFinalNewline": true
 }

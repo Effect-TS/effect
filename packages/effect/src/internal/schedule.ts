@@ -11,7 +11,7 @@ import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
+import { hasProperty, type Predicate } from "../Predicate.js"
 import * as Random from "../Random.js"
 import type * as Ref from "../Ref.js"
 import type * as Schedule from "../Schedule.js"
@@ -1956,66 +1956,6 @@ const repeatOrElseEffectLoop = <R, E, A extends A0, A0, R1, B, R2, E2, C>(
 }
 
 /** @internal */
-export const repeatUntil_Effect = dual<
-  {
-    <A, B extends A>(f: Refinement<A, B>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-    <A>(f: Predicate<A>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(self: Effect.Effect<R, E, A>, f: Predicate<A>): Effect.Effect<R, E, B>
-    <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>): Effect.Effect<R, E, A>
-  }
->(
-  2,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>) =>
-    repeatUntilEffect_Effect(self, (a) => core.sync(() => f(a)))
-)
-
-/** @internal */
-export const repeatUntilEffect_Effect: {
-  <A, R2, E2>(
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A>
-  <R, E, A, R2, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): Effect.Effect<R | R2, E | E2, A>
-} = dual<
-  <A, R2, E2>(
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A>,
-  <R, E, A, R2, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ) => Effect.Effect<R | R2, E | E2, A>
->(2, (self, f) =>
-  core.flatMap(self, (a) =>
-    core.flatMap(f(a), (result) =>
-      result ?
-        core.succeed(a) :
-        core.flatMap(
-          core.yieldNow(),
-          () => repeatUntilEffect_Effect(self, f)
-        ))))
-
-/** @internal */
-export const repeatWhile_Effect = dual<
-  <A>(f: Predicate<A>) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>) => Effect.Effect<R, E, A>
->(2, (self, f) => repeatWhileEffect_Effect(self, (a) => core.sync(() => f(a))))
-
-/** @internal */
-export const repeatWhileEffect_Effect = dual<
-  <R1, A, E2>(
-    f: (a: A) => Effect.Effect<R1, E2, boolean>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
-  <R, E, R1, A, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
->(2, (self, f) => repeatUntilEffect_Effect(self, (a) => effect.negate(f(a))))
-
-/** @internal */
 export const retry_Effect = dual<
   <R1, E extends E0, E0, B>(
     policy: Schedule.Schedule<R1, E0, B>
@@ -2077,23 +2017,6 @@ export const retry_combined = dual<{
 )
 
 /** @internal */
-export const retryN_Effect = dual<
-  (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, n: number) => Effect.Effect<R, E, A>
->(2, (self, n) => retryN_EffectLoop(self, n))
-
-/** @internal */
-const retryN_EffectLoop = <R, E, A>(
-  self: Effect.Effect<R, E, A>,
-  n: number
-): Effect.Effect<R, E, A> => {
-  return core.catchAll(self, (e) =>
-    n <= 0 ?
-      core.fail(e) :
-      core.flatMap(core.yieldNow(), () => retryN_EffectLoop(self, n - 1)))
-}
-
-/** @internal */
 export const retryOrElse_Effect = dual<
   <R1, E extends E3, A1, R2, E2, A2, E3>(
     policy: Schedule.Schedule<R1, E3, A1>,
@@ -2130,66 +2053,6 @@ const retryOrElse_EffectLoop = <R, E, A, R1, A1, R2, E2, A2>(
       })
   )
 }
-
-/** @internal */
-export const retryUntil_Effect = dual<
-  {
-    <E, E2 extends E>(f: Refinement<E, E2>): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E2, A>
-    <E>(f: Predicate<E>): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  },
-  {
-    <R, E, A, E2 extends E>(self: Effect.Effect<R, E, A>, f: Refinement<E, E2>): Effect.Effect<R, E2, A>
-    <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>): Effect.Effect<R, E, A>
-  }
->(2, <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>) =>
-  retryUntilEffect_Effect(
-    self,
-    (e) => core.sync(() => f(e))
-  ))
-
-/** @internal */
-export const retryUntilEffect_Effect: {
-  <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R1 | R, E | E2, A>
-  <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ): Effect.Effect<R | R1, E | E2, A>
-} = dual<
-  <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
-  <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
->(2, (self, f) =>
-  core.catchAll(self, (e) =>
-    core.flatMap(f(e), (b) =>
-      b ?
-        core.fail(e) :
-        core.flatMap(
-          core.yieldNow(),
-          () => retryUntilEffect_Effect(self, f)
-        ))))
-
-/** @internal */
-export const retryWhile_Effect = dual<
-  <E>(f: Predicate<E>) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>) => Effect.Effect<R, E, A>
->(2, (self, f) => retryWhileEffect_Effect(self, (e) => core.sync(() => f(e))))
-
-/** @internal */
-export const retryWhileEffect_Effect = dual<
-  <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
-  <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
->(2, (self, f) => retryUntilEffect_Effect(self, (e) => effect.negate(f(e))))
 
 /** @internal */
 export const schedule_Effect = dual<

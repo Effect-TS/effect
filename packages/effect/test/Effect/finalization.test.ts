@@ -241,13 +241,13 @@ describe("Effect", () => {
       yield* $(
         Ref.get(ref),
         Effect.zipLeft(Effect.sleep(Duration.millis(1))),
-        Effect.repeatUntil((list) => pipe(list, ReadonlyArray.findFirst((s) => s === "start 1"), Option.isSome))
+        Effect.repeat({ until: (list) => pipe(list, ReadonlyArray.findFirst((s) => s === "start 1"), Option.isSome) })
       )
       yield* $(Fiber.interrupt(fiber))
       yield* $(
         Ref.get(ref),
         Effect.zipLeft(Effect.sleep(Duration.millis(1))),
-        Effect.repeatUntil((list) => pipe(list, ReadonlyArray.findFirst((s) => s === "release 2"), Option.isSome))
+        Effect.repeat({ until: (list) => pipe(list, ReadonlyArray.findFirst((s) => s === "release 2"), Option.isSome) })
       )
       const result = yield* $(Ref.get(ref))
       assert.isTrue(pipe(

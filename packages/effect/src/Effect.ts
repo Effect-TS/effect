@@ -1813,17 +1813,6 @@ export const retry: {
 } = _schedule.retry_combined
 
 /**
- * Retries this effect the specified number of times.
- *
- * @since 2.0.0
- * @category error handling
- */
-export const retryN: {
-  (n: number): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, n: number): Effect<R, E, A>
-} = _schedule.retryN_Effect
-
-/**
  * Retries with the specified schedule, until it fails, and then both the
  * value produced by the schedule together with the last error are passed to
  * the recovery function.
@@ -1842,54 +1831,6 @@ export const retryOrElse: {
     orElse: (e: E, out: A1) => Effect<R2, E2, A2>
   ): Effect<R | R1 | R2, E | E2, A | A2>
 } = _schedule.retryOrElse_Effect
-
-/**
- * Retries this effect until its error satisfies the specified predicate.
- *
- * @since 2.0.0
- * @category error handling
- */
-export const retryUntil: {
-  <E, E2 extends E>(f: Refinement<E, E2>): <R, A>(self: Effect<R, E, A>) => Effect<R, E2, A>
-  <E>(f: Predicate<E>): <R, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A, E2 extends E>(self: Effect<R, E, A>, f: Refinement<E, E2>): Effect<R, E2, A>
-  <R, E, A>(self: Effect<R, E, A>, f: Predicate<E>): Effect<R, E, A>
-} = _schedule.retryUntil_Effect
-
-/**
- * Retries this effect until its error satisfies the specified effectful
- * predicate.
- *
- * @since 2.0.0
- * @category error handling
- */
-export const retryUntilEffect: {
-  <R1, E, E2>(f: (e: E) => Effect<R1, E2, boolean>): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E | E2, A>
-  <R, E, A, R1, E2>(self: Effect<R, E, A>, f: (e: E) => Effect<R1, E2, boolean>): Effect<R | R1, E | E2, A>
-} = _schedule.retryUntilEffect_Effect
-
-/**
- * Retries this effect while its error satisfies the specified predicate.
- *
- * @since 2.0.0
- * @category error handling
- */
-export const retryWhile: {
-  <E>(f: Predicate<E>): <R, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, f: Predicate<E>): Effect<R, E, A>
-} = _schedule.retryWhile_Effect
-
-/**
- * Retries this effect while its error satisfies the specified effectful
- * predicate.
- *
- * @since 2.0.0
- * @category error handling
- */
-export const retryWhileEffect: {
-  <R1, E, E2>(f: (e: E) => Effect<R1, E2, boolean>): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E | E2, A>
-  <R, E, A, R1, E2>(self: Effect<R, E, A>, f: (e: E) => Effect<R1, E2, boolean>): Effect<R | R1, E | E2, A>
-} = _schedule.retryWhileEffect_Effect
 
 const try_: {
   <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E }): Effect<never, E, A>
@@ -4131,56 +4072,6 @@ export const repeatOrElse: {
     orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
   ): Effect<R | R2 | R3, E2, B>
 } = _schedule.repeatOrElse_Effect
-
-/**
- * Repeats this effect until its value satisfies the specified predicate or
- * until the first failure.
- *
- * @since 2.0.0
- * @category repetition / recursion
- */
-export const repeatUntil: {
-  <A, B extends A>(f: Refinement<A, B>): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
-  <A>(f: Predicate<A>): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A, B extends A>(self: Effect<R, E, A>, f: Predicate<A>): Effect<R, E, B>
-  <R, E, A>(self: Effect<R, E, A>, f: Predicate<A>): Effect<R, E, A>
-} = _schedule.repeatUntil_Effect
-
-/**
- * Repeats this effect until its value satisfies the specified effectful
- * predicate or until the first failure.
- *
- * @since 2.0.0
- * @category repetition / recursion
- */
-export const repeatUntilEffect: {
-  <A, R2, E2>(f: (a: A) => Effect<R2, E2, boolean>): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A>
-  <R, E, A, R2, E2>(self: Effect<R, E, A>, f: (a: A) => Effect<R2, E2, boolean>): Effect<R | R2, E | E2, A>
-} = _schedule.repeatUntilEffect_Effect
-
-/**
- * Repeats this effect while its value satisfies the specified effectful
- * predicate or until the first failure.
- *
- * @since 2.0.0
- * @category repetition / recursion
- */
-export const repeatWhile: {
-  <A>(f: Predicate<A>): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, f: Predicate<A>): Effect<R, E, A>
-} = _schedule.repeatWhile_Effect
-
-/**
- * Repeats this effect while its value satisfies the specified effectful
- * predicate or until the first failure.
- *
- * @since 2.0.0
- * @category repetition / recursion
- */
-export const repeatWhileEffect: {
-  <R1, A, E2>(f: (a: A) => Effect<R1, E2, boolean>): <R, E>(self: Effect<R, E, A>) => Effect<R1 | R, E2 | E, A>
-  <R, E, R1, A, E2>(self: Effect<R, E, A>, f: (a: A) => Effect<R1, E2, boolean>): Effect<R | R1, E | E2, A>
-} = _schedule.repeatWhileEffect_Effect
 
 /**
  * Runs this effect according to the specified schedule.
