@@ -421,8 +421,8 @@ export const mapInputEffect = dual<
     )))
 
 /** @internal */
-export const cron = (expression: string): Schedule.Schedule<never, unknown, [number, number]> => {
-  const parsed = Cron.parse(expression)
+export const cron = (expression: string | Cron.Cron): Schedule.Schedule<never, unknown, [number, number]> => {
+  const parsed = Cron.isCron(expression) ? Either.right(expression) : Cron.parse(expression)
   return makeWithState<[boolean, [number, number, number]], never, unknown, [number, number]>(
     [true, [Number.MIN_SAFE_INTEGER, 0, 0]],
     (now, _, [initial, previous]) => {

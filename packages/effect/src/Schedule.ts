@@ -4,6 +4,7 @@
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
+import type * as Cron from "./Cron.js"
 import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
@@ -415,7 +416,7 @@ export const count: Schedule<never, unknown, number> = internal.count
  * @since 2.0.0
  * @category constructors
  */
-export const cron: (expression: string) => Schedule<never, unknown, [number, number]> = internal.cron
+export const cron: (expression: string | Cron.Cron) => Schedule<never, unknown, [number, number]> = internal.cron
 
 /**
  * Cron-like schedule that recurs every specified `day` of month. Won't recur
