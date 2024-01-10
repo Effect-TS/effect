@@ -174,3 +174,8 @@ export type Covariant<A> = (_: never) => A
  * @category models
  */
 export type Contravariant<A> = (_: A) => void
+
+/**
+ * @since 2.0.0
+ */
+export type MatchRecord<S, onTrue, onFalse> = {} extends S ? onTrue : onFalse
