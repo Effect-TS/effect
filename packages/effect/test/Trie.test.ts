@@ -284,10 +284,14 @@ describe("Trie", () => {
   it("keysWithPrefix", () => {
     const trie = pipe(
       Trie.empty<number>(),
-      Trie.insert("shells", 0),
-      Trie.insert("sells", 1),
+      Trie.insert("she", 0),
+      Trie.insert("shells", 1),
       Trie.insert("sea", 2),
-      Trie.insert("she", 3)
+      Trie.insert("sells", 3),
+      Trie.insert("by", 4),
+      Trie.insert("the", 5),
+      Trie.insert("sea", 6),
+      Trie.insert("shore", 7)
     )
 
     const result = Array.from(Trie.keysWithPrefix(trie, "she"))
