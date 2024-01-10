@@ -7,7 +7,7 @@
 import * as Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as order from "./Order.js"
-import type { Simplify } from "./Types.js"
+import type { MatchRecord, Simplify } from "./Types.js"
 
 /**
  * Create a new object by picking properties of an existing object.
@@ -20,13 +20,15 @@ import type { Simplify } from "./Types.js"
  *
  * @since 2.0.0
  */
-export const pick = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
+export const pick = <Keys extends Array<PropertyKey>>(
   ...keys: Keys
 ) =>
-(s: S): Simplify<Pick<S, Keys[number]>> => {
+<S extends Record<Keys[number], any>>(
+  s: S
+): MatchRecord<S, { [K in Keys[number]]: S[K] | undefined }, { [K in Keys[number]]: S[K] }> => {
   const out: any = {}
   for (const k of keys) {
-    out[k] = s[k]
+    out[k] = (s as any)[k]
   }
   return out
 }
@@ -42,10 +44,10 @@ export const pick = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
  *
  * @since 2.0.0
  */
-export const omit = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
+export const omit = <Keys extends Array<PropertyKey>>(
   ...keys: Keys
 ) =>
-(s: S): Simplify<Omit<S, Keys[number]>> => {
+<S extends Record<Keys[number], any>>(s: S): Simplify<Omit<S, Keys[number]>> => {
   const out: any = { ...s }
   for (const k of keys) {
     delete out[k]
@@ -150,3 +152,19 @@ export const evolve: {
     return out as any
   }
 )
+
+/**
+ * Retrieves the value associated with the specified key from a struct.
+ *
+ * @example
+ * import * as Struct from "effect/Struct"
+ * import { pipe } from "effect/Function"
+ *
+ * const value = pipe({ a: 1, b: 2 }, Struct.get("a"))
+ *
+ * assert.deepStrictEqual(value, 1)
+ *
+ * @since 2.0.0
+ */
+export const get =
+  <K extends PropertyKey>(key: K) => <S extends Record<K, any>>(s: S): MatchRecord<S, S[K] | undefined, S[K]> => s[key]

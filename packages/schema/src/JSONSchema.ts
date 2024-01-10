@@ -7,7 +7,6 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as AST from "./AST.js"
-import * as Parser from "./Parser.js"
 import type * as Schema from "./Schema.js"
 
 /**
@@ -388,7 +387,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
           }
           case "TemplateLiteral": {
             patternProperties = {
-              [Parser.getTemplateLiteralRegex(parameter).source]: goWithIdentifier(
+              [AST.getTemplateLiteralRegex(parameter).source]: goWithIdentifier(
                 is.type,
                 $defs
               )
@@ -493,7 +492,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       throw new Error("cannot build a JSON Schema for a refinement without a JSON Schema annotation")
     }
     case "TemplateLiteral": {
-      const regex = Parser.getTemplateLiteralRegex(ast)
+      const regex = AST.getTemplateLiteralRegex(ast)
       return {
         type: "string",
         description: "a template literal",

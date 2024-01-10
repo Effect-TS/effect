@@ -412,7 +412,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
     case "Enums":
       return fromRefinement(ast, (u): u is any => ast.enums.some(([_, value]) => value === u))
     case "TemplateLiteral": {
-      const regex = getTemplateLiteralRegex(ast)
+      const regex = AST.getTemplateLiteralRegex(ast)
       return fromRefinement(ast, (u): u is any => Predicate.isString(u) && regex.test(u))
     }
     case "Tuple": {
@@ -1099,21 +1099,6 @@ const handleForbidden = <A>(
     : options?.isEffectAllowed === true
     ? effect
     : Either.left(ParseResult.forbidden(actual))
-}
-
-/** @internal */
-export const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {
-  let pattern = `^${ast.head}`
-  for (const span of ast.spans) {
-    if (AST.isStringKeyword(span.type)) {
-      pattern += ".*"
-    } else if (AST.isNumberKeyword(span.type)) {
-      pattern += "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
-    }
-    pattern += span.literal
-  }
-  pattern += "$"
-  return new RegExp(pattern)
 }
 
 function sortByIndex<T>(

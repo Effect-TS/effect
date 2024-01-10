@@ -70,3 +70,13 @@ export type MutableTuple = Types.Mutable<readonly [string, number]>
 
 // $ExpectType { [x: string]: number; }
 export type MutableRecord = Types.Simplify<Types.Mutable<{ readonly [_: string]: number }>>
+
+// -------------------------------------------------------------------------------------
+// MatchRecord
+// -------------------------------------------------------------------------------------
+
+// $ExpectType 1
+export type MatchRecord1 = Types.MatchRecord<{ [x: string]: number }, 1, 0>
+
+// $ExpectType 0
+export type MatchRecord2 = Types.MatchRecord<{ a: number }, 1, 0>

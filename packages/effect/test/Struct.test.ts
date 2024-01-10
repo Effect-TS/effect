@@ -6,11 +6,13 @@ import { assert, describe, expect, it } from "vitest"
 
 describe("Struct", () => {
   it("exports", () => {
-    expect(Struct.getOrder).exist
+    expect(Struct.getOrder).exist // alias of order.struct, tested there
   })
 
   it("pick", () => {
     expect(pipe({ a: "a", b: 1, c: true }, Struct.pick("a", "b"))).toEqual({ a: "a", b: 1 })
+    const record: Record<string, number> = {}
+    expect(pipe(record, Struct.pick("a", "b"))).toStrictEqual({ a: undefined, b: undefined })
   })
 
   it("omit", () => {

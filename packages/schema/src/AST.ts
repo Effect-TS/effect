@@ -850,7 +850,7 @@ export const createTypeLiteral = (
   return {
     _tag: "TypeLiteral",
     propertySignatures: sortPropertySignatures(propertySignatures),
-    indexSignatures,
+    indexSignatures: sortIndexSignatures(indexSignatures),
     annotations
   }
 }
@@ -1248,19 +1248,69 @@ export const appendElement = (
  */
 export const keyof = (ast: AST): AST => createUnion(_keyof(ast))
 
-/**
- * @since 1.0.0
- */
-export const getPropertySignatures = (
-  ast: AST
-): ReadonlyArray<PropertySignature> => {
-  switch (ast._tag) {
-    case "TypeLiteral":
-      return ast.propertySignatures
-    case "Suspend":
-      return getPropertySignatures(ast.f())
+/** @internal */
+export const getTemplateLiteralRegex = (ast: TemplateLiteral): RegExp => {
+  let pattern = `^${ast.head}`
+  for (const span of ast.spans) {
+    if (isStringKeyword(span.type)) {
+      pattern += ".*"
+    } else if (isNumberKeyword(span.type)) {
+      pattern += "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
+    }
+    pattern += span.literal
   }
-  throw new Error(`getPropertySignatures: unsupported schema (${ast._tag})`)
+  pattern += "$"
+  return new RegExp(pattern)
+}
+
+const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
+  switch (ast._tag) {
+    case "TypeLiteral": {
+      const ops = ReadonlyArray.findFirst(ast.propertySignatures, (ps) => ps.name === name)
+      if (Option.isSome(ops)) {
+        return ops.value
+      } else {
+        if (Predicate.isString(name)) {
+          for (const is of ast.indexSignatures) {
+            const parameterBase = getParameterBase(is.parameter)
+            switch (parameterBase._tag) {
+              case "TemplateLiteral": {
+                const regex = getTemplateLiteralRegex(parameterBase)
+                if (regex.test(name)) {
+                  return createPropertySignature(name, is.type, false, false)
+                }
+                break
+              }
+              case "StringKeyword":
+                return createPropertySignature(name, is.type, false, false)
+            }
+          }
+        } else if (Predicate.isSymbol(name)) {
+          for (const is of ast.indexSignatures) {
+            const parameterBase = getParameterBase(is.parameter)
+            if (isSymbolKeyword(parameterBase)) {
+              return createPropertySignature(name, is.type, false, false)
+            }
+          }
+        }
+      }
+      break
+    }
+    case "Suspend":
+      return getIndexedAccess(ast.f(), name)
+  }
+  return createPropertySignature(name, neverKeyword, false, true)
+}
+
+const getIndexedAccessKeys = (ast: AST): Array<PropertyKey> => {
+  switch (ast._tag) {
+    case "TypeLiteral": {
+      return ast.propertySignatures.map((ps) => ps.name)
+    }
+    case "Suspend":
+      return getIndexedAccessKeys(ast.f())
+  }
+  return []
 }
 
 /**
@@ -1308,7 +1358,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
  * @since 1.0.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
-  createTypeLiteral(getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
+  createTypeLiteral(keys.map((key) => getIndexedAccess(ast, key)), [])
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Omit`.
@@ -1316,7 +1366,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
  * @since 1.0.0
  */
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
-  createTypeLiteral(getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
+  pick(ast, getIndexedAccessKeys(ast).filter((name) => !keys.includes(name)))
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Partial`.
@@ -1575,6 +1625,22 @@ export const getCardinality = (ast: AST): number => {
 
 const sortPropertySignatures = ReadonlyArray.sort(
   pipe(Number.Order, Order.mapInput((ps: PropertySignature) => getCardinality(ps.type)))
+)
+
+const sortIndexSignatures = ReadonlyArray.sort(
+  pipe(
+    Number.Order,
+    Order.mapInput((is: IndexSignature) => {
+      switch (getParameterBase(is.parameter)._tag) {
+        case "StringKeyword":
+          return 2
+        case "SymbolKeyword":
+          return 3
+        case "TemplateLiteral":
+          return 1
+      }
+    })
+  )
 )
 
 type Weight = readonly [number, number, number]

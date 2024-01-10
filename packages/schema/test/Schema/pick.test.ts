@@ -97,4 +97,52 @@ describe("Schema > pick", () => {
     await Util.expectParseSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectParseSuccess(schema, { b: "1" }, { a: "", b: 1 })
   })
+
+  it("record(string, number)", async () => {
+    const schema = S.record(S.string, S.number).pipe(S.pick("a", "b"))
+    await Util.expectParseSuccess(schema, { a: 1, b: 2 })
+    await Util.expectParseFailure(
+      schema,
+      { a: "a", b: 2 },
+      `{ a: number; b: number }
+└─ ["a"]
+   └─ Expected a number, actual "a"`
+    )
+    await Util.expectParseFailure(
+      schema,
+      { a: 1, b: "b" },
+      `{ a: number; b: number }
+└─ ["b"]
+   └─ Expected a number, actual "b"`
+    )
+  })
+
+  it("record(symbol, number)", async () => {
+    const a = Symbol.for("@effect/schema/test/a")
+    const b = Symbol.for("@effect/schema/test/b")
+    const schema = S.record(S.symbolFromSelf, S.number).pipe(S.pick(a, b))
+    await Util.expectParseSuccess(schema, { [a]: 1, [b]: 2 })
+    await Util.expectParseFailure(
+      schema,
+      { [a]: "a", [b]: 2 },
+      `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+└─ [Symbol(@effect/schema/test/a)]
+   └─ Expected a number, actual "a"`
+    )
+    await Util.expectParseFailure(
+      schema,
+      { [a]: 1, [b]: "b" },
+      `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+└─ [Symbol(@effect/schema/test/b)]
+   └─ Expected a number, actual "b"`
+    )
+  })
+
+  it("record(string, string) & record(`a${string}`, number)", async () => {
+    const schema = S.record(S.string, S.string).pipe(
+      S.extend(S.record(S.templateLiteral(S.literal("a"), S.string), S.number)),
+      S.pick("a", "b")
+    )
+    await Util.expectParseSuccess(schema, { a: 1, b: "b" })
+  })
 })
