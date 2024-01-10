@@ -1835,22 +1835,22 @@ export const findNextMonth = (now: number, day: number, months: number): number 
 
 // circular with Effect
 
-const ScheduleErrorTypeId = Symbol.for("effect/Schedule/ScheduleError")
-class ScheduleError<E> {
-  readonly [ScheduleErrorTypeId]: typeof ScheduleErrorTypeId
+const ScheduleDefectTypeId = Symbol.for("effect/Schedule/ScheduleDefect")
+class ScheduleDefect<E> {
+  readonly [ScheduleDefectTypeId]: typeof ScheduleDefectTypeId
   constructor(readonly error: E) {
-    this[ScheduleErrorTypeId] = ScheduleErrorTypeId
+    this[ScheduleDefectTypeId] = ScheduleDefectTypeId
   }
 }
-const isScheduleError = <E = unknown>(u: unknown): u is ScheduleError<E> => hasProperty(u, ScheduleErrorTypeId)
-const scheduleErrorWrap = <R, E, A>(self: Effect.Effect<R, E, A>) =>
-  core.catchAll(self, (e) => core.die(new ScheduleError(e)))
-const scheduleErrorRefail = <R, E, A>(self: Effect.Effect<R, E, A>) =>
+const isScheduleDefect = <E = unknown>(u: unknown): u is ScheduleDefect<E> => hasProperty(u, ScheduleDefectTypeId)
+const scheduleDefectWrap = <R, E, A>(self: Effect.Effect<R, E, A>) =>
+  core.catchAll(self, (e) => core.die(new ScheduleDefect(e)))
+const scheduleDefectRefail = <R, E, A>(self: Effect.Effect<R, E, A>) =>
   core.catchAllCause(self, (cause) =>
     Option.match(
       internalCause.find(
         cause,
-        (_) => internalCause.isDieType(_) && isScheduleError<E>(_.defect) ? Option.some(_.defect) : Option.none()
+        (_) => internalCause.isDieType(_) && isScheduleDefect<E>(_.defect) ? Option.some(_.defect) : Option.none()
       ),
       {
         onNone: () => core.failCause(cause),
@@ -1900,7 +1900,7 @@ export const repeat_combined = dual<{
         if (typeof applied === "boolean") {
           return core.succeed(applied)
         }
-        return scheduleErrorWrap(applied)
+        return scheduleDefectWrap(applied)
       }) :
       base
     const withUntil = options.until ?
@@ -1909,14 +1909,14 @@ export const repeat_combined = dual<{
         if (typeof applied === "boolean") {
           return core.succeed(applied)
         }
-        return scheduleErrorWrap(applied)
+        return scheduleDefectWrap(applied)
       }) :
       withWhile
     const withTimes = options.times ?
       intersect(withUntil, recurs(options.times)) :
       withUntil
 
-    return scheduleErrorRefail(repeat_Effect(self, withTimes))
+    return scheduleDefectRefail(repeat_Effect(self, withTimes))
   }
 )
 
@@ -1997,7 +1997,7 @@ export const retry_combined = dual<{
         if (typeof applied === "boolean") {
           return core.succeed(applied)
         }
-        return scheduleErrorWrap(applied)
+        return scheduleDefectWrap(applied)
       }) :
       base
     const withUntil = options.until ?
@@ -2006,13 +2006,13 @@ export const retry_combined = dual<{
         if (typeof applied === "boolean") {
           return core.succeed(applied)
         }
-        return scheduleErrorWrap(applied)
+        return scheduleDefectWrap(applied)
       }) :
       withWhile
     const withTimes = options.times ?
       intersect(withUntil, recurs(options.times)) :
       withUntil
-    return scheduleErrorRefail(retry_Effect(self, withTimes))
+    return scheduleDefectRefail(retry_Effect(self, withTimes))
   }
 )
 
