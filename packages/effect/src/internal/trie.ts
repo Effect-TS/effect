@@ -162,7 +162,7 @@ export const insert = dual<
   // -1:left | 0:mid | 1:right
   const d_stack: Array<Ordering.Ordering> = []
   const n_stack: Array<Node.Node<V>> = []
-  let n: Node.Node<V> = (self as TrieImpl<V>)._root ?? new Node.Node(key[0], 0)
+  let n: Node.Node<V> = (self as TrieImpl<V>)._root ?? Node.makeNode(key[0], 0)
   const count = n.count + 1
   let cIndex = 0
 
@@ -172,14 +172,14 @@ export const insert = dual<
     if (c > n.key) {
       d_stack.push(1)
       if (n.right === undefined) {
-        n = new Node.Node<V>(c, count)
+        n = Node.makeNode<V>(c, count)
       } else {
         n = n.right
       }
     } else if (c < n.key) {
       d_stack.push(-1)
       if (n.left === undefined) {
-        n = new Node.Node<V>(c, count)
+        n = Node.makeNode<V>(c, count)
       } else {
         n = n.left
       }
@@ -188,7 +188,7 @@ export const insert = dual<
         n.value = value
       } else if (n.mid === undefined) {
         d_stack.push(0)
-        n = new Node.Node<V>(key[cIndex + 1], count)
+        n = Node.makeNode<V>(key[cIndex + 1], count)
       } else {
         d_stack.push(0)
         n = n.mid
@@ -204,7 +204,7 @@ export const insert = dual<
     const d = d_stack[s]
     if (d === -1) {
       // left
-      n_stack[s] = new Node.Node(
+      n_stack[s] = Node.makeNode(
         n2.key,
         count,
         n2.value,
@@ -214,7 +214,7 @@ export const insert = dual<
       )
     } else if (d === 1) {
       // right
-      n_stack[s] = new Node.Node(
+      n_stack[s] = Node.makeNode(
         n2.key,
         count,
         n2.value,
@@ -224,7 +224,7 @@ export const insert = dual<
       )
     } else {
       // mid
-      n_stack[s] = new Node.Node(
+      n_stack[s] = Node.makeNode(
         n2.key,
         count,
         n2.value,
@@ -481,7 +481,7 @@ export const remove = dual<
     }
 
     const removeNode = n_stack[n_stack.length - 1]
-    n_stack[n_stack.length - 1] = new Node.Node(
+    n_stack[n_stack.length - 1] = Node.makeNode(
       removeNode.key,
       count,
       undefined, // Remove
@@ -498,7 +498,7 @@ export const remove = dual<
       const nc = child.left === undefined && child.mid === undefined && child.right === undefined ? undefined : child
       if (d === -1) {
         // left
-        n_stack[s] = new Node.Node(
+        n_stack[s] = Node.makeNode(
           n2.key,
           count,
           n2.value,
@@ -508,7 +508,7 @@ export const remove = dual<
         )
       } else if (d === 1) {
         // right
-        n_stack[s] = new Node.Node(
+        n_stack[s] = Node.makeNode(
           n2.key,
           count,
           n2.value,
@@ -518,7 +518,7 @@ export const remove = dual<
         )
       } else {
         // mid
-        n_stack[s] = new Node.Node(
+        n_stack[s] = Node.makeNode(
           n2.key,
           count,
           n2.value,
@@ -618,7 +618,7 @@ export const modify = dual<
       return self
     }
 
-    n_stack[n_stack.length - 1] = new Node.Node(
+    n_stack[n_stack.length - 1] = Node.makeNode(
       updateNode.key,
       updateNode.count,
       f(updateNode.value), // Update
@@ -634,7 +634,7 @@ export const modify = dual<
       const child = n_stack[s + 1]
       if (d === -1) {
         // left
-        n_stack[s] = new Node.Node(
+        n_stack[s] = Node.makeNode(
           n2.key,
           n2.count,
           n2.value,
@@ -644,7 +644,7 @@ export const modify = dual<
         )
       } else if (d === 1) {
         // right
-        n_stack[s] = new Node.Node(
+        n_stack[s] = Node.makeNode(
           n2.key,
           n2.count,
           n2.value,
@@ -654,7 +654,7 @@ export const modify = dual<
         )
       } else {
         // mid
-        n_stack[s] = new Node.Node(
+        n_stack[s] = Node.makeNode(
           n2.key,
           n2.count,
           n2.value,
