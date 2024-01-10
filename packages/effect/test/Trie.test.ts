@@ -59,13 +59,12 @@ describe("Trie", () => {
   it("iterable empty", () => {
     const trie = pipe(Trie.empty<string>())
 
-    assert.strictEqual(Trie.size(trie), 0)
+    assert.equal(Trie.size(trie), 0)
     deepStrictEqual(Array.from(trie), [])
   })
 
   it("insert", () => {
-    const trie1 = pipe(
-      Trie.empty<number>(),
+    const trie1 = Trie.empty<number>().pipe(
       Trie.insert("call", 0)
     )
 
@@ -85,14 +84,21 @@ describe("Trie", () => {
     deepStrictEqual(Array.from(trie), iterable)
   })
 
+  it("make", () => {
+    const trie = Trie.make(["ca", 0], ["me", 1])
+    deepStrictEqual(Array.from(trie), [["ca", 0], ["me", 1]])
+    assert.equal(Equal.equals(Trie.fromIterable([["ca", 0], ["me", 1]]), trie), true)
+  })
+
   it("fromIterable [1]", () => {
     const iterable: Array<[string, number]> = [["ca", 0], ["me", 1]]
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), iterable)
+    assert.equal(Equal.equals(Trie.make(["ca", 0], ["me", 1]), trie), true)
   })
 
   it("fromIterable [2]", () => {
-    const iterable: Array<[string, number]> = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]]
+    const iterable: Array<readonly [string, number]> = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]]
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
   })
@@ -116,26 +122,23 @@ describe("Trie", () => {
   })
 
   it("size", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("a", 0),
       Trie.insert("b", 1)
     )
+
     assert.equal(Trie.size(trie), 2)
   })
 
   it("isEmpty", () => {
-    const trie = pipe(
-      Trie.empty<number>()
-    )
+    const trie = Trie.empty<number>()
     const trie1 = trie.pipe(Trie.insert("ma", 0))
     assert.equal(Trie.isEmpty(trie), true)
     assert.equal(Trie.isEmpty(trie1), false)
   })
 
   it("get", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1),
       Trie.insert("mind", 2),
@@ -152,8 +155,7 @@ describe("Trie", () => {
   })
 
   it("has", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1),
       Trie.insert("mind", 2),
@@ -170,18 +172,15 @@ describe("Trie", () => {
   })
 
   it("unsafeGet", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1)
     )
-
     assert.throws(() => Trie.unsafeGet(trie, "mae"))
   })
 
   it("remove", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1),
       Trie.insert("mind", 2),
@@ -201,14 +200,14 @@ describe("Trie", () => {
   })
 
   it("keys", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
-      Trie.insert("call", 0),
-      Trie.insert("me", 1)
+    const trie = Trie.empty<number>().pipe(
+      Trie.insert("cab", 0),
+      Trie.insert("abc", 1),
+      Trie.insert("bca", 2)
     )
 
     const result = Array.from(Trie.keys(trie))
-    deepStrictEqual(result, ["call", "me"])
+    deepStrictEqual(result, ["abc", "bca", "cab"])
   })
 
   it("keys alphabetical order", () => {
@@ -249,19 +248,18 @@ describe("Trie", () => {
   })
 
   it("values", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
-      Trie.insert("me", 1)
+      Trie.insert("me", 1),
+      Trie.insert("and", 2)
     )
 
     const result = Array.from(Trie.values(trie))
-    deepStrictEqual(result, [0, 1])
+    deepStrictEqual(result, [2, 0, 1])
   })
 
   it("entries", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1)
     )
@@ -271,8 +269,7 @@ describe("Trie", () => {
   })
 
   it("toEntries", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1)
     )
@@ -282,8 +279,7 @@ describe("Trie", () => {
   })
 
   it("keysWithPrefix", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("she", 0),
       Trie.insert("shells", 1),
       Trie.insert("sea", 2),
@@ -325,8 +321,7 @@ describe("Trie", () => {
   })
 
   it("toEntriesWithPrefix", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("sea", 2),
@@ -338,8 +333,7 @@ describe("Trie", () => {
   })
 
   it("longestPrefixOf", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
@@ -352,22 +346,19 @@ describe("Trie", () => {
   })
 
   it("map", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
     )
 
-    const trieMapV = pipe(
-      Trie.empty<number>(),
+    const trieMapV = Trie.empty<number>().pipe(
       Trie.insert("shells", 1),
       Trie.insert("sells", 2),
       Trie.insert("she", 3)
     )
 
-    const trieMapK = pipe(
-      Trie.empty<number>(),
+    const trieMapK = Trie.empty<number>().pipe(
       Trie.insert("shells", 6),
       Trie.insert("sells", 5),
       Trie.insert("she", 3)
@@ -378,20 +369,17 @@ describe("Trie", () => {
   })
 
   it("filter", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
     )
 
-    const trieMapV = pipe(
-      Trie.empty<number>(),
+    const trieMapV = Trie.empty<number>().pipe(
       Trie.insert("she", 2)
     )
 
-    const trieMapK = pipe(
-      Trie.empty<number>(),
+    const trieMapK = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1)
     )
@@ -401,20 +389,17 @@ describe("Trie", () => {
   })
 
   it("filterMap", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
     )
 
-    const trieMapV = pipe(
-      Trie.empty<number>(),
+    const trieMapV = Trie.empty<number>().pipe(
       Trie.insert("she", 2)
     )
 
-    const trieMapK = pipe(
-      Trie.empty<number>(),
+    const trieMapK = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1)
     )
@@ -427,15 +412,13 @@ describe("Trie", () => {
   })
 
   it("compact", () => {
-    const trie = pipe(
-      Trie.empty<Option.Option<number>>(),
+    const trie = Trie.empty<Option.Option<number>>().pipe(
       Trie.insert("shells", Option.some(0)),
       Trie.insert("sells", Option.none()),
       Trie.insert("she", Option.some(2))
     )
 
-    const trieMapV = pipe(
-      Trie.empty<number>(),
+    const trieMapV = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("she", 2)
     )
@@ -444,8 +427,7 @@ describe("Trie", () => {
   })
 
   it("modify", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
@@ -456,8 +438,7 @@ describe("Trie", () => {
   })
 
   it("removeMany", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
@@ -470,15 +451,13 @@ describe("Trie", () => {
   })
 
   it("insertMany", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
     )
 
-    const trieInsert = pipe(
-      Trie.empty<number>(),
+    const trieInsert = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insertMany(
         [["sells", 1], ["she", 2]]
@@ -492,8 +471,7 @@ describe("Trie", () => {
   })
 
   it("reduce", () => {
-    const trie = pipe(
-      Trie.empty<number>(),
+    const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
@@ -521,8 +499,8 @@ describe("Trie", () => {
 
   it("forEach", () => {
     let value = 0
-    pipe(
-      Trie.empty<number>(),
+
+    Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2),
