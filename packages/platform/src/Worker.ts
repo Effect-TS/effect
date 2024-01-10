@@ -252,11 +252,22 @@ export declare namespace SerializedWorker {
    * @since 1.0.0
    * @category models
    */
-  export interface Options<I, W = unknown> {
+  export type Options<I, W = unknown> = Extract<I, { readonly _tag: "InitialMessage" }> extends never ?
+    BaseOptions<I, W> & {
+      readonly initialMessage?: LazyArg<I>
+    }
+    : BaseOptions<I, W> & {
+      readonly initialMessage: LazyArg<Extract<I, { readonly _tag: "InitialMessage" }>>
+    }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface BaseOptions<I, W = unknown> {
     readonly spawn: (id: number) => W
     readonly permits?: number
     readonly queue?: WorkerQueue<I>
-    readonly initialMessage?: LazyArg<I>
   }
 }
 

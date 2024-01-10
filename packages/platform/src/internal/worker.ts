@@ -344,12 +344,12 @@ export const makeSerialized = <
     const manager = yield* _(WorkerManager)
     const backing = yield* _(
       manager.spawn({
-        ...options,
+        ...options as any,
         transfers(message) {
           return Transferable.get(message)
         },
         encode(message) {
-          return Effect.mapError(Serializable.serialize(message), (error) => WorkerError("encode", error))
+          return Effect.mapError(Serializable.serialize(message as any), (error) => WorkerError("encode", error))
         }
       })
     )
