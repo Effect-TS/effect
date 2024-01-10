@@ -30,8 +30,6 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
   options?: Runtime.RunForkOptions
 ): Fiber.RuntimeFiber<E, A> => {
   const fiberId = FiberId.unsafeMake()
-  const effect = self
-
   const fiberRefUpdates: ReadonlyArray.NonEmptyArray<
     readonly [FiberRef.FiberRef<any>, ReadonlyArray.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
   > = [[core.currentContext, [[fiberId, runtime.context]]]]
@@ -55,6 +53,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
     runtime.runtimeFlags
   )
 
+  const effect = self
   const supervisor = fiberRuntime._supervisor
 
   // we can compare by reference here as _supervisor.none is wrapped with globalValue
@@ -66,7 +65,12 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 
   fiberScope.globalScope.add(runtime.runtimeFlags, fiberRuntime)
 
-  fiberRuntime.start(effect)
+  // Only an explicit false will prevent immediate execution
+  if (options?.immediate === false) {
+    fiberRuntime.resume(effect)
+  } else {
+    fiberRuntime.start(effect)
+  }
 
   return fiberRuntime
 }
@@ -75,22 +79,25 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 <E, A>(
   effect: Effect.Effect<R, E, A>,
-  onExit?: (exit: Exit.Exit<E, A>) => void
-): (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void) => void => {
-  const fiberRuntime = unsafeFork(runtime)(effect)
+  options: Runtime.RunCallbackOptions<E, A> = {}
+): (fiberId?: FiberId.FiberId, options?: Runtime.RunCallbackOptions<E, A> | undefined) => void => {
+  const fiberRuntime = unsafeFork(runtime)(effect, options)
 
-  if (onExit) {
+  if (options.onExit) {
     fiberRuntime.addObserver((exit) => {
-      onExit(exit)
+      options.onExit!(exit)
     })
   }
 
-  return (id, onExitInterrupt) =>
+  return (id, cancelOptions) =>
     unsafeRunCallback(runtime)(
       pipe(fiberRuntime, Fiber.interruptAs(id ?? FiberId.none)),
-      onExitInterrupt ?
-        (exit) => onExitInterrupt(Exit.flatten(exit)) :
-        void 0
+      {
+        ...cancelOptions,
+        onExit: cancelOptions?.onExit
+          ? (exit) => cancelOptions.onExit!(Exit.flatten(exit))
+          : undefined
+      }
     )
 }
 

@@ -4749,7 +4749,7 @@ export const runFork: <E, A>(effect: Effect<never, E, A>) => Fiber.RuntimeFiber<
  */
 export const runCallback: <E, A>(
   effect: Effect<never, E, A>,
-  onExit?: (exit: Exit.Exit<E, A>) => void
+  options?: Runtime.RunCallbackOptions<E, A> | undefined
 ) => Runtime.Cancel<E, A> = _runtime.unsafeRunEffect
 
 /**
