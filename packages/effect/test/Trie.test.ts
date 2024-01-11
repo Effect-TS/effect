@@ -137,7 +137,7 @@ describe("Trie", () => {
     assert.equal(Trie.isEmpty(trie1), false)
   })
 
-  it("get", () => {
+  it("get [1]", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1),
@@ -152,6 +152,19 @@ describe("Trie", () => {
     deepStrictEqual(Trie.get(trie, "ma"), Option.none())
     deepStrictEqual(Trie.get(trie, "midn"), Option.none())
     deepStrictEqual(Trie.get(trie, "mea"), Option.none())
+  })
+
+  it("get [2]", () => {
+    const trie = Trie.empty<number>().pipe(
+      Trie.insert("shells", 0),
+      Trie.insert("sells", 1),
+      Trie.insert("she", 2)
+    )
+
+    deepStrictEqual(Trie.get(trie, "sell"), Option.none())
+    deepStrictEqual(Trie.get(trie, "sells"), Option.some(1))
+    deepStrictEqual(Trie.get(trie, "shell"), Option.none())
+    deepStrictEqual(Trie.get(trie, "she"), Option.some(2))
   })
 
   it("has", () => {

@@ -393,6 +393,8 @@ export const get = dual<
         if (cIndex === key.length - 1) {
           if (n.value !== undefined) {
             return Option.some(n.value)
+          } else {
+            cIndex += 1
           }
         } else {
           if (n.mid === undefined) {
