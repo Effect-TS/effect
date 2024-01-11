@@ -293,7 +293,7 @@ export const fileContent = (
   mapOrFail(file(name, { exists: "yes" }), (path) =>
     Effect.mapError(
       InternalFiles.read(path),
-      (doc) => InternalValidationError.invalidValue(doc)
+      (msg) => InternalValidationError.invalidValue(InternalHelpDoc.p(msg))
     ))
 
 /** @internal */
@@ -304,7 +304,7 @@ export const fileParse = (
   mapOrFail(fileText(name), ([path, content]) =>
     Effect.mapError(
       InternalFiles.parse(path, content, format),
-      (error) => InternalValidationError.invalidValue(error)
+      (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(error))
     ))
 
 /** @internal */
@@ -321,7 +321,7 @@ export const fileText = (
   mapOrFail(file(name, { exists: "yes" }), (path) =>
     Effect.mapError(
       InternalFiles.readString(path),
-      (doc) => InternalValidationError.invalidValue(doc)
+      (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(error))
     ))
 
 /** @internal */

@@ -208,13 +208,20 @@ export const file = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
 export const fileContent = (
   config?: Args.Args.BaseArgsConfig
 ): Args.Args<readonly [path: string, content: Uint8Array]> =>
-  mapOrFail(file({ ...config, exists: "yes" }), (path) => InternalFiles.read(path))
+  mapOrFail(
+    file({ ...config, exists: "yes" }),
+    (path) => Effect.mapError(InternalFiles.read(path), (e) => InternalHelpDoc.p(e))
+  )
 
 /** @internal */
 export const fileParse = (
   config?: Args.Args.FormatArgsConfig
 ): Args.Args<unknown> =>
-  mapOrFail(fileText(config), ([path, content]) => InternalFiles.parse(path, content, config?.format))
+  mapOrFail(fileText(config), ([path, content]) =>
+    Effect.mapError(
+      InternalFiles.parse(path, content, config?.format),
+      (e) => InternalHelpDoc.p(e)
+    ))
 
 /** @internal */
 export const fileSchema = <I, A>(
@@ -226,7 +233,11 @@ export const fileSchema = <I, A>(
 export const fileText = (
   config?: Args.Args.BaseArgsConfig
 ): Args.Args<readonly [path: string, content: string]> =>
-  mapOrFail(file({ ...config, exists: "yes" }), (path) => InternalFiles.readString(path))
+  mapOrFail(file({ ...config, exists: "yes" }), (path) =>
+    Effect.mapError(
+      InternalFiles.readString(path),
+      (e) => InternalHelpDoc.p(e)
+    ))
 
 /** @internal */
 export const float = (config?: Args.Args.BaseArgsConfig): Args.Args<number> =>
