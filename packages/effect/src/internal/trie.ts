@@ -391,11 +391,7 @@ export const get = dual<
         }
       } else {
         if (cIndex === key.length - 1) {
-          if (n.value !== undefined) {
-            return Option.some(n.value)
-          } else {
-            cIndex += 1
-          }
+          return Option.fromNullable(n.value)
         } else {
           if (n.mid === undefined) {
             return Option.none()
