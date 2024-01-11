@@ -80,13 +80,13 @@ export const unsafeSet: {
   <K, E, A, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XE, XA>,
-    fiberId?: FiberId.FiberId
+    interruptAs?: FiberId.FiberId
   ): (self: FiberMap<K, E, A>) => void
   <K, E, A, XE extends E, XA extends A>(
     self: FiberMap<K, E, A>,
     key: K,
     fiber: Fiber.RuntimeFiber<XE, XA>,
-    fiberId?: FiberId.FiberId
+    interruptAs?: FiberId.FiberId
   ): void
 } = dual<
   <K, E, A, XE extends E, XA extends A>(
@@ -151,8 +151,8 @@ export const set: {
  * @categories combinators
  */
 export const unsafeGet: {
-  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<never, NoSuchElementException, Fiber.RuntimeFiber<E, A>>
-  <K, E, A>(self: FiberMap<K, E, A>, key: K): Effect.Effect<never, NoSuchElementException, Fiber.RuntimeFiber<E, A>>
+  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Option.Option<Fiber.RuntimeFiber<E, A>>
+  <K, E, A>(self: FiberMap<K, E, A>, key: K): Option.Option<Fiber.RuntimeFiber<E, A>>
 } = dual<
   <K>(
     key: K
