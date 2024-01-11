@@ -3,6 +3,8 @@ import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Options from "@effect/cli/Options"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as FileSystem from "@effect/platform-node/FileSystem"
+import * as Schema from "@effect/schema/Schema"
+import { BigDecimal } from "effect"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -10,11 +12,12 @@ import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 const firstName = Options.text("firstName").pipe(Options.withAlias("f"))
 const lastName = Options.text("lastName")
 const age = Options.integer("age")
+const balance = Options.text("balance").pipe(Options.withSchema(Schema.BigDecimal))
 const ageOptional = Options.optional(age)
 const verbose = Options.boolean("verbose", { ifPresent: true })
 const defs = Options.keyValueMap("defs").pipe(Options.withAlias("d"))
@@ -525,5 +528,29 @@ describe("Options", () => {
       expect(result4).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Expected at most 3 value(s) for option: '--foo'"
       )))
+    }).pipe(runEffect))
+
+  it("validates with a Schema", () =>
+    Effect.gen(function*(_) {
+      const result = yield* _(
+        process(balance, ["--balance", "100.50"], CliConfig.defaultConfig)
+      )
+      assert.deepStrictEqual(result, [[], BigDecimal.unsafeFromString("100.50").pipe(BigDecimal.normalize)])
+    }).pipe(runEffect))
+
+  it("failure with a Schema", () =>
+    Effect.gen(function*(_) {
+      const result = yield* _(
+        process(balance, ["--balance", "abc"], CliConfig.defaultConfig),
+        Effect.flip
+      )
+      assert.deepStrictEqual(
+        result,
+        ValidationError.invalidValue(HelpDoc.p(
+          "BigDecimal\n" +
+            "└─ Transformation process failure\n" +
+            "   └─ Expected BigDecimal, actual \"abc\""
+        ))
+      )
     }).pipe(runEffect))
 })

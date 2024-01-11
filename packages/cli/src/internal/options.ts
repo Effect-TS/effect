@@ -1,5 +1,7 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Terminal from "@effect/platform/Terminal"
+import * as Schema from "@effect/schema/Schema"
+import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import type * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
@@ -585,6 +587,19 @@ export const withPseudoName = dual<
       single.description,
       Option.some(pseudoName)
     ) as Single))
+
+/** @internal */
+export const withSchema = dual<
+  <A, I extends A, B>(schema: Schema.Schema<I, B>) => (self: Options.Options<A>) => Options.Options<B>,
+  <A, I extends A, B>(self: Options.Options<A>, schema: Schema.Schema<I, B>) => Options.Options<B>
+>(2, (self, schema) => {
+  const decode = Schema.decodeEither(schema)
+  return mapOrFail(self, (_) =>
+    Either.mapLeft(
+      decode(_ as any),
+      (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(TreeFormatter.formatIssue(error.error)))
+    ))
+})
 
 /** @internal */
 export const wizard = dual<
