@@ -45,10 +45,12 @@ export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pi
  *
  * @example
  * import * as Trie from "effect/Trie"
- * const trie = pipe(Trie.empty<string>())
+ * import * as Equal from "effect/Equal"
+ *
+ * const trie = Trie.empty<string>()
  *
  * assert.equal(Trie.size(trie), 0)
- * deepStrictEqual(Array.from(trie), [])
+ * assert.deepStrictEqual(Array.from(trie), [])
  *
  * @since 2.0.0
  * @category constructors
@@ -60,13 +62,14 @@ export const empty: <V = never>() => Trie<V> = TR.empty
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
  *
  * const iterable: Array<readonly [string, number]> = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]]
  * const trie = Trie.fromIterable(iterable)
  *
  * // The entries in the `Trie` are extracted in alphabetical order, regardless of the insertion order
- * deepStrictEqual(Array.from(trie), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
- * assert.equal(Equal.equals(Trie.make(["ca", 0], ["me", 1]), trie), true)
+ * assert.deepStrictEqual(Array.from(trie), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
+ * assert.equal(Equal.equals(Trie.make(["call", 0], ["me", 1], ["mind", 2], ["mid", 3]), trie), true)
  *
  * @since 2.0.0
  * @category constructors
@@ -78,10 +81,11 @@ export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Trie<
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
  *
  * const trie = Trie.make(["ca", 0], ["me", 1])
  *
- * deepStrictEqual(Array.from(trie), [["ca", 0], ["me", 1]])
+ * assert.deepStrictEqual(Array.from(trie), [["ca", 0], ["me", 1]])
  * assert.equal(Equal.equals(Trie.fromIterable([["ca", 0], ["me", 1]]), trie), true)
  *
  * @since 2.0.0
@@ -104,10 +108,10 @@ export const make: <Entries extends Array<readonly [string, any]>>(
  * const trie3 = trie2.pipe(Trie.insert("mind", 2))
  * const trie4 = trie3.pipe(Trie.insert("mid", 3))
  *
- * deepStrictEqual(Array.from(trie1), [["call", 0]])
- * deepStrictEqual(Array.from(trie2), [["call", 0], ["me", 1]])
- * deepStrictEqual(Array.from(trie3), [["call", 0], ["me", 1], ["mind", 2]])
- * deepStrictEqual(Array.from(trie4), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
+ * assert.deepStrictEqual(Array.from(trie1), [["call", 0]])
+ * assert.deepStrictEqual(Array.from(trie2), [["call", 0], ["me", 1]])
+ * assert.deepStrictEqual(Array.from(trie3), [["call", 0], ["me", 1], ["mind", 2]])
+ * assert.deepStrictEqual(Array.from(trie4), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
  *
  * @since 2.0.0
  * @category mutations
@@ -132,7 +136,7 @@ export const insert: {
  * )
  *
  * const result = Array.from(Trie.keys(trie))
- * deepStrictEqual(result, ["abc", "bca", "cab"])
+ * assert.deepStrictEqual(result, ["abc", "bca", "cab"])
  *
  * @since 2.0.0
  * @category getters
@@ -154,7 +158,7 @@ export const keys: <V>(self: Trie<V>) => IterableIterator<string> = TR.keys
  * )
  *
  * const result = Array.from(Trie.values(trie))
- * deepStrictEqual(result, [2, 0, 1])
+ * assert.deepStrictEqual(result, [2, 0, 1])
  *
  * @since 2.0.0
  * @category getters
@@ -175,7 +179,7 @@ export const values: <V>(self: Trie<V>) => IterableIterator<V> = TR.values
  * )
  *
  * const result = Array.from(Trie.entries(trie))
- * deepStrictEqual(result, [["call", 0], ["me", 1]])
+ * assert.deepStrictEqual(result, [["call", 0], ["me", 1]])
  *
  * @since 2.0.0
  * @category getters
@@ -196,7 +200,7 @@ export const entries: <V>(self: Trie<V>) => IterableIterator<[string, V]> = TR.e
  * )
  * const result = Trie.toEntries(trie)
  *
- * deepStrictEqual(result, [["call", 0], ["me", 1]])
+ * assert.deepStrictEqual(result, [["call", 0], ["me", 1]])
  *
  * @since 2.0.0
  * @category getters
@@ -218,7 +222,7 @@ export const toEntries = <V>(self: Trie<V>): Array<[string, V]> => Array.from(en
  * )
  *
  * const result = Array.from(Trie.keysWithPrefix(trie, "she"))
- * deepStrictEqual(result, ["she", "shells"])
+ * assert.deepStrictEqual(result, ["she", "shells"])
  *
  * @since 2.0.0
  * @category getters
@@ -245,7 +249,7 @@ export const keysWithPrefix: {
  * const result = Array.from(Trie.valuesWithPrefix(trie, "she"))
  *
  * // 0: "she", 1: "shells"
- * deepStrictEqual(result, [0, 1])
+ * assert.deepStrictEqual(result, [0, 1])
  *
  * @since 2.0.0
  * @category getters
@@ -270,7 +274,7 @@ export const valuesWithPrefix: {
  * )
  *
  * const result = Array.from(Trie.entriesWithPrefix(trie, "she"))
- * deepStrictEqual(result, [["she", 0], ["shells", 1]])
+ * assert.deepStrictEqual(result, [["she", 0], ["shells", 1]])
  *
  * @since 2.0.0
  * @category getters
@@ -295,7 +299,7 @@ export const entriesWithPrefix: {
  * )
  *
  * const result = Trie.toEntriesWithPrefix(trie, "she")
- * deepStrictEqual(result, [["she", 3], ["shells", 0]])
+ * assert.deepStrictEqual(result, [["she", 3], ["shells", 0]])
  *
  * @since 2.0.0
  * @category getters
@@ -311,6 +315,7 @@ export const toEntriesWithPrefix: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Option from "effect/Option"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -318,10 +323,10 @@ export const toEntriesWithPrefix: {
  *   Trie.insert("she", 2)
  * )
  *
- * deepStrictEqual(Trie.longestPrefixOf(trie, "sell"), Option.none())
- * deepStrictEqual(Trie.longestPrefixOf(trie, "sells"), Option.some(["sells", 1]))
- * deepStrictEqual(Trie.longestPrefixOf(trie, "shell"), Option.some(["she", 2]))
- * deepStrictEqual(Trie.longestPrefixOf(trie, "shellsort"), Option.some(["shells", 0]))
+ * assert.deepStrictEqual(Trie.longestPrefixOf(trie, "sell"), Option.none())
+ * assert.deepStrictEqual(Trie.longestPrefixOf(trie, "sells"), Option.some(["sells", 1]))
+ * assert.deepStrictEqual(Trie.longestPrefixOf(trie, "shell"), Option.some(["she", 2]))
+ * assert.deepStrictEqual(Trie.longestPrefixOf(trie, "shellsort"), Option.some(["shells", 0]))
  *
  * @since 2.0.0
  * @category getters
@@ -354,6 +359,7 @@ export const size: <V>(self: Trie<V>) => number = TR.size
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Option from "effect/Option"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -362,14 +368,14 @@ export const size: <V>(self: Trie<V>) => number = TR.size
  *   Trie.insert("mid", 3)
  * )
  *
- * deepStrictEqual(Trie.get(trie, "call"), Option.some(0))
- * deepStrictEqual(Trie.get(trie, "me"), Option.some(1))
- * deepStrictEqual(Trie.get(trie, "mind"), Option.some(2))
- * deepStrictEqual(Trie.get(trie, "mid"), Option.some(3))
- * deepStrictEqual(Trie.get(trie, "cale"), Option.none())
- * deepStrictEqual(Trie.get(trie, "ma"), Option.none())
- * deepStrictEqual(Trie.get(trie, "midn"), Option.none())
- * deepStrictEqual(Trie.get(trie, "mea"), Option.none())
+ * assert.deepStrictEqual(Trie.get(trie, "call"), Option.some(0))
+ * assert.deepStrictEqual(Trie.get(trie, "me"), Option.some(1))
+ * assert.deepStrictEqual(Trie.get(trie, "mind"), Option.some(2))
+ * assert.deepStrictEqual(Trie.get(trie, "mid"), Option.some(3))
+ * assert.deepStrictEqual(Trie.get(trie, "cale"), Option.none())
+ * assert.deepStrictEqual(Trie.get(trie, "ma"), Option.none())
+ * assert.deepStrictEqual(Trie.get(trie, "midn"), Option.none())
+ * assert.deepStrictEqual(Trie.get(trie, "mea"), Option.none())
  *
  * @since 2.0.0
  * @category elements
@@ -455,6 +461,7 @@ export const unsafeGet: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Option from "effect/Option"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -466,9 +473,9 @@ export const unsafeGet: {
  * const trie1 = trie.pipe(Trie.remove("call"))
  * const trie2 = trie1.pipe(Trie.remove("mea"))
  *
- * deepStrictEqual(Trie.get(trie, "call"), Option.some(0))
- * deepStrictEqual(Trie.get(trie1, "call"), Option.none())
- * deepStrictEqual(Trie.get(trie2, "call"), Option.none())
+ * assert.deepStrictEqual(Trie.get(trie, "call"), Option.some(0))
+ * assert.deepStrictEqual(Trie.get(trie1, "call"), Option.none())
+ * assert.deepStrictEqual(Trie.get(trie2, "call"), Option.none())
  *
  * @since 2.0.0
  * @category mutations
@@ -522,6 +529,7 @@ export const reduce: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -557,6 +565,7 @@ export const map: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -592,6 +601,8 @@ export const filter: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
+ * import * as Option from "effect/Option"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -627,6 +638,8 @@ export const filterMap: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
+ * import * as Option from "effect/Option"
  *
  * const trie = Trie.empty<Option.Option<number>>().pipe(
  *   Trie.insert("shells", Option.some(0)),
@@ -678,6 +691,8 @@ export const forEach: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
+ * import * as Option from "effect/Option"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -685,7 +700,7 @@ export const forEach: {
  *   Trie.insert("she", 2)
  * )
  *
- * deepStrictEqual(trie.pipe(Trie.modify("she", (v) => v + 10), Trie.get("she")), Option.some(12))
+ * assert.deepStrictEqual(trie.pipe(Trie.modify("she", (v) => v + 10), Trie.get("she")), Option.some(12))
  *
  * assert.equal(Equal.equals(trie.pipe(Trie.modify("me", (v) => v)), trie), true)
  *
@@ -702,6 +717,7 @@ export const modify: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -727,6 +743,7 @@ export const removeMany: {
  *
  * @example
  * import * as Trie from "effect/Trie"
+ * import * as Equal from "effect/Equal"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
