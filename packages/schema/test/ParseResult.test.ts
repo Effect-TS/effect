@@ -43,6 +43,10 @@ describe("ParseResult", () => {
       )
   })
 
+  it.only("Error.stack", () => {
+    expect(ParseResult.parseError(ParseResult.forbidden(1)).stack?.startsWith("ParseError: is forbidden")).toEqual(true)
+  })
+
   it("Effect.catchTag can be used to catch ParseError", () => {
     const program = Effect.fail(forbiddenParseError).pipe(
       Effect.catchTag("ParseError", () => Effect.succeed(1))

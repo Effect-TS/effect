@@ -21,6 +21,9 @@ export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
  * @since 1.0.0
  */
 export class ParseError extends TaggedError("ParseError")<{ readonly error: ParseIssue }> {
+  get message() {
+    return this.toString()
+  }
   /**
    * @since 1.0.0
    */
