@@ -1555,11 +1555,13 @@ describe("JSONSchema", () => {
       })
     })
 
-    it("symbol", () => {
-      const schema = S.symbol.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
+    it("symbolFromSelf", () => {
+      const schema = S.symbolFromSelf.pipe(S.jsonSchema({ "type": "custom JSON Schema" }))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "a symbol",
+        "title": "symbol",
         "type": "custom JSON Schema"
       })
     })
