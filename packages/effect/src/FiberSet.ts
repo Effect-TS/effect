@@ -60,7 +60,7 @@ const Proto = {
   }
 }
 
-const unsakeMake = <E = unknown, A = unknown>(): FiberSet<E, A> => {
+const unsafeMake = <E = unknown, A = unknown>(): FiberSet<E, A> => {
   const self = Object.create(Proto)
   self.backing = new Set()
   return self
@@ -71,7 +71,7 @@ const unsakeMake = <E = unknown, A = unknown>(): FiberSet<E, A> => {
  * @categories constructors
  */
 export const make = <E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, never, FiberSet<E, A>> =>
-  Effect.acquireRelease(Effect.sync(() => unsakeMake<E, A>()), clear)
+  Effect.acquireRelease(Effect.sync(() => unsafeMake<E, A>()), clear)
 
 /**
  * @since 2.0.0

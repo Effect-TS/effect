@@ -64,7 +64,7 @@ const Proto = {
   }
 }
 
-const unsakeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
+const unsafeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
   const self = Object.create(Proto)
   self.backing = MutableHashMap.empty()
   return self
@@ -75,7 +75,7 @@ const unsakeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
  * @categories constructors
  */
 export const make = <K, E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, never, FiberMap<K, E, A>> =>
-  Effect.acquireRelease(Effect.sync(() => unsakeMake<K, E, A>()), clear)
+  Effect.acquireRelease(Effect.sync(() => unsafeMake<K, E, A>()), clear)
 
 /**
  * @since 2.0.0
