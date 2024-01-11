@@ -486,7 +486,6 @@ export const remove = dual<
     nStack[nStack.length - 1] = {
       key: removeNode.key,
       count,
-      value: undefined, // Remove
       left: removeNode.left,
       mid: removeNode.mid,
       right: removeNode.right
