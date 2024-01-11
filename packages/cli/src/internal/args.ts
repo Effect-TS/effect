@@ -18,6 +18,7 @@ import type * as HelpDoc from "../HelpDoc.js"
 import type * as Primitive from "../Primitive.js"
 import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
+import * as InternalFiles from "./files.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
@@ -74,7 +75,7 @@ export interface Single extends
 export interface Map extends
   Op<"Map", {
     readonly args: Args.Args<unknown>
-    readonly f: (value: unknown) => Either.Either<HelpDoc.HelpDoc, unknown>
+    readonly f: (value: unknown) => Effect.Effect<FileSystem.FileSystem, HelpDoc.HelpDoc, unknown>
   }>
 {}
 
@@ -204,6 +205,30 @@ export const file = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
   )
 
 /** @internal */
+export const fileContent = (
+  config?: Args.Args.BaseArgsConfig
+): Args.Args<readonly [path: string, content: Uint8Array]> =>
+  mapOrFail(file({ ...config, exists: "yes" }), (path) => InternalFiles.read(path))
+
+/** @internal */
+export const fileParse = (
+  config?: Args.Args.FormatArgsConfig
+): Args.Args<unknown> =>
+  mapOrFail(fileText(config), ([path, content]) => InternalFiles.parse(path, content, config?.format))
+
+/** @internal */
+export const fileSchema = <I, A>(
+  schema: Schema.Schema<I, A>,
+  config?: Args.Args.FormatArgsConfig
+): Args.Args<A> => withSchema(fileParse(config), schema)
+
+/** @internal */
+export const fileText = (
+  config?: Args.Args.BaseArgsConfig
+): Args.Args<readonly [path: string, content: string]> =>
+  mapOrFail(file({ ...config, exists: "yes" }), (path) => InternalFiles.readString(path))
+
+/** @internal */
 export const float = (config?: Args.Args.BaseArgsConfig): Args.Args<number> =>
   makeSingle(Option.fromNullable(config?.name), InternalPrimitive.float)
 
@@ -299,8 +324,8 @@ export const map = dual<
 
 /** @internal */
 export const mapOrFail = dual<
-  <A, B>(f: (a: A) => Either.Either<HelpDoc.HelpDoc, B>) => (self: Args.Args<A>) => Args.Args<B>,
-  <A, B>(self: Args.Args<A>, f: (a: A) => Either.Either<HelpDoc.HelpDoc, B>) => Args.Args<B>
+  <A, B>(f: (a: A) => Effect.Effect<FileSystem.FileSystem, HelpDoc.HelpDoc, B>) => (self: Args.Args<A>) => Args.Args<B>,
+  <A, B>(self: Args.Args<A>, f: (a: A) => Effect.Effect<FileSystem.FileSystem, HelpDoc.HelpDoc, B>) => Args.Args<B>
 >(2, (self, f) => makeMap(self, f))
 
 /** @internal */
@@ -626,7 +651,7 @@ const makeSingle = <A>(
 
 const makeMap = <A, B>(
   self: Args.Args<A>,
-  f: (a: A) => Either.Either<HelpDoc.HelpDoc, B>
+  f: (value: A) => Effect.Effect<FileSystem.FileSystem, HelpDoc.HelpDoc, B>
 ): Args.Args<B> => {
   const op = Object.create(proto)
   op._tag = "Map"
@@ -728,9 +753,9 @@ const validateInternal = (
     case "Map": {
       return validateInternal(self.args as Instruction, args, config).pipe(
         Effect.flatMap(([leftover, a]) =>
-          Either.match(self.f(a), {
-            onLeft: (doc) => Effect.fail(InternalValidationError.invalidArgument(doc)),
-            onRight: (b) => Effect.succeed([leftover, b])
+          Effect.matchEffect(self.f(a), {
+            onFailure: (doc) => Effect.fail(InternalValidationError.invalidArgument(doc)),
+            onSuccess: (b) => Effect.succeed([leftover, b])
           })
         )
       )

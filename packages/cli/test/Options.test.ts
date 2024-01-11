@@ -3,8 +3,9 @@ import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Options from "@effect/cli/Options"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as FileSystem from "@effect/platform-node/FileSystem"
+import * as Path from "@effect/platform-node/Path"
 import * as Schema from "@effect/schema/Schema"
-import { BigDecimal } from "effect"
+import { BigDecimal, Layer } from "effect"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -22,10 +23,10 @@ const ageOptional = Options.optional(age)
 const verbose = Options.boolean("verbose", { ifPresent: true })
 const defs = Options.keyValueMap("defs").pipe(Options.withAlias("d"))
 
-const MainLive = FileSystem.layer
+const MainLive = Layer.mergeAll(FileSystem.layer, Path.layer)
 
 const runEffect = <E, A>(
-  self: Effect.Effect<FileSystem.FileSystem, E, A>
+  self: Effect.Effect<FileSystem.FileSystem | Path.Path, E, A>
 ): Promise<A> => Effect.provide(self, MainLive).pipe(Effect.runPromise)
 
 const process = <A>(
@@ -552,5 +553,132 @@ describe("Options", () => {
             "   └─ Expected BigDecimal, actual \"abc\""
         ))
       )
+    }).pipe(runEffect))
+
+  it("fileContent", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.json")
+      const result = yield* _(
+        process(Options.fileContent("config"), ["--config", filePath], CliConfig.defaultConfig)
+      )
+      const content = yield* _(fs.readFile(filePath))
+      assert.deepStrictEqual(result, [[], [filePath, content]])
+    }).pipe(runEffect))
+
+  it("fileText", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.json")
+      const result = yield* _(
+        process(Options.fileText("config"), ["--config", filePath], CliConfig.defaultConfig)
+      )
+      const content = yield* _(fs.readFileString(filePath))
+      assert.deepStrictEqual(result, [[], [filePath, content]])
+    }).pipe(runEffect))
+
+  it("fileParse", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.json")
+      const result = yield* _(
+        process(Options.fileParse("config"), ["--config", filePath], CliConfig.defaultConfig)
+      )
+      const content = yield* _(fs.readFileString(filePath), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
+
+  it("fileSchema", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.json")
+      const result = yield* _(
+        process(
+          Options.fileSchema(
+            "config",
+            Schema.struct({
+              foo: Schema.boolean,
+              bar: Schema.literal("baz")
+            })
+          ),
+          ["--config", filePath],
+          CliConfig.defaultConfig
+        )
+      )
+      const content = yield* _(fs.readFileString(filePath), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
+
+  it("fileSchema yaml", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.yaml")
+      const jsonPath = path.join(__dirname, "fixtures/config.json")
+      const result = yield* _(
+        process(
+          Options.fileSchema(
+            "config",
+            Schema.struct({
+              foo: Schema.boolean,
+              bar: Schema.literal("baz")
+            })
+          ),
+          ["--config", filePath],
+          CliConfig.defaultConfig
+        )
+      )
+      const content = yield* _(fs.readFileString(jsonPath), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
+
+  it("fileSchema ini", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.ini")
+      const jsonPath = path.join(__dirname, "fixtures/config.json")
+      const result = yield* _(
+        process(
+          Options.fileSchema(
+            "config",
+            Schema.struct({
+              foo: Schema.boolean,
+              bar: Schema.literal("baz")
+            })
+          ),
+          ["--config", filePath],
+          CliConfig.defaultConfig
+        )
+      )
+      const content = yield* _(fs.readFileString(jsonPath), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
+
+  it("fileSchema toml", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.toml")
+      const jsonPath = path.join(__dirname, "fixtures/config.json")
+      const result = yield* _(
+        process(
+          Options.fileSchema(
+            "config",
+            Schema.struct({
+              foo: Schema.boolean,
+              bar: Schema.literal("baz")
+            })
+          ),
+          ["--config", filePath],
+          CliConfig.defaultConfig
+        )
+      )
+      const content = yield* _(fs.readFileString(jsonPath), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
     }).pipe(runEffect))
 })

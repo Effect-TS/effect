@@ -225,6 +225,45 @@ export const directory: (name: string, config?: Options.PathOptionsConfig) => Op
 export const file: (name: string, config?: Options.PathOptionsConfig) => Options<string> = InternalOptions.file
 
 /**
+ * Creates a parameter expecting path to a file and reads its contents.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileContent: (name: string) => Options<readonly [path: string, content: Uint8Array]> =
+  InternalOptions.fileContent
+
+/**
+ * Creates a parameter expecting path to a file and parse its contents.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileParse: (name: string, format?: "json" | "yaml" | "ini" | "toml" | undefined) => Options<unknown> =
+  InternalOptions.fileParse
+
+/**
+ * Creates a parameter expecting path to a file, parse its contents and validate
+ * it with a Schema.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileSchema: <I, A>(
+  name: string,
+  schema: Schema<I, A>,
+  format?: "json" | "yaml" | "ini" | "toml" | undefined
+) => Options<A> = InternalOptions.fileSchema
+
+/**
+ * Creates a parameter expecting path to a file and reads its contents.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileText: (name: string) => Options<readonly [path: string, content: string]> = InternalOptions.fileText
+
+/**
  * @since 1.0.0
  * @category constructors
  */
@@ -346,8 +385,8 @@ export const map: {
  * @category combinators
  */
 export const mapOrFail: {
-  <A, B>(f: (a: A) => Either<ValidationError, B>): (self: Options<A>) => Options<B>
-  <A, B>(self: Options<A>, f: (a: A) => Either<ValidationError, B>): Options<B>
+  <A, B>(f: (a: A) => Effect<FileSystem, ValidationError, B>): (self: Options<A>) => Options<B>
+  <A, B>(self: Options<A>, f: (a: A) => Effect<FileSystem, ValidationError, B>): Options<B>
 } = InternalOptions.mapOrFail
 
 /**
