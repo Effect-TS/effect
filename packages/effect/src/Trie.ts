@@ -36,7 +36,7 @@ export type TypeId = typeof TypeId
  */
 export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _Value: Types.Invariant<Value>
+    readonly _Value: Types.Covariant<Value>
   }
 }
 

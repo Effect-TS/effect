@@ -25,7 +25,7 @@ export interface TrieImpl<in out V> extends TR.Trie<V> {
 
 const trieVariance = {
   /* c8 ignore next */
-  _Value: (_: unknown) => _
+  _Value: (_: never) => _
 }
 
 const TrieProto: TR.Trie<unknown> = {
