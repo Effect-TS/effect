@@ -263,6 +263,11 @@ export * as FiberId from "./FiberId.js"
 /**
  * @since 2.0.0
  */
+export * as FiberMap from "./FiberMap.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as FiberRef from "./FiberRef.js"
 
 /**
@@ -274,6 +279,11 @@ export * as FiberRefs from "./FiberRefs.js"
  * @since 2.0.0
  */
 export * as FiberRefsPatch from "./FiberRefsPatch.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as FiberSet from "./FiberSet.js"
 
 /**
  * @since 2.0.0
