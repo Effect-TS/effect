@@ -108,7 +108,6 @@ describe("Args", () => {
       const result = yield* _(Effect.flip(
         Args.validate(args, ReadonlyArray.of("-123"), CliConfig.defaultConfig)
       ))
-      console.log(result)
       expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p(
         "Positive\n" +
           "└─ Predicate refinement failure\n" +
