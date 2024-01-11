@@ -4,6 +4,7 @@ import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Path from "@effect/platform-node/Path"
+import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -90,5 +91,28 @@ describe("Args", () => {
         Args.validate(args, ReadonlyArray.make(filePath, filePath), CliConfig.defaultConfig)
       )
       expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.make(filePath, filePath)])
+    }).pipe(runEffect))
+
+  it("validates an valid argument with a Schema", () =>
+    Effect.gen(function*(_) {
+      const args = Args.integer().pipe(Args.withSchema(Schema.Positive))
+      const result = yield* _(
+        Args.validate(args, ["123"], CliConfig.defaultConfig)
+      )
+      expect(result).toEqual([ReadonlyArray.empty(), 123])
+    }).pipe(runEffect))
+
+  it("does not validate an invalid argument with a Schema", () =>
+    Effect.gen(function*(_) {
+      const args = Args.integer().pipe(Args.withSchema(Schema.Positive))
+      const result = yield* _(Effect.flip(
+        Args.validate(args, ReadonlyArray.of("-123"), CliConfig.defaultConfig)
+      ))
+      console.log(result)
+      expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p(
+        "Positive\n" +
+          "└─ Predicate refinement failure\n" +
+          "   └─ Expected Positive (a positive number), actual -123"
+      )))
     }).pipe(runEffect))
 })

@@ -3,6 +3,7 @@
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
 import type { QuitException, Terminal } from "@effect/platform/Terminal"
+import type { Schema } from "@effect/schema/Schema"
 import type { Config } from "effect/Config"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
@@ -382,6 +383,15 @@ export const withDescription: {
   (description: string): <A>(self: Args<A>) => Args<A>
   <A>(self: Args<A>, description: string): Args<A>
 } = InternalArgs.withDescription
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withSchema: {
+  <A, I extends A, B>(schema: Schema<I, B>): (self: Args<A>) => Args<B>
+  <A, I extends A, B>(self: Args<A>, schema: Schema<I, B>): Args<B>
+} = InternalArgs.withSchema
 
 /**
  * @since 1.0.0

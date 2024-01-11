@@ -1,5 +1,7 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Terminal from "@effect/platform/Terminal"
+import * as Schema from "@effect/schema/Schema"
+import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import type * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
@@ -371,6 +373,19 @@ export const withFallbackConfig: {
     )
   }
   return makeWithFallbackConfig(self, config)
+})
+
+/** @internal */
+export const withSchema = dual<
+  <A, I extends A, B>(schema: Schema.Schema<I, B>) => (self: Args.Args<A>) => Args.Args<B>,
+  <A, I extends A, B>(self: Args.Args<A>, schema: Schema.Schema<I, B>) => Args.Args<B>
+>(2, (self, schema) => {
+  const decode = Schema.decodeEither(schema)
+  return mapOrFail(self, (_) =>
+    Either.mapLeft(
+      decode(_ as any),
+      (error) => InternalHelpDoc.p(TreeFormatter.formatIssue(error.error))
+    ))
 })
 
 /** @internal */
