@@ -22,6 +22,7 @@ import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalAutoCorrect from "./autoCorrect.js"
 import * as InternalCliConfig from "./cliConfig.js"
+import * as InternalFiles from "./files.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
@@ -94,7 +95,7 @@ export interface KeyValueMap extends
 export interface Map extends
   Op<"Map", {
     readonly options: Options.Options<unknown>
-    readonly f: (a: unknown) => Either.Either<ValidationError.ValidationError, unknown>
+    readonly f: (a: unknown) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, unknown>
   }>
 {}
 
@@ -286,6 +287,44 @@ export const file = (
   )
 
 /** @internal */
+export const fileContent = (
+  name: string
+): Options.Options<readonly [path: string, content: Uint8Array]> =>
+  mapOrFail(file(name, { exists: "yes" }), (path) =>
+    Effect.mapError(
+      InternalFiles.read(path),
+      (doc) => InternalValidationError.invalidValue(doc)
+    ))
+
+/** @internal */
+export const fileParse = (
+  name: string,
+  format?: "json" | "yaml" | "ini" | "toml"
+): Options.Options<unknown> =>
+  mapOrFail(fileText(name), ([path, content]) =>
+    Effect.mapError(
+      InternalFiles.parse(path, content, format),
+      (error) => InternalValidationError.invalidValue(error)
+    ))
+
+/** @internal */
+export const fileSchema = <I, A>(
+  name: string,
+  schema: Schema.Schema<I, A>,
+  format?: "json" | "yaml" | "ini" | "toml"
+): Options.Options<A> => withSchema(fileParse(name, format), schema)
+
+/** @internal */
+export const fileText = (
+  name: string
+): Options.Options<readonly [path: string, content: string]> =>
+  mapOrFail(file(name, { exists: "yes" }), (path) =>
+    Effect.mapError(
+      InternalFiles.readString(path),
+      (doc) => InternalValidationError.invalidValue(doc)
+    ))
+
+/** @internal */
 export const filterMap = dual<
   <A, B>(
     f: (a: A) => Option.Option<B>,
@@ -415,11 +454,11 @@ export const map = dual<
 /** @internal */
 export const mapOrFail = dual<
   <A, B>(
-    f: (a: A) => Either.Either<ValidationError.ValidationError, B>
+    f: (a: A) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, B>
   ) => (self: Options.Options<A>) => Options.Options<B>,
   <A, B>(
     self: Options.Options<A>,
-    f: (a: A) => Either.Either<ValidationError.ValidationError, B>
+    f: (a: A) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, B>
   ) => Options.Options<B>
 >(2, (self, f) => makeMap(self, f))
 
@@ -593,9 +632,9 @@ export const withSchema = dual<
   <A, I extends A, B>(schema: Schema.Schema<I, B>) => (self: Options.Options<A>) => Options.Options<B>,
   <A, I extends A, B>(self: Options.Options<A>, schema: Schema.Schema<I, B>) => Options.Options<B>
 >(2, (self, schema) => {
-  const decode = Schema.decodeEither(schema)
+  const decode = Schema.decode(schema)
   return mapOrFail(self, (_) =>
-    Either.mapLeft(
+    Effect.mapError(
       decode(_ as any),
       (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(TreeFormatter.formatIssue(error.error)))
     ))
@@ -915,7 +954,7 @@ const makeKeyValueMap = (
 
 const makeMap = <A, B>(
   options: Options.Options<A>,
-  f: (a: A) => Either.Either<ValidationError.ValidationError, B>
+  f: (a: A) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, B>
 ): Options.Options<B> => {
   const op = Object.create(proto)
   op._tag = "Map"

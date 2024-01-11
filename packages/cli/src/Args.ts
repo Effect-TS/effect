@@ -6,7 +6,6 @@ import type { QuitException, Terminal } from "@effect/platform/Terminal"
 import type { Schema } from "@effect/schema/Schema"
 import type { Config } from "effect/Config"
 import type { Effect } from "effect/Effect"
-import type { Either } from "effect/Either"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
@@ -66,6 +65,14 @@ export declare namespace Args {
    */
   export interface PathArgsConfig extends BaseArgsConfig {
     readonly exists?: Primitive.PathExists
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface FormatArgsConfig extends BaseArgsConfig {
+    readonly format?: "json" | "yaml" | "ini" | "toml"
   }
 }
 
@@ -215,6 +222,51 @@ export const directory: (config?: Args.PathArgsConfig) => Args<string> = Interna
 export const file: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs.file
 
 /**
+ * Creates a file argument that reads its contents.
+ *
+ * Can optionally provide a custom argument name (defaults to `"file"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileContent: (
+  config?: Args.BaseArgsConfig | undefined
+) => Args<readonly [path: string, content: Uint8Array]> = InternalArgs.fileContent
+
+/**
+ * Creates a file argument that reads and parses its contents.
+ *
+ * Can optionally provide a custom argument name (defaults to `"file"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileParse: (config?: Args.FormatArgsConfig | undefined) => Args<unknown> = InternalArgs.fileParse
+
+/**
+ * Creates a file argument that reads, parses and validates its contents.
+ *
+ * Can optionally provide a custom argument name (defaults to `"file"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileSchema: <I, A>(schema: Schema<I, A>, config?: Args.FormatArgsConfig | undefined) => Args<A> =
+  InternalArgs.fileSchema
+
+/**
+ * Creates a file argument that reads it's contents.
+ *
+ * Can optionally provide a custom argument name (defaults to `"file"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileText: (
+  config?: Args.BaseArgsConfig | undefined
+) => Args<readonly [path: string, content: string]> = InternalArgs.fileText
+
+/**
  * Creates a floating point number argument.
  *
  * Can optionally provide a custom argument name (defaults to `"float"`).
@@ -278,8 +330,8 @@ export const map: {
  * @category mapping
  */
 export const mapOrFail: {
-  <A, B>(f: (a: A) => Either<HelpDoc, B>): (self: Args<A>) => Args<B>
-  <A, B>(self: Args<A>, f: (a: A) => Either<HelpDoc, B>): Args<B>
+  <A, B>(f: (a: A) => Effect<FileSystem, HelpDoc, B>): (self: Args<A>) => Args<B>
+  <A, B>(self: Args<A>, f: (a: A) => Effect<FileSystem, HelpDoc, B>): Args<B>
 } = InternalArgs.mapOrFail
 
 /**

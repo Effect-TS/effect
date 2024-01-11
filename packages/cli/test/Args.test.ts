@@ -2,6 +2,7 @@ import * as Args from "@effect/cli/Args"
 import * as CliConfig from "@effect/cli/CliConfig"
 import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as ValidationError from "@effect/cli/ValidationError"
+import * as FileSystem from "@effect/platform-node/FileSystem"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Path from "@effect/platform-node/Path"
 import * as Schema from "@effect/schema/Schema"
@@ -114,5 +115,63 @@ describe("Args", () => {
           "└─ Predicate refinement failure\n" +
           "   └─ Expected Positive (a positive number), actual -123"
       )))
+    }).pipe(runEffect))
+
+  it("fileContent", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.json")
+      const content = yield* _(fs.readFile(filePath))
+      const args = Args.fileContent({ name: "files" }).pipe(Args.repeated)
+      const result = yield* _(
+        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+      )
+      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of([filePath, content])])
+    }).pipe(runEffect))
+
+  it("fileText", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.json")
+      const content = yield* _(fs.readFileString(filePath))
+      const args = Args.fileText({ name: "files" }).pipe(Args.repeated)
+      const result = yield* _(
+        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+      )
+      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of([filePath, content])])
+    }).pipe(runEffect))
+
+  it("fileParse", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.json")
+      const content = yield* _(fs.readFileString(filePath), Effect.map(JSON.parse))
+      const args = Args.fileParse({ name: "files" }).pipe(Args.repeated)
+      const result = yield* _(
+        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+      )
+      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of(content)])
+    }).pipe(runEffect))
+
+  it("fileSchema", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const path = yield* _(Path.Path)
+      const filePath = path.join(__dirname, "fixtures/config.json")
+      const content = yield* _(fs.readFileString(filePath), Effect.map(JSON.parse))
+      const args = Args.fileSchema(
+        Schema.struct({
+          foo: Schema.boolean,
+          bar: Schema.literal("baz")
+        }),
+        { name: "files" }
+      ).pipe(Args.repeated)
+      const result = yield* _(
+        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+      )
+      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of(content)])
     }).pipe(runEffect))
 })

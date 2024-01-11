@@ -553,4 +553,114 @@ describe("Options", () => {
         ))
       )
     }).pipe(runEffect))
+
+  it("fileContent", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const result = yield* _(
+        process(Options.fileContent("config"), ["--config", "test/fixtures/config.json"], CliConfig.defaultConfig)
+      )
+      const content = yield* _(fs.readFile("test/fixtures/config.json"))
+      assert.deepStrictEqual(result, [[], ["test/fixtures/config.json", content]])
+    }).pipe(runEffect))
+
+  it("fileText", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const result = yield* _(
+        process(Options.fileText("config"), ["--config", "test/fixtures/config.json"], CliConfig.defaultConfig)
+      )
+      const content = yield* _(fs.readFileString("test/fixtures/config.json"))
+      assert.deepStrictEqual(result, [[], ["test/fixtures/config.json", content]])
+    }).pipe(runEffect))
+
+  it("fileParse", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const result = yield* _(
+        process(Options.fileParse("config"), ["--config", "test/fixtures/config.json"], CliConfig.defaultConfig)
+      )
+      const content = yield* _(fs.readFileString("test/fixtures/config.json"), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
+
+  it("fileSchema", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const result = yield* _(
+        process(
+          Options.fileSchema(
+            "config",
+            Schema.struct({
+              foo: Schema.boolean,
+              bar: Schema.literal("baz")
+            })
+          ),
+          ["--config", "test/fixtures/config.json"],
+          CliConfig.defaultConfig
+        )
+      )
+      const content = yield* _(fs.readFileString("test/fixtures/config.json"), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
+
+  it("fileSchema yaml", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const result = yield* _(
+        process(
+          Options.fileSchema(
+            "config",
+            Schema.struct({
+              foo: Schema.boolean,
+              bar: Schema.literal("baz")
+            })
+          ),
+          ["--config", "test/fixtures/config.yaml"],
+          CliConfig.defaultConfig
+        )
+      )
+      const content = yield* _(fs.readFileString("test/fixtures/config.json"), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
+
+  it("fileSchema ini", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const result = yield* _(
+        process(
+          Options.fileSchema(
+            "config",
+            Schema.struct({
+              foo: Schema.boolean,
+              bar: Schema.literal("baz")
+            })
+          ),
+          ["--config", "test/fixtures/config.ini"],
+          CliConfig.defaultConfig
+        )
+      )
+      const content = yield* _(fs.readFileString("test/fixtures/config.json"), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
+
+  it("fileSchema toml", () =>
+    Effect.gen(function*(_) {
+      const fs = yield* _(FileSystem.FileSystem)
+      const result = yield* _(
+        process(
+          Options.fileSchema(
+            "config",
+            Schema.struct({
+              foo: Schema.boolean,
+              bar: Schema.literal("baz")
+            })
+          ),
+          ["--config", "test/fixtures/config.toml"],
+          CliConfig.defaultConfig
+        )
+      )
+      const content = yield* _(fs.readFileString("test/fixtures/config.json"), Effect.map(JSON.parse))
+      assert.deepStrictEqual(result, [[], content])
+    }).pipe(runEffect))
 })
