@@ -431,6 +431,7 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
     {
       [AST.TypeAnnotationId]: InstanceOfTypeId,
       [InstanceOfTypeId]: { constructor },
+      [AST.TitleAnnotationId]: constructor.name,
       [AST.DescriptionAnnotationId]: `an instance of ${constructor.name}`,
       [hooks.PrettyHookId]: (): Pretty.Pretty<A> => () => `${constructor.name}(...args: any)`,
       ...toAnnotations(options)
@@ -2636,7 +2637,7 @@ export const symbol: Schema<string, symbol> = transform(
   (s) => Symbol.for(s),
   (sym) => sym.description,
   { strict: false }
-)
+).pipe(identifier("symbol"))
 
 /**
  * @category type id
@@ -4572,6 +4573,8 @@ const makeClass = <I, A>(
           input instanceof this ?
             ParseResult.succeed(input)
             : ParseResult.fail(ParseResult.type(ast, input)), {
+          [AST.IdentifierAnnotationId]: this.name,
+          [AST.TitleAnnotationId]: this.name,
           [AST.DescriptionAnnotationId]: `an instance of ${this.name}`,
           [hooks.PrettyHookId]: (struct: any) => (self: any) => `${self.constructor.name}(${struct(self)})`,
           [hooks.ArbitraryHookId]: (struct: any) => (fc: any) => struct(fc).map((props: any) => new this(props))

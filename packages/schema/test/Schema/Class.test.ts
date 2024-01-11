@@ -129,7 +129,7 @@ describe("Schema > Class", () => {
     await Util.expectParseFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
-      `Expected an instance of Person, actual {"id":1,"name":"John"}`
+      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
     )
   })
 
@@ -165,7 +165,7 @@ describe("Schema > Class", () => {
   it("extends error", () => {
     expect(() => S.parseSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
       new Error(
-        `({ id: number; age: number; name: a non empty string } <-> an instance of PersonWithAge)
+        `({ id: number; age: number; name: a non empty string } <-> PersonWithAge)
 └─ From side transformation failure
    └─ { id: number; age: number; name: a non empty string }
       └─ ["age"]
@@ -235,7 +235,7 @@ describe("Schema > Class", () => {
 
     expect(() => S.parseSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
       new Error(
-        `({ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string } <-> an instance of TaggedPersonWithAge)
+        `({ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string } <-> TaggedPersonWithAge)
 └─ From side transformation failure
    └─ { _tag: "TaggedPerson"; id: number; age: number; name: a non empty string }
       └─ ["_tag"]
