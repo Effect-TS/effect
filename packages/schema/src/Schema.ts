@@ -1317,8 +1317,21 @@ export const transformOrFail: {
   ): <A>(self: Schema<A, B>) => Schema<A, D>
   <C, D, B>(
     to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<C>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<B>,
+    annotations: AST.Annotated["annotations"]
+  ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <C, D, B>(
+    to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
     encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    options: { strict: false }
+  ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <C, D, B>(
+    to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    annotations: AST.Annotated["annotations"],
     options: { strict: false }
   ): <A>(self: Schema<A, B>) => Schema<A, D>
   <A, B, C, D>(
@@ -1330,21 +1343,38 @@ export const transformOrFail: {
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<C>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<B>,
+    annotations: AST.Annotated["annotations"]
+  ): Schema<A, D>
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
     encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    options: { strict: false }
+  ): Schema<A, D>
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    annotations: AST.Annotated["annotations"],
     options: { strict: false }
   ): Schema<A, D>
 } = dual((args) => isSchema(args[0]) && isSchema(args[1]), <A, B, C, D>(
   from: Schema<A, B>,
   to: Schema<C, D>,
   decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
-  encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>
+  encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+  annotations: AST.Annotated["annotations"] = {}
 ): Schema<A, D> =>
   make(
     AST.createTransform(
       from.ast,
       to.ast,
-      AST.createFinalTransformation(decode, encode)
+      AST.createFinalTransformation(decode, encode),
+      annotations
     )
   ))
 
@@ -1363,8 +1393,21 @@ export const transform: {
   ): <A>(self: Schema<A, B>) => Schema<A, D>
   <C, D, B>(
     to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => C,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => B,
+    annotations: AST.Annotated["annotations"]
+  ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <C, D, B>(
+    to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
     encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown,
+    options: { strict: false }
+  ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <C, D, B>(
+    to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown,
+    annotations: AST.Annotated["annotations"],
     options: { strict: false }
   ): <A>(self: Schema<A, B>) => Schema<A, D>
   <A, B, C, D>(
@@ -1376,8 +1419,23 @@ export const transform: {
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => C,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => B,
+    annotations: AST.Annotated["annotations"]
+  ): Schema<A, D>
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
     encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown,
+    options: { strict: false }
+  ): Schema<A, D>
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown,
+    annotations: AST.Annotated["annotations"],
     options: { strict: false }
   ): Schema<A, D>
 } = dual(
@@ -1386,16 +1444,17 @@ export const transform: {
     from: Schema<A, B>,
     to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => C,
-    encode: (c: C, options: ParseOptions, ast: AST.AST) => B
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => B,
+    annotations: AST.Annotated["annotations"] = {}
   ): Schema<A, D> =>
     transformOrFail(
       from,
       to,
       (a, options, ast) => Either.right(decode(a, options, ast)),
-      (b, options, ast) => Either.right(encode(b, options, ast))
+      (b, options, ast) => Either.right(encode(b, options, ast)),
+      annotations
     )
 )
-
 /**
  * Creates a new `Schema` which transforms literal values.
  *
