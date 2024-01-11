@@ -7,7 +7,7 @@ export const runMain: RunMain = <E, A>(
   effect: Effect.Effect<never, E, A>,
   teardown = defaultTeardown
 ) => {
-  const keepAlive = setInterval(() => {}, Number.MAX_SAFE_INTEGER)
+  const keepAlive = setInterval(() => {}, 2 ** 31 - 1)
 
   const fiber = Effect.runFork(
     Effect.tapErrorCause(effect, (cause) => {
