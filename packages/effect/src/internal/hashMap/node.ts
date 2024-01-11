@@ -2,7 +2,7 @@ import { equals } from "../../Equal.js"
 import type { HashMap } from "../../HashMap.js"
 import * as O from "../../Option.js"
 import { isTagged } from "../../Predicate.js"
-import { Stack } from "../stack.js"
+import * as Stack from "../stack.js"
 import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "./array.js"
 import { fromBitmap, hashFragment, toBitmap } from "./bitwise.js"
 import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "./config.js"
@@ -370,14 +370,14 @@ function mergeLeaves<K, V>(
   h2: number,
   n2: Node<K, V>
 ): Node<K, V> {
-  let stack: Stack<(node: Node<K, V>) => Node<K, V>> | undefined = undefined
+  let stack: Stack.Stack<(node: Node<K, V>) => Node<K, V>> | undefined = undefined
   let currentShift = shift
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = mergeLeavesInner(edit, currentShift, h1, n1, h2, n2)
 
     if (typeof res === "function") {
-      stack = new Stack(res, stack)
+      stack = Stack.make(res, stack)
       currentShift = currentShift + SIZE
     } else {
       let final = res

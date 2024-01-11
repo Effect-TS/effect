@@ -645,27 +645,24 @@ class BoundedPubSubSingleSubscription<in out A> implements Subscription<A> {
 }
 
 /** @internal */
-class Node<out A> {
-  constructor(
-    public value: A | AbsentValue,
-    public subscribers: number,
-    public next: Node<A> | null
-  ) {
-  }
+interface Node<out A> {
+  value: A | AbsentValue
+  subscribers: number
+  next: Node<A> | null
 }
 
 /** @internal */
 class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
-  publisherHead = new Node<A>(AbsentValue, 0, null)
+  publisherHead: Node<A> = {
+    value: AbsentValue,
+    subscribers: 0,
+    next: null
+  }
+  publisherTail = this.publisherHead
   publisherIndex = 0
-  publisherTail: Node<A>
   subscribersIndex = 0
 
   readonly capacity = Number.MAX_SAFE_INTEGER
-
-  constructor() {
-    this.publisherTail = this.publisherHead
-  }
 
   isEmpty(): boolean {
     return this.publisherHead === this.publisherTail
@@ -682,7 +679,11 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   publish(value: A): boolean {
     const subscribers = this.publisherTail.subscribers
     if (subscribers !== 0) {
-      this.publisherTail.next = new Node(value, subscribers, null)
+      this.publisherTail.next = {
+        value,
+        subscribers,
+        next: null
+      }
       this.publisherTail = this.publisherTail.next
       this.publisherIndex += 1
     }
