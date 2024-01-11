@@ -43,7 +43,7 @@ describe("ParseResult", () => {
       )
   })
 
-  it.only("Error.stack", () => {
+  it("Error.stack", () => {
     expect(ParseResult.parseError(ParseResult.forbidden(1)).stack?.startsWith("ParseError: is forbidden")).toEqual(true)
   })
 
