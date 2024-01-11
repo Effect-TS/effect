@@ -29,7 +29,9 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @categories models
  */
-export interface FiberMap<K, E = unknown, A = unknown> extends Pipeable, Inspectable.Inspectable {
+export interface FiberMap<K, E = unknown, A = unknown>
+  extends Pipeable, Inspectable.Inspectable, Iterable<[K, Fiber.RuntimeFiber<E, A>]>
+{
   readonly [TypeId]: TypeId
   readonly backing: MutableHashMap.MutableHashMap<K, Fiber.RuntimeFiber<E, A>>
 }
@@ -42,6 +44,9 @@ export const isFiberMap = (u: unknown): u is FiberMap<unknown> => Predicate.hasP
 
 const Proto = {
   [TypeId]: TypeId,
+  [Symbol.iterator](this: FiberMap<unknown>) {
+    return this.backing[Symbol.iterator]()
+  },
   toString(this: FiberMap<unknown>) {
     return Inspectable.format(this.toJSON())
   },

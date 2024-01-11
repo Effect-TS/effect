@@ -25,7 +25,9 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @categories models
  */
-export interface FiberSet<E = unknown, A = unknown> extends Pipeable, Inspectable.Inspectable {
+export interface FiberSet<E = unknown, A = unknown>
+  extends Pipeable, Inspectable.Inspectable, Iterable<Fiber.RuntimeFiber<E, A>>
+{
   readonly [TypeId]: TypeId
   readonly backing: Set<Fiber.RuntimeFiber<E, A>>
 }
@@ -38,6 +40,9 @@ export const isFiberSet = (u: unknown): u is FiberSet<unknown> => Predicate.hasP
 
 const Proto = {
   [TypeId]: TypeId,
+  [Symbol.iterator](this: FiberSet) {
+    return this.backing[Symbol.iterator]()
+  },
   toString(this: FiberSet) {
     return Inspectable.format(this.toJSON())
   },
