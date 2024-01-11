@@ -640,7 +640,7 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const fs = yield* _(FileSystem.FileSystem)
       const path = yield* _(Path.Path)
-      const filePath = path.join(__dirname, "fixtures/config.yaml")
+      const filePath = path.join(__dirname, "fixtures/config.ini")
       const jsonPath = path.join(__dirname, "fixtures/config.json")
       const result = yield* _(
         process(
@@ -663,7 +663,7 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const fs = yield* _(FileSystem.FileSystem)
       const path = yield* _(Path.Path)
-      const filePath = path.join(__dirname, "fixtures/config.yaml")
+      const filePath = path.join(__dirname, "fixtures/config.toml")
       const jsonPath = path.join(__dirname, "fixtures/config.json")
       const result = yield* _(
         process(
