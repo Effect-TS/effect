@@ -32,6 +32,23 @@ describe("Either/eitherFromUnion", () => {
     )
   })
 
+  it("decoding error transformation process", async () => {
+    const schema = S.eitherFromUnion(S.number, S.compose(S.boolean, S.string))
+    await Util.expectParseFailure(
+      schema,
+      true,
+      `(boolean | number <-> Either<number, string>)
+└─ Transformation process failure
+   └─ (boolean <-> string) | (number <-> number)
+      ├─ Union member
+      │  └─ (boolean <-> string)
+      │     └─ To side transformation failure
+      │        └─ Expected a string, actual true
+      └─ Union member
+         └─ Expected a number, actual true`
+    )
+  })
+
   it("decoding prefer right", async () => {
     const schema = S.eitherFromUnion(S.NumberFromString, S.NumberFromString)
     await Util.expectParseSuccess(schema, "1", E.right(1))

@@ -3739,7 +3739,35 @@ export const eitherFromUnion = <EI, EA, AI, AA>(
     (value, options) =>
       ParseResult.orElse(
         ParseResult.map(Parser.parse(right)(value, options), Either.right),
-        () => ParseResult.map(Parser.parse(left)(value, options), Either.left)
+        (e1) =>
+          ParseResult.mapLeft(
+            ParseResult.map(Parser.parse(left)(value, options), Either.left),
+            (e2) =>
+              ParseResult.parseError(
+                ParseResult.union(
+                  {
+                    _tag: "Union",
+                    types: [
+                      transformOrFail(
+                        from(right),
+                        to(right),
+                        Parser.parse(right),
+                        Parser.encode(right)
+                      ).ast,
+                      transformOrFail(
+                        from(left),
+                        to(left),
+                        Parser.parse(left),
+                        Parser.encode(left)
+                      ).ast
+                    ],
+                    annotations: {}
+                  },
+                  value,
+                  [ParseResult.member(to(right).ast, e1.error), ParseResult.member(to(left).ast, e2.error)]
+                )
+              )
+          )
       ),
     (value, options) =>
       Either.match(value, {
