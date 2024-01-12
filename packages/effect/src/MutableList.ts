@@ -79,14 +79,16 @@ interface MutableListImpl<A> extends MutableList<A> {
 interface LinkedListNode<T> {
   removed: boolean
   value: T
-  prev?: LinkedListNode<T> | undefined
-  next?: LinkedListNode<T> | undefined
+  prev: LinkedListNode<T> | undefined
+  next: LinkedListNode<T> | undefined
 }
 
 /** @internal */
 const makeNode = <T>(value: T): LinkedListNode<T> => ({
   value,
-  removed: false
+  removed: false,
+  prev: undefined,
+  next: undefined
 })
 
 /**

@@ -14,8 +14,8 @@ export interface Node<out K, out V> {
   color: Node.Color
   key: K
   value: V
-  left?: Node<K, V> | undefined
-  right?: Node<K, V> | undefined
+  left: Node<K, V> | undefined
+  right: Node<K, V> | undefined
   count: number
 }
 
