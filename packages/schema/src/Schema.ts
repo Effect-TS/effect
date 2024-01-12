@@ -235,19 +235,11 @@ export {
 export const isSchema = (u: unknown): u is Schema<unknown, unknown> =>
   Predicate.isObject(u) && TypeId in u && "ast" in u
 
-class SchemaImpl<From, To> implements Schema<From, To> {
-  readonly [TypeId] = InternalSchema.variance
-  constructor(readonly ast: AST.AST) {}
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make = <I, A>(ast: AST.AST): Schema<I, A> => new SchemaImpl(ast)
+export const make: <I, A>(ast: AST.AST) => Schema<I, A> = InternalSchema.make
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   make(AST.createLiteral(value))
