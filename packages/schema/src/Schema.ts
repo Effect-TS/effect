@@ -642,10 +642,7 @@ type PropertySignatureAST =
 
 /** @internal */
 export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional> {
-  readonly [TypeId]: {
-    readonly From: (_: From) => From
-    readonly To: (_: To) => To
-  } = InternalSchema.variance
+  readonly [TypeId]: Schema.Variance<From, To>[TypeId] = InternalSchema.variance
   readonly FromIsOptional!: FromIsOptional
   readonly ToIsOptional!: ToIsOptional
 
