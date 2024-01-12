@@ -51,7 +51,6 @@ export const formatAST = (ast: AST.AST, verbose: boolean = false): string => {
         () => `<enum ${ast.enums.length} value(s): ${ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
       )
     case "Suspend":
-      Option.liftThrowable(ast.f)
       return getExpected(ast, verbose).pipe(
         Option.orElse(() =>
           Option.flatMap(
