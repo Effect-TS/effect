@@ -12,8 +12,11 @@ export const TypeId: Schema.TypeId = Symbol.for("@effect/schema/Schema") as Sche
 /** @internal */
 export const make = <I, A>(ast: AST.AST): Schema.Schema<I, A> => new SchemaImpl(ast)
 
-const variance = {
+/** @internal */
+export const variance = {
+  /* c8 ignore next */
   From: (_: any) => _,
+  /* c8 ignore next */
   To: (_: any) => _
 }
 

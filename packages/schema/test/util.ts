@@ -20,8 +20,8 @@ const doRoundtrip = true
 export const sleep = Effect.sleep(Duration.millis(10))
 
 const effectifyDecode = (
-  decode: (input: any, options: ParseOptions, self: AST.AST) => ParseResult.ParseResult<any>
-): (input: any, options: ParseOptions, self: AST.AST) => ParseResult.ParseResult<any> =>
+  decode: (input: any, options: ParseOptions, self: AST.AST) => Effect.Effect<never, ParseResult.ParseError, any>
+): (input: any, options: ParseOptions, self: AST.AST) => Effect.Effect<never, ParseResult.ParseError, any> =>
 (input, options, ast) => ParseResult.flatMap(sleep, () => decode(input, options, ast))
 
 const effectifyAST = (ast: AST.AST): AST.AST => {

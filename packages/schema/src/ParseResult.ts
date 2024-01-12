@@ -15,11 +15,6 @@ import * as TreeFormatter from "./TreeFormatter.js"
 /**
  * @since 1.0.0
  */
-export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
-
-/**
- * @since 1.0.0
- */
 export class ParseError extends TaggedError("ParseError")<{ readonly error: ParseIssue }> {
   get message() {
     return this.toString()
@@ -57,13 +52,13 @@ export const parseError = (error: ParseIssue): ParseError => new ParseError({ er
  * @category constructors
  * @since 1.0.0
  */
-export const succeed: <A>(a: A) => ParseResult<A> = Either.right
+export const succeed: <A>(a: A) => Either.Either<never, A> = Either.right
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const fail = (error: ParseIssue): ParseResult<never> => Either.left(parseError(error))
+export const fail = (error: ParseIssue): Either.Either<ParseError, never> => Either.left(parseError(error))
 
 /**
  * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
@@ -345,7 +340,7 @@ export const member = (
 const _try: <A>(options: {
   try: LazyArg<A>
   catch: (e: unknown) => ParseError
-}) => ParseResult<A> = Either.try
+}) => Either.Either<ParseError, A> = Either.try
 
 export {
   /**
@@ -359,8 +354,8 @@ export {
  * @category optimisation
  * @since 1.0.0
  */
-export const eitherOrUndefined = <E, A>(
-  self: Effect.Effect<never, E, A>
+export const eitherOrUndefined = <R, E, A>(
+  self: Effect.Effect<R, E, A>
 ): Either.Either<E, A> | undefined => {
   const s: any = self
   if (s["_tag"] === "Left" || s["_tag"] === "Right") {
@@ -372,10 +367,10 @@ export const eitherOrUndefined = <E, A>(
  * @category optimisation
  * @since 1.0.0
  */
-export const flatMap = <E1, A, E2, B>(
-  self: Effect.Effect<never, E1, A>,
-  f: (self: A) => Effect.Effect<never, E2, B>
-): Effect.Effect<never, E1 | E2, B> => {
+export const flatMap = <R1, E1, A, R2, E2, B>(
+  self: Effect.Effect<R1, E1, A>,
+  f: (self: A) => Effect.Effect<R2, E2, B>
+): Effect.Effect<R1 | R2, E1 | E2, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -390,7 +385,7 @@ export const flatMap = <E1, A, E2, B>(
  * @category optimisation
  * @since 1.0.0
  */
-export const map = <A, B>(self: ParseResult<A>, f: (self: A) => B): ParseResult<B> => {
+export const map = <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B): Effect.Effect<R, E, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -405,10 +400,10 @@ export const map = <A, B>(self: ParseResult<A>, f: (self: A) => B): ParseResult<
  * @category optimisation
  * @since 1.0.0
  */
-export const mapLeft = <E1, A, E2>(
-  self: Effect.Effect<never, E1, A>,
+export const mapError = <R, E1, A, E2>(
+  self: Effect.Effect<R, E1, A>,
   f: (error: E1) => E2
-): Effect.Effect<never, E2, A> => {
+): Effect.Effect<R, E2, A> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(f(s.left))
@@ -423,11 +418,11 @@ export const mapLeft = <E1, A, E2>(
  * @category optimisation
  * @since 1.0.0
  */
-export const bimap = <E1, A, E2, B>(
-  self: Effect.Effect<never, E1, A>,
+export const mapBoth = <R, E1, A, E2, B>(
+  self: Effect.Effect<R, E1, A>,
   f: (error: E1) => E2,
   g: (a: A) => B
-): Effect.Effect<never, E2, B> => {
+): Effect.Effect<R, E2, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(f(s.left))
@@ -442,10 +437,10 @@ export const bimap = <E1, A, E2, B>(
  * @category optimisation
  * @since 1.0.0
  */
-export const orElse = <E1, A, E2, B>(
-  self: Effect.Effect<never, E1, A>,
-  f: (error: E1) => Effect.Effect<never, E2, B>
-): Effect.Effect<never, E2, A | B> => {
+export const orElse = <R1, E1, A, R2, E2, B>(
+  self: Effect.Effect<R1, E1, A>,
+  f: (error: E1) => Effect.Effect<R2, E2, B>
+): Effect.Effect<R1 | R2, E2, A | B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return f(s.left)

@@ -70,41 +70,41 @@ describe("ParseResult", () => {
   })
 
   it("mapLeft (Either)", () => {
-    expect(ParseResult.mapLeft(Either.right(1), () => typeParseError)).toStrictEqual(
+    expect(ParseResult.mapError(Either.right(1), () => typeParseError)).toStrictEqual(
       Either.right(1)
     )
-    expect(ParseResult.mapLeft(Either.left(forbiddenParseError), () => typeParseError))
+    expect(ParseResult.mapError(Either.left(forbiddenParseError), () => typeParseError))
       .toStrictEqual(Either.left(typeParseError))
   })
 
   it("mapLeft (Effect)", () => {
-    expect(Effect.runSyncExit(ParseResult.mapLeft(Effect.succeed(1), () => typeParseError)))
+    expect(Effect.runSyncExit(ParseResult.mapError(Effect.succeed(1), () => typeParseError)))
       .toStrictEqual(Exit.succeed(1))
     expect(
       Effect.runSyncExit(
-        ParseResult.mapLeft(Effect.fail(forbiddenParseError), () => typeParseError)
+        ParseResult.mapError(Effect.fail(forbiddenParseError), () => typeParseError)
       )
     ).toStrictEqual(Exit.fail(typeParseError))
   })
 
   it("bimap (Either)", () => {
-    expect(ParseResult.bimap(Either.right(1), () => typeParseError, (n) => n + 1)).toStrictEqual(
+    expect(ParseResult.mapBoth(Either.right(1), () => typeParseError, (n) => n + 1)).toStrictEqual(
       Either.right(2)
     )
     expect(
-      ParseResult.bimap(Either.left(forbiddenParseError), () => typeParseError, (n) => n + 1)
+      ParseResult.mapBoth(Either.left(forbiddenParseError), () => typeParseError, (n) => n + 1)
     ).toStrictEqual(Either.left(typeParseError))
   })
 
   it("bimap (Effect)", () => {
     expect(
       Effect.runSyncExit(
-        ParseResult.bimap(Effect.succeed(1), () => typeParseError, (n) => n + 1)
+        ParseResult.mapBoth(Effect.succeed(1), () => typeParseError, (n) => n + 1)
       )
     ).toStrictEqual(Exit.succeed(2))
     expect(
       Effect.runSyncExit(
-        ParseResult.bimap(Effect.fail(forbiddenParseError), () => typeParseError, (n) => n + 1)
+        ParseResult.mapBoth(Effect.fail(forbiddenParseError), () => typeParseError, (n) => n + 1)
       )
     ).toStrictEqual(Exit.fail(typeParseError))
   })
