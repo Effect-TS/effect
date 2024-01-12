@@ -3015,7 +3015,7 @@ export const DurationFromSelf: Schema<Duration.Duration> = declare(
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
-    [AST.IdentifierAnnotationId]: "Duration",
+    [AST.IdentifierAnnotationId]: "DurationFromSelf",
     [hooks.PrettyHookId]: (): Pretty.Pretty<Duration.Duration> => (duration) => String(duration),
     [hooks.ArbitraryHookId]: (): Arbitrary<Duration.Duration> => (fc) =>
       fc.oneof(
@@ -3252,7 +3252,7 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
-    [AST.IdentifierAnnotationId]: "Uint8Array",
+    [AST.IdentifierAnnotationId]: "Uint8ArrayFromSelf",
     [hooks.PrettyHookId]: (): Pretty.Pretty<Uint8Array> => (u8arr) =>
       `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
     [hooks.ArbitraryHookId]: (): Arbitrary<Uint8Array> => (fc) => fc.uint8Array(),
@@ -3461,6 +3461,7 @@ export const DateFromSelf: Schema<Date> = declare(
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
     [AST.IdentifierAnnotationId]: "DateFromSelf",
+    [AST.DescriptionAnnotationId]: "a potentially invalid Date instance",
     [hooks.PrettyHookId]: datePretty,
     [hooks.ArbitraryHookId]: dateArbitrary,
     [hooks.EquivalenceHookId]: () => Equivalence.Date
@@ -3474,7 +3475,10 @@ export const DateFromSelf: Schema<Date> = declare(
  * @since 1.0.0
  */
 export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(
-  validDate({ identifier: "ValidDateFromSelf" })
+  validDate({
+    identifier: "ValidDateFromSelf",
+    description: "a valid Date instance"
+  })
 )
 
 /**
@@ -3620,35 +3624,44 @@ export const optionFromNullish = <I, A>(
  * @category Either utils
  * @since 1.0.0
  */
-export type EitherFrom<IE, IA> =
-  | {
-    readonly _tag: "Left"
-    readonly left: IE
-  }
-  | {
-    readonly _tag: "Right"
-    readonly right: IA
-  }
+export type RightFrom<IA> = {
+  readonly _tag: "Right"
+  readonly right: IA
+}
 
-const rightFrom = <IA, A>(right: Schema<IA, A>) =>
+/**
+ * @category Either utils
+ * @since 1.0.0
+ */
+export type LeftFrom<IE> = {
+  readonly _tag: "Left"
+  readonly left: IE
+}
+
+/**
+ * @category Either utils
+ * @since 1.0.0
+ */
+export type EitherFrom<IE, IA> = LeftFrom<IE> | RightFrom<IA>
+
+const rightFrom = <IA, A>(right: Schema<IA, A>): Schema<RightFrom<IA>, RightFrom<A>> =>
   struct({
     _tag: literal("Right"),
     right
-  })
+  }).pipe(description(`RightFrom<${Format.format(right)}>`))
 
-const leftFrom = <IE, E>(left: Schema<IE, E>) =>
+const leftFrom = <IE, E>(left: Schema<IE, E>): Schema<LeftFrom<IE>, LeftFrom<E>> =>
   struct({
     _tag: literal("Left"),
     left
-  })
+  }).pipe(description(`LeftFrom<${Format.format(left)}>`))
 
 const eitherFrom = <IE, E, IA, A>(
   left: Schema<IE, E>,
   right: Schema<IA, A>
 ): Schema<EitherFrom<IE, IA>, EitherFrom<E, A>> =>
-  union(
-    rightFrom(right),
-    leftFrom(left)
+  union(rightFrom(right), leftFrom(left)).pipe(
+    description(`EitherFrom<${Format.format(left)}, ${Format.format(right)}>`)
   )
 
 const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<E, A> =>
@@ -3701,6 +3714,9 @@ export const eitherFromSelf = <IE, E, IA, A>(
   )
 }
 
+const makeLeftFrom = <E>(left: E) => ({ _tag: "Left", left }) as const
+const makeRightFrom = <A>(right: A) => ({ _tag: "Right", right }) as const
+
 /**
  * @category Either transformations
  * @since 1.0.0
@@ -3713,18 +3729,15 @@ export const either = <IE, E, IA, A>(
     eitherFrom(left, right),
     eitherFromSelf(to(left), to(right)),
     eitherDecode,
-    Either.match({
-      onLeft: (left) => ({ _tag: "Left", left }) as const,
-      onRight: (right) => ({ _tag: "Right", right }) as const
-    })
+    Either.match({ onLeft: makeLeftFrom, onRight: makeRightFrom })
   )
 
 /**
  * @example
  * import * as Schema from "@effect/schema/Schema"
  *
- * // Schema<"A" | "E", Either<"E", "A">>
- * Schema.eitherFromUnion(Schema.literal("A"), Schema.literal("E"))
+ * // Schema<string | number, Either<string, number>>
+ * Schema.eitherFromUnion(Schema.string, Schema.number)
  *
  * @category Either transformations
  * @since 1.0.0
@@ -3733,19 +3746,15 @@ export const eitherFromUnion = <EI, EA, AI, AA>(
   left: Schema<EI, EA>,
   right: Schema<AI, AA>
 ): Schema<EI | AI, Either.Either<EA, AA>> => {
-  return transformOrFail(
-    union(from(right), from(left)),
-    eitherFromSelf(to(left), to(right)),
-    (value, options) =>
-      ParseResult.orElse(
-        ParseResult.map(Parser.parse(right)(value, options), Either.right),
-        () => ParseResult.map(Parser.parse(left)(value, options), Either.left)
-      ),
-    (value, options) =>
-      Either.match(value, {
-        onLeft: (_) => Parser.encode(left)(_, options),
-        onRight: (_) => Parser.encode(right)(_, options)
-      })
+  const toleft = to(left)
+  const toright = to(right)
+  const fromLeft = transform(left, leftFrom(toleft), makeLeftFrom, (l) => l.left)
+  const fromRight = transform(right, rightFrom(toright), makeRightFrom, (r) => r.right)
+  return transform(
+    union(fromRight, fromLeft),
+    eitherFromSelf(toleft, toright),
+    (from) => from._tag === "Left" ? Either.left(from.left) : Either.right(from.right),
+    Either.match({ onLeft: makeLeftFrom, onRight: makeRightFrom })
   )
 }
 
@@ -3801,7 +3810,7 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
+      [AST.DescriptionAnnotationId]: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
       [hooks.PrettyHookId]: readonlyMapPretty,
       [hooks.ArbitraryHookId]: readonlyMapArbitrary,
       [hooks.EquivalenceHookId]: readonlyMapEquivalence
@@ -3902,7 +3911,7 @@ export const BigDecimalFromSelf: Schema<BigDecimal.BigDecimal> = declare(
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
   {
-    [AST.IdentifierAnnotationId]: "BigDecimal",
+    [AST.IdentifierAnnotationId]: "BigDecimalFromSelf",
     [hooks.PrettyHookId]: bigDecimalPretty,
     [hooks.ArbitraryHookId]: bigDecimalArbitrary,
     [hooks.EquivalenceHookId]: () => BigDecimal.Equivalence
@@ -4708,7 +4717,7 @@ export const FiberIdFromSelf: Schema<FiberId.FiberId, FiberId.FiberId> = declare
       ParseResult.succeed(input)
       : ParseResult.fail(ParseResult.type(ast, input)),
   {
-    [AST.IdentifierAnnotationId]: "FiberId",
+    [AST.IdentifierAnnotationId]: "FiberIdFromSelf",
     [hooks.PrettyHookId]: () => fiberIdPretty,
     [hooks.ArbitraryHookId]: () => fiberIdArbitrary,
     [hooks.EquivalenceHookId]: () => Equal.equals
@@ -4746,7 +4755,7 @@ const _FiberId: Schema<FiberIdFrom, FiberId.FiberId> = transform(
   FiberIdFromSelf,
   fiberIdDecode,
   fiberIdEncode
-)
+).pipe(identifier("FiberId"))
 
 export {
   /**
@@ -4826,7 +4835,6 @@ const causeFrom = <EI, E>(
   error: Schema<EI, E>,
   defect: Schema<unknown, unknown>
 ): Schema<CauseFrom<EI>, CauseFrom<E>> => {
-  const desc = `CauseFrom<${Format.format(error)}>`
   const recur = suspend(() => out)
   const out: Schema<CauseFrom<EI>, CauseFrom<E>> = union(
     causeDieFrom(defect),
@@ -4835,7 +4843,7 @@ const causeFrom = <EI, E>(
     CauseInterruptFrom,
     causeParallelFrom(recur),
     causeSequentialFrom(recur)
-  ).pipe(description(desc))
+  ).pipe(description(`CauseFrom<${Format.format(error)}>`))
   return out
 }
 
@@ -5055,7 +5063,7 @@ export const exitFromSelf = <IE, E, IA, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.IdentifierAnnotationId]: "Exit",
+      [AST.DescriptionAnnotationId]: `Exit<${Format.format(error)}, ${Format.format(value)}>`,
       [hooks.PrettyHookId]: exitPretty,
       [hooks.ArbitraryHookId]: exitArbitrary,
       [hooks.EquivalenceHookId]: () => Equal.equals

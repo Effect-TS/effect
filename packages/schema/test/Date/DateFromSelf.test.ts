@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Date/DateFromSelf", () => {
+describe("Date > DateFromSelf", () => {
   it("property tests", () => {
     Util.roundtrip(S.DateFromSelf)
   })
@@ -12,7 +12,11 @@ describe("Date/DateFromSelf", () => {
     await Util.expectParseSuccess(S.DateFromSelf, new Date(), new Date())
     await Util.expectParseSuccess(S.DateFromSelf, new Date("invalid"), new Date("invalid"))
 
-    await Util.expectParseFailure(S.DateFromSelf, null, `Expected DateFromSelf, actual null`)
+    await Util.expectParseFailure(
+      S.DateFromSelf,
+      null,
+      `Expected DateFromSelf (a potentially invalid Date instance), actual null`
+    )
   })
 
   it("encoding", async () => {
