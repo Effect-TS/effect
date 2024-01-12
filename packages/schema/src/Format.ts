@@ -52,7 +52,12 @@ export const formatAST = (ast: AST.AST, verbose: boolean = false): string => {
       )
     case "Suspend":
       return getExpected(ast, verbose).pipe(
-        Option.orElse(() => getExpected(ast.f(), verbose)),
+        Option.orElse(() =>
+          Option.flatMap(
+            Option.liftThrowable(ast.f)(),
+            (ast) => getExpected(ast, verbose)
+          )
+        ),
         Option.getOrElse(() => "<suspended schema>")
       )
     case "Declaration":

@@ -24,6 +24,12 @@ describe("Format", () => {
       )
       expect(format(schema)).toEqual("<suspended schema>")
     })
+
+    it("suspend before initialization", () => {
+      const schema = S.suspend(() => string)
+      expect(format(schema)).toEqual("<suspended schema>")
+      const string = S.string
+    })
   })
 
   describe("formatUnknown", () => {
