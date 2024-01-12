@@ -59,7 +59,7 @@ const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 const getEffect = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
   return (input: unknown, overrideOptions?: AST.ParseOptions) =>
-    ParseResult.mapLeft(
+    ParseResult.mapError(
       parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true }),
       ParseResult.parseError
     )
@@ -331,7 +331,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         return (i, options) =>
           handleForbidden(
             ParseResult.flatMap(
-              ParseResult.mapLeft(from(i, options), (e) => ParseResult.refinement(ast, i, "From", e)),
+              ParseResult.mapError(from(i, options), (e) => ParseResult.refinement(ast, i, "From", e)),
               (a) =>
                 Option.match(
                   ast.filter(a, options ?? defaultParseOption, ast),
@@ -357,19 +357,21 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       return (i1, options) =>
         handleForbidden(
           ParseResult.flatMap(
-            ParseResult.mapLeft(
+            ParseResult.mapError(
               from(i1, options),
               (e) => ParseResult.transform(ast, i1, isDecoding ? "From" : "To", e)
             ),
             (a) =>
               ParseResult.flatMap(
-                ParseResult.mapLeft(
+                ParseResult.mapError(
                   transform(a, options ?? defaultParseOption, ast),
                   (e) => ParseResult.transform(ast, i1, "Transformation", e.error)
                 ),
                 (i2) =>
-                  ParseResult.mapLeft(to(i2, options), (e) =>
-                    ParseResult.transform(ast, i1, isDecoding ? "To" : "From", e))
+                  ParseResult.mapError(
+                    to(i2, options),
+                    (e) => ParseResult.transform(ast, i1, isDecoding ? "To" : "From", e)
+                  )
               )
           ),
           i1,
@@ -379,7 +381,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
     case "Declaration": {
       const parse = ast.decode(isDecoding, ...ast.typeParameters)
       return (i, options) =>
-        handleForbidden(ParseResult.mapLeft(parse(i, options ?? defaultParseOption, ast), (e) => e.error), i, options)
+        handleForbidden(ParseResult.mapError(parse(i, options ?? defaultParseOption, ast), (e) => e.error), i, options)
     }
     case "Literal":
       return fromRefinement(ast, (u): u is typeof ast.literal => u === ast.literal)
@@ -1085,11 +1087,11 @@ export const getSearchTree = (
 
 const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? dropRightRefinement(ast.from) : ast
 
-const handleForbidden = <A>(
-  effect: Effect.Effect<never, ParseResult.ParseIssue, A>,
+const handleForbidden = <R, A>(
+  effect: Effect.Effect<R, ParseResult.ParseIssue, A>,
   actual: unknown,
   options?: InternalOptions
-): Effect.Effect<never, ParseResult.ParseIssue, A> => {
+): Effect.Effect<R, ParseResult.ParseIssue, A> => {
   const eu = ParseResult.eitherOrUndefined(effect)
   return eu
     ? eu
@@ -1124,7 +1126,7 @@ const getFinalPropertySignatureTransformation = (
 export const getFinalTransformation = (
   transformation: AST.Transformation,
   isDecoding: boolean
-): (input: any, options: AST.ParseOptions, self: AST.AST) => ParseResult.ParseResult<any> => {
+): (input: any, options: AST.ParseOptions, self: AST.AST) => Effect.Effect<never, ParseResult.ParseError, any> => {
   switch (transformation._tag) {
     case "FinalTransformation":
       return isDecoding ? transformation.decode : transformation.encode
@@ -1132,7 +1134,7 @@ export const getFinalTransformation = (
       return ParseResult.succeed
     case "TypeLiteralTransformation":
       return (input) => {
-        let out: ParseResult.ParseResult<any> = Either.right(input)
+        let out: Effect.Effect<never, ParseResult.ParseError, any> = Either.right(input)
 
         // ---------------------------------------------
         // handle property signature transformations

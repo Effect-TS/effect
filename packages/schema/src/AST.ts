@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import type { Effect } from "effect/Effect"
 import { dual, identity, pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
@@ -9,7 +10,7 @@ import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Internal from "./internal/ast.js"
-import type * as ParseResult from "./ParseResult.js"
+import type { ParseError } from "./ParseResult.js"
 
 // -------------------------------------------------------------------------------------
 // annotations
@@ -267,7 +268,7 @@ export interface Declaration extends Annotated {
   readonly decode: (
     isDecoding: boolean,
     ...typeParameters: ReadonlyArray<AST>
-  ) => (input: any, options: ParseOptions, self: AST) => ParseResult.ParseResult<any>
+  ) => (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
 }
 
 /**
@@ -944,7 +945,7 @@ export interface Refinement<From = AST> extends Annotated {
     input: any,
     options: ParseOptions,
     self: AST
-  ) => Option.Option<ParseResult.ParseError>
+  ) => Option.Option<ParseError>
 }
 
 /**
@@ -1019,8 +1020,8 @@ export type Transformation =
  */
 export interface FinalTransformation {
   readonly _tag: "FinalTransformation"
-  readonly decode: (input: any, options: ParseOptions, self: AST) => ParseResult.ParseResult<any>
-  readonly encode: (input: any, options: ParseOptions, self: AST) => ParseResult.ParseResult<any>
+  readonly decode: (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
+  readonly encode: (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
 }
 
 /**

@@ -26,7 +26,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Secret from "effect/Secret"
 import * as S from "effect/String"
-import type { Equals, Mutable, Simplify } from "effect/Types"
+import type { Equals, Invariant, Mutable, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as arbitrary from "./Arbitrary.js"
 import * as ArrayFormatter from "./ArrayFormatter.js"
@@ -60,7 +60,7 @@ export type TypeId = typeof TypeId
  * @category model
  * @since 1.0.0
  */
-export interface Schema<From, To = From> extends Schema.Variance<From, To>, Pipeable {
+export interface Schema<in out From, in out To = From> extends Schema.Variance<From, To>, Pipeable {
   readonly ast: AST.AST
 }
 
@@ -73,8 +73,8 @@ export declare module Schema {
    */
   export interface Variance<From, To> {
     readonly [TypeId]: {
-      readonly From: (_: From) => From
-      readonly To: (_: To) => To
+      readonly From: Invariant<From>
+      readonly To: Invariant<To>
     }
   }
 
@@ -235,13 +235,8 @@ export {
 export const isSchema = (u: unknown): u is Schema<unknown, unknown> =>
   Predicate.isObject(u) && TypeId in u && "ast" in u
 
-const variance = {
-  From: (_: any) => _,
-  To: (_: any) => _
-}
-
 class SchemaImpl<From, To> implements Schema<From, To> {
-  readonly [TypeId] = variance
+  readonly [TypeId] = InternalSchema.variance
   constructor(readonly ast: AST.AST) {}
   pipe() {
     return pipeArguments(this, arguments)
@@ -370,7 +365,7 @@ export const declare = (
   decode: (
     isDecoding: boolean,
     ...typeParameters: ReadonlyArray<Schema<any>>
-  ) => (input: any, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<any>,
+  ) => (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, any>,
   annotations?: AST.Annotations
 ): Schema<any> =>
   make(AST.createDeclaration(
@@ -658,7 +653,7 @@ export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional> {
   readonly [TypeId]: {
     readonly From: (_: From) => From
     readonly To: (_: To) => To
-  } = variance
+  } = InternalSchema.variance
   readonly FromIsOptional!: FromIsOptional
   readonly ToIsOptional!: ToIsOptional
 
@@ -1072,7 +1067,7 @@ export const brand = <B extends string | symbol, A>(
   const is = Parser.is(schema)
   const out: any = Object.assign((input: unknown) => validateSync(input), {
     [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
-    [TypeId]: variance,
+    [TypeId]: InternalSchema.variance,
     ast,
     option: (input: unknown) => validateOption(input),
     either: (input: unknown) =>
@@ -1311,33 +1306,33 @@ export function filter<A>(
 export const transformOrFail: {
   <C, D, B>(
     to: Schema<C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<C>,
-    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<B>
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, C>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, B>
   ): <A>(self: Schema<A, B>) => Schema<A, D>
   <C, D, B>(
     to: Schema<C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
-    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, unknown>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, unknown>,
     options: { strict: false }
   ): <A>(self: Schema<A, B>) => Schema<A, D>
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<C>,
-    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<B>
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, C>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, B>
   ): Schema<A, D>
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
-    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, unknown>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, unknown>,
     options: { strict: false }
   ): Schema<A, D>
 } = dual((args) => isSchema(args[0]) && isSchema(args[1]), <A, B, C, D>(
   from: Schema<A, B>,
   to: Schema<C, D>,
-  decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
-  encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>
+  decode: (b: B, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, unknown>,
+  encode: (c: C, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, unknown>
 ): Schema<A, D> =>
   make(
     AST.createTransform(
@@ -4386,10 +4381,10 @@ export interface Class<I, A, C, Self, Inherited = Data.Case> extends Schema<I, S
     fields: FieldsB,
     decode: (
       input: A
-    ) => ParseResult.ParseResult<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+    ) => Effect.Effect<never, ParseResult.ParseError, Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
     encode: (
       input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>
-    ) => ParseResult.ParseResult<A>
+    ) => Effect.Effect<never, ParseResult.ParseError, A>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
       I,
@@ -4405,10 +4400,10 @@ export interface Class<I, A, C, Self, Inherited = Data.Case> extends Schema<I, S
     fields: FieldsB,
     decode: (
       input: I
-    ) => ParseResult.ParseResult<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
+    ) => Effect.Effect<never, ParseResult.ParseError, Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
     encode: (
       input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>
-    ) => ParseResult.ParseResult<I>
+    ) => Effect.Effect<never, ParseResult.ParseError, I>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
       I,
@@ -4564,7 +4559,7 @@ const makeClass = <I, A>(
       super(props, true)
     }
 
-    static [TypeId] = variance
+    static [TypeId] = InternalSchema.variance
 
     toString() {
       return Pretty.make(this.constructor as any)(this)
