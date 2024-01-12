@@ -71,6 +71,27 @@ const unsafeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
 }
 
 /**
+ * A FiberMap can be used to store a collection of fibers, indexed by some key.
+ * When the associated Scope is closed, all fibers in the map will be interrupted.
+ *
+ * You can add fibers to the map using `FiberMap.set` or `FiberMap.run`, and the fibers will
+ * be automatically removed from the FiberMap when they complete.
+ *
+ * @example
+ * import { Effect, FiberMap } from "effect"
+ *
+ * Effect.gen(function*(_) {
+ *   const map = yield* _(FiberMap.make<string>())
+ *
+ *   // run some effects and add the fibers to the map
+ *   yield* _(FiberMap.run(map, "fiber a", Effect.never))
+ *   yield* _(FiberMap.run(map, "fiber b", Effect.never))
+ *
+ *   yield* _(Effect.sleep(1000))
+ * }).pipe(
+ *   Effect.scoped // The fibers will be interrupted when the scope is closed
+ * )
+ *
  * @since 2.0.0
  * @categories constructors
  */
@@ -78,6 +99,9 @@ export const make = <K, E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, 
   Effect.acquireRelease(Effect.sync(() => unsafeMake<K, E, A>()), clear)
 
 /**
+ * Add a fiber to the FiberMap. When the fiber completes, it will be removed from the FiberMap.
+ * If the key already exists in the FiberMap, the previous fiber will be interrupted.
+ *
  * @since 2.0.0
  * @categories combinators
  */
@@ -123,6 +147,9 @@ export const unsafeSet: {
 })
 
 /**
+ * Add a fiber to the FiberMap. When the fiber completes, it will be removed from the FiberMap.
+ * If the key already exists in the FiberMap, the previous fiber will be interrupted.
+ *
  * @since 2.0.0
  * @categories combinators
  */
@@ -152,6 +179,8 @@ export const set: {
   ))
 
 /**
+ * Retrieve a fiber from the FiberMap.
+ *
  * @since 2.0.0
  * @categories combinators
  */
@@ -169,6 +198,8 @@ export const unsafeGet: {
 >(2, (self, key) => MutableHashMap.get(self.backing, key))
 
 /**
+ * Retrieve a fiber from the FiberMap.
+ *
  * @since 2.0.0
  * @categories combinators
  */
@@ -198,6 +229,9 @@ export const clear = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<never, ne
   )
 
 /**
+ * Run an Effect and add the forked fiber to the FiberMap.
+ * When the fiber completes, it will be removed from the FiberMap.
+ *
  * @since 2.0.0
  * @categories combinators
  */

@@ -67,6 +67,27 @@ const unsafeMake = <E = unknown, A = unknown>(): FiberSet<E, A> => {
 }
 
 /**
+ * A FiberSet can be used to store a collection of fibers.
+ * When the associated Scope is closed, all fibers in the set will be interrupted.
+ *
+ * You can add fibers to the set using `FiberSet.add` or `FiberSet.run`, and the fibers will
+ * be automatically removed from the FiberSet when they complete.
+ *
+ * @example
+ * import { Effect, FiberSet } from "effect"
+ *
+ * Effect.gen(function*(_) {
+ *   const set = yield* _(FiberSet.make())
+ *
+ *   // run some effects and add the fibers to the set
+ *   yield* _(FiberSet.run(set, Effect.never))
+ *   yield* _(FiberSet.run(set, Effect.never))
+ *
+ *   yield* _(Effect.sleep(1000))
+ * }).pipe(
+ *   Effect.scoped // The fibers will be interrupted when the scope is closed
+ * )
+ *
  * @since 2.0.0
  * @categories constructors
  */
@@ -74,6 +95,8 @@ export const make = <E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, nev
   Effect.acquireRelease(Effect.sync(() => unsafeMake<E, A>()), clear)
 
 /**
+ * Add a fiber to the FiberSet. When the fiber completes, it will be removed.
+ *
  * @since 2.0.0
  * @categories combinators
  */
@@ -99,6 +122,8 @@ export const unsafeAdd: {
 })
 
 /**
+ * Add a fiber to the FiberSet. When the fiber completes, it will be removed.
+ *
  * @since 2.0.0
  * @categories combinators
  */
@@ -133,6 +158,9 @@ export const clear = <E, A>(self: FiberSet<E, A>): Effect.Effect<never, never, v
   )
 
 /**
+ * Fork an Effect and add the forked fiber to the FiberSet.
+ * When the fiber completes, it will be removed from the FiberSet.
+ *
  * @since 2.0.0
  * @categories combinators
  */
