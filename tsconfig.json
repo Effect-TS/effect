@@ -15,9 +15,6 @@
     { "path": "packages/printer-ansi" },
     { "path": "packages/rpc" },
     { "path": "packages/rpc-http" },
-    { "path": "packages/rpc-http-node" },
-    { "path": "packages/rpc-nextjs" },
-    { "path": "packages/rpc-workers" },
     { "path": "packages/schema" },
     { "path": "packages/schema" },
     { "path": "packages/typeclass" }

@@ -15,9 +15,6 @@
     { "path": "packages/printer-ansi/tsconfig.build.json" },
     { "path": "packages/rpc/tsconfig.build.json" },
     { "path": "packages/rpc-http/tsconfig.build.json" },
-    { "path": "packages/rpc-http-node/tsconfig.build.json" },
-    { "path": "packages/rpc-nextjs/tsconfig.build.json" },
-    { "path": "packages/rpc-workers/tsconfig.build.json" },
     { "path": "packages/schema/tsconfig.build.json" },
     { "path": "packages/typeclass/tsconfig.build.json" }
   ]

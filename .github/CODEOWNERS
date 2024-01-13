@@ -10,8 +10,5 @@
 /packages/printer-ansi/         @IMax153
 /packages/rpc/                  @tim-smart
 /packages/rpc-http/             @tim-smart
-/packages/rpc-http-node/        @tim-smart
-/packages/rpc-nextjs/           @tim-smart
-/packages/rpc-workers/          @tim-smart
 /packages/schema/               @gcanti
 /packages/typeclass/            @gcanti

@@ -4,6 +4,7 @@
   "references": [
     { "path": "tsconfig.src.json" },
     { "path": "../effect" },
+    { "path": "../experimental" },
     { "path": "../schema" },
     { "path": "../rpc" },
     { "path": "../platform" },

@@ -1,366 +1,263 @@
 /**
  * @since 1.0.0
  */
-import type { Context, Tag } from "effect/Context"
-import type { Effect } from "effect/Effect"
-import type { LazyArg } from "effect/Function"
-import type { Layer } from "effect/Layer"
-import * as internal from "./internal/router.js"
-import type { RpcSchema, RpcService } from "./Schema.js"
-import type { RpcUndecodedClient } from "./Server.js"
-
-/**
- * @category handler models
- * @since 1.0.0
- */
-export type RpcHandler<R, E, I, O> =
-  | RpcHandler.IO<R, E, I, O>
-  | RpcHandler.IOLayer<R, E, I, O>
-  | RpcHandler.NoInput<R, E, O>
-
-/**
- * @since 1.0.0
- */
-export declare namespace RpcHandler {
-  /**
-   * @category handler models
-   * @since 1.0.0
-   */
-  export type IO<R, E, I, O> = (input: I) => Effect<O, E, R>
-
-  /**
-   * @category handler models
-   * @since 1.0.0
-   */
-  export type IOLayer<R, E, I, O> = (input: I) => Layer<O, E, R>
-
-  /**
-   * @category handler models
-   * @since 1.0.0
-   */
-  export type NoInput<R, E, O> = Effect<O, E, R>
-
-  /**
-   * @category handler models
-   * @since 1.0.0
-   */
-  export type Any = RpcHandler<any, any, any, any>
-
-  /**
-   * @category handler utils
-   * @since 1.0.0
-   */
-  export type FromSchema<C extends RpcSchema.Any> = C extends RpcSchema.IO<
-    infer _RE,
-    infer _IE,
-    infer E,
-    infer _RI,
-    infer _II,
-    infer I,
-    infer _RO,
-    infer _IO,
-    infer O
-  > ? IO<any, E, I, O>
-    : C extends RpcSchema.NoError<infer _RI, infer _II, infer I, infer _RO, infer _IO, infer O> ? IO<any, never, I, O>
-    : C extends RpcSchema.NoInput<infer _RE, infer _IE, infer E, infer _RO, infer _IO, infer O> ? NoInput<any, E, O>
-    : C extends RpcSchema.NoInputNoError<infer _RO, infer _IO, infer O> ? NoInput<any, never, O>
-    : C extends RpcSchema.NoOutput<infer _RE, infer _IE, infer E, infer _RI, infer _II, infer I> ? IO<any, E, I, void>
-    : C extends RpcSchema.NoErrorNoOutput<infer _RI, infer _II, infer I> ? IO<any, never, I, void>
-    : never
-
-  /**
-   * @category handler utils
-   * @since 1.0.0
-   */
-  export type FromSetupSchema<C> = C extends RpcSchema.NoOutput<
-    infer _RE,
-    infer _IE,
-    infer E,
-    infer _RI,
-    infer _II,
-    infer I
-  > ? IO<any, E, I, Context<any>> | IOLayer<any, E, I, any>
-    : C extends RpcSchema.NoErrorNoOutput<infer _RI, infer _II, infer I>
-      ? IO<any, never, I, Context<any>> | IOLayer<any, never, I, any>
-    : never
-
-  /**
-   * @category handler utils
-   * @since 1.0.0
-   */
-  export type FromMethod<H extends RpcHandlers, M, XR, E2> = Extract<
-    RpcHandlers.Map<H, XR, E2>,
-    [M, any]
-  > extends [infer _M, infer T] ? T
-    : never
-}
-
-/**
- * @category handlers models
- * @since 1.0.0
- */
-export interface RpcHandlers extends Record<string, RpcHandler.Any | { readonly handlers: RpcHandlers }> {}
+import type { ParseError } from "@effect/schema/ParseResult"
+import * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
+import * as Cause from "effect/Cause"
+import * as Channel from "effect/Channel"
+import * as Chunk from "effect/Chunk"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import { pipe } from "effect/Function"
+import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import * as Predicate from "effect/Predicate"
+import * as Queue from "effect/Queue"
+import * as Stream from "effect/Stream"
+import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
+import * as Rpc from "./Rpc.js"
 
 /**
  * @since 1.0.0
+ * @category type ids
  */
-export declare namespace RpcHandlers {
-  /**
-   * @category handlers utils
-   * @since 1.0.0
-   */
-  export type FromService<S extends RpcService.DefinitionWithId, Depth extends ReadonlyArray<number> = []> = {
-    readonly [
-      K in Extract<
-        keyof S,
-        string
-      >
-    ]: S[K] extends RpcService.DefinitionWithId ?
-      Depth["length"] extends 3 ? never : { readonly handlers: FromService<S[K], [0, ...Depth]> }
-      : K extends "__setup" ? RpcHandler.FromSetupSchema<S[K]>
-      : S[K] extends RpcSchema.Any ? RpcHandler.FromSchema<S[K]>
-      : never
-  }
-
-  /**
-   * @category handlers utils
-   * @since 1.0.0
-   */
-  export type Services<H extends RpcHandlers, Depth extends ReadonlyArray<number> = []> = keyof H extends infer M
-    ? M extends keyof H ?
-      H[M] extends { readonly handlers: RpcHandlers } ?
-        Depth["length"] extends 3 ? never : Services<H[M]["handlers"], [0, ...Depth]>
-      : H[M] extends RpcHandler<infer R, infer _E, infer _I, infer _O> ? R
-      : never
-    : never
-    : never
-
-  /**
-   * @category handlers utils
-   * @since 1.0.0
-   */
-  export type Errors<H extends RpcHandlers, Depth extends ReadonlyArray<number> = []> = keyof H extends infer M
-    ? M extends keyof H ?
-      H[M] extends { readonly handlers: RpcHandlers } ?
-        Depth["length"] extends 3 ? never : Errors<H[M]["handlers"], [0, ...Depth]>
-      : H[M] extends RpcHandler<infer _R, infer E, infer _I, infer _O> ? E
-      : never
-    : never
-    : never
-
-  /**
-   * @category handlers utils
-   * @since 1.0.0
-   */
-  export type Map<
-    H extends RpcHandlers,
-    XR,
-    E2,
-    P extends string = "",
-    Depth extends ReadonlyArray<number> = []
-  > = Extract<keyof H, string> extends infer K
-    ? K extends Extract<keyof H, string>
-      ? H[K] extends { readonly handlers: RpcHandlers } ?
-        Depth["length"] extends 3 ? never : Map<H[K]["handlers"], XR, E2, `${P}${K}.`, [0, ...Depth]>
-      : H[K] extends RpcHandler.IO<infer R, infer E, infer _I, infer O>
-        ? [`${P}${K}`, Effect<O, E | E2, Exclude<R, XR>>]
-      : H[K] extends Effect<infer O, infer E, infer R> ? [`${P}${K}`, Effect<O, E | E2, Exclude<R, XR>>]
-      : never
-    : never
-    : never
-}
+export const TypeId = Symbol.for("@effect/rpc/Rpc/Router")
 
 /**
- * @category router models
  * @since 1.0.0
+ * @category type ids
  */
-export interface RpcRouter<
-  S extends RpcService.DefinitionWithId,
-  H extends RpcHandlers
-> extends RpcRouter.Base {
-  readonly handlers: H
-  readonly schema: S
-  readonly undecoded: RpcUndecodedClient<H>
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isRouter = (u: unknown): u is Router<any, any> => Predicate.hasProperty(u, TypeId)
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Router<R, Reqs extends Schema.TaggedRequest.Any> extends Pipeable {
+  readonly [TypeId]: TypeId
+  readonly rpcs: ReadonlySet<Rpc.Rpc<R, Reqs>>
 }
 
 /**
  * @since 1.0.0
+ * @category models
  */
-export declare namespace RpcRouter {
+export declare namespace Router {
   /**
-   * @category router models
    * @since 1.0.0
+   * @category models
    */
-  export interface Base {
-    readonly handlers: RpcHandlers
-    readonly schema: RpcService.DefinitionWithId
-    readonly undecoded: any
-    readonly options: Options
-  }
+  export type Context<A extends Router<any, any>> = A extends Router<infer R, infer Req>
+    ? R | Serializable.WithResult.Context<Req>
+    : never
 
   /**
-   * @category router models
    * @since 1.0.0
+   * @category models
    */
-  export interface WithSetup extends Base {
-    readonly handlers: RpcHandlers & {
-      readonly __setup: RpcHandler.Any
-    }
-  }
+  export type ContextRaw<A extends Router<any, any>> = A extends Router<infer _R, infer Req>
+    ? Serializable.Serializable.Context<Req>
+    : never
 
   /**
-   * @category router models
    * @since 1.0.0
+   * @category models
    */
-  export interface WithoutSetup extends Base {
-    readonly handlers: RpcHandlers & {
-      readonly __setup?: never
-    }
-  }
+  export type Request<A extends Router<any, any>> = A extends Router<infer _R, infer Req> ? Req
+    : never
 
   /**
-   * @category router models
    * @since 1.0.0
+   * @category models
    */
-  export interface Options {
-    readonly spanPrefix: string
-  }
+  export type Response = [index: number, response: Schema.ExitFrom<any, any> | ReadonlyArray<Schema.ExitFrom<any, any>>]
+}
 
-  /**
-   * @category router utils
-   * @since 1.0.0
-   */
-  export type Provide<Router extends Base, XR, PR, PE, Depth extends ReadonlyArray<number> = []> = RpcRouter<
-    Router["schema"],
-    {
-      readonly [M in keyof Router["handlers"]]: Router["handlers"][M] extends Base
-        ? Depth["length"] extends 3 ? never : Provide<Router["handlers"][M], XR, PR, PE, [0, ...Depth]>
-        : Router["handlers"][M] extends RpcHandler.IO<
-          infer R,
-          infer E,
-          infer I,
-          infer O
-        > ? RpcHandler.IO<Exclude<R, XR> | PR, E | PE, I, O>
-        : Router["handlers"][M] extends RpcHandler.IOLayer<
-          infer R,
-          infer E,
-          infer I,
-          infer O
-        > ? RpcHandler.IOLayer<Exclude<R, XR> | PR, E | PE, I, O>
-        : Router["handlers"][M] extends RpcHandler.NoInput<
-          infer R,
-          infer E,
-          infer O
-        > ? RpcHandler.NoInput<Exclude<R, XR> | PR, E | PE, O>
-        : never
-    }
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const make = <Rpcs extends ReadonlyArray<Rpc.Rpc<any, any> | Router<any, any>>>(
+  ...rpcs: Rpcs
+): Router<
+  | Rpc.Rpc.Context<
+    Extract<Rpcs[number], { readonly [Rpc.TypeId]: Rpc.TypeId }>
   >
+  | Router.Context<
+    Extract<Rpcs[number], { readonly [TypeId]: TypeId }>
+  >,
+  | Rpc.Rpc.Request<
+    Extract<Rpcs[number], { readonly [Rpc.TypeId]: Rpc.TypeId }>
+  >
+  | Router.Request<
+    Extract<Rpcs[number], { readonly [TypeId]: TypeId }>
+  >
+> => {
+  const rpcSet = new Set<Rpc.Rpc<any, any>>()
+  rpcs.forEach((rpc) => {
+    if (isRouter(rpc)) {
+      rpc.rpcs.forEach((rpc) => rpcSet.add(rpc))
+    } else {
+      rpcSet.add(rpc)
+    }
+  })
+  return ({
+    [TypeId]: TypeId,
+    rpcs: rpcSet,
+    pipe() {
+      return pipeArguments(this, arguments)
+    }
+  })
+}
 
-  /**
-   * @category router utils
-   * @since 1.0.0
-   */
-  export type SetupServices<R extends WithSetup> = R["handlers"]["__setup"] extends RpcHandler.IOLayer<
-    infer _R,
-    infer _E,
-    infer _I,
-    infer O
-  > ? O
-    : R["handlers"]["__setup"] extends RpcHandler.IO<
-      infer _R,
-      infer _E,
-      infer _I,
-      infer O
-    > ? O extends Context<infer Env> ? Env
-      : never
-    : never
+const EOF = Symbol.for("@effect/rpc/Rpc/Router/EOF")
 
-  /**
-   * @category router utils
-   * @since 1.0.0
-   */
-  export type Services<R extends Base> = R extends WithSetup
-    ? Exclude<RpcHandlers.Services<R["handlers"]> | RpcSchema.Context<R["schema"]>, SetupServices<R>>
-    : RpcHandlers.Services<R["handlers"]> | RpcSchema.Context<R["schema"]>
+const channelFromQueue = <A>(queue: Queue.Queue<A | typeof EOF>) => {
+  const loop: Channel.Channel<Chunk.Chunk<A>> = Channel.flatMap(
+    Queue.take(queue),
+    (elem) =>
+      elem === EOF
+        ? Channel.unit
+        : Channel.zipRight(Channel.write(Chunk.of(elem)), loop)
+  )
+  return loop
+}
 
-  /**
-   * @category router utils
-   * @since 1.0.0
-   */
-  export type Errors<R extends Base> = RpcHandlers.Errors<R["handlers"]>
+const emptyExit = Schema.encodeSync(Schema.exit(Schema.never, Schema.never))(Exit.failCause(Cause.empty))
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toHandler = <R extends Router<any, any>>(router: R) => {
+  const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
+    .union(
+      ...[...router.rpcs].map((rpc) =>
+        Schema.transform(
+          rpc.schema,
+          Schema.to(Schema.tuple(rpc.schema, Schema.any)),
+          (request) => [request, rpc] as const,
+          ([request]) => request
+        )
+      )
+    )
+  const schemaArray = Schema.array(Rpc.RequestSchema(schema))
+  const decode = Schema.decodeUnknown(schemaArray)
+  const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.chunk(Serializable.exitSchema(req))))
+
+  return (u: unknown): Stream.Stream<Router.Response, ParseError, Router.Context<R>> =>
+    pipe(
+      decode(u),
+      Effect.zip(Queue.bounded<Router.Response | typeof EOF>(16)),
+      Effect.tap(([requests, queue]) =>
+        pipe(
+          Effect.forEach(requests, (req, index) => {
+            const [request, rpc] = req.request
+            if (rpc._tag === "Effect") {
+              const encode = getEncode(request)
+              return pipe(
+                Effect.exit(rpc.handler(request)),
+                Effect.flatMap(encode),
+                Effect.orDie,
+                Effect.matchCauseEffect({
+                  onSuccess: (response) => Queue.offer(queue, [index, response]),
+                  onFailure: (cause) =>
+                    Effect.flatMap(
+                      encode(Exit.failCause(cause)),
+                      (response) => Queue.offer(queue, [index, response])
+                    )
+                }),
+                Effect.locally(Rpc.currentHeaders, req.headers),
+                Effect.withSpan(`Rpc.router ${request._tag}`, {
+                  parent: {
+                    _tag: "ExternalSpan",
+                    traceId: req.traceId,
+                    spanId: req.spanId,
+                    sampled: req.sampled,
+                    context: Context.empty()
+                  }
+                })
+              )
+            }
+            const encode = getEncodeChunk(request)
+            return pipe(
+              rpc.handler(request),
+              Stream.toChannel,
+              Channel.mapOutEffect((chunk) =>
+                Effect.flatMap(
+                  encode(Chunk.map(chunk, Exit.succeed)),
+                  (response) => Queue.offer(queue, [index, response])
+                )
+              ),
+              Channel.runDrain,
+              Effect.matchCauseEffect({
+                onSuccess: () => Queue.offer(queue, [index, [emptyExit]]),
+                onFailure: (cause) =>
+                  Effect.flatMap(
+                    encode(Chunk.of(Exit.failCause(cause))),
+                    (response) => Queue.offer(queue, [index, response])
+                  )
+              }),
+              Effect.locally(Rpc.currentHeaders, req.headers),
+              Effect.withSpan(`Rpc.router ${request._tag}`, {
+                parent: {
+                  _tag: "ExternalSpan",
+                  traceId: req.traceId,
+                  spanId: req.spanId,
+                  sampled: req.sampled,
+                  context: Context.empty()
+                }
+              })
+            )
+          }, { concurrency: "unbounded", discard: true }),
+          Effect.ensuring(Queue.offer(queue, EOF)),
+          Effect.fork
+        )
+      ),
+      Effect.map(([_, queue]) => Stream.fromChannel(channelFromQueue(queue))),
+      Stream.unwrap
+    )
 }
 
 /**
- * @category router constructors
  * @since 1.0.0
+ * @category combinators
  */
-export const make: <
-  const S extends RpcService.DefinitionWithId,
-  const H extends RpcHandlers.FromService<S>
->(
-  schema: S,
-  handlers: H,
-  options?: Partial<RpcRouter.Options>
-) => RpcRouter<S, H> = internal.make
+export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
+  const schema: Schema.Schema<
+    readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>],
+    unknown,
+    Router.ContextRaw<R>
+  > = Schema.union(...[...router.rpcs].map((rpc) =>
+    Schema.transform(
+      Schema.to(rpc.schema),
+      Schema.to(Schema.tuple(rpc.schema, Schema.any)),
+      (request) => [request, rpc] as const,
+      ([request]) => request
+    )
+  ))
+  const parse = Schema.decode(schema)
 
-/**
- * @category router combinators
- * @since 1.0.0
- */
-export const provideService: {
-  <T extends Tag<any, any>>(
-    tag: T,
-    service: Tag.Service<T>
-  ): <const Router extends RpcRouter.Base>(
-    self: Router
-  ) => RpcRouter.Provide<Router, Tag.Identifier<T>, never, never>
-  <const Router extends RpcRouter.Base, T extends Tag<any, any>>(
-    self: Router,
-    tag: T,
-    service: Tag.Service<T>
-  ): RpcRouter.Provide<Router, Tag.Identifier<T>, never, never>
-} = internal.provideService
-
-/**
- * @category router combinators
- * @since 1.0.0
- */
-export const provideServiceEffect: {
-  <
-    const Router extends RpcRouter.Base,
-    T extends Tag<any, any>,
-    R,
-    E extends RpcService.Errors<Router["schema"]>
-  >(
-    tag: T,
-    effect: Effect<Tag.Service<T>, E, R>
-  ): (self: Router) => RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
-  <
-    const Router extends RpcRouter.Base,
-    T extends Tag<any, any>,
-    R,
-    E extends RpcService.Errors<Router["schema"]>
-  >(
-    self: Router,
-    tag: T,
-    effect: Effect<Tag.Service<T>, E, R>
-  ): RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
-} = internal.provideServiceEffect
-
-/**
- * @category router combinators
- * @since 1.0.0
- */
-export const provideServiceSync: {
-  <T extends Tag<any, any>>(
-    tag: T,
-    service: LazyArg<Tag.Service<T>>
-  ): <const Router extends RpcRouter.Base>(
-    self: Router
-  ) => RpcRouter.Provide<Router, Tag.Identifier<T>, never, never>
-  <Router extends RpcRouter.Base, T extends Tag<any, any>>(
-    self: Router,
-    tag: T,
-    service: LazyArg<Tag.Service<T>>
-  ): RpcRouter.Provide<Router, Tag.Identifier<T>, never, never>
-} = internal.provideServiceSync
+  return <Req extends Router.Request<R>>(request: Req): Rpc.Rpc.Result<Req, Router.ContextRaw<R>> => {
+    const isStream = StreamRequestTypeId in request
+    const withHandler = parse(request)
+    if (isStream) {
+      return Stream.unwrap(Effect.map(
+        withHandler,
+        ([request, rpc]) => rpc.handler(request)
+      )) as any
+    }
+    return Effect.flatMap(
+      withHandler,
+      ([request, rpc]) => rpc.handler(request) as any
+    ) as any
+  }
+}

@@ -1,115 +1,208 @@
-import * as _ from "@effect/rpc/Router"
-import * as RS from "@effect/rpc/Schema"
-import { typeEquals } from "@effect/rpc/test/utils"
+import * as Resolver from "@effect/rpc/Resolver"
+import * as Router from "@effect/rpc/Router"
+import * as Rpc from "@effect/rpc/Rpc"
 import * as S from "@effect/schema/Schema"
-import { GenericTag } from "effect/Context"
+import * as Chunk from "effect/Chunk"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import { describe, expect, it } from "vitest"
+import { flow, pipe } from "effect/Function"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Stream from "effect/Stream"
+import { assert, describe, expect, it, test } from "vitest"
 
-const makeCounter = () => {
-  let count = 0
-
-  return {
-    count: () => count++
-  }
+interface Name {
+  readonly _: unique symbol
 }
-interface Counter extends ReturnType<typeof makeCounter> {}
-const Counter = GenericTag<Counter>("Counter")
+const Name = Context.GenericTag<Name, string>("Name")
 
-const SomeError_ = S.struct({
-  _tag: S.literal("SomeError"),
+class SomeError extends S.TaggedError<SomeError>()("SomeError", {
   message: S.string
-})
-interface SomeError extends S.Schema.To<typeof SomeError_> {}
-const SomeError: S.Schema<SomeError> = SomeError_
+}) {}
 
-const posts = RS.make({
-  create: {
-    output: S.string
-  }
-})
+class Post extends S.Class<Post>()({
+  id: S.number,
+  body: S.string
+}) {}
 
-const schema = RS.withServiceError(
-  RS.make({
-    getCount: {
-      output: S.tuple(S.number, S.number)
-    },
-    posts
-  }),
-  SomeError
+class CreatePost extends S.TaggedRequest<CreatePost>()("CreatePost", S.never, Post, {
+  body: S.string
+}) {}
+
+const posts = Router.make(
+  Rpc.effect(CreatePost, ({ body }) => Effect.succeed(new Post({ id: 1, body })))
 )
 
-const router = _.make(schema, {
-  getCount: Effect.map(
-    Counter,
-    (counter) => [counter.count(), counter.count()] as const
-  ),
+class Greet extends S.TaggedRequest<Greet>()("Greet", S.never, S.string, {
+  name: S.string
+}) {}
 
-  posts: _.make(posts, {
-    create: Effect.succeed("post")
+class Fail extends S.TaggedRequest<Fail>()("Fail", SomeError, S.void, {
+  name: S.string
+}) {}
+
+class FailNoInput extends S.TaggedRequest<FailNoInput>()("FailNoInput", SomeError, S.void, {}) {}
+
+class EncodeInput extends S.TaggedRequest<EncodeInput>()("EncodeInput", S.never, S.Date, {
+  date: S.Date
+}) {}
+
+class EncodeDate extends S.TaggedRequest<EncodeDate>()("EncodeDate", SomeError, S.Date, {
+  date: S.string
+}) {}
+
+class Refined extends S.TaggedRequest<Refined>()("Refined", S.never, S.number, {
+  number: pipe(S.number, S.int(), S.greaterThan(10))
+}) {}
+
+class SpanName extends S.TaggedRequest<SpanName>()("SpanName", S.never, S.string, {}) {}
+
+class Counts extends Rpc.StreamRequest<Counts>()(
+  "Counts",
+  S.never,
+  S.number,
+  {}
+) {}
+
+const router = Router.make(
+  posts,
+  Rpc.effect(Greet, ({ name }) => Effect.succeed(`Hello, ${name}!`)),
+  Rpc.effect(Fail, () =>
+    new SomeError({
+      message: "fail"
+    })),
+  Rpc.effect(FailNoInput, () => new SomeError({ message: "fail" })),
+  Rpc.effect(EncodeInput, ({ date }) => Effect.succeed(date)),
+  Rpc.effect(EncodeDate, ({ date }) =>
+    Effect.try({
+      try: () => new Date(date),
+      catch: () => new SomeError({ message: "fail" })
+    })),
+  Rpc.effect(Refined, ({ number }) => Effect.succeed(number)),
+  Rpc.effect(SpanName, () =>
+    Effect.currentSpan.pipe(
+      Effect.map((span) => span.name),
+      Effect.orDie
+    )),
+  Rpc.stream(Counts, () =>
+    Stream.make(1, 2, 3, 4, 5).pipe(
+      Stream.tap((_) => Effect.sleep(10))
+    ))
+)
+
+const handler = Router.toHandler(router)
+const handlerArray = (u: ReadonlyArray<unknown>) =>
+  handler(u.map((request, i) => ({
+    request,
+    traceId: "traceId",
+    spanId: `spanId${i}`,
+    sampled: true,
+    headers: {}
+  }))).pipe(
+    Stream.runCollect,
+    Effect.map(flow(
+      ReadonlyArray.fromIterable,
+      ReadonlyArray.map(([, response]) => response),
+      ReadonlyArray.filter((_): _ is S.ExitFrom<any, any> => Array.isArray(_) === false)
+    ))
+  )
+const resolver = Resolver.make(handler)<typeof router>()
+const client = Resolver.toClient(resolver)
+
+describe("Router", () => {
+  it("handler/", async () => {
+    const date = new Date()
+    const result = await Effect.runPromise(
+      handlerArray([
+        { _tag: "Greet", name: "John" },
+        { _tag: "Fail", name: "" },
+        { _tag: "FailNoInput" },
+        { _tag: "EncodeInput", date: date.toISOString() },
+        { _tag: "EncodeDate", date: date.toISOString() },
+        { _tag: "Refined", number: 11 },
+        { _tag: "CreatePost", body: "hello" },
+        { _tag: "SpanName" }
+      ])
+    )
+    expect(result.length).toEqual(8)
+
+    assert.deepStrictEqual(result, [{
+      _tag: "Success",
+      value: "Hello, John!"
+    }, {
+      _tag: "Failure",
+      cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } }
+    }, {
+      _tag: "Failure",
+      cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } }
+    }, {
+      _tag: "Success",
+      value: date.toISOString()
+    }, {
+      _tag: "Success",
+      value: date.toISOString()
+    }, {
+      _tag: "Success",
+      value: 11
+    }, {
+      _tag: "Success",
+      value: {
+        id: 1,
+        body: "hello"
+      }
+    }, {
+      _tag: "Success",
+      value: "Rpc.router SpanName"
+    }])
+  })
+
+  it("stream", async () => {
+    const result = await Effect.runPromise(
+      handler([{
+        request: { _tag: "Counts" },
+        traceId: "traceId",
+        spanId: "spanId",
+        sampled: true,
+        headers: {}
+      }]).pipe(
+        Stream.runCollect,
+        Effect.map(Chunk.toReadonlyArray)
+      )
+    )
+    expect(result.length).toEqual(6)
+    assert.deepStrictEqual(result, [
+      [0, [{ _tag: "Success", value: 1 }]],
+      [0, [{ _tag: "Success", value: 2 }]],
+      [0, [{ _tag: "Success", value: 3 }]],
+      [0, [{ _tag: "Success", value: 4 }]],
+      [0, [{ _tag: "Success", value: 5 }]],
+      [0, [{ _tag: "Failure", cause: { _tag: "Empty" } }]]
+    ])
   })
 })
 
-describe("Router", () => {
-  it("provideServiceSync/", () => {
-    typeEquals(router.handlers.getCount)<
-      Effect.Effect<readonly [number, number], never, Counter>
-    >() satisfies true
+describe("Resolver", () => {
+  test("effect", () =>
+    Effect.gen(function*(_) {
+      const name = yield* _(Rpc.call(new SpanName(), resolver))
+      assert.strictEqual(name, "Rpc.router SpanName")
 
-    const provided = _.provideServiceSync(router, Counter, makeCounter)
-    typeEquals(provided.handlers.getCount)<
-      Effect.Effect<readonly [number, number]>
-    >() satisfies true
+      const clientName = yield* _(client(new SpanName()))
+      assert.strictEqual(clientName, "Rpc.router SpanName")
+    }).pipe(Effect.runPromise))
 
-    expect(Effect.runSync(provided.handlers.getCount)).toEqual([0, 1])
-  })
-
-  it("provideServiceEffect/ error", () => {
-    const counterEffect: Effect.Effect<Counter, SomeError> = Effect.sync(makeCounter)
-
-    const provided = _.provideServiceEffect(router, Counter, counterEffect)
-
-    typeEquals(provided.handlers.getCount)<
-      Effect.Effect<readonly [number, number], SomeError>
-    >() satisfies true
-
-    expect(Effect.runSync(provided.handlers.getCount)).toEqual([0, 1])
-  })
-
-  it("provideServiceEffect/ error fail", () => {
-    const counterEffect: Effect.Effect<Counter, SomeError> = Effect.fail(
-      { _tag: "SomeError", message: "boom" }
-    )
-
-    const provided = _.provideServiceEffect(router, Counter, counterEffect)
-
-    expect(Effect.runSync(Effect.either(provided.handlers.getCount))).toEqual(
-      Either.left({ _tag: "SomeError", message: "boom" })
-    )
-  })
-
-  it("provideServiceEffect/ error fail nested", () => {
-    const counterEffect: Effect.Effect<Counter, SomeError> = Effect.fail(
-      { _tag: "SomeError", message: "boom" }
-    )
-
-    const provided = _.provideServiceEffect(router, Counter, counterEffect)
-
-    expect(
-      Effect.runSync(Effect.either(provided.handlers.posts.handlers.create))
-    ).toEqual(Either.left({ _tag: "SomeError", message: "boom" }))
-  })
-
-  it("provideServiceEffect/ env", () => {
-    interface Foo {
-      readonly _: unique symbol
-    }
-    const counterEffect: Effect.Effect<Counter, SomeError, Foo> = Effect.sync(makeCounter)
-
-    const provided = _.provideServiceEffect(router, Counter, counterEffect)
-    typeEquals(provided.handlers.getCount)<
-      Effect.Effect<readonly [number, number], SomeError, Foo>
-    >() satisfies true
-  })
+  test("stream", () =>
+    Effect.gen(function*(_) {
+      const counts = yield* _(
+        Rpc.call(new Counts(), resolver),
+        Stream.runCollect,
+        Effect.map(Chunk.toReadonlyArray)
+      )
+      assert.deepStrictEqual(counts, [
+        1,
+        2,
+        3,
+        4,
+        5
+      ])
+    }).pipe(Effect.runPromise))
 })
