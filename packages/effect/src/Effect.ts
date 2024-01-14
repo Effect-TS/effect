@@ -4741,7 +4741,10 @@ export const makeSemaphore: (permits: number) => Effect<never, never, Semaphore>
  * @since 2.0.0
  * @category execution
  */
-export const runFork: <E, A>(effect: Effect<never, E, A>) => Fiber.RuntimeFiber<E, A> = _runtime.unsafeForkEffect
+export const runFork: <E, A>(
+  effect: Effect<never, E, A>,
+  options?: Runtime.RunForkOptions
+) => Fiber.RuntimeFiber<E, A> = _runtime.unsafeForkEffect
 
 /**
  * @since 2.0.0
