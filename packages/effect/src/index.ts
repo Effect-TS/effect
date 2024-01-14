@@ -848,6 +848,25 @@ export * as TestSized from "./TestSized.js"
 export * as Tracer from "./Tracer.js"
 
 /**
+ * A `Trie` is used for locating specific `string` keys from within a set.
+ *
+ * It works similar to `HashMap`, but with keys required to be `string`.
+ * This constraint unlocks some performance optimizations and new methods to get string prefixes (e.g. `keysWithPrefix`, `longestPrefixOf`).
+ *
+ * Prefix search is also the main feature that makes a `Trie` more suited than `HashMap` for certain usecases.
+ *
+ * A `Trie` is often used to store a dictionary (list of words) that can be searched
+ * in a manner that allows for efficient generation of completion lists
+ * (e.g. predict the rest of a word a user is typing).
+ *
+ * A `Trie` has O(n) lookup time where `n` is the size of the key,
+ * or even less than `n` on search misses.
+ *
+ * @since 2.0.0
+ */
+export * as Trie from "./Trie.js"
+
+/**
  * This module provides utility functions for working with tuples in TypeScript.
  *
  * @since 2.0.0
