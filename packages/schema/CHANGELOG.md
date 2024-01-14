@@ -1,5 +1,32 @@
 # @effect/schema
 
+## 0.60.0
+
+### Minor Changes
+
+- [#1913](https://github.com/Effect-TS/effect/pull/1913) [`b557a10`](https://github.com/Effect-TS/effect/commit/b557a10b773e321bea77fc4951f0ef171dd193c9) Thanks [@gcanti](https://github.com/gcanti)! - ParseResult refactoring:
+
+  - remove `ParseResult` type
+  - rename `mapLeft` to `mapError`
+  - rename `bimap` to `mapBoth`
+
+### Patch Changes
+
+- [#1910](https://github.com/Effect-TS/effect/pull/1910) [`ec2bdfa`](https://github.com/Effect-TS/effect/commit/ec2bdfae2da717f28147b9d6820d3494cb240945) Thanks [@gcanti](https://github.com/gcanti)! - refactor `eitherFromUnion` as union of transformations
+
+- [#1892](https://github.com/Effect-TS/effect/pull/1892) [`687e02e`](https://github.com/Effect-TS/effect/commit/687e02e7d84dc06957844160761fda90929470ab) Thanks [@matheuspuel](https://github.com/matheuspuel)! - Schema: fix ParseIssue.actual on transformation
+
+- [#1891](https://github.com/Effect-TS/effect/pull/1891) [`8eec87e`](https://github.com/Effect-TS/effect/commit/8eec87e311ce55281a98517e6df0ef103b43e8a8) Thanks [@gcanti](https://github.com/gcanti)! - fix `pick` behavior when the input is a record
+
+- [#1906](https://github.com/Effect-TS/effect/pull/1906) [`0c397e7`](https://github.com/Effect-TS/effect/commit/0c397e762008a0de40c7526c9d99ff2cfe4f7a6a) Thanks [@matheuspuel](https://github.com/matheuspuel)! - Schema: show error message when throw ParseError
+
+- [#1909](https://github.com/Effect-TS/effect/pull/1909) [`74b9094`](https://github.com/Effect-TS/effect/commit/74b90940e571c73a6b76cafa88ffb8a1c949cb4c) Thanks [@tim-smart](https://github.com/tim-smart)! - fix formatting of suspend before initialization
+
+- [#1904](https://github.com/Effect-TS/effect/pull/1904) [`337e80f`](https://github.com/Effect-TS/effect/commit/337e80f69bc36966f889c439b819db2f84cae496) Thanks [@gcanti](https://github.com/gcanti)! - add more title and identifier annotations
+
+- Updated dependencies [[`536c1df`](https://github.com/Effect-TS/effect/commit/536c1dfb7833961dfb2fbd6bcd2dbdfa2f208d51), [`8eec87e`](https://github.com/Effect-TS/effect/commit/8eec87e311ce55281a98517e6df0ef103b43e8a8), [`540b294`](https://github.com/Effect-TS/effect/commit/540b2941dd0a81e9688311583ce7e2e140d6e7a5), [`536c1df`](https://github.com/Effect-TS/effect/commit/536c1dfb7833961dfb2fbd6bcd2dbdfa2f208d51), [`a3f96d6`](https://github.com/Effect-TS/effect/commit/a3f96d615b8b3e238dbfa01ef713c87e6f4532be), [`8eec87e`](https://github.com/Effect-TS/effect/commit/8eec87e311ce55281a98517e6df0ef103b43e8a8), [`536c1df`](https://github.com/Effect-TS/effect/commit/536c1dfb7833961dfb2fbd6bcd2dbdfa2f208d51), [`8eec87e`](https://github.com/Effect-TS/effect/commit/8eec87e311ce55281a98517e6df0ef103b43e8a8), [`8eec87e`](https://github.com/Effect-TS/effect/commit/8eec87e311ce55281a98517e6df0ef103b43e8a8), [`25adce7`](https://github.com/Effect-TS/effect/commit/25adce7ae76ce834096dca1ed70a60ad1a349217), [`536c1df`](https://github.com/Effect-TS/effect/commit/536c1dfb7833961dfb2fbd6bcd2dbdfa2f208d51)]:
+  - effect@2.0.4
+
 ## 0.59.1
 
 ### Patch Changes
