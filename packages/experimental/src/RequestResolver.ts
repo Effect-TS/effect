@@ -62,11 +62,11 @@ export const dataLoader = dual<
     const batch = yield* _(Ref.make(ReadonlyArray.empty<DataLoaderItem<A>>()))
     const takeOne = Effect.flatMap(Queue.take(queue), (item) => Ref.updateAndGet(batch, ReadonlyArray.append(item)))
     const takeRest = takeOne.pipe(
-      Effect.repeatUntil(
-        (items) =>
+      Effect.repeat({
+        until: (items) =>
           options.maxBatchSize !== undefined &&
           items.length >= options.maxBatchSize
-      ),
+      }),
       Effect.timeout(options.window),
       Effect.ignore,
       Effect.zipRight(Ref.getAndSet(batch, ReadonlyArray.empty()))

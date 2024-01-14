@@ -11,13 +11,14 @@ import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import type { Predicate, Refinement } from "../Predicate.js"
+import { hasProperty, type Predicate } from "../Predicate.js"
 import * as Random from "../Random.js"
 import type * as Ref from "../Ref.js"
 import type * as Schedule from "../Schedule.js"
 import * as ScheduleDecision from "../ScheduleDecision.js"
 import * as Interval from "../ScheduleInterval.js"
 import * as Intervals from "../ScheduleIntervals.js"
+import * as internalCause from "./cause.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as ref from "./ref.js"
@@ -29,6 +30,9 @@ const ScheduleSymbolKey = "effect/Schedule"
 export const ScheduleTypeId: Schedule.ScheduleTypeId = Symbol.for(
   ScheduleSymbolKey
 ) as Schedule.ScheduleTypeId
+
+/** @internal */
+export const isSchedule = (u: unknown): u is Schedule.Schedule<any, any, any> => hasProperty(u, ScheduleTypeId)
 
 /** @internal */
 const ScheduleDriverSymbolKey = "effect/ScheduleDriver"
@@ -1831,6 +1835,29 @@ export const findNextMonth = (now: number, day: number, months: number): number 
 
 // circular with Effect
 
+const ScheduleDefectTypeId = Symbol.for("effect/Schedule/ScheduleDefect")
+class ScheduleDefect<E> {
+  readonly [ScheduleDefectTypeId]: typeof ScheduleDefectTypeId
+  constructor(readonly error: E) {
+    this[ScheduleDefectTypeId] = ScheduleDefectTypeId
+  }
+}
+const isScheduleDefect = <E = unknown>(u: unknown): u is ScheduleDefect<E> => hasProperty(u, ScheduleDefectTypeId)
+const scheduleDefectWrap = <R, E, A>(self: Effect.Effect<R, E, A>) =>
+  core.catchAll(self, (e) => core.die(new ScheduleDefect(e)))
+const scheduleDefectRefail = <R, E, A>(self: Effect.Effect<R, E, A>) =>
+  core.catchAllCause(self, (cause) =>
+    Option.match(
+      internalCause.find(
+        cause,
+        (_) => internalCause.isDieType(_) && isScheduleDefect<E>(_.defect) ? Option.some(_.defect) : Option.none()
+      ),
+      {
+        onNone: () => core.failCause(cause),
+        onSome: (error) => core.fail(error.error)
+      }
+    ))
+
 /** @internal */
 export const repeat_Effect = dual<
   <R1, A extends A0, A0, B>(
@@ -1841,6 +1868,57 @@ export const repeat_Effect = dual<
     schedule: Schedule.Schedule<R1, A0, B>
   ) => Effect.Effect<R | R1, E, B>
 >(2, (self, schedule) => repeatOrElse_Effect(self, schedule, (e, _) => core.fail(e)))
+
+/** @internal */
+export const repeat_combined = dual<{
+  <A, O extends Effect.Repeat.Options<A>>(
+    options: O
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Repeat.Return<R, E, A, O>
+  <R1, A extends A0, A0, B>(
+    schedule: Schedule.Schedule<R1, A, B>
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E, B>
+}, {
+  <R, E, A, O extends Effect.Repeat.Options<A>>(
+    self: Effect.Effect<R, E, A>,
+    options: O
+  ): Effect.Repeat.Return<R, E, A, O>
+  <R, E, A extends A0, A0, R1, B>(
+    self: Effect.Effect<R, E, A>,
+    schedule: Schedule.Schedule<R1, A0, B>
+  ): Effect.Effect<R | R1, E, B>
+}>(
+  2,
+  (self: Effect.Effect<any, any, any>, options: Effect.Repeat.Options<any> | Schedule.Schedule<any, any, any>) => {
+    if (isSchedule(options)) {
+      return repeat_Effect(self, options)
+    }
+
+    const base = options.schedule ?? passthrough(forever)
+    const withWhile = options.while ?
+      whileInputEffect(base, (a) => {
+        const applied = options.while!(a)
+        if (typeof applied === "boolean") {
+          return core.succeed(applied)
+        }
+        return scheduleDefectWrap(applied)
+      }) :
+      base
+    const withUntil = options.until ?
+      untilInputEffect(withWhile, (a) => {
+        const applied = options.until!(a)
+        if (typeof applied === "boolean") {
+          return core.succeed(applied)
+        }
+        return scheduleDefectWrap(applied)
+      }) :
+      withWhile
+    const withTimes = options.times ?
+      intersect(withUntil, recurs(options.times)) :
+      withUntil
+
+    return scheduleDefectRefail(repeat_Effect(self, withTimes))
+  }
+)
 
 /** @internal */
 export const repeatOrElse_Effect = dual<
@@ -1878,66 +1956,6 @@ const repeatOrElseEffectLoop = <R, E, A extends A0, A0, R1, B, R2, E2, C>(
 }
 
 /** @internal */
-export const repeatUntil_Effect = dual<
-  {
-    <A, B extends A>(f: Refinement<A, B>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-    <A>(f: Predicate<A>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(self: Effect.Effect<R, E, A>, f: Predicate<A>): Effect.Effect<R, E, B>
-    <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>): Effect.Effect<R, E, A>
-  }
->(
-  2,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>) =>
-    repeatUntilEffect_Effect(self, (a) => core.sync(() => f(a)))
-)
-
-/** @internal */
-export const repeatUntilEffect_Effect: {
-  <A, R2, E2>(
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A>
-  <R, E, A, R2, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): Effect.Effect<R | R2, E | E2, A>
-} = dual<
-  <A, R2, E2>(
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A>,
-  <R, E, A, R2, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ) => Effect.Effect<R | R2, E | E2, A>
->(2, (self, f) =>
-  core.flatMap(self, (a) =>
-    core.flatMap(f(a), (result) =>
-      result ?
-        core.succeed(a) :
-        core.flatMap(
-          core.yieldNow(),
-          () => repeatUntilEffect_Effect(self, f)
-        ))))
-
-/** @internal */
-export const repeatWhile_Effect = dual<
-  <A>(f: Predicate<A>) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>) => Effect.Effect<R, E, A>
->(2, (self, f) => repeatWhileEffect_Effect(self, (a) => core.sync(() => f(a))))
-
-/** @internal */
-export const repeatWhileEffect_Effect = dual<
-  <R1, A, E2>(
-    f: (a: A) => Effect.Effect<R1, E2, boolean>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
-  <R, E, R1, A, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
->(2, (self, f) => repeatUntilEffect_Effect(self, (a) => effect.negate(f(a))))
-
-/** @internal */
 export const retry_Effect = dual<
   <R1, E extends E0, E0, B>(
     policy: Schedule.Schedule<R1, E0, B>
@@ -1949,21 +1967,54 @@ export const retry_Effect = dual<
 >(2, (self, policy) => retryOrElse_Effect(self, policy, (e, _) => core.fail(e)))
 
 /** @internal */
-export const retryN_Effect = dual<
-  (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, n: number) => Effect.Effect<R, E, A>
->(2, (self, n) => retryN_EffectLoop(self, n))
+export const retry_combined = dual<{
+  <E, O extends Effect.Retry.Options<E>>(
+    options: O
+  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Retry.Return<R, E, A, O>
+  <R1, E extends E0, E0, B>(
+    policy: Schedule.Schedule<R1, E0, B>
+  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E, A>
+}, {
+  <R, A, E, O extends Effect.Retry.Options<E>>(
+    self: Effect.Effect<R, E, A>,
+    options: O
+  ): Effect.Retry.Return<R, E, A, O>
+  <R, E extends E0, E0, A, R1, B>(
+    self: Effect.Effect<R, E, A>,
+    policy: Schedule.Schedule<R1, E0, B>
+  ): Effect.Effect<R | R1, E, A>
+}>(
+  2,
+  (self: Effect.Effect<any, any, any>, options: Effect.Retry.Options<any> | Schedule.Schedule<any, any, any>) => {
+    if (isSchedule(options)) {
+      return retry_Effect(self, options)
+    }
 
-/** @internal */
-const retryN_EffectLoop = <R, E, A>(
-  self: Effect.Effect<R, E, A>,
-  n: number
-): Effect.Effect<R, E, A> => {
-  return core.catchAll(self, (e) =>
-    n <= 0 ?
-      core.fail(e) :
-      core.flatMap(core.yieldNow(), () => retryN_EffectLoop(self, n - 1)))
-}
+    const base = options.schedule ?? forever
+    const withWhile = options.while ?
+      whileInputEffect(base, (e) => {
+        const applied = options.while!(e)
+        if (typeof applied === "boolean") {
+          return core.succeed(applied)
+        }
+        return scheduleDefectWrap(applied)
+      }) :
+      base
+    const withUntil = options.until ?
+      untilInputEffect(withWhile, (e) => {
+        const applied = options.until!(e)
+        if (typeof applied === "boolean") {
+          return core.succeed(applied)
+        }
+        return scheduleDefectWrap(applied)
+      }) :
+      withWhile
+    const withTimes = options.times ?
+      intersect(withUntil, recurs(options.times)) :
+      withUntil
+    return scheduleDefectRefail(retry_Effect(self, withTimes))
+  }
+)
 
 /** @internal */
 export const retryOrElse_Effect = dual<
@@ -2002,66 +2053,6 @@ const retryOrElse_EffectLoop = <R, E, A, R1, A1, R2, E2, A2>(
       })
   )
 }
-
-/** @internal */
-export const retryUntil_Effect = dual<
-  {
-    <E, E2 extends E>(f: Refinement<E, E2>): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E2, A>
-    <E>(f: Predicate<E>): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  },
-  {
-    <R, E, A, E2 extends E>(self: Effect.Effect<R, E, A>, f: Refinement<E, E2>): Effect.Effect<R, E2, A>
-    <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>): Effect.Effect<R, E, A>
-  }
->(2, <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>) =>
-  retryUntilEffect_Effect(
-    self,
-    (e) => core.sync(() => f(e))
-  ))
-
-/** @internal */
-export const retryUntilEffect_Effect: {
-  <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R1 | R, E | E2, A>
-  <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ): Effect.Effect<R | R1, E | E2, A>
-} = dual<
-  <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
-  <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
->(2, (self, f) =>
-  core.catchAll(self, (e) =>
-    core.flatMap(f(e), (b) =>
-      b ?
-        core.fail(e) :
-        core.flatMap(
-          core.yieldNow(),
-          () => retryUntilEffect_Effect(self, f)
-        ))))
-
-/** @internal */
-export const retryWhile_Effect = dual<
-  <E>(f: Predicate<E>) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>) => Effect.Effect<R, E, A>
->(2, (self, f) => retryWhileEffect_Effect(self, (e) => core.sync(() => f(e))))
-
-/** @internal */
-export const retryWhileEffect_Effect = dual<
-  <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
-  <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
->(2, (self, f) => retryUntilEffect_Effect(self, (e) => effect.negate(f(e))))
 
 /** @internal */
 export const schedule_Effect = dual<

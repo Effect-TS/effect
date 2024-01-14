@@ -1217,7 +1217,7 @@ export const mergeAllWith = (
                 )
             })
           ),
-          Effect.repeatUntil(Option.isSome),
+          Effect.repeat({ until: (_): _ is Option.Some<OutDone> => Option.isSome(_) }),
           Effect.flatMap((outDone) =>
             Ref.update(
               lastDone,
@@ -1325,7 +1325,7 @@ export const mergeAllWith = (
               })
           })
         }),
-        Effect.repeatWhile(identity),
+        Effect.repeat({ while: (_) => _ }),
         Effect.forkScoped
       )
       return [queue, input] as const

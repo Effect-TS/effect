@@ -14,7 +14,7 @@ import * as Ref from "effect/Ref"
 import { assert, describe, expect } from "vitest"
 
 export const waitForValue = <A>(ref: Effect.Effect<never, never, A>, value: A): Effect.Effect<never, never, A> => {
-  return ref.pipe(Effect.zipLeft(Effect.yieldNow()), Effect.repeatUntil((a) => value === a))
+  return ref.pipe(Effect.zipLeft(Effect.yieldNow()), Effect.repeat({ until: (a) => value === a }))
 }
 
 export const waitForSize = <A>(queue: Queue.Queue<A>, size: number): Effect.Effect<never, never, number> => {
