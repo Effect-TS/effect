@@ -346,6 +346,16 @@ export const remove: {
 
 /**
  * @since 2.0.0
+ */
+export const clear = <K, V>(self: MutableHashMap<K, V>) => {
+  self.referential.clear()
+  self.buckets.clear()
+  self.bucketsSize = 0
+  return self
+}
+
+/**
+ * @since 2.0.0
  * @category elements
  */
 export const size = <K, V>(self: MutableHashMap<K, V>): number => {

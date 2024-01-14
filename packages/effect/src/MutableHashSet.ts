@@ -118,3 +118,9 @@ export const remove: {
  * @category elements
  */
 export const size = <V>(self: MutableHashSet<V>): number => MutableHashMap.size(self.keyMap)
+
+/**
+ * @since 2.0.0
+ * @category elements
+ */
+export const clear = <V>(self: MutableHashSet<V>): MutableHashSet<V> => (MutableHashMap.clear(self.keyMap), self)
