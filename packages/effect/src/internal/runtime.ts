@@ -15,8 +15,10 @@ import type * as ReadonlyArray from "../ReadonlyArray.js"
 import type * as Runtime from "../Runtime.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as _scheduler from "../Scheduler.js"
+import * as _scope from "../Scope.js"
 import * as InternalCause from "./cause.js"
 import * as core from "./core.js"
+import * as executionStrategy from "./executionStrategy.js"
 import * as FiberRuntime from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
 import * as OpCodes from "./opCodes/effect.js"
@@ -53,7 +55,15 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
     runtime.runtimeFlags
   )
 
-  const effect = self
+  let effect: Effect.Effect<R, E, A> = self
+
+  if (options?.scope) {
+    effect = core.flatMap(
+      _scope.fork(options.scope, executionStrategy.sequential),
+      (closeableScope) => core.onExit(effect, (exit) => _scope.close(closeableScope, exit))
+    )
+  }
+
   const supervisor = fiberRuntime._supervisor
 
   // we can compare by reference here as _supervisor.none is wrapped with globalValue

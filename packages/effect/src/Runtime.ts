@@ -13,6 +13,7 @@ import * as internal from "./internal/runtime.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
 import type { Scheduler } from "./Scheduler.js"
+import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -58,6 +59,7 @@ export interface RunForkOptions {
   readonly scheduler?: Scheduler | undefined
   readonly updateRefs?: ((refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs) | undefined
   readonly immediate?: boolean
+  readonly scope?: Scope
 }
 
 /**
