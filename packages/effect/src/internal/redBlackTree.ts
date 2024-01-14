@@ -11,7 +11,7 @@ import { hasProperty } from "../Predicate.js"
 import type * as RBT from "../RedBlackTree.js"
 import { Direction, RedBlackTreeIterator } from "./redBlackTree/iterator.js"
 import * as Node from "./redBlackTree/node.js"
-import { Stack } from "./stack.js"
+import * as Stack from "./stack.js"
 
 const RedBlackTreeSymbolKey = "effect/RedBlackTree"
 
@@ -288,27 +288,34 @@ export const insert = dual<
     }
   }
   // Rebuild path to leaf node
-  n_stack.push(new Node.Node(Node.Color.Red, key, value, undefined, undefined, 1))
+  n_stack.push({
+    color: Node.Color.Red,
+    key,
+    value,
+    left: undefined,
+    right: undefined,
+    count: 1
+  })
   for (let s = n_stack.length - 2; s >= 0; --s) {
     const n2 = n_stack[s]!
     if (d_stack[s]! <= 0) {
-      n_stack[s] = new Node.Node(
-        n2.color,
-        n2.key,
-        n2.value,
-        n_stack[s + 1],
-        n2.right,
-        n2.count + 1
-      )
+      n_stack[s] = {
+        color: n2.color,
+        key: n2.key,
+        value: n2.value,
+        left: n_stack[s + 1],
+        right: n2.right,
+        count: n2.count + 1
+      }
     } else {
-      n_stack[s] = new Node.Node(
-        n2.color,
-        n2.key,
-        n2.value,
-        n2.left,
-        n_stack[s + 1],
-        n2.count + 1
-      )
+      n_stack[s] = {
+        color: n2.color,
+        key: n2.key,
+        value: n2.value,
+        left: n2.left,
+        right: n_stack[s + 1],
+        count: n2.count + 1
+      }
     }
   }
   // Rebalance tree using rotations
@@ -778,20 +785,34 @@ export const removeFirst = dual<
   }
   const cstack = new Array<Node.Node<K, V>>(stack.length)
   let n = stack[stack.length - 1]!
-  cstack[cstack.length - 1] = new Node.Node(
-    n.color,
-    n.key,
-    n.value,
-    n.left,
-    n.right,
-    n.count
-  )
+  cstack[cstack.length - 1] = {
+    color: n.color,
+    key: n.key,
+    value: n.value,
+    left: n.left,
+    right: n.right,
+    count: n.count
+  }
   for (let i = stack.length - 2; i >= 0; --i) {
     n = stack[i]!
     if (n.left === stack[i + 1]) {
-      cstack[i] = new Node.Node(n.color, n.key, n.value, cstack[i + 1], n.right, n.count)
+      cstack[i] = {
+        color: n.color,
+        key: n.key,
+        value: n.value,
+        left: cstack[i + 1],
+        right: n.right,
+        count: n.count
+      }
     } else {
-      cstack[i] = new Node.Node(n.color, n.key, n.value, n.left, cstack[i + 1], n.count)
+      cstack[i] = {
+        color: n.color,
+        key: n.key,
+        value: n.value,
+        left: n.left,
+        right: cstack[i + 1],
+        count: n.count
+      }
     }
   }
   // Get node
@@ -807,13 +828,27 @@ export const removeFirst = dual<
     }
     // Copy path to leaf
     const v = cstack[split - 1]
-    cstack.push(new Node.Node(n.color, v!.key, v!.value, n.left, n.right, n.count))
+    cstack.push({
+      color: n.color,
+      key: v!.key,
+      value: v!.value,
+      left: n.left,
+      right: n.right,
+      count: n.count
+    })
     cstack[split - 1]!.key = n.key
     cstack[split - 1]!.value = n.value
     // Fix up stack
     for (let i = cstack.length - 2; i >= split; --i) {
       n = cstack[i]!
-      cstack[i] = new Node.Node(n.color, n.key, n.value, n.left, cstack[i + 1], n.count)
+      cstack[i] = {
+        color: n.color,
+        key: n.key,
+        value: n.value,
+        left: n.left,
+        right: cstack[i + 1],
+        count: n.count
+      }
     }
     cstack[split - 1]!.left = cstack[split]
   }
@@ -913,11 +948,11 @@ const visitFull = <K, V, A>(
   visit: (key: K, value: V) => Option.Option<A>
 ): Option.Option<A> => {
   let current: Node.Node<K, V> | undefined = node
-  let stack: Stack<Node.Node<K, V>> | undefined = undefined
+  let stack: Stack.Stack<Node.Node<K, V>> | undefined = undefined
   let done = false
   while (!done) {
     if (current != null) {
-      stack = new Stack(current, stack)
+      stack = Stack.make(current, stack)
       current = current.left
     } else if (stack != null) {
       const value = visit(stack.value.key, stack.value.value)
@@ -940,11 +975,11 @@ const visitGreaterThanEqual = <K, V, A>(
   visit: (key: K, value: V) => Option.Option<A>
 ): Option.Option<A> => {
   let current: Node.Node<K, V> | undefined = node
-  let stack: Stack<Node.Node<K, V>> | undefined = undefined
+  let stack: Stack.Stack<Node.Node<K, V>> | undefined = undefined
   let done = false
   while (!done) {
     if (current !== undefined) {
-      stack = new Stack(current, stack)
+      stack = Stack.make(current, stack)
       if (ord(min, current.key) <= 0) {
         current = current.left
       } else {
@@ -973,11 +1008,11 @@ const visitLessThan = <K, V, A>(
   visit: (key: K, value: V) => Option.Option<A>
 ): Option.Option<A> => {
   let current: Node.Node<K, V> | undefined = node
-  let stack: Stack<Node.Node<K, V>> | undefined = undefined
+  let stack: Stack.Stack<Node.Node<K, V>> | undefined = undefined
   let done = false
   while (!done) {
     if (current !== undefined) {
-      stack = new Stack(current, stack)
+      stack = Stack.make(current, stack)
       current = current.left
     } else if (stack !== undefined && ord(max, stack.value.key) > 0) {
       const value = visit(stack.value.key, stack.value.value)
@@ -1001,11 +1036,11 @@ const visitBetween = <K, V, A>(
   visit: (key: K, value: V) => Option.Option<A>
 ): Option.Option<A> => {
   let current: Node.Node<K, V> | undefined = node
-  let stack: Stack<Node.Node<K, V>> | undefined = undefined
+  let stack: Stack.Stack<Node.Node<K, V>> | undefined = undefined
   let done = false
   while (!done) {
     if (current !== undefined) {
-      stack = new Stack(current, stack)
+      stack = Stack.make(current, stack)
       if (ord(min, current.key) <= 0) {
         current = current.left
       } else {

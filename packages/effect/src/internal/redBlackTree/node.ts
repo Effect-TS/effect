@@ -10,22 +10,31 @@ export declare namespace Node {
   }
 }
 
-/** @internal */
-export class Node<out K, out V> {
-  constructor(
-    public color: Node.Color,
-    public key: K,
-    public value: V,
-    public left: Node<K, V> | undefined,
-    public right: Node<K, V> | undefined,
-    public count: number
-  ) {}
+export interface Node<out K, out V> {
+  color: Node.Color
+  key: K
+  value: V
+  left: Node<K, V> | undefined
+  right: Node<K, V> | undefined
+  count: number
 }
 
 /** @internal */
-export function clone<K, V>(node: Node<K, V>) {
-  return new Node(node.color, node.key, node.value, node.left, node.right, node.count)
-}
+export const clone = <K, V>({
+  color,
+  count,
+  key,
+  left,
+  right,
+  value
+}: Node<K, V>) => ({
+  color,
+  key,
+  value,
+  left,
+  right,
+  count
+})
 
 /** @internal */
 export function swap<K, V>(n: Node<K, V>, v: Node<K, V>) {
@@ -38,11 +47,22 @@ export function swap<K, V>(n: Node<K, V>, v: Node<K, V>) {
 }
 
 /** @internal */
-export function repaint<K, V>(node: Node<K, V>, color: Node.Color) {
-  return new Node(color, node.key, node.value, node.left, node.right, node.count)
-}
+export const repaint = <K, V>({
+  count,
+  key,
+  left,
+  right,
+  value
+}: Node<K, V>, color: Node.Color) => ({
+  color,
+  key,
+  value,
+  left,
+  right,
+  count
+})
 
 /** @internal */
-export function recount<K, V>(node: Node<K, V>) {
+export const recount = <K, V>(node: Node<K, V>) => {
   node.count = 1 + (node.left?.count ?? 0) + (node.right?.count ?? 0)
 }

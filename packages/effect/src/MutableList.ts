@@ -76,12 +76,20 @@ interface MutableListImpl<A> extends MutableList<A> {
 }
 
 /** @internal */
-class LinkedListNode<T> {
-  removed = false
-  prev: LinkedListNode<T> | undefined = undefined
-  next: LinkedListNode<T> | undefined = undefined
-  constructor(readonly value: T) {}
+interface LinkedListNode<T> {
+  removed: boolean
+  value: T
+  prev: LinkedListNode<T> | undefined
+  next: LinkedListNode<T> | undefined
 }
+
+/** @internal */
+const makeNode = <T>(value: T): LinkedListNode<T> => ({
+  value,
+  removed: false,
+  prev: undefined,
+  next: undefined
+})
 
 /**
  * Creates an empty `MutableList`.
@@ -196,7 +204,7 @@ export const append: {
   <A>(value: A) => (self: MutableList<A>) => MutableList<A>,
   <A>(self: MutableList<A>, value: A) => MutableList<A>
 >(2, <A>(self: MutableList<A>, value: A) => {
-  const node = new LinkedListNode(value)
+  const node = makeNode(value)
   if (self.head === undefined) {
     self.head = node
   }
@@ -252,7 +260,7 @@ export const prepend: {
   <A>(value: A) => (self: MutableList<A>) => MutableList<A>,
   <A>(self: MutableList<A>, value: A) => MutableList<A>
 >(2, <A>(self: MutableList<A>, value: A) => {
-  const node = new LinkedListNode(value)
+  const node = makeNode(value)
   node.next = self.head
   if (self.head !== undefined) {
     self.head.prev = node
