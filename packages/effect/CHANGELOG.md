@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.5
+
+### Patch Changes
+
+- [#1920](https://github.com/Effect-TS/effect/pull/1920) [`f7f19f6`](https://github.com/Effect-TS/effect/commit/f7f19f66a5fa349baa2412c1f9f15111c437df09) Thanks [@tim-smart](https://github.com/tim-smart)! - add FiberMap.remove
+
 ## 2.0.4
 
 ### Patch Changes
