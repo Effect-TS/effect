@@ -1038,16 +1038,9 @@ const appendBrandAnnotation = <B extends string | symbol>(
   brand: B,
   options?: DocAnnotations
 ): AST.AST => {
-  if (AST.isTransform(ast)) {
-    return AST.createTransform(
-      ast.from,
-      appendBrandAnnotation(ast.to, brand, options),
-      ast.transformation,
-      ast.annotations
-    )
-  }
   const annotations = toAnnotations(options)
-  annotations[AST.BrandAnnotationId] = [...getBrands(ast), brand]
+  const brands = ast.annotations[AST.BrandAnnotationId] as Array<string> | undefined
+  annotations[AST.BrandAnnotationId] = brands ? [...brands, brand] : [brand]
   return AST.mergeAnnotations(ast, annotations)
 }
 
@@ -1100,9 +1093,6 @@ export const brand =
     })
     return out
   }
-
-const getBrands = (ast: AST.AST): Array<string> =>
-  (ast.annotations[AST.BrandAnnotationId] as Array<string> | undefined) || []
 
 /**
  * @category combinators

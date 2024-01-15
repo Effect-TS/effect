@@ -7,13 +7,25 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > brand", () => {
   describe("annotations", () => {
-    it("should move the brand annotations to the right end", async () => {
-      const schema = Util.X2.pipe(S.brand("X2"))
-      const to = S.to(schema)
-      expect(to.ast).toEqual(S.string.pipe(S.brand("X2")).ast)
+    it("brand as string (1 brand)", () => {
+      // const Branded: S.Schema<number, number & Brand<"A"> & Brand<"B">>
+      const Branded = S.number.pipe(
+        S.int(),
+        S.brand("A", {
+          description: "an A brand"
+        })
+      )
+
+      expect(Branded.ast.annotations).toEqual({
+        [AST.TypeAnnotationId]: S.IntTypeId,
+        [AST.BrandAnnotationId]: ["A"],
+        [AST.TitleAnnotationId]: "integer",
+        [AST.DescriptionAnnotationId]: "an A brand",
+        [AST.JSONSchemaAnnotationId]: { type: "integer" }
+      })
     })
 
-    it("brand as string", () => {
+    it("brand as string (2 brands)", () => {
       // const Branded: S.Schema<number, number & Brand<"A"> & Brand<"B">>
       const Branded = S.number.pipe(
         S.int(),
