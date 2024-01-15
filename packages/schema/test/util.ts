@@ -19,9 +19,9 @@ const doRoundtrip = true
 
 export const sleep = Effect.sleep(Duration.millis(10))
 
-const effectifyDecode = (
-  decode: (input: any, options: ParseOptions, self: AST.AST) => Effect.Effect<never, ParseResult.ParseError, any>
-): (input: any, options: ParseOptions, self: AST.AST) => Effect.Effect<never, ParseResult.ParseError, any> =>
+const effectifyDecode = <R>(
+  decode: (input: any, options: ParseOptions, self: AST.AST) => Effect.Effect<R, ParseResult.ParseError, any>
+): (input: any, options: ParseOptions, self: AST.AST) => Effect.Effect<R, ParseResult.ParseError, any> =>
 (input, options, ast) => ParseResult.flatMap(sleep, () => decode(input, options, ast))
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
@@ -75,9 +75,10 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
   )
 }
 
-export const effectify = <I, A>(schema: S.Schema<I, A>): S.Schema<I, A> => S.make(effectifyAST(schema.ast))
+export const effectify = <I, A>(schema: S.Schema<never, I, A>): S.Schema<never, I, A> =>
+  S.make(effectifyAST(schema.ast))
 
-export const roundtrip = <I, A>(schema: S.Schema<I, A>) => {
+export const roundtrip = <I, A>(schema: S.Schema<never, I, A>) => {
   if (!doRoundtrip) {
     return
   }
@@ -125,28 +126,28 @@ export const allErrors: ParseOptions = {
 }
 
 export const expectParseSuccess = async <I, A>(
-  schema: S.Schema<I, A>,
+  schema: S.Schema<never, I, A>,
   input: unknown,
   expected: A = input as any,
   options?: ParseOptions
 ) => expectSuccess(S.parse(schema)(input, options), expected)
 
 export const expectParseFailure = async <I, A>(
-  schema: S.Schema<I, A>,
+  schema: S.Schema<never, I, A>,
   input: unknown,
   message: string,
   options?: ParseOptions
 ) => expectFailure(S.parse(schema)(input, options), message)
 
 export const expectEncodeSuccess = async <I, A>(
-  schema: S.Schema<I, A>,
+  schema: S.Schema<never, I, A>,
   a: A,
   expected: unknown,
   options?: ParseOptions
 ) => expectSuccess(S.encode(schema)(a, options), expected)
 
 export const expectEncodeFailure = async <I, A>(
-  schema: S.Schema<I, A>,
+  schema: S.Schema<never, I, A>,
   a: A,
   message: string,
   options?: ParseOptions
@@ -156,7 +157,7 @@ export const printAST = <I, A>(schema: S.Schema<I, A>) => {
   console.log("%o", schema.ast)
 }
 
-export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A, A> => schema.pipe(S.compose(schema))
+export const identityTransform = <A>(schema: S.Schema<never, A>): S.Schema<never, A> => schema.pipe(S.compose(schema))
 
 export const X2 = S.transform(
   S.string,
@@ -174,7 +175,7 @@ export const X3 = S.transform(
 
 const doProperty = true
 
-export const expectValidArbitrary = <I, A>(schema: S.Schema<I, A>, params?: fc.Parameters<[A]>) => {
+export const expectValidArbitrary = <I, A>(schema: S.Schema<never, I, A>, params?: fc.Parameters<[A]>) => {
   if (!doProperty) {
     return
   }

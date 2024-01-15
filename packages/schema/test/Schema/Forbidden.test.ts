@@ -6,7 +6,7 @@ import * as E from "effect/Either"
 import { describe, expect, it } from "vitest"
 
 const expectMessage = <I, A>(
-  schema: S.Schema<I, A>,
+  schema: S.Schema<never, I, A>,
   u: unknown,
   message: string
 ) => {
@@ -16,7 +16,7 @@ const expectMessage = <I, A>(
 }
 
 export const expectForbidden = <I, A>(
-  schema: S.Schema<I, A>,
+  schema: S.Schema<never, I, A>,
   u: unknown,
   message: string
 ) => {

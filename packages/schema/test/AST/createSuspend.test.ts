@@ -9,7 +9,7 @@ describe("AST/createSuspend", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.struct({
+    const schema: S.Schema<never, A> = S.struct({
       a: S.string,
       as: S.array(S.suspend(() => {
         log++

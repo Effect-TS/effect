@@ -7,7 +7,7 @@ import { describe, it } from "vitest"
 
 describe("Schema > PropertySignatureTransformations", () => {
   it("default", async () => {
-    const transform: S.Schema<{ readonly a?: string }, { readonly a: number }> = S.make(
+    const transform: S.Schema<never, { readonly a?: string }, { readonly a: number }> = S.make(
       AST.createTransform(
         S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
         S.struct({ a: S.number }).ast,
@@ -44,7 +44,7 @@ describe("Schema > PropertySignatureTransformations", () => {
   })
 
   it("bidirectional default", async () => {
-    const transform: S.Schema<{ readonly a?: string }, { readonly a: number }> = S.make(
+    const transform: S.Schema<never, { readonly a?: string }, { readonly a: number }> = S.make(
       AST.createTransform(
         S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
         S.struct({ a: S.number }).ast,
@@ -81,7 +81,7 @@ describe("Schema > PropertySignatureTransformations", () => {
   })
 
   it("optional -> Option", async () => {
-    const transform: S.Schema<{ readonly a?: string }, { readonly a: O.Option<number> }> = S
+    const transform: S.Schema<never, { readonly a?: string }, { readonly a: O.Option<number> }> = S
       .make(
         AST.createTransform(
           S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
@@ -119,7 +119,7 @@ describe("Schema > PropertySignatureTransformations", () => {
   })
 
   it("empty string as optional", async () => {
-    const transform: S.Schema<{ readonly a: string }, { readonly a?: string }> = S.make(
+    const transform: S.Schema<never, { readonly a: string }, { readonly a?: string }> = S.make(
       AST.createTransform(
         S.struct({ a: S.string }).ast,
         S.struct({ a: S.optional(S.string, { exact: true }) }).ast,
@@ -144,7 +144,7 @@ describe("Schema > PropertySignatureTransformations", () => {
   })
 
   it("rename", async () => {
-    const transform: S.Schema<{ readonly a: number }, { readonly b: number }> = S.make(
+    const transform: S.Schema<never, { readonly a: number }, { readonly b: number }> = S.make(
       AST.createTransform(
         S.struct({ a: S.number }).ast,
         S.struct({ b: S.number }).ast,
@@ -169,7 +169,7 @@ describe("Schema > PropertySignatureTransformations", () => {
 
   it("rename transformation", async () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const rename: S.Schema<{ readonly a: string }, { readonly [a]: symbol }> = S.make(
+    const rename: S.Schema<never, { readonly a: string }, { readonly [a]: symbol }> = S.make(
       AST.createTransform(
         S.struct({ a: S.string }).ast,
         S.struct({ [a]: S.symbol }).ast,
@@ -194,7 +194,7 @@ describe("Schema > PropertySignatureTransformations", () => {
   })
 
   it("reversed default", async () => {
-    const transform: S.Schema<{ readonly a: string }, { readonly a?: number }> = S.make(
+    const transform: S.Schema<never, { readonly a: string }, { readonly a?: number }> = S.make(
       AST.createTransform(
         S.struct({ a: S.number }).ast,
         S.struct({ a: S.optional(S.number, { exact: true }) }).ast,

@@ -94,7 +94,7 @@ describe("Schema > partial", () => {
     interface A {
       readonly a?: null | A
     }
-    const schema: S.Schema<A> = S.partial(S.suspend( // intended outer suspend
+    const schema: S.Schema<never, A> = S.partial(S.suspend( // intended outer suspend
       () =>
         S.struct({
           a: S.union(S.null, schema)

@@ -47,7 +47,7 @@ describe("Schema/keyof", () => {
       readonly name: string
       readonly categories: ReadonlyArray<Category>
     }
-    const schema: S.Schema<Category> = S.suspend( // intended outer suspend
+    const schema: S.Schema<never, Category> = S.suspend( // intended outer suspend
       () =>
         S.struct({
           name: S.string,

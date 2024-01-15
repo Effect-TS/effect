@@ -4585,8 +4585,8 @@ export declare namespace TaggedRequest {
 export const TaggedRequest = <Self>() =>
 <Tag extends string, Fields extends StructFields<never>, EI, EA, AI, AA>(
   tag: Tag,
-  Failure: Schema<EI, EA>,
-  Success: Schema<AI, AA>,
+  Failure: Schema<never, EI, EA>,
+  Success: Schema<never, AI, AA>,
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
   : Class<
@@ -5036,7 +5036,7 @@ const causeDefectPretty: Schema<never, unknown, unknown> = transform(
  * @category Cause transformations
  * @since 1.0.0
  */
-export const cause = <R1, EI, E, R2>(
+export const cause = <R1, EI, E, R2 = never>(
   error: Schema<R1, EI, E>,
   defect: Schema<R2, unknown, unknown> = causeDefectPretty
 ): Schema<R1 | R2, CauseFrom<EI>, Cause.Cause<E>> =>
@@ -5148,7 +5148,7 @@ export const exitFromSelf = <IE, E, IA, A>(
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exit = <R1, IE, E, R2, IA, A, R3>(
+export const exit = <R1, IE, E, R2, IA, A, R3 = never>(
   error: Schema<R1, IE, E>,
   value: Schema<R2, IA, A>,
   defect: Schema<R3, unknown, unknown> = causeDefectPretty

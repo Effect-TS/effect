@@ -1020,8 +1020,8 @@ export type Transformation =
  */
 export interface FinalTransformation {
   readonly _tag: "FinalTransformation"
-  readonly decode: (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
-  readonly encode: (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
+  readonly decode: (input: any, options: ParseOptions, self: AST) => Effect<any, ParseError, any>
+  readonly encode: (input: any, options: ParseOptions, self: AST) => Effect<any, ParseError, any>
 }
 
 /**

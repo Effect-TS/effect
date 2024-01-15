@@ -564,7 +564,7 @@ describe("Equivalence", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.struct({
+      const schema: S.Schema<never, A> = S.struct({
         a: string,
         as: S.array(S.suspend(() => schema))
       })
@@ -598,12 +598,12 @@ describe("Equivalence", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.struct({
+      const Expression: S.Schema<never, Expression> = S.struct({
         type: S.literal("expression"),
         value: S.union(number, S.suspend(() => Operation))
       })
 
-      const Operation: S.Schema<Operation> = S.struct({
+      const Operation: S.Schema<never, Operation> = S.struct({
         type: S.literal("operation"),
         operator: S.union(S.literal("+"), S.literal("-")),
         left: Expression,
@@ -667,7 +667,7 @@ describe("Equivalence", () => {
   })
 
   describe("should handle annotations", () => {
-    const expectHook = <I, A>(source: S.Schema<I, A>) => {
+    const expectHook = <I, A>(source: S.Schema<never, I, A>) => {
       const schema = source.pipe(E.equivalence(() => () => true))
       const eq = E.make(schema)
       expect(eq("a" as any, "b" as any)).toEqual(true)
@@ -754,7 +754,7 @@ describe("Equivalence", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.struct({
+      const schema: S.Schema<never, A> = S.struct({
         a: S.string,
         as: S.array(S.suspend(() => schema))
       })

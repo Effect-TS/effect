@@ -117,7 +117,7 @@ describe("TreeFormatter", () => {
     describe("suspend", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
         )
 
@@ -141,7 +141,7 @@ describe("TreeFormatter", () => {
 
       it("inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
         )
@@ -188,7 +188,7 @@ describe("TreeFormatter", () => {
     describe("suspend", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
         ).pipe(S.identifier("A"))
 
@@ -212,7 +212,7 @@ describe("TreeFormatter", () => {
 
       it("inner/outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
         ).pipe(S.identifier("A"))
@@ -237,7 +237,7 @@ describe("TreeFormatter", () => {
 
       it("inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema).pipe(S.identifier("A")), S.literal(null))
         )
@@ -502,7 +502,7 @@ describe("TreeFormatter", () => {
     describe("suspend", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
         ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
 
@@ -520,7 +520,7 @@ describe("TreeFormatter", () => {
 
       it("inner/outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
         ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
@@ -539,7 +539,7 @@ describe("TreeFormatter", () => {
 
       it("inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(
             S.suspend(() => schema).pipe(
@@ -569,7 +569,7 @@ describe("TreeFormatter", () => {
 
       it("inner/inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(
             S.suspend(() =>
