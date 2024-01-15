@@ -217,6 +217,33 @@ export const get: {
 >(2, (self, key) => Effect.suspend(() => MutableHashMap.get(self.backing, key)))
 
 /**
+ * Remove a fiber from the FiberMap, interrupting it if it exists.
+ *
+ * @since 2.0.0
+ * @categories combinators
+ */
+export const remove: {
+  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<never, never, void>
+  <K, E, A>(self: FiberMap<K, E, A>, key: K): Effect.Effect<never, never, void>
+} = dual<
+  <K>(
+    key: K
+  ) => <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<never, never, void>,
+  <K, E, A>(
+    self: FiberMap<K, E, A>,
+    key: K
+  ) => Effect.Effect<never, never, void>
+>(2, (self, key) =>
+  Effect.suspend(() => {
+    const fiber = MutableHashMap.get(self.backing, key)
+    if (fiber._tag === "None") {
+      return Effect.unit
+    }
+    MutableHashMap.remove(self.backing, key)
+    return Fiber.interrupt(fiber.value)
+  }))
+
+/**
  * @since 2.0.0
  * @categories combinators
  */
