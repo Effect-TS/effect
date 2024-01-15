@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-bun",
   "type": "module",
-  "version": "0.29.0",
+  "version": "0.29.1",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
