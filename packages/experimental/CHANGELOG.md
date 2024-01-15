@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.6.6
+
+### Patch Changes
+
+- [#1926](https://github.com/Effect-TS/effect/pull/1926) [`169bc30`](https://github.com/Effect-TS/effect/commit/169bc3011ef8001fb75d844a46d8b7954131451b) Thanks [@tim-smart](https://github.com/tim-smart)! - use sliding queue for DevTools client
+
 ## 0.6.5
 
 ### Patch Changes
