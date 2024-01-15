@@ -5,6 +5,7 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
+import * as Schedule from "effect/Schedule"
 import type * as Stream from "effect/Stream"
 
 declare const self: Worker
@@ -39,7 +40,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           })
         }),
         Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.unit : Effect.logDebug(cause)),
-        Effect.retryWhile(() => true),
+        Effect.retry(Schedule.forever),
         Effect.annotateLogs({
           package: "@effect/platform-bun",
           module: "WorkerRunner"

@@ -438,7 +438,7 @@ describe("Schedule", () => {
     it.effect("retry exactly 'n' times after failure", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
-        const result = yield* $(alwaysFail(ref), Effect.retryN(3), Effect.flip)
+        const result = yield* $(alwaysFail(ref), Effect.retry({ times: 3 }), Effect.flip)
         assert.strictEqual(result, "Error: 4")
       }))
     // TODO(Max): after TestRandom

@@ -23,7 +23,7 @@ describe("Stream", () => {
         Effect.flatMap((queue) =>
           pipe(
             Queue.size(queue),
-            Effect.repeatWhile((size) => size !== chunk.length + 1),
+            Effect.repeat({ while: (size) => size !== chunk.length + 1 }),
             Effect.zipRight(Queue.takeAll(queue))
           )
         ),
@@ -49,7 +49,7 @@ describe("Stream", () => {
         Effect.flatMap((queue) =>
           pipe(
             Queue.size(queue),
-            Effect.repeatWhile((size) => size !== chunk.length + 1),
+            Effect.repeat({ while: (size) => size !== chunk.length + 1 }),
             Effect.zipRight(Queue.takeAll(queue))
           )
         ),

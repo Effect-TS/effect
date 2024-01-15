@@ -8,7 +8,7 @@ import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberStatus from "effect/FiberStatus"
-import { constVoid, identity, pipe } from "effect/Function"
+import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -172,7 +172,7 @@ describe("Fiber", () => {
       yield* $(
         rootContains(fiber1),
         Effect.flatMap((a) => a ? rootContains(fiber2) : Effect.succeed(false)),
-        Effect.repeatUntil(identity)
+        Effect.repeat({ until: (_) => _ })
       )
       const result = yield* $(Fiber.interrupt(fiber1), Effect.zipRight(Fiber.interrupt(fiber2)))
       assert.isTrue(Exit.isInterrupted(result))
