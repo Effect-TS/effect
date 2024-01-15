@@ -83,23 +83,17 @@ export declare module Schema {
   /**
    * @since 1.0.0
    */
-  export type Context<S extends { readonly [TypeId]: { readonly R: (..._: any) => any } }> = Parameters<
-    S[TypeId]["R"]
-  >[0]
+  export type Context<S> = S extends Schema.Variance<infer R, any, any> ? R : never
 
   /**
    * @since 1.0.0
    */
-  export type From<S extends { readonly [TypeId]: { readonly From: (..._: any) => any } }> = Parameters<
-    S[TypeId]["From"]
-  >[0]
+  export type From<S> = S extends Schema.Variance<any, infer From, any> ? From : never
 
   /**
    * @since 1.0.0
    */
-  export type To<S extends { readonly [TypeId]: { readonly To: (..._: any) => any } }> = Parameters<
-    S[TypeId]["To"]
-  >[0]
+  export type To<S> = S extends Schema.Variance<any, any, infer To> ? To : never
 
   /**
    * @since 1.0.0
@@ -416,7 +410,7 @@ export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
   options?: FilterAnnotations<InstanceType<A>>
-): Schema<never, InstanceType<A>, InstanceType<A>> => {
+): Schema<never, InstanceType<A>> => {
   return declare(
     [],
     unknown,
@@ -695,13 +689,13 @@ export const propertySignatureAnnotations = (annotations: DocAnnotations) =>
  * @category optional
  * @since 1.0.0
  */
-export const optionalToRequired = <R1, I, A, R2, B>(
-  from: Schema<R1, I, A>,
-  to: Schema<R2, B>,
+export const optionalToRequired = <R, I, A, B>(
+  from: Schema<R, I, A>,
+  to: Schema<never, B>,
   decode: (o: Option.Option<A>) => B, // `none` here means: the value is missing in the input
   encode: (b: B) => Option.Option<A>, // `none` here means: the value will be missing in the output
   options?: DocAnnotations
-): PropertySignature<R1 | R2, I, true, B, false> =>
+): PropertySignature<R, I, true, B, false> =>
   new PropertySignatureImpl({
     _tag: "OptionalToRequired",
     from: from.ast,
@@ -874,12 +868,12 @@ export type ToOptionalKeys<Fields> = {
 /**
  * @since 1.0.0
  */
-export type StructFields = Record<
+export type StructFields<R = any> = Record<
   PropertyKey,
-  | Schema<any, any, any>
-  | Schema<any, never, never>
-  | PropertySignature<any, any, boolean, any, boolean>
-  | PropertySignature<any, never, boolean, never, boolean>
+  | Schema<R, any, any>
+  | Schema<R, never, never>
+  | PropertySignature<R, any, boolean, any, boolean>
+  | PropertySignature<R, never, boolean, never, boolean>
 >
 
 /**
@@ -1076,38 +1070,36 @@ const appendBrandAnnotation = <B extends string | symbol>(
  * @category combinators
  * @since 1.0.0
  */
-export const brand = <B extends string | symbol, A>(
-  brand: B,
-  options?: DocAnnotations
-) =>
-<I>(self: Schema<never, I, A>): BrandSchema<never, I, A & Brand.Brand<B>> => {
-  const ast = appendBrandAnnotation(self.ast, brand, options)
-  const schema = make<never, I, A>(ast)
-  const validateSync = Parser.validateSync(schema)
-  const validateOption = Parser.validateOption(schema)
-  const validateEither = Parser.validateEither(schema)
-  const is = Parser.is(schema)
-  const out: any = Object.assign((input: unknown) => validateSync(input), {
-    [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
-    [TypeId]: InternalSchema.variance,
-    ast,
-    option: (input: unknown) => validateOption(input),
-    either: (input: unknown) =>
-      Either.mapLeft(
-        validateEither(input),
-        (e) =>
-          ArrayFormatter.formatIssues([e.error]).map((err) => ({
-            meta: err.path,
-            message: err.message
-          }))
-      ),
-    is: (input: unknown): input is A & Brand.Brand<B> => is(input),
-    pipe() {
-      return pipeArguments(this, arguments)
-    }
-  })
-  return out
-}
+export const brand =
+  <B extends string | symbol, A>(brand: B, options?: DocAnnotations) =>
+  <I>(self: Schema<never, I, A>): BrandSchema<never, I, A & Brand.Brand<B>> => {
+    const ast = appendBrandAnnotation(self.ast, brand, options)
+    const schema = make<never, I, A>(ast)
+    const validateSync = Parser.validateSync(schema)
+    const validateOption = Parser.validateOption(schema)
+    const validateEither = Parser.validateEither(schema)
+    const is = Parser.is(schema)
+    const out: any = Object.assign((input: unknown) => validateSync(input), {
+      [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
+      [TypeId]: InternalSchema.variance,
+      ast,
+      option: (input: unknown) => validateOption(input),
+      either: (input: unknown) =>
+        Either.mapLeft(
+          validateEither(input),
+          (e) =>
+            ArrayFormatter.formatIssues([e.error]).map((err) => ({
+              meta: err.path,
+              message: err.message
+            }))
+        ),
+      is: (input: unknown): input is A & Brand.Brand<B> => is(input),
+      pipe() {
+        return pipeArguments(this, arguments)
+      }
+    })
+    return out
+  }
 
 const getBrands = (ast: AST.AST): Array<string> =>
   (ast.annotations[AST.BrandAnnotationId] as Array<string> | undefined) || []
@@ -4441,7 +4433,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
+export interface Class<I, A, C, Self, Inherited> extends Schema<never, I, Self> {
   new(
     props: Equals<C, {}> extends true ? void | {} : C,
     disableValidation?: boolean
@@ -4449,11 +4441,10 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
 
   readonly struct: Schema<never, I, A>
 
-  readonly extend: <Extended>() => <FieldsB extends NeverStructFields>(
+  readonly extend: <Extended>() => <FieldsB extends StructFields<never>>(
     fields: FieldsB
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
     : Class<
-      never,
       Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4462,7 +4453,7 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     >
 
   readonly transform: <Transformed>() => <
-    FieldsB extends NeverStructFields
+    FieldsB extends StructFields<never>
   >(
     fields: FieldsB,
     decode: (
@@ -4473,7 +4464,6 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     ) => Effect.Effect<never, ParseResult.ParseError, A>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
-      never,
       I,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4482,7 +4472,7 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     >
 
   readonly transformFrom: <Transformed>() => <
-    FieldsB extends NeverStructFields
+    FieldsB extends StructFields<never>
   >(
     fields: FieldsB,
     decode: (
@@ -4493,7 +4483,6 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     ) => Effect.Effect<never, ParseResult.ParseError, I>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
-      never,
       I,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4502,42 +4491,32 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     >
 }
 
-type NeverStructFields = Record<
-  PropertyKey,
-  | Schema<any, any, any>
-  | Schema<any, never, never>
-  | PropertySignature<any, any, boolean, any, boolean>
-  | PropertySignature<any, never, boolean, never, boolean>
->
-
 /**
  * @category classes
  * @since 1.0.0
  */
 export const Class = <Self>() =>
-<Fields extends NeverStructFields>(
+<Fields extends StructFields<never>>(
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
   : Class<
-    never,
     Simplify<FromStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
     Self,
     Data.Case
-  > => makeClass(struct(fields), fields, Data.Class)
+  > => makeClass(struct(fields as StructFields<never>), fields, Data.Class)
 
 /**
  * @category classes
  * @since 1.0.0
  */
 export const TaggedClass = <Self>() =>
-<Tag extends string, Fields extends NeverStructFields>(
+<Tag extends string, Fields extends StructFields<never>>(
   tag: Tag,
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
-    never,
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
@@ -4545,7 +4524,7 @@ export const TaggedClass = <Self>() =>
     Data.Case
   > =>
 {
-  const fieldsWithTag = { ...fields, _tag: literal(tag) }
+  const fieldsWithTag: StructFields<never> = { ...fields, _tag: literal(tag) }
   return makeClass(struct(fieldsWithTag), fieldsWithTag, Data.Class, { _tag: tag })
 }
 
@@ -4554,12 +4533,11 @@ export const TaggedClass = <Self>() =>
  * @since 1.0.0
  */
 export const TaggedError = <Self>() =>
-<Tag extends string, Fields extends NeverStructFields>(
+<Tag extends string, Fields extends StructFields<never>>(
   tag: Tag,
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
-    never,
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
@@ -4567,7 +4545,7 @@ export const TaggedError = <Self>() =>
     Effect.Effect<never, Self, never> & globalThis.Error
   > =>
 {
-  const fieldsWithTag = { ...fields, _tag: literal(tag) }
+  const fieldsWithTag: StructFields<never> = { ...fields, _tag: literal(tag) }
   return makeClass(
     struct(fieldsWithTag),
     fieldsWithTag,
@@ -4605,14 +4583,13 @@ export declare namespace TaggedRequest {
  * @since 1.0.0
  */
 export const TaggedRequest = <Self>() =>
-<Tag extends string, Fields extends NeverStructFields, EI, EA, AI, AA>(
+<Tag extends string, Fields extends StructFields<never>, EI, EA, AI, AA>(
   tag: Tag,
   Failure: Schema<EI, EA>,
   Success: Schema<AI, AA>,
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
   : Class<
-    never,
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
@@ -4636,7 +4613,7 @@ export const TaggedRequest = <Self>() =>
       return { Failure, Success }
     }
   }
-  const fieldsWithTag = { ...fields, _tag: literal(tag) }
+  const fieldsWithTag: StructFields<never> = { ...fields, _tag: literal(tag) }
   return makeClass(
     struct(fieldsWithTag),
     fieldsWithTag,
@@ -4647,7 +4624,7 @@ export const TaggedRequest = <Self>() =>
 
 const makeClass = <I, A>(
   selfSchema: Schema<never, I, A>,
-  selfFields: NeverStructFields,
+  selfFields: StructFields<never>,
   Base: any,
   additionalProps?: any
 ): any => {
@@ -4693,8 +4670,8 @@ const makeClass = <I, A>(
     static struct = selfSchema
 
     static extend() {
-      return (fields: NeverStructFields) => {
-        const newFields: NeverStructFields = { ...selfFields, ...fields }
+      return (fields: StructFields<never>) => {
+        const newFields: StructFields<never> = { ...selfFields, ...fields }
         return makeClass(
           struct(newFields),
           newFields,
@@ -4722,8 +4699,8 @@ const makeClass = <I, A>(
     }
 
     static transformFrom() {
-      return (fields: NeverStructFields, decode: any, encode: any) => {
-        const newFields: NeverStructFields = { ...selfFields, ...fields }
+      return (fields: StructFields<never>, decode: any, encode: any) => {
+        const newFields: StructFields<never> = { ...selfFields, ...fields }
         return makeClass(
           transformOrFail(
             from(selfSchema),
