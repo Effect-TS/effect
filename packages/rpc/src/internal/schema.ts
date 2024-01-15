@@ -10,7 +10,7 @@ import * as Codec from "./codec.js"
 
 type JsonArray = ReadonlyArray<Json>
 type JsonObject = { readonly [key: string]: Json }
-export type Json = null | boolean | number | string | JsonArray | JsonObject
+export type Json = undefined | null | boolean | number | string | JsonArray | JsonObject
 
 /** @internal */
 export const RpcServiceId: schema.RpcServiceId = Symbol.for(
