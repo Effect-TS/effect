@@ -15,9 +15,9 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface IO<IE, E, II, I, IO, O> {
-    readonly input: Schema.Schema<II, I>
-    readonly output: Schema.Schema<IO, O>
-    readonly error: Schema.Schema<IE, E>
+    readonly input: Schema.Schema<never, II, I>
+    readonly output: Schema.Schema<never, IO, O>
+    readonly error: Schema.Schema<never, IE, E>
   }
 
   /**
@@ -25,8 +25,8 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoError<II, I, IO, O> {
-    readonly input: Schema.Schema<II, I>
-    readonly output: Schema.Schema<IO, O>
+    readonly input: Schema.Schema<never, II, I>
+    readonly output: Schema.Schema<never, IO, O>
   }
 
   /**
@@ -34,8 +34,8 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoInput<IE, E, IO, O> {
-    readonly output: Schema.Schema<IO, O>
-    readonly error: Schema.Schema<IE, E>
+    readonly output: Schema.Schema<never, IO, O>
+    readonly error: Schema.Schema<never, IE, E>
   }
 
   /**
@@ -43,7 +43,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoInputNoError<IO, O> {
-    readonly output: Schema.Schema<IO, O>
+    readonly output: Schema.Schema<never, IO, O>
   }
 
   /**
@@ -51,8 +51,8 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoOutput<IE, E, II, I> {
-    readonly input: Schema.Schema<II, I>
-    readonly error: Schema.Schema<IE, E>
+    readonly input: Schema.Schema<never, II, I>
+    readonly error: Schema.Schema<never, IE, E>
   }
 
   /**
@@ -60,7 +60,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoErrorNoOutput<II, I> {
-    readonly input: Schema.Schema<II, I>
+    readonly input: Schema.Schema<never, II, I>
   }
 
   /**
@@ -80,9 +80,9 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface Base {
-    readonly input?: Schema.Schema<any>
-    readonly output?: Schema.Schema<any>
-    readonly error: Schema.Schema<any>
+    readonly input?: Schema.Schema<never, any>
+    readonly output?: Schema.Schema<never, any>
+    readonly error: Schema.Schema<never, any>
   }
 
   /**
@@ -90,7 +90,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export type Input<S> = S extends {
-    readonly input: Schema.Schema<infer _I, infer A>
+    readonly input: Schema.Schema<never, infer _I, infer A>
   } ? A
     : never
 
@@ -99,7 +99,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export type Error<S> = S extends {
-    readonly error: Schema.Schema<infer _I, infer A>
+    readonly error: Schema.Schema<never, infer _I, infer A>
   } ? A
     : never
 
@@ -108,7 +108,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export type Output<S> = S extends {
-    readonly output: Schema.Schema<infer _I, infer A>
+    readonly output: Schema.Schema<never, infer _I, infer A>
   } ? A
     : never
 }
@@ -152,8 +152,8 @@ export namespace RpcService {
   export interface DefinitionWithId extends Definition {
     readonly [RpcServiceId]: RpcServiceId
     readonly [RpcServiceErrorId]:
-      | Schema.Schema<any, any>
-      | Schema.Schema<never, never>
+      | Schema.Schema<never, any, any>
+      | Schema.Schema<never, never, never>
   }
 
   /**
@@ -170,7 +170,7 @@ export namespace RpcService {
    */
   export type WithId<S, EI, E> = S & {
     readonly [RpcServiceId]: RpcServiceId
-    readonly [RpcServiceErrorId]: Schema.Schema<EI, E>
+    readonly [RpcServiceErrorId]: Schema.Schema<never, EI, E>
   }
 
   /**
@@ -295,7 +295,7 @@ export const make = makeWith<"Schema.Json", Json>()
  */
 export const withServiceError: {
   <EI extends Json, E>(
-    error: Schema.Schema<EI, E>
+    error: Schema.Schema<never, EI, E>
   ): <S extends RpcService.DefinitionWithId>(
     self: S
   ) => RpcService.WithId<
@@ -305,7 +305,7 @@ export const withServiceError: {
   >
   <S extends RpcService.DefinitionWithId, EI extends Json, E>(
     self: S,
-    error: Schema.Schema<EI, E>
+    error: Schema.Schema<never, EI, E>
   ): RpcService.WithId<
     S,
     EI | RpcService.ErrorsFrom<S>,
@@ -396,10 +396,7 @@ export namespace RpcRequestSchema {
    * @since 1.0.0
    */
   export type Schema<S extends RpcService.Definition> =
-    & Schema.Schema<
-      From<S>,
-      To<S>
-    >
+    & Schema.Schema<never, From<S>, To<S>>
     & {}
 }
 
@@ -412,11 +409,11 @@ export const makeRequestUnion = <S extends RpcService.Definition>(
 ): RpcRequestSchema.Schema<S> =>
   Schema.union(
     ...Object.entries(schema).map(
-      ([tag, schema]): Schema.Schema<any, any> =>
+      ([tag, schema]): Schema.Schema<never, any, any> =>
         "input" in schema
           ? Schema.struct({
             _tag: Schema.literal(tag),
-            input: schema.input as Schema.Schema<any, any>
+            input: schema.input as Schema.Schema<never, any, any>
           })
           : Schema.struct({ _tag: Schema.literal(tag) })
     )
@@ -439,8 +436,8 @@ export type HashAnnotationId = typeof HashAnnotationId
  * @since 1.0.0
  */
 export const withHash: {
-  <A>(f: (a: A) => number): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>
-  <I, A>(self: Schema.Schema<I, A>, f: (a: A) => number): Schema.Schema<I, A>
+  <A>(f: (a: A) => number): <I>(self: Schema.Schema<never, I, A>) => Schema.Schema<never, I, A>
+  <I, A>(self: Schema.Schema<never, I, A>, f: (a: A) => number): Schema.Schema<never, I, A>
 } = internal.withHash
 
 /**
@@ -448,12 +445,12 @@ export const withHash: {
  * @since 1.0.0
  */
 export const withHashString: {
-  <A>(f: (a: A) => string): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>
-  <I, A>(self: Schema.Schema<I, A>, f: (a: A) => string): Schema.Schema<I, A>
+  <A>(f: (a: A) => string): <I>(self: Schema.Schema<never, I, A>) => Schema.Schema<never, I, A>
+  <I, A>(self: Schema.Schema<never, I, A>, f: (a: A) => string): Schema.Schema<never, I, A>
 } = internal.withHashString
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const hash: <I, A>(self: Schema.Schema<I, A>, value: A) => number = internal.hash
+export const hash: <I, A>(self: Schema.Schema<never, I, A>, value: A) => number = internal.hash

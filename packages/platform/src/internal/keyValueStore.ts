@@ -70,7 +70,7 @@ export const SchemaStoreTypeId: KeyValueStore.SchemaStoreTypeId = Symbol.for(
 /** @internal */
 const makeSchemaStore = <I, A>(
   store: KeyValueStore.KeyValueStore,
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ): KeyValueStore.SchemaStore<A> => {
   const jsonSchema = Schema.parseJson(schema)
   const parse = Schema.parse(jsonSchema)
@@ -167,7 +167,7 @@ export const layerFileSystem = (directory: string) =>
 
 /** @internal */
 export const layerSchema = <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   tagIdentifier?: unknown
 ) => {
   const tag = Context.Tag<KeyValueStore.SchemaStore<A>>(tagIdentifier)

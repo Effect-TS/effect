@@ -5,14 +5,14 @@ import * as Either from "effect/Either"
 import { RpcDecodeFailure, RpcEncodeFailure } from "../Error.js"
 
 /** @internal */
-export const decodeEither = <I, A>(schema: Schema.Schema<I, A>) => {
+export const decodeEither = <I, A>(schema: Schema.Schema<never, I, A>) => {
   const decode = Schema.parseEither(schema)
   return (input: unknown): Either.Either<RpcDecodeFailure, A> =>
     Either.mapLeft(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ error: error.error }))
 }
 
 /** @internal */
-export const decode = <I, A>(schema: Schema.Schema<I, A>) => {
+export const decode = <I, A>(schema: Schema.Schema<never, I, A>) => {
   const decode = Schema.parse(schema)
   return (input: unknown): Effect.Effect<never, RpcDecodeFailure, A> =>
     Effect.mapError(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ error: error.error }))
@@ -20,9 +20,9 @@ export const decode = <I, A>(schema: Schema.Schema<I, A>) => {
 
 /** @internal */
 export const encode: <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => (input: A, options?: ParseOptions | undefined) => Effect.Effect<never, RpcEncodeFailure, I> = <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => {
   const encode = Schema.encode(schema)
   return (input: A) =>
@@ -31,9 +31,9 @@ export const encode: <I, A>(
 
 /** @internal */
 export const encodeEither: <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => (input: A, options?: ParseOptions | undefined) => Either.Either<RpcEncodeFailure, I> = <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => {
   const encode = Schema.encodeEither(schema)
   return (input: A) =>

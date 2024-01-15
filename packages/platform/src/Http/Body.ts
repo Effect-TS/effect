@@ -165,7 +165,7 @@ export const json: (body: unknown) => Effect.Effect<never, BodyError, Uint8Array
  * @category constructors
  */
 export const jsonSchema: <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => (body: A) => Effect.Effect<never, BodyError, Uint8Array> = internal.jsonSchema
 
 /**

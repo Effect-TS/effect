@@ -24,8 +24,8 @@ export const RpcServiceErrorId: schema.RpcServiceErrorId = Symbol.for(
 
 /** @internal */
 export const schemasToUnion = (
-  schemas: ReadonlyArray<Schema.Schema<any>>
-): Schema.Schema<any> => {
+  schemas: ReadonlyArray<Schema.Schema<never, any>>
+): Schema.Schema<never, any> => {
   schemas = schemas.filter((s) => s !== (Schema.never as any))
 
   return schemas.length === 0
@@ -38,19 +38,19 @@ export const schemasToUnion = (
 /** @internal */
 export const methodSchemaTransform = <A>(
   f: (schema: {
-    input?: Schema.Schema<any> | undefined
-    output?: Schema.Schema<any> | undefined
-    error: Schema.Schema<any>
+    input?: Schema.Schema<never, any> | undefined
+    output?: Schema.Schema<never, any> | undefined
+    error: Schema.Schema<never, any>
   }) => A
 ) =>
 <S extends schema.RpcService.DefinitionWithId>(
   schemas: S,
-  serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
+  serviceErrors: ReadonlyArray<Schema.Schema<never, any>> = [],
   prefix = ""
 ): Record<string, A> => {
   serviceErrors = [
     ...serviceErrors,
-    schemas[RpcServiceErrorId] as Schema.Schema<any>
+    schemas[RpcServiceErrorId] as Schema.Schema<never, any>
   ]
 
   return Object.entries(schemas).reduce((acc, [method, schema]) => {
@@ -137,7 +137,7 @@ export const rawClientCodecs = <S extends schema.RpcService.DefinitionWithId>(
 /** @internal */
 export const withServiceError: {
   <EI extends Json, E>(
-    error: Schema.Schema<EI, E>
+    error: Schema.Schema<never, EI, E>
   ): <S extends schema.RpcService.DefinitionWithId>(
     self: S
   ) => schema.RpcService.WithId<
@@ -147,7 +147,7 @@ export const withServiceError: {
   >
   <S extends schema.RpcService.DefinitionWithId, EI extends Json, E>(
     self: S,
-    error: Schema.Schema<EI, E>
+    error: Schema.Schema<never, EI, E>
   ): schema.RpcService.WithId<
     S,
     schema.RpcService.ErrorsFrom<S> | EI,
@@ -157,7 +157,7 @@ export const withServiceError: {
   2,
   <S extends schema.RpcService.DefinitionWithId, EI extends Json, E>(
     self: S,
-    error: Schema.Schema<EI, E>
+    error: Schema.Schema<never, EI, E>
   ): schema.RpcService.WithId<
     S,
     schema.RpcService.ErrorsFrom<S> | EI,
@@ -178,31 +178,31 @@ export const HashAnnotationId: schema.HashAnnotationId = Symbol.for(
 
 /** @internal */
 export const withHash: {
-  <A>(f: (a: A) => number): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>
+  <A>(f: (a: A) => number): <I>(self: Schema.Schema<never, I, A>) => Schema.Schema<never, I, A>
   <I, A>(
-    self: Schema.Schema<I, A>,
+    self: Schema.Schema<never, I, A>,
     f: (a: A) => number
-  ): Schema.Schema<I, A>
+  ): Schema.Schema<never, I, A>
 } = dual(
   2,
-  <I, A>(self: Schema.Schema<I, A>, f: (a: A) => number) => Schema.annotations({ [HashAnnotationId]: f })(self)
+  <I, A>(self: Schema.Schema<never, I, A>, f: (a: A) => number) => Schema.annotations({ [HashAnnotationId]: f })(self)
 )
 
 /** @internal */
 export const withHashString: {
-  <A>(f: (a: A) => string): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>
+  <A>(f: (a: A) => string): <I>(self: Schema.Schema<never, I, A>) => Schema.Schema<never, I, A>
   <I, A>(
-    self: Schema.Schema<I, A>,
+    self: Schema.Schema<never, I, A>,
     f: (a: A) => string
-  ): Schema.Schema<I, A>
+  ): Schema.Schema<never, I, A>
 } = dual(
   2,
-  <I, A>(self: Schema.Schema<I, A>, f: (a: A) => string) => withHash(self, (_) => Hash.string(f(_)))
+  <I, A>(self: Schema.Schema<never, I, A>, f: (a: A) => string) => withHash(self, (_) => Hash.string(f(_)))
 )
 
 /** @internal */
 export const hash = <I, A>(
-  self: Schema.Schema<I, A>,
+  self: Schema.Schema<never, I, A>,
   value: A
 ): number =>
   pipe(

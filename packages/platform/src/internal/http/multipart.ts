@@ -89,7 +89,7 @@ export const withFieldMimeTypes = dual<
   <R, E, A>(effect: Effect.Effect<R, E, A>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<R, E, A>
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
-const fileSchema: Schema.Schema<Multipart.PersistedFile, Multipart.PersistedFile> = Schema.struct({
+const fileSchema: Schema.Schema<never, Multipart.PersistedFile, Multipart.PersistedFile> = Schema.struct({
   [TypeId]: Schema.uniqueSymbol(TypeId),
   _tag: Schema.literal("PersistedFile"),
   key: Schema.string,
@@ -100,20 +100,21 @@ const fileSchema: Schema.Schema<Multipart.PersistedFile, Multipart.PersistedFile
 
 /** @internal */
 export const filesSchema: Schema.Schema<
+  never,
   ReadonlyArray<Multipart.PersistedFile>,
   ReadonlyArray<Multipart.PersistedFile>
 > = Schema.array(fileSchema)
 
 /** @internal */
 export const schemaPersisted = <I extends Multipart.Persisted, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => {
   const parse = Schema.parse(schema)
   return (persisted: Multipart.Persisted) => parse(persisted)
 }
 
 /** @internal */
-export const schemaJson = <I, A>(schema: Schema.Schema<I, A>): {
+export const schemaJson = <I, A>(schema: Schema.Schema<never, I, A>): {
   (
     field: string
   ): (persisted: Multipart.Persisted) => Effect.Effect<never, ParseResult.ParseError, A>

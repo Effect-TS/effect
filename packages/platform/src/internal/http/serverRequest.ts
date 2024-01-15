@@ -25,13 +25,13 @@ export const serverRequestTag = Context.Tag<ServerRequest.ServerRequest>(TypeId)
 export const multipartPersisted = Effect.flatMap(serverRequestTag, (request) => request.multipart)
 
 /** @internal */
-export const schemaHeaders = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<I, A>) => {
+export const schemaHeaders = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<never, I, A>) => {
   const parse = IncomingMessage.schemaHeaders(schema)
   return Effect.flatMap(serverRequestTag, parse)
 }
 
 /** @internal */
-export const schemaBodyJson = <I, A>(schema: Schema.Schema<I, A>) => {
+export const schemaBodyJson = <I, A>(schema: Schema.Schema<never, I, A>) => {
   const parse = IncomingMessage.schemaBodyJson(schema)
   return Effect.flatMap(serverRequestTag, parse)
 }
@@ -41,10 +41,10 @@ const isMultipart = (request: ServerRequest.ServerRequest) =>
 
 /** @internal */
 export const schemaBodyForm = <I extends Multipart.Persisted, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => {
   const parseMultipart = Multipart.schemaPersisted(schema)
-  const parseUrlParams = IncomingMessage.schemaBodyUrlParams(schema as Schema.Schema<any, A>)
+  const parseUrlParams = IncomingMessage.schemaBodyUrlParams(schema as Schema.Schema<never, any, A>)
   return Effect.flatMap(serverRequestTag, (request): Effect.Effect<
     ServerRequest.ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
     Multipart.MultipartError | ParseResult.ParseError | Error.RequestError,
@@ -58,21 +58,23 @@ export const schemaBodyForm = <I extends Multipart.Persisted, A>(
 }
 
 /** @internal */
-export const schemaBodyUrlParams = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<I, A>) => {
+export const schemaBodyUrlParams = <I extends Readonly<Record<string, string>>, A>(
+  schema: Schema.Schema<never, I, A>
+) => {
   const parse = IncomingMessage.schemaBodyUrlParams(schema)
   return Effect.flatMap(serverRequestTag, parse)
 }
 
 /** @internal */
 export const schemaBodyMultipart = <I extends Multipart.Persisted, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => {
   const parse = Multipart.schemaPersisted(schema)
   return Effect.flatMap(multipartPersisted, parse)
 }
 
 /** @internal */
-export const schemaBodyFormJson = <I, A>(schema: Schema.Schema<I, A>) => {
+export const schemaBodyFormJson = <I, A>(schema: Schema.Schema<never, I, A>) => {
   const parseMultipart = Multipart.schemaJson(schema)
   const parseUrlParams = UrlParams.schemaJson(schema)
   return (field: string) =>

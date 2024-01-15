@@ -360,7 +360,7 @@ export const retry: {
  */
 export const schemaFunction: {
   <SI, SA>(
-    schema: Schema.Schema<SI, SA>
+    schema: Schema.Schema<never, SI, SA>
   ): <R, E, A>(
     self: Client<R, E, A>
   ) => (
@@ -368,7 +368,7 @@ export const schemaFunction: {
   ) => (a: SA) => Effect.Effect<R, Error.RequestError | E | ParseResult.ParseError, A>
   <R, E, A, SI, SA>(
     self: Client<R, E, A>,
-    schema: Schema.Schema<SI, SA>
+    schema: Schema.Schema<never, SI, SA>
   ): (
     request: ClientRequest.ClientRequest
   ) => (a: SA) => Effect.Effect<R, Error.RequestError | ParseResult.ParseError | E, A>

@@ -67,7 +67,7 @@ export const schemaJson: <
   },
   A
 >(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => (self: ClientResponse) => Effect.Effect<never, Error.ResponseError | ParseResult.ParseError, A> =
   internal.schemaJson
 
@@ -78,5 +78,5 @@ export const schemaJson: <
 export const schemaNoBody: <
   I extends { readonly status?: number | undefined; readonly headers?: Readonly<Record<string, string>> | undefined },
   A
->(schema: Schema.Schema<I, A>) => (self: ClientResponse) => Effect.Effect<never, ParseResult.ParseError, A> =
+>(schema: Schema.Schema<never, I, A>) => (self: ClientResponse) => Effect.Effect<never, ParseResult.ParseError, A> =
   internal.schemaNoBody

@@ -193,7 +193,7 @@ export const withFieldMimeTypes: {
  * @since 1.0.0
  * @category schema
  */
-export const filesSchema: Schema.Schema<ReadonlyArray<PersistedFile>, ReadonlyArray<PersistedFile>> =
+export const filesSchema: Schema.Schema<never, ReadonlyArray<PersistedFile>, ReadonlyArray<PersistedFile>> =
   internal.filesSchema
 
 /**
@@ -201,7 +201,7 @@ export const filesSchema: Schema.Schema<ReadonlyArray<PersistedFile>, ReadonlyAr
  * @category schema
  */
 export const schemaJson: <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => {
   (field: string): (persisted: Persisted) => Effect.Effect<never, ParseResult.ParseError, A>
   (persisted: Persisted, field: string): Effect.Effect<never, ParseResult.ParseError, A>
@@ -212,7 +212,7 @@ export const schemaJson: <I, A>(
  * @category schema
  */
 export const schemaPersisted: <I extends Persisted, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => (persisted: Persisted) => Effect.Effect<never, ParseResult.ParseError, A> = internal.schemaPersisted
 
 /**

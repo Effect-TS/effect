@@ -39,6 +39,6 @@ export const layerSerialized: <
   A extends Schema.TaggedRequest.Any,
   Handlers extends Runner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   handlers: Handlers
 ) => Layer.Layer<Runner.SerializedRunner.HandlersContext<Handlers>, WorkerError, never> = internal.layerSerialized

@@ -363,7 +363,7 @@ export const fileWebBody = dual<
 >(2, (self, file) => setBody(self, internalBody.fileWeb(file)))
 
 /** @internal */
-export const schemaBody = <I, A>(schema: Schema.Schema<I, A>): {
+export const schemaBody = <I, A>(schema: Schema.Schema<never, I, A>): {
   (body: A): (self: ClientRequest.ClientRequest) => Effect.Effect<never, Body.BodyError, ClientRequest.ClientRequest>
   (self: ClientRequest.ClientRequest, body: A): Effect.Effect<never, Body.BodyError, ClientRequest.ClientRequest>
 } => {

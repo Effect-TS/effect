@@ -102,7 +102,7 @@ export const json: (
  * @category constructors
  */
 export const schemaJson: <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => (body: A, options?: Options.WithContent) => Effect.Effect<never, Body.BodyError, ServerResponse> =
   internal.schemaJson
 

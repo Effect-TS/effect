@@ -139,7 +139,7 @@ export const schemaJson = <
     readonly body?: unknown
   },
   A
->(schema: Schema.Schema<I, A>) => {
+>(schema: Schema.Schema<never, I, A>) => {
   const parse = Schema.parse(schema)
   return (self: ClientResponse.ClientResponse): Effect.Effect<never, Error.ResponseError | ParseResult.ParseError, A> =>
     Effect.flatMap(
@@ -160,7 +160,7 @@ export const schemaNoBody = <
     readonly headers?: Readonly<Record<string, string>>
   },
   A
->(schema: Schema.Schema<I, A>) => {
+>(schema: Schema.Schema<never, I, A>) => {
   const parse = Schema.parse(schema)
   return (self: ClientResponse.ClientResponse): Effect.Effect<never, ParseResult.ParseError, A> =>
     parse({

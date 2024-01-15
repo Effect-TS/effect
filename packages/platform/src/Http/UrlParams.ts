@@ -207,7 +207,7 @@ const baseUrl = (): string | undefined => {
  * @since 1.0.0
  * @category schema
  */
-export const schemaJson = <I, A>(schema: Schema.Schema<I, A>): {
+export const schemaJson = <I, A>(schema: Schema.Schema<never, I, A>): {
   (
     field: string
   ): (self: UrlParams) => Effect.Effect<never, ParseResult.ParseError, A>

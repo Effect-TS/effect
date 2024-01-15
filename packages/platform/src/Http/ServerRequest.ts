@@ -84,7 +84,7 @@ export const persistedMultipart: Effect.Effect<
  * @category schema
  */
 export const schemaHeaders: <I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => Effect.Effect<ServerRequest, ParseResult.ParseError, A> = internal.schemaHeaders
 
 /**
@@ -92,7 +92,7 @@ export const schemaHeaders: <I extends Readonly<Record<string, string>>, A>(
  * @category schema
  */
 export const schemaBodyJson: <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => Effect.Effect<ServerRequest, Error.RequestError | ParseResult.ParseError, A> = internal.schemaBodyJson
 
 /**
@@ -100,7 +100,7 @@ export const schemaBodyJson: <I, A>(
  * @category schema
  */
 export const schemaBodyForm: <I extends Multipart.Persisted, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => Effect.Effect<
   ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
   Multipart.MultipartError | Error.RequestError | ParseResult.ParseError,
@@ -112,7 +112,7 @@ export const schemaBodyForm: <I extends Multipart.Persisted, A>(
  * @category schema
  */
 export const schemaBodyUrlParams: <I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => Effect.Effect<ServerRequest, Error.RequestError | ParseResult.ParseError, A> = internal.schemaBodyUrlParams
 
 /**
@@ -120,7 +120,7 @@ export const schemaBodyUrlParams: <I extends Readonly<Record<string, string>>, A
  * @category schema
  */
 export const schemaBodyMultipart: <I extends Multipart.Persisted, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => Effect.Effect<
   ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
   Multipart.MultipartError | ParseResult.ParseError,
@@ -132,7 +132,7 @@ export const schemaBodyMultipart: <I extends Multipart.Persisted, A>(
  * @category schema
  */
 export const schemaBodyFormJson: <I, A>(
-  schema: Schema.Schema<I, A>
+  schema: Schema.Schema<never, I, A>
 ) => (
   field: string
 ) => Effect.Effect<
