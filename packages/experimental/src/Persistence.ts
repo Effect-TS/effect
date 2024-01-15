@@ -127,7 +127,7 @@ export declare namespace ResultPersistence {
    * @since 1.0.0
    * @category models
    */
-  export interface Key<IE, E, IA, A> extends PrimaryKey.PrimaryKey, Serializable.WithResult<IE, E, IA, A> {
+  export interface Key<IE, E, IA, A> extends PrimaryKey.PrimaryKey, Serializable.WithResult<never, IE, E, IA, A> {
     readonly _tag: string
   }
 }

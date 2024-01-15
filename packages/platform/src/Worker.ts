@@ -233,12 +233,12 @@ export interface SerializedWorker<I extends Schema.TaggedRequest.Any> {
   readonly id: number
   readonly execute: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
+  ) => Req extends Serializable.WithResult<never, infer _IE, infer E, infer _IA, infer A>
     ? Stream.Stream<never, E | WorkerError | ParseResult.ParseError, A>
     : never
   readonly executeEffect: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
+  ) => Req extends Serializable.WithResult<never, infer _IE, infer E, infer _IA, infer A>
     ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, A>
     : never
 }
@@ -279,17 +279,17 @@ export interface SerializedWorkerPool<I extends Schema.TaggedRequest.Any> {
   readonly backing: Pool.Pool<WorkerError, SerializedWorker<I>>
   readonly broadcast: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer _A>
+  ) => Req extends Serializable.WithResult<never, infer _IE, infer E, infer _IA, infer _A>
     ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, void>
     : never
   readonly execute: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
+  ) => Req extends Serializable.WithResult<never, infer _IE, infer E, infer _IA, infer A>
     ? Stream.Stream<never, E | WorkerError | ParseResult.ParseError, A>
     : never
   readonly executeEffect: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
+  ) => Req extends Serializable.WithResult<never, infer _IE, infer E, infer _IA, infer A>
     ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, A>
     : never
 }
