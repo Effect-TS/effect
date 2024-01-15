@@ -58,12 +58,15 @@ const minigitClone = Command.make(
 
 const command = minigit.pipe(Command.withSubcommands([minigitAdd, minigitClone]))
 
-const cli = Command.run(command, {
-  name: "Minigit Distributed Version Control",
-  version: "v1.0.0"
-})
-
-Effect.suspend(() => cli(process.argv.slice(2))).pipe(
+Effect.suspend(() => {
+  const [node, executable] = process.argv
+  const cli = Command.run(command, {
+    name: "Minigit Distributed Version Control",
+    version: "v1.0.0",
+    executable: `${node} ${executable}`
+  })
+  return cli(process.argv)
+}).pipe(
   Effect.withConfigProvider(ConfigProvider.nested(ConfigProvider.fromEnv(), "GIT")),
   Effect.provide(NodeContext.layer),
   Runtime.runMain

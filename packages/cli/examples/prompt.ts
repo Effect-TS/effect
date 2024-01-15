@@ -54,12 +54,17 @@ const prompt = Prompt.all([
   togglePrompt
 ])
 
-const cli = Command.run(Command.prompt("favorites", prompt, Effect.log), {
-  name: "Prompt Examples",
-  version: "0.0.1"
-})
+const command = Command.prompt("favorites", prompt, Effect.log)
 
-Effect.suspend(() => cli(process.argv.slice(2))).pipe(
+Effect.suspend(() => {
+  const [node, executable] = process.argv
+  const cli = Command.run(command, {
+    name: "Prompt Examples",
+    version: "0.0.1",
+    executable: `${node} ${executable}`
+  })
+  return cli(process.argv)
+}).pipe(
   Effect.provide(NodeContext.layer),
   Runtime.runMain
 )

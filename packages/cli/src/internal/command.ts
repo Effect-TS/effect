@@ -538,6 +538,7 @@ export const run = dual<
   (config: {
     readonly name: string
     readonly version: string
+    readonly executable: string
     readonly summary?: Span.Span | undefined
     readonly footer?: HelpDoc.HelpDoc | undefined
   }) => <Name extends string, R, E, A>(
@@ -548,6 +549,7 @@ export const run = dual<
   <Name extends string, R, E, A>(self: Command.Command<Name, R, E, A>, config: {
     readonly name: string
     readonly version: string
+    readonly executable: string
     readonly summary?: Span.Span | undefined
     readonly footer?: HelpDoc.HelpDoc | undefined
   }) => (

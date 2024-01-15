@@ -21,6 +21,7 @@ import type { ValidationError } from "./ValidationError.js"
 export interface CliApp<A> extends Pipeable {
   readonly name: string
   readonly version: string
+  readonly executable: string
   readonly command: Command<A>
   readonly summary: Span
   readonly footer: HelpDoc
@@ -45,6 +46,7 @@ export const make: <A>(
   config: {
     name: string
     version: string
+    executable: string
     command: Command<A>
     summary?: Span | undefined
     footer?: HelpDoc | undefined

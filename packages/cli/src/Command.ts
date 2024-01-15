@@ -427,6 +427,7 @@ export const run: {
     config: {
       readonly name: string
       readonly version: string
+      readonly executable: string
       readonly summary?: Span | undefined
       readonly footer?: HelpDoc | undefined
     }
@@ -438,6 +439,7 @@ export const run: {
     config: {
       readonly name: string
       readonly version: string
+      readonly executable: string
       readonly summary?: Span | undefined
       readonly footer?: HelpDoc | undefined
     }

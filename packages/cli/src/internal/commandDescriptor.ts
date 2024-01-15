@@ -169,20 +169,20 @@ export const getNames = <A>(self: Descriptor.Command<A>): HashSet.HashSet<string
 /** @internal */
 export const getBashCompletions = <A>(
   self: Descriptor.Command<A>,
-  programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> => getBashCompletionsInternal(self as Instruction, programName)
+  executable: string
+): Effect.Effect<never, never, ReadonlyArray<string>> => getBashCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getFishCompletions = <A>(
   self: Descriptor.Command<A>,
-  programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> => getFishCompletionsInternal(self as Instruction, programName)
+  executable: string
+): Effect.Effect<never, never, ReadonlyArray<string>> => getFishCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getZshCompletions = <A>(
   self: Descriptor.Command<A>,
-  programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> => getZshCompletionsInternal(self as Instruction, programName)
+  executable: string
+): Effect.Effect<never, never, ReadonlyArray<string>> => getZshCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getSubcommands = <A>(
@@ -1009,7 +1009,7 @@ const indentAll = dual<
 
 const getBashCompletionsInternal = (
   self: Instruction,
-  rootCommand: string
+  executable: string
 ): Effect.Effect<never, never, ReadonlyArray<string>> =>
   traverseCommand(
     self,
@@ -1068,6 +1068,7 @@ const getBashCompletionsInternal = (
       return Effect.succeed(lines)
     }
   ).pipe(Effect.map((lines) => {
+    const rootCommand = ReadonlyArray.unsafeGet(getNamesInternal(self), 0)
     const scriptName = `_${rootCommand}_bash_completions`
     const funcCases = ReadonlyArray.flatMap(lines, ([funcLines]) => funcLines)
     const cmdCases = ReadonlyArray.flatMap(lines, ([, cmdLines]) => cmdLines)
@@ -1082,7 +1083,7 @@ const getBashCompletionsInternal = (
       "    for i in \"${COMP_WORDS[@]}\"; do",
       "        case \"${cmd},${i}\" in",
       "            \",$1\")",
-      `                cmd="${rootCommand}"`,
+      `                cmd="${executable}"`,
       "                ;;",
       ...indentAll(funcCases, 12),
       "            *)",
@@ -1099,10 +1100,10 @@ const getBashCompletionsInternal = (
 
 const getFishCompletionsInternal = (
   self: Instruction,
-  rootCommand: string
+  executable: string
 ): Effect.Effect<never, never, ReadonlyArray<string>> =>
   traverseCommand(self, ReadonlyArray.empty(), (state, info) => {
-    const baseTemplate = ReadonlyArray.make("complete", "-c", rootCommand)
+    const baseTemplate = ReadonlyArray.make("complete", "-c", executable)
     const options = isStandard(info.command)
       ? InternalOptions.all([InternalBuiltInOptions.builtIns, info.command.options])
       : InternalBuiltInOptions.builtIns
@@ -1181,7 +1182,7 @@ const getFishCompletionsInternal = (
 
 const getZshCompletionsInternal = (
   self: Instruction,
-  rootCommand: string
+  executable: string
 ): Effect.Effect<never, never, ReadonlyArray<string>> =>
   traverseCommand(self, ReadonlyArray.empty<string>(), (state, info) => {
     const preformatted = ReadonlyArray.isEmptyReadonlyArray(info.parentCommands)
@@ -1212,10 +1213,11 @@ const getZshCompletionsInternal = (
     ]
     return Effect.succeed(ReadonlyArray.appendAll(state, handlerLines))
   }).pipe(Effect.map((handlers) => {
+    const rootCommand = ReadonlyArray.unsafeGet(getNamesInternal(self), 0)
     const cases = getZshSubcommandCases(self, ReadonlyArray.empty(), ReadonlyArray.empty())
     const scriptName = `_${rootCommand}_zsh_completions`
     return [
-      `#compdef ${rootCommand}`,
+      `#compdef ${executable}`,
       "",
       "autoload -U is-at-least",
       "",

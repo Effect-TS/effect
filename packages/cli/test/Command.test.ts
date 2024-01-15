@@ -58,7 +58,8 @@ const run = git.pipe(
   Command.withSubcommands([clone, add]),
   Command.run({
     name: "git",
-    version: "1.0.0"
+    version: "1.0.0",
+    executable: "git"
   })
 )
 
@@ -67,16 +68,16 @@ describe("Command", () => {
     it("no sub-command", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["--verbose"]))
-        yield* _(run([]))
+        yield* _(run(["git", "--verbose"]))
+        yield* _(run(["git"]))
         assert.deepStrictEqual(yield* _(messages.messages), ["shared", "shared"])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
 
     it("add", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["add", "file"]))
-        yield* _(run(["--verbose", "add", "file"]))
+        yield* _(run(["git", "add", "file"]))
+        yield* _(run(["git", "--verbose", "add", "file"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "shared",
           "Adding",
@@ -88,8 +89,8 @@ describe("Command", () => {
     it("clone", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["clone", "repo"]))
-        yield* _(run(["--verbose", "clone", "repo"]))
+        yield* _(run(["git", "clone", "repo"]))
+        yield* _(run(["git", "--verbose", "clone", "repo"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "shared",
           "Cloning",
@@ -101,7 +102,7 @@ describe("Command", () => {
     it("withFallbackConfig Options boolean", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["clone", "repo"]))
+        yield* _(run(["git", "clone", "repo"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "shared",
           "Cloning repo"
@@ -117,7 +118,7 @@ describe("Command", () => {
     it("withFallbackConfig Args", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["clone"]))
+        yield* _(run(["git", "clone"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "shared",
           "Cloning repo"
