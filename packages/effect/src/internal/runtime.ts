@@ -1,3 +1,4 @@
+import { equals } from "effect/Equal"
 import type * as Cause from "../Cause.js"
 import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
@@ -15,8 +16,10 @@ import type * as ReadonlyArray from "../ReadonlyArray.js"
 import type * as Runtime from "../Runtime.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as _scheduler from "../Scheduler.js"
+import * as _scope from "../Scope.js"
 import * as InternalCause from "./cause.js"
 import * as core from "./core.js"
+import * as executionStrategy from "./executionStrategy.js"
 import * as FiberRuntime from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
 import * as OpCodes from "./opCodes/effect.js"
@@ -30,8 +33,6 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
   options?: Runtime.RunForkOptions
 ): Fiber.RuntimeFiber<E, A> => {
   const fiberId = FiberId.unsafeMake()
-  const effect = self
-
   const fiberRefUpdates: ReadonlyArray.NonEmptyArray<
     readonly [FiberRef.FiberRef<any>, ReadonlyArray.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
   > = [[core.currentContext, [[fiberId, runtime.context]]]]
@@ -55,6 +56,24 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
     runtime.runtimeFlags
   )
 
+  let effect: Effect.Effect<R, E, A> = self
+
+  if (options?.scope) {
+    effect = core.flatMap(
+      _scope.fork(options.scope, executionStrategy.sequential),
+      (closeableScope) =>
+        core.zipRight(
+          core.scopeAddFinalizer(
+            closeableScope,
+            core.fiberIdWith((id) =>
+              equals(id, fiberRuntime.id()) ? core.unit : core.interruptAsFiber(fiberRuntime, id)
+            )
+          ),
+          core.onExit(effect, (exit) => _scope.close(closeableScope, exit))
+        )
+    )
+  }
+
   const supervisor = fiberRuntime._supervisor
 
   // we can compare by reference here as _supervisor.none is wrapped with globalValue
@@ -66,7 +85,12 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 
   fiberScope.globalScope.add(runtime.runtimeFlags, fiberRuntime)
 
-  fiberRuntime.start(effect)
+  // Only an explicit false will prevent immediate execution
+  if (options?.immediate === false) {
+    fiberRuntime.resume(effect)
+  } else {
+    fiberRuntime.start(effect)
+  }
 
   return fiberRuntime
 }
@@ -75,22 +99,25 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 <E, A>(
   effect: Effect.Effect<R, E, A>,
-  onExit?: (exit: Exit.Exit<E, A>) => void
-): (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void) => void => {
-  const fiberRuntime = unsafeFork(runtime)(effect)
+  options: Runtime.RunCallbackOptions<E, A> = {}
+): (fiberId?: FiberId.FiberId, options?: Runtime.RunCallbackOptions<E, A> | undefined) => void => {
+  const fiberRuntime = unsafeFork(runtime)(effect, options)
 
-  if (onExit) {
+  if (options.onExit) {
     fiberRuntime.addObserver((exit) => {
-      onExit(exit)
+      options.onExit!(exit)
     })
   }
 
-  return (id, onExitInterrupt) =>
+  return (id, cancelOptions) =>
     unsafeRunCallback(runtime)(
       pipe(fiberRuntime, Fiber.interruptAs(id ?? FiberId.none)),
-      onExitInterrupt ?
-        (exit) => onExitInterrupt(Exit.flatten(exit)) :
-        void 0
+      {
+        ...cancelOptions,
+        onExit: cancelOptions?.onExit
+          ? (exit) => cancelOptions.onExit!(Exit.flatten(exit))
+          : undefined
+      }
     )
 }
 

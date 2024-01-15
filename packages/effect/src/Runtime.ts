@@ -13,6 +13,7 @@ import * as internal from "./internal/runtime.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
 import type { Scheduler } from "./Scheduler.js"
+import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -28,7 +29,7 @@ export interface AsyncFiberException<out E, out A> {
  * @category models
  */
 export interface Cancel<out E, out A> {
-  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void): void
+  (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<E, A> | undefined): void
 }
 
 /**
@@ -57,6 +58,8 @@ export interface Runtime<in R> extends Pipeable {
 export interface RunForkOptions {
   readonly scheduler?: Scheduler | undefined
   readonly updateRefs?: ((refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs) | undefined
+  readonly immediate?: boolean
+  readonly scope?: Scope
 }
 
 /**
@@ -94,6 +97,14 @@ export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effe
 export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => A = internal.unsafeRunSync
 
 /**
+ * @since 2.0.0
+ * @category models
+ */
+export interface RunCallbackOptions<E, A> extends RunForkOptions {
+  readonly onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
+}
+
+/**
  * Executes the effect asynchronously, eventually passing the exit value to
  * the specified callback.
  *
@@ -107,8 +118,8 @@ export const runCallback: <R>(
   runtime: Runtime<R>
 ) => <E, A>(
   effect: Effect.Effect<R, E, A>,
-  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
-) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void =
+  options?: RunCallbackOptions<E, A> | undefined
+) => (fiberId?: FiberId.FiberId | undefined, options?: RunCallbackOptions<E, A> | undefined) => void =
   internal.unsafeRunCallback
 
 /**
