@@ -85,7 +85,5 @@ export const make = Effect.gen(function*(_) {
       })
     )
 
-  return {
-    run
-  } satisfies ServerImpl
+  return Server.of({ run })
 })

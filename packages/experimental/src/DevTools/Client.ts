@@ -45,7 +45,7 @@ export const Client = Context.Tag<Client, ClientImpl>("@effect/experimental/DevT
 export const make: Effect.Effect<Scope.Scope | Socket.Socket, never, ClientImpl> = Effect.gen(function*(_) {
   const socket = yield* _(Socket.Socket)
   const requests = yield* _(Effect.acquireRelease(
-    Queue.bounded<Domain.Request>(100),
+    Queue.sliding<Domain.Request>(1024),
     Queue.shutdown
   ))
 
