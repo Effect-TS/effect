@@ -1,3 +1,4 @@
+import { equals } from "effect/Equal"
 import type * as Cause from "../Cause.js"
 import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
@@ -60,7 +61,16 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
   if (options?.scope) {
     effect = core.flatMap(
       _scope.fork(options.scope, executionStrategy.sequential),
-      (closeableScope) => core.onExit(effect, (exit) => _scope.close(closeableScope, exit))
+      (closeableScope) =>
+        core.zipRight(
+          core.scopeAddFinalizer(
+            closeableScope,
+            core.fiberIdWith((id) =>
+              equals(id, fiberRuntime.id()) ? core.unit : core.interruptAsFiber(fiberRuntime, id)
+            )
+          ),
+          core.onExit(effect, (exit) => _scope.close(closeableScope, exit))
+        )
     )
   }
 
