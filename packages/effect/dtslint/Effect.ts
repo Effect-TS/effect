@@ -14,6 +14,28 @@ declare const numberRecord: Record<string, Effect.Effect<"dep-4", "err-4", numbe
 // forEach
 // -------------------------------------------------------------------------------------
 
+// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", string>
+Effect.tap(string, (
+  // $ExpectType string
+  _a
+) => number)
+
+// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", string>
+Effect.tap(string, number)
+
+// $ExpectType Effect<"dep-1", "err-1" | UnknownException, string>
+Effect.tap(string, async (
+  // $ExpectType string
+  _a
+) => console.log(""))
+
+// @ts-expect-error
+Effect.tap(string, () => 1)
+
+// -------------------------------------------------------------------------------------
+// forEach
+// -------------------------------------------------------------------------------------
+
 // $ExpectType Effect<"dep-1", "err-1", string[]>
 Effect.forEach(["a", "b"], (
   // $ExpectType string
