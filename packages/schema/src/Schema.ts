@@ -4638,10 +4638,11 @@ const makeClass = <R, I, A>(
 
   return class extends Base {
     constructor(props?: any, disableValidation = false) {
-      if (disableValidation !== true) {
-        props = validator(additionalProps ? { ...props, ...additionalProps } : props)
-      } else {
+      if (additionalProps !== undefined) {
         props = additionalProps ? { ...props, ...additionalProps } : props
+      }
+      if (disableValidation !== true) {
+        props = validator(props)
       }
       super(props, true)
     }
