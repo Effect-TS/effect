@@ -16,6 +16,7 @@ import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
 import * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
+import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
 import * as N from "effect/Number"
 import * as Option from "effect/Option"
@@ -3418,16 +3419,23 @@ export const head = <I, A>(value: Schema<I, A>): Schema<ReadonlyArray<I>, Option
   )
 
 /**
- * Get the first element of a `ReadonlyArray` or fails if the array is empty.
+ * Retrieves the first element of a `ReadonlyArray`.
+ *
+ * If the array is empty, it returns the `fallback` argument if provided; otherwise, it fails.
  *
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const headOrFail = <I, A>(value: Schema<I, A>): Schema<ReadonlyArray<I>, A> =>
+export const headOr = <I, A>(value: Schema<I, A>, fallback?: LazyArg<A>): Schema<ReadonlyArray<I>, A> =>
   transformOrFail(
     array(value),
     to(value),
-    (as, _, ast) => as.length > 0 ? ParseResult.succeed(as[0]) : ParseResult.fail(ParseResult.type(ast, as)),
+    (as, _, ast) =>
+      as.length > 0
+        ? ParseResult.succeed(as[0])
+        : fallback
+        ? ParseResult.succeed(fallback())
+        : ParseResult.fail(ParseResult.type(ast, as)),
     (a) => ParseResult.succeed(ReadonlyArray.of(a))
   )
 

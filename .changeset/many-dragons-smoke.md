@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-add head / headOrFail
+add head / headOr
