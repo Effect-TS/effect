@@ -1014,11 +1014,11 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @since 1.0.0
  */
 export const pluck: {
-  <A, K extends keyof A>(key: K): <I>(schema: Schema<I, A>) => Schema<I, A[K]>
-  <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Schema<I, A[K]>
-} = dual(2, <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Schema<I, A[K]> => {
+  <A, K extends keyof A>(key: K): <R, I>(schema: Schema<R, I, A>) => Schema<R, I, A[K]>
+  <R, I, A, K extends keyof A>(schema: Schema<R, I, A>, key: K): Schema<R, I, A[K]>
+} = dual(2, <R, I, A, K extends keyof A>(schema: Schema<R, I, A>, key: K): Schema<R, I, A[K]> => {
   const ps = AST.getIndexedAccess(to(schema).ast, key)
-  const value = make<A[K], A[K]>(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
+  const value = make<R, A[K], A[K]>(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
   return transform(
     schema,
     value,
@@ -3433,8 +3433,9 @@ export const itemsCount = <A>(
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const getNumberIndexedAccess = <I, A extends ReadonlyArray<any>>(self: Schema<I, A>): Schema<A[number]> =>
-  make(AST.getNumberIndexedAccess(self.ast))
+export const getNumberIndexedAccess = <R, I, A extends ReadonlyArray<any>>(
+  self: Schema<R, I, A>
+): Schema<R, A[number]> => make(AST.getNumberIndexedAccess(self.ast))
 
 /**
  * Get the first element of a `ReadonlyArray`, or `None` if the array is empty.
@@ -3442,7 +3443,7 @@ export const getNumberIndexedAccess = <I, A extends ReadonlyArray<any>>(self: Sc
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const head = <I, A>(self: Schema<I, ReadonlyArray<A>>): Schema<I, Option.Option<A>> =>
+export const head = <R, I, A>(self: Schema<R, I, ReadonlyArray<A>>): Schema<R, I, Option.Option<A>> =>
   transform(
     self,
     optionFromSelf(getNumberIndexedAccess(self)),
@@ -3458,7 +3459,7 @@ export const head = <I, A>(self: Schema<I, ReadonlyArray<A>>): Schema<I, Option.
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const headOr = <I, A>(self: Schema<I, ReadonlyArray<A>>, fallback?: LazyArg<A>): Schema<I, A> =>
+export const headOr = <R, I, A>(self: Schema<R, I, ReadonlyArray<A>>, fallback?: LazyArg<A>): Schema<R, I, A> =>
   transformOrFail(
     self,
     getNumberIndexedAccess(self),
@@ -3676,9 +3677,9 @@ export const optionFromNullish = <R, I, A>(
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromOrUndefined = <I, A>(
-  value: Schema<I, A>
-): Schema<I | undefined, Option.Option<A>> =>
+export const optionFromOrUndefined = <R, I, A>(
+  value: Schema<R, I, A>
+): Schema<R, I | undefined, Option.Option<A>> =>
   transform(orUndefined(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrUndefined)
 
 /**
