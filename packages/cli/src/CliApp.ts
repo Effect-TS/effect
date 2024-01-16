@@ -36,22 +36,26 @@ export declare namespace CliApp {
    * @category models
    */
   export type Environment = FileSystem | Path | Terminal
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ConstructorArgs<A> {
+    readonly name: string
+    readonly version: string
+    readonly command: Command<A>
+    readonly executable?: string | undefined
+    readonly summary?: Span | undefined
+    readonly footer?: HelpDoc | undefined
+  }
 }
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const make: <A>(
-  config: {
-    name: string
-    version: string
-    executable: string
-    command: Command<A>
-    summary?: Span | undefined
-    footer?: HelpDoc | undefined
-  }
-) => CliApp<A> = InternalCliApp.make
+export const make: <A>(config: CliApp.ConstructorArgs<A>) => CliApp<A> = InternalCliApp.make
 
 /**
  * @since 1.0.0

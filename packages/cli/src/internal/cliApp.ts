@@ -13,7 +13,6 @@ import type * as CliApp from "../CliApp.js"
 import type * as CliConfig from "../CliConfig.js"
 import type * as Command from "../CommandDescriptor.js"
 import type * as HelpDoc from "../HelpDoc.js"
-import type * as Span from "../HelpDoc/Span.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalCommand from "./commandDescriptor.js"
@@ -34,14 +33,7 @@ const proto = {
 // =============================================================================
 
 /** @internal */
-export const make = <A>(config: {
-  readonly name: string
-  readonly version: string
-  readonly executable: string
-  readonly command: Command.Command<A>
-  readonly summary?: Span.Span | undefined
-  readonly footer?: HelpDoc.HelpDoc | undefined
-}): CliApp.CliApp<A> => {
+export const make = <A>(config: CliApp.CliApp.ConstructorArgs<A>): CliApp.CliApp<A> => {
   const op = Object.create(proto)
   op.name = config.name
   op.version = config.version
@@ -82,7 +74,7 @@ export const run = dual<
       () => InternalCliConfig.defaultConfig
     )
     // Remove the executable from the command line arguments
-    const filteredArgs = dropExecutable(self, args)
+    const [executable, filteredArgs] = splitExecutable(self, args)
     // Prefix the command name to the command line arguments
     const prefixedArgs = ReadonlyArray.appendAll(prefixCommand(self.command), filteredArgs)
     // Handle the command
@@ -97,7 +89,7 @@ export const run = dual<
                   Effect.catchSome((e) =>
                     InternalValidationError.isValidationError(e) &&
                       InternalValidationError.isHelpRequested(e)
-                      ? Option.some(handleBuiltInOption(self, filteredArgs, e.showHelp, execute, config))
+                      ? Option.some(handleBuiltInOption(self, executable, filteredArgs, e.showHelp, execute, config))
                       : Option.none()
                   )
                 ),
@@ -108,7 +100,7 @@ export const run = dual<
             })
           }
           case "BuiltIn": {
-            return handleBuiltInOption(self, filteredArgs, directive.option, execute, config).pipe(
+            return handleBuiltInOption(self, executable, filteredArgs, directive.option, execute, config).pipe(
               Effect.catchSome((e) =>
                 InternalValidationError.isValidationError(e)
                   ? Option.some(Effect.zipRight(printDocs(e.error), Effect.fail(e)))
@@ -125,8 +117,16 @@ export const run = dual<
 // Internals
 // =============================================================================
 
-const dropExecutable = <A>(self: CliApp.CliApp<A>, args: ReadonlyArray<string>): ReadonlyArray<string> =>
-  ReadonlyArray.drop(args, self.executable.split(/\s+/).length)
+const splitExecutable = <A>(self: CliApp.CliApp<A>, args: ReadonlyArray<string>): [
+  executable: string,
+  args: ReadonlyArray<string>
+] => {
+  if (self.executable !== undefined) {
+    return [self.executable, ReadonlyArray.drop(args, 2)]
+  }
+  const [[runtime, script], optionsAndArgs] = ReadonlyArray.splitAt(args, 2)
+  return [`${runtime} ${script}`, optionsAndArgs]
+}
 
 const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<never, never, void> =>
   Console.log(InternalHelpDoc.toAnsiText(error))
@@ -137,6 +137,7 @@ const isQuitException = (u: unknown): u is Terminal.QuitException =>
 
 const handleBuiltInOption = <R, E, A>(
   self: CliApp.CliApp<A>,
+  executable: string,
   args: ReadonlyArray<string>,
   builtIn: BuiltInOptions.BuiltInOptions,
   execute: (a: A) => Effect.Effect<R, E, void>,
@@ -183,17 +184,17 @@ const handleBuiltInOption = <R, E, A>(
     case "ShowCompletions": {
       switch (builtIn.shellType) {
         case "bash": {
-          return InternalCommand.getBashCompletions(self.command, self.executable).pipe(
+          return InternalCommand.getBashCompletions(self.command, executable).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
         }
         case "fish": {
-          return InternalCommand.getFishCompletions(self.command, self.executable).pipe(
+          return InternalCommand.getFishCompletions(self.command, executable).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
         }
         case "zsh":
-          return InternalCommand.getZshCompletions(self.command, self.executable).pipe(
+          return InternalCommand.getZshCompletions(self.command, executable).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
       }
@@ -232,7 +233,7 @@ const handleBuiltInOption = <R, E, A>(
       )
       const help = InternalHelpDoc.sequence(header, description)
       const text = InternalHelpDoc.toAnsiText(help)
-      const wizardPrefix = getWizardPrefix(builtIn, self.executable, args)
+      const wizardPrefix = getWizardPrefix(builtIn, executable, args)
       return Console.log(text).pipe(
         Effect.zipRight(InternalCommand.wizard(builtIn.command, wizardPrefix, config)),
         Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args)))),

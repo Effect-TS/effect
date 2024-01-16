@@ -31,11 +31,10 @@ describe("Wizard", () => {
       const cli = Command.make("foo", { message: Options.text("message") }).pipe(
         Command.run({
           name: "Test",
-          version: "1.0.0",
-          executable: "test"
+          version: "1.0.0"
         })
       )
-      const args = ReadonlyArray.make("test", "--wizard")
+      const args = ReadonlyArray.make("node", "test", "--wizard")
       const fiber = yield* _(Effect.fork(cli(args)))
       yield* _(MockTerminal.inputKey("c", { ctrl: true }))
       yield* _(Fiber.join(fiber))

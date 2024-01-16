@@ -29,7 +29,7 @@ const clone = Command.make("clone", {
     if (verbose) {
       yield* _(log(`Cloning ${repository}`))
     } else {
-      yield* _(log(`Cloning`))
+      yield* _(log("Cloning"))
     }
   })).pipe(Command.withDescription("Clone a repository into a new directory"))
 
@@ -58,8 +58,7 @@ const run = git.pipe(
   Command.withSubcommands([clone, add]),
   Command.run({
     name: "git",
-    version: "1.0.0",
-    executable: "git"
+    version: "1.0.0"
   })
 )
 
@@ -68,16 +67,16 @@ describe("Command", () => {
     it("no sub-command", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["git", "--verbose"]))
-        yield* _(run(["git"]))
+        yield* _(run(["--verbose"]))
+        yield* _(run([]))
         assert.deepStrictEqual(yield* _(messages.messages), ["shared", "shared"])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
 
     it("add", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["git", "add", "file"]))
-        yield* _(run(["git", "--verbose", "add", "file"]))
+        yield* _(run(["node", "git.js", "add", "file"]))
+        yield* _(run(["node", "git.js", "--verbose", "add", "file"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "shared",
           "Adding",
@@ -89,8 +88,8 @@ describe("Command", () => {
     it("clone", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["git", "clone", "repo"]))
-        yield* _(run(["git", "--verbose", "clone", "repo"]))
+        yield* _(run(["node", "git.js", "clone", "repo"]))
+        yield* _(run(["node", "git.js", "--verbose", "clone", "repo"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "shared",
           "Cloning",
@@ -102,7 +101,7 @@ describe("Command", () => {
     it("withFallbackConfig Options boolean", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["git", "clone", "repo"]))
+        yield* _(run(["node", "git.js", "clone", "repo"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "shared",
           "Cloning repo"
@@ -118,7 +117,7 @@ describe("Command", () => {
     it("withFallbackConfig Args", () =>
       Effect.gen(function*(_) {
         const messages = yield* _(Messages)
-        yield* _(run(["git", "clone"]))
+        yield* _(run(["node", "git.js", "clone"]))
         assert.deepStrictEqual(yield* _(messages.messages), [
           "shared",
           "Cloning repo"

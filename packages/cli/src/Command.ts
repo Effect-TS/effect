@@ -16,7 +16,6 @@ import type { CliApp } from "./CliApp.js"
 import type { CliConfig } from "./CliConfig.js"
 import type * as Descriptor from "./CommandDescriptor.js"
 import type { HelpDoc } from "./HelpDoc.js"
-import type { Span } from "./HelpDoc/Span.js"
 import * as Internal from "./internal/command.js"
 import type { Options } from "./Options.js"
 import type { Prompt } from "./Prompt.js"
@@ -424,24 +423,12 @@ export const wizard: {
  */
 export const run: {
   (
-    config: {
-      readonly name: string
-      readonly version: string
-      readonly executable: string
-      readonly summary?: Span | undefined
-      readonly footer?: HelpDoc | undefined
-    }
+    config: Omit<CliApp.ConstructorArgs<never>, "command">
   ): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
   ) => (args: ReadonlyArray<string>) => Effect<R | CliApp.Environment, E | ValidationError, void>
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
-    config: {
-      readonly name: string
-      readonly version: string
-      readonly executable: string
-      readonly summary?: Span | undefined
-      readonly footer?: HelpDoc | undefined
-    }
+    config: Omit<CliApp.ConstructorArgs<never>, "command">
   ): (args: ReadonlyArray<string>) => Effect<CliApp.Environment | R, ValidationError | E, void>
 } = Internal.run
