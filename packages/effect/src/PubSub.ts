@@ -5,7 +5,6 @@ import type * as Effect from "./Effect.js"
 import * as internal from "./internal/pubsub.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Queue from "./Queue.js"
-import type * as Scope from "./Scope.js"
 
 /**
  * A `PubSub<A>` is an asynchronous message hub into which publishers can publish
@@ -33,7 +32,7 @@ export interface PubSub<in out A> extends Queue.Enqueue<A>, Pipeable {
    * be evaluated multiple times within the scope to take a message from the `PubSub`
    * each time.
    */
-  readonly subscribe: Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>>
+  readonly subscribe: Effect.Effect<"Scope", never, Queue.Dequeue<A>>
 }
 
 /**
@@ -172,4 +171,4 @@ export const publishAll: {
  * @since 2.0.0
  * @category utils
  */
-export const subscribe: <A>(self: PubSub<A>) => Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> = internal.subscribe
+export const subscribe: <A>(self: PubSub<A>) => Effect.Effect<"Scope", never, Queue.Dequeue<A>> = internal.subscribe

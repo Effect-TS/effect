@@ -23,7 +23,6 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import type * as PubSub from "./PubSub.js"
 import type * as Queue from "./Queue.js"
 import type * as Schedule from "./Schedule.js"
-import type * as Scope from "./Scope.js"
 import type * as Sink from "./Sink.js"
 import type * as Emit from "./StreamEmit.js"
 import type * as HaltStrategy from "./StreamHaltStrategy.js"
@@ -321,9 +320,9 @@ export const asyncOption: <R, E, A>(
  * @category constructors
  */
 export const asyncScoped: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<R | Scope.Scope, E, unknown>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<R | "Scope", E, unknown>,
   outputBuffer?: number
-) => Stream<Exclude<R, Scope.Scope>, E, A> = internal.asyncScoped
+) => Stream<Exclude<R, "Scope">, E, A> = internal.asyncScoped
 
 /**
  * Returns a `Stream` that first collects `n` elements from the input `Stream`,
@@ -359,12 +358,12 @@ export const broadcast: {
     maximumLag: number
   ): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Stream<never, E, A>, N>>
+  ) => Effect.Effect<"Scope" | R, never, Stream.DynamicTuple<Stream<never, E, A>, N>>
   <R, E, A, N extends number>(
     self: Stream<R, E, A>,
     n: N,
     maximumLag: number
-  ): Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Stream<never, E, A>, N>>
+  ): Effect.Effect<"Scope" | R, never, Stream.DynamicTuple<Stream<never, E, A>, N>>
 } = internal.broadcast
 
 /**
@@ -376,8 +375,8 @@ export const broadcast: {
  * @category utils
  */
 export const broadcastDynamic: {
-  (maximumLag: number): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, Stream<never, E, A>>
-  <R, E, A>(self: Stream<R, E, A>, maximumLag: number): Effect.Effect<Scope.Scope | R, never, Stream<never, E, A>>
+  (maximumLag: number): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R, never, Stream<never, E, A>>
+  <R, E, A>(self: Stream<R, E, A>, maximumLag: number): Effect.Effect<"Scope" | R, never, Stream<never, E, A>>
 } = internal.broadcastDynamic
 
 /**
@@ -396,12 +395,12 @@ export const broadcastedQueues: {
     maximumLag: number
   ): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>>
+  ) => Effect.Effect<"Scope" | R, never, Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>>
   <R, E, A, N extends number>(
     self: Stream<R, E, A>,
     n: N,
     maximumLag: number
-  ): Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>>
+  ): Effect.Effect<"Scope" | R, never, Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>>
 } = internal.broadcastedQueues
 
 /**
@@ -419,11 +418,11 @@ export const broadcastedQueuesDynamic: {
     maximumLag: number
   ): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Effect.Effect<Scope.Scope, never, Queue.Dequeue<Take.Take<E, A>>>>
+  ) => Effect.Effect<"Scope" | R, never, Effect.Effect<"Scope", never, Queue.Dequeue<Take.Take<E, A>>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     maximumLag: number
-  ): Effect.Effect<Scope.Scope | R, never, Effect.Effect<Scope.Scope, never, Queue.Dequeue<Take.Take<E, A>>>>
+  ): Effect.Effect<"Scope" | R, never, Effect.Effect<"Scope", never, Queue.Dequeue<Take.Take<E, A>>>>
 } = internal.broadcastedQueuesDynamic
 
 /**
@@ -893,7 +892,7 @@ export const distributedWith: {
     }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
+  ) => Effect.Effect<"Scope" | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
   <R, E, N extends number, A>(
     self: Stream<R, E, A>,
     options: {
@@ -901,7 +900,7 @@ export const distributedWith: {
       readonly maximumLag: number
       readonly decide: (a: A) => Effect.Effect<never, never, Predicate<number>>
     }
-  ): Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
+  ): Effect.Effect<"Scope" | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
 } = internal.distributedWith
 
 /**
@@ -924,7 +923,7 @@ export const distributedWithDynamic: {
   ): <R>(
     self: Stream<R, E, A>
   ) => Effect.Effect<
-    Scope.Scope | R,
+    "Scope" | R,
     never,
     Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
@@ -935,7 +934,7 @@ export const distributedWithDynamic: {
       readonly decide: (a: A) => Effect.Effect<never, never, Predicate<number>>
     }
   ): Effect.Effect<
-    Scope.Scope | R,
+    "Scope" | R,
     never,
     Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
@@ -1472,7 +1471,7 @@ export const fromChunkPubSub: {
       readonly scoped: true
       readonly shutdown?: boolean | undefined
     }
-  ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
+  ): Effect.Effect<"Scope", never, Stream<never, never, A>>
   <A>(
     pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
     options?: {
@@ -1538,7 +1537,7 @@ export const fromPubSub: {
       readonly maxChunkSize?: number | undefined
       readonly shutdown?: boolean | undefined
     }
-  ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
+  ): Effect.Effect<"Scope", never, Stream<never, never, A>>
   <A>(
     pubsub: PubSub.PubSub<A>,
     options?: {
@@ -1584,8 +1583,8 @@ export const fromIteratorSucceed: <A>(iterator: IterableIterator<A>, maxChunkSiz
  * @category constructors
  */
 export const fromPull: <R, R2, E, A>(
-  effect: Effect.Effect<Scope.Scope | R, never, Effect.Effect<R2, Option.Option<E>, Chunk.Chunk<A>>>
-) => Stream<Exclude<R, Scope.Scope> | R2, E, A> = internal.fromPull
+  effect: Effect.Effect<"Scope" | R, never, Effect.Effect<R2, Option.Option<E>, Chunk.Chunk<A>>>
+) => Stream<Exclude<R, "Scope"> | R2, E, A> = internal.fromPull
 
 /**
  * Creates a stream from a queue of values
@@ -2486,7 +2485,7 @@ export const partition: {
     }
   ): <R, E>(
     self: Stream<R, E, C>
-  ) => Effect.Effect<Scope.Scope | R, E, [excluded: Stream<never, E, Exclude<C, B>>, satisfying: Stream<never, E, B>]>
+  ) => Effect.Effect<"Scope" | R, E, [excluded: Stream<never, E, Exclude<C, B>>, satisfying: Stream<never, E, B>]>
   <A>(
     predicate: Predicate<A>,
     options?: {
@@ -2494,21 +2493,21 @@ export const partition: {
     }
   ): <R, E, B extends A>(
     self: Stream<R, E, B>
-  ) => Effect.Effect<Scope.Scope | R, E, [excluded: Stream<never, E, B>, satisfying: Stream<never, E, B>]>
+  ) => Effect.Effect<"Scope" | R, E, [excluded: Stream<never, E, B>, satisfying: Stream<never, E, B>]>
   <R, E, A, B extends A>(
     self: Stream<R, E, A>,
     refinement: Refinement<A, B>,
     options?: {
       bufferSize?: number | undefined
     }
-  ): Effect.Effect<Scope.Scope | R, E, [excluded: Stream<never, E, Exclude<A, B>>, satisfying: Stream<never, E, B>]>
+  ): Effect.Effect<"Scope" | R, E, [excluded: Stream<never, E, Exclude<A, B>>, satisfying: Stream<never, E, B>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,
     options?: {
       bufferSize?: number | undefined
     }
-  ): Effect.Effect<Scope.Scope | R, E, [excluded: Stream<never, E, A>, satisfying: Stream<never, E, A>]>
+  ): Effect.Effect<"Scope" | R, E, [excluded: Stream<never, E, A>, satisfying: Stream<never, E, A>]>
 } = internal.partition
 
 /**
@@ -2526,14 +2525,14 @@ export const partitionEither: {
     }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [left: Stream<never, E2 | E, A2>, right: Stream<never, E2 | E, A3>]>
+  ) => Effect.Effect<"Scope" | R2 | R, E2 | E, [left: Stream<never, E2 | E, A2>, right: Stream<never, E2 | E, A3>]>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<R, E, A>,
     predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
     options?: {
       readonly bufferSize?: number | undefined
     }
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, [left: Stream<never, E | E2, A2>, right: Stream<never, E | E2, A3>]>
+  ): Effect.Effect<"Scope" | R | R2, E | E2, [left: Stream<never, E | E2, A2>, right: Stream<never, E | E2, A3>]>
 } = internal.partitionEither
 
 /**
@@ -2548,11 +2547,11 @@ export const partitionEither: {
 export const peel: {
   <R2, E2, A, Z>(
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Z, Stream<never, E, A>]>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R2 | R, E2 | E, [Z, Stream<never, E, A>]>
   <R, E, R2, E2, A, Z>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, [Z, Stream<never, E, A>]>
+  ): Effect.Effect<"Scope" | R | R2, E | E2, [Z, Stream<never, E, A>]>
 } = internal.peel
 
 /**
@@ -3027,8 +3026,8 @@ export const runFoldEffect: {
  * @category destructors
  */
 export const runFoldScoped: {
-  <S, A>(s: S, f: (s: S, a: A) => S): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, E, S>
-  <R, E, S, A>(self: Stream<R, E, A>, s: S, f: (s: S, a: A) => S): Effect.Effect<Scope.Scope | R, E, S>
+  <S, A>(s: S, f: (s: S, a: A) => S): <R, E>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R, E, S>
+  <R, E, S, A>(self: Stream<R, E, A>, s: S, f: (s: S, a: A) => S): Effect.Effect<"Scope" | R, E, S>
 } = internal.runFoldScoped
 
 /**
@@ -3042,12 +3041,12 @@ export const runFoldScopedEffect: {
   <S, A, R2, E2>(
     s: S,
     f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, S>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R2 | R, E2 | E, S>
   <R, E, S, A, R2, E2>(
     self: Stream<R, E, A>,
     s: S,
     f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, S>
+  ): Effect.Effect<"Scope" | R | R2, E | E2, S>
 } = internal.runFoldScopedEffect
 
 /**
@@ -3096,13 +3095,13 @@ export const runFoldWhileScoped: {
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => S
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R | Scope.Scope, E, S>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R | "Scope", E, S>
   <R, E, S, A>(
     self: Stream<R, E, A>,
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => S
-  ): Effect.Effect<Scope.Scope | R, E, S>
+  ): Effect.Effect<"Scope" | R, E, S>
 } = internal.runFoldWhileScoped
 
 /**
@@ -3118,13 +3117,13 @@ export const runFoldWhileScopedEffect: {
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, S>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R2 | R, E2 | E, S>
   <R, E, S, A, R2, E2>(
     self: Stream<R, E, A>,
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, S>
+  ): Effect.Effect<"Scope" | R | R2, E | E2, S>
 } = internal.runFoldWhileScopedEffect
 
 /**
@@ -3171,11 +3170,11 @@ export const runForEachChunk: {
 export const runForEachChunkScoped: {
   <A, R2, E2, _>(
     f: (a: Chunk.Chunk<A>) => Effect.Effect<R2, E2, _>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, void>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R2 | R, E2 | E, void>
   <R, E, A, R2, E2, _>(
     self: Stream<R, E, A>,
     f: (a: Chunk.Chunk<A>) => Effect.Effect<R2, E2, _>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, void>
+  ): Effect.Effect<"Scope" | R | R2, E | E2, void>
 } = internal.runForEachChunkScoped
 
 /**
@@ -3188,11 +3187,11 @@ export const runForEachChunkScoped: {
 export const runForEachScoped: {
   <A, R2, E2, _>(
     f: (a: A) => Effect.Effect<R2, E2, _>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, void>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R2 | R, E2 | E, void>
   <R, E, A, R2, E2, _>(
     self: Stream<R, E, A>,
     f: (a: A) => Effect.Effect<R2, E2, _>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, void>
+  ): Effect.Effect<"Scope" | R | R2, E | E2, void>
 } = internal.runForEachScoped
 
 /**
@@ -3222,11 +3221,11 @@ export const runForEachWhile: {
 export const runForEachWhileScoped: {
   <A, R2, E2>(
     f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, void>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R2 | R, E2 | E, void>
   <R, E, A, R2, E2>(
     self: Stream<R, E, A>,
     f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, void>
+  ): Effect.Effect<"Scope" | R | R2, E | E2, void>
 } = internal.runForEachWhileScoped
 
 /**
@@ -3260,8 +3259,8 @@ export const runIntoPubSub: {
 export const runIntoPubSubScoped: {
   <E, A>(
     pubsub: PubSub.PubSub<Take.Take<E, A>>
-  ): <R>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<Scope.Scope | R, never, void>
+  ): <R>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<"Scope" | R, never, void>
 } = internal.runIntoPubSubScoped
 
 /**
@@ -3286,11 +3285,11 @@ export const runIntoQueue: {
 export const runIntoQueueElementsScoped: {
   <E, A>(
     queue: Queue.Enqueue<Exit.Exit<Option.Option<E>, A>>
-  ): <R>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>
+  ): <R>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R, never, void>
   <R, E, A>(
     self: Stream<R, E, A>,
     queue: Queue.Enqueue<Exit.Exit<Option.Option<E>, A>>
-  ): Effect.Effect<Scope.Scope | R, never, void>
+  ): Effect.Effect<"Scope" | R, never, void>
 } = internal.runIntoQueueElementsScoped
 
 /**
@@ -3303,8 +3302,8 @@ export const runIntoQueueElementsScoped: {
 export const runIntoQueueScoped: {
   <E, A>(
     queue: Queue.Enqueue<Take.Take<E, A>>
-  ): <R>(self: Stream<R, E, A>) => Effect.Effect<R | Scope.Scope, never, void>
-  <R, E, A>(self: Stream<R, E, A>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect.Effect<Scope.Scope | R, never, void>
+  ): <R>(self: Stream<R, E, A>) => Effect.Effect<R | "Scope", never, void>
+  <R, E, A>(self: Stream<R, E, A>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect.Effect<"Scope" | R, never, void>
 } = internal.runIntoQueueScoped
 
 /**
@@ -3323,11 +3322,11 @@ export const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Op
 export const runScoped: {
   <R2, E2, A, A2>(
     sink: Sink.Sink<R2, E2, A, unknown, A2>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, A2>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R2 | R, E2 | E, A2>
   <R, E, R2, E2, A, A2>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A, unknown, A2>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, A2>
+  ): Effect.Effect<"Scope" | R | R2, E | E2, A2>
 } = internal.runScoped
 
 /**
@@ -3441,8 +3440,7 @@ export const scheduleWith: {
  * @since 2.0.0
  * @category constructors
  */
-export const scoped: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<Exclude<R, Scope.Scope>, E, A> =
-  internal.scoped
+export const scoped: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<Exclude<R, "Scope">, E, A> = internal.scoped
 
 /**
  * Emits a sliding window of `n` elements.
@@ -3879,11 +3877,11 @@ export const timeoutTo: {
 export const toPubSub: {
   (
     capacity: number
-  ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R, never, PubSub.PubSub<Take.Take<E, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     capacity: number
-  ): Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
+  ): Effect.Effect<"Scope" | R, never, PubSub.PubSub<Take.Take<E, A>>>
 } = internal.toPubSub
 
 /**
@@ -3897,7 +3895,7 @@ export const toPubSub: {
  */
 export const toPull: <R, E, A>(
   self: Stream<R, E, A>
-) => Effect.Effect<Scope.Scope | R, never, Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>> = internal.toPull
+) => Effect.Effect<"Scope" | R, never, Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>> = internal.toPull
 
 /**
  * Converts the stream to a scoped queue of chunks. After the scope is closed,
@@ -3916,7 +3914,7 @@ export const toQueue: {
     } | {
       readonly strategy: "unbounded"
     }
-  ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Take.Take<E, A>>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<"Scope" | R, never, Queue.Dequeue<Take.Take<E, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     options?: {
@@ -3925,7 +3923,7 @@ export const toQueue: {
     } | {
       readonly strategy: "unbounded"
     }
-  ): Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Take.Take<E, A>>>
+  ): Effect.Effect<"Scope" | R, never, Queue.Dequeue<Take.Take<E, A>>>
 } = internal.toQueue
 
 /**
@@ -3944,13 +3942,13 @@ export const toQueueOfElements: {
     }
   ): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
+  ) => Effect.Effect<"Scope" | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     options?: {
       readonly capacity?: number | undefined
     }
-  ): Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
+  ): Effect.Effect<"Scope" | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
 } = internal.toQueueOfElements
 
 /**
@@ -4043,7 +4041,7 @@ export const unwrap: <R, E, R2, E2, A>(effect: Effect.Effect<R, E, Stream<R2, E2
  */
 export const unwrapScoped: <R, E, R2, E2, A>(
   effect: Effect.Effect<R, E, Stream<R2, E2, A>>
-) => Stream<R2 | Exclude<R, Scope.Scope>, E | E2, A> = internal.unwrapScoped
+) => Stream<R2 | Exclude<R, "Scope">, E | E2, A> = internal.unwrapScoped
 
 /**
  * Updates the specified service within the context of the `Stream`.

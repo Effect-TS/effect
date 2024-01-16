@@ -8,14 +8,8 @@ import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import { describe, expect } from "vitest"
 
-interface Counter {
-  readonly _: unique symbol
-}
-const Counter = Context.Tag<Counter, { count: number }>()
-interface Requests {
-  readonly _: unique symbol
-}
-const Requests = Context.Tag<Requests, { count: number }>()
+const Counter = Context.Tag("Counter")<{ count: number }>()
+const Requests = Context.Tag("Requests")<{ count: number }>()
 
 interface Parent {
   readonly id: number

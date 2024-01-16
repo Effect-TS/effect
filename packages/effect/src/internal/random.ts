@@ -15,7 +15,8 @@ export const RandomTypeId: Random.RandomTypeId = Symbol.for(
 ) as Random.RandomTypeId
 
 /** @internal */
-export const randomTag: Context.Tag<Random.Random, Random.Random> = Context.Tag(RandomTypeId)
+export const randomTag = Context.Tag("Random")<Random.Random>()
+
 /** @internal */
 class RandomImpl implements Random.Random {
   readonly [RandomTypeId]: Random.RandomTypeId = RandomTypeId

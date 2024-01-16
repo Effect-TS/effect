@@ -932,15 +932,15 @@ export const provideContext: {
  * @category context
  */
 export const provideService: {
-  <T, T1 extends T>(
-    tag: any,
-    service: T1
-  ): <Env, In, Out>(self: Schedule<T | Env, In, Out>) => Schedule<Exclude<Env, T>, In, Out>
-  <Env, T, In, Out, T1 extends T>(
-    self: Schedule<Env | T, In, Out>,
-    tag: any,
-    service: T1
-  ): Schedule<Exclude<Env, T>, In, Out>
+  <T extends Context.Tag<any, any>>(
+    tag: T,
+    service: Context.Tag.Service<T>
+  ): <R, In, Out>(self: Schedule<R, In, Out>) => Schedule<Exclude<R, Context.Tag.Identifier<T>>, In, Out>
+  <R, In, Out, T extends Context.Tag<any, any>>(
+    self: Schedule<R, In, Out>,
+    tag: T,
+    service: Context.Tag.Service<T>
+  ): Schedule<Exclude<R, Context.Tag.Identifier<T>>, In, Out>
 } = internal.provideService
 
 /**

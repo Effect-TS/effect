@@ -1893,10 +1893,11 @@ export const serviceMembers = <SR, SE, S>(getService: Effect.Effect<SR, SE, S>):
 })
 
 /** @internal */
-export const serviceOption = <I, S>(tag: Context.Tag<I, S>) => core.map(core.context<never>(), Context.getOption(tag))
+export const serviceOption = <I extends string, S>(tag: Context.Tag<I, S>) =>
+  core.map(core.context<never>(), Context.getOption(tag))
 
 /** @internal */
-export const serviceOptional = <I, S>(tag: Context.Tag<I, S>) =>
+export const serviceOptional = <I extends string, S>(tag: Context.Tag<I, S>) =>
   core.flatMap(core.context<never>(), Context.getOption(tag))
 
 // -----------------------------------------------------------------------------
@@ -2108,8 +2109,8 @@ export const useSpan: {
 export const withParentSpan = dual<
   (
     span: Tracer.ParentSpan
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, span: Tracer.ParentSpan) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>
+  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, "ParentSpan">, E, A>,
+  <R, E, A>(self: Effect.Effect<R, E, A>, span: Tracer.ParentSpan) => Effect.Effect<Exclude<R, "ParentSpan">, E, A>
 >(2, (self, span) => provideService(self, internalTracer.spanTag, span))
 
 /** @internal */
@@ -2120,14 +2121,14 @@ export const withSpan = dual<
     readonly parent?: Tracer.ParentSpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
-  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>,
+  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, "ParentSpan">, E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
     readonly parent?: Tracer.ParentSpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
-  }) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>
+  }) => Effect.Effect<Exclude<R, "ParentSpan">, E, A>
 >(
   (args) => typeof args[0] !== "string",
   (self, name, options) =>

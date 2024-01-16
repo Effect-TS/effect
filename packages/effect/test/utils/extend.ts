@@ -4,7 +4,6 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
 import type { TestAPI } from "vitest"
@@ -106,7 +105,7 @@ export const flakyTest = <R, E, A>(
 
 export const scoped = <E, A>(
   name: string,
-  self: () => Effect.Effect<Scope.Scope | TestServices.TestServices, E, A>,
+  self: () => Effect.Effect<"Scope" | TestServices.TestServices, E, A>,
   timeout = 5_000
 ) => {
   return it(
@@ -124,7 +123,7 @@ export const scoped = <E, A>(
 
 export const scopedLive = <E, A>(
   name: string,
-  self: () => Effect.Effect<Scope.Scope, E, A>,
+  self: () => Effect.Effect<"Scope", E, A>,
   timeout = 5_000
 ) => {
   return it(

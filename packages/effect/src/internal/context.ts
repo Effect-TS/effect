@@ -23,7 +23,7 @@ export const STMTypeId: STM.STMTypeId = Symbol.for(
 ) as STM.STMTypeId
 
 /** @internal */
-export const TagProto: C.Tag<unknown, unknown> = {
+export const TagProto: any = {
   ...EffectPrototype,
   _tag: "Tag",
   _op: "Tag",
@@ -35,7 +35,7 @@ export const TagProto: C.Tag<unknown, unknown> = {
   toString() {
     return format(this.toJSON())
   },
-  toJSON<I, A>(this: C.Tag<I, A>) {
+  toJSON<I extends string, A>(this: C.Tag<I, A>) {
     return {
       _id: "Tag",
       identifier: this.identifier,
@@ -48,7 +48,7 @@ export const TagProto: C.Tag<unknown, unknown> = {
   of<Service>(self: Service): Service {
     return self
   },
-  context<Identifier, Service>(
+  context<Identifier extends string, Service>(
     this: C.Tag<Identifier, Service>,
     self: Service
   ): C.Context<Identifier> {
@@ -59,26 +59,27 @@ export const TagProto: C.Tag<unknown, unknown> = {
 const tagRegistry = globalValue("effect/Context/Tag/tagRegistry", () => new Map<any, C.Tag<any, any>>())
 
 /** @internal */
-export const makeTag = <Identifier, Service = Identifier>(identifier?: unknown): C.Tag<Identifier, Service> => {
-  if (identifier && tagRegistry.has(identifier)) {
-    return tagRegistry.get(identifier)!
-  }
-  const limit = Error.stackTraceLimit
-  Error.stackTraceLimit = 2
-  const creationError = new Error()
-  Error.stackTraceLimit = limit
-  const tag = Object.create(TagProto)
-  Object.defineProperty(tag, "stack", {
-    get() {
-      return creationError.stack
+export const makeTag =
+  <Identifier extends string>(identifier: Identifier) => <Service>(): C.Tag<Identifier, Service> => {
+    if (identifier && tagRegistry.has(identifier)) {
+      return tagRegistry.get(identifier)!
     }
-  })
-  if (identifier) {
-    tag.identifier = identifier
-    tagRegistry.set(identifier, tag)
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const creationError = new Error()
+    Error.stackTraceLimit = limit
+    const tag = Object.create(TagProto)
+    Object.defineProperty(tag, "stack", {
+      get() {
+        return creationError.stack
+      }
+    })
+    if (identifier) {
+      tag.identifier = identifier
+      tagRegistry.set(identifier, tag)
+    }
+    return tag
   }
-  return tag
-}
 
 /** @internal */
 export const TypeId: C.TypeId = Symbol.for("effect/Context") as C.TypeId
@@ -179,14 +180,14 @@ export const add = dual<
   ) => C.Context<Services | C.Tag.Identifier<T>>
 >(3, (self, tag, service) => {
   const map = new Map(self.unsafeMap)
-  map.set(tag as C.Tag<unknown, unknown>, service)
+  map.set(tag as C.Tag<any, unknown>, service)
   return makeContext(map)
 })
 
 /** @internal */
 export const unsafeGet = dual<
-  <S, I>(tag: C.Tag<I, S>) => <Services>(self: C.Context<Services>) => S,
-  <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => S
+  <S, I extends string>(tag: C.Tag<I, S>) => <Services>(self: C.Context<Services>) => S,
+  <Services, S, I extends string>(self: C.Context<Services>, tag: C.Tag<I, S>) => S
 >(2, (self, tag) => {
   if (!self.unsafeMap.has(tag)) {
     throw serviceNotFoundError(tag as any)
@@ -202,8 +203,8 @@ export const get: {
 
 /** @internal */
 export const getOption = dual<
-  <S, I>(tag: C.Tag<I, S>) => <Services>(self: C.Context<Services>) => O.Option<S>,
-  <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => O.Option<S>
+  <S, I extends string>(tag: C.Tag<I, S>) => <Services>(self: C.Context<Services>) => O.Option<S>,
+  <Services, S, I extends string>(self: C.Context<Services>, tag: C.Tag<I, S>) => O.Option<S>
 >(2, (self, tag) => {
   if (!self.unsafeMap.has(tag)) {
     return option.none

@@ -11,7 +11,6 @@ import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Pool from "../Pool.js"
 import * as Predicate from "../Predicate.js"
-import type * as Scope from "../Scope.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as pool from "./pool.js"
@@ -42,7 +41,7 @@ class KeyedPoolImpl<in K, out E, in out A> implements KeyedPool.KeyedPool<K, E, 
     readonly getOrCreatePool: (key: K) => Effect.Effect<never, never, Pool.Pool<E, A>>,
     readonly activePools: Effect.Effect<never, never, Array<Pool.Pool<E, A>>>
   ) {}
-  get(key: K): Effect.Effect<Scope.Scope, E, A> {
+  get(key: K): Effect.Effect<"Scope", E, A> {
     return core.flatMap(this.getOrCreatePool(key), pool.get)
   }
   invalidate(item: A): Effect.Effect<never, never, void> {
@@ -96,7 +95,7 @@ const makeImpl = <K, R, E, A>(
   min: (key: K) => number,
   max: (key: K) => number,
   timeToLive: (key: K) => Option.Option<Duration.Duration>
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
+): Effect.Effect<R | "Scope", never, KeyedPool.KeyedPool<K, E, A>> =>
   pipe(
     fiberRuntime.all([
       core.context<R>(),
@@ -193,7 +192,7 @@ export const make = <K, R, E, A>(
     readonly acquire: (key: K) => Effect.Effect<R, E, A>
     readonly size: number
   }
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
+): Effect.Effect<R | "Scope", never, KeyedPool.KeyedPool<K, E, A>> =>
   makeImpl(options.acquire, () => options.size, () => options.size, () => Option.none())
 
 /** @internal */
@@ -202,7 +201,7 @@ export const makeWith = <K, R, E, A>(
     readonly acquire: (key: K) => Effect.Effect<R, E, A>
     readonly size: (key: K) => number
   }
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
+): Effect.Effect<R | "Scope", never, KeyedPool.KeyedPool<K, E, A>> =>
   makeImpl(options.acquire, options.size, options.size, () => Option.none())
 
 /** @internal */
@@ -213,7 +212,7 @@ export const makeWithTTL = <K, R, E, A>(
     readonly max: (key: K) => number
     readonly timeToLive: Duration.DurationInput
   }
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> => {
+): Effect.Effect<R | "Scope", never, KeyedPool.KeyedPool<K, E, A>> => {
   const timeToLive = Duration.decode(options.timeToLive)
   return makeImpl(options.acquire, options.min, options.max, () => Option.some(timeToLive))
 }
@@ -226,13 +225,13 @@ export const makeWithTTLBy = <K, R, E, A>(
     readonly max: (key: K) => number
     readonly timeToLive: (key: K) => Duration.DurationInput
   }
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
+): Effect.Effect<R | "Scope", never, KeyedPool.KeyedPool<K, E, A>> =>
   makeImpl(options.acquire, options.min, options.max, (key) => Option.some(Duration.decode(options.timeToLive(key))))
 
 /** @internal */
 export const get = dual<
-  <K>(key: K) => <E, A>(self: KeyedPool.KeyedPool<K, E, A>) => Effect.Effect<Scope.Scope, E, A>,
-  <K, E, A>(self: KeyedPool.KeyedPool<K, E, A>, key: K) => Effect.Effect<Scope.Scope, E, A>
+  <K>(key: K) => <E, A>(self: KeyedPool.KeyedPool<K, E, A>) => Effect.Effect<"Scope", E, A>,
+  <K, E, A>(self: KeyedPool.KeyedPool<K, E, A>, key: K) => Effect.Effect<"Scope", E, A>
 >(2, (self, key) => self.get(key))
 
 /** @internal */

@@ -7,8 +7,8 @@ import * as Duration from "../Duration.js"
 import * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Exit from "../Exit.js"
-import { constTrue, dual, identity, pipe } from "../Function.js"
 import type { LazyArg } from "../Function.js"
+import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
 import type * as MergeDecision from "../MergeDecision.js"
@@ -19,7 +19,6 @@ import * as PubSub from "../PubSub.js"
 import * as Queue from "../Queue.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
 import * as Ref from "../Ref.js"
-import type * as Scope from "../Scope.js"
 import type * as Sink from "../Sink.js"
 import * as channel from "./channel.js"
 import * as mergeDecision from "./channel/mergeDecision.js"
@@ -1470,7 +1469,7 @@ export const fromPush = <R, E, In, L, Z>(
     never,
     (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
   >
-): Sink.Sink<Exclude<R, Scope.Scope>, E, In, L, Z> =>
+): Sink.Sink<Exclude<R, "Scope">, E, In, L, Z> =>
   new SinkImpl(channel.unwrapScoped(pipe(push, Effect.map(fromPushPull))))
 
 const fromPushPull = <R, E, In, L, Z>(
@@ -1983,7 +1982,7 @@ export const unwrap = <R, E, R2, E2, In, L, Z>(
 /** @internal */
 export const unwrapScoped = <R, E, In, L, Z>(
   effect: Effect.Effect<R, E, Sink.Sink<R, E, In, L, Z>>
-): Sink.Sink<Exclude<R, Scope.Scope>, E, In, L, Z> => {
+): Sink.Sink<Exclude<R, "Scope">, E, In, L, Z> => {
   return new SinkImpl(channel.unwrapScoped(pipe(effect, Effect.map((sink) => toChannel(sink)))))
 }
 

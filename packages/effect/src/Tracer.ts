@@ -58,7 +58,7 @@ export type ParentSpan = Span | ExternalSpan
  * @since 2.0.0
  * @category tags
  */
-export const ParentSpan: Context.Tag<ParentSpan, ParentSpan> = internal.spanTag
+export const ParentSpan: Context.Tag<"ParentSpan", ParentSpan> = internal.spanTag
 
 /**
  * @since 2.0.0
@@ -106,7 +106,7 @@ export interface SpanLink {
  * @since 2.0.0
  * @category tags
  */
-export const Tracer: Context.Tag<Tracer, Tracer> = internal.tracerTag
+export const Tracer: Context.Tag<"Tracer", Tracer> = internal.tracerTag
 
 /**
  * @since 2.0.0

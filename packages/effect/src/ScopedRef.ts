@@ -60,7 +60,7 @@ export declare namespace ScopedRef {
  */
 export const fromAcquire: <R, E, A>(
   acquire: Effect.Effect<R, E, A>
-) => Effect.Effect<Scope.Scope | R, E, ScopedRef<A>> = internal.fromAcquire
+) => Effect.Effect<"Scope" | R, E, ScopedRef<A>> = internal.fromAcquire
 
 /**
  * Retrieves the current value of the scoped reference.
@@ -77,7 +77,7 @@ export const get: <A>(self: ScopedRef<A>) => Effect.Effect<never, never, A> = in
  * @since 2.0.0
  * @category constructors
  */
-export const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<Scope.Scope, never, ScopedRef<A>> = internal.make
+export const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<"Scope", never, ScopedRef<A>> = internal.make
 
 /**
  * Sets the value of this reference to the specified resourcefully-created
@@ -91,6 +91,6 @@ export const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<Scope.Scope, never
  * @category getters
  */
 export const set: {
-  <A, R, E>(acquire: Effect.Effect<R, E, A>): (self: ScopedRef<A>) => Effect.Effect<Exclude<R, Scope.Scope>, E, void>
-  <A, R, E>(self: ScopedRef<A>, acquire: Effect.Effect<R, E, A>): Effect.Effect<Exclude<R, Scope.Scope>, E, void>
+  <A, R, E>(acquire: Effect.Effect<R, E, A>): (self: ScopedRef<A>) => Effect.Effect<Exclude<R, "Scope">, E, void>
+  <A, R, E>(self: ScopedRef<A>, acquire: Effect.Effect<R, E, A>): Effect.Effect<Exclude<R, "Scope">, E, void>
 } = internal.set

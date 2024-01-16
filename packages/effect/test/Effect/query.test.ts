@@ -15,14 +15,8 @@ import * as TestClock from "effect/TestClock"
 import type { Concurrency } from "effect/Types"
 import { describe, expect } from "vitest"
 
-interface Counter {
-  readonly _: unique symbol
-}
-const Counter = Context.Tag<Counter, { count: number }>()
-interface Requests {
-  readonly _: unique symbol
-}
-const Requests = Context.Tag<Requests, { count: number }>()
+const Counter = Context.Tag("Counter")<{ count: number }>()
+const Requests = Context.Tag("Requests")<{ count: number }>()
 
 export const userIds: ReadonlyArray<number> = ReadonlyArray.range(1, 26)
 

@@ -99,9 +99,9 @@ class AnnotationsImpl implements TestAnnotations {
 /**
  * @since 2.0.0
  */
-export const TestAnnotations: Context.Tag<TestAnnotations, TestAnnotations> = Context.Tag<TestAnnotations>(
-  Symbol.for("effect/Annotations")
-)
+export const TestAnnotations: Context.Tag<"TestAnnotations", TestAnnotations> = Context.Tag("TestAnnotations")<
+  TestAnnotations
+>()
 
 /**
  * @since 2.0.0

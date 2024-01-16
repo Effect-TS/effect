@@ -12,7 +12,6 @@ import type * as Pool from "../Pool.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Queue from "../Queue.js"
 import type * as Ref from "../Ref.js"
-import type * as Scope from "../Scope.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
@@ -136,7 +135,7 @@ class TimeToLiveStrategy implements Strategy<readonly [Clock.Clock, Ref.Ref<numb
 class PoolImpl<in out E, in out A> implements Pool.Pool<E, A> {
   readonly [PoolTypeId] = poolVariance
   constructor(
-    readonly creator: Effect.Effect<Scope.Scope, E, A>,
+    readonly creator: Effect.Effect<"Scope", E, A>,
     readonly min: number,
     readonly max: number,
     readonly isShuttingDown: Ref.Ref<boolean>,
@@ -175,7 +174,7 @@ class PoolImpl<in out E, in out A> implements Pool.Pool<E, A> {
     return pipeArguments(this, arguments)
   }
 
-  get get(): Effect.Effect<Scope.Scope, E, A> {
+  get get(): Effect.Effect<"Scope", E, A> {
     const acquire = (
       restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>
     ): Effect.Effect<never, never, Attempted<E, A>> =>
@@ -410,7 +409,7 @@ const makeWith = <R, E, A, S, R2>(
     readonly max: number
     readonly strategy: Strategy<S, R2, E, A>
   }
-): Effect.Effect<R | R2 | Scope.Scope, never, Pool.Pool<E, A>> =>
+): Effect.Effect<R | R2 | "Scope", never, Pool.Pool<E, A>> =>
   core.uninterruptibleMask((restore) =>
     pipe(
       fiberRuntime.all([
@@ -462,7 +461,7 @@ export const make = <R, E, A>(
     readonly acquire: Effect.Effect<R, E, A>
     readonly size: number
   }
-): Effect.Effect<R | Scope.Scope, never, Pool.Pool<E, A>> =>
+): Effect.Effect<R | "Scope", never, Pool.Pool<E, A>> =>
   makeWith({
     acquire: options.acquire,
     min: options.size,
@@ -478,7 +477,7 @@ export const makeWithTTL = <R, E, A>(
     readonly max: number
     readonly timeToLive: Duration.DurationInput
   }
-): Effect.Effect<R | Scope.Scope, never, Pool.Pool<E, A>> =>
+): Effect.Effect<R | "Scope", never, Pool.Pool<E, A>> =>
   makeWith({
     acquire: options.acquire,
     min: options.min,
@@ -487,10 +486,10 @@ export const makeWithTTL = <R, E, A>(
   })
 
 /** @internal */
-export const get = <E, A>(self: Pool.Pool<E, A>): Effect.Effect<Scope.Scope, E, A> => self.get
+export const get = <E, A>(self: Pool.Pool<E, A>): Effect.Effect<"Scope", E, A> => self.get
 
 /** @internal */
 export const invalidate = dual<
-  <A>(value: A) => <E>(self: Pool.Pool<E, A>) => Effect.Effect<Scope.Scope, never, void>,
-  <E, A>(self: Pool.Pool<E, A>, value: A) => Effect.Effect<Scope.Scope, never, void>
+  <A>(value: A) => <E>(self: Pool.Pool<E, A>) => Effect.Effect<"Scope", never, void>,
+  <E, A>(self: Pool.Pool<E, A>, value: A) => Effect.Effect<"Scope", never, void>
 >(2, (self, value) => self.invalidate(value))

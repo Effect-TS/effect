@@ -18,7 +18,6 @@ import type * as Option from "./Option.js"
 import type * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
-import type * as Scope from "./Scope.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -588,8 +587,7 @@ export const unsafeRoots: (_: void) => Array<RuntimeFiber<any, any>> = internal.
  * @since 2.0.0
  * @category destructors
  */
-export const scoped: <E, A>(self: Fiber<E, A>) => Effect.Effect<Scope.Scope, never, Fiber<E, A>> =
-  fiberRuntime.fiberScoped
+export const scoped: <E, A>(self: Fiber<E, A>) => Effect.Effect<"Scope", never, Fiber<E, A>> = fiberRuntime.fiberScoped
 
 /**
  * Returns the `FiberStatus` of a `RuntimeFiber`.

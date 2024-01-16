@@ -2,7 +2,6 @@ import type * as Effect from "../Effect.js"
 import { identity, pipe } from "../Function.js"
 import type * as Resource from "../Resource.js"
 import type * as Schedule from "../Schedule.js"
-import type * as Scope from "../Scope.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as _schedule from "./schedule.js"
@@ -27,7 +26,7 @@ const resourceVariance = {
 export const auto = <R, E, A, R2, Out>(
   acquire: Effect.Effect<R, E, A>,
   policy: Schedule.Schedule<R2, unknown, Out>
-): Effect.Effect<R | R2 | Scope.Scope, never, Resource.Resource<E, A>> =>
+): Effect.Effect<R | R2 | "Scope", never, Resource.Resource<E, A>> =>
   core.tap(manual(acquire), (manual) =>
     fiberRuntime.acquireRelease(
       pipe(
@@ -42,7 +41,7 @@ export const auto = <R, E, A, R2, Out>(
 /** @internal */
 export const manual = <R, E, A>(
   acquire: Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, never, Resource.Resource<E, A>> =>
+): Effect.Effect<R | "Scope", never, Resource.Resource<E, A>> =>
   core.flatMap(core.context<R>(), (env) =>
     pipe(
       scopedRef.fromAcquire(core.exit(acquire)),

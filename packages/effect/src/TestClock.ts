@@ -107,9 +107,7 @@ export const makeData = (
 /**
  * @since 2.0.0
  */
-export const TestClock: Context.Tag<TestClock, TestClock> = Context.Tag<TestClock>(
-  Symbol.for("effect/TestClock")
-)
+export const TestClock = Context.Tag("TestClock")<TestClock>()
 
 /**
  * The warning message that will be displayed if a test is using time but is
@@ -431,7 +429,7 @@ export class TestClockImpl implements TestClock {
 /**
  * @since 2.0.0
  */
-export const live = (data: Data): Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
+export const live = (data: Data): Layer.Layer<"TestAnnotations" | "TestLive", never, "TestClock"> =>
   layer.scoped(
     TestClock,
     effect.gen(function*($) {
@@ -452,7 +450,7 @@ export const live = (data: Data): Layer.Layer<Annotations.TestAnnotations | Live
 /**
  * @since 2.0.0
  */
-export const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> = live(
+export const defaultTestClock: Layer.Layer<"TestAnnotations" | "TestLive", never, "TestClock"> = live(
   makeData(new Date(0).getTime(), Chunk.empty())
 )
 

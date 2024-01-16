@@ -6,7 +6,6 @@ import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import * as internal from "./internal/pool.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Scope from "./Scope.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -35,7 +34,7 @@ export interface Pool<out E, in out A> extends Data.Case, Pool.Variance<E, A>, P
    * acquisition fails, then the returned effect will fail for that same reason.
    * Retrying a failed acquisition attempt will repeat the acquisition attempt.
    */
-  readonly get: Effect.Effect<Scope.Scope, E, A>
+  readonly get: Effect.Effect<"Scope", E, A>
 
   /**
    * Invalidates the specified item. This will cause the pool to eventually
@@ -83,7 +82,7 @@ export const make: <R, E, A>(
     readonly acquire: Effect.Effect<R, E, A>
     readonly size: number
   }
-) => Effect.Effect<Scope.Scope | R, never, Pool<E, A>> = internal.make
+) => Effect.Effect<"Scope" | R, never, Pool<E, A>> = internal.make
 
 /**
  * Makes a new pool with the specified minimum and maximum sizes and time to
@@ -121,7 +120,7 @@ export const makeWithTTL: <R, E, A>(options: {
   readonly min: number
   readonly max: number
   readonly timeToLive: Duration.DurationInput
-}) => Effect.Effect<Scope.Scope | R, never, Pool<E, A>> = internal.makeWithTTL
+}) => Effect.Effect<"Scope" | R, never, Pool<E, A>> = internal.makeWithTTL
 
 /**
  * Retrieves an item from the pool in a scoped effect. Note that if
@@ -131,7 +130,7 @@ export const makeWithTTL: <R, E, A>(options: {
  * @since 2.0.0
  * @category getters
  */
-export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A> = internal.get
+export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<"Scope", E, A> = internal.get
 
 /**
  * Invalidates the specified item. This will cause the pool to eventually
@@ -142,6 +141,6 @@ export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A> =
  * @category combinators
  */
 export const invalidate: {
-  <A>(value: A): <E>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, never, void>
-  <E, A>(self: Pool<E, A>, value: A): Effect.Effect<Scope.Scope, never, void>
+  <A>(value: A): <E>(self: Pool<E, A>) => Effect.Effect<"Scope", never, void>
+  <E, A>(self: Pool<E, A>, value: A): Effect.Effect<"Scope", never, void>
 } = internal.invalidate

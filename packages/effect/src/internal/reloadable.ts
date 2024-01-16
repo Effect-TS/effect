@@ -33,9 +33,9 @@ export const auto = <Out extends Context.Tag<any, any>, In, E, R>(
     readonly schedule: Schedule.Schedule<R, unknown, unknown>
   }
 ): Layer.Layer<
-  R | In,
+  Exclude<R, "Scope"> | Exclude<Exclude<In, "Scope">, "Scope">,
   E,
-  Reloadable.Reloadable<Context.Tag.Identifier<Out>>
+  `Reloadable<${Context.Tag.Identifier<Out>}>`
 > =>
   _layer.scoped(
     reloadableTag(tag),
@@ -63,11 +63,7 @@ export const autoFromConfig = <Out extends Context.Tag<any, any>, In, E, R>(
     readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
     readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<R, unknown, unknown>
   }
-): Layer.Layer<
-  R | In,
-  E,
-  Reloadable.Reloadable<Context.Tag.Identifier<Out>>
-> =>
+): Layer.Layer<Exclude<In, "Scope"> | Exclude<R, "Scope">, E, `Reloadable<${Context.Tag.Identifier<Out>}>`> =>
   _layer.scoped(
     reloadableTag(tag),
     pipe(
@@ -87,7 +83,7 @@ export const autoFromConfig = <Out extends Context.Tag<any, any>, In, E, R>(
 /** @internal */
 export const get = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>> =>
+): Effect.Effect<`Reloadable<${Context.Tag.Identifier<T>}>`, never, Context.Tag.Service<T>> =>
   core.flatMap(
     reloadableTag(tag),
     (reloadable) => scopedRef.get(reloadable.scopedRef)
@@ -99,7 +95,7 @@ export const manual = <Out extends Context.Tag<any, any>, In, E>(
   options: {
     readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
   }
-): Layer.Layer<In, E, Reloadable.Reloadable<Context.Tag.Identifier<Out>>> =>
+): Layer.Layer<Exclude<In, "Scope">, E, `Reloadable<${Context.Tag.Identifier<Out>}>`> =>
   _layer.scoped(
     reloadableTag(tag),
     pipe(
@@ -129,12 +125,13 @@ const tagMap = globalValue(
 /** @internal */
 export const reloadableTag = <T extends Context.Tag<any, any>>(
   tag: T
-): Context.Tag<Reloadable.Reloadable<Context.Tag.Identifier<T>>, Reloadable.Reloadable<Context.Tag.Service<T>>> => {
+): Context.Tag<`Reloadable<${Context.Tag.Identifier<T>}>`, Reloadable.Reloadable<Context.Tag.Service<T>>> => {
   if (tagMap.has(tag)) {
     return tagMap.get(tag)!
   }
-  const newTag = Context.Tag<
-    Reloadable.Reloadable<Context.Tag.Identifier<T>>,
+  const newTag = Context.Tag(
+    `Reloadable<${tag.identifier}>`
+  )<
     Reloadable.Reloadable<Context.Tag.Service<T>>
   >()
   tagMap.set(tag, newTag)
@@ -144,7 +141,7 @@ export const reloadableTag = <T extends Context.Tag<any, any>>(
 /** @internal */
 export const reload = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
+): Effect.Effect<`Reloadable<${Context.Tag.Identifier<T>}>`, unknown, void> =>
   core.flatMap(
     reloadableTag(tag),
     (reloadable) => reloadable.reload
@@ -153,7 +150,7 @@ export const reload = <T extends Context.Tag<any, any>>(
 /** @internal */
 export const reloadFork = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
+): Effect.Effect<`Reloadable<${Context.Tag.Identifier<T>}>`, unknown, void> =>
   core.flatMap(reloadableTag(tag), (reloadable) =>
     pipe(
       reloadable.reload,

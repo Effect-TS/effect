@@ -4,7 +4,6 @@
 
 import type * as Effect from "./Effect.js"
 import * as internal from "./internal/stm/tSemaphore.js"
-import type * as Scope from "./Scope.js"
 import type * as STM from "./STM.js"
 import type * as TRef from "./TRef.js"
 
@@ -111,15 +110,15 @@ export const withPermits: {
  * @since 2.0.0
  * @category mutations
  */
-export const withPermitScoped: (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void> = internal.withPermitScoped
+export const withPermitScoped: (self: TSemaphore) => Effect.Effect<"Scope", never, void> = internal.withPermitScoped
 
 /**
  * @since 2.0.0
  * @category mutations
  */
 export const withPermitsScoped: {
-  (permits: number): (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void>
-  (self: TSemaphore, permits: number): Effect.Effect<Scope.Scope, never, void>
+  (permits: number): (self: TSemaphore) => Effect.Effect<"Scope", never, void>
+  (self: TSemaphore, permits: number): Effect.Effect<"Scope", never, void>
 } = internal.withPermitsScoped
 
 /**

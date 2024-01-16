@@ -19,7 +19,6 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as PubSub from "./PubSub.js"
 import type * as Queue from "./Queue.js"
-import type * as Scope from "./Scope.js"
 import type * as Types from "./Types.js"
 import type * as Unify from "./Unify.js"
 
@@ -1029,7 +1028,7 @@ export const fromPush: <R, E, In, L, Z>(
     never,
     (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
   >
-) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z> = internal.fromPush
+) => Sink<Exclude<R, "Scope">, E, In, L, Z> = internal.fromPush
 
 /**
  * Create a sink which enqueues each element into the specified queue.
@@ -1363,7 +1362,7 @@ export const unwrap: <R, E, R2, E2, In, L, Z>(
  */
 export const unwrapScoped: <R, E, In, L, Z>(
   effect: Effect.Effect<R, E, Sink<R, E, In, L, Z>>
-) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z> = internal.unwrapScoped
+) => Sink<Exclude<R, "Scope">, E, In, L, Z> = internal.unwrapScoped
 
 /**
  * Returns the sink that executes this one and times its execution.

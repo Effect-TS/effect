@@ -4,7 +4,6 @@ import * as FiberId from "../../FiberId.js"
 import { dual } from "../../Function.js"
 import * as HashMap from "../../HashMap.js"
 import * as Option from "../../Option.js"
-import type * as Scope from "../../Scope.js"
 import type * as STM from "../../STM.js"
 import type * as TReentrantLock from "../../TReentrantLock.js"
 import type * as TRef from "../../TRef.js"
@@ -225,7 +224,7 @@ export const fiberWriteLocks = (self: TReentrantLock.TReentrantLock): STM.STM<ne
   )
 
 /** @internal */
-export const lock = (self: TReentrantLock.TReentrantLock): Effect.Effect<Scope.Scope, never, number> => writeLock(self)
+export const lock = (self: TReentrantLock.TReentrantLock): Effect.Effect<"Scope", never, number> => writeLock(self)
 
 /** @internal */
 export const locked = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, boolean> =>
@@ -242,7 +241,7 @@ export const make: STM.STM<never, never, TReentrantLock.TReentrantLock> = core.m
 )
 
 /** @internal */
-export const readLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<Scope.Scope, never, number> =>
+export const readLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<"Scope", never, number> =>
   Effect.acquireRelease(
     core.commit(acquireRead(self)),
     () => core.commit(releaseRead(self))
@@ -331,7 +330,7 @@ export const withWriteLock = dual<
   ))
 
 /** @internal */
-export const writeLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<Scope.Scope, never, number> =>
+export const writeLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<"Scope", never, number> =>
   Effect.acquireRelease(
     core.commit(acquireWrite(self)),
     () => core.commit(releaseWrite(self))

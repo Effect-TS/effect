@@ -1108,7 +1108,7 @@ export const run = <Env, InErr, InDone, OutErr, OutDone>(
 /** @internal */
 export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
   self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
-): Effect.Effect<Env | Scope.Scope, OutErr, OutDone> => {
+): Effect.Effect<Env | "Scope", OutErr, OutDone> => {
   const run = (
     channelDeferred: Deferred.Deferred<OutErr, OutDone>,
     scopeDeferred: Deferred.Deferred<never, void>,

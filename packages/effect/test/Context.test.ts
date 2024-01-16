@@ -7,17 +7,17 @@ import { assert, describe, expect, it } from "vitest"
 interface A {
   a: number
 }
-const A = Context.Tag<A>()
+const A = Context.Tag("A")<A>()
 
 interface B {
   b: number
 }
-const B = Context.Tag<B>()
+const B = Context.Tag("B")<B>()
 
 interface C {
   c: number
 }
-const C = Context.Tag<C>("C")
+const C = Context.Tag("C")<C>()
 
 describe("Context", () => {
   it("Tag.toJson()", () => {
@@ -34,8 +34,8 @@ describe("Context", () => {
   })
 
   it("global tag", () => {
-    const a = Context.Tag<number>("effect-test/Context/Tag")
-    const b = Context.Tag<number>("effect-test/Context/Tag")
+    const a = Context.Tag("a")<number>()
+    const b = Context.Tag("a")<number>()
     expect(a).toBe(b)
   })
 
@@ -46,10 +46,7 @@ describe("Context", () => {
     interface Bar {
       readonly _tag: "Bar"
     }
-    interface FooBar {
-      readonly FooBar: unique symbol
-    }
-    const Service = Context.Tag<FooBar, Foo | Bar>()
+    const Service = Context.Tag("FooBar")<Foo | Bar>()
     const context = Context.make(Service, { _tag: "Foo" })
     expect(Context.get(context, Service)).toStrictEqual({ _tag: "Foo" })
   })
@@ -153,13 +150,13 @@ describe("Context", () => {
       Context.add(A, a),
       Context.add(B, b),
       Context.add(C, c)
-    ) as Context.Context<A | B | C>
+    ) as Context.Context<"A" | "B" | "C">
     const newEnv = pipe(
       Context.empty(),
       Context.add(A, a),
       Context.add(B, { b: 3 })
-    ) as Context.Context<A | B | C>
-    const differ = Differ.environment<A | B | C>()
+    ) as Context.Context<"A" | "B" | "C">
+    const differ = Differ.environment<"A" | "B" | "C">()
     const patch = differ.diff(oldEnv, newEnv)
     const result = differ.patch(patch, oldEnv)
 
@@ -178,13 +175,13 @@ describe("Context", () => {
       Context.add(A, a),
       Context.add(B, b),
       Context.add(C, c)
-    ) as Context.Context<A | B | C>
+    ) as Context.Context<"A" | "B" | "C">
     const newEnv = pipe(
       Context.empty(),
       Context.add(A, a),
       Context.add(B, { b: 3 })
-    ) as Context.Context<A | B | C>
-    const differ = Differ.environment<A | B | C>()
+    ) as Context.Context<"A" | "B" | "C">
+    const differ = Differ.environment<"A" | "B" | "C">()
     const result = differ.diff(oldEnv, newEnv)
 
     assert.deepNestedPropertyVal(result, "first._tag", "AndThen")
@@ -236,7 +233,7 @@ describe("Context", () => {
   })
 
   it("isTag", () => {
-    expect(Context.isTag(Context.Tag())).toEqual(true)
+    expect(Context.isTag(Context.Tag("")())).toEqual(true)
     expect(Context.isContext(null)).toEqual(false)
   })
 })

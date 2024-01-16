@@ -8,7 +8,6 @@ import type * as Exit from "./Exit.js"
 import * as internal from "./internal/scopedCache.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Scope from "./Scope.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -32,13 +31,13 @@ export interface ScopedCache<in Key, out Error, out Value> extends ScopedCache.V
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  getOption(key: Key): Effect.Effect<Scope.Scope, Error, Option.Option<Value>>
+  getOption(key: Key): Effect.Effect<"Scope", Error, Option.Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getOptionComplete(key: Key): Effect.Effect<Scope.Scope, never, Option.Option<Value>>
+  getOptionComplete(key: Key): Effect.Effect<"Scope", never, Option.Option<Value>>
 
   /**
    * Returns statistics for this cache.
@@ -62,7 +61,7 @@ export interface ScopedCache<in Key, out Error, out Value> extends ScopedCache.V
    * release action signals to the cache that the value is no longer being used
    * and can potentially be finalized subject to the policies of the cache.
    */
-  get(key: Key): Effect.Effect<Scope.Scope, Error, Value>
+  get(key: Key): Effect.Effect<"Scope", Error, Value>
 
   /**
    * Invalidates the resource associated with the specified key.
@@ -120,7 +119,7 @@ export const make: <Key, Environment, Error, Value>(
     readonly capacity: number
     readonly timeToLive: Duration.DurationInput
   }
-) => Effect.Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>> = internal.make
+) => Effect.Effect<"Scope" | Environment, never, ScopedCache<Key, Error, Value>> = internal.make
 
 /**
  * Constructs a new cache with the specified capacity, time to live, and
@@ -136,7 +135,7 @@ export const makeWith: <Key, Environment, Error, Value>(
     readonly lookup: Lookup<Key, Environment, Error, Value>
     readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
   }
-) => Effect.Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>> = internal.makeWith
+) => Effect.Effect<"Scope" | Environment, never, ScopedCache<Key, Error, Value>> = internal.makeWith
 
 /**
  * Similar to `Cache.Lookup`, but executes the lookup function within a `Scope`.
@@ -146,4 +145,4 @@ export const makeWith: <Key, Environment, Error, Value>(
  */
 export type Lookup<Key, Environment, Error, Value> = (
   key: Key
-) => Effect.Effect<Environment | Scope.Scope, Error, Value>
+) => Effect.Effect<Environment | "Scope", Error, Value>

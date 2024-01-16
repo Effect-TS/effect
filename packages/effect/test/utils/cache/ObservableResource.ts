@@ -6,7 +6,7 @@ import * as Scope from "effect/Scope"
 import { expect } from "vitest"
 
 export interface ObservableResource<E, V> {
-  readonly scoped: Effect.Effect<Scope.Scope, E, V>
+  readonly scoped: Effect.Effect<"Scope", E, V>
   assertNotAcquired(): Effect.Effect<never, never, void>
   assertAcquiredOnceAndCleaned(): Effect.Effect<never, never, void>
   assertAcquiredOnceAndNotCleaned(): Effect.Effect<never, never, void>
@@ -14,7 +14,7 @@ export interface ObservableResource<E, V> {
 
 class ObservableResourceImpl<E, V> implements ObservableResource<E, V> {
   constructor(
-    readonly scoped: Effect.Effect<Scope.Scope, E, V>,
+    readonly scoped: Effect.Effect<"Scope", E, V>,
     readonly getState: Effect.Effect<never, never, readonly [number, number]>
   ) {}
 

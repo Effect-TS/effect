@@ -1438,22 +1438,22 @@ export const currentLoggers: FiberRef.FiberRef<
 export const acquireRelease: {
   <A, R2, X>(
     release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-  ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R | Scope.Scope, E, A>
+  ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R | "Scope", E, A>
   <R, E, A, R2, X>(
     acquire: Effect.Effect<R, E, A>,
     release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-  ): Effect.Effect<Scope.Scope | R | R2, E, A>
+  ): Effect.Effect<"Scope" | R | R2, E, A>
 } = dual<
   {
     <A, R2, X>(
       release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-    ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R | R2 | Scope.Scope, E, A>
+    ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R | R2 | "Scope", E, A>
   },
   {
     <R, E, A, R2, X>(
       acquire: Effect.Effect<R, E, A>,
       release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-    ): Effect.Effect<R | R2 | Scope.Scope, E, A>
+    ): Effect.Effect<R | R2 | "Scope", E, A>
   }
 >((args) => core.isEffect(args[0]), (acquire, release) => {
   return core.uninterruptible(
@@ -1465,22 +1465,22 @@ export const acquireRelease: {
 export const acquireReleaseInterruptible: {
   <A, R2, X>(
     release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-  ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E, A>
+  ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<"Scope" | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect.Effect<R, E, A>,
     release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-  ): Effect.Effect<Scope.Scope | R | R2, E, A>
+  ): Effect.Effect<"Scope" | R | R2, E, A>
 } = dual<
   {
     <A, R2, X>(
       release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-    ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R | R2 | Scope.Scope, E, A>
+    ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R | R2 | "Scope", E, A>
   },
   {
     <R, E, A, R2, X>(
       acquire: Effect.Effect<R, E, A>,
       release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-    ): Effect.Effect<R | R2 | Scope.Scope, E, A>
+    ): Effect.Effect<R | R2 | "Scope", E, A>
   }
 >((args) => core.isEffect(args[0]), (acquire, release) => {
   return ensuring(
@@ -1492,7 +1492,7 @@ export const acquireReleaseInterruptible: {
 /* @internal */
 export const addFinalizer = <R, X>(
   finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R, never, X>
-): Effect.Effect<R | Scope.Scope, never, void> =>
+): Effect.Effect<R | "Scope", never, void> =>
   core.withFiberRuntime(
     (runtime) => {
       const acquireRefs = runtime.getFiberRefs()
@@ -2573,10 +2573,10 @@ export const finalizersMask = (strategy: ExecutionStrategy.ExecutionStrategy) =>
 /* @internal */
 export const scopeWith = <R, E, A>(
   f: (scope: Scope.Scope) => Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, E, A> => core.flatMap(scopeTag, f)
+): Effect.Effect<R | "Scope", E, A> => core.flatMap(scopeTag, f)
 
 /* @internal */
-export const scopedEffect = <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<Exclude<R, Scope.Scope>, E, A> =>
+export const scopedEffect = <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<Exclude<R, "Scope">, E, A> =>
   core.flatMap(scopeMake(), (scope) => scopeUse(scope)(effect))
 
 /* @internal */
@@ -2600,24 +2600,24 @@ export const sequentialFinalizers = <R, E, A>(self: Effect.Effect<R, E, A>): Eff
   )
 
 /* @internal */
-export const tagMetricsScoped = (key: string, value: string): Effect.Effect<Scope.Scope, never, void> =>
+export const tagMetricsScoped = (key: string, value: string): Effect.Effect<"Scope", never, void> =>
   labelMetricsScoped([metricLabel.make(key, value)])
 
 /* @internal */
 export const labelMetricsScoped = (
   labels: Iterable<MetricLabel.MetricLabel>
-): Effect.Effect<Scope.Scope, never, void> =>
+): Effect.Effect<"Scope", never, void> =>
   fiberRefLocallyScopedWith(core.currentMetricLabels, (old) => RA.union(old, labels))
 
 /* @internal */
 export const using = dual<
   <A, R2, E2, A2>(
     use: (a: A) => Effect.Effect<R2, E2, A2>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope.Scope> | R2, E | E2, A2>,
+  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, "Scope"> | R2, E | E2, A2>,
   <R, E, A, R2, E2, A2>(
     self: Effect.Effect<R, E, A>,
     use: (a: A) => Effect.Effect<R2, E2, A2>
-  ) => Effect.Effect<Exclude<R, Scope.Scope> | R2, E | E2, A2>
+  ) => Effect.Effect<Exclude<R, "Scope"> | R2, E | E2, A2>
 >(2, (self, use) =>
   core.acquireUseRelease(
     scopeMake(),
@@ -2737,7 +2737,7 @@ export const withConfigProviderScoped = (value: ConfigProvider) =>
 /* @internal */
 export const withEarlyRelease = <R, E, A>(
   self: Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, E, [Effect.Effect<never, never, void>, A]> =>
+): Effect.Effect<R | "Scope", E, [Effect.Effect<never, never, void>, A]> =>
   scopeWith((parent) =>
     core.flatMap(core.scopeFork(parent, executionStrategy.sequential), (child) =>
       pipe(
@@ -2859,7 +2859,7 @@ export const zipWithOptions = dual<
 /* @internal */
 export const withRuntimeFlagsScoped = (
   update: RuntimeFlagsPatch.RuntimeFlagsPatch
-): Effect.Effect<Scope.Scope, never, void> => {
+): Effect.Effect<"Scope", never, void> => {
   if (update === RuntimeFlagsPatch.empty) {
     return core.unit
   }
@@ -2936,10 +2936,10 @@ export const releaseMapReleaseAll = (
 // circular with Scope
 
 /** @internal */
-export const scopeTag = Context.Tag<Scope.Scope>(core.ScopeTypeId)
+export const scopeTag = Context.Tag("Scope")<Scope.Scope>()
 
 /* @internal */
-export const scope: Effect.Effect<Scope.Scope, never, Scope.Scope> = scopeTag
+export const scope: Effect.Effect<"Scope", never, Scope.Scope> = scopeTag
 
 /* @internal */
 export const scopeMake = (
@@ -2971,12 +2971,12 @@ export const scopeMake = (
 
 /* @internal */
 export const scopeExtend = dual<
-  (scope: Scope.Scope) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope.Scope>, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope.Scope) => Effect.Effect<Exclude<R, Scope.Scope>, E, A>
+  (scope: Scope.Scope) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, "Scope">, E, A>,
+  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope.Scope) => Effect.Effect<Exclude<R, "Scope">, E, A>
 >(
   2,
   <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope.Scope) =>
-    core.mapInputContext<Exclude<R, Scope.Scope>, R, E, A>(
+    core.mapInputContext<Exclude<R, "Scope">, R, E, A>(
       effect,
       // @ts-expect-error
       Context.merge(Context.make(scopeTag, scope))
@@ -2987,11 +2987,11 @@ export const scopeExtend = dual<
 export const scopeUse = dual<
   (
     scope: Scope.Scope.Closeable
-  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope.Scope>, E, A>,
+  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, "Scope">, E, A>,
   <R, E, A>(
     effect: Effect.Effect<R, E, A>,
     scope: Scope.Scope.Closeable
-  ) => Effect.Effect<Exclude<R, Scope.Scope>, E, A>
+  ) => Effect.Effect<Exclude<R, "Scope">, E, A>
 >(2, (effect, scope) =>
   pipe(
     effect,
@@ -3014,8 +3014,8 @@ export const fiberRefUnsafeMakeSupervisor = (
 
 /* @internal */
 export const fiberRefLocallyScoped = dual<
-  <A>(value: A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<Scope.Scope, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, value: A) => Effect.Effect<Scope.Scope, never, void>
+  <A>(value: A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<"Scope", never, void>,
+  <A>(self: FiberRef.FiberRef<A>, value: A) => Effect.Effect<"Scope", never, void>
 >(2, (self, value) =>
   core.asUnit(
     acquireRelease(
@@ -3029,8 +3029,8 @@ export const fiberRefLocallyScoped = dual<
 
 /* @internal */
 export const fiberRefLocallyScopedWith = dual<
-  <A>(f: (a: A) => A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<Scope.Scope, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect.Effect<Scope.Scope, never, void>
+  <A>(f: (a: A) => A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<"Scope", never, void>,
+  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect.Effect<"Scope", never, void>
 >(2, (self, f) => core.fiberRefGetWith(self, (a) => fiberRefLocallyScoped(self, f(a))))
 
 /* @internal */
@@ -3040,13 +3040,13 @@ export const fiberRefMake = <A>(
     readonly fork?: ((a: A) => A) | undefined
     readonly join?: ((left: A, right: A) => A) | undefined
   }
-): Effect.Effect<Scope.Scope, never, FiberRef.FiberRef<A>> =>
+): Effect.Effect<"Scope", never, FiberRef.FiberRef<A>> =>
   fiberRefMakeWith(() => core.fiberRefUnsafeMake(initial, options))
 
 /* @internal */
 export const fiberRefMakeWith = <Value>(
   ref: LazyArg<FiberRef.FiberRef<Value>>
-): Effect.Effect<Scope.Scope, never, FiberRef.FiberRef<Value>> =>
+): Effect.Effect<"Scope", never, FiberRef.FiberRef<Value>> =>
   acquireRelease(
     core.tap(core.sync(ref), (ref) => core.fiberRefUpdate(ref, identity)),
     (fiberRef) => core.fiberRefDelete(fiberRef)
@@ -3055,13 +3055,13 @@ export const fiberRefMakeWith = <Value>(
 /* @internal */
 export const fiberRefMakeContext = <A>(
   initial: Context.Context<A>
-): Effect.Effect<Scope.Scope, never, FiberRef.FiberRef<Context.Context<A>>> =>
+): Effect.Effect<"Scope", never, FiberRef.FiberRef<Context.Context<A>>> =>
   fiberRefMakeWith(() => core.fiberRefUnsafeMakeContext(initial))
 
 /* @internal */
 export const fiberRefMakeRuntimeFlags = (
   initial: RuntimeFlags.RuntimeFlags
-): Effect.Effect<Scope.Scope, never, FiberRef.FiberRef<RuntimeFlags.RuntimeFlags>> =>
+): Effect.Effect<"Scope", never, FiberRef.FiberRef<RuntimeFlags.RuntimeFlags>> =>
   fiberRefMakeWith(() => core.fiberRefUnsafeMakeRuntimeFlags(initial))
 
 /** @internal */
@@ -3130,7 +3130,7 @@ export const fiberJoinAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Effect.
   core.asUnit(internalFiber.join(fiberAll(fibers)))
 
 /* @internal */
-export const fiberScoped = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Scope.Scope, never, Fiber.Fiber<E, A>> =>
+export const fiberScoped = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<"Scope", never, Fiber.Fiber<E, A>> =>
   acquireRelease(core.succeed(self), core.interruptFiber)
 
 //
@@ -3451,7 +3451,7 @@ export const makeSpanScoped = (
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }
-): Effect.Effect<Scope.Scope, never, Tracer.Span> =>
+): Effect.Effect<"Scope", never, Tracer.Span> =>
   acquireRelease(
     internalEffect.makeSpan(name, options),
     (span, exit) =>
@@ -3462,7 +3462,7 @@ export const makeSpanScoped = (
   )
 
 /* @internal */
-export const withTracerScoped = (value: Tracer.Tracer): Effect.Effect<Scope.Scope, never, void> =>
+export const withTracerScoped = (value: Tracer.Tracer): Effect.Effect<"Scope", never, void> =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(tracer.tracerTag, value))
 
 /** @internal */
@@ -3473,14 +3473,14 @@ export const withSpanScoped = dual<
     readonly parent?: Tracer.ParentSpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
-  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>,
+  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, "ParentSpan"> | "Scope", E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
     readonly parent?: Tracer.ParentSpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
-  }) => Effect.Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>
+  }) => Effect.Effect<Exclude<R, "ParentSpan"> | "Scope", E, A>
 >(
   (args) => typeof args[0] !== "string",
   (self, name, options) =>

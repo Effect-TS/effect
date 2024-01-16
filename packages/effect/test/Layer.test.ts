@@ -24,7 +24,7 @@ export const release3 = "Releasing Module 3"
 describe("Layer", () => {
   it.effect("layers can be acquired in parallel", () =>
     Effect.gen(function*($) {
-      const BoolTag = Context.Tag<boolean>()
+      const BoolTag = Context.Tag("boolean")<boolean>()
       const deferred = yield* $(Deferred.make<never, void>())
       const layer1 = Layer.effectContext<never, never, never>(Effect.never)
       const layer2 = Layer.scopedContext(
@@ -43,7 +43,7 @@ describe("Layer", () => {
     }))
   it.effect("preserves identity of acquired resources", () =>
     Effect.gen(function*($) {
-      const ChunkTag = Context.Tag<Ref.Ref<Chunk.Chunk<string>>>()
+      const ChunkTag = Context.Tag("Ref.Ref<Chunk.Chunk<string>>")<Ref.Ref<Chunk.Chunk<string>>>()
       const testRef = yield* $(Ref.make<Chunk.Chunk<string>>(Chunk.empty()))
       const layer = Layer.scoped(
         ChunkTag,
@@ -107,21 +107,21 @@ describe("Layer", () => {
       class Config {
         constructor(readonly value: number) {}
       }
-      const ConfigTag = Context.Tag<Config>()
+      const ConfigTag = Context.Tag("Config")<Config>()
       class A {
         constructor(readonly value: number) {}
       }
-      const ATag = Context.Tag<A>()
+      const ATag = Context.Tag("A")<A>()
       const aLayer = Layer.function(ConfigTag, ATag, (config) => new A(config.value))
       class B {
         constructor(readonly value: number) {}
       }
-      const BTag = Context.Tag<B>()
+      const BTag = Context.Tag("B")<B>()
       const bLayer = Layer.function(ATag, BTag, (_: A) => new B(_.value))
       class C {
         constructor(readonly value: number) {}
       }
-      const CTag = Context.Tag<C>()
+      const CTag = Context.Tag("C")<C>()
       const cLayer = Layer.function(ATag, CTag, (_: A) => new C(_.value))
       const fedB = bLayer.pipe(
         Layer.provideMerge(aLayer),
@@ -161,12 +161,12 @@ describe("Layer", () => {
       interface Bar {
         readonly bar: string
       }
-      const BarTag = Context.Tag<Bar>()
+      const BarTag = Context.Tag("Bar")<Bar>()
       interface Baz {
         readonly baz: string
       }
-      const BazTag = Context.Tag<Baz>()
-      const ScopedTag = Context.Tag<void>()
+      const BazTag = Context.Tag("Baz")<Baz>()
+      const ScopedTag = Context.Tag("void")<void>()
       const sleep = Effect.sleep(Duration.millis(100))
       const layer1 = Layer.fail("foo")
       const layer2 = Layer.succeed(BarTag, { bar: "bar" })
@@ -311,12 +311,12 @@ describe("Layer", () => {
         readonly name: string
         readonly value: number
       }
-      const ServiceATag = Context.Tag<ServiceA>()
+      const ServiceATag = Context.Tag("ServiceA")<ServiceA>()
       interface ServiceB {
         readonly name: string
       }
-      const ServiceBTag = Context.Tag<ServiceB>()
-      const StringTag = Context.Tag<string>()
+      const ServiceBTag = Context.Tag("ServiceB")<ServiceB>()
+      const StringTag = Context.Tag("string")<string>()
       const layer1 = Layer.succeed(ServiceATag, { name: "name", value: 1 })
       const layer2 = Layer.function(StringTag, ServiceBTag, (name) => ({ name }))
       const live = layer2.pipe(
@@ -334,9 +334,9 @@ describe("Layer", () => {
       yield* $(
         memoized,
         Effect.flatMap((layer) =>
-          Effect.context<Service1>().pipe(
+          Effect.context<"Service1">().pipe(
             Effect.provide(layer),
-            Effect.flatMap(() => Effect.context<Service1>().pipe(Effect.provide(layer)))
+            Effect.flatMap(() => Effect.context<"Service1">().pipe(Effect.provide(layer)))
           )
         ),
         Effect.scoped
@@ -347,7 +347,7 @@ describe("Layer", () => {
   it.scoped("fiberRef changes are memoized", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make<boolean>(false))
-      const tag = Context.Tag<boolean>()
+      const tag = Context.Tag("boolean")<boolean>()
       const layer1 = Layer.scopedDiscard(Effect.locallyScoped(fiberRef, true))
       const layer2 = Layer.effect(tag, FiberRef.get(fiberRef))
       const layer3 = layer2.pipe(
@@ -359,8 +359,8 @@ describe("Layer", () => {
     }))
   it.effect("provides a partial environment to an effect", () =>
     Effect.gen(function*($) {
-      const NumberTag = Context.Tag<number>()
-      const StringTag = Context.Tag<string>()
+      const NumberTag = Context.Tag("number")<number>()
+      const StringTag = Context.Tag("string")<string>()
       const needsNumberAndString = Effect.all([NumberTag, StringTag])
       const providesNumber = Layer.succeed(NumberTag, 10)
       const providesString = Layer.succeed(StringTag, "hi")
@@ -371,8 +371,8 @@ describe("Layer", () => {
     }))
   it.effect("to provides a partial environment to another layer", () =>
     Effect.gen(function*($) {
-      const StringTag = Context.Tag<string>()
-      const NumberRefTag = Context.Tag<Ref.Ref<number>>()
+      const StringTag = Context.Tag("string")<string>()
+      const NumberRefTag = Context.Tag("Ref<number>")<Ref.Ref<number>>()
       interface FooService {
         readonly ref: Ref.Ref<number>
         readonly string: string
@@ -385,8 +385,8 @@ describe("Layer", () => {
           ]
         >
       }
-      const FooTag = Context.Tag<FooService>()
-      const fooBuilder = Layer.context<string | Ref.Ref<number>>().pipe(
+      const FooTag = Context.Tag("FooService")<FooService>()
+      const fooBuilder = Layer.context<"string" | "Ref<number>">().pipe(
         Layer.map((context) => {
           const s = Context.get(context, StringTag)
           const ref = Context.get(context, NumberRefTag)
@@ -407,8 +407,8 @@ describe("Layer", () => {
     }))
   it.effect("andTo provides a partial environment to another layer", () =>
     Effect.gen(function*($) {
-      const StringTag = Context.Tag<string>()
-      const NumberRefTag = Context.Tag<Ref.Ref<number>>()
+      const StringTag = Context.Tag("string")<string>()
+      const NumberRefTag = Context.Tag("Ref<number>")<Ref.Ref<number>>()
       interface FooService {
         readonly ref: Ref.Ref<number>
         readonly string: string
@@ -421,8 +421,8 @@ describe("Layer", () => {
           ]
         >
       }
-      const FooTag = Context.Tag<FooService>()
-      const fooBuilder = Layer.context<string | Ref.Ref<number>>().pipe(
+      const FooTag = Context.Tag("FooService")<FooService>()
+      const fooBuilder = Layer.context<"string" | "Ref<number>">().pipe(
         Layer.map((context) => {
           const s = Context.get(context, StringTag)
           const ref = Context.get(context, NumberRefTag)
@@ -453,11 +453,11 @@ describe("Layer", () => {
       interface NumberService {
         readonly value: number
       }
-      const NumberTag = Context.Tag<NumberService>()
+      const NumberTag = Context.Tag("NumberService")<NumberService>()
       interface ToStringService {
         readonly value: string
       }
-      const ToStringTag = Context.Tag<ToStringService>()
+      const ToStringTag = Context.Tag("ToStringService")<ToStringService>()
       const layer = Layer.function(NumberTag, ToStringTag, (numberService) => ({
         value: numberService.value.toString()
       }))
@@ -480,8 +480,8 @@ describe("Layer", () => {
       }
       interface AgeService extends Pick<PersonService, "age"> {
       }
-      const PersonTag = Context.Tag<PersonService>()
-      const AgeTag = Context.Tag<AgeService>()
+      const PersonTag = Context.Tag("PersonService")<PersonService>()
+      const AgeTag = Context.Tag("AgeService")<AgeService>()
       const personLayer = Layer.succeed(PersonTag, { name: "User", age: 42 })
       const ageLayer = personLayer.pipe(Layer.project(PersonTag, AgeTag, (_) => ({ age: _.age })))
       const { age } = yield* $(AgeTag, Effect.provide(ageLayer))
@@ -614,7 +614,7 @@ describe("Layer", () => {
       interface BarService {
         readonly bar: string
       }
-      const BarTag = Context.Tag<BarService>()
+      const BarTag = Context.Tag("BarService")<BarService>()
       const ref: Ref.Ref<string> = yield* $(Ref.make("foo"))
       const layer = Layer.succeed(BarTag, { bar: "bar" }).pipe(
         Layer.tap((context) => Ref.set(ref, context.pipe(Context.get(BarTag)).bar))
@@ -628,7 +628,7 @@ describe("Layer", () => {
       interface BarService {
         readonly bar: string
       }
-      const BarTag = Context.Tag<BarService>()
+      const BarTag = Context.Tag("BarService")<BarService>()
       const fiberRef = FiberRef.unsafeMake(0)
       const layer = Layer.locally(fiberRef, 100)(
         Layer.effect(
@@ -648,7 +648,7 @@ describe("Layer", () => {
       interface BarService {
         readonly bar: string
       }
-      const BarTag = Context.Tag<BarService>()
+      const BarTag = Context.Tag("BarService")<BarService>()
       const fiberRef = FiberRef.unsafeMake(0)
       const layer = Layer.locallyWith(fiberRef, (n) => n + 1)(
         Layer.effect(
@@ -715,8 +715,8 @@ export class Service1 {
     return Effect.succeed(1)
   }
 }
-export const Service1Tag = Context.Tag<Service1>()
-export const makeLayer1 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, Service1> => {
+export const Service1Tag = Context.Tag("Service1")<Service1>()
+export const makeLayer1 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, "Service1"> => {
   return Layer.scoped(
     Service1Tag,
     Effect.acquireRelease(
@@ -730,8 +730,8 @@ export class Service2 {
     return Effect.succeed(2)
   }
 }
-export const Service2Tag = Context.Tag<Service2>()
-export const makeLayer2 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, Service2> => {
+export const Service2Tag = Context.Tag("Service2")<Service2>()
+export const makeLayer2 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, "Service2"> => {
   return Layer.scoped(
     Service2Tag,
     Effect.acquireRelease(
@@ -745,8 +745,8 @@ export class Service3 {
     return Effect.succeed(3)
   }
 }
-export const Service3Tag = Context.Tag<Service3>()
-export const makeLayer3 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, Service3> => {
+export const Service3Tag = Context.Tag("Service3")<Service3>()
+export const makeLayer3 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, "Service3"> => {
   return Layer.scoped(
     Service3Tag,
     Effect.acquireRelease(

@@ -68,7 +68,7 @@ export interface CloseableScope extends Scope, Pipeable {
  * @since 2.0.0
  * @category context
  */
-export const Scope: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
+export const Scope: Context.Tag<"Scope", Scope> = fiberRuntime.scopeTag
 
 /**
  * @since 2.0.0
@@ -128,8 +128,8 @@ export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) =>
  * @category utils
  */
 export const extend: {
-  (scope: Scope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope>, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope): Effect.Effect<Exclude<R, Scope>, E, A>
+  (scope: Scope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, "Scope">, E, A>
+  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope): Effect.Effect<Exclude<R, "Scope">, E, A>
 } = fiberRuntime.scopeExtend
 
 /**
@@ -154,8 +154,8 @@ export const fork: (
  * @category destructors
  */
 export const use: {
-  (scope: CloseableScope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope>, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: CloseableScope): Effect.Effect<Exclude<R, Scope>, E, A>
+  (scope: CloseableScope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, "Scope">, E, A>
+  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: CloseableScope): Effect.Effect<Exclude<R, "Scope">, E, A>
 } = fiberRuntime.scopeUse
 
 /**

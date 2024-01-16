@@ -61,9 +61,9 @@ const makeAndThen = <Input, Output, Output2>(
 }
 
 /** @internal */
-export interface AddService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env, Env | I> {
+export interface AddService<in out Env, in out T, in out I extends string> extends Differ.Context.Patch<Env, Env | I> {
   readonly _tag: "AddService"
-  readonly tag: Tag<T, I>
+  readonly tag: Tag<I, T>
   readonly service: T
 }
 
@@ -71,8 +71,8 @@ const AddServiceProto = Object.assign(Object.create(PatchProto), {
   _tag: "AddService"
 })
 
-const makeAddService = <Env, I, T>(
-  tag: Tag<T, I>,
+const makeAddService = <Env, I extends string, T>(
+  tag: Tag<I, T>,
   service: T
 ): Differ.Context.Patch<Env, Env | I> => {
   const o = Object.create(AddServiceProto)
@@ -82,17 +82,19 @@ const makeAddService = <Env, I, T>(
 }
 
 /** @internal */
-export interface RemoveService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env, Exclude<Env, I>> {
+export interface RemoveService<in out Env, in out T, in out I extends string>
+  extends Differ.Context.Patch<Env, Exclude<Env, I>>
+{
   readonly _tag: "RemoveService"
-  readonly tag: Tag<T, I>
+  readonly tag: Tag<I, T>
 }
 
 const RemoveServiceProto = Object.assign(Object.create(PatchProto), {
   _tag: "RemoveService"
 })
 
-const makeRemoveService = <Env, I, T>(
-  tag: Tag<T, I>
+const makeRemoveService = <Env, I extends string, T>(
+  tag: Tag<I, T>
 ): Differ.Context.Patch<Env, Exclude<Env, I>> => {
   const o = Object.create(RemoveServiceProto)
   o.tag = tag
@@ -100,9 +102,11 @@ const makeRemoveService = <Env, I, T>(
 }
 
 /** @internal */
-export interface UpdateService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env | I, Env | I> {
+export interface UpdateService<in out Env, in out T, in out I extends string>
+  extends Differ.Context.Patch<Env | I, Env | I>
+{
   readonly _tag: "UpdateService"
-  readonly tag: Tag<T, I>
+  readonly tag: Tag<I, T>
   update(service: T): T
 }
 
@@ -110,8 +114,8 @@ const UpdateServiceProto = Object.assign(Object.create(PatchProto), {
   _tag: "UpdateService"
 })
 
-const makeUpdateService = <Env, I, T>(
-  tag: Tag<T, I>,
+const makeUpdateService = <Env, I extends string, T>(
+  tag: Tag<I, T>,
   update: (service: T) => T
 ): Differ.Context.Patch<Env | I, Env | I> => {
   const o = Object.create(UpdateServiceProto)

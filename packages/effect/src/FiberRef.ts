@@ -22,7 +22,6 @@ import type { Pipeable } from "./Pipeable.js"
 import type * as Request from "./Request.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
 import * as Scheduler from "./Scheduler.js"
-import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type * as Types from "./Types.js"
@@ -78,13 +77,13 @@ export const make: <A>(
     readonly fork?: ((a: A) => A) | undefined
     readonly join?: ((left: A, right: A) => A) | undefined
   }
-) => Effect.Effect<Scope.Scope, never, FiberRef<A>> = fiberRuntime.fiberRefMake
+) => Effect.Effect<"Scope", never, FiberRef<A>> = fiberRuntime.fiberRefMake
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect.Effect<Scope.Scope, never, FiberRef<Value>> =
+export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect.Effect<"Scope", never, FiberRef<Value>> =
   fiberRuntime.fiberRefMakeWith
 
 /**
@@ -93,7 +92,7 @@ export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect.Effect<S
  */
 export const makeContext: <A>(
   initial: Context.Context<A>
-) => Effect.Effect<Scope.Scope, never, FiberRef<Context.Context<A>>> = fiberRuntime.fiberRefMakeContext
+) => Effect.Effect<"Scope", never, FiberRef<Context.Context<A>>> = fiberRuntime.fiberRefMakeContext
 
 /**
  * @since 2.0.0
@@ -101,7 +100,7 @@ export const makeContext: <A>(
  */
 export const makeRuntimeFlags: (
   initial: RuntimeFlags.RuntimeFlags
-) => Effect.Effect<Scope.Scope, never, FiberRef<RuntimeFlags.RuntimeFlags>> = fiberRuntime.fiberRefMakeRuntimeFlags
+) => Effect.Effect<"Scope", never, FiberRef<RuntimeFlags.RuntimeFlags>> = fiberRuntime.fiberRefMakeRuntimeFlags
 
 /**
  * @since 2.0.0

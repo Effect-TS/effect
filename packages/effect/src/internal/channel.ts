@@ -701,7 +701,7 @@ export const fromPubSub = <Err, Done, Elem>(
 /** @internal */
 export const fromPubSubScoped = <Err, Done, Elem>(
   pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-): Effect.Effect<Scope.Scope, never, Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =>
+): Effect.Effect<"Scope", never, Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =>
   Effect.map(PubSub.subscribe(pubsub), fromQueue)
 
 /** @internal */
@@ -2121,7 +2121,7 @@ export const runDrain = <Env, InErr, InDone, OutElem, OutErr, OutDone>(
 /** @internal */
 export const scoped = <R, E, A>(
   effect: Effect.Effect<R, E, A>
-): Channel.Channel<Exclude<R, Scope.Scope>, unknown, unknown, unknown, E, A, unknown> =>
+): Channel.Channel<Exclude<R, "Scope">, unknown, unknown, unknown, E, A, unknown> =>
   unwrap(
     Effect.uninterruptibleMask((restore) =>
       Effect.map(Scope.make(), (scope) =>
@@ -2170,7 +2170,7 @@ export const toPubSub = <Err, Done, Elem>(
 /** @internal */
 export const toPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Effect.Effect<Env | Scope.Scope, never, Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>> =>
+): Effect.Effect<Env | "Scope", never, Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>> =>
   Effect.map(
     Effect.acquireRelease(
       Effect.sync(() => new executor.ChannelExecutor(self, void 0, identity)),
@@ -2254,7 +2254,7 @@ export const unwrapScoped = <
 >(
   self: Effect.Effect<R, E, Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
 ): Channel.Channel<
-  Exclude<R, Scope.Scope> | Env,
+  Exclude<R, "Scope"> | Env,
   InErr,
   InElem,
   InDone,
@@ -2305,7 +2305,7 @@ export const withSpan = dual<
     }
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => Channel.Channel<Exclude<Env, Tracer.ParentSpan>, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  ) => Channel.Channel<Exclude<Env, "ParentSpan">, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     name: string,
@@ -2316,7 +2316,7 @@ export const withSpan = dual<
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
     }
-  ) => Channel.Channel<Exclude<Env, Tracer.ParentSpan>, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ) => Channel.Channel<Exclude<Env, "ParentSpan">, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 >(3, (self, name, options) =>
   unwrapScoped(
     Effect.flatMap(

@@ -14,7 +14,7 @@ interface StringService {
   readonly string: string
 }
 
-const StringService = Context.Tag<StringService>()
+const StringService = Context.Tag("StringService")<StringService>()
 
 describe("Stream", () => {
   it.effect("context", () =>
@@ -24,7 +24,7 @@ describe("Stream", () => {
         Context.add(StringService, { string: "test" })
       )
       const result = yield* $(
-        Stream.context<StringService>(),
+        Stream.context<"StringService">(),
         Stream.map(Context.get(StringService)),
         Stream.provideContext(context),
         Stream.runCollect
@@ -51,7 +51,7 @@ describe("Stream", () => {
   it.effect("contextWithEffect - success", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.contextWithEffect((context: Context.Context<StringService>) =>
+        Stream.contextWithEffect((context: Context.Context<"StringService">) =>
           Effect.succeed(pipe(context, Context.get(StringService)))
         ),
         Stream.provideContext(
@@ -69,7 +69,7 @@ describe("Stream", () => {
   it.effect("contextWithEffect - fails", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.contextWithEffect((_: Context.Context<StringService>) => Effect.fail("boom")),
+        Stream.contextWithEffect((_: Context.Context<"StringService">) => Effect.fail("boom")),
         Stream.provideContext(
           pipe(
             Context.empty(),
@@ -85,7 +85,7 @@ describe("Stream", () => {
   it.effect("contextWithStream - success", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.contextWithStream((context: Context.Context<StringService>) =>
+        Stream.contextWithStream((context: Context.Context<"StringService">) =>
           Stream.succeed(pipe(context, Context.get(StringService)))
         ),
         Stream.provideContext(
@@ -103,7 +103,7 @@ describe("Stream", () => {
   it.effect("contextWithStream - fails", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.contextWithStream((_: Context.Context<StringService>) => Stream.fail("boom")),
+        Stream.contextWithStream((_: Context.Context<"StringService">) => Stream.fail("boom")),
         Stream.provideContext(
           pipe(
             Context.empty(),

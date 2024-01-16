@@ -136,7 +136,7 @@ export declare namespace ConfigProvider {
  * @since 2.0.0
  * @category context
  */
-export const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider> = internal.configProviderTag
+export const ConfigProvider: Context.Tag<"ConfigProvider", ConfigProvider> = internal.configProviderTag
 
 /**
  * Creates a new config provider.

@@ -3,7 +3,6 @@ import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
 import { dual } from "../Function.js"
 import type * as Layer from "../Layer.js"
-import type * as Scope from "../Scope.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as defaultConsole from "./defaultServices/console.js"
@@ -35,7 +34,7 @@ export const withConsole = dual<
   ))
 
 /** @internal */
-export const withConsoleScoped = <A extends Console.Console>(console: A): Effect.Effect<Scope.Scope, never, void> =>
+export const withConsoleScoped = <A extends Console.Console>(console: A): Effect.Effect<"Scope", never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(
     defaultServices.currentServices,
     Context.add(defaultConsole.consoleTag, console)

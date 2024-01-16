@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 import * as Chunk from "./Chunk.js"
-import * as Context from "./Context.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
 import type * as Fiber from "./Fiber.js"
@@ -34,7 +33,6 @@ export interface TestAnnotation<in out A> extends Equal.Equal {
     readonly _A: Types.Invariant<A>
   }
   readonly identifier: string
-  readonly tag: Context.Tag<A, A>
   readonly initial: A
   combine(a: A, b: A): A
 }
@@ -46,21 +44,18 @@ class TestAnnotationImpl<A> implements Equal.Equal {
   }
   constructor(
     readonly identifier: string,
-    readonly tag: Context.Tag<A, A>,
     readonly initial: A,
     readonly combine: (a: A, b: A) => A
   ) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(TestAnnotationSymbolKey),
-      Hash.combine(Hash.hash(this.identifier)),
-      Hash.combine(Hash.hash(this.tag))
+      Hash.combine(Hash.hash(this.identifier))
     )
   }
   [Equal.symbol](that: unknown): boolean {
     return isTestAnnotation(that) &&
-      this.identifier === that.identifier &&
-      Equal.equals(this.tag, that.tag)
+      this.identifier === that.identifier
   }
 }
 
@@ -74,11 +69,10 @@ export const isTestAnnotation = (u: unknown): u is TestAnnotation<unknown> => ha
  */
 export const make = <A>(
   identifier: string,
-  tag: Context.Tag<A, A>,
   initial: A,
   combine: (a: A, b: A) => A
 ): TestAnnotation<A> => {
-  return new TestAnnotationImpl(identifier, tag, initial, combine)
+  return new TestAnnotationImpl<A>(identifier, initial, combine)
 }
 
 /**
@@ -111,11 +105,13 @@ export const fibers: TestAnnotation<
     number,
     Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>
   >
-> = make(
+> = make<
+  Either.Either<
+    number,
+    Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>
+  >
+>(
   "fibers",
-  Context.Tag<
-    Either.Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
-  >(),
   Either.left(0),
   compose
 )
@@ -127,7 +123,6 @@ export const fibers: TestAnnotation<
  */
 export const ignored: TestAnnotation<number> = make(
   "ignored",
-  Context.Tag<number>(Symbol.for("effect/TestAnnotation/ignored")),
   0,
   (a, b) => a + b
 )
@@ -139,7 +134,6 @@ export const ignored: TestAnnotation<number> = make(
  */
 export const repeated: TestAnnotation<number> = make(
   "repeated",
-  Context.Tag<number>(Symbol.for("effect/TestAnnotation/repeated")),
   0,
   (a, b) => a + b
 )
@@ -151,7 +145,6 @@ export const repeated: TestAnnotation<number> = make(
  */
 export const retried: TestAnnotation<number> = make(
   "retried",
-  Context.Tag<number>(Symbol.for("effect/TestAnnotation/retired")),
   0,
   (a, b) => a + b
 )
@@ -163,7 +156,6 @@ export const retried: TestAnnotation<number> = make(
  */
 export const tagged: TestAnnotation<HashSet.HashSet<string>> = make(
   "tagged",
-  Context.Tag<HashSet.HashSet<string>>(Symbol.for("effect/TestAnnotation/tagged")),
   HashSet.empty(),
   (a, b) => pipe(a, HashSet.union(b))
 )

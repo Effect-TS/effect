@@ -7,7 +7,6 @@ import * as internal from "./internal/metric/polling.js"
 import type * as Metric from "./Metric.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Schedule from "./Schedule.js"
-import type * as Scope from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -74,11 +73,11 @@ export const launch: {
     schedule: Schedule.Schedule<R2, unknown, A2>
   ): <Type, In, R, E, Out>(
     self: MetricPolling<Type, In, R, E, Out>
-  ) => Effect.Effect<R2 | R | Scope.Scope, never, Fiber.Fiber<E, A2>>
+  ) => Effect.Effect<R2 | R | "Scope", never, Fiber.Fiber<E, A2>>
   <Type, In, R, E, Out, R2, A2>(
     self: MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
-  ): Effect.Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
+  ): Effect.Effect<"Scope" | R | R2, never, Fiber.Fiber<E, A2>>
 } = internal.launch
 
 /**

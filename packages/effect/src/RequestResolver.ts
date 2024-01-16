@@ -98,7 +98,7 @@ export const contextFromServices =
     { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number],
     never,
     RequestResolver<A, Exclude<R, { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number]>>
-  > => Effect.contextWith((_) => provideContext(self as any, Context.pick(...services)(_ as any)))
+  > => Effect.contextWith((_) => provideContext(self as any, Context.pick(...(services as never))(_ as any)))
 
 /**
  * Returns `true` if the specified value is a `RequestResolver`, `false` otherwise.

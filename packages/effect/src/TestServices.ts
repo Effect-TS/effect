@@ -13,7 +13,6 @@ import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as layer from "./internal/layer.js"
 import * as ref from "./internal/ref.js"
 import type * as Layer from "./Layer.js"
-import type * as Scope from "./Scope.js"
 import type * as SortedSet from "./SortedSet.js"
 import type * as TestAnnotation from "./TestAnnotation.js"
 import * as TestAnnotationMap from "./TestAnnotationMap.js"
@@ -26,10 +25,10 @@ import * as Sized from "./TestSized.js"
  * @since 2.0.0
  */
 export type TestServices =
-  | Annotations.TestAnnotations
-  | Live.TestLive
-  | Sized.TestSized
-  | TestConfig.TestConfig
+  | "TestAnnotations"
+  | "TestLive"
+  | "TestSized"
+  | "TestConfig"
 
 /**
  * The default Effect test services.
@@ -94,7 +93,7 @@ export const withAnnotations = dual<
  */
 export const withAnnotationsScoped = (
   annotations: Annotations.TestAnnotations
-): Effect.Effect<Scope.Scope, never, void> =>
+): Effect.Effect<"Scope", never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(
     currentServices,
     Context.add(Annotations.TestAnnotations, annotations)
@@ -105,7 +104,7 @@ export const withAnnotationsScoped = (
  *
  * @since 2.0.0
  */
-export const annotationsLayer = (): Layer.Layer<never, never, Annotations.TestAnnotations> =>
+export const annotationsLayer = (): Layer.Layer<never, never, "TestAnnotations"> =>
   layer.scoped(
     Annotations.TestAnnotations,
     pipe(
@@ -181,7 +180,7 @@ export const withLive = dual<
  *
  * @since 2.0.0
  */
-export const withLiveScoped = (live: Live.TestLive): Effect.Effect<Scope.Scope, never, void> =>
+export const withLiveScoped = (live: Live.TestLive): Effect.Effect<"Scope", never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Live.TestLive, live))
 
 /**
@@ -189,7 +188,7 @@ export const withLiveScoped = (live: Live.TestLive): Effect.Effect<Scope.Scope, 
  *
  * @since 2.0.0
  */
-export const liveLayer = (): Layer.Layer<DefaultServices.DefaultServices, never, Live.TestLive> =>
+export const liveLayer = (): Layer.Layer<DefaultServices.DefaultServices, never, "TestLive"> =>
   layer.scoped(
     Live.TestLive,
     pipe(
@@ -267,13 +266,13 @@ export const withSized = dual<
  *
  * @since 2.0.0
  */
-export const withSizedScoped = (sized: Sized.TestSized): Effect.Effect<Scope.Scope, never, void> =>
+export const withSizedScoped = (sized: Sized.TestSized): Effect.Effect<"Scope", never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Sized.TestSized, sized))
 
 /**
  * @since 2.0.0
  */
-export const sizedLayer = (size: number): Layer.Layer<never, never, Sized.TestSized> =>
+export const sizedLayer = (size: number): Layer.Layer<never, never, "TestSized"> =>
   layer.scoped(
     Sized.TestSized,
     pipe(
@@ -338,7 +337,7 @@ export const withTestConfig = dual<
  *
  * @since 2.0.0
  */
-export const withTestConfigScoped = (config: TestConfig.TestConfig): Effect.Effect<Scope.Scope, never, void> =>
+export const withTestConfigScoped = (config: TestConfig.TestConfig): Effect.Effect<"Scope", never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(TestConfig.TestConfig, config))
 
 /**
@@ -351,7 +350,7 @@ export const testConfigLayer = (params: {
   readonly retries: number
   readonly samples: number
   readonly shrinks: number
-}): Layer.Layer<never, never, TestConfig.TestConfig> =>
+}): Layer.Layer<never, never, "TestConfig"> =>
   layer.scoped(
     TestConfig.TestConfig,
     Effect.suspend(() => {

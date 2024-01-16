@@ -7,7 +7,6 @@ import * as HashSet from "../../HashSet.js"
 import type * as Layer from "../../Layer.js"
 import type * as Logger from "../../Logger.js"
 import type * as LogLevel from "../../LogLevel.js"
-import type { Scope } from "../../Scope.js"
 import type * as Supervisor from "../../Supervisor.js"
 import type * as Tracer from "../../Tracer.js"
 import * as core from "../core.js"
@@ -59,7 +58,7 @@ export const addLoggerEffect = <R, E, A>(
 /** @internal */
 export const addLoggerScoped = <R, E, A>(
   effect: Effect.Effect<R, E, Logger.Logger<unknown, A>>
-): Layer.Layer<Exclude<R, Scope>, E, never> =>
+): Layer.Layer<Exclude<R, "Scope">, E, never> =>
   layer.unwrapScoped(
     core.map(effect, addLogger)
   )
@@ -94,11 +93,11 @@ export const replaceLoggerEffect = dual<
 export const replaceLoggerScoped = dual<
   <R, E, B>(
     that: Effect.Effect<R, E, Logger.Logger<unknown, B>>
-  ) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<Exclude<R, Scope>, E, never>,
+  ) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<Exclude<R, "Scope">, E, never>,
   <A, R, E, B>(
     self: Logger.Logger<unknown, A>,
     that: Effect.Effect<R, E, Logger.Logger<unknown, B>>
-  ) => Layer.Layer<Exclude<R, Scope>, E, never>
+  ) => Layer.Layer<Exclude<R, "Scope">, E, never>
 >(2, (self, that) => layer.flatMap(removeLogger(self), () => addLoggerScoped(that)))
 
 /** @internal */
@@ -185,7 +184,7 @@ export const setConfigProvider = (configProvider: ConfigProvider.ConfigProvider)
   layer.scopedDiscard(fiberRuntime.withConfigProviderScoped(configProvider))
 
 /** @internal */
-export const parentSpan = (span: Tracer.ParentSpan): Layer.Layer<never, never, Tracer.ParentSpan> =>
+export const parentSpan = (span: Tracer.ParentSpan): Layer.Layer<never, never, "ParentSpan"> =>
   layer.succeedContext(Context.make(tracer.spanTag, span))
 
 /** @internal */
@@ -201,7 +200,7 @@ export const span = (
       | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
       | undefined
   }
-): Layer.Layer<never, never, Tracer.ParentSpan> =>
+): Layer.Layer<never, never, "ParentSpan"> =>
   layer.scoped(
     tracer.spanTag,
     options?.onEnd

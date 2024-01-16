@@ -2239,11 +2239,11 @@ export const negate: <R, E>(self: Effect<R, E, boolean>) => Effect<R, E, boolean
 export const acquireRelease: {
   <A, R2, X>(
     release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
+  ): <R, E>(acquire: Effect<R, E, A>) => Effect<"Scope" | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
     release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): Effect<Scope.Scope | R | R2, E, A>
+  ): Effect<"Scope" | R | R2, E, A>
 } = fiberRuntime.acquireRelease
 
 /**
@@ -2272,11 +2272,11 @@ export const acquireRelease: {
 export const acquireReleaseInterruptible: {
   <A, R2, X>(
     release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
+  ): <R, E>(acquire: Effect<R, E, A>) => Effect<"Scope" | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
     release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): Effect<Scope.Scope | R | R2, E, A>
+  ): Effect<"Scope" | R | R2, E, A>
 } = fiberRuntime.acquireReleaseInterruptible
 
 /**
@@ -2342,7 +2342,7 @@ export const acquireUseRelease: {
  */
 export const addFinalizer: <R, X>(
   finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<R, never, X>
-) => Effect<R | Scope.Scope, never, void> = fiberRuntime.addFinalizer
+) => Effect<R | "Scope", never, void> = fiberRuntime.addFinalizer
 
 /**
  * Returns an effect that, if this effect _starts_ execution, then the
@@ -2428,7 +2428,7 @@ export const sequentialFinalizers: <R, E, A>(self: Effect<R, E, A>) => Effect<R,
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
-export const scope: Effect<Scope.Scope, never, Scope.Scope> = fiberRuntime.scope
+export const scope: Effect<"Scope", never, Scope.Scope> = fiberRuntime.scope
 
 /**
  * Accesses the current scope and uses it to perform the specified effect.
@@ -2436,7 +2436,7 @@ export const scope: Effect<Scope.Scope, never, Scope.Scope> = fiberRuntime.scope
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
-export const scopeWith: <R, E, A>(f: (scope: Scope.Scope) => Effect<R, E, A>) => Effect<R | Scope.Scope, E, A> =
+export const scopeWith: <R, E, A>(f: (scope: Scope.Scope) => Effect<R, E, A>) => Effect<R | "Scope", E, A> =
   fiberRuntime.scopeWith
 
 /**
@@ -2447,8 +2447,7 @@ export const scopeWith: <R, E, A>(f: (scope: Scope.Scope) => Effect<R, E, A>) =>
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
-export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope.Scope>, E, A> =
-  fiberRuntime.scopedEffect
+export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, "Scope">, E, A> = fiberRuntime.scopedEffect
 
 /**
  * Scopes all resources acquired by `resource` to the lifetime of `use`
@@ -2460,11 +2459,11 @@ export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Sco
 export const using: {
   <A, R2, E2, A2>(
     use: (a: A) => Effect<R2, E2, A2>
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, Scope.Scope>, E2 | E, A2>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, "Scope">, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
     use: (a: A) => Effect<R2, E2, A2>
-  ): Effect<R2 | Exclude<R, Scope.Scope>, E | E2, A2>
+  ): Effect<R2 | Exclude<R, "Scope">, E | E2, A2>
 } = fiberRuntime.using
 
 /**
@@ -2476,7 +2475,7 @@ export const using: {
  */
 export const withEarlyRelease: <R, E, A>(
   self: Effect<R, E, A>
-) => Effect<Scope.Scope | R, E, [Effect<never, never, void>, A]> = fiberRuntime.withEarlyRelease
+) => Effect<"Scope" | R, E, [Effect<never, never, void>, A]> = fiberRuntime.withEarlyRelease
 
 // -------------------------------------------------------------------------------------
 // supervision & fibers
@@ -2658,7 +2657,7 @@ export const forkIn: {
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const forkScoped: <R, E, A>(self: Effect<R, E, A>) => Effect<Scope.Scope | R, never, Fiber.RuntimeFiber<E, A>> =
+export const forkScoped: <R, E, A>(self: Effect<R, E, A>) => Effect<"Scope" | R, never, Fiber.RuntimeFiber<E, A>> =
   circular.forkScoped
 
 /**
@@ -2797,7 +2796,7 @@ export const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) =>
  * @since 2.0.0
  * @category constructors
  */
-export const withClockScoped: <A extends Clock.Clock>(value: A) => Effect<Scope.Scope, never, void> =
+export const withClockScoped: <A extends Clock.Clock>(value: A) => Effect<"Scope", never, void> =
   fiberRuntime.withClockScoped
 
 /**
@@ -2840,7 +2839,7 @@ export const consoleWith: <R, E, A>(f: (console: Console) => Effect<R, E, A>) =>
  * @since 2.0.0
  * @category constructors
  */
-export const withConsoleScoped: <A extends Console>(console: A) => Effect<Scope.Scope, never, void> =
+export const withConsoleScoped: <A extends Console>(console: A) => Effect<"Scope", never, void> =
   _console.withConsoleScoped
 
 /**
@@ -3032,7 +3031,7 @@ export const withConfigProvider: {
  * @since 2.0.0
  * @category config
  */
-export const withConfigProviderScoped: (value: ConfigProvider) => Effect<Scope.Scope, never, void> =
+export const withConfigProviderScoped: (value: ConfigProvider) => Effect<"Scope", never, void> =
   fiberRuntime.withConfigProviderScoped
 
 // -------------------------------------------------------------------------------------
@@ -3194,15 +3193,16 @@ export const serviceMembers: <SR, SE, S>(getService: Effect<SR, SE, S>) => {
  * @since 2.0.0
  * @category context
  */
-export const serviceOption: <I, S>(tag: Context.Tag<I, S>) => Effect<never, never, Option.Option<S>> =
+export const serviceOption: <I extends string, S>(tag: Context.Tag<I, S>) => Effect<never, never, Option.Option<S>> =
   effect.serviceOption
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const serviceOptional: <I, S>(tag: Context.Tag<I, S>) => Effect<never, Cause.NoSuchElementException, S> =
-  effect.serviceOptional
+export const serviceOptional: <I extends string, S>(
+  tag: Context.Tag<I, S>
+) => Effect<never, Cause.NoSuchElementException, S> = effect.serviceOptional
 
 /**
  * Updates the service with the required service entry.
@@ -4097,11 +4097,11 @@ export const schedule: {
 export const scheduleForked: {
   <R2, Out>(
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, never, Fiber.RuntimeFiber<E, Out>>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<"Scope" | R2 | R, never, Fiber.RuntimeFiber<E, Out>>
   <R, E, A, R2, Out>(
     self: Effect<R, E, A>,
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ): Effect<Scope.Scope | R | R2, never, Fiber.RuntimeFiber<E, Out>>
+  ): Effect<"Scope" | R | R2, never, Fiber.RuntimeFiber<E, Out>>
 } = circular.scheduleForked
 
 /**
@@ -4180,8 +4180,8 @@ export const locallyWith: {
  * @category fiber refs
  */
 export const locallyScoped: {
-  <A>(value: A): (self: FiberRef.FiberRef<A>) => Effect<Scope.Scope, never, void>
-  <A>(self: FiberRef.FiberRef<A>, value: A): Effect<Scope.Scope, never, void>
+  <A>(value: A): (self: FiberRef.FiberRef<A>) => Effect<"Scope", never, void>
+  <A>(self: FiberRef.FiberRef<A>, value: A): Effect<"Scope", never, void>
 } = fiberRuntime.fiberRefLocallyScoped
 
 /**
@@ -4189,8 +4189,8 @@ export const locallyScoped: {
  * @category fiber refs
  */
 export const locallyScopedWith: {
-  <A>(f: (a: A) => A): (self: FiberRef.FiberRef<A>) => Effect<Scope.Scope, never, void>
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A): Effect<Scope.Scope, never, void>
+  <A>(f: (a: A) => A): (self: FiberRef.FiberRef<A>) => Effect<"Scope", never, void>
+  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A): Effect<"Scope", never, void>
 } = fiberRuntime.fiberRefLocallyScopedWith
 
 /**
@@ -4581,7 +4581,7 @@ export const withRuntimeFlagsPatch: {
  */
 export const withRuntimeFlagsPatchScoped: (
   update: RuntimeFlagsPatch.RuntimeFlagsPatch
-) => Effect<Scope.Scope, never, void> = fiberRuntime.withRuntimeFlagsScoped
+) => Effect<"Scope", never, void> = fiberRuntime.withRuntimeFlagsScoped
 
 // -------------------------------------------------------------------------------------
 // metrics
@@ -4617,7 +4617,7 @@ export const labelMetrics: {
  * @since 2.0.0
  * @category metrics
  */
-export const tagMetricsScoped: (key: string, value: string) => Effect<Scope.Scope, never, void> =
+export const tagMetricsScoped: (key: string, value: string) => Effect<"Scope", never, void> =
   fiberRuntime.tagMetricsScoped
 
 /**
@@ -4628,7 +4628,7 @@ export const tagMetricsScoped: (key: string, value: string) => Effect<Scope.Scop
  */
 export const labelMetricsScoped: (
   labels: ReadonlyArray<MetricLabel.MetricLabel>
-) => Effect<Scope.Scope, never, void> = fiberRuntime.labelMetricsScoped
+) => Effect<"Scope", never, void> = fiberRuntime.labelMetricsScoped
 
 /**
  * Retrieves the metric labels associated with the current scope.
@@ -5028,8 +5028,7 @@ export const withTracer: {
  * @since 2.0.0
  * @category tracing
  */
-export const withTracerScoped: (value: Tracer.Tracer) => Effect<Scope.Scope, never, void> =
-  fiberRuntime.withTracerScoped
+export const withTracerScoped: (value: Tracer.Tracer) => Effect<"Scope", never, void> = fiberRuntime.withTracerScoped
 
 /**
  * @since 2.0.0
@@ -5143,7 +5142,7 @@ export const makeSpanScoped: (
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }
-) => Effect<Scope.Scope, never, Tracer.Span> = fiberRuntime.makeSpanScoped
+) => Effect<"Scope", never, Tracer.Span> = fiberRuntime.makeSpanScoped
 
 /**
  * Create a new span for tracing, and automatically close it when the effect
@@ -5185,8 +5184,8 @@ export const withSpan: {
       readonly parent?: Tracer.ParentSpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
-    }
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
+    } | undefined
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, "ParentSpan">, E, A>
   <R, E, A>(
     self: Effect<R, E, A>,
     name: string,
@@ -5196,8 +5195,8 @@ export const withSpan: {
       readonly parent?: Tracer.ParentSpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
-    }
-  ): Effect<Exclude<R, Tracer.ParentSpan>, E, A>
+    } | undefined
+  ): Effect<Exclude<R, "ParentSpan">, E, A>
 } = effect.withSpan
 
 /**
@@ -5217,8 +5216,8 @@ export const withSpanScoped: {
       readonly parent?: Tracer.ParentSpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
-    }
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>
+    } | undefined
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<"Scope" | Exclude<R, "ParentSpan">, E, A>
   <R, E, A>(
     self: Effect<R, E, A>,
     name: string,
@@ -5228,8 +5227,8 @@ export const withSpanScoped: {
       readonly parent?: Tracer.ParentSpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
-    }
-  ): Effect<Scope.Scope | Exclude<R, Tracer.ParentSpan>, E, A>
+    } | undefined
+  ): Effect<"Scope" | Exclude<R, "ParentSpan">, E, A>
 } = fiberRuntime.withSpanScoped
 
 /**
@@ -5239,8 +5238,8 @@ export const withSpanScoped: {
  * @category tracing
  */
 export const withParentSpan: {
-  (span: Tracer.ParentSpan): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
-  <R, E, A>(self: Effect<R, E, A>, span: Tracer.ParentSpan): Effect<Exclude<R, Tracer.ParentSpan>, E, A>
+  (span: Tracer.ParentSpan): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, "ParentSpan">, E, A>
+  <R, E, A>(self: Effect<R, E, A>, span: Tracer.ParentSpan): Effect<Exclude<R, "ParentSpan">, E, A>
 } = effect.withParentSpan
 
 // -------------------------------------------------------------------------------------

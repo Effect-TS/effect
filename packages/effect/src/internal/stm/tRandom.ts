@@ -83,7 +83,7 @@ const shuffleWith = <A>(
 }
 
 /** @internal */
-export const Tag = Context.Tag<TRandom.TRandom>()
+export const Tag = Context.Tag("TRandom")<TRandom.TRandom>()
 
 class TRandomImpl implements TRandom.TRandom {
   readonly [TRandomTypeId]: TRandom.TRandomTypeId = TRandomTypeId
@@ -109,7 +109,7 @@ class TRandomImpl implements TRandom.TRandom {
 }
 
 /** @internal */
-export const live: Layer.Layer<never, never, TRandom.TRandom> = Layer.effect(
+export const live: Layer.Layer<never, never, "TRandom"> = Layer.effect(
   Tag,
   pipe(
     tRef.make(new Random.PCGRandom((Math.random() * 4294967296) >>> 0).getState()),
@@ -119,22 +119,22 @@ export const live: Layer.Layer<never, never, TRandom.TRandom> = Layer.effect(
 )
 
 /** @internal */
-export const next: STM.STM<TRandom.TRandom, never, number> = core.flatMap(Tag, (random) => random.next)
+export const next: STM.STM<"TRandom", never, number> = core.flatMap(Tag, (random) => random.next)
 
 /** @internal */
-export const nextBoolean: STM.STM<TRandom.TRandom, never, boolean> = core.flatMap(Tag, (random) => random.nextBoolean)
+export const nextBoolean: STM.STM<"TRandom", never, boolean> = core.flatMap(Tag, (random) => random.nextBoolean)
 
 /** @internal */
-export const nextInt: STM.STM<TRandom.TRandom, never, number> = core.flatMap(Tag, (random) => random.nextInt)
+export const nextInt: STM.STM<"TRandom", never, number> = core.flatMap(Tag, (random) => random.nextInt)
 
 /** @internal */
-export const nextIntBetween = (low: number, high: number): STM.STM<TRandom.TRandom, never, number> =>
+export const nextIntBetween = (low: number, high: number): STM.STM<"TRandom", never, number> =>
   core.flatMap(Tag, (random) => random.nextIntBetween(low, high))
 
 /** @internal */
-export const nextRange = (min: number, max: number): STM.STM<TRandom.TRandom, never, number> =>
+export const nextRange = (min: number, max: number): STM.STM<"TRandom", never, number> =>
   core.flatMap(Tag, (random) => random.nextRange(min, max))
 
 /** @internal */
-export const shuffle = <A>(elements: Iterable<A>): STM.STM<TRandom.TRandom, never, Array<A>> =>
+export const shuffle = <A>(elements: Iterable<A>): STM.STM<"TRandom", never, Array<A>> =>
   core.flatMap(Tag, (random) => random.shuffle(elements))

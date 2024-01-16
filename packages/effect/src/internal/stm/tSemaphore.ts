@@ -1,7 +1,6 @@
 import * as Cause from "../../Cause.js"
 import * as Effect from "../../Effect.js"
 import { dual } from "../../Function.js"
-import type * as Scope from "../../Scope.js"
 import * as STM from "../../STM.js"
 import type * as TRef from "../../TRef.js"
 import type * as TSemaphore from "../../TSemaphore.js"
@@ -94,13 +93,13 @@ export const withPermits = dual<
   ))
 
 /** @internal */
-export const withPermitScoped = (self: TSemaphore.TSemaphore): Effect.Effect<Scope.Scope, never, void> =>
+export const withPermitScoped = (self: TSemaphore.TSemaphore): Effect.Effect<"Scope", never, void> =>
   withPermitsScoped(self, 1)
 
 /** @internal */
 export const withPermitsScoped = dual<
-  (permits: number) => (self: TSemaphore.TSemaphore) => Effect.Effect<Scope.Scope, never, void>,
-  (self: TSemaphore.TSemaphore, permits: number) => Effect.Effect<Scope.Scope, never, void>
+  (permits: number) => (self: TSemaphore.TSemaphore) => Effect.Effect<"Scope", never, void>,
+  (self: TSemaphore.TSemaphore, permits: number) => Effect.Effect<"Scope", never, void>
 >(2, (self, permits) =>
   Effect.acquireReleaseInterruptible(
     core.commit(acquireN(self, permits)),

@@ -27,7 +27,7 @@ export type TagTypeId = typeof TagTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Tag<in out Identifier, in out Service> extends Pipeable, Inspectable {
+export interface Tag<in out Identifier extends string, in out Service> extends Pipeable, Inspectable {
   readonly _tag: "Tag"
   readonly _op: "Tag"
   readonly [TagTypeId]: {
@@ -37,7 +37,7 @@ export interface Tag<in out Identifier, in out Service> extends Pipeable, Inspec
   of(self: Service): Service
   context(self: Service): Context<Identifier>
   readonly stack?: string | undefined
-  readonly identifier?: unknown
+  readonly identifier: Identifier
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: TagUnify<this>
   [Unify.ignoreSymbol]?: TagUnifyIgnore
@@ -91,7 +91,7 @@ export declare namespace Tag {
  * @since 2.0.0
  * @category constructors
  */
-export const Tag: <Identifier, Service = Identifier>(identifier?: unknown) => Tag<Identifier, Service> =
+export const Tag: <Identifier extends string>(identifier: Identifier) => <Service>() => Tag<Identifier, Service> =
   internal.makeTag
 
 const TypeId: unique symbol = internal.TypeId as TypeId
@@ -106,7 +106,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export type ValidTagsById<R> = R extends infer S ? Tag<S, any> : never
+export type ValidTagsById<R> = R extends infer S extends string ? Tag<S, any> : never
 
 /**
  * @since 2.0.0
@@ -272,8 +272,8 @@ export const get: {
  * @category unsafe
  */
 export const unsafeGet: {
-  <S, I>(tag: Tag<I, S>): <Services>(self: Context<Services>) => S
-  <Services, S, I>(self: Context<Services>, tag: Tag<I, S>): S
+  <S, I extends string>(tag: Tag<I, S>): <Services>(self: Context<Services>) => S
+  <Services, S, I extends string>(self: Context<Services>, tag: Tag<I, S>): S
 } = internal.unsafeGet
 
 /**
@@ -299,8 +299,8 @@ export const unsafeGet: {
  * @category getters
  */
 export const getOption: {
-  <S, I>(tag: Tag<I, S>): <Services>(self: Context<Services>) => Option<S>
-  <Services, S, I>(self: Context<Services>, tag: Tag<I, S>): Option<S>
+  <S, I extends string>(tag: Tag<I, S>): <Services>(self: Context<Services>) => Option<S>
+  <Services, S, I extends string>(self: Context<Services>, tag: Tag<I, S>): Option<S>
 } = internal.getOption
 
 /**

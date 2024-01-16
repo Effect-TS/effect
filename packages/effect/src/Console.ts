@@ -6,7 +6,6 @@ import type { Effect } from "./Effect.js"
 import * as internal from "./internal/console.js"
 import * as defaultConsole from "./internal/defaultServices/console.js"
 import type * as Layer from "./Layer.js"
-import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -82,7 +81,7 @@ export interface UnsafeConsole {
  * @since 2.0.0
  * @category context
  */
-export const Console: Context.Tag<Console, Console> = defaultConsole.consoleTag
+export const Console: Context.Tag<"Console", Console> = defaultConsole.consoleTag
 
 /**
  * @since 2.0.0
@@ -158,11 +157,8 @@ export const error: (...args: ReadonlyArray<any>) => Effect<never, never, void> 
  * @category accessor
  */
 export const group: (
-  options?: {
-    label?: string | undefined
-    collapsed?: boolean | undefined
-  }
-) => Effect<Scope, never, void> = internal.group
+  options?: { label?: string | undefined; collapsed?: boolean | undefined } | undefined
+) => Effect<"Scope", never, void> = internal.group
 
 /**
  * @since 2.0.0
@@ -187,7 +183,7 @@ export const table: (tabularData: any, properties?: ReadonlyArray<string>) => Ef
  * @since 2.0.0
  * @category accessor
  */
-export const time: (label?: string) => Effect<Scope, never, void> = internal.time
+export const time: (label?: string | undefined) => Effect<"Scope", never, void> = internal.time
 
 /**
  * @since 2.0.0

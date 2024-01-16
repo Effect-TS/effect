@@ -23,7 +23,6 @@ import type { Predicate } from "./Predicate.js"
 import type * as PubSub from "./PubSub.js"
 import type * as Queue from "./Queue.js"
 import type * as Ref from "./Ref.js"
-import type * as Scope from "./Scope.js"
 import type * as SingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
@@ -1090,7 +1089,7 @@ export const fromPubSub: <Err, Done, Elem>(
  */
 export const fromPubSubScoped: <Err, Done, Elem>(
   pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-) => Effect.Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =
+) => Effect.Effect<"Scope", never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =
   channel.fromPubSubScoped
 
 /**
@@ -1932,7 +1931,7 @@ export const runDrain: <Env, InErr, InDone, OutElem, OutErr, OutDone>(
  */
 export const scoped: <R, E, A>(
   effect: Effect.Effect<R, E, A>
-) => Channel<Exclude<R, Scope.Scope>, unknown, unknown, unknown, E, A, unknown> = channel.scoped
+) => Channel<Exclude<R, "Scope">, unknown, unknown, unknown, E, A, unknown> = channel.scoped
 
 /**
  * Constructs a channel that succeeds immediately with the specified value.
@@ -1983,8 +1982,7 @@ export const toPubSub: <Err, Done, Elem>(
  */
 export const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) => Effect.Effect<Scope.Scope | Env, never, Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>> =
-  channel.toPull
+) => Effect.Effect<"Scope" | Env, never, Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>> = channel.toPull
 
 /**
  * Converts a `Channel` to a `Queue`.
@@ -2039,7 +2037,7 @@ export const unwrap: <R, E, R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>
  */
 export const unwrapScoped: <R, E, Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Effect.Effect<R, E, Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
-) => Channel<Env | Exclude<R, Scope.Scope>, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> = channel.unwrapScoped
+) => Channel<Env | Exclude<R, "Scope">, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> = channel.unwrapScoped
 
 /**
  * Updates a service in the context of this channel.

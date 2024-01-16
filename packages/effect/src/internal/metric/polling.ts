@@ -5,7 +5,6 @@ import type * as Metric from "../../Metric.js"
 import type * as MetricPolling from "../../MetricPolling.js"
 import { pipeArguments } from "../../Pipeable.js"
 import type * as Schedule from "../../Schedule.js"
-import type * as Scope from "../../Scope.js"
 import * as core from "../core.js"
 import * as circular from "../effect/circular.js"
 import * as metric from "../metric.js"
@@ -68,11 +67,11 @@ export const launch = dual<
     schedule: Schedule.Schedule<R2, unknown, A2>
   ) => <Type, In, R, E, Out>(
     self: MetricPolling.MetricPolling<Type, In, R, E, Out>
-  ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.Fiber<E, A2>>,
+  ) => Effect.Effect<R | R2 | "Scope", never, Fiber.Fiber<E, A2>>,
   <Type, In, R, E, Out, R2, A2>(
     self: MetricPolling.MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
-  ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.Fiber<E, A2>>
+  ) => Effect.Effect<R | R2 | "Scope", never, Fiber.Fiber<E, A2>>
 >(2, (self, schedule) =>
   pipe(
     pollAndUpdate(self),

@@ -288,8 +288,7 @@ export const forkIn = dual<
 /** @internal */
 export const forkScoped = <R, E, A>(
   self: Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, never, Fiber.RuntimeFiber<E, A>> =>
-  fiberRuntime.scopeWith((scope) => forkIn(self, scope))
+): Effect.Effect<R | "Scope", never, Fiber.RuntimeFiber<E, A>> => fiberRuntime.scopeWith((scope) => forkIn(self, scope))
 
 /** @internal */
 export const fromFiber = <E, A>(fiber: Fiber.Fiber<E, A>): Effect.Effect<never, E, A> => internalFiber.join(fiber)
@@ -379,11 +378,11 @@ export const scheduleForked = dual<
     schedule: Schedule.Schedule<R2, unknown, Out>
   ) => <R, E, A>(
     self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.RuntimeFiber<E, Out>>,
+  ) => Effect.Effect<R | R2 | "Scope", never, Fiber.RuntimeFiber<E, Out>>,
   <R, E, A, R2, Out>(
     self: Effect.Effect<R, E, A>,
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.RuntimeFiber<E, Out>>
+  ) => Effect.Effect<R | R2 | "Scope", never, Fiber.RuntimeFiber<E, Out>>
 >(2, (self, schedule) => pipe(self, _schedule.schedule_Effect(schedule), forkScoped))
 
 /** @internal */

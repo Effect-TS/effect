@@ -97,7 +97,7 @@ export const addEffect: <R, E, A>(effect: Effect<R, E, Logger<unknown, A>>) => L
  */
 export const addScoped: <R, E, A>(
   effect: Effect<R, E, Logger<unknown, A>>
-) => Layer.Layer<Exclude<R, Scope>, E, never> = circular.addLoggerScoped
+) => Layer.Layer<Exclude<R, "Scope">, E, never> = circular.addLoggerScoped
 
 /**
  * @since 2.0.0

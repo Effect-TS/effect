@@ -7,12 +7,11 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
 import * as TestServices from "effect/TestServices"
 import { expect } from "vitest"
 
 export interface WatchableLookup<Key, Error, Value> {
-  (key: Key): Effect.Effect<Scope.Scope, Error, Value>
+  (key: Key): Effect.Effect<"Scope", Error, Value>
   lock(): Effect.Effect<never, never, void>
   unlock(): Effect.Effect<never, never, void>
   createdResources(): Effect.Effect<
@@ -48,7 +47,7 @@ export const makeEffect = <Key, Error, Value>(
       Ref.make(HashMap.empty<Key, Chunk.Chunk<ObservableResource.ObservableResource<Error, Value>>>())
     ),
     ([blocked, resources]): WatchableLookup<Key, Error, Value> => {
-      function lookup(key: Key): Effect.Effect<Scope.Scope, Error, Value> {
+      function lookup(key: Key): Effect.Effect<"Scope", Error, Value> {
         return Effect.flatten(Effect.gen(function*($) {
           const observableResource = yield* $(ObservableResource.makeEffect(concreteLookup(key)))
           yield* $(Ref.update(resources, (resourceMap) => {
