@@ -93,8 +93,8 @@ export const exitSchema = <R, IE, E, IA, A>(
  * @since 1.0.0
  * @category model
  */
-export interface SerializableWithResult<R, IS, S, IE, E, IA, A>
-  extends Serializable<R, IS, S>, WithResult<R, IE, E, IA, A>
+export interface SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
+  extends Serializable<R, IS, S>, WithResult<RR, IE, E, IA, A>
 {}
 
 /**
@@ -117,7 +117,7 @@ export const deserialize: {
 } = dual<
   (value: unknown) => <R, I, A>(
     self: Serializable<R, I, A>
-  ) => Effect.Effect<never, ParseResult.ParseError, A>,
+  ) => Effect.Effect<R, ParseResult.ParseError, A>,
   <R, I, A>(
     self: Serializable<R, I, A>,
     value: unknown

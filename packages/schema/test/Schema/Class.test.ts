@@ -4,7 +4,7 @@ import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Util from "@effect/schema/test/util"
-import { Effect, Exit } from "effect"
+import { Context, Effect, Exit } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
@@ -19,6 +19,40 @@ class Person extends S.Class<Person>()({
     return this.name.toUpperCase()
   }
 }
+
+const Name = Context.Tag<"Name", string>()
+const NameString = S.string.pipe(
+  S.nonEmpty(),
+  S.transformOrFail(
+    S.string,
+    (_, _opts, ast) =>
+      Name.pipe(
+        Effect.filterOrFail(
+          (name) => _ === name,
+          () => PR.parseError(PR.type(ast, _, "Does not match Name"))
+        )
+      ),
+    (_) => PR.succeed(_)
+  )
+)
+
+const Id = Context.Tag<"Id", number>()
+const IdNumber = S.number.pipe(
+  S.transformOrFail(
+    S.number,
+    (_, _opts, ast) =>
+      Effect.filterOrFail(
+        Id,
+        (id) => _ === id,
+        () => PR.parseError(PR.type(ast, _, "Does not match Id"))
+      ),
+    (_) => PR.succeed(_)
+  )
+)
+
+class PersonContext extends Person.extend<PersonContext>()({
+  name: NameString
+}) {}
 
 class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
   id: S.number,
@@ -122,6 +156,22 @@ describe("Schema > Class", () => {
 
   it("schema", async () => {
     const person = S.parseSync(Person)({ id: 1, name: "John" })
+    expect(person.name).toEqual("John")
+
+    const PersonFromSelf = S.to(Person)
+    await Util.expectParseSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.expectParseFailure(
+      PersonFromSelf,
+      { id: 1, name: "John" },
+      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+    )
+  })
+
+  it("with context", async () => {
+    const person = S.parse(PersonContext)({ id: 1, name: "John" }).pipe(
+      Effect.provideService(Name, "John"),
+      Effect.runSync
+    )
     expect(person.name).toEqual("John")
 
     const PersonFromSelf = S.to(Person)
@@ -321,6 +371,51 @@ describe("Schema > Class", () => {
     assert.deepStrictEqual(
       Serializable.deserializeExit(req, { _tag: "Success", value: "123" }).pipe(Effect.runSync),
       Exit.succeed(123)
+    )
+  })
+
+  it("TaggedRequest context", () => {
+    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", NameString, S.number, {
+      id: IdNumber
+    }) {}
+
+    let req = new MyRequest({ id: 1 }, true)
+    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+
+    req = S.decode(MyRequest)({ _tag: "MyRequest", id: 1 }).pipe(
+      Effect.provideService(Id, 1),
+      Effect.runSync
+    )
+    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+
+    assert.deepStrictEqual(
+      Serializable.serialize(req).pipe(
+        Effect.provideService(Id, 1),
+        Effect.runSync
+      ),
+      { _tag: "MyRequest", id: 1 }
+    )
+    assert.deepStrictEqual(
+      Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(
+        Effect.provideService(Id, 1),
+        Effect.runSync
+      ),
+      req
+    )
+    assert.deepStrictEqual(
+      Serializable.serializeExit(req, Exit.fail("fail")).pipe(
+        Effect.provideService(Name, "fail"),
+        Effect.runSync
+      ),
+      { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
+    )
+    assert.deepStrictEqual(
+      Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
+        .pipe(
+          Effect.provideService(Name, "fail"),
+          Effect.runSync
+        ),
+      Exit.fail("fail")
     )
   })
 })

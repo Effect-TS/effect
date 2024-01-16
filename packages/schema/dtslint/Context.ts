@@ -1,9 +1,11 @@
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Option from "effect/Option"
 
 declare const aContext: Schema.Schema<"a", string>
 declare const bContext: Schema.Schema<"b", number>
+declare const cContext: Schema.Schema<"c", string>
 
 // ---------------------------------------------
 // union
@@ -255,6 +257,33 @@ Schema.rename(Schema.struct({ a: aContext, b: bContext }), { a: "c", b: "d" })
 // ---------------------------------------------
 
 export class MyClass extends Schema.Class<MyClass>()({
-  // @ts-expect-error
   a: aContext
 }) {}
+
+// $ExpectType "a"
+export type MyClassContext = Schema.Schema.Context<typeof MyClass>
+
+// $ExpectType Schema<"a", { readonly a: string; }, { readonly a: string; }>
+MyClass.struct
+
+// $ExpectType [props: { readonly a: string; }, disableValidation: true]
+export type MyClassParams = ConstructorParameters<typeof MyClass>
+
+// ---------------------------------------------
+// TaggedRequest
+// ---------------------------------------------
+
+class MyRequest extends Schema.TaggedRequest<MyRequest>()("MyRequest", bContext, cContext, {
+  a: aContext
+}) {}
+
+// $ExpectType "a"
+export type MyRequestContext = Schema.Schema.Context<typeof MyRequest>
+
+// $ExpectType Schema<"a", { readonly _tag: "MyRequest"; readonly a: string; }, { readonly _tag: "MyRequest"; readonly a: string; }>
+MyRequest.struct
+
+declare const myRequest: MyRequest
+
+// $ExpectType Schema<"b" | "c", ExitFrom<number, string>, Exit<number, string>>
+Serializable.exitSchema(myRequest)
