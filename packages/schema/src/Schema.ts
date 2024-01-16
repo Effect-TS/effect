@@ -3633,6 +3633,15 @@ export const optionFromNullish = <I, A>(
   )
 
 /**
+ * @category Option transformations
+ * @since 1.0.0
+ */
+export const optionFromOrUndefined = <I, A>(
+  value: Schema<I, A>
+): Schema<I | undefined, Option.Option<A>> =>
+  transform(orUndefined(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrUndefined)
+
+/**
  * @category Either utils
  * @since 1.0.0
  */
