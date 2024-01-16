@@ -3404,6 +3404,34 @@ export const itemsCount = <A>(
   )
 
 /**
+ * Get the first element of a `ReadonlyArray`, or `None` if the array is empty.
+ *
+ * @category ReadonlyArray transformations
+ * @since 1.0.0
+ */
+export const head = <I, A>(value: Schema<I, A>): Schema<ReadonlyArray<I>, Option.Option<A>> =>
+  transform(
+    array(value),
+    optionFromSelf(to(value)),
+    ReadonlyArray.head,
+    Option.match({ onNone: () => [], onSome: ReadonlyArray.of })
+  )
+
+/**
+ * Get the first element of a `ReadonlyArray` or fails if the array is empty.
+ *
+ * @category ReadonlyArray transformations
+ * @since 1.0.0
+ */
+export const headOrFail = <I, A>(value: Schema<I, A>): Schema<ReadonlyArray<I>, A> =>
+  transformOrFail(
+    array(value),
+    to(value),
+    (as, _, ast) => as.length > 0 ? ParseResult.succeed(as[0]) : ParseResult.fail(ParseResult.type(ast, as)),
+    (a) => ParseResult.succeed(ReadonlyArray.of(a))
+  )
+
+/**
  * @category type id
  * @since 1.0.0
  */
