@@ -1264,6 +1264,19 @@ export const getTemplateLiteralRegex = (ast: TemplateLiteral): RegExp => {
   return new RegExp(pattern)
 }
 
+/**
+ * @since 1.0.0
+ */
+export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
+  switch (ast._tag) {
+    case "TypeLiteral":
+      return ast.propertySignatures.slice()
+    case "Suspend":
+      return getPropertySignatures(ast.f())
+  }
+  return getIndexedAccessKeys(ast).map((name) => getIndexedAccess(ast, name))
+}
+
 /** @internal */
 export const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
   switch (ast._tag) {
@@ -1313,11 +1326,15 @@ export const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature
 
 const getIndexedAccessKeys = (ast: AST): Array<PropertyKey> => {
   switch (ast._tag) {
-    case "TypeLiteral": {
+    case "TypeLiteral":
       return ast.propertySignatures.map((ps) => ps.name)
-    }
     case "Suspend":
       return getIndexedAccessKeys(ast.f())
+    case "Union":
+      return ast.types.slice(1).reduce(
+        (out: Array<PropertyKey>, ast) => ReadonlyArray.intersection(out, getIndexedAccessKeys(ast)),
+        getIndexedAccessKeys(ast.types[0])
+      )
   }
   return []
 }
@@ -1513,15 +1530,12 @@ export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
 }
 
 /** @internal */
-export const getToPropertySignatures = (
-  ps: ReadonlyArray<PropertySignature>
-): Array<PropertySignature> =>
+export const getToPropertySignatures = (ps: ReadonlyArray<PropertySignature>): Array<PropertySignature> =>
   ps.map((p) => createPropertySignature(p.name, to(p.type), p.isOptional, p.isReadonly, p.annotations))
 
 /** @internal */
-export const getToIndexSignatures = (
-  ps: ReadonlyArray<IndexSignature>
-): Array<IndexSignature> => ps.map((is) => createIndexSignature(is.parameter, to(is.type), is.isReadonly))
+export const getToIndexSignatures = (ps: ReadonlyArray<IndexSignature>): Array<IndexSignature> =>
+  ps.map((is) => createIndexSignature(is.parameter, to(is.type), is.isReadonly))
 
 /**
  * @since 1.0.0
@@ -1707,7 +1721,7 @@ const sortUnionMembers: (self: Members<AST>) => Members<AST> = ReadonlyArray.sor
   Order.reverse(Order.mapInput(WeightOrder, getWeight))
 ) as any
 
-const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
+const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
   let out = pipe(
     candidates,
     ReadonlyArray.flatMap((ast: AST): ReadonlyArray<AST> => {
@@ -1760,7 +1774,7 @@ export const getParameterBase = (
   }
 }
 
-const _keyof = (ast: AST): ReadonlyArray<AST> => {
+const _keyof = (ast: AST): Array<AST> => {
   switch (ast._tag) {
     case "Declaration":
       return _keyof(ast.type)
