@@ -1186,51 +1186,6 @@ export const tap = dual<
 )
 
 /* @internal */
-export const tap2 = dual<
-  {
-    <A, X>(
-      f: (a: NoInfer<A>) => X
-    ): <R, E>(
-      self: Effect.Effect<R, E, A>
-    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
-      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
-      : Effect.Effect<R, E, A>
-    <X>(
-      f: X
-    ): <R, E, A>(
-      self: Effect.Effect<R, E, A>
-    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
-      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
-      : Effect.Effect<R, E, A>
-  },
-  {
-    <A, R, E, X>(
-      self: Effect.Effect<R, E, A>,
-      f: (a: NoInfer<A>) => X
-    ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
-      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
-      : Effect.Effect<R, E, A>
-    <A, R, E, X>(
-      self: Effect.Effect<R, E, A>,
-      f: X
-    ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
-      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
-      : Effect.Effect<R, E, A>
-  }
->(2, (self, f) =>
-  flatMap(self, (a) => {
-    const b = typeof f === "function" ? (f as any)(a) : f
-    if (isEffect(b)) {
-      return as(b, a)
-    } else if (isPromise(b)) {
-      return async<never, Cause.UnknownException, any>((resume) => {
-        b.then((_) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
-      })
-    }
-    return succeed(a)
-  }))
-
-/* @internal */
 export const transplant = <R, E, A>(
   f: (grafter: <R2, E2, A2>(effect: Effect.Effect<R2, E2, A2>) => Effect.Effect<R2, E2, A2>) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, A> =>
