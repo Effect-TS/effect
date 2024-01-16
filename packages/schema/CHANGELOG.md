@@ -1,5 +1,17 @@
 # @effect/schema
 
+## 0.60.3
+
+### Patch Changes
+
+- [#1930](https://github.com/Effect-TS/effect/pull/1930) [`d543221`](https://github.com/Effect-TS/effect/commit/d5432213e91ab620aa66e0fd92a6593134d18940) Thanks [@gcanti](https://github.com/gcanti)! - add optionFromOrUndefined
+
+- [#1928](https://github.com/Effect-TS/effect/pull/1928) [`2530d47`](https://github.com/Effect-TS/effect/commit/2530d470b0ad5df7e636921eedfb1cbe42821f94) Thanks [@gcanti](https://github.com/gcanti)! - add head / headOr
+
+- [#1933](https://github.com/Effect-TS/effect/pull/1933) [`f493929`](https://github.com/Effect-TS/effect/commit/f493929ab88d2ea137ca5fbff70bdc6c9d804d80) Thanks [@gcanti](https://github.com/gcanti)! - re-add getPropertySignatures
+
+- [#1932](https://github.com/Effect-TS/effect/pull/1932) [`5911fa9`](https://github.com/Effect-TS/effect/commit/5911fa9c9440dd3bc1ee38542bcd15f8c75a4637) Thanks [@gcanti](https://github.com/gcanti)! - add `pluck`
+
 ## 0.60.2
 
 ### Patch Changes
