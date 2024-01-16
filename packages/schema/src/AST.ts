@@ -1264,7 +1264,8 @@ export const getTemplateLiteralRegex = (ast: TemplateLiteral): RegExp => {
   return new RegExp(pattern)
 }
 
-const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
+/** @internal */
+export const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
   switch (ast._tag) {
     case "TypeLiteral": {
       const ops = ReadonlyArray.findFirst(ast.propertySignatures, (ps) => ps.name === name)
@@ -1297,6 +1298,13 @@ const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
       }
       break
     }
+    case "Union":
+      return createPropertySignature(
+        name,
+        createUnion(ast.types.map((ast) => getIndexedAccess(ast, name).type)),
+        false,
+        true
+      )
     case "Suspend":
       return getIndexedAccess(ast.f(), name)
   }
