@@ -108,7 +108,7 @@ describe("Schema > pluck", () => {
     await Util.expectEncodeSuccess(schema, "a", { a: "a" })
   })
 
-  it.only("struct with exact optional key", async () => {
+  it("struct with exact optional key", async () => {
     const schema = S.pluck(S.struct({ a: S.optional(S.string, { exact: true }) }), "a")
     await Util.expectEncodeSuccess(schema, undefined, {})
     await Util.expectEncodeSuccess(schema, "a", { a: "a" })
