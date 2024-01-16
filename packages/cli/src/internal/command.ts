@@ -18,7 +18,6 @@ import type * as CliConfig from "../CliConfig.js"
 import type * as Command from "../Command.js"
 import type * as Descriptor from "../CommandDescriptor.js"
 import type * as HelpDoc from "../HelpDoc.js"
-import type * as Span from "../HelpDoc/Span.js"
 import type * as Options from "../Options.js"
 import type * as Prompt from "../Prompt.js"
 import type * as Usage from "../Usage.js"
@@ -535,22 +534,17 @@ export const wizard = dual<
 
 /** @internal */
 export const run = dual<
-  (config: {
-    readonly name: string
-    readonly version: string
-    readonly summary?: Span.Span | undefined
-    readonly footer?: HelpDoc.HelpDoc | undefined
-  }) => <Name extends string, R, E, A>(
+  (
+    config: Omit<CliApp.CliApp.ConstructorArgs<never>, "command">
+  ) => <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>
   ) => (
     args: ReadonlyArray<string>
   ) => Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void>,
-  <Name extends string, R, E, A>(self: Command.Command<Name, R, E, A>, config: {
-    readonly name: string
-    readonly version: string
-    readonly summary?: Span.Span | undefined
-    readonly footer?: HelpDoc.HelpDoc | undefined
-  }) => (
+  <Name extends string, R, E, A>(
+    self: Command.Command<Name, R, E, A>,
+    config: Omit<CliApp.CliApp.ConstructorArgs<never>, "command">
+  ) => (
     args: ReadonlyArray<string>
   ) => Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void>
 >(2, (self, config) => {

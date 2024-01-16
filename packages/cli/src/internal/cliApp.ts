@@ -13,7 +13,6 @@ import type * as CliApp from "../CliApp.js"
 import type * as CliConfig from "../CliConfig.js"
 import type * as Command from "../CommandDescriptor.js"
 import type * as HelpDoc from "../HelpDoc.js"
-import type * as Span from "../HelpDoc/Span.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalCommand from "./commandDescriptor.js"
@@ -34,16 +33,11 @@ const proto = {
 // =============================================================================
 
 /** @internal */
-export const make = <A>(config: {
-  name: string
-  version: string
-  command: Command.Command<A>
-  summary?: Span.Span | undefined
-  footer?: HelpDoc.HelpDoc | undefined
-}): CliApp.CliApp<A> => {
+export const make = <A>(config: CliApp.CliApp.ConstructorArgs<A>): CliApp.CliApp<A> => {
   const op = Object.create(proto)
   op.name = config.name
   op.version = config.version
+  op.executable = config.executable
   op.command = config.command
   op.summary = config.summary || InternalSpan.empty
   op.footer = config.footer || InternalHelpDoc.empty
@@ -79,8 +73,10 @@ export const run = dual<
       Context.getOption(context, InternalCliConfig.Tag),
       () => InternalCliConfig.defaultConfig
     )
+    // Remove the executable from the command line arguments
+    const [executable, filteredArgs] = splitExecutable(self, args)
     // Prefix the command name to the command line arguments
-    const prefixedArgs = ReadonlyArray.appendAll(prefixCommand(self.command), args)
+    const prefixedArgs = ReadonlyArray.appendAll(prefixCommand(self.command), filteredArgs)
     // Handle the command
     return Effect.matchEffect(InternalCommand.parse(self.command, prefixedArgs, config), {
       onFailure: (e) => Effect.zipRight(printDocs(e.error), Effect.fail(e)),
@@ -93,7 +89,7 @@ export const run = dual<
                   Effect.catchSome((e) =>
                     InternalValidationError.isValidationError(e) &&
                       InternalValidationError.isHelpRequested(e)
-                      ? Option.some(handleBuiltInOption(self, args, e.showHelp, execute, config))
+                      ? Option.some(handleBuiltInOption(self, executable, filteredArgs, e.showHelp, execute, config))
                       : Option.none()
                   )
                 ),
@@ -104,7 +100,7 @@ export const run = dual<
             })
           }
           case "BuiltIn": {
-            return handleBuiltInOption(self, args, directive.option, execute, config).pipe(
+            return handleBuiltInOption(self, executable, filteredArgs, directive.option, execute, config).pipe(
               Effect.catchSome((e) =>
                 InternalValidationError.isValidationError(e)
                   ? Option.some(Effect.zipRight(printDocs(e.error), Effect.fail(e)))
@@ -121,6 +117,17 @@ export const run = dual<
 // Internals
 // =============================================================================
 
+const splitExecutable = <A>(self: CliApp.CliApp<A>, args: ReadonlyArray<string>): [
+  executable: string,
+  args: ReadonlyArray<string>
+] => {
+  if (self.executable !== undefined) {
+    return [self.executable, ReadonlyArray.drop(args, 2)]
+  }
+  const [[runtime, script], optionsAndArgs] = ReadonlyArray.splitAt(args, 2)
+  return [`${runtime} ${script}`, optionsAndArgs]
+}
+
 const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<never, never, void> =>
   Console.log(InternalHelpDoc.toAnsiText(error))
 
@@ -130,6 +137,7 @@ const isQuitException = (u: unknown): u is Terminal.QuitException =>
 
 const handleBuiltInOption = <R, E, A>(
   self: CliApp.CliApp<A>,
+  executable: string,
   args: ReadonlyArray<string>,
   builtIn: BuiltInOptions.BuiltInOptions,
   execute: (a: A) => Effect.Effect<R, E, void>,
@@ -174,96 +182,80 @@ const handleBuiltInOption = <R, E, A>(
       return Console.log(InternalHelpDoc.toAnsiText(helpDoc))
     }
     case "ShowCompletions": {
-      const commandNames = ReadonlyArray.fromIterable(InternalCommand.getNames(self.command))
-      if (ReadonlyArray.isNonEmptyReadonlyArray(commandNames)) {
-        const programName = ReadonlyArray.headNonEmpty(commandNames)
-        switch (builtIn.shellType) {
-          case "bash": {
-            return InternalCommand.getBashCompletions(self.command, programName).pipe(
-              Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
-            )
-          }
-          case "fish": {
-            return InternalCommand.getFishCompletions(self.command, programName).pipe(
-              Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
-            )
-          }
-          case "zsh":
-            return InternalCommand.getZshCompletions(self.command, programName).pipe(
-              Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
-            )
+      switch (builtIn.shellType) {
+        case "bash": {
+          return InternalCommand.getBashCompletions(self.command, executable).pipe(
+            Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
+          )
         }
+        case "fish": {
+          return InternalCommand.getFishCompletions(self.command, executable).pipe(
+            Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
+          )
+        }
+        case "zsh":
+          return InternalCommand.getZshCompletions(self.command, executable).pipe(
+            Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
+          )
       }
-      throw new Error(
-        "[BUG]: BuiltInOptions.showCompletions - received empty list of command names"
-      )
     }
     case "ShowWizard": {
-      const commandNames = ReadonlyArray.fromIterable(InternalCommand.getNames(self.command))
-      if (ReadonlyArray.isNonEmptyReadonlyArray(commandNames)) {
-        const programName = ReadonlyArray.headNonEmpty(commandNames)
-        const summary = InternalSpan.isEmpty(self.summary)
-          ? InternalSpan.empty
-          : InternalSpan.spans([
-            InternalSpan.space,
-            InternalSpan.text("--"),
-            InternalSpan.space,
-            self.summary
-          ])
-        const instructions = InternalHelpDoc.sequence(
-          InternalHelpDoc.p(InternalSpan.spans([
-            InternalSpan.text("The wizard mode will assist you with constructing commands for"),
-            InternalSpan.space,
-            InternalSpan.code(`${self.name} (${self.version})`),
-            InternalSpan.text(".")
-          ])),
-          InternalHelpDoc.p("Please answer all prompts provided by the wizard.")
-        )
-        const description = InternalHelpDoc.descriptionList([[
-          InternalSpan.text("Instructions"),
-          instructions
-        ]])
-        const header = InternalHelpDoc.h1(
-          InternalSpan.spans([
-            InternalSpan.code("Wizard Mode for CLI Application:"),
-            InternalSpan.space,
-            InternalSpan.code(self.name),
-            InternalSpan.space,
-            InternalSpan.code(`(${self.version})`),
-            summary
-          ])
-        )
-        const help = InternalHelpDoc.sequence(header, description)
-        const text = InternalHelpDoc.toAnsiText(help)
-        const wizardPrefix = getWizardPrefix(builtIn, programName, args)
-        return Console.log(text).pipe(
-          Effect.zipRight(InternalCommand.wizard(builtIn.command, wizardPrefix, config)),
-          Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args)))),
-          Effect.flatMap((args) =>
-            InternalTogglePrompt.toggle({
-              message: "Would you like to run the command?",
-              initial: true,
-              active: "yes",
-              inactive: "no"
-            }).pipe(Effect.flatMap((shouldRunCommand) => {
-              return shouldRunCommand
-                ? Console.log().pipe(
-                  Effect.zipRight(run(self, ReadonlyArray.drop(args, 1), execute))
-                )
-                : Effect.unit
-            }))
-          ),
-          Effect.catchAll((e) => {
-            if (isQuitException(e)) {
-              const message = InternalHelpDoc.p(InternalSpan.error("\n\nQuitting wizard mode..."))
-              return Console.log(InternalHelpDoc.toAnsiText(message))
-            }
-            return Effect.fail(e)
-          })
-        )
-      }
-      throw new Error(
-        "[BUG]: BuiltInOptions.showWizard - received empty list of command names"
+      const summary = InternalSpan.isEmpty(self.summary)
+        ? InternalSpan.empty
+        : InternalSpan.spans([
+          InternalSpan.space,
+          InternalSpan.text("--"),
+          InternalSpan.space,
+          self.summary
+        ])
+      const instructions = InternalHelpDoc.sequence(
+        InternalHelpDoc.p(InternalSpan.spans([
+          InternalSpan.text("The wizard mode will assist you with constructing commands for"),
+          InternalSpan.space,
+          InternalSpan.code(`${self.name} (${self.version})`),
+          InternalSpan.text(".")
+        ])),
+        InternalHelpDoc.p("Please answer all prompts provided by the wizard.")
+      )
+      const description = InternalHelpDoc.descriptionList([[
+        InternalSpan.text("Instructions"),
+        instructions
+      ]])
+      const header = InternalHelpDoc.h1(
+        InternalSpan.spans([
+          InternalSpan.code("Wizard Mode for CLI Application:"),
+          InternalSpan.space,
+          InternalSpan.code(self.name),
+          InternalSpan.space,
+          InternalSpan.code(`(${self.version})`),
+          summary
+        ])
+      )
+      const help = InternalHelpDoc.sequence(header, description)
+      const text = InternalHelpDoc.toAnsiText(help)
+      const wizardPrefix = getWizardPrefix(builtIn, executable, args)
+      return Console.log(text).pipe(
+        Effect.zipRight(InternalCommand.wizard(builtIn.command, wizardPrefix, config)),
+        Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args)))),
+        Effect.flatMap((args) =>
+          InternalTogglePrompt.toggle({
+            message: "Would you like to run the command?",
+            initial: true,
+            active: "yes",
+            inactive: "no"
+          }).pipe(Effect.flatMap((shouldRunCommand) => {
+            return shouldRunCommand
+              ? Console.log().pipe(Effect.zipRight(run(self, args, execute)))
+              : Effect.unit
+          }))
+        ),
+        Effect.catchAll((e) => {
+          if (isQuitException(e)) {
+            const message = InternalHelpDoc.p(InternalSpan.error("\n\nQuitting wizard mode..."))
+            return Console.log(InternalHelpDoc.toAnsiText(message))
+          }
+          return Effect.fail(e)
+        })
       )
     }
     case "ShowVersion": {
@@ -315,7 +307,7 @@ const getWizardPrefix = (
     onEmpty: () => ReadonlyArray.filter(parentArgs, (arg) => arg !== "--wizard"),
     onNonEmpty: (head) => ReadonlyArray.append(parentArgs, head)
   })
-  return ReadonlyArray.prepend(args, rootCommand)
+  return ReadonlyArray.appendAll(rootCommand.split(/\s+/), args)
 }
 
 const renderWizardArgs = (args: ReadonlyArray<string>) => {

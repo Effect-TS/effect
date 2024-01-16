@@ -25,7 +25,7 @@ describe("CliApp", () => {
         name: "Test",
         version: "1.0.0"
       })
-      const args = ReadonlyArray.make("--bar")
+      const args = ReadonlyArray.make("node", "test.js", "--bar")
       const result = yield* _(Effect.flip(cli(args)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Received unknown argument: '--bar'"

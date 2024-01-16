@@ -90,7 +90,7 @@ const removeMineCommand = Command.make("remove", {
     yield* _(Console.log(`Removing mine at coordinates (${x}, ${y}), if present`))
   })).pipe(Command.withDescription("Remove a mine at specific coordinates"))
 
-const run = Command.make("naval_fate").pipe(
+const command = Command.make("naval_fate").pipe(
   Command.withDescription("An implementation of the Naval Fate CLI application."),
   Command.withSubcommands([
     shipCommand.pipe(Command.withSubcommands([
@@ -102,21 +102,20 @@ const run = Command.make("naval_fate").pipe(
       setMineCommand,
       removeMineCommand
     ]))
-  ]),
-  Command.run({
-    name: "Naval Fate",
-    version: "1.0.0"
-  })
+  ])
 )
-
-const main = Effect.suspend(() => run(globalThis.process.argv.slice(2)))
 
 const MainLayer = NavalFateStore.layer.pipe(
   Layer.provide(KeyValueStore.layerFileSystem("naval-fate-store")),
   Layer.merge(NodeContext.layer)
 )
 
-main.pipe(
+const cli = Command.run(command, {
+  name: "Naval Fate",
+  version: "1.0.0"
+})
+
+Effect.suspend(() => cli(process.argv)).pipe(
   Effect.provide(MainLayer),
   Effect.tapErrorCause(Effect.logError),
   Runtime.runMain

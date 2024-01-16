@@ -63,7 +63,7 @@ const cli = Command.run(command, {
   version: "v1.0.0"
 })
 
-Effect.suspend(() => cli(process.argv.slice(2))).pipe(
+Effect.suspend(() => cli(process.argv)).pipe(
   Effect.withConfigProvider(ConfigProvider.nested(ConfigProvider.fromEnv(), "GIT")),
   Effect.provide(NodeContext.layer),
   Runtime.runMain

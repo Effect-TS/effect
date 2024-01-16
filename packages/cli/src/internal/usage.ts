@@ -117,7 +117,13 @@ const simplify = (self: Usage.Usage, config: CliConfig.CliConfig): Usage.Usage =
         return empty
       }
       const usage = simplify(self.usage, config)
-      return usage._tag === "Empty" ? empty : optional(usage)
+      // No need to do anything for empty usage
+      return usage._tag === "Empty"
+        ? empty
+        // Avoid re-wrapping the usage in an optional instruction
+        : usage._tag === "Optional"
+        ? usage
+        : optional(usage)
     }
     case "Repeated": {
       const usage = simplify(self.usage, config)
