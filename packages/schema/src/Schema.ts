@@ -942,7 +942,7 @@ export const struct = <Fields extends StructFields>(
 }
 
 /**
- * @category combinators
+ * @category struct transformations
  * @since 1.0.0
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
@@ -972,7 +972,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 }
 
 /**
- * @category combinators
+ * @category struct transformations
  * @since 1.0.0
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
@@ -999,6 +999,21 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     throw new Error(`omit: cannot handle this kind of transformation`)
   }
   return make(AST.omit(ast, keys))
+}
+
+/**
+ * @category struct transformations
+ * @since 1.0.0
+ */
+export const pluck = <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Schema<I, A[K]> => {
+  const ps = AST.getIndexedAccess(to(schema).ast, key)
+  const value = make<A[K], A[K]>(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
+  return transform(
+    schema,
+    value,
+    (a) => a[key],
+    (ak) => ps.isOptional && ak === undefined ? {} : { [key]: ak } as any
+  )
 }
 
 /**
