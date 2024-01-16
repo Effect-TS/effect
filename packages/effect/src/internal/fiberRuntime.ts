@@ -1094,6 +1094,9 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
 
   [OpCodes.OP_FAILURE](op: core.Primitive & { _op: OpCodes.OP_FAILURE }) {
     const cause = op.i0
+    if (cause._tag === "Interrupt" && !this.isInterrupted() && this._exitValue !== null) {
+      this.tell(FiberMessage.interruptSignal(cause as Cause.Cause<never>))
+    }
     const cont = this.getNextFailCont()
     if (cont !== undefined) {
       switch (cont._op) {
