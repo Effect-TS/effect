@@ -110,15 +110,12 @@ const MainLayer = NavalFateStore.layer.pipe(
   Layer.merge(NodeContext.layer)
 )
 
-Effect.suspend(() => {
-  const [node, executable] = process.argv
-  const cli = Command.run(command, {
-    name: "Naval Fate",
-    version: "1.0.0",
-    executable: `${node} ${executable}`
-  })
-  return cli(process.argv)
-}).pipe(
+const cli = Command.run(command, {
+  name: "Naval Fate",
+  version: "1.0.0"
+})
+
+Effect.suspend(() => cli(process.argv)).pipe(
   Effect.provide(MainLayer),
   Effect.tapErrorCause(Effect.logError),
   Runtime.runMain
