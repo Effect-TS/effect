@@ -867,3 +867,13 @@ S.string.pipe(S.propertySignatureAnnotations({ description: "description" }))
 
 // $ExpectType PropertySignature<string | undefined, true, string | undefined, true>
 S.optional(S.string).pipe(S.propertySignatureAnnotations({ description: "description" }))
+
+// ---------------------------------------------
+// pluck
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, string>
+S.pluck(S.struct({ a: S.string, b: S.number }), "a")
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, string>
+pipe(S.struct({ a: S.string, b: S.number }), S.pluck("a"))

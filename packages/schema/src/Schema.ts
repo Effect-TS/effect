@@ -1005,7 +1005,10 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @category struct transformations
  * @since 1.0.0
  */
-export const pluck = <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Schema<I, A[K]> => {
+export const pluck: {
+  <A, K extends keyof A>(key: K): <I>(schema: Schema<I, A>) => Schema<I, A[K]>
+  <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Schema<I, A[K]>
+} = dual(2, <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Schema<I, A[K]> => {
   const ps = AST.getIndexedAccess(to(schema).ast, key)
   const value = make<A[K], A[K]>(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
   return transform(
@@ -1014,7 +1017,7 @@ export const pluck = <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Sc
     (a) => a[key],
     (ak) => ps.isOptional && ak === undefined ? {} : { [key]: ak } as any
   )
-}
+})
 
 /**
  * @category model
