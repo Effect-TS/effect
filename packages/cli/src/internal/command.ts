@@ -1,4 +1,5 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -517,7 +518,7 @@ export const wizard = dual<
   ) => <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>
   ) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >,
@@ -526,7 +527,7 @@ export const wizard = dual<
     prefix: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >

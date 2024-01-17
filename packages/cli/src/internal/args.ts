@@ -1,4 +1,5 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
@@ -75,7 +76,11 @@ export interface Single extends
 export interface Map extends
   Op<"Map", {
     readonly args: Args.Args<unknown>
-    readonly f: (value: unknown) => Effect.Effect<FileSystem.FileSystem, HelpDoc.HelpDoc, unknown>
+    readonly f: (value: unknown) => Effect.Effect<
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      HelpDoc.HelpDoc,
+      unknown
+    >
   }>
 {}
 
@@ -208,7 +213,7 @@ export const file = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
 export const fileContent = (
   config?: Args.Args.BaseArgsConfig
 ): Args.Args<readonly [path: string, content: Uint8Array]> =>
-  mapOrFail(
+  mapEffect(
     file({ ...config, exists: "yes" }),
     (path) => Effect.mapError(InternalFiles.read(path), (e) => InternalHelpDoc.p(e))
   )
@@ -217,7 +222,7 @@ export const fileContent = (
 export const fileParse = (
   config?: Args.Args.FormatArgsConfig
 ): Args.Args<unknown> =>
-  mapOrFail(fileText(config), ([path, content]) =>
+  mapEffect(fileText(config), ([path, content]) =>
     Effect.mapError(
       InternalFiles.parse(path, content, config?.format),
       (e) => InternalHelpDoc.p(e)
@@ -233,7 +238,7 @@ export const fileSchema = <I, A>(
 export const fileText = (
   config?: Args.Args.BaseArgsConfig
 ): Args.Args<readonly [path: string, content: string]> =>
-  mapOrFail(file({ ...config, exists: "yes" }), (path) =>
+  mapEffect(file({ ...config, exists: "yes" }), (path) =>
     Effect.mapError(
       InternalFiles.readString(path),
       (e) => InternalHelpDoc.p(e)
@@ -331,12 +336,17 @@ export const getUsage = <A>(self: Args.Args<A>): Usage.Usage => getUsageInternal
 export const map = dual<
   <A, B>(f: (a: A) => B) => (self: Args.Args<A>) => Args.Args<B>,
   <A, B>(self: Args.Args<A>, f: (a: A) => B) => Args.Args<B>
->(2, (self, f) => mapOrFail(self, (a) => Either.right(f(a))))
+>(2, (self, f) => mapEffect(self, (a) => Effect.succeed(f(a))))
 
 /** @internal */
-export const mapOrFail = dual<
-  <A, B>(f: (a: A) => Effect.Effect<FileSystem.FileSystem, HelpDoc.HelpDoc, B>) => (self: Args.Args<A>) => Args.Args<B>,
-  <A, B>(self: Args.Args<A>, f: (a: A) => Effect.Effect<FileSystem.FileSystem, HelpDoc.HelpDoc, B>) => Args.Args<B>
+export const mapEffect = dual<
+  <A, B>(
+    f: (a: A) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, HelpDoc.HelpDoc, B>
+  ) => (self: Args.Args<A>) => Args.Args<B>,
+  <A, B>(
+    self: Args.Args<A>,
+    f: (a: A) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, HelpDoc.HelpDoc, B>
+  ) => Args.Args<B>
 >(2, (self, f) => makeMap(self, f))
 
 /** @internal */
@@ -351,7 +361,7 @@ export const mapTryCatch = dual<
     onError: (e: unknown) => HelpDoc.HelpDoc
   ) => Args.Args<B>
 >(3, (self, f, onError) =>
-  mapOrFail(self, (a) => {
+  mapEffect(self, (a) => {
     try {
       return Either.right(f(a))
     } catch (e) {
@@ -373,7 +383,7 @@ export const validate = dual<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => <A>(self: Args.Args<A>) => Effect.Effect<
-    FileSystem.FileSystem,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     ValidationError.ValidationError,
     [ReadonlyArray<string>, A]
   >,
@@ -382,7 +392,7 @@ export const validate = dual<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     ValidationError.ValidationError,
     [ReadonlyArray<string>, A]
   >
@@ -417,7 +427,7 @@ export const withSchema = dual<
   <A, I extends A, B>(self: Args.Args<A>, schema: Schema.Schema<I, B>) => Args.Args<B>
 >(2, (self, schema) => {
   const decode = Schema.decodeEither(schema)
-  return mapOrFail(self, (_) =>
+  return mapEffect(self, (_) =>
     Either.mapLeft(
       decode(_ as any),
       (error) => InternalHelpDoc.p(TreeFormatter.formatIssue(error.error))
@@ -433,12 +443,12 @@ export const withDescription = dual<
 /** @internal */
 export const wizard = dual<
   (config: CliConfig.CliConfig) => <A>(self: Args.Args<A>) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >,
   <A>(self: Args.Args<A>, config: CliConfig.CliConfig) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >
@@ -662,7 +672,7 @@ const makeSingle = <A>(
 
 const makeMap = <A, B>(
   self: Args.Args<A>,
-  f: (value: A) => Effect.Effect<FileSystem.FileSystem, HelpDoc.HelpDoc, B>
+  f: (value: A) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, HelpDoc.HelpDoc, B>
 ): Args.Args<B> => {
   const op = Object.create(proto)
   op._tag = "Map"
@@ -719,7 +729,7 @@ const validateInternal = (
   args: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  FileSystem.FileSystem,
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
   ValidationError.ValidationError,
   [ReadonlyArray<string>, any]
 > => {
@@ -787,7 +797,7 @@ const validateInternal = (
         args: ReadonlyArray<string>,
         acc: ReadonlyArray<any>
       ): Effect.Effect<
-        FileSystem.FileSystem,
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal,
         ValidationError.ValidationError,
         [ReadonlyArray<string>, ReadonlyArray<any>]
       > => {
@@ -868,7 +878,7 @@ const withDescriptionInternal = (self: Instruction, description: string): Args.A
 }
 
 const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.Effect<
-  FileSystem.FileSystem | Terminal.Terminal,
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
   Terminal.QuitException | ValidationError.ValidationError,
   ReadonlyArray<string>
 > => {

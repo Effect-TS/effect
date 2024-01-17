@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Path } from "@effect/platform/Path"
 import type { QuitException, Terminal } from "@effect/platform/Terminal"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
@@ -409,12 +410,20 @@ export const wizard: {
     config: CliConfig
   ): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
-  ) => Effect<Terminal | FileSystem, QuitException | ValidationError, ReadonlyArray<string>>
+  ) => Effect<
+    FileSystem | Path | Terminal,
+    QuitException | ValidationError,
+    ReadonlyArray<string>
+  >
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
     prefix: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<Terminal | FileSystem, QuitException | ValidationError, ReadonlyArray<string>>
+  ): Effect<
+    FileSystem | Path | Terminal,
+    QuitException | ValidationError,
+    ReadonlyArray<string>
+  >
 } = Internal.wizard
 
 /**

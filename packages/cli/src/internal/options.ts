@@ -1,4 +1,5 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
@@ -95,7 +96,11 @@ export interface KeyValueMap extends
 export interface Map extends
   Op<"Map", {
     readonly options: Options.Options<unknown>
-    readonly f: (a: unknown) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, unknown>
+    readonly f: (a: unknown) => Effect.Effect<
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      ValidationError.ValidationError,
+      unknown
+    >
   }>
 {}
 
@@ -290,7 +295,7 @@ export const file = (
 export const fileContent = (
   name: string
 ): Options.Options<readonly [path: string, content: Uint8Array]> =>
-  mapOrFail(file(name, { exists: "yes" }), (path) =>
+  mapEffect(file(name, { exists: "yes" }), (path) =>
     Effect.mapError(
       InternalFiles.read(path),
       (msg) => InternalValidationError.invalidValue(InternalHelpDoc.p(msg))
@@ -301,7 +306,7 @@ export const fileParse = (
   name: string,
   format?: "json" | "yaml" | "ini" | "toml"
 ): Options.Options<unknown> =>
-  mapOrFail(fileText(name), ([path, content]) =>
+  mapEffect(fileText(name), ([path, content]) =>
     Effect.mapError(
       InternalFiles.parse(path, content, format),
       (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(error))
@@ -318,7 +323,7 @@ export const fileSchema = <I, A>(
 export const fileText = (
   name: string
 ): Options.Options<readonly [path: string, content: string]> =>
-  mapOrFail(file(name, { exists: "yes" }), (path) =>
+  mapEffect(file(name, { exists: "yes" }), (path) =>
     Effect.mapError(
       InternalFiles.readString(path),
       (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(error))
@@ -336,7 +341,7 @@ export const filterMap = dual<
     message: string
   ) => Options.Options<B>
 >(3, (self, f, message) =>
-  mapOrFail(self, (a) =>
+  mapEffect(self, (a) =>
     Option.match(f(a), {
       onNone: () => Either.left(InternalValidationError.invalidValue(InternalHelpDoc.p(message))),
       onSome: Either.right
@@ -452,13 +457,17 @@ export const map = dual<
 >(2, (self, f) => makeMap(self, (a) => Either.right(f(a))))
 
 /** @internal */
-export const mapOrFail = dual<
+export const mapEffect = dual<
   <A, B>(
-    f: (a: A) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, B>
+    f: (
+      a: A
+    ) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, ValidationError.ValidationError, B>
   ) => (self: Options.Options<A>) => Options.Options<B>,
   <A, B>(
     self: Options.Options<A>,
-    f: (a: A) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, B>
+    f: (
+      a: A
+    ) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, ValidationError.ValidationError, B>
   ) => Options.Options<B>
 >(2, (self, f) => makeMap(self, f))
 
@@ -474,7 +483,7 @@ export const mapTryCatch = dual<
     onError: (e: unknown) => HelpDoc.HelpDoc
   ) => Options.Options<B>
 >(3, (self, f, onError) =>
-  mapOrFail(self, (a) => {
+  mapEffect(self, (a) => {
     try {
       return Either.right(f(a))
     } catch (e) {
@@ -523,7 +532,7 @@ export const processCommandLine = dual<
   ) => <A>(
     self: Options.Options<A>
   ) => Effect.Effect<
-    FileSystem.FileSystem,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     ValidationError.ValidationError,
     [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
   >,
@@ -532,7 +541,7 @@ export const processCommandLine = dual<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     ValidationError.ValidationError,
     [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
   >
@@ -633,7 +642,7 @@ export const withSchema = dual<
   <A, I extends A, B>(self: Options.Options<A>, schema: Schema.Schema<I, B>) => Options.Options<B>
 >(2, (self, schema) => {
   const decode = Schema.decode(schema)
-  return mapOrFail(self, (_) =>
+  return mapEffect(self, (_) =>
     Effect.mapError(
       decode(_ as any),
       (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(TreeFormatter.formatIssue(error.error)))
@@ -643,12 +652,12 @@ export const withSchema = dual<
 /** @internal */
 export const wizard = dual<
   (config: CliConfig.CliConfig) => <A>(self: Options.Options<A>) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >,
   <A>(self: Options.Options<A>, config: CliConfig.CliConfig) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >
@@ -954,7 +963,7 @@ const makeKeyValueMap = (
 
 const makeMap = <A, B>(
   options: Options.Options<A>,
-  f: (a: A) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, B>
+  f: (a: A) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, ValidationError.ValidationError, B>
 ): Options.Options<B> => {
   const op = Object.create(proto)
   op._tag = "Map"
@@ -1137,7 +1146,11 @@ const parseInternal = (
   self: Instruction,
   args: HashMap.HashMap<string, ReadonlyArray<string>>,
   config: CliConfig.CliConfig
-): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, unknown> => {
+): Effect.Effect<
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+  ValidationError.ValidationError,
+  unknown
+> => {
   switch (self._tag) {
     case "Empty": {
       return Effect.unit
@@ -1304,7 +1317,7 @@ const parseInternal = (
 }
 
 const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.Effect<
-  FileSystem.FileSystem | Terminal.Terminal,
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
   Terminal.QuitException | ValidationError.ValidationError,
   ReadonlyArray<string>
 > => {

@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Path } from "@effect/platform/Path"
 import type { QuitException, Terminal } from "@effect/platform/Terminal"
 import type { Schema } from "@effect/schema/Schema"
 import type { Config } from "effect/Config"
@@ -387,7 +388,7 @@ export const map: {
 export const mapOrFail: {
   <A, B>(f: (a: A) => Effect<FileSystem, ValidationError, B>): (self: Options<A>) => Options<B>
   <A, B>(self: Options<A>, f: (a: A) => Effect<FileSystem, ValidationError, B>): Options<B>
-} = InternalOptions.mapOrFail
+} = InternalOptions.mapEffect
 
 /**
  * @since 1.0.0
@@ -465,7 +466,7 @@ export const processCommandLine: {
   ): <A>(
     self: Options<A>
   ) => Effect<
-    FileSystem,
+    FileSystem | Path | Terminal,
     ValidationError,
     [Option<ValidationError>, ReadonlyArray<string>, A]
   >
@@ -474,7 +475,7 @@ export const processCommandLine: {
     args: ReadonlyArray<string>,
     config: CliConfig
   ): Effect<
-    FileSystem,
+    FileSystem | Path | Terminal,
     ValidationError,
     [Option<ValidationError>, ReadonlyArray<string>, A]
   >
@@ -543,9 +544,17 @@ export const wizard: {
     config: CliConfig
   ): <A>(
     self: Options<A>
-  ) => Effect<FileSystem | Terminal, QuitException | ValidationError, ReadonlyArray<string>>
+  ) => Effect<
+    FileSystem | Path | Terminal,
+    QuitException | ValidationError,
+    ReadonlyArray<string>
+  >
   <A>(
     self: Options<A>,
     config: CliConfig
-  ): Effect<FileSystem | Terminal, QuitException | ValidationError, ReadonlyArray<string>>
+  ): Effect<
+    FileSystem | Path | Terminal,
+    QuitException | ValidationError,
+    ReadonlyArray<string>
+  >
 } = InternalOptions.wizard

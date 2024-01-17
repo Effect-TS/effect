@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Path } from "@effect/platform/Path"
 import type { QuitException, Terminal } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
-import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
 import type { HashSet } from "effect/HashSet"
 import type { Option } from "effect/Option"
@@ -165,10 +165,10 @@ export const map: {
  * @since 1.0.0
  * @category combinators
  */
-export const mapOrFail: {
-  <A, B>(f: (a: A) => Either<ValidationError, B>): (self: Command<A>) => Command<B>
-  <A, B>(self: Command<A>, f: (a: A) => Either<ValidationError, B>): Command<B>
-} = Internal.mapOrFail
+export const mapEffect: {
+  <A, B>(f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): (self: Command<A>) => Command<B>
+  <A, B>(self: Command<A>, f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): Command<B>
+} = Internal.mapEffect
 
 /**
  * @since 1.0.0
@@ -180,12 +180,12 @@ export const parse: {
     config: CliConfig
   ): <A>(
     self: Command<A>
-  ) => Effect<FileSystem | Terminal, ValidationError, CommandDirective<A>>
+  ) => Effect<FileSystem | Path | Terminal, ValidationError, CommandDirective<A>>
   <A>(
     self: Command<A>,
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<FileSystem | Terminal, ValidationError, CommandDirective<A>>
+  ): Effect<FileSystem | Path | Terminal, ValidationError, CommandDirective<A>>
 } = Internal.parse
 
 /**
@@ -261,10 +261,18 @@ export const wizard: {
     config: CliConfig
   ): <A>(
     self: Command<A>
-  ) => Effect<FileSystem | Terminal, ValidationError | QuitException, ReadonlyArray<string>>
+  ) => Effect<
+    FileSystem | Path | Terminal,
+    ValidationError | QuitException,
+    ReadonlyArray<string>
+  >
   <A>(
     self: Command<A>,
     prefix: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<FileSystem | Terminal, ValidationError | QuitException, ReadonlyArray<string>>
+  ): Effect<
+    FileSystem | Path | Terminal,
+    ValidationError | QuitException,
+    ReadonlyArray<string>
+  >
 } = Internal.wizard
