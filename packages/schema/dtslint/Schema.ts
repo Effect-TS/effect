@@ -872,22 +872,22 @@ S.optional(S.string).pipe(S.propertySignatureAnnotations({ description: "descrip
 // pluck
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; }, string>
+// $ExpectType Schema<never, { readonly a: string; readonly b: number; }, string>
 S.pluck(S.struct({ a: S.string, b: S.number }), "a")
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; }, string>
+// $ExpectType Schema<never, { readonly a: string; readonly b: number; }, string>
 pipe(S.struct({ a: S.string, b: S.number }), S.pluck("a"))
 
 // ---------------------------------------------
 // head
 // ---------------------------------------------
 
-// $ExpectType Schema<readonly number[], Option<number>>
+// $ExpectType Schema<never, readonly number[], Option<number>>
 S.head(S.array(S.number))
 
 // ---------------------------------------------
 // headOr
 // ---------------------------------------------
 
-// $ExpectType Schema<readonly number[], number>
+// $ExpectType Schema<never, readonly number[], number>
 S.headOr(S.array(S.number))
