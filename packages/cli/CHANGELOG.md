@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.30.0
+
+### Minor Changes
+
+- [#1938](https://github.com/Effect-TS/effect/pull/1938) [`9a0d61f`](https://github.com/Effect-TS/effect/commit/9a0d61f674b70ff17c8bcffbd27fea9d5ec57857) Thanks [@IMax153](https://github.com/IMax153)! - rename mapOrFail to mapEffect for Command, Options, and Args modules
+
 ## 0.29.0
 
 ### Minor Changes
