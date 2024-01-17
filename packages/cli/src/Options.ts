@@ -385,9 +385,9 @@ export const map: {
  * @since 1.0.0
  * @category combinators
  */
-export const mapOrFail: {
-  <A, B>(f: (a: A) => Effect<FileSystem, ValidationError, B>): (self: Options<A>) => Options<B>
-  <A, B>(self: Options<A>, f: (a: A) => Effect<FileSystem, ValidationError, B>): Options<B>
+export const mapEffect: {
+  <A, B>(f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): (self: Options<A>) => Options<B>
+  <A, B>(self: Options<A>, f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): Options<B>
 } = InternalOptions.mapEffect
 
 /**
