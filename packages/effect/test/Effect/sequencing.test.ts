@@ -42,11 +42,15 @@ describe("Effect", () => {
       const a2 = Effect.tap(Effect.succeed(0), (n) => Effect.succeed(n + 1))
       const a3 = Effect.succeed(0).pipe(Effect.tap((n) => Effect.succeed(n + 1)))
       const a4 = Effect.tap(Effect.succeed(0), () => Promise.resolve("ok"))
+      const a5 = Effect.succeed(0).pipe(Effect.tap(() => "ok"))
+      const a6 = Effect.tap(Effect.succeed(0), () => "ok")
       assert.strictEqual(yield* $(a0), 0)
       assert.strictEqual(yield* $(a1), 0)
       assert.strictEqual(yield* $(a2), 0)
       assert.strictEqual(yield* $(a3), 0)
       assert.strictEqual(yield* $(a4), 0)
+      assert.strictEqual(yield* $(a5), 0)
+      assert.strictEqual(yield* $(a6), 0)
     }))
   it.effect("flattens nested effects", () =>
     Effect.gen(function*($) {

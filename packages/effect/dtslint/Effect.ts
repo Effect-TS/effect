@@ -29,8 +29,14 @@ Effect.tap(string, async (
   _a
 ) => console.log(""))
 
+// $ExpectType Effect<"dep-1", "err-1", string>
+Effect.tap(string, (
+  // $ExpectType string
+  _a
+) => console.log(""))
+
 // @ts-expect-error
-Effect.tap(string, () => 1)
+Effect.tap(string, Promise.resolve(0))
 
 // -------------------------------------------------------------------------------------
 // forEach

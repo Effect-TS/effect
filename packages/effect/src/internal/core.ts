@@ -1136,52 +1136,54 @@ export const sync = <A>(evaluate: LazyArg<A>): Effect.Effect<never, never, A> =>
 /* @internal */
 export const tap = dual<
   {
-    <A, R1, E1>(
-      f: (a: NoInfer<A>) => Effect.Effect<R1, E1, unknown>
+    <A, X>(
+      f: (a: NoInfer<A>) => X
     ): <R, E>(
       self: Effect.Effect<R, E, A>
-    ) => Effect.Effect<R | R1, E | E1, A>
-    <A>(
-      f: (a: NoInfer<A>) => Promise<unknown>
-    ): <R, E>(
-      self: Effect.Effect<R, E, A>
-    ) => Effect.Effect<R, Cause.UnknownException | E, A>
-    <A, R1, E1>(
-      f: Effect.Effect<R1, E1, unknown>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
+      : Effect.Effect<R, E, A>
+    <A, R1, E1, B>(
+      f: Effect.Effect<R1, E1, B>
     ): <R, E>(
       self: Effect.Effect<R, E, A>
     ) => Effect.Effect<R | R1, E | E1, A>
   },
   {
-    <A, R, E, R1, E1>(
+    <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
-      f: (a: NoInfer<A>) => Effect.Effect<R1, E1, unknown>
-    ): Effect.Effect<R | R1, E | E1, A>
-    <A, R, E>(
+      f: (a: NoInfer<A>) => X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, Cause.UnknownException | E, A>
+      : Effect.Effect<R, E, A>
+    <A, R, E, R1, E1, B>(
       self: Effect.Effect<R, E, A>,
-      f: (a: NoInfer<A>) => Promise<unknown>
-    ): Effect.Effect<R, Cause.UnknownException | E, A>
-    <A, R, E, R1, E1>(
-      self: Effect.Effect<R, E, A>,
-      f: Effect.Effect<R1, E1, unknown>
+      f: Effect.Effect<R1, E1, B>
     ): Effect.Effect<R | R1, E | E1, A>
   }
 >(
   2,
-  <A, R, E, R1, E1>(
+  <
+    A,
+    R,
+    E,
+    X extends
+      | ((a: NoInfer<A>) => unknown)
+      | Effect.Effect<unknown, unknown, unknown>
+  >(
     self: Effect.Effect<R, E, A>,
-    f:
-      | ((a: NoInfer<A>) => Effect.Effect<R1, E1, unknown> | Promise<unknown>)
-      | Effect.Effect<R1, E1, unknown>
-  ): Effect.Effect<R | R1, Cause.UnknownException | E | E1, A> =>
-    flatMap(self, (a): Effect.Effect<R1, E1 | Cause.UnknownException, A> => {
-      const b = typeof f === "function" ? (f)(a) : f
+    f: X
+  ): Effect.Effect<unknown, unknown, A> =>
+    flatMap(self, (a) => {
+      const b = typeof f === "function" ? (f as any)(a) : f
       if (isEffect(b)) {
         return as(b, a)
+      } else if (isPromise(b)) {
+        return async<never, Cause.UnknownException, any>((resume) => {
+          b.then((_) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
+        })
       }
-      return async<never, Cause.UnknownException, A>((resume) => {
-        b.then((_) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
-      })
+      return succeed(a)
     })
 )
 

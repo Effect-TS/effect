@@ -3750,32 +3750,27 @@ export const summarized: {
  * @category sequencing
  */
 export const tap: {
-  <A, R1, E1>(
-    f: (a: NoInfer<A>) => Effect<R1, E1, unknown>
+  <A, X>(
+    f: (a: NoInfer<A>) => X
+  ): <R, E>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A>
+    : [X] extends [Promise<infer _A1>] ? Effect<R, E | Cause.UnknownException, A>
+    : Effect<R, E, A>
+  <A, R1, E1, B>(
+    f: Effect<R1, E1, B>
   ): <R, E>(
     self: Effect<R, E, A>
   ) => Effect<R | R1, E | E1, A>
-  <A>(
-    f: (a: NoInfer<A>) => Promise<unknown>
-  ): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R, Cause.UnknownException | E, A>
-  <A, R1, E1>(
-    f: Effect<R1, E1, unknown>
-  ): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R | R1, E | E1, A>
-  <A, R, E, R1, E1>(
+  <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: (a: NoInfer<A>) => Effect<R1, E1, unknown>
-  ): Effect<R | R1, E | E1, A>
-  <A, R, E>(
+    f: (a: NoInfer<A>) => X
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A>
+    : [X] extends [Promise<infer _A1>] ? Effect<R, Cause.UnknownException | E, A>
+    : Effect<R, E, A>
+  <A, R, E, R1, E1, B>(
     self: Effect<R, E, A>,
-    f: (a: NoInfer<A>) => Promise<unknown>
-  ): Effect<R, Cause.UnknownException | E, A>
-  <A, R, E, R1, E1>(
-    self: Effect<R, E, A>,
-    f: Effect<R1, E1, unknown>
+    f: Effect<R1, E1, B>
   ): Effect<R | R1, E | E1, A>
 } = core.tap
 
