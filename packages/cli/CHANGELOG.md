@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.30.1
+
+### Patch Changes
+
+- [#1942](https://github.com/Effect-TS/effect/pull/1942) [`d21e028`](https://github.com/Effect-TS/effect/commit/d21e028fe2628b42e681eee641547b0bc01a70d1) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Options.mapEffect export
+
 ## 0.30.0
 
 ### Minor Changes
