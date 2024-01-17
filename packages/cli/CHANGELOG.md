@@ -1,5 +1,22 @@
 # @effect/cli
 
+## 0.29.0
+
+### Minor Changes
+
+- [#1925](https://github.com/Effect-TS/effect/pull/1925) [`86180cc`](https://github.com/Effect-TS/effect/commit/86180cc96102627a42397d2e4f84fb3a55c3038e) Thanks [@IMax153](https://github.com/IMax153)! - adds optional `executable` parameter to `CliApp.make`
+
+  **NOTE**: This means that users are no longer required to manually remove the executable from the CLI arguments (i.e. `process.argv.slice(2)`). The executable is stripped from the CLI arguments internally within `CliApp.make`, so all command-line arguments can be provided directly to the CLI application.
+
+### Patch Changes
+
+- Updated dependencies [[`0d1af1e`](https://github.com/Effect-TS/effect/commit/0d1af1e38c11b94e152beaccd0ff7569a1b3f5b7), [`0d1af1e`](https://github.com/Effect-TS/effect/commit/0d1af1e38c11b94e152beaccd0ff7569a1b3f5b7), [`a222524`](https://github.com/Effect-TS/effect/commit/a2225247e9de2e013d287320790fde88c081dbbd)]:
+  - @effect/schema@0.60.4
+  - effect@2.1.1
+  - @effect/platform@0.42.4
+  - @effect/printer@0.30.7
+  - @effect/printer-ansi@0.31.7
+
 ## 0.28.9
 
 ### Patch Changes
