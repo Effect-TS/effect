@@ -133,15 +133,16 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
 
 /** @internal */
 export const schemaJson = <
+  R,
   I extends {
     readonly status?: number
     readonly headers?: Readonly<Record<string, string>>
     readonly body?: unknown
   },
   A
->(schema: Schema.Schema<never, I, A>) => {
+>(schema: Schema.Schema<R, I, A>) => {
   const parse = Schema.parse(schema)
-  return (self: ClientResponse.ClientResponse): Effect.Effect<never, Error.ResponseError | ParseResult.ParseError, A> =>
+  return (self: ClientResponse.ClientResponse): Effect.Effect<R, Error.ResponseError | ParseResult.ParseError, A> =>
     Effect.flatMap(
       self.json,
       (body) =>
@@ -155,14 +156,15 @@ export const schemaJson = <
 
 /** @internal */
 export const schemaNoBody = <
+  R,
   I extends {
     readonly status?: number
     readonly headers?: Readonly<Record<string, string>>
   },
   A
->(schema: Schema.Schema<never, I, A>) => {
+>(schema: Schema.Schema<R, I, A>) => {
   const parse = Schema.parse(schema)
-  return (self: ClientResponse.ClientResponse): Effect.Effect<never, ParseResult.ParseError, A> =>
+  return (self: ClientResponse.ClientResponse): Effect.Effect<R, ParseResult.ParseError, A> =>
     parse({
       status: self.status,
       headers: self.headers

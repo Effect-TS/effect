@@ -527,23 +527,23 @@ export const retry: {
 
 /** @internal */
 export const schemaFunction = dual<
-  <SI, SA>(
-    schema: Schema.Schema<never, SI, SA>
+  <SR, SI, SA>(
+    schema: Schema.Schema<SR, SI, SA>
   ) => <R, E, A>(
     self: Client.Client<R, E, A>
   ) => (
     request: ClientRequest.ClientRequest
   ) => (
     a: SA
-  ) => Effect.Effect<R, E | ParseResult.ParseError | Error.RequestError, A>,
-  <R, E, A, SI, SA>(
+  ) => Effect.Effect<R | SR, E | ParseResult.ParseError | Error.RequestError, A>,
+  <R, E, A, SR, SI, SA>(
     self: Client.Client<R, E, A>,
-    schema: Schema.Schema<never, SI, SA>
+    schema: Schema.Schema<SR, SI, SA>
   ) => (
     request: ClientRequest.ClientRequest
   ) => (
     a: SA
-  ) => Effect.Effect<R, E | ParseResult.ParseError | Error.RequestError, A>
+  ) => Effect.Effect<R | SR, E | ParseResult.ParseError | Error.RequestError, A>
 >(2, (self, schema) => {
   const encode = Schema.encode(schema)
   return (request) => (a) =>

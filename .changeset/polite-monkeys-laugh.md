@@ -1,11 +1,11 @@
 ---
 "@effect/schema": minor
-"@effect/platform-browser": patch
-"@effect/platform-node": patch
-"@effect/experimental": patch
-"@effect/platform-bun": patch
+"@effect/platform-browser": minor
+"@effect/platform-node": minor
+"@effect/experimental": minor
+"@effect/platform-bun": minor
 "@effect/rpc-workers": patch
-"@effect/platform": patch
+"@effect/platform": minor
 "@effect/cli": patch
 "@effect/rpc": patch
 ---

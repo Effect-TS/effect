@@ -45,21 +45,18 @@ export const get = (u: unknown): ReadonlyArray<globalThis.Transferable> => {
 export const schema: {
   <A>(
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ): <I>(self: Schema.Schema<never, I, A>) => Schema.Schema<never, I, A>
-  <I, A>(
-    self: Schema.Schema<never, I, A>,
-    f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ): Schema.Schema<never, I, A>
+  ): <R, I>(self: Schema.Schema<R, I, A>) => Schema.Schema<R, I, A>
+  <R, I, A>(self: Schema.Schema<R, I, A>, f: (_: A) => ReadonlyArray<globalThis.Transferable>): Schema.Schema<R, I, A>
 } = dual<
   <A>(
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ) => <I>(self: Schema.Schema<never, I, A>) => Schema.Schema<never, I, A>,
-  <I, A>(
-    self: Schema.Schema<never, I, A>,
+  ) => <R, I>(self: Schema.Schema<R, I, A>) => Schema.Schema<R, I, A>,
+  <R, I, A>(
+    self: Schema.Schema<R, I, A>,
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ) => Schema.Schema<never, I, A>
->(2, <I, A>(
-  self: Schema.Schema<never, I, A>,
+  ) => Schema.Schema<R, I, A>
+>(2, <R, I, A>(
+  self: Schema.Schema<R, I, A>,
   f: (_: A) => ReadonlyArray<globalThis.Transferable>
 ) =>
   Schema.transform(

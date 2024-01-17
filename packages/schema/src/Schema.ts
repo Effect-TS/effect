@@ -4358,7 +4358,7 @@ const chunkPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<Chunk.Chunk<A>> =
  * @category Chunk transformations
  * @since 1.0.0
  */
-export const chunkFromSelf = <I, A>(item: Schema<never, I, A>): Schema<never, Chunk.Chunk<I>, Chunk.Chunk<A>> => {
+export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.Chunk<I>, Chunk.Chunk<A>> => {
   return declare(
     [item],
     struct({

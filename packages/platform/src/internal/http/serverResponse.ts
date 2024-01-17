@@ -117,14 +117,14 @@ export const unsafeJson = (
   )
 
 /** @internal */
-export const schemaJson = <I, A>(
-  schema: Schema.Schema<never, I, A>
+export const schemaJson = <R, I, A>(
+  schema: Schema.Schema<R, I, A>
 ) => {
   const encode = internalBody.jsonSchema(schema)
   return (
     body: A,
     options?: ServerResponse.Options.WithContent
-  ): Effect.Effect<never, Body.BodyError, ServerResponse.ServerResponse> =>
+  ): Effect.Effect<R, Body.BodyError, ServerResponse.ServerResponse> =>
     Effect.map(encode(body), (body) =>
       new ServerResponseImpl(
         options?.status ?? 200,

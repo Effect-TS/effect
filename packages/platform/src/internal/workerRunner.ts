@@ -221,13 +221,15 @@ export const makeSerialized = <
 
 /** @internal */
 export const layerSerialized = <
+  R,
   I,
   A extends Schema.TaggedRequest.Any,
   const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<never, I, A>,
+  schema: Schema.Schema<R, I, A>,
   handlers: Handlers
 ): Layer.Layer<
+  | R
   | WorkerRunner.PlatformRunner
   | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError.WorkerError,

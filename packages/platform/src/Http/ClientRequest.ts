@@ -301,11 +301,11 @@ export const unsafeJsonBody: {
  * @since 1.0.0
  * @category combinators
  */
-export const schemaBody: <I, A>(
-  schema: Schema.Schema<never, I, A>
+export const schemaBody: <R, I, A>(
+  schema: Schema.Schema<R, I, A>
 ) => {
-  (body: A): (self: ClientRequest) => Effect.Effect<never, Body.BodyError, ClientRequest>
-  (self: ClientRequest, body: A): Effect.Effect<never, Body.BodyError, ClientRequest>
+  (body: A): (self: ClientRequest) => Effect.Effect<R, Body.BodyError, ClientRequest>
+  (self: ClientRequest, body: A): Effect.Effect<R, Body.BodyError, ClientRequest>
 } = internal.schemaBody
 
 /**

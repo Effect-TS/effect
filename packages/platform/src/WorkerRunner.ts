@@ -199,14 +199,12 @@ export const makeSerialized: <
  * @category layers
  */
 export const layerSerialized: <
+  R,
   I,
   A extends Schema.TaggedRequest.Any,
   const Handlers extends SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<never, I, A>,
+  schema: Schema.Schema<R, I, A>,
   handlers: Handlers
-) => Layer.Layer<
-  PlatformRunner | SerializedRunner.HandlersContext<Handlers>,
-  WorkerError,
-  never
-> = internal.layerSerialized
+) => Layer.Layer<PlatformRunner | R | SerializedRunner.HandlersContext<Handlers>, WorkerError, never> =
+  internal.layerSerialized

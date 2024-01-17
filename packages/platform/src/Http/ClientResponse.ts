@@ -60,23 +60,24 @@ export const fromWeb: (request: ClientRequest.ClientRequest, source: Response) =
  * @category schema
  */
 export const schemaJson: <
+  R,
   I extends {
-    readonly status?: number
-    readonly headers?: Readonly<Record<string, string>>
+    readonly status?: number | undefined
+    readonly headers?: Readonly<Record<string, string>> | undefined
     readonly body?: unknown
   },
   A
 >(
-  schema: Schema.Schema<never, I, A>
-) => (self: ClientResponse) => Effect.Effect<never, Error.ResponseError | ParseResult.ParseError, A> =
-  internal.schemaJson
+  schema: Schema.Schema<R, I, A>
+) => (self: ClientResponse) => Effect.Effect<R, Error.ResponseError | ParseResult.ParseError, A> = internal.schemaJson
 
 /**
  * @since 1.0.0
  * @category schema
  */
 export const schemaNoBody: <
+  R,
   I extends { readonly status?: number | undefined; readonly headers?: Readonly<Record<string, string>> | undefined },
   A
->(schema: Schema.Schema<never, I, A>) => (self: ClientResponse) => Effect.Effect<never, ParseResult.ParseError, A> =
+>(schema: Schema.Schema<R, I, A>) => (self: ClientResponse) => Effect.Effect<R, ParseResult.ParseError, A> =
   internal.schemaNoBody

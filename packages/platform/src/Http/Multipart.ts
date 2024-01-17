@@ -200,20 +200,20 @@ export const filesSchema: Schema.Schema<never, ReadonlyArray<PersistedFile>, Rea
  * @since 1.0.0
  * @category schema
  */
-export const schemaJson: <I, A>(
-  schema: Schema.Schema<never, I, A>
+export const schemaJson: <R, I, A>(
+  schema: Schema.Schema<R, I, A>
 ) => {
-  (field: string): (persisted: Persisted) => Effect.Effect<never, ParseResult.ParseError, A>
-  (persisted: Persisted, field: string): Effect.Effect<never, ParseResult.ParseError, A>
+  (field: string): (persisted: Persisted) => Effect.Effect<R, ParseResult.ParseError, A>
+  (persisted: Persisted, field: string): Effect.Effect<R, ParseResult.ParseError, A>
 } = internal.schemaJson
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaPersisted: <I extends Persisted, A>(
-  schema: Schema.Schema<never, I, A>
-) => (persisted: Persisted) => Effect.Effect<never, ParseResult.ParseError, A> = internal.schemaPersisted
+export const schemaPersisted: <R, I extends Persisted, A>(
+  schema: Schema.Schema<R, I, A>
+) => (persisted: Persisted) => Effect.Effect<R, ParseResult.ParseError, A> = internal.schemaPersisted
 
 /**
  * @since 1.0.0

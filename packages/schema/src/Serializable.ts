@@ -28,6 +28,17 @@ export interface Serializable<R, I, A> {
 
 /**
  * @since 1.0.0
+ * @category model
+ */
+export declare namespace Serializable {
+  /**
+   * @since 1.0.0
+   */
+  export type Context<T> = T extends Serializable<infer R, infer _I, infer _A> ? R : never
+}
+
+/**
+ * @since 1.0.0
  * @category accessor
  */
 export const selfSchema = <R, I, A>(self: Serializable<R, I, A>): Schema.Schema<R, I, A> => self[symbol]
@@ -47,6 +58,17 @@ export interface WithResult<R, IE, E, IA, A> {
     readonly Failure: Schema.Schema<R, IE, E>
     readonly Success: Schema.Schema<R, IA, A>
   }
+}
+
+/**
+ * @since 1.0.0
+ * @category model
+ */
+export declare namespace WithResult {
+  /**
+   * @since 1.0.0
+   */
+  export type Context<T> = T extends WithResult<infer R, infer _IE, infer _E, infer _IA, infer _A> ? R : never
 }
 
 /**
@@ -96,6 +118,19 @@ export const exitSchema = <R, IE, E, IA, A>(
 export interface SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
   extends Serializable<R, IS, S>, WithResult<RR, IE, E, IA, A>
 {}
+
+/**
+ * @since 1.0.0
+ * @category model
+ */
+export declare namespace SerializableWithResult {
+  /**
+   * @since 1.0.0
+   */
+  export type Context<T> = T extends
+    SerializableWithResult<infer R, infer _IS, infer _S, infer RR, infer _IE, infer _E, infer _IA, infer _A> ? R | RR
+    : never
+}
 
 /**
  * @since 1.0.0

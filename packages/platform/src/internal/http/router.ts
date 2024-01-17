@@ -36,20 +36,20 @@ export const params = Effect.map(RouteContext, (_) => _.params)
 export const searchParams = Effect.map(RouteContext, (_) => _.searchParams)
 
 /** @internal */
-export const schemaParams = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<never, I, A>) => {
+export const schemaParams = <R, I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<R, I, A>) => {
   const parse = Schema.parse(schema)
   return Effect.flatMap(RouteContext, (_) => parse({ ..._.searchParams, ..._.params }))
 }
 
 /** @internal */
-export const schemaPathParams = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<never, I, A>) => {
+export const schemaPathParams = <R, I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<R, I, A>) => {
   const parse = Schema.parse(schema)
   return Effect.flatMap(RouteContext, (_) => parse(_.params))
 }
 
 /** @internal */
-export const schemaSearchParams = <I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<never, I, A>
+export const schemaSearchParams = <R, I extends Readonly<Record<string, string>>, A>(
+  schema: Schema.Schema<R, I, A>
 ) => {
   const parse = Schema.parse(schema)
   return Effect.flatMap(RouteContext, (_) => parse(_.searchParams))

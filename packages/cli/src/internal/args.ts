@@ -230,7 +230,7 @@ export const fileParse = (
 
 /** @internal */
 export const fileSchema = <I, A>(
-  schema: Schema.Schema<never, I, A>,
+  schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, A>,
   config?: Args.Args.FormatArgsConfig
 ): Args.Args<A> => withSchema(fileParse(config), schema)
 
@@ -423,12 +423,17 @@ export const withFallbackConfig: {
 
 /** @internal */
 export const withSchema = dual<
-  <A, I extends A, B>(schema: Schema.Schema<never, I, B>) => (self: Args.Args<A>) => Args.Args<B>,
-  <A, I extends A, B>(self: Args.Args<A>, schema: Schema.Schema<never, I, B>) => Args.Args<B>
+  <A, I extends A, B>(
+    schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, B>
+  ) => (self: Args.Args<A>) => Args.Args<B>,
+  <A, I extends A, B>(
+    self: Args.Args<A>,
+    schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, B>
+  ) => Args.Args<B>
 >(2, (self, schema) => {
-  const decode = Schema.decodeEither(schema)
+  const decode = Schema.decode(schema)
   return mapEffect(self, (_) =>
-    Either.mapLeft(
+    Effect.mapError(
       decode(_ as any),
       (error) => InternalHelpDoc.p(TreeFormatter.formatIssue(error.error))
     ))

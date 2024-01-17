@@ -166,7 +166,7 @@ export const MetricLabel = Schema.struct({
  * @since 1.0.0
  * @category schemas
  */
-export const metric = <Tag extends string, IS, S>(tag: Tag, state: Schema.Schema<never, IS, S>) =>
+export const metric = <Tag extends string, R, IS, S>(tag: Tag, state: Schema.Schema<R, IS, S>) =>
   Schema.struct({
     _tag: Schema.literal(tag),
     name: Schema.string,
