@@ -868,12 +868,12 @@ export type ToOptionalKeys<Fields> = {
 /**
  * @since 1.0.0
  */
-export type StructFields<R = any> = Record<
+export type StructFields = Record<
   PropertyKey,
-  | Schema<R, any, any>
-  | Schema<R, never, never>
-  | PropertySignature<R, any, boolean, any, boolean>
-  | PropertySignature<R, never, boolean, never, boolean>
+  | Schema<any, any, any>
+  | Schema<any, never, never>
+  | PropertySignature<any, any, boolean, any, boolean>
+  | PropertySignature<any, never, boolean, never, boolean>
 >
 
 /**
