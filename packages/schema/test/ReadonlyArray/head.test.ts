@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("ReadonlyArray > head", () => {
   it("decoding", async () => {
-    const schema = S.head(S.number)
+    const schema = S.head(S.array(S.number))
     await Util.expectParseSuccess(schema, [], Option.none())
     await Util.expectParseSuccess(schema, [1], Option.some(1))
     await Util.expectParseFailure(
@@ -20,7 +20,7 @@ describe("ReadonlyArray > head", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.head(S.number)
+    const schema = S.head(S.array(S.number))
     await Util.expectEncodeSuccess(schema, Option.none(), [])
     await Util.expectEncodeSuccess(schema, Option.some(1), [1])
   })

@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("ReadonlyArray > headOr", () => {
   it("decoding (without fallback)", async () => {
-    const schema = S.headOr(S.number)
+    const schema = S.headOr(S.array(S.number))
     await Util.expectParseSuccess(schema, [1], 1)
     await Util.expectParseFailure(
       schema,
@@ -25,7 +25,7 @@ describe("ReadonlyArray > headOr", () => {
   })
 
   it("decoding (with fallback)", async () => {
-    const schema = S.headOr(S.number, () => 0)
+    const schema = S.headOr(S.array(S.number), () => 0)
     await Util.expectParseSuccess(schema, [1], 1)
     await Util.expectParseSuccess(schema, [], 0)
     await Util.expectParseFailure(
@@ -40,7 +40,7 @@ describe("ReadonlyArray > headOr", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.headOr(S.number)
+    const schema = S.headOr(S.array(S.number))
     await Util.expectEncodeSuccess(schema, 1, [1])
   })
 })
