@@ -4451,18 +4451,18 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     >
 
   readonly transform: <Transformed>() => <
-    FieldsB extends StructFields
+    FieldsB extends StructFields,
+    R2,
+    R3
   >(
     fields: FieldsB,
-    decode: (
-      input: A
-    ) => Effect.Effect<never, ParseResult.ParseError, Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+    decode: (input: A) => Effect.Effect<R2, ParseResult.ParseError, Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
     encode: (
       input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>
-    ) => Effect.Effect<never, ParseResult.ParseError, A>
+    ) => Effect.Effect<R3, ParseResult.ParseError, A>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
-      R | Schema.Context<FieldsB[keyof FieldsB]>,
+      R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
       I,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4471,18 +4471,18 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     >
 
   readonly transformFrom: <Transformed>() => <
-    FieldsB extends StructFields
+    FieldsB extends StructFields,
+    R2,
+    R3
   >(
     fields: FieldsB,
-    decode: (
-      input: I
-    ) => Effect.Effect<never, ParseResult.ParseError, Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
+    decode: (input: I) => Effect.Effect<R2, ParseResult.ParseError, Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
     encode: (
       input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>
-    ) => Effect.Effect<never, ParseResult.ParseError, I>
+    ) => Effect.Effect<R3, ParseResult.ParseError, I>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
-      R | Schema.Context<FieldsB[keyof FieldsB]>,
+      R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
       I,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
