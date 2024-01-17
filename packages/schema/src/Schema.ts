@@ -381,7 +381,7 @@ export const declarePrimitive = <T extends Schema<any, any>, R, A>(
   type: T,
   parse: (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseError, A>,
   annotations?: AST.Annotations
-): Schema<Schema.Context<T> | R, A, A> => declare([], type, () => parse, () => parse, annotations)
+): Schema<Schema.Context<T> | R, A> => declare([], type, () => parse, () => parse, annotations)
 
 /**
  * @category type id
@@ -3616,9 +3616,9 @@ const optionPretty = <A>(value: Pretty.Pretty<A>): Pretty.Pretty<Option.Option<A
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromSelf = <I, A>(
-  value: Schema<never, I, A>
-): Schema<never, Option.Option<I>, Option.Option<A>> => {
+export const optionFromSelf = <R, I, A>(
+  value: Schema<R, I, A>
+): Schema<R, Option.Option<I>, Option.Option<A>> => {
   return declare(
     [value],
     optionFrom(value),
@@ -3768,34 +3768,32 @@ const eitherPretty = <E, A>(
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromSelf = <IE, E, IA, A>(
-  left: Schema<never, IE, E>,
-  right: Schema<never, IA, A>
-): Schema<never, Either.Either<IE, IA>, Either.Either<E, A>> => {
+export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
+  left: Schema<RE, IE, E>,
+  right: Schema<RA, IA, A>
+): Schema<RE | RA, Either.Either<IE, IA>, Either.Either<E, A>> => {
   return declare(
     [left, right],
     eitherFrom(left, right),
     (left, right) => {
       const parseLeft = Parser.parse(left)
       const parseRight = Parser.parse(right)
-      return (u, options, ast) =>
+      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseError, Either.Either<E, A>> =>
         Either.isEither(u) ?
           Either.match(u, {
-            onLeft: (left) => ParseResult.map(parseLeft(left, options), (e): Either.Either<E, A> => Either.left(e)),
-            onRight: (right) => ParseResult.map(parseRight(right, options), (a): Either.Either<E, A> => Either.right(a))
+            onLeft: (left) => ParseResult.map(parseLeft(left, options), Either.left),
+            onRight: (right) => ParseResult.map(parseRight(right, options), Either.right)
           })
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (left, right) => {
       const encodeLeft = Parser.encode(left)
       const encodeRight = Parser.encode(right)
-      return (either, options, ast) =>
+      return (either, options, ast): Effect.Effect<RE | RA, ParseResult.ParseError, Either.Either<IE, IA>> =>
         Either.isEither(either) ?
           Either.match(either, {
-            onLeft: (left) =>
-              ParseResult.map(encodeLeft(left, options), (ie): Either.Either<IE, IA> => Either.left(ie)),
-            onRight: (right) =>
-              ParseResult.map(encodeRight(right, options), (ia): Either.Either<IE, IA> => Either.right(ia))
+            onLeft: (left) => ParseResult.map(encodeLeft(left, options), Either.left),
+            onRight: (right) => ParseResult.map(encodeRight(right, options), Either.right)
           }) :
           ParseResult.fail(ParseResult.type(ast, either))
     },
@@ -3885,10 +3883,10 @@ const readonlyMapEquivalence = <K, V>(
  * @category ReadonlyMap transformations
  * @since 1.0.0
  */
-export const readonlyMapFromSelf = <IK, K, IV, V>(
-  key: Schema<never, IK, K>,
-  value: Schema<never, IV, V>
-): Schema<never, ReadonlyMap<IK, IV>, ReadonlyMap<K, V>> => {
+export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
+  key: Schema<RK, IK, K>,
+  value: Schema<RV, IV, V>
+): Schema<RK | RV, ReadonlyMap<IK, IV>, ReadonlyMap<K, V>> => {
   return declare(
     [key, value],
     struct({
@@ -3952,9 +3950,9 @@ const readonlySetEquivalence = <A>(
  * @category ReadonlySet transformations
  * @since 1.0.0
  */
-export const readonlySetFromSelf = <I, A>(
-  item: Schema<never, I, A>
-): Schema<never, ReadonlySet<I>, ReadonlySet<A>> => {
+export const readonlySetFromSelf = <R, I, A>(
+  item: Schema<R, I, A>
+): Schema<R, ReadonlySet<I>, ReadonlySet<A>> => {
   return declare(
     [item],
     struct({
@@ -4425,11 +4423,12 @@ const dataPretty = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>
  * @since 1.0.0
  */
 export const dataFromSelf = <
+  R,
   I extends Readonly<Record<string, any>> | ReadonlyArray<any>,
   A extends Readonly<Record<string, any>> | ReadonlyArray<any>
 >(
-  item: Schema<never, I, A>
-): Schema<never, Data.Data<I>, Data.Data<A>> => {
+  item: Schema<R, I, A>
+): Schema<R, Data.Data<I>, Data.Data<A>> => {
   return declare(
     [item],
     item,
@@ -5035,10 +5034,10 @@ const causePretty = <E>(error: Pretty.Pretty<E>): Pretty.Pretty<Cause.Cause<E>> 
  * @category Cause transformations
  * @since 1.0.0
  */
-export const causeFromSelf = <IE, E>(
-  error: Schema<never, IE, E>,
+export const causeFromSelf = <R, I, A>(
+  error: Schema<R, I, A>,
   defect: Schema<never, unknown, unknown> = unknown
-): Schema<never, Cause.Cause<IE>, Cause.Cause<E>> => {
+): Schema<R, Cause.Cause<I>, Cause.Cause<A>> => {
   return declare(
     [error, defect],
     causeFrom(error, defect),
@@ -5204,36 +5203,33 @@ const exitPretty = <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pre
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exitFromSelf = <IE, E, IA, A>(
-  error: Schema<never, IE, E>,
-  value: Schema<never, IA, A>,
+export const exitFromSelf = <RE, IE, E, RA, IA, A>(
+  error: Schema<RE, IE, E>,
+  value: Schema<RA, IA, A>,
   defect: Schema<never, unknown, unknown> = unknown
-): Schema<never, Exit.Exit<IE, IA>, Exit.Exit<E, A>> =>
+): Schema<RE | RA, Exit.Exit<IE, IA>, Exit.Exit<E, A>> =>
   declare(
     [error, value, defect],
     exitFrom(error, value, defect),
     (error, value, defect) => {
       const parseCause = Parser.parse(causeFromSelf(error, defect))
       const parseValue = Parser.parse(value)
-      return (u, options, ast) =>
+      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseError, Exit.Exit<E, A>> =>
         Exit.isExit(u) ?
           Exit.match(u, {
-            onFailure: (cause) =>
-              ParseResult.map(parseCause(cause, options), (c): Exit.Exit<E, A> => Exit.failCause(c)),
-            onSuccess: (value) => ParseResult.map(parseValue(value, options), (a): Exit.Exit<E, A> => Exit.succeed(a))
+            onFailure: (cause) => ParseResult.map(parseCause(cause, options), Exit.failCause),
+            onSuccess: (value) => ParseResult.map(parseValue(value, options), Exit.succeed)
           })
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (error, value, defect) => {
       const encodeCause = Parser.encode(causeFromSelf(error, defect))
       const encodeValue = Parser.encode(value)
-      return (exit, options, ast) =>
+      return (exit, options, ast): Effect.Effect<RE | RA, ParseResult.ParseError, Exit.Exit<IE, IA>> =>
         Exit.isExit(exit) ?
           Exit.match(exit, {
-            onFailure: (cause) =>
-              ParseResult.map(encodeCause(cause, options), (c): Exit.Exit<IE, IA> => Exit.failCause(c)),
-            onSuccess: (value) =>
-              ParseResult.map(encodeValue(value, options), (a): Exit.Exit<IE, IA> => Exit.succeed(a))
+            onFailure: (cause) => ParseResult.map(encodeCause(cause, options), Exit.failCause),
+            onSuccess: (value) => ParseResult.map(encodeValue(value, options), Exit.succeed)
           }) :
           ParseResult.fail(ParseResult.type(ast, exit))
     },

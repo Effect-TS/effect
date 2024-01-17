@@ -79,9 +79,9 @@ export const schema: {
  * @since 1.0.0
  * @category schema
  */
-export const schemaFromSelf = <I, A>(
-  item: Schema.Schema<never, I, A>
-): Schema.Schema<never, I, A> => {
+export const schemaFromSelf = <R, I, A>(
+  item: Schema.Schema<R, I, A>
+): Schema.Schema<R, I, A> => {
   return Schema.declare(
     [item],
     item,
