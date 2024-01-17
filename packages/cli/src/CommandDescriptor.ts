@@ -5,7 +5,6 @@ import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Path } from "@effect/platform/Path"
 import type { QuitException, Terminal } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
-import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
 import type { HashSet } from "effect/HashSet"
 import type { Option } from "effect/Option"
@@ -167,8 +166,8 @@ export const map: {
  * @category combinators
  */
 export const mapEffect: {
-  <A, B>(f: (a: A) => Either<ValidationError, B>): (self: Command<A>) => Command<B>
-  <A, B>(self: Command<A>, f: (a: A) => Either<ValidationError, B>): Command<B>
+  <A, B>(f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): (self: Command<A>) => Command<B>
+  <A, B>(self: Command<A>, f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): Command<B>
 } = Internal.mapEffect
 
 /**
