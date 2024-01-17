@@ -3420,15 +3420,22 @@ export const itemsCount = <A>(
   )
 
 /**
+ * @category ReadonlyArray transformations
+ * @since 1.0.0
+ */
+export const getNumberIndexedAccess = <I, A extends ReadonlyArray<any>>(self: Schema<I, A>): Schema<A[number]> =>
+  make(AST.getNumberIndexedAccess(self.ast))
+
+/**
  * Get the first element of a `ReadonlyArray`, or `None` if the array is empty.
  *
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const head = <I, A>(value: Schema<I, A>): Schema<ReadonlyArray<I>, Option.Option<A>> =>
+export const head = <I, A>(self: Schema<I, ReadonlyArray<A>>): Schema<I, Option.Option<A>> =>
   transform(
-    array(value),
-    optionFromSelf(to(value)),
+    self,
+    optionFromSelf(getNumberIndexedAccess(self)),
     ReadonlyArray.head,
     Option.match({ onNone: () => [], onSome: ReadonlyArray.of })
   )
@@ -3441,10 +3448,10 @@ export const head = <I, A>(value: Schema<I, A>): Schema<ReadonlyArray<I>, Option
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const headOr = <I, A>(value: Schema<I, A>, fallback?: LazyArg<A>): Schema<ReadonlyArray<I>, A> =>
+export const headOr = <I, A>(self: Schema<I, ReadonlyArray<A>>, fallback?: LazyArg<A>): Schema<I, A> =>
   transformOrFail(
-    array(value),
-    to(value),
+    self,
+    getNumberIndexedAccess(self),
     (as, _, ast) =>
       as.length > 0
         ? ParseResult.succeed(as[0])

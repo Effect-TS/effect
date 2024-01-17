@@ -1278,6 +1278,28 @@ export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
 }
 
 /** @internal */
+export const getNumberIndexedAccess = (ast: AST): AST => {
+  switch (ast._tag) {
+    case "Tuple": {
+      const out: Array<AST> = ast.elements.map((e) => e.type)
+      if (Option.isSome(ast.rest)) {
+        out.push(...ast.rest.value)
+      }
+      return createUnion(out)
+    }
+    case "Union":
+      return createUnion(ast.types.map(getNumberIndexedAccess))
+    case "Refinement":
+      return getNumberIndexedAccess(ast.from)
+    case "Suspend":
+      return getNumberIndexedAccess(ast.f())
+    case "Transform":
+      return getNumberIndexedAccess(ast.to)
+  }
+  throw new Error(`getNumberIndexedAccess: unsupported schema (${ast._tag})`)
+}
+
+/** @internal */
 export const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
   switch (ast._tag) {
     case "TypeLiteral": {
