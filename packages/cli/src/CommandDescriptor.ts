@@ -166,7 +166,7 @@ export const map: {
  * @since 1.0.0
  * @category combinators
  */
-export const mapOrFail: {
+export const mapEffect: {
   <A, B>(f: (a: A) => Either<ValidationError, B>): (self: Command<A>) => Command<B>
   <A, B>(self: Command<A>, f: (a: A) => Either<ValidationError, B>): Command<B>
 } = Internal.mapEffect
