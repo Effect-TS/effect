@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Path } from "@effect/platform/Path"
 import type { QuitException, Terminal } from "@effect/platform/Terminal"
 import type { Schema } from "@effect/schema/Schema"
 import type { Config } from "effect/Config"
@@ -329,10 +330,10 @@ export const map: {
  * @since 1.0.0
  * @category mapping
  */
-export const mapOrFail: {
-  <A, B>(f: (a: A) => Effect<FileSystem, HelpDoc, B>): (self: Args<A>) => Args<B>
-  <A, B>(self: Args<A>, f: (a: A) => Effect<FileSystem, HelpDoc, B>): Args<B>
-} = InternalArgs.mapOrFail
+export const mapEffect: {
+  <A, B>(f: (a: A) => Effect<FileSystem | Path | Terminal, HelpDoc, B>): (self: Args<A>) => Args<B>
+  <A, B>(self: Args<A>, f: (a: A) => Effect<FileSystem | Path | Terminal, HelpDoc, B>): Args<B>
+} = InternalArgs.mapEffect
 
 /**
  * @since 1.0.0
@@ -401,12 +402,20 @@ export const validate: {
   (
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): <A>(self: Args<A>) => Effect<FileSystem, ValidationError, [ReadonlyArray<string>, A]>
+  ): <A>(self: Args<A>) => Effect<
+    FileSystem | Path | Terminal,
+    ValidationError,
+    [ReadonlyArray<string>, A]
+  >
   <A>(
     self: Args<A>,
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<FileSystem, ValidationError, [ReadonlyArray<string>, A]>
+  ): Effect<
+    FileSystem | Path | Terminal,
+    ValidationError,
+    [ReadonlyArray<string>, A]
+  >
 } = InternalArgs.validate
 
 /**
@@ -454,9 +463,17 @@ export const wizard: {
     config: CliConfig
   ): <A>(
     self: Args<A>
-  ) => Effect<FileSystem | Terminal, ValidationError | QuitException, ReadonlyArray<string>>
+  ) => Effect<
+    FileSystem | Path | Terminal,
+    ValidationError | QuitException,
+    ReadonlyArray<string>
+  >
   <A>(
     self: Args<A>,
     config: CliConfig
-  ): Effect<FileSystem | Terminal, ValidationError | QuitException, ReadonlyArray<string>>
+  ): Effect<
+    FileSystem | Path | Terminal,
+    ValidationError | QuitException,
+    ReadonlyArray<string>
+  >
 } = InternalArgs.wizard

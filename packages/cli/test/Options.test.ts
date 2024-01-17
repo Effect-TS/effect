@@ -3,9 +3,10 @@ import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Options from "@effect/cli/Options"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as FileSystem from "@effect/platform-node/FileSystem"
+import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Path from "@effect/platform-node/Path"
 import * as Schema from "@effect/schema/Schema"
-import { BigDecimal, Layer } from "effect"
+import { BigDecimal } from "effect"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -23,18 +24,16 @@ const ageOptional = Options.optional(age)
 const verbose = Options.boolean("verbose", { ifPresent: true })
 const defs = Options.keyValueMap("defs").pipe(Options.withAlias("d"))
 
-const MainLive = Layer.mergeAll(FileSystem.layer, Path.layer)
-
 const runEffect = <E, A>(
-  self: Effect.Effect<FileSystem.FileSystem | Path.Path, E, A>
-): Promise<A> => Effect.provide(self, MainLive).pipe(Effect.runPromise)
+  self: Effect.Effect<NodeContext.NodeContext, E, A>
+): Promise<A> => Effect.provide(self, NodeContext.layer).pipe(Effect.runPromise)
 
 const process = <A>(
   options: Options.Options<A>,
   args: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  FileSystem.FileSystem,
+  NodeContext.NodeContext,
   ValidationError.ValidationError,
   [ReadonlyArray<string>, A]
 > =>

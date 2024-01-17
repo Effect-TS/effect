@@ -9,20 +9,16 @@ import * as Grep from "@effect/cli/test/utils/grep"
 import * as Tail from "@effect/cli/test/utils/tail"
 import * as WordCount from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
-import * as FileSystem from "@effect/platform-node/FileSystem"
-import * as Terminal from "@effect/platform-node/Terminal"
+import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Doc from "@effect/printer/Doc"
 import * as Render from "@effect/printer/Render"
 import { Effect, Option, ReadonlyArray, String } from "effect"
-import * as Layer from "effect/Layer"
 import { describe, expect, it } from "vitest"
 
-const MainLive = Layer.merge(FileSystem.layer, Terminal.layer)
-
 const runEffect = <E, A>(
-  self: Effect.Effect<FileSystem.FileSystem | Terminal.Terminal, E, A>
+  self: Effect.Effect<NodeContext.NodeContext, E, A>
 ): Promise<A> =>
-  Effect.provide(self, MainLive).pipe(
+  Effect.provide(self, NodeContext.layer).pipe(
     Effect.runPromise
   )
 

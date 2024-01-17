@@ -1,4 +1,5 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Color from "@effect/printer-ansi/Color"
 import * as Console from "effect/Console"
@@ -86,7 +87,11 @@ export interface GetUserInput extends
 export interface Map extends
   Op<"Map", {
     readonly command: Instruction
-    readonly f: (value: unknown) => Either.Either<ValidationError.ValidationError, unknown>
+    readonly f: (value: unknown) => Effect.Effect<
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      ValidationError.ValidationError,
+      unknown
+    >
   }>
 {}
 
@@ -197,16 +202,24 @@ export const getUsage = <A>(self: Descriptor.Command<A>): Usage.Usage => getUsag
 export const map = dual<
   <A, B>(f: (a: A) => B) => (self: Descriptor.Command<A>) => Descriptor.Command<B>,
   <A, B>(self: Descriptor.Command<A>, f: (a: A) => B) => Descriptor.Command<B>
->(2, (self, f) => mapOrFail(self, (a) => Either.right(f(a))))
+>(2, (self, f) => mapEffect(self, (a) => Either.right(f(a))))
 
 /** @internal */
-export const mapOrFail = dual<
+export const mapEffect = dual<
   <A, B>(
-    f: (a: A) => Either.Either<ValidationError.ValidationError, B>
+    f: (a: A) => Effect.Effect<
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      ValidationError.ValidationError,
+      B
+    >
   ) => (self: Descriptor.Command<A>) => Descriptor.Command<B>,
   <A, B>(
     self: Descriptor.Command<A>,
-    f: (a: A) => Either.Either<ValidationError.ValidationError, B>
+    f: (a: A) => Effect.Effect<
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      ValidationError.ValidationError,
+      B
+    >
   ) => Descriptor.Command<B>
 >(2, (self, f) => {
   const op = Object.create(proto)
@@ -222,7 +235,7 @@ export const parse = dual<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => <A>(self: Descriptor.Command<A>) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     ValidationError.ValidationError,
     Directive.CommandDirective<A>
   >,
@@ -231,7 +244,7 @@ export const parse = dual<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     ValidationError.ValidationError,
     Directive.CommandDirective<A>
   >
@@ -301,7 +314,7 @@ export const wizard = dual<
     prefix: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   >
@@ -491,7 +504,7 @@ const parseInternal = (
   args: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  FileSystem.FileSystem | Terminal.Terminal,
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
   ValidationError.ValidationError,
   Directive.CommandDirective<any>
 > => {
@@ -521,7 +534,7 @@ const parseInternal = (
       const parseBuiltInArgs = (
         args: ReadonlyArray<string>
       ): Effect.Effect<
-        FileSystem.FileSystem,
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal,
         ValidationError.ValidationError,
         Directive.CommandDirective<never>
       > =>
@@ -555,7 +568,7 @@ const parseInternal = (
       const parseUserDefinedArgs = (
         args: ReadonlyArray<string>
       ): Effect.Effect<
-        FileSystem.FileSystem,
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal,
         ValidationError.ValidationError,
         Directive.CommandDirective<unknown>
       > =>
@@ -588,7 +601,7 @@ const parseInternal = (
       const exhaustiveSearch = (
         args: ReadonlyArray<string>
       ): Effect.Effect<
-        FileSystem.FileSystem,
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal,
         ValidationError.ValidationError,
         Directive.CommandDirective<never>
       > => {
@@ -640,13 +653,12 @@ const parseInternal = (
       return parseInternal(self.command, args, config).pipe(
         Effect.flatMap((directive) => {
           if (InternalCommandDirective.isUserDefined(directive)) {
-            const either = self.f(directive.value)
-            return Either.isLeft(either)
-              ? Effect.fail(either.left)
-              : Effect.succeed(InternalCommandDirective.userDefined(
+            return self.f(directive.value).pipe(Effect.map((value) =>
+              InternalCommandDirective.userDefined(
                 directive.leftover,
-                either.right
-              ))
+                value
+              )
+            ))
           }
           return Effect.succeed(directive)
         })
@@ -664,7 +676,7 @@ const parseInternal = (
         const loop = (
           next: Instruction
         ): Effect.Effect<
-          FileSystem.FileSystem | Terminal.Terminal,
+          FileSystem.FileSystem | Path.Path | Terminal.Terminal,
           ValidationError.ValidationError,
           Directive.CommandDirective<any>
         > => {
@@ -805,7 +817,7 @@ const withDescriptionInternal = (
       return op
     }
     case "Map": {
-      return mapOrFail(withDescriptionInternal(self.command, description), self.f)
+      return mapEffect(withDescriptionInternal(self.command, description), self.f)
     }
     case "Subcommands": {
       const op = Object.create(proto)
@@ -825,7 +837,7 @@ const wizardInternal = (
   prefix: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  FileSystem.FileSystem | Terminal.Terminal,
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
   Terminal.QuitException | ValidationError.ValidationError,
   ReadonlyArray<string>
 > => {
@@ -833,7 +845,7 @@ const wizardInternal = (
     self: Instruction,
     commandLineRef: Ref.Ref<ReadonlyArray<string>>
   ): Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
     ReadonlyArray<string>
   > => {
