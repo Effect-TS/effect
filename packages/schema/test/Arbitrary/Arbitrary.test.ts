@@ -11,7 +11,7 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("should throw on declarations without annotations", () => {
-    const schema = S.declare([], S.any, () => ParseResult.succeed)
+    const schema = S.declarePrimitive(S.any, ParseResult.succeed)
     expect(() => Arbitrary.make(schema)).toThrow(
       new Error("cannot build an Arbitrary for a declaration without annotations")
     )

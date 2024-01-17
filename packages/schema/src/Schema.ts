@@ -354,21 +354,34 @@ const getTemplateLiterals = (
   @category constructors
   @since 1.0.0
 */
-export const declare = (
-  typeParameters: ReadonlyArray<Schema<never, any>>,
-  type: Schema<never, any>,
+export const declare = <const P extends ReadonlyArray<Schema<any, any>>, T extends Schema<any, any>, R, I, A>(
+  typeParameters: P,
+  type: T,
   decode: (
-    isDecoding: boolean,
-    ...typeParameters: ReadonlyArray<Schema<never, any>>
-  ) => (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<never, ParseResult.ParseError, any>,
+    ...typeParameters: P
+  ) => (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseError, A>,
+  encode: (
+    ...typeParameters: P
+  ) => (input: A, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseError, I>,
   annotations?: AST.Annotations
-): Schema<never, any> =>
+): Schema<Schema.Context<P[number]> | Schema.Context<T> | R, I, A> =>
   make(AST.createDeclaration(
     typeParameters.map((tp) => tp.ast),
     type.ast,
-    (isDecoding, ...typeParameters) => decode(isDecoding, ...typeParameters.map((tp) => make<never, any, any>(tp))),
+    (...typeParameters) => decode(...typeParameters.map((ast) => make(ast)) as any),
+    (...typeParameters) => encode(...typeParameters.map((ast) => make(ast)) as any),
     annotations
   ))
+
+/**
+  @category constructors
+  @since 1.0.0
+*/
+export const declarePrimitive = <T extends Schema<any, any>, R, A>(
+  type: T,
+  parse: (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseError, A>,
+  annotations?: AST.Annotations
+): Schema<Schema.Context<T> | R, A, A> => declare([], type, () => parse, () => parse, annotations)
 
 /**
  * @category type id
@@ -411,10 +424,9 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
   options?: FilterAnnotations<InstanceType<A>>
 ): Schema<never, InstanceType<A>> => {
-  return declare(
-    [],
+  return declarePrimitive(
     unknown,
-    () => (u, _, ast) =>
+    (u, _, ast) =>
       u instanceof constructor ?
         ParseResult.succeed(u)
         : ParseResult.fail(ParseResult.type(ast, u)),
@@ -2967,10 +2979,9 @@ export const BigintFromNumber: Schema<never, number, bigint> = transformOrFail(
  * @category Secret constructors
  * @since 1.0.0
  */
-export const SecretFromSelf: Schema<never, Secret.Secret> = declare(
-  [],
+export const SecretFromSelf: Schema<never, Secret.Secret> = declarePrimitive(
   string,
-  () => (u, _, ast) =>
+  (u, _, ast) =>
     Secret.isSecret(u) ?
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
@@ -3017,8 +3028,7 @@ const DurationInfinity = struct({
  * @category Duration constructors
  * @since 1.0.0
  */
-export const DurationFromSelf: Schema<never, Duration.Duration> = declare(
-  [],
+export const DurationFromSelf: Schema<never, Duration.Duration> = declarePrimitive(
   struct({
     value: union(
       DurationMillis,
@@ -3026,7 +3036,7 @@ export const DurationFromSelf: Schema<never, Duration.Duration> = declare(
       DurationInfinity
     )
   }),
-  () => (u, _, ast) =>
+  (u, _, ast) =>
     Duration.isDuration(u) ?
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
@@ -3254,10 +3264,9 @@ export const betweenDuration = <A extends Duration.Duration>(
  * @category Uint8Array constructors
  * @since 1.0.0
  */
-export const Uint8ArrayFromSelf: Schema<never, Uint8Array> = declare(
-  [],
+export const Uint8ArrayFromSelf: Schema<never, Uint8Array> = declarePrimitive(
   array(number),
-  () => (u, _, ast) =>
+  (u, _, ast) =>
     Predicate.isUint8Array(u) ?
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
@@ -3503,12 +3512,11 @@ const datePretty = (): Pretty.Pretty<Date> => (date) => `new Date(${JSON.stringi
  * @category Date constructors
  * @since 1.0.0
  */
-export const DateFromSelf: Schema<never, Date> = declare(
-  [],
+export const DateFromSelf: Schema<never, Date> = declarePrimitive(
   struct({
     valueOf: number
   }),
-  () => (u, _, ast) =>
+  (u, _, ast) =>
     Predicate.isDate(u) ?
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
@@ -3614,14 +3622,24 @@ export const optionFromSelf = <I, A>(
   return declare(
     [value],
     optionFrom(value),
-    (isDecoding, value) => {
-      const parse = isDecoding ? Parser.parse(value) : Parser.encode(value)
+    (value) => {
+      const parse = Parser.parse(value)
       return (u, options, ast) =>
         Option.isOption(u) ?
           Option.isNone(u) ?
             ParseResult.succeed(Option.none())
             : ParseResult.map(parse(u.value, options), Option.some)
           : ParseResult.fail(ParseResult.type(ast, u))
+    },
+    (value) => {
+      const encode = Parser.encode(value)
+      return (o, options, ast) =>
+        Option.isOption(o) ?
+          Option.match(o, {
+            onNone: () => ParseResult.succeed(Option.none()),
+            onSome: (a) => ParseResult.map(encode(a, options), Option.some)
+          }) :
+          ParseResult.fail(ParseResult.type(ast, o))
     },
     {
       [AST.DescriptionAnnotationId]: `Option<${Format.format(value)}>`,
@@ -3757,15 +3775,29 @@ export const eitherFromSelf = <IE, E, IA, A>(
   return declare(
     [left, right],
     eitherFrom(left, right),
-    (isDecoding, left, right) => {
-      const parseLeft = isDecoding ? Parser.parse(left) : Parser.encode(left)
-      const parseRight = isDecoding ? Parser.parse(right) : Parser.encode(right)
+    (left, right) => {
+      const parseLeft = Parser.parse(left)
+      const parseRight = Parser.parse(right)
       return (u, options, ast) =>
         Either.isEither(u) ?
-          Either.isLeft(u) ?
-            ParseResult.map(parseLeft(u.left, options), Either.left)
-            : ParseResult.map(parseRight(u.right, options), Either.right)
+          Either.match(u, {
+            onLeft: (left) => ParseResult.map(parseLeft(left, options), (e): Either.Either<E, A> => Either.left(e)),
+            onRight: (right) => ParseResult.map(parseRight(right, options), (a): Either.Either<E, A> => Either.right(a))
+          })
           : ParseResult.fail(ParseResult.type(ast, u))
+    },
+    (left, right) => {
+      const encodeLeft = Parser.encode(left)
+      const encodeRight = Parser.encode(right)
+      return (either, options, ast) =>
+        Either.isEither(either) ?
+          Either.match(either, {
+            onLeft: (left) =>
+              ParseResult.map(encodeLeft(left, options), (ie): Either.Either<IE, IA> => Either.left(ie)),
+            onRight: (right) =>
+              ParseResult.map(encodeRight(right, options), (ia): Either.Either<IE, IA> => Either.right(ia))
+          }) :
+          ParseResult.fail(ParseResult.type(ast, either))
     },
     {
       [AST.DescriptionAnnotationId]: `Either<${Format.format(left)}, ${Format.format(right)}>`,
@@ -3863,13 +3895,19 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
       size: number,
       entries: array(tuple(key, value))
     }),
-    (isDecoding, key, value) => {
-      const items = array(tuple(key, value))
-      const parse = isDecoding ? Parser.parse(items) : Parser.encode(items)
+    (key, value) => {
+      const parse = Parser.parse(array(tuple(key, value)))
       return (u, options, ast) =>
         isMap(u) ?
-          ParseResult.map(parse(Array.from(u.entries()), options), (as) => new Map(as))
+          ParseResult.map(parse(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
           : ParseResult.fail(ParseResult.type(ast, u))
+    },
+    (key, value) => {
+      const encode = Parser.encode(array(tuple(key, value)))
+      return (map, options, ast) =>
+        isMap(map) ?
+          ParseResult.map(encode(Array.from(map.entries()), options), (as): ReadonlyMap<IK, IV> => new Map(as))
+          : ParseResult.fail(ParseResult.type(ast, map))
     },
     {
       [AST.DescriptionAnnotationId]: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
@@ -3923,13 +3961,19 @@ export const readonlySetFromSelf = <I, A>(
       size: number,
       values: array(item)
     }),
-    (isDecoding, item) => {
-      const items = array(item)
-      const parse = isDecoding ? Parser.parse(items) : Parser.encode(items)
+    (item) => {
+      const parse = Parser.parse(array(item))
       return (u, options, ast) =>
         isSet(u) ?
-          ParseResult.map(parse(Array.from(u.values()), options), (as) => new Set(as))
+          ParseResult.map(parse(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
           : ParseResult.fail(ParseResult.type(ast, u))
+    },
+    (item) => {
+      const encode = Parser.encode(array(item))
+      return (set, options, ast) =>
+        isSet(set) ?
+          ParseResult.map(encode(Array.from(set.values()), options), (as): ReadonlySet<I> => new Set(as))
+          : ParseResult.fail(ParseResult.type(ast, set))
     },
     {
       [AST.DescriptionAnnotationId]: `ReadonlySet<${Format.format(item)}>`,
@@ -3962,13 +4006,12 @@ const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
  * @category BigDecimal constructors
  * @since 1.0.0
  */
-export const BigDecimalFromSelf: Schema<never, BigDecimal.BigDecimal> = declare(
-  [],
+export const BigDecimalFromSelf: Schema<never, BigDecimal.BigDecimal> = declarePrimitive(
   struct({
     value: bigintFromSelf,
     scale: number
   }),
-  () => (u, _, ast) =>
+  (u, _, ast) =>
     BigDecimal.isBigDecimal(u) ?
       ParseResult.succeed(u)
       : ParseResult.fail(ParseResult.type(ast, u)),
@@ -4324,16 +4367,24 @@ export const chunkFromSelf = <I, A>(item: Schema<never, I, A>): Schema<never, Ch
       length: number,
       values: array(item)
     }),
-    (isDecoding, item) => {
-      const items = array(item)
-      const parse = isDecoding ? Parser.parse(items) : Parser.encode(items)
+    (item) => {
+      const parse = Parser.parse(array(item))
       return (u, options, ast) => {
         return Chunk.isChunk(u) ?
           Chunk.isEmpty(u) ?
-            ParseResult.succeed(u)
+            ParseResult.succeed(Chunk.empty())
             : ParseResult.map(parse(Chunk.toReadonlyArray(u), options), Chunk.fromIterable)
           : ParseResult.fail(ParseResult.type(ast, u))
       }
+    },
+    (item) => {
+      const encode = Parser.encode(array(item))
+      return (chunk, options, ast) =>
+        Chunk.isChunk(chunk) ?
+          Chunk.isEmpty(chunk) ?
+            ParseResult.succeed(Chunk.empty())
+            : ParseResult.map(encode(Chunk.toReadonlyArray(chunk), options), Chunk.fromIterable)
+          : ParseResult.fail(ParseResult.type(ast, chunk))
     },
     {
       [AST.DescriptionAnnotationId]: `Chunk<${Format.format(item)}>`,
@@ -4382,12 +4433,19 @@ export const dataFromSelf = <
   return declare(
     [item],
     item,
-    (isDecoding, item) => {
-      const parse = isDecoding ? Parser.parse(item) : Parser.encode(item)
+    (item) => {
+      const parse = Parser.parse(item)
       return (u, options, ast) =>
         Equal.isEqual(u) ?
           ParseResult.map(parse(u, options), toData)
           : ParseResult.fail(ParseResult.type(ast, u))
+    },
+    (item) => {
+      const encode = Parser.encode(item)
+      return (data, options, ast) =>
+        Equal.isEqual(data) ?
+          ParseResult.map(encode(data, options), toData)
+          : ParseResult.fail(ParseResult.type(ast, data))
     },
     {
       [AST.DescriptionAnnotationId]: `Data<${Format.format(item)}>`,
@@ -4671,21 +4729,25 @@ const makeClass = <R, I, A>(
 
     static get ast() {
       const toSchema = to(selfSchema)
-      return transform(
+      const pretty = Pretty.make(toSchema)
+      const arb = arbitrary.make(toSchema)
+      const declaration: Schema<never, any, any> = declarePrimitive(toSchema, (input, _, ast) =>
+        input instanceof this ?
+          ParseResult.succeed(input)
+          : ParseResult.fail(ParseResult.type(ast, input)), {
+        [AST.IdentifierAnnotationId]: this.name,
+        [AST.TitleAnnotationId]: this.name,
+        [AST.DescriptionAnnotationId]: `an instance of ${this.name}`,
+        [hooks.PrettyHookId]: () => (self: any) => `${self.constructor.name}(${pretty(self)})`,
+        [hooks.ArbitraryHookId]: () => (fc: any) => arb(fc).map((props: any) => new this(props))
+      })
+      const transformation = transform(
         selfSchema,
-        declare([toSchema], toSchema, () => (input, _, ast) =>
-          input instanceof this ?
-            ParseResult.succeed(input)
-            : ParseResult.fail(ParseResult.type(ast, input)), {
-          [AST.IdentifierAnnotationId]: this.name,
-          [AST.TitleAnnotationId]: this.name,
-          [AST.DescriptionAnnotationId]: `an instance of ${this.name}`,
-          [hooks.PrettyHookId]: (struct: any) => (self: any) => `${self.constructor.name}(${struct(self)})`,
-          [hooks.ArbitraryHookId]: (struct: any) => (fc: any) => struct(fc).map((props: any) => new this(props))
-        }),
+        declaration,
         (input) => new this(input, true),
         (input) => ({ ...input })
-      ).ast
+      )
+      return transformation.ast
     }
 
     static struct = selfSchema
@@ -4804,10 +4866,9 @@ const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
  * @category FiberId constructors
  * @since 1.0.0
  */
-export const FiberIdFromSelf: Schema<never, FiberId.FiberId, FiberId.FiberId> = declare(
-  [],
+export const FiberIdFromSelf: Schema<never, FiberId.FiberId, FiberId.FiberId> = declarePrimitive(
   FiberIdFrom,
-  () => (input, _, ast) =>
+  (input, _, ast) =>
     FiberId.isFiberId(input) ?
       ParseResult.succeed(input)
       : ParseResult.fail(ParseResult.type(ast, input)),
@@ -4981,14 +5042,19 @@ export const causeFromSelf = <IE, E>(
   return declare(
     [error, defect],
     causeFrom(error, defect),
-    (isDecoding, error) => {
-      const cause = causeFrom(error, defect)
-      const parse = isDecoding ? Parser.parse(cause) : Parser.encode(cause)
-      return (u, options, ast) => {
-        return Cause.isCause(u) ?
+    (error, defect) => {
+      const parse = Parser.parse(causeFrom(error, defect))
+      return (u, options, ast) =>
+        Cause.isCause(u) ?
           ParseResult.map(parse(causeEncode(u), options), causeDecode)
           : ParseResult.fail(ParseResult.type(ast, u))
-      }
+    },
+    (error, defect) => {
+      const encode = Parser.encode(causeFrom(error, defect))
+      return (cause, options, ast) =>
+        Cause.isCause(cause) ?
+          ParseResult.map(encode(causeEncode(cause), options), causeDecode)
+          : ParseResult.fail(ParseResult.type(ast, cause))
     },
     {
       [AST.DescriptionAnnotationId]: `Cause<${Format.format(error)}>`,
@@ -5146,16 +5212,30 @@ export const exitFromSelf = <IE, E, IA, A>(
   declare(
     [error, value, defect],
     exitFrom(error, value, defect),
-    (isDecoding, error, value) => {
-      const cause = causeFromSelf(error, defect)
-      const parseCause = isDecoding ? Parser.parse(cause) : Parser.encode(cause)
-      const parseValue = isDecoding ? Parser.parse(value) : Parser.encode(value)
+    (error, value, defect) => {
+      const parseCause = Parser.parse(causeFromSelf(error, defect))
+      const parseValue = Parser.parse(value)
       return (u, options, ast) =>
         Exit.isExit(u) ?
-          Exit.isFailure(u) ?
-            ParseResult.map(parseCause(u.cause, options), Exit.failCause)
-            : ParseResult.map(parseValue(u.value, options), Exit.succeed)
+          Exit.match(u, {
+            onFailure: (cause) =>
+              ParseResult.map(parseCause(cause, options), (c): Exit.Exit<E, A> => Exit.failCause(c)),
+            onSuccess: (value) => ParseResult.map(parseValue(value, options), (a): Exit.Exit<E, A> => Exit.succeed(a))
+          })
           : ParseResult.fail(ParseResult.type(ast, u))
+    },
+    (error, value, defect) => {
+      const encodeCause = Parser.encode(causeFromSelf(error, defect))
+      const encodeValue = Parser.encode(value)
+      return (exit, options, ast) =>
+        Exit.isExit(exit) ?
+          Exit.match(exit, {
+            onFailure: (cause) =>
+              ParseResult.map(encodeCause(cause, options), (c): Exit.Exit<IE, IA> => Exit.failCause(c)),
+            onSuccess: (value) =>
+              ParseResult.map(encodeValue(value, options), (a): Exit.Exit<IE, IA> => Exit.succeed(a))
+          }) :
+          ParseResult.fail(ParseResult.type(ast, exit))
     },
     {
       [AST.DescriptionAnnotationId]: `Exit<${Format.format(error)}, ${Format.format(value)}>`,

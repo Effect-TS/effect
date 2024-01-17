@@ -379,7 +379,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         )
     }
     case "Declaration": {
-      const parse = ast.decode(isDecoding, ...ast.typeParameters)
+      const parse = isDecoding ? ast.decode(...ast.typeParameters) : ast.encode(...ast.typeParameters)
       return (i, options) =>
         handleForbidden(ParseResult.mapError(parse(i, options ?? defaultParseOption, ast), (e) => e.error), i, options)
     }

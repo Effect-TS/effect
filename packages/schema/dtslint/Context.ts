@@ -7,6 +7,21 @@ declare const aContext: Schema.Schema<"a", string>
 declare const bContext: Schema.Schema<"b", number>
 declare const cContext: Schema.Schema<"c", string>
 
+const Tag1 = Context.Tag<"Tag1", string>()
+const Tag2 = Context.Tag<"Tag2", number>()
+
+// ---------------------------------------------
+// declare
+// ---------------------------------------------
+
+// $ExpectType Schema<"a" | "b" | "c" | "Tag1", number, string>
+Schema.declare(
+  [aContext, bContext],
+  cContext,
+  (_a, _b) => () => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(a))),
+  (_a, _b) => () => Tag2.pipe(Effect.flatMap((a) => ParseResult.succeed(a)))
+)
+
 // ---------------------------------------------
 // union
 // ---------------------------------------------
@@ -272,9 +287,6 @@ export type MyClassParams = ConstructorParameters<typeof MyClass>
 // ---------------------------------------------
 // Class.transform
 // ---------------------------------------------
-
-const Tag1 = Context.Tag<"Tag1", string>()
-const Tag2 = Context.Tag<"Tag2", number>()
 
 export class MyClassWithTransform extends MyClass.transform<MyClassWithTransform>()(
   {

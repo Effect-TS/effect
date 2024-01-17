@@ -5,7 +5,7 @@
 import * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import { dual } from "effect/Function"
+import { dual, identity } from "effect/Function"
 
 /**
  * @since 1.0.0
@@ -72,7 +72,7 @@ export const schema: {
           return f(this as any)
         }
       }) as A,
-    (output) => output as A
+    identity
   ))
 
 /**
@@ -85,8 +85,8 @@ export const schemaFromSelf = <I, A>(
   return Schema.declare(
     [item],
     item,
-    (isDecoding, item) => {
-      const parse = isDecoding ? Schema.parse(item) : Schema.encode(item)
+    (item) => {
+      const parse = Schema.parse(item)
       return (u, options, ast) => {
         if (!isTransferable(u)) {
           return ParseResult.fail(ParseResult.type(ast, u))
@@ -95,10 +95,16 @@ export const schemaFromSelf = <I, A>(
           __proto__: Object.getPrototypeOf(u),
           [symbol]: u[symbol]
         }
-        return ParseResult.map(
-          parse(u, options),
-          (a) => Object.setPrototypeOf(a, proto)
-        )
+        return ParseResult.map(parse(u, options), (a): A => Object.setPrototypeOf(a, proto))
+      }
+    },
+    (item) => {
+      const encode = Schema.encode(item)
+      return (a, _, ast) => {
+        if (!isTransferable(a)) {
+          return ParseResult.fail(ParseResult.type(ast, a))
+        }
+        return encode(a)
       }
     },
     { [AST.IdentifierAnnotationId]: "Transferable" }

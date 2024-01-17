@@ -45,10 +45,9 @@ describe("Parser", () => {
     // declare
     expect(
       P.getLiterals(
-        S.declare(
-          [],
+        S.declarePrimitive(
           S.struct({ _tag: S.literal("a") }),
-          () => P.parse(S.struct({ _tag: S.literal("a") }))
+          P.parse(S.struct({ _tag: S.literal("a") }))
         ).ast,
         true
       )
