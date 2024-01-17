@@ -14,7 +14,7 @@ const Tag2 = Context.Tag<"Tag2", number>()
 // declare
 // ---------------------------------------------
 
-// $ExpectType Schema<"a" | "b" | "c" | "Tag1", number, string>
+// $ExpectType Schema<"a" | "b" | "c" | "Tag1" | "Tag2", number, string>
 Schema.declare(
   [aContext, bContext],
   cContext,
