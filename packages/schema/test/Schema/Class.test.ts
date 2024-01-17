@@ -88,17 +88,21 @@ class PersonWithTransform extends Person.transform<PersonWithTransform>()(
     id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
   },
-  (input) =>
-    PR.succeed({
-      ...input,
-      id: input.id.toString(),
-      thing: O.some({ id: 123 })
-    }),
-  (input) =>
-    PR.succeed({
-      ...input,
-      id: Number(input.id)
-    })
+  (input, _, ast) =>
+    input.id === 2 ?
+      PR.fail(PR.type(ast, input)) :
+      PR.succeed({
+        ...input,
+        id: input.id.toString(),
+        thing: O.some({ id: 123 })
+      }),
+  (input, _, ast) =>
+    input.id === "2" ?
+      PR.fail(PR.type(ast, input)) :
+      PR.succeed({
+        ...input,
+        id: Number(input.id)
+      })
 ) {}
 
 class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFrom>()(
@@ -106,17 +110,21 @@ class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFr
     id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
   },
-  (input) =>
-    PR.succeed({
-      ...input,
-      id: input.id.toString(),
-      thing: { id: 123 }
-    }),
-  (input) =>
-    PR.succeed({
-      ...input,
-      id: Number(input.id)
-    })
+  (input, _, ast) =>
+    input.id === 2 ?
+      PR.fail(PR.type(ast, input)) :
+      PR.succeed({
+        ...input,
+        id: input.id.toString(),
+        thing: { id: 123 }
+      }),
+  (input, _, ast) =>
+    input.id === "2" ?
+      PR.fail(PR.type(ast, input)) :
+      PR.succeed({
+        ...input,
+        id: Number(input.id)
+      })
 ) {}
 
 describe("Schema > Class", () => {
@@ -248,7 +256,7 @@ describe("Schema > Class", () => {
     )
   })
 
-  it("transform", () => {
+  it("transform", async () => {
     const decode = S.decodeSync(PersonWithTransform)
     const person = decode({
       id: 1,
@@ -259,9 +267,31 @@ describe("Schema > Class", () => {
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
+
+    await Util.expectParseFailure(
+      PersonWithTransform,
+      {
+        id: 2,
+        name: "John"
+      },
+      `(({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
+└─ From side transformation failure
+   └─ ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })
+      └─ Transformation process failure
+         └─ Expected ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John"}`
+    )
+    await Util.expectEncodeFailure(
+      PersonWithTransform,
+      new PersonWithTransform({ id: "2", name: "John", thing: O.some({ id: 1 }) }),
+      `(({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
+└─ From side transformation failure
+   └─ ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })
+      └─ Transformation process failure
+         └─ Expected ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":"2","name":"John","thing":{"_id":"Option","_tag":"Some","value":{"id":1}}}`
+    )
   })
 
-  it("transform from", () => {
+  it("transform from", async () => {
     const decode = S.decodeSync(PersonWithTransformFrom)
     const person = decode({
       id: 1,
@@ -272,6 +302,28 @@ describe("Schema > Class", () => {
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
+
+    await Util.expectParseFailure(
+      PersonWithTransformFrom,
+      {
+        id: 2,
+        name: "John"
+      },
+      `(({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
+└─ From side transformation failure
+   └─ ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }))
+      └─ Transformation process failure
+         └─ Expected ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":2,"name":"John"}`
+    )
+    await Util.expectEncodeFailure(
+      PersonWithTransformFrom,
+      new PersonWithTransformFrom({ id: "2", name: "John", thing: O.some({ id: 1 }) }),
+      `(({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
+└─ From side transformation failure
+   └─ ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }))
+      └─ Transformation process failure
+         └─ Expected ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":"2","name":"John","thing":{"id":1}}`
+    )
   })
 
   it("TaggedClass", () => {
