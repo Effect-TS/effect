@@ -1,5 +1,15 @@
 # @effect/rpc-workers
 
+## 0.25.10
+
+### Patch Changes
+
+- Updated dependencies [[`0d1af1e`](https://github.com/Effect-TS/effect/commit/0d1af1e38c11b94e152beaccd0ff7569a1b3f5b7), [`0d1af1e`](https://github.com/Effect-TS/effect/commit/0d1af1e38c11b94e152beaccd0ff7569a1b3f5b7), [`a222524`](https://github.com/Effect-TS/effect/commit/a2225247e9de2e013d287320790fde88c081dbbd)]:
+  - @effect/schema@0.60.4
+  - effect@2.1.1
+  - @effect/platform@0.42.4
+  - @effect/rpc@0.26.7
+
 ## 0.25.9
 
 ### Patch Changes

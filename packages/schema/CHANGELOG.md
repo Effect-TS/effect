@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.60.4
+
+### Patch Changes
+
+- [#1939](https://github.com/Effect-TS/effect/pull/1939) [`0d1af1e`](https://github.com/Effect-TS/effect/commit/0d1af1e38c11b94e152beaccd0ff7569a1b3f5b7) Thanks [@gcanti](https://github.com/gcanti)! - fix `head` / `headOr` signatures and add `getNumberIndexedAccess`
+
+- [#1939](https://github.com/Effect-TS/effect/pull/1939) [`0d1af1e`](https://github.com/Effect-TS/effect/commit/0d1af1e38c11b94e152beaccd0ff7569a1b3f5b7) Thanks [@gcanti](https://github.com/gcanti)! - make `pluck` dual
+
+- Updated dependencies [[`a222524`](https://github.com/Effect-TS/effect/commit/a2225247e9de2e013d287320790fde88c081dbbd)]:
+  - effect@2.1.1
+
 ## 0.60.3
 
 ### Patch Changes

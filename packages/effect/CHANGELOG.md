@@ -1,5 +1,11 @@
 # effect
 
+## 2.1.1
+
+### Patch Changes
+
+- [#1934](https://github.com/Effect-TS/effect/pull/1934) [`a222524`](https://github.com/Effect-TS/effect/commit/a2225247e9de2e013d287320790fde88c081dbbd) Thanks [@gcanti](https://github.com/gcanti)! - ReadonlyRecord: add `mapKeys` / `mapEntries`
+
 ## 2.1.0
 
 ### Minor Changes
