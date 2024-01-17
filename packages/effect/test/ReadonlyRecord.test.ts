@@ -290,4 +290,14 @@ describe("ReadonlyRecord", () => {
   it("singleton", () => {
     assert.deepStrictEqual(RR.singleton("a", 1), { a: 1 })
   })
+
+  it("mapKeys", () => {
+    expect(pipe({ a: 1, b: 2 }, RR.mapKeys((key) => key.toUpperCase()))).toStrictEqual({ A: 1, B: 2 })
+    expect(RR.mapKeys({ a: 1, b: 2 }, (k) => k.toUpperCase())).toStrictEqual({ A: 1, B: 2 })
+  })
+
+  it("mapEntries", () => {
+    expect(pipe({ a: 1, b: 2 }, RR.mapEntries((a, key) => [key.toUpperCase(), a + 1]))).toStrictEqual({ A: 2, B: 3 })
+    expect(RR.mapEntries({ a: 1, b: 2 }, (a, k) => [k.toUpperCase(), a + 1])).toStrictEqual({ A: 2, B: 3 })
+  })
 })

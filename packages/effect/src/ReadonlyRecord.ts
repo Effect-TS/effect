@@ -426,6 +426,58 @@ export const map: {
 )
 
 /**
+ * Maps the keys of a `ReadonlyRecord` while preserving the corresponding values.
+ *
+ * @example
+ * import { mapKeys } from "effect/ReadonlyRecord"
+ *
+ * assert.deepStrictEqual(mapKeys({ a: 3, b: 5 }, (key) => key.toUpperCase()), { A: 3, B: 5 })
+ *
+ * @category mapping
+ * @since 2.0.0
+ */
+export const mapKeys: {
+  <A>(f: (key: string, a: A) => string): (self: ReadonlyRecord<A>) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, f: (key: string, a: A) => string): Record<string, A>
+} = dual(
+  2,
+  <A>(self: ReadonlyRecord<A>, f: (key: string, a: A) => string): Record<string, A> => {
+    const out: Record<string, A> = {}
+    for (const key of Object.keys(self)) {
+      const a = self[key]
+      out[f(key, a)] = a
+    }
+    return out
+  }
+)
+
+/**
+ * Maps entries of a `ReadonlyRecord` using the provided function, allowing modification of both keys and corresponding values.
+ *
+ * @example
+ * import { mapEntries } from "effect/ReadonlyRecord"
+ *
+ * assert.deepStrictEqual(mapEntries({ a: 3, b: 5 }, (a, key) => [key.toUpperCase(), a + 1]), { A: 4, B: 6 })
+ *
+ * @category mapping
+ * @since 2.0.0
+ */
+export const mapEntries: {
+  <A>(f: (a: A, key: string) => [string, A]): (self: ReadonlyRecord<A>) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, f: (a: A, key: string) => [string, A]): Record<string, A>
+} = dual(
+  2,
+  <A>(self: ReadonlyRecord<A>, f: (a: A, key: string) => [string, A]): Record<string, A> => {
+    const out: Record<string, A> = {}
+    for (const key of Object.keys(self)) {
+      const [k, a] = f(self[key], key)
+      out[k] = a
+    }
+    return out
+  }
+)
+
+/**
  * Transforms a record into a record by applying the function `f` to each key and value in the original record.
  * If the function returns `Some`, the key-value pair is included in the output record.
  *
