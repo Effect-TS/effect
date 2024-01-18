@@ -87,24 +87,31 @@ describe("ParseResult", () => {
     ).toStrictEqual(Exit.fail(typeParseError))
   })
 
-  it("bimap (Either)", () => {
-    expect(ParseResult.mapBoth(Either.right(1), () => typeParseError, (n) => n + 1)).toStrictEqual(
-      Either.right(2)
-    )
+  it("mapBoth (Either)", () => {
+    expect(ParseResult.mapBoth(Either.right(1), { onFailure: () => typeParseError, onSuccess: (n) => n + 1 }))
+      .toStrictEqual(
+        Either.right(2)
+      )
     expect(
-      ParseResult.mapBoth(Either.left(forbiddenParseError), () => typeParseError, (n) => n + 1)
+      ParseResult.mapBoth(Either.left(forbiddenParseError), {
+        onFailure: () => typeParseError,
+        onSuccess: (n) => n + 1
+      })
     ).toStrictEqual(Either.left(typeParseError))
   })
 
-  it("bimap (Effect)", () => {
+  it("mapBoth (Effect)", () => {
     expect(
       Effect.runSyncExit(
-        ParseResult.mapBoth(Effect.succeed(1), () => typeParseError, (n) => n + 1)
+        ParseResult.mapBoth(Effect.succeed(1), { onFailure: () => typeParseError, onSuccess: (n) => n + 1 })
       )
     ).toStrictEqual(Exit.succeed(2))
     expect(
       Effect.runSyncExit(
-        ParseResult.mapBoth(Effect.fail(forbiddenParseError), () => typeParseError, (n) => n + 1)
+        ParseResult.mapBoth(Effect.fail(forbiddenParseError), {
+          onFailure: () => typeParseError,
+          onSuccess: (n) => n + 1
+        })
       )
     ).toStrictEqual(Exit.fail(typeParseError))
   })

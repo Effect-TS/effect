@@ -420,17 +420,19 @@ export const mapError = <R, E1, A, E2>(
  */
 export const mapBoth = <R, E1, A, E2, B>(
   self: Effect.Effect<R, E1, A>,
-  f: (error: E1) => E2,
-  g: (a: A) => B
+  options: {
+    readonly onFailure: (error: E1) => E2
+    readonly onSuccess: (a: A) => B
+  }
 ): Effect.Effect<R, E2, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
-    return Either.left(f(s.left))
+    return Either.left(options.onFailure(s.left))
   }
   if (s["_tag"] === "Right") {
-    return Either.right(g(s.right))
+    return Either.right(options.onSuccess(s.right))
   }
-  return Effect.mapBoth(self, { onFailure: f, onSuccess: g })
+  return Effect.mapBoth(self, options)
 }
 
 /**
