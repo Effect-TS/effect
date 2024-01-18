@@ -81,7 +81,6 @@ export const schemaFromSelf = <R, I, A>(
 ): Schema.Schema<R, I, A> => {
   return Schema.declare(
     [item],
-    item,
     (item) => {
       const parse = Schema.parse(item)
       return (u, options, ast) => {
