@@ -1409,6 +1409,16 @@ export const none: <R, E, A>(
 ) => Effect<R, E | Cause.NoSuchElementException, void> = effect.none
 
 /**
+ * Requires the option produced by this value to be `Some`.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const some: <R, E, A>(
+  self: Effect<R, E, Option.Option<A>>
+) => Effect<R, E | Cause.NoSuchElementException, A> = effect.some
+
+/**
  * Like `tryPromise` but produces a defect in case of errors.
  *
  * An optional `AbortSignal` can be provided to allow for interruption of the

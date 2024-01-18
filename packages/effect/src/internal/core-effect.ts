@@ -1119,6 +1119,21 @@ export const none = <R, E, A>(
   })
 
 /* @internal */
+export const some = <R, E, A>(
+  self: Effect.Effect<R, E, Option.Option<A>>
+): Effect.Effect<R, E | Cause.NoSuchElementException, A> =>
+  core.flatMap(self, (option) => {
+    switch (option._tag) {
+      case "None": {
+        return core.fail(new core.NoSuchElementException())
+      }
+      case "Some": {
+        return core.succeed(option.value)
+      }
+    }
+  })
+
+/* @internal */
 export const once = <R, E, A>(
   self: Effect.Effect<R, E, A>
 ): Effect.Effect<never, never, Effect.Effect<R, E, void>> =>

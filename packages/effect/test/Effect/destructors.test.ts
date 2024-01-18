@@ -60,6 +60,22 @@ describe("Effect", () => {
       const result = yield* $(Effect.exit(Effect.none(Effect.fail(error))))
       assert.deepStrictEqual(result, Exit.fail(error))
     }))
+  it.effect("some - on None fails with NoSuchElementException", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(Effect.exit(Effect.some(Effect.succeedNone)))
+      assert.deepStrictEqual(result, Exit.fail(new Cause.NoSuchElementException()))
+    }))
+  it.effect("some - on Some succeeds with the value", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(Effect.some(Effect.succeedSome(1)))
+      assert.equal(result, 1)
+    }))
+  it.effect("some - fails with ex when effect fails with ex", () =>
+    Effect.gen(function*($) {
+      const error = new Cause.RuntimeException("failed task")
+      const result = yield* $(Effect.exit(Effect.some(Effect.fail(error))))
+      assert.deepStrictEqual(result, Exit.fail(error))
+    }))
   it.effect("option - return success in Some", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.option(Effect.succeed(11)))
