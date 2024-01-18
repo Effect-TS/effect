@@ -1009,7 +1009,7 @@ export const pluck: {
   <A, K extends keyof A>(key: K): <I>(schema: Schema<I, A>) => Schema<I, A[K]>
   <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Schema<I, A[K]>
 } = dual(2, <I, A, K extends keyof A>(schema: Schema<I, A>, key: K): Schema<I, A[K]> => {
-  const ps = AST.getIndexedAccess(to(schema).ast, key)
+  const ps = AST.getPropertyKeyIndexedAccess(to(schema).ast, key)
   const value = make<A[K], A[K]>(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
   return transform(
     schema,
@@ -3426,8 +3426,9 @@ export const itemsCount = <A>(
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const getNumberIndexedAccess = <I, A extends ReadonlyArray<any>>(self: Schema<I, A>): Schema<A[number]> =>
-  make(AST.getNumberIndexedAccess(self.ast))
+export const getNumberIndexedAccess = <I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
+  self: Schema<I, A>
+): Schema<I[number], A[number]> => make(AST.getNumberIndexedAccess(self.ast))
 
 /**
  * Get the first element of a `ReadonlyArray`, or `None` if the array is empty.
@@ -3438,7 +3439,7 @@ export const getNumberIndexedAccess = <I, A extends ReadonlyArray<any>>(self: Sc
 export const head = <I, A>(self: Schema<I, ReadonlyArray<A>>): Schema<I, Option.Option<A>> =>
   transform(
     self,
-    optionFromSelf(getNumberIndexedAccess(self)),
+    optionFromSelf(getNumberIndexedAccess(to(self))),
     ReadonlyArray.head,
     Option.match({ onNone: () => [], onSome: ReadonlyArray.of })
   )
@@ -3454,7 +3455,7 @@ export const head = <I, A>(self: Schema<I, ReadonlyArray<A>>): Schema<I, Option.
 export const headOr = <I, A>(self: Schema<I, ReadonlyArray<A>>, fallback?: LazyArg<A>): Schema<I, A> =>
   transformOrFail(
     self,
-    getNumberIndexedAccess(self),
+    getNumberIndexedAccess(to(self)),
     (as, _, ast) =>
       as.length > 0
         ? ParseResult.succeed(as[0])

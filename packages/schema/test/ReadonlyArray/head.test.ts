@@ -5,23 +5,25 @@ import { describe, it } from "vitest"
 
 describe("ReadonlyArray > head", () => {
   it("decoding", async () => {
-    const schema = S.head(S.array(S.number))
+    const schema = S.head(S.array(S.NumberFromString))
     await Util.expectParseSuccess(schema, [], Option.none())
-    await Util.expectParseSuccess(schema, [1], Option.some(1))
+    await Util.expectParseSuccess(schema, ["1"], Option.some(1))
     await Util.expectParseFailure(
       schema,
       ["a"],
-      `(ReadonlyArray<number> <-> Option<number>)
+      `(ReadonlyArray<NumberFromString> <-> Option<number>)
 └─ From side transformation failure
-   └─ ReadonlyArray<number>
+   └─ ReadonlyArray<NumberFromString>
       └─ [0]
-         └─ Expected a number, actual "a"`
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Expected NumberFromString, actual "a"`
     )
   })
 
   it("encoding", async () => {
-    const schema = S.head(S.array(S.number))
+    const schema = S.head(S.array(S.NumberFromString))
     await Util.expectEncodeSuccess(schema, Option.none(), [])
-    await Util.expectEncodeSuccess(schema, Option.some(1), [1])
+    await Util.expectEncodeSuccess(schema, Option.some(1), ["1"])
   })
 })

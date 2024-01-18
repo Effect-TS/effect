@@ -1274,33 +1274,41 @@ export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
     case "Suspend":
       return getPropertySignatures(ast.f())
   }
-  return getIndexedAccessKeys(ast).map((name) => getIndexedAccess(ast, name))
+  return getPropertyKeys(ast).map((name) => getPropertyKeyIndexedAccess(ast, name))
 }
 
 /** @internal */
 export const getNumberIndexedAccess = (ast: AST): AST => {
   switch (ast._tag) {
     case "Tuple": {
-      const out: Array<AST> = ast.elements.map((e) => e.type)
+      let hasOptional = false
+      const out: Array<AST> = []
+      for (const e of ast.elements) {
+        if (e.isOptional) {
+          hasOptional = true
+        }
+        out.push(e.type)
+      }
+      if (hasOptional) {
+        out.push(undefinedKeyword)
+      }
       if (Option.isSome(ast.rest)) {
         out.push(...ast.rest.value)
       }
       return createUnion(out)
     }
-    case "Union":
-      return createUnion(ast.types.map(getNumberIndexedAccess))
     case "Refinement":
       return getNumberIndexedAccess(ast.from)
+    case "Union":
+      return createUnion(ast.types.map(getNumberIndexedAccess))
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
-    case "Transform":
-      return getNumberIndexedAccess(ast.to)
   }
   throw new Error(`getNumberIndexedAccess: unsupported schema (${ast._tag})`)
 }
 
 /** @internal */
-export const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
+export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
   switch (ast._tag) {
     case "TypeLiteral": {
       const ops = ReadonlyArray.findFirst(ast.propertySignatures, (ps) => ps.name === name)
@@ -1336,26 +1344,26 @@ export const getIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature
     case "Union":
       return createPropertySignature(
         name,
-        createUnion(ast.types.map((ast) => getIndexedAccess(ast, name).type)),
+        createUnion(ast.types.map((ast) => getPropertyKeyIndexedAccess(ast, name).type)),
         false,
         true
       )
     case "Suspend":
-      return getIndexedAccess(ast.f(), name)
+      return getPropertyKeyIndexedAccess(ast.f(), name)
   }
   return createPropertySignature(name, neverKeyword, false, true)
 }
 
-const getIndexedAccessKeys = (ast: AST): Array<PropertyKey> => {
+const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
   switch (ast._tag) {
     case "TypeLiteral":
       return ast.propertySignatures.map((ps) => ps.name)
     case "Suspend":
-      return getIndexedAccessKeys(ast.f())
+      return getPropertyKeys(ast.f())
     case "Union":
       return ast.types.slice(1).reduce(
-        (out: Array<PropertyKey>, ast) => ReadonlyArray.intersection(out, getIndexedAccessKeys(ast)),
-        getIndexedAccessKeys(ast.types[0])
+        (out: Array<PropertyKey>, ast) => ReadonlyArray.intersection(out, getPropertyKeys(ast)),
+        getPropertyKeys(ast.types[0])
       )
   }
   return []
@@ -1406,7 +1414,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
  * @since 1.0.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
-  createTypeLiteral(keys.map((key) => getIndexedAccess(ast, key)), [])
+  createTypeLiteral(keys.map((key) => getPropertyKeyIndexedAccess(ast, key)), [])
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Omit`.
@@ -1414,7 +1422,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
  * @since 1.0.0
  */
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
-  pick(ast, getIndexedAccessKeys(ast).filter((name) => !keys.includes(name)))
+  pick(ast, getPropertyKeys(ast).filter((name) => !keys.includes(name)))
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Partial`.
