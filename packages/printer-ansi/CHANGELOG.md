@@ -1,5 +1,14 @@
 # @effect/printer-ansi
 
+## 0.31.8
+
+### Patch Changes
+
+- Updated dependencies [[`21b9edd`](https://github.com/Effect-TS/effect/commit/21b9edde464f7c5624ef54ad1b5e264204a37625)]:
+  - effect@2.1.2
+  - @effect/printer@0.30.8
+  - @effect/typeclass@0.22.8
+
 ## 0.31.7
 
 ### Patch Changes
