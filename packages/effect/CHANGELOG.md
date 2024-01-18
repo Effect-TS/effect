@@ -1,5 +1,11 @@
 # effect
 
+## 2.1.2
+
+### Patch Changes
+
+- [#1949](https://github.com/Effect-TS/effect/pull/1949) [`21b9edd`](https://github.com/Effect-TS/effect/commit/21b9edde464f7c5624ef54ad1b5e264204a37625) Thanks [@TylorS](https://github.com/TylorS)! - Fix runFork with Scope
+
 ## 2.1.1
 
 ### Patch Changes
