@@ -69,7 +69,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
               equals(id, fiberRuntime.id()) ? core.unit : core.interruptAsFiber(fiberRuntime, id)
             )
           ),
-          core.onExit(effect, (exit) => _scope.close(closeableScope, exit))
+          core.onExit(self, (exit) => _scope.close(closeableScope, exit))
         )
     )
   }
