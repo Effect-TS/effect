@@ -165,7 +165,8 @@ describe("Schema > Class", () => {
     await Util.expectParseFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
-      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+      `Person
+└─ Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
     )
   })
 
@@ -181,7 +182,8 @@ describe("Schema > Class", () => {
     await Util.expectParseFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
-      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+      `Person
+└─ Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
     )
   })
 

@@ -266,10 +266,10 @@ export interface Declaration extends Annotated {
   readonly typeParameters: ReadonlyArray<AST>
   readonly decode: (
     ...typeParameters: ReadonlyArray<AST>
-  ) => (input: any, options: ParseOptions, self: AST) => Effect<any, ParseError, any>
+  ) => (input: any, options: ParseOptions, self: Declaration) => Effect<any, ParseError, any>
   readonly encode: (
     ...typeParameters: ReadonlyArray<AST>
-  ) => (input: any, options: ParseOptions, self: AST) => Effect<any, ParseError, any>
+  ) => (input: any, options: ParseOptions, self: Declaration) => Effect<any, ParseError, any>
 }
 
 /**
@@ -945,7 +945,7 @@ export interface Refinement<From = AST> extends Annotated {
   readonly filter: (
     input: any,
     options: ParseOptions,
-    self: AST
+    self: Refinement
   ) => Option.Option<ParseError>
 }
 
@@ -1021,8 +1021,8 @@ export type Transformation =
  */
 export interface FinalTransformation {
   readonly _tag: "FinalTransformation"
-  readonly decode: (input: any, options: ParseOptions, self: AST) => Effect<any, ParseError, any>
-  readonly encode: (input: any, options: ParseOptions, self: AST) => Effect<any, ParseError, any>
+  readonly decode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseError, any>
+  readonly encode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseError, any>
 }
 
 /**

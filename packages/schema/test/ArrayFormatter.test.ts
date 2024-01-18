@@ -4,6 +4,7 @@ import { ParseResult } from "@effect/schema/index"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as Either from "effect/Either"
+import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
@@ -17,6 +18,20 @@ const expectIssues = <I, A>(schema: S.Schema<never, I, A>, input: unknown, issue
 
 describe("ArrayFormatter", () => {
   describe("defaults", () => {
+    it("declaration", () => {
+      const schema = S.optionFromSelf(S.number)
+      expectIssues(schema, null, [{
+        _tag: "Type",
+        path: [],
+        message: "Expected Option<number>, actual null"
+      }])
+      expectIssues(schema, Option.some("a"), [{
+        _tag: "Type",
+        path: [],
+        message: `Expected a number, actual "a"`
+      }])
+    })
+
     it("Type", () => {
       const schema = S.string
       expectIssues(schema, null, [{
@@ -159,7 +174,7 @@ describe("ArrayFormatter", () => {
       )
 
       expectIssues(schema, null, [{
-        _tag: "Type",
+        _tag: "Declaration",
         path: [],
         message: "my custom message null"
       }])

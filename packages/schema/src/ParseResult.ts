@@ -67,6 +67,7 @@ export const fail = (error: ParseIssue): Either.Either<ParseError, never> => Eit
  * @since 1.0.0
  */
 export type ParseIssue =
+  | Declaration
   | Refinement
   | Tuple
   | TypeLiteral
@@ -144,6 +145,29 @@ export const forbidden = (actual: unknown): Forbidden => ({
   _tag: "Forbidden",
   actual
 })
+
+/**
+ * Error that occurs when a declaration has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Declaration {
+  readonly _tag: "Declaration"
+  readonly ast: AST.Declaration
+  readonly actual: unknown
+  readonly error: ParseIssue
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const declaration = (
+  ast: AST.Declaration,
+  actual: unknown,
+  error: ParseIssue
+): Declaration => ({ _tag: "Declaration", ast, actual, error })
 
 /**
  * Error that occurs when a refinement has an error.

@@ -22,8 +22,18 @@ describe("Schema > instanceOf", () => {
   it("decoding", async () => {
     const schema = S.instanceOf(Set)
     await Util.expectParseSuccess(schema, new Set())
-    await Util.expectParseFailure(schema, 1, `Expected an instance of Set, actual 1`)
-    await Util.expectParseFailure(schema, {}, `Expected an instance of Set, actual {}`)
+    await Util.expectParseFailure(
+      schema,
+      1,
+      `Set
+└─ Expected an instance of Set, actual 1`
+    )
+    await Util.expectParseFailure(
+      schema,
+      {},
+      `Set
+└─ Expected an instance of Set, actual {}`
+    )
   })
 
   it("pretty", () => {

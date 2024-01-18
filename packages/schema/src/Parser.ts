@@ -381,7 +381,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     case "Declaration": {
       const parse = isDecoding ? ast.decode(...ast.typeParameters) : ast.encode(...ast.typeParameters)
       return (i, options) =>
-        handleForbidden(ParseResult.mapError(parse(i, options ?? defaultParseOption, ast), (e) => e.error), i, options)
+        handleForbidden(
+          ParseResult.mapError(parse(i, options ?? defaultParseOption, ast), (e) =>
+            ParseResult.declaration(ast, i, e.error)),
+          i,
+          options
+        )
     }
     case "Literal":
       return fromRefinement(ast, (u): u is typeof ast.literal => u === ast.literal)
@@ -1126,7 +1131,7 @@ const getFinalPropertySignatureTransformation = (
 export const getFinalTransformation = (
   transformation: AST.Transformation,
   isDecoding: boolean
-): (input: any, options: AST.ParseOptions, self: AST.AST) => Effect.Effect<any, ParseResult.ParseError, any> => {
+): (input: any, options: AST.ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseError, any> => {
   switch (transformation._tag) {
     case "FinalTransformation":
       return isDecoding ? transformation.decode : transformation.encode

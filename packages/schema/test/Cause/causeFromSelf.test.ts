@@ -15,32 +15,39 @@ describe("Cause > causeFromSelf", () => {
 
     await Util.expectParseSuccess(schema, Cause.fail("1"), Cause.fail(1))
 
-    await Util.expectParseFailure(schema, null, `Expected Cause<NumberFromString>, actual null`)
+    await Util.expectParseFailure(
+      schema,
+      null,
+      `Cause<NumberFromString>
+└─ Expected Cause<NumberFromString>, actual null`
+    )
     await Util.expectParseFailure(
       schema,
       Cause.fail("a"),
-      `CauseFrom<NumberFromString>
-└─ Union member
-   └─ { _tag: "Fail"; error: NumberFromString }
-      └─ ["error"]
-         └─ NumberFromString
-            └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+      `Cause<NumberFromString>
+└─ CauseFrom<NumberFromString>
+   └─ Union member
+      └─ { _tag: "Fail"; error: NumberFromString }
+         └─ ["error"]
+            └─ NumberFromString
+               └─ Transformation process failure
+                  └─ Expected NumberFromString, actual "a"`
     )
     await Util.expectParseFailure(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
-      `CauseFrom<NumberFromString>
-└─ Union member
-   └─ { _tag: "Parallel"; left: CauseFrom<NumberFromString>; right: CauseFrom<NumberFromString> }
-      └─ ["right"]
-         └─ CauseFrom<NumberFromString>
-            └─ Union member
-               └─ { _tag: "Fail"; error: NumberFromString }
-                  └─ ["error"]
-                     └─ NumberFromString
-                        └─ Transformation process failure
-                           └─ Expected NumberFromString, actual "a"`
+      `Cause<NumberFromString>
+└─ CauseFrom<NumberFromString>
+   └─ Union member
+      └─ { _tag: "Parallel"; left: CauseFrom<NumberFromString>; right: CauseFrom<NumberFromString> }
+         └─ ["right"]
+            └─ CauseFrom<NumberFromString>
+               └─ Union member
+                  └─ { _tag: "Fail"; error: NumberFromString }
+                     └─ ["error"]
+                        └─ NumberFromString
+                           └─ Transformation process failure
+                              └─ Expected NumberFromString, actual "a"`
     )
   })
 

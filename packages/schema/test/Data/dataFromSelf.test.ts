@@ -21,14 +21,16 @@ describe("Data > dataFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       { a: "ok", b: 0 },
-      "Expected Data<{ a: string; b: number }>, actual {\"a\":\"ok\",\"b\":0}"
+      `Data<{ a: string; b: number }>
+└─ Expected Data<{ a: string; b: number }>, actual {"a":"ok","b":0}`
     )
     await Util.expectParseFailure(
       schema,
       Data.struct({ a: "ok", b: "0" }),
-      `{ a: string; b: number }
-└─ ["b"]
-   └─ Expected a number, actual "0"`
+      `Data<{ a: string; b: number }>
+└─ { a: string; b: number }
+   └─ ["b"]
+      └─ Expected a number, actual "0"`
     )
   })
 
@@ -52,6 +54,6 @@ describe("Data > dataFromSelf", () => {
   it("pretty", () => {
     const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
     const pretty = Pretty.make(schema)
-    expect(pretty(Data.struct({ a: "ok", b: 0 }))).toEqual("Data({ \"a\": \"ok\", \"b\": 0 })")
+    expect(pretty(Data.struct({ a: "ok", b: 0 }))).toEqual(`Data({ "a": "ok", "b": 0 })`)
   })
 })

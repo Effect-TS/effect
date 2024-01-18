@@ -16,7 +16,12 @@ describe("FiberIdFromSelf", () => {
     await Util.expectParseSuccess(schema, FiberId.runtime(1, 100))
     await Util.expectParseSuccess(schema, FiberId.composite(FiberId.none, FiberId.none))
 
-    await Util.expectParseFailure(schema, null, `Expected FiberIdFromSelf, actual null`)
+    await Util.expectParseFailure(
+      schema,
+      null,
+      `FiberIdFromSelf
+└─ Expected FiberIdFromSelf, actual null`
+    )
   })
 
   it("pretty", () => {

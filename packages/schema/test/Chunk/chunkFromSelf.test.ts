@@ -22,16 +22,18 @@ describe("Chunk > chunkFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected Chunk<NumberFromString>, actual null`
+      `Chunk<NumberFromString>
+└─ Expected Chunk<NumberFromString>, actual null`
     )
     await Util.expectParseFailure(
       schema,
       C.fromIterable(["1", "a", "3"]),
-      `ReadonlyArray<NumberFromString>
-└─ [1]
-   └─ NumberFromString
-      └─ Transformation process failure
-         └─ Expected NumberFromString, actual "a"`
+      `Chunk<NumberFromString>
+└─ ReadonlyArray<NumberFromString>
+   └─ [1]
+      └─ NumberFromString
+         └─ Transformation process failure
+            └─ Expected NumberFromString, actual "a"`
     )
   })
 

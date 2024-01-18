@@ -175,5 +175,10 @@ const go = (e: ParseIssue | Missing | Unexpected): Tree<string> => {
           ]),
         onSome: make
       })
+    case "Declaration":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () => make(Format.formatAST(e.ast), [go(e.error)]),
+        onSome: make
+      })
   }
 }
