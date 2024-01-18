@@ -1003,8 +1003,6 @@ export const getLiterals = (
   isDecoding: boolean
 ): ReadonlyArray<[PropertyKey, AST.Literal]> => {
   switch (ast._tag) {
-    case "Declaration":
-      return getLiterals(ast.type, isDecoding)
     case "TypeLiteral": {
       const out: Array<[PropertyKey, AST.Literal]> = []
       for (let i = 0; i < ast.propertySignatures.length; i++) {
@@ -1018,6 +1016,8 @@ export const getLiterals = (
     }
     case "Refinement":
       return getLiterals(ast.from, isDecoding)
+    case "Suspend":
+      return getLiterals(ast.f(), isDecoding)
     case "Transform":
       return getLiterals(isDecoding ? ast.from : ast.to, isDecoding)
   }
