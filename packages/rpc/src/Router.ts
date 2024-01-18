@@ -51,18 +51,21 @@ export declare namespace RpcHandler {
    * @since 1.0.0
    */
   export type FromSchema<C extends RpcSchema.Any> = C extends RpcSchema.IO<
+    infer _RE,
     infer _IE,
     infer E,
+    infer _RI,
     infer _II,
     infer I,
+    infer _RO,
     infer _IO,
     infer O
   > ? IO<any, E, I, O>
-    : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O> ? IO<any, never, I, O>
-    : C extends RpcSchema.NoInput<infer _IE, infer E, infer _IO, infer O> ? NoInput<any, E, O>
-    : C extends RpcSchema.NoInputNoError<infer _IO, infer O> ? NoInput<any, never, O>
-    : C extends RpcSchema.NoOutput<infer _IE, infer E, infer _II, infer I> ? IO<any, E, I, void>
-    : C extends RpcSchema.NoErrorNoOutput<infer _II, infer I> ? IO<any, never, I, void>
+    : C extends RpcSchema.NoError<infer _RI, infer _II, infer I, infer _RO, infer _IO, infer O> ? IO<any, never, I, O>
+    : C extends RpcSchema.NoInput<infer _RE, infer _IE, infer E, infer _RO, infer _IO, infer O> ? NoInput<any, E, O>
+    : C extends RpcSchema.NoInputNoError<infer _RO, infer _IO, infer O> ? NoInput<any, never, O>
+    : C extends RpcSchema.NoOutput<infer _RE, infer _IE, infer E, infer _RI, infer _II, infer I> ? IO<any, E, I, void>
+    : C extends RpcSchema.NoErrorNoOutput<infer _RI, infer _II, infer I> ? IO<any, never, I, void>
     : never
 
   /**
@@ -70,12 +73,14 @@ export declare namespace RpcHandler {
    * @since 1.0.0
    */
   export type FromSetupSchema<C> = C extends RpcSchema.NoOutput<
+    infer _RE,
     infer _IE,
     infer E,
+    infer _RI,
     infer _II,
     infer I
   > ? IO<any, E, I, Context<any>> | IOLayer<any, E, I, any>
-    : C extends RpcSchema.NoErrorNoOutput<infer _II, infer I>
+    : C extends RpcSchema.NoErrorNoOutput<infer _RI, infer _II, infer I>
       ? IO<any, never, I, Context<any>> | IOLayer<any, never, I, any>
     : never
 
@@ -275,8 +280,8 @@ export declare namespace RpcRouter {
    * @since 1.0.0
    */
   export type Services<R extends Base> = R extends WithSetup
-    ? Exclude<RpcHandlers.Services<R["handlers"]>, SetupServices<R>>
-    : RpcHandlers.Services<R["handlers"]>
+    ? Exclude<RpcHandlers.Services<R["handlers"]> | RpcSchema.Context<R["schema"]>, SetupServices<R>>
+    : RpcHandlers.Services<R["handlers"]> | RpcSchema.Context<R["schema"]>
 
   /**
    * @category router utils

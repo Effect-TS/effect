@@ -74,15 +74,15 @@ export type TransferableAnnotationId = typeof TransferableAnnotationId
 export const transferable: {
   <I>(
     f: (a: I) => ReadonlyArray<Transferable>
-  ): <A>(self: S.Schema<never, I, A>) => S.Schema<never, I, A>
+  ): <R, A>(self: S.Schema<R, I, A>) => S.Schema<R, I, A>
 
-  <I, A>(
-    self: S.Schema<never, I, A>,
+  <R, I, A>(
+    self: S.Schema<R, I, A>,
     f: (a: I) => ReadonlyArray<Transferable>
-  ): S.Schema<never, I, A>
+  ): S.Schema<R, I, A>
 } = dual(
   2,
-  <I, A>(self: S.Schema<never, I, A>, f: (a: I) => ReadonlyArray<Transferable>) =>
+  <R, I, A>(self: S.Schema<R, I, A>, f: (a: I) => ReadonlyArray<Transferable>) =>
     S.annotations({ [TransferableAnnotationId]: f })(self)
 )
 
@@ -91,12 +91,11 @@ export const transferable: {
  * @since 1.0.0
  */
 export const getTransferables: {
-  <I>(value: I): <A>(self: S.Schema<never, I, A>) => Array<Transferable>
-
-  <I, A>(self: S.Schema<never, I, A>, value: I): Array<Transferable>
+  (...args: Array<any>): any
+  <R, I, A>(self: S.Schema<R, I, A>, value: I): Array<Transferable>
 } = dual(
   2,
-  <I, A>(self: S.Schema<never, I, A>, value: I): Array<Transferable> =>
+  <R, I, A>(self: S.Schema<R, I, A>, value: I): Array<Transferable> =>
     pipe(
       AST.getAnnotation<(value: I) => Array<Transferable>>(
         TransferableAnnotationId

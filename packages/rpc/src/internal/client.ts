@@ -1,6 +1,5 @@
 import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import type * as client from "../Client.js"
 import { RpcError } from "../Error.js"
@@ -12,16 +11,12 @@ import * as resolverInternal from "./resolver.js"
 import * as schemaInternal from "./schema.js"
 
 const unsafeDecode = <const S extends RpcService.DefinitionWithId>(schemas: S) => {
-  const map = schemaInternal.methodClientCodecsEither(schemas)
+  const map = schemaInternal.methodClientCodecs(schemas)
 
   return (method: RpcService.Methods<S>, output: unknown) => {
     const codec = map[method as string].output
-    const result = codec ? codec(output) : Either.right(void 0)
-    if (result._tag !== "Left") {
-      return result.right as unknown
-    }
-
-    throw "unsafeDecode fail"
+    const result = codec ? codec(output) : Effect.succeed(void 0)
+    return Effect.runSync(result as any)
   }
 }
 
@@ -29,12 +24,12 @@ const makeRecursive = <const S extends RpcService.DefinitionWithId>(
   schemas: S,
   transport: RpcResolver<never>,
   options: client.RpcClientOptions,
-  serviceErrors: ReadonlyArray<Schema.Schema<never, any>> = [],
+  serviceErrors: ReadonlyArray<Schema.Schema<any, any>> = [],
   prefix = ""
 ): client.RpcClient<S, never> => {
   serviceErrors = [
     ...serviceErrors,
-    schemas[RpcServiceErrorId] as Schema.Schema<never, any>
+    schemas[RpcServiceErrorId] as Schema.Schema<any, any>
   ]
 
   return Object.entries(schemas).reduce(
@@ -112,7 +107,7 @@ export const make: <
 
 const makeRpc = <const S extends RpcSchema.Any>(
   resolver: RpcResolver<never>,
-  serviceErrors: ReadonlyArray<Schema.Schema<never, any>>,
+  serviceErrors: ReadonlyArray<Schema.Schema<any, any>>,
   schema: S,
   method: string,
   { spanPrefix = "RpcClient" }: client.RpcClientOptions
@@ -126,7 +121,7 @@ const makeRpc = <const S extends RpcSchema.Any>(
   const parseOutput = "output" in schema ? codec.decode(schema.output) : (_: any) => Effect.unit
 
   if ("input" in schema) {
-    const encodeInput = codec.encode(schema.input as Schema.Schema<never, any>)
+    const encodeInput = codec.encode(schema.input as Schema.Schema<any, any>)
 
     return ((input: any) => {
       const inputHash = schemaHash(schema.input, input)

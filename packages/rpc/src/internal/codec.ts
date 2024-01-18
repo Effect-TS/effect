@@ -1,41 +1,22 @@
 import type { ParseOptions } from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import { RpcDecodeFailure, RpcEncodeFailure } from "../Error.js"
 
 /** @internal */
-export const decodeEither = <I, A>(schema: Schema.Schema<never, I, A>) => {
-  const decode = Schema.parseEither(schema)
-  return (input: unknown): Either.Either<RpcDecodeFailure, A> =>
-    Either.mapLeft(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ error: error.error }))
-}
-
-/** @internal */
-export const decode = <I, A>(schema: Schema.Schema<never, I, A>) => {
+export const decode = <R, I, A>(schema: Schema.Schema<R, I, A>) => {
   const decode = Schema.parse(schema)
-  return (input: unknown): Effect.Effect<never, RpcDecodeFailure, A> =>
+  return (input: unknown): Effect.Effect<R, RpcDecodeFailure, A> =>
     Effect.mapError(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ error: error.error }))
 }
 
 /** @internal */
-export const encode: <I, A>(
-  schema: Schema.Schema<never, I, A>
-) => (input: A, options?: ParseOptions | undefined) => Effect.Effect<never, RpcEncodeFailure, I> = <I, A>(
-  schema: Schema.Schema<never, I, A>
+export const encode: <R, I, A>(
+  schema: Schema.Schema<R, I, A>
+) => (input: A, options?: ParseOptions | undefined) => Effect.Effect<R, RpcEncodeFailure, I> = <R, I, A>(
+  schema: Schema.Schema<R, I, A>
 ) => {
   const encode = Schema.encode(schema)
   return (input: A) =>
     Effect.mapError(encode(input, { errors: "all" }), (error) => RpcEncodeFailure({ error: error.error }))
-}
-
-/** @internal */
-export const encodeEither: <I, A>(
-  schema: Schema.Schema<never, I, A>
-) => (input: A, options?: ParseOptions | undefined) => Either.Either<RpcEncodeFailure, I> = <I, A>(
-  schema: Schema.Schema<never, I, A>
-) => {
-  const encode = Schema.encodeEither(schema)
-  return (input: A) =>
-    Either.mapLeft(encode(input, { errors: "all" }), (error) => RpcEncodeFailure({ error: error.error }))
 }

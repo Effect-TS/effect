@@ -14,19 +14,25 @@ import type { UndecodedRpcResponse } from "./Server.js"
  * @since 1.0.0
  */
 export type Rpc<C extends RpcSchema.Any, R, SE> = C extends RpcSchema.IO<
+  infer RE,
   infer _IE,
   infer E,
+  infer RI,
   infer _II,
   infer I,
+  infer RO,
   infer _IO,
   infer O
-> ? (input: I) => Effect<R, RpcError | SE | E, O>
-  : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O> ? (input: I) => Effect<R, RpcError | SE, O>
-  : C extends RpcSchema.NoOutput<infer _IE, infer E, infer _II, infer I>
-    ? (input: I) => Effect<R, RpcError | SE | E, void>
-  : C extends RpcSchema.NoErrorNoOutput<infer _II, infer I> ? (input: I) => Effect<R, RpcError | SE, void>
-  : C extends RpcSchema.NoInput<infer _IE, infer E, infer _IO, infer O> ? Effect<R, RpcError | SE | E, O>
-  : C extends RpcSchema.NoInputNoError<infer _IO, infer O> ? Effect<R, RpcError | SE, O>
+> ? (input: I) => Effect<R | RE | RI | RO, RpcError | SE | E, O>
+  : C extends RpcSchema.NoError<infer RI, infer _II, infer I, infer RO, infer _IO, infer O> ?
+    (input: I) => Effect<R | RI | RO, RpcError | SE, O>
+  : C extends RpcSchema.NoOutput<infer RE, infer _IE, infer E, infer RI, infer _II, infer I>
+    ? (input: I) => Effect<R | RE | RI, RpcError | SE | E, void>
+  : C extends RpcSchema.NoErrorNoOutput<infer RI, infer _II, infer I> ?
+    (input: I) => Effect<R | RI, RpcError | SE, void>
+  : C extends RpcSchema.NoInput<infer RE, infer _IE, infer E, infer RO, infer _IO, infer O> ?
+    Effect<R | RE | RO, RpcError | SE | E, O>
+  : C extends RpcSchema.NoInputNoError<infer RO, infer _IO, infer O> ? Effect<R | RO, RpcError | SE, O>
   : never
 
 type RpcClientRpcs<S extends RpcService.DefinitionWithId, R, SE = never, Depth extends ReadonlyArray<number> = []> = {
