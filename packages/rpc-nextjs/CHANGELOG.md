@@ -1,5 +1,14 @@
 # @effect/rpc-nextjs
 
+## 0.25.11
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.42.5
+  - @effect/rpc@0.26.8
+  - @effect/rpc-http@0.25.11
+
 ## 0.25.10
 
 ### Patch Changes

@@ -1,5 +1,25 @@
 # @effect/cli
 
+## 0.30.2
+
+### Patch Changes
+
+- Updated dependencies [[`3bf67cf`](https://github.com/Effect-TS/effect/commit/3bf67cf64ff27ffaa811b07751875cb161ac3385)]:
+  - @effect/schema@0.60.5
+  - @effect/platform@0.42.5
+
+## 0.30.1
+
+### Patch Changes
+
+- [#1942](https://github.com/Effect-TS/effect/pull/1942) [`d21e028`](https://github.com/Effect-TS/effect/commit/d21e028fe2628b42e681eee641547b0bc01a70d1) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Options.mapEffect export
+
+## 0.30.0
+
+### Minor Changes
+
+- [#1938](https://github.com/Effect-TS/effect/pull/1938) [`9a0d61f`](https://github.com/Effect-TS/effect/commit/9a0d61f674b70ff17c8bcffbd27fea9d5ec57857) Thanks [@IMax153](https://github.com/IMax153)! - rename mapOrFail to mapEffect for Command, Options, and Args modules
+
 ## 0.29.0
 
 ### Minor Changes

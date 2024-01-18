@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.60.5
+
+### Patch Changes
+
+- [#1945](https://github.com/Effect-TS/effect/pull/1945) [`3bf67cf`](https://github.com/Effect-TS/effect/commit/3bf67cf64ff27ffaa811b07751875cb161ac3385) Thanks [@gcanti](https://github.com/gcanti)! - fix `getNumberIndexedAccess` signature and implementation
+
 ## 0.60.4
 
 ### Patch Changes
