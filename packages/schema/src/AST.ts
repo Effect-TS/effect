@@ -1721,8 +1721,7 @@ export const getWeight = (ast: AST): Weight => {
         [4, y, z]
     }
     case "Declaration": {
-      const [_, y, z] = getWeight(ast.type)
-      return [6, y, z]
+      return [6, 0, 0]
     }
     case "Suspend":
       return [8, 0, 0]
