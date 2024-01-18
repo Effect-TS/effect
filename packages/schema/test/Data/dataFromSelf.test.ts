@@ -6,11 +6,6 @@ import * as Data from "effect/Data"
 import { describe, expect, it } from "vitest"
 
 describe("Data > dataFromSelf", () => {
-  it("keyof", () => {
-    const schema1 = S.keyof(S.dataFromSelf(S.struct({ a: S.string, b: S.string })))
-    expect(schema1).toEqual(S.union(S.literal("a"), S.literal("b")))
-  })
-
   it("property tests", () => {
     Util.roundtrip(S.dataFromSelf(S.struct({ a: S.string, b: S.number })))
     Util.roundtrip(S.dataFromSelf(S.array(S.number)))

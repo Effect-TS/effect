@@ -1803,8 +1803,6 @@ export const getParameterBase = (
 
 const _keyof = (ast: AST): Array<AST> => {
   switch (ast._tag) {
-    case "Declaration":
-      return _keyof(ast.type)
     case "TypeLiteral":
       return ast.propertySignatures.map((p): AST =>
         Predicate.isSymbol(p.name) ? createUniqueSymbol(p.name) : createLiteral(p.name)
