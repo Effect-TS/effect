@@ -14,10 +14,9 @@ const Tag2 = Context.Tag<"Tag2", number>()
 // declare
 // ---------------------------------------------
 
-// $ExpectType Schema<"a" | "b" | "c" | "Tag1" | "Tag2", number, string>
+// $ExpectType Schema<"a" | "b" | "Tag1" | "Tag2", number, string>
 Schema.declare(
   [aContext, bContext],
-  cContext,
   (_a, _b) => () => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(a))),
   (_a, _b) => () => Tag2.pipe(Effect.flatMap((a) => ParseResult.succeed(a)))
 )

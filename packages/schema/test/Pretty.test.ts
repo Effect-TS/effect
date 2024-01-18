@@ -22,7 +22,7 @@ describe("Pretty", () => {
   })
 
   it("should throw on declarations without annotations", () => {
-    const schema = S.declarePrimitive(S.any, ParseResult.succeed)
+    const schema = S.declarePrimitive(ParseResult.succeed)
     expect(() => Pretty.make(schema)).toThrow(
       new Error("cannot build an Pretty for a declaration without annotations")
     )

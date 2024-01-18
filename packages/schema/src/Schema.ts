@@ -354,9 +354,8 @@ const getTemplateLiterals = (
   @category constructors
   @since 1.0.0
 */
-export const declare = <const P extends ReadonlyArray<Schema<any, any>>, T extends Schema<any, any>, R, I, A>(
+export const declare = <const P extends ReadonlyArray<Schema<any, any>>, R, I, A>(
   typeParameters: P,
-  type: T,
   decode: (
     ...typeParameters: P
   ) => (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseError, A>,
@@ -364,10 +363,9 @@ export const declare = <const P extends ReadonlyArray<Schema<any, any>>, T exten
     ...typeParameters: P
   ) => (input: A, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseError, I>,
   annotations?: AST.Annotations
-): Schema<Schema.Context<P[number]> | Schema.Context<T> | R, I, A> =>
+): Schema<Schema.Context<P[number]> | R, I, A> =>
   make(AST.createDeclaration(
     typeParameters.map((tp) => tp.ast),
-    type.ast,
     (...typeParameters) => decode(...typeParameters.map((ast) => make(ast)) as any),
     (...typeParameters) => encode(...typeParameters.map((ast) => make(ast)) as any),
     annotations
@@ -377,11 +375,10 @@ export const declare = <const P extends ReadonlyArray<Schema<any, any>>, T exten
   @category constructors
   @since 1.0.0
 */
-export const declarePrimitive = <T extends Schema<any, any>, R, A>(
-  type: T,
+export const declarePrimitive = <R, A>(
   parse: (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseError, A>,
   annotations?: AST.Annotations
-): Schema<Schema.Context<T> | R, A> => declare([], type, () => parse, () => parse, annotations)
+): Schema<R, A> => declare([], () => parse, () => parse, annotations)
 
 /**
  * @category type id
@@ -425,7 +422,6 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
   options?: FilterAnnotations<InstanceType<A>>
 ): Schema<never, InstanceType<A>> => {
   return declarePrimitive(
-    unknown,
     (u, _, ast) =>
       u instanceof constructor ?
         ParseResult.succeed(u)
@@ -2980,7 +2976,6 @@ export const BigintFromNumber: Schema<never, number, bigint> = transformOrFail(
  * @since 1.0.0
  */
 export const SecretFromSelf: Schema<never, Secret.Secret> = declarePrimitive(
-  string,
   (u, _, ast) =>
     Secret.isSecret(u) ?
       ParseResult.succeed(u)
@@ -3010,32 +3005,11 @@ export {
   _Secret as Secret
 }
 
-const DurationMillis = struct({
-  _tag: literal("Millis"),
-  millis: number
-}).pipe(identifier("DurationMillis"))
-
-const DurationNanos = struct({
-  _tag: literal("Nanos"),
-  nanos: bigintFromSelf
-}).pipe(identifier("DurationNanos"))
-
-const DurationInfinity = struct({
-  _tag: literal("Infinity")
-}).pipe(identifier("DurationInfinity"))
-
 /**
  * @category Duration constructors
  * @since 1.0.0
  */
 export const DurationFromSelf: Schema<never, Duration.Duration> = declarePrimitive(
-  struct({
-    value: union(
-      DurationMillis,
-      DurationNanos,
-      DurationInfinity
-    )
-  }),
   (u, _, ast) =>
     Duration.isDuration(u) ?
       ParseResult.succeed(u)
@@ -3265,7 +3239,6 @@ export const betweenDuration = <A extends Duration.Duration>(
  * @since 1.0.0
  */
 export const Uint8ArrayFromSelf: Schema<never, Uint8Array> = declarePrimitive(
-  array(number),
   (u, _, ast) =>
     Predicate.isUint8Array(u) ?
       ParseResult.succeed(u)
@@ -3513,9 +3486,6 @@ const datePretty = (): Pretty.Pretty<Date> => (date) => `new Date(${JSON.stringi
  * @since 1.0.0
  */
 export const DateFromSelf: Schema<never, Date> = declarePrimitive(
-  struct({
-    valueOf: number
-  }),
   (u, _, ast) =>
     Predicate.isDate(u) ?
       ParseResult.succeed(u)
@@ -3621,7 +3591,6 @@ export const optionFromSelf = <R, I, A>(
 ): Schema<R, Option.Option<I>, Option.Option<A>> => {
   return declare(
     [value],
-    optionFrom(value),
     (value) => {
       const parse = Parser.parse(value)
       return (u, options, ast) =>
@@ -3774,7 +3743,6 @@ export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
 ): Schema<RE | RA, Either.Either<IE, IA>, Either.Either<E, A>> => {
   return declare(
     [left, right],
-    eitherFrom(left, right),
     (left, right) => {
       const parseLeft = Parser.parse(left)
       const parseRight = Parser.parse(right)
@@ -3889,10 +3857,6 @@ export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
 ): Schema<RK | RV, ReadonlyMap<IK, IV>, ReadonlyMap<K, V>> => {
   return declare(
     [key, value],
-    struct({
-      size: number,
-      entries: array(tuple(key, value))
-    }),
     (key, value) => {
       const parse = Parser.parse(array(tuple(key, value)))
       return (u, options, ast) =>
@@ -3955,10 +3919,6 @@ export const readonlySetFromSelf = <R, I, A>(
 ): Schema<R, ReadonlySet<I>, ReadonlySet<A>> => {
   return declare(
     [item],
-    struct({
-      size: number,
-      values: array(item)
-    }),
     (item) => {
       const parse = Parser.parse(array(item))
       return (u, options, ast) =>
@@ -4005,10 +3965,6 @@ const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
  * @since 1.0.0
  */
 export const BigDecimalFromSelf: Schema<never, BigDecimal.BigDecimal> = declarePrimitive(
-  struct({
-    value: bigintFromSelf,
-    scale: number
-  }),
   (u, _, ast) =>
     BigDecimal.isBigDecimal(u) ?
       ParseResult.succeed(u)
@@ -4361,10 +4317,6 @@ const chunkPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<Chunk.Chunk<A>> =
 export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.Chunk<I>, Chunk.Chunk<A>> => {
   return declare(
     [item],
-    struct({
-      length: number,
-      values: array(item)
-    }),
     (item) => {
       const parse = Parser.parse(array(item))
       return (u, options, ast) => {
@@ -4431,7 +4383,6 @@ export const dataFromSelf = <
 ): Schema<R, Data.Data<I>, Data.Data<A>> => {
   return declare(
     [item],
-    item,
     (item) => {
       const parse = Parser.parse(item)
       return (u, options, ast) =>
@@ -4730,7 +4681,7 @@ const makeClass = <R, I, A>(
       const toSchema = to(selfSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
-      const declaration: Schema<never, any, any> = declarePrimitive(toSchema, (input, _, ast) =>
+      const declaration: Schema<never, any, any> = declarePrimitive((input, _, ast) =>
         input instanceof this ?
           ParseResult.succeed(input)
           : ParseResult.fail(ParseResult.type(ast, input)), {
@@ -4866,7 +4817,6 @@ const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
  * @since 1.0.0
  */
 export const FiberIdFromSelf: Schema<never, FiberId.FiberId, FiberId.FiberId> = declarePrimitive(
-  FiberIdFrom,
   (input, _, ast) =>
     FiberId.isFiberId(input) ?
       ParseResult.succeed(input)
@@ -5040,7 +4990,6 @@ export const causeFromSelf = <R, I, A>(
 ): Schema<R, Cause.Cause<I>, Cause.Cause<A>> => {
   return declare(
     [error, defect],
-    causeFrom(error, defect),
     (error, defect) => {
       const parse = Parser.parse(causeFrom(error, defect))
       return (u, options, ast) =>
@@ -5210,7 +5159,6 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
 ): Schema<RE | RA, Exit.Exit<IE, IA>, Exit.Exit<E, A>> =>
   declare(
     [error, value, defect],
-    exitFrom(error, value, defect),
     (error, value, defect) => {
       const parseCause = Parser.parse(causeFromSelf(error, defect))
       const parseValue = Parser.parse(value)
