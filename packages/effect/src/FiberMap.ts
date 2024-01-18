@@ -7,6 +7,7 @@ import type { NoSuchElementException } from "./Cause.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
 import { dual } from "./Function.js"
+import type { FiberMap } from "./index.js"
 import * as Inspectable from "./Inspectable.js"
 import * as MutableHashMap from "./MutableHashMap.js"
 import * as Option from "./Option.js"
@@ -98,6 +99,26 @@ const unsafeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
  */
 export const make = <K, E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, never, FiberMap<K, E, A>> =>
   Effect.acquireRelease(Effect.sync(() => unsafeMake<K, E, A>()), clear)
+
+/**
+ * Create an Effect run function that is backed by a FiberMap.
+ *
+ * @since 2.0.0
+ * @categories constructors
+ */
+export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
+  Scope.Scope | R,
+  never,
+  <XE extends E, XA extends A>(
+    key: K,
+    effect: Effect.Effect<R, XE, XA>,
+    options?: Runtime.RunForkOptions | undefined
+  ) => Fiber.RuntimeFiber<XE, XA>
+> =>
+  Effect.flatMap(
+    make<K, E, A>(),
+    (self) => runtime(self)<R>()
+  )
 
 /**
  * Add a fiber to the FiberMap. When the fiber completes, it will be removed from the FiberMap.

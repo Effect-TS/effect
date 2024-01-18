@@ -96,6 +96,25 @@ export const make = <E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, nev
   Effect.acquireRelease(Effect.sync(() => unsafeMake<E, A>()), clear)
 
 /**
+ * Create an Effect run function that is backed by a FiberSet.
+ *
+ * @since 2.0.0
+ * @categories constructors
+ */
+export const makeRuntime = <R, E = unknown, A = unknown>(): Effect.Effect<
+  Scope.Scope | R,
+  never,
+  <XE extends E, XA extends A>(
+    effect: Effect.Effect<R, XE, XA>,
+    options?: Runtime.RunForkOptions | undefined
+  ) => Fiber.RuntimeFiber<XE, XA>
+> =>
+  Effect.flatMap(
+    make<E, A>(),
+    (self) => runtime(self)<R>()
+  )
+
+/**
  * Add a fiber to the FiberSet. When the fiber completes, it will be removed.
  *
  * @since 2.0.0
