@@ -206,10 +206,10 @@ export const validatePromise = <I, A>(
  * @category validation
  * @since 1.0.0
  */
-export const validate = <I, A>(
-  schema: Schema.Schema<never, I, A>,
+export const validate = <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
-): (a: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<never, ParseResult.ParseError, A> =>
+): (a: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseError, A> =>
   getEffect(AST.to(schema.ast), true, options)
 
 /**
