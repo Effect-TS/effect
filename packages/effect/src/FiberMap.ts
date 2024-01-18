@@ -7,11 +7,13 @@ import type { NoSuchElementException } from "./Cause.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
 import { dual } from "./Function.js"
+import type { FiberMap } from "./index.js"
 import * as Inspectable from "./Inspectable.js"
 import * as MutableHashMap from "./MutableHashMap.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
+import * as Runtime from "./Runtime.js"
 
 /**
  * @since 2.0.0
@@ -97,6 +99,26 @@ const unsafeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
  */
 export const make = <K, E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, never, FiberMap<K, E, A>> =>
   Effect.acquireRelease(Effect.sync(() => unsafeMake<K, E, A>()), clear)
+
+/**
+ * Create an Effect run function that is backed by a FiberMap.
+ *
+ * @since 2.0.0
+ * @categories constructors
+ */
+export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
+  Scope.Scope | R,
+  never,
+  <XE extends E, XA extends A>(
+    key: K,
+    effect: Effect.Effect<R, XE, XA>,
+    options?: Runtime.RunForkOptions | undefined
+  ) => Fiber.RuntimeFiber<XE, XA>
+> =>
+  Effect.flatMap(
+    make<K, E, A>(),
+    (self) => runtime(self)<R>()
+  )
 
 /**
  * Add a fiber to the FiberMap. When the fiber completes, it will be removed from the FiberMap.
@@ -263,30 +285,89 @@ export const clear = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<never, ne
  * @categories combinators
  */
 export const run: {
-  <K, E, A, R, XE extends E, XA extends A>(
-    key: K,
+  <K, E, A>(
+    self: FiberMap<K, E, A>,
+    key: K
+  ): <R, XE extends E, XA extends A>(
     effect: Effect.Effect<R, XE, XA>
-  ): (self: FiberMap<K, E, A>) => Effect.Effect<R, never, Fiber.RuntimeFiber<XE, XA>>
+  ) => Effect.Effect<R, never, Fiber.RuntimeFiber<XE, XA>>
   <K, E, A, R, XE extends E, XA extends A>(
     self: FiberMap<K, E, A>,
     key: K,
     effect: Effect.Effect<R, XE, XA>
   ): Effect.Effect<R, never, Fiber.RuntimeFiber<XE, XA>>
-} = dual<
-  <K, E, A, R, XE extends E, XA extends A>(
-    key: K,
-    effect: Effect.Effect<R, XE, XA>
-  ) => (self: FiberMap<K, E, A>) => Effect.Effect<R, never, Fiber.RuntimeFiber<XE, XA>>,
-  <K, E, A, R, XE extends E, XA extends A>(
-    self: FiberMap<K, E, A>,
-    key: K,
-    effect: Effect.Effect<R, XE, XA>
-  ) => Effect.Effect<R, never, Fiber.RuntimeFiber<XE, XA>>
->(3, (self, key, effect) =>
-  Effect.tap(
+} = function() {
+  if (arguments.length === 2) {
+    const self = arguments[0] as FiberMap<any>
+    const key = arguments[1]
+    return (effect: Effect.Effect<any, any, any>) =>
+      Effect.tap(
+        Effect.forkDaemon(effect),
+        (fiber) => set(self, key, fiber)
+      )
+  }
+  const self = arguments[0] as FiberMap<any>
+  const key = arguments[1]
+  const effect = arguments[2] as Effect.Effect<any, any, any>
+  return Effect.tap(
     Effect.forkDaemon(effect),
     (fiber) => set(self, key, fiber)
-  ))
+  ) as any
+}
+
+/**
+ * Capture a Runtime and use it to fork Effect's, adding the forked fibers to the FiberMap.
+ *
+ * @example
+ * import { Context, Effect, FiberMap } from "effect"
+ *
+ * interface Users {
+ *   readonly _: unique symbol
+ * }
+ * const Users = Context.Tag<Users, {
+ *    getAll: Effect.Effect<never, never, Array<unknown>>
+ * }>()
+ *
+ * Effect.gen(function*(_) {
+ *   const map = yield* _(FiberMap.make<string>())
+ *   const run = yield* _(FiberMap.runtime(map)<Users>())
+ *
+ *   // run some effects and add the fibers to the map
+ *   run("effect-a", Effect.andThen(Users, _ => _.getAll))
+ *   run("effect-b", Effect.andThen(Users, _ => _.getAll))
+ * }).pipe(
+ *   Effect.scoped // The fibers will be interrupted when the scope is closed
+ * )
+ *
+ * @since 2.0.0
+ * @categories combinators
+ */
+export const runtime: <K, E, A>(
+  self: FiberMap<K, E, A>
+) => <R>() => Effect.Effect<
+  R,
+  never,
+  <XE extends E, XA extends A>(
+    key: K,
+    effect: Effect.Effect<R, XE, XA>,
+    options?: Runtime.RunForkOptions | undefined
+  ) => Fiber.RuntimeFiber<XE, XA>
+> = <K, E, A>(self: FiberMap<K, E, A>) => <R>() =>
+  Effect.map(
+    Effect.runtime<R>(),
+    (runtime) => {
+      const runFork = Runtime.runFork(runtime)
+      return <XE extends E, XA extends A>(
+        key: K,
+        effect: Effect.Effect<R, XE, XA>,
+        options?: Runtime.RunForkOptions | undefined
+      ) => {
+        const fiber = runFork(effect, options)
+        unsafeSet(self, key, fiber)
+        return fiber
+      }
+    }
+  )
 
 /**
  * @since 2.0.0
