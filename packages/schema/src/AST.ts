@@ -1647,8 +1647,6 @@ export const from = (ast: AST): AST => {
 /** @internal */
 export const getCardinality = (ast: AST): number => {
   switch (ast._tag) {
-    case "Declaration":
-      return getCardinality(ast.type)
     case "NeverKeyword":
       return 0
     case "Literal":
