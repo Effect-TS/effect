@@ -25,14 +25,12 @@ describe("Schema > instanceOf", () => {
     await Util.expectParseFailure(
       schema,
       1,
-      `Set
-└─ Expected an instance of Set, actual 1`
+      `Expected an instance of Set, actual 1`
     )
     await Util.expectParseFailure(
       schema,
       {},
-      `Set
-└─ Expected an instance of Set, actual {}`
+      `Expected an instance of Set, actual {}`
     )
   })
 

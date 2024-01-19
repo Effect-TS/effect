@@ -15,8 +15,7 @@ describe("Date > DateFromSelf", () => {
     await Util.expectParseFailure(
       S.DateFromSelf,
       null,
-      `DateFromSelf
-└─ Expected DateFromSelf (a potentially invalid Date instance), actual null`
+      `Expected DateFromSelf (a potentially invalid Date instance), actual null`
     )
   })
 

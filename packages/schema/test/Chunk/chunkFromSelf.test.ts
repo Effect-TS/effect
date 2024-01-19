@@ -22,8 +22,7 @@ describe("Chunk > chunkFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Chunk<NumberFromString>
-└─ Expected Chunk<NumberFromString>, actual null`
+      `Expected Chunk<NumberFromString>, actual null`
     )
     await Util.expectParseFailure(
       schema,

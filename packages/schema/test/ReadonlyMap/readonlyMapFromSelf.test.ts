@@ -21,8 +21,7 @@ describe("ReadonlyMap > readonlyMapFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `ReadonlyMap<NumberFromString, string>
-└─ Expected ReadonlyMap<NumberFromString, string>, actual null`
+      `Expected ReadonlyMap<NumberFromString, string>, actual null`
     )
     await Util.expectParseFailure(
       schema,

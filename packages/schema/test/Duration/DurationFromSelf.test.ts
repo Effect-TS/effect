@@ -17,14 +17,12 @@ describe("Duration > DurationFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       123,
-      `DurationFromSelf
-└─ Expected DurationFromSelf, actual 123`
+      `Expected DurationFromSelf, actual 123`
     )
     await Util.expectParseFailure(
       schema,
       123n,
-      `DurationFromSelf
-└─ Expected DurationFromSelf, actual 123n`
+      `Expected DurationFromSelf, actual 123n`
     )
   })
 

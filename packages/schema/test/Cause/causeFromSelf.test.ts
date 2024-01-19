@@ -18,8 +18,7 @@ describe("Cause > causeFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Cause<NumberFromString>
-└─ Expected Cause<NumberFromString>, actual null`
+      `Expected Cause<NumberFromString>, actual null`
     )
     await Util.expectParseFailure(
       schema,

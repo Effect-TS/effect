@@ -21,8 +21,7 @@ describe("Data > dataFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       { a: "ok", b: 0 },
-      `Data<{ a: string; b: number }>
-└─ Expected Data<{ a: string; b: number }>, actual {"a":"ok","b":0}`
+      `Expected Data<{ a: string; b: number }>, actual {"a":"ok","b":0}`
     )
     await Util.expectParseFailure(
       schema,

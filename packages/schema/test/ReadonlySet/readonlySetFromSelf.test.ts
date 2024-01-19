@@ -17,8 +17,7 @@ describe("ReadonlySet > readonlySetFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `ReadonlySet<NumberFromString>
-└─ Expected ReadonlySet<NumberFromString>, actual null`
+      `Expected ReadonlySet<NumberFromString>, actual null`
     )
     await Util.expectParseFailure(
       schema,

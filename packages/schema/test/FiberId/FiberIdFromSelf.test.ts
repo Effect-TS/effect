@@ -19,8 +19,7 @@ describe("FiberIdFromSelf", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `FiberIdFromSelf
-└─ Expected FiberIdFromSelf, actual null`
+      `Expected FiberIdFromSelf, actual null`
     )
   })
 

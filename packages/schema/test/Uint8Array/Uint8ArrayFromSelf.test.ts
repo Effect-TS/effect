@@ -13,8 +13,7 @@ describe("Uint8Array > Uint8ArrayFromSelf", () => {
     await Util.expectParseFailure(
       S.Uint8ArrayFromSelf,
       null,
-      `Uint8ArrayFromSelf
-└─ Expected Uint8ArrayFromSelf, actual null`
+      `Expected Uint8ArrayFromSelf, actual null`
     )
   })
 
