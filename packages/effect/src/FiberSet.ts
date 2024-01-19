@@ -101,7 +101,7 @@ export const make = <E = unknown, A = unknown>(): Effect.Effect<"Scope", never, 
  * @categories constructors
  */
 export const makeRuntime = <R, E = unknown, A = unknown>(): Effect.Effect<
-  Scope.Scope | R,
+  "Scope" | R,
   never,
   <XE extends E, XA extends A>(
     effect: Effect.Effect<R, XE, XA>,

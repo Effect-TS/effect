@@ -106,7 +106,7 @@ export const make = <K, E = unknown, A = unknown>(): Effect.Effect<"Scope", neve
  * @categories constructors
  */
 export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
-  Scope.Scope | R,
+  "Scope" | R,
   never,
   <XE extends E, XA extends A>(
     key: K,
