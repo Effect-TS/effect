@@ -23,7 +23,7 @@ describe("Context", () => {
   it("Tag.toJson()", () => {
     const json: any = A.toJSON()
     expect(json["_id"]).toEqual("Tag")
-    expect(json["identifier"]).toEqual(undefined)
+    expect(json["identifier"]).toEqual("A")
     expect(typeof json["stack"]).toEqual("string")
   })
 
@@ -211,7 +211,7 @@ describe("Context", () => {
       } catch (e) {
         assert.match(
           String(e),
-          new RegExp(/Error: Service not found: C \(defined at (.*)Context.test.ts:20:19\)/)
+          new RegExp(/Error: Service not found: C \(defined at (.*)Context.test.ts:20:26\)/)
         )
       }
     }
