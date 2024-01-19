@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-make Effect.tap safer
+make Effect.tap and Effect.andThen safer

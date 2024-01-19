@@ -728,7 +728,6 @@ export const andThen = dual<
     ): <R, E, A>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
-      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
   },
   {
@@ -742,7 +741,6 @@ export const andThen = dual<
       self: Effect.Effect<R, E, A>,
       f: X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
-      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
   }
 >(2, (self, f) =>
@@ -750,7 +748,7 @@ export const andThen = dual<
     const b = typeof f === "function" ? (f as any)(a) : f
     if (isEffect(b)) {
       return b
-    } else if (isPromise(b)) {
+    } else if (typeof f === "function" && isPromise(b)) {
       return async<never, Cause.UnknownException, any>((resume) => {
         b.then((a) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
       })

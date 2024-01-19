@@ -14,6 +14,7 @@ import { assert, describe } from "vitest"
 describe("Effect", () => {
   it.effect("andThen", () =>
     Effect.gen(function*($) {
+      const okPromise = Promise.resolve("ok")
       const a0 = Effect.andThen(Effect.succeed(0), Effect.succeed(1))
       const a1 = Effect.succeed(0).pipe(Effect.andThen(Effect.succeed(1)))
       const a2 = Effect.andThen(Effect.succeed(0), (n) => Effect.succeed(n + 1))
@@ -23,7 +24,7 @@ describe("Effect", () => {
       const a6 = Effect.andThen(Effect.succeed(0), () => "ok")
       const a7 = Effect.andThen(Effect.succeed(0), "ok")
       const a8 = Effect.andThen(Effect.succeed(0), () => Promise.resolve("ok"))
-      const a9 = Effect.andThen(Effect.succeed(0), Promise.resolve("ok"))
+      const a9 = Effect.andThen(Effect.succeed(0), okPromise)
       assert.strictEqual(yield* $(a0), 1)
       assert.strictEqual(yield* $(a1), 1)
       assert.strictEqual(yield* $(a2), 1)
@@ -33,7 +34,7 @@ describe("Effect", () => {
       assert.strictEqual(yield* $(a6), "ok")
       assert.strictEqual(yield* $(a7), "ok")
       assert.strictEqual(yield* $(a8), "ok")
-      assert.strictEqual(yield* $(a9), "ok")
+      assert.strictEqual(yield* $(a9), okPromise)
     }))
   it.effect("tap", () =>
     Effect.gen(function*($) {

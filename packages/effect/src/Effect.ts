@@ -3633,7 +3633,6 @@ export const andThen: {
   ): <R, E, A>(
     self: Effect<R, E, A>
   ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1>
-    : [X] extends [Promise<infer A1>] ? Effect<R, Cause.UnknownException | E, A1>
     : Effect<R, E, X>
   <A, R, E, X>(
     self: Effect<R, E, A>,
@@ -3645,7 +3644,6 @@ export const andThen: {
     self: Effect<R, E, A>,
     f: X
   ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1>
-    : [X] extends [Promise<infer A1>] ? Effect<R, Cause.UnknownException | E, A1>
     : Effect<R, E, X>
 } = core.andThen
 

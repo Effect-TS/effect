@@ -11,7 +11,7 @@ declare const stringArray: Array<Effect.Effect<"dep-3", "err-3", string>>
 declare const numberRecord: Record<string, Effect.Effect<"dep-4", "err-4", number>>
 
 // -------------------------------------------------------------------------------------
-// forEach
+// tap
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", string>
@@ -29,6 +29,9 @@ Effect.tap(string, async (
   _a
 ) => console.log(""))
 
+// @ts-expect-error
+Effect.tap(string, Promise.resolve(0))
+
 // $ExpectType Effect<"dep-1", "err-1", string>
 Effect.tap(string, (
   // $ExpectType string
@@ -36,7 +39,7 @@ Effect.tap(string, (
 ) => console.log(""))
 
 // @ts-expect-error
-Effect.tap(string, Promise.resolve(0))
+Effect.tap(string, 0)
 
 // -------------------------------------------------------------------------------------
 // forEach
@@ -701,7 +704,7 @@ Effect.andThen(string, number)
 // $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
 Effect.andThen(string, () => number)
 
-// $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
+// $ExpectType Effect<"dep-1", "err-1", Promise<number>>
 Effect.andThen(string, Promise.resolve(123))
 
 // $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
@@ -725,7 +728,7 @@ string.pipe(Effect.andThen(1))
 // $ExpectType Effect<"dep-1", "err-1", number>
 string.pipe(Effect.andThen(() => 1))
 
-// $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
+// $ExpectType Effect<"dep-1", "err-1", Promise<number>>
 string.pipe(Effect.andThen(Promise.resolve(123)))
 
 // $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
