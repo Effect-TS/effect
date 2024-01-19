@@ -5,6 +5,7 @@
 import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import { dual } from "effect/Function"
 import type { LazyArg } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import type * as Option from "effect/Option"
@@ -362,7 +363,21 @@ export const mapError = InternalParser.mapError
  * @category optimisation
  * @since 1.0.0
  */
-export const mapBoth = <R, E1, A, E2, B>(
+export const mapBoth: {
+  <E1, A, E2, B>(
+    options: {
+      readonly onFailure: (error: E1) => E2
+      readonly onSuccess: (a: A) => B
+    }
+  ): <R>(self: Effect.Effect<R, E1, A>) => Effect.Effect<R, E2, B>
+  <R, E1, A, E2, B>(
+    self: Effect.Effect<R, E1, A>,
+    options: {
+      readonly onFailure: (error: E1) => E2
+      readonly onSuccess: (a: A) => B
+    }
+  ): Effect.Effect<R, E2, B>
+} = dual(2, <R, E1, A, E2, B>(
   self: Effect.Effect<R, E1, A>,
   options: {
     readonly onFailure: (error: E1) => E2
@@ -377,13 +392,21 @@ export const mapBoth = <R, E1, A, E2, B>(
     return Either.right(options.onSuccess(s.right))
   }
   return Effect.mapBoth(self, options)
-}
+})
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const orElse = <R1, E1, A, R2, E2, B>(
+export const orElse: {
+  <E1, A, R2, E2, B>(
+    f: (error: E1) => Effect.Effect<R2, E2, B>
+  ): <R1>(self: Effect.Effect<R1, E1, A>) => Effect.Effect<R1 | R2, E2, A | B>
+  <R1, E1, A, R2, E2, B>(
+    self: Effect.Effect<R1, E1, A>,
+    f: (error: E1) => Effect.Effect<R2, E2, B>
+  ): Effect.Effect<R1 | R2, E2, A | B>
+} = dual(2, <R1, E1, A, R2, E2, B>(
   self: Effect.Effect<R1, E1, A>,
   f: (error: E1) => Effect.Effect<R2, E2, B>
 ): Effect.Effect<R1 | R2, E2, A | B> => {
@@ -395,7 +418,7 @@ export const orElse = <R1, E1, A, R2, E2, B>(
     return s
   }
   return Effect.catchAll(self, f)
-}
+})
 
 /* c8 ignore start */
 export {

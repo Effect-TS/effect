@@ -3,13 +3,22 @@
  */
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as AST from "../AST.js"
 import type * as ParseResult from "../ParseResult.js"
 
 /** @internal */
-export const flatMap = <R1, E1, A, R2, E2, B>(
+export const flatMap: {
+  <A, R2, E2, B>(
+    f: (self: A) => Effect.Effect<R2, E2, B>
+  ): <R1, E1>(self: Effect.Effect<R1, E1, A>) => Effect.Effect<R1 | R2, E1 | E2, B>
+  <R1, E1, A, R2, E2, B>(
+    self: Effect.Effect<R1, E1, A>,
+    f: (self: A) => Effect.Effect<R2, E2, B>
+  ): Effect.Effect<R1 | R2, E1 | E2, B>
+} = dual(2, <R1, E1, A, R2, E2, B>(
   self: Effect.Effect<R1, E1, A>,
   f: (self: A) => Effect.Effect<R2, E2, B>
 ): Effect.Effect<R1 | R2, E1 | E2, B> => {
@@ -21,10 +30,13 @@ export const flatMap = <R1, E1, A, R2, E2, B>(
     return f(s.right)
   }
   return Effect.flatMap(self, f)
-}
+})
 
 /** @internal */
-export const map = <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B): Effect.Effect<R, E, B> => {
+export const map: {
+  <A, B>(f: (self: A) => B): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
+  <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B): Effect.Effect<R, E, B>
+} = dual(2, <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B): Effect.Effect<R, E, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -33,10 +45,13 @@ export const map = <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B)
     return Either.right(f(s.right))
   }
   return Effect.map(self, f)
-}
+})
 
 /** @internal */
-export const mapError = <R, E1, A, E2>(
+export const mapError: {
+  <E1, E2>(f: (error: E1) => E2): <R, A>(self: Effect.Effect<R, E1, A>) => Effect.Effect<R, E2, A>
+  <R, E1, A, E2>(self: Effect.Effect<R, E1, A>, f: (error: E1) => E2): Effect.Effect<R, E2, A>
+} = dual(2, <R, E1, A, E2>(
   self: Effect.Effect<R, E1, A>,
   f: (error: E1) => E2
 ): Effect.Effect<R, E2, A> => {
@@ -48,7 +63,7 @@ export const mapError = <R, E1, A, E2>(
     return s
   }
   return Effect.mapError(self, f)
-}
+})
 
 /** @internal */
 export const eitherOrUndefined = <R, E, A>(
