@@ -46,19 +46,32 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
  * @category constructors
  * @since 1.0.0
  */
-export const parseError = (error: ParseIssue): ParseError => new ParseError({ error })
+export const parseError = (issue: ParseIssue): ParseError => new ParseError({ error: issue })
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const succeed: <A>(a: A) => Either.Either<never, A> = Either.right
+export const succeed: <A>(a: A) => Either.Either<ParseIssue, A> = Either.right
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const fail = (error: ParseIssue): Either.Either<ParseError, never> => Either.left(parseError(error))
+export const fail: (issue: ParseIssue) => Either.Either<ParseIssue, never> = Either.left
+
+const _try: <A>(options: {
+  try: LazyArg<A>
+  catch: (e: unknown) => ParseIssue
+}) => Either.Either<ParseIssue, A> = Either.try
+
+export {
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  _try as try
+}
 
 /**
  * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
@@ -360,19 +373,6 @@ export const member = (
   ast: AST.AST,
   error: ParseIssue
 ): Member => ({ _tag: "Member", ast, error })
-
-const _try: <A>(options: {
-  try: LazyArg<A>
-  catch: (e: unknown) => ParseError
-}) => Either.Either<ParseError, A> = Either.try
-
-export {
-  /**
-   * @category constructors
-   * @since 1.0.0
-   */
-  _try as try
-}
 
 /**
  * @category optimisation

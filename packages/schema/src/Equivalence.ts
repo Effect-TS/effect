@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import * as Either from "effect/Either"
 import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -46,11 +45,6 @@ const getHook = AST.getAnnotation<
 >(
   EquivalenceHookId
 )
-
-const is = (ast: AST.AST) => {
-  const getEither = Parser.getEither(ast, true)
-  return (i: unknown) => Either.isRight(getEither(i))
-}
 
 const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
   const hook = getHook(ast)
@@ -209,7 +203,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         if (searchTree.otherwise.length > 0) {
           candidates = candidates.concat(searchTree.otherwise)
         }
-        const tuples = candidates.map((ast) => [go(ast), is(ast)] as const)
+        const tuples = candidates.map((ast) => [go(ast), Parser.is(InternalSchema.make(ast))] as const)
         for (let i = 0; i < tuples.length; i++) {
           const [equivalence, is] = tuples[i]
           if (is(a) && is(b)) {

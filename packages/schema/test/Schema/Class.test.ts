@@ -1,5 +1,5 @@
 import * as AST from "@effect/schema/AST"
-import * as PR from "@effect/schema/ParseResult"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
@@ -29,10 +29,10 @@ const NameString = S.string.pipe(
       Name.pipe(
         Effect.filterOrFail(
           (name) => _ === name,
-          () => PR.parseError(PR.type(ast, _, "Does not match Name"))
+          () => ParseResult.type(ast, _, "Does not match Name")
         )
       ),
-    (_) => PR.succeed(_)
+    (_) => ParseResult.succeed(_)
   )
 )
 
@@ -44,9 +44,9 @@ const IdNumber = S.number.pipe(
       Effect.filterOrFail(
         Id,
         (id) => _ === id,
-        () => PR.parseError(PR.type(ast, _, "Does not match Id"))
+        () => ParseResult.type(ast, _, "Does not match Id")
       ),
-    (_) => PR.succeed(_)
+    (_) => ParseResult.succeed(_)
   )
 )
 
@@ -90,16 +90,16 @@ class PersonWithTransform extends Person.transform<PersonWithTransform>()(
   },
   (input, _, ast) =>
     input.id === 2 ?
-      PR.fail(PR.type(ast, input)) :
-      PR.succeed({
+      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.succeed({
         ...input,
         id: input.id.toString(),
         thing: O.some({ id: 123 })
       }),
   (input, _, ast) =>
     input.id === "2" ?
-      PR.fail(PR.type(ast, input)) :
-      PR.succeed({
+      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.succeed({
         ...input,
         id: Number(input.id)
       })
@@ -112,16 +112,16 @@ class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFr
   },
   (input, _, ast) =>
     input.id === 2 ?
-      PR.fail(PR.type(ast, input)) :
-      PR.succeed({
+      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.succeed({
         ...input,
         id: input.id.toString(),
         thing: { id: 123 }
       }),
   (input, _, ast) =>
     input.id === "2" ?
-      PR.fail(PR.type(ast, input)) :
-      PR.succeed({
+      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.succeed({
         ...input,
         id: Number(input.id)
       })

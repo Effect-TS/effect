@@ -20,8 +20,8 @@ const doRoundtrip = true
 export const sleep = Effect.sleep(Duration.millis(10))
 
 const effectifyDecode = <R>(
-  decode: (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<R, ParseResult.ParseError, any>
-): (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<R, ParseResult.ParseError, any> =>
+  decode: (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<R, ParseResult.ParseIssue, any>
+): (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<R, ParseResult.ParseIssue, any> =>
 (input, options, ast) => ParseResult.flatMap(sleep, () => decode(input, options, ast))
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
@@ -69,8 +69,8 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
     AST.from(ast),
     AST.to(ast),
     AST.createFinalTransformation(
-      (a, options) => Effect.flatMap(sleep, () => decode(a, options)),
-      (a, options) => Effect.flatMap(sleep, () => encode(a, options))
+      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(decode(a, options), (e) => e.error)),
+      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(encode(a, options), (e) => e.error))
     )
   )
 }

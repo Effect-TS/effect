@@ -1,8 +1,8 @@
-import * as PR from "@effect/schema/ParseResult"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { formatIssue } from "@effect/schema/TreeFormatter"
-import * as E from "effect/Either"
+import * as Either from "effect/Either"
 import { describe, expect, it } from "vitest"
 
 const expectMessage = <I, A>(
@@ -10,8 +10,8 @@ const expectMessage = <I, A>(
   u: unknown,
   message: string
 ) => {
-  expect(E.mapLeft(S.parseEither(schema)(u), (e) => formatIssue(e.error))).toEqual(
-    E.left(message)
+  expect(Either.mapLeft(S.parseEither(schema)(u), (e) => formatIssue(e.error))).toEqual(
+    Either.left(message)
   )
 }
 
@@ -79,8 +79,9 @@ describe("Schema > Forbidden", () => {
   })
 
   it("declaration", () => {
-    const transform = S.declarePrimitive(
-      S.parse(Util.effectify(S.number))
+    const parse = S.parse(Util.effectify(S.number))
+    const transform = S.declarePrimitive((input, options) =>
+      ParseResult.mapError(parse(input, options), (e) => e.error)
     )
     expectMessage(
       transform,
@@ -95,11 +96,11 @@ describe("Schema > Forbidden", () => {
       S.transformOrFail(
         S.string,
         S.string,
-        (s) => PR.flatMap(Util.sleep, () => PR.succeed(s)),
-        (s) => PR.flatMap(Util.sleep, () => PR.succeed(s))
+        (s) => ParseResult.flatMap(Util.sleep, () => ParseResult.succeed(s)),
+        (s) => ParseResult.flatMap(Util.sleep, () => ParseResult.succeed(s))
       ),
-      E.right,
-      E.right
+      ParseResult.succeed,
+      ParseResult.succeed
     )
     expectMessage(
       transform,

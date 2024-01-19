@@ -358,10 +358,10 @@ export const declare = <const P extends ReadonlyArray<Schema<any, any>>, R, I, A
   typeParameters: P,
   decode: (
     ...typeParameters: P
-  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseError, A>,
+  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, A>,
   encode: (
     ...typeParameters: P
-  ) => (input: A, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseError, I>,
+  ) => (input: A, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
   annotations?: AST.Annotations
 ): Schema<Schema.Context<P[number]> | R, I, A> =>
   make(AST.createDeclaration(
@@ -376,7 +376,7 @@ export const declare = <const P extends ReadonlyArray<Schema<any, any>>, R, I, A
   @since 1.0.0
 */
 export const declarePrimitive = <R, A>(
-  parse: (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseError, A>,
+  parse: (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseIssue, A>,
   annotations?: AST.Annotations
 ): Schema<R, A> => declare([], () => parse, () => parse, annotations)
 
@@ -397,10 +397,10 @@ export const fromBrand = <C extends Brand.Brand<string | symbol>>(
 <R, I, A extends Brand.Brand.Unbranded<C>>(self: Schema<R, I, A>): Schema<R, I, A & C> => {
   return make(AST.createRefinement(
     self.ast,
-    (a: A, _: ParseOptions, ast: AST.AST): Option.Option<ParseResult.ParseError> => {
-      const e = constructor.either(a)
-      return Either.isLeft(e) ?
-        Option.some(ParseResult.parseError(ParseResult.type(ast, a, e.left.map((v) => v.message).join(", ")))) :
+    (a: A, _: ParseOptions, ast: AST.AST): Option.Option<ParseResult.ParseIssue> => {
+      const either = constructor.either(a)
+      return Either.isLeft(either) ?
+        Option.some(ParseResult.type(ast, a, either.left.map((v) => v.message).join(", "))) :
         Option.none()
     },
     toAnnotations({ typeId: { id: BrandTypeId, params: { constructor } }, ...options })
@@ -1089,7 +1089,7 @@ export const brand =
         Either.mapLeft(
           validateEither(input),
           (e) =>
-            ArrayFormatter.formatIssues([e.error]).map((err) => ({
+            ArrayFormatter.formatError(e).map((err) => ({
               meta: err.path,
               message: err.message
             }))
@@ -1280,7 +1280,7 @@ export const suspend = <R, I, A = I>(
  * @since 1.0.0
  */
 export function filter<A>(
-  f: (a: A, options: ParseOptions, self: AST.AST) => Option.Option<ParseResult.ParseError>,
+  f: (a: A, options: ParseOptions, self: AST.AST) => Option.Option<ParseResult.ParseIssue>,
   options?: FilterAnnotations<A>
 ): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A>
 export function filter<C extends A, B extends A, A = C>(
@@ -1294,7 +1294,7 @@ export function filter<B extends A, A = B>(
 export function filter<A>(
   predicate:
     | Predicate.Predicate<A>
-    | ((a: A, options: ParseOptions, self: AST.AST) => Option.Option<ParseResult.ParseError>),
+    | ((a: A, options: ParseOptions, self: AST.AST) => Option.Option<ParseResult.ParseIssue>),
   options?: FilterAnnotations<A>
 ): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> {
   return (self) =>
@@ -1305,7 +1305,7 @@ export function filter<A>(
         if (Predicate.isBoolean(out)) {
           return out
             ? Option.none()
-            : Option.some(ParseResult.parseError(ParseResult.type(ast, a)))
+            : Option.some(ParseResult.type(ast, a))
         }
         return out
       },
@@ -1323,33 +1323,33 @@ export function filter<A>(
 export const transformOrFail: {
   <R2, C, D, B, R3, R4>(
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseError, C>,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseError, B>
+    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, C>,
+    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, B>
   ): <R1, A>(self: Schema<R1, A, B>) => Schema<R1 | R2 | R3 | R4, A, D>
   <R2, C, D, B, R3, R4>(
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseError, unknown>,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseError, unknown>,
+    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, unknown>,
+    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, unknown>,
     options: { strict: false }
   ): <R1, A>(self: Schema<R1, A, B>) => Schema<R1 | R2 | R3 | R4, A, D>
   <R1, A, B, R2, C, D, R3, R4>(
     from: Schema<R1, A, B>,
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseError, C>,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseError, B>
+    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, C>,
+    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, B>
   ): Schema<R1 | R2 | R3 | R4, A, D>
   <R1, A, B, R2, C, D, R3, R4>(
     from: Schema<R1, A, B>,
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseError, unknown>,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseError, unknown>,
+    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, unknown>,
+    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, unknown>,
     options: { strict: false }
   ): Schema<R1 | R2 | R3 | R4, A, D>
 } = dual((args) => isSchema(args[0]) && isSchema(args[1]), <R1, A, B, R2, C, D, R3, R4>(
   from: Schema<R1, A, B>,
   to: Schema<R2, C, D>,
-  decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseError, unknown>,
-  encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseError, unknown>
+  decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, unknown>,
+  encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, unknown>
 ): Schema<R1 | R2 | R3 | R4, A, D> =>
   make(
     AST.createTransform(
@@ -1402,8 +1402,8 @@ export const transform: {
     transformOrFail(
       from,
       to,
-      (a, options, ast) => Either.right(decode(a, options, ast)),
-      (b, options, ast) => Either.right(encode(b, options, ast))
+      (a, options, ast) => ParseResult.succeed(decode(a, options, ast)),
+      (b, options, ast) => ParseResult.succeed(encode(b, options, ast))
     )
 )
 
@@ -2147,12 +2147,12 @@ export const parseJson: {
     (s, _, ast) =>
       ParseResult.try({
         try: () => JSON.parse(s, options?.reviver),
-        catch: (e: any) => ParseResult.parseError(ParseResult.type(ast, s, e.message))
+        catch: (e: any) => ParseResult.type(ast, s, e.message)
       }),
     (u, _, ast) =>
       ParseResult.try({
         try: () => JSON.stringify(u, options?.replacer, options?.space),
-        catch: (e: any) => ParseResult.parseError(ParseResult.type(ast, u, e.message))
+        catch: (e: any) => ParseResult.type(ast, u, e.message)
       })
   )
 }
@@ -2877,7 +2877,7 @@ export const bigint: Schema<never, string, bigint> = transformOrFail(
 
     return ParseResult.try({
       try: () => BigInt(s),
-      catch: () => ParseResult.parseError(ParseResult.type(ast, s))
+      catch: () => ParseResult.type(ast, s)
     })
   },
   (n) => ParseResult.succeed(String(n))
@@ -2961,7 +2961,7 @@ export const BigintFromNumber: Schema<never, number, bigint> = transformOrFail(
   (n, _, ast) =>
     ParseResult.try({
       try: () => BigInt(n),
-      catch: () => ParseResult.parseError(ParseResult.type(ast, n))
+      catch: () => ParseResult.type(ast, n)
     }),
   (b, _, ast) => {
     if (b > InternalBigInt.maxSafeInteger || b < InternalBigInt.minSafeInteger) {
@@ -3285,7 +3285,7 @@ const makeEncodingTransformation = (
     (s, _, ast) =>
       Either.mapLeft(
         decode(s),
-        (decodeException) => ParseResult.parseError(ParseResult.type(ast, s, decodeException.message))
+        (decodeException) => ParseResult.type(ast, s, decodeException.message)
       ),
     (u) => ParseResult.succeed(encode(u)),
     { strict: false }
@@ -3592,7 +3592,7 @@ export const optionFromSelf = <R, I, A>(
   return declare(
     [value],
     (value) => {
-      const parse = Parser.parse(value)
+      const parse = Parser.rawparse(value)
       return (u, options, ast) =>
         Option.isOption(u) ?
           Option.isNone(u) ?
@@ -3601,14 +3601,13 @@ export const optionFromSelf = <R, I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (value) => {
-      const encode = Parser.encode(value)
+      const encode = Parser.rawencode(value)
       return (o, options, ast) =>
         Option.isOption(o) ?
-          Option.match(o, {
-            onNone: () => ParseResult.succeed(Option.none()),
-            onSome: (a) => ParseResult.map(encode(a, options), Option.some)
-          }) :
-          ParseResult.fail(ParseResult.type(ast, o))
+          Option.isNone(o) ?
+            ParseResult.succeed(Option.none())
+            : ParseResult.map(encode(o.value, options), Option.some)
+          : ParseResult.fail(ParseResult.type(ast, o))
     },
     {
       [AST.DescriptionAnnotationId]: `Option<${Format.format(value)}>`,
@@ -3744,9 +3743,9 @@ export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
   return declare(
     [left, right],
     (left, right) => {
-      const parseLeft = Parser.parse(left)
-      const parseRight = Parser.parse(right)
-      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseError, Either.Either<E, A>> =>
+      const parseLeft = Parser.rawparse(left)
+      const parseRight = Parser.rawparse(right)
+      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Either.Either<E, A>> =>
         Either.isEither(u) ?
           Either.match(u, {
             onLeft: (left) => ParseResult.map(parseLeft(left, options), Either.left),
@@ -3755,9 +3754,9 @@ export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (left, right) => {
-      const encodeLeft = Parser.encode(left)
-      const encodeRight = Parser.encode(right)
-      return (either, options, ast): Effect.Effect<RE | RA, ParseResult.ParseError, Either.Either<IE, IA>> =>
+      const encodeLeft = Parser.rawencode(left)
+      const encodeRight = Parser.rawencode(right)
+      return (either, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Either.Either<IE, IA>> =>
         Either.isEither(either) ?
           Either.match(either, {
             onLeft: (left) => ParseResult.map(encodeLeft(left, options), Either.left),
@@ -3858,14 +3857,14 @@ export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
   return declare(
     [key, value],
     (key, value) => {
-      const parse = Parser.parse(array(tuple(key, value)))
+      const parse = Parser.rawparse(array(tuple(key, value)))
       return (u, options, ast) =>
         isMap(u) ?
           ParseResult.map(parse(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (key, value) => {
-      const encode = Parser.encode(array(tuple(key, value)))
+      const encode = Parser.rawencode(array(tuple(key, value)))
       return (map, options, ast) =>
         isMap(map) ?
           ParseResult.map(encode(Array.from(map.entries()), options), (as): ReadonlyMap<IK, IV> => new Map(as))
@@ -3920,14 +3919,14 @@ export const readonlySetFromSelf = <R, I, A>(
   return declare(
     [item],
     (item) => {
-      const parse = Parser.parse(array(item))
+      const parse = Parser.rawparse(array(item))
       return (u, options, ast) =>
         isSet(u) ?
           ParseResult.map(parse(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (item) => {
-      const encode = Parser.encode(array(item))
+      const encode = Parser.rawencode(array(item))
       return (set, options, ast) =>
         isSet(set) ?
           ParseResult.map(encode(Array.from(set.values()), options), (as): ReadonlySet<I> => new Set(as))
@@ -4318,7 +4317,7 @@ export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.C
   return declare(
     [item],
     (item) => {
-      const parse = Parser.parse(array(item))
+      const parse = Parser.rawparse(array(item))
       return (u, options, ast) => {
         return Chunk.isChunk(u) ?
           Chunk.isEmpty(u) ?
@@ -4328,7 +4327,7 @@ export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.C
       }
     },
     (item) => {
-      const encode = Parser.encode(array(item))
+      const encode = Parser.rawencode(array(item))
       return (chunk, options, ast) =>
         Chunk.isChunk(chunk) ?
           Chunk.isEmpty(chunk) ?
@@ -4384,14 +4383,14 @@ export const dataFromSelf = <
   return declare(
     [item],
     (item) => {
-      const parse = Parser.parse(item)
+      const parse = Parser.rawparse(item)
       return (u, options, ast) =>
         Equal.isEqual(u) ?
           ParseResult.map(parse(u, options), toData)
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (item) => {
-      const encode = Parser.encode(item)
+      const encode = Parser.rawencode(item)
       return (data, options, ast) =>
         Equal.isEqual(data) ?
           ParseResult.map(encode(data, options), toData)
@@ -4468,12 +4467,12 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
       input: A,
       options: ParseOptions,
       ast: AST.AST
-    ) => Effect.Effect<R2, ParseResult.ParseError, Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+    ) => Effect.Effect<R2, ParseResult.ParseIssue, Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
     encode: (
       input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       options: ParseOptions,
       ast: AST.AST
-    ) => Effect.Effect<R3, ParseResult.ParseError, A>
+    ) => Effect.Effect<R3, ParseResult.ParseIssue, A>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
       R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
@@ -4494,12 +4493,12 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
       input: I,
       options: ParseOptions,
       ast: AST.AST
-    ) => Effect.Effect<R2, ParseResult.ParseError, Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
+    ) => Effect.Effect<R2, ParseResult.ParseIssue, Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
     encode: (
       input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
       options: ParseOptions,
       ast: AST.AST
-    ) => Effect.Effect<R3, ParseResult.ParseError, I>
+    ) => Effect.Effect<R3, ParseResult.ParseIssue, I>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
       R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
@@ -4991,14 +4990,14 @@ export const causeFromSelf = <R, I, A>(
   return declare(
     [error, defect],
     (error, defect) => {
-      const parse = Parser.parse(causeFrom(error, defect))
+      const parse = Parser.rawparse(causeFrom(error, defect))
       return (u, options, ast) =>
         Cause.isCause(u) ?
           ParseResult.map(parse(causeEncode(u), options), causeDecode)
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (error, defect) => {
-      const encode = Parser.encode(causeFrom(error, defect))
+      const encode = Parser.rawencode(causeFrom(error, defect))
       return (cause, options, ast) =>
         Cause.isCause(cause) ?
           ParseResult.map(encode(causeEncode(cause), options), causeDecode)
@@ -5160,9 +5159,9 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
   declare(
     [error, value, defect],
     (error, value, defect) => {
-      const parseCause = Parser.parse(causeFromSelf(error, defect))
-      const parseValue = Parser.parse(value)
-      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseError, Exit.Exit<E, A>> =>
+      const parseCause = Parser.rawparse(causeFromSelf(error, defect))
+      const parseValue = Parser.rawparse(value)
+      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Exit.Exit<E, A>> =>
         Exit.isExit(u) ?
           Exit.match(u, {
             onFailure: (cause) => ParseResult.map(parseCause(cause, options), Exit.failCause),
@@ -5171,9 +5170,9 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (error, value, defect) => {
-      const encodeCause = Parser.encode(causeFromSelf(error, defect))
-      const encodeValue = Parser.encode(value)
-      return (exit, options, ast): Effect.Effect<RE | RA, ParseResult.ParseError, Exit.Exit<IE, IA>> =>
+      const encodeCause = Parser.rawencode(causeFromSelf(error, defect))
+      const encodeValue = Parser.rawencode(value)
+      return (exit, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Exit.Exit<IE, IA>> =>
         Exit.isExit(exit) ?
           Exit.match(exit, {
             onFailure: (cause) => ParseResult.map(encodeCause(cause, options), Exit.failCause),

@@ -32,8 +32,7 @@ export const mergeParseOptions = (
   return out
 }
 
-/** @internal */
-export const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
+const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
   return (i: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseIssue, any> =>
     parser(i, mergeParseOptions(options, overrideOptions)) as any
@@ -41,13 +40,8 @@ export const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.Parse
 
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = getEither(ast, isDecoding, options)
-  return (input: unknown, overrideOptions?: AST.ParseOptions) => {
-    const result = parser(input, overrideOptions)
-    if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatIssue(result.left))
-    }
-    return result.right
-  }
+  return (input: unknown, overrideOptions?: AST.ParseOptions) =>
+    Either.getOrThrowWith(parser(input, overrideOptions), (e) => new Error(TreeFormatter.formatIssue(e)))
 }
 
 const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -58,16 +52,33 @@ const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 
 const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
+  return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<R, ParseResult.ParseIssue, any> =>
+    parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true })
+}
+
+/** @internal */
+export const rawparse = <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
+  options?: AST.ParseOptions
+): (i: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> =>
+  getEffect(schema.ast, true, options)
+
+/** @internal */
+export const rawencode = <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
+  options?: AST.ParseOptions
+): (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> =>
+  getEffect(schema.ast, false, options)
+
+const getEffectWrap = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
+  const parse = getEffect<R>(ast, isDecoding, options)
   return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<R, ParseResult.ParseError, any> =>
-    ParseResult.mapError(
-      parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true }),
-      ParseResult.parseError
-    )
+    ParseResult.mapError(parse(input, overrideOptions), ParseResult.parseError)
 }
 
 const getPromise = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
-  const parser = getEffect<never>(ast, isDecoding, options)
-  return (input: unknown, overrideOptions?: AST.ParseOptions) => Effect.runPromise(parser(input, overrideOptions))
+  const parse = getEffectWrap<never>(ast, isDecoding, options)
+  return (input: unknown, overrideOptions?: AST.ParseOptions) => Effect.runPromise(parse(input, overrideOptions))
 }
 
 /**
@@ -115,7 +126,7 @@ export const parse = <R, I, A>(
   schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
 ): (i: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseError, A> =>
-  getEffect(schema.ast, true, options)
+  getEffectWrap(schema.ast, true, options)
 
 /**
  * @category decoding
@@ -210,7 +221,7 @@ export const validate = <R, I, A>(
   schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
 ): (a: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseError, A> =>
-  getEffect(AST.to(schema.ast), true, options)
+  getEffectWrap(AST.to(schema.ast), true, options)
 
 /**
  * @category validation
@@ -287,10 +298,11 @@ export const encode = <R, I, A>(
   schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
 ): (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseError, I> =>
-  getEffect(schema.ast, false, options)
+  getEffectWrap(schema.ast, false, options)
 
 interface InternalOptions extends AST.ParseOptions {
   readonly isEffectAllowed?: boolean
+  // `isExact = false` means that missing keys are treated as undefined values (`{ key: undefined }`)
   readonly isExact?: boolean
 }
 
@@ -337,7 +349,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   ast.filter(a, options ?? defaultParseOption, ast),
                   {
                     onNone: () => Either.right(a),
-                    onSome: (e) => Either.left(ParseResult.refinement(ast, i, "Predicate", e.error))
+                    onSome: (e) => Either.left(ParseResult.refinement(ast, i, "Predicate", e))
                   }
                 )
             ),
@@ -365,7 +377,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               ParseResult.flatMap(
                 ParseResult.mapError(
                   transform(a, options ?? defaultParseOption, ast),
-                  (e) => ParseResult.transform(ast, i1, "Transformation", e.error)
+                  (e) => ParseResult.transform(ast, i1, "Transformation", e)
                 ),
                 (i2) =>
                   ParseResult.mapError(
@@ -379,11 +391,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         )
     }
     case "Declaration": {
-      const parse = isDecoding ? ast.decode(...ast.typeParameters) : ast.encode(...ast.typeParameters)
+      const parse = isDecoding ? ast.parse(...ast.typeParameters) : ast.encode(...ast.typeParameters)
       return (i, options) =>
         handleForbidden(
-          ParseResult.mapError(parse(i, options ?? defaultParseOption, ast), (e) =>
-            ParseResult.declaration(ast, i, e.error)),
+          ParseResult.mapError(parse(i, options ?? defaultParseOption, ast), (e) => ParseResult.declaration(ast, i, e)),
           i,
           options
         )
@@ -948,7 +959,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   } else {
                     return Effect.flatMap(Effect.either(pr), (t) => {
                       if (Either.isRight(t)) {
-                        state.finalResult = ParseResult.succeed(t.right)
+                        state.finalResult = Either.right(t.right)
                       } else {
                         state.es.push([nk, ParseResult.member(candidate, t.left)])
                       }
@@ -1131,15 +1142,15 @@ const getFinalPropertySignatureTransformation = (
 export const getFinalTransformation = (
   transformation: AST.Transformation,
   isDecoding: boolean
-): (input: any, options: AST.ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseError, any> => {
+): (input: any, options: AST.ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, any> => {
   switch (transformation._tag) {
     case "FinalTransformation":
       return isDecoding ? transformation.decode : transformation.encode
     case "ComposeTransformation":
-      return ParseResult.succeed
+      return Either.right
     case "TypeLiteralTransformation":
       return (input) => {
-        let out: Effect.Effect<any, ParseResult.ParseError, any> = Either.right(input)
+        let out: Effect.Effect<any, ParseResult.ParseIssue, any> = Either.right(input)
 
         // ---------------------------------------------
         // handle property signature transformations

@@ -1,6 +1,6 @@
 import * as _ from "@effect/schema/ArrayFormatter"
 import type { ParseOptions } from "@effect/schema/AST"
-import { ParseResult } from "@effect/schema/index"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as Either from "effect/Either"

@@ -105,7 +105,7 @@ describe("Equivalence", () => {
 
   describe("declaration", () => {
     it("should return Equivalence.strict() when an annotation exists", () => {
-      const schema = S.declarePrimitive((input) => ParseResult.succeed(input), {
+      const schema = S.declarePrimitive(ParseResult.succeed, {
         [A.ArbitraryHookId]: (): A.Arbitrary<string> => (fc) => fc.string()
       })
       const equivalence = E.make(schema)
