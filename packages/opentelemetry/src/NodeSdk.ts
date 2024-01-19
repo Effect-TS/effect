@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { TracerProvider } from "@opentelemetry/api"
 import type * as Resources from "@opentelemetry/resources"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
@@ -12,6 +11,7 @@ import * as Layer from "effect/Layer"
 import * as Metrics from "./Metrics.js"
 import * as Resource from "./Resource.js"
 import * as Tracer from "./Tracer.js"
+import * as TracerProviderJs from "./TracerProvider.js"
 
 /**
  * @since 1.0.0
@@ -35,9 +35,9 @@ export interface Configuration {
 export const layerTracerProvider = (
   processor: SpanProcessor,
   config?: Omit<TracerConfig, "resource">
-): Layer.Layer<Resource.Resource, never, TracerProvider> =>
+): Layer.Layer<"Otel.Resource", never, "Otel.TracerProvider"> =>
   Layer.scoped(
-    Tracer.TracerProvider,
+    TracerProviderJs.TracerProvider,
     Effect.flatMap(
       Resource.Resource,
       (resource) =>
@@ -60,11 +60,11 @@ export const layerTracerProvider = (
  * @category layer
  */
 export const layer: {
-  (evaluate: LazyArg<Configuration>): Layer.Layer<never, never, Resource.Resource>
-  <R, E>(evaluate: Effect.Effect<R, E, Configuration>): Layer.Layer<R, E, Resource.Resource>
+  (evaluate: LazyArg<Configuration>): Layer.Layer<never, never, "Otel.Resource">
+  <R, E>(evaluate: Effect.Effect<R, E, Configuration>): Layer.Layer<R, E, "Otel.Resource">
 } = (
   evaluate: LazyArg<Configuration> | Effect.Effect<any, any, Configuration>
-): Layer.Layer<never, never, Resource.Resource> =>
+): Layer.Layer<never, never, "Otel.Resource"> =>
   Layer.unwrapEffect(
     Effect.map(
       Effect.isEffect(evaluate)

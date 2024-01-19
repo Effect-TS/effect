@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 import * as Effect from "effect/Effect"
-import type * as Scope from "effect/Scope"
 import * as Fiber from "./Fiber.js"
 import { dual } from "./Function.js"
 import * as Inspectable from "./Inspectable.js"
@@ -92,7 +91,7 @@ const unsafeMake = <E = unknown, A = unknown>(): FiberSet<E, A> => {
  * @since 2.0.0
  * @categories constructors
  */
-export const make = <E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, never, FiberSet<E, A>> =>
+export const make = <E = unknown, A = unknown>(): Effect.Effect<"Scope", never, FiberSet<E, A>> =>
   Effect.acquireRelease(Effect.sync(() => unsafeMake<E, A>()), clear)
 
 /**

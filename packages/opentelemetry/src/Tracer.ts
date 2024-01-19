@@ -8,13 +8,12 @@ import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type { ExternalSpan, Tracer as EffectTracer } from "effect/Tracer"
 import * as internal from "./internal/tracer.js"
-import type { Resource } from "./Resource.js"
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect<Otel.Tracer, never, EffectTracer> = internal.make
+export const make: Effect<"Otel.Tracer", never, EffectTracer> = internal.make
 
 /**
  * @since 1.0.0
@@ -39,46 +38,46 @@ export const currentOtelSpan: Effect<never, NoSuchElementException, Otel.Span> =
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer<Resource | Otel.TracerProvider, never, never> = internal.layer
+export const layer: Layer<"Otel.Resource" | "Otel.TracerProvider", never, never> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerGlobal: Layer<Resource, never, never> = internal.layerGlobal
+export const layerGlobal: Layer<"Otel.Resource", never, never> = internal.layerGlobal
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerTracer: Layer<Resource | Otel.TracerProvider, never, Otel.Tracer> = internal.layerTracer
+export const layerTracer: Layer<"Otel.Resource" | "Otel.TracerProvider", never, "Otel.Tracer"> = internal.layerTracer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerGlobalTracer: Layer<Resource, never, Otel.Tracer> = internal.layerGlobalTracer
+export const layerGlobalTracer: Layer<"Otel.Resource", never, "Otel.Tracer"> = internal.layerGlobalTracer
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const TracerProvider: Tag<Otel.TracerProvider, Otel.TracerProvider> = internal.TracerProvider
+export const TracerProvider: Tag<"Otel.TracerProvider", Otel.TracerProvider> = internal.TracerProvider
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const Tracer: Tag<Otel.Tracer, Otel.Tracer> = internal.Tracer
+export const Tracer: Tag<"Otel.Tracer", Otel.Tracer> = internal.Tracer
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const TraceFlags: Tag<Otel.TraceFlags, Otel.TraceFlags> = internal.traceFlagsTag
+export const TraceFlags: Tag<"Otel.TraceFlags", Otel.TraceFlags> = internal.traceFlagsTag
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const TraceState: Tag<Otel.TraceState, Otel.TraceState> = internal.traceStateTag
+export const TraceState: Tag<"Otel.TraceState", Otel.TraceState> = internal.traceStateTag

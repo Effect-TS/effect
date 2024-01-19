@@ -20,5 +20,11 @@ export * as Tracer from "./Tracer.js"
 
 /**
  * @since 1.0.0
+ * @category tags
+ */
+export * as TracerProvider from "./TracerProvider.js"
+
+/**
+ * @since 1.0.0
  */
 export * as WebSdk from "./WebSdk.js"

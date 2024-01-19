@@ -104,10 +104,10 @@ export class OtelSpan implements EffectTracer.Span {
 }
 
 /** @internal */
-export const TracerProvider = Context.Tag<OtelApi.TracerProvider>("@effect/opentelemetry/Tracer/TracerProvider")
+export const TracerProvider = Context.Tag("Otel.TracerProvider")<OtelApi.TracerProvider>()
 
 /** @internal */
-export const Tracer = Context.Tag<OtelApi.Tracer>("@effect/opentelemetry/Tracer/Tracer")
+export const Tracer = Context.Tag("Otel.Tracer")<OtelApi.Tracer>()
 
 /** @internal */
 export const make = Effect.map(Tracer, (tracer) =>
@@ -140,10 +140,10 @@ export const make = Effect.map(Tracer, (tracer) =>
   }))
 
 /** @internal */
-export const traceFlagsTag = Context.Tag<OtelApi.TraceFlags>("@effect/opentelemetry/traceFlags")
+export const traceFlagsTag = Context.Tag("Otel.TraceFlags")<OtelApi.TraceFlags>()
 
 /** @internal */
-export const traceStateTag = Context.Tag<OtelApi.TraceState>("@effect/opentelemetry/traceState")
+export const traceStateTag = Context.Tag("Otel.TraceState")<OtelApi.TraceState>()
 
 /** @internal */
 export const makeExternalSpan = (options: {
@@ -262,7 +262,7 @@ const makeSpanContext = (span: EffectTracer.ParentSpan, context?: Context.Contex
   ) as OtelApi.TraceState
 })
 
-const extractTraceTag = <I, S>(
+const extractTraceTag = <I extends string, S>(
   parent: EffectTracer.ParentSpan,
   context: Context.Context<never>,
   tag: Context.Tag<I, S>

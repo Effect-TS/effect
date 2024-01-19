@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 import * as Effect from "effect/Effect"
-import type * as Scope from "effect/Scope"
 import type { NoSuchElementException } from "./Cause.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
@@ -97,7 +96,7 @@ const unsafeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
  * @since 2.0.0
  * @categories constructors
  */
-export const make = <K, E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, never, FiberMap<K, E, A>> =>
+export const make = <K, E = unknown, A = unknown>(): Effect.Effect<"Scope", never, FiberMap<K, E, A>> =>
   Effect.acquireRelease(Effect.sync(() => unsafeMake<K, E, A>()), clear)
 
 /**

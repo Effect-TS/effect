@@ -8,17 +8,9 @@ import * as Layer from "effect/Layer"
 
 /**
  * @since 1.0.0
- * @category identifier
- */
-export interface Resource {
-  readonly _: unique symbol
-}
-
-/**
- * @since 1.0.0
  * @category tag
  */
-export const Resource = Tag<Resource, Resources.Resource>("@effect/opentelemetry/Resource")
+export const Resource = Tag("Otel.Resource")<Resources.Resource>()
 
 /**
  * @since 1.0.0
