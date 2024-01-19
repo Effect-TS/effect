@@ -116,18 +116,21 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
           core.flatMap((now) =>
             pipe(
               core.suspend(() => this.schedule.step(now, input, state)),
-              core.flatMap(([state, out, decision]) =>
-                ScheduleDecision.isDone(decision) ?
-                  pipe(
-                    ref.set(this.ref, [Option.some(out), state] as const),
-                    core.zipRight(core.fail(Option.none()))
-                  ) :
-                  pipe(
-                    ref.set(this.ref, [Option.some(out), state] as const),
-                    core.zipRight(effect.sleep(Duration.millis(Intervals.start(decision.intervals) - now))),
-                    core.as(out)
-                  )
-              )
+              core.flatMap(([state, out, decision]) => {
+                const setState = ref.set(this.ref, [Option.some(out), state] as const)
+                if (ScheduleDecision.isDone(decision)) {
+                  return core.zipRight(setState, core.fail(Option.none()))
+                }
+                const millis = Intervals.start(decision.intervals) - now
+                if (millis <= 0) {
+                  return core.as(setState, out)
+                }
+                return pipe(
+                  setState,
+                  core.zipRight(effect.sleep(Duration.millis(millis))),
+                  core.as(out)
+                )
+              })
             )
           )
         )
