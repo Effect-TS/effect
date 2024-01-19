@@ -80,9 +80,7 @@ describe("Schema > Forbidden", () => {
 
   it("declaration", () => {
     const parse = S.parse(Util.effectify(S.number))
-    const transform = S.declarePrimitive((input, options) =>
-      ParseResult.mapError(parse(input, options), (e) => e.error)
-    )
+    const transform = S.declare((input, options) => ParseResult.mapError(parse(input, options), (e) => e.error))
     expectMessage(
       transform,
       1,

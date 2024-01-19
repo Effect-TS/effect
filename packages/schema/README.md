@@ -3022,17 +3022,15 @@ Creating schemas for new data types is crucial to defining the expected structur
 
 ## Declaring Schemas for Primitive Data Types
 
-A primitive data type represents simple values. To declare a schema for a primitive data type, like the `File` type in TypeScript, we use the `S.declarePrimitive` constructor. Let's go through an example:
+A primitive data type represents simple values. To declare a schema for a primitive data type, like the `File` type in TypeScript, we use the `S.declare` constructor along with a type guard. Let's go through an example:
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult";
 import * as S from "@effect/schema/Schema";
 
-const FileFromSelf = S.declarePrimitive((input, _parseOptions, ast) =>
-  input instanceof File
-    ? ParseResult.succeed(input)
-    : ParseResult.fail(ParseResult.type(ast, input))
-).pipe(S.identifier("FileFromSelf"));
+const isFile = (input: unknown): input is File => input instanceof File;
+
+// const FileFromSelf: S.Schema<never, File, File>
+const FileFromSelf = S.declare(isFile).pipe(S.identifier("FileFromSelf"));
 
 const parseSync = S.parseSync(FileFromSelf);
 

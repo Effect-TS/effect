@@ -434,31 +434,49 @@ const getTemplateLiterals = (
   @category constructors
   @since 1.0.0
 */
-export const declare = <const P extends ReadonlyArray<Schema<any, any>>, R, I, A>(
-  typeParameters: P,
-  decode: (
-    ...typeParameters: P
-  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, A>,
-  encode: (
-    ...typeParameters: P
-  ) => (input: A, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
-  annotations?: AST.Annotations
-): Schema<Schema.Context<P[number]> | R, I, A> =>
-  make(AST.createDeclaration(
-    typeParameters.map((tp) => tp.ast),
-    (...typeParameters) => decode(...typeParameters.map((ast) => make(ast)) as any),
-    (...typeParameters) => encode(...typeParameters.map((ast) => make(ast)) as any),
-    annotations
-  ))
-
-/**
-  @category constructors
-  @since 1.0.0
-*/
-export const declarePrimitive = <R, A>(
-  parse: (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseIssue, A>,
-  annotations?: AST.Annotations
-): Schema<R, A> => declare([], () => parse, () => parse, annotations)
+export const declare: {
+  <const P extends ReadonlyArray<Schema<any, any>>, R, I, A>(
+    typeParameters: P,
+    decode: (
+      ...typeParameters: P
+    ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, A>,
+    encode: (
+      ...typeParameters: P
+    ) => (input: A, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
+    annotations?: AST.Annotations
+  ): Schema<Schema.Context<P[number]> | R, I, A>
+  <R, A>(
+    parse: (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseIssue, A>,
+    annotations?: AST.Annotations
+  ): Schema<R, A>
+  <A>(
+    parse: (input: unknown, options: ParseOptions, ast: AST.AST) => input is A,
+    annotations?: AST.Annotations
+  ): Schema<never, A>
+} = function() {
+  if (Array.isArray(arguments[0])) {
+    const typeParameters = arguments[0]
+    const decode = arguments[1]
+    const encode = arguments[2]
+    const annotations = arguments[3]
+    return make(AST.createDeclaration(
+      typeParameters.map((tp) => tp.ast),
+      (...typeParameters) => decode(...typeParameters.map((ast) => make(ast)) as any),
+      (...typeParameters) => encode(...typeParameters.map((ast) => make(ast)) as any),
+      annotations
+    ))
+  }
+  const parse = arguments[0]
+  const annotations = arguments[1]
+  const f = () => (input: any, options: ParseOptions, ast: AST.Declaration) => {
+    const out = parse(input, options, ast)
+    if (Predicate.isBoolean(out)) {
+      return out ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input))
+    }
+    return out
+  }
+  return make(AST.createDeclaration([], f, f, annotations))
+} as any
 
 /**
  * @category type id
@@ -500,12 +518,9 @@ export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
   options?: FilterAnnotations<InstanceType<A>>
-): Schema<never, InstanceType<A>> => {
-  return declarePrimitive(
-    (u, _, ast) =>
-      u instanceof constructor ?
-        ParseResult.succeed(u)
-        : ParseResult.fail(ParseResult.type(ast, u)),
+): Schema<never, InstanceType<A>> =>
+  declare(
+    (u): u is InstanceType<A> => u instanceof constructor,
     {
       [AST.TypeAnnotationId]: InstanceOfTypeId,
       [InstanceOfTypeId]: { constructor },
@@ -515,7 +530,6 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
       ...toAnnotations(options)
     }
   )
-}
 
 const _undefined: Schema<never, undefined> = make(AST.undefinedKeyword)
 
@@ -3055,11 +3069,8 @@ export const BigintFromNumber: Schema<never, number, bigint> = transformOrFail(
  * @category Secret constructors
  * @since 1.0.0
  */
-export const SecretFromSelf: Schema<never, Secret.Secret> = declarePrimitive(
-  (u, _, ast) =>
-    Secret.isSecret(u) ?
-      ParseResult.succeed(u)
-      : ParseResult.fail(ParseResult.type(ast, u)),
+export const SecretFromSelf: Schema<never, Secret.Secret> = declare(
+  Secret.isSecret,
   {
     [AST.IdentifierAnnotationId]: "SecretFromSelf",
     [hooks.PrettyHookId]: (): Pretty.Pretty<Secret.Secret> => (secret) => String(secret),
@@ -3089,11 +3100,8 @@ export {
  * @category Duration constructors
  * @since 1.0.0
  */
-export const DurationFromSelf: Schema<never, Duration.Duration> = declarePrimitive(
-  (u, _, ast) =>
-    Duration.isDuration(u) ?
-      ParseResult.succeed(u)
-      : ParseResult.fail(ParseResult.type(ast, u)),
+export const DurationFromSelf: Schema<never, Duration.Duration> = declare(
+  Duration.isDuration,
   {
     [AST.IdentifierAnnotationId]: "DurationFromSelf",
     [hooks.PrettyHookId]: (): Pretty.Pretty<Duration.Duration> => (duration) => String(duration),
@@ -3318,11 +3326,8 @@ export const betweenDuration = <A extends Duration.Duration>(
  * @category Uint8Array constructors
  * @since 1.0.0
  */
-export const Uint8ArrayFromSelf: Schema<never, Uint8Array> = declarePrimitive(
-  (u, _, ast) =>
-    Predicate.isUint8Array(u) ?
-      ParseResult.succeed(u)
-      : ParseResult.fail(ParseResult.type(ast, u)),
+export const Uint8ArrayFromSelf: Schema<never, Uint8Array> = declare(
+  Predicate.isUint8Array,
   {
     [AST.IdentifierAnnotationId]: "Uint8ArrayFromSelf",
     [hooks.PrettyHookId]: (): Pretty.Pretty<Uint8Array> => (u8arr) =>
@@ -3565,11 +3570,8 @@ const datePretty = (): Pretty.Pretty<Date> => (date) => `new Date(${JSON.stringi
  * @category Date constructors
  * @since 1.0.0
  */
-export const DateFromSelf: Schema<never, Date> = declarePrimitive(
-  (u, _, ast) =>
-    Predicate.isDate(u) ?
-      ParseResult.succeed(u)
-      : ParseResult.fail(ParseResult.type(ast, u)),
+export const DateFromSelf: Schema<never, Date> = declare(
+  Predicate.isDate,
   {
     [AST.IdentifierAnnotationId]: "DateFromSelf",
     [AST.DescriptionAnnotationId]: "a potentially invalid Date instance",
@@ -4043,11 +4045,8 @@ const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
  * @category BigDecimal constructors
  * @since 1.0.0
  */
-export const BigDecimalFromSelf: Schema<never, BigDecimal.BigDecimal> = declarePrimitive(
-  (u, _, ast) =>
-    BigDecimal.isBigDecimal(u) ?
-      ParseResult.succeed(u)
-      : ParseResult.fail(ParseResult.type(ast, u)),
+export const BigDecimalFromSelf: Schema<never, BigDecimal.BigDecimal> = declare(
+  BigDecimal.isBigDecimal,
   {
     [AST.IdentifierAnnotationId]: "BigDecimalFromSelf",
     [hooks.PrettyHookId]: bigDecimalPretty,
@@ -4760,10 +4759,7 @@ const makeClass = <R, I, A>(
       const toSchema = to(selfSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
-      const declaration: Schema<never, any, any> = declarePrimitive((input, _, ast) =>
-        input instanceof this ?
-          ParseResult.succeed(input)
-          : ParseResult.fail(ParseResult.type(ast, input)), {
+      const declaration: Schema<never, any, any> = declare((input): input is any => input instanceof this, {
         [AST.IdentifierAnnotationId]: this.name,
         [AST.TitleAnnotationId]: this.name,
         [AST.DescriptionAnnotationId]: `an instance of ${this.name}`,
@@ -4895,11 +4891,8 @@ const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
  * @category FiberId constructors
  * @since 1.0.0
  */
-export const FiberIdFromSelf: Schema<never, FiberId.FiberId, FiberId.FiberId> = declarePrimitive(
-  (input, _, ast) =>
-    FiberId.isFiberId(input) ?
-      ParseResult.succeed(input)
-      : ParseResult.fail(ParseResult.type(ast, input)),
+export const FiberIdFromSelf: Schema<never, FiberId.FiberId, FiberId.FiberId> = declare(
+  FiberId.isFiberId,
   {
     [AST.IdentifierAnnotationId]: "FiberIdFromSelf",
     [hooks.PrettyHookId]: () => fiberIdPretty,
