@@ -7,4 +7,4 @@ import * as internal from "./internal/tracer.js"
  * @category tags
  */
 
-export const TracerProvider: Tag<"Otel.TracerProvider", Otel.TracerProvider> = internal.TracerProvider
+export const TracerProvider: Tag<"Otel/TracerProvider", Otel.TracerProvider> = internal.TracerProvider

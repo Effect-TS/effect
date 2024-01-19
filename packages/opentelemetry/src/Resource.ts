@@ -10,7 +10,7 @@ import * as Layer from "effect/Layer"
  * @since 1.0.0
  * @category tag
  */
-export const Resource = Tag("Otel.Resource")<Resources.Resource>()
+export const Resource = Tag("Otel/Resource")<Resources.Resource>()
 
 /**
  * @since 1.0.0

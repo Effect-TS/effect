@@ -11,7 +11,7 @@ import * as internal from "./internal/metrics.js"
  * @since 1.0.0
  * @category producer
  */
-export const makeProducer: Effect.Effect<"Otel.Resource", never, MetricProducer> = internal.makeProducer
+export const makeProducer: Effect.Effect<"Otel/Resource", never, MetricProducer> = internal.makeProducer
 
 /**
  * @since 1.0.0
@@ -26,4 +26,4 @@ export const registerProducer: (
  * @since 1.0.0
  * @category layers
  */
-export const layer: (evaluate: LazyArg<MetricReader>) => Layer<"Otel.Resource", never, never> = internal.layer
+export const layer: (evaluate: LazyArg<MetricReader>) => Layer<"Otel/Resource", never, never> = internal.layer
