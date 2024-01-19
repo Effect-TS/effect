@@ -85,4 +85,4 @@ export class QuitException extends TaggedError("QuitException")<{}> {}
  * @since 1.0.0
  * @category tag
  */
-export const Terminal: Tag<Terminal, Terminal> = InternalTerminal.tag
+export const Terminal: Tag<"Platform/Terminal", Terminal> = InternalTerminal.tag

@@ -103,7 +103,7 @@ export const jsonSchema = <I, A>(schema: Schema.Schema<I, A>) => {
 export const file = (
   path: string,
   options?: FileSystem.StreamOptions & { readonly contentType?: string }
-): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Body.Stream> =>
+): Effect.Effect<"Platform/FileSystem", PlatformError.PlatformError, Body.Stream> =>
   Effect.flatMap(
     FileSystem.FileSystem,
     (fs) =>
@@ -120,7 +120,7 @@ export const fileInfo = (
   path: string,
   info: FileSystem.File.Info,
   options?: FileSystem.StreamOptions & { readonly contentType?: string }
-): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Body.Stream> =>
+): Effect.Effect<"Platform/FileSystem", never, Body.Stream> =>
   Effect.map(
     FileSystem.FileSystem,
     (fs) =>

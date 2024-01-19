@@ -9,7 +9,6 @@ import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/serverResponse.js"
 import type * as Body from "./Body.js"
 import type * as Headers from "./Headers.js"
-import type * as Platform from "./Platform.js"
 import type * as UrlParams from "./UrlParams.js"
 
 /**
@@ -143,8 +142,8 @@ export const stream: (body: Stream.Stream<never, unknown, Uint8Array>, options?:
  */
 export const file: (
   path: string,
-  options?: Options & FileSystem.StreamOptions
-) => Effect.Effect<Platform.Platform, PlatformError.PlatformError, ServerResponse> = internal.file
+  options?: (Options & FileSystem.StreamOptions) | undefined
+) => Effect.Effect<"Platform/HttpPlatform", PlatformError.PlatformError, ServerResponse> = internal.file
 
 /**
  * @since 1.0.0
@@ -152,8 +151,8 @@ export const file: (
  */
 export const fileWeb: (
   file: Body.Body.FileLike,
-  options?: Options.WithContent & FileSystem.StreamOptions
-) => Effect.Effect<Platform.Platform, never, ServerResponse> = internal.fileWeb
+  options?: (Options.WithContent & FileSystem.StreamOptions) | undefined
+) => Effect.Effect<"Platform/HttpPlatform", never, ServerResponse> = internal.fileWeb
 
 /**
  * @since 1.0.0

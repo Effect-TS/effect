@@ -59,14 +59,14 @@ export type PlatformWorkerTypeId = typeof PlatformWorkerTypeId
  */
 export interface PlatformWorker {
   readonly [PlatformWorkerTypeId]: PlatformWorkerTypeId
-  readonly spawn: <I, O>(worker: unknown) => Effect.Effect<Scope.Scope, WorkerError, BackingWorker<I, O>>
+  readonly spawn: <I, O>(worker: unknown) => Effect.Effect<"Scope", WorkerError, BackingWorker<I, O>>
 }
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const PlatformWorker: Context.Tag<PlatformWorker, PlatformWorker> = internal.PlatformWorker
+export const PlatformWorker: Context.Tag<"Platform/PlatformWorker", PlatformWorker> = internal.PlatformWorker
 
 /**
  * @since 1.0.0
@@ -185,26 +185,27 @@ export interface WorkerManager {
   readonly [WorkerManagerTypeId]: WorkerManagerTypeId
   readonly spawn: <I, E, O>(
     options: Worker.Options<I>
-  ) => Effect.Effect<Scope.Scope, WorkerError, Worker<I, E, O>>
+  ) => Effect.Effect<"Scope", WorkerError, Worker<I, E, O>>
 }
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const WorkerManager: Context.Tag<WorkerManager, WorkerManager> = internal.WorkerManager
+export const WorkerManager: Context.Tag<"Platform/WorkerManager", WorkerManager> = internal.WorkerManager
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makeManager: Effect.Effect<PlatformWorker, never, WorkerManager> = internal.makeManager
+export const makeManager: Effect.Effect<"Platform/PlatformWorker", never, WorkerManager> = internal.makeManager
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerManager: Layer.Layer<PlatformWorker, never, WorkerManager> = internal.layerManager
+export const layerManager: Layer.Layer<"Platform/PlatformWorker", never, "Platform/WorkerManager"> =
+  internal.layerManager
 
 /**
  * @since 1.0.0
@@ -212,7 +213,7 @@ export const layerManager: Layer.Layer<PlatformWorker, never, WorkerManager> = i
  */
 export const makePool: <W>() => <I, E, O>(
   options: WorkerPool.Options<I, W>
-) => Effect.Effect<WorkerManager | Scope.Scope, never, WorkerPool<I, E, O>> = internal.makePool
+) => Effect.Effect<"Platform/WorkerManager" | "Scope" | Scope.Scope, never, WorkerPool<I, E, O>> = internal.makePool
 
 /**
  * @since 1.0.0
@@ -220,10 +221,10 @@ export const makePool: <W>() => <I, E, O>(
  */
 export const makePoolLayer: <W>(
   managerLayer: Layer.Layer<never, never, WorkerManager>
-) => <Tag, I, E, O>(
+) => <Tag extends string, I, E, O>(
   tag: Context.Tag<Tag, WorkerPool<I, E, O>>,
   options: WorkerPool.Options<I, W>
-) => Layer.Layer<never, never, Tag> = internal.makePoolLayer
+) => Layer.Layer<"Platform/WorkerManager" | Scope.Scope, never, Tag> = internal.makePoolLayer
 
 /**
  * @since 1.0.0
@@ -322,7 +323,7 @@ export declare namespace SerializedWorkerPool {
  */
 export const makeSerialized: <I extends Schema.TaggedRequest.Any, W = unknown>(
   options: SerializedWorker.Options<I, W>
-) => Effect.Effect<WorkerManager | Scope.Scope, WorkerError, SerializedWorker<I>> = internal.makeSerialized
+) => Effect.Effect<"Scope" | "Platform/WorkerManager", WorkerError, SerializedWorker<I>> = internal.makeSerialized
 
 /**
  * @since 1.0.0
@@ -330,7 +331,7 @@ export const makeSerialized: <I extends Schema.TaggedRequest.Any, W = unknown>(
  */
 export const makePoolSerialized: <W>() => <I extends Schema.TaggedRequest.Any>(
   options: SerializedWorkerPool.Options<I, W>
-) => Effect.Effect<WorkerManager | Scope.Scope, never, SerializedWorkerPool<I>> = internal.makePoolSerialized
+) => Effect.Effect<"Platform/WorkerManager" | "Scope", never, SerializedWorkerPool<I>> = internal.makePoolSerialized
 
 /**
  * @since 1.0.0
@@ -338,7 +339,7 @@ export const makePoolSerialized: <W>() => <I extends Schema.TaggedRequest.Any>(
  */
 export const makePoolSerializedLayer: <W>(
   managerLayer: Layer.Layer<never, never, WorkerManager>
-) => <Tag, I extends Schema.TaggedRequest.Any>(
+) => <Tag extends string, I extends Schema.TaggedRequest.Any>(
   tag: Context.Tag<Tag, SerializedWorkerPool<I>>,
   options: SerializedWorkerPool.Options<I, W>
-) => Layer.Layer<never, never, Tag> = internal.makePoolSerializedLayer
+) => Layer.Layer<"Platform/WorkerManager", never, Tag> = internal.makePoolSerializedLayer

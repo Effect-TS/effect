@@ -345,12 +345,12 @@ export const fileBody = dual<
     options?: FileSystem.StreamOptions & { readonly contentType?: string }
   ) => (
     self: ClientRequest.ClientRequest
-  ) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest.ClientRequest>,
+  ) => Effect.Effect<"Platform/FileSystem", PlatformError.PlatformError, ClientRequest.ClientRequest>,
   (
     self: ClientRequest.ClientRequest,
     path: string,
     options?: FileSystem.StreamOptions & { readonly contentType?: string }
-  ) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest.ClientRequest>
+  ) => Effect.Effect<"Platform/FileSystem", PlatformError.PlatformError, ClientRequest.ClientRequest>
 >(
   (args) => isClientRequest(args[0]),
   (self, path, options) => Effect.map(internalBody.file(path, options), (body) => setBody(self, body))

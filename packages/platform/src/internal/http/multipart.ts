@@ -11,7 +11,6 @@ import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
-import type * as Scope from "effect/Scope"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 import * as Stream from "effect/Stream"
 import * as MP from "multipasta"
@@ -378,7 +377,11 @@ const defaultWriteFile = (path: string, file: Multipart.File) =>
 export const toPersisted = (
   stream: Stream.Stream<never, Multipart.MultipartError, Multipart.Part>,
   writeFile = defaultWriteFile
-): Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, Multipart.MultipartError, Multipart.Persisted> =>
+): Effect.Effect<
+  "Platform/FileSystem" | "Platform/Path" | "Scope",
+  Multipart.MultipartError,
+  Multipart.Persisted
+> =>
   pipe(
     Effect.Do,
     Effect.bind("fs", () => FileSystem.FileSystem),

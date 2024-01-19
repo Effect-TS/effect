@@ -7,7 +7,7 @@ export const GeneratorTypeId: Etag.GeneratorTypeId = Symbol.for(
 ) as Etag.GeneratorTypeId
 
 /** @internal */
-export const tag = Context.Tag<Etag.Generator>(GeneratorTypeId)
+export const tag = Context.Tag("Platform/HttpEtagGenerator")<Etag.Generator>()
 
 /** @internal */
 export const toString = (self: Etag.Etag): string => {

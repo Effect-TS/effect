@@ -19,7 +19,7 @@ export const ExitCode = Brand.nominal<_CommandExecutor.ExitCode>()
 export const ProcessId = Brand.nominal<_CommandExecutor.Process.Id>()
 
 /** @internal */
-export const CommandExecutor = Tag<_CommandExecutor.CommandExecutor>("@effect/platform/CommandExecutor")
+export const CommandExecutor = Tag("Platform/CommandExecutor")<_CommandExecutor.CommandExecutor>()
 
 /** @internal */
 export const makeExecutor = (start: _CommandExecutor.CommandExecutor["start"]): _CommandExecutor.CommandExecutor => {

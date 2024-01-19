@@ -50,7 +50,7 @@ export declare namespace Path {
  * @since 1.0.0
  * @category tag
  */
-export const Path: Tag<Path, Path> = internal.Path
+export const Path: Tag<"Platform/Path", Path> = internal.Path
 
 /**
  * An implementation of the Path interface that can be used in all environments
@@ -61,4 +61,4 @@ export const Path: Tag<Path, Path> = internal.Path
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer<never, never, Path> = internal.layer
+export const layer: Layer<never, never, "Platform/Path"> = internal.layer

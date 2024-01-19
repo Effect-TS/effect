@@ -12,7 +12,7 @@ import type * as ServerResponse from "../../Http/ServerResponse.js"
 export const TypeId: Multiplex.TypeId = Symbol.for("@effect/platform/Http/Multiplex") as Multiplex.TypeId
 
 class MultiplexImpl<R, E>
-  extends Effectable.Class<R | ServerRequest.ServerRequest, E | Error.RouteNotFound, ServerResponse.ServerResponse>
+  extends Effectable.Class<R | "Platform/ServerRequest", E | Error.RouteNotFound, ServerResponse.ServerResponse>
   implements Multiplex.Multiplex<R, E>
 {
   readonly [TypeId]: Multiplex.TypeId

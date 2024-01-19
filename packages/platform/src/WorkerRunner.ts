@@ -7,7 +7,6 @@ import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Queue from "effect/Queue"
-import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import * as internal from "./internal/workerRunner.js"
 import type { WorkerError } from "./WorkerError.js"
@@ -53,14 +52,14 @@ export interface PlatformRunner {
   readonly [PlatformRunnerTypeId]: PlatformRunnerTypeId
   readonly start: <I, O>(
     shutdown: Effect.Effect<never, never, void>
-  ) => Effect.Effect<Scope.Scope, WorkerError, BackingRunner<I, O>>
+  ) => Effect.Effect<"Scope", WorkerError, BackingRunner<I, O>>
 }
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const PlatformRunner: Context.Tag<PlatformRunner, PlatformRunner> = internal.PlatformRunner
+export const PlatformRunner: Context.Tag<"Platform/PlatformRunner", PlatformRunner> = internal.PlatformRunner
 
 /**
  * @since 1.0.0
@@ -86,7 +85,7 @@ export declare namespace Runner {
 export const make: <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
   options?: Runner.Options<I, E, O> | undefined
-) => Effect.Effect<Scope.Scope | R | PlatformRunner, WorkerError, void> = internal.make
+) => Effect.Effect<"Platform/PlatformRunner" | R | "Scope", WorkerError, void> = internal.make
 
 /**
  * @since 1.0.0
@@ -95,7 +94,8 @@ export const make: <I, R, E, O>(
 export const layer: <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
   options?: Runner.Options<I, E, O> | undefined
-) => Layer.Layer<R | PlatformRunner, WorkerError, never> = internal.layer
+) => Layer.Layer<"Platform/PlatformRunner" | Exclude<R, "Scope"> | "Platform/FileSystem", WorkerError, never> =
+  internal.layer
 
 /**
  * @since 1.0.0
@@ -155,8 +155,11 @@ export const makeSerialized: <
 >(
   schema: Schema.Schema<I, A>,
   handlers: Handlers
-) => Effect.Effect<PlatformRunner | Scope.Scope | SerializedRunner.HandlersContext<Handlers>, WorkerError, void> =
-  internal.makeSerialized
+) => Effect.Effect<
+  "Platform/PlatformRunner" | "Scope" | SerializedRunner.HandlersContext<Handlers>,
+  WorkerError,
+  void
+> = internal.makeSerialized
 
 /**
  * @since 1.0.0
@@ -169,5 +172,5 @@ export const layerSerialized: <
 >(
   schema: Schema.Schema<I, A>,
   handlers: Handlers
-) => Layer.Layer<PlatformRunner | SerializedRunner.HandlersContext<Handlers>, WorkerError, never> =
+) => Layer.Layer<"Platform/PlatformRunner" | SerializedRunner.HandlersContext<Handlers>, WorkerError, never> =
   internal.layerSerialized

@@ -5,11 +5,8 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
-import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/serverRequest.js"
-import type * as Path from "../Path.js"
 import type * as Headers from "./Headers.js"
 import type * as IncomingMessage from "./IncomingMessage.js"
 import type { Method } from "./Method.js"
@@ -48,7 +45,7 @@ export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.Req
   readonly method: Method
 
   readonly multipart: Effect.Effect<
-    Scope.Scope | FileSystem.FileSystem | Path.Path,
+    "Scope" | "Platform/FileSystem" | "Platform/Path",
     Multipart.MultipartError,
     Multipart.Persisted
   >
@@ -67,14 +64,14 @@ export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.Req
  * @since 1.0.0
  * @category context
  */
-export const ServerRequest: Context.Tag<ServerRequest, ServerRequest> = internal.serverRequestTag
+export const ServerRequest: Context.Tag<"Platform/ServerRequest", ServerRequest> = internal.serverRequestTag
 
 /**
  * @since 1.0.0
  * @category accessors
  */
 export const persistedMultipart: Effect.Effect<
-  Scope.Scope | FileSystem.FileSystem | Path.Path | ServerRequest,
+  "Scope" | "Platform/FileSystem" | "Platform/Path" | "Platform/ServerRequest",
   Multipart.MultipartError,
   unknown
 > = internal.multipartPersisted
@@ -85,7 +82,7 @@ export const persistedMultipart: Effect.Effect<
  */
 export const schemaHeaders: <I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<I, A>
-) => Effect.Effect<ServerRequest, ParseResult.ParseError, A> = internal.schemaHeaders
+) => Effect.Effect<"Platform/ServerRequest", ParseResult.ParseError, A> = internal.schemaHeaders
 
 /**
  * @since 1.0.0
@@ -93,7 +90,7 @@ export const schemaHeaders: <I extends Readonly<Record<string, string>>, A>(
  */
 export const schemaBodyJson: <I, A>(
   schema: Schema.Schema<I, A>
-) => Effect.Effect<ServerRequest, Error.RequestError | ParseResult.ParseError, A> = internal.schemaBodyJson
+) => Effect.Effect<"Platform/ServerRequest", Error.RequestError | ParseResult.ParseError, A> = internal.schemaBodyJson
 
 /**
  * @since 1.0.0
@@ -102,7 +99,7 @@ export const schemaBodyJson: <I, A>(
 export const schemaBodyForm: <I extends Multipart.Persisted, A>(
   schema: Schema.Schema<I, A>
 ) => Effect.Effect<
-  ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
+  "Platform/ServerRequest" | "Scope" | "Platform/FileSystem" | "Platform/Path",
   Multipart.MultipartError | Error.RequestError | ParseResult.ParseError,
   A
 > = internal.schemaBodyForm
@@ -113,7 +110,8 @@ export const schemaBodyForm: <I extends Multipart.Persisted, A>(
  */
 export const schemaBodyUrlParams: <I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<I, A>
-) => Effect.Effect<ServerRequest, Error.RequestError | ParseResult.ParseError, A> = internal.schemaBodyUrlParams
+) => Effect.Effect<"Platform/ServerRequest", Error.RequestError | ParseResult.ParseError, A> =
+  internal.schemaBodyUrlParams
 
 /**
  * @since 1.0.0
@@ -122,7 +120,7 @@ export const schemaBodyUrlParams: <I extends Readonly<Record<string, string>>, A
 export const schemaBodyMultipart: <I extends Multipart.Persisted, A>(
   schema: Schema.Schema<I, A>
 ) => Effect.Effect<
-  ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
+  "Platform/ServerRequest" | "Scope" | "Platform/FileSystem" | "Platform/Path",
   Multipart.MultipartError | ParseResult.ParseError,
   A
 > = internal.schemaBodyMultipart
@@ -136,7 +134,7 @@ export const schemaBodyFormJson: <I, A>(
 ) => (
   field: string
 ) => Effect.Effect<
-  ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
+  "Platform/ServerRequest" | "Scope" | "Platform/FileSystem" | "Platform/Path",
   Error.RequestError | ParseResult.ParseError,
   A
 > = internal.schemaBodyFormJson

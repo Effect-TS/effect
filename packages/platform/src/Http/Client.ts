@@ -72,29 +72,24 @@ export declare namespace Client {
 
 /**
  * @since 1.0.0
- * @category models
+ * @category tags
  */
-export interface Fetch {
-  readonly _: unique symbol
-}
+export const Client: Context.Tag<"Platform/HttpClient", Client.Default> = internal.tag
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const Client: Context.Tag<Client.Default, Client.Default> = internal.tag
-
-/**
- * @since 1.0.0
- * @category tags
- */
-export const Fetch: Context.Tag<Fetch, typeof globalThis.fetch> = internal.Fetch
+export const Fetch: Context.Tag<
+  "Platform/HttpClient/Fetch",
+  (input: URL | RequestInfo, init?: RequestInit | undefined) => Promise<Response>
+> = internal.Fetch
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<never, never, Client.Default> = internal.layer
+export const layer: Layer.Layer<never, never, "Platform/HttpClient"> = internal.layer
 
 /**
  * @since 1.0.0

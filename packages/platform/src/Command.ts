@@ -6,10 +6,9 @@ import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
-import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
-import type { CommandExecutor, ExitCode, Process } from "./CommandExecutor.js"
+import type { ExitCode, Process } from "./CommandExecutor.js"
 import type { PlatformError } from "./Error.js"
 import * as internal from "./internal/command.js"
 
@@ -131,7 +130,8 @@ export const env: {
  * @since 1.0.0
  * @category execution
  */
-export const exitCode: (self: Command) => Effect<CommandExecutor, PlatformError, ExitCode> = internal.exitCode
+export const exitCode: (self: Command) => Effect<"Platform/CommandExecutor", PlatformError, ExitCode> =
+  internal.exitCode
 
 /**
  * Feed a string to standard input (default encoding of UTF-8).
@@ -166,7 +166,7 @@ export const flatten: (self: Command) => NonEmptyReadonlyArray<StandardCommand> 
 export const lines: (
   command: Command,
   encoding?: string
-) => Effect<CommandExecutor, PlatformError, ReadonlyArray<string>> = internal.lines
+) => Effect<"Platform/CommandExecutor", PlatformError, ReadonlyArray<string>> = internal.lines
 
 /**
  * Create a command with the specified process name and an optional list of
@@ -212,7 +212,8 @@ export const runInShell: {
  * @since 1.0.0
  * @category execution
  */
-export const start: (command: Command) => Effect<CommandExecutor | Scope, PlatformError, Process> = internal.start
+export const start: (command: Command) => Effect<"Platform/CommandExecutor" | "Scope", PlatformError, Process> =
+  internal.start
 
 /**
  * Start running the command and return the output as a `Stream`.
@@ -220,7 +221,8 @@ export const start: (command: Command) => Effect<CommandExecutor | Scope, Platfo
  * @since 1.0.0
  * @category execution
  */
-export const stream: (command: Command) => Stream<CommandExecutor, PlatformError, Uint8Array> = internal.stream
+export const stream: (command: Command) => Stream<"Platform/CommandExecutor", PlatformError, Uint8Array> =
+  internal.stream
 
 /**
  * Runs the command returning the output as an stream of lines with the
@@ -229,7 +231,8 @@ export const stream: (command: Command) => Stream<CommandExecutor, PlatformError
  * @since 1.0.0
  * @category execution
  */
-export const streamLines: (command: Command) => Stream<CommandExecutor, PlatformError, string> = internal.streamLines
+export const streamLines: (command: Command) => Stream<"Platform/CommandExecutor", PlatformError, string> =
+  internal.streamLines
 
 /**
  * Runs the command returning the entire output as a string with the
@@ -241,8 +244,8 @@ export const streamLines: (command: Command) => Stream<CommandExecutor, Platform
  * @category execution
  */
 export const string: {
-  (encoding?: string): (command: Command) => Effect<CommandExecutor, PlatformError, string>
-  (command: Command, encoding?: string): Effect<CommandExecutor, PlatformError, string>
+  (encoding?: string | undefined): (command: Command) => Effect<"Platform/CommandExecutor", PlatformError, string>
+  (command: Command, encoding?: string | undefined): Effect<"Platform/CommandExecutor", PlatformError, string>
 } = internal.string
 
 /**

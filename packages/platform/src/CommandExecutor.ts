@@ -4,7 +4,6 @@
 import type * as Brand from "effect/Brand"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
-import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
 import type { Command } from "./Command.js"
@@ -24,7 +23,7 @@ export interface CommandExecutor {
   /**
    * Start running the command and return a handle to the running process.
    */
-  readonly start: (command: Command) => Effect<Scope, PlatformError, Process>
+  readonly start: (command: Command) => Effect<"Scope", PlatformError, Process>
   /**
    * Runs the command returning the entire output as a string with the
    * specified encoding.
@@ -52,7 +51,7 @@ export interface CommandExecutor {
  * @since 1.0.0
  * @category tags
  */
-export const CommandExecutor: Tag<CommandExecutor, CommandExecutor> = internal.CommandExecutor
+export const CommandExecutor: Tag<"Platform/CommandExecutor", CommandExecutor> = internal.CommandExecutor
 
 /**
  * @since 1.0.0
@@ -187,6 +186,5 @@ export const ProcessId: Brand.Brand.Constructor<Process.Id> = internal.ProcessId
  * @since 1.0.0
  * @category constructors
  */
-export const makeExecutor: (
-  start: (command: Command) => Effect<Scope, PlatformError, Process>
-) => CommandExecutor = internal.makeExecutor
+export const makeExecutor: (start: (command: Command) => Effect<"Scope", PlatformError, Process>) => CommandExecutor =
+  internal.makeExecutor

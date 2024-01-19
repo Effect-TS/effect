@@ -5,7 +5,6 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
-import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as Command from "../Command.js"
 import type * as CommandExecutor from "../CommandExecutor.js"
@@ -39,7 +38,7 @@ export const env: {
 /** @internal */
 export const exitCode = (
   self: Command.Command
-): Effect.Effect<CommandExecutor.CommandExecutor, PlatformError, CommandExecutor.ExitCode> =>
+): Effect.Effect<"Platform/CommandExecutor", PlatformError, CommandExecutor.ExitCode> =>
   Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.exitCode(self))
 
 /** @internal */
@@ -91,7 +90,7 @@ export const runInShell = dual<
 export const lines = (
   command: Command.Command,
   encoding = "utf-8"
-): Effect.Effect<CommandExecutor.CommandExecutor, PlatformError, ReadonlyArray<string>> =>
+): Effect.Effect<"Platform/CommandExecutor", PlatformError, ReadonlyArray<string>> =>
   Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.lines(command, encoding))
 
 /** @internal */
@@ -192,27 +191,27 @@ export const stdout: {
 /** @internal */
 export const start = (
   command: Command.Command
-): Effect.Effect<CommandExecutor.CommandExecutor | Scope, PlatformError, CommandExecutor.Process> =>
+): Effect.Effect<"Platform/CommandExecutor" | "Scope", PlatformError, CommandExecutor.Process> =>
   Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.start(command))
 
 /** @internal */
 export const stream = (
   command: Command.Command
-): Stream.Stream<CommandExecutor.CommandExecutor, PlatformError, Uint8Array> =>
+): Stream.Stream<"Platform/CommandExecutor", PlatformError, Uint8Array> =>
   Stream.flatMap(commandExecutor.CommandExecutor, (process) => process.stream(command))
 
 /** @internal */
 export const streamLines = (
   command: Command.Command
-): Stream.Stream<CommandExecutor.CommandExecutor, PlatformError, string> =>
+): Stream.Stream<"Platform/CommandExecutor", PlatformError, string> =>
   Stream.flatMap(commandExecutor.CommandExecutor, (process) => process.streamLines(command))
 
 /** @internal */
 export const string = dual<
   (
     encoding?: string
-  ) => (command: Command.Command) => Effect.Effect<CommandExecutor.CommandExecutor, PlatformError, string>,
-  (command: Command.Command, encoding?: string) => Effect.Effect<CommandExecutor.CommandExecutor, PlatformError, string>
+  ) => (command: Command.Command) => Effect.Effect<"Platform/CommandExecutor", PlatformError, string>,
+  (command: Command.Command, encoding?: string) => Effect.Effect<"Platform/CommandExecutor", PlatformError, string>
 >(
   (args) => isCommand(args[0]),
   (command, encoding) =>

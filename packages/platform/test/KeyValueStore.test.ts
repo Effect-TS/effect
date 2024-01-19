@@ -6,8 +6,8 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { afterEach, describe, expect, it } from "vitest"
 
-export const testLayer = <E>(layer: Layer.Layer<never, E, KeyValueStore.KeyValueStore>) => {
-  const run = <E, A>(effect: Effect.Effect<KeyValueStore.KeyValueStore, E, A>) =>
+export const testLayer = <E>(layer: Layer.Layer<never, E, "Platform/KeyValueStore">) => {
+  const run = <E, A>(effect: Effect.Effect<"Platform/KeyValueStore", E, A>) =>
     Effect.runPromise(Effect.provide(effect, layer))
 
   afterEach(() =>
@@ -114,8 +114,8 @@ class User extends Schema.Class<User>()({
   name: Schema.string,
   age: Schema.number
 }) {}
-const UserStore = KeyValueStore.layerSchema(User)
-const runUserStore = <E, A>(effect: Effect.Effect<KeyValueStore.SchemaStore<User>, E, A>) =>
+const UserStore = KeyValueStore.layerSchema("UserStore", User)
+const runUserStore = <E, A>(effect: Effect.Effect<"UserStore", E, A>) =>
   Effect.runPromise(Effect.provide(effect, UserStore.layer.pipe(Layer.provide(KeyValueStore.layerMemory))))
 
 describe("KeyValueStore / SchemaStore", () => {

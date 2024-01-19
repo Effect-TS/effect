@@ -217,8 +217,8 @@ export const stream: (
  */
 export const file: (
   path: string,
-  options?: FileSystem.StreamOptions & { readonly contentType?: string }
-) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Stream> = internal.file
+  options?: (FileSystem.StreamOptions & { readonly contentType?: string | undefined }) | undefined
+) => Effect.Effect<"Platform/FileSystem", PlatformError.PlatformError, Stream> = internal.file
 
 /**
  * @since 1.0.0
@@ -227,8 +227,8 @@ export const file: (
 export const fileInfo: (
   path: string,
   info: FileSystem.File.Info,
-  options?: FileSystem.StreamOptions & { readonly contentType?: string }
-) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Stream> = internal.fileInfo
+  options?: (FileSystem.StreamOptions & { readonly contentType?: string | undefined }) | undefined
+) => Effect.Effect<"Platform/FileSystem", never, Stream> = internal.fileInfo
 
 /**
  * @since 1.0.0

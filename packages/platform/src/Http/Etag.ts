@@ -63,4 +63,4 @@ export interface Generator {
  * @since 1.0.0
  * @category tags
  */
-export const Generator: Context.Tag<Generator, Generator> = internal.tag
+export const Generator: Context.Tag<"Platform/HttpEtagGenerator", Generator> = internal.tag

@@ -25,15 +25,13 @@ export const PlatformRunnerTypeId: WorkerRunner.PlatformRunnerTypeId = Symbol.fo
 ) as WorkerRunner.PlatformRunnerTypeId
 
 /** @internal */
-export const PlatformRunner = Context.Tag<WorkerRunner.PlatformRunner>(
-  PlatformRunnerTypeId
-)
+export const PlatformRunner = Context.Tag("Platform/PlatformRunner")<WorkerRunner.PlatformRunner>()
 
 /** @internal */
 export const make = <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
   options?: WorkerRunner.Runner.Options<I, E, O>
-) =>
+): Effect.Effect<"Platform/PlatformRunner" | R | "Scope", WorkerError.WorkerError, void> =>
   Effect.gen(function*(_) {
     const scope = yield* _(Scope.fork(yield* _(Effect.scope), ExecutionStrategy.parallel))
     const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
@@ -158,8 +156,11 @@ export const make = <I, R, E, O>(
 export const layer = <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
   options?: WorkerRunner.Runner.Options<I, E, O>
-): Layer.Layer<WorkerRunner.PlatformRunner | R, WorkerError.WorkerError, never> =>
-  Layer.scopedDiscard(make(process, options))
+): Layer.Layer<
+  "Platform/FileSystem" | "Platform/PlatformRunner" | Exclude<R, "Scope">,
+  WorkerError.WorkerError,
+  never
+> => Layer.scopedDiscard(make(process, options))
 
 /** @internal */
 export const makeSerialized = <
@@ -170,8 +171,8 @@ export const makeSerialized = <
   schema: Schema.Schema<I, A>,
   handlers: Handlers
 ): Effect.Effect<
-  | WorkerRunner.PlatformRunner
-  | Scope.Scope
+  | "Platform/PlatformRunner"
+  | "Scope"
   | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError.WorkerError,
   void
@@ -226,7 +227,7 @@ export const layerSerialized = <
   schema: Schema.Schema<I, A>,
   handlers: Handlers
 ): Layer.Layer<
-  | WorkerRunner.PlatformRunner
+  | "Platform/PlatformRunner"
   | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError.WorkerError,
   never

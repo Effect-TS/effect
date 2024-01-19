@@ -5,7 +5,6 @@ import * as Brand from "effect/Brand"
 import type { Tag } from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type { Option } from "effect/Option"
-import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
 import type { PlatformError } from "./Error.js"
@@ -98,7 +97,7 @@ export interface FileSystem {
    */
   readonly makeTempDirectoryScoped: (
     options?: MakeTempDirectoryOptions
-  ) => Effect.Effect<Scope, PlatformError, string>
+  ) => Effect.Effect<"Scope", PlatformError, string>
   /**
    * Create a temporary file.
    * The directory creation is functionally equivalent to `makeTempDirectory`.
@@ -115,7 +114,7 @@ export interface FileSystem {
    */
   readonly makeTempFileScoped: (
     options?: MakeTempFileOptions
-  ) => Effect.Effect<Scope, PlatformError, string>
+  ) => Effect.Effect<"Scope", PlatformError, string>
   /**
    * Open a file at `path` with the specified `options`.
    *
@@ -124,7 +123,7 @@ export interface FileSystem {
   readonly open: (
     path: string,
     options?: OpenFileOptions
-  ) => Effect.Effect<Scope, PlatformError, File>
+  ) => Effect.Effect<"Scope", PlatformError, File>
   /**
    * List the contents of a directory.
    *
@@ -425,7 +424,7 @@ export interface WriteFileStringOptions {
  * @since 1.0.0
  * @category tag
  */
-export const FileSystem: Tag<FileSystem, FileSystem> = internal.tag
+export const FileSystem: Tag<"Platform/FileSystem", FileSystem> = internal.tag
 
 /**
  * @since 1.0.0

@@ -7,7 +7,6 @@ import type * as Error from "../Error.js"
 import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/platform.js"
 import type * as Body from "./Body.js"
-import type * as Etag from "./Etag.js"
 import type * as Headers from "./Headers.js"
 import type * as ServerResponse from "./ServerResponse.js"
 
@@ -27,7 +26,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category tags
  */
-export const Platform: Context.Tag<Platform, Platform> = internal.tag
+export const Platform: Context.Tag<"Platform/HttpPlatform", Platform> = internal.tag
 
 /**
  * @since 1.0.0
@@ -68,4 +67,4 @@ export const make: (
       options?: FileSystem.StreamOptions | undefined
     ) => ServerResponse.ServerResponse
   }
-) => Effect.Effect<FileSystem.FileSystem | Etag.Generator, never, Platform> = internal.make
+) => Effect.Effect<"Platform/FileSystem" | "Platform/HttpEtagGenerator", never, Platform> = internal.make

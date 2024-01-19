@@ -9,12 +9,10 @@ import type * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type * as Option from "effect/Option"
-import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type * as Multipasta from "multipasta"
 import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/multipart.js"
-import type * as Path from "../Path.js"
 
 /**
  * @since 1.0.0
@@ -238,5 +236,5 @@ export const makeConfig: (headers: Record<string, string>) => Effect.Effect<neve
  */
 export const toPersisted: (
   stream: Stream.Stream<never, MultipartError, Part>,
-  writeFile?: (path: string, file: File) => Effect.Effect<FileSystem.FileSystem, MultipartError, void>
-) => Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, MultipartError, Persisted> = internal.toPersisted
+  writeFile?: (path: string, file: File) => Effect.Effect<"Platform/FileSystem", MultipartError, void>
+) => Effect.Effect<"Platform/FileSystem" | "Platform/Path" | "Scope", MultipartError, Persisted> = internal.toPersisted

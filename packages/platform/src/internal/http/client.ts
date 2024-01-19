@@ -26,7 +26,7 @@ export const TypeId: Client.TypeId = Symbol.for(
 ) as Client.TypeId
 
 /** @internal */
-export const tag = Context.Tag<Client.Client.Default>(TypeId)
+export const tag = Context.Tag("Platform/HttpClient")<Client.Client.Default>()
 
 const clientProto = {
   [TypeId]: TypeId,
@@ -76,9 +76,7 @@ export const makeDefault = (
 ): Client.Client.Default => make(Effect.flatMap(f), addB3Headers)
 
 /** @internal */
-export const Fetch = Context.Tag<Client.Fetch, typeof globalThis.fetch>(
-  Symbol.for("@effect/platform/Http/Client/Fetch")
-)
+export const Fetch = Context.Tag("Platform/HttpClient/Fetch")<typeof globalThis.fetch>()
 
 /** @internal */
 export const fetch = (options?: RequestInit): Client.Client.Default =>

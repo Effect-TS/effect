@@ -8,9 +8,7 @@ import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type * as PlatformError from "./Error.js"
-import type * as FileSystem from "./FileSystem.js"
 import * as internal from "./internal/keyValueStore.js"
-import type * as Path from "./Path.js"
 
 /**
  * @since 1.0.0
@@ -93,7 +91,7 @@ export declare namespace KeyValueStore {
  * @since 1.0.0
  * @category tags
  */
-export const KeyValueStore: Context.Tag<KeyValueStore, KeyValueStore> = internal.keyValueStoreTag
+export const KeyValueStore: Context.Tag<"Platform/KeyValueStore", KeyValueStore> = internal.keyValueStoreTag
 
 /**
  * @since 1.0.0
@@ -116,7 +114,7 @@ export const prefix: {
  * @since 1.0.0
  * @category layers
  */
-export const layerMemory: Layer.Layer<never, never, KeyValueStore> = internal.layerMemory
+export const layerMemory: Layer.Layer<never, never, "Platform/KeyValueStore"> = internal.layerMemory
 
 /**
  * @since 1.0.0
@@ -124,7 +122,7 @@ export const layerMemory: Layer.Layer<never, never, KeyValueStore> = internal.la
  */
 export const layerFileSystem: (
   directory: string
-) => Layer.Layer<FileSystem.FileSystem | Path.Path, PlatformError.PlatformError, KeyValueStore> =
+) => Layer.Layer<"Platform/FileSystem" | "Platform/Path", PlatformError.PlatformError, "Platform/KeyValueStore"> =
   internal.layerFileSystem
 
 /**
@@ -198,10 +196,8 @@ export interface SchemaStore<A> {
  * @since 1.0.0
  * @category layers
  */
-export const layerSchema: <I, A>(
-  schema: Schema.Schema<I, A>,
-  tagIdentifier?: unknown
-) => {
-  readonly tag: Context.Tag<SchemaStore<A>, SchemaStore<A>>
-  readonly layer: Layer.Layer<KeyValueStore, never, SchemaStore<A>>
-} = internal.layerSchema
+export const layerSchema: <I, A, K extends string>(
+  tagIdentifier: K,
+  schema: Schema.Schema<I, A>
+) => { readonly tag: Context.Tag<K, SchemaStore<A>>; readonly layer: Layer.Layer<"Platform/KeyValueStore", never, K> } =
+  internal.layerSchema

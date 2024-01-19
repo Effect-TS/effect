@@ -32,7 +32,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Router<R, E> extends App.Default<Exclude<R, RouteContext>, E | Error.RouteNotFound> {
+export interface Router<R, E> extends App.Default<Exclude<R, "Platform/RouteContext">, E | Error.RouteNotFound> {
   readonly [TypeId]: TypeId
   readonly routes: Chunk.Chunk<Route<R, E>>
   readonly mounts: Chunk.Chunk<readonly [string, App.Default<R, E>]>
@@ -45,7 +45,7 @@ export declare namespace Router {
   /**
    * @since 1.0.0
    */
-  export type ExcludeProvided<A> = Exclude<A, RouteContext | ServerRequest.ServerRequest | Scope.Scope>
+  export type ExcludeProvided<A> = Exclude<A, "Platform/RouteContext" | "Platform/ServerRequest" | "Scope">
 }
 
 /**
@@ -86,7 +86,7 @@ export declare namespace Route {
    * @since 1.0.0
    */
   export type Handler<R, E> = Effect.Effect<
-    R | RouteContext | ServerRequest.ServerRequest,
+    R | "Platform/RouteContext" | "Platform/ServerRequest",
     E,
     ServerResponse.ServerResponse
   >
@@ -119,27 +119,21 @@ export interface RouteContext {
  * @since 1.0.0
  * @category route context
  */
-export const RouteContext: Context.Tag<RouteContext, RouteContext> = internal.RouteContext
+export const RouteContext: Context.Tag<"Platform/RouteContext", RouteContext> = internal.RouteContext
 
 /**
  * @since 1.0.0
  * @category route context
  */
-export const params: Effect.Effect<
-  RouteContext,
-  never,
-  Readonly<Record<string, string | undefined>>
-> = internal.params
+export const params: Effect.Effect<"Platform/RouteContext", never, Readonly<Record<string, string | undefined>>> =
+  internal.params
 
 /**
  * @since 1.0.0
  * @category route context
  */
-export const searchParams: Effect.Effect<
-  RouteContext,
-  never,
-  Readonly<Record<string, string>>
-> = internal.searchParams
+export const searchParams: Effect.Effect<"Platform/RouteContext", never, Readonly<Record<string, string>>> =
+  internal.searchParams
 
 /**
  * @since 1.0.0
@@ -147,7 +141,7 @@ export const searchParams: Effect.Effect<
  */
 export const schemaParams: <I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<I, A>
-) => Effect.Effect<RouteContext, ParseResult.ParseError, A> = internal.schemaParams
+) => Effect.Effect<"Platform/RouteContext", ParseResult.ParseError, A> = internal.schemaParams
 
 /**
  * @since 1.0.0
@@ -155,7 +149,7 @@ export const schemaParams: <I extends Readonly<Record<string, string>>, A>(
  */
 export const schemaPathParams: <I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<I, A>
-) => Effect.Effect<RouteContext, ParseResult.ParseError, A> = internal.schemaPathParams
+) => Effect.Effect<"Platform/RouteContext", ParseResult.ParseError, A> = internal.schemaPathParams
 
 /**
  * @since 1.0.0
@@ -163,7 +157,7 @@ export const schemaPathParams: <I extends Readonly<Record<string, string>>, A>(
  */
 export const schemaSearchParams: <I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<I, A>
-) => Effect.Effect<RouteContext, ParseResult.ParseError, A> = internal.schemaSearchParams
+) => Effect.Effect<"Platform/RouteContext", ParseResult.ParseError, A> = internal.schemaSearchParams
 
 /**
  * @since 1.0.0
@@ -188,7 +182,7 @@ export const makeRoute: <R, E>(
   path: PathInput,
   handler: Route.Handler<R, E>,
   prefix?: Option.Option<string>
-) => Route<Exclude<R, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E> = internal.makeRoute
+) => Route<Exclude<R, "Platform/RouteContext" | "Platform/ServerRequest" | "Scope">, E> = internal.makeRoute
 
 /**
  * @since 1.0.0
@@ -640,14 +634,17 @@ export const provideService: {
   ): <R, E>(
     self: Router<R, E>
   ) => Router<
-    Exclude<Exclude<R, Context.Tag.Identifier<T>>, RouteContext | ServerRequest.ServerRequest | Scope.Scope>,
+    Exclude<Exclude<R, Context.Tag.Identifier<T>>, "Platform/RouteContext" | "Platform/ServerRequest" | "Scope">,
     E
   >
   <R, E, T extends Context.Tag<any, any>>(
     self: Router<R, E>,
     tag: T,
     service: Context.Tag.Service<T>
-  ): Router<Exclude<Exclude<R, Context.Tag.Identifier<T>>, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E>
+  ): Router<
+    Exclude<Exclude<R, Context.Tag.Identifier<T>>, "Platform/RouteContext" | "Platform/ServerRequest" | "Scope">,
+    E
+  >
 } = internal.provideService
 
 /**

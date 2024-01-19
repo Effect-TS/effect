@@ -27,7 +27,7 @@ export const RouteContextTypeId: Router.RouteContextTypeId = Symbol.for(
 ) as Router.RouteContextTypeId
 
 /** @internal */
-export const RouteContext = Context.Tag<Router.RouteContext>("@effect/platform/Http/Router/RouteContext")
+export const RouteContext = Context.Tag("Platform/RouteContext")<Router.RouteContext>()
 
 /** @internal */
 export const params = Effect.map(RouteContext, (_) => _.params)
@@ -54,7 +54,7 @@ export const schemaSearchParams = <I extends Readonly<Record<string, string>>, A
 }
 
 class RouterImpl<R, E> extends Effectable.StructuralClass<
-  Exclude<R, Router.RouteContext>,
+  Exclude<R, "Platform/RouteContext">,
   E | Error.RouteNotFound,
   ServerResponse.ServerResponse
 > implements Router.Router<R, E> {
@@ -68,7 +68,7 @@ class RouterImpl<R, E> extends Effectable.StructuralClass<
     this.httpApp = toHttpApp(this) as any
   }
   private httpApp: Effect.Effect<
-    Exclude<R, Router.RouteContext>,
+    Exclude<R, "Platform/RouteContext">,
     E | Error.RouteNotFound,
     ServerResponse.ServerResponse
   >

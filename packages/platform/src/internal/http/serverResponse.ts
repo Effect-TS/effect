@@ -138,7 +138,7 @@ export const schemaJson = <I, A>(
 export const file = (
   path: string,
   options?: ServerResponse.Options & FileSystem.StreamOptions
-): Effect.Effect<Platform.Platform, PlatformError.PlatformError, ServerResponse.ServerResponse> =>
+): Effect.Effect<"Platform/HttpPlatform", PlatformError.PlatformError, ServerResponse.ServerResponse> =>
   Effect.flatMap(
     Platform.Platform,
     (platform) => platform.fileResponse(path, options)
@@ -148,7 +148,7 @@ export const file = (
 export const fileWeb = (
   file: Body.Body.FileLike,
   options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
-): Effect.Effect<Platform.Platform, never, ServerResponse.ServerResponse> =>
+): Effect.Effect<"Platform/HttpPlatform", never, ServerResponse.ServerResponse> =>
   Effect.flatMap(
     Platform.Platform,
     (platform) => platform.fileWebResponse(file, options)

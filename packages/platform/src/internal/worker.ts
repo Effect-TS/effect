@@ -16,7 +16,6 @@ import * as Pool from "effect/Pool"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
@@ -39,9 +38,7 @@ export const PlatformWorkerTypeId: Worker.PlatformWorkerTypeId = Symbol.for(
 ) as Worker.PlatformWorkerTypeId
 
 /** @internal */
-export const PlatformWorker = Context.Tag<Worker.PlatformWorker>(
-  PlatformWorkerTypeId
-)
+export const PlatformWorker = Context.Tag("Platform/PlatformWorker")<Worker.PlatformWorker>()
 
 /** @internal */
 export const WorkerManagerTypeId: Worker.WorkerManagerTypeId = Symbol.for(
@@ -49,9 +46,7 @@ export const WorkerManagerTypeId: Worker.WorkerManagerTypeId = Symbol.for(
 ) as Worker.WorkerManagerTypeId
 
 /** @internal */
-export const WorkerManager = Context.Tag<Worker.WorkerManager>(
-  WorkerManagerTypeId
-)
+export const WorkerManager = Context.Tag("Platform/WorkerManager")<Worker.WorkerManager>()
 
 /** @internal */
 export const makeManager = Effect.gen(function*(_) {
@@ -327,11 +322,12 @@ export const makePool = <W>() =>
   })
 
 /** @internal */
-export const makePoolLayer = <W>(managerLayer: Layer.Layer<never, never, Worker.WorkerManager>) =>
-<Tag, I, E, O>(
-  tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
-  options: Worker.WorkerPool.Options<I, W>
-) => Layer.scoped(tag, makePool<W>()(options)).pipe(Layer.provide(managerLayer))
+export const makePoolLayer =
+  <W>(managerLayer: Layer.Layer<never, never, Worker.WorkerManager>) =>
+  <Tag extends string, I, E, O>(
+    tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
+    options: Worker.WorkerPool.Options<I, W>
+  ) => Layer.scoped(tag, makePool<W>()(options)).pipe(Layer.provide(managerLayer))
 
 /** @internal */
 export const makeSerialized = <
@@ -339,7 +335,7 @@ export const makeSerialized = <
   W = unknown
 >(
   options: Worker.SerializedWorker.Options<I, W>
-): Effect.Effect<Worker.WorkerManager | Scope.Scope, WorkerError, Worker.SerializedWorker<I>> =>
+): Effect.Effect<"Platform/WorkerManager" | "Scope", WorkerError, Worker.SerializedWorker<I>> =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
     const backing = yield* _(
@@ -381,7 +377,7 @@ export const makeSerialized = <
 export const makePoolSerialized = <W>() =>
 <I extends Schema.TaggedRequest.Any>(
   options: Worker.SerializedWorkerPool.Options<I, W>
-) =>
+): Effect.Effect<"Platform/WorkerManager" | "Scope", never, Worker.SerializedWorkerPool<I>> =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
     const workers = new Set<Worker.SerializedWorker<I>>()
@@ -432,7 +428,7 @@ export const makePoolSerialized = <W>() =>
 /** @internal */
 export const makePoolSerializedLayer =
   <W>(managerLayer: Layer.Layer<never, never, Worker.WorkerManager>) =>
-  <Tag, I extends Schema.TaggedRequest.Any>(
+  <Tag extends string, I extends Schema.TaggedRequest.Any>(
     tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
     options: Worker.SerializedWorkerPool.Options<I, W>
   ) => Layer.scoped(tag, makePoolSerialized<W>()(options)).pipe(Layer.provide(managerLayer))

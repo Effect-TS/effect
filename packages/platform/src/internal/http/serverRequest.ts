@@ -3,9 +3,7 @@ import type * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as FileSystem from "../../FileSystem.js"
 import * as Headers from "../../Http/Headers.js"
 import * as IncomingMessage from "../../Http/IncomingMessage.js"
 import type { Method } from "../../Http/Method.js"
@@ -13,13 +11,12 @@ import * as Multipart from "../../Http/Multipart.js"
 import * as Error from "../../Http/ServerError.js"
 import type * as ServerRequest from "../../Http/ServerRequest.js"
 import * as UrlParams from "../../Http/UrlParams.js"
-import type * as Path from "../../Path.js"
 
 /** @internal */
 export const TypeId: ServerRequest.TypeId = Symbol.for("@effect/platform/Http/ServerRequest") as ServerRequest.TypeId
 
 /** @internal */
-export const serverRequestTag = Context.Tag<ServerRequest.ServerRequest>(TypeId)
+export const serverRequestTag = Context.Tag("Platform/ServerRequest")<ServerRequest.ServerRequest>()
 
 /** @internal */
 export const multipartPersisted = Effect.flatMap(serverRequestTag, (request) => request.multipart)
@@ -46,7 +43,7 @@ export const schemaBodyForm = <I extends Multipart.Persisted, A>(
   const parseMultipart = Multipart.schemaPersisted(schema)
   const parseUrlParams = IncomingMessage.schemaBodyUrlParams(schema as Schema.Schema<any, A>)
   return Effect.flatMap(serverRequestTag, (request): Effect.Effect<
-    ServerRequest.ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
+    "Platform/ServerRequest" | "Scope" | "Platform/FileSystem" | "Platform/Path",
     Multipart.MultipartError | ParseResult.ParseError | Error.RequestError,
     A
   > => {
@@ -81,7 +78,7 @@ export const schemaBodyFormJson = <I, A>(schema: Schema.Schema<I, A>) => {
       (
         request
       ): Effect.Effect<
-        FileSystem.FileSystem | Path.Path | Scope.Scope | ServerRequest.ServerRequest,
+        "Platform/FileSystem" | "Platform/Path" | "Scope" | "Platform/ServerRequest",
         ParseResult.ParseError | Error.RequestError,
         A
       > => {
@@ -206,13 +203,13 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
 
   private multipartEffect:
     | Effect.Effect<
-      Scope.Scope | FileSystem.FileSystem | Path.Path,
+      "Scope" | "Platform/FileSystem" | "Platform/Path",
       Multipart.MultipartError,
       Multipart.Persisted
     >
     | undefined
   get multipart(): Effect.Effect<
-    Scope.Scope | FileSystem.FileSystem | Path.Path,
+    "Scope" | "Platform/FileSystem" | "Platform/Path",
     Multipart.MultipartError,
     Multipart.Persisted
   > {

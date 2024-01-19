@@ -349,13 +349,13 @@ export const streamBody: {
 export const fileBody: {
   (
     path: string,
-    options?: FileSystem.StreamOptions & { readonly contentType?: string }
-  ): (self: ClientRequest) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest>
+    options?: (FileSystem.StreamOptions & { readonly contentType?: string | undefined }) | undefined
+  ): (self: ClientRequest) => Effect.Effect<"Platform/FileSystem", PlatformError.PlatformError, ClientRequest>
   (
     self: ClientRequest,
     path: string,
-    options?: FileSystem.StreamOptions & { readonly contentType?: string }
-  ): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest>
+    options?: (FileSystem.StreamOptions & { readonly contentType?: string | undefined }) | undefined
+  ): Effect.Effect<"Platform/FileSystem", PlatformError.PlatformError, ClientRequest>
 } = internal.fileBody
 
 /**

@@ -7,7 +7,7 @@ import { BadArgument } from "../Error.js"
 import type { Path as _Path } from "../Path.js"
 
 /** @internal */
-export const Path = Tag<_Path>("@effect/platform/Path")
+export const Path = Tag("Platform/Path")<_Path>()
 
 /** @internal */
 export const layer = Layer.succeed(

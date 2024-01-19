@@ -20,7 +20,7 @@ import * as ServerResponse from "./ServerResponse.js"
  * @since 1.0.0
  * @category models
  */
-export interface HttpApp<R, E, A> extends Effect.Effect<R | ServerRequest.ServerRequest, E, A> {}
+export interface HttpApp<R, E, A> extends Effect.Effect<R | "Platform/ServerRequest", E, A> {}
 
 /**
  * @since 1.0.0
@@ -109,7 +109,7 @@ export const withPreResponseHandler = dual<
  */
 export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   const run = Runtime.runFork(runtime)
-  return <E>(self: Default<R | Scope.Scope, E>) => {
+  return <E>(self: Default<R | "Scope", E>) => {
     self = withDefaultMiddleware(self)
     return (request: Request): Promise<Response> =>
       new Promise((resolve, reject) => {
@@ -138,7 +138,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
  * @since 1.0.0
  * @category conversions
  */
-export const toWebHandler: <E>(self: Default<Scope.Scope, E>) => (request: Request) => Promise<Response> =
+export const toWebHandler: <E>(self: Default<"Scope", E>) => (request: Request) => Promise<Response> =
   toWebHandlerRuntime(Runtime.defaultRuntime)
 
 /**
@@ -146,7 +146,7 @@ export const toWebHandler: <E>(self: Default<Scope.Scope, E>) => (request: Reque
  * @category conversions
  */
 export const toWebHandlerLayer = <R, E, RE>(
-  self: Default<R | Scope.Scope, E>,
+  self: Default<R | "Scope", E>,
   layer: Layer.Layer<never, RE, R>
 ): {
   readonly close: () => Promise<void>

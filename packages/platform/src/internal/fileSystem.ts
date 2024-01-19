@@ -10,7 +10,7 @@ import * as Error from "../Error.js"
 import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
 
 /** @internal */
-export const tag = Tag<FileSystem>("@effect/platform/FileSystem")
+export const tag = Tag("Platform/FileSystem")<FileSystem>()
 
 /** @internal */
 export const Size = (bytes: SizeInput) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
