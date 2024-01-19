@@ -82,7 +82,7 @@ export const schemaFromSelf = <R, I, A>(
   return Schema.declare(
     [item],
     (item) => {
-      const parse = Schema.parse(item)
+      const parse = ParseResult.parse(item)
       return (u, options, ast) => {
         if (!isTransferable(u)) {
           return ParseResult.fail(ParseResult.type(ast, u))
@@ -95,7 +95,7 @@ export const schemaFromSelf = <R, I, A>(
       }
     },
     (item) => {
-      const encode = Schema.encode(item)
+      const encode = ParseResult.encode(item)
       return (a, _, ast) => {
         if (!isTransferable(a)) {
           return ParseResult.fail(ParseResult.type(ast, a))
