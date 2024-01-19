@@ -8,7 +8,6 @@ import type * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Internal from "./internal/serializable.js"
-import * as Parser from "./Parser.js"
 import type * as ParseResult from "./ParseResult.js"
 import * as Schema from "./Schema.js"
 
@@ -138,7 +137,7 @@ export declare namespace SerializableWithResult {
  */
 export const serialize = <R, I, A>(
   self: Serializable<R, I, A>
-): Effect.Effect<R, ParseResult.ParseError, I> => Parser.encode(self[symbol])(self as A)
+): Effect.Effect<R, ParseResult.ParseError, I> => Schema.encode(self[symbol])(self as A)
 
 /**
  * @since 1.0.0
@@ -157,7 +156,7 @@ export const deserialize: {
     self: Serializable<R, I, A>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, A>
->(2, (self, value) => Parser.parse(self[symbol])(value))
+>(2, (self, value) => Schema.parse(self[symbol])(value))
 
 /**
  * @since 1.0.0
@@ -179,7 +178,7 @@ export const serializeFailure: {
     self: WithResult<R, IE, E, IA, A>,
     value: E
   ) => Effect.Effect<R, ParseResult.ParseError, IE>
->(2, (self, value) => Parser.encode(self[symbolResult].Failure)(value))
+>(2, (self, value) => Schema.encode(self[symbolResult].Failure)(value))
 
 /**
  * @since 1.0.0
@@ -201,7 +200,7 @@ export const deserializeFailure: {
     self: WithResult<R, IE, E, IA, A>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, E>
->(2, (self, value) => Parser.parse(self[symbolResult].Failure)(value))
+>(2, (self, value) => Schema.parse(self[symbolResult].Failure)(value))
 
 /**
  * @since 1.0.0
@@ -223,7 +222,7 @@ export const serializeSuccess: {
     self: WithResult<R, IE, E, IA, A>,
     value: A
   ) => Effect.Effect<R, ParseResult.ParseError, IA>
->(2, (self, value) => Parser.encode(self[symbolResult].Success)(value))
+>(2, (self, value) => Schema.encode(self[symbolResult].Success)(value))
 
 /**
  * @since 1.0.0
@@ -247,7 +246,7 @@ export const deserializeSuccess: {
     self: WithResult<R, IE, E, IA, A>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, A>
->(2, (self, value) => Parser.parse(self[symbolResult].Success)(value))
+>(2, (self, value) => Schema.parse(self[symbolResult].Success)(value))
 
 /**
  * @since 1.0.0
@@ -271,7 +270,7 @@ export const serializeExit: {
     self: WithResult<R, IE, E, IA, A>,
     value: Exit.Exit<E, A>
   ) => Effect.Effect<R, ParseResult.ParseError, Schema.ExitFrom<IE, IA>>
->(2, (self, value) => Parser.encode(exitSchema(self))(value))
+>(2, (self, value) => Schema.encode(exitSchema(self))(value))
 
 /**
  * @since 1.0.0
@@ -293,4 +292,4 @@ export const deserializeExit: {
     self: WithResult<R, IE, E, IA, A>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, Exit.Exit<E, A>>
->(2, (self, value) => Parser.parse(exitSchema(self))(value))
+>(2, (self, value) => Schema.parse(exitSchema(self))(value))

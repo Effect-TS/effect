@@ -9,7 +9,7 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Duration from "effect/Duration"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import * as Equal from "effect/Equal"
@@ -40,7 +40,6 @@ import * as filters from "./internal/filters.js"
 import * as hooks from "./internal/hooks.js"
 import * as InternalSchema from "./internal/schema.js"
 import * as InternalSerializable from "./internal/serializable.js"
-import * as Parser from "./Parser.js"
 import * as ParseResult from "./ParseResult.js"
 import * as Pretty from "./Pretty.js"
 import type * as Serializable from "./Serializable.js"
@@ -125,22 +124,7 @@ export {
    * @category decoding
    * @since 1.0.0
    */
-  decode,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
-  decodeEither,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
   decodeOption,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
-  decodePromise,
   /**
    * @category decoding
    * @since 1.0.0
@@ -150,22 +134,7 @@ export {
    * @category encoding
    * @since 1.0.0
    */
-  encode,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
-  encodeEither,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
   encodeOption,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
-  encodePromise,
   /**
    * @category encoding
    * @since 1.0.0
@@ -180,22 +149,7 @@ export {
    * @category parsing
    * @since 1.0.0
    */
-  parse,
-  /**
-   * @category parsing
-   * @since 1.0.0
-   */
-  parseEither,
-  /**
-   * @category parsing
-   * @since 1.0.0
-   */
   parseOption,
-  /**
-   * @category parsing
-   * @since 1.0.0
-   */
-  parsePromise,
   /**
    * @category parsing
    * @since 1.0.0
@@ -205,29 +159,155 @@ export {
    * @category validation
    * @since 1.0.0
    */
-  validate,
-  /**
-   * @category validation
-   * @since 1.0.0
-   */
-  validateEither,
-  /**
-   * @category validation
-   * @since 1.0.0
-   */
   validateOption,
   /**
    * @category validation
    * @since 1.0.0
    */
-  validatePromise,
-  /**
-   * @category validation
-   * @since 1.0.0
-   */
   validateSync
-} from "./Parser.js"
+} from "./ParseResult.js"
 /* c8 ignore end */
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encode = <R, I, A>(
+  schema: Schema<R, I, A>,
+  options?: ParseOptions
+) => {
+  const encode = ParseResult.encode(schema, options)
+  return (a: A, overrideOptions?: ParseOptions): Effect.Effect<R, ParseResult.ParseError, I> =>
+    ParseResult.mapError(encode(a, overrideOptions), ParseResult.parseError)
+}
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodeEither = <I, A>(
+  schema: Schema<never, I, A>,
+  options?: ParseOptions
+) => {
+  const encodeEither = ParseResult.encodeEither(schema, options)
+  return (a: A, overrideOptions?: ParseOptions): Either.Either<ParseResult.ParseError, I> =>
+    Either.mapLeft(encodeEither(a, overrideOptions), ParseResult.parseError)
+}
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodePromise = <I, A>(
+  schema: Schema<never, I, A>,
+  options?: ParseOptions
+) => {
+  const parser = encode(schema, options)
+  return (a: A, overrideOptions?: ParseOptions): Promise<I> => Effect.runPromise(parser(a, overrideOptions))
+}
+
+/**
+ * @category parsing
+ * @since 1.0.0
+ */
+export const parse = <R, I, A>(
+  schema: Schema<R, I, A>,
+  options?: ParseOptions
+) => {
+  const parse = ParseResult.parse(schema, options)
+  return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<R, ParseResult.ParseError, A> =>
+    ParseResult.mapError(parse(u, overrideOptions), ParseResult.parseError)
+}
+
+/**
+ * @category parsing
+ * @since 1.0.0
+ */
+export const parseEither = <I, A>(
+  schema: Schema<never, I, A>,
+  options?: ParseOptions
+) => {
+  const parseEither = ParseResult.parseEither(schema, options)
+  return (u: unknown, overrideOptions?: ParseOptions): Either.Either<ParseResult.ParseError, A> =>
+    Either.mapLeft(parseEither(u, overrideOptions), ParseResult.parseError)
+}
+
+/**
+ * @category parsing
+ * @since 1.0.0
+ */
+export const parsePromise = <I, A>(
+  schema: Schema<never, I, A>,
+  options?: ParseOptions
+) => {
+  const parser = parse(schema, options)
+  return (u: unknown, overrideOptions?: ParseOptions): Promise<A> => Effect.runPromise(parser(u, overrideOptions))
+}
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const decode: <R, I, A>(
+  schema: Schema<R, I, A>,
+  options?: ParseOptions
+) => (i: I, overrideOptions?: ParseOptions) => Effect.Effect<R, ParseResult.ParseError, A> = parse
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const decodeEither: <I, A>(
+  schema: Schema<never, I, A>,
+  options?: ParseOptions
+) => (i: I, overrideOptions?: ParseOptions) => Either.Either<ParseResult.ParseError, A> = parseEither
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const decodePromise: <I, A>(
+  schema: Schema<never, I, A>,
+  options?: ParseOptions
+) => (i: I, overrideOptions?: ParseOptions) => Promise<A> = parsePromise
+
+/**
+ * @category validation
+ * @since 1.0.0
+ */
+export const validate = <R, I, A>(
+  schema: Schema<R, I, A>,
+  options?: ParseOptions
+) => {
+  const validate = ParseResult.validate(schema, options)
+  return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<R, ParseResult.ParseError, A> =>
+    ParseResult.mapError(validate(u, overrideOptions), ParseResult.parseError)
+}
+
+/**
+ * @category validation
+ * @since 1.0.0
+ */
+export const validateEither = <I, A>(
+  schema: Schema<never, I, A>,
+  options?: ParseOptions
+) => {
+  const validateEither = ParseResult.validateEither(schema, options)
+  return (u: unknown, overrideOptions?: ParseOptions): Either.Either<ParseResult.ParseError, A> =>
+    Either.mapLeft(validateEither(u, overrideOptions), ParseResult.parseError)
+}
+
+/**
+ * @category validation
+ * @since 1.0.0
+ */
+export const validatePromise = <I, A>(
+  schema: Schema<never, I, A>,
+  options?: ParseOptions
+) => {
+  const parser = validate(schema, options)
+  return (u: unknown, overrideOptions?: ParseOptions): Promise<A> => Effect.runPromise(parser(u, overrideOptions))
+}
 
 /**
  * Tests if a value is a `Schema`.
@@ -1076,10 +1156,10 @@ export const brand =
   <I>(self: Schema<never, I, A>): BrandSchema<never, I, A & Brand.Brand<B>> => {
     const ast = appendBrandAnnotation(self.ast, brand, options)
     const schema = make<never, I, A>(ast)
-    const validateSync = Parser.validateSync(schema)
-    const validateOption = Parser.validateOption(schema)
-    const validateEither = Parser.validateEither(schema)
-    const is = Parser.is(schema)
+    const validateSync = ParseResult.validateSync(schema)
+    const validateOption = ParseResult.validateOption(schema)
+    const _validateEither = validateEither(schema)
+    const is = ParseResult.is(schema)
     const out: any = Object.assign((input: unknown) => validateSync(input), {
       [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
       [TypeId]: InternalSchema.variance,
@@ -1087,7 +1167,7 @@ export const brand =
       option: (input: unknown) => validateOption(input),
       either: (input: unknown) =>
         Either.mapLeft(
-          validateEither(input),
+          _validateEither(input),
           (e) =>
             ArrayFormatter.formatError(e).map((err) => ({
               meta: err.path,
@@ -3592,7 +3672,7 @@ export const optionFromSelf = <R, I, A>(
   return declare(
     [value],
     (value) => {
-      const parse = Parser.rawparse(value)
+      const parse = ParseResult.parse(value)
       return (u, options, ast) =>
         Option.isOption(u) ?
           Option.isNone(u) ?
@@ -3601,7 +3681,7 @@ export const optionFromSelf = <R, I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (value) => {
-      const encode = Parser.rawencode(value)
+      const encode = ParseResult.encode(value)
       return (o, options, ast) =>
         Option.isOption(o) ?
           Option.isNone(o) ?
@@ -3743,8 +3823,8 @@ export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
   return declare(
     [left, right],
     (left, right) => {
-      const parseLeft = Parser.rawparse(left)
-      const parseRight = Parser.rawparse(right)
+      const parseLeft = ParseResult.parse(left)
+      const parseRight = ParseResult.parse(right)
       return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Either.Either<E, A>> =>
         Either.isEither(u) ?
           Either.match(u, {
@@ -3754,8 +3834,8 @@ export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (left, right) => {
-      const encodeLeft = Parser.rawencode(left)
-      const encodeRight = Parser.rawencode(right)
+      const encodeLeft = ParseResult.encode(left)
+      const encodeRight = ParseResult.encode(right)
       return (either, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Either.Either<IE, IA>> =>
         Either.isEither(either) ?
           Either.match(either, {
@@ -3857,14 +3937,14 @@ export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
   return declare(
     [key, value],
     (key, value) => {
-      const parse = Parser.rawparse(array(tuple(key, value)))
+      const parse = ParseResult.parse(array(tuple(key, value)))
       return (u, options, ast) =>
         isMap(u) ?
           ParseResult.map(parse(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (key, value) => {
-      const encode = Parser.rawencode(array(tuple(key, value)))
+      const encode = ParseResult.encode(array(tuple(key, value)))
       return (map, options, ast) =>
         isMap(map) ?
           ParseResult.map(encode(Array.from(map.entries()), options), (as): ReadonlyMap<IK, IV> => new Map(as))
@@ -3919,14 +3999,14 @@ export const readonlySetFromSelf = <R, I, A>(
   return declare(
     [item],
     (item) => {
-      const parse = Parser.rawparse(array(item))
+      const parse = ParseResult.parse(array(item))
       return (u, options, ast) =>
         isSet(u) ?
           ParseResult.map(parse(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (item) => {
-      const encode = Parser.rawencode(array(item))
+      const encode = ParseResult.encode(array(item))
       return (set, options, ast) =>
         isSet(set) ?
           ParseResult.map(encode(Array.from(set.values()), options), (as): ReadonlySet<I> => new Set(as))
@@ -4317,7 +4397,7 @@ export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.C
   return declare(
     [item],
     (item) => {
-      const parse = Parser.rawparse(array(item))
+      const parse = ParseResult.parse(array(item))
       return (u, options, ast) => {
         return Chunk.isChunk(u) ?
           Chunk.isEmpty(u) ?
@@ -4327,7 +4407,7 @@ export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.C
       }
     },
     (item) => {
-      const encode = Parser.rawencode(array(item))
+      const encode = ParseResult.encode(array(item))
       return (chunk, options, ast) =>
         Chunk.isChunk(chunk) ?
           Chunk.isEmpty(chunk) ?
@@ -4383,14 +4463,14 @@ export const dataFromSelf = <
   return declare(
     [item],
     (item) => {
-      const parse = Parser.rawparse(item)
+      const parse = ParseResult.parse(item)
       return (u, options, ast) =>
         Equal.isEqual(u) ?
           ParseResult.map(parse(u, options), toData)
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (item) => {
-      const encode = Parser.rawencode(item)
+      const encode = ParseResult.encode(item)
       return (data, options, ast) =>
         Equal.isEqual(data) ?
           ParseResult.map(encode(data, options), toData)
@@ -4653,7 +4733,7 @@ const makeClass = <R, I, A>(
   Base: any,
   additionalProps?: any
 ): any => {
-  const validator = Parser.validateSync(selfSchema as any)
+  const validator = ParseResult.validateSync(selfSchema as any)
 
   return class extends Base {
     constructor(props?: any, disableValidation = false) {
@@ -4990,14 +5070,14 @@ export const causeFromSelf = <R, I, A>(
   return declare(
     [error, defect],
     (error, defect) => {
-      const parse = Parser.rawparse(causeFrom(error, defect))
+      const parse = ParseResult.parse(causeFrom(error, defect))
       return (u, options, ast) =>
         Cause.isCause(u) ?
           ParseResult.map(parse(causeEncode(u), options), causeDecode)
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (error, defect) => {
-      const encode = Parser.rawencode(causeFrom(error, defect))
+      const encode = ParseResult.encode(causeFrom(error, defect))
       return (cause, options, ast) =>
         Cause.isCause(cause) ?
           ParseResult.map(encode(causeEncode(cause), options), causeDecode)
@@ -5159,8 +5239,8 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
   declare(
     [error, value, defect],
     (error, value, defect) => {
-      const parseCause = Parser.rawparse(causeFromSelf(error, defect))
-      const parseValue = Parser.rawparse(value)
+      const parseCause = ParseResult.parse(causeFromSelf(error, defect))
+      const parseValue = ParseResult.parse(value)
       return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Exit.Exit<E, A>> =>
         Exit.isExit(u) ?
           Exit.match(u, {
@@ -5170,8 +5250,8 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     (error, value, defect) => {
-      const encodeCause = Parser.rawencode(causeFromSelf(error, defect))
-      const encodeValue = Parser.rawencode(value)
+      const encodeCause = ParseResult.encode(causeFromSelf(error, defect))
+      const encodeValue = ParseResult.encode(value)
       return (exit, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Exit.Exit<IE, IA>> =>
         Exit.isExit(exit) ?
           Exit.match(exit, {

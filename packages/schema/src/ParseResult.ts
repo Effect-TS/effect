@@ -7,9 +7,10 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import type { LazyArg } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
-import * as Option from "effect/Option"
+import type * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as AST from "./AST.js"
+import * as InternalParser from "./internal/parser.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
@@ -107,12 +108,7 @@ export interface Transform {
  * @category constructors
  * @since 1.0.0
  */
-export const transform = (
-  ast: AST.Transform,
-  actual: unknown,
-  kind: "From" | "Transformation" | "To",
-  error: ParseIssue
-): Transform => ({ _tag: "Transform", ast, actual, kind, error })
+export const transform = InternalParser.transform
 
 /**
  * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
@@ -132,12 +128,7 @@ export interface Type {
  * @category constructors
  * @since 1.0.0
  */
-export const type = (ast: AST.AST, actual: unknown, message?: string): Type => ({
-  _tag: "Type",
-  ast,
-  actual,
-  message: Option.fromNullable(message)
-})
+export const type = InternalParser.type
 
 /**
  * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
@@ -154,10 +145,7 @@ export interface Forbidden {
  * @category constructors
  * @since 1.0.0
  */
-export const forbidden = (actual: unknown): Forbidden => ({
-  _tag: "Forbidden",
-  actual
-})
+export const forbidden = InternalParser.forbidden
 
 /**
  * Error that occurs when a declaration has an error.
@@ -176,11 +164,7 @@ export interface Declaration {
  * @category constructors
  * @since 1.0.0
  */
-export const declaration = (
-  ast: AST.Declaration,
-  actual: unknown,
-  error: ParseIssue
-): Declaration => ({ _tag: "Declaration", ast, actual, error })
+export const declaration = InternalParser.declaration
 
 /**
  * Error that occurs when a refinement has an error.
@@ -200,12 +184,7 @@ export interface Refinement {
  * @category constructors
  * @since 1.0.0
  */
-export const refinement = (
-  ast: AST.Refinement,
-  actual: unknown,
-  kind: "From" | "Predicate",
-  error: ParseIssue
-): Refinement => ({ _tag: "Refinement", ast, actual, kind, error })
+export const refinement = InternalParser.refinement
 
 /**
  * Error that occurs when an array or tuple has an error.
@@ -247,11 +226,7 @@ export interface TypeLiteral {
  * @category constructors
  * @since 1.0.0
  */
-export const typeLiteral = (
-  ast: AST.TypeLiteral,
-  actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
-): TypeLiteral => ({ _tag: "TypeLiteral", ast, actual, errors })
+export const typeLiteral = InternalParser.typeLiteral
 
 /**
  * The `Index` error indicates that there was an error at a specific index in an array or tuple.
@@ -269,10 +244,7 @@ export interface Index {
  * @category constructors
  * @since 1.0.0
  */
-export const index = (
-  index: number,
-  error: ParseIssue | Missing | Unexpected
-): Index => ({ _tag: "Index", index, error })
+export const index = InternalParser.index
 
 /**
  * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in a type literal or record is invalid.
@@ -290,10 +262,7 @@ export interface Key {
  * @category constructors
  * @since 1.0.0
  */
-export const key = (
-  key: PropertyKey,
-  error: ParseIssue | Missing | Unexpected
-): Key => ({ _tag: "Key", key, error })
+export const key = InternalParser.key
 
 /**
  * Error that occurs when a required key or index is missing.
@@ -309,7 +278,7 @@ export interface Missing {
  * @category constructors
  * @since 1.0.0
  */
-export const missing: Missing = { _tag: "Missing" }
+export const missing: Missing = InternalParser.missing
 
 /**
  * Error that occurs when an unexpected key or index is present.
@@ -326,9 +295,7 @@ export interface Unexpected {
  * @category constructors
  * @since 1.0.0
  */
-export const unexpected = (
-  ast: AST.AST
-): Unexpected => ({ _tag: "Unexpected", ast })
+export const unexpected = InternalParser.unexpected
 
 /**
  * Error that occurs when a union has an error.
@@ -347,11 +314,7 @@ export interface Union {
  * @category constructors
  * @since 1.0.0
  */
-export const union = (
-  ast: AST.Union,
-  actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
-): Union => ({ _tag: "Union", ast, actual, errors })
+export const union = InternalParser.union
 
 /**
  * Error that occurs when a member in a union has an error.
@@ -369,74 +332,31 @@ export interface Member {
  * @category constructors
  * @since 1.0.0
  */
-export const member = (
-  ast: AST.AST,
-  error: ParseIssue
-): Member => ({ _tag: "Member", ast, error })
+export const member = InternalParser.member
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const eitherOrUndefined = <R, E, A>(
-  self: Effect.Effect<R, E, A>
-): Either.Either<E, A> | undefined => {
-  const s: any = self
-  if (s["_tag"] === "Left" || s["_tag"] === "Right") {
-    return s
-  }
-}
+export const eitherOrUndefined = InternalParser.eitherOrUndefined
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const flatMap = <R1, E1, A, R2, E2, B>(
-  self: Effect.Effect<R1, E1, A>,
-  f: (self: A) => Effect.Effect<R2, E2, B>
-): Effect.Effect<R1 | R2, E1 | E2, B> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return s
-  }
-  if (s["_tag"] === "Right") {
-    return f(s.right)
-  }
-  return Effect.flatMap(self, f)
-}
+export const flatMap = InternalParser.flatMap
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const map = <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B): Effect.Effect<R, E, B> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return s
-  }
-  if (s["_tag"] === "Right") {
-    return Either.right(f(s.right))
-  }
-  return Effect.map(self, f)
-}
+export const map = InternalParser.map
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const mapError = <R, E1, A, E2>(
-  self: Effect.Effect<R, E1, A>,
-  f: (error: E1) => E2
-): Effect.Effect<R, E2, A> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return Either.left(f(s.left))
-  }
-  if (s["_tag"] === "Right") {
-    return s
-  }
-  return Effect.mapError(self, f)
-}
+export const mapError = InternalParser.mapError
 
 /**
  * @category optimisation
@@ -476,3 +396,118 @@ export const orElse = <R1, E1, A, R2, E2, B>(
   }
   return Effect.catchAll(self, f)
 }
+
+/* c8 ignore start */
+export {
+  /**
+   * @category validation
+   * @since 1.0.0
+   */
+  asserts,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decode,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodeEither,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodeOption,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodePromise,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodeSync,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encode,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeEither,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeOption,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodePromise,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeSync,
+  /**
+   * @category validation
+   * @since 1.0.0
+   */
+  is,
+  /**
+   * @category parsing
+   * @since 1.0.0
+   */
+  parse,
+  /**
+   * @category parsing
+   * @since 1.0.0
+   */
+  parseEither,
+  /**
+   * @category parsing
+   * @since 1.0.0
+   */
+  parseOption,
+  /**
+   * @category parsing
+   * @since 1.0.0
+   */
+  parsePromise,
+  /**
+   * @category parsing
+   * @since 1.0.0
+   */
+  parseSync,
+  /**
+   * @category validation
+   * @since 1.0.0
+   */
+  validate,
+  /**
+   * @category validation
+   * @since 1.0.0
+   */
+  validateEither,
+  /**
+   * @category validation
+   * @since 1.0.0
+   */
+  validateOption,
+  /**
+   * @category validation
+   * @since 1.0.0
+   */
+  validatePromise,
+  /**
+   * @category validation
+   * @since 1.0.0
+   */
+  validateSync
+} from "./Parser.js"
+/* c8 ignore end */

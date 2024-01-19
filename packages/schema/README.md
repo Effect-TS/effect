@@ -3066,7 +3066,7 @@ export const myReadonlySet = <R, I, A>(
     (item) => (input, parseOptions, ast) => {
       if (input instanceof Set) {
         // Parse the elements
-        const elements = S.parse(S.array(item))(
+        const elements = ParseResult.parse(S.array(item))(
           Array.from(input.values()),
           parseOptions
         );
@@ -3079,7 +3079,7 @@ export const myReadonlySet = <R, I, A>(
     (item) => (input, parseOptions, ast) => {
       if (input instanceof Set) {
         // Parse the elements
-        const elements = S.encode(S.array(item))(
+        const elements = ParseResult.encode(S.array(item))(
           Array.from(input.values()),
           parseOptions
         );
