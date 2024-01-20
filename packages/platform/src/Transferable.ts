@@ -96,11 +96,15 @@ export const schemaFromSelf = <R, I, A>(
     },
     (item) => {
       const unparse = ParseResult.unparse(item)
-      return (u, _, ast) => {
+      return (u, options, ast) => {
         if (!isTransferable(u)) {
           return ParseResult.fail(ParseResult.type(ast, u))
         }
-        return unparse(u)
+        const proto = {
+          __proto__: Object.getPrototypeOf(u),
+          [symbol]: u[symbol]
+        }
+        return ParseResult.map(unparse(u, options), (i): I => Object.setPrototypeOf(i, proto))
       }
     },
     { [AST.IdentifierAnnotationId]: "Transferable" }
