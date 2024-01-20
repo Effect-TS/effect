@@ -23,7 +23,26 @@ Schema.declare((u): u is string => typeof u === "string")
 Schema.declare(
   [aContext, bContext],
   (_a, _b) => () => ParseResult.succeed("a"),
-  (_a, _b) => () => ParseResult.succeed(1)
+  (_a, _b) => () => ParseResult.succeed(1),
+  {
+    arbitrary: (
+      _a, // $ExpectType Arbitrary<string>
+      _b // $ExpectType Arbitrary<number>
+    ) =>
+    (fc) => fc.string(),
+    pretty: (
+      _a, // $ExpectType Pretty<string>
+      _b // $ExpectType Pretty<number>
+    ) =>
+    (
+      s // $ExpectType string
+    ) => s,
+    equivalence: () =>
+    (
+      _a, // $ExpectType string
+      _b // $ExpectType string
+    ) => true
+  }
 )
 
 // $ExpectType Schema<"a" | "b", number, string>

@@ -476,22 +476,35 @@ const declareConstructor = <const P extends ReadonlyArray<Schema<any, any>>, R e
   unparse: (
     ...typeParameters: P
   ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
-  annotations?: AST.Annotations
+  annotations?: DeclareAnnotations<P, A>
 ): Schema<Schema.Context<P[number]>, I, A> =>
   make(AST.createDeclaration(
     typeParameters.map((tp) => tp.ast),
     (...typeParameters) => parse(...typeParameters.map((ast) => make(ast)) as any),
     (...typeParameters) => unparse(...typeParameters.map((ast) => make(ast)) as any),
-    annotations
+    toAnnotations(annotations)
   ))
 
 const declarePrimitive = <A>(
   is: (input: unknown) => input is A,
-  annotations?: AST.Annotations
+  annotations?: DeclareAnnotations<[], A>
 ): Schema<never, A> => {
   const parse = () => (input: unknown, _: ParseOptions, ast: AST.Declaration) =>
     is(input) ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input))
-  return make(AST.createDeclaration([], parse, parse, annotations))
+  return make(AST.createDeclaration([], parse, parse, toAnnotations(annotations)))
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface DeclareAnnotations<P extends ReadonlyArray<any>, A> extends DocAnnotations {
+  readonly message?: AST.MessageAnnotation<A>
+  readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; params: unknown }
+  readonly arbitrary?: (...arbitraries: { readonly [K in keyof P]: Arbitrary<P[K]> }) => Arbitrary<A>
+  readonly pretty?: (...pretties: { readonly [K in keyof P]: Pretty.Pretty<P[K]> }) => Pretty.Pretty<A>
+  readonly equivalence?: (
+    ...equivalences: { readonly [K in keyof P]: Equivalence.Equivalence<P[K]> }
+  ) => Equivalence.Equivalence<A>
 }
 
 /**
@@ -502,6 +515,10 @@ const declarePrimitive = <A>(
  * @since 1.0.0
  */
 export const declare: {
+  <A>(
+    is: (input: unknown) => input is A,
+    annotations?: DeclareAnnotations<readonly [], A>
+  ): Schema<never, A>
   <const P extends ReadonlyArray<Schema<any, any>>, R extends Schema.Context<P[number]>, I, A>(
     typeParameters: P,
     parse: (
@@ -510,12 +527,8 @@ export const declare: {
     unparse: (
       ...typeParameters: P
     ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
-    annotations?: AST.Annotations
+    annotations?: DeclareAnnotations<{ readonly [K in keyof P]: Schema.To<P[K]> }, A>
   ): Schema<Schema.Context<P[number]>, I, A>
-  <A>(
-    is: (input: unknown) => input is A,
-    annotations?: AST.Annotations
-  ): Schema<never, A>
 } = function() {
   if (Array.isArray(arguments[0])) {
     const typeParameters = arguments[0]
@@ -568,17 +581,16 @@ export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
  */
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
-  options?: FilterAnnotations<InstanceType<A>>
+  options?: DeclareAnnotations<[], InstanceType<A>>
 ): Schema<never, InstanceType<A>> =>
   declare(
     (u): u is InstanceType<A> => u instanceof constructor,
     {
-      [AST.TypeAnnotationId]: InstanceOfTypeId,
-      [InstanceOfTypeId]: { constructor },
-      [AST.TitleAnnotationId]: constructor.name,
-      [AST.DescriptionAnnotationId]: `an instance of ${constructor.name}`,
-      [hooks.PrettyHookId]: (): Pretty.Pretty<A> => () => `${constructor.name}(...args: any)`,
-      ...toAnnotations(options)
+      title: constructor.name,
+      description: `an instance of ${constructor.name}`,
+      pretty: (): Pretty.Pretty<InstanceType<A>> => String,
+      typeId: { id: InstanceOfTypeId, params: { constructor } },
+      ...options
     }
   )
 
@@ -1666,8 +1678,8 @@ export const attachPropertySignature: {
   }
 )
 
-const toAnnotations = <A>(
-  options?: FilterAnnotations<A>
+const toAnnotations = (
+  options?: Record<string | symbol, any>
 ): Mutable<AST.Annotations> => {
   if (!options) {
     return {}
@@ -1690,7 +1702,7 @@ const toAnnotations = <A>(
       out[AST.TypeAnnotationId] = typeId
     }
   }
-  const move = (from: keyof FilterAnnotations<A>, to: symbol) => {
+  const move = (from: keyof typeof options, to: symbol) => {
     if (options[from] !== undefined) {
       out[to] = options[from]
     }
@@ -1725,18 +1737,13 @@ export interface DocAnnotations extends AST.Annotations {
 /**
  * @since 1.0.0
  */
-export interface FilterAnnotations<A> extends DocAnnotations {
-  readonly message?: AST.MessageAnnotation<A>
-  readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; params: unknown }
+export interface FilterAnnotations<A> extends DeclareAnnotations<readonly [A], A> {
   /**
    * Attaches a JSON Schema annotation to this refinement.
    *
    * If the schema is composed of more than one refinement, the corresponding annotations will be merged.
    */
   readonly jsonSchema?: AST.JSONSchemaAnnotation
-  readonly arbitrary?: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
-  readonly pretty?: (...args: ReadonlyArray<Pretty.Pretty<any>>) => Pretty.Pretty<any>
-  readonly equivalence?: () => Equivalence.Equivalence<A>
 }
 
 /**
@@ -1987,7 +1994,7 @@ export const pattern = <A extends string>(
         typeId: { id: PatternTypeId, params: { regex } },
         description: `a string matching the pattern ${pattern}`,
         jsonSchema: { pattern },
-        arbitrary: (): Arbitrary<string> => (fc) => fc.stringMatching(regex),
+        arbitrary: () => (fc) => fc.stringMatching(regex) as any,
         ...options
       }
     )
@@ -3123,9 +3130,9 @@ export const BigintFromNumber: Schema<never, number, bigint> = transformOrFail(
 export const SecretFromSelf: Schema<never, Secret.Secret> = declare(
   Secret.isSecret,
   {
-    [AST.IdentifierAnnotationId]: "SecretFromSelf",
-    [hooks.PrettyHookId]: (): Pretty.Pretty<Secret.Secret> => (secret) => String(secret),
-    [hooks.ArbitraryHookId]: (): Arbitrary<Secret.Secret> => (fc) => fc.string().map((_) => Secret.fromString(_))
+    identifier: "SecretFromSelf",
+    pretty: (): Pretty.Pretty<Secret.Secret> => (secret) => String(secret),
+    arbitrary: (): Arbitrary<Secret.Secret> => (fc) => fc.string().map((_) => Secret.fromString(_))
   }
 )
 
@@ -3154,9 +3161,9 @@ export {
 export const DurationFromSelf: Schema<never, Duration.Duration> = declare(
   Duration.isDuration,
   {
-    [AST.IdentifierAnnotationId]: "DurationFromSelf",
-    [hooks.PrettyHookId]: (): Pretty.Pretty<Duration.Duration> => (duration) => String(duration),
-    [hooks.ArbitraryHookId]: (): Arbitrary<Duration.Duration> => (fc) =>
+    identifier: "DurationFromSelf",
+    pretty: (): Pretty.Pretty<Duration.Duration> => String,
+    arbitrary: (): Arbitrary<Duration.Duration> => (fc) =>
       fc.oneof(
         fc.constant(Duration.infinity),
         fc.bigUint().map((_) => Duration.nanos(_)),
@@ -3168,7 +3175,7 @@ export const DurationFromSelf: Schema<never, Duration.Duration> = declare(
         fc.maxSafeNat().map((_) => Duration.days(_)),
         fc.maxSafeNat().map((_) => Duration.weeks(_))
       ),
-    [hooks.EquivalenceHookId]: () => Duration.Equivalence
+    equivalence: (): Equivalence.Equivalence<Duration.Duration> => Duration.Equivalence
   }
 )
 
@@ -3380,11 +3387,10 @@ export const betweenDuration = <A extends Duration.Duration>(
 export const Uint8ArrayFromSelf: Schema<never, Uint8Array> = declare(
   Predicate.isUint8Array,
   {
-    [AST.IdentifierAnnotationId]: "Uint8ArrayFromSelf",
-    [hooks.PrettyHookId]: (): Pretty.Pretty<Uint8Array> => (u8arr) =>
-      `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
-    [hooks.ArbitraryHookId]: (): Arbitrary<Uint8Array> => (fc) => fc.uint8Array(),
-    [hooks.EquivalenceHookId]: () => ReadonlyArray.getEquivalence(Equivalence.strict())
+    identifier: "Uint8ArrayFromSelf",
+    pretty: (): Pretty.Pretty<Uint8Array> => (u8arr) => `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
+    arbitrary: (): Arbitrary<Uint8Array> => (fc) => fc.uint8Array(),
+    equivalence: (): Equivalence.Equivalence<Uint8Array> => ReadonlyArray.getEquivalence(Equivalence.strict()) as any
   }
 )
 
@@ -3611,10 +3617,6 @@ export const validDate = (options?: FilterAnnotations<Date>) => <R, I>(self: Sch
     })
   )
 
-const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date({ noInvalidDate: false })
-
-const datePretty = (): Pretty.Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`
-
 /**
  * Represents a schema for handling potentially **invalid** `Date` instances (e.g., `new Date("Invalid Date")` is not rejected).
  *
@@ -3624,11 +3626,11 @@ const datePretty = (): Pretty.Pretty<Date> => (date) => `new Date(${JSON.stringi
 export const DateFromSelf: Schema<never, Date> = declare(
   Predicate.isDate,
   {
-    [AST.IdentifierAnnotationId]: "DateFromSelf",
-    [AST.DescriptionAnnotationId]: "a potentially invalid Date instance",
-    [hooks.PrettyHookId]: datePretty,
-    [hooks.ArbitraryHookId]: dateArbitrary,
-    [hooks.EquivalenceHookId]: () => Equivalence.Date
+    identifier: "DateFromSelf",
+    description: "a potentially invalid Date instance",
+    pretty: (): Pretty.Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`,
+    arbitrary: (): Arbitrary<Date> => (fc) => fc.date({ noInvalidDate: false }),
+    equivalence: () => Equivalence.Date
   }
 )
 
@@ -3743,10 +3745,10 @@ export const optionFromSelf = <R, I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Option<${Format.format(value)}>`,
-      [hooks.PrettyHookId]: optionPretty,
-      [hooks.ArbitraryHookId]: optionArbitrary,
-      [hooks.EquivalenceHookId]: Option.getEquivalence
+      description: `Option<${Format.format(value)}>`,
+      pretty: optionPretty,
+      arbitrary: optionArbitrary,
+      equivalence: Option.getEquivalence
     }
   )
 }
@@ -3898,10 +3900,10 @@ export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
           ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Either<${Format.format(left)}, ${Format.format(right)}>`,
-      [hooks.PrettyHookId]: eitherPretty,
-      [hooks.ArbitraryHookId]: eitherArbitrary,
-      [hooks.EquivalenceHookId]: Either.getEquivalence
+      description: `Either<${Format.format(left)}, ${Format.format(right)}>`,
+      pretty: eitherPretty,
+      arbitrary: eitherArbitrary,
+      equivalence: Either.getEquivalence
     }
   )
 }
@@ -4004,10 +4006,10 @@ export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
-      [hooks.PrettyHookId]: readonlyMapPretty,
-      [hooks.ArbitraryHookId]: readonlyMapArbitrary,
-      [hooks.EquivalenceHookId]: readonlyMapEquivalence
+      description: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
+      pretty: readonlyMapPretty,
+      arbitrary: readonlyMapArbitrary,
+      equivalence: readonlyMapEquivalence
     }
   )
 }
@@ -4066,10 +4068,10 @@ export const readonlySetFromSelf = <R, I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `ReadonlySet<${Format.format(item)}>`,
-      [hooks.PrettyHookId]: readonlySetPretty,
-      [hooks.ArbitraryHookId]: readonlySetArbitrary,
-      [hooks.EquivalenceHookId]: readonlySetEquivalence
+      description: `ReadonlySet<${Format.format(item)}>`,
+      pretty: readonlySetPretty,
+      arbitrary: readonlySetArbitrary,
+      equivalence: readonlySetEquivalence
     }
   )
 }
@@ -4099,10 +4101,10 @@ const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
 export const BigDecimalFromSelf: Schema<never, BigDecimal.BigDecimal> = declare(
   BigDecimal.isBigDecimal,
   {
-    [AST.IdentifierAnnotationId]: "BigDecimalFromSelf",
-    [hooks.PrettyHookId]: bigDecimalPretty,
-    [hooks.ArbitraryHookId]: bigDecimalArbitrary,
-    [hooks.EquivalenceHookId]: () => BigDecimal.Equivalence
+    identifier: "BigDecimalFromSelf",
+    pretty: bigDecimalPretty,
+    arbitrary: bigDecimalArbitrary,
+    equivalence: () => BigDecimal.Equivalence
   }
 )
 
@@ -4466,10 +4468,10 @@ export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.C
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Chunk<${Format.format(item)}>`,
-      [hooks.PrettyHookId]: chunkPretty,
-      [hooks.ArbitraryHookId]: chunkArbitrary,
-      [hooks.EquivalenceHookId]: Chunk.getEquivalence
+      description: `Chunk<${Format.format(item)}>`,
+      pretty: chunkPretty,
+      arbitrary: chunkArbitrary,
+      equivalence: Chunk.getEquivalence
     }
   )
 }
@@ -4527,10 +4529,10 @@ export const dataFromSelf = <
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Data<${Format.format(item)}>`,
-      [hooks.PrettyHookId]: dataPretty,
-      [hooks.ArbitraryHookId]: dataArbitrary,
-      [hooks.EquivalenceHookId]: () => Equal.equals
+      description: `Data<${Format.format(item)}>`,
+      pretty: dataPretty,
+      arbitrary: dataArbitrary,
+      equivalence: () => Equal.equals
     }
   )
 }
@@ -4811,11 +4813,11 @@ const makeClass = <R, I, A>(
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const declaration: Schema<never, any, any> = declare((input): input is any => input instanceof this, {
-        [AST.IdentifierAnnotationId]: this.name,
-        [AST.TitleAnnotationId]: this.name,
-        [AST.DescriptionAnnotationId]: `an instance of ${this.name}`,
-        [hooks.PrettyHookId]: () => (self: any) => `${self.constructor.name}(${pretty(self)})`,
-        [hooks.ArbitraryHookId]: () => (fc: any) => arb(fc).map((props: any) => new this(props))
+        identifier: this.name,
+        title: this.name,
+        description: `an instance of ${this.name}`,
+        pretty: () => (self: any) => `${self.constructor.name}(${pretty(self)})`,
+        arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props))
       })
       const transformation = transform(
         selfSchema,
@@ -4945,10 +4947,10 @@ const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
 export const FiberIdFromSelf: Schema<never, FiberId.FiberId, FiberId.FiberId> = declare(
   FiberId.isFiberId,
   {
-    [AST.IdentifierAnnotationId]: "FiberIdFromSelf",
-    [hooks.PrettyHookId]: () => fiberIdPretty,
-    [hooks.ArbitraryHookId]: () => fiberIdArbitrary,
-    [hooks.EquivalenceHookId]: () => Equal.equals
+    identifier: "FiberIdFromSelf",
+    pretty: () => fiberIdPretty,
+    arbitrary: () => fiberIdArbitrary,
+    equivalence: () => Equal.equals
   }
 )
 
@@ -5128,10 +5130,10 @@ export const causeFromSelf = <R, I, A>(
           : ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Cause<${Format.format(error)}>`,
-      [hooks.PrettyHookId]: causePretty,
-      [hooks.ArbitraryHookId]: causeArbitrary,
-      [hooks.EquivalenceHookId]: () => Equal.equals
+      description: `Cause<${Format.format(error)}>`,
+      pretty: causePretty,
+      arbitrary: causeArbitrary,
+      equivalence: () => Equal.equals
     }
   )
 }
@@ -5305,10 +5307,10 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
           ParseResult.fail(ParseResult.type(ast, u))
     },
     {
-      [AST.DescriptionAnnotationId]: `Exit<${Format.format(error)}, ${Format.format(value)}>`,
-      [hooks.PrettyHookId]: exitPretty,
-      [hooks.ArbitraryHookId]: exitArbitrary,
-      [hooks.EquivalenceHookId]: () => Equal.equals
+      description: `Exit<${Format.format(error)}, ${Format.format(value)}>`,
+      pretty: exitPretty,
+      arbitrary: exitArbitrary,
+      equivalence: () => Equal.equals
     }
   )
 

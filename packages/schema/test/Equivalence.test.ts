@@ -106,7 +106,7 @@ describe("Equivalence", () => {
   describe("declaration", () => {
     it("should return Equivalence.strict() when an annotation exists", () => {
       const schema = S.declare(isUnknown, {
-        [A.ArbitraryHookId]: (): A.Arbitrary<string> => (fc) => fc.string()
+        arbitrary: (): A.Arbitrary<string> => (fc) => fc.string()
       })
       const equivalence = E.make(schema)
       expect(equivalence).toStrictEqual(Equivalence.strict())

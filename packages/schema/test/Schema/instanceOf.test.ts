@@ -17,6 +17,7 @@ describe("Schema > instanceOf", () => {
   it("annotations", () => {
     const schema = S.instanceOf(Set, { description: "my description" })
     expect(schema.ast.annotations[AST.DescriptionAnnotationId]).toEqual("my description")
+    expect(schema.ast.annotations[S.InstanceOfTypeId]).toEqual({ constructor: Set })
   })
 
   it("decoding", async () => {
@@ -34,10 +35,20 @@ describe("Schema > instanceOf", () => {
     )
   })
 
-  it("pretty", () => {
-    const schema = S.instanceOf(Set)
-    const pretty = Pretty.make(schema)
-    expect(pretty(new Set())).toEqual("Set(...args: any)")
+  describe("pretty", () => {
+    it("default", () => {
+      const schema = S.instanceOf(Set)
+      const pretty = Pretty.make(schema)
+      expect(pretty(new Set())).toEqual("[object Set]")
+    })
+
+    it("override", () => {
+      const schema = S.instanceOf(Set, {
+        pretty: () => (set) => `new Set(${JSON.stringify(Array.from(set.values()))})`
+      })
+      const pretty = Pretty.make(schema)
+      expect(pretty(new Set([1, 2, 3]))).toEqual("new Set([1,2,3])")
+    })
   })
 
   it("Custom message", async () => {

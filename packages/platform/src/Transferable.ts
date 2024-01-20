@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import { dual, identity } from "effect/Function"
@@ -107,6 +106,6 @@ export const schemaFromSelf = <R, I, A>(
         return ParseResult.map(unparse(u, options), (i): I => Object.setPrototypeOf(i, proto))
       }
     },
-    { [AST.IdentifierAnnotationId]: "Transferable" }
+    { identifier: "Transferable" }
   )
 }

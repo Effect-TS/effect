@@ -52,6 +52,8 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
     switch (ast._tag) {
       case "Declaration":
         return hook.value(...ast.typeParameters.map(go))
+      case "Refinement":
+        return hook.value(go(ast.from))
       default:
         return hook.value()
     }

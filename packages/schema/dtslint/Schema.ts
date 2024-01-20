@@ -652,6 +652,31 @@ pipe(UnionFilter, S.filter(S.is(S.struct({ b: S.string }))))
 // $ExpectType Schema<never, number, number & Brand<"MyNumber">>
 pipe(S.number, S.filter((n): n is number & Brand.Brand<"MyNumber"> => n > 0))
 
+// annotations
+pipe(
+  S.string,
+  S.filter(
+    (
+      _s // $ExpectType string
+    ) => true,
+    {
+      arbitrary: (
+        _from // $ExpectType Arbitrary<string>
+      ) =>
+      (fc) => fc.string(),
+      pretty: (
+        _from // $ExpectType Pretty<string>
+      ) =>
+      (s) => s,
+      equivalence: () =>
+      (
+        _a, // $ExpectType string
+        _b // $ExpectType string
+      ) => true
+    }
+  )
+)
+
 // ---------------------------------------------
 // compose
 // ---------------------------------------------
