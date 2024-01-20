@@ -153,7 +153,7 @@ export const expectEncodeFailure = async <I, A>(
   options?: ParseOptions
 ) => expectFailure(S.encode(schema)(a, options), message)
 
-export const printAST = <I, A>(schema: S.Schema<I, A>) => {
+export const printAST = <R, I, A>(schema: S.Schema<R, I, A>) => {
   console.log("%o", schema.ast)
 }
 

@@ -35,8 +35,8 @@ export const mergeParseOptions = (
 
 const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
-  return (i: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseIssue, any> =>
-    parser(i, mergeParseOptions(options, overrideOptions)) as any
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseIssue, any> =>
+    parser(u, mergeParseOptions(options, overrideOptions)) as any
 }
 
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -64,7 +64,7 @@ const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOpti
 export const parseSync = <I, A>(
   schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(schema.ast, true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(schema.ast, true, options)
 
 /**
  * @category parsing
@@ -73,7 +73,7 @@ export const parseSync = <I, A>(
 export const parseOption = <I, A>(
   schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(schema.ast, true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(schema.ast, true, options)
 
 /**
  * @category parsing
@@ -82,7 +82,7 @@ export const parseOption = <I, A>(
 export const parseEither = <I, A>(
   schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> =>
   getEither(schema.ast, true, options)
 
 /**
@@ -94,7 +94,7 @@ export const parsePromise = <I, A>(
   options?: AST.ParseOptions
 ) => {
   const parser = parse(schema, options)
-  return (i: unknown, overrideOptions?: AST.ParseOptions): Promise<A> => Effect.runPromise(parser(i, overrideOptions))
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<A> => Effect.runPromise(parser(u, overrideOptions))
 }
 
 /**
@@ -104,8 +104,58 @@ export const parsePromise = <I, A>(
 export const parse = <R, I, A>(
   schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> =>
   getEffect(schema.ast, true, options)
+
+/**
+ * @category unparsing
+ * @since 1.0.0
+ */
+export const unparseSync = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => I => getSync(schema.ast, false, options)
+
+/**
+ * @category unparsing
+ * @since 1.0.0
+ */
+export const unparseOption = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<I> => getOption(schema.ast, false, options)
+
+/**
+ * @category unparsing
+ * @since 1.0.0
+ */
+export const unparseEither = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, I> =>
+  getEither(schema.ast, false, options)
+
+/**
+ * @category unparsing
+ * @since 1.0.0
+ */
+export const unparsePromise = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+) => {
+  const parser = unparse(schema, options)
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<I> => Effect.runPromise(parser(u, overrideOptions))
+}
+
+/**
+ * @category unparsing
+ * @since 1.0.0
+ */
+export const unparse = <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> =>
+  getEffect(schema.ast, false, options)
 
 /**
  * @category decoding
@@ -233,51 +283,46 @@ export const asserts = <I, A>(schema: Schema.Schema<never, I, A>, options?: AST.
  * @category encoding
  * @since 1.0.0
  */
-export const encodeSync = <I, A>(
+export const encodeSync: <I, A>(
   schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (a: A, overrideOptions?: AST.ParseOptions) => I => getSync(schema.ast, false, options)
+) => (a: A, overrideOptions?: AST.ParseOptions) => I = unparseSync
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodeOption = <I, A>(
+export const encodeOption: <I, A>(
   schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (input: A, overrideOptions?: AST.ParseOptions) => Option.Option<I> => getOption(schema.ast, false, options)
+) => (input: A, overrideOptions?: AST.ParseOptions) => Option.Option<I> = unparseOption
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodeEither = <I, A>(
+export const encodeEither: <I, A>(
   schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (a: A, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, I> =>
-  getEither(schema.ast, false, options)
+) => (a: A, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, I> = unparseEither
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodePromise = <I, A>(
+export const encodePromise: <I, A>(
   schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-) => {
-  const parser = encode(schema, options)
-  return (a: A, overrideOptions?: AST.ParseOptions): Promise<I> => Effect.runPromise(parser(a, overrideOptions))
-}
+) => (a: A, overrideOptions?: AST.ParseOptions) => Promise<I> = unparsePromise
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encode = <R, I, A>(
+export const encode: <R, I, A>(
   schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
-): (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> =>
-  getEffect(schema.ast, false, options)
+) => (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> = unparse
 
 interface InternalOptions extends AST.ParseOptions {
   readonly isEffectAllowed?: boolean
@@ -371,7 +416,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         )
     }
     case "Declaration": {
-      const parse = isDecoding ? ast.parse(...ast.typeParameters) : ast.encode(...ast.typeParameters)
+      const parse = isDecoding ? ast.parse(...ast.typeParameters) : ast.unparse(...ast.typeParameters)
       return (i, options) =>
         handleForbidden(
           InternalParser.mapError(parse(i, options ?? defaultParseOption, ast), (e) =>

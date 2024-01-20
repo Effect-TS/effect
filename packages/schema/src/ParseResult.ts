@@ -423,66 +423,6 @@ export const orElse: {
 /* c8 ignore start */
 export {
   /**
-   * @category validation
-   * @since 1.0.0
-   */
-  asserts,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
-  decode,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
-  decodeEither,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
-  decodeOption,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
-  decodePromise,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
-  decodeSync,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
-  encode,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
-  encodeEither,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
-  encodeOption,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
-  encodePromise,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
-  encodeSync,
-  /**
-   * @category validation
-   * @since 1.0.0
-   */
-  is,
-  /**
    * @category parsing
    * @since 1.0.0
    */
@@ -508,29 +448,29 @@ export {
    */
   parseSync,
   /**
-   * @category validation
+   * @category unparsing
    * @since 1.0.0
    */
-  validate,
+  unparse,
   /**
-   * @category validation
+   * @category unparsing
    * @since 1.0.0
    */
-  validateEither,
+  unparseEither,
   /**
-   * @category validation
+   * @category unparsing
    * @since 1.0.0
    */
-  validateOption,
+  unparseOption,
   /**
-   * @category validation
+   * @category unparsing
    * @since 1.0.0
    */
-  validatePromise,
+  unparsePromise,
   /**
-   * @category validation
+   * @category unparsing
    * @since 1.0.0
    */
-  validateSync
+  unparseSync
 } from "./Parser.js"
 /* c8 ignore end */

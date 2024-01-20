@@ -267,7 +267,7 @@ export interface Declaration extends Annotated {
   readonly parse: (
     ...typeParameters: ReadonlyArray<AST>
   ) => (input: unknown, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
-  readonly encode: (
+  readonly unparse: (
     ...typeParameters: ReadonlyArray<AST>
   ) => (input: any, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
 }
@@ -279,9 +279,9 @@ export interface Declaration extends Annotated {
 export const createDeclaration = (
   typeParameters: ReadonlyArray<AST>,
   parse: Declaration["parse"],
-  encode: Declaration["encode"],
+  unparse: Declaration["unparse"],
   annotations: Annotations = {}
-): Declaration => ({ _tag: "Declaration", typeParameters, parse, encode, annotations })
+): Declaration => ({ _tag: "Declaration", typeParameters, parse, unparse, annotations })
 
 /**
  * @category guards
@@ -1577,7 +1577,7 @@ export const to = (ast: AST): AST => {
       return createDeclaration(
         ast.typeParameters.map(to),
         ast.parse,
-        ast.encode,
+        ast.unparse,
         ast.annotations
       )
     case "Tuple":
@@ -1621,7 +1621,7 @@ export const from = (ast: AST): AST => {
       return createDeclaration(
         ast.typeParameters.map(from),
         ast.parse,
-        ast.encode,
+        ast.unparse,
         ast.annotations
       )
     case "Tuple":

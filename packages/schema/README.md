@@ -3073,11 +3073,11 @@ export const myReadonlySet = <R, I, A>(
       }
       return ParseResult.fail(ParseResult.type(ast, input));
     },
-    // Encoding function
+    // Unparse function
     (item) => (input, parseOptions, ast) => {
       if (input instanceof Set) {
         // Parse the elements
-        const elements = ParseResult.encode(S.array(item))(
+        const elements = ParseResult.unparse(S.array(item))(
           Array.from(input.values()),
           parseOptions
         );

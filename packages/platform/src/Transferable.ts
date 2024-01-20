@@ -95,12 +95,12 @@ export const schemaFromSelf = <R, I, A>(
       }
     },
     (item) => {
-      const encode = ParseResult.encode(item)
-      return (a, _, ast) => {
-        if (!isTransferable(a)) {
-          return ParseResult.fail(ParseResult.type(ast, a))
+      const unparse = ParseResult.unparse(item)
+      return (u, _, ast) => {
+        if (!isTransferable(u)) {
+          return ParseResult.fail(ParseResult.type(ast, u))
         }
-        return encode(a)
+        return unparse(u)
       }
     },
     { [AST.IdentifierAnnotationId]: "Transferable" }

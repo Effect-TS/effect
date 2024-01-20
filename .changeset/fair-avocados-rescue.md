@@ -4,9 +4,12 @@
 
 AST / Schema: refactoring
 
-- refactor `Schema.declare` API to make it safe
-- add `Schema.declare` overloads
-- `AST.Declaration`
-  - split `decode` into `parse` / `encode` in
+- Schema:
+  - refactor `Schema.declare` API to make it safe
+  - add `Schema.declare` overloads
+  - add `unparse*` APIs
+- AST:
+- return `ParseResult.ParseIssue` instead of `ParseResult.ParseError` in all APIs
+- Declaration
+  - split `decode` into `parse` / `unparse` in
   - remove `type` field
-- return `ParseResult.ParseIssue` instead of `ParseResult.ParseError`
