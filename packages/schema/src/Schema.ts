@@ -430,7 +430,7 @@ const getTemplateLiterals = (
   }
 }
 
-const declareConstructor = <const P extends ReadonlyArray<Schema<any, any>>, R, I, A>(
+const declareConstructor = <const P extends ReadonlyArray<Schema<any, any>>, R extends Schema.Context<P[number]>, I, A>(
   typeParameters: P,
   parse: (
     ...typeParameters: P
@@ -439,7 +439,7 @@ const declareConstructor = <const P extends ReadonlyArray<Schema<any, any>>, R, 
     ...typeParameters: P
   ) => (input: A, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
   annotations?: AST.Annotations
-): Schema<Schema.Context<P[number]> | R, I, A> =>
+): Schema<Schema.Context<P[number]>, I, A> =>
   make(AST.createDeclaration(
     typeParameters.map((tp) => tp.ast),
     (...typeParameters) => parse(...typeParameters.map((ast) => make(ast)) as any),
@@ -457,11 +457,14 @@ const declarePrimitive = <A>(
 }
 
 /**
-  @category constructors
-  @since 1.0.0
-*/
+ * The constraint `R extends Schema.Context<P[number]>` enforces dependencies solely from `typeParameters`.
+ * This ensures that when you call `Schema.to` or `Schema.from`, you receive a schema with a `never` context.
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
 export const declare: {
-  <const P extends ReadonlyArray<Schema<any, any>>, R, I, A>(
+  <const P extends ReadonlyArray<Schema<any, any>>, R extends Schema.Context<P[number]>, I, A>(
     typeParameters: P,
     parse: (
       ...typeParameters: P
@@ -470,7 +473,7 @@ export const declare: {
       ...typeParameters: P
     ) => (input: A, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
     annotations?: AST.Annotations
-  ): Schema<Schema.Context<P[number]> | R, I, A>
+  ): Schema<Schema.Context<P[number]>, I, A>
   <A>(
     is: (input: unknown, options: ParseOptions, ast: AST.AST) => input is A,
     annotations?: AST.Annotations

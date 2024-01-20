@@ -7,6 +7,8 @@ declare const aContext: Schema.Schema<"a", string>
 declare const bContext: Schema.Schema<"b", number>
 declare const cContext: Schema.Schema<"c", string>
 
+const Taga = Context.Tag<"a", string>()
+const Tagb = Context.Tag<"b", number>()
 const Tag1 = Context.Tag<"Tag1", string>()
 const Tag2 = Context.Tag<"Tag2", number>()
 
@@ -14,11 +16,56 @@ const Tag2 = Context.Tag<"Tag2", number>()
 // declare
 // ---------------------------------------------
 
-// $ExpectType Schema<"a" | "b" | "Tag1" | "Tag2", number, string>
+// $ExpectType Schema<never, string, string>
+Schema.declare((u): u is string => typeof u === "string")
+
+// $ExpectType Schema<"a" | "b", number, string>
 Schema.declare(
   [aContext, bContext],
-  (_a, _b) => () => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(a))),
-  (_a, _b) => () => Tag2.pipe(Effect.flatMap((a) => ParseResult.succeed(a)))
+  (_a, _b) => () => ParseResult.succeed("a"),
+  (_a, _b) => () => ParseResult.succeed(1)
+)
+
+// $ExpectType Schema<"a" | "b", number, string>
+Schema.declare(
+  [aContext, bContext],
+  (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
+  (_a, _b) => () => ParseResult.succeed(1)
+)
+
+// $ExpectType Schema<"a" | "b", number, string>
+Schema.declare(
+  [aContext, bContext],
+  (_a, _b) => () => ParseResult.succeed("a"),
+  (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+)
+
+// $ExpectType Schema<"a" | "b", number, string>
+Schema.declare(
+  [aContext, bContext],
+  (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
+  (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+)
+
+Schema.declare(
+  [],
+  // @ts-expect-error
+  () => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
+  () => () => ParseResult.succeed(1)
+)
+
+Schema.declare(
+  [aContext, bContext],
+  // @ts-expect-error
+  (_a, _b) => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
+  (_a, _b) => () => ParseResult.succeed(1)
+)
+
+Schema.declare(
+  [aContext, bContext],
+  (_a, _b) => () => ParseResult.succeed("a"),
+  // @ts-expect-error
+  (_a, _b) => () => Tag2.pipe(Effect.flatMap(ParseResult.succeed))
 )
 
 // ---------------------------------------------
