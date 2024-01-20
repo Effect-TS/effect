@@ -1,7 +1,7 @@
 import * as AST from "@effect/schema/AST"
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
+import { isUnknown } from "effect/Predicate"
 import { describe, expect, it } from "vitest"
 
 describe("Pretty", () => {
@@ -22,7 +22,7 @@ describe("Pretty", () => {
   })
 
   it("should throw on declarations without annotations", () => {
-    const schema = S.declare(ParseResult.succeed)
+    const schema = S.declare(isUnknown)
     expect(() => Pretty.make(schema)).toThrow(
       new Error("cannot build an Pretty for a declaration without annotations")
     )

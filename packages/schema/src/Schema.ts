@@ -430,6 +430,32 @@ const getTemplateLiterals = (
   }
 }
 
+const declareConstructor = <const P extends ReadonlyArray<Schema<any, any>>, R, I, A>(
+  typeParameters: P,
+  parse: (
+    ...typeParameters: P
+  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, A>,
+  encode: (
+    ...typeParameters: P
+  ) => (input: A, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
+  annotations?: AST.Annotations
+): Schema<Schema.Context<P[number]> | R, I, A> =>
+  make(AST.createDeclaration(
+    typeParameters.map((tp) => tp.ast),
+    (...typeParameters) => parse(...typeParameters.map((ast) => make(ast)) as any),
+    (...typeParameters) => encode(...typeParameters.map((ast) => make(ast)) as any),
+    annotations
+  ))
+
+const declarePrimitive = <A>(
+  is: (input: unknown, options: ParseOptions, ast: AST.AST) => input is A,
+  annotations?: AST.Annotations
+): Schema<never, A> => {
+  const f = () => (input: unknown, options: ParseOptions, ast: AST.Declaration) =>
+    is(input, options, ast) ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input))
+  return make(AST.createDeclaration([], f, f, annotations))
+}
+
 /**
   @category constructors
   @since 1.0.0
@@ -437,7 +463,7 @@ const getTemplateLiterals = (
 export const declare: {
   <const P extends ReadonlyArray<Schema<any, any>>, R, I, A>(
     typeParameters: P,
-    decode: (
+    parse: (
       ...typeParameters: P
     ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, A>,
     encode: (
@@ -445,37 +471,21 @@ export const declare: {
     ) => (input: A, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
     annotations?: AST.Annotations
   ): Schema<Schema.Context<P[number]> | R, I, A>
-  <R, A>(
-    parse: (input: unknown, options: ParseOptions, ast: AST.AST) => Effect.Effect<R, ParseResult.ParseIssue, A>,
-    annotations?: AST.Annotations
-  ): Schema<R, A>
   <A>(
-    parse: (input: unknown, options: ParseOptions, ast: AST.AST) => input is A,
+    is: (input: unknown, options: ParseOptions, ast: AST.AST) => input is A,
     annotations?: AST.Annotations
   ): Schema<never, A>
 } = function() {
   if (Array.isArray(arguments[0])) {
     const typeParameters = arguments[0]
-    const decode = arguments[1]
+    const parse = arguments[1]
     const encode = arguments[2]
     const annotations = arguments[3]
-    return make(AST.createDeclaration(
-      typeParameters.map((tp) => tp.ast),
-      (...typeParameters) => decode(...typeParameters.map((ast) => make(ast)) as any),
-      (...typeParameters) => encode(...typeParameters.map((ast) => make(ast)) as any),
-      annotations
-    ))
+    return declareConstructor(typeParameters, parse, encode, annotations)
   }
-  const parse = arguments[0]
+  const is = arguments[0]
   const annotations = arguments[1]
-  const f = () => (input: any, options: ParseOptions, ast: AST.Declaration) => {
-    const out = parse(input, options, ast)
-    if (Predicate.isBoolean(out)) {
-      return out ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input))
-    }
-    return out
-  }
-  return make(AST.createDeclaration([], f, f, annotations))
+  return declarePrimitive(is, annotations)
 } as any
 
 /**

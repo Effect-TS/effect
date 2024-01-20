@@ -1,7 +1,7 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { expectValidArbitrary } from "@effect/schema/test/util"
+import { isUnknown } from "effect/Predicate"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -11,7 +11,7 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("should throw on declarations without annotations", () => {
-    const schema = S.declare(ParseResult.succeed)
+    const schema = S.declare(isUnknown)
     expect(() => Arbitrary.make(schema)).toThrow(
       new Error("cannot build an Arbitrary for a declaration without annotations")
     )

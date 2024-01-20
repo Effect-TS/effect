@@ -1,12 +1,12 @@
 import * as A from "@effect/schema/Arbitrary"
 import * as E from "@effect/schema/Equivalence"
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Either from "effect/Either"
 import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
+import { isUnknown } from "effect/Predicate"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -105,7 +105,7 @@ describe("Equivalence", () => {
 
   describe("declaration", () => {
     it("should return Equivalence.strict() when an annotation exists", () => {
-      const schema = S.declare(ParseResult.succeed, {
+      const schema = S.declare(isUnknown, {
         [A.ArbitraryHookId]: (): A.Arbitrary<string> => (fc) => fc.string()
       })
       const equivalence = E.make(schema)

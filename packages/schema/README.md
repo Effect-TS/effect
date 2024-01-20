@@ -3060,7 +3060,7 @@ export const myReadonlySet = <R, I, A>(
   S.declare(
     // Store the schema for the elements
     [item],
-    // Decoding function
+    // Parsing function
     (item) => (input, parseOptions, ast) => {
       if (input instanceof Set) {
         // Parse the elements
