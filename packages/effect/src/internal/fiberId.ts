@@ -38,12 +38,13 @@ export type OP_COMPOSITE = typeof OP_COMPOSITE
 /** @internal */
 class None implements FiberId.None {
   readonly [FiberIdTypeId]: FiberId.FiberIdTypeId = FiberIdTypeId
-  readonly _tag = OP_NONE;
+  readonly _tag = OP_NONE
+  readonly _hash: number
+  constructor() {
+    this._hash = Hash.string(FiberIdSymbolKey + this._tag)
+  }
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FiberIdSymbolKey),
-      Hash.combine(Hash.hash(this._tag))
-    )
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberId(that) && that._tag === OP_NONE
@@ -66,17 +67,19 @@ class None implements FiberId.None {
 class Runtime implements FiberId.Runtime {
   readonly [FiberIdTypeId]: FiberId.FiberIdTypeId = FiberIdTypeId
   readonly _tag = OP_RUNTIME
+  readonly _hash: number
   constructor(
     readonly id: number,
     readonly startTimeMillis: number
-  ) {}
-  [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FiberIdSymbolKey),
-      Hash.combine(Hash.hash(this._tag)),
-      Hash.combine(Hash.hash(this.id)),
-      Hash.combine(Hash.hash(this.startTimeMillis))
+  ) {
+    this._hash = pipe(
+      Hash.string(FiberIdSymbolKey + this._tag),
+      Hash.combine(Hash.number(this.id)),
+      Hash.combine(Hash.number(this.startTimeMillis))
     )
+  }
+  [Hash.symbol](): number {
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberId(that) &&
@@ -104,17 +107,19 @@ class Runtime implements FiberId.Runtime {
 class Composite implements FiberId.Composite {
   readonly [FiberIdTypeId]: FiberId.FiberIdTypeId = FiberIdTypeId
   readonly _tag = OP_COMPOSITE
+  readonly _hash: number
   constructor(
     readonly left: FiberId.FiberId,
     readonly right: FiberId.FiberId
-  ) {}
-  [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FiberIdSymbolKey),
-      Hash.combine(Hash.hash(this._tag)),
+  ) {
+    this._hash = pipe(
+      Hash.string(FiberIdSymbolKey + this._tag),
       Hash.combine(Hash.hash(this.left)),
       Hash.combine(Hash.hash(this.right))
     )
+  }
+  [Hash.symbol](): number {
+    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberId(that) &&
