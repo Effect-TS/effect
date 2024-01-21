@@ -1423,7 +1423,7 @@ export const compose: {
   <R1, A, B, R2, C>(ab: Schema<R1, A, B>, cd: Schema<R2, B, C>): Schema<R1 | R2, A, C>
   <R1, A, B, R2, C, D>(ab: Schema<R1, A, B>, cd: Schema<R2, C, D>, options: { strict: false }): Schema<R1 | R2, A, D>
 } = dual(
-  2,
+  (args) => isSchema(args[1]),
   <R1, A, B, R2, C, D>(ab: Schema<R1, A, B>, cd: Schema<R2, C, D>): Schema<R1 | R2, A, D> =>
     make(AST.compose(ab.ast, cd.ast))
 )
