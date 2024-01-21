@@ -474,3 +474,17 @@ export {
   unparseSync
 } from "./Parser.js"
 /* c8 ignore end */
+
+/**
+ * @since 1.0.0
+ */
+export type Parse<R, Out> = (u: unknown, options?: AST.ParseOptions) => Effect.Effect<R, ParseIssue, Out>
+
+/**
+ * @since 1.0.0
+ */
+export type DeclarationParse<R, Out> = (
+  u: unknown,
+  options: AST.ParseOptions,
+  ast: AST.Declaration
+) => Effect.Effect<R, ParseIssue, Out>

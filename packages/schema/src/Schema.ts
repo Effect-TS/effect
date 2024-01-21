@@ -3716,6 +3716,14 @@ const optionPretty = <A>(value: Pretty.Pretty<A>): Pretty.Pretty<Option.Option<A
     onSome: (a) => `some(${value(a)})`
   })
 
+const optionParse =
+  <R, A>(parse: ParseResult.Parse<R, A>): ParseResult.DeclarationParse<R, Option.Option<A>> => (u, options, ast) =>
+    Option.isOption(u) ?
+      Option.isNone(u) ?
+        ParseResult.succeed(Option.none())
+        : ParseResult.map(parse(u.value, options), Option.some)
+      : ParseResult.fail(ParseResult.type(ast, u))
+
 /**
  * @category Option transformations
  * @since 1.0.0
@@ -3725,24 +3733,8 @@ export const optionFromSelf = <R, I, A>(
 ): Schema<R, Option.Option<I>, Option.Option<A>> => {
   return declare(
     [value],
-    (value) => {
-      const parse = ParseResult.parse(value)
-      return (u, options, ast) =>
-        Option.isOption(u) ?
-          Option.isNone(u) ?
-            ParseResult.succeed(Option.none())
-            : ParseResult.map(parse(u.value, options), Option.some)
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
-    (value) => {
-      const unparse = ParseResult.unparse(value)
-      return (u, options, ast) =>
-        Option.isOption(u) ?
-          Option.isNone(u) ?
-            ParseResult.succeed(Option.none())
-            : ParseResult.map(unparse(u.value, options), Option.some)
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
+    (value) => optionParse(ParseResult.parse(value)),
+    (value) => optionParse(ParseResult.unparse(value)),
     {
       description: `Option<${Format.format(value)}>`,
       pretty: optionPretty,
@@ -3866,6 +3858,18 @@ const eitherPretty = <E, A>(
     onRight: (a) => `right(${right(a)})`
   })
 
+const eitherParse = <RE, E, RA, A>(
+  parseLeft: ParseResult.Parse<RE, E>,
+  parseRight: ParseResult.Parse<RA, A>
+): ParseResult.DeclarationParse<RE | RA, Either.Either<E, A>> =>
+(u, options, ast) =>
+  Either.isEither(u) ?
+    Either.match(u, {
+      onLeft: (left) => ParseResult.map(parseLeft(left, options), Either.left),
+      onRight: (right) => ParseResult.map(parseRight(right, options), Either.right)
+    })
+    : ParseResult.fail(ParseResult.type(ast, u))
+
 /**
  * @category Either transformations
  * @since 1.0.0
@@ -3876,28 +3880,8 @@ export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
 ): Schema<RE | RA, Either.Either<IE, IA>, Either.Either<E, A>> => {
   return declare(
     [left, right],
-    (left, right) => {
-      const parseLeft = ParseResult.parse(left)
-      const parseRight = ParseResult.parse(right)
-      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Either.Either<E, A>> =>
-        Either.isEither(u) ?
-          Either.match(u, {
-            onLeft: (left) => ParseResult.map(parseLeft(left, options), Either.left),
-            onRight: (right) => ParseResult.map(parseRight(right, options), Either.right)
-          })
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
-    (left, right) => {
-      const unparseLeft = ParseResult.unparse(left)
-      const unparseRight = ParseResult.unparse(right)
-      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Either.Either<IE, IA>> =>
-        Either.isEither(u) ?
-          Either.match(u, {
-            onLeft: (left) => ParseResult.map(unparseLeft(left, options), Either.left),
-            onRight: (right) => ParseResult.map(unparseRight(right, options), Either.right)
-          }) :
-          ParseResult.fail(ParseResult.type(ast, u))
-    },
+    (left, right) => eitherParse(ParseResult.parse(left), ParseResult.parse(right)),
+    (left, right) => eitherParse(ParseResult.unparse(left), ParseResult.unparse(right)),
     {
       description: `Either<${Format.format(left)}, ${Format.format(right)}>`,
       pretty: eitherPretty,
@@ -3980,6 +3964,14 @@ const readonlyMapEquivalence = <K, V>(
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a.entries()), Array.from(b.entries())))
 }
 
+const readonlyMapParse = <R, K, V>(
+  parse: ParseResult.Parse<R, ReadonlyArray<readonly [K, V]>>
+): ParseResult.DeclarationParse<R, ReadonlyMap<K, V>> =>
+(u, options, ast) =>
+  isMap(u) ?
+    ParseResult.map(parse(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
+    : ParseResult.fail(ParseResult.type(ast, u))
+
 /**
  * @category ReadonlyMap transformations
  * @since 1.0.0
@@ -3990,20 +3982,8 @@ export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
 ): Schema<RK | RV, ReadonlyMap<IK, IV>, ReadonlyMap<K, V>> => {
   return declare(
     [key, value],
-    (key, value) => {
-      const parse = ParseResult.parse(array(tuple(key, value)))
-      return (u, options, ast) =>
-        isMap(u) ?
-          ParseResult.map(parse(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
-    (key, value) => {
-      const unparse = ParseResult.unparse(array(tuple(key, value)))
-      return (u, options, ast) =>
-        isMap(u) ?
-          ParseResult.map(unparse(Array.from(u.entries()), options), (as): ReadonlyMap<IK, IV> => new Map(as))
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
+    (key, value) => readonlyMapParse(ParseResult.parse(array(tuple(key, value)))),
+    (key, value) => readonlyMapParse(ParseResult.unparse(array(tuple(key, value)))),
     {
       description: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
       pretty: readonlyMapPretty,
@@ -4043,6 +4023,14 @@ const readonlySetEquivalence = <A>(
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a.values()), Array.from(b.values())))
 }
 
+const readonlySetParse = <R, A>(
+  parse: ParseResult.Parse<R, ReadonlyArray<A>>
+): ParseResult.DeclarationParse<R, ReadonlySet<A>> =>
+(u, options, ast) =>
+  isSet(u) ?
+    ParseResult.map(parse(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
+    : ParseResult.fail(ParseResult.type(ast, u))
+
 /**
  * @category ReadonlySet transformations
  * @since 1.0.0
@@ -4052,20 +4040,8 @@ export const readonlySetFromSelf = <R, I, A>(
 ): Schema<R, ReadonlySet<I>, ReadonlySet<A>> => {
   return declare(
     [item],
-    (item) => {
-      const parse = ParseResult.parse(array(item))
-      return (u, options, ast) =>
-        isSet(u) ?
-          ParseResult.map(parse(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
-    (item) => {
-      const unparse = ParseResult.unparse(array(item))
-      return (u, options, ast) =>
-        isSet(u) ?
-          ParseResult.map(unparse(Array.from(u.values()), options), (as): ReadonlySet<I> => new Set(as))
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
+    (item) => readonlySetParse(ParseResult.parse(array(item))),
+    (item) => readonlySetParse(ParseResult.unparse(array(item))),
     {
       description: `ReadonlySet<${Format.format(item)}>`,
       pretty: readonlySetPretty,
@@ -4440,6 +4416,15 @@ const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc
 const chunkPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<Chunk.Chunk<A>> => (c) =>
   `Chunk(${Chunk.toReadonlyArray(c).map(item).join(", ")})`
 
+const chunkParse =
+  <R, A>(parse: ParseResult.Parse<R, ReadonlyArray<A>>): ParseResult.DeclarationParse<R, Chunk.Chunk<A>> =>
+  (u, options, ast) =>
+    Chunk.isChunk(u) ?
+      Chunk.isEmpty(u) ?
+        ParseResult.succeed(Chunk.empty())
+        : ParseResult.map(parse(Chunk.toReadonlyArray(u), options), Chunk.fromIterable)
+      : ParseResult.fail(ParseResult.type(ast, u))
+
 /**
  * @category Chunk transformations
  * @since 1.0.0
@@ -4447,25 +4432,8 @@ const chunkPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<Chunk.Chunk<A>> =
 export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.Chunk<I>, Chunk.Chunk<A>> => {
   return declare(
     [item],
-    (item) => {
-      const parse = ParseResult.parse(array(item))
-      return (u, options, ast) => {
-        return Chunk.isChunk(u) ?
-          Chunk.isEmpty(u) ?
-            ParseResult.succeed(Chunk.empty())
-            : ParseResult.map(parse(Chunk.toReadonlyArray(u), options), Chunk.fromIterable)
-          : ParseResult.fail(ParseResult.type(ast, u))
-      }
-    },
-    (item) => {
-      const unparse = ParseResult.unparse(array(item))
-      return (u, options, ast) =>
-        Chunk.isChunk(u) ?
-          Chunk.isEmpty(u) ?
-            ParseResult.succeed(Chunk.empty())
-            : ParseResult.map(unparse(Chunk.toReadonlyArray(u), options), Chunk.fromIterable)
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
+    (item) => chunkParse(ParseResult.parse(array(item))),
+    (item) => chunkParse(ParseResult.unparse(array(item))),
     {
       description: `Chunk<${Format.format(item)}>`,
       pretty: chunkPretty,
@@ -4500,6 +4468,14 @@ const dataPretty = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>
 ): Pretty.Pretty<Data.Data<A>> =>
 (d) => `Data(${item(d)})`
 
+const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
+  parse: ParseResult.Parse<R, A>
+): ParseResult.DeclarationParse<R, Data.Data<A>> =>
+(u, options, ast) =>
+  Equal.isEqual(u) ?
+    ParseResult.map(parse(u, options), toData)
+    : ParseResult.fail(ParseResult.type(ast, u))
+
 /**
  * @category Data transformations
  * @since 1.0.0
@@ -4513,20 +4489,8 @@ export const dataFromSelf = <
 ): Schema<R, Data.Data<I>, Data.Data<A>> => {
   return declare(
     [item],
-    (item) => {
-      const parse = ParseResult.parse(item)
-      return (u, options, ast) =>
-        Equal.isEqual(u) ?
-          ParseResult.map(parse(u, options), toData)
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
-    (item) => {
-      const unparse = ParseResult.unparse(item)
-      return (u, options, ast) =>
-        Equal.isEqual(u) ?
-          ParseResult.map(unparse(u, options), toData)
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
+    (item) => dataParse(ParseResult.parse(item)),
+    (item) => dataParse(ParseResult.unparse(item)),
     {
       description: `Data<${Format.format(item)}>`,
       pretty: dataPretty,
@@ -5104,6 +5068,14 @@ const causePretty = <E>(error: Pretty.Pretty<E>): Pretty.Pretty<Cause.Cause<E>> 
   return f(cause)
 }
 
+const causeParse = <R, A>(
+  parse: ParseResult.Parse<R, CauseFrom<A>>
+): ParseResult.DeclarationParse<R, Cause.Cause<A>> =>
+(u, options, ast) =>
+  Cause.isCause(u) ?
+    ParseResult.map(parse(causeEncode(u), options), causeDecode)
+    : ParseResult.fail(ParseResult.type(ast, u))
+
 /**
  * @category Cause transformations
  * @since 1.0.0
@@ -5114,20 +5086,8 @@ export const causeFromSelf = <R, I, A>(
 ): Schema<R, Cause.Cause<I>, Cause.Cause<A>> => {
   return declare(
     [error, defect],
-    (error, defect) => {
-      const parse = ParseResult.parse(causeFrom(error, defect))
-      return (u, options, ast) =>
-        Cause.isCause(u) ?
-          ParseResult.map(parse(causeEncode(u), options), causeDecode)
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
-    (error, defect) => {
-      const unparse = ParseResult.unparse(causeFrom(error, defect))
-      return (u, options, ast) =>
-        Cause.isCause(u) ?
-          ParseResult.map(unparse(causeEncode(u), options), causeDecode)
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
+    (error, defect) => causeParse(ParseResult.parse(causeFrom(error, defect))),
+    (error, defect) => causeParse(ParseResult.unparse(causeFrom(error, defect))),
     {
       description: `Cause<${Format.format(error)}>`,
       pretty: causePretty,
@@ -5272,6 +5232,18 @@ const exitPretty = <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pre
     ? `Exit.failCause(${causePretty(error)(exit.cause)})`
     : `Exit.succeed(${value(exit.value)})`
 
+const exitParse = <RE, E, RA, A>(
+  parseCause: ParseResult.Parse<RE, Cause.Cause<E>>,
+  parseValue: ParseResult.Parse<RA, A>
+): ParseResult.DeclarationParse<RE | RA, Exit.Exit<E, A>> =>
+(u, options, ast) =>
+  Exit.isExit(u) ?
+    Exit.match(u, {
+      onFailure: (cause) => ParseResult.map(parseCause(cause, options), Exit.failCause),
+      onSuccess: (value) => ParseResult.map(parseValue(value, options), Exit.succeed)
+    })
+    : ParseResult.fail(ParseResult.type(ast, u))
+
 /**
  * @category Exit transformations
  * @since 1.0.0
@@ -5283,28 +5255,8 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
 ): Schema<RE | RA, Exit.Exit<IE, IA>, Exit.Exit<E, A>> =>
   declare(
     [error, value, defect],
-    (error, value, defect) => {
-      const parseCause = ParseResult.parse(causeFromSelf(error, defect))
-      const parseValue = ParseResult.parse(value)
-      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Exit.Exit<E, A>> =>
-        Exit.isExit(u) ?
-          Exit.match(u, {
-            onFailure: (cause) => ParseResult.map(parseCause(cause, options), Exit.failCause),
-            onSuccess: (value) => ParseResult.map(parseValue(value, options), Exit.succeed)
-          })
-          : ParseResult.fail(ParseResult.type(ast, u))
-    },
-    (error, value, defect) => {
-      const unparseCause = ParseResult.unparse(causeFromSelf(error, defect))
-      const unparseValue = ParseResult.unparse(value)
-      return (u, options, ast): Effect.Effect<RE | RA, ParseResult.ParseIssue, Exit.Exit<IE, IA>> =>
-        Exit.isExit(u) ?
-          Exit.match(u, {
-            onFailure: (cause) => ParseResult.map(unparseCause(cause, options), Exit.failCause),
-            onSuccess: (value) => ParseResult.map(unparseValue(value, options), Exit.succeed)
-          }) :
-          ParseResult.fail(ParseResult.type(ast, u))
-    },
+    (error, value, defect) => exitParse(ParseResult.parse(causeFromSelf(error, defect)), ParseResult.parse(value)),
+    (error, value, defect) => exitParse(ParseResult.unparse(causeFromSelf(error, defect)), ParseResult.unparse(value)),
     {
       description: `Exit<${Format.format(error)}, ${Format.format(value)}>`,
       pretty: exitPretty,
