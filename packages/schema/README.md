@@ -17,7 +17,22 @@ Welcome to the documentation for `@effect/schema`, **a library for defining and 
 
 If you're eager to learn how to define your first schema, jump straight to the [**Basic usage**](#basic-usage) section!
 
-## Understanding Parsing, Decoding, and Encoding
+## Understanding Parsing, Unparsing, Decoding, and Encoding
+
+```mermaid
+sequenceDiagram
+    participant U1 as unknown
+    participant I
+    participant A
+    participant U2 as unknown
+    U1->>A: parse
+    I->>A: decode
+    A->>I: encode
+    U2->>I: unparse
+    U2->>A: validate
+    U2->>A: is
+    U2->>A: asserts
+```
 
 We'll break down these concepts using an example with a `Schema<never, string, Date>`. This schema serves as a tool to transform a `string` into a `Date` and vice versa.
 
@@ -36,6 +51,14 @@ Parsing involves two key steps:
 1. **Checking:** Initially, we verify that the input data (which is of the `unknown` type) matches the expected structure. In our specific case, this means ensuring that the input is indeed a `string`.
 
 2. **Decoding:** Following the successful check, we proceed to convert the `string` into a `Date`. This process completes the parsing operation, where the data is both validated and transformed.
+
+**Unparsing**
+
+Unparsing involves two key steps:
+
+1. **Checking:** Initially, we verify that the input data (which is of the `unknown` type) matches the expected structure. In our specific case, this means ensuring that the input is indeed a `Date`.
+
+2. **Encoding:** Following the successful check, we proceed to convert the `Date` into a `string`. This process completes the unparsing operation, where the data is both validated and transformed.
 
 > [!NOTE]
 > As a general rule, schemas should be defined such that encode + decode return the original value.
