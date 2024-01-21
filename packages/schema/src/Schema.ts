@@ -491,7 +491,8 @@ const declarePrimitive = <A>(
 ): Schema<never, A> => {
   const parse = () => (input: unknown, _: ParseOptions, ast: AST.Declaration) =>
     is(input) ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input))
-  return make(AST.createDeclaration([], parse, parse, toAnnotations(annotations)))
+  const unparse = parse
+  return make(AST.createDeclaration([], parse, unparse, toAnnotations(annotations)))
 }
 
 /**
@@ -1442,7 +1443,7 @@ export const suspend = <R, I, A = I>(
  * @since 1.0.0
  */
 export function filter<A>(
-  f: (a: A, options: ParseOptions, self: AST.AST) => Option.Option<ParseResult.ParseIssue>,
+  f: (a: A, options: ParseOptions, self: AST.Refinement) => Option.Option<ParseResult.ParseIssue>,
   options?: FilterAnnotations<A>
 ): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A>
 export function filter<C extends A, B extends A, A = C>(
@@ -1454,9 +1455,7 @@ export function filter<B extends A, A = B>(
   options?: FilterAnnotations<A>
 ): <R, I>(self: Schema<R, I, B>) => Schema<R, I, B>
 export function filter<A>(
-  predicate:
-    | Predicate.Predicate<A>
-    | ((a: A, options: ParseOptions, self: AST.AST) => Option.Option<ParseResult.ParseIssue>),
+  predicate: Predicate.Predicate<A> | AST.Refinement["filter"],
   options?: FilterAnnotations<A>
 ): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> {
   return (self) =>
@@ -1531,26 +1530,26 @@ export const transformOrFail: {
 export const transform: {
   <R2, C, D, B>(
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => C,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => B
+    decode: (b: B) => C,
+    encode: (c: C) => B
   ): <R1, A>(self: Schema<R1, A, B>) => Schema<R1 | R2, A, D>
   <R2, C, D, B>(
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => unknown,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => unknown,
+    decode: (b: B) => unknown,
+    encode: (c: C) => unknown,
     options: { strict: false }
   ): <R1, A>(self: Schema<R1, A, B>) => Schema<R1 | R2, A, D>
   <R1, A, B, R2, C, D>(
     from: Schema<R1, A, B>,
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => C,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => B
+    decode: (b: B) => C,
+    encode: (c: C) => B
   ): Schema<R1 | R2, A, D>
   <R1, A, B, R2, C, D>(
     from: Schema<R1, A, B>,
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => unknown,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => unknown,
+    decode: (b: B) => unknown,
+    encode: (c: C) => unknown,
     options: { strict: false }
   ): Schema<R1 | R2, A, D>
 } = dual(
@@ -1558,15 +1557,10 @@ export const transform: {
   <R1, A, B, R2, C, D>(
     from: Schema<R1, A, B>,
     to: Schema<R2, C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => C,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => B
+    decode: (b: B) => C,
+    encode: (c: C) => B
   ): Schema<R1 | R2, A, D> =>
-    transformOrFail(
-      from,
-      to,
-      (a, options, ast) => ParseResult.succeed(decode(a, options, ast)),
-      (b, options, ast) => ParseResult.succeed(encode(b, options, ast))
-    )
+    transformOrFail(from, to, (a) => ParseResult.succeed(decode(a)), (b) => ParseResult.succeed(encode(b)))
 )
 
 /**
@@ -4603,12 +4597,12 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     decode: (
       input: A,
       options: ParseOptions,
-      ast: AST.AST
+      ast: AST.Transform
     ) => Effect.Effect<R2, ParseResult.ParseIssue, Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
     encode: (
       input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       options: ParseOptions,
-      ast: AST.AST
+      ast: AST.Transform
     ) => Effect.Effect<R3, ParseResult.ParseIssue, A>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
@@ -4629,12 +4623,12 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     decode: (
       input: I,
       options: ParseOptions,
-      ast: AST.AST
+      ast: AST.Transform
     ) => Effect.Effect<R2, ParseResult.ParseIssue, Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
     encode: (
       input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
       options: ParseOptions,
-      ast: AST.AST
+      ast: AST.Transform
     ) => Effect.Effect<R3, ParseResult.ParseIssue, I>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<

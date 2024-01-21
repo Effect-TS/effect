@@ -269,7 +269,7 @@ export interface Declaration extends Annotated {
   ) => (input: unknown, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
   readonly unparse: (
     ...typeParameters: ReadonlyArray<AST>
-  ) => (input: any, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
+  ) => (input: unknown, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
 }
 
 /**
