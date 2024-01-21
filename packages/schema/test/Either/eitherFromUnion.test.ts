@@ -37,7 +37,7 @@ describe("Either > eitherFromUnion", () => {
   })
 
   it("decoding error (Transformation process failure)", async () => {
-    const schema = S.eitherFromUnion(S.number, S.compose(S.boolean, S.string))
+    const schema = S.eitherFromUnion(S.number, S.compose(S.boolean, S.string, { strict: false }))
     await Util.expectParseFailure(
       schema,
       true,
@@ -70,8 +70,8 @@ describe("Either > eitherFromUnion", () => {
 
   it("encoding error", async () => {
     const schema = S.eitherFromUnion(
-      S.compose(S.DateFromString, S.unknown),
-      S.compose(S.NumberFromString, S.unknown)
+      S.compose(S.DateFromString, S.unknown, { strict: false }),
+      S.compose(S.NumberFromString, S.unknown, { strict: false })
     )
     await Util.expectEncodeFailure(
       schema,
@@ -107,8 +107,8 @@ describe("Either > eitherFromUnion", () => {
 
   it("encoding don't overlap", async () => {
     const schema = S.eitherFromUnion(
-      S.compose(S.DateFromString, S.unknown),
-      S.compose(S.NumberFromString, S.unknown)
+      S.compose(S.DateFromString, S.unknown, { strict: false }),
+      S.compose(S.NumberFromString, S.unknown, { strict: false })
     )
     await Util.expectEncodeFailure(
       schema,
