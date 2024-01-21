@@ -681,7 +681,7 @@ pipe(
 // compose
 // ---------------------------------------------
 
-// plain
+// A -> B -> C
 
 // $ExpectType Schema<never, string, readonly number[]>
 S.compose(S.split(","), S.array(S.NumberFromString))
@@ -689,20 +689,36 @@ S.compose(S.split(","), S.array(S.NumberFromString))
 // $ExpectType Schema<never, string, readonly number[]>
 S.split(",").pipe(S.compose(S.array(S.NumberFromString)))
 
-// decoding
+// decoding (strict: false)
 
 // $ExpectType Schema<never, string | null, number>
+S.compose(S.union(S.null, S.string), S.NumberFromString, { strict: false })
+
+// $ExpectType Schema<never, string | null, number>
+S.union(S.null, S.string).pipe(S.compose(S.NumberFromString, { strict: false }))
+
+// decoding (strict: true)
+
+// @ts-expect-error
 S.compose(S.union(S.null, S.string), S.NumberFromString)
 
-// $ExpectType Schema<never, string | null, number>
+// @ts-expect-error
 S.union(S.null, S.string).pipe(S.compose(S.NumberFromString))
 
-// encoding
+// encoding (strict: false)
 
 // $ExpectType Schema<never, string, number | null>
+S.compose(S.NumberFromString, S.union(S.null, S.number), { strict: false })
+
+// $ExpectType Schema<never, string, number | null>
+S.NumberFromString.pipe(S.compose(S.union(S.null, S.number), { strict: false }))
+
+// encoding (strict: true)
+
+// @ts-expect-error
 S.compose(S.NumberFromString, S.union(S.null, S.number))
 
-// $ExpectType Schema<never, string, number | null>
+// @ts-expect-error
 S.NumberFromString.pipe(S.compose(S.union(S.null, S.number)))
 
 // ---------------------------------------------

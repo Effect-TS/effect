@@ -1415,8 +1415,13 @@ export const extend: {
  * @since 1.0.0
  */
 export const compose: {
-  <R2, C, D>(bc: Schema<R2, C, D>): <R1, A, B>(ab: Schema<R1, A, B>) => Schema<R1 | R2, A, D>
-  <R1, A, B, R2, C, D>(ab: Schema<R1, A, B>, cd: Schema<R2, C, D>): Schema<R1 | R2, A, D>
+  <R2, B, C>(bc: Schema<R2, B, C>): <R1, A>(ab: Schema<R1, A, B>) => Schema<R1 | R2, A, C>
+  <R2, C, D>(
+    bc: Schema<R2, C, D>,
+    options: { strict: false }
+  ): <R1, A, B>(ab: Schema<R1, A, B>) => Schema<R1 | R2, A, D>
+  <R1, A, B, R2, C>(ab: Schema<R1, A, B>, cd: Schema<R2, B, C>): Schema<R1 | R2, A, C>
+  <R1, A, B, R2, C, D>(ab: Schema<R1, A, B>, cd: Schema<R2, C, D>, options: { strict: false }): Schema<R1 | R2, A, D>
 } = dual(
   2,
   <R1, A, B, R2, C, D>(ab: Schema<R1, A, B>, cd: Schema<R2, C, D>): Schema<R1 | R2, A, D> =>

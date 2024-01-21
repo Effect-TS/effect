@@ -225,7 +225,7 @@ Schema.struct({ a: aContext, b: bContext }).pipe(Schema.extend(Schema.struct({ b
 // ---------------------------------------------
 
 // $ExpectType Schema<"a" | "b", string, number>
-aContext.pipe(Schema.compose(bContext))
+aContext.pipe(Schema.compose(bContext, { strict: false }))
 
 // ---------------------------------------------
 // suspend

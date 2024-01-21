@@ -10,6 +10,7 @@ Refactoring:
   - add `unparse*` APIs
   - symplify brand implementation
   - rename `params` to `annotation` in `typeId` annotation
+  - add optional `{ strict: false }` parameter to `compose`
 - AST:
   - return `ParseResult.ParseIssue` instead of `ParseResult.ParseError` in all APIs
   - Declaration
