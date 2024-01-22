@@ -41,7 +41,7 @@ class None implements FiberId.None {
   readonly _tag = OP_NONE
   readonly _hash: number
   constructor() {
-    this._hash = Hash.string(FiberIdSymbolKey + this._tag)
+    this._hash = Hash.string(`${FiberIdSymbolKey}-${this._tag}`)
   }
   [Hash.symbol](): number {
     return this._hash
@@ -72,11 +72,7 @@ class Runtime implements FiberId.Runtime {
     readonly id: number,
     readonly startTimeMillis: number
   ) {
-    this._hash = pipe(
-      Hash.string(FiberIdSymbolKey + this._tag),
-      Hash.combine(Hash.number(this.id)),
-      Hash.combine(Hash.number(this.startTimeMillis))
-    )
+    this._hash = Hash.string(`${FiberIdSymbolKey}-${this._tag}-${this.id}-${this.startTimeMillis}`)
   }
   [Hash.symbol](): number {
     return this._hash
