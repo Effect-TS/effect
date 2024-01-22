@@ -6,7 +6,6 @@ import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
 import type * as FileSystem from "../../FileSystem.js"
 import type * as Body from "../../Http/Body.js"
-import type * as Error from "../../Http/ClientError.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
 import * as Headers from "../../Http/Headers.js"
 import type { Method } from "../../Http/Method.js"
@@ -398,7 +397,7 @@ export const formDataBody = dual<
 /** @internal */
 export const streamBody = dual<
   (
-    body: Stream.Stream<never, Error.RequestError, Uint8Array>,
+    body: Stream.Stream<never, unknown, Uint8Array>,
     options?: {
       readonly contentType?: string
       readonly contentLength?: number
@@ -406,7 +405,7 @@ export const streamBody = dual<
   ) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (
     self: ClientRequest.ClientRequest,
-    body: Stream.Stream<never, Error.RequestError, Uint8Array>,
+    body: Stream.Stream<never, unknown, Uint8Array>,
     options?: {
       readonly contentType?: string
       readonly contentLength?: number
