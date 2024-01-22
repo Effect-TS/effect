@@ -353,7 +353,7 @@ export type MyClassParams = ConstructorParameters<typeof MyClass>
 // Class.transform
 // ---------------------------------------------
 
-export class MyClassWithTransform extends MyClass.transform<MyClassWithTransform>()(
+export class MyClassWithTransform extends MyClass.transformOrFail<MyClassWithTransform>()(
   {
     b: bContext
   },
@@ -374,7 +374,7 @@ export type MyClassWithTransformParams = ConstructorParameters<typeof MyClassWit
 // Class.transformFrom
 // ---------------------------------------------
 
-export class MyClassWithTransformFrom extends MyClass.transformFrom<MyClassWithTransformFrom>()(
+export class MyClassWithTransformFrom extends MyClass.transformOrFailFrom<MyClassWithTransformFrom>()(
   {
     b: bContext
   },
