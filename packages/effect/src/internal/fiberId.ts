@@ -109,7 +109,7 @@ class Composite implements FiberId.Composite {
     readonly right: FiberId.FiberId
   ) {
     this._hash = pipe(
-      Hash.string(FiberIdSymbolKey + this._tag),
+      Hash.string(`${FiberIdSymbolKey}-${this._tag}`),
       Hash.combine(Hash.hash(this.left)),
       Hash.combine(Hash.hash(this.right))
     )
