@@ -1703,14 +1703,14 @@ export const getRights = <E, A>(self: Iterable<Either<E, A>>): Array<A> => {
  */
 export const filter: {
   <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Array<B>
-  <A, B extends A>(predicate: (b: B, i: number) => boolean): (self: Iterable<A>) => Array<A>
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Array<B>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Array<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A>
 } = dual(
   2,
-  <B extends A, A = B>(self: Iterable<B>, predicate: (a: A, i: number) => boolean): Array<B> => {
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A> => {
     const as = fromIterable(self)
-    const out: Array<B> = []
+    const out: Array<A> = []
     for (let i = 0; i < as.length; i++) {
       if (predicate(as[i], i)) {
         out.push(as[i])

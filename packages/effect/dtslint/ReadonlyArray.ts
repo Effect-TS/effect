@@ -243,10 +243,23 @@ ReadonlyArray.filter(numbersOrStrings, (
   _item // $ExpectType string | number
 ) => true)
 
+// @ts-expect-error
+ReadonlyArray.filter(numbersOrStrings, (
+  _item: string
+) => true)
+
 pipe(
   numbersOrStrings,
   ReadonlyArray.filter((
     _item // $ExpectType string | number
+  ) => true)
+)
+
+pipe(
+  // @ts-expect-error
+  numbersOrStrings,
+  ReadonlyArray.filter((
+    _item: string
   ) => true)
 )
 

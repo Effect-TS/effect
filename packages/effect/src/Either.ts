@@ -405,29 +405,21 @@ export const match: {
  * @category filtering & conditionals
  */
 export const filterOrLeft: {
-  <A, B extends A, X extends A, E2>(
-    filter: Refinement<A, B>,
-    orLeftWith: (a: X) => E2
-  ): <E>(self: Either<E, A>) => Either<E2 | E, B>
-  <A, X extends A, Y extends A, E2>(
-    filter: Predicate<X>,
-    orLeftWith: (a: Y) => E2
-  ): <E>(self: Either<E, A>) => Either<E2 | E, A>
-  <E, A, B extends A, X extends A, E2>(
-    self: Either<E, A>,
-    filter: Refinement<A, B>,
-    orLeftWith: (a: X) => E2
-  ): Either<E | E2, B>
-  <E, A, X extends A, Y extends A, E2>(
-    self: Either<E, A>,
-    filter: Predicate<X>,
-    orLeftWith: (a: Y) => E2
-  ): Either<E | E2, A>
+  <C extends A, B extends A, E2, A = C>(
+    refinement: Refinement<A, B>,
+    orLeftWith: (c: C) => E2
+  ): <E>(self: Either<E, C>) => Either<E2 | E, B>
+  <B extends A, E2, A = B>(
+    predicate: Predicate<A>,
+    orLeftWith: (b: B) => E2
+  ): <E>(self: Either<E, B>) => Either<E2 | E, B>
+  <E, A, B extends A, E2>(self: Either<E, A>, refinement: Refinement<A, B>, orLeftWith: (a: A) => E2): Either<E | E2, B>
+  <E, A, E2>(self: Either<E, A>, predicate: Predicate<A>, orLeftWith: (a: A) => E2): Either<E | E2, A>
 } = dual(3, <E, A, E2>(
   self: Either<E, A>,
-  filter: Predicate<A>,
+  predicate: Predicate<A>,
   orLeftWith: (a: A) => E2
-): Either<E | E2, A> => flatMap(self, (a) => filter(a) ? right(a) : left(orLeftWith(a))))
+): Either<E | E2, A> => flatMap(self, (a) => predicate(a) ? right(a) : left(orLeftWith(a))))
 
 /**
  * @category getters
