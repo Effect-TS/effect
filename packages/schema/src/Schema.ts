@@ -4552,7 +4552,7 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
       Self
     >
 
-  readonly transform: <Transformed>() => <
+  readonly transformOrFail: <Transformed>() => <
     FieldsB extends StructFields,
     R2,
     R3
@@ -4578,7 +4578,7 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
       Self
     >
 
-  readonly transformFrom: <Transformed>() => <
+  readonly transformOrFailFrom: <Transformed>() => <
     FieldsB extends StructFields,
     R2,
     R3
@@ -4805,7 +4805,7 @@ const makeClass = <R, I, A>(
       }
     }
 
-    static transform() {
+    static transformOrFail() {
       return (fields: any, decode: any, encode: any) => {
         const newFields = { ...selfFields, ...fields }
         return makeClass(
@@ -4822,7 +4822,7 @@ const makeClass = <R, I, A>(
       }
     }
 
-    static transformFrom() {
+    static transformOrFailFrom() {
       return (fields: StructFields, decode: any, encode: any) => {
         const newFields: StructFields = { ...selfFields, ...fields }
         return makeClass(

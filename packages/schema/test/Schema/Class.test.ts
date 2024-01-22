@@ -83,7 +83,7 @@ class PersonWithNick extends PersonWithAge.extend<PersonWithNick>()({
   nick: S.string
 }) {}
 
-class PersonWithTransform extends Person.transform<PersonWithTransform>()(
+class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
   {
     id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
@@ -105,7 +105,7 @@ class PersonWithTransform extends Person.transform<PersonWithTransform>()(
       })
 ) {}
 
-class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFrom>()(
+class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>()(
   {
     id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
@@ -243,14 +243,14 @@ describe("Schema > Class", () => {
     expect(Equal.equals(person, person3)).toEqual(false)
   })
 
-  it("Pretty/to", () => {
+  it("pretty", () => {
     const pretty = Pretty.make(Person)
     expect(pretty(new Person({ id: 1, name: "John" }))).toEqual(
       `Person({ "id": 1, "name": "John" })`
     )
   })
 
-  it("transform", async () => {
+  it("transformOrFail", async () => {
     const decode = S.decodeSync(PersonWithTransform)
     const person = decode({
       id: 1,
@@ -285,7 +285,7 @@ describe("Schema > Class", () => {
     )
   })
 
-  it("transform from", async () => {
+  it("transformOrFailFrom", async () => {
     const decode = S.decodeSync(PersonWithTransformFrom)
     const person = decode({
       id: 1,
