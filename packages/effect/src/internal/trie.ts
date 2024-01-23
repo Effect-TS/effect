@@ -7,6 +7,7 @@ import type * as Ordering from "../Ordering.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as TR from "../Trie.js"
+import type { NoInfer } from "../Types.js"
 
 const TrieSymbolKey = "effect/Trie"
 
@@ -287,8 +288,8 @@ export const map = dual<
 
 /** @internal */
 export const filter: {
-  <A, B extends A>(f: (a: A, k: string) => a is B): (self: TR.Trie<A>) => TR.Trie<B>
-  <B extends A, A = B>(f: (a: A, k: string) => boolean): (self: TR.Trie<B>) => TR.Trie<B>
+  <A, B extends A>(f: (a: NoInfer<A>, k: string) => a is B): (self: TR.Trie<A>) => TR.Trie<B>
+  <A>(f: (a: NoInfer<A>, k: string) => boolean): (self: TR.Trie<A>) => TR.Trie<A>
   <A, B extends A>(self: TR.Trie<A>, f: (a: A, k: string) => a is B): TR.Trie<B>
   <A>(self: TR.Trie<A>, f: (a: A, k: string) => boolean): TR.Trie<A>
 } = dual(

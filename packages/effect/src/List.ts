@@ -33,6 +33,7 @@ import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import * as ReadonlyArray from "./ReadonlyArray.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * Represents an immutable linked list of elements of type `A`.
@@ -461,7 +462,7 @@ export const every: {
  * @category elements
  */
 export const some: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => self is Cons<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: List<A>) => self is Cons<A>
   <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A> => {
   let these = self
@@ -481,8 +482,8 @@ export const some: {
  * @category combinators
  */
 export const filter: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => List<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => List<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: List<A>) => List<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: List<A>) => List<A>
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): List<B>
   <A>(self: List<A>, predicate: Predicate<A>): List<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): List<A> => noneIn(self, predicate, false))
@@ -617,8 +618,8 @@ export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(s
  * @since 2.0.0
  */
 export const findFirst: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option.Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => Option.Option<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: List<A>) => Option.Option<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: List<A>) => Option.Option<A>
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option.Option<B>
   <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A> => {
@@ -769,10 +770,10 @@ export const map: {
  * @category combinators
  */
 export const partition: {
-  <C extends A, B extends A, A = C>(
-    refinement: Refinement<A, B>
-  ): (self: List<C>) => [excluded: List<Exclude<C, B>>, satisfying: List<B>]
-  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => [excluded: List<B>, satisfying: List<B>]
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>
+  ): (self: List<A>) => [excluded: List<Exclude<A, B>>, satisfying: List<B>]
+  <A>(predicate: Predicate<NoInfer<A>>): (self: List<A>) => [excluded: List<A>, satisfying: List<A>]
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): [excluded: List<Exclude<A, B>>, satisfying: List<B>]
   <A>(self: List<A>, predicate: Predicate<A>): [excluded: List<A>, satisfying: List<A>]
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): [excluded: List<A>, satisfying: List<A>] => {

@@ -26,6 +26,7 @@ import * as ReadonlyArray from "../ReadonlyArray.js"
 import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
+import type { NoInfer } from "../Types.js"
 import * as internalCause from "./cause.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
@@ -543,14 +544,14 @@ export const filterMap = dual<
 
 /* @internal */
 export const filterOrDie: {
-  <C extends A, B extends A, A = C>(
-    refinement: Predicate.Refinement<A, B>,
-    orDieWith: (c: C) => unknown
-  ): <R, E>(self: Effect.Effect<R, E, C>) => Effect.Effect<R, E, B>
-  <B extends A, A = B>(
-    predicate: Predicate.Predicate<A>,
-    orDieWith: (b: B) => unknown
-  ): <R, E>(self: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>
+  <A, B extends A>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    orDieWith: (a: A) => unknown
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
+  <A>(
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orDieWith: (a: A) => unknown
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A, B extends A>(
     self: Effect.Effect<R, E, A>,
     refinement: Predicate.Refinement<A, B>,
@@ -573,13 +574,13 @@ export const filterOrDie: {
 /* @internal */
 export const filterOrDieMessage: {
   <A, B extends A>(
-    refinement: Predicate.Refinement<A, B>,
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
     message: string
   ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-  <B extends A, A = B>(
-    predicate: Predicate.Predicate<A>,
+  <A>(
+    predicate: Predicate.Predicate<NoInfer<A>>,
     message: string
-  ): <R, E>(self: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A, B extends A>(
     self: Effect.Effect<R, E, A>,
     refinement: Predicate.Refinement<A, B>,

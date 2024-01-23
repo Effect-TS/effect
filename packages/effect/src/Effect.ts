@@ -870,9 +870,9 @@ export const takeUntil: {
  * @category collecting & elements
  */
 export const takeWhile: {
-  <R, E, B extends A, A = B>(
-    predicate: (a: A, i: number) => Effect<R, E, boolean>
-  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
+  <R, E, A>(
+    predicate: (a: NoInfer<A>, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<A>) => Effect<R, E, Array<A>>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.takeWhile
 
@@ -1559,23 +1559,23 @@ export const catchAllDefect: {
  * @category error handling
  */
 export const catchIf: {
-  <E, EA extends E, EB extends EA, R2, E2, A2>(
-    refinement: Refinement<EA, EB>,
+  <E, EB extends E, R2, E2, A2>(
+    refinement: Refinement<NoInfer<E>, EB>,
     f: (e: EB) => Effect<R2, E2, A2>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | Exclude<E, EB>, A2 | A>
-  <E, EX extends E, R2, E2, A2>(
-    predicate: Predicate<EX>,
-    f: (e: EX) => Effect<R2, E2, A2>
+  <E, R2, E2, A2>(
+    predicate: Predicate<NoInfer<E>>,
+    f: (e: NoInfer<E>) => Effect<R2, E2, A2>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
   <R, E, A, EA extends E, EB extends EA, R2, E2, A2>(
     self: Effect<R, E, A>,
     refinement: Refinement<EA, EB>,
     f: (e: EB) => Effect<R2, E2, A2>
   ): Effect<R | R2, E2 | Exclude<E, EB>, A | A2>
-  <R, E, A, EX extends E, R2, E2, A2>(
+  <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    predicate: Predicate<EX>,
-    f: (e: EX) => Effect<R2, E2, A2>
+    predicate: Predicate<E>,
+    f: (e: E) => Effect<R2, E2, A2>
   ): Effect<R | R2, E | E2, A | A2>
 } = core.catchIf
 
@@ -3358,14 +3358,14 @@ export {
  * @category filtering & conditionals
  */
 export const filterOrDie: {
-  <C extends A, B extends A, A = C>(
-    refinement: Refinement<A, B>,
-    orDieWith: (c: C) => unknown
-  ): <R, E>(self: Effect<R, E, C>) => Effect<R, E, B>
-  <B extends A, A = B>(
-    predicate: Predicate<A>,
-    orDieWith: (b: B) => unknown
-  ): <R, E>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orDieWith: (a: NoInfer<A>) => unknown
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
+  <A>(
+    predicate: Predicate<NoInfer<A>>,
+    orDieWith: (a: NoInfer<A>) => unknown
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, B extends A>(
     self: Effect<R, E, A>,
     refinement: Refinement<A, B>,
@@ -3382,8 +3382,11 @@ export const filterOrDie: {
  * @category filtering & conditionals
  */
 export const filterOrDieMessage: {
-  <A, B extends A>(refinement: Refinement<A, B>, message: string): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
-  <B extends A, A = B>(predicate: Predicate<A>, message: string): <R, E>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>,
+    message: string
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
+  <A>(predicate: Predicate<NoInfer<A>>, message: string): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, B extends A>(self: Effect<R, E, A>, refinement: Refinement<A, B>, message: string): Effect<R, E, B>
   <R, E, A>(self: Effect<R, E, A>, predicate: Predicate<A>, message: string): Effect<R, E, A>
 } = effect.filterOrDieMessage
@@ -3396,14 +3399,14 @@ export const filterOrDieMessage: {
  * @category filtering & conditionals
  */
 export const filterOrElse: {
-  <C extends A, B extends A, R2, E2, D, A = C>(
-    refinement: Refinement<A, B>,
-    orElse: (c: C) => Effect<R2, E2, D>
-  ): <R, E>(self: Effect<R, E, C>) => Effect<R2 | R, E2 | E, B | D>
-  <B extends A, R2, E2, C, A = B>(
-    predicate: Predicate<A>,
-    orElse: (b: B) => Effect<R2, E2, C>
-  ): <R, E>(self: Effect<R, E, B>) => Effect<R2 | R, E2 | E, B | C>
+  <A, B extends A, R2, E2, C>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orElse: (a: NoInfer<A>) => Effect<R2, E2, C>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, B | C>
+  <A, R2, E2, B>(
+    predicate: Predicate<NoInfer<A>>,
+    orElse: (a: NoInfer<A>) => Effect<R2, E2, B>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A | B>
   <R, E, A, B extends A, R2, E2, C>(
     self: Effect<R, E, A>,
     refinement: Refinement<A, B>,
@@ -3450,14 +3453,14 @@ export const filterOrElse: {
  * @category filtering & conditionals
  */
 export const filterOrFail: {
-  <C extends A, B extends A, E2, A = C>(
-    refinement: Refinement<A, B>,
-    orFailWith: (c: C) => E2
-  ): <R, E>(self: Effect<R, E, C>) => Effect<R, E2 | E, B>
-  <B extends A, E2, A = B>(
-    predicate: Predicate<A>,
-    orFailWith: (b: B) => E2
-  ): <R, E>(self: Effect<R, E, B>) => Effect<R, E2 | E, B>
+  <A, B extends A, E2>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, B>
+  <A, E2>(
+    predicate: Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, A>
   <R, E, A, B extends A, E2>(
     self: Effect<R, E, A>,
     refinement: Refinement<A, B>,

@@ -7,6 +7,7 @@ import type { Inspectable } from "./Inspectable.js"
 import * as HS from "./internal/hashSet.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import type { NoInfer } from "./Types.js"
 
 const TypeId: unique symbol = HS.HashSetTypeId as TypeId
 
@@ -271,8 +272,8 @@ export const reduce: {
  * @category filtering
  */
 export const filter: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: HashSet<A>) => HashSet<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: HashSet<B>) => HashSet<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: HashSet<A>) => HashSet<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: HashSet<A>) => HashSet<A>
   <A, B extends A>(self: HashSet<A>, refinement: Refinement<A, B>): HashSet<B>
   <A>(self: HashSet<A>, predicate: Predicate<A>): HashSet<A>
 } = HS.filter
@@ -288,10 +289,10 @@ export const filter: {
  * @category partitioning
  */
 export const partition: {
-  <C extends A, B extends A, A = C>(
-    refinement: Refinement<A, B>
-  ): (self: HashSet<C>) => [excluded: HashSet<Exclude<C, B>>, satisfying: HashSet<B>]
-  <B extends A, A = B>(predicate: Predicate<A>): (self: HashSet<B>) => [excluded: HashSet<B>, satisfying: HashSet<B>]
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>
+  ): (self: HashSet<A>) => [excluded: HashSet<Exclude<A, B>>, satisfying: HashSet<B>]
+  <A>(predicate: Predicate<NoInfer<A>>): (self: HashSet<A>) => [excluded: HashSet<A>, satisfying: HashSet<A>]
   <A, B extends A>(
     self: HashSet<A>,
     refinement: Refinement<A, B>

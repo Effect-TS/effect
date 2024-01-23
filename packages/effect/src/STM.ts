@@ -14,7 +14,7 @@ import * as stm from "./internal/stm/stm.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Types from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -140,9 +140,9 @@ export declare namespace STM {
    */
   export interface Variance<out R, out E, out A> {
     readonly [STMTypeId]: {
-      readonly _R: Types.Covariant<R>
-      readonly _E: Types.Covariant<E>
-      readonly _A: Types.Covariant<A>
+      readonly _R: Covariant<R>
+      readonly _E: Covariant<E>
+      readonly _A: Covariant<A>
     }
   }
 }
@@ -620,8 +620,11 @@ export const filterNot: {
  * @category filtering
  */
 export const filterOrDie: {
-  <A, B extends A>(refinement: Refinement<A, B>, defect: LazyArg<unknown>): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
-  <B extends A, A = B>(predicate: Predicate<A>, defect: LazyArg<unknown>): <R, E>(self: STM<R, E, B>) => STM<R, E, B>
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>,
+    defect: LazyArg<unknown>
+  ): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
+  <A>(predicate: Predicate<NoInfer<A>>, defect: LazyArg<unknown>): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
   <R, E, A, B extends A>(self: STM<R, E, A>, refinement: Refinement<A, B>, defect: LazyArg<unknown>): STM<R, E, B>
   <R, E, A>(self: STM<R, E, A>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM<R, E, A>
 } = stm.filterOrDie
@@ -634,8 +637,8 @@ export const filterOrDie: {
  * @category filtering
  */
 export const filterOrDieMessage: {
-  <A, B extends A>(refinement: Refinement<A, B>, message: string): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
-  <B extends A, A = B>(predicate: Predicate<A>, message: string): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>, message: string): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
+  <A>(predicate: Predicate<NoInfer<A>>, message: string): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
   <R, E, A, B extends A>(self: STM<R, E, A>, refinement: Refinement<A, B>, message: string): STM<R, E, B>
   <R, E, A>(self: STM<R, E, A>, predicate: Predicate<A>, message: string): STM<R, E, A>
 } = stm.filterOrDieMessage
@@ -1846,8 +1849,8 @@ export const tapBoth: {
  * @category sequencing
  */
 export const tapError: {
-  <E, X extends E, R2, E2, _>(f: (error: X) => STM<R2, E2, _>): <R, A>(self: STM<R, E, A>) => STM<R2 | R, E | E2, A>
-  <R, A, E, X extends E, R2, E2, _>(self: STM<R, E, A>, f: (error: X) => STM<R2, E2, _>): STM<R | R2, E | E2, A>
+  <E, R2, E2, _>(f: (error: NoInfer<E>) => STM<R2, E2, _>): <R, A>(self: STM<R, E, A>) => STM<R2 | R, E | E2, A>
+  <R, A, E, R2, E2, _>(self: STM<R, E, A>, f: (error: E) => STM<R2, E2, _>): STM<R | R2, E | E2, A>
 } = stm.tapError
 
 const try_: {

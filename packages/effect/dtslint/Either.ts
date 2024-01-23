@@ -7,10 +7,9 @@ declare const string$number: Either.Either<string, number>
 declare const string$boolean: Either.Either<string, boolean>
 declare const error$boolean: Either.Either<Error, boolean>
 
-declare const error$numberOrString: Either.Either<Error, number | string>
-declare const error$number: Either.Either<Error, number>
+declare const error$a: Either.Either<Error, "a">
 
-declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
+declare const predicateUnknown: Predicate.Predicate<unknown>
 
 // -------------------------------------------------------------------------------------
 // flip
@@ -114,69 +113,34 @@ string$string.pipe(Either.andThen(() => string$number))
 // filter
 // -------------------------------------------------------------------------------------
 
-Either.filterOrLeft(error$numberOrString, (
-  _item // $ExpectType string | number
-) => true, (
-  _a // $ExpectType string | number
-) => "a")
-
-// @ts-expect-error
-ReadonlyArray.filter(error$numberOrString, (
-  _item: string
-) => true)
-
+// $ExpectType Either<"b" | Error, "a">
 pipe(
-  error$numberOrString,
-  Either.filterOrLeft((
-    _item // $ExpectType string | number
-  ) => true, (
-    _a // $ExpectType string | number
-  ) => "a")
+  error$a,
+  Either.filterOrLeft(Predicate.isString, (
+    _s // $ExpectType "a"
+  ) => "b" as const)
 )
 
+// $ExpectType Either<"b" | Error, "a">
 pipe(
-  error$numberOrString,
-  // @ts-expect-error
-  Either.filterOrLeft((
-    _item: string
-  ) => true, () => "a")
+  error$a,
+  Either.filterOrLeft(Predicate.isString, (
+    _s: string
+  ) => "b" as const)
 )
 
-// $ExpectType Either<string | Error, string | number>
-Either.filterOrLeft(error$numberOrString, predicateNumbersOrStrings, (
-  _a // $ExpectType string | number
-) => "a")
-
-// $ExpectType Either<string | Error, number>
-Either.filterOrLeft(error$number, predicateNumbersOrStrings, (
-  _a // $ExpectType number
-) => "a")
-
-// $ExpectType Either<string | Error, string | number>
+// $ExpectType Either<"b" | Error, "a">
 pipe(
-  error$numberOrString,
-  Either.filterOrLeft(predicateNumbersOrStrings, (
-    _a // $ExpectType string | number
-  ) => "a")
+  error$a,
+  Either.filterOrLeft(predicateUnknown, (
+    _s // $ExpectType "a"
+  ) => "b" as const)
 )
 
-// $ExpectType Either<string | Error, number>
+// $ExpectType Either<"b" | Error, "a">
 pipe(
-  error$number,
-  Either.filterOrLeft(predicateNumbersOrStrings, (
-    _a // $ExpectType number
-  ) => "a")
-)
-
-// $ExpectType Either<string | Error, number>
-Either.filterOrLeft(error$numberOrString, Predicate.isNumber, (
-  _a // $ExpectType string | number
-) => "a")
-
-// $ExpectType Either<string | Error, number>
-pipe(
-  error$numberOrString,
-  Either.filterOrLeft(Predicate.isNumber, (
-    _a // $ExpectType string | number
-  ) => "a")
+  error$a,
+  Either.filterOrLeft(predicateUnknown, (
+    _s: string
+  ) => "b" as const)
 )

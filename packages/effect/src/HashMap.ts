@@ -9,6 +9,7 @@ import * as HM from "./internal/hashMap.js"
 import * as _keySet from "./internal/hashMap/keySet.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
+import type { NoInfer } from "./Types.js"
 
 const TypeId: unique symbol = HM.HashMapTypeId as TypeId
 
@@ -380,8 +381,8 @@ export const reduce: {
  * @category filtering
  */
 export const filter: {
-  <K, A, B extends A>(f: (a: A, k: K) => a is B): (self: HashMap<K, A>) => HashMap<K, B>
-  <K, B extends A, A = B>(f: (a: A, k: K) => boolean): (self: HashMap<K, B>) => HashMap<K, B>
+  <K, A, B extends A>(f: (a: NoInfer<A>, k: K) => a is B): (self: HashMap<K, A>) => HashMap<K, B>
+  <K, A>(f: (a: NoInfer<A>, k: K) => boolean): (self: HashMap<K, A>) => HashMap<K, A>
   <K, A, B extends A>(self: HashMap<K, A>, f: (a: A, k: K) => a is B): HashMap<K, B>
   <K, A>(self: HashMap<K, A>, f: (a: A, k: K) => boolean): HashMap<K, A>
 } = HM.filter
@@ -414,8 +415,8 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const findFirst: {
-  <K, A, B extends A>(predicate: (a: A, k: K) => a is B): (self: HashMap<K, A>) => Option<[K, B]>
-  <K, B extends A, A = B>(predicate: (a: A, k: K) => boolean): (self: HashMap<K, B>) => Option<[K, B]>
+  <K, A, B extends A>(predicate: (a: NoInfer<A>, k: K) => a is B): (self: HashMap<K, A>) => Option<[K, B]>
+  <K, A>(predicate: (a: NoInfer<A>, k: K) => boolean): (self: HashMap<K, A>) => Option<[K, A]>
   <K, A, B extends A>(self: HashMap<K, A>, predicate: (a: A, k: K) => a is B): Option<[K, B]>
   <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option<[K, A]>
 } = HM.findFirst

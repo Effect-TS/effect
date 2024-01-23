@@ -646,14 +646,24 @@ pipe(numbersArray, Effect.takeUntil(predicateNumbersOrStringsEffect))
 // takeWhile
 // -------------------------------------------------------------------------------------
 
+// $ExpectType Effect<never, never, number[]>
 Effect.takeWhile(numbersArray, (
   _item // $ExpectType number
 ) => Effect.succeed(true))
 
+// $ExpectType Effect<never, never, number[]>
 pipe(
   numbersArray,
   Effect.takeWhile((
     _item // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
+// $ExpectType Effect<never, never, number[]>
+pipe(
+  numbersArray,
+  Effect.takeWhile((
+    _item: unknown
   ) => Effect.succeed(true))
 )
 

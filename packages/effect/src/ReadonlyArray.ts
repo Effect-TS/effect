@@ -19,6 +19,7 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import { isBoolean } from "./Predicate.js"
 import * as RR from "./ReadonlyRecord.js"
 import * as Tuple from "./Tuple.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * @category type lambdas
@@ -559,8 +560,8 @@ export const takeRight: {
  * @since 2.0.0
  */
 export const takeWhile: {
-  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Array<B>
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Array<B>
+  <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Array<B>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Array<A>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Array<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A>
 } = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A> => {
@@ -597,10 +598,10 @@ const spanIndex = <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean
  * @since 2.0.0
  */
 export const span: {
-  <C extends A, B extends A, A = C>(
-    refinement: (a: A, i: number) => a is B
-  ): (self: Iterable<C>) => [init: Array<B>, rest: Array<Exclude<C, B>>]
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [init: Array<B>, rest: Array<B>]
+  <A, B extends A>(
+    refinement: (a: NoInfer<A>, i: number) => a is B
+  ): (self: Iterable<A>) => [init: Array<B>, rest: Array<Exclude<A, B>>]
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => [init: Array<A>, rest: Array<A>]
   <A, B extends A>(
     self: Iterable<A>,
     refinement: (a: A, i: number) => a is B
@@ -651,7 +652,7 @@ export const dropRight: {
  * @since 2.0.0
  */
 export const dropWhile: {
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Array<B>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Array<A>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A>
 } = dual(
   2,
@@ -706,9 +707,9 @@ export const findLastIndex: {
  * @since 2.0.0
  */
 export const findFirst: {
-  <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
-  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Option<B>
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Option<B>
+  <A, B>(f: (a: NoInfer<A>, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Option<B>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Option<A>
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
@@ -740,9 +741,9 @@ export const findFirst: {
  * @since 2.0.0
  */
 export const findLast: {
-  <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
-  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Option<B>
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Option<B>
+  <A, B>(f: (a: NoInfer<A>, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Option<B>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Option<A>
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
@@ -1236,9 +1237,9 @@ export const split: {
  * @since 2.0.0
  */
 export const splitWhere: {
-  <B extends A, A = B>(
-    predicate: (a: A, i: number) => boolean
-  ): (self: Iterable<B>) => [beforeMatch: Array<B>, fromMatch: Array<B>]
+  <A>(
+    predicate: (a: NoInfer<A>, i: number) => boolean
+  ): (self: Iterable<A>) => [beforeMatch: Array<A>, fromMatch: Array<A>]
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [beforeMatch: Array<A>, fromMatch: Array<A>]
 } = dual(
   2,
@@ -1702,8 +1703,8 @@ export const getRights = <E, A>(self: Iterable<Either<E, A>>): Array<A> => {
  * @since 2.0.0
  */
 export const filter: {
-  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Array<B>
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Array<B>
+  <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Array<B>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Array<A>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Array<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A>
 } = dual(
@@ -1727,12 +1728,12 @@ export const filter: {
  * @since 2.0.0
  */
 export const partition: {
-  <C extends A, B extends A, A = C>(refinement: (a: A, i: number) => a is B): (
-    self: Iterable<C>
-  ) => [excluded: Array<Exclude<C, B>>, satisfying: Array<B>]
-  <B extends A, A = B>(
-    predicate: (a: A, i: number) => boolean
-  ): (self: Iterable<B>) => [excluded: Array<B>, satisfying: Array<B>]
+  <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (
+    self: Iterable<A>
+  ) => [excluded: Array<Exclude<A, B>>, satisfying: Array<B>]
+  <A>(
+    predicate: (a: NoInfer<A>, i: number) => boolean
+  ): (self: Iterable<A>) => [excluded: Array<A>, satisfying: Array<A>]
   <A, B extends A>(
     self: Iterable<A>,
     refinement: (a: A, i: number) => a is B
@@ -1871,9 +1872,9 @@ export const every: {
  * @since 2.0.0
  */
 export const some: {
-  <B extends A, A = B>(
-    predicate: (a: A, i: number) => boolean
-  ): (self: ReadonlyArray<B>) => self is NonEmptyReadonlyArray<B>
+  <A>(
+    predicate: (a: NoInfer<A>, i: number) => boolean
+  ): (self: ReadonlyArray<A>) => self is NonEmptyReadonlyArray<A>
   <A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): self is NonEmptyReadonlyArray<A>
 } = dual(
   2,

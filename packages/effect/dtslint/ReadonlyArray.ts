@@ -256,8 +256,8 @@ pipe(
 )
 
 pipe(
-  // @ts-expect-error
   numbersOrStrings,
+  // @ts-expect-error
   ReadonlyArray.filter((
     _item: string
   ) => true)

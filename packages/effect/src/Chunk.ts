@@ -17,7 +17,7 @@ import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import * as RA from "./ReadonlyArray.js"
 import type { NonEmptyReadonlyArray } from "./ReadonlyArray.js"
-import type * as Types from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 
 const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
 
@@ -33,7 +33,7 @@ export type TypeId = typeof TypeId
  */
 export interface Chunk<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _A: Types.Covariant<A>
+    readonly _A: Covariant<A>
   }
   readonly length: number
   /** @internal */
@@ -534,7 +534,7 @@ export const dropRight: {
  * @since 2.0.0
  */
 export const dropWhile: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => Chunk<A>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 } = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => {
   const arr = toReadonlyArray(self)
@@ -655,7 +655,7 @@ export const filterMap: {
  */
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => Chunk<A>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 } = dual(
@@ -907,12 +907,12 @@ export const mapAccum: {
  * @since 2.0.0
  */
 export const partition: {
-  <C extends A, B extends A, A = C>(
-    refinement: (a: A, i: number) => a is B
-  ): (self: Chunk<C>) => [excluded: Chunk<Exclude<C, B>>, satisfying: Chunk<B>]
-  <B extends A, A = B>(
-    predicate: (a: A, i: number) => boolean
-  ): (self: Chunk<B>) => [excluded: Chunk<B>, satisfying: Chunk<B>]
+  <A, B extends A>(
+    refinement: (a: NoInfer<A>, i: number) => a is B
+  ): (self: Chunk<A>) => [excluded: Chunk<Exclude<A, B>>, satisfying: Chunk<B>]
+  <A>(
+    predicate: (a: NoInfer<A>, i: number) => boolean
+  ): (self: Chunk<A>) => [excluded: Chunk<A>, satisfying: Chunk<A>]
   <A, B extends A>(
     self: Chunk<A>,
     refinement: (a: A, i: number) => a is B
@@ -1035,7 +1035,7 @@ export const split: {
  * @since 2.0.0
  */
 export const splitWhere: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [beforeMatch: Chunk<B>, fromMatch: Chunk<B>]
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => [beforeMatch: Chunk<A>, fromMatch: Chunk<A>]
   <A>(self: Chunk<A>, predicate: Predicate<A>): [beforeMatch: Chunk<A>, fromMatch: Chunk<A>]
 } = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): [beforeMatch: Chunk<A>, fromMatch: Chunk<A>] => {
   let i = 0
@@ -1083,8 +1083,8 @@ export const takeRight: {
  * @category elements
  */
 export const takeWhile: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: Chunk<A>) => Chunk<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => Chunk<A>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 } = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => {
@@ -1288,8 +1288,8 @@ export const containsWith: <A>(
  * @since 2.0.0
  */
 export const findFirst: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Option<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: Chunk<A>) => Option<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => Option<A>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Option<A>
 } = RA.findFirst
@@ -1312,8 +1312,8 @@ export const findFirstIndex: {
  * @since 2.0.0
  */
 export const findLast: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Option<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: Chunk<A>) => Option<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => Option<A>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Option<A>
 } = RA.findLast
@@ -1353,7 +1353,7 @@ export const every: {
  * @since 2.0.0
  */
 export const some: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => self is NonEmptyChunk<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => self is NonEmptyChunk<A>
   <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A>
 } = dual(
   2,

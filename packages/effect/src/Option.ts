@@ -15,7 +15,7 @@ import type { Order } from "./Order.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Types from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -45,7 +45,7 @@ export interface None<out A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "None"
   readonly _op: "None"
   readonly [TypeId]: {
-    readonly _A: Types.Covariant<A>
+    readonly _A: Covariant<A>
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: OptionUnify<this>
@@ -61,7 +61,7 @@ export interface Some<out A> extends Data.Case, Pipeable, Inspectable {
   readonly _op: "Some"
   readonly value: A
   readonly [TypeId]: {
-    readonly _A: Types.Covariant<A>
+    readonly _A: Covariant<A>
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: OptionUnify<this>
@@ -983,8 +983,8 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const filter: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Option<A>) => Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Option<B>) => Option<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: Option<A>) => Option<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Option<A>) => Option<A>
   <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Option<A>, predicate: Predicate<A>): Option<A>
 } = dual(
@@ -1066,7 +1066,7 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
  * @category lifting
  * @since 2.0.0
  */
-export const liftPredicate: {
+export const liftPredicate: { // Note: not using the NoInfer pattern here on purpose
   <A, B extends A>(refinement: Refinement<A, B>): (a: A) => Option<B>
   <B extends A, A = B>(predicate: Predicate<A>): (b: B) => Option<B>
 } = <B extends A, A = B>(predicate: Predicate<A>) => (b: B): Option<B> => predicate(b) ? some(b) : none()
@@ -1127,8 +1127,8 @@ export const contains: {
  * @since 2.0.0
  */
 export const exists: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Option<A>) => self is Option<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Option<B>) => boolean
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: Option<A>) => self is Option<B>
+  <A>(predicate: Predicate<NoInfer<A>>): (self: Option<A>) => boolean
   <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): self is Option<B>
   <A>(self: Option<A>, predicate: Predicate<A>): boolean
 } = dual(

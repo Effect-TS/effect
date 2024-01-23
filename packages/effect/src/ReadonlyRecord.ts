@@ -11,6 +11,7 @@ import type { Equivalence } from "./Equivalence.js"
 import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as Option from "./Option.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * @category models
@@ -527,10 +528,12 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const filter: {
-  <K extends string, A, B extends A>(refinement: (a: A, key: K) => a is B): (self: Record<K, A>) => Record<string, B>
-  <K extends string, B extends A, A = B>(
-    predicate: (A: A, key: K) => boolean
-  ): (self: Record<K, B>) => Record<string, B>
+  <K extends string, A, B extends A>(
+    refinement: (a: NoInfer<A>, key: K) => a is B
+  ): (self: Record<K, A>) => Record<string, B>
+  <K extends string, A>(
+    predicate: (A: NoInfer<A>, key: K) => boolean
+  ): (self: Record<K, A>) => Record<string, A>
   <K extends string, A, B extends A>(self: Record<K, A>, refinement: (a: A, key: K) => a is B): Record<string, B>
   <K extends string, A>(self: Record<K, A>, predicate: (a: A, key: K) => boolean): Record<string, A>
 } = dual(
@@ -709,12 +712,12 @@ export const separate: <A, B>(
  * @since 2.0.0
  */
 export const partition: {
-  <K extends string, C extends A, B extends A, A = C>(refinement: (a: A, key: K) => a is B): (
-    self: Record<K, C>
-  ) => [excluded: Record<string, Exclude<C, B>>, satisfying: Record<string, B>]
-  <K extends string, B extends A, A = B>(
-    predicate: (a: A, key: K) => boolean
-  ): (self: Record<K, B>) => [excluded: Record<string, B>, satisfying: Record<string, B>]
+  <K extends string, A, B extends A>(refinement: (a: NoInfer<A>, key: K) => a is B): (
+    self: Record<K, A>
+  ) => [excluded: Record<string, Exclude<A, B>>, satisfying: Record<string, B>]
+  <K extends string, A>(
+    predicate: (a: NoInfer<A>, key: K) => boolean
+  ): (self: Record<K, A>) => [excluded: Record<string, A>, satisfying: Record<string, A>]
   <K extends string, A, B extends A>(
     self: Record<K, A>,
     refinement: (a: A, key: K) => a is B

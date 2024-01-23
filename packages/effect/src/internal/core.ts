@@ -533,39 +533,35 @@ export const unified = <Args extends ReadonlyArray<any>, Ret extends Effect.Effe
 (...args: Args): Effect.Effect.Unify<Ret> => f(...args)
 
 /* @internal */
-export const catchIf = dual<
-  {
-    <E, EA extends E, EB extends EA, R2, E2, A2>(
-      refinement: Refinement<EA, EB>,
-      f: (e: EB) => Effect.Effect<R2, E2, A2>
-    ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R, Exclude<E, EB> | E2, A2 | A>
-    <E, EX extends E, R2, E2, A2>(
-      predicate: Predicate<EX>,
-      f: (e: EX) => Effect.Effect<R2, E2, A2>
-    ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R, E | E2, A2 | A>
-  },
-  {
-    <R, E, A, EA extends E, EB extends EA, R2, E2, A2>(
-      self: Effect.Effect<R, E, A>,
-      refinement: Refinement<EA, EB>,
-      f: (e: EB) => Effect.Effect<R2, E2, A2>
-    ): Effect.Effect<R2 | R, Exclude<E, EB> | E2, A2 | A>
-    <R, E, A, EX extends E, R2, E2, A2>(
-      self: Effect.Effect<R, E, A>,
-      predicate: Predicate<EX>,
-      f: (e: EX) => Effect.Effect<R2, E2, A2>
-    ): Effect.Effect<R2 | R, E | E2, A2 | A>
-  }
->(3, <R, E, A, EX extends E, R2, E2, A2>(
+export const catchIf: {
+  <E, EB extends E, R2, E2, A2>(
+    refinement: Refinement<NoInfer<E>, EB>,
+    f: (e: EB) => Effect.Effect<R2, E2, A2>
+  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R, E2 | Exclude<E, EB>, A2 | A>
+  <E, R2, E2, A2>(
+    predicate: Predicate<NoInfer<E>>,
+    f: (e: NoInfer<E>) => Effect.Effect<R2, E2, A2>
+  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R, E | E2, A2 | A>
+  <R, E, A, EA extends E, EB extends EA, R2, E2, A2>(
+    self: Effect.Effect<R, E, A>,
+    refinement: Refinement<EA, EB>,
+    f: (e: EB) => Effect.Effect<R2, E2, A2>
+  ): Effect.Effect<R | R2, E2 | Exclude<E, EB>, A | A2>
+  <R, E, A, R2, E2, A2>(
+    self: Effect.Effect<R, E, A>,
+    predicate: Predicate<E>,
+    f: (e: E) => Effect.Effect<R2, E2, A2>
+  ): Effect.Effect<R | R2, E | E2, A | A2>
+} = dual(3, <R, E, A, R2, E2, A2>(
   self: Effect.Effect<R, E, A>,
-  predicate: Predicate<EX>,
-  f: (e: EX) => Effect.Effect<R2, E2, A2>
-) =>
+  predicate: Predicate<E>,
+  f: (e: E) => Effect.Effect<R2, E2, A2>
+): Effect.Effect<R | R2, E | E2, A | A2> =>
   catchAllCause(self, (cause): Effect.Effect<R2 | R, E | E2, A2 | A> => {
     const either = internalCause.failureOrCause(cause)
     switch (either._tag) {
       case "Left": {
-        return predicate(either.left as EX) ? f(either.left as EX) : failCause(cause)
+        return predicate(either.left) ? f(either.left) : failCause(cause)
       }
       case "Right": {
         return failCause(either.right)

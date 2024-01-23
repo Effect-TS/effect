@@ -13,7 +13,7 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type * as Types from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -44,8 +44,8 @@ export interface Left<out E, out A> extends Data.Case, Pipeable, Inspectable {
   readonly _op: "Left"
   readonly left: E
   readonly [TypeId]: {
-    readonly _A: Types.Covariant<A>
-    readonly _E: Types.Covariant<E>
+    readonly _A: Covariant<A>
+    readonly _E: Covariant<E>
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: EitherUnify<this>
@@ -61,8 +61,8 @@ export interface Right<out E, out A> extends Data.Case, Pipeable, Inspectable {
   readonly _op: "Right"
   readonly right: A
   readonly [TypeId]: {
-    readonly _A: Types.Covariant<A>
-    readonly _E: Types.Covariant<E>
+    readonly _A: Covariant<A>
+    readonly _E: Covariant<E>
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: EitherUnify<this>
@@ -405,14 +405,14 @@ export const match: {
  * @category filtering & conditionals
  */
 export const filterOrLeft: {
-  <C extends A, B extends A, E2, A = C>(
-    refinement: Refinement<A, B>,
-    orLeftWith: (c: C) => E2
-  ): <E>(self: Either<E, C>) => Either<E2 | E, B>
-  <B extends A, E2, A = B>(
-    predicate: Predicate<A>,
-    orLeftWith: (b: B) => E2
-  ): <E>(self: Either<E, B>) => Either<E2 | E, B>
+  <A, B extends A, E2>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orLeftWith: (a: NoInfer<A>) => E2
+  ): <E>(self: Either<E, A>) => Either<E2 | E, B>
+  <A, E2>(
+    predicate: Predicate<NoInfer<A>>,
+    orLeftWith: (a: NoInfer<A>) => E2
+  ): <E>(self: Either<E, A>) => Either<E2 | E, A>
   <E, A, B extends A, E2>(self: Either<E, A>, refinement: Refinement<A, B>, orLeftWith: (a: A) => E2): Either<E | E2, B>
   <E, A, E2>(self: Either<E, A>, predicate: Predicate<A>, orLeftWith: (a: A) => E2): Either<E | E2, A>
 } = dual(3, <E, A, E2>(
