@@ -17,6 +17,28 @@ if (Exit.exists(numberOrString, Predicate.isString)) {
   numberOrString // $ExpectType Exit<never, string>
 }
 
+if (
+  pipe(
+    number,
+    Exit.exists((
+      _n // $ExpectType number
+    ) => true)
+  )
+) {
+  number // $ExpectType Exit<string, number>
+}
+
+if (
+  pipe(
+    number,
+    Exit.exists((
+      _sn: string | number
+    ) => true)
+  )
+) {
+  number // $ExpectType Exit<string, number>
+}
+
 // $ExpectType boolean
 pipe(
   number,

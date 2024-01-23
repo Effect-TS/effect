@@ -3476,8 +3476,8 @@ export const filterOrFail: {
  * @category filtering & conditionals
  */
 export const unless: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option.Option<A>>
+  (condition: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
+  <R, E, A>(self: Effect<R, E, A>, condition: LazyArg<boolean>): Effect<R, E, Option.Option<A>>
 } = effect.unless
 
 /**
@@ -3488,13 +3488,13 @@ export const unless: {
  */
 export const unlessEffect: {
   <R2, E2>(
-    predicate: Effect<R2, E2, boolean>
+    condition: Effect<R2, E2, boolean>
   ): <R, E, A>(
     self: Effect<R, E, A>
   ) => Effect<R2 | R, E2 | E, Option.Option<A>>
   <R, E, A, R2, E2>(
     self: Effect<R, E, A>,
-    predicate: Effect<R2, E2, boolean>
+    condition: Effect<R2, E2, boolean>
   ): Effect<R | R2, E | E2, Option.Option<A>>
 } = effect.unlessEffect
 
@@ -3505,8 +3505,8 @@ export const unlessEffect: {
  * @category filtering & conditionals
  */
 export const when: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option.Option<A>>
+  (condition: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
+  <R, E, A>(self: Effect<R, E, A>, condition: LazyArg<boolean>): Effect<R, E, Option.Option<A>>
 } = effect.when
 
 /**
@@ -3515,13 +3515,13 @@ export const when: {
  */
 export const whenEffect: {
   <R, E>(
-    predicate: Effect<R, E, boolean>
+    condition: Effect<R, E, boolean>
   ): <R2, E2, A>(
     effect: Effect<R2, E2, A>
   ) => Effect<R | R2, E | E2, Option.Option<A>>
   <R, E, A, R2, E2>(
     self: Effect<R2, E2, A>,
-    predicate: Effect<R, E, boolean>
+    condition: Effect<R, E, boolean>
   ): Effect<R | R2, E | E2, Option.Option<A>>
 } = core.whenEffect
 

@@ -1711,11 +1711,11 @@ export const tryMapPromise = dual<
 
 /* @internal */
 export const unless = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, predicate: LazyArg<boolean>) => Effect.Effect<R, E, Option.Option<A>>
->(2, (self, predicate) =>
+  (condition: LazyArg<boolean>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
+  <R, E, A>(self: Effect.Effect<R, E, A>, condition: LazyArg<boolean>) => Effect.Effect<R, E, Option.Option<A>>
+>(2, (self, condition) =>
   core.suspend(() =>
-    predicate()
+    condition()
       ? succeedNone
       : asSome(self)
   ))
@@ -1723,13 +1723,13 @@ export const unless = dual<
 /* @internal */
 export const unlessEffect = dual<
   <R2, E2>(
-    predicate: Effect.Effect<R2, E2, boolean>
+    condition: Effect.Effect<R2, E2, boolean>
   ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, Option.Option<A>>,
   <R, E, A, R2, E2>(
     self: Effect.Effect<R, E, A>,
-    predicate: Effect.Effect<R2, E2, boolean>
+    condition: Effect.Effect<R2, E2, boolean>
   ) => Effect.Effect<R | R2, E | E2, Option.Option<A>>
->(2, (self, predicate) => core.flatMap(predicate, (b) => (b ? succeedNone : asSome(self))))
+>(2, (self, condition) => core.flatMap(condition, (b) => (b ? succeedNone : asSome(self))))
 
 /* @internal */
 export const unsandbox = <R, E, A>(self: Effect.Effect<R, Cause.Cause<E>, A>) =>
@@ -1769,11 +1769,11 @@ export const updateService = dual<
 
 /* @internal */
 export const when = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, predicate: LazyArg<boolean>) => Effect.Effect<R, E, Option.Option<A>>
->(2, (self, predicate) =>
+  (condition: LazyArg<boolean>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
+  <R, E, A>(self: Effect.Effect<R, E, A>, condition: LazyArg<boolean>) => Effect.Effect<R, E, Option.Option<A>>
+>(2, (self, condition) =>
   core.suspend(() =>
-    predicate()
+    condition()
       ? core.map(self, Option.some)
       : core.succeed(Option.none())
   ))

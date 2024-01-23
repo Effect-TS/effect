@@ -1245,16 +1245,16 @@ export const updateRuntimeFlags = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): 
 /* @internal */
 export const whenEffect = dual<
   <R, E>(
-    predicate: Effect.Effect<R, E, boolean>
+    condition: Effect.Effect<R, E, boolean>
   ) => <R2, E2, A>(
     effect: Effect.Effect<R2, E2, A>
   ) => Effect.Effect<R | R2, E | E2, Option.Option<A>>,
   <R, E, A, R2, E2>(
     self: Effect.Effect<R2, E2, A>,
-    predicate: Effect.Effect<R, E, boolean>
+    condition: Effect.Effect<R, E, boolean>
   ) => Effect.Effect<R | R2, E | E2, Option.Option<A>>
->(2, (self, predicate) =>
-  flatMap(predicate, (b) => {
+>(2, (self, condition) =>
+  flatMap(condition, (b) => {
     if (b) {
       return pipe(self, map(Option.some))
     }
@@ -2369,8 +2369,8 @@ export const exitDie = (defect: unknown): Exit.Exit<never, never> =>
 
 /** @internal */
 export const exitExists: {
-  <A, B extends A>(refinement: Refinement<A, B>): <E>(self: Exit.Exit<E, A>) => self is Exit.Exit<never, B>
-  <A>(predicate: Predicate<A>): <E>(self: Exit.Exit<E, A>) => boolean
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <E>(self: Exit.Exit<E, A>) => self is Exit.Exit<never, B>
+  <A>(predicate: Predicate<NoInfer<A>>): <E>(self: Exit.Exit<E, A>) => boolean
   <E, A, B extends A>(self: Exit.Exit<E, A>, refinement: Refinement<A, B>): self is Exit.Exit<never, B>
   <E, A>(self: Exit.Exit<E, A>, predicate: Predicate<A>): boolean
 } = dual(2, <E, A, B extends A>(self: Exit.Exit<E, A>, refinement: Refinement<A, B>): self is Exit.Exit<never, B> => {
