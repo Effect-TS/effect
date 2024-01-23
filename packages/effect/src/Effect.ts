@@ -3382,10 +3382,10 @@ export const filterOrDie: {
  * @category filtering & conditionals
  */
 export const filterOrDieMessage: {
-  <A, B extends A>(filter: Refinement<A, B>, message: string): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
-  <B extends A, A = B>(filter: Predicate<A>, message: string): <R, E>(self: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, A, B extends A>(self: Effect<R, E, A>, filter: Refinement<A, B>, message: string): Effect<R, E, B>
-  <R, E, A>(self: Effect<R, E, A>, filter: Predicate<A>, message: string): Effect<R, E, A>
+  <A, B extends A>(refinement: Refinement<A, B>, message: string): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>, message: string): <R, E>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, A, B extends A>(self: Effect<R, E, A>, refinement: Refinement<A, B>, message: string): Effect<R, E, B>
+  <R, E, A>(self: Effect<R, E, A>, predicate: Predicate<A>, message: string): Effect<R, E, A>
 } = effect.filterOrDieMessage
 
 /**
@@ -3396,23 +3396,23 @@ export const filterOrDieMessage: {
  * @category filtering & conditionals
  */
 export const filterOrElse: {
-  <A, B extends A, X extends A, R2, E2, C>(
-    filter: Refinement<A, B>,
-    orElse: (a: X) => Effect<R2, E2, C>
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, B | C>
-  <A, X extends A, Y extends A, R2, E2, B>(
-    filter: Predicate<X>,
-    orElse: (a: Y) => Effect<R2, E2, B>
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A | B>
-  <R, E, A, B extends A, X extends A, R2, E2, C>(
+  <C extends A, B extends A, R2, E2, D, A = C>(
+    refinement: Refinement<A, B>,
+    orElse: (c: C) => Effect<R2, E2, D>
+  ): <R, E>(self: Effect<R, E, C>) => Effect<R2 | R, E2 | E, B | D>
+  <B extends A, R2, E2, C, A = B>(
+    predicate: Predicate<A>,
+    orElse: (b: B) => Effect<R2, E2, C>
+  ): <R, E>(self: Effect<R, E, B>) => Effect<R2 | R, E2 | E, B | C>
+  <R, E, A, B extends A, R2, E2, C>(
     self: Effect<R, E, A>,
-    filter: Refinement<A, B>,
-    orElse: (a: X) => Effect<R2, E2, C>
+    refinement: Refinement<A, B>,
+    orElse: (a: A) => Effect<R2, E2, C>
   ): Effect<R | R2, E | E2, B | C>
-  <R, E, A, X extends A, Y extends A, R2, E2, B>(
+  <R, E, A, R2, E2, B>(
     self: Effect<R, E, A>,
-    filter: Predicate<X>,
-    orElse: (a: Y) => Effect<R2, E2, B>
+    predicate: Predicate<A>,
+    orElse: (a: A) => Effect<R2, E2, B>
   ): Effect<R | R2, E | E2, A | B>
 } = effect.filterOrElse
 
@@ -3450,24 +3450,20 @@ export const filterOrElse: {
  * @category filtering & conditionals
  */
 export const filterOrFail: {
-  <A, B extends A, X extends A, E2>(
-    filter: Refinement<A, B>,
-    orFailWith: (a: X) => E2
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, B>
-  <A, X extends A, Y extends A, E2>(
-    filter: Predicate<X>,
-    orFailWith: (a: Y) => E2
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, A>
-  <R, E, A, B extends A, X extends A, E2>(
+  <C extends A, B extends A, E2, A = C>(
+    refinement: Refinement<A, B>,
+    orFailWith: (c: C) => E2
+  ): <R, E>(self: Effect<R, E, C>) => Effect<R, E2 | E, B>
+  <B extends A, E2, A = B>(
+    predicate: Predicate<A>,
+    orFailWith: (b: B) => E2
+  ): <R, E>(self: Effect<R, E, B>) => Effect<R, E2 | E, B>
+  <R, E, A, B extends A, E2>(
     self: Effect<R, E, A>,
-    filter: Refinement<A, B>,
-    orFailWith: (a: X) => E2
+    refinement: Refinement<A, B>,
+    orFailWith: (a: A) => E2
   ): Effect<R, E | E2, B>
-  <R, E, A, X extends A, Y extends A, E2>(
-    self: Effect<R, E, A>,
-    filter: Predicate<X>,
-    orFailWith: (a: Y) => E2
-  ): Effect<R, E | E2, A>
+  <R, E, A, E2>(self: Effect<R, E, A>, predicate: Predicate<A>, orFailWith: (a: A) => E2): Effect<R, E | E2, A>
 } = effect.filterOrFail
 
 /**
