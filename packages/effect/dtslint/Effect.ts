@@ -647,10 +647,19 @@ Effect.takeUntil(numbersArray, (
   _item // $ExpectType number
 ) => Effect.succeed(true))
 
+// $ExpectType Effect<never, never, number[]>
 pipe(
   numbersArray,
   Effect.takeUntil((
     _item // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
+// $ExpectType Effect<never, never, number[]>
+pipe(
+  numbersArray,
+  Effect.takeUntil((
+    _item: number | string
   ) => Effect.succeed(true))
 )
 

@@ -1395,17 +1395,20 @@ export const labelMetrics = dual<
 )
 
 /* @internal */
-export const takeUntil = dual<
-  <R, E, A>(
-    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
+export const takeUntil: {
+  <A, R, E>(
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
+  ): (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>
   <R, E, A>(
     elements: Iterable<A>,
     predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => Effect.Effect<R, E, Array<A>>
->(
+  ): Effect.Effect<R, E, Array<A>>
+} = dual(
   2,
-  <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>) =>
+  <R, E, A>(
+    elements: Iterable<A>,
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
+  ): Effect.Effect<R, E, Array<A>> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
       const builder: Array<A> = []
