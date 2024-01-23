@@ -3360,7 +3360,7 @@ export {
 export const filterOrDie: {
   <A, B extends A>(
     refinement: Refinement<NoInfer<A>, B>,
-    orDieWith: (a: NoInfer<A>) => unknown
+    orDieWith: (a: Exclude<NoInfer<A>, B>) => unknown
   ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
   <A>(
     predicate: Predicate<NoInfer<A>>,
@@ -3369,7 +3369,7 @@ export const filterOrDie: {
   <R, E, A, B extends A>(
     self: Effect<R, E, A>,
     refinement: Refinement<A, B>,
-    orDieWith: (a: A) => unknown
+    orDieWith: (a: Exclude<A, B>) => unknown
   ): Effect<R, E, B>
   <R, E, A>(self: Effect<R, E, A>, filter: Predicate<A>, orDieWith: (a: A) => unknown): Effect<R, E, A>
 } = effect.filterOrDie
@@ -3401,7 +3401,7 @@ export const filterOrDieMessage: {
 export const filterOrElse: {
   <A, B extends A, R2, E2, C>(
     refinement: Refinement<NoInfer<A>, B>,
-    orElse: (a: NoInfer<A>) => Effect<R2, E2, C>
+    orElse: (a: Exclude<NoInfer<A>, B>) => Effect<R2, E2, C>
   ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, B | C>
   <A, R2, E2, B>(
     predicate: Predicate<NoInfer<A>>,
@@ -3410,7 +3410,7 @@ export const filterOrElse: {
   <R, E, A, B extends A, R2, E2, C>(
     self: Effect<R, E, A>,
     refinement: Refinement<A, B>,
-    orElse: (a: A) => Effect<R2, E2, C>
+    orElse: (a: Exclude<A, B>) => Effect<R2, E2, C>
   ): Effect<R | R2, E | E2, B | C>
   <R, E, A, R2, E2, B>(
     self: Effect<R, E, A>,
@@ -3455,7 +3455,7 @@ export const filterOrElse: {
 export const filterOrFail: {
   <A, B extends A, E2>(
     refinement: Refinement<NoInfer<A>, B>,
-    orFailWith: (a: NoInfer<A>) => E2
+    orFailWith: (a: Exclude<NoInfer<A>, B>) => E2
   ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, B>
   <A, E2>(
     predicate: Predicate<NoInfer<A>>,
@@ -3464,7 +3464,7 @@ export const filterOrFail: {
   <R, E, A, B extends A, E2>(
     self: Effect<R, E, A>,
     refinement: Refinement<A, B>,
-    orFailWith: (a: A) => E2
+    orFailWith: (a: Exclude<A, B>) => E2
   ): Effect<R, E | E2, B>
   <R, E, A, E2>(self: Effect<R, E, A>, predicate: Predicate<A>, orFailWith: (a: A) => E2): Effect<R, E | E2, A>
 } = effect.filterOrFail

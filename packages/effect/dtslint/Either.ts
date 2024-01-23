@@ -1,6 +1,7 @@
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 
 declare const string$string: Either.Either<string, string>
 declare const string$number: Either.Either<string, number>
@@ -110,8 +111,51 @@ string$string.pipe(Either.andThen(string$number))
 string$string.pipe(Either.andThen(() => string$number))
 
 // -------------------------------------------------------------------------------------
-// filter
+// filterOrLeft
 // -------------------------------------------------------------------------------------
+
+declare const error$arrayOfStrings: Either.Either<Error, Array<string>>
+
+// $ExpectType Either<"b" | Error, [string, ...string[]]>
+pipe(
+  error$arrayOfStrings,
+  Either.filterOrLeft(ReadonlyArray.isNonEmptyArray, (
+    _s // $ExpectType string[]
+  ) => "b" as const)
+)
+
+declare const error$readonlyArrayOfStrings: Either.Either<Error, ReadonlyArray<string>>
+
+// $ExpectType Either<"b" | Error, readonly [string, ...string[]]>
+pipe(
+  error$readonlyArrayOfStrings,
+  Either.filterOrLeft(ReadonlyArray.isNonEmptyReadonlyArray, (
+    _s // $ExpectType readonly string[]
+  ) => "b" as const)
+)
+
+declare const error$stringOrNumber: Either.Either<Error, string | number>
+
+// $ExpectType Either<"b" | Error, string>
+pipe(
+  error$stringOrNumber,
+  Either.filterOrLeft(Predicate.isString, (
+    _s // $ExpectType number
+  ) => "b" as const)
+)
+
+// $ExpectType Either<"b" | Error, string>
+Either.filterOrLeft(error$stringOrNumber, Predicate.isString, (
+  _s // $ExpectType number
+) => "b" as const)
+
+// $ExpectType Either<"b" | Error, string>
+pipe(
+  error$stringOrNumber,
+  Either.filterOrLeft(Predicate.isString, (
+    _s // $ExpectType number
+  ) => "b" as const)
+)
 
 // $ExpectType Either<"b" | Error, "a">
 pipe(

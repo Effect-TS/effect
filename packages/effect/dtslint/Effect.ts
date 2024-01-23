@@ -879,3 +879,22 @@ Effect.repeat(Effect.succeed(""), {
     _ // $ExpectType string
   ): _ is "hello" => true
 })
+
+// -------------------------------------------------------------------------------------
+// filterOrFail
+// -------------------------------------------------------------------------------------
+
+declare const error$stringOrNumber: Effect.Effect<never, Error, string | number>
+
+// $ExpectType Effect<never, "b" | Error, string>
+pipe(
+  error$stringOrNumber,
+  Effect.filterOrFail(Predicate.isString, (
+    _s // $ExpectType number
+  ) => "b" as const)
+)
+
+// $ExpectType Effect<never, "b" | Error, string>
+Effect.filterOrFail(error$stringOrNumber, Predicate.isString, (
+  _s // $ExpectType number
+) => "b" as const)
