@@ -1794,7 +1794,7 @@ export const reduceRight: {
  * @category lifting
  * @since 2.0.0
  */
-export const liftPredicate: {
+export const liftPredicate: { // Note: I intentionally avoid using the NoInfer pattern here.
   <A, B extends A>(refinement: Refinement<A, B>): (a: A) => Array<B>
   <A>(predicate: Predicate<A>): <B extends A>(b: B) => Array<B>
 } = <A>(predicate: Predicate<A>) => <B extends A>(b: B): Array<B> => predicate(b) ? [b] : []

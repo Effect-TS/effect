@@ -1066,7 +1066,7 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
  * @category lifting
  * @since 2.0.0
  */
-export const liftPredicate: { // Note: not using the NoInfer pattern here on purpose
+export const liftPredicate: { // Note: I intentionally avoid using the NoInfer pattern here.
   <A, B extends A>(refinement: Refinement<A, B>): (a: A) => Option<B>
   <B extends A, A = B>(predicate: Predicate<A>): (b: B) => Option<B>
 } = <B extends A, A = B>(predicate: Predicate<A>) => (b: B): Option<B> => predicate(b) ? some(b) : none()
