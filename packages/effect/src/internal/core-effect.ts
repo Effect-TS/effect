@@ -1433,7 +1433,7 @@ export const takeUntil: {
 /* @internal */
 export const takeWhile = dual<
   <R, E, A>(
-    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
   ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
   <R, E, A>(
     elements: Iterable<A>,

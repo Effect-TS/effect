@@ -338,7 +338,7 @@ export const eventually = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, E, A> =>
 
 /** @internal */
 export const every = dual<
-  <A, R, E>(predicate: (a: A) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, boolean>,
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, boolean>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<R, E, boolean>) => STM.STM<R, E, boolean>
 >(
   2,
@@ -365,7 +365,7 @@ export const every = dual<
 
 /** @internal */
 export const exists = dual<
-  <A, R, E>(predicate: (a: A) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, boolean>,
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, boolean>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<R, E, boolean>) => STM.STM<R, E, boolean>
 >(
   2,
@@ -392,7 +392,7 @@ export const fiberId: STM.STM<never, never, FiberId.FiberId> = core.effect<never
 
 /** @internal */
 export const filter = dual<
-  <A, R, E>(predicate: (a: A) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, Array<A>>,
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, Array<A>>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<R, E, boolean>) => STM.STM<R, E, Array<A>>
 >(
   2,
@@ -415,7 +415,7 @@ export const filter = dual<
 
 /** @internal */
 export const filterNot = dual<
-  <A, R, E>(predicate: (a: A) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, Array<A>>,
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, Array<A>>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<R, E, boolean>) => STM.STM<R, E, Array<A>>
 >(
   2,

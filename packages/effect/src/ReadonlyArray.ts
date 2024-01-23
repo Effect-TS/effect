@@ -667,7 +667,7 @@ export const dropWhile: {
  * @since 2.0.0
  */
 export const findFirstIndex: {
-  <A>(predicate: (a: A, i: number) => boolean): (self: Iterable<A>) => Option<number>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Option<number>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<number>
 } = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<number> => {
   let i = 0
@@ -687,7 +687,7 @@ export const findFirstIndex: {
  * @since 2.0.0
  */
 export const findLastIndex: {
-  <A>(predicate: (a: A, i: number) => boolean): (self: Iterable<A>) => Option<number>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Option<number>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<number>
 } = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<number> => {
   const input = fromIterable(self)
@@ -1855,8 +1855,10 @@ export const liftEither = <A extends Array<unknown>, E, B>(
  * @since 2.0.0
  */
 export const every: {
-  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: ReadonlyArray<A>) => self is ReadonlyArray<B>
-  <A>(predicate: (a: A, i: number) => boolean): (self: ReadonlyArray<A>) => boolean
+  <A, B extends A>(
+    refinement: (a: NoInfer<A>, i: number) => a is B
+  ): (self: ReadonlyArray<A>) => self is ReadonlyArray<B>
+  <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: ReadonlyArray<A>) => boolean
   <A, B extends A>(self: ReadonlyArray<A>, refinement: (a: A, i: number) => a is B): self is ReadonlyArray<B>
   <A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): boolean
 } = dual(

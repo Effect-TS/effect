@@ -4441,7 +4441,7 @@ export const partition: {
 /** @internal */
 export const partitionEither = dual<
   <A, R2, E2, A2, A3>(
-    predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
+    predicate: (a: NoInfer<A>) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
     options?: {
       readonly bufferSize?: number | undefined
     }
@@ -6073,7 +6073,7 @@ export const takeUntil: {
 /** @internal */
 export const takeUntilEffect: {
   <A, R2, E2>(
-    predicate: (a: A) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: NoInfer<A>) => Effect.Effect<R2, E2, boolean>
   ): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, A>
   <R, E, A, R2, E2>(
     self: Stream.Stream<R, E, A>,
