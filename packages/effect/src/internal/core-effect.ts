@@ -542,34 +542,14 @@ export const filterMap = dual<
   ))
 
 /* @internal */
-export const filterOrDie = dual<
-  {
-    <A, B extends A, X extends A>(
-      filter: Predicate.Refinement<A, B>,
-      orDieWith: (a: X) => unknown
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-    <A, X extends A, Y extends A>(
-      filter: Predicate.Predicate<X>,
-      orDieWith: (a: Y) => unknown
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  },
-  {
-    <R, E, A, B extends A, X extends A>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Refinement<A, B>,
-      orDieWith: (a: X) => unknown
-    ): Effect.Effect<R, E, B>
-    <R, E, A, X extends A, Y extends A>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
-      orDieWith: (a: Y) => unknown
-    ): Effect.Effect<R, E, A>
-  }
->(3, <R, E, A, X extends A, Y extends A>(
-  self: Effect.Effect<R, E, A>,
-  filter: Predicate.Predicate<X>,
-  orDieWith: (a: Y) => unknown
-): Effect.Effect<R, E, A> => filterOrElse(self, filter, (a) => core.dieSync(() => orDieWith(a as Y))))
+export const filterOrDie = dual(
+  3,
+  <R, E, A>(
+    self: Effect.Effect<R, E, A>,
+    filter: Predicate.Predicate<A>,
+    orDieWith: (a: A) => unknown
+  ): Effect.Effect<R, E, A> => filterOrElse(self, filter, (a) => core.dieSync(() => orDieWith(a)))
+)
 
 /* @internal */
 export const filterOrDieMessage = dual<

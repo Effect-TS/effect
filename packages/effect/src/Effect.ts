@@ -3358,24 +3358,20 @@ export {
  * @category filtering & conditionals
  */
 export const filterOrDie: {
-  <A, B extends A, X extends A>(
-    filter: Refinement<A, B>,
-    orDieWith: (a: X) => unknown
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
-  <A, X extends A, Y extends A>(
-    filter: Predicate<X>,
-    orDieWith: (a: Y) => unknown
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A, B extends A, X extends A>(
+  <C extends A, B extends A, A = C>(
+    refinement: Refinement<A, B>,
+    orDieWith: (c: C) => unknown
+  ): <R, E>(self: Effect<R, E, C>) => Effect<R, E, B>
+  <B extends A, A = B>(
+    predicate: Predicate<A>,
+    orDieWith: (b: B) => unknown
+  ): <R, E>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, A, B extends A>(
     self: Effect<R, E, A>,
-    filter: Refinement<A, B>,
-    orDieWith: (a: X) => unknown
+    refinement: Refinement<A, B>,
+    orDieWith: (a: A) => unknown
   ): Effect<R, E, B>
-  <R, E, A, X extends A, Y extends A>(
-    self: Effect<R, E, A>,
-    filter: Predicate<X>,
-    orDieWith: (a: Y) => unknown
-  ): Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, filter: Predicate<A>, orDieWith: (a: A) => unknown): Effect<R, E, A>
 } = effect.filterOrDie
 
 /**
