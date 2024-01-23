@@ -1206,7 +1206,7 @@ describe("ReadonlyArray", () => {
       a: string
       b: number
     }
-    const chunk: ReadonlyArray<X> = [{ a: "a", b: 2 }, { a: "b", b: 1 }]
-    expect(RA.sortWith(chunk, (x) => x.b, Order.number)).toEqual([{ a: "b", b: 1 }, { a: "a", b: 2 }])
+    const arr: ReadonlyArray<X> = [{ a: "a", b: 2 }, { a: "b", b: 1 }]
+    expect(RA.sortWith(arr, (x) => x.b, Order.number)).toEqual([{ a: "b", b: 1 }, { a: "a", b: 2 }])
   })
 })

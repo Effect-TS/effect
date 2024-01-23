@@ -896,12 +896,15 @@ export const sort: {
  * @category elements
  */
 export const sortWith: {
-  <A, B>(f: (a: A) => B, order: Order.Order<B>): (self: ReadonlyArray<A>) => Array<A>
-  <A, B>(self: ReadonlyArray<A>, f: (a: A) => B, order: Order.Order<B>): Array<A>
+  <S extends Iterable<any> | NonEmptyReadonlyArray<any>, B>(
+    f: (a: ReadonlyArray.Infer<S>) => B,
+    order: Order.Order<B>
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
+  <A, B>(self: NonEmptyReadonlyArray<A>, f: (a: A) => B, O: Order.Order<B>): NonEmptyArray<A>
+  <A, B>(self: Iterable<A>, f: (a: A) => B, order: Order.Order<B>): Array<A>
 } = dual(
   3,
-  <A, B>(self: ReadonlyArray<A>, f: (a: A) => B, order: Order.Order<B>): Array<A> =>
-    sort(self, Order.mapInput(order, f))
+  <A, B>(self: Iterable<A>, f: (a: A) => B, order: Order.Order<B>): Array<A> => sort(self, Order.mapInput(order, f))
 )
 
 /**
