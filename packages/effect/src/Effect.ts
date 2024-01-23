@@ -508,9 +508,9 @@ export const allSuccesses: <R, E, A>(
  * @category collecting & elements
  */
 export const dropUntil: {
-  <B extends A, R, E, A = B>(
-    predicate: (a: A, i: number) => Effect<R, E, boolean>
-  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
+  <R, E, A>(
+    predicate: (a: NoInfer<A>, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<A>) => Effect<R, E, Array<A>>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropUntil
 

@@ -608,10 +608,19 @@ Effect.dropUntil(numbersArray, (
   _item // $ExpectType number
 ) => Effect.succeed(true))
 
+// $ExpectType Effect<never, never, number[]>
 pipe(
   numbersArray,
   Effect.dropUntil((
     _item // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
+// $ExpectType Effect<never, never, number[]>
+pipe(
+  numbersArray,
+  Effect.dropUntil((
+    _item: string | number
   ) => Effect.succeed(true))
 )
 

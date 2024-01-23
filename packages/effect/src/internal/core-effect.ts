@@ -459,37 +459,40 @@ export const bindValue = dual<
   ))
 
 /* @internal */
-export const dropUntil = dual<
-  <A, R, E>(
-    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
+export const dropUntil: {
+  <R, E, A>(
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
+  ): (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>
   <A, R, E>(
     elements: Iterable<A>,
     predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => Effect.Effect<R, E, Array<A>>
->(2, <A, R, E>(
-  elements: Iterable<A>,
-  predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-) =>
-  core.suspend(() => {
-    const iterator = elements[Symbol.iterator]()
-    const builder: Array<A> = []
-    let next: IteratorResult<A, any>
-    let dropping: Effect.Effect<R, E, boolean> = core.succeed(false)
-    let i = 0
-    while ((next = iterator.next()) && !next.done) {
-      const a = next.value
-      const index = i++
-      dropping = core.flatMap(dropping, (bool) => {
-        if (bool) {
-          builder.push(a)
-          return core.succeed(true)
-        }
-        return predicate(a, index)
-      })
-    }
-    return core.map(dropping, () => builder)
-  }))
+  ): Effect.Effect<R, E, Array<A>>
+} = dual(
+  2,
+  <A, R, E>(
+    elements: Iterable<A>,
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
+  ): Effect.Effect<R, E, Array<A>> =>
+    core.suspend(() => {
+      const iterator = elements[Symbol.iterator]()
+      const builder: Array<A> = []
+      let next: IteratorResult<A, any>
+      let dropping: Effect.Effect<R, E, boolean> = core.succeed(false)
+      let i = 0
+      while ((next = iterator.next()) && !next.done) {
+        const a = next.value
+        const index = i++
+        dropping = core.flatMap(dropping, (bool) => {
+          if (bool) {
+            builder.push(a)
+            return core.succeed(true)
+          }
+          return predicate(a, index)
+        })
+      }
+      return core.map(dropping, () => builder)
+    })
+)
 
 /* @internal */
 export const dropWhile = dual<
