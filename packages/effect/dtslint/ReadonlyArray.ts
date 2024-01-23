@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
-import { hole, pipe } from "effect/Function"
+import { hole, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
@@ -207,6 +207,22 @@ pipe(nonEmptyabs, ReadonlyArray.sort(ordera))
 
 // $ExpectType [AB, ...AB[]]
 ReadonlyArray.sort(ordera)(nonEmptyabs)
+
+// -------------------------------------------------------------------------------------
+// sortWith
+// -------------------------------------------------------------------------------------
+
+// $ExpectType AB[]
+pipe(abs, ReadonlyArray.sortWith(identity, ordera))
+
+// $ExpectType AB[]
+ReadonlyArray.sortWith(abs, identity, ordera)
+
+// $ExpectType [AB, ...AB[]]
+pipe(nonEmptyabs, ReadonlyArray.sortWith(identity, ordera))
+
+// $ExpectType [AB, ...AB[]]
+ReadonlyArray.sortWith(nonEmptyabs, identity, ordera)
 
 // -------------------------------------------------------------------------------------
 // partition
