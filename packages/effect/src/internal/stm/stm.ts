@@ -1305,15 +1305,14 @@ export const summarized = dual<
 export const suspend = <R, E, A>(evaluate: LazyArg<STM.STM<R, E, A>>): STM.STM<R, E, A> => flatten(core.sync(evaluate))
 
 /** @internal */
-export const tap = dual<
-  <A, X extends A, R2, E2, _>(
-    f: (a: X) => STM.STM<R2, E2, _>
-  ) => <R, E>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E2 | E, A>,
-  <R, E, A, X extends A, R2, E2, _>(
-    self: STM.STM<R, E, A>,
-    f: (a: X) => STM.STM<R2, E2, _>
-  ) => STM.STM<R2 | R, E2 | E, A>
->(2, (self, f) => core.flatMap(self, (a) => as(f(a as any), a)))
+export const tap: {
+  <A, R2, E2, _>(f: (a: A) => STM.STM<R2, E2, _>): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2, _>(self: STM.STM<R, E, A>, f: (a: A) => STM.STM<R2, E2, _>): STM.STM<R | R2, E | E2, A>
+} = dual(
+  2,
+  <R, E, A, R2, E2, _>(self: STM.STM<R, E, A>, f: (a: A) => STM.STM<R2, E2, _>): STM.STM<R | R2, E | E2, A> =>
+    core.flatMap(self, (a) => as(f(a), a))
+)
 
 /** @internal */
 export const tapBoth = dual<
