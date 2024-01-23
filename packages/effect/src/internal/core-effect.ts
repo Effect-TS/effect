@@ -552,34 +552,11 @@ export const filterOrDie = dual(
 )
 
 /* @internal */
-export const filterOrDieMessage = dual<
-  {
-    <A, B extends A>(
-      filter: Predicate.Refinement<A, B>,
-      message: string
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-    <A, X extends A>(
-      filter: Predicate.Predicate<X>,
-      message: string
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Refinement<A, B>,
-      message: string
-    ): Effect.Effect<R, E, B>
-    <R, E, A, X extends A>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
-      message: string
-    ): Effect.Effect<R, E, A>
-  }
->(3, <R, E, A, X extends A>(
-  self: Effect.Effect<R, E, A>,
-  filter: Predicate.Predicate<X>,
-  message: string
-): Effect.Effect<R, E, A> => filterOrElse(self, filter, () => core.dieMessage(message)))
+export const filterOrDieMessage = dual(
+  3,
+  <R, E, A>(self: Effect.Effect<R, E, A>, filter: Predicate.Predicate<A>, message: string): Effect.Effect<R, E, A> =>
+    filterOrElse(self, filter, () => core.dieMessage(message))
+)
 
 /* @internal */
 export const filterOrElse = dual<

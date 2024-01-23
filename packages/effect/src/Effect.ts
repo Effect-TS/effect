@@ -3383,9 +3383,9 @@ export const filterOrDie: {
  */
 export const filterOrDieMessage: {
   <A, B extends A>(filter: Refinement<A, B>, message: string): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
-  <A, X extends A>(filter: Predicate<X>, message: string): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <B extends A, A = B>(filter: Predicate<A>, message: string): <R, E>(self: Effect<R, E, B>) => Effect<R, E, B>
   <R, E, A, B extends A>(self: Effect<R, E, A>, filter: Refinement<A, B>, message: string): Effect<R, E, B>
-  <R, E, A, X extends A>(self: Effect<R, E, A>, filter: Predicate<X>, message: string): Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, filter: Predicate<A>, message: string): Effect<R, E, A>
 } = effect.filterOrDieMessage
 
 /**
