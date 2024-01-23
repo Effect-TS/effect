@@ -256,7 +256,12 @@ export const catchTag = dual<
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<R1, E1, A1>
   ) => Effect.Effect<R | R1, Exclude<E, { _tag: K }> | E1, A | A1>
->(3, (self, k, f) => core.catchIf(self, Predicate.isTagged(k), f) as any)
+>(3, <R, E, A, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1, A1>(
+  self: Effect.Effect<R, E, A>,
+  k: K,
+  f: (e: Extract<E, { _tag: K }>) => Effect.Effect<R1, E1, A1>
+): Effect.Effect<R | R1, Exclude<E, { _tag: K }> | E1, A | A1> =>
+  core.catchIf(self, Predicate.isTagged(k) as Predicate.Refinement<E, Extract<E, { _tag: K }>>, f) as any)
 
 /** @internal */
 export const catchTags: {

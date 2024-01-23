@@ -2,7 +2,4 @@
 "effect": patch
 ---
 
-Fix filters signature:
-
-- `Either`
-  - `filterOrLeft`
+Fix signatures related to predicates, closes #1916

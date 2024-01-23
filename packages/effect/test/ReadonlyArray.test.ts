@@ -148,7 +148,7 @@ describe("ReadonlyArray", () => {
     })
 
     it("span", () => {
-      const f = RA.span((n: number) => n % 2 === 1)
+      const f = RA.span<number>((n) => n % 2 === 1)
       const assertSpan = (
         input: Iterable<number>,
         expectedInit: ReadonlyArray<number>,
@@ -170,7 +170,7 @@ describe("ReadonlyArray", () => {
     })
 
     it("splitWhere", () => {
-      const f = RA.splitWhere((n: number) => n % 2 !== 1)
+      const f = RA.splitWhere<number>((n) => n % 2 !== 1)
       const assertSplitWhere = (
         input: Iterable<number>,
         expectedInit: ReadonlyArray<number>,
@@ -252,7 +252,7 @@ describe("ReadonlyArray", () => {
     })
 
     it("dropWhile", () => {
-      const f = RA.dropWhile((n: number) => n > 0)
+      const f = RA.dropWhile<number>((n) => n > 0)
 
       deepStrictEqual(f([]), [])
       deepStrictEqual(f([1, 2]), RA.empty())
