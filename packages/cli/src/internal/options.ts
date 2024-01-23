@@ -1675,7 +1675,7 @@ const parseCommandLine = (
           onNonEmpty: (head, tail) => {
             const normalize = (value: string) => InternalCliConfig.normalizeCase(config, value)
             const normalizedHead = normalize(head)
-            const normalizedNames = ReadonlyArray.map(getNames(self), normalize)
+            const normalizedNames = ReadonlyArray.map(getNames(self), (name) => normalize(name))
             if (ReadonlyArray.contains(normalizedNames, normalizedHead)) {
               if (InternalPrimitive.isBool(self.primitiveType)) {
                 return ReadonlyArray.matchLeft(tail, {
@@ -1727,7 +1727,7 @@ const parseCommandLine = (
       ))
     }
     case "KeyValueMap": {
-      const singleNames = ReadonlyArray.map(
+      const normalizedNames = ReadonlyArray.map(
         getNames(self.argumentOption),
         (name) => InternalCliConfig.normalizeCase(config, name)
       )
@@ -1740,10 +1740,10 @@ const parseCommandLine = (
             let keyValues = ReadonlyArray.empty<string>()
             let leftover = args as ReadonlyArray<string>
             while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
-              const name = leftover[0].trim()
+              const name = ReadonlyArray.headNonEmpty(leftover).trim()
               const normalizedName = InternalCliConfig.normalizeCase(config, name)
               // Can be in the form of "--flag key1=value1 --flag key2=value2"
-              if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, normalizedName)) {
+              if (leftover.length >= 2 && ReadonlyArray.contains(normalizedNames, normalizedName)) {
                 const keyValue = leftover[1].trim()
                 const [key, value] = keyValue.split("=")
                 if (key !== undefined && value !== undefined && value.length > 0) {
@@ -1765,17 +1765,17 @@ const parseCommandLine = (
             }
             return [keyValues, leftover]
           }
-          const name = InternalCliConfig.normalizeCase(config, head)
-          if (ReadonlyArray.contains(singleNames, name)) {
+          const normalizedName = InternalCliConfig.normalizeCase(config, head)
+          if (ReadonlyArray.contains(normalizedNames, normalizedName)) {
             const [values, leftover] = loop(tail)
-            return Effect.succeed({ parsed: Option.some({ name, values }), leftover })
+            return Effect.succeed({ parsed: Option.some({ name: head, values }), leftover })
           }
           return Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args })
         }
       })
     }
     case "Variadic": {
-      const singleNames = ReadonlyArray.map(
+      const normalizedNames = ReadonlyArray.map(
         getNames(self.argumentOption),
         (name) => InternalCliConfig.normalizeCase(config, name)
       )
@@ -1783,8 +1783,9 @@ const parseCommandLine = (
       let values = ReadonlyArray.empty<string>()
       let leftover = args as ReadonlyArray<string>
       while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
-        const name = InternalCliConfig.normalizeCase(config, ReadonlyArray.headNonEmpty(leftover))
-        if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, name)) {
+        const name = ReadonlyArray.headNonEmpty(leftover)
+        const normalizedName = InternalCliConfig.normalizeCase(config, name)
+        if (leftover.length >= 2 && ReadonlyArray.contains(normalizedNames, normalizedName)) {
           if (optionName === undefined) {
             optionName = name
           }
