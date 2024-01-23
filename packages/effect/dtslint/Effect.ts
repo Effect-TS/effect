@@ -587,10 +587,19 @@ Effect.dropWhile(numbersArray, (
   _item // $ExpectType number
 ) => Effect.succeed(true))
 
+// $ExpectType Effect<never, never, number[]>
 pipe(
   numbersArray,
   Effect.dropWhile((
     _item // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
+// $ExpectType Effect<never, never, number[]>
+pipe(
+  numbersArray,
+  Effect.dropWhile((
+    _item: number | string
   ) => Effect.succeed(true))
 )
 

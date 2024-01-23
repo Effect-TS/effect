@@ -460,7 +460,7 @@ export const bindValue = dual<
 
 /* @internal */
 export const dropUntil: {
-  <R, E, A>(
+  <A, R, E>(
     predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
   ): (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>
   <A, R, E>(
@@ -495,17 +495,20 @@ export const dropUntil: {
 )
 
 /* @internal */
-export const dropWhile = dual<
-  <R, E, A>(
-    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
-  <R, E, A>(
+export const dropWhile: {
+  <A, R, E>(
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
+  ): (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>
+  <A, R, E>(
     elements: Iterable<A>,
     predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => Effect.Effect<R, E, Array<A>>
->(
+  ): Effect.Effect<R, E, Array<A>>
+} = dual(
   2,
-  <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>) =>
+  <A, R, E>(
+    elements: Iterable<A>,
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
+  ): Effect.Effect<R, E, Array<A>> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
       const builder: Array<A> = []
