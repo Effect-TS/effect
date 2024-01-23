@@ -445,18 +445,15 @@ export const filterOrDie: {
 )
 
 /** @internal */
-export const filterOrDieMessage = dual<
-  {
-    <A, B extends A>(refinement: Refinement<A, B>, message: string): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
-    <A, X extends A>(predicate: Predicate<X>, message: string): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(self: STM.STM<R, E, A>, refinement: Refinement<A, B>, message: string): STM.STM<R, E, B>
-    <R, E, A, X extends A>(self: STM.STM<R, E, A>, predicate: Predicate<X>, message: string): STM.STM<R, E, A>
-  }
->(
+export const filterOrDieMessage: {
+  <A, B extends A>(refinement: Refinement<A, B>, message: string): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>, message: string): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
+  <R, E, A, B extends A>(self: STM.STM<R, E, A>, refinement: Refinement<A, B>, message: string): STM.STM<R, E, B>
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: Predicate<A>, message: string): STM.STM<R, E, A>
+} = dual(
   3,
-  (self, predicate, message) => filterOrElse(self, predicate, () => core.dieMessage(message))
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: Predicate<A>, message: string): STM.STM<R, E, A> =>
+    filterOrElse(self, predicate, () => core.dieMessage(message))
 )
 
 /** @internal */
