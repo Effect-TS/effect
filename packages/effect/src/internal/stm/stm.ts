@@ -423,28 +423,24 @@ export const filterNot = dual<
 )
 
 /** @internal */
-export const filterOrDie = dual<
-  {
-    <A, B extends A>(
-      refinement: Refinement<A, B>,
-      defect: LazyArg<unknown>
-    ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
-    <A, X extends A>(
-      predicate: Predicate<X>,
-      defect: LazyArg<unknown>
-    ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(
-      self: STM.STM<R, E, A>,
-      refinement: Refinement<A, B>,
-      defect: LazyArg<unknown>
-    ): STM.STM<R, E, B>
-    <R, E, A, X extends A>(self: STM.STM<R, E, A>, predicate: Predicate<X>, defect: LazyArg<unknown>): STM.STM<R, E, A>
-  }
->(
+export const filterOrDie: {
+  <A, B extends A>(
+    refinement: Refinement<A, B>,
+    defect: LazyArg<unknown>
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
+  <B extends A, A = B>(
+    predicate: Predicate<A>,
+    defect: LazyArg<unknown>
+  ): <R, E>(self: STM.STM<R, E, B>) => STM.STM<R, E, B>
+  <R, E, A, B extends A>(
+    self: STM.STM<R, E, A>,
+    refinement: Refinement<A, B>,
+    defect: LazyArg<unknown>
+  ): STM.STM<R, E, B>
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM.STM<R, E, A>
+} = dual(
   3,
-  <R, E, A, X extends A>(self: STM.STM<R, E, A>, predicate: Predicate<X>, defect: LazyArg<unknown>): STM.STM<R, E, A> =>
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM.STM<R, E, A> =>
     filterOrElse(self, predicate, () => core.dieSync(defect))
 )
 
