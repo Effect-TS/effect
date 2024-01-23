@@ -457,76 +457,60 @@ export const filterOrDieMessage: {
 )
 
 /** @internal */
-export const filterOrElse = dual<
-  {
-    <A, B extends A, X extends A, R2, E2, A2>(
-      refinement: Refinement<A, B>,
-      orElse: (a: X) => STM.STM<R2, E2, A2>
-    ): <R, E>(
-      self: STM.STM<R, E, A>
-    ) => STM.STM<R2 | R, E2 | E, B | A2>
-    <A, X extends A, Y extends A, R2, E2, A2>(
-      predicate: Predicate<X>,
-      orElse: (a: Y) => STM.STM<R2, E2, A2>
-    ): <R, E>(
-      self: STM.STM<R, E, A>
-    ) => STM.STM<R2 | R, E2 | E, A | A2>
-  },
-  {
-    <R, E, A, B extends A, X extends A, R2, E2, A2>(
-      self: STM.STM<R, E, A>,
-      refinement: Refinement<A, B>,
-      orElse: (a: X) => STM.STM<R2, E2, A2>
-    ): STM.STM<R2 | R, E2 | E, B | A2>
-    <R, E, A, X extends A, Y extends A, R2, E2, A2>(
-      self: STM.STM<R, E, A>,
-      predicate: Predicate<X>,
-      orElse: (a: Y) => STM.STM<R2, E2, A2>
-    ): STM.STM<R2 | R, E2 | E, A | A2>
-  }
->(
-  3,
-  <R, E, A, X extends A, Y extends A, R2, E2, A2>(
+export const filterOrElse: {
+  <C extends A, B extends A, R2, E2, D, A = C>(
+    refinement: Refinement<A, B>,
+    orElse: (c: C) => STM.STM<R2, E2, D>
+  ): <R, E>(self: STM.STM<R, E, C>) => STM.STM<R2 | R, E2 | E, B | D>
+  <B extends A, R2, E2, C, A = B>(
+    predicate: Predicate<A>,
+    orElse: (b: B) => STM.STM<R2, E2, C>
+  ): <R, E>(self: STM.STM<R, E, B>) => STM.STM<R2 | R, E2 | E, B | C>
+  <R, E, A, B extends A, R2, E2, C>(
     self: STM.STM<R, E, A>,
-    predicate: Predicate<X>,
-    orElse: (a: Y) => STM.STM<R2, E2, A2>
-  ): STM.STM<R2 | R, E2 | E, A | A2> =>
-    core.flatMap(self, (a): STM.STM<R | R2, E | E2, A | A2> =>
-      predicate(a as X) ?
-        core.succeed(a) :
-        orElse(a as Y))
+    refinement: Refinement<A, B>,
+    orElse: (a: A) => STM.STM<R2, E2, C>
+  ): STM.STM<R | R2, E | E2, B | C>
+  <R, E, A, R2, E2, B>(
+    self: STM.STM<R, E, A>,
+    predicate: Predicate<A>,
+    orElse: (a: A) => STM.STM<R2, E2, B>
+  ): STM.STM<R | R2, E | E2, A | B>
+} = dual(
+  3,
+  <R, E, A, R2, E2, B>(
+    self: STM.STM<R, E, A>,
+    predicate: Predicate<A>,
+    orElse: (a: A) => STM.STM<R2, E2, B>
+  ): STM.STM<R | R2, E | E2, A | B> =>
+    core.flatMap(self, (a): STM.STM<R | R2, E | E2, A | B> => predicate(a) ? core.succeed(a) : orElse(a))
 )
 
 /** @internal */
-export const filterOrFail = dual<
-  {
-    <A, B extends A, X extends A, E2>(
-      refinement: Refinement<A, B>,
-      orFailWith: (a: X) => E2
-    ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E2 | E, B>
-    <A, X extends A, Y extends A, E2>(
-      predicate: Predicate<X>,
-      orFailWith: (a: Y) => E2
-    ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E2 | E, A>
-  },
-  {
-    <R, E, A, B extends A, X extends A, E2>(
-      self: STM.STM<R, E, A>,
-      refinement: Refinement<A, B>,
-      orFailWith: (a: X) => E2
-    ): STM.STM<R, E2 | E, B>
-    <R, E, A, X extends A, Y extends A, E2>(
-      self: STM.STM<R, E, A>,
-      predicate: Predicate<X>,
-      orFailWith: (a: Y) => E2
-    ): STM.STM<R, E2 | E, A>
-  }
->(3, (self, predicate, orFailWith) =>
-  filterOrElse(
-    self,
-    predicate,
-    (a) => core.failSync(() => orFailWith(a as any))
-  ))
+export const filterOrFail: {
+  <C extends A, B extends A, E2, A = C>(
+    refinement: Refinement<A, B>,
+    orFailWith: (c: C) => E2
+  ): <R, E>(self: STM.STM<R, E, C>) => STM.STM<R, E2 | E, B>
+  <B extends A, E2, A = B>(
+    predicate: Predicate<A>,
+    orFailWith: (b: B) => E2
+  ): <R, E>(self: STM.STM<R, E, B>) => STM.STM<R, E2 | E, B>
+  <R, E, A, B extends A, E2>(
+    self: STM.STM<R, E, A>,
+    refinement: Refinement<A, B>,
+    orFailWith: (a: A) => E2
+  ): STM.STM<R, E | E2, B>
+  <R, E, A, E2>(self: STM.STM<R, E, A>, predicate: Predicate<A>, orFailWith: (a: A) => E2): STM.STM<R, E | E2, A>
+} = dual(
+  3,
+  <R, E, A, E2>(self: STM.STM<R, E, A>, predicate: Predicate<A>, orFailWith: (a: A) => E2): STM.STM<R, E | E2, A> =>
+    filterOrElse(
+      self,
+      predicate,
+      (a) => core.failSync(() => orFailWith(a))
+    )
+)
 
 /** @internal */
 export const flatten = <R, E, R2, E2, A>(self: STM.STM<R, E, STM.STM<R2, E2, A>>): STM.STM<R | R2, E | E2, A> =>
