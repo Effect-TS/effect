@@ -40,5 +40,9 @@
   "editor.suggestSelection": "recentlyUsed",
   "editor.wordBasedSuggestions": "matchingDocuments",
   "editor.parameterHints.enabled": true,
-  "files.insertFinalNewline": true
+  "files.insertFinalNewline": true,
+  "prettier.prettierPath": "node_modules/prettier/index.cjs",
+  "vitest.nodeEnv": {
+    "ATTEST_CONFIG": "{ \"skipTypes\": true }"
+  }
 }

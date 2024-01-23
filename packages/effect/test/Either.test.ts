@@ -1,3 +1,4 @@
+import { attest } from "@arktype/attest"
 import * as Util from "effect-test/util"
 import * as Chunk from "effect/Chunk"
 import * as Either from "effect/Either"
@@ -157,8 +158,8 @@ describe("Either", () => {
   })
 
   it("flip", () => {
-    Util.deepStrictEqual(Either.flip(Either.right("a")), Either.left("a"))
-    Util.deepStrictEqual(Either.flip(Either.left("b")), Either.right("b"))
+    attest<Either.Either<string, never>>(Either.flip(Either.right("a"))).equals(Either.left("a"))
+    attest<Either.Either<never, string>>(Either.flip(Either.left("b"))).equals(Either.right("b"))
   })
 
   it("filterOrLeft", () => {
@@ -198,21 +199,19 @@ describe("Either", () => {
   })
 
   it("try", () => {
-    Util.deepStrictEqual(Either.try(() => 1), Either.right(1))
-    Util.deepStrictEqual(
-      Either.try(() => {
-        throw "b"
-      }),
-      Either.left("b")
+    attest<Either.Either<unknown, number>>(Either.try(() => 1)).equals(Either.right(1))
+    attest<Either.Either<unknown, never>>(Either.try(() => {
+      throw "b"
+    })).equals(Either.left("b"))
+    attest<Either.Either<Error, number>>(Either.try({ try: () => 1, catch: (e) => new Error(String(e)) })).equals(
+      Either.right(1)
     )
-    Util.deepStrictEqual(Either.try({ try: () => 1, catch: (e) => new Error(String(e)) }), Either.right(1))
-    Util.deepStrictEqual(
-      Either.try({
-        try: () => {
-          throw "b"
-        },
-        catch: (e) => new Error(String(e))
-      }),
+    attest<Either.Either<Error, never>>(Either.try({
+      try: () => {
+        throw "b"
+      },
+      catch: (e) => new Error(String(e))
+    })).equals(
       Either.left(new Error("b"))
     )
   })
@@ -288,13 +287,14 @@ describe("Either", () => {
     expect(pipe(Either.right(1), Either.zipWith(Either.right(2), (a, b) => a + b))).toEqual(Either.right(3))
   })
 
-  it("all", () => {
-    // tuples and arrays
+  it("allTuplesArrays", () => {
     Util.deepStrictEqual(Either.all([]), Either.right([]))
     Util.deepStrictEqual(Either.all([Either.right(1)]), Either.right([1]))
     Util.deepStrictEqual(Either.all([Either.right(1), Either.right(true)]), Either.right([1, true]))
     Util.deepStrictEqual(Either.all([Either.right(1), Either.left("e")]), Either.left("e"))
-    // structs and records
+  })
+
+  it("allStructsRecords", () => {
     Util.deepStrictEqual(Either.all({}), Either.right({}))
     Util.deepStrictEqual(Either.all({ a: Either.right(1) }), Either.right({ a: 1 }))
     Util.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.right(true) }), Either.right({ a: 1, b: true }))

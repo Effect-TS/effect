@@ -9,6 +9,7 @@ const alias = (pkg: string) => ({
 // This is a workaround, see https://github.com/vitest-dev/vitest/issues/4744
 const config: UserConfig = {
   test: {
+    globalSetup: path.join(__dirname, "scripts", "vitestGlobalSetup.ts"),
     fakeTimers: {
       toFake: undefined
     },

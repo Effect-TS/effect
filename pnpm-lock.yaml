@@ -13,6 +13,9 @@ importers:
 
   .:
     devDependencies:
+      '@arktype/attest':
+        specifier: ^0.5.0
+        version: 0.5.0(typescript@5.3.3)
       '@babel/cli':
         specifier: ^7.23.4
         version: 7.23.4(@babel/core@7.23.6)
@@ -489,6 +492,29 @@ packages:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.3
       '@jridgewell/trace-mapping': 0.3.20
+    dev: true
+
+  /@arktype/attest@0.5.0(typescript@5.3.3):
+    resolution: {integrity: sha512-MRWnjq2rAJLhPZP9GqWHLyIOBomzxcJxHdzANNcEZV/EXdutS4YumdoHi3NEsk6zt0kscqk4reRRPnUa2zwhrQ==}
+    hasBin: true
+    peerDependencies:
+      typescript: '*'
+    dependencies:
+      '@arktype/fs': 0.0.10
+      '@arktype/util': 0.0.16
+      '@typescript/vfs': 1.5.0
+      arktype: 1.0.29-alpha
+      typescript: 5.3.3
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /@arktype/fs@0.0.10:
+    resolution: {integrity: sha512-aPYLmcdS7eHUftTQOyPZRdoMWrvuk4m0LwO6dB9fwKqJTngnizWAeP0AS+tMincPhdZEahRyX0ju9Czvdm/zkQ==}
+    dev: true
+
+  /@arktype/util@0.0.16:
+    resolution: {integrity: sha512-a10hhQ5E95tV0wfi8N9/74Uo6mRDHjeGWaHsyZriq4a9srZ9AbJ3UlYUQfIaQgsxLIuMw3kdClsE/H3tMdZKvw==}
     dev: true
 
   /@babel/cli@7.23.4(@babel/core@7.23.6):
@@ -2208,6 +2234,14 @@ packages:
       eslint-visitor-keys: 3.4.3
     dev: true
 
+  /@typescript/vfs@1.5.0:
+    resolution: {integrity: sha512-AJS307bPgbsZZ9ggCT3wwpg3VbTKMFNHfaY/uF0ahSkYYrPF2dSSKDNIDIQAHm9qJqbLvCsSJH7yN4Vs/CsMMg==}
+    dependencies:
+      debug: 4.3.4
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /@ungap/structured-clone@1.2.0:
     resolution: {integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==}
     dev: true
@@ -2408,6 +2442,10 @@ packages:
 
   /argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
+    dev: true
+
+  /arktype@1.0.29-alpha:
+    resolution: {integrity: sha512-glMLgVhIQRSkR3tymiS+POAcWVJH09sfrgic0jHnyFL8BlhHAJZX2BzdImU9zYr1y9NBqy+U93ZNrRTHXsKRDw==}
     dev: true
 
   /array-buffer-byte-length@1.0.0:
