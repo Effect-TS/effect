@@ -462,14 +462,14 @@ export const filterOrDieMessage: {
 
 /** @internal */
 export const filterOrElse: {
-  <C extends A, B extends A, R2, E2, D, A = C>(
-    refinement: Refinement<A, B>,
-    orElse: (c: C) => STM.STM<R2, E2, D>
-  ): <R, E>(self: STM.STM<R, E, C>) => STM.STM<R2 | R, E2 | E, B | D>
-  <B extends A, R2, E2, C, A = B>(
-    predicate: Predicate<A>,
-    orElse: (b: B) => STM.STM<R2, E2, C>
-  ): <R, E>(self: STM.STM<R, E, B>) => STM.STM<R2 | R, E2 | E, B | C>
+  <A, B extends A, R2, E2, C>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orElse: (a: NoInfer<A>) => STM.STM<R2, E2, C>
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E2 | E, B | C>
+  <A, R2, E2, B>(
+    predicate: Predicate<NoInfer<A>>,
+    orElse: (a: NoInfer<A>) => STM.STM<R2, E2, B>
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E2 | E, A | B>
   <R, E, A, B extends A, R2, E2, C>(
     self: STM.STM<R, E, A>,
     refinement: Refinement<A, B>,
@@ -487,13 +487,13 @@ export const filterOrElse: {
     predicate: Predicate<A>,
     orElse: (a: A) => STM.STM<R2, E2, B>
   ): STM.STM<R | R2, E | E2, A | B> =>
-    core.flatMap(self, (a): STM.STM<R | R2, E | E2, A | B> => predicate(a) ? core.succeed(a) : orElse(a))
+    core.flatMap(self, (a): STM.STM<R2, E2, A | B> => predicate(a) ? core.succeed(a) : orElse(a))
 )
 
 /** @internal */
 export const filterOrFail: {
   <C extends A, B extends A, E2, A = C>(
-    refinement: Refinement<A, B>,
+    refinement: Refinement<NoInfer<A>, B>,
     orFailWith: (c: C) => E2
   ): <R, E>(self: STM.STM<R, E, C>) => STM.STM<R, E2 | E, B>
   <B extends A, E2, A = B>(
@@ -1202,7 +1202,7 @@ export const replicateSTMDiscard = dual<
 /** @internal */
 export const retryUntil = dual<
   {
-    <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
+    <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
     <A>(predicate: Predicate<A>): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
   },
   {

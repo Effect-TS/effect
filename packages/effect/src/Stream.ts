@@ -2480,7 +2480,7 @@ export const paginateEffect: <S, R, E, A>(
  */
 export const partition: {
   <C extends A, B extends A, A = C>(
-    refinement: Refinement<A, B>,
+    refinement: Refinement<NoInfer<A>, B>,
     options?: {
       bufferSize?: number | undefined
     }

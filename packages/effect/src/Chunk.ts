@@ -654,7 +654,7 @@ export const filterMap: {
  * @category filtering
  */
 export const filter: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: Chunk<A>) => Chunk<B>
   <A>(predicate: Predicate<NoInfer<A>>): (self: Chunk<A>) => Chunk<A>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
@@ -1336,7 +1336,7 @@ export const findLastIndex: {
  * @since 2.0.0
  */
 export const every: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => self is Chunk<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: Chunk<A>) => self is Chunk<B>
   <A>(predicate: Predicate<A>): (self: Chunk<A>) => boolean
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): self is Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): boolean

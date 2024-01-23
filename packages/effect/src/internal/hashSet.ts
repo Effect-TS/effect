@@ -113,7 +113,7 @@ export const some = dual<
 
 /** @internal */
 export const every: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: HS.HashSet<A>) => self is HS.HashSet<B>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: HS.HashSet<A>) => self is HS.HashSet<B>
   <A>(predicate: Predicate<A>): (self: HS.HashSet<A>) => boolean
   <A, B extends A>(self: HS.HashSet<A>, refinement: Refinement<A, B>): self is HS.HashSet<B>
   <A>(self: HS.HashSet<A>, predicate: Predicate<A>): boolean

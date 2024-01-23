@@ -650,14 +650,14 @@ export const filterOrDieMessage: {
  * @category filtering
  */
 export const filterOrElse: {
-  <C extends A, B extends A, R2, E2, D, A = C>(
-    refinement: Refinement<A, B>,
-    orElse: (c: C) => STM<R2, E2, D>
-  ): <R, E>(self: STM<R, E, C>) => STM<R2 | R, E2 | E, B | D>
-  <B extends A, R2, E2, C, A = B>(
-    predicate: Predicate<A>,
-    orElse: (b: B) => STM<R2, E2, C>
-  ): <R, E>(self: STM<R, E, B>) => STM<R2 | R, E2 | E, B | C>
+  <A, B extends A, R2, E2, C>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orElse: (a: NoInfer<A>) => STM<R2, E2, C>
+  ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, B | C>
+  <A, R2, E2, B>(
+    predicate: Predicate<NoInfer<A>>,
+    orElse: (a: NoInfer<A>) => STM<R2, E2, B>
+  ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A | B>
   <R, E, A, B extends A, R2, E2, C>(
     self: STM<R, E, A>,
     refinement: Refinement<A, B>,
@@ -678,7 +678,7 @@ export const filterOrElse: {
  */
 export const filterOrFail: {
   <C extends A, B extends A, E2, A = C>(
-    refinement: Refinement<A, B>,
+    refinement: Refinement<NoInfer<A>, B>,
     orFailWith: (c: C) => E2
   ): <R, E>(self: STM<R, E, C>) => STM<R, E2 | E, B>
   <B extends A, E2, A = B>(
@@ -1722,7 +1722,9 @@ export const retry: STM<never, never, never> = core.retry
  * @category mutations
  */
 export const retryUntil: {
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
   <A>(predicate: Predicate<A>): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
+  <R, E, A, B extends A>(self: STM<R, E, A>, refinement: Refinement<A, B>): STM<R, E, B>
   <R, E, A>(self: STM<R, E, A>, predicate: Predicate<A>): STM<R, E, A>
 } = stm.retryUntil
 

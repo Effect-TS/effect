@@ -2354,7 +2354,9 @@ export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Stream.Stre
 
 /** @internal */
 export const filter: {
-  <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, B>
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>
+  ): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, B>
   <A, B extends A>(predicate: Predicate<B>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>
   <R, E, A, B extends A>(self: Stream.Stream<R, E, A>, refinement: Refinement<A, B>): Stream.Stream<R, E, B>
   <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>): Stream.Stream<R, E, A>
@@ -4379,7 +4381,7 @@ export const peel = dual<
 /** @internal */
 export const partition: {
   <C extends A, B extends A, A = C>(
-    refinement: Refinement<A, B>,
+    refinement: Refinement<NoInfer<A>, B>,
     options?: {
       bufferSize?: number | undefined
     }

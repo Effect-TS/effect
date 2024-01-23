@@ -134,11 +134,20 @@ Chunk.filter(numbersOrStrings, (
   _item // $ExpectType string | number
 ) => true)
 
+// $ExpectType Chunk<string | number>
 pipe(
   numbersOrStrings,
   Chunk.filter((
     _item // $ExpectType string | number
   ) => true)
+)
+
+// $ExpectType Chunk<number>
+pipe(
+  numbers,
+  Chunk.filter((
+    item: string | number
+  ): item is string | number => true)
 )
 
 // $ExpectType Chunk<string | number>
