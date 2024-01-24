@@ -1246,21 +1246,25 @@ export const mergeAllWith = (
             ),
           onSuccess: Either.match({
             onLeft: (outDone) =>
-              Effect.raceWith(Deferred.await(errorSignal), withPermits(concurrencyN)(Effect.unit), {
-                onSelfDone: (_, permitAcquisition) => Effect.as(Fiber.interrupt(permitAcquisition), false),
-                onOtherDone: (_, failureAwait) =>
-                  Effect.zipRight(
-                    Fiber.interrupt(failureAwait),
-                    pipe(
-                      Ref.get(lastDone),
-                      Effect.flatMap(Option.match({
-                        onNone: () => Queue.offer(queue, Effect.succeed(Either.left(outDone))),
-                        onSome: (lastDone) => Queue.offer(queue, Effect.succeed(Either.left(f(lastDone, outDone))))
-                      })),
-                      Effect.as(false)
+              Effect.raceWith(
+                Effect.interruptible(Deferred.await(errorSignal)),
+                Effect.interruptible(withPermits(concurrencyN)(Effect.unit)),
+                {
+                  onSelfDone: (_, permitAcquisition) => Effect.as(Fiber.interrupt(permitAcquisition), false),
+                  onOtherDone: (_, failureAwait) =>
+                    Effect.zipRight(
+                      Fiber.interrupt(failureAwait),
+                      pipe(
+                        Ref.get(lastDone),
+                        Effect.flatMap(Option.match({
+                          onNone: () => Queue.offer(queue, Effect.succeed(Either.left(outDone))),
+                          onSome: (lastDone) => Queue.offer(queue, Effect.succeed(Either.left(f(lastDone, outDone))))
+                        })),
+                        Effect.as(false)
+                      )
                     )
-                  )
-              }),
+                }
+              ),
             onRight: (channel) =>
               _mergeStrategy.match(mergeStrategy, {
                 onBackPressure: () =>
@@ -1273,7 +1277,7 @@ export const mergeAllWith = (
                       Effect.flatMap((pull) =>
                         Effect.race(
                           evaluatePull(pull),
-                          Deferred.await(errorSignal)
+                          Effect.interruptible(Deferred.await(errorSignal))
                         )
                       ),
                       Effect.scoped
@@ -1306,8 +1310,8 @@ export const mergeAllWith = (
                       Effect.flatMap((pull) =>
                         pipe(
                           evaluatePull(pull),
-                          Effect.race(Deferred.await(errorSignal)),
-                          Effect.race(Deferred.await(canceler))
+                          Effect.race(Effect.interruptible(Deferred.await(errorSignal))),
+                          Effect.race(Effect.interruptible(Deferred.await(canceler)))
                         )
                       ),
                       Effect.scoped
