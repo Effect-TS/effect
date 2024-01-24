@@ -5,7 +5,6 @@ import { dual, pipe } from "../Function.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Scope from "../Scope.js"
 import type * as ScopedRef from "../ScopedRef.js"
-import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
 import * as fiberRuntime from "./fiberRuntime.js"
@@ -34,39 +33,30 @@ const close = <A>(self: ScopedRef.ScopedRef<A>): Effect.Effect<never, never, voi
 export const fromAcquire = <R, E, A>(
   acquire: Effect.Effect<R, E, A>
 ): Effect.Effect<R | Scope.Scope, E, ScopedRef.ScopedRef<A>> =>
-  core.uninterruptibleMask((restore) =>
-    pipe(
-      fiberRuntime.scopeMake(),
-      core.flatMap((newScope) =>
-        pipe(
-          restore(
-            pipe(
-              acquire,
-              core.mapInputContext<R, Scope.Scope | R>(Context.add(fiberRuntime.scopeTag, newScope))
-            )
-          ),
-          core.onError((cause) => newScope.close(core.exitFail(cause))),
-          core.flatMap((value) =>
-            pipe(
-              circular.makeSynchronized([newScope, value] as const),
-              core.flatMap((ref) => {
-                const scopedRef: ScopedRef.ScopedRef<A> = {
-                  [ScopedRefTypeId]: scopedRefVariance,
-                  pipe() {
-                    return pipeArguments(this, arguments)
-                  },
-                  ref
-                }
-                return pipe(
-                  fiberRuntime.addFinalizer<R | Scope.Scope, void>(() => close(scopedRef)),
-                  core.as(scopedRef)
-                )
-              })
-            )
+  core.uninterruptible(
+    fiberRuntime.scopeMake().pipe(core.flatMap((newScope) =>
+      acquire.pipe(
+        core.mapInputContext<R, Scope.Scope | R>(Context.add(fiberRuntime.scopeTag, newScope)),
+        core.onError((cause) => newScope.close(core.exitFail(cause))),
+        core.flatMap((value) =>
+          circular.makeSynchronized([newScope, value] as const).pipe(
+            core.flatMap((ref) => {
+              const scopedRef: ScopedRef.ScopedRef<A> = {
+                [ScopedRefTypeId]: scopedRefVariance,
+                pipe() {
+                  return pipeArguments(this, arguments)
+                },
+                ref
+              }
+              return pipe(
+                fiberRuntime.addFinalizer<R | Scope.Scope, void>(() => close(scopedRef)),
+                core.as(scopedRef)
+              )
+            })
           )
         )
       )
-    )
+    ))
   )
 
 /** @internal */
@@ -92,38 +82,28 @@ export const set = dual<
 ) =>
   core.flatten(
     synchronized.modifyEffect(self.ref, ([oldScope, value]) =>
-      core.uninterruptibleMask((restore) =>
-        pipe(
-          fiberRuntime.scopeMake(),
+      core.uninterruptible(
+        core.scopeClose(oldScope, core.exitUnit).pipe(
+          core.zipRight(fiberRuntime.scopeMake()),
           core.flatMap((newScope) =>
-            pipe(
-              restore(
-                pipe(
-                  acquire,
-                  core.mapInputContext<Exclude<R, Scope.Scope>, R>(
-                    Context.add(fiberRuntime.scopeTag, newScope) as any
-                  )
-                )
-              ),
-              core.exit,
-              core.flatMap(
-                core.exitMatch({
+            core.exit(fiberRuntime.scopeExtend(acquire, newScope)).pipe(
+              core.flatMap((exit) =>
+                core.exitMatch(exit, {
                   onFailure: (cause) =>
-                    pipe(
-                      newScope.close(core.exitUnit),
-                      effect.ignore,
+                    core.scopeClose(newScope, core.exitUnit).pipe(
                       core.as(
                         [
-                          core.failCause(cause) as unknown as Effect.Effect<never, never, void>,
+                          core.failCause(cause) as Effect.Effect<never, E, void>,
                           [oldScope, value] as const
                         ] as const
                       )
                     ),
                   onSuccess: (value) =>
-                    pipe(
-                      oldScope.close(core.exitUnit),
-                      effect.ignore,
-                      core.as([core.unit, [newScope, value] as const] as const)
+                    core.succeed(
+                      [
+                        core.unit as Effect.Effect<never, E, void>,
+                        [newScope, value] as const
+                      ] as const
                     )
                 })
               )
