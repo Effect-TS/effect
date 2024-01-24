@@ -652,7 +652,7 @@ export const filterOrDieMessage: {
 export const filterOrElse: {
   <A, B extends A, R2, E2, C>(
     refinement: Refinement<NoInfer<A>, B>,
-    orElse: (a: Exclude<NoInfer<A>, B>) => STM<R2, E2, C>
+    orElse: (a: NoInfer<A>) => STM<R2, E2, C>
   ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, B | C>
   <A, R2, E2, B>(
     predicate: Predicate<NoInfer<A>>,
@@ -661,7 +661,7 @@ export const filterOrElse: {
   <R, E, A, B extends A, R2, E2, C>(
     self: STM<R, E, A>,
     refinement: Refinement<A, B>,
-    orElse: (a: Exclude<A, B>) => STM<R2, E2, C>
+    orElse: (a: A) => STM<R2, E2, C>
   ): STM<R | R2, E | E2, B | C>
   <R, E, A, R2, E2, B>(
     self: STM<R, E, A>,
@@ -679,7 +679,7 @@ export const filterOrElse: {
 export const filterOrFail: {
   <A, B extends A, E2>(
     refinement: Refinement<NoInfer<A>, B>,
-    orFailWith: (a: Exclude<NoInfer<A>, B>) => E2
+    orFailWith: (a: NoInfer<A>) => E2
   ): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, B>
   <A, E2>(
     predicate: Predicate<NoInfer<A>>,
@@ -688,7 +688,7 @@ export const filterOrFail: {
   <R, E, A, B extends A, E2>(
     self: STM<R, E, A>,
     refinement: Refinement<A, B>,
-    orFailWith: (a: Exclude<A, B>) => E2
+    orFailWith: (a: A) => E2
   ): STM<R, E | E2, B>
   <R, E, A, E2>(self: STM<R, E, A>, predicate: Predicate<A>, orFailWith: (a: A) => E2): STM<R, E | E2, A>
 } = stm.filterOrFail

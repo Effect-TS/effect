@@ -557,7 +557,7 @@ export const filterMap = dual<
 export const filterOrDie: {
   <A, B extends A>(
     refinement: Predicate.Refinement<NoInfer<A>, B>,
-    orDieWith: (a: Exclude<A, B>) => unknown
+    orDieWith: (a: A) => unknown
   ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
   <A>(
     predicate: Predicate.Predicate<NoInfer<A>>,
@@ -566,7 +566,7 @@ export const filterOrDie: {
   <R, E, A, B extends A>(
     self: Effect.Effect<R, E, A>,
     refinement: Predicate.Refinement<A, B>,
-    orDieWith: (a: Exclude<A, B>) => unknown
+    orDieWith: (a: A) => unknown
   ): Effect.Effect<R, E, B>
   <R, E, A>(
     self: Effect.Effect<R, E, A>,
@@ -608,7 +608,7 @@ export const filterOrDieMessage: {
 export const filterOrElse: {
   <A, B extends A, R2, E2, C>(
     refinement: Predicate.Refinement<NoInfer<A>, B>,
-    orElse: (a: Exclude<NoInfer<A>, B>) => Effect.Effect<R2, E2, C>
+    orElse: (a: NoInfer<A>) => Effect.Effect<R2, E2, C>
   ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R, E2 | E, B | C>
   <A, R2, E2, B>(
     predicate: Predicate.Predicate<NoInfer<A>>,
@@ -617,7 +617,7 @@ export const filterOrElse: {
   <R, E, A, B extends A, R2, E2, C>(
     self: Effect.Effect<R, E, A>,
     refinement: Predicate.Refinement<A, B>,
-    orElse: (a: Exclude<A, B>) => Effect.Effect<R2, E2, C>
+    orElse: (a: A) => Effect.Effect<R2, E2, C>
   ): Effect.Effect<R | R2, E | E2, B | C>
   <R, E, A, R2, E2, B>(
     self: Effect.Effect<R, E, A>,
@@ -638,7 +638,7 @@ export const filterOrElse: {
 export const filterOrFail: {
   <A, B extends A, E2>(
     refinement: Predicate.Refinement<NoInfer<A>, B>,
-    orFailWith: (a: Exclude<NoInfer<A>, B>) => E2
+    orFailWith: (a: NoInfer<A>) => E2
   ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E2 | E, B>
   <A, E2>(
     predicate: Predicate.Predicate<NoInfer<A>>,
@@ -647,7 +647,7 @@ export const filterOrFail: {
   <R, E, A, B extends A, E2>(
     self: Effect.Effect<R, E, A>,
     refinement: Predicate.Refinement<A, B>,
-    orFailWith: (a: Exclude<A, B>) => E2
+    orFailWith: (a: A) => E2
   ): Effect.Effect<R, E | E2, B>
   <R, E, A, E2>(
     self: Effect.Effect<R, E, A>,

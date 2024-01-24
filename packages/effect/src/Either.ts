@@ -407,7 +407,7 @@ export const match: {
 export const filterOrLeft: {
   <A, B extends A, E2>(
     refinement: Refinement<NoInfer<A>, B>,
-    orLeftWith: (a: Exclude<NoInfer<A>, B>) => E2
+    orLeftWith: (a: NoInfer<A>) => E2
   ): <E>(self: Either<E, A>) => Either<E2 | E, B>
   <A, E2>(
     predicate: Predicate<NoInfer<A>>,
@@ -416,7 +416,7 @@ export const filterOrLeft: {
   <E, A, B extends A, E2>(
     self: Either<E, A>,
     refinement: Refinement<A, B>,
-    orLeftWith: (a: Exclude<A, B>) => E2
+    orLeftWith: (a: A) => E2
   ): Either<E | E2, B>
   <E, A, E2>(self: Either<E, A>, predicate: Predicate<A>, orLeftWith: (a: A) => E2): Either<E | E2, A>
 } = dual(3, <E, A, E2>(

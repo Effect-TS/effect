@@ -134,29 +134,6 @@ pipe(
   ) => "b" as const)
 )
 
-declare const error$stringOrNumber: Either.Either<Error, string | number>
-
-// $ExpectType Either<"b" | Error, string>
-pipe(
-  error$stringOrNumber,
-  Either.filterOrLeft(Predicate.isString, (
-    _s // $ExpectType number
-  ) => "b" as const)
-)
-
-// $ExpectType Either<"b" | Error, string>
-Either.filterOrLeft(error$stringOrNumber, Predicate.isString, (
-  _s // $ExpectType number
-) => "b" as const)
-
-// $ExpectType Either<"b" | Error, string>
-pipe(
-  error$stringOrNumber,
-  Either.filterOrLeft(Predicate.isString, (
-    _s // $ExpectType number
-  ) => "b" as const)
-)
-
 // $ExpectType Either<"b" | Error, "a">
 pipe(
   error$a,
