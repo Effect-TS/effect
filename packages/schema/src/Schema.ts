@@ -18,6 +18,7 @@ import * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
 import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
+import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as List from "effect/List"
 import * as N from "effect/Number"
@@ -5344,6 +5345,77 @@ export const hashSet = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray
     hashSetFromSelf(to(item)),
     (as) => HashSet.fromIterable(as),
     (set) => Array.from(set)
+  )
+
+const hashMapArbitrary = <K, V>(
+  key: Arbitrary<K>,
+  value: Arbitrary<V>
+): Arbitrary<HashMap.HashMap<K, V>> =>
+(fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => HashMap.fromIterable(as))
+
+const hashMapPretty = <K, V>(
+  key: Pretty.Pretty<K>,
+  value: Pretty.Pretty<V>
+): Pretty.Pretty<HashMap.HashMap<K, V>> =>
+(map) =>
+  `HashMap([${
+    Array.from(map)
+      .map(([k, v]) => `[${key(k)}, ${value(v)}]`)
+      .join(", ")
+  }])`
+
+const hashMapEquivalence = <K, V>(
+  key: Equivalence.Equivalence<K>,
+  value: Equivalence.Equivalence<V>
+): Equivalence.Equivalence<HashMap.HashMap<K, V>> => {
+  const arrayEquivalence = ReadonlyArray.getEquivalence(
+    Equivalence.make<[K, V]>(([ka, va], [kb, vb]) => key(ka, kb) && value(va, vb))
+  )
+  return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
+}
+
+const hashMapParse = <R, K, V>(
+  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<readonly [K, V]>>
+): ParseResult.DeclarationDecodeUnknown<R, HashMap.HashMap<K, V>> =>
+(u, options, ast) =>
+  HashMap.isHashMap(u) ?
+    ParseResult.map(decodeUnknown(Array.from(u), options), (as): HashMap.HashMap<K, V> => HashMap.fromIterable(as))
+    : ParseResult.fail(ParseResult.type(ast, u))
+
+/**
+ * @category HashMap transformations
+ * @since 1.0.0
+ */
+export const hashMapFromSelf = <RK, IK, K, RV, IV, V>(
+  key: Schema<RK, IK, K>,
+  value: Schema<RV, IV, V>
+): Schema<RK | RV, HashMap.HashMap<IK, IV>, HashMap.HashMap<K, V>> => {
+  return declare(
+    [key, value],
+    (key, value) => hashMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
+    (key, value) => hashMapParse(ParseResult.encodeUnknown(array(tuple(key, value)))),
+    {
+      description: `HashMap<${Format.format(key)}, ${Format.format(value)}>`,
+      pretty: hashMapPretty,
+      arbitrary: hashMapArbitrary,
+      equivalence: hashMapEquivalence
+    }
+  )
+}
+
+/**
+ * @category HashMap transformations
+ * @since 1.0.0
+ */
+export const hashMap = <R1, IK, K, R2, IV, V>(
+  key: Schema<R1, IK, K>,
+  value: Schema<R2, IV, V>
+): Schema<R1 | R2, ReadonlyArray<readonly [IK, IV]>, HashMap.HashMap<K, V>> =>
+  transform(
+    array(tuple(key, value)),
+    hashMapFromSelf(to(key), to(value)),
+    (as) => HashMap.fromIterable(as),
+    (map) => Array.from(map)
   )
 
 const listArbitrary = <A>(item: Arbitrary<A>): Arbitrary<List.List<A>> => (fc) =>

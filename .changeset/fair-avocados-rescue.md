@@ -16,6 +16,7 @@ Refactoring:
     - rename `transform` to `transformOrFail`
     - rename `transformFrom` to `transformOrFailFrom`
   - add `hashSet` and `hashSetFromSelf`
+  - add `hashMap` and `hashMapFromSelf`
   - add `list` and `listFromSelf`
 - AST:
   - return `ParseResult.ParseIssue` instead of `ParseResult.ParseError` in all APIs
