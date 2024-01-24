@@ -1,6 +1,6 @@
 {
   "name": "@effect/printer",
-  "version": "0.30.9",
+  "version": "0.30.10",
   "type": "module",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",

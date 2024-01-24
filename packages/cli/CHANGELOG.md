@@ -1,5 +1,20 @@
 # @effect/cli
 
+## 0.30.5
+
+### Patch Changes
+
+- [#1963](https://github.com/Effect-TS/effect/pull/1963) [`de4cb04`](https://github.com/Effect-TS/effect/commit/de4cb049a39923d673fa4acd3db62dd60d341887) Thanks [@IMax153](https://github.com/IMax153)! - fix the parsed letter case for variadic and key/value flags
+
+- [#1922](https://github.com/Effect-TS/effect/pull/1922) [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764) Thanks [@gcanti](https://github.com/gcanti)! - add context tracking to Schema, closes #1873
+
+- Updated dependencies [[`84da31f`](https://github.com/Effect-TS/effect/commit/84da31f0643e8651b9d311b30526b1e4edfbdfb8), [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764), [`645bea2`](https://github.com/Effect-TS/effect/commit/645bea2551129f94a5b0e38347e28067dee531bb), [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764)]:
+  - effect@2.2.1
+  - @effect/schema@0.61.0
+  - @effect/platform@0.43.0
+  - @effect/printer@0.30.10
+  - @effect/printer-ansi@0.31.10
+
 ## 0.30.4
 
 ### Patch Changes

@@ -1,5 +1,41 @@
 # @effect/schema
 
+## 0.61.0
+
+### Minor Changes
+
+- [#1922](https://github.com/Effect-TS/effect/pull/1922) [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764) Thanks [@gcanti](https://github.com/gcanti)! - Refactoring:
+
+  - Schema:
+    - refactor `Schema.declare` API to make it safe
+    - add `Schema.declare` overloads
+    - add `encodeUnknown*` APIs
+    - rename `parse*` APIs to `decodeUnknown*`
+    - symplify brand implementation
+    - rename `params` to `annotation` in `typeId` annotation
+    - add optional `{ strict: false }` parameter to `compose`
+    - `Class`
+      - rename `transform` to `transformOrFail`
+      - rename `transformFrom` to `transformOrFailFrom`
+    - add `hashSet` and `hashSetFromSelf`
+    - add `hashMap` and `hashMapFromSelf`
+    - add `list` and `listFromSelf`
+  - AST:
+    - return `ParseResult.ParseIssue` instead of `ParseResult.ParseError` in all APIs
+    - Declaration
+      - split `decode` into `decodeUnknown` / `encodeUnknown`
+      - remove `type` field
+  - ParseResult
+    - align `mapBoth` with `Effect` (i.e. onFailure, onSuccess handlers)
+    - add missing `Declaration` node in `ParseIssue`
+
+- [#1922](https://github.com/Effect-TS/effect/pull/1922) [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764) Thanks [@gcanti](https://github.com/gcanti)! - add context tracking to Schema, closes #1873
+
+### Patch Changes
+
+- Updated dependencies [[`84da31f`](https://github.com/Effect-TS/effect/commit/84da31f0643e8651b9d311b30526b1e4edfbdfb8), [`645bea2`](https://github.com/Effect-TS/effect/commit/645bea2551129f94a5b0e38347e28067dee531bb)]:
+  - effect@2.2.1
+
 ## 0.60.7
 
 ### Patch Changes
