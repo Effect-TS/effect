@@ -90,6 +90,7 @@ export const dataLoader = dual<
       ),
       Effect.forever,
       Effect.withRequestCaching(false),
+      Effect.interruptible,
       Effect.forkScoped
     )
 
