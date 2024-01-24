@@ -9,10 +9,10 @@ describe("Date > DateFromSelf", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(S.DateFromSelf, new Date(), new Date())
-    await Util.expectParseSuccess(S.DateFromSelf, new Date("invalid"), new Date("invalid"))
+    await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date(), new Date())
+    await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date("invalid"), new Date("invalid"))
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       S.DateFromSelf,
       null,
       `Expected DateFromSelf (a potentially invalid Date instance), actual null`

@@ -7,19 +7,19 @@ describe("BigDecimal > NonNegativeBigDecimalFromSelf", () => {
   const schema = S.NonNegativeBigDecimalFromSelf
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       BigDecimal.make(0n, 0),
       BigDecimal.make(0n, 0)
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       BigDecimal.make(-2n, 0),
       `NonNegativeBigDecimalFromSelf
 └─ Predicate refinement failure
    └─ Expected NonNegativeBigDecimalFromSelf (a non-negative BigDecimal), actual BigDecimal(-2)`
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       BigDecimal.make(2n, 0),
       BigDecimal.make(2n, 0)

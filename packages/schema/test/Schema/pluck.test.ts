@@ -6,8 +6,8 @@ describe("Schema > pluck", () => {
   describe("decoding", () => {
     it("struct (string keys)", async () => {
       const schema = S.pluck(S.struct({ a: S.string, b: S.number }), "a")
-      await Util.expectParseSuccess(schema, { a: "a", b: 2 }, "a")
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: 2 }, "a")
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: 2 },
         `({ a: string; b: number } <-> string)
@@ -22,8 +22,8 @@ describe("Schema > pluck", () => {
       const a = Symbol.for("effect/schema/test/a")
       const b = Symbol.for("effect/schema/test/b")
       const schema = S.pluck(S.struct({ [a]: S.string, [b]: S.number }), a)
-      await Util.expectParseSuccess(schema, { [a]: "a", [b]: 2 }, "a")
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", [b]: 2 }, "a")
+      await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: 1, [b]: 2 },
         `({ Symbol(effect/schema/test/a): string; Symbol(effect/schema/test/b): number } <-> string)
@@ -36,16 +36,16 @@ describe("Schema > pluck", () => {
 
     it("struct with optional key", async () => {
       const schema = S.pluck(S.struct({ a: S.optional(S.string), b: S.number }), "a")
-      await Util.expectSuccess(S.parse(schema)({ b: 2 }), undefined)
-      await Util.expectSuccess(S.parse(schema)({ a: undefined, b: 2 }), undefined)
-      await Util.expectParseSuccess(schema, { a: "a", b: 2 }, "a")
+      await Util.expectSuccess(S.decodeUnknown(schema)({ b: 2 }), undefined)
+      await Util.expectSuccess(S.decodeUnknown(schema)({ a: undefined, b: 2 }), undefined)
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: 2 }, "a")
     })
 
     it("union", async () => {
       const schema = S.pluck(S.union(S.struct({ _tag: S.literal("A") }), S.struct({ _tag: S.literal("B") })), "_tag")
-      await Util.expectParseSuccess(schema, { _tag: "A" }, "A")
-      await Util.expectParseSuccess(schema, { _tag: "B" }, "B")
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownSuccess(schema, { _tag: "A" }, "A")
+      await Util.expectDecodeUnknownSuccess(schema, { _tag: "B" }, "B")
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `({ _tag: "A" } | { _tag: "B" } <-> "A" | "B")

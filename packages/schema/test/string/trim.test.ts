@@ -10,12 +10,12 @@ describe("string > trim", () => {
 
   it("decoding", async () => {
     const schema = S.string.pipe(S.minLength(1), S.compose(S.Trim), S.identifier("MySchema"))
-    await Util.expectParseSuccess(schema, "a", "a")
-    await Util.expectParseSuccess(schema, "a ", "a")
-    await Util.expectParseSuccess(schema, " a ", "a")
-    await Util.expectParseSuccess(schema, " ", "")
+    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+    await Util.expectDecodeUnknownSuccess(schema, "a ", "a")
+    await Util.expectDecodeUnknownSuccess(schema, " a ", "a")
+    await Util.expectDecodeUnknownSuccess(schema, " ", "")
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `MySchema

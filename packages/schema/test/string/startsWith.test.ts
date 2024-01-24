@@ -16,17 +16,17 @@ describe("string > startsWith", () => {
 
   it("decoding", async () => {
     const schema = S.string.pipe(S.startsWith("a"))
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseSuccess(schema, "ab")
+    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.expectDecodeUnknownSuccess(schema, "ab")
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `a string starting with "a"
 └─ Predicate refinement failure
    └─ Expected a string starting with "a", actual ""`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "b",
       `a string starting with "a"

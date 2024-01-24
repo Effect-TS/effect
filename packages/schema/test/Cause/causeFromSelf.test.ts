@@ -13,14 +13,14 @@ describe("Cause > causeFromSelf", () => {
   it("decoding", async () => {
     const schema = S.causeFromSelf(S.NumberFromString)
 
-    await Util.expectParseSuccess(schema, Cause.fail("1"), Cause.fail(1))
+    await Util.expectDecodeUnknownSuccess(schema, Cause.fail("1"), Cause.fail(1))
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `Expected Cause<NumberFromString>, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Cause.fail("a"),
       `Cause<NumberFromString>
@@ -32,7 +32,7 @@ describe("Cause > causeFromSelf", () => {
                └─ Transformation process failure
                   └─ Expected NumberFromString, actual "a"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
       `Cause<NumberFromString>

@@ -16,8 +16,8 @@ describe("AST/createSuspend", () => {
         return schema
       }))
     })
-    await Util.expectParseSuccess(schema, { a: "a1", as: [] })
-    await Util.expectParseSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [] })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
     expect(log).toEqual(1)
   })
 })

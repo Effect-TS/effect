@@ -25,8 +25,8 @@ describe("Either/eitherFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.eitherFromSelf(S.string, S.NumberFromString)
-    await Util.expectParseSuccess(schema, E.left("a"), E.left("a"))
-    await Util.expectParseSuccess(schema, E.right("1"), E.right(1))
+    await Util.expectDecodeUnknownSuccess(schema, E.left("a"), E.left("a"))
+    await Util.expectDecodeUnknownSuccess(schema, E.right("1"), E.right(1))
   })
 
   it("pretty", () => {

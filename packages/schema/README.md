@@ -6,7 +6,6 @@ Welcome to the documentation for `@effect/schema`, **a library for defining and 
 
 | Operation       | Description                                                                                                    |
 | --------------- | -------------------------------------------------------------------------------------------------------------- |
-| Parsing         | Convert from `unknown` value to output type `A`.                                                               |
 | Decoding        | Transforming data from an input type `I` to an output type `A`.                                                |
 | Encoding        | Converting data from an output type `A` back to an input type `I`.                                             |
 | Asserting       | Verifying that a value adheres to the schema's output type `A`.                                                |
@@ -25,10 +24,10 @@ sequenceDiagram
     participant I
     participant A
     participant U2 as unknown
-    U1->>A: parse
+    U1->>A: decodeUnknown
     I->>A: decode
     A->>I: encode
-    U2->>I: unparse
+    U2->>I: encodeUnknown
     U2->>A: validate
     U2->>A: is
     U2->>A: asserts
@@ -44,21 +43,21 @@ When we talk about "encoding," we are referring to the process of changing a `Da
 
 Conversely, "decoding" entails transforming a `string` back into a `Date`. It's essentially the reverse operation of encoding, where data is returned to its original form.
 
-**Parsing**
+**Decoding From Unknown**
 
-Parsing involves two key steps:
+Decoding from `unknown` involves two key steps:
 
 1. **Checking:** Initially, we verify that the input data (which is of the `unknown` type) matches the expected structure. In our specific case, this means ensuring that the input is indeed a `string`.
 
-2. **Decoding:** Following the successful check, we proceed to convert the `string` into a `Date`. This process completes the parsing operation, where the data is both validated and transformed.
+2. **Decoding:** Following the successful check, we proceed to convert the `string` into a `Date`. This process completes the decoding operation, where the data is both validated and transformed.
 
-**Unparsing**
+**Encoding From Unknown**
 
-Unparsing involves two key steps:
+Encoding from `unknown` involves two key steps:
 
 1. **Checking:** Initially, we verify that the input data (which is of the `unknown` type) matches the expected structure. In our specific case, this means ensuring that the input is indeed a `Date`.
 
-2. **Encoding:** Following the successful check, we proceed to convert the `Date` into a `string`. This process completes the unparsing operation, where the data is both validated and transformed.
+2. **Encoding:** Following the successful check, we proceed to convert the `Date` into a `string`. This process completes the encoding operation, where the data is both validated and transformed.
 
 > [!NOTE]
 > As a general rule, schemas should be defined such that encode + decode return the original value.
@@ -313,9 +312,9 @@ const Person: S.Schema<never, PersonFrom, Person> = _Person;
 
 In this case, the field `"age"` is of type `string` in the `From` type of the schema and is of type `number` in the `To` type of the schema. Therefore, we need to define **two** interfaces (`PersonFrom` and `Person`) and use both to redeclare our final schema `Person`.
 
-## Parsing
+## Decoding From Unknown
 
-To parse a value from the `unknown` type using the previously defined `Schema`, you can make use of the `parse*` functions provided by the `@effect/schema/Schema` module. Let's explore an example using the `parseEither` function:
+To decode a value from an `unknown` value using the previously defined `Schema`, you can make use of the `decodeUnknown*` functions provided by the `@effect/schema/Schema` module. Let's explore an example using the `decodeUnknownEither` function:
 
 ```ts
 import * as S from "@effect/schema/Schema";
@@ -326,11 +325,11 @@ const Person = S.struct({
   age: S.number,
 });
 
-const parsePerson = S.parseEither(Person);
+const parse = S.decodeUnknownEither(Person);
 
 const input: unknown = { name: "Alice", age: 30 };
 
-const result1 = parsePerson(input);
+const result1 = parse(input);
 if (Either.isRight(result1)) {
   console.log(result1.right);
   /*
@@ -339,7 +338,7 @@ if (Either.isRight(result1)) {
   */
 }
 
-const result2 = parsePerson(null);
+const result2 = parse(null);
 if (Either.isLeft(result2)) {
   console.log(result2.left);
   /*
@@ -352,7 +351,7 @@ if (Either.isLeft(result2)) {
 }
 ```
 
-The `parsePerson` function returns an `Either<ParseError, A>`, where `ParseError` is defined as follows:
+The `parse` function returns an `Either<ParseError, A>`, where `ParseError` is defined as follows:
 
 ```ts
 interface ParseError {
@@ -363,9 +362,9 @@ interface ParseError {
 
 Here, `ParseIssue` represents an error that might occur during the parsing process. It is wrapped in a tagged error to make it easier to catch errors using `Effect.catchTag`. The result `Either<ParseError, A>` contains the inferred data type described by the schema. A successful parse yields a `Right` value with the parsed data `A`, while a failed parse results in a `Left` value containing a `ParseError`.
 
-Now, let's see another example using the `parseSync` function.
+Now, let's see another example using the `decodeUnknownSync` function.
 
-The `parseSync` function is used to parse a value and throw an error if the parsing fails. This is especially useful when you want to ensure that the parsed value adheres to the correct format and are ready to throw an error if it does not.
+The `decodeUnknownSync` function is used to parse a value and throw an error if the parsing fails. This is especially useful when you want to ensure that the parsed value adheres to the correct format and are ready to throw an error if it does not.
 
 ```ts
 import * as S from "@effect/schema/Schema";
@@ -376,7 +375,7 @@ const Person = S.struct({
 });
 
 try {
-  const person = S.parseSync(Person)({});
+  const person = S.decodeUnknownSync(Person)({});
   console.log(person);
 } catch (e) {
   console.error("Parsing failed:");
@@ -395,7 +394,7 @@ In this example, we attempt to parse an empty object, but the `name` property is
 
 ### Handling Async Transformations
 
-When your schema involves asynchronous transformations, neither the `parseSync` nor the `parseEither` functions will work for you. In such cases, you must turn to the `parse` function, which returns an `Effect`.
+When your schema involves asynchronous transformations, neither the `decodeUnknownSync` nor the `decodeUnknownEither` functions will work for you. In such cases, you must turn to the `decodeUnknown` function, which returns an `Effect`.
 
 ```ts
 import * as S from "@effect/schema/Schema";
@@ -420,7 +419,7 @@ const asyncSchema = S.transformOrFail(
   (person) => Effect.succeed(person.id).pipe(Effect.delay("10 millis"))
 );
 
-const syncParsePersonId = S.parseEither(asyncSchema);
+const syncParsePersonId = S.decodeUnknownEither(asyncSchema);
 
 console.log(JSON.stringify(syncParsePersonId(1), null, 2));
 /*
@@ -435,7 +434,7 @@ Output:
 }
 */
 
-const asyncParsePersonId = S.parse(asyncSchema);
+const asyncParsePersonId = S.decodeUnknown(asyncSchema);
 
 Effect.runPromise(asyncParsePersonId(1)).then(console.log);
 /*
@@ -444,7 +443,7 @@ Output:
 */
 ```
 
-As shown in the code above, the first approach returns a `Forbidden` error, indicating that using `parseEither` with an async transformation is not allowed. However, the second approach works as expected, allowing you to handle async transformations and return the desired result.
+As shown in the code above, the first approach returns a `Forbidden` error, indicating that using `decodeUnknownEither` with an async transformation is not allowed. However, the second approach works as expected, allowing you to handle async transformations and return the desired result.
 
 ### Excess properties
 
@@ -463,7 +462,7 @@ const Person = S.struct({
 });
 
 console.log(
-  S.parseSync(Person)({
+  S.decodeUnknownSync(Person)({
     name: "Bob",
     age: 40,
     email: "bob@example.com",
@@ -474,7 +473,7 @@ Output:
 { name: 'Bob', age: 40 }
 */
 
-S.parseSync(Person)(
+S.decodeUnknownSync(Person)(
   {
     name: "Bob",
     age: 40,
@@ -504,7 +503,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-S.parseSync(Person)(
+S.decodeUnknownSync(Person)(
   {
     name: "Bob",
     age: "abc",
@@ -570,7 +569,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-const result = S.parseEither(Person)({});
+const result = S.decodeUnknownEither(Person)({});
 if (Either.isLeft(result)) {
   console.error("Parsing failed:");
   console.error(formatError(result.left));
@@ -590,15 +589,16 @@ The `ArrayFormatter` is an alternative way to format errors, presenting them as 
 ```ts
 export interface Issue {
   readonly _tag:
-    | "Refinement"
-    | "Tuple"
-    | "TypeLiteral"
-    | "Union"
     | "Transform"
     | "Type"
     | "Forbidden"
+    | "Declaration"
+    | "Refinement"
+    | "Tuple"
+    | "TypeLiteral"
     | "Missing"
-    | "Unexpected";
+    | "Unexpected"
+    | "Union";
   readonly path: ReadonlyArray<PropertyKey>;
   readonly message: string;
 }
@@ -616,7 +616,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-const result = S.parseEither(Person)(
+const result = S.decodeUnknownEither(Person)(
   { name: 1, foo: 2 },
   { errors: "all", onExcessProperty: "error" }
 );
@@ -1129,7 +1129,7 @@ const LongString = S.string.pipe(
   })
 );
 
-console.log(S.parseSync(LongString)("a"));
+console.log(S.decodeUnknownSync(LongString)("a"));
 /*
 throws:
 Error: a string at least 10 characters long
@@ -1165,18 +1165,16 @@ const schema = S.struct({ a: S.string, b: S.string }).pipe(
     o.b === o.a
       ? Option.none()
       : Option.some(
-          ParseResult.parseError(
-            ParseResult.type(
-              S.literal(o.a).ast,
-              o.b,
-              `b ("${o.b}") should be equal to a ("${o.a}")`
-            )
+          ParseResult.type(
+            S.literal(o.a).ast,
+            o.b,
+            `b ("${o.b}") should be equal to a ("${o.a}")`
           )
         )
   )
 );
 
-console.log(S.parseSync(schema)({ a: "foo", b: "bar" }));
+console.log(S.decodeUnknownSync(schema)({ a: "foo", b: "bar" }));
 /*
 throws:
 Error: <refinement schema>
@@ -1525,15 +1523,21 @@ const DiscriminatedShape = S.union(
   )
 );
 
-assert.deepStrictEqual(S.parseSync(DiscriminatedShape)({ radius: 10 }), {
-  kind: "circle",
-  radius: 10,
-});
+assert.deepStrictEqual(
+  S.decodeUnknownSync(DiscriminatedShape)({ radius: 10 }),
+  {
+    kind: "circle",
+    radius: 10,
+  }
+);
 
-assert.deepStrictEqual(S.parseSync(DiscriminatedShape)({ sideLength: 10 }), {
-  kind: "square",
-  sideLength: 10,
-});
+assert.deepStrictEqual(
+  S.decodeUnknownSync(DiscriminatedShape)({ sideLength: 10 }),
+  {
+    kind: "square",
+    sideLength: 10,
+  }
+);
 ```
 
 In this example, we use the `extend` function to add a "kind" property with a literal value to each member of the union. Then we use `transform` to add the discriminant property and remove it afterwards. Finally, we use `union` to combine the transformed schemas into a discriminated union.
@@ -1553,11 +1557,14 @@ const DiscriminatedShape = S.union(
   Square.pipe(S.attachPropertySignature("kind", "square"))
 );
 
-// parsing
-assert.deepStrictEqual(S.parseSync(DiscriminatedShape)({ radius: 10 }), {
-  kind: "circle",
-  radius: 10,
-});
+// decoding
+assert.deepStrictEqual(
+  S.decodeUnknownSync(DiscriminatedShape)({ radius: 10 }),
+  {
+    kind: "circle",
+    radius: 10,
+  }
+);
 
 // encoding
 assert.deepStrictEqual(
@@ -1790,11 +1797,11 @@ const originalSchema = S.struct({ a: S.string, b: S.number });
 // Renaming the "a" property to "c"
 const renamedSchema = S.rename(originalSchema, { a: "c" });
 
-console.log(S.parseSync(renamedSchema)({ a: "a", b: 1 }));
+console.log(S.decodeUnknownSync(renamedSchema)({ a: "a", b: 1 }));
 // Output: { c: "a", b: 1 }
 ```
 
-In the example above, we have an original schema with properties "a" and "b." Using the `rename` API, we create a new schema where we rename the "a" property to "c." The resulting schema, when used with `S.parseSync`, transforms the input object by renaming the specified property.
+In the example above, we have an original schema with properties "a" and "b." Using the `rename` API, we create a new schema where we rename the "a" property to "c." The resulting schema, when used with `S.decodeUnknownSync`, transforms the input object by renaming the specified property.
 
 ## Classes
 
@@ -1943,7 +1950,7 @@ export class Person extends S.Class<Person>()({
   name: S.string,
 }) {}
 
-console.log(S.parseSync(Person)({ id: 1, name: "name" }));
+console.log(S.decodeUnknownSync(Person)({ id: 1, name: "name" }));
 /*
 Output:
 Person { id: 1, name: 'name' }
@@ -1953,23 +1960,22 @@ function getAge(id: number): Effect.Effect<never, Error, number> {
   return Effect.succeed(id + 2);
 }
 
-export class PersonWithTransform extends Person.transform<PersonWithTransform>()(
+export class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
   {
     age: S.optional(S.number, { exact: true, as: "Option" }),
   },
   (input) =>
     Effect.mapBoth(getAge(input.id), {
-      onFailure: (e) =>
-        ParseResult.parseError(
-          ParseResult.type(S.string.ast, input.id, e.message)
-        ),
+      onFailure: (e) => ParseResult.type(S.string.ast, input.id, e.message),
       // must return { age: Option<number> }
       onSuccess: (age) => ({ ...input, age: Option.some(age) }),
     }),
   ParseResult.succeed
 ) {}
 
-S.parsePromise(PersonWithTransform)({ id: 1, name: "name" }).then(console.log);
+S.decodeUnknownPromise(PersonWithTransform)({ id: 1, name: "name" }).then(
+  console.log
+);
 /*
 Output:
 PersonWithTransform {
@@ -1979,23 +1985,20 @@ PersonWithTransform {
 }
 */
 
-export class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFrom>()(
+export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>()(
   {
     age: S.optional(S.number, { exact: true, as: "Option" }),
   },
   (input) =>
     Effect.mapBoth(getAge(input.id), {
-      onFailure: (e) =>
-        ParseResult.parseError(
-          ParseResult.type(S.string.ast, input, e.message)
-        ),
+      onFailure: (e) => ParseResult.type(S.string.ast, input, e.message),
       // must return { age?: number }
       onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input }),
     }),
   ParseResult.succeed
 ) {}
 
-S.parsePromise(PersonWithTransformFrom)({ id: 1, name: "name" }).then(
+S.decodeUnknownPromise(PersonWithTransformFrom)({ id: 1, name: "name" }).then(
   console.log
 );
 /*
@@ -2343,15 +2346,14 @@ const PeopleIdFromString = S.transformOrFail(
   PeopleId,
   (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
-      onFailure: (e) =>
-        ParseResult.parseError(ParseResult.type(ast, s, e.message)),
+      onFailure: (e) => ParseResult.type(ast, s, e.message),
       onSuccess: () => s,
     }),
   ParseResult.succeed
 );
 
 const parse = (id: string) =>
-  Effect.mapError(S.parse(PeopleIdFromString)(id), (e) =>
+  Effect.mapError(S.decodeUnknown(PeopleIdFromString)(id), (e) =>
     TreeFormatter.formatError(e)
   );
 
@@ -2411,15 +2413,14 @@ const PeopleIdFromString = S.transformOrFail(
   PeopleId,
   (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
-      onFailure: (e) =>
-        ParseResult.parseError(ParseResult.type(ast, s, e.message)),
+      onFailure: (e) => ParseResult.type(ast, s, e.message),
       onSuccess: () => s,
     }),
   ParseResult.succeed
 );
 
 const parse = (id: string) =>
-  Effect.mapError(S.parse(PeopleIdFromString)(id), (e) =>
+  Effect.mapError(S.decodeUnknown(PeopleIdFromString)(id), (e) =>
     TreeFormatter.formatError(e)
   );
 
@@ -2461,7 +2462,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, string, string[]>
 const schema = S.split(",");
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse("")); // [""]
 console.log(parse(",")); // ["", ""]
@@ -2478,7 +2479,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, string, string>
 const schema = S.Trim;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse("a")); // "a"
 console.log(parse(" a")); // "a"
@@ -2497,7 +2498,7 @@ import * as S from "@effect/schema/Schema";
 
 // const schema: S.Schema<never, string, string>
 const schema = S.Lowercase;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse("A")); // "a"
 console.log(parse(" AB")); // " ab"
@@ -2516,7 +2517,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, string, unknown>
 const schema = S.parseJson();
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 // Parse valid JSON strings
 console.log(parse("{}")); // Output: {}
@@ -2556,7 +2557,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, string, number>
 const schema = S.NumberFromString;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 // success cases
 console.log(parse("1")); // 1
@@ -2586,7 +2587,7 @@ import * as S from "@effect/schema/Schema";
 // $ExpectType Schema<never, number, number>
 const schema = S.number.pipe(S.clamp(-1, 1)); // clamps the input to -1 <= x <= 1
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse(-3)); // -1
 console.log(parse(0)); // 0
@@ -2604,7 +2605,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, string, BigDecimal>
 const schema = S.BigDecimal;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse(".124")); // { _id: 'BigDecimal', value: '124', scale: 3 }
 ```
@@ -2621,7 +2622,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, number, BigDecimal>
 const schema = S.BigDecimalFromNumber;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse(0.111)); // { _id: 'BigDecimal', value: '111', scale: 3 }
 ```
@@ -2639,7 +2640,7 @@ const schema = S.BigDecimal.pipe(
   S.clampBigDecimal(BigDecimal.fromNumber(-1), BigDecimal.fromNumber(1))
 );
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse("-2")); // { _id: 'BigDecimal', value: '-1', scale: 0 }
 console.log(parse("0")); // { _id: 'BigDecimal', value: '0', scale: 0 }
@@ -2656,7 +2657,7 @@ import * as S from "@effect/schema/Schema";
 // $ExpectType Schema<never, string, BigDecimal.BigDecimal>
 const schema = S.BigDecimal.pipe(S.negateBigDecimal);
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse("-2")); // { _id: 'BigDecimal', value: '2', scale: 0 }
 console.log(parse("0")); // { _id: 'BigDecimal', value: '0', scale: 0 }
@@ -2675,7 +2676,7 @@ import * as S from "@effect/schema/Schema";
 // $ExpectType Schema<never, number, Duration>
 const schema = S.Duration;
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse([0, 0])); // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 0, 0 ] }
 console.log(parse([5000, 0])); // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 5000, 0 ] }
@@ -2691,7 +2692,7 @@ import * as S from "@effect/schema/Schema";
 // $ExpectType Schema<never, number, Duration>
 const schema = S.DurationFromMillis;
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse(0)); // { _id: 'Duration', _tag: 'Millis', millis: 0 }
 console.log(parse(5000)); // { _id: 'Duration', _tag: 'Millis', millis: 5000 }
@@ -2707,7 +2708,7 @@ import * as S from "@effect/schema/Schema";
 // $ExpectType Schema<never, bigint, Duration>
 const schema = S.DurationFromNanos;
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse(0n)); // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 0, 0 ] }
 console.log(parse(5000000000n)); // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 5, 0 ] }
@@ -2726,7 +2727,7 @@ const schema = S.DurationFromSelf.pipe(
   S.clampDuration("5 seconds", "10 seconds")
 );
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse(Duration.decode("2 seconds"))); // { _id: 'Duration', _tag: 'Millis', millis: 5000 }
 console.log(parse(Duration.decode("6 seconds"))); // { _id: 'Duration', _tag: 'Millis', millis: 6000 }
@@ -2745,7 +2746,7 @@ import * as S from "@effect/schema/Schema";
 // $ExpectType Schema<never, string, Secret>
 const schema = S.Secret;
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse("keep it secret, keep it safe")); // {}
 ```
@@ -2761,7 +2762,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, string, symbol>
 const schema = S.symbol;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse("a")); // Symbol(a)
 ```
@@ -2777,7 +2778,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, string, bigint>
 const schema = S.bigint;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 // success cases
 console.log(parse("1")); // 1n
@@ -2806,7 +2807,7 @@ import * as S from "@effect/schema/Schema";
 
 // const schema: S.Schema<never, number, bigint>
 const schema = S.BigintFromNumber;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 const encode = S.encodeSync(schema);
 
 // success cases
@@ -2840,7 +2841,7 @@ import * as S from "@effect/schema/Schema";
 // $ExpectType Schema<never, bigint, bigint>
 const schema = S.bigintFromSelf.pipe(S.clampBigint(-1n, 1n)); // clamps the input to -1n <= x <= 1n
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse(-3n)); // -1n
 console.log(parse(0n)); // 0n
@@ -2859,7 +2860,7 @@ import * as S from "@effect/schema/Schema";
 // $ExpectType Schema<never, boolean, boolean>
 const schema = S.Not;
 
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse(true)); // false
 console.log(parse(false)); // true
@@ -2876,7 +2877,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, string, Date>
 const schema = S.Date;
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse("1970-01-01T00:00:00.000Z")); // 1970-01-01T00:00:00.000Z
 
@@ -3014,7 +3015,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, readonly number[], ReadonlySet<number>>
 const schema = S.readonlySet(S.number); // define a schema for ReadonlySet with number values
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(parse([1, 2, 3])); // Set(3) { 1, 2, 3 }
 ```
@@ -3028,7 +3029,7 @@ import * as S from "@effect/schema/Schema";
 
 // $ExpectType Schema<never, readonly (readonly [number, string])[], ReadonlyMap<number, string>>
 const schema = S.readonlyMap(S.number, S.string); // define the schema for ReadonlyMap with number keys and string values
-const parse = S.parseSync(schema);
+const parse = S.decodeUnknownSync(schema);
 
 console.log(
   parse([
@@ -3055,7 +3056,7 @@ const isFile = (input: unknown): input is File => input instanceof File;
 // const FileFromSelf: S.Schema<never, File, File>
 const FileFromSelf = S.declare(isFile).pipe(S.identifier("FileFromSelf"));
 
-const parseSync = S.parseSync(FileFromSelf);
+const parseSync = S.decodeUnknownSync(FileFromSelf);
 
 console.log(parseSync(new File([], ""))); // File { size: 0, type: '', name: '', lastModified: 1705595977234 }
 
@@ -3083,11 +3084,11 @@ export const myReadonlySet = <R, I, A>(
   S.declare(
     // Store the schema for the elements
     [item],
-    // Parsing function
+    // Decoding function
     (item) => (input, parseOptions, ast) => {
       if (input instanceof Set) {
-        // Parse the elements
-        const elements = ParseResult.parse(S.array(item))(
+        // Decode the elements
+        const elements = ParseResult.decodeUnknown(S.array(item))(
           Array.from(input.values()),
           parseOptions
         );
@@ -3096,11 +3097,11 @@ export const myReadonlySet = <R, I, A>(
       }
       return ParseResult.fail(ParseResult.type(ast, input));
     },
-    // Unparse function
+    // Encoding function
     (item) => (input, parseOptions, ast) => {
       if (input instanceof Set) {
-        // Parse the elements
-        const elements = ParseResult.unparse(S.array(item))(
+        // Encode the elements
+        const elements = ParseResult.encodeUnknown(S.array(item))(
           Array.from(input.values()),
           parseOptions
         );
@@ -3114,7 +3115,7 @@ export const myReadonlySet = <R, I, A>(
 // const setOfNumbers: S.Schema<never, ReadonlySet<string>, ReadonlySet<number>>
 const setOfNumbers = myReadonlySet(S.NumberFromString);
 
-const parseSync = S.parseSync(setOfNumbers);
+const parseSync = S.decodeUnknownSync(setOfNumbers);
 
 console.log(parseSync(new Set(["1", "2", "3"]))); // Set(3) { 1, 2, 3 }
 
@@ -3170,7 +3171,7 @@ const UrlString: S.Schema<never, string, string> = S.string.pipe(
   })
 );
 
-const parse = S.parseSync(UrlString);
+const parse = S.decodeUnknownSync(UrlString);
 
 console.log(parse("https://www.effect.website")); // https://www.effect.website
 ```
@@ -3198,18 +3199,16 @@ const NormalizeUrlString: S.Schema<never, string, string> = S.transformOrFail(
     ParseResult.try({
       try: () => new URL(value).toString(),
       catch: (err) =>
-        ParseResult.parseError(
-          ParseResult.type(
-            ast,
-            value,
-            err instanceof Error ? err.message : undefined
-          )
+        ParseResult.type(
+          ast,
+          value,
+          err instanceof Error ? err.message : undefined
         ),
     }),
   ParseResult.succeed
 );
 
-const parse = S.parseSync(NormalizeUrlString);
+const parse = S.decodeUnknownSync(NormalizeUrlString);
 
 console.log(parse("https://www.effect.website")); // "https://www.effect.website/"
 ```
@@ -3388,13 +3387,13 @@ const schema = S.struct({
   age: S.number,
 });
 
-S.parseSync(schema)(null);
+S.decodeUnknownSync(schema)(null);
 /*
 throws:
 Error: Expected { name: string; age: number }, actual null
 */
 
-S.parseSync(schema)({}, { errors: "all" });
+S.decodeUnknownSync(schema)({}, { errors: "all" });
 /*
 throws:
 Error: { name: string; age: number }
@@ -3417,13 +3416,13 @@ const schema = S.struct({
   age: S.number.pipe(S.identifier("Age")),
 }).pipe(S.identifier("Person"));
 
-S.parseSync(schema)(null);
+S.decodeUnknownSync(schema)(null);
 /*
 throws:
 Error: Expected Person, actual null
 */
 
-S.parseSync(schema)({}, { errors: "all" });
+S.decodeUnknownSync(schema)({}, { errors: "all" });
 /*
 throws:
 Error: Person
@@ -3433,7 +3432,7 @@ Error: Person
    └─ is missing
 */
 
-S.parseSync(schema)({ name: null, age: null }, { errors: "all" });
+S.decodeUnknownSync(schema)({ name: null, age: null }, { errors: "all" });
 /*
 throws:
 Error: Person
@@ -3457,7 +3456,7 @@ const schema = S.struct({
 }).pipe(S.identifier("Person"));
 
 // "from" failure
-S.parseSync(schema)({ name: null, age: 18 });
+S.decodeUnknownSync(schema)({ name: null, age: 18 });
 /*
 throws:
 Error: Person
@@ -3468,7 +3467,7 @@ Error: Person
 */
 
 // predicate failure
-S.parseSync(schema)({ name: "", age: 18 });
+S.decodeUnknownSync(schema)({ name: "", age: 18 });
 /*
 throws:
 Error: Person
@@ -3500,7 +3499,7 @@ const schema = S.struct({
   ),
 }).pipe(S.identifier("Person"));
 
-S.parseSync(schema)({ name: null, age: 18 });
+S.decodeUnknownSync(schema)({ name: null, age: 18 });
 /*
 throws:
 Error: Person
@@ -3508,7 +3507,7 @@ Error: Person
    └─ Name: a required non empty string
 */
 
-S.parseSync(schema)({ name: "", age: 18 });
+S.decodeUnknownSync(schema)({ name: "", age: 18 });
 /*
 throws:
 Error: Person
@@ -3531,7 +3530,7 @@ const schema = S.struct({
   ),
 }).pipe(S.identifier("Person"));
 
-S.parseSync(schema)({ name: "John", age: null });
+S.decodeUnknownSync(schema)({ name: "John", age: null });
 /*
 throws:
 Error: Person
@@ -3539,7 +3538,7 @@ Error: Person
    └─ please enter a number
 */
 
-S.parseSync(schema)({ name: "John", age: -1 });
+S.decodeUnknownSync(schema)({ name: "John", age: -1 });
 /*
 throws:
 Error: Person
@@ -3547,7 +3546,7 @@ Error: Person
    └─ please enter a positive number
 */
 
-S.parseSync(schema)({ name: "John", age: 1.2 });
+S.decodeUnknownSync(schema)({ name: "John", age: 1.2 });
 /*
 throws:
 Error: Person
@@ -3555,7 +3554,7 @@ Error: Person
    └─ please enter an integer
 */
 
-S.parseSync(schema)({ name: "John", age: -1.2 });
+S.decodeUnknownSync(schema)({ name: "John", age: -1.2 });
 /*
 throws:
 Error: Person
@@ -3590,7 +3589,7 @@ const schema = S.struct({
 }).pipe(S.identifier("Person"));
 
 // "from" failure
-S.parseSync(schema)({ name: "John", age: null });
+S.decodeUnknownSync(schema)({ name: "John", age: null });
 /*
 throws:
 Error: Person
@@ -3601,7 +3600,7 @@ Error: Person
 */
 
 // "to" failure
-S.parseSync(schema)({ name: "John", age: "1.2" });
+S.decodeUnknownSync(schema)({ name: "John", age: "1.2" });
 /*
 throws:
 Error: Person
@@ -3614,7 +3613,7 @@ Error: Person
 */
 
 // "transformation" failure
-S.parseSync(schema)({ name: "John", age: "a" });
+S.decodeUnknownSync(schema)({ name: "John", age: "a" });
 /*
 throws:
 Error: Person
@@ -3654,7 +3653,7 @@ const schema = S.struct({
 }).pipe(S.identifier("Person"));
 
 // "from" failure
-S.parseSync(schema)({ name: "John", age: null });
+S.decodeUnknownSync(schema)({ name: "John", age: null });
 /*
 throws:
 Error: Person
@@ -3663,7 +3662,7 @@ Error: Person
 */
 
 // "to" failure
-S.parseSync(schema)({ name: "John", age: "1.2" });
+S.decodeUnknownSync(schema)({ name: "John", age: "1.2" });
 /*
 throws:
 Error: Person
@@ -3672,7 +3671,7 @@ Error: Person
 */
 
 // "transformation" failure
-S.parseSync(schema)({ name: "John", age: "a" });
+S.decodeUnknownSync(schema)({ name: "John", age: "a" });
 /*
 throws:
 Error: Person

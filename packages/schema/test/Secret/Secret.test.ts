@@ -11,7 +11,7 @@ describe("Schema/Secret", () => {
   })
 
   it("decoding", () => {
-    Util.expectParseSuccess(schema, "keep me safe", Secret.fromString("keep me safe"))
+    Util.expectDecodeUnknownSuccess(schema, "keep me safe", Secret.fromString("keep me safe"))
   })
 
   it("encoding", () => {

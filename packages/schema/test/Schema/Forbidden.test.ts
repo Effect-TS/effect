@@ -10,7 +10,7 @@ const expectMessage = <I, A>(
   u: unknown,
   message: string
 ) => {
-  expect(Either.mapLeft(S.parseEither(schema)(u), (e) => formatIssue(e.error))).toEqual(
+  expect(Either.mapLeft(S.decodeUnknownEither(schema)(u), (e) => formatIssue(e.error))).toEqual(
     Either.left(message)
   )
 }
@@ -79,9 +79,9 @@ describe("Schema > Forbidden", () => {
   })
 
   it("declaration", () => {
-    const parse = ParseResult.parse(Util.effectify(S.number))
-    const unparse = ParseResult.unparse(Util.effectify(S.number))
-    const transform = S.declare([], () => parse, () => unparse)
+    const decodeUnknown = ParseResult.decodeUnknown(Util.effectify(S.number))
+    const encodeUnknown = ParseResult.encodeUnknown(Util.effectify(S.number))
+    const transform = S.declare([], () => decodeUnknown, () => encodeUnknown)
     expectMessage(
       transform,
       1,

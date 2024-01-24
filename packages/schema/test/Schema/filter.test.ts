@@ -49,8 +49,8 @@ describe("Schema > filter", () => {
       )
     )
 
-    await Util.expectParseSuccess(schema, { a: "x", b: "x" })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, { a: "x", b: "x" })
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a", b: "b" },
       `<refinement schema>

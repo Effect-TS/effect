@@ -5,14 +5,14 @@ import { describe, it } from "vitest"
 describe("bigint > greaterThanOrEqualToBigint", () => {
   const schema = S.bigintFromSelf.pipe(S.greaterThanOrEqualToBigint(0n))
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       -1n,
       `a non-negative bigint
 └─ Predicate refinement failure
    └─ Expected a non-negative bigint, actual -1n`
     )
-    await Util.expectParseSuccess(schema, 0n, 0n)
+    await Util.expectDecodeUnknownSuccess(schema, 0n, 0n)
   })
 
   it("encoding", async () => {

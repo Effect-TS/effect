@@ -22,13 +22,13 @@ describe("Schema > instanceOf", () => {
 
   it("decoding", async () => {
     const schema = S.instanceOf(Set)
-    await Util.expectParseSuccess(schema, new Set())
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, new Set())
+    await Util.expectDecodeUnknownFailure(
       schema,
       1,
       `Expected an instance of Set, actual 1`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       {},
       `Expected an instance of Set, actual {}`
@@ -55,6 +55,6 @@ describe("Schema > instanceOf", () => {
     const schema = S.instanceOf(Set, {
       message: () => "This is a custom message"
     })
-    await Util.expectParseFailure(schema, 1, `This is a custom message`)
+    await Util.expectDecodeUnknownFailure(schema, 1, `This is a custom message`)
   })
 })

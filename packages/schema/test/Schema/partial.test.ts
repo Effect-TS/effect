@@ -8,10 +8,10 @@ const NumberFromString = S.NumberFromString
 describe("Schema > partial", () => {
   it("struct", async () => {
     const schema = S.partial(S.struct({ a: S.number }))
-    await Util.expectParseSuccess(schema, {})
-    await Util.expectParseSuccess(schema, { a: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, {})
+    await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: undefined },
       `{ a?: number }
@@ -22,18 +22,18 @@ describe("Schema > partial", () => {
 
   it("tuple", async () => {
     const schema = S.partial(S.tuple(S.string, S.number))
-    await Util.expectParseSuccess(schema, [])
-    await Util.expectParseSuccess(schema, ["a"])
-    await Util.expectParseSuccess(schema, ["a", 1])
+    await Util.expectDecodeUnknownSuccess(schema, [])
+    await Util.expectDecodeUnknownSuccess(schema, ["a"])
+    await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
   })
 
   it("array", async () => {
     const schema = S.partial(S.array(S.number))
-    await Util.expectParseSuccess(schema, [])
-    await Util.expectParseSuccess(schema, [1])
-    await Util.expectParseSuccess(schema, [undefined])
+    await Util.expectDecodeUnknownSuccess(schema, [])
+    await Util.expectDecodeUnknownSuccess(schema, [1])
+    await Util.expectDecodeUnknownSuccess(schema, [undefined])
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       ["a"],
       `ReadonlyArray<number | undefined>
@@ -48,12 +48,12 @@ describe("Schema > partial", () => {
 
   it("union", async () => {
     const schema = S.partial(S.union(S.string, S.array(S.number)))
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseSuccess(schema, [])
-    await Util.expectParseSuccess(schema, [1])
-    await Util.expectParseSuccess(schema, [undefined])
+    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.expectDecodeUnknownSuccess(schema, [])
+    await Util.expectDecodeUnknownSuccess(schema, [1])
+    await Util.expectDecodeUnknownSuccess(schema, [undefined])
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       ["a"],
       `ReadonlyArray<number | undefined> | string
@@ -72,22 +72,22 @@ describe("Schema > partial", () => {
 
   it("tuple/ e", async () => {
     const schema = S.partial(S.tuple(NumberFromString))
-    await Util.expectParseSuccess(schema, ["1"], [1])
-    await Util.expectParseSuccess(schema, [], [])
+    await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
+    await Util.expectDecodeUnknownSuccess(schema, [], [])
   })
 
   it("tuple/ e r", async () => {
     const schema = S.partial(S.tuple(NumberFromString).pipe(S.rest(NumberFromString)))
-    await Util.expectParseSuccess(schema, ["1"], [1])
-    await Util.expectParseSuccess(schema, [], [])
-    await Util.expectParseSuccess(schema, ["1", "2"], [1, 2])
-    await Util.expectParseSuccess(schema, ["1", undefined], [1, undefined])
+    await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
+    await Util.expectDecodeUnknownSuccess(schema, [], [])
+    await Util.expectDecodeUnknownSuccess(schema, ["1", "2"], [1, 2])
+    await Util.expectDecodeUnknownSuccess(schema, ["1", undefined], [1, undefined])
   })
 
   it("record", async () => {
     const schema = S.partial(S.record(S.string, NumberFromString))
-    await Util.expectParseSuccess(schema, {}, {})
-    await Util.expectParseSuccess(schema, { a: "1" }, { a: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, {}, {})
+    await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
   })
 
   it("suspend", async () => {
@@ -100,11 +100,11 @@ describe("Schema > partial", () => {
           a: S.union(S.null, schema)
         })
     ))
-    await Util.expectParseSuccess(schema, {})
-    await Util.expectParseSuccess(schema, { a: null })
-    await Util.expectParseSuccess(schema, { a: {} })
-    await Util.expectParseSuccess(schema, { a: { a: null } })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, {})
+    await Util.expectDecodeUnknownSuccess(schema, { a: null })
+    await Util.expectDecodeUnknownSuccess(schema, { a: {} })
+    await Util.expectDecodeUnknownSuccess(schema, { a: { a: null } })
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: 1 },
       `{ a?: <suspended schema> | null }

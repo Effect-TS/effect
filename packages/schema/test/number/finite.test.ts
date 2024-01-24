@@ -10,15 +10,15 @@ describe("number > Finite", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 1)
+    await Util.expectDecodeUnknownFailure(
       schema,
       Infinity,
       `Finite
 └─ Predicate refinement failure
    └─ Expected Finite (a finite number), actual Infinity`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       -Infinity,
       `Finite

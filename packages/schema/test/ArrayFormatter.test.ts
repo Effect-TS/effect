@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest"
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
 const expectIssues = <I, A>(schema: S.Schema<never, I, A>, input: unknown, issues: Array<_.Issue>) => {
-  const result = S.parseEither(schema)(input, options).pipe(
+  const result = S.decodeUnknownEither(schema)(input, options).pipe(
     Either.mapLeft((e) => _.formatIssues([e.error]))
   )
   expect(result).toStrictEqual(Either.left(issues))
@@ -365,7 +365,7 @@ describe("ArrayFormatter", () => {
               : ParseResult.succeed(n)
           },
           (n) => ParseResult.succeed(String(n))
-        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a parseable string"))
+        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a decodeUnknownable string"))
 
         expectIssues(schema, null, [{
           _tag: "Transform",
@@ -380,7 +380,7 @@ describe("ArrayFormatter", () => {
         expectIssues(schema, "a", [{
           _tag: "Transform",
           path: [],
-          message: "please enter a parseable string"
+          message: "please enter a decodeUnknownable string"
         }])
       })
     })

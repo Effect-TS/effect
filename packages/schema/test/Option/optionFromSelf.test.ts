@@ -24,10 +24,10 @@ describe("Option > optionFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.optionFromSelf(S.NumberFromString)
-    await Util.expectParseSuccess(schema, O.none(), O.none())
-    await Util.expectParseSuccess(schema, O.some("1"), O.some(1))
+    await Util.expectDecodeUnknownSuccess(schema, O.none(), O.none())
+    await Util.expectDecodeUnknownSuccess(schema, O.some("1"), O.some(1))
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `Expected Option<NumberFromString>, actual null`

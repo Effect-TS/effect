@@ -157,12 +157,12 @@ describe("Schema > Class", () => {
   })
 
   it("schema", async () => {
-    const person = S.parseSync(Person)({ id: 1, name: "John" })
+    const person = S.decodeUnknownSync(Person)({ id: 1, name: "John" })
     expect(person.name).toEqual("John")
 
     const PersonFromSelf = S.to(Person)
-    await Util.expectParseSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
       `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
@@ -170,15 +170,15 @@ describe("Schema > Class", () => {
   })
 
   it("with context", async () => {
-    const person = S.parse(PersonContext)({ id: 1, name: "John" }).pipe(
+    const person = S.decodeUnknown(PersonContext)({ id: 1, name: "John" }).pipe(
       Effect.provideService(Name, "John"),
       Effect.runSync
     )
     expect(person.name).toEqual("John")
 
     const PersonFromSelf = S.to(Person)
-    await Util.expectParseSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
       `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
@@ -186,12 +186,12 @@ describe("Schema > Class", () => {
   })
 
   it(".struct", async () => {
-    const person = S.parseSync(Person.struct)({ id: 1, name: "John" })
+    const person = S.decodeUnknownSync(Person.struct)({ id: 1, name: "John" })
     assert.deepStrictEqual(person, { id: 1, name: "John" })
   })
 
   it("extends", () => {
-    const person = S.parseSync(PersonWithAge)({
+    const person = S.decodeUnknownSync(PersonWithAge)({
       id: 1,
       name: "John",
       age: 30
@@ -204,7 +204,7 @@ describe("Schema > Class", () => {
   })
 
   it("extends extends", () => {
-    const person = S.parseSync(PersonWithNick)({
+    const person = S.decodeUnknownSync(PersonWithNick)({
       id: 1,
       name: "John",
       age: 30,
@@ -215,7 +215,7 @@ describe("Schema > Class", () => {
   })
 
   it("extends error", () => {
-    expect(() => S.parseSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
+    expect(() => S.decodeUnknownSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
       new Error(
         `({ id: number; age: number; name: a non empty string } <-> PersonWithAge)
 └─ From side transformation failure
@@ -262,7 +262,7 @@ describe("Schema > Class", () => {
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       PersonWithTransform,
       {
         id: 2,
@@ -297,7 +297,7 @@ describe("Schema > Class", () => {
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       PersonWithTransformFrom,
       {
         id: 2,
@@ -329,7 +329,7 @@ describe("Schema > Class", () => {
     expect(person._tag).toEqual("TaggedPerson")
     expect(person.upperName).toEqual("JOHN")
 
-    expect(() => S.parseSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
+    expect(() => S.decodeUnknownSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
       new Error(
         `({ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string } <-> TaggedPersonWithAge)
 └─ From side transformation failure
@@ -338,7 +338,7 @@ describe("Schema > Class", () => {
          └─ is missing`
       )
     )
-    person = S.parseSync(TaggedPersonWithAge)({
+    person = S.decodeUnknownSync(TaggedPersonWithAge)({
       _tag: "TaggedPerson",
       id: 1,
       name: "John",
@@ -364,7 +364,7 @@ describe("Schema > Class", () => {
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
 
-    err = S.parseSync(MyError)({ _tag: "MyError", id: 1 })
+    err = S.decodeUnknownSync(MyError)({ _tag: "MyError", id: 1 })
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
   })

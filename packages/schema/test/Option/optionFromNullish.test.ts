@@ -11,15 +11,15 @@ describe("Option > optionFromNullish", () => {
 
   it("decoding", async () => {
     const schema = S.optionFromNullish(S.NumberFromString, undefined)
-    await Util.expectParseSuccess(schema, null, O.none())
-    await Util.expectParseSuccess(schema, undefined, O.none())
-    await Util.expectParseSuccess(schema, "1", O.some(1))
+    await Util.expectDecodeUnknownSuccess(schema, null, O.none())
+    await Util.expectDecodeUnknownSuccess(schema, undefined, O.none())
+    await Util.expectDecodeUnknownSuccess(schema, "1", O.some(1))
 
     expect(O.isOption(S.decodeSync(schema)(null))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)(undefined))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       {},
       `(null | undefined | NumberFromString <-> Option<number>)

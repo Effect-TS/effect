@@ -10,13 +10,13 @@ describe("Option > optionFromNullable", () => {
 
   it("decoding", async () => {
     const schema = S.optionFromNullable(S.NumberFromString)
-    await Util.expectParseSuccess(schema, null, O.none())
-    await Util.expectParseSuccess(schema, "1", O.some(1))
+    await Util.expectDecodeUnknownSuccess(schema, null, O.none())
+    await Util.expectDecodeUnknownSuccess(schema, "1", O.some(1))
 
     expect(O.isOption(S.decodeSync(schema)(null))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       undefined,
       `(null | NumberFromString <-> Option<number>)
@@ -29,7 +29,7 @@ describe("Option > optionFromNullable", () => {
             └─ From side transformation failure
                └─ Expected a string, actual undefined`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       {},
       `(null | NumberFromString <-> Option<number>)

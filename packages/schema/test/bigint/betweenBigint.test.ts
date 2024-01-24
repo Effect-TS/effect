@@ -6,15 +6,15 @@ describe("bigint > betweenBigint", () => {
   const schema = S.bigintFromSelf.pipe(S.betweenBigint(-1n, 1n), S.title("[-1n, -1n] interval"))
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0n, 0n)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 0n, 0n)
+    await Util.expectDecodeUnknownFailure(
       schema,
       -2n,
       `[-1n, -1n] interval
 └─ Predicate refinement failure
    └─ Expected a bigint between -1n and 1n, actual -2n`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       2n,
       `[-1n, -1n] interval

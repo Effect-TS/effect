@@ -9,8 +9,8 @@ describe("Uint8Array > Uint8ArrayFromSelf", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(S.Uint8ArrayFromSelf, new Uint8Array(), new Uint8Array())
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(S.Uint8ArrayFromSelf, new Uint8Array(), new Uint8Array())
+    await Util.expectDecodeUnknownFailure(
       S.Uint8ArrayFromSelf,
       null,
       `Expected Uint8ArrayFromSelf, actual null`

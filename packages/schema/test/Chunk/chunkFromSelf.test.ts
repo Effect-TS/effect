@@ -12,19 +12,19 @@ describe("Chunk > chunkFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.chunkFromSelf(S.NumberFromString)
-    await Util.expectParseSuccess(schema, C.empty(), C.empty())
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(schema, C.empty(), C.empty())
+    await Util.expectDecodeUnknownSuccess(
       schema,
       C.fromIterable(["1", "2", "3"]),
       C.fromIterable([1, 2, 3])
     )
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `Expected Chunk<NumberFromString>, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       C.fromIterable(["1", "a", "3"]),
       `Chunk<NumberFromString>

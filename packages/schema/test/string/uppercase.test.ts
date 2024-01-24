@@ -10,9 +10,9 @@ describe("string > Uppercase", () => {
 
   it("decoding", async () => {
     const schema = S.Uppercase
-    await Util.expectParseSuccess(schema, "A", "A")
-    await Util.expectParseSuccess(schema, "a ", "A ")
-    await Util.expectParseSuccess(schema, " a ", " A ")
+    await Util.expectDecodeUnknownSuccess(schema, "A", "A")
+    await Util.expectDecodeUnknownSuccess(schema, "a ", "A ")
+    await Util.expectDecodeUnknownSuccess(schema, " a ", " A ")
   })
 
   it("encoding", async () => {

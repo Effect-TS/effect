@@ -14,8 +14,8 @@ describe("Schema/from", () => {
       prop: S.union(S.NumberFromString, S.suspend(() => schema1))
     })
     const from1 = S.from(schema1)
-    await Util.expectParseSuccess(from1, { prop: "a" })
-    await Util.expectParseSuccess(from1, { prop: { prop: "a" } })
+    await Util.expectDecodeUnknownSuccess(from1, { prop: "a" })
+    await Util.expectDecodeUnknownSuccess(from1, { prop: { prop: "a" } })
 
     const schema2: S.Schema<never, I, A> = S.suspend( // intended outer suspend
       () =>
@@ -24,14 +24,14 @@ describe("Schema/from", () => {
         })
     )
     const from2 = S.from(schema2)
-    await Util.expectParseSuccess(from2, { prop: "a" })
-    await Util.expectParseSuccess(from2, { prop: { prop: "a" } })
+    await Util.expectDecodeUnknownSuccess(from2, { prop: "a" })
+    await Util.expectDecodeUnknownSuccess(from2, { prop: { prop: "a" } })
   })
 
   it("decoding", async () => {
     const schema = S.from(S.NumberFromString)
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseFailure(schema, null, "Expected a string, actual null")
-    await Util.expectParseFailure(schema, 1, "Expected a string, actual 1")
+    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.expectDecodeUnknownFailure(schema, null, "Expected a string, actual null")
+    await Util.expectDecodeUnknownFailure(schema, 1, "Expected a string, actual 1")
   })
 })

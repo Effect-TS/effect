@@ -423,67 +423,67 @@ export const orElse: {
 /* c8 ignore start */
 export {
   /**
-   * @category parsing
+   * @category decoding
    * @since 1.0.0
    */
-  parse,
+  decodeUnknown,
   /**
-   * @category parsing
+   * @category decoding
    * @since 1.0.0
    */
-  parseEither,
+  decodeUnknownEither,
   /**
-   * @category parsing
+   * @category decoding
    * @since 1.0.0
    */
-  parseOption,
+  decodeUnknownOption,
   /**
-   * @category parsing
+   * @category decoding
    * @since 1.0.0
    */
-  parsePromise,
+  decodeUnknownPromise,
   /**
-   * @category parsing
+   * @category decoding
    * @since 1.0.0
    */
-  parseSync,
+  decodeUnknownSync,
   /**
-   * @category unparsing
+   * @category encoding
    * @since 1.0.0
    */
-  unparse,
+  encodeUnknown,
   /**
-   * @category unparsing
+   * @category encoding
    * @since 1.0.0
    */
-  unparseEither,
+  encodeUnknownEither,
   /**
-   * @category unparsing
+   * @category encoding
    * @since 1.0.0
    */
-  unparseOption,
+  encodeUnknownOption,
   /**
-   * @category unparsing
+   * @category encoding
    * @since 1.0.0
    */
-  unparsePromise,
+  encodeUnknownPromise,
   /**
-   * @category unparsing
+   * @category encoding
    * @since 1.0.0
    */
-  unparseSync
+  encodeUnknownSync
 } from "./Parser.js"
 /* c8 ignore end */
 
 /**
  * @since 1.0.0
  */
-export type Parse<R, Out> = (u: unknown, options?: AST.ParseOptions) => Effect.Effect<R, ParseIssue, Out>
+export type DecodeUnknown<R, Out> = (u: unknown, options?: AST.ParseOptions) => Effect.Effect<R, ParseIssue, Out>
 
 /**
  * @since 1.0.0
  */
-export type DeclarationParse<R, Out> = (
+export type DeclarationDecodeUnknown<R, Out> = (
   u: unknown,
   options: AST.ParseOptions,
   ast: AST.Declaration

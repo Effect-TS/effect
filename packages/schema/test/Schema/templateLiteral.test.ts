@@ -72,31 +72,31 @@ describe("Schema > templateLiteral", () => {
   describe("Decoder", () => {
     it("a", async () => {
       const schema = S.templateLiteral(S.literal("a"))
-      await Util.expectParseSuccess(schema, "a", "a")
+      await Util.expectDecodeUnknownSuccess(schema, "a", "a")
 
-      await Util.expectParseFailure(schema, "ab", `Expected "a", actual "ab"`)
-      await Util.expectParseFailure(schema, "", `Expected "a", actual ""`)
-      await Util.expectParseFailure(schema, null, `Expected "a", actual null`)
+      await Util.expectDecodeUnknownFailure(schema, "ab", `Expected "a", actual "ab"`)
+      await Util.expectDecodeUnknownFailure(schema, "", `Expected "a", actual ""`)
+      await Util.expectDecodeUnknownFailure(schema, null, `Expected "a", actual null`)
     })
 
     it("a b", async () => {
       const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
-      await Util.expectParseSuccess(schema, "a b", "a b")
+      await Util.expectDecodeUnknownSuccess(schema, "a b", "a b")
 
-      await Util.expectParseFailure(schema, "a  b", `Expected "a b", actual "a  b"`)
+      await Util.expectDecodeUnknownFailure(schema, "a  b", `Expected "a b", actual "a  b"`)
     })
 
     it("a${string}", async () => {
       const schema = S.templateLiteral(S.literal("a"), S.string)
-      await Util.expectParseSuccess(schema, "a", "a")
-      await Util.expectParseSuccess(schema, "ab", "ab")
+      await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+      await Util.expectDecodeUnknownSuccess(schema, "ab", "ab")
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         "Expected `a${string}`, actual null"
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "",
         "Expected `a${string}`, actual \"\""
@@ -105,34 +105,34 @@ describe("Schema > templateLiteral", () => {
 
     it("a${number}", async () => {
       const schema = S.templateLiteral(S.literal("a"), S.number)
-      await Util.expectParseSuccess(schema, "a1")
-      await Util.expectParseSuccess(schema, "a1.2")
+      await Util.expectDecodeUnknownSuccess(schema, "a1")
+      await Util.expectDecodeUnknownSuccess(schema, "a1.2")
 
-      await Util.expectParseSuccess(schema, "a-1.401298464324817e-45")
-      await Util.expectParseSuccess(schema, "a1.401298464324817e-45")
-      await Util.expectParseSuccess(schema, "a+1.401298464324817e-45")
-      await Util.expectParseSuccess(schema, "a-1.401298464324817e+45")
-      await Util.expectParseSuccess(schema, "a1.401298464324817e+45")
-      await Util.expectParseSuccess(schema, "a+1.401298464324817e+45")
+      await Util.expectDecodeUnknownSuccess(schema, "a-1.401298464324817e-45")
+      await Util.expectDecodeUnknownSuccess(schema, "a1.401298464324817e-45")
+      await Util.expectDecodeUnknownSuccess(schema, "a+1.401298464324817e-45")
+      await Util.expectDecodeUnknownSuccess(schema, "a-1.401298464324817e+45")
+      await Util.expectDecodeUnknownSuccess(schema, "a1.401298464324817e+45")
+      await Util.expectDecodeUnknownSuccess(schema, "a+1.401298464324817e+45")
 
-      await Util.expectParseSuccess(schema, "a-1.401298464324817E-45")
-      await Util.expectParseSuccess(schema, "a1.401298464324817E-45")
-      await Util.expectParseSuccess(schema, "a+1.401298464324817E-45")
-      await Util.expectParseSuccess(schema, "a-1.401298464324817E+45")
-      await Util.expectParseSuccess(schema, "a1.401298464324817E+45")
-      await Util.expectParseSuccess(schema, "a+1.401298464324817E+45")
+      await Util.expectDecodeUnknownSuccess(schema, "a-1.401298464324817E-45")
+      await Util.expectDecodeUnknownSuccess(schema, "a1.401298464324817E-45")
+      await Util.expectDecodeUnknownSuccess(schema, "a+1.401298464324817E-45")
+      await Util.expectDecodeUnknownSuccess(schema, "a-1.401298464324817E+45")
+      await Util.expectDecodeUnknownSuccess(schema, "a1.401298464324817E+45")
+      await Util.expectDecodeUnknownSuccess(schema, "a+1.401298464324817E+45")
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         "Expected `a${number}`, actual null"
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "",
         "Expected `a${number}`, actual \"\""
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "aa",
         "Expected `a${number}`, actual \"aa\""
@@ -141,27 +141,27 @@ describe("Schema > templateLiteral", () => {
 
     it("${string}", async () => {
       const schema = S.templateLiteral(S.string)
-      await Util.expectParseSuccess(schema, "a", "a")
-      await Util.expectParseSuccess(schema, "ab", "ab")
-      await Util.expectParseSuccess(schema, "", "")
+      await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+      await Util.expectDecodeUnknownSuccess(schema, "ab", "ab")
+      await Util.expectDecodeUnknownSuccess(schema, "", "")
     })
 
     it("a${string}b", async () => {
       const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
-      await Util.expectParseSuccess(schema, "ab", "ab")
-      await Util.expectParseSuccess(schema, "acb", "acb")
-      await Util.expectParseSuccess(schema, "abb", "abb")
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownSuccess(schema, "ab", "ab")
+      await Util.expectDecodeUnknownSuccess(schema, "acb", "acb")
+      await Util.expectDecodeUnknownSuccess(schema, "abb", "abb")
+      await Util.expectDecodeUnknownFailure(
         schema,
         "",
         "Expected `a${string}b`, actual \"\""
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "a",
         "Expected `a${string}b`, actual \"a\""
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "b",
         "Expected `a${string}b`, actual \"b\""
@@ -171,16 +171,16 @@ describe("Schema > templateLiteral", () => {
 
     it("a${string}b${string}", async () => {
       const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"), S.string)
-      await Util.expectParseSuccess(schema, "ab", "ab")
-      await Util.expectParseSuccess(schema, "acb", "acb")
-      await Util.expectParseSuccess(schema, "acbd", "acbd")
+      await Util.expectDecodeUnknownSuccess(schema, "ab", "ab")
+      await Util.expectDecodeUnknownSuccess(schema, "acb", "acb")
+      await Util.expectDecodeUnknownSuccess(schema, "acbd", "acbd")
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "a",
         "Expected `a${string}b${string}`, actual \"a\""
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "b",
         "Expected `a${string}b${string}`, actual \"b\""
@@ -191,12 +191,12 @@ describe("Schema > templateLiteral", () => {
       const EmailLocaleIDs = S.literal("welcome_email", "email_heading")
       const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff")
       const schema = S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
-      await Util.expectParseSuccess(schema, "welcome_email_id", "welcome_email_id")
-      await Util.expectParseSuccess(schema, "email_heading_id", "email_heading_id")
-      await Util.expectParseSuccess(schema, "footer_title_id", "footer_title_id")
-      await Util.expectParseSuccess(schema, "footer_sendoff_id", "footer_sendoff_id")
+      await Util.expectDecodeUnknownSuccess(schema, "welcome_email_id", "welcome_email_id")
+      await Util.expectDecodeUnknownSuccess(schema, "email_heading_id", "email_heading_id")
+      await Util.expectDecodeUnknownSuccess(schema, "footer_title_id", "footer_title_id")
+      await Util.expectDecodeUnknownSuccess(schema, "footer_sendoff_id", "footer_sendoff_id")
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "_id",
         `"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id"

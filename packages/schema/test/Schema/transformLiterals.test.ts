@@ -7,7 +7,7 @@ describe("Schema > transformLiteral", () => {
     it("simple", async () => {
       const schema = S.transformLiteral(0, "a")
 
-      await Util.expectParseSuccess(schema, 0, "a")
+      await Util.expectDecodeUnknownSuccess(schema, 0, "a")
       await Util.expectEncodeSuccess(schema, "a", 0)
     })
   })
@@ -22,7 +22,7 @@ describe("Schema > transformLiterals", () => {
         [2, "c"]
       )
 
-      await Util.expectParseSuccess(schema, 1, "b")
+      await Util.expectDecodeUnknownSuccess(schema, 1, "b")
       await Util.expectEncodeSuccess(schema, "b", 1)
     })
 
@@ -33,11 +33,11 @@ describe("Schema > transformLiterals", () => {
         [null, false]
       )
 
-      await Util.expectParseSuccess(schema, 0, BigInt(0))
+      await Util.expectDecodeUnknownSuccess(schema, 0, BigInt(0))
       await Util.expectEncodeSuccess(schema, BigInt(0), 0)
-      await Util.expectParseSuccess(schema, "a", true)
+      await Util.expectDecodeUnknownSuccess(schema, "a", true)
       await Util.expectEncodeSuccess(schema, true, "a")
-      await Util.expectParseSuccess(schema, null, false)
+      await Util.expectDecodeUnknownSuccess(schema, null, false)
       await Util.expectEncodeSuccess(schema, false, null)
     })
   })

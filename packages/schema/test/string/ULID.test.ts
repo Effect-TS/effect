@@ -9,8 +9,8 @@ describe("string > ULID", () => {
 
   it("Decoder", async () => {
     const schema = S.ULID
-    await Util.expectParseSuccess(schema, "01H4PGGGJVN2DKP2K1H7EH996V")
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, "01H4PGGGJVN2DKP2K1H7EH996V")
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `ULID

@@ -10,7 +10,7 @@ describe("ParseResult", () => {
 
   it("toString()", () => {
     const schema = S.struct({ a: S.string })
-    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
+    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
       Either.left(`{ a: string }
 └─ ["a"]
    └─ is missing`)
@@ -19,7 +19,7 @@ describe("ParseResult", () => {
 
   it("toJSON()", () => {
     const schema = S.struct({ a: S.string })
-    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => (e as any).toJSON())))
+    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => (e as any).toJSON())))
       .toStrictEqual(
         Either.left({
           _id: "ParseError",
@@ -32,7 +32,7 @@ describe("ParseResult", () => {
 
   it("[NodeInspectSymbol]", () => {
     const schema = S.struct({ a: S.string })
-    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => inspect(e))))
+    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => inspect(e))))
       .toStrictEqual(
         Either.left(inspect({
           _id: "ParseError",
@@ -44,7 +44,8 @@ describe("ParseResult", () => {
   })
 
   it("Error.stack", () => {
-    expect(ParseResult.parseError(ParseResult.forbidden(1)).stack?.startsWith("ParseError: is forbidden")).toEqual(true)
+    expect(ParseResult.parseError(ParseResult.forbidden(1)).stack?.startsWith("ParseError: is forbidden"))
+      .toEqual(true)
   })
 
   it("Effect.catchTag can be used to catch ParseError", () => {

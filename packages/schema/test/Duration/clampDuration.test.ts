@@ -7,19 +7,19 @@ describe("Duration > clampDuration", () => {
   it("decoding", async () => {
     const schema = S.DurationFromSelf.pipe(S.clampDuration("5 seconds", "10 seconds"))
 
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       Duration.decode("1 seconds"),
       Duration.decode("5 seconds")
     )
 
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       Duration.decode("6 seconds"),
       Duration.decode("6 seconds")
     )
 
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       Duration.decode("11 seconds"),
       Duration.decode("10 seconds")

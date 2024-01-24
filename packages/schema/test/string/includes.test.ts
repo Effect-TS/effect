@@ -21,11 +21,11 @@ describe("string > includes", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseSuccess(schema, "aa")
-    await Util.expectParseSuccess(schema, "bac")
-    await Util.expectParseSuccess(schema, "ba")
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.expectDecodeUnknownSuccess(schema, "aa")
+    await Util.expectDecodeUnknownSuccess(schema, "bac")
+    await Util.expectDecodeUnknownSuccess(schema, "ba")
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `a string including "a"

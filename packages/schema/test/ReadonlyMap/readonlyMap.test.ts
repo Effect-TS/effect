@@ -9,21 +9,21 @@ describe("ReadonlyMap > readonlyMap", () => {
 
   it("decoding", async () => {
     const schema = S.readonlyMap(S.number, S.string)
-    await Util.expectParseSuccess(schema, [], new Map())
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(schema, [], new Map())
+    await Util.expectDecodeUnknownSuccess(
       schema,
       [[1, "a"], [2, "b"], [3, "c"]],
       new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
 └─ From side transformation failure
    └─ Expected ReadonlyArray<readonly [number, string]>, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [[1, "a"], [2, 1]],
       `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)

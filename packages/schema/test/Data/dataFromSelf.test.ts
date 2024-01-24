@@ -13,17 +13,17 @@ describe("Data > dataFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: "ok", b: 0 },
       `Expected Data<{ a: string; b: number }>, actual {"a":"ok","b":0}`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Data.struct({ a: "ok", b: "0" }),
       `Data<{ a: string; b: number }>

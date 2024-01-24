@@ -10,51 +10,51 @@ describe("number > NumberFromString", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, "0", 0)
-    await Util.expectParseSuccess(schema, "-0", -0)
-    await Util.expectParseSuccess(schema, "1", 1)
-    await Util.expectParseSuccess(schema, "1.2", 1.2)
+    await Util.expectDecodeUnknownSuccess(schema, "0", 0)
+    await Util.expectDecodeUnknownSuccess(schema, "-0", -0)
+    await Util.expectDecodeUnknownSuccess(schema, "1", 1)
+    await Util.expectDecodeUnknownSuccess(schema, "1.2", 1.2)
 
-    await Util.expectParseSuccess(schema, "NaN", NaN)
-    await Util.expectParseSuccess(schema, "Infinity", Infinity)
-    await Util.expectParseSuccess(schema, "-Infinity", -Infinity)
+    await Util.expectDecodeUnknownSuccess(schema, "NaN", NaN)
+    await Util.expectDecodeUnknownSuccess(schema, "Infinity", Infinity)
+    await Util.expectDecodeUnknownSuccess(schema, "-Infinity", -Infinity)
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `NumberFromString
 └─ Transformation process failure
    └─ Expected NumberFromString, actual ""`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       " ",
       `NumberFromString
 └─ Transformation process failure
    └─ Expected NumberFromString, actual " "`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "1AB",
       `NumberFromString
 └─ Transformation process failure
    └─ Expected NumberFromString, actual "1AB"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "AB1",
       `NumberFromString
 └─ Transformation process failure
    └─ Expected NumberFromString, actual "AB1"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a",
       `NumberFromString
 └─ Transformation process failure
    └─ Expected NumberFromString, actual "a"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a1",
       `NumberFromString

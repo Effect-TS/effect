@@ -18,9 +18,9 @@ describe("string > minLength", () => {
 
   it("decoding", async () => {
     const schema = S.minLength(1)(S.string)
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseSuccess(schema, "aa")
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.expectDecodeUnknownSuccess(schema, "aa")
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `a string at least 1 character(s) long

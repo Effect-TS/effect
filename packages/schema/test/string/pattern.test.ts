@@ -22,17 +22,17 @@ describe("string > pattern", () => {
 
   it("decoding", async () => {
     const schema = S.string.pipe(S.pattern(/^abb+$/))
-    await Util.expectParseSuccess(schema, "abb")
-    await Util.expectParseSuccess(schema, "abbb")
+    await Util.expectDecodeUnknownSuccess(schema, "abb")
+    await Util.expectDecodeUnknownSuccess(schema, "abbb")
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "ab",
       `a string matching the pattern ^abb+$
 └─ Predicate refinement failure
    └─ Expected a string matching the pattern ^abb+$, actual "ab"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a",
       `a string matching the pattern ^abb+$

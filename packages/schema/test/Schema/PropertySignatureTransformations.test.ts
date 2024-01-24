@@ -25,9 +25,9 @@ describe("Schema > PropertySignatureTransformations", () => {
         )
       )
     )
-    await Util.expectParseSuccess(transform, {}, { a: 0 })
-    await Util.expectParseSuccess(transform, { a: "1" }, { a: 1 })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(transform, {}, { a: 0 })
+    await Util.expectDecodeUnknownSuccess(transform, { a: "1" }, { a: 1 })
+    await Util.expectDecodeUnknownFailure(
       transform,
       { a: "a" },
       `({ a?: NumberFromString } <-> { a: number })
@@ -62,9 +62,9 @@ describe("Schema > PropertySignatureTransformations", () => {
         )
       )
     )
-    await Util.expectParseSuccess(transform, {}, { a: 0 })
-    await Util.expectParseSuccess(transform, { a: "1" }, { a: 1 })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(transform, {}, { a: 0 })
+    await Util.expectDecodeUnknownSuccess(transform, { a: "1" }, { a: 1 })
+    await Util.expectDecodeUnknownFailure(
       transform,
       { a: "a" },
       `({ a?: NumberFromString } <-> { a: number })
@@ -100,9 +100,9 @@ describe("Schema > PropertySignatureTransformations", () => {
           )
         )
       )
-    await Util.expectParseSuccess(transform, {}, { a: O.none() })
-    await Util.expectParseSuccess(transform, { a: "1" }, { a: O.some(1) })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(transform, {}, { a: O.none() })
+    await Util.expectDecodeUnknownSuccess(transform, { a: "1" }, { a: O.some(1) })
+    await Util.expectDecodeUnknownFailure(
       transform,
       { a: "a" },
       `({ a?: NumberFromString } <-> { a: Option<number> })
@@ -137,8 +137,8 @@ describe("Schema > PropertySignatureTransformations", () => {
         )
       )
     )
-    await Util.expectParseSuccess(transform, { a: "" }, {})
-    await Util.expectParseSuccess(transform, { a: "a" }, { a: "a" })
+    await Util.expectDecodeUnknownSuccess(transform, { a: "" }, {})
+    await Util.expectDecodeUnknownSuccess(transform, { a: "a" }, { a: "a" })
 
     await Util.expectEncodeSuccess(transform, { a: "a" }, { a: "a" })
   })
@@ -162,7 +162,7 @@ describe("Schema > PropertySignatureTransformations", () => {
         )
       )
     )
-    await Util.expectParseSuccess(transform, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
+    await Util.expectDecodeUnknownSuccess(transform, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
 
     await Util.expectEncodeSuccess(transform, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
   })
@@ -189,7 +189,7 @@ describe("Schema > PropertySignatureTransformations", () => {
     )
     const schema = S.struct({ b: S.number }).pipe(S.extend(rename))
 
-    await Util.expectParseSuccess(schema, { a: "@effect/schema/test/a", b: 1 }, { [a]: a, b: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "@effect/schema/test/a", b: 1 }, { [a]: a, b: 1 })
     await Util.expectEncodeSuccess(schema, { [a]: a, b: 1 }, { a: "@effect/schema/test/a", b: 1 })
   })
 
@@ -212,8 +212,8 @@ describe("Schema > PropertySignatureTransformations", () => {
         )
       )
     )
-    await Util.expectParseSuccess(transform, { a: 1 }, { a: 1 })
-    await Util.expectParseSuccess(transform, { a: 0 }, { a: 0 })
+    await Util.expectDecodeUnknownSuccess(transform, { a: 1 }, { a: 1 })
+    await Util.expectDecodeUnknownSuccess(transform, { a: 0 }, { a: 0 })
 
     await Util.expectEncodeSuccess(transform, {}, { a: 0 })
     await Util.expectEncodeSuccess(transform, { a: 1 }, { a: 1 })

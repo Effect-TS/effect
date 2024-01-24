@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("ReadonlyArray > maxItems", () => {
   const schema = S.array(S.number).pipe(S.maxItems(2))
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [1, 2, 3],
       `an array of at most 2 items
@@ -13,7 +13,7 @@ describe("ReadonlyArray > maxItems", () => {
    └─ Expected an array of at most 2 items, actual [1,2,3]`
     )
 
-    await Util.expectParseSuccess(schema, [1])
-    await Util.expectParseSuccess(schema, [1, 2])
+    await Util.expectDecodeUnknownSuccess(schema, [1])
+    await Util.expectDecodeUnknownSuccess(schema, [1, 2])
   })
 })

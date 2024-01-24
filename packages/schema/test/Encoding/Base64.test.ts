@@ -11,26 +11,26 @@ describe("Encoding > Base64", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "Zm9vYmFy",
       encoder.encode("foobar")
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "Zm9vY",
       `Base64
 └─ Transformation process failure
    └─ Length must be a multiple of 4, but is 5`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "Zm9vYmF-",
       `Base64
 └─ Transformation process failure
    └─ Invalid character -`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "=Zm9vYmF",
       `Base64

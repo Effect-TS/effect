@@ -19,15 +19,15 @@ describe("number > greaterThan", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 1)
+    await Util.expectDecodeUnknownFailure(
       schema,
       0,
       `a positive number
 └─ Predicate refinement failure
    └─ Expected a positive number, actual 0`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       -1,
       `a positive number

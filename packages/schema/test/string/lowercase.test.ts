@@ -10,9 +10,9 @@ describe("string > Lowercase", () => {
 
   it("decoding", async () => {
     const schema = S.Lowercase
-    await Util.expectParseSuccess(schema, "a", "a")
-    await Util.expectParseSuccess(schema, "A ", "a ")
-    await Util.expectParseSuccess(schema, " A ", " a ")
+    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+    await Util.expectDecodeUnknownSuccess(schema, "A ", "a ")
+    await Util.expectDecodeUnknownSuccess(schema, " A ", " a ")
   })
 
   it("encoding", async () => {

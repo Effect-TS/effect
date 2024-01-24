@@ -10,8 +10,8 @@ describe("Either > eitherFromUnion", () => {
 
   it("decoding success", async () => {
     const schema = S.eitherFromUnion(S.DateFromString, S.NumberFromString)
-    await Util.expectParseSuccess(schema, "1970-01-01T00:00:00.000Z", E.left(new Date(0)))
-    await Util.expectParseSuccess(schema, "1", E.right(1))
+    await Util.expectDecodeUnknownSuccess(schema, "1970-01-01T00:00:00.000Z", E.left(new Date(0)))
+    await Util.expectDecodeUnknownSuccess(schema, "1", E.right(1))
 
     expect(E.isEither(S.decodeSync(schema)("1970-01-01T00:00:00.000Z"))).toEqual(true)
     expect(E.isEither(S.decodeSync(schema)("1"))).toEqual(true)
@@ -19,7 +19,7 @@ describe("Either > eitherFromUnion", () => {
 
   it("decoding error (From side transformation failure)", async () => {
     const schema = S.eitherFromUnion(S.number, S.string)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       undefined,
       `((string <-> RightFrom<string>) | (number <-> LeftFrom<number>) <-> Either<number, string>)
@@ -38,7 +38,7 @@ describe("Either > eitherFromUnion", () => {
 
   it("decoding error (Transformation process failure)", async () => {
     const schema = S.eitherFromUnion(S.number, S.compose(S.boolean, S.string, { strict: false }))
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       true,
       `(((boolean <-> string) <-> RightFrom<string>) | (number <-> LeftFrom<number>) <-> Either<number, string>)
@@ -59,7 +59,7 @@ describe("Either > eitherFromUnion", () => {
 
   it("decoding prefer right", async () => {
     const schema = S.eitherFromUnion(S.NumberFromString, S.NumberFromString)
-    await Util.expectParseSuccess(schema, "1", E.right(1))
+    await Util.expectDecodeUnknownSuccess(schema, "1", E.right(1))
   })
 
   it("encoding success", async () => {

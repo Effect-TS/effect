@@ -11,12 +11,12 @@ describe("Data > data", () => {
 
   it("decoding", async () => {
     const schema = S.data(S.struct({ a: S.string, b: S.number }))
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       { a: "ok", b: 0 },
       Data.struct({ a: "ok", b: 0 })
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: "ok", b: "0" },
       `({ a: string; b: number } <-> Data<{ a: string; b: number }>)

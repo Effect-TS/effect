@@ -156,7 +156,7 @@ export const deserialize: {
     self: Serializable<R, I, A>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, A>
->(2, (self, value) => Schema.parse(self[symbol])(value))
+>(2, (self, value) => Schema.decodeUnknown(self[symbol])(value))
 
 /**
  * @since 1.0.0
@@ -200,7 +200,7 @@ export const deserializeFailure: {
     self: WithResult<R, IE, E, IA, A>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, E>
->(2, (self, value) => Schema.parse(self[symbolResult].Failure)(value))
+>(2, (self, value) => Schema.decodeUnknown(self[symbolResult].Failure)(value))
 
 /**
  * @since 1.0.0
@@ -246,7 +246,7 @@ export const deserializeSuccess: {
     self: WithResult<R, IE, E, IA, A>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, A>
->(2, (self, value) => Schema.parse(self[symbolResult].Success)(value))
+>(2, (self, value) => Schema.decodeUnknown(self[symbolResult].Success)(value))
 
 /**
  * @since 1.0.0
@@ -292,4 +292,4 @@ export const deserializeExit: {
     self: WithResult<R, IE, E, IA, A>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, Exit.Exit<E, A>>
->(2, (self, value) => Schema.parse(exitSchema(self))(value))
+>(2, (self, value) => Schema.decodeUnknown(exitSchema(self))(value))

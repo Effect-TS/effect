@@ -11,7 +11,7 @@ describe("Schema > struct", () => {
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
       const schema = S.struct({}).pipe(S.identifier("MyDataType"))
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected MyDataType, actual null`
@@ -20,11 +20,11 @@ describe("Schema > struct", () => {
 
     it("empty", async () => {
       const schema = S.struct({})
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { a: 1 })
-      await Util.expectParseSuccess(schema, [])
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, [])
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected {}, actual null`
@@ -33,28 +33,28 @@ describe("Schema > struct", () => {
 
     it("required property signature", async () => {
       const schema = S.struct({ a: S.number })
-      await Util.expectParseSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected { a: number }, actual null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ a: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: undefined },
         `{ a: number }
 └─ ["a"]
    └─ Expected a number, actual undefined`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ a: number }
@@ -66,16 +66,16 @@ describe("Schema > struct", () => {
 
     it("required property signature with undefined", async () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
-      await Util.expectParseSuccess(schema, { a: 1 })
-      await Util.expectParseSuccess(schema, { a: undefined })
-      await Util.expectParseSuccess(schema, {}, { a: undefined })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
+      await Util.expectDecodeUnknownSuccess(schema, {}, { a: undefined })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected { a: number | undefined }, actual null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
         `{ a: number | undefined }
@@ -86,7 +86,7 @@ describe("Schema > struct", () => {
       └─ Union member
          └─ Expected undefined, actual "a"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ a: number | undefined }
@@ -98,29 +98,29 @@ describe("Schema > struct", () => {
 
     it("optional property signature", async () => {
       const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected { a?: number }, actual null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
         `{ a?: number }
 └─ ["a"]
    └─ Expected a number, actual "a"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: undefined },
         `{ a?: number }
 └─ ["a"]
    └─ Expected a number, actual undefined`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ a?: number }
@@ -132,16 +132,16 @@ describe("Schema > struct", () => {
 
     it("optional property signature with undefined", async () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined), { exact: true }) })
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { a: 1 })
-      await Util.expectParseSuccess(schema, { a: undefined })
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected { a?: number | undefined }, actual null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
         `{ a?: number | undefined }
@@ -152,7 +152,7 @@ describe("Schema > struct", () => {
       └─ Union member
          └─ Expected undefined, actual "a"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ a?: number | undefined }
@@ -167,7 +167,7 @@ describe("Schema > struct", () => {
         a: S.optional(S.string, { exact: true }),
         b: S.optional(S.number, { exact: true })
       })
-      await Util.expectParseSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, {})
     })
   })
 

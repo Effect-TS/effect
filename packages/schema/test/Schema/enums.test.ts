@@ -11,12 +11,12 @@ describe("Schema/enums", () => {
     const schema = S.enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectParseSuccess(schema, Fruits.Apple)
-      await Util.expectParseSuccess(schema, Fruits.Banana)
-      await Util.expectParseSuccess(schema, 0)
-      await Util.expectParseSuccess(schema, 1)
+      await Util.expectDecodeUnknownSuccess(schema, Fruits.Apple)
+      await Util.expectDecodeUnknownSuccess(schema, Fruits.Banana)
+      await Util.expectDecodeUnknownSuccess(schema, 0)
+      await Util.expectDecodeUnknownSuccess(schema, 1)
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         3,
         `Expected <enum 2 value(s): 0 | 1>, actual 3`
@@ -38,13 +38,13 @@ describe("Schema/enums", () => {
     const schema = S.enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectParseSuccess(schema, Fruits.Apple)
-      await Util.expectParseSuccess(schema, Fruits.Cantaloupe)
-      await Util.expectParseSuccess(schema, "apple")
-      await Util.expectParseSuccess(schema, "banana")
-      await Util.expectParseSuccess(schema, 0)
+      await Util.expectDecodeUnknownSuccess(schema, Fruits.Apple)
+      await Util.expectDecodeUnknownSuccess(schema, Fruits.Cantaloupe)
+      await Util.expectDecodeUnknownSuccess(schema, "apple")
+      await Util.expectDecodeUnknownSuccess(schema, "banana")
+      await Util.expectDecodeUnknownSuccess(schema, 0)
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "Cantaloupe",
         `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`
@@ -67,11 +67,11 @@ describe("Schema/enums", () => {
     const schema = S.enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectParseSuccess(schema, "apple")
-      await Util.expectParseSuccess(schema, "banana")
-      await Util.expectParseSuccess(schema, 3)
+      await Util.expectDecodeUnknownSuccess(schema, "apple")
+      await Util.expectDecodeUnknownSuccess(schema, "banana")
+      await Util.expectDecodeUnknownSuccess(schema, 3)
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         "Cantaloupe",
         `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`

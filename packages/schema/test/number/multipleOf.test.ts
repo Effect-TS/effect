@@ -22,24 +22,24 @@ describe("number > multipleOf", () => {
 
   it("decoding", async () => {
     const schema = S.number.pipe(S.multipleOf(2), S.identifier("Even"))
-    await Util.expectParseSuccess(schema, -4)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, -4)
+    await Util.expectDecodeUnknownFailure(
       schema,
       -3,
       `Even
 └─ Predicate refinement failure
    └─ Expected Even (a number divisible by 2), actual -3`
     )
-    await Util.expectParseSuccess(schema, 0)
-    await Util.expectParseSuccess(schema, 2)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 0)
+    await Util.expectDecodeUnknownSuccess(schema, 2)
+    await Util.expectDecodeUnknownFailure(
       schema,
       2.5,
       `Even
 └─ Predicate refinement failure
    └─ Expected Even (a number divisible by 2), actual 2.5`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `Even

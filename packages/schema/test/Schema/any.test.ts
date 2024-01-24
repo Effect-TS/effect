@@ -5,12 +5,12 @@ import { describe, it } from "vitest"
 describe("Schema/any", () => {
   const schema = S.any
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, undefined, undefined)
-    await Util.expectParseSuccess(schema, null, null)
-    await Util.expectParseSuccess(schema, "a", "a")
-    await Util.expectParseSuccess(schema, 1, 1)
-    await Util.expectParseSuccess(schema, true, true)
-    await Util.expectParseSuccess(schema, [], [])
-    await Util.expectParseSuccess(schema, {}, {})
+    await Util.expectDecodeUnknownSuccess(schema, undefined, undefined)
+    await Util.expectDecodeUnknownSuccess(schema, null, null)
+    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+    await Util.expectDecodeUnknownSuccess(schema, 1, 1)
+    await Util.expectDecodeUnknownSuccess(schema, true, true)
+    await Util.expectDecodeUnknownSuccess(schema, [], [])
+    await Util.expectDecodeUnknownSuccess(schema, {}, {})
   })
 })

@@ -10,17 +10,17 @@ describe("Cause > cause", () => {
 
   it("decoding", async () => {
     const schema = S.cause(S.NumberFromString)
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       { _tag: "Fail", error: "1" },
       Cause.fail(1)
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       { _tag: "Empty" },
       Cause.empty
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       {
         _tag: "Parallel",
@@ -29,7 +29,7 @@ describe("Cause > cause", () => {
       },
       Cause.parallel(Cause.fail(1), Cause.empty)
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       {
         _tag: "Sequential",
@@ -38,7 +38,7 @@ describe("Cause > cause", () => {
       },
       Cause.sequential(Cause.fail(1), Cause.empty)
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       {
         _tag: "Die",
@@ -46,7 +46,7 @@ describe("Cause > cause", () => {
       },
       Cause.die({ stack: "fail", message: "error" })
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       {
         _tag: "Interrupt",
@@ -65,14 +65,14 @@ describe("Cause > cause", () => {
       Cause.interrupt(FiberId.composite(FiberId.runtime(1, 1000), FiberId.none))
     )
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `(CauseFrom<NumberFromString> <-> Cause<number>)
 └─ From side transformation failure
    └─ Expected CauseFrom<NumberFromString>, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       {},
       `(CauseFrom<NumberFromString> <-> Cause<number>)
@@ -82,7 +82,7 @@ describe("Cause > cause", () => {
          └─ ["_tag"]
             └─ is missing`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
       `(CauseFrom<NumberFromString> <-> Cause<number>)

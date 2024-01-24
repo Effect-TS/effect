@@ -8,21 +8,21 @@ describe("Schema > pick", () => {
     const schema = S.struct({ [a]: S.string, b: S.NumberFromString, c: S.boolean }).pipe(
       S.pick(a, "b")
     )
-    await Util.expectParseSuccess(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       "Expected { Symbol(@effect/schema/test/a): string; b: NumberFromString }, actual null"
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: "a" },
       `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
 └─ ["b"]
    └─ is missing`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { b: 1 },
       `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
@@ -40,15 +40,15 @@ describe("Schema > pick", () => {
       .pipe(
         S.pick("a", "b")
       )
-    await Util.expectParseSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
-    await Util.expectParseSuccess(schema, { b: "1" }, { b: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { b: 1 })
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       "Expected { a?: string; b: NumberFromString }, actual null"
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a" },
       `{ a?: string; b: NumberFromString }
@@ -70,10 +70,10 @@ describe("Schema > pick", () => {
         })
     )
     const schema = A.pipe(S.pick("as"))
-    await Util.expectParseSuccess(schema, { as: [] })
-    await Util.expectParseSuccess(schema, { as: [{ a: "a", as: [] }] })
+    await Util.expectDecodeUnknownSuccess(schema, { as: [] })
+    await Util.expectDecodeUnknownSuccess(schema, { as: [{ a: "a", as: [] }] })
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { as: [{ as: [] }] },
       `{ as: ReadonlyArray<<suspended schema>> }
@@ -94,21 +94,21 @@ describe("Schema > pick", () => {
     }).pipe(
       S.pick("a", "b")
     )
-    await Util.expectParseSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
-    await Util.expectParseSuccess(schema, { b: "1" }, { a: "", b: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { a: "", b: 1 })
   })
 
   it("record(string, number)", async () => {
     const schema = S.record(S.string, S.number).pipe(S.pick("a", "b"))
-    await Util.expectParseSuccess(schema, { a: 1, b: 2 })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a", b: 2 },
       `{ a: number; b: number }
 └─ ["a"]
    └─ Expected a number, actual "a"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: 1, b: "b" },
       `{ a: number; b: number }
@@ -121,15 +121,15 @@ describe("Schema > pick", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
     const schema = S.record(S.symbolFromSelf, S.number).pipe(S.pick(a, b))
-    await Util.expectParseSuccess(schema, { [a]: 1, [b]: 2 })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
+    await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: "a", [b]: 2 },
       `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/a)]
    └─ Expected a number, actual "a"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: 1, [b]: "b" },
       `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
@@ -143,6 +143,6 @@ describe("Schema > pick", () => {
       S.extend(S.record(S.templateLiteral(S.literal("a"), S.string), S.number)),
       S.pick("a", "b")
     )
-    await Util.expectParseSuccess(schema, { a: 1, b: "b" })
+    await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: "b" })
   })
 })

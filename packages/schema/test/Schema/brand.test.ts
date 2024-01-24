@@ -119,8 +119,8 @@ describe("Schema > brand", () => {
         S.brand("Int"),
         S.identifier("IntegerFromString")
       )
-      await Util.expectParseSuccess(schema, "1", 1 as any)
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownSuccess(schema, "1", 1 as any)
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `IntegerFromString
@@ -138,8 +138,8 @@ describe("Schema > brand", () => {
         S.brand(Int),
         S.identifier("IntegerFromString")
       )
-      await Util.expectParseSuccess(schema, "1", 1 as any)
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownSuccess(schema, "1", 1 as any)
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `IntegerFromString
