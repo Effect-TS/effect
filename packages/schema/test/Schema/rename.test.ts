@@ -8,7 +8,7 @@ describe("Schema > rename", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const renamed = S.rename(schema, { a: "c" })
 
-      await Util.expectParseSuccess(renamed, { a: "a", b: 1 }, { c: "a", b: 1 })
+      await Util.expectDecodeUnknownSuccess(renamed, { a: "a", b: 1 }, { c: "a", b: 1 })
       await Util.expectEncodeSuccess(renamed, { c: "a", b: 1 }, { a: "a", b: 1 })
     })
 
@@ -17,7 +17,7 @@ describe("Schema > rename", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const renamed = S.rename(schema, { a: c })
 
-      await Util.expectParseSuccess(renamed, { a: "a", b: 1 }, { [c]: "a", b: 1 })
+      await Util.expectDecodeUnknownSuccess(renamed, { a: "a", b: 1 }, { [c]: "a", b: 1 })
       await Util.expectEncodeSuccess(renamed, { [c]: "a", b: 1 }, { a: "a", b: 1 })
     })
 
@@ -26,7 +26,7 @@ describe("Schema > rename", () => {
       const schema = S.struct({ [a]: S.string, b: S.number })
       const renamed = S.rename(schema, { [a]: "c" })
 
-      await Util.expectParseSuccess(renamed, { [a]: "a", b: 1 }, { c: "a", b: 1 })
+      await Util.expectDecodeUnknownSuccess(renamed, { [a]: "a", b: 1 }, { c: "a", b: 1 })
       await Util.expectEncodeSuccess(renamed, { c: "a", b: 1 }, { [a]: "a", b: 1 })
     })
 
@@ -36,7 +36,7 @@ describe("Schema > rename", () => {
       const schema = S.struct({ [a]: S.string, b: S.number })
       const renamed = S.rename(schema, { [a]: c })
 
-      await Util.expectParseSuccess(renamed, { [a]: "a", b: 1 }, { [c]: "a", b: 1 })
+      await Util.expectDecodeUnknownSuccess(renamed, { [a]: "a", b: 1 }, { [c]: "a", b: 1 })
       await Util.expectEncodeSuccess(renamed, { [c]: "a", b: 1 }, { [a]: "a", b: 1 })
     })
   })
@@ -46,7 +46,7 @@ describe("Schema > rename", () => {
     const renamed = S.rename(schema, { a: "c" })
     const renamed2 = S.rename(renamed, { c: "d" })
 
-    await Util.expectParseSuccess(renamed2, { a: "a", b: 1 }, { d: "a", b: 1 })
+    await Util.expectDecodeUnknownSuccess(renamed2, { a: "a", b: 1 }, { d: "a", b: 1 })
     await Util.expectEncodeSuccess(renamed2, { d: "a", b: 1 }, { a: "a", b: 1 })
   })
 
@@ -55,7 +55,7 @@ describe("Schema > rename", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.suspend( // intended outer suspend
+    const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
       () =>
         S.struct({
           a: S.string,
@@ -64,7 +64,7 @@ describe("Schema > rename", () => {
     )
     const renamed = S.rename(schema, { a: "c" })
 
-    await Util.expectParseSuccess(renamed, { a: "a1", as: [{ a: "a2", as: [] }] }, {
+    await Util.expectDecodeUnknownSuccess(renamed, { a: "a1", as: [{ a: "a2", as: [] }] }, {
       c: "a1",
       as: [{ a: "a2", as: [] }]
     })
@@ -79,7 +79,7 @@ describe("Schema > rename", () => {
       S.rename({ a: "c" })
     )
 
-    await Util.expectParseSuccess(renamed, { a: "a", b: 1 }, { c: "a", b: 1 })
+    await Util.expectDecodeUnknownSuccess(renamed, { a: "a", b: 1 }, { c: "a", b: 1 })
     await Util.expectEncodeSuccess(renamed, { c: "a", b: 1 }, { a: "a", b: 1 })
   })
 
@@ -93,7 +93,7 @@ describe("Schema > rename", () => {
     const schema = S.struct({ a: S.string, b: S.NumberFromString })
     const renamed = S.rename(schema, { a: "c" })
 
-    await Util.expectParseSuccess(renamed, { a: "a", b: "1" }, { c: "a", b: 1 })
+    await Util.expectDecodeUnknownSuccess(renamed, { a: "a", b: "1" }, { c: "a", b: 1 })
     await Util.expectEncodeSuccess(renamed, { c: "a", b: 1 }, { a: "a", b: "1" })
   })
 })

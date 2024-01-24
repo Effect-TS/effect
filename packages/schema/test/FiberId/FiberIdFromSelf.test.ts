@@ -12,11 +12,15 @@ describe("FiberIdFromSelf", () => {
   it("decoding", async () => {
     const schema = S.FiberIdFromSelf
 
-    await Util.expectParseSuccess(schema, FiberId.none)
-    await Util.expectParseSuccess(schema, FiberId.runtime(1, 100))
-    await Util.expectParseSuccess(schema, FiberId.composite(FiberId.none, FiberId.none))
+    await Util.expectDecodeUnknownSuccess(schema, FiberId.none)
+    await Util.expectDecodeUnknownSuccess(schema, FiberId.runtime(1, 100))
+    await Util.expectDecodeUnknownSuccess(schema, FiberId.composite(FiberId.none, FiberId.none))
 
-    await Util.expectParseFailure(schema, null, `Expected FiberIdFromSelf, actual null`)
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      null,
+      `Expected FiberIdFromSelf, actual null`
+    )
   })
 
   it("pretty", () => {

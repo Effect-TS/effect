@@ -5,8 +5,8 @@ import { describe, it } from "vitest"
 describe("number > NonNegative", () => {
   const schema = S.NonNegative
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0, 0)
-    await Util.expectParseSuccess(schema, 1, 1)
+    await Util.expectDecodeUnknownSuccess(schema, 0, 0)
+    await Util.expectDecodeUnknownSuccess(schema, 1, 1)
   })
 
   it("encoding", async () => {

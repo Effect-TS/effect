@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import * as Either from "effect/Either"
 import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -32,14 +31,14 @@ export type EquivalenceHookId = typeof EquivalenceHookId
  */
 export const equivalence =
   <A>(handler: (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<A>) =>
-  <I>(self: Schema.Schema<I, A>): Schema.Schema<I, A> =>
+  <R, I>(self: Schema.Schema<R, I, A>): Schema.Schema<R, I, A> =>
     InternalSchema.make(AST.setAnnotation(self.ast, EquivalenceHookId, handler))
 
 /**
  * @category Equivalence
  * @since 1.0.0
  */
-export const make = <I, A>(schema: Schema.Schema<I, A>): Equivalence.Equivalence<A> => go(schema.ast)
+export const make = <R, I, A>(schema: Schema.Schema<R, I, A>): Equivalence.Equivalence<A> => go(schema.ast)
 
 const getHook = AST.getAnnotation<
   (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<any>
@@ -47,17 +46,14 @@ const getHook = AST.getAnnotation<
   EquivalenceHookId
 )
 
-const is = (ast: AST.AST) => {
-  const getEither = Parser.getEither(ast, true)
-  return (i: unknown) => Either.isRight(getEither(i))
-}
-
 const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
     switch (ast._tag) {
       case "Declaration":
         return hook.value(...ast.typeParameters.map(go))
+      case "Refinement":
+        return hook.value(go(ast.from))
       default:
         return hook.value()
     }
@@ -209,7 +205,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         if (searchTree.otherwise.length > 0) {
           candidates = candidates.concat(searchTree.otherwise)
         }
-        const tuples = candidates.map((ast) => [go(ast), is(ast)] as const)
+        const tuples = candidates.map((ast) => [go(ast), Parser.is(InternalSchema.make(ast))] as const)
         for (let i = 0; i < tuples.length; i++) {
           const [equivalence, is] = tuples[i]
           if (is(a) && is(b)) {

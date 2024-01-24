@@ -15,15 +15,15 @@ describe("Schema > required", () => {
       a: S.optional(NumberFromString.pipe(S.greaterThan(0)), { exact: true })
     }))
 
-    await Util.expectParseSuccess(schema, { a: "1" }, { a: 1 })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
+    await Util.expectDecodeUnknownFailure(
       schema,
       {},
       `{ a: a positive number }
 └─ ["a"]
    └─ is missing`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: "-1" },
       `{ a: a positive number }
@@ -39,8 +39,8 @@ describe("Schema > required", () => {
     // type B = Required<A>
     const schema = S.required(S.tuple().pipe(S.optionalElement(NumberFromString)))
 
-    await Util.expectParseSuccess(schema, ["1"], [1])
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
+    await Util.expectDecodeUnknownFailure(
       schema,
       [],
       `readonly [NumberFromString]
@@ -52,8 +52,8 @@ describe("Schema > required", () => {
   it("tuple/ e e?", async () => {
     const schema = S.required(S.tuple(NumberFromString).pipe(S.optionalElement(S.string)))
 
-    await Util.expectParseSuccess(schema, ["0", ""], [0, ""])
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, ["0", ""], [0, ""])
+    await Util.expectDecodeUnknownFailure(
       schema,
       ["0"],
       `readonly [NumberFromString, string]
@@ -68,19 +68,19 @@ describe("Schema > required", () => {
 
     const schema = S.required(S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean)))
 
-    await Util.expectParseSuccess(schema, ["", 0], ["", 0])
-    await Util.expectParseSuccess(schema, ["", true], ["", true])
-    await Util.expectParseSuccess(schema, ["", true, 0], ["", true, 0])
-    await Util.expectParseSuccess(schema, ["", 0, true], ["", 0, true])
+    await Util.expectDecodeUnknownSuccess(schema, ["", 0], ["", 0])
+    await Util.expectDecodeUnknownSuccess(schema, ["", true], ["", true])
+    await Util.expectDecodeUnknownSuccess(schema, ["", true, 0], ["", true, 0])
+    await Util.expectDecodeUnknownSuccess(schema, ["", 0, true], ["", 0, true])
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [],
       `readonly [string, ...(number | boolean)[], number | boolean]
 └─ [0]
    └─ is missing`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [""],
       `readonly [string, ...(number | boolean)[], number | boolean]
@@ -97,32 +97,32 @@ describe("Schema > required", () => {
       S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean), S.element(S.boolean))
     )
 
-    await Util.expectParseSuccess(schema, ["", 0, true])
-    await Util.expectParseSuccess(schema, ["", 0, true, false])
-    await Util.expectParseSuccess(schema, ["", 0, 1, 2, 3, true, false])
+    await Util.expectDecodeUnknownSuccess(schema, ["", 0, true])
+    await Util.expectDecodeUnknownSuccess(schema, ["", 0, true, false])
+    await Util.expectDecodeUnknownSuccess(schema, ["", 0, 1, 2, 3, true, false])
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [],
       `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
 └─ [0]
    └─ is missing`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [""],
       `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
 └─ [1]
    └─ is missing`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       ["", true],
       `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
 └─ [2]
    └─ is missing`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       ["", 0, "a"],
       `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
@@ -140,9 +140,9 @@ describe("Schema > required", () => {
       S.struct({ a: S.optional(S.string, { exact: true }) }),
       S.struct({ b: S.optional(S.number, { exact: true }) })
     ))
-    await Util.expectParseSuccess(schema, { a: "a" })
-    await Util.expectParseSuccess(schema, { b: 1 })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
+    await Util.expectDecodeUnknownSuccess(schema, { b: 1 })
+    await Util.expectDecodeUnknownFailure(
       schema,
       {},
       `{ a: string } | { b: number }
@@ -161,22 +161,22 @@ describe("Schema > required", () => {
     interface A {
       readonly a: null | A
     }
-    const schema: S.Schema<A> = S.required(S.suspend( // intended outer suspend
+    const schema: S.Schema<never, A> = S.required(S.suspend( // intended outer suspend
       () =>
         S.struct({
           a: S.optional(S.union(S.null, schema), { exact: true })
         })
     ))
-    await Util.expectParseSuccess(schema, { a: null })
-    await Util.expectParseSuccess(schema, { a: { a: null } })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, { a: null })
+    await Util.expectDecodeUnknownSuccess(schema, { a: { a: null } })
+    await Util.expectDecodeUnknownFailure(
       schema,
       {},
       `{ a: <suspended schema> | null }
 └─ ["a"]
    └─ is missing`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: {} },
       `{ a: <suspended schema> | null }

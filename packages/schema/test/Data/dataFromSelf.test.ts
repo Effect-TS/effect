@@ -6,11 +6,6 @@ import * as Data from "effect/Data"
 import { describe, expect, it } from "vitest"
 
 describe("Data > dataFromSelf", () => {
-  it("keyof", () => {
-    const schema1 = S.keyof(S.dataFromSelf(S.struct({ a: S.string, b: S.string })))
-    expect(schema1).toEqual(S.union(S.literal("a"), S.literal("b")))
-  })
-
   it("property tests", () => {
     Util.roundtrip(S.dataFromSelf(S.struct({ a: S.string, b: S.number })))
     Util.roundtrip(S.dataFromSelf(S.array(S.number)))
@@ -18,22 +13,23 @@ describe("Data > dataFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: "ok", b: 0 },
-      "Expected Data<{ a: string; b: number }>, actual {\"a\":\"ok\",\"b\":0}"
+      `Expected Data<{ a: string; b: number }>, actual {"a":"ok","b":0}`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Data.struct({ a: "ok", b: "0" }),
-      `{ a: string; b: number }
-└─ ["b"]
-   └─ Expected a number, actual "0"`
+      `Data<{ a: string; b: number }>
+└─ { a: string; b: number }
+   └─ ["b"]
+      └─ Expected a number, actual "0"`
     )
   })
 
@@ -57,6 +53,6 @@ describe("Data > dataFromSelf", () => {
   it("pretty", () => {
     const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
     const pretty = Pretty.make(schema)
-    expect(pretty(Data.struct({ a: "ok", b: 0 }))).toEqual("Data({ \"a\": \"ok\", \"b\": 0 })")
+    expect(pretty(Data.struct({ a: "ok", b: 0 }))).toEqual(`Data({ "a": "ok", "b": 0 })`)
   })
 })

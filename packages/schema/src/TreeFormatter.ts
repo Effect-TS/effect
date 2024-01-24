@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
 import * as Format from "./Format.js"
-import type { Missing, ParseError, ParseIssue, Refinement, Transform, Type, Unexpected } from "./ParseResult.js"
+import type * as ParseResult from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -24,7 +24,7 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  * @category formatting
  * @since 1.0.0
  */
-export const formatIssues = (issues: NonEmptyReadonlyArray<ParseIssue>): string => {
+export const formatIssues = (issues: NonEmptyReadonlyArray<ParseResult.ParseIssue>): string => {
   const forest = issues.map(go)
   return drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, issues.map(go)))
 }
@@ -33,13 +33,13 @@ export const formatIssues = (issues: NonEmptyReadonlyArray<ParseIssue>): string 
  * @category formatting
  * @since 1.0.0
  */
-export const formatIssue = (issue: ParseIssue): string => formatIssues([issue])
+export const formatIssue = (issue: ParseResult.ParseIssue): string => formatIssues([issue])
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatError = (error: ParseError): string => formatIssue(error.error)
+export const formatError = (error: ParseResult.ParseError): string => formatIssue(error.error)
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 
@@ -56,7 +56,7 @@ const draw = (indentation: string, forest: Forest<string>): string => {
   return r
 }
 
-const formatTransformationKind = (kind: Transform["kind"]): string => {
+const formatTransformationKind = (kind: ParseResult.Transform["kind"]): string => {
   switch (kind) {
     case "From":
       return "From side transformation failure"
@@ -67,7 +67,7 @@ const formatTransformationKind = (kind: Transform["kind"]): string => {
   }
 }
 
-const formatRefinementKind = (kind: Refinement["kind"]): string => {
+const formatRefinementKind = (kind: ParseResult.Refinement["kind"]): string => {
   switch (kind) {
     case "From":
       return "From side refinement failure"
@@ -84,13 +84,16 @@ export const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string>
 }
 
 /** @internal */
-export const formatMessage = (e: Type): string =>
+export const formatMessage = (e: ParseResult.Type): string =>
   getMessage(e.ast, e.actual).pipe(
     Option.orElse(() => e.message),
     Option.getOrElse(() => `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`)
   )
 
-const getParseIsssueMessage = (issue: ParseIssue, orElse: () => Option.Option<string>): Option.Option<string> => {
+const getParseIsssueMessage = (
+  issue: ParseResult.ParseIssue,
+  orElse: () => Option.Option<string>
+): Option.Option<string> => {
   switch (issue._tag) {
     case "Refinement":
       return Option.orElse(getRefinementMessage(issue, issue.actual), orElse)
@@ -106,7 +109,7 @@ const getParseIsssueMessage = (issue: ParseIssue, orElse: () => Option.Option<st
 }
 
 /** @internal */
-export const getRefinementMessage = (e: Refinement, actual: unknown): Option.Option<string> => {
+export const getRefinementMessage = (e: ParseResult.Refinement, actual: unknown): Option.Option<string> => {
   if (e.kind === "From") {
     return getParseIsssueMessage(e.error, () => getMessage(e.ast, actual))
   }
@@ -114,11 +117,11 @@ export const getRefinementMessage = (e: Refinement, actual: unknown): Option.Opt
 }
 
 /** @internal */
-export const getTransformMessage = (e: Transform, actual: unknown): Option.Option<string> => {
+export const getTransformMessage = (e: ParseResult.Transform, actual: unknown): Option.Option<string> => {
   return getParseIsssueMessage(e.error, () => getMessage(e.ast, actual))
 }
 
-const go = (e: ParseIssue | Missing | Unexpected): Tree<string> => {
+const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected): Tree<string> => {
   switch (e._tag) {
     case "Type":
       return make(formatMessage(e))
@@ -173,6 +176,15 @@ const go = (e: ParseIssue | Missing | Unexpected): Tree<string> => {
           make(Format.formatAST(e.ast), [
             make(formatRefinementKind(e.kind), [go(e.error)])
           ]),
+        onSome: make
+      })
+    case "Declaration":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () => {
+          const error = e.error
+          const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
+          return shouldSkipDefaultMessage ? go(error) : make(Format.formatAST(e.ast), [go(e.error)])
+        },
         onSome: make
       })
   }

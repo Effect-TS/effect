@@ -315,7 +315,7 @@ export const fileParse = (
 /** @internal */
 export const fileSchema = <I, A>(
   name: string,
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, A>,
   format?: "json" | "yaml" | "ini" | "toml"
 ): Options.Options<A> => withSchema(fileParse(name, format), schema)
 
@@ -638,8 +638,13 @@ export const withPseudoName = dual<
 
 /** @internal */
 export const withSchema = dual<
-  <A, I extends A, B>(schema: Schema.Schema<I, B>) => (self: Options.Options<A>) => Options.Options<B>,
-  <A, I extends A, B>(self: Options.Options<A>, schema: Schema.Schema<I, B>) => Options.Options<B>
+  <A, I extends A, B>(
+    schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, B>
+  ) => (self: Options.Options<A>) => Options.Options<B>,
+  <A, I extends A, B>(
+    self: Options.Options<A>,
+    schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, B>
+  ) => Options.Options<B>
 >(2, (self, schema) => {
   const decode = Schema.decode(schema)
   return mapEffect(self, (_) =>

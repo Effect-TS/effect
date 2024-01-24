@@ -19,9 +19,9 @@ describe("number > greaterThanOrEqualTo", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0)
-    await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 0)
+    await Util.expectDecodeUnknownSuccess(schema, 1)
+    await Util.expectDecodeUnknownFailure(
       schema,
       -1,
       `a non-negative number

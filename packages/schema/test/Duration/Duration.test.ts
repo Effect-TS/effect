@@ -11,8 +11,8 @@ describe("Duration > Duration", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, [555, 123456789], Duration.nanos(555123456789n))
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, [555, 123456789], Duration.nanos(555123456789n))
+    await Util.expectDecodeUnknownFailure(
       schema,
       [-500, 0],
       `Duration
@@ -25,7 +25,7 @@ describe("Duration > Duration", () => {
                   └─ Predicate refinement failure
                      └─ Expected NonNegative (a non-negative number), actual -500`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [0, -123],
       `Duration
@@ -38,14 +38,14 @@ describe("Duration > Duration", () => {
                   └─ Predicate refinement failure
                      └─ Expected NonNegative (a non-negative number), actual -123`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       123,
       `Duration
 └─ From side transformation failure
    └─ Expected readonly [seconds, nanos], actual 123`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       123n,
       `Duration

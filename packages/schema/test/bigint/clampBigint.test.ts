@@ -6,8 +6,8 @@ describe("bigint/clampBigint", () => {
   it("decoding", async () => {
     const schema = S.bigintFromSelf.pipe(S.clampBigint(-1n, 1n))
 
-    await Util.expectParseSuccess(schema, 3n, 1n)
-    await Util.expectParseSuccess(schema, 0n, 0n)
-    await Util.expectParseSuccess(schema, -3n, -1n)
+    await Util.expectDecodeUnknownSuccess(schema, 3n, 1n)
+    await Util.expectDecodeUnknownSuccess(schema, 0n, 0n)
+    await Util.expectDecodeUnknownSuccess(schema, -3n, -1n)
   })
 })

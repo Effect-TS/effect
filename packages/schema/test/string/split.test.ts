@@ -9,12 +9,12 @@ describe("string/split", () => {
     Util.roundtrip(schema)
 
     // Decoding
-    await Util.expectParseSuccess(schema, "", [""])
-    await Util.expectParseSuccess(schema, ",", ["", ""])
-    await Util.expectParseSuccess(schema, "a", ["a"])
-    await Util.expectParseSuccess(schema, ",a", ["", "a"])
-    await Util.expectParseSuccess(schema, "a,", ["a", ""])
-    await Util.expectParseSuccess(schema, "a,b", ["a", "b"])
+    await Util.expectDecodeUnknownSuccess(schema, "", [""])
+    await Util.expectDecodeUnknownSuccess(schema, ",", ["", ""])
+    await Util.expectDecodeUnknownSuccess(schema, "a", ["a"])
+    await Util.expectDecodeUnknownSuccess(schema, ",a", ["", "a"])
+    await Util.expectDecodeUnknownSuccess(schema, "a,", ["a", ""])
+    await Util.expectDecodeUnknownSuccess(schema, "a,b", ["a", "b"])
 
     // Encoding
     await Util.expectEncodeSuccess(schema, [], "")

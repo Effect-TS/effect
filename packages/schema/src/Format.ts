@@ -10,7 +10,7 @@ import type * as Schema from "./Schema.js"
  * @category formatting
  * @since 1.0.0
  */
-export const format = <I, A>(schema: Schema.Schema<I, A>): string => formatAST(schema.ast)
+export const format = <R, I, A>(schema: Schema.Schema<R, I, A>): string => formatAST(schema.ast)
 
 /**
  * @category formatting

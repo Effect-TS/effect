@@ -76,7 +76,7 @@ export interface KeyValueStore {
   /**
    * Create a SchemaStore for the specified schema.
    */
-  readonly forSchema: <I, A>(schema: Schema.Schema<I, A>) => SchemaStore<A>
+  readonly forSchema: <R, I, A>(schema: Schema.Schema<R, I, A>) => SchemaStore<R, A>
 }
 
 /**
@@ -86,7 +86,7 @@ export declare namespace KeyValueStore {
   /**
    * @since 1.0.0
    */
-  export type AnyStore = KeyValueStore | SchemaStore<any>
+  export type AnyStore = KeyValueStore | SchemaStore<any, any>
 }
 
 /**
@@ -143,14 +143,14 @@ export type SchemaStoreTypeId = typeof SchemaStoreTypeId
  * @since 1.0.0
  * @category models
  */
-export interface SchemaStore<A> {
+export interface SchemaStore<R, A> {
   readonly [SchemaStoreTypeId]: SchemaStoreTypeId
   /**
    * Returns the value of the specified key if it exists.
    */
   readonly get: (
     key: string
-  ) => Effect.Effect<never, PlatformError.PlatformError | ParseResult.ParseError, Option.Option<A>>
+  ) => Effect.Effect<R, PlatformError.PlatformError | ParseResult.ParseError, Option.Option<A>>
 
   /**
    * Sets the value of the specified key.
@@ -158,7 +158,7 @@ export interface SchemaStore<A> {
   readonly set: (
     key: string,
     value: A
-  ) => Effect.Effect<never, PlatformError.PlatformError | ParseResult.ParseError, void>
+  ) => Effect.Effect<R, PlatformError.PlatformError | ParseResult.ParseError, void>
 
   /**
    * Removes the specified key.
@@ -181,7 +181,7 @@ export interface SchemaStore<A> {
   readonly modify: (
     key: string,
     f: (value: A) => A
-  ) => Effect.Effect<never, PlatformError.PlatformError | ParseResult.ParseError, Option.Option<A>>
+  ) => Effect.Effect<R, PlatformError.PlatformError | ParseResult.ParseError, Option.Option<A>>
 
   /**
    * Returns true if the KeyValueStore contains the specified key.
@@ -198,10 +198,10 @@ export interface SchemaStore<A> {
  * @since 1.0.0
  * @category layers
  */
-export const layerSchema: <I, A>(
-  schema: Schema.Schema<I, A>,
+export const layerSchema: <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
   tagIdentifier?: unknown
 ) => {
-  readonly tag: Context.Tag<SchemaStore<A>, SchemaStore<A>>
-  readonly layer: Layer.Layer<KeyValueStore, never, SchemaStore<A>>
+  readonly tag: Context.Tag<SchemaStore<R, A>, SchemaStore<R, A>>
+  readonly layer: Layer.Layer<KeyValueStore, never, SchemaStore<R, A>>
 } = internal.layerSchema

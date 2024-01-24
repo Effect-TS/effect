@@ -18,8 +18,8 @@ describe("number > NonNaN", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 1)
+    await Util.expectDecodeUnknownFailure(
       schema,
       NaN,
       `NonNaN

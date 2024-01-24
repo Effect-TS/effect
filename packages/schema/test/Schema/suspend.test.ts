@@ -9,27 +9,27 @@ describe("Schema > suspend", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.struct({
+      const schema: S.Schema<never, A> = S.struct({
         a: S.string,
         as: S.array(S.suspend(() => schema))
       })
 
-      await Util.expectParseSuccess(schema, { a: "a1", as: [] })
-      await Util.expectParseSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [] })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected { a: string; as: ReadonlyArray<<suspended schema>> }, actual null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a1" },
         `{ a: string; as: ReadonlyArray<<suspended schema>> }
 └─ ["as"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
         `{ a: string; as: ReadonlyArray<<suspended schema>> }
@@ -57,12 +57,12 @@ describe("Schema > suspend", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.struct({
+      const Expression: S.Schema<never, Expression> = S.struct({
         type: S.literal("expression"),
         value: S.union(S.number, S.suspend(() => Operation))
       })
 
-      const Operation: S.Schema<Operation> = S.struct({
+      const Operation: S.Schema<never, Operation> = S.struct({
         type: S.literal("operation"),
         operator: S.union(S.literal("+"), S.literal("-")),
         left: Expression,
@@ -93,7 +93,7 @@ describe("Schema > suspend", () => {
         }
       }
 
-      await Util.expectParseSuccess(Operation, input)
+      await Util.expectDecodeUnknownSuccess(Operation, input)
     })
   })
 
@@ -107,7 +107,7 @@ describe("Schema > suspend", () => {
         readonly a: string
         readonly as: ReadonlyArray<FromA>
       }
-      const schema: S.Schema<FromA, A> = S.struct({
+      const schema: S.Schema<never, FromA, A> = S.struct({
         a: Util.NumberFromChar,
         as: S.array(S.suspend(() => schema))
       })

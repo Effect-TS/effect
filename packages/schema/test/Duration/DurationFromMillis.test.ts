@@ -11,9 +11,9 @@ describe("Duration > DurationFromMillis", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0, Duration.millis(0))
-    await Util.expectParseSuccess(schema, 1000, Duration.seconds(1))
-    await Util.expectParseSuccess(schema, 60 * 1000, Duration.minutes(1))
+    await Util.expectDecodeUnknownSuccess(schema, 0, Duration.millis(0))
+    await Util.expectDecodeUnknownSuccess(schema, 1000, Duration.seconds(1))
+    await Util.expectDecodeUnknownSuccess(schema, 60 * 1000, Duration.minutes(1))
   })
 
   it("encoding", async () => {

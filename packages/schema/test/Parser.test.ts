@@ -42,17 +42,6 @@ describe("Parser", () => {
         true
       )
     ).toEqual([["_tag", AST.createLiteral("a")]])
-    // declare
-    expect(
-      P.getLiterals(
-        S.declare(
-          [],
-          S.struct({ _tag: S.literal("a") }),
-          () => P.parse(S.struct({ _tag: S.literal("a") }))
-        ).ast,
-        true
-      )
-    ).toEqual([["_tag", AST.createLiteral("a")]])
 
     // Transform
     expect(

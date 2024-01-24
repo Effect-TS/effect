@@ -10,7 +10,7 @@ import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Internal from "./internal/ast.js"
-import type { ParseError } from "./ParseResult.js"
+import type { ParseIssue } from "./ParseResult.js"
 
 // -------------------------------------------------------------------------------------
 // annotations
@@ -264,11 +264,12 @@ export type AST =
 export interface Declaration extends Annotated {
   readonly _tag: "Declaration"
   readonly typeParameters: ReadonlyArray<AST>
-  readonly type: AST
-  readonly decode: (
-    isDecoding: boolean,
+  readonly decodeUnknown: (
     ...typeParameters: ReadonlyArray<AST>
-  ) => (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
+  ) => (input: unknown, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
+  readonly encodeUnknown: (
+    ...typeParameters: ReadonlyArray<AST>
+  ) => (input: unknown, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
 }
 
 /**
@@ -277,10 +278,10 @@ export interface Declaration extends Annotated {
  */
 export const createDeclaration = (
   typeParameters: ReadonlyArray<AST>,
-  type: AST,
-  decode: Declaration["decode"],
-  annotations: Annotated["annotations"] = {}
-): Declaration => ({ _tag: "Declaration", typeParameters, type, decode, annotations })
+  decodeUnknown: Declaration["decodeUnknown"],
+  encodeUnknown: Declaration["encodeUnknown"],
+  annotations: Annotations = {}
+): Declaration => ({ _tag: "Declaration", typeParameters, decodeUnknown, encodeUnknown, annotations })
 
 /**
  * @category guards
@@ -309,7 +310,7 @@ export interface Literal extends Annotated {
  */
 export const createLiteral = (
   literal: LiteralValue,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Literal => ({ _tag: "Literal", literal, annotations })
 
 /**
@@ -338,7 +339,7 @@ export interface UniqueSymbol extends Annotated {
  */
 export const createUniqueSymbol = (
   symbol: symbol,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): UniqueSymbol => ({ _tag: "UniqueSymbol", symbol, annotations })
 
 /**
@@ -644,7 +645,7 @@ export interface Enums extends Annotated {
  */
 export const createEnums = (
   enums: ReadonlyArray<readonly [string, string | number]>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Enums => ({ _tag: "Enums", enums, annotations })
 
 /**
@@ -678,7 +679,7 @@ export interface TemplateLiteral extends Annotated {
 export const createTemplateLiteral = (
   head: string,
   spans: ReadonlyArray<TemplateLiteralSpan>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): TemplateLiteral | Literal =>
   ReadonlyArray.isNonEmptyReadonlyArray(spans) ?
     { _tag: "TemplateLiteral", head, spans, annotations } :
@@ -725,7 +726,7 @@ export const createTuple = (
   elements: ReadonlyArray<Element>,
   rest: Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>,
   isReadonly: boolean,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly, annotations })
 
 /**
@@ -752,7 +753,7 @@ export const createPropertySignature = (
   type: AST,
   isOptional: boolean,
   isReadonly: boolean,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): PropertySignature => ({ name, type, isOptional, isReadonly, annotations })
 
 /**
@@ -818,7 +819,7 @@ export interface TypeLiteral extends Annotated {
 export const createTypeLiteral = (
   propertySignatures: ReadonlyArray<PropertySignature>,
   indexSignatures: ReadonlyArray<IndexSignature>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): TypeLiteral => {
   // check for duplicate property signatures
   const keys: Record<PropertyKey, null> = {}
@@ -884,7 +885,7 @@ const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Array<A>] 
  */
 export const createUnion = (
   candidates: ReadonlyArray<AST>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): AST => {
   const types = unify(candidates)
   if (isMembers(types)) {
@@ -921,7 +922,7 @@ export interface Suspend extends Annotated {
  */
 export const createSuspend = (
   f: () => AST,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Suspend => ({
   _tag: "Suspend",
   f: Internal.memoizeThunk(f),
@@ -944,8 +945,8 @@ export interface Refinement<From = AST> extends Annotated {
   readonly filter: (
     input: any,
     options: ParseOptions,
-    self: AST
-  ) => Option.Option<ParseError>
+    self: Refinement
+  ) => Option.Option<ParseIssue>
 }
 
 /**
@@ -955,7 +956,7 @@ export interface Refinement<From = AST> extends Annotated {
 export const createRefinement = <From extends AST>(
   from: From,
   filter: Refinement["filter"],
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Refinement<From> => {
   return { _tag: "Refinement", from, filter, annotations }
 }
@@ -996,7 +997,7 @@ export const createTransform = (
   from: AST,
   to: AST,
   transformation: Transformation,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Transform => ({ _tag: "Transform", from, to, transformation, annotations })
 
 /**
@@ -1020,8 +1021,8 @@ export type Transformation =
  */
 export interface FinalTransformation {
   readonly _tag: "FinalTransformation"
-  readonly decode: (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
-  readonly encode: (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
+  readonly decode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseIssue, any>
+  readonly encode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseIssue, any>
 }
 
 /**
@@ -1179,7 +1180,7 @@ export const isTypeLiteralTransformation = (
  *
  * @since 1.0.0
  */
-export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]): AST => {
+export const mergeAnnotations = (ast: AST, annotations: Annotations): AST => {
   return {
     ...ast,
     annotations: { ...ast.annotations, ...annotations }
@@ -1575,8 +1576,8 @@ export const to = (ast: AST): AST => {
     case "Declaration":
       return createDeclaration(
         ast.typeParameters.map(to),
-        to(ast.type),
-        ast.decode,
+        ast.decodeUnknown,
+        ast.encodeUnknown,
         ast.annotations
       )
     case "Tuple":
@@ -1619,8 +1620,8 @@ export const from = (ast: AST): AST => {
     case "Declaration":
       return createDeclaration(
         ast.typeParameters.map(from),
-        from(ast.type),
-        ast.decode,
+        ast.decodeUnknown,
+        ast.encodeUnknown,
         ast.annotations
       )
     case "Tuple":
@@ -1650,8 +1651,6 @@ export const from = (ast: AST): AST => {
 /** @internal */
 export const getCardinality = (ast: AST): number => {
   switch (ast._tag) {
-    case "Declaration":
-      return getCardinality(ast.type)
     case "NeverKeyword":
       return 0
     case "Literal":
@@ -1724,8 +1723,7 @@ export const getWeight = (ast: AST): Weight => {
         [4, y, z]
     }
     case "Declaration": {
-      const [_, y, z] = getWeight(ast.type)
-      return [6, y, z]
+      return [6, 0, 0]
     }
     case "Suspend":
       return [8, 0, 0]
@@ -1806,8 +1804,6 @@ export const getParameterBase = (
 
 const _keyof = (ast: AST): Array<AST> => {
   switch (ast._tag) {
-    case "Declaration":
-      return _keyof(ast.type)
     case "TypeLiteral":
       return ast.propertySignatures.map((p): AST =>
         Predicate.isSymbol(p.name) ? createUniqueSymbol(p.name) : createLiteral(p.name)

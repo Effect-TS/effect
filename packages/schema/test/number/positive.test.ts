@@ -5,14 +5,14 @@ import { describe, it } from "vitest"
 describe("number > Positive", () => {
   const schema = S.Positive
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       -1,
       `Positive
 └─ Predicate refinement failure
    └─ Expected Positive (a positive number), actual -1`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       0,
       `Positive

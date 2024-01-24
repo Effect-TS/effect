@@ -80,14 +80,15 @@ export const layer = <I, R, E, O>(
 
 /** @internal */
 export const layerSerialized = <
+  R,
   I,
   A extends Schema.TaggedRequest.Any,
   Handlers extends WorkerRunner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<R, I, A>,
   handlers: Handlers
 ): Layer.Layer<
-  WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
+  R | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError,
   never
 > => Layer.provide(Runner.layerSerialized(schema, handlers), layerPlatform)

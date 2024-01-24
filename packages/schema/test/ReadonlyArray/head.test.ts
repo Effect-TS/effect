@@ -6,9 +6,9 @@ import { describe, it } from "vitest"
 describe("ReadonlyArray > head", () => {
   it("decoding", async () => {
     const schema = S.head(S.array(S.NumberFromString))
-    await Util.expectParseSuccess(schema, [], Option.none())
-    await Util.expectParseSuccess(schema, ["1"], Option.some(1))
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, [], Option.none())
+    await Util.expectDecodeUnknownSuccess(schema, ["1"], Option.some(1))
+    await Util.expectDecodeUnknownFailure(
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> Option<number>)

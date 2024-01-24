@@ -78,23 +78,23 @@ describe("Schema > annotations", () => {
       )
 
     expect(S.isSchema(schema)).toEqual(true)
-    await Util.expectParseFailure(schema, null, "not a string")
-    await Util.expectParseFailure(schema, "", "required")
-    await Util.expectParseSuccess(schema, "a", "a")
-    await Util.expectParseFailure(schema, "aaaaaaaaaaaaaa", "aaaaaaaaaaaaaa is too long")
+    await Util.expectDecodeUnknownFailure(schema, null, "not a string")
+    await Util.expectDecodeUnknownFailure(schema, "", "required")
+    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+    await Util.expectDecodeUnknownFailure(schema, "aaaaaaaaaaaaaa", "aaaaaaaaaaaaaa is too long")
   })
 
   describe("message as annotation", () => {
     it("primitives", async () => {
       const schema = S.string.pipe(S.nonEmpty(), S.message(() => "custom message"))
       expect(S.isSchema(schema)).toEqual(true)
-      await Util.expectParseFailure(schema, "", "custom message")
+      await Util.expectDecodeUnknownFailure(schema, "", "custom message")
     })
 
     it("transformations", async () => {
       const schema = S.NumberFromString.pipe(S.message(() => "custom message"))
       expect(S.isSchema(schema)).toEqual(true)
-      await Util.expectParseFailure(schema, "", "custom message")
+      await Util.expectDecodeUnknownFailure(schema, "", "custom message")
     })
   })
 

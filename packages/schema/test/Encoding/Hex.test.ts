@@ -11,36 +11,36 @@ describe("Encoding > Hex", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "0001020304050607",
       Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7])
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "f0f1f2f3f4f5f6f7",
       Uint8Array.from([0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7])
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "67",
       encoder.encode("g")
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "0",
       `Hex
 └─ Transformation process failure
    └─ Length must be a multiple of 2, but is 1`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "zd4aa",
       `Hex
 └─ Transformation process failure
    └─ Length must be a multiple of 2, but is 5`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "0\x01",
       `Hex

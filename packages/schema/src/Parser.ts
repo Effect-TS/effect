@@ -11,7 +11,8 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { Mutable } from "effect/Types"
 import * as AST from "./AST.js"
 import * as Internal from "./internal/ast.js"
-import * as ParseResult from "./ParseResult.js"
+import * as InternalParser from "./internal/parser.js"
+import type * as ParseResult from "./ParseResult.js"
 import type * as Schema from "./Schema.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
@@ -32,22 +33,16 @@ export const mergeParseOptions = (
   return out
 }
 
-/** @internal */
-export const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
+const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
-  return (i: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseIssue, any> =>
-    parser(i, mergeParseOptions(options, overrideOptions)) as any
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseIssue, any> =>
+    parser(u, mergeParseOptions(options, overrideOptions)) as any
 }
 
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = getEither(ast, isDecoding, options)
-  return (input: unknown, overrideOptions?: AST.ParseOptions) => {
-    const result = parser(input, overrideOptions)
-    if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatIssue(result.left))
-    }
-    return result.right
-  }
+  return (input: unknown, overrideOptions?: AST.ParseOptions) =>
+    Either.getOrThrowWith(parser(input, overrideOptions), (e) => new Error(TreeFormatter.formatIssue(e)))
 }
 
 const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -56,180 +51,225 @@ const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
     Option.getRight(parser(input, overrideOptions))
 }
 
-const getEffect = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
+const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
-  return (input: unknown, overrideOptions?: AST.ParseOptions) =>
-    ParseResult.mapError(
-      parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true }),
-      ParseResult.parseError
-    )
-}
-
-const getPromise = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
-  const parser = getEffect(ast, isDecoding, options)
-  return (input: unknown, overrideOptions?: AST.ParseOptions) => Effect.runPromise(parser(input, overrideOptions))
+  return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<R, ParseResult.ParseIssue, any> =>
+    parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true })
 }
 
 /**
- * @category parsing
+ * @category decoding
  * @since 1.0.0
  */
-export const parseSync = <I, A>(
-  schema: Schema.Schema<I, A>,
+export const decodeUnknownSync = <I, A>(
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(schema.ast, true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(schema.ast, true, options)
 
 /**
- * @category parsing
+ * @category decoding
  * @since 1.0.0
  */
-export const parseOption = <I, A>(
-  schema: Schema.Schema<I, A>,
+export const decodeUnknownOption = <I, A>(
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(schema.ast, true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(schema.ast, true, options)
 
 /**
- * @category parsing
+ * @category decoding
  * @since 1.0.0
  */
-export const parseEither = <I, A>(schema: Schema.Schema<I, A>, options?: AST.ParseOptions) => {
-  const parser = getEither(schema.ast, true, options)
-  return (i: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseError, A> =>
-    Either.mapLeft(parser(i, overrideOptions), ParseResult.parseError)
+export const decodeUnknownEither = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> =>
+  getEither(schema.ast, true, options)
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const decodeUnknownPromise = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+) => {
+  const parser = decodeUnknown(schema, options)
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<A> => Effect.runPromise(parser(u, overrideOptions))
 }
 
 /**
- * @category parsing
+ * @category decoding
  * @since 1.0.0
  */
-export const parsePromise = <I, A>(
-  schema: Schema.Schema<I, A>,
+export const decodeUnknown = <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => Promise<A> => getPromise(schema.ast, true, options)
-
-/**
- * @category parsing
- * @since 1.0.0
- */
-export const parse = <I, A>(
-  schema: Schema.Schema<I, A>,
-  options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<never, ParseResult.ParseError, A> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> =>
   getEffect(schema.ast, true, options)
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodeUnknownSync = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => I => getSync(schema.ast, false, options)
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodeUnknownOption = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<I> => getOption(schema.ast, false, options)
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodeUnknownEither = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, I> =>
+  getEither(schema.ast, false, options)
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodeUnknownPromise = <I, A>(
+  schema: Schema.Schema<never, I, A>,
+  options?: AST.ParseOptions
+) => {
+  const parser = encodeUnknown(schema, options)
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<I> => Effect.runPromise(parser(u, overrideOptions))
+}
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodeUnknown = <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
+  options?: AST.ParseOptions
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> =>
+  getEffect(schema.ast, false, options)
 
 /**
  * @category decoding
  * @since 1.0.0
  */
 export const decodeSync: <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-) => (i: I, overrideOptions?: AST.ParseOptions) => A = parseSync
+) => (i: I, overrideOptions?: AST.ParseOptions) => A = decodeUnknownSync
 
 /**
  * @category decoding
  * @since 1.0.0
  */
 export const decodeOption: <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-) => (i: I, overrideOptions?: AST.ParseOptions) => Option.Option<A> = parseOption
+) => (i: I, overrideOptions?: AST.ParseOptions) => Option.Option<A> = decodeUnknownOption
 
 /**
  * @category decoding
  * @since 1.0.0
  */
 export const decodeEither: <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-) => (i: I, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, A> = parseEither
+) => (i: I, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> = decodeUnknownEither
 
 /**
  * @category decoding
  * @since 1.0.0
  */
 export const decodePromise: <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-) => (i: I, overrideOptions?: AST.ParseOptions) => Promise<A> = parsePromise
+) => (i: I, overrideOptions?: AST.ParseOptions) => Promise<A> = decodeUnknownPromise
 
 /**
  * @category decoding
  * @since 1.0.0
  */
-export const decode: <I, A>(
-  schema: Schema.Schema<I, A>,
+export const decode: <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
-) => (i: I, overrideOptions?: AST.ParseOptions) => Effect.Effect<never, ParseResult.ParseError, A> = parse
+) => (i: I, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> = decodeUnknown
 
 /**
  * @category validation
  * @since 1.0.0
  */
 export const validateSync = <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (a: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(AST.to(schema.ast), true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(AST.to(schema.ast), true, options)
 
 /**
  * @category validation
  * @since 1.0.0
  */
 export const validateOption = <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (a: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(AST.to(schema.ast), true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(AST.to(schema.ast), true, options)
 
 /**
  * @category validation
  * @since 1.0.0
  */
 export const validateEither = <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-) => {
-  const parser = getEither(AST.to(schema.ast), true, options)
-  return (a: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseError, A> =>
-    Either.mapLeft(parser(a, overrideOptions), ParseResult.parseError)
-}
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> =>
+  getEither(AST.to(schema.ast), true, options)
 
 /**
  * @category validation
  * @since 1.0.0
  */
 export const validatePromise = <I, A>(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (i: unknown, overrideOptions?: AST.ParseOptions) => Promise<A> => getPromise(AST.to(schema.ast), true, options)
-
-/**
- * @category validation
- * @since 1.0.0
- */
-export const validate = <I, A>(
-  schema: Schema.Schema<I, A>,
-  options?: AST.ParseOptions
-): (a: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<never, ParseResult.ParseError, A> =>
-  getEffect(AST.to(schema.ast), true, options)
-
-/**
- * @category validation
- * @since 1.0.0
- */
-export const is = <I, A>(schema: Schema.Schema<I, A>, options?: AST.ParseOptions) => {
-  const parser = goMemo(AST.to(schema.ast), true)
-  return (a: unknown, overrideOptions?: AST.ParseOptions): a is A =>
-    Either.isRight(parser(a, { ...mergeParseOptions(options, overrideOptions), isExact: true }) as any)
+) => {
+  const parser = validate(schema, options)
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<A> => Effect.runPromise(parser(u, overrideOptions))
 }
 
 /**
  * @category validation
  * @since 1.0.0
  */
-export const asserts = <I, A>(schema: Schema.Schema<I, A>, options?: AST.ParseOptions) => {
+export const validate = <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
+  options?: AST.ParseOptions
+): (a: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> =>
+  getEffect(AST.to(schema.ast), true, options)
+
+/**
+ * @category validation
+ * @since 1.0.0
+ */
+export const is = <I, A>(schema: Schema.Schema<never, I, A>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.to(schema.ast), true)
-  return (a: unknown, overrideOptions?: AST.ParseOptions): asserts a is A => {
-    const result: Either.Either<ParseResult.ParseIssue, any> = parser(a, {
+  return (u: unknown, overrideOptions?: AST.ParseOptions): u is A =>
+    Either.isRight(parser(u, { ...mergeParseOptions(options, overrideOptions), isExact: true }) as any)
+}
+
+/**
+ * @category validation
+ * @since 1.0.0
+ */
+export const asserts = <I, A>(schema: Schema.Schema<never, I, A>, options?: AST.ParseOptions) => {
+  const parser = goMemo(AST.to(schema.ast), true)
+  return (u: unknown, overrideOptions?: AST.ParseOptions): asserts u is A => {
+    const result: Either.Either<ParseResult.ParseIssue, any> = parser(u, {
       ...mergeParseOptions(options, overrideOptions),
       isExact: true
     }) as any
@@ -243,59 +283,55 @@ export const asserts = <I, A>(schema: Schema.Schema<I, A>, options?: AST.ParseOp
  * @category encoding
  * @since 1.0.0
  */
-export const encodeSync = <I, A>(
-  schema: Schema.Schema<I, A>,
+export const encodeSync: <I, A>(
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (a: A, overrideOptions?: AST.ParseOptions) => I => getSync(schema.ast, false, options)
+) => (a: A, overrideOptions?: AST.ParseOptions) => I = encodeUnknownSync
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodeOption = <I, A>(
-  schema: Schema.Schema<I, A>,
+export const encodeOption: <I, A>(
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (input: A, overrideOptions?: AST.ParseOptions) => Option.Option<I> => getOption(schema.ast, false, options)
+) => (input: A, overrideOptions?: AST.ParseOptions) => Option.Option<I> = encodeUnknownOption
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodeEither = <I, A>(
-  schema: Schema.Schema<I, A>,
+export const encodeEither: <I, A>(
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-) => {
-  const parser = getEither(schema.ast, false, options)
-  return (a: A, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseError, I> =>
-    Either.mapLeft(parser(a, overrideOptions), ParseResult.parseError)
-}
+) => (a: A, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, I> = encodeUnknownEither
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodePromise = <I, A>(
-  schema: Schema.Schema<I, A>,
+export const encodePromise: <I, A>(
+  schema: Schema.Schema<never, I, A>,
   options?: AST.ParseOptions
-): (a: A, overrideOptions?: AST.ParseOptions) => Promise<I> => getPromise(schema.ast, false, options)
+) => (a: A, overrideOptions?: AST.ParseOptions) => Promise<I> = encodeUnknownPromise
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encode = <I, A>(
-  schema: Schema.Schema<I, A>,
+export const encode: <R, I, A>(
+  schema: Schema.Schema<R, I, A>,
   options?: AST.ParseOptions
-): (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<never, ParseResult.ParseError, I> =>
-  getEffect(schema.ast, false, options)
+) => (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> = encodeUnknown
 
 interface InternalOptions extends AST.ParseOptions {
   readonly isEffectAllowed?: boolean
+  // `isExact = false` means that missing keys are treated as undefined values (`{ key: undefined }`)
   readonly isExact?: boolean
 }
 
-interface Parser<I, A> {
-  (i: I, options?: InternalOptions): Effect.Effect<never, ParseResult.ParseIssue, A>
+interface Parser {
+  (i: any, options?: InternalOptions): Effect.Effect<any, ParseResult.ParseIssue, any>
 }
 
 /**
@@ -305,14 +341,14 @@ export const defaultParseOption: AST.ParseOptions = {}
 
 const decodeMemoMap = globalValue(
   Symbol.for("@effect/schema/Parser/decodeMemoMap"),
-  () => new WeakMap<AST.AST, Parser<any, any>>()
+  () => new WeakMap<AST.AST, Parser>()
 )
 const encodeMemoMap = globalValue(
   Symbol.for("@effect/schema/Parser/encodeMemoMap"),
-  () => new WeakMap<AST.AST, Parser<any, any>>()
+  () => new WeakMap<AST.AST, Parser>()
 )
 
-const goMemo = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
+const goMemo = (ast: AST.AST, isDecoding: boolean): Parser => {
   const memoMap = isDecoding ? decodeMemoMap : encodeMemoMap
   const memo = memoMap.get(ast)
   if (memo) {
@@ -323,21 +359,21 @@ const goMemo = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
   return parser
 }
 
-const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
+const go = (ast: AST.AST, isDecoding: boolean): Parser => {
   switch (ast._tag) {
     case "Refinement": {
       if (isDecoding) {
         const from = goMemo(ast.from, true)
         return (i, options) =>
           handleForbidden(
-            ParseResult.flatMap(
-              ParseResult.mapError(from(i, options), (e) => ParseResult.refinement(ast, i, "From", e)),
+            InternalParser.flatMap(
+              InternalParser.mapError(from(i, options), (e) => InternalParser.refinement(ast, i, "From", e)),
               (a) =>
                 Option.match(
                   ast.filter(a, options ?? defaultParseOption, ast),
                   {
                     onNone: () => Either.right(a),
-                    onSome: (e) => Either.left(ParseResult.refinement(ast, i, "Predicate", e.error))
+                    onSome: (e) => Either.left(InternalParser.refinement(ast, i, "Predicate", e))
                   }
                 )
             ),
@@ -347,7 +383,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       } else {
         const from = goMemo(AST.to(ast), true)
         const to = goMemo(dropRightRefinement(ast.from), false)
-        return (i, options) => handleForbidden(ParseResult.flatMap(from(i, options), (a) => to(a, options)), i, options)
+        return (i, options) =>
+          handleForbidden(InternalParser.flatMap(from(i, options), (a) => to(a, options)), i, options)
       }
     }
     case "Transform": {
@@ -356,21 +393,21 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       const to = isDecoding ? goMemo(ast.to, true) : goMemo(ast.from, false)
       return (i1, options) =>
         handleForbidden(
-          ParseResult.flatMap(
-            ParseResult.mapError(
+          InternalParser.flatMap(
+            InternalParser.mapError(
               from(i1, options),
-              (e) => ParseResult.transform(ast, i1, isDecoding ? "From" : "To", e)
+              (e) => InternalParser.transform(ast, i1, isDecoding ? "From" : "To", e)
             ),
             (a) =>
-              ParseResult.flatMap(
-                ParseResult.mapError(
+              InternalParser.flatMap(
+                InternalParser.mapError(
                   transform(a, options ?? defaultParseOption, ast),
-                  (e) => ParseResult.transform(ast, i1, "Transformation", e.error)
+                  (e) => InternalParser.transform(ast, i1, "Transformation", e)
                 ),
                 (i2) =>
-                  ParseResult.mapError(
+                  InternalParser.mapError(
                     to(i2, options),
-                    (e) => ParseResult.transform(ast, i1, isDecoding ? "To" : "From", e)
+                    (e) => InternalParser.transform(ast, i1, isDecoding ? "To" : "From", e)
                   )
               )
           ),
@@ -379,9 +416,16 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         )
     }
     case "Declaration": {
-      const parse = ast.decode(isDecoding, ...ast.typeParameters)
+      const parse = isDecoding
+        ? ast.decodeUnknown(...ast.typeParameters)
+        : ast.encodeUnknown(...ast.typeParameters)
       return (i, options) =>
-        handleForbidden(ParseResult.mapError(parse(i, options ?? defaultParseOption, ast), (e) => e.error), i, options)
+        handleForbidden(
+          InternalParser.mapError(parse(i, options ?? defaultParseOption, ast), (e) =>
+            InternalParser.declaration(ast, i, e)),
+          i,
+          options
+        )
     }
     case "Literal":
       return fromRefinement(ast, (u): u is typeof ast.literal => u === ast.literal)
@@ -424,7 +468,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       const expectedAST = AST.createUnion(ast.elements.map((_, i) => AST.createLiteral(i)))
       return (input: unknown, options) => {
         if (!Array.isArray(input)) {
-          return Either.left(ParseResult.type(ast, input))
+          return Either.left(InternalParser.type(ast, input))
         }
         const allErrors = options?.errors === "all"
         const es: Array<[number, ParseResult.Index]> = []
@@ -434,12 +478,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const len = input.length
         for (let i = len; i <= requiredLen - 1; i++) {
-          const e = ParseResult.index(i, ParseResult.missing)
+          const e = InternalParser.index(i, InternalParser.missing)
           if (allErrors) {
             es.push([stepKey++, e])
             continue
           } else {
-            return Either.left(ParseResult.tuple(ast, input, [e]))
+            return Either.left(InternalParser.tuple(ast, input, [e]))
           }
         }
 
@@ -448,12 +492,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         if (Option.isNone(ast.rest)) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = ParseResult.index(i, ParseResult.unexpected(expectedAST))
+            const e = InternalParser.index(i, InternalParser.unexpected(expectedAST))
             if (allErrors) {
               es.push([stepKey++, e])
               continue
             } else {
-              return Either.left(ParseResult.tuple(ast, input, [e]))
+              return Either.left(InternalParser.tuple(ast, input, [e]))
             }
           }
         }
@@ -465,7 +509,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           output: typeof output
         }
         let queue:
-          | Array<(_: State) => Effect.Effect<never, ParseResult.ParseIssue, void>>
+          | Array<(_: State) => Effect.Effect<any, ParseResult.ParseIssue, void>>
           | undefined = undefined
 
         // ---------------------------------------------
@@ -480,16 +524,16 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           } else {
             const parser = elements[i]
             const te = parser(input[i], options)
-            const eu = ParseResult.eitherOrUndefined(te)
+            const eu = InternalParser.eitherOrUndefined(te)
             if (eu) {
               if (Either.isLeft(eu)) {
                 // the input element is present but is not valid
-                const e = ParseResult.index(i, eu.left)
+                const e = InternalParser.index(i, eu.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(ParseResult.tuple(ast, input, [e]))
+                  return Either.left(InternalParser.tuple(ast, input, [e]))
                 }
               }
               output.push([stepKey++, eu.right])
@@ -503,12 +547,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 Effect.flatMap(Effect.either(te), (t) => {
                   if (Either.isLeft(t)) {
                     // the input element is present but is not valid
-                    const e = ParseResult.index(index, t.left)
+                    const e = InternalParser.index(index, t.left)
                     if (allErrors) {
                       es.push([nk, e])
                       return Effect.unit
                     } else {
-                      return Either.left(ParseResult.tuple(ast, input, [e]))
+                      return Either.left(InternalParser.tuple(ast, input, [e]))
                     }
                   }
                   output.push([nk, t.right])
@@ -525,15 +569,15 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           const [head, ...tail] = rest.value
           for (; i < len - tail.length; i++) {
             const te = head(input[i], options)
-            const eu = ParseResult.eitherOrUndefined(te)
+            const eu = InternalParser.eitherOrUndefined(te)
             if (eu) {
               if (Either.isLeft(eu)) {
-                const e = ParseResult.index(i, eu.left)
+                const e = InternalParser.index(i, eu.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(ParseResult.tuple(ast, input, [e]))
+                  return Either.left(InternalParser.tuple(ast, input, [e]))
                 }
               } else {
                 output.push([stepKey++, eu.right])
@@ -548,12 +592,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 ({ es, output }: State) =>
                   Effect.flatMap(Effect.either(te), (t) => {
                     if (Either.isLeft(t)) {
-                      const e = ParseResult.index(index, t.left)
+                      const e = InternalParser.index(index, t.left)
                       if (allErrors) {
                         es.push([nk, e])
                         return Effect.unit
                       } else {
-                        return Either.left(ParseResult.tuple(ast, input, [e]))
+                        return Either.left(InternalParser.tuple(ast, input, [e]))
                       }
                     } else {
                       output.push([nk, t.right])
@@ -572,16 +616,16 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               continue
             } else {
               const te = tail[j](input[i], options)
-              const eu = ParseResult.eitherOrUndefined(te)
+              const eu = InternalParser.eitherOrUndefined(te)
               if (eu) {
                 if (Either.isLeft(eu)) {
                   // the input element is present but is not valid
-                  const e = ParseResult.index(i, eu.left)
+                  const e = InternalParser.index(i, eu.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return Either.left(ParseResult.tuple(ast, input, [e]))
+                    return Either.left(InternalParser.tuple(ast, input, [e]))
                   }
                 }
                 output.push([stepKey++, eu.right])
@@ -596,12 +640,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                     Effect.flatMap(Effect.either(te), (t) => {
                       if (Either.isLeft(t)) {
                         // the input element is present but is not valid
-                        const e = ParseResult.index(index, t.left)
+                        const e = InternalParser.index(index, t.left)
                         if (allErrors) {
                           es.push([nk, e])
                           return Effect.unit
                         } else {
-                          return Either.left(ParseResult.tuple(ast, input, [e]))
+                          return Either.left(InternalParser.tuple(ast, input, [e]))
                         }
                       }
                       output.push([nk, t.right])
@@ -618,7 +662,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            Either.left(ParseResult.tuple(ast, input, sortByIndex(es))) :
+            Either.left(InternalParser.tuple(ast, input, sortByIndex(es))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue
@@ -641,7 +685,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         return fromRefinement(ast, Predicate.isNotNullable)
       }
 
-      const propertySignatures: Array<Parser<any, any>> = []
+      const propertySignatures: Array<Parser> = []
       const expectedKeys: Record<PropertyKey, null> = {}
       for (const ps of ast.propertySignatures) {
         propertySignatures.push(goMemo(ps.type, isDecoding))
@@ -665,7 +709,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
 
       return (input: unknown, options) => {
         if (!Predicate.isRecord(input)) {
-          return Either.left(ParseResult.type(ast, input))
+          return Either.left(InternalParser.type(ast, input))
         }
         const allErrors = options?.errors === "all"
         const es: Array<[number, ParseResult.Key]> = []
@@ -677,14 +721,14 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         const onExcessPropertyError = options?.onExcessProperty === "error"
         if (onExcessPropertyError) {
           for (const key of Internal.ownKeys(input)) {
-            const eu = ParseResult.eitherOrUndefined(expected(key, options))
+            const eu = InternalParser.eitherOrUndefined(expected(key, options))
             if (eu && Either.isLeft(eu)) {
-              const e = ParseResult.key(key, ParseResult.unexpected(expectedAST))
+              const e = InternalParser.key(key, InternalParser.unexpected(expectedAST))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(ParseResult.typeLiteral(ast, input, [e]))
+                return Either.left(InternalParser.typeLiteral(ast, input, [e]))
               }
             }
           }
@@ -699,7 +743,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           output: typeof output
         }
         let queue:
-          | Array<(state: State) => Effect.Effect<never, ParseResult.ParseIssue, void>>
+          | Array<(state: State) => Effect.Effect<any, ParseResult.ParseIssue, void>>
           | undefined = undefined
 
         const isExact = options?.isExact === true
@@ -711,26 +755,26 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             if (ps.isOptional) {
               continue
             } else if (isExact) {
-              const e = ParseResult.key(name, ParseResult.missing)
+              const e = InternalParser.key(name, InternalParser.missing)
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(ParseResult.typeLiteral(ast, input, [e]))
+                return Either.left(InternalParser.typeLiteral(ast, input, [e]))
               }
             }
           }
           const parser = propertySignatures[i]
           const te = parser(input[name], options)
-          const eu = ParseResult.eitherOrUndefined(te)
+          const eu = InternalParser.eitherOrUndefined(te)
           if (eu) {
             if (Either.isLeft(eu)) {
-              const e = ParseResult.key(name, hasKey ? eu.left : ParseResult.missing)
+              const e = InternalParser.key(name, hasKey ? eu.left : InternalParser.missing)
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(ParseResult.typeLiteral(ast, input, [e]))
+                return Either.left(InternalParser.typeLiteral(ast, input, [e]))
               }
             }
             output[name] = eu.right
@@ -744,12 +788,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               ({ es, output }: State) =>
                 Effect.flatMap(Effect.either(te), (t) => {
                   if (Either.isLeft(t)) {
-                    const e = ParseResult.key(index, hasKey ? t.left : ParseResult.missing)
+                    const e = InternalParser.key(index, hasKey ? t.left : InternalParser.missing)
                     if (allErrors) {
                       es.push([nk, e])
                       return Effect.unit
                     } else {
-                      return Either.left(ParseResult.typeLiteral(ast, input, [e]))
+                      return Either.left(InternalParser.typeLiteral(ast, input, [e]))
                     }
                   }
                   output[index] = t.right
@@ -771,21 +815,21 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             // ---------------------------------------------
             // handle keys
             // ---------------------------------------------
-            const keu = ParseResult.eitherOrUndefined(parameter(key, options))
+            const keu = InternalParser.eitherOrUndefined(parameter(key, options))
             if (keu && Either.isRight(keu)) {
               // ---------------------------------------------
               // handle values
               // ---------------------------------------------
               const vpr = type(input[key], options)
-              const veu = ParseResult.eitherOrUndefined(vpr)
+              const veu = InternalParser.eitherOrUndefined(vpr)
               if (veu) {
                 if (Either.isLeft(veu)) {
-                  const e = ParseResult.key(key, veu.left)
+                  const e = InternalParser.key(key, veu.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return Either.left(ParseResult.typeLiteral(ast, input, [e]))
+                    return Either.left(InternalParser.typeLiteral(ast, input, [e]))
                   }
                 } else {
                   if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -804,12 +848,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                       Effect.either(vpr),
                       (tv) => {
                         if (Either.isLeft(tv)) {
-                          const e = ParseResult.key(index, tv.left)
+                          const e = InternalParser.key(index, tv.left)
                           if (allErrors) {
                             es.push([nk, e])
                             return Effect.unit
                           } else {
-                            return Either.left(ParseResult.typeLiteral(ast, input, [e]))
+                            return Either.left(InternalParser.typeLiteral(ast, input, [e]))
                           }
                         } else {
                           if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -829,7 +873,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            Either.left(ParseResult.typeLiteral(ast, input, sortByIndex(es))) :
+            Either.left(InternalParser.typeLiteral(ast, input, sortByIndex(es))) :
             Either.right(output)
         if (queue && queue.length > 0) {
           const cqueue = queue
@@ -854,7 +898,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       const searchTree = getSearchTree(ast.types, isDecoding)
       const ownKeys = Internal.ownKeys(searchTree.keys)
       const len = ownKeys.length
-      const map = new Map<any, Parser<any, any>>()
+      const map = new Map<any, Parser>()
       for (let i = 0; i < ast.types.length; i++) {
         map.set(ast.types[i], goMemo(ast.types[i], isDecoding))
       }
@@ -878,30 +922,30 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 } else {
                   es.push([
                     stepKey++,
-                    ParseResult.typeLiteral(
+                    InternalParser.typeLiteral(
                       AST.createTypeLiteral([
                         AST.createPropertySignature(name, searchTree.keys[name].ast, false, true)
                       ], []),
                       input,
-                      [ParseResult.key(name, ParseResult.type(searchTree.keys[name].ast, input[name]))]
+                      [InternalParser.key(name, InternalParser.type(searchTree.keys[name].ast, input[name]))]
                     )
                   ])
                 }
               } else {
                 es.push([
                   stepKey++,
-                  ParseResult.typeLiteral(
+                  InternalParser.typeLiteral(
                     AST.createTypeLiteral([
                       AST.createPropertySignature(name, searchTree.keys[name].ast, false, true)
                     ], []),
                     input,
-                    [ParseResult.key(name, ParseResult.missing)]
+                    [InternalParser.key(name, InternalParser.missing)]
                   )
                 ])
               }
             }
           } else {
-            es.push([stepKey++, ParseResult.type(ast, input)])
+            es.push([stepKey++, InternalParser.type(ast, input)])
           }
         }
         if (searchTree.otherwise.length > 0) {
@@ -909,7 +953,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         }
 
         let queue:
-          | Array<(state: State) => Effect.Effect<never, ParseResult.ParseIssue, unknown>>
+          | Array<(state: State) => Effect.Effect<any, ParseResult.ParseIssue, unknown>>
           | undefined = undefined
 
         type State = {
@@ -923,12 +967,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           // the members of a union are ordered based on which one should be decoded first,
           // therefore if one member has added a task, all subsequent members must
           // also add a task to the queue even if they are synchronous
-          const eu = !queue || queue.length === 0 ? ParseResult.eitherOrUndefined(pr) : undefined
+          const eu = !queue || queue.length === 0 ? InternalParser.eitherOrUndefined(pr) : undefined
           if (eu) {
             if (Either.isRight(eu)) {
               return Either.right(eu.right)
             } else {
-              es.push([stepKey++, ParseResult.member(candidate, eu.left)])
+              es.push([stepKey++, InternalParser.member(candidate, eu.left)])
             }
           } else {
             const nk = stepKey++
@@ -943,9 +987,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   } else {
                     return Effect.flatMap(Effect.either(pr), (t) => {
                       if (Either.isRight(t)) {
-                        state.finalResult = ParseResult.succeed(t.right)
+                        state.finalResult = Either.right(t.right)
                       } else {
-                        state.es.push([nk, ParseResult.member(candidate, t.left)])
+                        state.es.push([nk, InternalParser.member(candidate, t.left)])
                       }
                       return Effect.unit
                     })
@@ -962,9 +1006,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           ReadonlyArray.isNonEmptyArray(es) ?
             es.length === 1 && es[0][1]._tag === "Type" ?
               Either.left(es[0][1]) :
-              Either.left(ParseResult.union(ast, input, sortByIndex(es))) :
+              Either.left(InternalParser.union(ast, input, sortByIndex(es))) :
             // this should never happen
-            Either.left(ParseResult.type(AST.neverKeyword, input))
+            Either.left(InternalParser.type(AST.neverKeyword, input))
 
         if (queue && queue.length > 0) {
           const cqueue = queue
@@ -994,8 +1038,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
   }
 }
 
-const fromRefinement = <A>(ast: AST.AST, refinement: (u: unknown) => u is A): Parser<unknown, A> => (u) =>
-  refinement(u) ? Either.right(u) : Either.left(ParseResult.type(ast, u))
+const fromRefinement = <A>(ast: AST.AST, refinement: (u: unknown) => u is A): Parser => (u) =>
+  refinement(u) ? Either.right(u) : Either.left(InternalParser.type(ast, u))
 
 /** @internal */
 export const getLiterals = (
@@ -1003,8 +1047,6 @@ export const getLiterals = (
   isDecoding: boolean
 ): ReadonlyArray<[PropertyKey, AST.Literal]> => {
   switch (ast._tag) {
-    case "Declaration":
-      return getLiterals(ast.type, isDecoding)
     case "TypeLiteral": {
       const out: Array<[PropertyKey, AST.Literal]> = []
       for (let i = 0; i < ast.propertySignatures.length; i++) {
@@ -1018,6 +1060,8 @@ export const getLiterals = (
     }
     case "Refinement":
       return getLiterals(ast.from, isDecoding)
+    case "Suspend":
+      return getLiterals(ast.f(), isDecoding)
     case "Transform":
       return getLiterals(isDecoding ? ast.from : ast.to, isDecoding)
   }
@@ -1092,12 +1136,12 @@ const handleForbidden = <R, A>(
   actual: unknown,
   options?: InternalOptions
 ): Effect.Effect<R, ParseResult.ParseIssue, A> => {
-  const eu = ParseResult.eitherOrUndefined(effect)
+  const eu = InternalParser.eitherOrUndefined(effect)
   return eu
     ? eu
     : options?.isEffectAllowed === true
     ? effect
-    : Either.left(ParseResult.forbidden(actual))
+    : Either.left(InternalParser.forbidden(actual))
 }
 
 function sortByIndex<T>(
@@ -1126,15 +1170,15 @@ const getFinalPropertySignatureTransformation = (
 export const getFinalTransformation = (
   transformation: AST.Transformation,
   isDecoding: boolean
-): (input: any, options: AST.ParseOptions, self: AST.AST) => Effect.Effect<never, ParseResult.ParseError, any> => {
+): (input: any, options: AST.ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, any> => {
   switch (transformation._tag) {
     case "FinalTransformation":
       return isDecoding ? transformation.decode : transformation.encode
     case "ComposeTransformation":
-      return ParseResult.succeed
+      return Either.right
     case "TypeLiteralTransformation":
       return (input) => {
-        let out: Effect.Effect<never, ParseResult.ParseError, any> = Either.right(input)
+        let out: Effect.Effect<any, ParseResult.ParseIssue, any> = Either.right(input)
 
         // ---------------------------------------------
         // handle property signature transformations
@@ -1159,7 +1203,7 @@ export const getFinalTransformation = (
             }
             return input
           }
-          out = ParseResult.map(out, f)
+          out = InternalParser.map(out, f)
         }
         return out
       }

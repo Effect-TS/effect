@@ -6,8 +6,8 @@ describe("bigint > NonPositiveBigintFromSelf", () => {
   const schema = S.NonPositiveBigintFromSelf
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0n)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 0n)
+    await Util.expectDecodeUnknownFailure(
       schema,
       1n,
       `NonPositiveBigintFromSelf

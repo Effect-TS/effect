@@ -12,10 +12,18 @@ describe("Duration > DurationFromSelf", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, Duration.nanos(123n), Duration.nanos(123n))
-    await Util.expectParseSuccess(schema, Duration.millis(0), Duration.millis(0))
-    await Util.expectParseFailure(schema, 123, "Expected DurationFromSelf, actual 123")
-    await Util.expectParseFailure(schema, 123n, "Expected DurationFromSelf, actual 123n")
+    await Util.expectDecodeUnknownSuccess(schema, Duration.nanos(123n), Duration.nanos(123n))
+    await Util.expectDecodeUnknownSuccess(schema, Duration.millis(0), Duration.millis(0))
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      123,
+      `Expected DurationFromSelf, actual 123`
+    )
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      123n,
+      `Expected DurationFromSelf, actual 123n`
+    )
   })
 
   it("encoding", async () => {

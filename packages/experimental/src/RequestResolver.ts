@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Schema from "@effect/schema/Schema"
+import type * as Serializable from "@effect/schema/Serializable"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -111,15 +112,27 @@ export const dataLoader = dual<
 export const persisted = dual<
   (storeId: string) => <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
     self: RequestResolver.RequestResolver<Req, never>
-  ) => Effect.Effect<Persistence.ResultPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>,
+  ) => Effect.Effect<
+    Persistence.ResultPersistence | Scope.Scope,
+    never,
+    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>
+  >,
   <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
     self: RequestResolver.RequestResolver<Req, never>,
     storeId: string
-  ) => Effect.Effect<Persistence.ResultPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>>
+  ) => Effect.Effect<
+    Persistence.ResultPersistence | Scope.Scope,
+    never,
+    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>
+  >
 >(2, <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
   self: RequestResolver.RequestResolver<Req, never>,
   storeId: string
-): Effect.Effect<Persistence.ResultPersistence | Scope.Scope, never, RequestResolver.RequestResolver<Req, never>> =>
+): Effect.Effect<
+  Persistence.ResultPersistence | Scope.Scope,
+  never,
+  RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>
+> =>
   Effect.gen(function*(_) {
     const storage = yield* _(
       (yield* _(Persistence.ResultPersistence)).make(storeId)
@@ -141,7 +154,7 @@ export const persisted = dual<
     const set = (
       request: Req,
       result: Request.Request.Result<Req>
-    ): Effect.Effect<never, never, void> => Effect.ignoreLogged(storage.set(request as any, result))
+    ): Effect.Effect<any, never, void> => Effect.ignoreLogged(storage.set(request as any, result))
 
     return RequestResolver.makeBatched((requests: Array<Req>) =>
       Effect.flatMap(partition(requests), ([remaining, results]) => {

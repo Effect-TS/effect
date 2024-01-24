@@ -25,23 +25,23 @@ describe("string/trimmed", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseSuccess(schema, "")
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.expectDecodeUnknownSuccess(schema, "")
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a ",
       `Trimmed
 └─ Predicate refinement failure
    └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       " a",
       `Trimmed
 └─ Predicate refinement failure
    └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       " a ",
       `Trimmed

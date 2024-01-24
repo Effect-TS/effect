@@ -70,6 +70,11 @@ const go = (e: ParseIssue | Missing | Unexpected, path: ReadonlyArray<PropertyKe
         onNone: () => go(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })
+    case "Declaration":
+      return Option.match(getMessage(e.ast, e.actual), {
+        onNone: () => go(e.error, path),
+        onSome: (message) => [{ _tag, path, message }]
+      })
   }
 }
 

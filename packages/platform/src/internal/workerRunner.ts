@@ -163,13 +163,15 @@ export const layer = <I, R, E, O>(
 
 /** @internal */
 export const makeSerialized = <
+  R,
   I,
   A extends Schema.TaggedRequest.Any,
   const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<R, I, A>,
   handlers: Handlers
 ): Effect.Effect<
+  | R
   | WorkerRunner.PlatformRunner
   | Scope.Scope
   | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
@@ -179,7 +181,7 @@ export const makeSerialized = <
   Effect.gen(function*(_) {
     const scope = yield* _(Effect.scope)
     let context = Context.empty() as Context.Context<any>
-    const parseRequest = Schema.parse(schema)
+    const parseRequest = Schema.decodeUnknown(schema) as (_: unknown) => Effect.Effect<never, never, A>
 
     return yield* _(make((request: A) => {
       const result = (handlers as any)[request._tag](request)
@@ -219,13 +221,15 @@ export const makeSerialized = <
 
 /** @internal */
 export const layerSerialized = <
+  R,
   I,
   A extends Schema.TaggedRequest.Any,
   const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<R, I, A>,
   handlers: Handlers
 ): Layer.Layer<
+  | R
   | WorkerRunner.PlatformRunner
   | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError.WorkerError,

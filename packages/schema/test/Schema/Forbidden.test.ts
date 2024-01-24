@@ -1,22 +1,22 @@
-import * as PR from "@effect/schema/ParseResult"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { formatIssue } from "@effect/schema/TreeFormatter"
-import * as E from "effect/Either"
+import * as Either from "effect/Either"
 import { describe, expect, it } from "vitest"
 
 const expectMessage = <I, A>(
-  schema: S.Schema<I, A>,
+  schema: S.Schema<never, I, A>,
   u: unknown,
   message: string
 ) => {
-  expect(E.mapLeft(S.parseEither(schema)(u), (e) => formatIssue(e.error))).toEqual(
-    E.left(message)
+  expect(Either.mapLeft(S.decodeUnknownEither(schema)(u), (e) => formatIssue(e.error))).toEqual(
+    Either.left(message)
   )
 }
 
 export const expectForbidden = <I, A>(
-  schema: S.Schema<I, A>,
+  schema: S.Schema<never, I, A>,
   u: unknown,
   message: string
 ) => {
@@ -79,11 +79,9 @@ describe("Schema > Forbidden", () => {
   })
 
   it("declaration", () => {
-    const transform = S.declare(
-      [],
-      S.number,
-      () => S.parse(Util.effectify(S.number))
-    )
+    const decodeUnknown = ParseResult.decodeUnknown(Util.effectify(S.number))
+    const encodeUnknown = ParseResult.encodeUnknown(Util.effectify(S.number))
+    const transform = S.declare([], () => decodeUnknown, () => encodeUnknown)
     expectMessage(
       transform,
       1,
@@ -97,11 +95,11 @@ describe("Schema > Forbidden", () => {
       S.transformOrFail(
         S.string,
         S.string,
-        (s) => PR.flatMap(Util.sleep, () => PR.succeed(s)),
-        (s) => PR.flatMap(Util.sleep, () => PR.succeed(s))
+        (s) => ParseResult.flatMap(Util.sleep, () => ParseResult.succeed(s)),
+        (s) => ParseResult.flatMap(Util.sleep, () => ParseResult.succeed(s))
       ),
-      E.right,
-      E.right
+      ParseResult.succeed,
+      ParseResult.succeed
     )
     expectMessage(
       transform,

@@ -10,7 +10,7 @@ describe("Duration > betweenDuration", () => {
   )
 
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Duration.decode("4 seconds"),
       `[5 seconds, 10 seconds] interval
@@ -18,13 +18,13 @@ describe("Duration > betweenDuration", () => {
    └─ Expected a Duration between Duration(5s) and Duration(10s), actual Duration(4s)`
     )
 
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       Duration.decode("7 seconds"),
       Duration.decode("7 seconds")
     )
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Duration.decode("11 seconds"),
       `[5 seconds, 10 seconds] interval

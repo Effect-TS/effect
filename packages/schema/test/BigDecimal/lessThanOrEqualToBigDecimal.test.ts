@@ -8,12 +8,12 @@ describe("BigDecimal > lessThanOrEqualToBigDecimal", () => {
   const schema = S.BigDecimal.pipe(S.lessThanOrEqualToBigDecimal(max))
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "5",
       BigDecimal.normalize(BigDecimal.fromNumber(5))
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "6",
       `a BigDecimal less than or equal to 5

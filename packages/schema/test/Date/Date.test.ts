@@ -10,12 +10,12 @@ describe("Date > Date", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "1970-01-01T00:00:00.000Z",
       new Date(0)
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a",
       `Date

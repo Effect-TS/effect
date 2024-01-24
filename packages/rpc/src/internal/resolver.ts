@@ -44,14 +44,14 @@ export const RpcRequest: Request.Request.Constructor<
   return Object.setPrototypeOf(args, requestProto)
 }
 
-const RpcResponse: Schema.Schema<resolver.RpcResponse> = Schema.union(
+const RpcResponse: Schema.Schema<never, resolver.RpcResponse> = Schema.union(
   Schema.struct({
     _tag: Schema.literal("Success"),
     value: Schema.unknown
   }),
   Schema.struct({
     _tag: Schema.literal("Error"),
-    error: Schema.unknown as Schema.Schema<RpcError>
+    error: Schema.unknown as Schema.Schema<never, RpcError>
   })
 )
 

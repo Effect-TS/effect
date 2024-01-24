@@ -11,28 +11,29 @@ describe("ReadonlyMap > readonlyMapFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.readonlyMapFromSelf(S.NumberFromString, S.string)
-    await Util.expectParseSuccess(schema, new Map(), new Map())
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(schema, new Map(), new Map())
+    await Util.expectDecodeUnknownSuccess(
       schema,
       new Map([["1", "a"], ["2", "b"], ["3", "c"]]),
       new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `Expected ReadonlyMap<NumberFromString, string>, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
-      `ReadonlyArray<readonly [NumberFromString, string]>
-└─ [1]
-   └─ readonly [NumberFromString, string]
-      └─ [0]
-         └─ NumberFromString
-            └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+      `ReadonlyMap<NumberFromString, string>
+└─ ReadonlyArray<readonly [NumberFromString, string]>
+   └─ [1]
+      └─ readonly [NumberFromString, string]
+         └─ [0]
+            └─ NumberFromString
+               └─ Transformation process failure
+                  └─ Expected NumberFromString, actual "a"`
     )
   })
 

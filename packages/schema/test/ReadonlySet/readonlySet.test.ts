@@ -9,17 +9,17 @@ describe("ReadonlySet > readonlySet", () => {
 
   it("decoding", async () => {
     const schema = S.readonlySet(S.number)
-    await Util.expectParseSuccess(schema, [], new Set([]))
-    await Util.expectParseSuccess(schema, [1, 2, 3], new Set([1, 2, 3]))
+    await Util.expectDecodeUnknownSuccess(schema, [], new Set([]))
+    await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], new Set([1, 2, 3]))
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `(ReadonlyArray<number> <-> ReadonlySet<number>)
 └─ From side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> ReadonlySet<number>)

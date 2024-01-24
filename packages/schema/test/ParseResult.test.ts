@@ -10,7 +10,7 @@ describe("ParseResult", () => {
 
   it("toString()", () => {
     const schema = S.struct({ a: S.string })
-    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
+    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
       Either.left(`{ a: string }
 └─ ["a"]
    └─ is missing`)
@@ -19,7 +19,7 @@ describe("ParseResult", () => {
 
   it("toJSON()", () => {
     const schema = S.struct({ a: S.string })
-    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => (e as any).toJSON())))
+    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => (e as any).toJSON())))
       .toStrictEqual(
         Either.left({
           _id: "ParseError",
@@ -32,7 +32,7 @@ describe("ParseResult", () => {
 
   it("[NodeInspectSymbol]", () => {
     const schema = S.struct({ a: S.string })
-    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => inspect(e))))
+    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => inspect(e))))
       .toStrictEqual(
         Either.left(inspect({
           _id: "ParseError",
@@ -44,7 +44,8 @@ describe("ParseResult", () => {
   })
 
   it("Error.stack", () => {
-    expect(ParseResult.parseError(ParseResult.forbidden(1)).stack?.startsWith("ParseError: is forbidden")).toEqual(true)
+    expect(ParseResult.parseError(ParseResult.forbidden(1)).stack?.startsWith("ParseError: is forbidden"))
+      .toEqual(true)
   })
 
   it("Effect.catchTag can be used to catch ParseError", () => {
@@ -59,6 +60,8 @@ describe("ParseResult", () => {
     expect(ParseResult.map(Either.left(forbiddenParseError), (n) => n + 1)).toStrictEqual(
       Either.left(forbiddenParseError)
     )
+    // pipeable
+    expect(Either.right(1).pipe(ParseResult.map((n) => n + 1))).toStrictEqual(Either.right(2))
   })
 
   it("map (Effect)", () => {
@@ -75,6 +78,10 @@ describe("ParseResult", () => {
     )
     expect(ParseResult.mapError(Either.left(forbiddenParseError), () => typeParseError))
       .toStrictEqual(Either.left(typeParseError))
+    // pipeable
+    expect(Either.right(1).pipe(ParseResult.mapError(() => typeParseError))).toStrictEqual(
+      Either.right(1)
+    )
   })
 
   it("mapLeft (Effect)", () => {
@@ -87,24 +94,32 @@ describe("ParseResult", () => {
     ).toStrictEqual(Exit.fail(typeParseError))
   })
 
-  it("bimap (Either)", () => {
-    expect(ParseResult.mapBoth(Either.right(1), () => typeParseError, (n) => n + 1)).toStrictEqual(
-      Either.right(2)
-    )
+  it("mapBoth (Either)", () => {
+    expect(ParseResult.mapBoth(Either.right(1), { onFailure: () => typeParseError, onSuccess: (n) => n + 1 }))
+      .toStrictEqual(Either.right(2))
     expect(
-      ParseResult.mapBoth(Either.left(forbiddenParseError), () => typeParseError, (n) => n + 1)
+      ParseResult.mapBoth(Either.left(forbiddenParseError), {
+        onFailure: () => typeParseError,
+        onSuccess: (n) => n + 1
+      })
     ).toStrictEqual(Either.left(typeParseError))
+    // pipeable
+    expect(Either.right(1).pipe(ParseResult.mapBoth({ onFailure: () => typeParseError, onSuccess: (n) => n + 1 })))
+      .toStrictEqual(Either.right(2))
   })
 
-  it("bimap (Effect)", () => {
+  it("mapBoth (Effect)", () => {
     expect(
       Effect.runSyncExit(
-        ParseResult.mapBoth(Effect.succeed(1), () => typeParseError, (n) => n + 1)
+        ParseResult.mapBoth(Effect.succeed(1), { onFailure: () => typeParseError, onSuccess: (n) => n + 1 })
       )
     ).toStrictEqual(Exit.succeed(2))
     expect(
       Effect.runSyncExit(
-        ParseResult.mapBoth(Effect.fail(forbiddenParseError), () => typeParseError, (n) => n + 1)
+        ParseResult.mapBoth(Effect.fail(forbiddenParseError), {
+          onFailure: () => typeParseError,
+          onSuccess: (n) => n + 1
+        })
       )
     ).toStrictEqual(Exit.fail(typeParseError))
   })
@@ -115,6 +130,10 @@ describe("ParseResult", () => {
     )
     expect(ParseResult.orElse(Either.left(forbiddenParseError), () => Either.right(2)))
       .toStrictEqual(Either.right(2))
+    // pipeable
+    expect(Either.right(1).pipe(ParseResult.orElse(() => Either.right(2)))).toStrictEqual(
+      Either.right(1)
+    )
   })
 
   it("orElse (Effect)", () => {

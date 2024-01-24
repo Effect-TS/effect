@@ -11,22 +11,23 @@ describe("ReadonlySet > readonlySetFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.readonlySetFromSelf(S.NumberFromString)
-    await Util.expectParseSuccess(schema, new Set(), new Set())
-    await Util.expectParseSuccess(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
+    await Util.expectDecodeUnknownSuccess(schema, new Set(), new Set())
+    await Util.expectDecodeUnknownSuccess(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `Expected ReadonlySet<NumberFromString>, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       new Set(["1", "a", "3"]),
-      `ReadonlyArray<NumberFromString>
-└─ [1]
-   └─ NumberFromString
-      └─ Transformation process failure
-         └─ Expected NumberFromString, actual "a"`
+      `ReadonlySet<NumberFromString>
+└─ ReadonlyArray<NumberFromString>
+   └─ [1]
+      └─ NumberFromString
+         └─ Transformation process failure
+            └─ Expected NumberFromString, actual "a"`
     )
   })
 

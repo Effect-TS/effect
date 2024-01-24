@@ -7,7 +7,7 @@ describe("Schema > allErrors option", () => {
     describe("tuple", () => {
       it("e r e", async () => {
         const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [true],
           `readonly [string, ...number[], boolean]
@@ -21,7 +21,7 @@ describe("Schema > allErrors option", () => {
 
       it("missing element", async () => {
         const schema = S.tuple(S.string, S.number)
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [],
           `readonly [string, number]
@@ -35,7 +35,7 @@ describe("Schema > allErrors option", () => {
 
       it("unexpected indexes", async () => {
         const schema = S.tuple()
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           ["a", "b"],
           `readonly []
@@ -49,7 +49,7 @@ describe("Schema > allErrors option", () => {
 
       it("wrong type for elements", async () => {
         const schema = S.tuple(S.string, S.number)
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, "b"],
           `readonly [string, number]
@@ -63,7 +63,7 @@ describe("Schema > allErrors option", () => {
 
       it("wrong type for rest", async () => {
         const schema = S.tuple(S.string).pipe(S.rest(S.number))
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           ["a", "b", "c"],
           `readonly [string, ...number[]]
@@ -77,7 +77,7 @@ describe("Schema > allErrors option", () => {
 
       it("wrong type for post rest elements", async () => {
         const schema = S.array(S.boolean).pipe(S.element(S.number), S.element(S.number))
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           ["a", "b"],
           `readonly [...boolean[], number, number]
@@ -93,7 +93,7 @@ describe("Schema > allErrors option", () => {
     describe("struct", () => {
       it("missing keys", async () => {
         const schema = S.struct({ a: S.string, b: S.number })
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           {},
           `{ a: string; b: number }
@@ -107,7 +107,7 @@ describe("Schema > allErrors option", () => {
 
       it("wrong type for values", async () => {
         const schema = S.struct({ a: S.string, b: S.number })
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: "b" },
           `{ a: string; b: number }
@@ -121,7 +121,7 @@ describe("Schema > allErrors option", () => {
 
       it("unexpected keys", async () => {
         const schema = S.struct({ a: S.number })
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: "b", c: "c" },
           `{ a: number }
@@ -137,7 +137,7 @@ describe("Schema > allErrors option", () => {
     describe("record", () => {
       it("all key errors", async () => {
         const schema = S.record(S.string.pipe(S.minLength(2)), S.number)
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: 2 },
           `{ [x: string]: number }
@@ -151,7 +151,7 @@ describe("Schema > allErrors option", () => {
 
       it("all value errors", async () => {
         const schema = S.record(S.string, S.number)
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           { a: "a", b: "b" },
           `{ [x: string]: number }

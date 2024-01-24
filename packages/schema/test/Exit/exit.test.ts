@@ -10,12 +10,12 @@ describe("Exit > exit", () => {
 
   it("decoding", async () => {
     const schema = S.exit(S.string, S.number)
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       { _tag: "Failure", cause: { _tag: "Fail", error: "error" } },
       Exit.fail("error")
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       { _tag: "Success", value: 123 },
       Exit.succeed(123)
