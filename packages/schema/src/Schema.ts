@@ -19,6 +19,7 @@ import * as FiberId from "effect/FiberId"
 import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
 import * as HashSet from "effect/HashSet"
+import * as List from "effect/List"
 import * as N from "effect/Number"
 import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
@@ -5342,6 +5343,62 @@ export const hashSet = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray
     array(item),
     hashSetFromSelf(to(item)),
     (as) => HashSet.fromIterable(as),
+    (set) => Array.from(set)
+  )
+
+const listArbitrary = <A>(item: Arbitrary<A>): Arbitrary<List.List<A>> => (fc) =>
+  fc.array(item(fc)).map((as) => List.fromIterable(as))
+
+const listPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<List.List<A>> => (set) =>
+  `List(${Array.from(set).map((a) => item(a)).join(", ")})`
+
+const listEquivalence = <A>(
+  item: Equivalence.Equivalence<A>
+): Equivalence.Equivalence<List.List<A>> => {
+  const arrayEquivalence = ReadonlyArray.getEquivalence(item)
+  return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
+}
+
+const listParse = <R, A>(
+  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<A>>
+): ParseResult.DeclarationDecodeUnknown<R, List.List<A>> =>
+(u, options, ast) =>
+  List.isList(u) ?
+    ParseResult.map(
+      decodeUnknown(Array.from(u), options),
+      (as): List.List<A> => List.fromIterable(as)
+    )
+    : ParseResult.fail(ParseResult.type(ast, u))
+
+/**
+ * @category List transformations
+ * @since 1.0.0
+ */
+export const listFromSelf = <R, I, A>(
+  item: Schema<R, I, A>
+): Schema<R, List.List<I>, List.List<A>> => {
+  return declare(
+    [item],
+    (item) => listParse(ParseResult.decodeUnknown(array(item))),
+    (item) => listParse(ParseResult.encodeUnknown(array(item))),
+    {
+      description: `List<${Format.format(item)}>`,
+      pretty: listPretty,
+      arbitrary: listArbitrary,
+      equivalence: listEquivalence
+    }
+  )
+}
+
+/**
+ * @category List transformations
+ * @since 1.0.0
+ */
+export const list = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray<I>, List.List<A>> =>
+  transform(
+    array(item),
+    listFromSelf(to(item)),
+    (as) => List.fromIterable(as),
     (set) => Array.from(set)
   )
 
