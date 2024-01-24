@@ -27,7 +27,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Secret from "effect/Secret"
 import * as S from "effect/String"
-import type { Covariant, Equals, Invariant, Mutable, Simplify } from "effect/Types"
+import type { Covariant, Equals, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as arbitrary from "./Arbitrary.js"
 import * as ArrayFormatter from "./ArrayFormatter.js"
@@ -1450,10 +1450,10 @@ export function filter<C extends A, B extends A, A = C>(
   refinement: Predicate.Refinement<A, B>,
   options?: FilterAnnotations<A>
 ): <R, I>(self: Schema<R, I, C>) => Schema<R, I, C & B>
-export function filter<B extends A, A = B>(
-  predicate: Predicate.Predicate<A>,
-  options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, B>) => Schema<R, I, B>
+export function filter<A>(
+  predicate: Predicate.Predicate<NoInfer<A>>,
+  options?: FilterAnnotations<NoInfer<A>>
+): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A>
 export function filter<A>(
   predicate: Predicate.Predicate<A> | AST.Refinement["filter"],
   options?: FilterAnnotations<A>
