@@ -16,7 +16,7 @@ Welcome to the documentation for `@effect/schema`, **a library for defining and 
 
 If you're eager to learn how to define your first schema, jump straight to the [**Basic usage**](#basic-usage) section!
 
-## Understanding Parsing, Unparsing, Decoding, and Encoding
+## Understanding Decoding and Encoding
 
 ```mermaid
 sequenceDiagram
