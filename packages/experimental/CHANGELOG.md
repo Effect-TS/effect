@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.7.1
+
+### Patch Changes
+
+- [#1968](https://github.com/Effect-TS/effect/pull/1968) [`fdf7b0e`](https://github.com/Effect-TS/effect/commit/fdf7b0e6647419fb70e18be64b60e652de42e97d) Thanks [@IMax153](https://github.com/IMax153)! - ensure data-loader worker fiber can be interrupted if forked in an uninterruptible region
+
 ## 0.7.0
 
 ### Minor Changes
