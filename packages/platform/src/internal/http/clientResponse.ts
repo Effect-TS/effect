@@ -141,7 +141,7 @@ export const schemaJson = <
   },
   A
 >(schema: Schema.Schema<R, I, A>) => {
-  const parse = Schema.parse(schema)
+  const parse = Schema.decodeUnknown(schema)
   return (self: ClientResponse.ClientResponse): Effect.Effect<R, Error.ResponseError | ParseResult.ParseError, A> =>
     Effect.flatMap(
       self.json,
@@ -163,7 +163,7 @@ export const schemaNoBody = <
   },
   A
 >(schema: Schema.Schema<R, I, A>) => {
-  const parse = Schema.parse(schema)
+  const parse = Schema.decodeUnknown(schema)
   return (self: ClientResponse.ClientResponse): Effect.Effect<R, ParseResult.ParseError, A> =>
     parse({
       status: self.status,

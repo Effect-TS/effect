@@ -131,7 +131,7 @@ describe("Schema", () => {
         _tag: "currentTime"
       })
 
-      expect(S.parseEither(schema)({ _tag: "greet", input: 123 })._tag).toEqual(
+      expect(S.decodeUnknownEither(schema)({ _tag: "greet", input: 123 })._tag).toEqual(
         "Left"
       )
     })

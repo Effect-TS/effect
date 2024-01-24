@@ -216,7 +216,7 @@ export const schemaJson = <R, I, A>(schema: Schema.Schema<R, I, A>): {
     field: string
   ): Effect.Effect<R, ParseResult.ParseError, A>
 } => {
-  const parse = Schema.parse(Schema.parseJson(schema))
+  const parse = Schema.decodeUnknown(Schema.parseJson(schema))
   return dual<
     (field: string) => (self: UrlParams) => Effect.Effect<R, ParseResult.ParseError, A>,
     (self: UrlParams, field: string) => Effect.Effect<R, ParseResult.ParseError, A>

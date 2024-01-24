@@ -47,7 +47,7 @@ export interface IncomingMessage<E> {
  * @category schema
  */
 export const schemaBodyJson = <R, I, A>(schema: Schema.Schema<R, I, A>) => {
-  const parse = Schema.parse(schema)
+  const parse = Schema.decodeUnknown(schema)
   return <E>(self: IncomingMessage<E>): Effect.Effect<R, E | ParseResult.ParseError, A> =>
     Effect.flatMap(self.json, parse)
 }
@@ -59,7 +59,7 @@ export const schemaBodyJson = <R, I, A>(schema: Schema.Schema<R, I, A>) => {
 export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<R, I, A>
 ) => {
-  const parse = Schema.parse(schema)
+  const parse = Schema.decodeUnknown(schema)
   return <E>(self: IncomingMessage<E>): Effect.Effect<R, E | ParseResult.ParseError, A> =>
     Effect.flatMap(self.urlParamsBody, (_) => parse(Object.fromEntries(_)))
 }
@@ -69,7 +69,7 @@ export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>
  * @category schema
  */
 export const schemaHeaders = <R, I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<R, I, A>) => {
-  const parse = Schema.parse(schema)
+  const parse = Schema.decodeUnknown(schema)
   return <E>(self: IncomingMessage<E>): Effect.Effect<R, ParseResult.ParseError, A> => parse(self.headers)
 }
 

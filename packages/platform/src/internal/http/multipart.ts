@@ -109,7 +109,7 @@ export const filesSchema: Schema.Schema<
 export const schemaPersisted = <R, I extends Multipart.Persisted, A>(
   schema: Schema.Schema<R, I, A>
 ) => {
-  const parse = Schema.parse(schema)
+  const parse = Schema.decodeUnknown(schema)
   return (persisted: Multipart.Persisted) => parse(persisted)
 }
 
@@ -136,7 +136,7 @@ export const schemaJson = <R, I, A>(schema: Schema.Schema<R, I, A>): {
     ) => Effect.Effect<R, ParseResult.ParseError, A>
   >(2, (persisted, field) =>
     Effect.map(
-      Schema.parse(
+      Schema.decodeUnknown(
         Schema.struct({
           [field]: fromJson
         })

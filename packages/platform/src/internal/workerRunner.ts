@@ -181,7 +181,7 @@ export const makeSerialized = <
   Effect.gen(function*(_) {
     const scope = yield* _(Effect.scope)
     let context = Context.empty() as Context.Context<any>
-    const parseRequest = Schema.parse(schema) as (_: unknown) => Effect.Effect<never, never, A>
+    const parseRequest = Schema.decodeUnknown(schema) as (_: unknown) => Effect.Effect<never, never, A>
 
     return yield* _(make((request: A) => {
       const result = (handlers as any)[request._tag](request)

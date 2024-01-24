@@ -5,7 +5,7 @@ import { RpcDecodeFailure, RpcEncodeFailure } from "../Error.js"
 
 /** @internal */
 export const decode = <R, I, A>(schema: Schema.Schema<R, I, A>) => {
-  const decode = Schema.parse(schema)
+  const decode = Schema.decodeUnknown(schema)
   return (input: unknown): Effect.Effect<R, RpcDecodeFailure, A> =>
     Effect.mapError(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ error: error.error }))
 }

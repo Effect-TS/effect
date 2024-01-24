@@ -171,7 +171,7 @@ export const unpackSchema = <R, I, A>(
   Chunk.Chunk<A>,
   void
 > => {
-  const parse = Schema.parse(Schema.chunkFromSelf(schema))
+  const parse = Schema.decodeUnknown(Schema.chunkFromSelf(schema))
   return Channel.mapOutEffect(unpack<IE>(), parse)
 }
 

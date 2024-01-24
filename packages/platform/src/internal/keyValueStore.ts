@@ -73,7 +73,7 @@ const makeSchemaStore = <R, I, A>(
   schema: Schema.Schema<R, I, A>
 ): KeyValueStore.SchemaStore<R, A> => {
   const jsonSchema = Schema.parseJson(schema)
-  const parse = Schema.parse(jsonSchema)
+  const parse = Schema.decodeUnknown(jsonSchema)
   const encode = Schema.encode(jsonSchema)
 
   const get = (key: string) =>

@@ -415,14 +415,14 @@ const validateInternal = (
       )
     }
     case "DateTime": {
-      return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.Date))
+      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.Date))
     }
     case "Float": {
-      return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.NumberFromString))
+      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.NumberFromString))
     }
     case "Integer": {
       const intFromString = Schema.compose(Schema.NumberFromString, Schema.Int)
-      return attempt(value, getTypeNameInternal(self), Schema.parse(intFromString))
+      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(intFromString))
     }
     case "Path": {
       return Effect.flatMap(FileSystem.FileSystem, (fileSystem) => {
@@ -445,12 +445,12 @@ const validateInternal = (
       })
     }
     case "Secret": {
-      return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.string)).pipe(
+      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.string)).pipe(
         Effect.map((value) => EffectSecret.fromString(value))
       )
     }
     case "Text": {
-      return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.string))
+      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.string))
     }
   }
 }

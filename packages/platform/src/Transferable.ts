@@ -71,16 +71,17 @@ export const schema: {
     identity
   ))
 
-const schemaParse = <R, A>(parse: ParseResult.Parse<R, A>): ParseResult.DeclarationParse<R, A> => (u, options, ast) => {
-  if (!isTransferable(u)) {
-    return ParseResult.fail(ParseResult.type(ast, u))
+const schemaParse =
+  <R, A>(parse: ParseResult.DecodeUnknown<R, A>): ParseResult.DeclarationDecodeUnknown<R, A> => (u, options, ast) => {
+    if (!isTransferable(u)) {
+      return ParseResult.fail(ParseResult.type(ast, u))
+    }
+    const proto = {
+      __proto__: Object.getPrototypeOf(u),
+      [symbol]: u[symbol]
+    }
+    return ParseResult.map(parse(u, options), (a): A => Object.setPrototypeOf(a, proto))
   }
-  const proto = {
-    __proto__: Object.getPrototypeOf(u),
-    [symbol]: u[symbol]
-  }
-  return ParseResult.map(parse(u, options), (a): A => Object.setPrototypeOf(a, proto))
-}
 
 /**
  * @since 1.0.0
@@ -91,8 +92,8 @@ export const schemaFromSelf = <R, I, A>(
 ): Schema.Schema<R, I, A> => {
   return Schema.declare(
     [item],
-    (item) => schemaParse(ParseResult.parse(item)),
-    (item) => schemaParse(ParseResult.unparse(item)),
+    (item) => schemaParse(ParseResult.decodeUnknown(item)),
+    (item) => schemaParse(ParseResult.encodeUnknown(item)),
     { identifier: "Transferable" }
   )
 }
