@@ -14,7 +14,7 @@ import * as stm from "./internal/stm/stm.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Types from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -140,9 +140,9 @@ export declare namespace STM {
    */
   export interface Variance<out R, out E, out A> {
     readonly [STMTypeId]: {
-      readonly _R: Types.Covariant<R>
-      readonly _E: Types.Covariant<E>
-      readonly _A: Types.Covariant<A>
+      readonly _R: Covariant<R>
+      readonly _E: Covariant<E>
+      readonly _A: Covariant<A>
     }
   }
 }
@@ -550,7 +550,7 @@ export const eventually: <R, E, A>(self: STM<R, E, A>) => STM<R, E, A> = stm.eve
  * @category constructors
  */
 export const every: {
-  <A, R, E>(predicate: (a: A) => STM<R, E, boolean>): (iterable: Iterable<A>) => STM<R, E, boolean>
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM<R, E, boolean>): (iterable: Iterable<A>) => STM<R, E, boolean>
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM<R, E, boolean>): STM<R, E, boolean>
 } = stm.every
 
@@ -562,7 +562,7 @@ export const every: {
  * @category constructors
  */
 export const exists: {
-  <A, R, E>(predicate: (a: A) => STM<R, E, boolean>): (iterable: Iterable<A>) => STM<R, E, boolean>
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM<R, E, boolean>): (iterable: Iterable<A>) => STM<R, E, boolean>
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM<R, E, boolean>): STM<R, E, boolean>
 } = stm.exists
 
@@ -597,7 +597,7 @@ export const fiberId: STM<never, never, FiberId.FiberId> = stm.fiberId
  * @category constructors
  */
 export const filter: {
-  <A, R, E>(predicate: (a: A) => STM<R, E, boolean>): (iterable: Iterable<A>) => STM<R, E, Array<A>>
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM<R, E, boolean>): (iterable: Iterable<A>) => STM<R, E, Array<A>>
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM<R, E, boolean>): STM<R, E, Array<A>>
 } = stm.filter
 
@@ -609,7 +609,7 @@ export const filter: {
  * @category constructors
  */
 export const filterNot: {
-  <A, R, E>(predicate: (a: A) => STM<R, E, boolean>): (iterable: Iterable<A>) => STM<R, E, Array<A>>
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM<R, E, boolean>): (iterable: Iterable<A>) => STM<R, E, Array<A>>
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM<R, E, boolean>): STM<R, E, Array<A>>
 } = stm.filterNot
 
@@ -620,10 +620,13 @@ export const filterNot: {
  * @category filtering
  */
 export const filterOrDie: {
-  <A, B extends A>(refinement: Refinement<A, B>, defect: LazyArg<unknown>): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
-  <A, X extends A>(predicate: Predicate<X>, defect: LazyArg<unknown>): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>,
+    defect: LazyArg<unknown>
+  ): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
+  <A>(predicate: Predicate<NoInfer<A>>, defect: LazyArg<unknown>): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
   <R, E, A, B extends A>(self: STM<R, E, A>, refinement: Refinement<A, B>, defect: LazyArg<unknown>): STM<R, E, B>
-  <R, E, A, X extends A>(self: STM<R, E, A>, predicate: Predicate<X>, defect: LazyArg<unknown>): STM<R, E, A>
+  <R, E, A>(self: STM<R, E, A>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM<R, E, A>
 } = stm.filterOrDie
 
 /**
@@ -634,10 +637,10 @@ export const filterOrDie: {
  * @category filtering
  */
 export const filterOrDieMessage: {
-  <A, B extends A>(refinement: Refinement<A, B>, message: string): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
-  <A, X extends A>(predicate: Predicate<X>, message: string): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>, message: string): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
+  <A>(predicate: Predicate<NoInfer<A>>, message: string): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
   <R, E, A, B extends A>(self: STM<R, E, A>, refinement: Refinement<A, B>, message: string): STM<R, E, B>
-  <R, E, A, X extends A>(self: STM<R, E, A>, predicate: Predicate<X>, message: string): STM<R, E, A>
+  <R, E, A>(self: STM<R, E, A>, predicate: Predicate<A>, message: string): STM<R, E, A>
 } = stm.filterOrDieMessage
 
 /**
@@ -647,24 +650,24 @@ export const filterOrDieMessage: {
  * @category filtering
  */
 export const filterOrElse: {
-  <A, B extends A, X extends A, R2, E2, A2>(
-    refinement: Refinement<A, B>,
-    orElse: (a: X) => STM<R2, E2, A2>
-  ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, B | A2>
-  <A, X extends A, Y extends A, R2, E2, A2>(
-    predicate: Predicate<X>,
-    orElse: (a: Y) => STM<R2, E2, A2>
-  ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A | A2>
-  <R, E, A, B extends A, X extends A, R2, E2, A2>(
+  <A, B extends A, R2, E2, C>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orElse: (a: NoInfer<A>) => STM<R2, E2, C>
+  ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, B | C>
+  <A, R2, E2, B>(
+    predicate: Predicate<NoInfer<A>>,
+    orElse: (a: NoInfer<A>) => STM<R2, E2, B>
+  ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A | B>
+  <R, E, A, B extends A, R2, E2, C>(
     self: STM<R, E, A>,
     refinement: Refinement<A, B>,
-    orElse: (a: X) => STM<R2, E2, A2>
-  ): STM<R | R2, E | E2, B | A2>
-  <R, E, A, X extends A, Y extends A, R2, E2, A2>(
+    orElse: (a: A) => STM<R2, E2, C>
+  ): STM<R | R2, E | E2, B | C>
+  <R, E, A, R2, E2, B>(
     self: STM<R, E, A>,
-    predicate: Predicate<X>,
-    orElse: (a: Y) => STM<R2, E2, A2>
-  ): STM<R | R2, E | E2, A | A2>
+    predicate: Predicate<A>,
+    orElse: (a: A) => STM<R2, E2, B>
+  ): STM<R | R2, E | E2, A | B>
 } = stm.filterOrElse
 
 /**
@@ -674,24 +677,20 @@ export const filterOrElse: {
  * @category filtering
  */
 export const filterOrFail: {
-  <A, B extends A, X extends A, E2>(
-    refinement: Refinement<A, B>,
-    orFailWith: (a: X) => E2
+  <A, B extends A, E2>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orFailWith: (a: NoInfer<A>) => E2
   ): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, B>
-  <A, X extends A, Y extends A, E2>(
-    predicate: Predicate<X>,
-    orFailWith: (a: Y) => E2
+  <A, E2>(
+    predicate: Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => E2
   ): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, A>
-  <R, E, A, B extends A, X extends A, E2>(
+  <R, E, A, B extends A, E2>(
     self: STM<R, E, A>,
     refinement: Refinement<A, B>,
-    orFailWith: (a: X) => E2
+    orFailWith: (a: A) => E2
   ): STM<R, E | E2, B>
-  <R, E, A, X extends A, Y extends A, E2>(
-    self: STM<R, E, A>,
-    predicate: Predicate<X>,
-    orFailWith: (a: Y) => E2
-  ): STM<R, E | E2, A>
+  <R, E, A, E2>(self: STM<R, E, A>, predicate: Predicate<A>, orFailWith: (a: A) => E2): STM<R, E | E2, A>
 } = stm.filterOrFail
 
 /**
@@ -1723,7 +1722,9 @@ export const retry: STM<never, never, never> = core.retry
  * @category mutations
  */
 export const retryUntil: {
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
   <A>(predicate: Predicate<A>): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
+  <R, E, A, B extends A>(self: STM<R, E, A>, refinement: Refinement<A, B>): STM<R, E, B>
   <R, E, A>(self: STM<R, E, A>, predicate: Predicate<A>): STM<R, E, A>
 } = stm.retryUntil
 
@@ -1817,8 +1818,8 @@ export const sync: <A>(evaluate: () => A) => STM<never, never, A> = core.sync
  * @category sequencing
  */
 export const tap: {
-  <A, X extends A, R2, E2, _>(f: (a: X) => STM<R2, E2, _>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A>
-  <R, E, A, X extends A, R2, E2, _>(self: STM<R, E, A>, f: (a: X) => STM<R2, E2, _>): STM<R | R2, E | E2, A>
+  <A, R2, E2, _>(f: (a: A) => STM<R2, E2, _>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2, _>(self: STM<R, E, A>, f: (a: A) => STM<R2, E2, _>): STM<R | R2, E | E2, A>
 } = stm.tap
 
 /**
@@ -1850,8 +1851,8 @@ export const tapBoth: {
  * @category sequencing
  */
 export const tapError: {
-  <E, X extends E, R2, E2, _>(f: (error: X) => STM<R2, E2, _>): <R, A>(self: STM<R, E, A>) => STM<R2 | R, E | E2, A>
-  <R, A, E, X extends E, R2, E2, _>(self: STM<R, E, A>, f: (error: X) => STM<R2, E2, _>): STM<R | R2, E | E2, A>
+  <E, R2, E2, _>(f: (error: NoInfer<E>) => STM<R2, E2, _>): <R, A>(self: STM<R, E, A>) => STM<R2 | R, E | E2, A>
+  <R, A, E, R2, E2, _>(self: STM<R, E, A>, f: (error: E) => STM<R2, E2, _>): STM<R | R2, E | E2, A>
 } = stm.tapError
 
 const try_: {

@@ -7,6 +7,7 @@ import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
+import type { NoInfer } from "../Types.js"
 import { fromBitmap, hashFragment, toBitmap } from "./hashMap/bitwise.js"
 import { SIZE } from "./hashMap/config.js"
 import * as Node from "./hashMap/node.js"
@@ -486,8 +487,8 @@ export const reduce = Dual.dual<
 
 /** @internal */
 export const filter: {
-  <K, A, B extends A>(f: (a: A, k: K) => a is B): (self: HM.HashMap<K, A>) => HM.HashMap<K, B>
-  <K, B extends A, A = B>(f: (a: A, k: K) => boolean): (self: HM.HashMap<K, B>) => HM.HashMap<K, B>
+  <K, A, B extends A>(f: (a: NoInfer<A>, k: K) => a is B): (self: HM.HashMap<K, A>) => HM.HashMap<K, B>
+  <K, A>(f: (a: NoInfer<A>, k: K) => boolean): (self: HM.HashMap<K, A>) => HM.HashMap<K, A>
   <K, A, B extends A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => a is B): HM.HashMap<K, B>
   <K, A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => boolean): HM.HashMap<K, A>
 } = Dual.dual(
@@ -523,8 +524,8 @@ export const filterMap = Dual.dual<
 
 /** @internal */
 export const findFirst: {
-  <K, A, B extends A>(predicate: (a: A, k: K) => a is B): (self: HM.HashMap<K, A>) => Option.Option<[K, B]>
-  <K, B extends A, A = B>(predicate: (a: A, k: K) => boolean): (self: HM.HashMap<K, B>) => Option.Option<[K, B]>
+  <K, A, B extends A>(predicate: (a: NoInfer<A>, k: K) => a is B): (self: HM.HashMap<K, A>) => Option.Option<[K, B]>
+  <K, A>(predicate: (a: NoInfer<A>, k: K) => boolean): (self: HM.HashMap<K, A>) => Option.Option<[K, A]>
   <K, A, B extends A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => a is B): Option.Option<[K, B]>
   <K, A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option.Option<[K, A]>
 } = Dual.dual(

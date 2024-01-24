@@ -9,11 +9,12 @@ import * as HashSet from "../HashSet.js"
 import { NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isFunction, type Predicate } from "../Predicate.js"
+import { hasProperty, isFunction } from "../Predicate.js"
+import type { Predicate, Refinement } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
-import * as OpCodes from "./opCodes/cause.js"
-
 import type { ParentSpan, Span } from "../Tracer.js"
+import type { NoInfer } from "../Types.js"
+import * as OpCodes from "./opCodes/cause.js"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -643,10 +644,18 @@ export const find = dual<
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const filter = dual<
-  <E>(predicate: Predicate<Cause.Cause<E>>) => (self: Cause.Cause<E>) => Cause.Cause<E>,
-  <E>(self: Cause.Cause<E>, predicate: Predicate<Cause.Cause<E>>) => Cause.Cause<E>
->(2, (self, predicate) => reduceWithContext(self, void 0, FilterCauseReducer(predicate)))
+export const filter: {
+  <E, EB extends E>(
+    refinement: Refinement<Cause.Cause<NoInfer<E>>, Cause.Cause<EB>>
+  ): (self: Cause.Cause<E>) => Cause.Cause<EB>
+  <E>(predicate: Predicate<Cause.Cause<NoInfer<E>>>): (self: Cause.Cause<E>) => Cause.Cause<E>
+  <E, EB extends E>(self: Cause.Cause<E>, refinement: Refinement<Cause.Cause<E>, Cause.Cause<EB>>): Cause.Cause<EB>
+  <E>(self: Cause.Cause<E>, predicate: Predicate<Cause.Cause<E>>): Cause.Cause<E>
+} = dual(
+  2,
+  <E>(self: Cause.Cause<E>, predicate: Predicate<Cause.Cause<E>>): Cause.Cause<E> =>
+    reduceWithContext(self, void 0, FilterCauseReducer(predicate))
+)
 
 // -----------------------------------------------------------------------------
 // Evaluation

@@ -20,7 +20,7 @@ import type { Inspectable } from "./Inspectable.js"
 import * as TR from "./internal/trie.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Types from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 
 const TypeId: unique symbol = TR.TrieTypeId as TypeId
 
@@ -36,7 +36,7 @@ export type TypeId = typeof TypeId
  */
 export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _Value: Types.Covariant<Value>
+    readonly _Value: Covariant<Value>
   }
 }
 
@@ -589,8 +589,8 @@ export const map: {
  * @category filtering
  */
 export const filter: {
-  <A, B extends A>(f: (a: A, k: string) => a is B): (self: Trie<A>) => Trie<B>
-  <B extends A, A = B>(f: (a: A, k: string) => boolean): (self: Trie<B>) => Trie<B>
+  <A, B extends A>(f: (a: NoInfer<A>, k: string) => a is B): (self: Trie<A>) => Trie<B>
+  <A>(f: (a: NoInfer<A>, k: string) => boolean): (self: Trie<A>) => Trie<A>
   <A, B extends A>(self: Trie<A>, f: (a: A, k: string) => a is B): Trie<B>
   <A>(self: Trie<A>, f: (a: A, k: string) => boolean): Trie<A>
 } = TR.filter

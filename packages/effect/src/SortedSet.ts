@@ -13,7 +13,7 @@ import { pipeArguments } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import { hasProperty } from "./Predicate.js"
 import * as RBT from "./RedBlackTree.js"
-import type * as Types from "./Types.js"
+import type { Invariant, NoInfer } from "./Types.js"
 
 const TypeId: unique symbol = Symbol.for("effect/SortedSet")
 
@@ -29,7 +29,7 @@ export type TypeId = typeof TypeId
  */
 export interface SortedSet<in out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _A: Types.Invariant<A>
+    readonly _A: Invariant<A>
   }
   /** @internal */
   readonly keyTree: RBT.RedBlackTree<A, boolean>
@@ -279,9 +279,9 @@ export const map: {
  * @category filtering
  */
 export const partition: {
-  <B extends A, A = B>(
-    predicate: (a: A) => boolean
-  ): (self: SortedSet<B>) => [excluded: SortedSet<B>, satisfying: SortedSet<B>]
+  <A>(
+    predicate: (a: NoInfer<A>) => boolean
+  ): (self: SortedSet<A>) => [excluded: SortedSet<A>, satisfying: SortedSet<A>]
   <A>(self: SortedSet<A>, predicate: (a: A) => boolean): [excluded: SortedSet<A>, satisfying: SortedSet<A>]
 } = Dual.dual(
   2,

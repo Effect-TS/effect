@@ -26,6 +26,7 @@ import * as ReadonlyArray from "../ReadonlyArray.js"
 import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
+import type { NoInfer } from "../Types.js"
 import * as internalCause from "./cause.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
@@ -255,7 +256,12 @@ export const catchTag = dual<
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<R1, E1, A1>
   ) => Effect.Effect<R | R1, Exclude<E, { _tag: K }> | E1, A | A1>
->(3, (self, k, f) => core.catchIf(self, Predicate.isTagged(k), f) as any)
+>(3, <R, E, A, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1, A1>(
+  self: Effect.Effect<R, E, A>,
+  k: K,
+  f: (e: Extract<E, { _tag: K }>) => Effect.Effect<R1, E1, A1>
+): Effect.Effect<R | R1, Exclude<E, { _tag: K }> | E1, A | A1> =>
+  core.catchIf(self, Predicate.isTagged(k) as Predicate.Refinement<E, Extract<E, { _tag: K }>>, f) as any)
 
 /** @internal */
 export const catchTags: {
@@ -453,50 +459,56 @@ export const bindValue = dual<
   ))
 
 /* @internal */
-export const dropUntil = dual<
+export const dropUntil: {
   <A, R, E>(
-    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
+  ): (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>
   <A, R, E>(
     elements: Iterable<A>,
     predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => Effect.Effect<R, E, Array<A>>
->(2, <A, R, E>(
-  elements: Iterable<A>,
-  predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-) =>
-  core.suspend(() => {
-    const iterator = elements[Symbol.iterator]()
-    const builder: Array<A> = []
-    let next: IteratorResult<A, any>
-    let dropping: Effect.Effect<R, E, boolean> = core.succeed(false)
-    let i = 0
-    while ((next = iterator.next()) && !next.done) {
-      const a = next.value
-      const index = i++
-      dropping = core.flatMap(dropping, (bool) => {
-        if (bool) {
-          builder.push(a)
-          return core.succeed(true)
-        }
-        return predicate(a, index)
-      })
-    }
-    return core.map(dropping, () => builder)
-  }))
+  ): Effect.Effect<R, E, Array<A>>
+} = dual(
+  2,
+  <A, R, E>(
+    elements: Iterable<A>,
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
+  ): Effect.Effect<R, E, Array<A>> =>
+    core.suspend(() => {
+      const iterator = elements[Symbol.iterator]()
+      const builder: Array<A> = []
+      let next: IteratorResult<A, any>
+      let dropping: Effect.Effect<R, E, boolean> = core.succeed(false)
+      let i = 0
+      while ((next = iterator.next()) && !next.done) {
+        const a = next.value
+        const index = i++
+        dropping = core.flatMap(dropping, (bool) => {
+          if (bool) {
+            builder.push(a)
+            return core.succeed(true)
+          }
+          return predicate(a, index)
+        })
+      }
+      return core.map(dropping, () => builder)
+    })
+)
 
 /* @internal */
-export const dropWhile = dual<
-  <R, E, A>(
-    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
-  <R, E, A>(
+export const dropWhile: {
+  <A, R, E>(
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
+  ): (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>
+  <A, R, E>(
     elements: Iterable<A>,
     predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => Effect.Effect<R, E, Array<A>>
->(
+  ): Effect.Effect<R, E, Array<A>>
+} = dual(
   2,
-  <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>) =>
+  <A, R, E>(
+    elements: Iterable<A>,
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
+  ): Effect.Effect<R, E, Array<A>> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
       const builder: Array<A> = []
@@ -542,128 +554,111 @@ export const filterMap = dual<
   ))
 
 /* @internal */
-export const filterOrDie = dual<
-  {
-    <A, B extends A, X extends A>(
-      filter: Predicate.Refinement<A, B>,
-      orDieWith: (a: X) => unknown
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-    <A, X extends A, Y extends A>(
-      filter: Predicate.Predicate<X>,
-      orDieWith: (a: Y) => unknown
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  },
-  {
-    <R, E, A, B extends A, X extends A>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Refinement<A, B>,
-      orDieWith: (a: X) => unknown
-    ): Effect.Effect<R, E, B>
-    <R, E, A, X extends A, Y extends A>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
-      orDieWith: (a: Y) => unknown
-    ): Effect.Effect<R, E, A>
-  }
->(3, <R, E, A, X extends A, Y extends A>(
-  self: Effect.Effect<R, E, A>,
-  filter: Predicate.Predicate<X>,
-  orDieWith: (a: Y) => unknown
-): Effect.Effect<R, E, A> => filterOrElse(self, filter, (a) => core.dieSync(() => orDieWith(a as Y))))
+export const filterOrDie: {
+  <A, B extends A>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    orDieWith: (a: A) => unknown
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
+  <A>(
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orDieWith: (a: A) => unknown
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <R, E, A, B extends A>(
+    self: Effect.Effect<R, E, A>,
+    refinement: Predicate.Refinement<A, B>,
+    orDieWith: (a: A) => unknown
+  ): Effect.Effect<R, E, B>
+  <R, E, A>(
+    self: Effect.Effect<R, E, A>,
+    filter: Predicate.Predicate<A>,
+    orDieWith: (a: A) => unknown
+  ): Effect.Effect<R, E, A>
+} = dual(
+  3,
+  <R, E, A>(
+    self: Effect.Effect<R, E, A>,
+    predicate: Predicate.Predicate<A>,
+    orDieWith: (a: A) => unknown
+  ): Effect.Effect<R, E, A> => filterOrElse(self, predicate, (a) => core.dieSync(() => orDieWith(a)))
+)
 
 /* @internal */
-export const filterOrDieMessage = dual<
-  {
-    <A, B extends A>(
-      filter: Predicate.Refinement<A, B>,
-      message: string
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-    <A, X extends A>(
-      filter: Predicate.Predicate<X>,
-      message: string
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Refinement<A, B>,
-      message: string
-    ): Effect.Effect<R, E, B>
-    <R, E, A, X extends A>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
-      message: string
-    ): Effect.Effect<R, E, A>
-  }
->(3, <R, E, A, X extends A>(
-  self: Effect.Effect<R, E, A>,
-  filter: Predicate.Predicate<X>,
-  message: string
-): Effect.Effect<R, E, A> => filterOrElse(self, filter, () => core.dieMessage(message)))
+export const filterOrDieMessage: {
+  <A, B extends A>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    message: string
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
+  <A>(
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    message: string
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <R, E, A, B extends A>(
+    self: Effect.Effect<R, E, A>,
+    refinement: Predicate.Refinement<A, B>,
+    message: string
+  ): Effect.Effect<R, E, B>
+  <R, E, A>(self: Effect.Effect<R, E, A>, predicate: Predicate.Predicate<A>, message: string): Effect.Effect<R, E, A>
+} = dual(
+  3,
+  <R, E, A>(self: Effect.Effect<R, E, A>, predicate: Predicate.Predicate<A>, message: string): Effect.Effect<R, E, A> =>
+    filterOrElse(self, predicate, () => core.dieMessage(message))
+)
 
 /* @internal */
-export const filterOrElse = dual<
-  {
-    <A, B extends A, X extends A, R2, E2, C>(
-      filter: Predicate.Refinement<A, B>,
-      orElse: (a: X) => Effect.Effect<R2, E2, C>
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, B | C>
-    <A, X extends A, Y extends A, R2, E2, B>(
-      filter: Predicate.Predicate<X>,
-      orElse: (a: Y) => Effect.Effect<R2, E2, B>
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A | B>
-  },
-  {
-    <R, E, A, B extends A, X extends A, R2, E2, C>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Refinement<A, B>,
-      orElse: (a: X) => Effect.Effect<R2, E2, C>
-    ): Effect.Effect<R | R2, E | E2, B | C>
-    <R, E, A, X extends A, Y extends A, R2, E2, B>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
-      orElse: (a: Y) => Effect.Effect<R2, E2, B>
-    ): Effect.Effect<R | R2, E | E2, A | B>
-  }
->(3, <R, E, A, R2, E2, B>(
+export const filterOrElse: {
+  <A, B extends A, R2, E2, C>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    orElse: (a: NoInfer<A>) => Effect.Effect<R2, E2, C>
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R, E2 | E, B | C>
+  <A, R2, E2, B>(
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orElse: (a: NoInfer<A>) => Effect.Effect<R2, E2, B>
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R, E2 | E, A | B>
+  <R, E, A, B extends A, R2, E2, C>(
+    self: Effect.Effect<R, E, A>,
+    refinement: Predicate.Refinement<A, B>,
+    orElse: (a: A) => Effect.Effect<R2, E2, C>
+  ): Effect.Effect<R | R2, E | E2, B | C>
+  <R, E, A, R2, E2, B>(
+    self: Effect.Effect<R, E, A>,
+    predicate: Predicate.Predicate<A>,
+    orElse: (a: A) => Effect.Effect<R2, E2, B>
+  ): Effect.Effect<R | R2, E | E2, A | B>
+} = dual(3, <R, E, A, R2, E2, B>(
   self: Effect.Effect<R, E, A>,
-  filter: Predicate.Predicate<A>,
+  predicate: Predicate.Predicate<A>,
   orElse: (a: A) => Effect.Effect<R2, E2, B>
 ): Effect.Effect<R | R2, E | E2, A | B> =>
   core.flatMap(
     self,
-    (a) => filter(a) ? core.succeed<A | B>(a) : orElse(a)
+    (a) => predicate(a) ? core.succeed<A | B>(a) : orElse(a)
   ))
 
 /* @internal */
-export const filterOrFail = dual<
-  {
-    <A, B extends A, X extends A, E2>(
-      filter: Predicate.Refinement<A, B>,
-      orFailWith: (a: X) => E2
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E | E2, B>
-    <A, X extends A, Y extends A, E2>(
-      filter: Predicate.Predicate<X>,
-      orFailWith: (a: Y) => E2
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E | E2, A>
-  },
-  {
-    <R, E, A, B extends A, X extends A, E2>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Refinement<A, B>,
-      orFailWith: (a: X) => E2
-    ): Effect.Effect<R, E | E2, B>
-    <R, E, A, X extends A, Y extends A, E2>(
-      self: Effect.Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
-      orFailWith: (a: Y) => E2
-    ): Effect.Effect<R, E | E2, A>
-  }
->(3, <R, E, A, X extends A, Y extends A, E2>(
+export const filterOrFail: {
+  <A, B extends A, E2>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E2 | E, B>
+  <A, E2>(
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E2 | E, A>
+  <R, E, A, B extends A, E2>(
+    self: Effect.Effect<R, E, A>,
+    refinement: Predicate.Refinement<A, B>,
+    orFailWith: (a: A) => E2
+  ): Effect.Effect<R, E | E2, B>
+  <R, E, A, E2>(
+    self: Effect.Effect<R, E, A>,
+    predicate: Predicate.Predicate<A>,
+    orFailWith: (a: A) => E2
+  ): Effect.Effect<R, E | E2, A>
+} = dual(3, <R, E, A, E2>(
   self: Effect.Effect<R, E, A>,
-  filter: Predicate.Predicate<X>,
-  orFailWith: (a: Y) => E2
-): Effect.Effect<R, E | E2, A> => filterOrElse(self, filter, (a) => core.failSync(() => orFailWith(a as Y))))
+  predicate: Predicate.Predicate<A>,
+  orFailWith: (a: A) => E2
+): Effect.Effect<R, E | E2, A> => filterOrElse(self, predicate, (a) => core.failSync(() => orFailWith(a))))
 
 /* @internal */
 export const findFirst = dual<
@@ -1400,17 +1395,20 @@ export const labelMetrics = dual<
 )
 
 /* @internal */
-export const takeUntil = dual<
-  <R, E, A>(
-    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
+export const takeUntil: {
+  <A, R, E>(
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
+  ): (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>
   <R, E, A>(
     elements: Iterable<A>,
     predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
-  ) => Effect.Effect<R, E, Array<A>>
->(
+  ): Effect.Effect<R, E, Array<A>>
+} = dual(
   2,
-  <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>) =>
+  <R, E, A>(
+    elements: Iterable<A>,
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
+  ): Effect.Effect<R, E, Array<A>> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
       const builder: Array<A> = []
@@ -1435,7 +1433,7 @@ export const takeUntil = dual<
 /* @internal */
 export const takeWhile = dual<
   <R, E, A>(
-    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<R, E, boolean>
   ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
   <R, E, A>(
     elements: Iterable<A>,
@@ -1713,11 +1711,11 @@ export const tryMapPromise = dual<
 
 /* @internal */
 export const unless = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, predicate: LazyArg<boolean>) => Effect.Effect<R, E, Option.Option<A>>
->(2, (self, predicate) =>
+  (condition: LazyArg<boolean>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
+  <R, E, A>(self: Effect.Effect<R, E, A>, condition: LazyArg<boolean>) => Effect.Effect<R, E, Option.Option<A>>
+>(2, (self, condition) =>
   core.suspend(() =>
-    predicate()
+    condition()
       ? succeedNone
       : asSome(self)
   ))
@@ -1725,13 +1723,13 @@ export const unless = dual<
 /* @internal */
 export const unlessEffect = dual<
   <R2, E2>(
-    predicate: Effect.Effect<R2, E2, boolean>
+    condition: Effect.Effect<R2, E2, boolean>
   ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, Option.Option<A>>,
   <R, E, A, R2, E2>(
     self: Effect.Effect<R, E, A>,
-    predicate: Effect.Effect<R2, E2, boolean>
+    condition: Effect.Effect<R2, E2, boolean>
   ) => Effect.Effect<R | R2, E | E2, Option.Option<A>>
->(2, (self, predicate) => core.flatMap(predicate, (b) => (b ? succeedNone : asSome(self))))
+>(2, (self, condition) => core.flatMap(condition, (b) => (b ? succeedNone : asSome(self))))
 
 /* @internal */
 export const unsandbox = <R, E, A>(self: Effect.Effect<R, Cause.Cause<E>, A>) =>
@@ -1771,11 +1769,11 @@ export const updateService = dual<
 
 /* @internal */
 export const when = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, predicate: LazyArg<boolean>) => Effect.Effect<R, E, Option.Option<A>>
->(2, (self, predicate) =>
+  (condition: LazyArg<boolean>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
+  <R, E, A>(self: Effect.Effect<R, E, A>, condition: LazyArg<boolean>) => Effect.Effect<R, E, Option.Option<A>>
+>(2, (self, condition) =>
   core.suspend(() =>
-    predicate()
+    condition()
       ? core.map(self, Option.some)
       : core.succeed(Option.none())
   ))

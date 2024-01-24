@@ -13,6 +13,7 @@ import * as Queue from "../Queue.js"
 import * as Ref from "../Ref.js"
 import type * as Stream from "../Stream.js"
 import type * as Take from "../Take.js"
+import type { NoInfer } from "../Types.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as core from "./core-stream.js"
@@ -75,7 +76,7 @@ export const evaluate = dual<
 
 /** @internal */
 export const filter = dual<
-  <K>(predicate: Predicate<K>) => <R, E, V>(self: GroupBy.GroupBy<R, E, K, V>) => GroupBy.GroupBy<R, E, K, V>,
+  <K>(predicate: Predicate<NoInfer<K>>) => <R, E, V>(self: GroupBy.GroupBy<R, E, K, V>) => GroupBy.GroupBy<R, E, K, V>,
   <R, E, V, K>(self: GroupBy.GroupBy<R, E, K, V>, predicate: Predicate<K>) => GroupBy.GroupBy<R, E, K, V>
 >(2, <R, E, V, K>(self: GroupBy.GroupBy<R, E, K, V>, predicate: Predicate<K>): GroupBy.GroupBy<R, E, K, V> =>
   make(
