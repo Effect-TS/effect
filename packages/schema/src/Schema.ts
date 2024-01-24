@@ -18,6 +18,7 @@ import * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
 import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
+import * as HashSet from "effect/HashSet"
 import * as N from "effect/Number"
 import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
@@ -5286,6 +5287,62 @@ export const exit = <R1, IE, E, R2, IA, A, R3 = never>(
       exit._tag === "Failure"
         ? { _tag: "Failure", cause: exit.cause } as const
         : { _tag: "Success", value: exit.value } as const
+  )
+
+const hashSetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<HashSet.HashSet<A>> => (fc) =>
+  fc.array(item(fc)).map((as) => HashSet.fromIterable(as))
+
+const hashSetPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<HashSet.HashSet<A>> => (set) =>
+  `HashSet(${Array.from(set).map((a) => item(a)).join(", ")})`
+
+const hashSetEquivalence = <A>(
+  item: Equivalence.Equivalence<A>
+): Equivalence.Equivalence<HashSet.HashSet<A>> => {
+  const arrayEquivalence = ReadonlyArray.getEquivalence(item)
+  return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
+}
+
+const hashSetParse = <R, A>(
+  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<A>>
+): ParseResult.DeclarationDecodeUnknown<R, HashSet.HashSet<A>> =>
+(u, options, ast) =>
+  HashSet.isHashSet(u) ?
+    ParseResult.map(
+      decodeUnknown(Array.from(u), options),
+      (as): HashSet.HashSet<A> => HashSet.fromIterable(as)
+    )
+    : ParseResult.fail(ParseResult.type(ast, u))
+
+/**
+ * @category HashSet transformations
+ * @since 1.0.0
+ */
+export const hashSetFromSelf = <R, I, A>(
+  item: Schema<R, I, A>
+): Schema<R, HashSet.HashSet<I>, HashSet.HashSet<A>> => {
+  return declare(
+    [item],
+    (item) => hashSetParse(ParseResult.decodeUnknown(array(item))),
+    (item) => hashSetParse(ParseResult.encodeUnknown(array(item))),
+    {
+      description: `HashSet<${Format.format(item)}>`,
+      pretty: hashSetPretty,
+      arbitrary: hashSetArbitrary,
+      equivalence: hashSetEquivalence
+    }
+  )
+}
+
+/**
+ * @category HashSet transformations
+ * @since 1.0.0
+ */
+export const hashSet = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray<I>, HashSet.HashSet<A>> =>
+  transform(
+    array(item),
+    hashSetFromSelf(to(item)),
+    (as) => HashSet.fromIterable(as),
+    (set) => Array.from(set)
   )
 
 const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<never, A> =>
