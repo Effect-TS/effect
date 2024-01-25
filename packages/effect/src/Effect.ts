@@ -3095,7 +3095,7 @@ export const provide: {
 
 /**
  * Provides the effect with the single service it requires. If the effect
- * requires more than one service use `provideContext` instead.
+ * requires more than one service use `provide` instead.
  *
  * @since 2.0.0
  * @category context
@@ -3114,7 +3114,7 @@ export const provideService: {
 
 /**
  * Provides the effect with the single service it requires. If the effect
- * requires more than one service use `provideContext` instead.
+ * requires more than one service use `provide` instead.
  *
  * @since 2.0.0
  * @category context
