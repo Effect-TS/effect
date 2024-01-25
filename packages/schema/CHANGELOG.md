@@ -1,5 +1,23 @@
 # @effect/schema
 
+## 0.61.1
+
+### Patch Changes
+
+- [#1975](https://github.com/Effect-TS/effect/pull/1975) [`c7550f9`](https://github.com/Effect-TS/effect/commit/c7550f96e1006eee832ce5025bf0c197a65935ea) Thanks [@gcanti](https://github.com/gcanti)! - fix templateLiteral signature (R should be never)
+
+- [#1974](https://github.com/Effect-TS/effect/pull/1974) [`8d1f6e4`](https://github.com/Effect-TS/effect/commit/8d1f6e4bb13e221804fb1762ef19e02bcefc8f61) Thanks [@gcanti](https://github.com/gcanti)! - causeFromSelf: add missing type parameter
+
+- [#1977](https://github.com/Effect-TS/effect/pull/1977) [`1a84dee`](https://github.com/Effect-TS/effect/commit/1a84dee0e9ddbfaf2610e4d7c00c7020c427171a) Thanks [@gcanti](https://github.com/gcanti)! - add `hash`
+
+- [#1978](https://github.com/Effect-TS/effect/pull/1978) [`ac30bf4`](https://github.com/Effect-TS/effect/commit/ac30bf4cd53de0663784f65ae6bee8279333df97) Thanks [@gcanti](https://github.com/gcanti)! - Allow non-async Effects to be used with \*Sync combinators, closes #1976
+
+  - `ParseResult`
+    - add `ast` and `message` fields to `Forbidden`
+
+- Updated dependencies [[`d404561`](https://github.com/Effect-TS/effect/commit/d404561e47ec2fa5f68709a308ee5d2ee959141d), [`7b84a3c`](https://github.com/Effect-TS/effect/commit/7b84a3c7e4b9c8dc02294b0e3cc3ae3becea977b)]:
+  - effect@2.2.2
+
 ## 0.61.0
 
 ### Minor Changes
