@@ -71,6 +71,11 @@ export interface Schema<out R, in out From, in out To = From> extends Schema.Var
 /**
  * @since 1.0.0
  */
+export const hash = <R, I, A>(schema: Schema<R, I, A>): number => AST.hash(schema.ast)
+
+/**
+ * @since 1.0.0
+ */
 export declare module Schema {
   /**
    * @since 1.0.0
