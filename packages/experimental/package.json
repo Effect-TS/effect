@@ -46,10 +46,14 @@
     "@effect/platform-node": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^",
+    "lmdb": "^2.9.2",
     "ws": "^8.14"
   },
   "peerDependenciesMeta": {
     "@effect/platform-node": {
+      "optional": true
+    },
+    "lmdb": {
       "optional": true
     },
     "ws": {
@@ -58,6 +62,7 @@
   },
   "devDependencies": {
     "@types/ws": "^8.5.10",
+    "lmdb": "^2.9.2",
     "vitest-websocket-mock": "^0.3.0",
     "ws": "^8.15.1"
   },
