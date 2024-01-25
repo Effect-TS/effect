@@ -4,6 +4,8 @@
 
 import type { Effect } from "effect/Effect"
 import { dual, identity, pipe } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
+import * as Hash from "effect/Hash"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
@@ -1647,6 +1649,66 @@ export const from = (ast: AST): AST => {
   }
   return ast
 }
+
+const toStringMemoSet = globalValue(
+  Symbol.for("@effect/schema/AST/toStringMemoSet"),
+  () => new WeakSet<AST>()
+)
+
+const containerASTTags = {
+  Declaration: true,
+  Refinement: true,
+  Tuple: true,
+  TypeLiteral: true,
+  Union: true,
+  Suspend: true,
+  Transform: true
+}
+
+const isContainerAST = (ast: object): ast is
+  | Declaration
+  | Refinement
+  | Tuple
+  | TypeLiteral
+  | Union
+  | Suspend
+  | Transform => "_tag" in ast && Predicate.isString(ast["_tag"]) && ast["_tag"] in containerASTTags
+
+/** @internal */
+export const toString = (ast: AST): string =>
+  JSON.stringify(ast, (key, value) => {
+    if (Predicate.isSymbol(value)) {
+      return String(value)
+    }
+    if (typeof value === "object" && value !== null) {
+      if (isContainerAST(value)) {
+        if (toStringMemoSet.has(value)) {
+          return "<suspended schema>"
+        }
+        toStringMemoSet.add(value)
+        if (isSuspend(value)) {
+          const out = value.f()
+          if (toStringMemoSet.has(out)) {
+            return "<suspended schema>"
+          }
+          toStringMemoSet.add(out)
+          return out
+        }
+      } else if (key === "annotations") {
+        const out: Record<string, unknown> = {}
+        for (const k of Internal.ownKeys(value)) {
+          out[String(k)] = value[k]
+        }
+        return out
+      }
+    }
+    return value
+  }, 2)
+
+/**
+ * @since 1.0.0
+ */
+export const hash = (ast: AST): number => Hash.string(toString(ast))
 
 /** @internal */
 export const getCardinality = (ast: AST): number => {
