@@ -5085,10 +5085,10 @@ const causeParse = <R, A>(
  * @category Cause transformations
  * @since 1.0.0
  */
-export const causeFromSelf = <R, I, A>(
-  error: Schema<R, I, A>,
-  defect: Schema<never, unknown, unknown> = unknown
-): Schema<R, Cause.Cause<I>, Cause.Cause<A>> => {
+export const causeFromSelf = <R1, I, A, R2 = never>(
+  error: Schema<R1, I, A>,
+  defect: Schema<R2, unknown, unknown> = unknown
+): Schema<R1 | R2, Cause.Cause<I>, Cause.Cause<A>> => {
   return declare(
     [error, defect],
     (error, defect) => causeParse(ParseResult.decodeUnknown(causeFrom(error, defect))),

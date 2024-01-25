@@ -932,3 +932,25 @@ S.head(S.array(S.number))
 
 // $ExpectType Schema<never, readonly number[], number>
 S.headOr(S.array(S.number))
+
+// ---------------------------------------------
+// cause
+// ---------------------------------------------
+
+declare const defect: S.Schema<"defect", unknown, unknown>
+
+// $ExpectType Schema<never, CauseFrom<string>, Cause<string>>
+S.cause(S.string)
+
+// $ExpectType Schema<"defect", CauseFrom<string>, Cause<string>>
+S.cause(S.string, defect)
+
+// ---------------------------------------------
+// causeFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<never, Cause<string>, Cause<string>>
+S.causeFromSelf(S.string)
+
+// $ExpectType Schema<"defect", Cause<string>, Cause<string>>
+S.causeFromSelf(S.string, defect)
