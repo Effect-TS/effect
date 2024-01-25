@@ -1801,6 +1801,8 @@ const parseCommandLine = (
             continue
           }
           break
+        } else {
+          break
         }
       }
       const parsed = Option.fromNullable(optionName).pipe(
