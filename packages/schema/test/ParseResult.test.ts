@@ -5,7 +5,7 @@ import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe("ParseResult", () => {
-  const forbiddenParseError = ParseResult.parseError(ParseResult.forbidden(null))
+  const forbiddenParseError = ParseResult.parseError(ParseResult.forbidden(S.string.ast, null))
   const typeParseError = ParseResult.parseError(ParseResult.type(S.string.ast, null))
 
   it("toString()", () => {
@@ -44,7 +44,8 @@ describe("ParseResult", () => {
   })
 
   it("Error.stack", () => {
-    expect(ParseResult.parseError(ParseResult.forbidden(1)).stack?.startsWith("ParseError: is forbidden"))
+    expect(ParseResult.parseError(ParseResult.forbidden(S.string.ast, 1)).stack?.startsWith(`ParseError: string
+└─ is forbidden`))
       .toEqual(true)
   })
 
@@ -154,8 +155,8 @@ describe("ParseIssue.actual", () => {
     const result = S.decodeEither(S.transformOrFail(
       S.NumberFromString,
       S.boolean,
-      (_) => ParseResult.fail(ParseResult.forbidden(_)),
-      (_) => ParseResult.fail(ParseResult.forbidden(_))
+      (n, _, ast) => ParseResult.fail(ParseResult.forbidden(ast, n)),
+      (b, _, ast) => ParseResult.fail(ParseResult.forbidden(ast, b))
     ))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual("1")
@@ -166,8 +167,8 @@ describe("ParseIssue.actual", () => {
     const result = S.encodeEither(S.transformOrFail(
       S.boolean,
       S.NumberFromString,
-      (_) => ParseResult.fail(ParseResult.forbidden(_)),
-      (_) => ParseResult.fail(ParseResult.forbidden(_))
+      (n, _, ast) => ParseResult.fail(ParseResult.forbidden(ast, n)),
+      (b, _, ast) => ParseResult.fail(ParseResult.forbidden(ast, b))
     ))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual(1)

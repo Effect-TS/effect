@@ -17,7 +17,8 @@ describe("Schema > validateSync", () => {
   it("should throw on async", () => {
     expect(() => S.validateSync(Util.AsyncDeclaration)("a")).toThrow(
       new Error(
-        "Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work"
+        `AsyncDeclaration
+└─ Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       )
     )
   })

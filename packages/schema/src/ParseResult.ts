@@ -139,6 +139,7 @@ export const type = InternalParser.type
  */
 export interface Forbidden {
   readonly _tag: "Forbidden"
+  readonly ast: AST.AST
   readonly actual: unknown
   readonly message: Option.Option<string>
 }

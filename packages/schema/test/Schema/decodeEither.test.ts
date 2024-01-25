@@ -21,8 +21,9 @@ describe("Schema > decodeEither", () => {
 
   it("should return Left on async", () => {
     Util.expectEitherLeft(
-      S.decodeEither(Util.effectify(S.string))("a"),
-      `Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+      S.decodeEither(Util.AsyncString)("a"),
+      `AsyncString
+└─ Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
     )
   })
 

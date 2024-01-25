@@ -130,7 +130,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
     case "Type":
       return make(formatTypeMessage(e))
     case "Forbidden":
-      return make(formatForbiddenMessage(e))
+      return make(Format.formatAST(e.ast), [make(formatForbiddenMessage(e))])
     case "Unexpected":
       return make(`is unexpected, expected ${Format.formatAST(e.ast, true)}`)
     case "Missing":

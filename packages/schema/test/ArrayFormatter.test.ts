@@ -124,12 +124,12 @@ describe("ArrayFormatter", () => {
     })
 
     it("Forbidden", () => {
-      const schema = Util.effectify(S.string)
+      const schema = Util.AsyncString
       expectIssues(schema, "", [{
         _tag: "Forbidden",
         path: [],
         message:
-          "Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work"
+          `Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       }])
     })
 

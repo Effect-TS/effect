@@ -274,5 +274,10 @@ export const expectSome = <A>(o: Option.Option<A>, a: A) => {
 export const AsyncDeclaration = S.declare(
   [],
   () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
-  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u))
+  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
+  {
+    identifier: "AsyncDeclaration"
+  }
 )
+
+export const AsyncString = effectify(S.string).pipe(S.identifier("AsyncString"))

@@ -4,6 +4,6 @@ import { describe, it } from "vitest"
 
 describe("Schema > encodeUnknownOption", () => {
   it("should return none on async", () => {
-    Util.expectNone(S.encodeUnknownOption(Util.effectify(S.string))("a"))
+    Util.expectNone(S.encodeUnknownOption(Util.AsyncString)("a"))
   })
 })

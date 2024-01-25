@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("Schema > decodeOption", () => {
   it("should return none on async", () => {
-    Util.expectNone(S.decodeOption(Util.effectify(S.string))("a"))
+    Util.expectNone(S.decodeOption(Util.AsyncString)("a"))
   })
 
   const schema = S.struct({ a: Util.NumberFromChar })
