@@ -2167,6 +2167,30 @@ In this example, we have two schemas, `schema1` and `schema2`. The first schema,
 
 Now, by using the `compose` combinator, we can create a new schema, `composedSchema`, that combines the functionality of both `schema1` and `schema2`. This allows us to parse a string and directly obtain an array of numbers as a result.
 
+### Non-strict Option
+
+If you need to be less restrictive when composing your schemas, i.e., when you have something like `Schema<R1, A, B>` and `Schema<R2, C, D>` where `C` is different from `B`, you can make use of the `{ strict: false }` option:
+
+```ts
+declare const compose: <R1, A, B, R2, C, D>(
+  ab: Schema<R1, A, B>,
+  cd: Schema<R2, C, D>, // Less strict constraint
+  options: { strict: false }
+) => Schema<R1 | R2, A, D>;
+```
+
+This is useful when you want to relax the type constraints imposed by the `decode` and `encode` functions, making them more permissive:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+// error: Type 'string | null' is not assignable to type 'string'
+S.compose(S.union(S.null, S.string), S.NumberFromString);
+
+// ok
+S.compose(S.union(S.null, S.string), S.NumberFromString, { strict: false });
+```
+
 ## InstanceOf
 
 In the following section, we demonstrate how to use the `instanceOf` combinator to create a `Schema` for a class instance.
