@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.8.0
+
+### Minor Changes
+
+- [#1985](https://github.com/Effect-TS/effect/pull/1985) [`634af60`](https://github.com/Effect-TS/effect/commit/634af60a2f9d407f42357edc29ca4c14a005fdf9) Thanks [@tim-smart](https://github.com/tim-smart)! - add lmdb implementation of persistence
+
 ## 0.7.2
 
 ### Patch Changes
