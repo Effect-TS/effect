@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.31.0
+
+### Minor Changes
+
+- [#1984](https://github.com/Effect-TS/effect/pull/1984) [`eaab2e8`](https://github.com/Effect-TS/effect/commit/eaab2e81be72df9ded2e01e4c6d40b2bb159a349) Thanks [@IMax153](https://github.com/IMax153)! - default Options.repeated to return an empty array if option is not provided
+
+### Patch Changes
+
+- [#1980](https://github.com/Effect-TS/effect/pull/1980) [`9cf3782`](https://github.com/Effect-TS/effect/commit/9cf3782a17f38097f7b1a0024bd7ec7db8aeb2d0) Thanks [@IMax153](https://github.com/IMax153)! - fix CLI argument parsing to properly handle the case when a repeated option is not provided
+
 ## 0.30.6
 
 ### Patch Changes
