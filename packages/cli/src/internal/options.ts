@@ -1298,10 +1298,15 @@ const parseInternal = (
         return Effect.forEach(values, (value) => validatePrimitive(value))
       }
       return parseInternal(self.argumentOption, args, config).pipe(Effect.matchEffect({
-        onFailure: (error) =>
-          InternalValidationError.isMultipleValuesDetected(error)
-            ? validateMinMax(error.values)
-            : Effect.fail(error),
+        onFailure: (error) => {
+          if (InternalValidationError.isInvalidValue(error)) {
+            return validateMinMax(ReadonlyArray.empty<string>())
+          }
+          if (InternalValidationError.isMultipleValuesDetected(error)) {
+            return validateMinMax(error.values)
+          }
+          return Effect.fail(error)
+        },
         onSuccess: (value) => validateMinMax(ReadonlyArray.of(value as string))
       }))
     }
@@ -1486,10 +1491,7 @@ const matchOptions = (
     HashMap.HashMap<string, ReadonlyArray<string>>
   ]
 > => {
-  if (
-    ReadonlyArray.isNonEmptyReadonlyArray(input)
-    && ReadonlyArray.isNonEmptyReadonlyArray(options)
-  ) {
+  if (ReadonlyArray.isNonEmptyReadonlyArray(options)) {
     return findOptions(input, options, config).pipe(
       Effect.flatMap(([otherArgs, otherOptions, map1]) => {
         if (HashMap.isEmpty(map1)) {
@@ -1806,6 +1808,7 @@ const parseCommandLine = (
         }
       }
       const parsed = Option.fromNullable(optionName).pipe(
+        Option.orElse(() => Option.some(self.argumentOption.fullName)),
         Option.map((name) => ({ name, values }))
       )
       return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
