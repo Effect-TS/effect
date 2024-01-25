@@ -5,8 +5,8 @@ import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe("ParseResult", () => {
-  const forbiddenParseError = ParseResult.parseError(ParseResult.forbidden(S.string.ast, null))
-  const typeParseError = ParseResult.parseError(ParseResult.type(S.string.ast, null))
+  const typeParseError1 = ParseResult.parseError(ParseResult.type(S.string.ast, null))
+  const typeParseError2 = ParseResult.parseError(ParseResult.type(S.number.ast, null))
 
   it("toString()", () => {
     const schema = S.struct({ a: S.string })
@@ -44,13 +44,16 @@ describe("ParseResult", () => {
   })
 
   it("Error.stack", () => {
-    expect(ParseResult.parseError(ParseResult.forbidden(S.string.ast, 1)).stack?.startsWith(`ParseError: string
-└─ is forbidden`))
+    expect(
+      ParseResult.parseError(ParseResult.type(S.string.ast, 1)).stack?.startsWith(
+        `ParseError: Expected a string, actual 1`
+      )
+    )
       .toEqual(true)
   })
 
   it("Effect.catchTag can be used to catch ParseError", () => {
-    const program = Effect.fail(forbiddenParseError).pipe(
+    const program = Effect.fail(typeParseError1).pipe(
       Effect.catchTag("ParseError", () => Effect.succeed(1))
     )
     expect(Effect.runSync(program)).toBe(1)
@@ -58,8 +61,8 @@ describe("ParseResult", () => {
 
   it("map (Either)", () => {
     expect(ParseResult.map(Either.right(1), (n) => n + 1)).toStrictEqual(Either.right(2))
-    expect(ParseResult.map(Either.left(forbiddenParseError), (n) => n + 1)).toStrictEqual(
-      Either.left(forbiddenParseError)
+    expect(ParseResult.map(Either.left(typeParseError1), (n) => n + 1)).toStrictEqual(
+      Either.left(typeParseError1)
     )
     // pipeable
     expect(Either.right(1).pipe(ParseResult.map((n) => n + 1))).toStrictEqual(Either.right(2))
@@ -69,67 +72,67 @@ describe("ParseResult", () => {
     expect(Effect.runSyncExit(ParseResult.map(Effect.succeed(1), (n) => n + 1))).toStrictEqual(
       Exit.succeed(2)
     )
-    expect(Effect.runSyncExit(ParseResult.map(Effect.fail(forbiddenParseError), (n) => n + 1)))
-      .toStrictEqual(Exit.fail(forbiddenParseError))
+    expect(Effect.runSyncExit(ParseResult.map(Effect.fail(typeParseError1), (n) => n + 1)))
+      .toStrictEqual(Exit.fail(typeParseError1))
   })
 
   it("mapLeft (Either)", () => {
-    expect(ParseResult.mapError(Either.right(1), () => typeParseError)).toStrictEqual(
+    expect(ParseResult.mapError(Either.right(1), () => typeParseError2)).toStrictEqual(
       Either.right(1)
     )
-    expect(ParseResult.mapError(Either.left(forbiddenParseError), () => typeParseError))
-      .toStrictEqual(Either.left(typeParseError))
+    expect(ParseResult.mapError(Either.left(typeParseError1), () => typeParseError2))
+      .toStrictEqual(Either.left(typeParseError2))
     // pipeable
-    expect(Either.right(1).pipe(ParseResult.mapError(() => typeParseError))).toStrictEqual(
+    expect(Either.right(1).pipe(ParseResult.mapError(() => typeParseError2))).toStrictEqual(
       Either.right(1)
     )
   })
 
   it("mapLeft (Effect)", () => {
-    expect(Effect.runSyncExit(ParseResult.mapError(Effect.succeed(1), () => typeParseError)))
+    expect(Effect.runSyncExit(ParseResult.mapError(Effect.succeed(1), () => typeParseError2)))
       .toStrictEqual(Exit.succeed(1))
     expect(
       Effect.runSyncExit(
-        ParseResult.mapError(Effect.fail(forbiddenParseError), () => typeParseError)
+        ParseResult.mapError(Effect.fail(typeParseError1), () => typeParseError2)
       )
-    ).toStrictEqual(Exit.fail(typeParseError))
+    ).toStrictEqual(Exit.fail(typeParseError2))
   })
 
   it("mapBoth (Either)", () => {
-    expect(ParseResult.mapBoth(Either.right(1), { onFailure: () => typeParseError, onSuccess: (n) => n + 1 }))
+    expect(ParseResult.mapBoth(Either.right(1), { onFailure: () => typeParseError2, onSuccess: (n) => n + 1 }))
       .toStrictEqual(Either.right(2))
     expect(
-      ParseResult.mapBoth(Either.left(forbiddenParseError), {
-        onFailure: () => typeParseError,
+      ParseResult.mapBoth(Either.left(typeParseError1), {
+        onFailure: () => typeParseError2,
         onSuccess: (n) => n + 1
       })
-    ).toStrictEqual(Either.left(typeParseError))
+    ).toStrictEqual(Either.left(typeParseError2))
     // pipeable
-    expect(Either.right(1).pipe(ParseResult.mapBoth({ onFailure: () => typeParseError, onSuccess: (n) => n + 1 })))
+    expect(Either.right(1).pipe(ParseResult.mapBoth({ onFailure: () => typeParseError2, onSuccess: (n) => n + 1 })))
       .toStrictEqual(Either.right(2))
   })
 
   it("mapBoth (Effect)", () => {
     expect(
       Effect.runSyncExit(
-        ParseResult.mapBoth(Effect.succeed(1), { onFailure: () => typeParseError, onSuccess: (n) => n + 1 })
+        ParseResult.mapBoth(Effect.succeed(1), { onFailure: () => typeParseError2, onSuccess: (n) => n + 1 })
       )
     ).toStrictEqual(Exit.succeed(2))
     expect(
       Effect.runSyncExit(
-        ParseResult.mapBoth(Effect.fail(forbiddenParseError), {
-          onFailure: () => typeParseError,
+        ParseResult.mapBoth(Effect.fail(typeParseError1), {
+          onFailure: () => typeParseError2,
           onSuccess: (n) => n + 1
         })
       )
-    ).toStrictEqual(Exit.fail(typeParseError))
+    ).toStrictEqual(Exit.fail(typeParseError2))
   })
 
   it("orElse (Either)", () => {
     expect(ParseResult.orElse(Either.right(1), () => Either.right(2))).toStrictEqual(
       Either.right(1)
     )
-    expect(ParseResult.orElse(Either.left(forbiddenParseError), () => Either.right(2)))
+    expect(ParseResult.orElse(Either.left(typeParseError1), () => Either.right(2)))
       .toStrictEqual(Either.right(2))
     // pipeable
     expect(Either.right(1).pipe(ParseResult.orElse(() => Either.right(2)))).toStrictEqual(
@@ -144,7 +147,7 @@ describe("ParseResult", () => {
       )
     expect(
       Effect.runSyncExit(
-        ParseResult.orElse(Effect.fail(forbiddenParseError), () => Either.right(2))
+        ParseResult.orElse(Effect.fail(typeParseError1), () => Either.right(2))
       )
     ).toStrictEqual(Exit.succeed(2))
   })
@@ -155,8 +158,8 @@ describe("ParseIssue.actual", () => {
     const result = S.decodeEither(S.transformOrFail(
       S.NumberFromString,
       S.boolean,
-      (n, _, ast) => ParseResult.fail(ParseResult.forbidden(ast, n)),
-      (b, _, ast) => ParseResult.fail(ParseResult.forbidden(ast, b))
+      (n, _, ast) => ParseResult.fail(ParseResult.type(ast, n)),
+      (b, _, ast) => ParseResult.fail(ParseResult.type(ast, b))
     ))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual("1")
@@ -167,8 +170,8 @@ describe("ParseIssue.actual", () => {
     const result = S.encodeEither(S.transformOrFail(
       S.boolean,
       S.NumberFromString,
-      (n, _, ast) => ParseResult.fail(ParseResult.forbidden(ast, n)),
-      (b, _, ast) => ParseResult.fail(ParseResult.forbidden(ast, b))
+      (n, _, ast) => ParseResult.fail(ParseResult.type(ast, n)),
+      (b, _, ast) => ParseResult.fail(ParseResult.type(ast, b))
     ))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual(1)
