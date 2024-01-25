@@ -12,6 +12,7 @@ import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 1.0.0
@@ -55,7 +56,7 @@ export type BackingPersistenceTypeId = typeof BackingPersistenceTypeId
  */
 export interface BackingPersistence {
   readonly [BackingPersistenceTypeId]: BackingPersistenceTypeId
-  readonly make: (storeId: string) => Effect.Effect<never, never, BackingPersistenceStore>
+  readonly make: (storeId: string) => Effect.Effect<Scope.Scope, never, BackingPersistenceStore>
 }
 
 /**
@@ -95,7 +96,7 @@ export type ResultPersistenceTypeId = typeof ResultPersistenceTypeId
  */
 export interface ResultPersistence {
   readonly [ResultPersistenceTypeId]: ResultPersistenceTypeId
-  readonly make: (storeId: string) => Effect.Effect<never, never, ResultPersistenceStore>
+  readonly make: (storeId: string) => Effect.Effect<Scope.Scope, never, ResultPersistenceStore>
 }
 
 /**
