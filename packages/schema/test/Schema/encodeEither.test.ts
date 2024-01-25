@@ -19,6 +19,13 @@ describe("Schema > encodeEither", () => {
     )
   })
 
+  it("should return Left on async", () => {
+    Util.expectEitherLeft(
+      S.encodeEither(Util.effectify(S.string))("a"),
+      `Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+    )
+  })
+
   it("should respect outer/inner options", () => {
     const input = { a: 1, b: "b" }
     Util.expectEitherLeft(

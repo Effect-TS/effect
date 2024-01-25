@@ -138,9 +138,10 @@ export const type = (ast: AST.AST, actual: unknown, message?: string): ParseResu
 })
 
 /** @internal */
-export const forbidden = (actual: unknown): ParseResult.Forbidden => ({
+export const forbidden = (actual: unknown, message?: string): ParseResult.Forbidden => ({
   _tag: "Forbidden",
-  actual
+  actual,
+  message: Option.fromNullable(message)
 })
 
 /** @internal */

@@ -35,8 +35,17 @@ export const mergeParseOptions = (
 
 const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
-  return (u: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseIssue, any> =>
-    parser(u, mergeParseOptions(options, overrideOptions)) as any
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseIssue, any> => {
+    const result = parser(u, mergeParseOptions(options, overrideOptions))
+    if (Either.isEither(result)) {
+      return result as any
+    }
+    try {
+      return Effect.runSync(Effect.either(result) as any)
+    } catch (e) {
+      return Either.left(InternalParser.forbidden(u, e instanceof Error ? e.message : undefined))
+    }
+  }
 }
 
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -54,7 +63,7 @@ const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
   return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<R, ParseResult.ParseIssue, any> =>
-    parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true })
+    parser(input, mergeParseOptions(options, overrideOptions))
 }
 
 /**
@@ -325,7 +334,6 @@ export const encode: <R, I, A>(
 ) => (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> = encodeUnknown
 
 interface InternalOptions extends AST.ParseOptions {
-  readonly isEffectAllowed?: boolean
   // `isExact = false` means that missing keys are treated as undefined values (`{ key: undefined }`)
   readonly isExact?: boolean
 }
@@ -365,26 +373,21 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       if (isDecoding) {
         const from = goMemo(ast.from, true)
         return (i, options) =>
-          handleForbidden(
-            InternalParser.flatMap(
-              InternalParser.mapError(from(i, options), (e) => InternalParser.refinement(ast, i, "From", e)),
-              (a) =>
-                Option.match(
-                  ast.filter(a, options ?? defaultParseOption, ast),
-                  {
-                    onNone: () => Either.right(a),
-                    onSome: (e) => Either.left(InternalParser.refinement(ast, i, "Predicate", e))
-                  }
-                )
-            ),
-            i,
-            options
+          InternalParser.flatMap(
+            InternalParser.mapError(from(i, options), (e) => InternalParser.refinement(ast, i, "From", e)),
+            (a) =>
+              Option.match(
+                ast.filter(a, options ?? defaultParseOption, ast),
+                {
+                  onNone: () => Either.right(a),
+                  onSome: (e) => Either.left(InternalParser.refinement(ast, i, "Predicate", e))
+                }
+              )
           )
       } else {
         const from = goMemo(AST.to(ast), true)
         const to = goMemo(dropRightRefinement(ast.from), false)
-        return (i, options) =>
-          handleForbidden(InternalParser.flatMap(from(i, options), (a) => to(a, options)), i, options)
+        return (i, options) => InternalParser.flatMap(from(i, options), (a) => to(a, options))
       }
     }
     case "Transform": {
@@ -392,27 +395,23 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const from = isDecoding ? goMemo(ast.from, true) : goMemo(ast.to, false)
       const to = isDecoding ? goMemo(ast.to, true) : goMemo(ast.from, false)
       return (i1, options) =>
-        handleForbidden(
-          InternalParser.flatMap(
-            InternalParser.mapError(
-              from(i1, options),
-              (e) => InternalParser.transform(ast, i1, isDecoding ? "From" : "To", e)
-            ),
-            (a) =>
-              InternalParser.flatMap(
-                InternalParser.mapError(
-                  transform(a, options ?? defaultParseOption, ast),
-                  (e) => InternalParser.transform(ast, i1, "Transformation", e)
-                ),
-                (i2) =>
-                  InternalParser.mapError(
-                    to(i2, options),
-                    (e) => InternalParser.transform(ast, i1, isDecoding ? "To" : "From", e)
-                  )
-              )
+        InternalParser.flatMap(
+          InternalParser.mapError(
+            from(i1, options),
+            (e) => InternalParser.transform(ast, i1, isDecoding ? "From" : "To", e)
           ),
-          i1,
-          options
+          (a) =>
+            InternalParser.flatMap(
+              InternalParser.mapError(
+                transform(a, options ?? defaultParseOption, ast),
+                (e) => InternalParser.transform(ast, i1, "Transformation", e)
+              ),
+              (i2) =>
+                InternalParser.mapError(
+                  to(i2, options),
+                  (e) => InternalParser.transform(ast, i1, isDecoding ? "To" : "From", e)
+                )
+            )
         )
     }
     case "Declaration": {
@@ -420,11 +419,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         ? ast.decodeUnknown(...ast.typeParameters)
         : ast.encodeUnknown(...ast.typeParameters)
       return (i, options) =>
-        handleForbidden(
-          InternalParser.mapError(parse(i, options ?? defaultParseOption, ast), (e) =>
-            InternalParser.declaration(ast, i, e)),
-          i,
-          options
+        InternalParser.mapError(
+          parse(i, options ?? defaultParseOption, ast),
+          (e) => InternalParser.declaration(ast, i, e)
         )
     }
     case "Literal":
@@ -1130,19 +1127,6 @@ export const getSearchTree = (
 }
 
 const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? dropRightRefinement(ast.from) : ast
-
-const handleForbidden = <R, A>(
-  effect: Effect.Effect<R, ParseResult.ParseIssue, A>,
-  actual: unknown,
-  options?: InternalOptions
-): Effect.Effect<R, ParseResult.ParseIssue, A> => {
-  const eu = InternalParser.eitherOrUndefined(effect)
-  return eu
-    ? eu
-    : options?.isEffectAllowed === true
-    ? effect
-    : Either.left(InternalParser.forbidden(actual))
-}
 
 function sortByIndex<T>(
   es: ReadonlyArray.NonEmptyArray<[number, T]>

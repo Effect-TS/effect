@@ -140,6 +140,7 @@ export const type = InternalParser.type
 export interface Forbidden {
   readonly _tag: "Forbidden"
   readonly actual: unknown
+  readonly message: Option.Option<string>
 }
 
 /**

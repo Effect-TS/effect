@@ -3,6 +3,10 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("Schema > validateOption", () => {
+  it("should return none on async", () => {
+    Util.expectNone(S.validateOption(Util.AsyncDeclaration)("a"))
+  })
+
   const schema = S.struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", () => {

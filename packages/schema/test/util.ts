@@ -270,3 +270,9 @@ export const expectNone = <A>(o: Option.Option<A>) => {
 export const expectSome = <A>(o: Option.Option<A>, a: A) => {
   expect(o).toStrictEqual(Option.some(a))
 }
+
+export const AsyncDeclaration = S.declare(
+  [],
+  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
+  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u))
+)

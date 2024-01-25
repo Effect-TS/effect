@@ -18,6 +18,14 @@ describe("Schema > encodeSync", () => {
     )
   })
 
+  it("should throw on async", () => {
+    expect(() => S.encodeSync(Util.effectify(S.string))("a")).toThrow(
+      new Error(
+        "Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work"
+      )
+    )
+  })
+
   it("should respect outer/inner options", () => {
     const input = { a: 1, b: "b" }
     expect(() => S.encodeSync(schema)(input, { onExcessProperty: "error" })).toThrow(
