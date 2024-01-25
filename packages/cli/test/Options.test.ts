@@ -475,12 +475,14 @@ describe("Options", () => {
   it("repeated", () =>
     Effect.gen(function*(_) {
       const option = Options.integer("foo").pipe(Options.repeated)
-      const args1 = ["--foo", "1", "--foo", "2", "--foo", "3"]
-      const args2 = ["--foo", "1", "--foo", "v2", "--foo", "3"]
-      const result1 = yield* _(process(option, args1, CliConfig.defaultConfig))
-      const result2 = yield* _(Effect.flip(process(option, args2, CliConfig.defaultConfig)))
-      expect(result1).toEqual([ReadonlyArray.empty(), [1, 2, 3]])
-      expect(result2).toEqual(ValidationError.invalidValue(HelpDoc.p("'v2' is not a integer")))
+      const args2 = ["--foo", "1", "--foo", "2", "--foo", "3"]
+      const args3 = ["--foo", "1", "--foo", "v2", "--foo", "3"]
+      const result1 = yield* _(process(option, [], CliConfig.defaultConfig))
+      const result2 = yield* _(process(option, args2, CliConfig.defaultConfig))
+      const result3 = yield* _(Effect.flip(process(option, args3, CliConfig.defaultConfig)))
+      expect(result1).toEqual([ReadonlyArray.empty(), []])
+      expect(result2).toEqual([ReadonlyArray.empty(), [1, 2, 3]])
+      expect(result3).toEqual(ValidationError.invalidValue(HelpDoc.p("'v2' is not a integer")))
     }).pipe(runEffect))
 
   it("atLeast", () =>
