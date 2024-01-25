@@ -5,6 +5,7 @@ import { getFinalTransformation } from "@effect/schema/Parser"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { formatError } from "@effect/schema/TreeFormatter"
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -270,3 +271,23 @@ export const expectNone = <A>(o: Option.Option<A>) => {
 export const expectSome = <A>(o: Option.Option<A>, a: A) => {
   expect(o).toStrictEqual(Option.some(a))
 }
+
+export const AsyncDeclaration = S.declare(
+  [],
+  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
+  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
+  {
+    identifier: "AsyncDeclaration"
+  }
+)
+
+export const AsyncString = effectify(S.string).pipe(S.identifier("AsyncString"))
+
+const Name = Context.Tag<"Name", string>()
+
+export const DependencyString = S.transformOrFail(
+  S.string,
+  S.string,
+  (s) => Effect.andThen(Name, s),
+  (s) => Effect.andThen(Name, s)
+).pipe(S.identifier("DependencyString"))

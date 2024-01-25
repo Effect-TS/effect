@@ -84,11 +84,15 @@ export const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string>
 }
 
 /** @internal */
-export const formatMessage = (e: ParseResult.Type): string =>
+export const formatTypeMessage = (e: ParseResult.Type): string =>
   getMessage(e.ast, e.actual).pipe(
     Option.orElse(() => e.message),
     Option.getOrElse(() => `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`)
   )
+
+/** @internal */
+export const formatForbiddenMessage = (e: ParseResult.Forbidden): string =>
+  Option.getOrElse(e.message, () => "is forbidden")
 
 const getParseIsssueMessage = (
   issue: ParseResult.ParseIssue,
@@ -124,9 +128,9 @@ export const getTransformMessage = (e: ParseResult.Transform, actual: unknown): 
 const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected): Tree<string> => {
   switch (e._tag) {
     case "Type":
-      return make(formatMessage(e))
+      return make(formatTypeMessage(e))
     case "Forbidden":
-      return make("is forbidden")
+      return make(Format.formatAST(e.ast), [make(formatForbiddenMessage(e))])
     case "Unexpected":
       return make(`is unexpected, expected ${Format.formatAST(e.ast, true)}`)
     case "Missing":

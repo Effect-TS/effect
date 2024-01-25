@@ -377,6 +377,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   }
                 )
             ),
+            ast,
             i,
             options
           )
@@ -384,7 +385,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         const from = goMemo(AST.to(ast), true)
         const to = goMemo(dropRightRefinement(ast.from), false)
         return (i, options) =>
-          handleForbidden(InternalParser.flatMap(from(i, options), (a) => to(a, options)), i, options)
+          handleForbidden(InternalParser.flatMap(from(i, options), (a) => to(a, options)), ast, i, options)
       }
     }
     case "Transform": {
@@ -411,6 +412,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   )
               )
           ),
+          ast,
           i1,
           options
         )
@@ -423,6 +425,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         handleForbidden(
           InternalParser.mapError(parse(i, options ?? defaultParseOption, ast), (e) =>
             InternalParser.declaration(ast, i, e)),
+          ast,
           i,
           options
         )
@@ -1133,15 +1136,22 @@ const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? d
 
 const handleForbidden = <R, A>(
   effect: Effect.Effect<R, ParseResult.ParseIssue, A>,
+  ast: AST.AST,
   actual: unknown,
-  options?: InternalOptions
+  options: InternalOptions | undefined
 ): Effect.Effect<R, ParseResult.ParseIssue, A> => {
   const eu = InternalParser.eitherOrUndefined(effect)
-  return eu
-    ? eu
-    : options?.isEffectAllowed === true
-    ? effect
-    : Either.left(InternalParser.forbidden(actual))
+  if (eu) {
+    return eu
+  }
+  if (options?.isEffectAllowed === true) {
+    return effect
+  }
+  try {
+    return Effect.runSync(Effect.either(effect as Effect.Effect<never, ParseResult.ParseIssue, A>))
+  } catch (e) {
+    return Either.left(InternalParser.forbidden(ast, actual, e instanceof Error ? e.message : undefined))
+  }
 }
 
 function sortByIndex<T>(

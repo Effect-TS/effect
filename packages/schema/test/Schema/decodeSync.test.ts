@@ -18,6 +18,15 @@ describe("Schema > decodeSync", () => {
     )
   })
 
+  it("should throw on async", () => {
+    expect(() => S.decodeSync(Util.AsyncString)("a")).toThrow(
+      new Error(
+        `AsyncString
+└─ Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+      )
+    )
+  })
+
   it("should respect outer/inner options", () => {
     const input = { a: "1", b: "b" }
     expect(() => S.decodeSync(schema)(input, { onExcessProperty: "error" })).toThrow(

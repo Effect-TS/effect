@@ -9,9 +9,12 @@ describe("TreeFormatter", () => {
     it("forbidden", async () => {
       const schema = Util.effectify(S.struct({ a: S.string }))
       expect(() => S.decodeUnknownSync(schema)({ a: "a" })).toThrow(
-        new Error(`{ a: (string <-> string) }
+        new Error(
+          `{ a: (string <-> string) }
 └─ ["a"]
-   └─ is forbidden`)
+   └─ (string <-> string)
+      └─ Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+        )
       )
     })
 
