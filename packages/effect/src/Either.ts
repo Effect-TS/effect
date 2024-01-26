@@ -187,6 +187,40 @@ export {
   try_ as try
 }
 
+const tryPromise_: {
+  <A, E>(
+    options: {
+      readonly try: LazyArg<Promise<A>>
+      readonly catch: (error: unknown) => E
+    }
+  ): Promise<Either<E, A>>
+  <A>(evaluate: LazyArg<Promise<A>>): Promise<Either<unknown, A>>
+} = (<A, E>(
+  evaluate: LazyArg<Promise<A>> | {
+    readonly try: LazyArg<Promise<A>>
+    readonly catch: (error: unknown) => E
+  }
+) => {
+  if (isFunction(evaluate)) {
+    return evaluate().then((value) => right(value)).catch((e) => left(e))
+  } else {
+    evaluate.try()
+      .then((value) => right(value))
+      .catch((e) => left(evaluate.catch(e)))
+  }
+}) as any
+
+export {
+  /**
+   * Imports an asynchronous side-effect into a `Promise<Either<E, A>>` value, translating any
+   * rejections into typed failed eithers created with `Either.left`.
+   *
+   * @category constructors
+   * @since 2.0.0
+   */
+  tryPromise_ as tryPromise
+}
+
 /**
  * Tests if a value is a `Either`.
  *

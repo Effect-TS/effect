@@ -221,6 +221,36 @@ describe("Either", () => {
     )
   })
 
+  it("tryPromise", async () => {
+    const promise = () => new Promise<number>((resolve) => resolve(1))
+    Util.deepStrictEqual(
+      await Either.tryPromise(promise),
+      Either.right(1)
+    )
+    Util.deepStrictEqual(
+      await Either.tryPromise(async () => {
+        throw "b"
+      }),
+      Either.left("b")
+    )
+    Util.deepStrictEqual(
+      await Either.tryPromise({
+        try: promise,
+        catch: (e) => new Error(String(e))
+      }),
+      Either.right(1)
+    )
+    Util.deepStrictEqual(
+      await Either.tryPromise({
+        try: async () => {
+          throw "b"
+        },
+        catch: (e) => new Error(String(e))
+      }),
+      Either.left(new Error("b"))
+    )
+  })
+
   it("getOrElse", () => {
     Util.deepStrictEqual(Either.getOrElse(Either.right(1), (error) => error + "!"), 1)
     Util.deepStrictEqual(Either.getOrElse(Either.left("not a number"), (error) => error + "!"), "not a number!")
