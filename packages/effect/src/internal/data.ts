@@ -22,7 +22,7 @@ export const ArrayProto: Equal.Equal = Object.assign(Object.create(Array.prototy
 export const Structural: new<A>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
-) => Data.Case = (function() {
+) => Data.CasePrototype = (function() {
   function Structural(this: any, args: any) {
     if (args) {
       Object.assign(this, args)

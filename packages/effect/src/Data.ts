@@ -2,7 +2,8 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.js"
-import type * as Equal from "./Equal.js"
+import * as Equal from "./Equal.js"
+import * as Hash from "./Hash.js"
 import * as core from "./internal/core.js"
 import * as internal from "./internal/data.js"
 import { StructuralPrototype } from "./internal/effectable.js"
@@ -14,7 +15,25 @@ import type * as Types from "./Types.js"
  */
 export type Data<A> =
   & { readonly [P in keyof A]: A[P] }
-  & Equal.Equal
+  & CasePrototype
+
+/**
+ * @internal
+ * this only exists to make sure Data tracks Hash and Equal being on the prototype
+ *
+ * class C extends Class<{}> {}
+ * let c = new C()
+ * c = { ...c }
+ * ^ should error: "is missing the following properties from type 'CasePrototype': [Hash.symbol], [Equal.symbol]"
+ */
+export abstract class CasePrototype implements Case {
+  [Hash.symbol](this: Equal.Equal): number {
+    throw new global.Error("Method not implemented.")
+  }
+  [Equal.symbol](this: Equal.Equal, _: Equal.Equal): boolean {
+    throw new global.Error("Method not implemented.")
+  }
+}
 
 /**
  * `Case` represents a datatype similar to a case class in Scala. Namely, a

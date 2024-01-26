@@ -4629,7 +4629,7 @@ export const Class = <Self>() =>
     Simplify<ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
     Self,
-    Data.Case
+    Data.CasePrototype
   > => makeClass(struct(fields), fields, Data.Class)
 
 /**
@@ -4647,7 +4647,7 @@ export const TaggedClass = <Self>() =>
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
     Self,
-    Data.Case
+    Data.CasePrototype
   > =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
