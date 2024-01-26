@@ -1,5 +1,12 @@
 # @effect/platform-node
 
+## 0.42.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.43.2
+
 ## 0.42.1
 
 ### Patch Changes
