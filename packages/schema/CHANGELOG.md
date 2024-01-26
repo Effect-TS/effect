@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.61.3
+
+### Patch Changes
+
+- [#1992](https://github.com/Effect-TS/effect/pull/1992) [`9863e2f`](https://github.com/Effect-TS/effect/commit/9863e2fb3561dc019965aeccd6584a418fc8b401) Thanks [@gcanti](https://github.com/gcanti)! - enhance error messages
+
 ## 0.61.2
 
 ### Patch Changes
