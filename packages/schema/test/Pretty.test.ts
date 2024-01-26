@@ -24,7 +24,7 @@ describe("Pretty", () => {
   it("should throw on declarations without annotations", () => {
     const schema = S.declare(isUnknown)
     expect(() => Pretty.make(schema)).toThrow(
-      new Error("cannot build an Pretty for a declaration without annotations")
+      new Error("cannot build a Pretty for a declaration without annotations (<declaration schema>)")
     )
   })
 

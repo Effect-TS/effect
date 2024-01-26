@@ -36,7 +36,6 @@ import * as arbitrary from "./Arbitrary.js"
 import * as ArrayFormatter from "./ArrayFormatter.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
-import * as Format from "./Format.js"
 import * as Internal from "./internal/ast.js"
 import * as InternalBigInt from "./internal/bigint.js"
 import * as filters from "./internal/filters.js"
@@ -69,9 +68,16 @@ export interface Schema<out R, in out From, in out To = From> extends Schema.Var
 }
 
 /**
+ * @category hashing
  * @since 1.0.0
  */
 export const hash = <R, I, A>(schema: Schema<R, I, A>): number => AST.hash(schema.ast)
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const format = <R, I, A>(schema: Schema<R, I, A>): string => AST.format(schema.ast)
 
 /**
  * @since 1.0.0
@@ -472,7 +478,7 @@ const getTemplateLiterals = (
     case "Union":
       return ReadonlyArray.flatMap(ast.types, getTemplateLiterals)
     default:
-      throw new Error(`templateLiteral: unsupported template literal span ${ast._tag}`)
+      throw new Error(`templateLiteral: unsupported template literal span (${AST.format(ast)})`)
   }
 }
 
@@ -3745,7 +3751,7 @@ export const optionFromSelf = <R, I, A>(
     (value) => optionParse(ParseResult.decodeUnknown(value)),
     (value) => optionParse(ParseResult.encodeUnknown(value)),
     {
-      description: `Option<${Format.format(value)}>`,
+      description: `Option<${format(value)}>`,
       pretty: optionPretty,
       arbitrary: optionArbitrary,
       equivalence: Option.getEquivalence
@@ -3831,20 +3837,20 @@ const rightFrom = <R, IA, A>(right: Schema<R, IA, A>): Schema<R, RightFrom<IA>, 
   struct({
     _tag: literal("Right"),
     right
-  }).pipe(description(`RightFrom<${Format.format(right)}>`))
+  }).pipe(description(`RightFrom<${format(right)}>`))
 
 const leftFrom = <R, IE, E>(left: Schema<R, IE, E>): Schema<R, LeftFrom<IE>, LeftFrom<E>> =>
   struct({
     _tag: literal("Left"),
     left
-  }).pipe(description(`LeftFrom<${Format.format(left)}>`))
+  }).pipe(description(`LeftFrom<${format(left)}>`))
 
 const eitherFrom = <R1, IE, E, R2, IA, A>(
   left: Schema<R1, IE, E>,
   right: Schema<R2, IA, A>
 ): Schema<R1 | R2, EitherFrom<IE, IA>, EitherFrom<E, A>> =>
   union(rightFrom(right), leftFrom(left)).pipe(
-    description(`EitherFrom<${Format.format(left)}, ${Format.format(right)}>`)
+    description(`EitherFrom<${format(left)}, ${format(right)}>`)
   )
 
 const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<E, A> =>
@@ -3892,7 +3898,7 @@ export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
     (left, right) => eitherParse(ParseResult.decodeUnknown(left), ParseResult.decodeUnknown(right)),
     (left, right) => eitherParse(ParseResult.encodeUnknown(left), ParseResult.encodeUnknown(right)),
     {
-      description: `Either<${Format.format(left)}, ${Format.format(right)}>`,
+      description: `Either<${format(left)}, ${format(right)}>`,
       pretty: eitherPretty,
       arbitrary: eitherArbitrary,
       equivalence: Either.getEquivalence
@@ -3994,7 +4000,7 @@ export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
     (key, value) => readonlyMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
     (key, value) => readonlyMapParse(ParseResult.encodeUnknown(array(tuple(key, value)))),
     {
-      description: `ReadonlyMap<${Format.format(key)}, ${Format.format(value)}>`,
+      description: `ReadonlyMap<${format(key)}, ${format(value)}>`,
       pretty: readonlyMapPretty,
       arbitrary: readonlyMapArbitrary,
       equivalence: readonlyMapEquivalence
@@ -4052,7 +4058,7 @@ export const readonlySetFromSelf = <R, I, A>(
     (item) => readonlySetParse(ParseResult.decodeUnknown(array(item))),
     (item) => readonlySetParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `ReadonlySet<${Format.format(item)}>`,
+      description: `ReadonlySet<${format(item)}>`,
       pretty: readonlySetPretty,
       arbitrary: readonlySetArbitrary,
       equivalence: readonlySetEquivalence
@@ -4445,7 +4451,7 @@ export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.C
     (item) => chunkParse(ParseResult.decodeUnknown(array(item))),
     (item) => chunkParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `Chunk<${Format.format(item)}>`,
+      description: `Chunk<${format(item)}>`,
       pretty: chunkPretty,
       arbitrary: chunkArbitrary,
       equivalence: Chunk.getEquivalence
@@ -4502,7 +4508,7 @@ export const dataFromSelf = <
     (item) => dataParse(ParseResult.decodeUnknown(item)),
     (item) => dataParse(ParseResult.encodeUnknown(item)),
     {
-      description: `Data<${Format.format(item)}>`,
+      description: `Data<${format(item)}>`,
       pretty: dataPretty,
       arbitrary: dataArbitrary,
       equivalence: () => Equal.equals
@@ -5046,7 +5052,7 @@ const causeFrom = <R1, EI, E, R2>(
     CauseInterruptFrom,
     causeParallelFrom(recur),
     causeSequentialFrom(recur)
-  ).pipe(description(`CauseFrom<${Format.format(error)}>`))
+  ).pipe(description(`CauseFrom<${format(error)}>`))
   return out
 }
 
@@ -5099,7 +5105,7 @@ export const causeFromSelf = <R1, I, A, R2 = never>(
     (error, defect) => causeParse(ParseResult.decodeUnknown(causeFrom(error, defect))),
     (error, defect) => causeParse(ParseResult.encodeUnknown(causeFrom(error, defect))),
     {
-      description: `Cause<${Format.format(error)}>`,
+      description: `Cause<${format(error)}>`,
       pretty: causePretty,
       arbitrary: causeArbitrary,
       equivalence: () => Equal.equals
@@ -5270,7 +5276,7 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
     (error, value, defect) =>
       exitParse(ParseResult.encodeUnknown(causeFromSelf(error, defect)), ParseResult.encodeUnknown(value)),
     {
-      description: `Exit<${Format.format(error)}, ${Format.format(value)}>`,
+      description: `Exit<${format(error)}, ${format(value)}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary,
       equivalence: () => Equal.equals
@@ -5332,7 +5338,7 @@ export const hashSetFromSelf = <R, I, A>(
     (item) => hashSetParse(ParseResult.decodeUnknown(array(item))),
     (item) => hashSetParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `HashSet<${Format.format(item)}>`,
+      description: `HashSet<${format(item)}>`,
       pretty: hashSetPretty,
       arbitrary: hashSetArbitrary,
       equivalence: hashSetEquivalence
@@ -5400,7 +5406,7 @@ export const hashMapFromSelf = <RK, IK, K, RV, IV, V>(
     (key, value) => hashMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
     (key, value) => hashMapParse(ParseResult.encodeUnknown(array(tuple(key, value)))),
     {
-      description: `HashMap<${Format.format(key)}, ${Format.format(value)}>`,
+      description: `HashMap<${format(key)}, ${format(value)}>`,
       pretty: hashMapPretty,
       arbitrary: hashMapArbitrary,
       equivalence: hashMapEquivalence
@@ -5459,7 +5465,7 @@ export const listFromSelf = <R, I, A>(
     (item) => listParse(ParseResult.decodeUnknown(array(item))),
     (item) => listParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `List<${Format.format(item)}>`,
+      description: `List<${format(item)}>`,
       pretty: listPretty,
       arbitrary: listArbitrary,
       equivalence: listEquivalence

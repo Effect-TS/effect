@@ -725,13 +725,13 @@ describe("JSONSchema", () => {
   describe("record", () => {
     it("record(symbol, number)", () => {
       expect(() => JSONSchema.make(S.record(S.symbolFromSelf, JsonNumber))).toThrow(
-        new Error("Unsupported index signature parameter SymbolKeyword")
+        new Error("Unsupported index signature parameter (symbol)")
       )
     })
 
     it("record(refinement, number)", () => {
       expect(() => JSONSchema.make(S.record(S.string.pipe(S.minLength(1)), JsonNumber))).toThrow(
-        new Error("Unsupported index signature parameter Refinement")
+        new Error("Unsupported index signature parameter (a string at least 1 character(s) long)")
       )
     })
 

@@ -102,7 +102,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
   }
   switch (ast._tag) {
     case "Declaration": {
-      throw new Error("cannot build an Arbitrary for a declaration without annotations")
+      throw new Error(`cannot build an Arbitrary for a declaration without annotations (${AST.format(ast)})`)
     }
     case "Literal":
       return (fc) => fc.constant(ast.literal)
