@@ -348,6 +348,20 @@ describe("Schema > Class", () => {
     expect(person.upperName).toEqual("JOHN")
   })
 
+  it("extending a TaggedClass with props containing a _tag field", async () => {
+    class A extends S.TaggedClass<A>()("A", {
+      id: S.number
+    }) {}
+    class B extends A.transformOrFail<B>()(
+      { _tag: S.literal("B") },
+      (input) => ParseResult.succeed({ ...input, _tag: "B" as const }),
+      (input) => ParseResult.succeed({ ...input, _tag: "A" })
+    ) {}
+
+    await Util.expectDecodeUnknownSuccess(B, { _tag: "A", id: 1 }, new B({ _tag: "B", id: 1 }))
+    await Util.expectEncodeSuccess(B, new B({ _tag: "B", id: 1 }), { _tag: "A", id: 1 })
+  })
+
   it("TaggedError", () => {
     class MyError extends S.TaggedError<MyError>()("MyError", {
       id: S.number
