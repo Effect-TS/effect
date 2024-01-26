@@ -1,4 +1,5 @@
-import { format, formatUnknown } from "@effect/schema/Format"
+import { formatUnknown } from "@effect/schema/AST"
+import { format } from "@effect/schema/Schema"
 import * as S from "@effect/schema/Schema"
 import * as _ from "@effect/schema/TreeFormatter"
 import { describe, expect, it } from "vitest"

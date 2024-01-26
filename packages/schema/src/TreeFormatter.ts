@@ -5,7 +5,6 @@
 import * as Option from "effect/Option"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as Format from "./Format.js"
 import type * as ParseResult from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
@@ -87,7 +86,7 @@ export const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string>
 export const formatTypeMessage = (e: ParseResult.Type): string =>
   getMessage(e.ast, e.actual).pipe(
     Option.orElse(() => e.message),
-    Option.getOrElse(() => `Expected ${Format.formatAST(e.ast, true)}, actual ${Format.formatUnknown(e.actual)}`)
+    Option.getOrElse(() => `Expected ${AST.format(e.ast, true)}, actual ${AST.formatUnknown(e.actual)}`)
   )
 
 /** @internal */
@@ -130,16 +129,16 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
     case "Type":
       return make(formatTypeMessage(e))
     case "Forbidden":
-      return make(Format.formatAST(e.ast), [make(formatForbiddenMessage(e))])
+      return make(AST.format(e.ast), [make(formatForbiddenMessage(e))])
     case "Unexpected":
-      return make(`is unexpected, expected ${Format.formatAST(e.ast, true)}`)
+      return make(`is unexpected, expected ${AST.format(e.ast, true)}`)
     case "Missing":
       return make("is missing")
     case "Union":
       return Option.match(getMessage(e.ast, e.actual), {
         onNone: () =>
           make(
-            Format.formatAST(e.ast),
+            AST.format(e.ast),
             e.errors.map((e) => {
               switch (e._tag) {
                 case "Member":
@@ -155,7 +154,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
       return Option.match(getMessage(e.ast, e.actual), {
         onNone: () =>
           make(
-            Format.formatAST(e.ast),
+            AST.format(e.ast),
             e.errors.map((index) => make(`[${index.index}]`, [go(index.error)]))
           ),
         onSome: make
@@ -164,20 +163,20 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
       return Option.match(getMessage(e.ast, e.actual), {
         onNone: () =>
           make(
-            Format.formatAST(e.ast),
-            e.errors.map((key) => make(`[${Format.formatUnknown(key.key)}]`, [go(key.error)]))
+            AST.format(e.ast),
+            e.errors.map((key) => make(`[${AST.formatUnknown(key.key)}]`, [go(key.error)]))
           ),
         onSome: make
       })
     case "Transform":
       return Option.match(getTransformMessage(e, e.actual), {
-        onNone: () => make(Format.formatAST(e.ast), [make(formatTransformationKind(e.kind), [go(e.error)])]),
+        onNone: () => make(AST.format(e.ast), [make(formatTransformationKind(e.kind), [go(e.error)])]),
         onSome: make
       })
     case "Refinement":
       return Option.match(getRefinementMessage(e, e.actual), {
         onNone: () =>
-          make(Format.formatAST(e.ast), [
+          make(AST.format(e.ast), [
             make(formatRefinementKind(e.kind), [go(e.error)])
           ]),
         onSome: make
@@ -187,7 +186,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         onNone: () => {
           const error = e.error
           const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
-          return shouldSkipDefaultMessage ? go(error) : make(Format.formatAST(e.ast), [go(e.error)])
+          return shouldSkipDefaultMessage ? go(error) : make(AST.format(e.ast), [go(e.error)])
         },
         onSome: make
       })

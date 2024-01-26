@@ -1307,7 +1307,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
   }
-  throw new Error(`getNumberIndexedAccess: unsupported schema (${ast._tag})`)
+  throw new Error(`getNumberIndexedAccess: unsupported schema (${format(ast)})`)
 }
 
 /** @internal */
@@ -1394,7 +1394,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
           propertySignatures.push(createPropertySignature(key.literal, value, false, isReadonly))
         } else {
-          throw new Error(`createRecord: unsupported literal ${String(key.literal)}`)
+          throw new Error(`createRecord: unsupported literal (${formatUnknown(key.literal)})`)
         }
         break
       case "UniqueSymbol":
@@ -1404,7 +1404,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
         key.types.forEach(go)
         break
       default:
-        throw new Error(`createRecord: unsupported key schema (${key._tag})`)
+        throw new Error(`createRecord: unsupported key schema (${format(key)})`)
     }
   }
   go(key)
@@ -1873,7 +1873,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "Suspend":
       return _keyof(ast.f())
     default:
-      throw new Error(`keyof: unsupported schema (${ast._tag})`)
+      throw new Error(`keyof: unsupported schema (${format(ast)})`)
   }
 }
 
@@ -1924,5 +1924,178 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
     case "Transform":
       return compose(ast, rename(to(ast), mapping))
   }
-  throw new Error(`cannot rename ${ast._tag}`)
+  throw new Error(`rename: cannot rename (${format(ast)})`)
+}
+
+export const formatTransformation = (from: string, to: string): string => `(${from} <-> ${to})`
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const format = (ast: AST, verbose: boolean = false): string => {
+  switch (ast._tag) {
+    case "StringKeyword":
+    case "NumberKeyword":
+    case "BooleanKeyword":
+    case "BigIntKeyword":
+    case "UndefinedKeyword":
+    case "SymbolKeyword":
+    case "ObjectKeyword":
+    case "AnyKeyword":
+    case "UnknownKeyword":
+    case "VoidKeyword":
+    case "NeverKeyword":
+      return Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
+    case "Literal":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatUnknown(ast.literal))
+    case "UniqueSymbol":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatUnknown(ast.symbol))
+    case "Union":
+      return Option.getOrElse(
+        getExpected(ast, verbose),
+        () => ast.types.map((member) => format(member)).join(" | ")
+      )
+    case "TemplateLiteral":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTemplateLiteral(ast))
+    case "Tuple":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTuple(ast))
+    case "TypeLiteral":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTypeLiteral(ast))
+    case "Enums":
+      return Option.getOrElse(
+        getExpected(ast, verbose),
+        () => `<enum ${ast.enums.length} value(s): ${ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
+      )
+    case "Suspend":
+      return getExpected(ast, verbose).pipe(
+        Option.orElse(() =>
+          Option.flatMap(
+            Option.liftThrowable(ast.f)(),
+            (ast) => getExpected(ast, verbose)
+          )
+        ),
+        Option.getOrElse(() => "<suspended schema>")
+      )
+    case "Declaration":
+      return Option.getOrElse(getExpected(ast, verbose), () => "<declaration schema>")
+    case "Refinement":
+      return Option.getOrElse(getExpected(ast, verbose), () => "<refinement schema>")
+    case "Transform":
+      return Option.getOrElse(
+        getExpected(ast, verbose),
+        () => formatTransformation(format(ast.from), format(ast.to))
+      )
+  }
+}
+
+/** @internal */
+export const formatUnknown = (u: unknown): string => {
+  if (Predicate.isString(u)) {
+    return JSON.stringify(u)
+  } else if (
+    Predicate.isNumber(u)
+    || u == null
+    || Predicate.isBoolean(u)
+    || Predicate.isSymbol(u)
+    || Predicate.isDate(u)
+  ) {
+    return String(u)
+  } else if (Predicate.isBigInt(u)) {
+    return String(u) + "n"
+  } else if (
+    !Array.isArray(u)
+    && Predicate.hasProperty(u, "toString")
+    && Predicate.isFunction(u["toString"])
+    && u["toString"] !== Object.prototype.toString
+  ) {
+    return u["toString"]()
+  }
+  try {
+    return JSON.stringify(u)
+  } catch (e) {
+    return String(u)
+  }
+}
+
+const formatTemplateLiteral = (ast: TemplateLiteral): string =>
+  "`" + ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("") +
+  "`"
+
+const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
+  if (verbose) {
+    const description = getDescriptionAnnotation(ast).pipe(
+      Option.orElse(() => getTitleAnnotation(ast))
+    )
+    return Option.match(getIdentifierAnnotation(ast), {
+      onNone: () => description,
+      onSome: (identifier) =>
+        Option.match(description, {
+          onNone: () => Option.some(identifier),
+          onSome: (description) => Option.some(`${identifier} (${description})`)
+        })
+    })
+  }
+  return getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => getTitleAnnotation(ast)),
+    Option.orElse(() => getDescriptionAnnotation(ast))
+  )
+}
+
+const formatTuple = (ast: Tuple): string => {
+  const formattedElements = ast.elements.map((element) => format(element.type) + (element.isOptional ? "?" : ""))
+    .join(", ")
+  return Option.match(ast.rest, {
+    onNone: () => "readonly [" + formattedElements + "]",
+    onSome: ([head, ...tail]) => {
+      const formattedHead = format(head)
+      const wrappedHead = formattedHead.includes(" | ") ? "(" + formattedHead + ")" : formattedHead
+
+      if (tail.length > 0) {
+        const formattedTail = tail.map((ast) => format(ast)).join(", ")
+        if (ast.elements.length > 0) {
+          return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
+        } else {
+          return `readonly [...${wrappedHead}[], ${formattedTail}]`
+        }
+      } else {
+        if (ast.elements.length > 0) {
+          return `readonly [${formattedElements}, ...${wrappedHead}[]]`
+        } else {
+          return `ReadonlyArray<${formattedHead}>`
+        }
+      }
+    }
+  })
+}
+
+const formatTypeLiteral = (ast: TypeLiteral): string => {
+  const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
+    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + format(ps.type)
+  ).join("; ")
+  if (ast.indexSignatures.length > 0) {
+    const formattedIndexSignatures = ast.indexSignatures.map((is) =>
+      `[x: ${format(getParameterBase(is.parameter))}]: ${format(is.type)}`
+    ).join("; ")
+    if (ast.propertySignatures.length > 0) {
+      return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
+    } else {
+      return `{ ${formattedIndexSignatures} }`
+    }
+  } else {
+    if (ast.propertySignatures.length > 0) {
+      return `{ ${formattedPropertySignatures} }`
+    } else {
+      return "{}"
+    }
+  }
+}
+
+const formatTemplateLiteralSpan = (span: TemplateLiteralSpan): string => {
+  switch (span.type._tag) {
+    case "StringKeyword":
+      return "${string}"
+    case "NumberKeyword":
+      return "${number}"
+  }
 }

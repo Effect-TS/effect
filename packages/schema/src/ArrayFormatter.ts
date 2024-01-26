@@ -4,7 +4,7 @@
 
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Format from "./Format.js"
+import * as AST from "./AST.js"
 import type * as ParseResult from "./ParseResult.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
@@ -29,7 +29,7 @@ const go = (
     case "Forbidden":
       return [{ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) }]
     case "Unexpected":
-      return [{ _tag, path, message: `is unexpected, expected ${Format.formatAST(e.ast, true)}` }]
+      return [{ _tag, path, message: `is unexpected, expected ${AST.format(e.ast, true)}` }]
     case "Missing":
       return [{ _tag, path, message: "is missing" }]
     case "Union":

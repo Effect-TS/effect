@@ -4,7 +4,6 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as Format from "./Format.js"
 import * as Internal from "./internal/ast.js"
 import * as hooks from "./internal/hooks.js"
 import * as InternalSchema from "./internal/schema.js"
@@ -60,7 +59,7 @@ const toString = getMatcher((a) => String(a))
 
 const stringify = getMatcher((a) => JSON.stringify(a))
 
-const formatUnknown = getMatcher(Format.formatUnknown)
+const formatUnknown = getMatcher(AST.formatUnknown)
 
 /**
  * @since 1.0.0
@@ -71,7 +70,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value(...ast.typeParameters.map(go))
     }
-    throw new Error("cannot build an Pretty for a declaration without annotations")
+    throw new Error(`cannot build a Pretty for a declaration without annotations (${AST.format(ast)})`)
   },
   "VoidKeyword": getMatcher(() => "void(0)"),
   "NeverKeyword": getMatcher(() => {
