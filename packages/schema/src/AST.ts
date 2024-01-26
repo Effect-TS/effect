@@ -1927,7 +1927,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
   throw new Error(`rename: cannot rename (${format(ast)})`)
 }
 
-export const formatTransformation = (from: string, to: string): string => `(${from} <-> ${to})`
+const formatTransformation = (from: string, to: string): string => `(${from} <-> ${to})`
 
 /**
  * @category formatting
