@@ -40,9 +40,9 @@ const parseConfig = (config: Command.Command.Config): Command.Command.ParsedConf
   let argsIndex = 0
   const options: Array<Options.Options<any>> = []
   let optionsIndex = 0
-  const tree: Command.Command.ParsedConfigTree = {}
 
   function parse(config: Command.Command.Config) {
+    const tree: Command.Command.ParsedConfigTree = {}
     for (const key in config) {
       tree[key] = parseValue(config[key])
     }
