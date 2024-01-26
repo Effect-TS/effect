@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.31.3
+
+### Patch Changes
+
+- [#1990](https://github.com/Effect-TS/effect/pull/1990) [`003bb69`](https://github.com/Effect-TS/effect/commit/003bb691f2059ef596121c78b556196f22ab2a1e) Thanks [@IMax153](https://github.com/IMax153)! - fix stack overflow exception when nesting cli options / args in a command config
+
 ## 0.31.2
 
 ### Patch Changes
