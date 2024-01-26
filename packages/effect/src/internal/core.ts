@@ -2274,6 +2274,19 @@ export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapa
   hasProperty(u, InvalidPubSubCapacityExceptionTypeId)
 
 /** @internal */
+export const TimeoutExceptionTypeId: Cause.TimeoutExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/Timeout"
+) as Cause.TimeoutExceptionTypeId
+
+/** @internal */
+export const TimeoutException = makeException<Cause.TimeoutException>({
+  [TimeoutExceptionTypeId]: TimeoutExceptionTypeId
+}, "TimeoutException")
+
+/** @internal */
+export const isTimeoutException = (u: unknown): u is Cause.TimeoutException => hasProperty(u, TimeoutExceptionTypeId)
+
+/** @internal */
 export const UnknownExceptionTypeId: Cause.UnknownExceptionTypeId = Symbol.for(
   "effect/Cause/errors/UnknownException"
 ) as Cause.UnknownExceptionTypeId
