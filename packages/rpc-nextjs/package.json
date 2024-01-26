@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-nextjs",
-  "version": "0.25.15",
+  "version": "0.25.16",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",

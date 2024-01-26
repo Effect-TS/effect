@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.61.2
+
+### Patch Changes
+
+- [#1988](https://github.com/Effect-TS/effect/pull/1988) [`64f710a`](https://github.com/Effect-TS/effect/commit/64f710aa49dec6ffcd33ee23438d0774f5489733) Thanks [@gcanti](https://github.com/gcanti)! - Class constructor: avoid overwriting `props` with `additionalProps`, closes #1987
+
 ## 0.61.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@effect/experimental",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",
