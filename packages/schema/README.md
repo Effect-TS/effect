@@ -3078,7 +3078,9 @@ import * as S from "@effect/schema/Schema";
 const isFile = (input: unknown): input is File => input instanceof File;
 
 // const FileFromSelf: S.Schema<never, File, File>
-const FileFromSelf = S.declare(isFile).pipe(S.identifier("FileFromSelf"));
+const FileFromSelf = S.declare(isFile, {
+  identifier: "FileFromSelf",
+});
 
 const parseSync = S.decodeUnknownSync(FileFromSelf);
 
@@ -3087,8 +3089,7 @@ console.log(parseSync(new File([], ""))); // File { size: 0, type: '', name: '',
 parseSync(null);
 /*
 throws
-Error: FileFromSelf
-└─ Expected FileFromSelf, actual null
+Error: Error: Expected FileFromSelf, actual null
 */
 ```
 
@@ -3097,7 +3098,6 @@ Error: FileFromSelf
 Type constructors are generic types that take one or more types as arguments and return a new type. If you need to define a schema for a type constructor, you can use the `S.declare` constructor. Let's illustrate this with a schema for `ReadonlySet<A>`:
 
 ```ts
-import * as Format from "@effect/schema/Format";
 import * as ParseResult from "@effect/schema/ParseResult";
 import * as S from "@effect/schema/Schema";
 
@@ -3133,8 +3133,11 @@ export const myReadonlySet = <R, I, A>(
         return ParseResult.map(elements, (is): ReadonlySet<I> => new Set(is));
       }
       return ParseResult.fail(ParseResult.type(ast, input));
+    },
+    {
+      description: `ReadonlySet<${S.format(item)}>`,
     }
-  ).pipe(S.description(`ReadonlySet<${Format.format(item)}>`));
+  );
 
 // const setOfNumbers: S.Schema<never, ReadonlySet<string>, ReadonlySet<number>>
 const setOfNumbers = myReadonlySet(S.NumberFromString);
@@ -3146,8 +3149,7 @@ console.log(parseSync(new Set(["1", "2", "3"]))); // Set(3) { 1, 2, 3 }
 parseSync(null);
 /*
 throws
-Error: ReadonlySet<NumberFromString>
-└─ Expected ReadonlySet<NumberFromString>, actual null
+Error: Expected ReadonlySet<NumberFromString>, actual null
 */
 
 parseSync(new Set(["1", null, "3"]));
@@ -3160,6 +3162,70 @@ Error: ReadonlySet<NumberFromString>
          └─ From side transformation failure
             └─ Expected a string, actual null
 */
+```
+
+## Adding Annotations
+
+When you define a new data type, some compilers like `Arbitrary` or `Pretty` may not know how to handle the newly defined data. For instance:
+
+```ts
+import * as Arbitrary from "@effect/schema/Arbitrary";
+import * as S from "@effect/schema/Schema";
+
+const isFile = (input: unknown): input is File => input instanceof File;
+
+const FileFromSelf = S.declare(isFile, {
+  identifier: "FileFromSelf",
+});
+
+// Create an Arbitrary instance for FileFromSelf schema
+const arb = Arbitrary.make(FileFromSelf);
+/*
+throws:
+Error: cannot build an Arbitrary for a declaration without annotations (FileFromSelf)
+*/
+```
+
+In such cases, you need to provide annotations to ensure proper functionality:
+
+```ts
+import * as Arbitrary from "@effect/schema/Arbitrary";
+import * as Pretty from "@effect/schema/Pretty";
+import * as S from "@effect/schema/Schema";
+import * as fc from "fast-check";
+
+const isFile = (input: unknown): input is File => input instanceof File;
+
+const FileFromSelf = S.declare(isFile, {
+  identifier: "FileFromSelf",
+  // Provide an arbitrary function to generate random File instances
+  arbitrary: () => (fc) =>
+    fc
+      .tuple(fc.string(), fc.string())
+      .map(([path, content]) => new File([content], path)),
+  // Provide a pretty function to generate human-readable representation of File instances
+  pretty: () => (file) => `File(${file.name})`,
+});
+
+// Create an Arbitrary instance for FileFromSelf schema
+const arb = Arbitrary.make(FileFromSelf);
+
+// Generate sample files using the Arbitrary instance
+const files = fc.sample(arb(fc), 2);
+console.log(files);
+/*
+Output:
+[
+  File { size: 5, type: '', name: 'C', lastModified: 1706435571176 },
+  File { size: 1, type: '', name: '98Ggmc', lastModified: 1706435571176 }
+]
+*/
+
+// Create a Pretty instance for FileFromSelf schema
+const pretty = Pretty.make(FileFromSelf);
+
+// Print human-readable representation of a file
+console.log(pretty(files[0])); // "File(C)"
 ```
 
 # Useful Examples
