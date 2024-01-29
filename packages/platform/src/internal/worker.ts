@@ -123,6 +123,7 @@ export const makeManager = Effect.gen(function*(_) {
             package: "@effect/platform",
             module: "Worker"
           }),
+          Effect.interruptible,
           Effect.forkScoped
         )
 
@@ -255,6 +256,7 @@ export const makeManager = Effect.gen(function*(_) {
             )
           ),
           Effect.forever,
+          Effect.interruptible,
           Effect.forkScoped
         )
 

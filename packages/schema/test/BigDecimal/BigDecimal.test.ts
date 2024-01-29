@@ -7,22 +7,22 @@ describe("BigDecimal > BigDecimal", () => {
   const schema = S.BigDecimal
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "2",
       BigDecimal.normalize(BigDecimal.make(2n, 0))
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "0.123",
       BigDecimal.normalize(BigDecimal.make(123n, 3))
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       "",
       BigDecimal.normalize(BigDecimal.make(0n, 0))
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "abc",
       `BigDecimal

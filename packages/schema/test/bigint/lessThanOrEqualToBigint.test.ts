@@ -6,8 +6,8 @@ describe("bigint > lessThanOrEqualToBigint", () => {
   const schema = S.bigintFromSelf.pipe(S.lessThanOrEqualToBigint(0n))
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0n, 0n)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 0n, 0n)
+    await Util.expectDecodeUnknownFailure(
       schema,
       1n,
       `a non-positive bigint

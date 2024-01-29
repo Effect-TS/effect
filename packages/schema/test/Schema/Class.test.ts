@@ -1,10 +1,10 @@
 import * as AST from "@effect/schema/AST"
-import * as PR from "@effect/schema/ParseResult"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Util from "@effect/schema/test/util"
-import { Effect, Exit } from "effect"
+import { Context, Effect, Exit } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
@@ -19,6 +19,40 @@ class Person extends S.Class<Person>()({
     return this.name.toUpperCase()
   }
 }
+
+const Name = Context.Tag<"Name", string>()
+const NameString = S.string.pipe(
+  S.nonEmpty(),
+  S.transformOrFail(
+    S.string,
+    (_, _opts, ast) =>
+      Name.pipe(
+        Effect.filterOrFail(
+          (name) => _ === name,
+          () => ParseResult.type(ast, _, "Does not match Name")
+        )
+      ),
+    (_) => ParseResult.succeed(_)
+  )
+)
+
+const Id = Context.Tag<"Id", number>()
+const IdNumber = S.number.pipe(
+  S.transformOrFail(
+    S.number,
+    (_, _opts, ast) =>
+      Effect.filterOrFail(
+        Id,
+        (id) => _ === id,
+        () => ParseResult.type(ast, _, "Does not match Id")
+      ),
+    (_) => ParseResult.succeed(_)
+  )
+)
+
+class PersonContext extends Person.extend<PersonContext>()({
+  name: NameString
+}) {}
 
 class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
   id: S.number,
@@ -49,40 +83,48 @@ class PersonWithNick extends PersonWithAge.extend<PersonWithNick>()({
   nick: S.string
 }) {}
 
-class PersonWithTransform extends Person.transform<PersonWithTransform>()(
+class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
   {
     id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
   },
-  (input) =>
-    PR.succeed({
-      ...input,
-      id: input.id.toString(),
-      thing: O.some({ id: 123 })
-    }),
-  (input) =>
-    PR.succeed({
-      ...input,
-      id: Number(input.id)
-    })
+  (input, _, ast) =>
+    input.id === 2 ?
+      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.succeed({
+        ...input,
+        id: input.id.toString(),
+        thing: O.some({ id: 123 })
+      }),
+  (input, _, ast) =>
+    input.id === "2" ?
+      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.succeed({
+        ...input,
+        id: Number(input.id)
+      })
 ) {}
 
-class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFrom>()(
+class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>()(
   {
     id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
   },
-  (input) =>
-    PR.succeed({
-      ...input,
-      id: input.id.toString(),
-      thing: { id: 123 }
-    }),
-  (input) =>
-    PR.succeed({
-      ...input,
-      id: Number(input.id)
-    })
+  (input, _, ast) =>
+    input.id === 2 ?
+      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.succeed({
+        ...input,
+        id: input.id.toString(),
+        thing: { id: 123 }
+      }),
+  (input, _, ast) =>
+    input.id === "2" ?
+      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.succeed({
+        ...input,
+        id: Number(input.id)
+      })
 ) {}
 
 describe("Schema > Class", () => {
@@ -109,24 +151,34 @@ describe("Schema > Class", () => {
     )
   })
 
-  it("keyof", () => {
-    expect(S.keyof(S.to(Person))).toEqual(
-      S.union(S.literal("id"), S.literal("name"))
-    )
-  })
-
   it("is", () => {
     const is = S.is(S.to(Person))
     expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
   })
 
   it("schema", async () => {
-    const person = S.parseSync(Person)({ id: 1, name: "John" })
+    const person = S.decodeUnknownSync(Person)({ id: 1, name: "John" })
     expect(person.name).toEqual("John")
 
     const PersonFromSelf = S.to(Person)
-    await Util.expectParseSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.expectDecodeUnknownFailure(
+      PersonFromSelf,
+      { id: 1, name: "John" },
+      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+    )
+  })
+
+  it("with context", async () => {
+    const person = S.decodeUnknown(PersonContext)({ id: 1, name: "John" }).pipe(
+      Effect.provideService(Name, "John"),
+      Effect.runSync
+    )
+    expect(person.name).toEqual("John")
+
+    const PersonFromSelf = S.to(Person)
+    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
       `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
@@ -134,12 +186,12 @@ describe("Schema > Class", () => {
   })
 
   it(".struct", async () => {
-    const person = S.parseSync(Person.struct)({ id: 1, name: "John" })
+    const person = S.decodeUnknownSync(Person.struct)({ id: 1, name: "John" })
     assert.deepStrictEqual(person, { id: 1, name: "John" })
   })
 
   it("extends", () => {
-    const person = S.parseSync(PersonWithAge)({
+    const person = S.decodeUnknownSync(PersonWithAge)({
       id: 1,
       name: "John",
       age: 30
@@ -152,7 +204,7 @@ describe("Schema > Class", () => {
   })
 
   it("extends extends", () => {
-    const person = S.parseSync(PersonWithNick)({
+    const person = S.decodeUnknownSync(PersonWithNick)({
       id: 1,
       name: "John",
       age: 30,
@@ -163,7 +215,7 @@ describe("Schema > Class", () => {
   })
 
   it("extends error", () => {
-    expect(() => S.parseSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
+    expect(() => S.decodeUnknownSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
       new Error(
         `({ id: number; age: number; name: a non empty string } <-> PersonWithAge)
 └─ From side transformation failure
@@ -191,14 +243,14 @@ describe("Schema > Class", () => {
     expect(Equal.equals(person, person3)).toEqual(false)
   })
 
-  it("Pretty/to", () => {
+  it("pretty", () => {
     const pretty = Pretty.make(Person)
     expect(pretty(new Person({ id: 1, name: "John" }))).toEqual(
       `Person({ "id": 1, "name": "John" })`
     )
   })
 
-  it("transform", () => {
+  it("transformOrFail", async () => {
     const decode = S.decodeSync(PersonWithTransform)
     const person = decode({
       id: 1,
@@ -209,9 +261,31 @@ describe("Schema > Class", () => {
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
+
+    await Util.expectDecodeUnknownFailure(
+      PersonWithTransform,
+      {
+        id: 2,
+        name: "John"
+      },
+      `(({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
+└─ From side transformation failure
+   └─ ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })
+      └─ Transformation process failure
+         └─ Expected ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John"}`
+    )
+    await Util.expectEncodeFailure(
+      PersonWithTransform,
+      new PersonWithTransform({ id: "2", name: "John", thing: O.some({ id: 1 }) }),
+      `(({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
+└─ From side transformation failure
+   └─ ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })
+      └─ Transformation process failure
+         └─ Expected ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":"2","name":"John","thing":{"_id":"Option","_tag":"Some","value":{"id":1}}}`
+    )
   })
 
-  it("transform from", () => {
+  it("transformOrFailFrom", async () => {
     const decode = S.decodeSync(PersonWithTransformFrom)
     const person = decode({
       id: 1,
@@ -222,6 +296,28 @@ describe("Schema > Class", () => {
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
+
+    await Util.expectDecodeUnknownFailure(
+      PersonWithTransformFrom,
+      {
+        id: 2,
+        name: "John"
+      },
+      `(({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
+└─ From side transformation failure
+   └─ ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }))
+      └─ Transformation process failure
+         └─ Expected ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":2,"name":"John"}`
+    )
+    await Util.expectEncodeFailure(
+      PersonWithTransformFrom,
+      new PersonWithTransformFrom({ id: "2", name: "John", thing: O.some({ id: 1 }) }),
+      `(({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
+└─ From side transformation failure
+   └─ ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }))
+      └─ Transformation process failure
+         └─ Expected ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":"2","name":"John","thing":{"id":1}}`
+    )
   })
 
   it("TaggedClass", () => {
@@ -233,7 +329,7 @@ describe("Schema > Class", () => {
     expect(person._tag).toEqual("TaggedPerson")
     expect(person.upperName).toEqual("JOHN")
 
-    expect(() => S.parseSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
+    expect(() => S.decodeUnknownSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
       new Error(
         `({ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string } <-> TaggedPersonWithAge)
 └─ From side transformation failure
@@ -242,7 +338,7 @@ describe("Schema > Class", () => {
          └─ is missing`
       )
     )
-    person = S.parseSync(TaggedPersonWithAge)({
+    person = S.decodeUnknownSync(TaggedPersonWithAge)({
       _tag: "TaggedPerson",
       id: 1,
       name: "John",
@@ -250,6 +346,20 @@ describe("Schema > Class", () => {
     })
     expect(person._tag).toEqual("TaggedPerson")
     expect(person.upperName).toEqual("JOHN")
+  })
+
+  it("extending a TaggedClass with props containing a _tag field", async () => {
+    class A extends S.TaggedClass<A>()("A", {
+      id: S.number
+    }) {}
+    class B extends A.transformOrFail<B>()(
+      { _tag: S.literal("B") },
+      (input) => ParseResult.succeed({ ...input, _tag: "B" as const }),
+      (input) => ParseResult.succeed({ ...input, _tag: "A" })
+    ) {}
+
+    await Util.expectDecodeUnknownSuccess(B, { _tag: "A", id: 1 }, new B({ _tag: "B", id: 1 }))
+    await Util.expectEncodeSuccess(B, new B({ _tag: "B", id: 1 }), { _tag: "A", id: 1 })
   })
 
   it("TaggedError", () => {
@@ -268,7 +378,7 @@ describe("Schema > Class", () => {
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
 
-    err = S.parseSync(MyError)({ _tag: "MyError", id: 1 })
+    err = S.decodeUnknownSync(MyError)({ _tag: "MyError", id: 1 })
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
   })
@@ -321,6 +431,51 @@ describe("Schema > Class", () => {
     assert.deepStrictEqual(
       Serializable.deserializeExit(req, { _tag: "Success", value: "123" }).pipe(Effect.runSync),
       Exit.succeed(123)
+    )
+  })
+
+  it("TaggedRequest context", () => {
+    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", NameString, S.number, {
+      id: IdNumber
+    }) {}
+
+    let req = new MyRequest({ id: 1 }, true)
+    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+
+    req = S.decode(MyRequest)({ _tag: "MyRequest", id: 1 }).pipe(
+      Effect.provideService(Id, 1),
+      Effect.runSync
+    )
+    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+
+    assert.deepStrictEqual(
+      Serializable.serialize(req).pipe(
+        Effect.provideService(Id, 1),
+        Effect.runSync
+      ),
+      { _tag: "MyRequest", id: 1 }
+    )
+    assert.deepStrictEqual(
+      Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(
+        Effect.provideService(Id, 1),
+        Effect.runSync
+      ),
+      req
+    )
+    assert.deepStrictEqual(
+      Serializable.serializeExit(req, Exit.fail("fail")).pipe(
+        Effect.provideService(Name, "fail"),
+        Effect.runSync
+      ),
+      { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
+    )
+    assert.deepStrictEqual(
+      Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
+        .pipe(
+          Effect.provideService(Name, "fail"),
+          Effect.runSync
+        ),
+      Exit.fail("fail")
     )
   })
 })

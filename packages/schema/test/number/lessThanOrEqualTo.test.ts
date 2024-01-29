@@ -18,9 +18,9 @@ describe("number > lessThanOrEqualTo", () => {
 
   it("decoding", async () => {
     const schema = S.lessThanOrEqualTo(0)(S.number)
-    await Util.expectParseSuccess(schema, 0)
-    await Util.expectParseSuccess(schema, -1)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 0)
+    await Util.expectDecodeUnknownSuccess(schema, -1)
+    await Util.expectDecodeUnknownFailure(
       schema,
       1,
       `a non-positive number

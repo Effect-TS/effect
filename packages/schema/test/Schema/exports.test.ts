@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema/exports", () => {
   it("exports", () => {
-    expect(S.parse).exist
-    expect(S.parseSync).exist
-    expect(S.parseOption).exist
-    expect(S.parseEither).exist
+    expect(S.decodeUnknown).exist
+    expect(S.decodeUnknownSync).exist
+    expect(S.decodeUnknownOption).exist
+    expect(S.decodeUnknownEither).exist
 
     expect(S.decode).exist
     expect(S.decodeSync).exist

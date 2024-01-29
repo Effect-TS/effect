@@ -45,6 +45,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           package: "@effect/platform-bun",
           module: "WorkerRunner"
         }),
+        Effect.interruptible,
         Effect.forkScoped
       )
       const send = (message: O, transfer?: ReadonlyArray<unknown>) =>
@@ -71,14 +72,15 @@ export const layer = <I, R, E, O>(
 
 /** @internal */
 export const layerSerialized = <
+  R,
   I,
   A extends Schema.TaggedRequest.Any,
   Handlers extends Runner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<R, I, A>,
   handlers: Handlers
 ): Layer.Layer<
-  Runner.SerializedRunner.HandlersContext<Handlers>,
+  R | Runner.SerializedRunner.HandlersContext<Handlers>,
   WorkerError,
   never
 > => Layer.provide(Runner.layerSerialized(schema, handlers), layerPlatform)

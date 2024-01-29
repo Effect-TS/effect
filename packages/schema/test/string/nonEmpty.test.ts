@@ -5,10 +5,10 @@ import { describe, it } from "vitest"
 describe("string > nonEmpty", () => {
   const schema = S.NonEmpty
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseSuccess(schema, "aa")
+    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.expectDecodeUnknownSuccess(schema, "aa")
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `NonEmpty

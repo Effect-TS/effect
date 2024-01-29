@@ -5,16 +5,16 @@ import { describe, it } from "vitest"
 describe("string > length", () => {
   it("decoding", async () => {
     const schema = S.string.pipe(S.length(1), S.identifier("Char"))
-    await Util.expectParseSuccess(schema, "a")
+    await Util.expectDecodeUnknownSuccess(schema, "a")
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `Char
 └─ Predicate refinement failure
    └─ Expected Char (a single character), actual ""`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "aa",
       `Char

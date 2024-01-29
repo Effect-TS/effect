@@ -2,10 +2,9 @@
  * @since 1.0.0
  */
 
-import * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import { dual } from "effect/Function"
+import { dual, identity } from "effect/Function"
 
 /**
  * @since 1.0.0
@@ -43,18 +42,20 @@ export const get = (u: unknown): ReadonlyArray<globalThis.Transferable> => {
  * @category schema
  */
 export const schema: {
-  <A>(f: (_: A) => ReadonlyArray<globalThis.Transferable>): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>
-  <I, A>(self: Schema.Schema<I, A>, f: (_: A) => ReadonlyArray<globalThis.Transferable>): Schema.Schema<I, A>
+  <A>(
+    f: (_: A) => ReadonlyArray<globalThis.Transferable>
+  ): <R, I>(self: Schema.Schema<R, I, A>) => Schema.Schema<R, I, A>
+  <R, I, A>(self: Schema.Schema<R, I, A>, f: (_: A) => ReadonlyArray<globalThis.Transferable>): Schema.Schema<R, I, A>
 } = dual<
   <A>(
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ) => <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>,
-  <I, A>(
-    self: Schema.Schema<I, A>,
+  ) => <R, I>(self: Schema.Schema<R, I, A>) => Schema.Schema<R, I, A>,
+  <R, I, A>(
+    self: Schema.Schema<R, I, A>,
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ) => Schema.Schema<I, A>
->(2, <I, A>(
-  self: Schema.Schema<I, A>,
+  ) => Schema.Schema<R, I, A>
+>(2, <R, I, A>(
+  self: Schema.Schema<R, I, A>,
   f: (_: A) => ReadonlyArray<globalThis.Transferable>
 ) =>
   Schema.transform(
@@ -67,35 +68,32 @@ export const schema: {
           return f(this as any)
         }
       }) as A,
-    (output) => output as A
+    identity
   ))
+
+const schemaParse =
+  <R, A>(parse: ParseResult.DecodeUnknown<R, A>): ParseResult.DeclarationDecodeUnknown<R, A> => (u, options, ast) => {
+    if (!isTransferable(u)) {
+      return ParseResult.fail(ParseResult.type(ast, u))
+    }
+    const proto = {
+      __proto__: Object.getPrototypeOf(u),
+      [symbol]: u[symbol]
+    }
+    return ParseResult.map(parse(u, options), (a): A => Object.setPrototypeOf(a, proto))
+  }
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaFromSelf = <I, A>(
-  item: Schema.Schema<I, A>
-): Schema.Schema<I, A> => {
+export const schemaFromSelf = <R, I, A>(
+  item: Schema.Schema<R, I, A>
+): Schema.Schema<R, I, A> => {
   return Schema.declare(
     [item],
-    item,
-    (isDecoding, item) => {
-      const parse = isDecoding ? Schema.parse(item) : Schema.encode(item)
-      return (u, options, ast) => {
-        if (!isTransferable(u)) {
-          return ParseResult.fail(ParseResult.type(ast, u))
-        }
-        const proto = {
-          __proto__: Object.getPrototypeOf(u),
-          [symbol]: u[symbol]
-        }
-        return ParseResult.map(
-          parse(u, options),
-          (a) => Object.setPrototypeOf(a, proto)
-        )
-      }
-    },
-    { [AST.IdentifierAnnotationId]: "Transferable" }
+    (item) => schemaParse(ParseResult.decodeUnknown(item)),
+    (item) => schemaParse(ParseResult.encodeUnknown(item)),
+    { identifier: "Transferable" }
   )
 }

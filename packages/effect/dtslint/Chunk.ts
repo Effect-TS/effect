@@ -63,8 +63,8 @@ pipe(
 // $ExpectType [excluded: Chunk<string | number>, satisfying: Chunk<string | number>]
 Chunk.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType [excluded: Chunk<string | number>, satisfying: Chunk<string | number>]
-pipe(numbersOrStrings, Chunk.partition(predicateNumbersOrStrings))
+// $ExpectType [excluded: Chunk<number>, satisfying: Chunk<number>]
+pipe(numbers, Chunk.partition(predicateNumbersOrStrings))
 
 // $ExpectType [excluded: Chunk<string>, satisfying: Chunk<number>]
 Chunk.partition(numbersOrStrings, Predicate.isNumber)
@@ -134,11 +134,20 @@ Chunk.filter(numbersOrStrings, (
   _item // $ExpectType string | number
 ) => true)
 
+// $ExpectType Chunk<string | number>
 pipe(
   numbersOrStrings,
   Chunk.filter((
     _item // $ExpectType string | number
   ) => true)
+)
+
+// $ExpectType Chunk<number>
+pipe(
+  numbers,
+  Chunk.filter((
+    item: string | number
+  ): item is string | number => true)
 )
 
 // $ExpectType Chunk<string | number>

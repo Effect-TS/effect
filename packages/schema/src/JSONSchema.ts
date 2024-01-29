@@ -207,7 +207,7 @@ export type JsonSchema7Root = JsonSchema7 & {
  * @category encoding
  * @since 1.0.0
  */
-export const make = <I, A>(schema: Schema.Schema<I, A>): JsonSchema7Root => goRoot(schema.ast)
+export const make = <R, I, A>(schema: Schema.Schema<R, I, A>): JsonSchema7Root => goRoot(schema.ast)
 
 const anyJsonSchema: JsonSchema7 = { $id: "/schemas/any" }
 
@@ -408,10 +408,10 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
               }
               break
             }
-            throw new Error(`Unsupported index signature parameter ${parameter._tag}`)
+            throw new Error(`Unsupported index signature parameter (${AST.format(parameter)})`)
           }
           case "SymbolKeyword":
-            throw new Error(`Unsupported index signature parameter ${parameter._tag}`)
+            throw new Error(`Unsupported index signature parameter (${AST.format(parameter)})`)
         }
       }
       const propertySignatures = ast.propertySignatures.map((ps) => {

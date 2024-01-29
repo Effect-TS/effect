@@ -1,5 +1,59 @@
 # @effect/experimental
 
+## 0.8.2
+
+### Patch Changes
+
+- Updated dependencies [[`9863e2f`](https://github.com/Effect-TS/effect/commit/9863e2fb3561dc019965aeccd6584a418fc8b401)]:
+  - @effect/schema@0.61.3
+  - @effect/platform@0.43.3
+  - @effect/platform-node@0.42.3
+
+## 0.8.1
+
+### Patch Changes
+
+- Updated dependencies [[`64f710a`](https://github.com/Effect-TS/effect/commit/64f710aa49dec6ffcd33ee23438d0774f5489733)]:
+  - @effect/schema@0.61.2
+  - @effect/platform@0.43.2
+  - @effect/platform-node@0.42.2
+
+## 0.8.0
+
+### Minor Changes
+
+- [#1985](https://github.com/Effect-TS/effect/pull/1985) [`634af60`](https://github.com/Effect-TS/effect/commit/634af60a2f9d407f42357edc29ca4c14a005fdf9) Thanks [@tim-smart](https://github.com/tim-smart)! - add lmdb implementation of persistence
+
+## 0.7.2
+
+### Patch Changes
+
+- Updated dependencies [[`c7550f9`](https://github.com/Effect-TS/effect/commit/c7550f96e1006eee832ce5025bf0c197a65935ea), [`8d1f6e4`](https://github.com/Effect-TS/effect/commit/8d1f6e4bb13e221804fb1762ef19e02bcefc8f61), [`d404561`](https://github.com/Effect-TS/effect/commit/d404561e47ec2fa5f68709a308ee5d2ee959141d), [`7b84a3c`](https://github.com/Effect-TS/effect/commit/7b84a3c7e4b9c8dc02294b0e3cc3ae3becea977b), [`1a84dee`](https://github.com/Effect-TS/effect/commit/1a84dee0e9ddbfaf2610e4d7c00c7020c427171a), [`ac30bf4`](https://github.com/Effect-TS/effect/commit/ac30bf4cd53de0663784f65ae6bee8279333df97)]:
+  - @effect/schema@0.61.1
+  - effect@2.2.2
+  - @effect/platform@0.43.1
+  - @effect/platform-node@0.42.1
+
+## 0.7.1
+
+### Patch Changes
+
+- [#1968](https://github.com/Effect-TS/effect/pull/1968) [`fdf7b0e`](https://github.com/Effect-TS/effect/commit/fdf7b0e6647419fb70e18be64b60e652de42e97d) Thanks [@IMax153](https://github.com/IMax153)! - ensure data-loader worker fiber can be interrupted if forked in an uninterruptible region
+
+## 0.7.0
+
+### Minor Changes
+
+- [#1922](https://github.com/Effect-TS/effect/pull/1922) [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764) Thanks [@gcanti](https://github.com/gcanti)! - add context tracking to Schema, closes #1873
+
+### Patch Changes
+
+- Updated dependencies [[`84da31f`](https://github.com/Effect-TS/effect/commit/84da31f0643e8651b9d311b30526b1e4edfbdfb8), [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764), [`645bea2`](https://github.com/Effect-TS/effect/commit/645bea2551129f94a5b0e38347e28067dee531bb), [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764)]:
+  - effect@2.2.1
+  - @effect/schema@0.61.0
+  - @effect/platform-node@0.42.0
+  - @effect/platform@0.43.0
+
 ## 0.6.11
 
 ### Patch Changes

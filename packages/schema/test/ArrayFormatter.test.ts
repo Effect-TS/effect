@@ -1,15 +1,16 @@
 import * as _ from "@effect/schema/ArrayFormatter"
 import type { ParseOptions } from "@effect/schema/AST"
-import { ParseResult } from "@effect/schema/index"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as Either from "effect/Either"
+import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
-const expectIssues = <I, A>(schema: S.Schema<I, A>, input: unknown, issues: Array<_.Issue>) => {
-  const result = S.parseEither(schema)(input, options).pipe(
+const expectIssues = <I, A>(schema: S.Schema<never, I, A>, input: unknown, issues: Array<_.Issue>) => {
+  const result = S.decodeUnknownEither(schema)(input, options).pipe(
     Either.mapLeft((e) => _.formatIssues([e.error]))
   )
   expect(result).toStrictEqual(Either.left(issues))
@@ -17,6 +18,20 @@ const expectIssues = <I, A>(schema: S.Schema<I, A>, input: unknown, issues: Arra
 
 describe("ArrayFormatter", () => {
   describe("defaults", () => {
+    it("declaration", () => {
+      const schema = S.optionFromSelf(S.number)
+      expectIssues(schema, null, [{
+        _tag: "Type",
+        path: [],
+        message: "Expected Option<number>, actual null"
+      }])
+      expectIssues(schema, Option.some("a"), [{
+        _tag: "Type",
+        path: [],
+        message: `Expected a number, actual "a"`
+      }])
+    })
+
     it("Type", () => {
       const schema = S.string
       expectIssues(schema, null, [{
@@ -109,11 +124,12 @@ describe("ArrayFormatter", () => {
     })
 
     it("Forbidden", () => {
-      const schema = Util.effectify(S.string)
+      const schema = Util.AsyncString
       expectIssues(schema, "", [{
         _tag: "Forbidden",
         path: [],
-        message: "is forbidden"
+        message:
+          `Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       }])
     })
 
@@ -159,7 +175,7 @@ describe("ArrayFormatter", () => {
       )
 
       expectIssues(schema, null, [{
-        _tag: "Type",
+        _tag: "Declaration",
         path: [],
         message: "my custom message null"
       }])
@@ -350,7 +366,7 @@ describe("ArrayFormatter", () => {
               : ParseResult.succeed(n)
           },
           (n) => ParseResult.succeed(String(n))
-        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a parseable string"))
+        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a decodeUnknownable string"))
 
         expectIssues(schema, null, [{
           _tag: "Transform",
@@ -365,7 +381,7 @@ describe("ArrayFormatter", () => {
         expectIssues(schema, "a", [{
           _tag: "Transform",
           path: [],
-          message: "please enter a parseable string"
+          message: "please enter a decodeUnknownable string"
         }])
       })
     })
@@ -373,7 +389,7 @@ describe("ArrayFormatter", () => {
     describe("suspend", () => {
       it("outer", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
         ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
 
@@ -391,7 +407,7 @@ describe("ArrayFormatter", () => {
 
       it("inner/outer", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
         ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
@@ -410,7 +426,7 @@ describe("ArrayFormatter", () => {
 
       it("inner/inner", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(
             S.suspend(() => schema).pipe(
@@ -438,7 +454,7 @@ describe("ArrayFormatter", () => {
 
       it("inner/inner/inner", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(
             S.suspend(() =>

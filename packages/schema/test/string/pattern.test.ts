@@ -15,24 +15,24 @@ describe("string > pattern", () => {
 
   it("should reset lastIndex to 0 before each `test` call (#88)", () => {
     const regex = /^(A|B)$/g
-    const schema: S.Schema<string> = S.string.pipe(S.pattern(regex))
+    const schema = S.string.pipe(S.pattern(regex))
     expect(S.decodeSync(schema)("A")).toEqual("A")
     expect(S.decodeSync(schema)("A")).toEqual("A")
   })
 
   it("decoding", async () => {
     const schema = S.string.pipe(S.pattern(/^abb+$/))
-    await Util.expectParseSuccess(schema, "abb")
-    await Util.expectParseSuccess(schema, "abbb")
+    await Util.expectDecodeUnknownSuccess(schema, "abb")
+    await Util.expectDecodeUnknownSuccess(schema, "abbb")
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "ab",
       `a string matching the pattern ^abb+$
 └─ Predicate refinement failure
    └─ Expected a string matching the pattern ^abb+$, actual "ab"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a",
       `a string matching the pattern ^abb+$

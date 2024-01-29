@@ -18,15 +18,15 @@ describe("number > lessThan", () => {
 
   it("decoding", async () => {
     const schema = S.lessThan(0)(S.number)
-    await Util.expectParseSuccess(schema, -1)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, -1)
+    await Util.expectDecodeUnknownFailure(
       schema,
       0,
       `a negative number
 └─ Predicate refinement failure
    └─ Expected a negative number, actual 0`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       1,
       `a negative number

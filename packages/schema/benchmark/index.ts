@@ -1,31 +1,31 @@
+import type { ParseOptions } from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
+import * as S from "@effect/schema/Schema"
 import { Bench } from "tinybench"
 import { z } from "zod"
-import type { ParseOptions } from "../src/AST.js"
-import * as P from "../src/Parser.js"
-import * as t from "../src/Schema.js"
 
 /*
-┌─────────┬──────────────────────┬───────────┬───────────────────┬───────────┬─────────┐
-│ (index) │      Task Name       │  ops/sec  │ Average Time (ns) │  Margin   │ Samples │
-├─────────┼──────────────────────┼───────────┼───────────────────┼───────────┼─────────┤
-│    0    │ 'parseEither (good)' │ '150,586' │ 6640.714005254174 │ '±0.73%'  │ 150587  │
-│    1    │     'zod (good)'     │ '212,371' │ 4708.722572530713 │ '±0.57%'  │ 212372  │
-│    2    │ 'parseEither (bad)'  │ '130,028' │ 7690.645276174016 │ '±0.57%'  │ 130029  │
-│    3    │     'zod (bad)'      │ '56,463'  │ 17710.45249230275 │ '±10.43%' │  56465  │
-│    4    │ 'parseEither (bad2)' │ '152,362' │  6563.3090290069  │ '±0.55%'  │ 152363  │
-│    5    │     'zod (bad2)'     │ '211,165' │ 4735.626160980493 │ '±0.59%'  │ 211166  │
-└─────────┴──────────────────────┴───────────┴───────────────────┴───────────┴─────────┘
+┌─────────┬──────────────────────────────────────────┬───────────┬───────────────────┬──────────┬─────────┐
+│ (index) │                Task Name                 │  ops/sec  │ Average Time (ns) │  Margin  │ Samples │
+├─────────┼──────────────────────────────────────────┼───────────┼───────────────────┼──────────┼─────────┤
+│    0    │   'Schema.decodeUnknownEither (good)'    │ '138,053' │ 7243.554507198951 │ '±0.85%' │ 138054  │
+│    1    │ 'ParseResult.decodeUnknownEither (good)' │ '128,506' │ 7781.701724800714 │ '±2.51%' │ 128507  │
+│    2    │               'zod (good)'               │ '188,773' │ 5297.342979977194 │ '±7.13%' │ 188792  │
+│    3    │    'Schema.decodeUnknownEither (bad)'    │ '34,880'  │ 28669.19968011391 │ '±0.46%' │  34881  │
+│    4    │ 'ParseResult.decodeUnknownEither (bad)'  │ '129,795' │ 7704.451490526424 │ '±0.53%' │ 129796  │
+│    5    │               'zod (bad)'                │ '52,210'  │ 19153.05420333659 │ '±6.88%' │  52211  │
+└─────────┴──────────────────────────────────────────┴───────────┴───────────────────┴──────────┴─────────┘
 */
 
 const bench = new Bench({ time: 1000 })
 
-const Vector = t.tuple(t.number, t.number, t.number)
+const Vector = S.tuple(S.number, S.number, S.number)
 const VectorZod = z.tuple([z.number(), z.number(), z.number()])
 
-const Asteroid = t.struct({
-  type: t.literal("asteroid"),
+const Asteroid = S.struct({
+  type: S.literal("asteroid"),
   location: Vector,
-  mass: t.number
+  mass: S.number
 })
 const AsteroidZod = z.object({
   type: z.literal("asteroid"),
@@ -33,12 +33,12 @@ const AsteroidZod = z.object({
   mass: z.number()
 })
 
-const Planet = t.struct({
-  type: t.literal("planet"),
+const Planet = S.struct({
+  type: S.literal("planet"),
   location: Vector,
-  mass: t.number,
-  population: t.number,
-  habitable: t.boolean
+  mass: S.number,
+  population: S.number,
+  habitable: S.boolean
 })
 const PlanetZod = z.object({
   type: z.literal("planet"),
@@ -48,11 +48,11 @@ const PlanetZod = z.object({
   habitable: z.boolean()
 })
 
-const Rank = t.union(
-  t.literal("captain"),
-  t.literal("first mate"),
-  t.literal("officer"),
-  t.literal("ensign")
+const Rank = S.union(
+  S.literal("captain"),
+  S.literal("first mate"),
+  S.literal("officer"),
+  S.literal("ensign")
 )
 const RankZod = z.union([
   z.literal("captain"),
@@ -61,9 +61,9 @@ const RankZod = z.union([
   z.literal("ensign")
 ])
 
-const CrewMember = t.struct({
-  name: t.string,
-  age: t.number,
+const CrewMember = S.struct({
+  name: S.string,
+  age: S.number,
   rank: Rank,
   home: Planet
 })
@@ -74,12 +74,12 @@ const CrewMemberZod = z.object({
   home: PlanetZod
 })
 
-const Ship = t.struct({
-  type: t.literal("ship"),
+const Ship = S.struct({
+  type: S.literal("ship"),
   location: Vector,
-  mass: t.number,
-  name: t.string,
-  crew: t.array(CrewMember)
+  mass: S.number,
+  name: S.string,
+  crew: S.array(CrewMember)
 })
 const ShipZod = z.object({
   type: z.literal("ship"),
@@ -89,11 +89,8 @@ const ShipZod = z.object({
   crew: z.array(CrewMemberZod)
 })
 
-export const schema = t.union(Asteroid, Planet, Ship)
+export const schema = S.union(Asteroid, Planet, Ship)
 export const schemaZod = z.discriminatedUnion("type", [AsteroidZod, PlanetZod, ShipZod])
-
-export const parseEither = P.parseEither(schema)
-const options: ParseOptions = { errors: "all" }
 
 const good = {
   type: "ship",
@@ -137,49 +134,28 @@ const bad = {
   ]
 }
 
-const bad2 = {
-  type: "ship",
-  location: [1, 2, 3],
-  mass: 4,
-  name: "foo",
-  crew: [
-    {
-      name: "bar",
-      age: 44,
-      rank: "captain",
-      home: {
-        type: "planet",
-        location: [5, 6, 7],
-        mass: 8,
-        population: 1000,
-        habitable: true
-      }
-    }
-  ],
-  excess: 1
-}
-
-// console.log(parseEither(good))
-// console.log(parseEither(bad))
+export const schemadecodeUnknownEither = S.decodeUnknownEither(schema)
+const parseResultdecodeUnknownEither = ParseResult.decodeUnknownEither(schema)
+const options: ParseOptions = { errors: "all" }
 
 bench
-  .add("parseEither (good)", function() {
-    parseEither(good, options)
+  .add("Schema.decodeUnknownEither (good)", function() {
+    schemadecodeUnknownEither(good, options)
+  })
+  .add("ParseResult.decodeUnknownEither (good)", function() {
+    parseResultdecodeUnknownEither(good, options)
   })
   .add("zod (good)", function() {
     schemaZod.safeParse(good)
   })
-  .add("parseEither (bad)", function() {
-    parseEither(bad, options)
+  .add("Schema.decodeUnknownEither (bad)", function() {
+    schemadecodeUnknownEither(bad, options)
+  })
+  .add("ParseResult.decodeUnknownEither (bad)", function() {
+    parseResultdecodeUnknownEither(bad, options)
   })
   .add("zod (bad)", function() {
     schemaZod.safeParse(bad)
-  })
-  .add("parseEither (bad2)", function() {
-    parseEither(bad2, options)
-  })
-  .add("zod (bad2)", function() {
-    schemaZod.safeParse(bad2)
   })
 
 await bench.run()

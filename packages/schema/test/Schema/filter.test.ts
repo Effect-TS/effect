@@ -40,19 +40,17 @@ describe("Schema > filter", () => {
         o.b === o.a
           ? Option.none()
           : Option.some(
-            ParseResult.parseError(
-              ParseResult.type(
-                S.literal(o.a).ast,
-                o.b,
-                `b should be equal to a's value ("${o.a}")`
-              )
+            ParseResult.type(
+              S.literal(o.a).ast,
+              o.b,
+              `b should be equal to a's value ("${o.a}")`
             )
           )
       )
     )
 
-    await Util.expectParseSuccess(schema, { a: "x", b: "x" })
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, { a: "x", b: "x" })
+    await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a", b: "b" },
       `<refinement schema>

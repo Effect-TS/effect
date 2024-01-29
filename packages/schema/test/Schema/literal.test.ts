@@ -21,18 +21,18 @@ describe("Schema/literal", () => {
   describe("decoding", () => {
     it("1 member", async () => {
       const schema = S.literal(1)
-      await Util.expectParseSuccess(schema, 1)
+      await Util.expectDecodeUnknownSuccess(schema, 1)
 
-      await Util.expectParseFailure(schema, "a", `Expected 1, actual "a"`)
-      await Util.expectParseFailure(schema, null, `Expected 1, actual null`)
+      await Util.expectDecodeUnknownFailure(schema, "a", `Expected 1, actual "a"`)
+      await Util.expectDecodeUnknownFailure(schema, null, `Expected 1, actual null`)
     })
 
     it("2 members", async () => {
       const schema = S.literal(1, "a")
-      await Util.expectParseSuccess(schema, 1)
-      await Util.expectParseSuccess(schema, "a")
+      await Util.expectDecodeUnknownSuccess(schema, 1)
+      await Util.expectDecodeUnknownSuccess(schema, "a")
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `1 | "a"

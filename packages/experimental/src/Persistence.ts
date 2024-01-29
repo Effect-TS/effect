@@ -12,6 +12,7 @@ import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 1.0.0
@@ -55,7 +56,7 @@ export type BackingPersistenceTypeId = typeof BackingPersistenceTypeId
  */
 export interface BackingPersistence {
   readonly [BackingPersistenceTypeId]: BackingPersistenceTypeId
-  readonly make: (storeId: string) => Effect.Effect<never, never, BackingPersistenceStore>
+  readonly make: (storeId: string) => Effect.Effect<Scope.Scope, never, BackingPersistenceStore>
 }
 
 /**
@@ -95,7 +96,7 @@ export type ResultPersistenceTypeId = typeof ResultPersistenceTypeId
  */
 export interface ResultPersistence {
   readonly [ResultPersistenceTypeId]: ResultPersistenceTypeId
-  readonly make: (storeId: string) => Effect.Effect<never, never, ResultPersistenceStore>
+  readonly make: (storeId: string) => Effect.Effect<Scope.Scope, never, ResultPersistenceStore>
 }
 
 /**
@@ -103,18 +104,18 @@ export interface ResultPersistence {
  * @category models
  */
 export interface ResultPersistenceStore {
-  readonly get: <IE, E, IA, A>(
-    key: ResultPersistence.Key<IE, E, IA, A>
-  ) => Effect.Effect<never, PersistenceError, Option.Option<Exit.Exit<E, A>>>
-  readonly getMany: <IE, E, IA, A>(
-    key: ReadonlyArray<ResultPersistence.Key<IE, E, IA, A>>
-  ) => Effect.Effect<never, PersistenceError, Array<Option.Option<Exit.Exit<E, A>>>>
-  readonly set: <IE, E, IA, A>(
-    key: ResultPersistence.Key<IE, E, IA, A>,
+  readonly get: <R, IE, E, IA, A>(
+    key: ResultPersistence.Key<R, IE, E, IA, A>
+  ) => Effect.Effect<R, PersistenceError, Option.Option<Exit.Exit<E, A>>>
+  readonly getMany: <R, IE, E, IA, A>(
+    key: ReadonlyArray<ResultPersistence.Key<R, IE, E, IA, A>>
+  ) => Effect.Effect<R, PersistenceError, Array<Option.Option<Exit.Exit<E, A>>>>
+  readonly set: <R, IE, E, IA, A>(
+    key: ResultPersistence.Key<R, IE, E, IA, A>,
     value: Exit.Exit<E, A>
-  ) => Effect.Effect<never, PersistenceError, void>
-  readonly remove: <IE, E, IA, A>(
-    key: ResultPersistence.Key<IE, E, IA, A>
+  ) => Effect.Effect<R, PersistenceError, void>
+  readonly remove: <R, IE, E, IA, A>(
+    key: ResultPersistence.Key<R, IE, E, IA, A>
   ) => Effect.Effect<never, PersistenceError, void>
 }
 
@@ -127,7 +128,7 @@ export declare namespace ResultPersistence {
    * @since 1.0.0
    * @category models
    */
-  export interface Key<IE, E, IA, A> extends PrimaryKey.PrimaryKey, Serializable.WithResult<IE, E, IA, A> {
+  export interface Key<R, IE, E, IA, A> extends PrimaryKey.PrimaryKey, Serializable.WithResult<R, IE, E, IA, A> {
     readonly _tag: string
   }
 }
@@ -153,30 +154,35 @@ export const layerResult = Layer.effect(
       make: (storeId: string) =>
         Effect.gen(function*(_) {
           const storage = yield* _(backing.make(storeId))
-          const parse = <IE, E, IA, A>(method: string, key: ResultPersistence.Key<IE, E, IA, A>, value: unknown) =>
-            Effect.mapError(Serializable.deserializeExit(key, value), (_) =>
-              new PersistenceSchemaError({ method, error: _.error }))
-          const encode = <IE, E, IA, A>(
+          const parse = <R, IE, E, IA, A>(
             method: string,
-            key: ResultPersistence.Key<IE, E, IA, A>,
+            key: ResultPersistence.Key<R, IE, E, IA, A>,
+            value: unknown
+          ) =>
+            Effect.mapError(
+              Serializable.deserializeExit(key, value),
+              (_) => new PersistenceSchemaError({ method, error: _.error })
+            )
+          const encode = <R, IE, E, IA, A>(
+            method: string,
+            key: ResultPersistence.Key<R, IE, E, IA, A>,
             value: Exit.Exit<E, A>
           ) =>
-            Effect.mapError(Serializable.serializeExit(key, value), (_) =>
-              new PersistenceSchemaError({ method, error: _.error }))
-          const makeKey = <IE, E, IA, A>(
-            key: ResultPersistence.Key<IE, E, IA, A>
-          ) =>
-            `${key._tag}:${key[PrimaryKey.symbol]()}`
+            Effect.mapError(
+              Serializable.serializeExit(key, value),
+              (_) => new PersistenceSchemaError({ method, error: _.error })
+            )
+          const makeKey = <R, IE, E, IA, A>(
+            key: ResultPersistence.Key<R, IE, E, IA, A>
+          ) => `${key._tag}:${key[PrimaryKey.symbol]()}`
 
           return identity<ResultPersistenceStore>({
             get: (key) =>
               Effect.flatMap(
                 storage.get(makeKey(key)),
                 Option.match({
-                  onNone: () =>
-                    Effect.succeedNone,
-                  onSome: (_) =>
-                    Effect.asSome(parse("get", key, _))
+                  onNone: () => Effect.succeedNone,
+                  onSome: (_) => Effect.asSome(parse("get", key, _))
                 })
               ),
             getMany: (keys) =>

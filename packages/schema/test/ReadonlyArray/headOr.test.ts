@@ -5,15 +5,15 @@ import { describe, it } from "vitest"
 describe("ReadonlyArray > headOr", () => {
   it("decoding (without fallback)", async () => {
     const schema = S.headOr(S.array(S.NumberFromString))
-    await Util.expectParseSuccess(schema, ["1"], 1)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
+    await Util.expectDecodeUnknownFailure(
       schema,
       [],
       `(ReadonlyArray<NumberFromString> <-> number)
 └─ Transformation process failure
    └─ Expected (ReadonlyArray<NumberFromString> <-> number), actual []`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> number)
@@ -28,9 +28,9 @@ describe("ReadonlyArray > headOr", () => {
 
   it("decoding (with fallback)", async () => {
     const schema = S.headOr(S.array(S.NumberFromString), () => 0)
-    await Util.expectParseSuccess(schema, ["1"], 1)
-    await Util.expectParseSuccess(schema, [], 0)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
+    await Util.expectDecodeUnknownSuccess(schema, [], 0)
+    await Util.expectDecodeUnknownFailure(
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> number)
@@ -52,7 +52,7 @@ describe("ReadonlyArray > headOr", () => {
         })
       )
     )
-    await Util.expectParseSuccess(schema, [
+    await Util.expectDecodeUnknownSuccess(schema, [
       {
         id: "1",
         data: "{\"a\":\"a\"}"

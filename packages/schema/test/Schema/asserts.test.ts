@@ -2,11 +2,11 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-const expectAssertsSuccess = <I, A>(schema: S.Schema<I, A>, input: unknown) => {
+const expectAssertsSuccess = <I, A>(schema: S.Schema<never, I, A>, input: unknown) => {
   expect(S.asserts(schema)(input)).toEqual(undefined)
 }
 
-const expectAssertsFailure = <I, A>(schema: S.Schema<I, A>, input: unknown, message: string) => {
+const expectAssertsFailure = <I, A>(schema: S.Schema<never, I, A>, input: unknown, message: string) => {
   expect(() => S.asserts(schema)(input)).toThrow(new Error(message))
 }
 

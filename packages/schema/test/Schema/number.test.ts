@@ -5,11 +5,11 @@ import { describe, it } from "vitest"
 describe("Schema/number", () => {
   const schema = S.number
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 1, 1)
-    await Util.expectParseSuccess(schema, NaN, NaN)
-    await Util.expectParseSuccess(schema, Infinity, Infinity)
-    await Util.expectParseSuccess(schema, -Infinity, -Infinity)
-    await Util.expectParseFailure(schema, "a", `Expected a number, actual "a"`)
+    await Util.expectDecodeUnknownSuccess(schema, 1, 1)
+    await Util.expectDecodeUnknownSuccess(schema, NaN, NaN)
+    await Util.expectDecodeUnknownSuccess(schema, Infinity, Infinity)
+    await Util.expectDecodeUnknownSuccess(schema, -Infinity, -Infinity)
+    await Util.expectDecodeUnknownFailure(schema, "a", `Expected a number, actual "a"`)
   })
 
   it("encoding", async () => {

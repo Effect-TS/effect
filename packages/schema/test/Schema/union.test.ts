@@ -9,7 +9,7 @@ describe("Schema > union", () => {
         S.struct({}).pipe(S.identifier("MyDataType1")),
         S.struct({}).pipe(S.identifier("MyDataType2"))
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `MyDataType1 | MyDataType2
@@ -18,7 +18,7 @@ describe("Schema > union", () => {
 └─ Union member
    └─ Expected MyDataType2, actual null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `MyDataType1 | MyDataType2
@@ -31,7 +31,7 @@ describe("Schema > union", () => {
 
     it("empty union", async () => {
       const schema = S.union()
-      await Util.expectParseFailure(schema, 1, "Expected never, actual 1")
+      await Util.expectDecodeUnknownFailure(schema, 1, "Expected never, actual 1")
     })
 
     it("members with literals but the input doesn't have any", async () => {
@@ -39,12 +39,12 @@ describe("Schema > union", () => {
         S.struct({ a: S.literal(1), c: S.string }),
         S.struct({ b: S.literal(2), d: S.number })
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected { a: 1; c: string } | { b: 2; d: number }, actual null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ a: 1; c: string } | { b: 2; d: number }
@@ -55,7 +55,7 @@ describe("Schema > union", () => {
    └─ ["b"]
       └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: null },
         `{ a: 1; c: string } | { b: 2; d: number }
@@ -66,7 +66,7 @@ describe("Schema > union", () => {
    └─ ["b"]
       └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { b: 3 },
         `{ a: 1; c: string } | { b: 2; d: number }
@@ -85,12 +85,12 @@ describe("Schema > union", () => {
         S.struct({ category: S.literal("catA"), tag: S.literal("b") }),
         S.struct({ category: S.literal("catA"), tag: S.literal("c") })
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `Expected { category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }, actual null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
@@ -101,7 +101,7 @@ describe("Schema > union", () => {
    └─ ["tag"]
       └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { category: null },
         `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
@@ -112,7 +112,7 @@ describe("Schema > union", () => {
    └─ ["tag"]
       └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { tag: "d" },
         `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
@@ -129,19 +129,19 @@ describe("Schema > union", () => {
       const a = S.struct({ a: S.string })
       const ab = S.struct({ a: S.string, b: S.number })
       const schema = S.union(a, ab)
-      await Util.expectParseSuccess(schema, { a: "a", b: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: 1 })
     })
 
     it("union/optional property signatures: should return the best output", async () => {
       const ab = S.struct({ a: S.string, b: S.optional(S.number, { exact: true }) })
       const ac = S.struct({ a: S.string, c: S.optional(S.number, { exact: true }) })
       const schema = S.union(ab, ac)
-      await Util.expectParseSuccess(
+      await Util.expectDecodeUnknownSuccess(
         schema,
         { a: "a", c: 1 },
         { a: "a" }
       )
-      await Util.expectParseSuccess(
+      await Util.expectDecodeUnknownSuccess(
         schema,
         { a: "a", c: 1 },
         { a: "a", c: 1 },

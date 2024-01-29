@@ -17,25 +17,44 @@ describe("Schema > instanceOf", () => {
   it("annotations", () => {
     const schema = S.instanceOf(Set, { description: "my description" })
     expect(schema.ast.annotations[AST.DescriptionAnnotationId]).toEqual("my description")
+    expect(schema.ast.annotations[S.InstanceOfTypeId]).toEqual({ constructor: Set })
   })
 
   it("decoding", async () => {
     const schema = S.instanceOf(Set)
-    await Util.expectParseSuccess(schema, new Set())
-    await Util.expectParseFailure(schema, 1, `Expected an instance of Set, actual 1`)
-    await Util.expectParseFailure(schema, {}, `Expected an instance of Set, actual {}`)
+    await Util.expectDecodeUnknownSuccess(schema, new Set())
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      1,
+      `Expected an instance of Set, actual 1`
+    )
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      {},
+      `Expected an instance of Set, actual {}`
+    )
   })
 
-  it("pretty", () => {
-    const schema = S.instanceOf(Set)
-    const pretty = Pretty.make(schema)
-    expect(pretty(new Set())).toEqual("Set(...args: any)")
+  describe("pretty", () => {
+    it("default", () => {
+      const schema = S.instanceOf(Set)
+      const pretty = Pretty.make(schema)
+      expect(pretty(new Set())).toEqual("[object Set]")
+    })
+
+    it("override", () => {
+      const schema = S.instanceOf(Set, {
+        pretty: () => (set) => `new Set(${JSON.stringify(Array.from(set.values()))})`
+      })
+      const pretty = Pretty.make(schema)
+      expect(pretty(new Set([1, 2, 3]))).toEqual("new Set([1,2,3])")
+    })
   })
 
   it("Custom message", async () => {
     const schema = S.instanceOf(Set, {
       message: () => "This is a custom message"
     })
-    await Util.expectParseFailure(schema, 1, `This is a custom message`)
+    await Util.expectDecodeUnknownFailure(schema, 1, `This is a custom message`)
   })
 })

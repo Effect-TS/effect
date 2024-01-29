@@ -5,15 +5,15 @@ import { describe, it } from "vitest"
 describe("number > between", () => {
   const schema = S.number.pipe(S.between(-1, 1), S.title("[-1, -1] interval"))
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       -2,
       `[-1, -1] interval
 └─ Predicate refinement failure
    └─ Expected a number between -1 and 1, actual -2`
     )
-    await Util.expectParseSuccess(schema, 0, 0)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 0, 0)
+    await Util.expectDecodeUnknownFailure(
       schema,
       2,
       `[-1, -1] interval

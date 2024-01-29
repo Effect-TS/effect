@@ -1,5 +1,7 @@
 import * as Persistence from "@effect/experimental/Persistence"
+import * as PersistenceLmdb from "@effect/experimental/Persistence/Lmdb"
 import * as RequestResolverX from "@effect/experimental/RequestResolver"
+import { FileSystem } from "@effect/platform-node"
 import * as KeyValueStore from "@effect/platform-node/KeyValueStore"
 import { Schema } from "@effect/schema"
 import { Effect, Layer, PrimaryKey, ReadonlyArray, RequestResolver } from "effect"
@@ -60,6 +62,40 @@ describe("RequestResolver", () => {
       }).pipe(
         Effect.scoped,
         Effect.provide(Persistence.layerResultKeyValueStore.pipe(Layer.provide(KeyValueStore.layerMemory))),
+        Effect.runPromise
+      ))
+
+    test("lmdb", () =>
+      Effect.gen(function*(_) {
+        const fs = yield* _(FileSystem.FileSystem)
+        const dir = yield* _(fs.makeTempDirectoryScoped())
+
+        yield* _(
+          Effect.gen(function*(_) {
+            const baseResolver = RequestResolver.fromEffectTagged<MyRequest>()({
+              MyRequest: (reqs) =>
+                Effect.succeed(ReadonlyArray.map(reqs, (req) => new User({ id: req.id, name: "John" })))
+            })
+            const persised = yield* _(RequestResolverX.persisted(baseResolver, "lmbd"))
+            let users = yield* _(
+              Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persised), {
+                batching: true
+              })
+            )
+            assert.strictEqual(users.length, 5)
+            users = yield* _(
+              Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persised), {
+                batching: true
+              })
+            )
+            assert.strictEqual(users.length, 5)
+          }),
+          Effect.scoped,
+          Effect.provide(PersistenceLmdb.layerResult({ path: dir }))
+        )
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(FileSystem.layer),
         Effect.runPromise
       ))
   })

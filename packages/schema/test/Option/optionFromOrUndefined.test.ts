@@ -10,13 +10,13 @@ describe("Option > optionFromOrUndefined", () => {
 
   it("decoding", async () => {
     const schema = S.optionFromOrUndefined(S.NumberFromString)
-    await Util.expectParseSuccess(schema, undefined, O.none())
-    await Util.expectParseSuccess(schema, "1", O.some(1))
+    await Util.expectDecodeUnknownSuccess(schema, undefined, O.none())
+    await Util.expectDecodeUnknownSuccess(schema, "1", O.some(1))
 
     expect(O.isOption(S.decodeSync(schema)(undefined))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `(undefined | NumberFromString <-> Option<number>)
@@ -29,7 +29,7 @@ describe("Option > optionFromOrUndefined", () => {
             └─ From side transformation failure
                └─ Expected a string, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       {},
       `(undefined | NumberFromString <-> Option<number>)

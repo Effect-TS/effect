@@ -9,15 +9,15 @@ describe("AST/createSuspend", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.struct({
+    const schema: S.Schema<never, A> = S.struct({
       a: S.string,
       as: S.array(S.suspend(() => {
         log++
         return schema
       }))
     })
-    await Util.expectParseSuccess(schema, { a: "a1", as: [] })
-    await Util.expectParseSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [] })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
     expect(log).toEqual(1)
   })
 })

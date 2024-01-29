@@ -6,21 +6,21 @@ describe("Schema > record", () => {
   describe("decoding", () => {
     it("record(never, number)", async () => {
       const schema = S.record(S.never, S.number)
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
     })
 
     it("record(string, number)", async () => {
       const schema = S.record(S.string, S.number)
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         [],
         "Expected { [x: string]: number }, actual []"
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
         `{ [x: string]: number }
@@ -28,8 +28,8 @@ describe("Schema > record", () => {
    └─ Expected a number, actual "a"`
       )
       const b = Symbol.for("@effect/schema/test/b")
-      await Util.expectParseSuccess(schema, { a: 1, [b]: "b" }, { a: 1 })
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1, [b]: "b" }, { a: 1 })
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, [b]: "b" },
         `{ [x: string]: number }
@@ -42,27 +42,27 @@ describe("Schema > record", () => {
     it("record(symbol, number)", async () => {
       const a = Symbol.for("@effect/schema/test/a")
       const schema = S.record(S.symbolFromSelf, S.number)
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { [a]: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { [a]: 1 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         [],
         "Expected { [x: symbol]: number }, actual []"
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: "a" },
         `{ [x: symbol]: number }
 └─ [Symbol(@effect/schema/test/a)]
    └─ Expected a number, actual "a"`
       )
-      await Util.expectParseSuccess(
+      await Util.expectDecodeUnknownSuccess(
         schema,
         { [a]: 1, b: "b" },
         { [a]: 1 }
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: 1, b: "b" },
         `{ [x: symbol]: number }
@@ -74,23 +74,23 @@ describe("Schema > record", () => {
 
     it("record('a' | 'b', number)", async () => {
       const schema = S.record(S.union(S.literal("a"), S.literal("b")), S.number)
-      await Util.expectParseSuccess(schema, { a: 1, b: 2 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ a: number; b: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1 },
         `{ a: number; b: number }
 └─ ["b"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { b: 2 },
         `{ a: number; b: number }
@@ -104,17 +104,17 @@ describe("Schema > record", () => {
         S.union(S.literal("a"), S.templateLiteral(S.literal("prefix-"), S.string)),
         S.number
       )
-      await Util.expectParseSuccess(schema, { a: 1 })
-      await Util.expectParseSuccess(schema, { a: 1, "prefix-b": 2 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1, "prefix-b": 2 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ a: number; [x: \`prefix-\${string}\`]: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, "prefix-b": "b" },
         `{ a: number; [x: \`prefix-\${string}\`]: number }
@@ -125,30 +125,30 @@ describe("Schema > record", () => {
 
     it("record(keyof struct({ a, b }), number)", async () => {
       const schema = S.record(S.keyof(S.struct({ a: S.string, b: S.string })), S.number)
-      await Util.expectParseSuccess(schema, { a: 1, b: 2 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ a: number; b: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1 },
         `{ a: number; b: number }
 └─ ["b"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { b: 2 },
         `{ a: number; b: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
         `{ a: number; b: number }
@@ -164,12 +164,12 @@ describe("Schema > record", () => {
         ),
         S.number
       )
-      await Util.expectParseSuccess(schema, { a: 1, b: 2 })
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { a: 1 })
-      await Util.expectParseSuccess(schema, { b: 2 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { b: 2 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
         `{ [x: string]: number }
@@ -187,39 +187,39 @@ describe("Schema > record", () => {
         ),
         S.number
       )
-      await Util.expectParseSuccess(schema, { a: 1, b: 2 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
       const c = Symbol.for("@effect/schema/test/c")
-      await Util.expectParseSuccess(schema, { a: 1, b: 2, [c]: 3 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2, [c]: 3 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ a: number; b: number; [x: symbol]: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1 },
         `{ a: number; b: number; [x: symbol]: number }
 └─ ["b"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { b: 2 },
         `{ a: number; b: number; [x: symbol]: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: 2, [c]: "c" },
         `{ a: number; b: number; [x: symbol]: number }
 └─ [Symbol(@effect/schema/test/c)]
    └─ Expected a number, actual "c"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
         `{ a: number; b: number; [x: symbol]: number }
@@ -232,23 +232,23 @@ describe("Schema > record", () => {
       const a = Symbol.for("@effect/schema/test/a")
       const b = Symbol.for("@effect/schema/test/b")
       const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
-      await Util.expectParseSuccess(schema, { [a]: 1, [b]: 2 })
+      await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/a)]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: 1 },
         `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/b)]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { [b]: 2 },
         `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
@@ -259,37 +259,37 @@ describe("Schema > record", () => {
 
     it("record(${string}-${string}, number)", async () => {
       const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number)
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { "-": 1 })
-      await Util.expectParseSuccess(schema, { "a-": 1 })
-      await Util.expectParseSuccess(schema, { "-b": 1 })
-      await Util.expectParseSuccess(schema, { "a-b": 1 })
-      await Util.expectParseSuccess(schema, { "": 1 }, {})
-      await Util.expectParseSuccess(schema, { "a": 1 }, {})
-      await Util.expectParseSuccess(schema, { "a": "a" }, {})
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "-": 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { "a-": 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { "-b": 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { "a-b": 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { "": 1 }, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "a": 1 }, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "a": "a" }, {})
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "-": "a" },
         `{ [x: \`\${string}-\${string}\`]: number }
 └─ ["-"]
    └─ Expected a number, actual "a"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "a-": "a" },
         `{ [x: \`\${string}-\${string}\`]: number }
 └─ ["a-"]
    └─ Expected a number, actual "a"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "-b": "b" },
         `{ [x: \`\${string}-\${string}\`]: number }
 └─ ["-b"]
    └─ Expected a number, actual "b"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "a-b": "ab" },
         `{ [x: \`\${string}-\${string}\`]: number }
@@ -297,7 +297,7 @@ describe("Schema > record", () => {
    └─ Expected a number, actual "ab"`
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "a": 1 },
         `{ [x: \`\${string}-\${string}\`]: number }
@@ -309,20 +309,20 @@ describe("Schema > record", () => {
 
     it("record(minLength(2), number)", async () => {
       const schema = S.record(S.string.pipe(S.minLength(2)), S.number)
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { "a": 1 }, {})
-      await Util.expectParseSuccess(schema, { "a": "a" }, {})
-      await Util.expectParseSuccess(schema, { "aa": 1 })
-      await Util.expectParseSuccess(schema, { "aaa": 1 })
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "a": 1 }, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "a": "a" }, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "aa": 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { "aaa": 1 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "aa": "aa" },
         `{ [x: string]: number }
 └─ ["aa"]
    └─ Expected a number, actual "aa"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "a": 1 },
         `{ [x: string]: number }
@@ -336,18 +336,18 @@ describe("Schema > record", () => {
       const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number).pipe(
         S.extend(S.record(S.string, S.union(S.string, S.number)))
       )
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { "a": "a" })
-      await Util.expectParseSuccess(schema, { "a-": 1 })
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "a": "a" })
+      await Util.expectDecodeUnknownSuccess(schema, { "a-": 1 })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "a-": "a" },
         `{ [x: \`\${string}-\${string}\`]: number; [x: string]: string | number }
 └─ ["a-"]
    └─ Expected a number, actual "a"`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "a": true },
         `{ [x: \`\${string}-\${string}\`]: number; [x: string]: string | number }
@@ -362,12 +362,12 @@ describe("Schema > record", () => {
 
     it("should support branded keys", async () => {
       const schema = S.record(S.NonEmpty.pipe(S.brand("UserId")), S.number)
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { "a": 1 })
-      await Util.expectParseSuccess(schema, { "": 1 }, {})
-      await Util.expectParseSuccess(schema, { "": "" }, {})
+      await Util.expectDecodeUnknownSuccess(schema, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "a": 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { "": 1 }, {})
+      await Util.expectDecodeUnknownSuccess(schema, { "": "" }, {})
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { "": 1 },
         `{ [x: string]: number }

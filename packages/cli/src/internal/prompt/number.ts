@@ -26,10 +26,10 @@ const round = (number: number, precision: number) => {
 
 const parseInt = Schema.NumberFromString.pipe(
   Schema.int(),
-  Schema.parse
+  Schema.decodeUnknown
 )
 
-const parseFloat = Schema.parse(Schema.NumberFromString)
+const parseFloat = Schema.decodeUnknown(Schema.NumberFromString)
 
 const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 

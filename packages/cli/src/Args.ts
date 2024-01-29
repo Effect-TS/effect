@@ -252,8 +252,10 @@ export const fileParse: (config?: Args.FormatArgsConfig | undefined) => Args<unk
  * @since 1.0.0
  * @category constructors
  */
-export const fileSchema: <I, A>(schema: Schema<I, A>, config?: Args.FormatArgsConfig | undefined) => Args<A> =
-  InternalArgs.fileSchema
+export const fileSchema: <I, A>(
+  schema: Schema<FileSystem | Path | Terminal, I, A>,
+  config?: Args.FormatArgsConfig | undefined
+) => Args<A> = InternalArgs.fileSchema
 
 /**
  * Creates a file argument that reads it's contents.
@@ -450,8 +452,8 @@ export const withDescription: {
  * @category combinators
  */
 export const withSchema: {
-  <A, I extends A, B>(schema: Schema<I, B>): (self: Args<A>) => Args<B>
-  <A, I extends A, B>(self: Args<A>, schema: Schema<I, B>): Args<B>
+  <A, I extends A, B>(schema: Schema<FileSystem | Path | Terminal, I, B>): (self: Args<A>) => Args<B>
+  <A, I extends A, B>(self: Args<A>, schema: Schema<FileSystem | Path | Terminal, I, B>): Args<B>
 } = InternalArgs.withSchema
 
 /**

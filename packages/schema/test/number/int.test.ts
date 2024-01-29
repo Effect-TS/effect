@@ -21,9 +21,9 @@ describe("number > Int", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0)
-    await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, 0)
+    await Util.expectDecodeUnknownSuccess(schema, 1)
+    await Util.expectDecodeUnknownFailure(
       schema,
       0.5,
       `Int

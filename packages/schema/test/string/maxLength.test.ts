@@ -18,9 +18,9 @@ describe("string > maxLength", () => {
 
   it("decoding", async () => {
     const schema = S.maxLength(1)(S.string)
-    await Util.expectParseSuccess(schema, "")
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, "")
+    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.expectDecodeUnknownFailure(
       schema,
       "aa",
       `a string at most 1 character(s) long

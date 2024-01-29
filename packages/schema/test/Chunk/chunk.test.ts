@@ -10,17 +10,17 @@ describe("Chunk > chunk", () => {
 
   it("decoding", async () => {
     const schema = S.chunk(S.number)
-    await Util.expectParseSuccess(schema, [], C.empty())
-    await Util.expectParseSuccess(schema, [1, 2, 3], C.fromIterable([1, 2, 3]))
+    await Util.expectDecodeUnknownSuccess(schema, [], C.empty())
+    await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], C.fromIterable([1, 2, 3]))
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `(ReadonlyArray<number> <-> Chunk<number>)
 └─ From side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> Chunk<number>)

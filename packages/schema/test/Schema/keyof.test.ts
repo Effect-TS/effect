@@ -3,7 +3,7 @@ import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/keyof", () => {
+describe("Schema > keyof", () => {
   it("struct/ string keys", () => {
     const schema = S.struct({
       a: S.string,
@@ -47,7 +47,7 @@ describe("Schema/keyof", () => {
       readonly name: string
       readonly categories: ReadonlyArray<Category>
     }
-    const schema: S.Schema<Category> = S.suspend( // intended outer suspend
+    const schema: S.Schema<never, Category> = S.suspend( // intended outer suspend
       () =>
         S.struct({
           name: S.string,
@@ -59,7 +59,7 @@ describe("Schema/keyof", () => {
 
   it("should throw on unsupported schemas", () => {
     expect(() => AST.keyof(S.NumberFromString.ast)).toThrow(
-      new Error("keyof: unsupported schema (Transform)")
+      new Error("keyof: unsupported schema (NumberFromString)")
     )
   })
 })

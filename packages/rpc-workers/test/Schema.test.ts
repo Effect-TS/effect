@@ -19,9 +19,9 @@ describe("Schema", () => {
       }
     })
 
-    typeEquals(schema.currentTime)<{ output: S.Schema<Date> }>() satisfies true
-    typeEquals(schema.binary)<{ output: S.Schema<Uint8Array> }>() satisfies true
-    typeEquals(schema.array)<{ output: S.Schema<ReadonlyArray<{}>> }>() satisfies true
+    typeEquals(schema.currentTime)<{ output: S.Schema<never, Date> }>() satisfies true
+    typeEquals(schema.binary)<{ output: S.Schema<never, Uint8Array> }>() satisfies true
+    typeEquals(schema.array)<{ output: S.Schema<never, ReadonlyArray<{}>> }>() satisfies true
   })
 
   it("transferable", () => {

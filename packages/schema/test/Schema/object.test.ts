@@ -5,24 +5,24 @@ import { describe, it } from "vitest"
 describe("Schema/object", () => {
   const schema = S.object
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, {})
-    await Util.expectParseSuccess(schema, [])
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, {})
+    await Util.expectDecodeUnknownSuccess(schema, [])
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual null`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a",
       `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual "a"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       1,
       `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual 1`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       true,
       `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual true`

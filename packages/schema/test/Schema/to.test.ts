@@ -12,7 +12,7 @@ describe("Schema/to", () => {
       ),
       S.to
     )
-    expect(S.parseSync(schema)([1, 2])).toEqual([1, 2])
+    expect(S.decodeUnknownSync(schema)([1, 2])).toEqual([1, 2])
   })
 
   it("refinement", () => {
@@ -34,21 +34,21 @@ describe("Schema/to", () => {
     interface A {
       prop: A | number
     }
-    const schema: S.Schema<I, A> = S.suspend( // intended outer suspend
+    const schema: S.Schema<never, I, A> = S.suspend( // intended outer suspend
       () =>
         S.struct({
           prop: S.union(S.NumberFromString, schema)
         })
     )
     const to = S.to(schema)
-    await Util.expectParseSuccess(to, { prop: 1 })
-    await Util.expectParseSuccess(to, { prop: { prop: 1 } })
+    await Util.expectDecodeUnknownSuccess(to, { prop: 1 })
+    await Util.expectDecodeUnknownSuccess(to, { prop: { prop: 1 } })
   })
 
   it("decoding", async () => {
     const schema = S.to(S.NumberFromString)
-    await Util.expectParseSuccess(schema, 1)
-    await Util.expectParseFailure(schema, null, "Expected a number, actual null")
-    await Util.expectParseFailure(schema, "a", `Expected a number, actual "a"`)
+    await Util.expectDecodeUnknownSuccess(schema, 1)
+    await Util.expectDecodeUnknownFailure(schema, null, "Expected a number, actual null")
+    await Util.expectDecodeUnknownFailure(schema, "a", `Expected a number, actual "a"`)
   })
 })

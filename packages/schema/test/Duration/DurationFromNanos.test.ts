@@ -11,8 +11,8 @@ describe("Duration > DurationFromNanos", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, 0n, Duration.nanos(0n))
-    await Util.expectParseSuccess(schema, 1000n, Duration.nanos(1000n))
+    await Util.expectDecodeUnknownSuccess(schema, 0n, Duration.nanos(0n))
+    await Util.expectDecodeUnknownSuccess(schema, 1000n, Duration.nanos(1000n))
   })
 
   it("encoding", async () => {

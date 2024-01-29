@@ -10,8 +10,8 @@ describe("symbol > symbol", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, "a", Symbol.for("a"))
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, "a", Symbol.for("a"))
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `symbol

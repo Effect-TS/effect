@@ -7,9 +7,9 @@ describe("BigDecimal/negateBigDecimal", () => {
   it("decoding", async () => {
     const schema = S.BigDecimalFromSelf.pipe(S.negateBigDecimal)
 
-    await Util.expectParseSuccess(schema, BigDecimal.make(3n, 0), BigDecimal.make(-3n, 0))
-    await Util.expectParseSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
-    await Util.expectParseSuccess(schema, BigDecimal.make(-3n, 0), BigDecimal.make(3n, 0))
+    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(3n, 0), BigDecimal.make(-3n, 0))
+    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
+    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(-3n, 0), BigDecimal.make(3n, 0))
   })
 
   it("encoding", async () => {

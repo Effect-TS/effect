@@ -8,16 +8,19 @@ describe("TreeFormatter", () => {
   describe("defaults", () => {
     it("forbidden", async () => {
       const schema = Util.effectify(S.struct({ a: S.string }))
-      expect(() => S.parseSync(schema)({ a: "a" })).toThrow(
-        new Error(`{ a: (string <-> string) }
+      expect(() => S.decodeUnknownSync(schema)({ a: "a" })).toThrow(
+        new Error(
+          `{ a: (string <-> string) }
 └─ ["a"]
-   └─ is forbidden`)
+   └─ (string <-> string)
+      └─ Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+        )
       )
     })
 
     it("missing", async () => {
       const schema = S.struct({ a: S.string })
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ a: string }
@@ -28,7 +31,7 @@ describe("TreeFormatter", () => {
 
     it("excess property", async () => {
       const schema = S.struct({ a: S.string })
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: 1 },
         `{ a: string }
@@ -42,14 +45,14 @@ describe("TreeFormatter", () => {
       it("1 refinement", async () => {
         const schema = S.string.pipe(S.minLength(1))
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `a string at least 1 character(s) long
 └─ From side refinement failure
    └─ Expected a string, actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "",
           `a string at least 1 character(s) long
@@ -69,7 +72,7 @@ describe("TreeFormatter", () => {
       it("2 refinements", async () => {
         const schema = S.string.pipe(S.minLength(1), S.maxLength(3))
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `a string at most 3 character(s) long
@@ -78,7 +81,7 @@ describe("TreeFormatter", () => {
       └─ From side refinement failure
          └─ Expected a string, actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "",
           `a string at most 3 character(s) long
@@ -87,7 +90,7 @@ describe("TreeFormatter", () => {
       └─ Predicate refinement failure
          └─ Expected a string at least 1 character(s) long, actual ""`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "aaaa",
           `a string at most 3 character(s) long
@@ -117,16 +120,16 @@ describe("TreeFormatter", () => {
     describe("suspend", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
         )
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `Expected readonly [number, <suspended schema> | null], actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `readonly [number, <suspended schema> | null]
@@ -141,17 +144,17 @@ describe("TreeFormatter", () => {
 
       it("inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
         )
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `Expected readonly [number, <suspended schema> | null], actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `readonly [number, <suspended schema> | null]
@@ -173,7 +176,7 @@ describe("TreeFormatter", () => {
         b: S.string.pipe(S.identifier("MyString2"))
       }).pipe(S.identifier("MySchema"))
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: 2 },
         `MySchema
@@ -188,16 +191,16 @@ describe("TreeFormatter", () => {
     describe("suspend", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
         ).pipe(S.identifier("A"))
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `Expected A, actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `A
@@ -212,17 +215,17 @@ describe("TreeFormatter", () => {
 
       it("inner/outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
         ).pipe(S.identifier("A"))
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `Expected A, actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `A
@@ -237,17 +240,17 @@ describe("TreeFormatter", () => {
 
       it("inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema).pipe(S.identifier("A")), S.literal(null))
         )
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `Expected readonly [number, A | null], actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `readonly [number, A | null]
@@ -268,7 +271,7 @@ describe("TreeFormatter", () => {
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
@@ -280,7 +283,7 @@ describe("TreeFormatter", () => {
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
@@ -292,7 +295,7 @@ describe("TreeFormatter", () => {
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
@@ -304,7 +307,7 @@ describe("TreeFormatter", () => {
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
@@ -320,7 +323,7 @@ describe("TreeFormatter", () => {
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
@@ -332,7 +335,7 @@ describe("TreeFormatter", () => {
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
@@ -346,12 +349,12 @@ describe("TreeFormatter", () => {
           S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
         )
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `my custom message null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "",
           `my custom message ""`
@@ -374,17 +377,17 @@ describe("TreeFormatter", () => {
           })
         )
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `minLength custom message null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "",
           `minLength custom message ""`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "aaaa",
           `maxLength custom message "aaaa"`
@@ -408,12 +411,12 @@ describe("TreeFormatter", () => {
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         [1, 2],
         `my custom message [1,2]`
@@ -426,12 +429,12 @@ describe("TreeFormatter", () => {
         b: S.string
       }).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: 2 },
         `my custom message {"a":1,"b":2}`
@@ -443,7 +446,7 @@ describe("TreeFormatter", () => {
         S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
       )
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         null,
         `my custom message null`
@@ -456,12 +459,12 @@ describe("TreeFormatter", () => {
           S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
         )
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `my custom message null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "a",
           `my custom message "a"`
@@ -479,22 +482,22 @@ describe("TreeFormatter", () => {
               : ParseResult.succeed(n)
           },
           (n) => ParseResult.succeed(String(n))
-        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a parseable string"))
+        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a decodeUnknownable string"))
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           "please enter a string"
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "1.2",
           "please enter an integer"
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           "a",
-          "please enter a parseable string"
+          "please enter a decodeUnknownable string"
         )
       })
     })
@@ -502,16 +505,16 @@ describe("TreeFormatter", () => {
     describe("suspend", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
         ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `my custom message null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `my custom message [1,null]`
@@ -520,17 +523,17 @@ describe("TreeFormatter", () => {
 
       it("inner/outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
         ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `my custom message null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `my custom message [1,null]`
@@ -539,7 +542,7 @@ describe("TreeFormatter", () => {
 
       it("inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(
             S.suspend(() => schema).pipe(
@@ -549,12 +552,12 @@ describe("TreeFormatter", () => {
           )
         )
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `Expected readonly [number, <suspended schema> | null], actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `readonly [number, <suspended schema> | null]
@@ -569,7 +572,7 @@ describe("TreeFormatter", () => {
 
       it("inner/inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
+        const schema: S.Schema<never, A> = S.tuple(
           S.number,
           S.union(
             S.suspend(() =>
@@ -581,12 +584,12 @@ describe("TreeFormatter", () => {
           )
         )
 
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           null,
           `Expected readonly [number, <suspended schema> | null], actual null`
         )
-        await Util.expectParseFailure(
+        await Util.expectDecodeUnknownFailure(
           schema,
           [1, undefined],
           `readonly [number, <suspended schema> | null]

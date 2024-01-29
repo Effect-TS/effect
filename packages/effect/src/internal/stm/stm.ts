@@ -12,6 +12,7 @@ import * as predicate from "../../Predicate.js"
 import type { Predicate, Refinement } from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
 import type * as STM from "../../STM.js"
+import type { NoInfer } from "../../Types.js"
 import * as effectCore from "../core.js"
 import * as SingleShotGen from "../singleShotGen.js"
 import * as core from "./core.js"
@@ -337,7 +338,7 @@ export const eventually = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, E, A> =>
 
 /** @internal */
 export const every = dual<
-  <A, R, E>(predicate: (a: A) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, boolean>,
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, boolean>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<R, E, boolean>) => STM.STM<R, E, boolean>
 >(
   2,
@@ -364,7 +365,7 @@ export const every = dual<
 
 /** @internal */
 export const exists = dual<
-  <A, R, E>(predicate: (a: A) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, boolean>,
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, boolean>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<R, E, boolean>) => STM.STM<R, E, boolean>
 >(
   2,
@@ -391,7 +392,7 @@ export const fiberId: STM.STM<never, never, FiberId.FiberId> = core.effect<never
 
 /** @internal */
 export const filter = dual<
-  <A, R, E>(predicate: (a: A) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, Array<A>>,
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, Array<A>>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<R, E, boolean>) => STM.STM<R, E, Array<A>>
 >(
   2,
@@ -414,7 +415,7 @@ export const filter = dual<
 
 /** @internal */
 export const filterNot = dual<
-  <A, R, E>(predicate: (a: A) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, Array<A>>,
+  <A, R, E>(predicate: (a: NoInfer<A>) => STM.STM<R, E, boolean>) => (iterable: Iterable<A>) => STM.STM<R, E, Array<A>>,
   <A, R, E>(iterable: Iterable<A>, predicate: (a: A) => STM.STM<R, E, boolean>) => STM.STM<R, E, Array<A>>
 >(
   2,
@@ -423,117 +424,97 @@ export const filterNot = dual<
 )
 
 /** @internal */
-export const filterOrDie = dual<
-  {
-    <A, B extends A>(
-      refinement: Refinement<A, B>,
-      defect: LazyArg<unknown>
-    ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
-    <A, X extends A>(
-      predicate: Predicate<X>,
-      defect: LazyArg<unknown>
-    ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(
-      self: STM.STM<R, E, A>,
-      refinement: Refinement<A, B>,
-      defect: LazyArg<unknown>
-    ): STM.STM<R, E, B>
-    <R, E, A, X extends A>(self: STM.STM<R, E, A>, predicate: Predicate<X>, defect: LazyArg<unknown>): STM.STM<R, E, A>
-  }
->(
+export const filterOrDie: {
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>,
+    defect: LazyArg<unknown>
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
+  <A>(
+    predicate: Predicate<NoInfer<A>>,
+    defect: LazyArg<unknown>
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
+  <R, E, A, B extends A>(
+    self: STM.STM<R, E, A>,
+    refinement: Refinement<A, B>,
+    defect: LazyArg<unknown>
+  ): STM.STM<R, E, B>
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM.STM<R, E, A>
+} = dual(
   3,
-  <R, E, A, X extends A>(self: STM.STM<R, E, A>, predicate: Predicate<X>, defect: LazyArg<unknown>): STM.STM<R, E, A> =>
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM.STM<R, E, A> =>
     filterOrElse(self, predicate, () => core.dieSync(defect))
 )
 
 /** @internal */
-export const filterOrDieMessage = dual<
-  {
-    <A, B extends A>(refinement: Refinement<A, B>, message: string): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
-    <A, X extends A>(predicate: Predicate<X>, message: string): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(self: STM.STM<R, E, A>, refinement: Refinement<A, B>, message: string): STM.STM<R, E, B>
-    <R, E, A, X extends A>(self: STM.STM<R, E, A>, predicate: Predicate<X>, message: string): STM.STM<R, E, A>
-  }
->(
+export const filterOrDieMessage: {
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>,
+    message: string
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
+  <A>(predicate: Predicate<NoInfer<A>>, message: string): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
+  <R, E, A, B extends A>(self: STM.STM<R, E, A>, refinement: Refinement<A, B>, message: string): STM.STM<R, E, B>
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: Predicate<A>, message: string): STM.STM<R, E, A>
+} = dual(
   3,
-  (self, predicate, message) => filterOrElse(self, predicate, () => core.dieMessage(message))
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: Predicate<A>, message: string): STM.STM<R, E, A> =>
+    filterOrElse(self, predicate, () => core.dieMessage(message))
 )
 
 /** @internal */
-export const filterOrElse = dual<
-  {
-    <A, B extends A, X extends A, R2, E2, A2>(
-      refinement: Refinement<A, B>,
-      orElse: (a: X) => STM.STM<R2, E2, A2>
-    ): <R, E>(
-      self: STM.STM<R, E, A>
-    ) => STM.STM<R2 | R, E2 | E, B | A2>
-    <A, X extends A, Y extends A, R2, E2, A2>(
-      predicate: Predicate<X>,
-      orElse: (a: Y) => STM.STM<R2, E2, A2>
-    ): <R, E>(
-      self: STM.STM<R, E, A>
-    ) => STM.STM<R2 | R, E2 | E, A | A2>
-  },
-  {
-    <R, E, A, B extends A, X extends A, R2, E2, A2>(
-      self: STM.STM<R, E, A>,
-      refinement: Refinement<A, B>,
-      orElse: (a: X) => STM.STM<R2, E2, A2>
-    ): STM.STM<R2 | R, E2 | E, B | A2>
-    <R, E, A, X extends A, Y extends A, R2, E2, A2>(
-      self: STM.STM<R, E, A>,
-      predicate: Predicate<X>,
-      orElse: (a: Y) => STM.STM<R2, E2, A2>
-    ): STM.STM<R2 | R, E2 | E, A | A2>
-  }
->(
-  3,
-  <R, E, A, X extends A, Y extends A, R2, E2, A2>(
+export const filterOrElse: {
+  <A, B extends A, R2, E2, C>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orElse: (a: NoInfer<A>) => STM.STM<R2, E2, C>
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E2 | E, B | C>
+  <A, R2, E2, B>(
+    predicate: Predicate<NoInfer<A>>,
+    orElse: (a: NoInfer<A>) => STM.STM<R2, E2, B>
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E2 | E, A | B>
+  <R, E, A, B extends A, R2, E2, C>(
     self: STM.STM<R, E, A>,
-    predicate: Predicate<X>,
-    orElse: (a: Y) => STM.STM<R2, E2, A2>
-  ): STM.STM<R2 | R, E2 | E, A | A2> =>
-    core.flatMap(self, (a): STM.STM<R | R2, E | E2, A | A2> =>
-      predicate(a as X) ?
-        core.succeed(a) :
-        orElse(a as Y))
+    refinement: Refinement<A, B>,
+    orElse: (a: A) => STM.STM<R2, E2, C>
+  ): STM.STM<R | R2, E | E2, B | C>
+  <R, E, A, R2, E2, B>(
+    self: STM.STM<R, E, A>,
+    predicate: Predicate<A>,
+    orElse: (a: A) => STM.STM<R2, E2, B>
+  ): STM.STM<R | R2, E | E2, A | B>
+} = dual(
+  3,
+  <R, E, A, R2, E2, B>(
+    self: STM.STM<R, E, A>,
+    predicate: Predicate<A>,
+    orElse: (a: A) => STM.STM<R2, E2, B>
+  ): STM.STM<R | R2, E | E2, A | B> =>
+    core.flatMap(self, (a): STM.STM<R2, E2, A | B> => predicate(a) ? core.succeed(a) : orElse(a))
 )
 
 /** @internal */
-export const filterOrFail = dual<
-  {
-    <A, B extends A, X extends A, E2>(
-      refinement: Refinement<A, B>,
-      orFailWith: (a: X) => E2
-    ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E2 | E, B>
-    <A, X extends A, Y extends A, E2>(
-      predicate: Predicate<X>,
-      orFailWith: (a: Y) => E2
-    ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E2 | E, A>
-  },
-  {
-    <R, E, A, B extends A, X extends A, E2>(
-      self: STM.STM<R, E, A>,
-      refinement: Refinement<A, B>,
-      orFailWith: (a: X) => E2
-    ): STM.STM<R, E2 | E, B>
-    <R, E, A, X extends A, Y extends A, E2>(
-      self: STM.STM<R, E, A>,
-      predicate: Predicate<X>,
-      orFailWith: (a: Y) => E2
-    ): STM.STM<R, E2 | E, A>
-  }
->(3, (self, predicate, orFailWith) =>
-  filterOrElse(
-    self,
-    predicate,
-    (a) => core.failSync(() => orFailWith(a as any))
-  ))
+export const filterOrFail: {
+  <A, B extends A, E2>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E2 | E, B>
+  <A, E2>(
+    predicate: Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E2 | E, A>
+  <R, E, A, B extends A, E2>(
+    self: STM.STM<R, E, A>,
+    refinement: Refinement<A, B>,
+    orFailWith: (a: A) => E2
+  ): STM.STM<R, E | E2, B>
+  <R, E, A, E2>(self: STM.STM<R, E, A>, predicate: Predicate<A>, orFailWith: (a: A) => E2): STM.STM<R, E | E2, A>
+} = dual(
+  3,
+  <R, E, A, E2>(self: STM.STM<R, E, A>, predicate: Predicate<A>, orFailWith: (a: A) => E2): STM.STM<R, E | E2, A> =>
+    filterOrElse(
+      self,
+      predicate,
+      (a) => core.failSync(() => orFailWith(a))
+    )
+)
 
 /** @internal */
 export const flatten = <R, E, R2, E2, A>(self: STM.STM<R, E, STM.STM<R2, E2, A>>): STM.STM<R | R2, E | E2, A> =>
@@ -1221,7 +1202,7 @@ export const replicateSTMDiscard = dual<
 /** @internal */
 export const retryUntil = dual<
   {
-    <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
+    <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, B>
     <A>(predicate: Predicate<A>): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A>
   },
   {
@@ -1328,15 +1309,14 @@ export const summarized = dual<
 export const suspend = <R, E, A>(evaluate: LazyArg<STM.STM<R, E, A>>): STM.STM<R, E, A> => flatten(core.sync(evaluate))
 
 /** @internal */
-export const tap = dual<
-  <A, X extends A, R2, E2, _>(
-    f: (a: X) => STM.STM<R2, E2, _>
-  ) => <R, E>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E2 | E, A>,
-  <R, E, A, X extends A, R2, E2, _>(
-    self: STM.STM<R, E, A>,
-    f: (a: X) => STM.STM<R2, E2, _>
-  ) => STM.STM<R2 | R, E2 | E, A>
->(2, (self, f) => core.flatMap(self, (a) => as(f(a as any), a)))
+export const tap: {
+  <A, R2, E2, _>(f: (a: A) => STM.STM<R2, E2, _>): <R, E>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2, _>(self: STM.STM<R, E, A>, f: (a: A) => STM.STM<R2, E2, _>): STM.STM<R | R2, E | E2, A>
+} = dual(
+  2,
+  <R, E, A, R2, E2, _>(self: STM.STM<R, E, A>, f: (a: A) => STM.STM<R2, E2, _>): STM.STM<R | R2, E | E2, A> =>
+    core.flatMap(self, (a) => as(f(a), a))
+)
 
 /** @internal */
 export const tapBoth = dual<
@@ -1362,19 +1342,19 @@ export const tapBoth = dual<
   }))
 
 /** @internal */
-export const tapError = dual<
-  <E, X extends E, R2, E2, _>(
-    f: (error: X) => STM.STM<R2, E2, _>
-  ) => <R, A>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E | E2, A>,
-  <R, A, E, X extends E, R2, E2, _>(
-    self: STM.STM<R, E, A>,
-    f: (error: X) => STM.STM<R2, E2, _>
-  ) => STM.STM<R2 | R, E | E2, A>
->(2, (self, f) =>
-  core.matchSTM(self, {
-    onFailure: (e) => core.zipRight(f(e as any), core.fail(e)),
-    onSuccess: core.succeed
-  }))
+export const tapError: {
+  <E, R2, E2, _>(
+    f: (error: NoInfer<E>) => STM.STM<R2, E2, _>
+  ): <R, A>(self: STM.STM<R, E, A>) => STM.STM<R2 | R, E | E2, A>
+  <R, A, E, R2, E2, _>(self: STM.STM<R, E, A>, f: (error: E) => STM.STM<R2, E2, _>): STM.STM<R | R2, E | E2, A>
+} = dual(
+  2,
+  <R, A, E, R2, E2, _>(self: STM.STM<R, E, A>, f: (error: E) => STM.STM<R2, E2, _>): STM.STM<R | R2, E | E2, A> =>
+    core.matchSTM(self, {
+      onFailure: (e) => core.zipRight(f(e), core.fail(e)),
+      onSuccess: core.succeed
+    })
+)
 
 /** @internal */
 export const try_: {

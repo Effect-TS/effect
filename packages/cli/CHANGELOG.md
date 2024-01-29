@@ -1,5 +1,63 @@
 # @effect/cli
 
+## 0.31.3
+
+### Patch Changes
+
+- [#1990](https://github.com/Effect-TS/effect/pull/1990) [`003bb69`](https://github.com/Effect-TS/effect/commit/003bb691f2059ef596121c78b556196f22ab2a1e) Thanks [@IMax153](https://github.com/IMax153)! - fix stack overflow exception when nesting cli options / args in a command config
+
+## 0.31.2
+
+### Patch Changes
+
+- Updated dependencies [[`9863e2f`](https://github.com/Effect-TS/effect/commit/9863e2fb3561dc019965aeccd6584a418fc8b401)]:
+  - @effect/schema@0.61.3
+  - @effect/platform@0.43.3
+
+## 0.31.1
+
+### Patch Changes
+
+- Updated dependencies [[`64f710a`](https://github.com/Effect-TS/effect/commit/64f710aa49dec6ffcd33ee23438d0774f5489733)]:
+  - @effect/schema@0.61.2
+  - @effect/platform@0.43.2
+
+## 0.31.0
+
+### Minor Changes
+
+- [#1984](https://github.com/Effect-TS/effect/pull/1984) [`eaab2e8`](https://github.com/Effect-TS/effect/commit/eaab2e81be72df9ded2e01e4c6d40b2bb159a349) Thanks [@IMax153](https://github.com/IMax153)! - default Options.repeated to return an empty array if option is not provided
+
+### Patch Changes
+
+- [#1980](https://github.com/Effect-TS/effect/pull/1980) [`9cf3782`](https://github.com/Effect-TS/effect/commit/9cf3782a17f38097f7b1a0024bd7ec7db8aeb2d0) Thanks [@IMax153](https://github.com/IMax153)! - fix CLI argument parsing to properly handle the case when a repeated option is not provided
+
+## 0.30.6
+
+### Patch Changes
+
+- Updated dependencies [[`c7550f9`](https://github.com/Effect-TS/effect/commit/c7550f96e1006eee832ce5025bf0c197a65935ea), [`8d1f6e4`](https://github.com/Effect-TS/effect/commit/8d1f6e4bb13e221804fb1762ef19e02bcefc8f61), [`d404561`](https://github.com/Effect-TS/effect/commit/d404561e47ec2fa5f68709a308ee5d2ee959141d), [`7b84a3c`](https://github.com/Effect-TS/effect/commit/7b84a3c7e4b9c8dc02294b0e3cc3ae3becea977b), [`1a84dee`](https://github.com/Effect-TS/effect/commit/1a84dee0e9ddbfaf2610e4d7c00c7020c427171a), [`ac30bf4`](https://github.com/Effect-TS/effect/commit/ac30bf4cd53de0663784f65ae6bee8279333df97)]:
+  - @effect/schema@0.61.1
+  - effect@2.2.2
+  - @effect/platform@0.43.1
+  - @effect/printer@0.30.11
+  - @effect/printer-ansi@0.31.11
+
+## 0.30.5
+
+### Patch Changes
+
+- [#1963](https://github.com/Effect-TS/effect/pull/1963) [`de4cb04`](https://github.com/Effect-TS/effect/commit/de4cb049a39923d673fa4acd3db62dd60d341887) Thanks [@IMax153](https://github.com/IMax153)! - fix the parsed letter case for variadic and key/value flags
+
+- [#1922](https://github.com/Effect-TS/effect/pull/1922) [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764) Thanks [@gcanti](https://github.com/gcanti)! - add context tracking to Schema, closes #1873
+
+- Updated dependencies [[`84da31f`](https://github.com/Effect-TS/effect/commit/84da31f0643e8651b9d311b30526b1e4edfbdfb8), [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764), [`645bea2`](https://github.com/Effect-TS/effect/commit/645bea2551129f94a5b0e38347e28067dee531bb), [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764)]:
+  - effect@2.2.1
+  - @effect/schema@0.61.0
+  - @effect/platform@0.43.0
+  - @effect/printer@0.30.10
+  - @effect/printer-ansi@0.31.10
+
 ## 0.30.4
 
 ### Patch Changes

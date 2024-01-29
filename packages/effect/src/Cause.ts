@@ -34,10 +34,10 @@ import * as internal from "./internal/cause.js"
 import * as core from "./internal/core.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { Predicate } from "./Predicate.js"
+import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
-import type * as Types from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -153,7 +153,7 @@ export declare namespace Cause {
    */
   export interface Variance<out E> {
     readonly [CauseTypeId]: {
-      readonly _E: Types.Covariant<E>
+      readonly _E: Covariant<E>
     }
   }
 }
@@ -730,7 +730,9 @@ export const find: {
  * @category filtering
  */
 export const filter: {
-  <E>(predicate: Predicate<Cause<E>>): (self: Cause<E>) => Cause<E>
+  <E, EB extends E>(refinement: Refinement<Cause<NoInfer<E>>, Cause<EB>>): (self: Cause<E>) => Cause<EB>
+  <E>(predicate: Predicate<Cause<NoInfer<E>>>): (self: Cause<E>) => Cause<E>
+  <E, EB extends E>(self: Cause<E>, refinement: Refinement<Cause<E>, Cause<EB>>): Cause<EB>
   <E>(self: Cause<E>, predicate: Predicate<Cause<E>>): Cause<E>
 } = internal.filter
 

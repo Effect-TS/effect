@@ -13,9 +13,9 @@ describe("BigDecimal > BigDecimalFromSelf", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
-    await Util.expectParseSuccess(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
+    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
+    await Util.expectDecodeUnknownSuccess(
       schema,
       BigDecimal.make(-20000000n, 0),
       BigDecimal.make(-20000000n, 0)

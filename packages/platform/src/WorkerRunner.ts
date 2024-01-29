@@ -18,7 +18,10 @@ import type { WorkerError } from "./WorkerError.js"
  */
 export interface BackingRunner<I, O> {
   readonly queue: Queue.Dequeue<I>
-  readonly send: (message: O, transfers?: ReadonlyArray<unknown>) => Effect.Effect<never, never, void>
+  readonly send: (
+    message: O,
+    transfers?: ReadonlyArray<unknown>
+  ) => Effect.Effect<never, never, void>
 }
 
 /**
@@ -72,9 +75,17 @@ export declare namespace Runner {
    * @category models
    */
   export interface Options<I, E, O> {
-    readonly decode?: (message: unknown) => Effect.Effect<never, WorkerError, I>
-    readonly encodeOutput?: (request: I, message: O) => Effect.Effect<never, WorkerError, unknown>
-    readonly encodeError?: (request: I, error: E) => Effect.Effect<never, WorkerError, unknown>
+    readonly decode?: (
+      message: unknown
+    ) => Effect.Effect<never, WorkerError, I>
+    readonly encodeOutput?: (
+      request: I,
+      message: O
+    ) => Effect.Effect<never, WorkerError, unknown>
+    readonly encodeError?: (
+      request: I,
+      error: E
+    ) => Effect.Effect<never, WorkerError, unknown>
     readonly transfers?: (message: O | E) => ReadonlyArray<unknown>
   }
 }
@@ -106,8 +117,19 @@ export declare namespace SerializedRunner {
    * @since 1.0.0
    */
   export type Handlers<A extends Schema.TaggedRequest.Any> = {
-    readonly [K in A["_tag"]]: Extract<A, { readonly _tag: K }> extends
-      Serializable.SerializableWithResult<infer _IS, infer S, infer _IE, infer E, infer _IO, infer O> ? (
+    readonly [K in A["_tag"]]: Extract<
+      A,
+      { readonly _tag: K }
+    > extends Serializable.SerializableWithResult<
+      infer _RS,
+      infer _IS,
+      infer S,
+      infer _RR,
+      infer _IE,
+      infer E,
+      infer _IO,
+      infer O
+    > ? (
         _: S
       ) =>
         | Stream.Stream<any, E, O>
@@ -120,10 +142,17 @@ export declare namespace SerializedRunner {
   /**
    * @since 1.0.0
    */
-  export type HandlersContext<Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>> =
+  export type HandlersContext<
+    Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>
+  > =
     | Exclude<
       {
-        [K in keyof Handlers]: ReturnType<Handlers[K]> extends Stream.Stream<infer R, infer _E, infer _A> ? R : never
+        [K in keyof Handlers]: ReturnType<Handlers[K]> extends Stream.Stream<
+          infer R,
+          infer _E,
+          infer _A
+        > ? R
+          : never
       }[keyof Handlers],
       InitialContext<Handlers>
     >
@@ -132,16 +161,22 @@ export declare namespace SerializedRunner {
   /**
    * @since 1.0.0
    */
-  type InitialContext<Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>> =
-    Handlers["InitialMessage"] extends (...args: ReadonlyArray<any>) => Layer.Layer<infer _R, infer _E, infer A> ? A
-      : never
+  type InitialContext<
+    Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>
+  > = Handlers["InitialMessage"] extends (
+    ...args: ReadonlyArray<any>
+  ) => Layer.Layer<infer _R, infer _E, infer A> ? A
+    : never
 
   /**
    * @since 1.0.0
    */
-  type InitialEnv<Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>> =
-    Handlers["InitialMessage"] extends (...args: ReadonlyArray<any>) => Layer.Layer<infer R, infer _E, infer _A> ? R
-      : never
+  type InitialEnv<
+    Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>
+  > = Handlers["InitialMessage"] extends (
+    ...args: ReadonlyArray<any>
+  ) => Layer.Layer<infer R, infer _E, infer _A> ? R
+    : never
 }
 
 /**
@@ -149,13 +184,14 @@ export declare namespace SerializedRunner {
  * @category constructors
  */
 export const makeSerialized: <
+  R,
   I,
   A extends Schema.TaggedRequest.Any,
   const Handlers extends SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<R, I, A>,
   handlers: Handlers
-) => Effect.Effect<PlatformRunner | Scope.Scope | SerializedRunner.HandlersContext<Handlers>, WorkerError, void> =
+) => Effect.Effect<PlatformRunner | Scope.Scope | R | SerializedRunner.HandlersContext<Handlers>, WorkerError, void> =
   internal.makeSerialized
 
 /**
@@ -163,11 +199,12 @@ export const makeSerialized: <
  * @category layers
  */
 export const layerSerialized: <
+  R,
   I,
   A extends Schema.TaggedRequest.Any,
   const Handlers extends SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<R, I, A>,
   handlers: Handlers
-) => Layer.Layer<PlatformRunner | SerializedRunner.HandlersContext<Handlers>, WorkerError, never> =
+) => Layer.Layer<PlatformRunner | R | SerializedRunner.HandlersContext<Handlers>, WorkerError, never> =
   internal.layerSerialized

@@ -8,14 +8,14 @@ describe("BigDecimal > lessThanBigDecimal", () => {
   const schema = S.BigDecimal.pipe(S.lessThanBigDecimal(max))
 
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "5",
       `a BigDecimal less than 5
 └─ Predicate refinement failure
    └─ Expected a BigDecimal less than 5, actual BigDecimal(5)`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "6",
       `a BigDecimal less than 5

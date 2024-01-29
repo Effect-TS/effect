@@ -10,32 +10,32 @@ describe("bigint > BigintFromNumber", () => {
   })
 
   it("Decoder", async () => {
-    await Util.expectParseSuccess(schema, 0, 0n)
-    await Util.expectParseSuccess(schema, -0, -0n)
-    await Util.expectParseSuccess(schema, 1, 1n)
+    await Util.expectDecodeUnknownSuccess(schema, 0, 0n)
+    await Util.expectDecodeUnknownSuccess(schema, -0, -0n)
+    await Util.expectDecodeUnknownSuccess(schema, 1, 1n)
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       1.2,
       `BigintFromNumber
 └─ Transformation process failure
    └─ Expected BigintFromNumber, actual 1.2`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       NaN,
       `BigintFromNumber
 └─ Transformation process failure
    └─ Expected BigintFromNumber, actual NaN`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Infinity,
       `BigintFromNumber
 └─ Transformation process failure
    └─ Expected BigintFromNumber, actual Infinity`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       -Infinity,
       `BigintFromNumber

@@ -10,53 +10,53 @@ describe("bigint > bigint", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, "0", 0n)
-    await Util.expectParseSuccess(schema, "-0", -0n)
-    await Util.expectParseSuccess(schema, "1", 1n)
+    await Util.expectDecodeUnknownSuccess(schema, "0", 0n)
+    await Util.expectDecodeUnknownSuccess(schema, "-0", -0n)
+    await Util.expectDecodeUnknownSuccess(schema, "1", 1n)
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `bigint
 └─ Transformation process failure
    └─ Expected bigint, actual ""`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       " ",
       `bigint
 └─ Transformation process failure
    └─ Expected bigint, actual " "`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "1.2",
       `bigint
 └─ Transformation process failure
    └─ Expected bigint, actual "1.2"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "1AB",
       `bigint
 └─ Transformation process failure
    └─ Expected bigint, actual "1AB"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "AB1",
       `bigint
 └─ Transformation process failure
    └─ Expected bigint, actual "AB1"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a",
       `bigint
 └─ Transformation process failure
    └─ Expected bigint, actual "a"`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       "a1",
       `bigint

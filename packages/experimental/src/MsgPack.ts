@@ -66,11 +66,11 @@ export const pack = <IE = never>(): Channel.Channel<
  * @since 1.0.0
  * @category constructors
  */
-export const packSchema = <I, A>(
-  schema: Schema.Schema<I, A>
+export const packSchema = <R, I, A>(
+  schema: Schema.Schema<R, I, A>
 ) =>
 <IE = never>(): Channel.Channel<
-  never,
+  R,
   IE,
   Chunk.Chunk<A>,
   unknown,
@@ -79,7 +79,7 @@ export const packSchema = <I, A>(
   void
 > => {
   const encode = Schema.encode(Schema.chunkFromSelf(schema))
-  const loop: Channel.Channel<never, IE, Chunk.Chunk<A>, unknown, IE | ParseError, Chunk.Chunk<I>, unknown> = Channel
+  const loop: Channel.Channel<R, IE, Chunk.Chunk<A>, unknown, IE | ParseError, Chunk.Chunk<I>, unknown> = Channel
     .readWithCause({
       onInput: (input: Chunk.Chunk<A>) =>
         Channel.zipRight(
@@ -159,11 +159,11 @@ export const unpack = <IE = never>(): Channel.Channel<
  * @since 1.0.0
  * @category constructors
  */
-export const unpackSchema = <I, A>(
-  schema: Schema.Schema<I, A>
+export const unpackSchema = <R, I, A>(
+  schema: Schema.Schema<R, I, A>
 ) =>
 <IE = never>(): Channel.Channel<
-  never,
+  R,
   IE,
   Chunk.Chunk<Uint8Array>,
   unknown,
@@ -171,7 +171,7 @@ export const unpackSchema = <I, A>(
   Chunk.Chunk<A>,
   void
 > => {
-  const parse = Schema.parse(Schema.chunkFromSelf(schema))
+  const parse = Schema.decodeUnknown(Schema.chunkFromSelf(schema))
   return Channel.mapOutEffect(unpack<IE>(), parse)
 }
 
@@ -208,8 +208,8 @@ export const duplex = <R, IE, OE>(
  * @category combinators
  */
 export const duplexSchema: {
-  <II, IA, OI, OA>(
-    options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
+  <IR, II, IA, OR, OI, OA>(
+    options: { readonly inputSchema: Schema.Schema<IR, II, IA>; readonly outputSchema: Schema.Schema<OR, OI, OA> }
   ): <R, InErr, OutErr>(
     self: Channel.Channel<
       R,
@@ -220,8 +220,16 @@ export const duplexSchema: {
       Chunk.Chunk<Uint8Array>,
       void
     >
-  ) => Channel.Channel<R, InErr, Chunk.Chunk<IA>, unknown, MsgPackError | ParseError | OutErr, Chunk.Chunk<OA>, void>
-  <R, InErr, OutErr, II, IA, OI, OA>(
+  ) => Channel.Channel<
+    IR | OR | R,
+    InErr,
+    Chunk.Chunk<IA>,
+    unknown,
+    MsgPackError | ParseError | OutErr,
+    Chunk.Chunk<OA>,
+    void
+  >
+  <R, InErr, OutErr, IR, II, IA, OR, OI, OA>(
     self: Channel.Channel<
       R,
       MsgPackError | ParseError | InErr,
@@ -231,11 +239,22 @@ export const duplexSchema: {
       Chunk.Chunk<Uint8Array>,
       void
     >,
-    options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
-  ): Channel.Channel<R, InErr, Chunk.Chunk<IA>, unknown, MsgPackError | ParseError | OutErr, Chunk.Chunk<OA>, void>
+    options: { readonly inputSchema: Schema.Schema<IR, II, IA>; readonly outputSchema: Schema.Schema<OR, OI, OA> }
+  ): Channel.Channel<
+    R | IR | OR,
+    InErr,
+    Chunk.Chunk<IA>,
+    unknown,
+    MsgPackError | ParseError | OutErr,
+    Chunk.Chunk<OA>,
+    void
+  >
 } = dual<
-  <II, IA, OI, OA>(
-    options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
+  <IR, II, IA, OR, OI, OA>(
+    options: {
+      readonly inputSchema: Schema.Schema<IR, II, IA>
+      readonly outputSchema: Schema.Schema<OR, OI, OA>
+    }
   ) => <R, InErr, OutErr>(
     self: Channel.Channel<
       R,
@@ -247,7 +266,7 @@ export const duplexSchema: {
       void
     >
   ) => Channel.Channel<
-    R,
+    R | IR | OR,
     InErr,
     Chunk.Chunk<IA>,
     unknown,
@@ -255,7 +274,7 @@ export const duplexSchema: {
     Chunk.Chunk<OA>,
     void
   >,
-  <R, InErr, OutErr, II, IA, OI, OA>(
+  <R, InErr, OutErr, IR, II, IA, OR, OI, OA>(
     self: Channel.Channel<
       R,
       MsgPackError | ParseError | InErr,
@@ -265,9 +284,12 @@ export const duplexSchema: {
       Chunk.Chunk<Uint8Array>,
       void
     >,
-    options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
+    options: {
+      readonly inputSchema: Schema.Schema<IR, II, IA>
+      readonly outputSchema: Schema.Schema<OR, OI, OA>
+    }
   ) => Channel.Channel<
-    R,
+    R | IR | OR,
     InErr,
     Chunk.Chunk<IA>,
     unknown,
@@ -275,7 +297,7 @@ export const duplexSchema: {
     Chunk.Chunk<OA>,
     void
   >
->(2, <R, InErr, OutErr, II, IA, OI, OA>(
+>(2, <R, InErr, OutErr, IR, II, IA, OR, OI, OA>(
   self: Channel.Channel<
     R,
     MsgPackError | ParseError | InErr,
@@ -285,9 +307,12 @@ export const duplexSchema: {
     Chunk.Chunk<Uint8Array>,
     void
   >,
-  options: { readonly inputSchema: Schema.Schema<II, IA>; readonly outputSchema: Schema.Schema<OI, OA> }
+  options: {
+    readonly inputSchema: Schema.Schema<IR, II, IA>
+    readonly outputSchema: Schema.Schema<OR, OI, OA>
+  }
 ): Channel.Channel<
-  R,
+  R | IR | OR,
   InErr,
   Chunk.Chunk<IA>,
   unknown,

@@ -4,7 +4,6 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as Format from "./Format.js"
 import * as Internal from "./internal/ast.js"
 import * as hooks from "./internal/hooks.js"
 import * as InternalSchema from "./internal/schema.js"
@@ -37,14 +36,14 @@ export type PrettyHookId = typeof PrettyHookId
  */
 export const pretty =
   <A>(handler: (...args: ReadonlyArray<Pretty<any>>) => Pretty<A>) =>
-  <I>(self: Schema.Schema<I, A>): Schema.Schema<I, A> =>
+  <R, I>(self: Schema.Schema<R, I, A>): Schema.Schema<R, I, A> =>
     InternalSchema.make(AST.setAnnotation(self.ast, PrettyHookId, handler))
 
 /**
  * @category prettify
  * @since 1.0.0
  */
-export const make = <I, A>(schema: Schema.Schema<I, A>): (a: A) => string => compile(schema.ast)
+export const make = <R, I, A>(schema: Schema.Schema<R, I, A>): (a: A) => string => compile(schema.ast)
 
 const getHook = AST.getAnnotation<(...args: ReadonlyArray<Pretty<any>>) => Pretty<any>>(
   PrettyHookId
@@ -60,7 +59,7 @@ const toString = getMatcher((a) => String(a))
 
 const stringify = getMatcher((a) => JSON.stringify(a))
 
-const formatUnknown = getMatcher(Format.formatUnknown)
+const formatUnknown = getMatcher(AST.formatUnknown)
 
 /**
  * @since 1.0.0
@@ -71,7 +70,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value(...ast.typeParameters.map(go))
     }
-    throw new Error("cannot build an Pretty for a declaration without annotations")
+    throw new Error(`cannot build a Pretty for a declaration without annotations (${AST.format(ast)})`)
   },
   "VoidKeyword": getMatcher(() => "void(0)"),
   "NeverKeyword": getMatcher(() => {

@@ -1,4 +1,5 @@
-import { format, formatUnknown } from "@effect/schema/Format"
+import { formatUnknown } from "@effect/schema/AST"
+import { format } from "@effect/schema/Schema"
 import * as S from "@effect/schema/Schema"
 import * as _ from "@effect/schema/TreeFormatter"
 import { describe, expect, it } from "vitest"
@@ -19,7 +20,7 @@ describe("Format", () => {
 
     it("suspend", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.suspend( // intended outer suspend
+      const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
         () => S.tuple(S.number, S.union(schema, S.literal(null)))
       )
       expect(format(schema)).toEqual("<suspended schema>")

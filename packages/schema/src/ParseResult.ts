@@ -5,11 +5,13 @@
 import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import { dual } from "effect/Function"
 import type { LazyArg } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
-import * as Option from "effect/Option"
+import type * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as AST from "./AST.js"
+import * as InternalParser from "./internal/parser.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
@@ -46,19 +48,32 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
  * @category constructors
  * @since 1.0.0
  */
-export const parseError = (error: ParseIssue): ParseError => new ParseError({ error })
+export const parseError = (issue: ParseIssue): ParseError => new ParseError({ error: issue })
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const succeed: <A>(a: A) => Either.Either<never, A> = Either.right
+export const succeed: <A>(a: A) => Either.Either<ParseIssue, A> = Either.right
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const fail = (error: ParseIssue): Either.Either<ParseError, never> => Either.left(parseError(error))
+export const fail: (issue: ParseIssue) => Either.Either<ParseIssue, never> = Either.left
+
+const _try: <A>(options: {
+  try: LazyArg<A>
+  catch: (e: unknown) => ParseIssue
+}) => Either.Either<ParseIssue, A> = Either.try
+
+export {
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  _try as try
+}
 
 /**
  * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
@@ -67,6 +82,7 @@ export const fail = (error: ParseIssue): Either.Either<ParseError, never> => Eit
  * @since 1.0.0
  */
 export type ParseIssue =
+  | Declaration
   | Refinement
   | Tuple
   | TypeLiteral
@@ -93,12 +109,7 @@ export interface Transform {
  * @category constructors
  * @since 1.0.0
  */
-export const transform = (
-  ast: AST.Transform,
-  actual: unknown,
-  kind: "From" | "Transformation" | "To",
-  error: ParseIssue
-): Transform => ({ _tag: "Transform", ast, actual, kind, error })
+export const transform = InternalParser.transform
 
 /**
  * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
@@ -118,12 +129,7 @@ export interface Type {
  * @category constructors
  * @since 1.0.0
  */
-export const type = (ast: AST.AST, actual: unknown, message?: string): Type => ({
-  _tag: "Type",
-  ast,
-  actual,
-  message: Option.fromNullable(message)
-})
+export const type = InternalParser.type
 
 /**
  * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
@@ -133,17 +139,35 @@ export const type = (ast: AST.AST, actual: unknown, message?: string): Type => (
  */
 export interface Forbidden {
   readonly _tag: "Forbidden"
+  readonly ast: AST.AST
   readonly actual: unknown
+  readonly message: Option.Option<string>
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const forbidden = (actual: unknown): Forbidden => ({
-  _tag: "Forbidden",
-  actual
-})
+export const forbidden = InternalParser.forbidden
+
+/**
+ * Error that occurs when a declaration has an error.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Declaration {
+  readonly _tag: "Declaration"
+  readonly ast: AST.Declaration
+  readonly actual: unknown
+  readonly error: ParseIssue
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const declaration = InternalParser.declaration
 
 /**
  * Error that occurs when a refinement has an error.
@@ -163,12 +187,7 @@ export interface Refinement {
  * @category constructors
  * @since 1.0.0
  */
-export const refinement = (
-  ast: AST.Refinement,
-  actual: unknown,
-  kind: "From" | "Predicate",
-  error: ParseIssue
-): Refinement => ({ _tag: "Refinement", ast, actual, kind, error })
+export const refinement = InternalParser.refinement
 
 /**
  * Error that occurs when an array or tuple has an error.
@@ -210,11 +229,7 @@ export interface TypeLiteral {
  * @category constructors
  * @since 1.0.0
  */
-export const typeLiteral = (
-  ast: AST.TypeLiteral,
-  actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
-): TypeLiteral => ({ _tag: "TypeLiteral", ast, actual, errors })
+export const typeLiteral = InternalParser.typeLiteral
 
 /**
  * The `Index` error indicates that there was an error at a specific index in an array or tuple.
@@ -232,10 +247,7 @@ export interface Index {
  * @category constructors
  * @since 1.0.0
  */
-export const index = (
-  index: number,
-  error: ParseIssue | Missing | Unexpected
-): Index => ({ _tag: "Index", index, error })
+export const index = InternalParser.index
 
 /**
  * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in a type literal or record is invalid.
@@ -253,10 +265,7 @@ export interface Key {
  * @category constructors
  * @since 1.0.0
  */
-export const key = (
-  key: PropertyKey,
-  error: ParseIssue | Missing | Unexpected
-): Key => ({ _tag: "Key", key, error })
+export const key = InternalParser.key
 
 /**
  * Error that occurs when a required key or index is missing.
@@ -272,7 +281,7 @@ export interface Missing {
  * @category constructors
  * @since 1.0.0
  */
-export const missing: Missing = { _tag: "Missing" }
+export const missing: Missing = InternalParser.missing
 
 /**
  * Error that occurs when an unexpected key or index is present.
@@ -289,9 +298,7 @@ export interface Unexpected {
  * @category constructors
  * @since 1.0.0
  */
-export const unexpected = (
-  ast: AST.AST
-): Unexpected => ({ _tag: "Unexpected", ast })
+export const unexpected = InternalParser.unexpected
 
 /**
  * Error that occurs when a union has an error.
@@ -310,11 +317,7 @@ export interface Union {
  * @category constructors
  * @since 1.0.0
  */
-export const union = (
-  ast: AST.Union,
-  actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
-): Union => ({ _tag: "Union", ast, actual, errors })
+export const union = InternalParser.union
 
 /**
  * Error that occurs when a member in a union has an error.
@@ -332,112 +335,80 @@ export interface Member {
  * @category constructors
  * @since 1.0.0
  */
-export const member = (
-  ast: AST.AST,
-  error: ParseIssue
-): Member => ({ _tag: "Member", ast, error })
-
-const _try: <A>(options: {
-  try: LazyArg<A>
-  catch: (e: unknown) => ParseError
-}) => Either.Either<ParseError, A> = Either.try
-
-export {
-  /**
-   * @category constructors
-   * @since 1.0.0
-   */
-  _try as try
-}
+export const member = InternalParser.member
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const eitherOrUndefined = <R, E, A>(
-  self: Effect.Effect<R, E, A>
-): Either.Either<E, A> | undefined => {
-  const s: any = self
-  if (s["_tag"] === "Left" || s["_tag"] === "Right") {
-    return s
-  }
-}
+export const eitherOrUndefined = InternalParser.eitherOrUndefined
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const flatMap = <R1, E1, A, R2, E2, B>(
-  self: Effect.Effect<R1, E1, A>,
-  f: (self: A) => Effect.Effect<R2, E2, B>
-): Effect.Effect<R1 | R2, E1 | E2, B> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return s
-  }
-  if (s["_tag"] === "Right") {
-    return f(s.right)
-  }
-  return Effect.flatMap(self, f)
-}
+export const flatMap = InternalParser.flatMap
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const map = <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B): Effect.Effect<R, E, B> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return s
-  }
-  if (s["_tag"] === "Right") {
-    return Either.right(f(s.right))
-  }
-  return Effect.map(self, f)
-}
+export const map = InternalParser.map
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const mapError = <R, E1, A, E2>(
+export const mapError = InternalParser.mapError
+
+/**
+ * @category optimisation
+ * @since 1.0.0
+ */
+export const mapBoth: {
+  <E1, A, E2, B>(
+    options: {
+      readonly onFailure: (error: E1) => E2
+      readonly onSuccess: (a: A) => B
+    }
+  ): <R>(self: Effect.Effect<R, E1, A>) => Effect.Effect<R, E2, B>
+  <R, E1, A, E2, B>(
+    self: Effect.Effect<R, E1, A>,
+    options: {
+      readonly onFailure: (error: E1) => E2
+      readonly onSuccess: (a: A) => B
+    }
+  ): Effect.Effect<R, E2, B>
+} = dual(2, <R, E1, A, E2, B>(
   self: Effect.Effect<R, E1, A>,
-  f: (error: E1) => E2
-): Effect.Effect<R, E2, A> => {
-  const s: any = self
-  if (s["_tag"] === "Left") {
-    return Either.left(f(s.left))
+  options: {
+    readonly onFailure: (error: E1) => E2
+    readonly onSuccess: (a: A) => B
   }
-  if (s["_tag"] === "Right") {
-    return s
-  }
-  return Effect.mapError(self, f)
-}
-
-/**
- * @category optimisation
- * @since 1.0.0
- */
-export const mapBoth = <R, E1, A, E2, B>(
-  self: Effect.Effect<R, E1, A>,
-  f: (error: E1) => E2,
-  g: (a: A) => B
 ): Effect.Effect<R, E2, B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
-    return Either.left(f(s.left))
+    return Either.left(options.onFailure(s.left))
   }
   if (s["_tag"] === "Right") {
-    return Either.right(g(s.right))
+    return Either.right(options.onSuccess(s.right))
   }
-  return Effect.mapBoth(self, { onFailure: f, onSuccess: g })
-}
+  return Effect.mapBoth(self, options)
+})
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const orElse = <R1, E1, A, R2, E2, B>(
+export const orElse: {
+  <E1, A, R2, E2, B>(
+    f: (error: E1) => Effect.Effect<R2, E2, B>
+  ): <R1>(self: Effect.Effect<R1, E1, A>) => Effect.Effect<R1 | R2, E2, A | B>
+  <R1, E1, A, R2, E2, B>(
+    self: Effect.Effect<R1, E1, A>,
+    f: (error: E1) => Effect.Effect<R2, E2, B>
+  ): Effect.Effect<R1 | R2, E2, A | B>
+} = dual(2, <R1, E1, A, R2, E2, B>(
   self: Effect.Effect<R1, E1, A>,
   f: (error: E1) => Effect.Effect<R2, E2, B>
 ): Effect.Effect<R1 | R2, E2, A | B> => {
@@ -449,4 +420,73 @@ export const orElse = <R1, E1, A, R2, E2, B>(
     return s
   }
   return Effect.catchAll(self, f)
-}
+})
+
+/* c8 ignore start */
+export {
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodeUnknown,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodeUnknownEither,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodeUnknownOption,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodeUnknownPromise,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
+  decodeUnknownSync,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeUnknown,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeUnknownEither,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeUnknownOption,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeUnknownPromise,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeUnknownSync
+} from "./Parser.js"
+/* c8 ignore end */
+
+/**
+ * @since 1.0.0
+ */
+export type DecodeUnknown<R, Out> = (u: unknown, options?: AST.ParseOptions) => Effect.Effect<R, ParseIssue, Out>
+
+/**
+ * @since 1.0.0
+ */
+export type DeclarationDecodeUnknown<R, Out> = (
+  u: unknown,
+  options: AST.ParseOptions,
+  ast: AST.Declaration
+) => Effect.Effect<R, ParseIssue, Out>

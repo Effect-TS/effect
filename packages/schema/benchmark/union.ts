@@ -1,19 +1,22 @@
+import type { ParseOptions } from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
+import * as S from "@effect/schema/Schema"
 import * as RA from "effect/ReadonlyArray"
 import { Bench } from "tinybench"
 import { z } from "zod"
-import type { ParseOptions } from "../src/AST.js"
-import * as S from "../src/Schema.js"
 
 /*
 n = 100
-┌─────────┬──────────────────────┬─────────────┬────────────────────┬──────────┬─────────┐
-│ (index) │      Task Name       │   ops/sec   │ Average Time (ns)  │  Margin  │ Samples │
-├─────────┼──────────────────────┼─────────────┼────────────────────┼──────────┼─────────┤
-│    0    │ 'parseEither (good)' │  '769,686'  │ 1299.2299910120141 │ '±0.72%' │ 769789  │
-│    1    │     'zod (good)'     │ '1,032,295' │ 968.7144246894364  │ '±0.61%' │ 1032296 │
-│    2    │ 'parseEither (bad)'  │  '463,348'  │  2158.20458744785  │ '±0.55%' │ 463349  │
-│    3    │     'zod (bad)'      │ '1,010,359' │ 989.7469520908651  │ '±0.62%' │ 1010360 │
-└─────────┴──────────────────────┴─────────────┴────────────────────┴──────────┴─────────┘
+┌─────────┬──────────────────────────────────────────┬───────────┬────────────────────┬──────────┬─────────┐
+│ (index) │                Task Name                 │  ops/sec  │ Average Time (ns)  │  Margin  │ Samples │
+├─────────┼──────────────────────────────────────────┼───────────┼────────────────────┼──────────┼─────────┤
+│    0    │   'Schema.decodeUnknownEither (good)'    │ '762,351' │ 1311.7303972762459 │ '±0.93%' │ 762352  │
+│    1    │ 'ParseResult.decodeUnknownEither (good)' │ '783,576' │ 1276.199792010595  │ '±0.54%' │ 783577  │
+│    2    │               'zod (good)'               │ '958,140' │ 1043.6878259825853 │ '±0.82%' │ 958141  │
+│    3    │    'Schema.decodeUnknownEither (bad)'    │ '53,537'  │ 18678.624151070893 │ '±0.58%' │  53538  │
+│    4    │ 'ParseResult.decodeUnknownEither (bad)'  │ '484,651' │ 2063.3393040682363 │ '±0.67%' │ 484652  │
+│    5    │               'zod (bad)'                │ '997,081' │ 1002.9270279182039 │ '±0.67%' │ 997082  │
+└─────────┴──────────────────────────────────────────┴───────────┴────────────────────┴──────────┴─────────┘
 */
 
 const bench = new Bench({ time: 1000 })
@@ -38,9 +41,6 @@ const x = RA.makeBy(n, (i) =>
 
 const schemaZod = z.discriminatedUnion("kind", x)
 
-const parseEither = S.parseEither(schema)
-const options: ParseOptions = { errors: "all" }
-
 const good = {
   kind: n - 1,
   a: "a",
@@ -55,18 +55,25 @@ const bad = {
   c: "c"
 }
 
-// console.log(parseEither(good))
-// console.log(parseEither(bad))
+const schemadecodeUnknownEither = S.decodeUnknownEither(schema)
+const parseResultdecodeUnknownEither = ParseResult.decodeUnknownEither(schema)
+const options: ParseOptions = { errors: "all" }
 
 bench
-  .add("parseEither (good)", function() {
-    parseEither(good, options)
+  .add("Schema.decodeUnknownEither (good)", function() {
+    schemadecodeUnknownEither(good, options)
+  })
+  .add("ParseResult.decodeUnknownEither (good)", function() {
+    parseResultdecodeUnknownEither(good, options)
   })
   .add("zod (good)", function() {
     schemaZod.safeParse(good)
   })
-  .add("parseEither (bad)", function() {
-    parseEither(bad, options)
+  .add("Schema.decodeUnknownEither (bad)", function() {
+    schemadecodeUnknownEither(bad, options)
+  })
+  .add("ParseResult.decodeUnknownEither (bad)", function() {
+    parseResultdecodeUnknownEither(bad, options)
   })
   .add("zod (bad)", function() {
     schemaZod.safeParse(good)

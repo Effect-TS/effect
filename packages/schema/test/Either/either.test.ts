@@ -10,12 +10,12 @@ describe("Either/either", () => {
 
   it("decoding", async () => {
     const schema = S.either(S.string, S.NumberFromString)
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       JSON.parse(JSON.stringify(E.left("a"))),
       E.left("a")
     )
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       JSON.parse(JSON.stringify(E.right("1"))),
       E.right(1)

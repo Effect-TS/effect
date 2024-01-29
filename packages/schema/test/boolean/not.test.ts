@@ -5,8 +5,8 @@ import { describe, it } from "vitest"
 describe("boolean/not", () => {
   const schema = S.Not
   it("decoding", async () => {
-    await Util.expectParseSuccess(schema, true, false)
-    await Util.expectParseSuccess(schema, false, true)
+    await Util.expectDecodeUnknownSuccess(schema, true, false)
+    await Util.expectDecodeUnknownSuccess(schema, false, true)
   })
 
   it("encoding", async () => {

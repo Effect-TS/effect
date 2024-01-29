@@ -166,6 +166,10 @@ describe("Either", () => {
     Util.deepStrictEqual(Either.filterOrLeft(Either.right(1), (n) => n > 0, () => "a"), Either.right(1))
     Util.deepStrictEqual(Either.filterOrLeft(Either.right(1), (n) => n > 1, () => "a"), Either.left("a"))
     Util.deepStrictEqual(Either.filterOrLeft(Either.left(1), (n) => n > 0, () => "a"), Either.left(1))
+
+    Util.deepStrictEqual(Either.right(1).pipe(Either.filterOrLeft((n) => n > 0, () => "a")), Either.right(1))
+    Util.deepStrictEqual(Either.right(1).pipe(Either.filterOrLeft((n) => n > 1, () => "a")), Either.left("a"))
+    Util.deepStrictEqual(Either.left(1).pipe(Either.filterOrLeft((n) => n > 0, () => "a")), Either.left(1))
   })
 
   it("merge", () => {

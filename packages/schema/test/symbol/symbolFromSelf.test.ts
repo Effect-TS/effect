@@ -6,8 +6,8 @@ describe("symbol > symbolFromSelf", () => {
   const schema = S.symbolFromSelf
   it("decoding", async () => {
     const a = Symbol.for("@effect/schema/test/a")
-    await Util.expectParseSuccess(schema, a)
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownSuccess(schema, a)
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `Expected a symbol, actual null`

@@ -7,13 +7,13 @@ describe("Duration > lessThanDuration", () => {
   const schema = S.DurationFromSelf.pipe(S.lessThanDuration("5 seconds"))
 
   it("decoding", async () => {
-    await Util.expectParseSuccess(
+    await Util.expectDecodeUnknownSuccess(
       schema,
       Duration.decode("4 seconds"),
       Duration.decode("4 seconds")
     )
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Duration.decode("5 seconds"),
       `a Duration less than Duration(5s)
@@ -21,7 +21,7 @@ describe("Duration > lessThanDuration", () => {
    └─ Expected a Duration less than Duration(5s), actual Duration(5s)`
     )
 
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       Duration.decode("6 seconds"),
       `a Duration less than Duration(5s)

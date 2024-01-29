@@ -1,5 +1,43 @@
 # @effect/rpc-http
 
+## 0.25.17
+
+### Patch Changes
+
+- Updated dependencies [[`9863e2f`](https://github.com/Effect-TS/effect/commit/9863e2fb3561dc019965aeccd6584a418fc8b401)]:
+  - @effect/schema@0.61.3
+  - @effect/platform@0.43.3
+  - @effect/rpc@0.26.14
+
+## 0.25.16
+
+### Patch Changes
+
+- Updated dependencies [[`64f710a`](https://github.com/Effect-TS/effect/commit/64f710aa49dec6ffcd33ee23438d0774f5489733)]:
+  - @effect/schema@0.61.2
+  - @effect/platform@0.43.2
+  - @effect/rpc@0.26.13
+
+## 0.25.15
+
+### Patch Changes
+
+- Updated dependencies [[`c7550f9`](https://github.com/Effect-TS/effect/commit/c7550f96e1006eee832ce5025bf0c197a65935ea), [`8d1f6e4`](https://github.com/Effect-TS/effect/commit/8d1f6e4bb13e221804fb1762ef19e02bcefc8f61), [`d404561`](https://github.com/Effect-TS/effect/commit/d404561e47ec2fa5f68709a308ee5d2ee959141d), [`7b84a3c`](https://github.com/Effect-TS/effect/commit/7b84a3c7e4b9c8dc02294b0e3cc3ae3becea977b), [`1a84dee`](https://github.com/Effect-TS/effect/commit/1a84dee0e9ddbfaf2610e4d7c00c7020c427171a), [`ac30bf4`](https://github.com/Effect-TS/effect/commit/ac30bf4cd53de0663784f65ae6bee8279333df97)]:
+  - @effect/schema@0.61.1
+  - effect@2.2.2
+  - @effect/platform@0.43.1
+  - @effect/rpc@0.26.12
+
+## 0.25.14
+
+### Patch Changes
+
+- Updated dependencies [[`84da31f`](https://github.com/Effect-TS/effect/commit/84da31f0643e8651b9d311b30526b1e4edfbdfb8), [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764), [`645bea2`](https://github.com/Effect-TS/effect/commit/645bea2551129f94a5b0e38347e28067dee531bb), [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764)]:
+  - effect@2.2.1
+  - @effect/schema@0.61.0
+  - @effect/platform@0.43.0
+  - @effect/rpc@0.26.11
+
 ## 0.25.13
 
 ### Patch Changes

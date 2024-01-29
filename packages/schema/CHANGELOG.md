@@ -1,5 +1,71 @@
 # @effect/schema
 
+## 0.61.3
+
+### Patch Changes
+
+- [#1992](https://github.com/Effect-TS/effect/pull/1992) [`9863e2f`](https://github.com/Effect-TS/effect/commit/9863e2fb3561dc019965aeccd6584a418fc8b401) Thanks [@gcanti](https://github.com/gcanti)! - enhance error messages
+
+## 0.61.2
+
+### Patch Changes
+
+- [#1988](https://github.com/Effect-TS/effect/pull/1988) [`64f710a`](https://github.com/Effect-TS/effect/commit/64f710aa49dec6ffcd33ee23438d0774f5489733) Thanks [@gcanti](https://github.com/gcanti)! - Class constructor: avoid overwriting `props` with `additionalProps`, closes #1987
+
+## 0.61.1
+
+### Patch Changes
+
+- [#1975](https://github.com/Effect-TS/effect/pull/1975) [`c7550f9`](https://github.com/Effect-TS/effect/commit/c7550f96e1006eee832ce5025bf0c197a65935ea) Thanks [@gcanti](https://github.com/gcanti)! - fix templateLiteral signature (R should be never)
+
+- [#1974](https://github.com/Effect-TS/effect/pull/1974) [`8d1f6e4`](https://github.com/Effect-TS/effect/commit/8d1f6e4bb13e221804fb1762ef19e02bcefc8f61) Thanks [@gcanti](https://github.com/gcanti)! - causeFromSelf: add missing type parameter
+
+- [#1977](https://github.com/Effect-TS/effect/pull/1977) [`1a84dee`](https://github.com/Effect-TS/effect/commit/1a84dee0e9ddbfaf2610e4d7c00c7020c427171a) Thanks [@gcanti](https://github.com/gcanti)! - add `hash`
+
+- [#1978](https://github.com/Effect-TS/effect/pull/1978) [`ac30bf4`](https://github.com/Effect-TS/effect/commit/ac30bf4cd53de0663784f65ae6bee8279333df97) Thanks [@gcanti](https://github.com/gcanti)! - Allow non-async Effects to be used with \*Sync combinators, closes #1976
+
+  - `ParseResult`
+    - add `ast` and `message` fields to `Forbidden`
+
+- Updated dependencies [[`d404561`](https://github.com/Effect-TS/effect/commit/d404561e47ec2fa5f68709a308ee5d2ee959141d), [`7b84a3c`](https://github.com/Effect-TS/effect/commit/7b84a3c7e4b9c8dc02294b0e3cc3ae3becea977b)]:
+  - effect@2.2.2
+
+## 0.61.0
+
+### Minor Changes
+
+- [#1922](https://github.com/Effect-TS/effect/pull/1922) [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764) Thanks [@gcanti](https://github.com/gcanti)! - Refactoring:
+
+  - Schema:
+    - refactor `Schema.declare` API to make it safe
+    - add `Schema.declare` overloads
+    - add `encodeUnknown*` APIs
+    - rename `parse*` APIs to `decodeUnknown*`
+    - symplify brand implementation
+    - rename `params` to `annotation` in `typeId` annotation
+    - add optional `{ strict: false }` parameter to `compose`
+    - `Class`
+      - rename `transform` to `transformOrFail`
+      - rename `transformFrom` to `transformOrFailFrom`
+    - add `hashSet` and `hashSetFromSelf`
+    - add `hashMap` and `hashMapFromSelf`
+    - add `list` and `listFromSelf`
+  - AST:
+    - return `ParseResult.ParseIssue` instead of `ParseResult.ParseError` in all APIs
+    - Declaration
+      - split `decode` into `decodeUnknown` / `encodeUnknown`
+      - remove `type` field
+  - ParseResult
+    - align `mapBoth` with `Effect` (i.e. onFailure, onSuccess handlers)
+    - add missing `Declaration` node in `ParseIssue`
+
+- [#1922](https://github.com/Effect-TS/effect/pull/1922) [`62b40e8`](https://github.com/Effect-TS/effect/commit/62b40e8479371d6663c0255aaca56a1ae0d59764) Thanks [@gcanti](https://github.com/gcanti)! - add context tracking to Schema, closes #1873
+
+### Patch Changes
+
+- Updated dependencies [[`84da31f`](https://github.com/Effect-TS/effect/commit/84da31f0643e8651b9d311b30526b1e4edfbdfb8), [`645bea2`](https://github.com/Effect-TS/effect/commit/645bea2551129f94a5b0e38347e28067dee531bb)]:
+  - effect@2.2.1
+
 ## 0.60.7
 
 ### Patch Changes

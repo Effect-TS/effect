@@ -40,7 +40,7 @@ export type ArbitraryHookId = typeof ArbitraryHookId
  */
 export const arbitrary =
   <A>(handler: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<A>) =>
-  <I>(self: Schema.Schema<I, A>): Schema.Schema<I, A> =>
+  <R, I>(self: Schema.Schema<R, I, A>): Schema.Schema<R, I, A> =>
     InternalSchema.make(AST.setAnnotation(self.ast, ArbitraryHookId, handler))
 
 /**
@@ -49,9 +49,7 @@ export const arbitrary =
  * @category arbitrary
  * @since 1.0.0
  */
-export const make = <I, A>(
-  schema: Schema.Schema<I, A>
-): Arbitrary<A> => go(schema.ast, {})
+export const make = <R, I, A>(schema: Schema.Schema<R, I, A>): Arbitrary<A> => go(schema.ast, {})
 
 const depthSize = 1
 
@@ -104,7 +102,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
   }
   switch (ast._tag) {
     case "Declaration": {
-      throw new Error("cannot build an Arbitrary for a declaration without annotations")
+      throw new Error(`cannot build an Arbitrary for a declaration without annotations (${AST.format(ast)})`)
     }
     case "Literal":
       return (fc) => fc.constant(ast.literal)

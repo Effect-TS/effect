@@ -315,7 +315,7 @@ export const fileParse = (
 /** @internal */
 export const fileSchema = <I, A>(
   name: string,
-  schema: Schema.Schema<I, A>,
+  schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, A>,
   format?: "json" | "yaml" | "ini" | "toml"
 ): Options.Options<A> => withSchema(fileParse(name, format), schema)
 
@@ -638,8 +638,13 @@ export const withPseudoName = dual<
 
 /** @internal */
 export const withSchema = dual<
-  <A, I extends A, B>(schema: Schema.Schema<I, B>) => (self: Options.Options<A>) => Options.Options<B>,
-  <A, I extends A, B>(self: Options.Options<A>, schema: Schema.Schema<I, B>) => Options.Options<B>
+  <A, I extends A, B>(
+    schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, B>
+  ) => (self: Options.Options<A>) => Options.Options<B>,
+  <A, I extends A, B>(
+    self: Options.Options<A>,
+    schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, B>
+  ) => Options.Options<B>
 >(2, (self, schema) => {
   const decode = Schema.decode(schema)
   return mapEffect(self, (_) =>
@@ -1274,6 +1279,7 @@ const parseInternal = (
     case "Variadic": {
       const min = Option.getOrElse(self.min, () => 0)
       const max = Option.getOrElse(self.max, () => Number.MAX_SAFE_INTEGER)
+      const matchedArgument = ReadonlyArray.filterMap(getNames(self), (name) => HashMap.get(args, name))
       const validateMinMax = (values: ReadonlyArray<string>) => {
         if (values.length < min) {
           const name = self.argumentOption.fullName
@@ -1291,6 +1297,11 @@ const parseInternal = (
             Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
           )
         return Effect.forEach(values, (value) => validatePrimitive(value))
+      }
+      // If we did not receive any variadic arguments then perform the bounds
+      // checks with an empty array
+      if (ReadonlyArray.every(matchedArgument, ReadonlyArray.isEmptyReadonlyArray)) {
+        return validateMinMax(ReadonlyArray.empty())
       }
       return parseInternal(self.argumentOption, args, config).pipe(Effect.matchEffect({
         onFailure: (error) =>
@@ -1481,10 +1492,7 @@ const matchOptions = (
     HashMap.HashMap<string, ReadonlyArray<string>>
   ]
 > => {
-  if (
-    ReadonlyArray.isNonEmptyReadonlyArray(input)
-    && ReadonlyArray.isNonEmptyReadonlyArray(options)
-  ) {
+  if (ReadonlyArray.isNonEmptyReadonlyArray(options)) {
     return findOptions(input, options, config).pipe(
       Effect.flatMap(([otherArgs, otherOptions, map1]) => {
         if (HashMap.isEmpty(map1)) {
@@ -1675,7 +1683,7 @@ const parseCommandLine = (
           onNonEmpty: (head, tail) => {
             const normalize = (value: string) => InternalCliConfig.normalizeCase(config, value)
             const normalizedHead = normalize(head)
-            const normalizedNames = ReadonlyArray.map(getNames(self), normalize)
+            const normalizedNames = ReadonlyArray.map(getNames(self), (name) => normalize(name))
             if (ReadonlyArray.contains(normalizedNames, normalizedHead)) {
               if (InternalPrimitive.isBool(self.primitiveType)) {
                 return ReadonlyArray.matchLeft(tail, {
@@ -1727,7 +1735,7 @@ const parseCommandLine = (
       ))
     }
     case "KeyValueMap": {
-      const singleNames = ReadonlyArray.map(
+      const normalizedNames = ReadonlyArray.map(
         getNames(self.argumentOption),
         (name) => InternalCliConfig.normalizeCase(config, name)
       )
@@ -1740,10 +1748,10 @@ const parseCommandLine = (
             let keyValues = ReadonlyArray.empty<string>()
             let leftover = args as ReadonlyArray<string>
             while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
-              const name = leftover[0].trim()
+              const name = ReadonlyArray.headNonEmpty(leftover).trim()
               const normalizedName = InternalCliConfig.normalizeCase(config, name)
               // Can be in the form of "--flag key1=value1 --flag key2=value2"
-              if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, normalizedName)) {
+              if (leftover.length >= 2 && ReadonlyArray.contains(normalizedNames, normalizedName)) {
                 const keyValue = leftover[1].trim()
                 const [key, value] = keyValue.split("=")
                 if (key !== undefined && value !== undefined && value.length > 0) {
@@ -1765,17 +1773,17 @@ const parseCommandLine = (
             }
             return [keyValues, leftover]
           }
-          const name = InternalCliConfig.normalizeCase(config, head)
-          if (ReadonlyArray.contains(singleNames, name)) {
+          const normalizedName = InternalCliConfig.normalizeCase(config, head)
+          if (ReadonlyArray.contains(normalizedNames, normalizedName)) {
             const [values, leftover] = loop(tail)
-            return Effect.succeed({ parsed: Option.some({ name, values }), leftover })
+            return Effect.succeed({ parsed: Option.some({ name: head, values }), leftover })
           }
           return Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args })
         }
       })
     }
     case "Variadic": {
-      const singleNames = ReadonlyArray.map(
+      const normalizedNames = ReadonlyArray.map(
         getNames(self.argumentOption),
         (name) => InternalCliConfig.normalizeCase(config, name)
       )
@@ -1783,8 +1791,9 @@ const parseCommandLine = (
       let values = ReadonlyArray.empty<string>()
       let leftover = args as ReadonlyArray<string>
       while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
-        const name = InternalCliConfig.normalizeCase(config, ReadonlyArray.headNonEmpty(leftover))
-        if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, name)) {
+        const name = ReadonlyArray.headNonEmpty(leftover)
+        const normalizedName = InternalCliConfig.normalizeCase(config, name)
+        if (leftover.length >= 2 && ReadonlyArray.contains(normalizedNames, normalizedName)) {
           if (optionName === undefined) {
             optionName = name
           }
@@ -1795,9 +1804,12 @@ const parseCommandLine = (
             continue
           }
           break
+        } else {
+          break
         }
       }
       const parsed = Option.fromNullable(optionName).pipe(
+        Option.orElse(() => Option.some(self.argumentOption.fullName)),
         Option.map((name) => ({ name, values }))
       )
       return Effect.succeed<ParsedCommandLine>({ parsed, leftover })

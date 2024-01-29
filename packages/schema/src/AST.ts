@@ -4,13 +4,15 @@
 
 import type { Effect } from "effect/Effect"
 import { dual, identity, pipe } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
+import * as Hash from "effect/Hash"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Internal from "./internal/ast.js"
-import type { ParseError } from "./ParseResult.js"
+import type { ParseIssue } from "./ParseResult.js"
 
 // -------------------------------------------------------------------------------------
 // annotations
@@ -264,11 +266,12 @@ export type AST =
 export interface Declaration extends Annotated {
   readonly _tag: "Declaration"
   readonly typeParameters: ReadonlyArray<AST>
-  readonly type: AST
-  readonly decode: (
-    isDecoding: boolean,
+  readonly decodeUnknown: (
     ...typeParameters: ReadonlyArray<AST>
-  ) => (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
+  ) => (input: unknown, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
+  readonly encodeUnknown: (
+    ...typeParameters: ReadonlyArray<AST>
+  ) => (input: unknown, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>
 }
 
 /**
@@ -277,10 +280,10 @@ export interface Declaration extends Annotated {
  */
 export const createDeclaration = (
   typeParameters: ReadonlyArray<AST>,
-  type: AST,
-  decode: Declaration["decode"],
-  annotations: Annotated["annotations"] = {}
-): Declaration => ({ _tag: "Declaration", typeParameters, type, decode, annotations })
+  decodeUnknown: Declaration["decodeUnknown"],
+  encodeUnknown: Declaration["encodeUnknown"],
+  annotations: Annotations = {}
+): Declaration => ({ _tag: "Declaration", typeParameters, decodeUnknown, encodeUnknown, annotations })
 
 /**
  * @category guards
@@ -309,7 +312,7 @@ export interface Literal extends Annotated {
  */
 export const createLiteral = (
   literal: LiteralValue,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Literal => ({ _tag: "Literal", literal, annotations })
 
 /**
@@ -338,7 +341,7 @@ export interface UniqueSymbol extends Annotated {
  */
 export const createUniqueSymbol = (
   symbol: symbol,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): UniqueSymbol => ({ _tag: "UniqueSymbol", symbol, annotations })
 
 /**
@@ -644,7 +647,7 @@ export interface Enums extends Annotated {
  */
 export const createEnums = (
   enums: ReadonlyArray<readonly [string, string | number]>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Enums => ({ _tag: "Enums", enums, annotations })
 
 /**
@@ -678,7 +681,7 @@ export interface TemplateLiteral extends Annotated {
 export const createTemplateLiteral = (
   head: string,
   spans: ReadonlyArray<TemplateLiteralSpan>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): TemplateLiteral | Literal =>
   ReadonlyArray.isNonEmptyReadonlyArray(spans) ?
     { _tag: "TemplateLiteral", head, spans, annotations } :
@@ -725,7 +728,7 @@ export const createTuple = (
   elements: ReadonlyArray<Element>,
   rest: Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>,
   isReadonly: boolean,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly, annotations })
 
 /**
@@ -752,7 +755,7 @@ export const createPropertySignature = (
   type: AST,
   isOptional: boolean,
   isReadonly: boolean,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): PropertySignature => ({ name, type, isOptional, isReadonly, annotations })
 
 /**
@@ -818,7 +821,7 @@ export interface TypeLiteral extends Annotated {
 export const createTypeLiteral = (
   propertySignatures: ReadonlyArray<PropertySignature>,
   indexSignatures: ReadonlyArray<IndexSignature>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): TypeLiteral => {
   // check for duplicate property signatures
   const keys: Record<PropertyKey, null> = {}
@@ -884,7 +887,7 @@ const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Array<A>] 
  */
 export const createUnion = (
   candidates: ReadonlyArray<AST>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): AST => {
   const types = unify(candidates)
   if (isMembers(types)) {
@@ -921,7 +924,7 @@ export interface Suspend extends Annotated {
  */
 export const createSuspend = (
   f: () => AST,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Suspend => ({
   _tag: "Suspend",
   f: Internal.memoizeThunk(f),
@@ -944,8 +947,8 @@ export interface Refinement<From = AST> extends Annotated {
   readonly filter: (
     input: any,
     options: ParseOptions,
-    self: AST
-  ) => Option.Option<ParseError>
+    self: Refinement
+  ) => Option.Option<ParseIssue>
 }
 
 /**
@@ -955,7 +958,7 @@ export interface Refinement<From = AST> extends Annotated {
 export const createRefinement = <From extends AST>(
   from: From,
   filter: Refinement["filter"],
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Refinement<From> => {
   return { _tag: "Refinement", from, filter, annotations }
 }
@@ -996,7 +999,7 @@ export const createTransform = (
   from: AST,
   to: AST,
   transformation: Transformation,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotations = {}
 ): Transform => ({ _tag: "Transform", from, to, transformation, annotations })
 
 /**
@@ -1020,8 +1023,8 @@ export type Transformation =
  */
 export interface FinalTransformation {
   readonly _tag: "FinalTransformation"
-  readonly decode: (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
-  readonly encode: (input: any, options: ParseOptions, self: AST) => Effect<never, ParseError, any>
+  readonly decode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseIssue, any>
+  readonly encode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseIssue, any>
 }
 
 /**
@@ -1179,7 +1182,7 @@ export const isTypeLiteralTransformation = (
  *
  * @since 1.0.0
  */
-export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]): AST => {
+export const mergeAnnotations = (ast: AST, annotations: Annotations): AST => {
   return {
     ...ast,
     annotations: { ...ast.annotations, ...annotations }
@@ -1304,7 +1307,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
   }
-  throw new Error(`getNumberIndexedAccess: unsupported schema (${ast._tag})`)
+  throw new Error(`getNumberIndexedAccess: unsupported schema (${format(ast)})`)
 }
 
 /** @internal */
@@ -1391,7 +1394,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
           propertySignatures.push(createPropertySignature(key.literal, value, false, isReadonly))
         } else {
-          throw new Error(`createRecord: unsupported literal ${String(key.literal)}`)
+          throw new Error(`createRecord: unsupported literal (${formatUnknown(key.literal)})`)
         }
         break
       case "UniqueSymbol":
@@ -1401,7 +1404,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
         key.types.forEach(go)
         break
       default:
-        throw new Error(`createRecord: unsupported key schema (${key._tag})`)
+        throw new Error(`createRecord: unsupported key schema (${format(key)})`)
     }
   }
   go(key)
@@ -1575,8 +1578,8 @@ export const to = (ast: AST): AST => {
     case "Declaration":
       return createDeclaration(
         ast.typeParameters.map(to),
-        to(ast.type),
-        ast.decode,
+        ast.decodeUnknown,
+        ast.encodeUnknown,
         ast.annotations
       )
     case "Tuple":
@@ -1619,8 +1622,8 @@ export const from = (ast: AST): AST => {
     case "Declaration":
       return createDeclaration(
         ast.typeParameters.map(from),
-        from(ast.type),
-        ast.decode,
+        ast.decodeUnknown,
+        ast.encodeUnknown,
         ast.annotations
       )
     case "Tuple":
@@ -1647,11 +1650,69 @@ export const from = (ast: AST): AST => {
   return ast
 }
 
+const toStringMemoSet = globalValue(
+  Symbol.for("@effect/schema/AST/toStringMemoSet"),
+  () => new WeakSet<AST>()
+)
+
+const containerASTTags = {
+  Declaration: true,
+  Refinement: true,
+  Tuple: true,
+  TypeLiteral: true,
+  Union: true,
+  Suspend: true,
+  Transform: true
+}
+
+const isContainerAST = (ast: object): ast is
+  | Declaration
+  | Refinement
+  | Tuple
+  | TypeLiteral
+  | Union
+  | Suspend
+  | Transform => "_tag" in ast && Predicate.isString(ast["_tag"]) && ast["_tag"] in containerASTTags
+
+/** @internal */
+export const toString = (ast: AST): string =>
+  JSON.stringify(ast, (key, value) => {
+    if (Predicate.isSymbol(value)) {
+      return String(value)
+    }
+    if (typeof value === "object" && value !== null) {
+      if (isContainerAST(value)) {
+        if (toStringMemoSet.has(value)) {
+          return "<suspended schema>"
+        }
+        toStringMemoSet.add(value)
+        if (isSuspend(value)) {
+          const out = value.f()
+          if (toStringMemoSet.has(out)) {
+            return "<suspended schema>"
+          }
+          toStringMemoSet.add(out)
+          return out
+        }
+      } else if (key === "annotations") {
+        const out: Record<string, unknown> = {}
+        for (const k of Internal.ownKeys(value)) {
+          out[String(k)] = value[k]
+        }
+        return out
+      }
+    }
+    return value
+  }, 2)
+
+/**
+ * @since 1.0.0
+ */
+export const hash = (ast: AST): number => Hash.string(toString(ast))
+
 /** @internal */
 export const getCardinality = (ast: AST): number => {
   switch (ast._tag) {
-    case "Declaration":
-      return getCardinality(ast.type)
     case "NeverKeyword":
       return 0
     case "Literal":
@@ -1724,8 +1785,7 @@ export const getWeight = (ast: AST): Weight => {
         [4, y, z]
     }
     case "Declaration": {
-      const [_, y, z] = getWeight(ast.type)
-      return [6, y, z]
+      return [6, 0, 0]
     }
     case "Suspend":
       return [8, 0, 0]
@@ -1806,8 +1866,6 @@ export const getParameterBase = (
 
 const _keyof = (ast: AST): Array<AST> => {
   switch (ast._tag) {
-    case "Declaration":
-      return _keyof(ast.type)
     case "TypeLiteral":
       return ast.propertySignatures.map((p): AST =>
         Predicate.isSymbol(p.name) ? createUniqueSymbol(p.name) : createLiteral(p.name)
@@ -1815,7 +1873,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "Suspend":
       return _keyof(ast.f())
     default:
-      throw new Error(`keyof: unsupported schema (${ast._tag})`)
+      throw new Error(`keyof: unsupported schema (${format(ast)})`)
   }
 }
 
@@ -1866,5 +1924,178 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
     case "Transform":
       return compose(ast, rename(to(ast), mapping))
   }
-  throw new Error(`cannot rename ${ast._tag}`)
+  throw new Error(`rename: cannot rename (${format(ast)})`)
+}
+
+const formatTransformation = (from: string, to: string): string => `(${from} <-> ${to})`
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const format = (ast: AST, verbose: boolean = false): string => {
+  switch (ast._tag) {
+    case "StringKeyword":
+    case "NumberKeyword":
+    case "BooleanKeyword":
+    case "BigIntKeyword":
+    case "UndefinedKeyword":
+    case "SymbolKeyword":
+    case "ObjectKeyword":
+    case "AnyKeyword":
+    case "UnknownKeyword":
+    case "VoidKeyword":
+    case "NeverKeyword":
+      return Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
+    case "Literal":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatUnknown(ast.literal))
+    case "UniqueSymbol":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatUnknown(ast.symbol))
+    case "Union":
+      return Option.getOrElse(
+        getExpected(ast, verbose),
+        () => ast.types.map((member) => format(member)).join(" | ")
+      )
+    case "TemplateLiteral":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTemplateLiteral(ast))
+    case "Tuple":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTuple(ast))
+    case "TypeLiteral":
+      return Option.getOrElse(getExpected(ast, verbose), () => formatTypeLiteral(ast))
+    case "Enums":
+      return Option.getOrElse(
+        getExpected(ast, verbose),
+        () => `<enum ${ast.enums.length} value(s): ${ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
+      )
+    case "Suspend":
+      return getExpected(ast, verbose).pipe(
+        Option.orElse(() =>
+          Option.flatMap(
+            Option.liftThrowable(ast.f)(),
+            (ast) => getExpected(ast, verbose)
+          )
+        ),
+        Option.getOrElse(() => "<suspended schema>")
+      )
+    case "Declaration":
+      return Option.getOrElse(getExpected(ast, verbose), () => "<declaration schema>")
+    case "Refinement":
+      return Option.getOrElse(getExpected(ast, verbose), () => "<refinement schema>")
+    case "Transform":
+      return Option.getOrElse(
+        getExpected(ast, verbose),
+        () => formatTransformation(format(ast.from), format(ast.to))
+      )
+  }
+}
+
+/** @internal */
+export const formatUnknown = (u: unknown): string => {
+  if (Predicate.isString(u)) {
+    return JSON.stringify(u)
+  } else if (
+    Predicate.isNumber(u)
+    || u == null
+    || Predicate.isBoolean(u)
+    || Predicate.isSymbol(u)
+    || Predicate.isDate(u)
+  ) {
+    return String(u)
+  } else if (Predicate.isBigInt(u)) {
+    return String(u) + "n"
+  } else if (
+    !Array.isArray(u)
+    && Predicate.hasProperty(u, "toString")
+    && Predicate.isFunction(u["toString"])
+    && u["toString"] !== Object.prototype.toString
+  ) {
+    return u["toString"]()
+  }
+  try {
+    return JSON.stringify(u)
+  } catch (e) {
+    return String(u)
+  }
+}
+
+const formatTemplateLiteral = (ast: TemplateLiteral): string =>
+  "`" + ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("") +
+  "`"
+
+const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
+  if (verbose) {
+    const description = getDescriptionAnnotation(ast).pipe(
+      Option.orElse(() => getTitleAnnotation(ast))
+    )
+    return Option.match(getIdentifierAnnotation(ast), {
+      onNone: () => description,
+      onSome: (identifier) =>
+        Option.match(description, {
+          onNone: () => Option.some(identifier),
+          onSome: (description) => Option.some(`${identifier} (${description})`)
+        })
+    })
+  }
+  return getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => getTitleAnnotation(ast)),
+    Option.orElse(() => getDescriptionAnnotation(ast))
+  )
+}
+
+const formatTuple = (ast: Tuple): string => {
+  const formattedElements = ast.elements.map((element) => format(element.type) + (element.isOptional ? "?" : ""))
+    .join(", ")
+  return Option.match(ast.rest, {
+    onNone: () => "readonly [" + formattedElements + "]",
+    onSome: ([head, ...tail]) => {
+      const formattedHead = format(head)
+      const wrappedHead = formattedHead.includes(" | ") ? "(" + formattedHead + ")" : formattedHead
+
+      if (tail.length > 0) {
+        const formattedTail = tail.map((ast) => format(ast)).join(", ")
+        if (ast.elements.length > 0) {
+          return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
+        } else {
+          return `readonly [...${wrappedHead}[], ${formattedTail}]`
+        }
+      } else {
+        if (ast.elements.length > 0) {
+          return `readonly [${formattedElements}, ...${wrappedHead}[]]`
+        } else {
+          return `ReadonlyArray<${formattedHead}>`
+        }
+      }
+    }
+  })
+}
+
+const formatTypeLiteral = (ast: TypeLiteral): string => {
+  const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
+    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + format(ps.type)
+  ).join("; ")
+  if (ast.indexSignatures.length > 0) {
+    const formattedIndexSignatures = ast.indexSignatures.map((is) =>
+      `[x: ${format(getParameterBase(is.parameter))}]: ${format(is.type)}`
+    ).join("; ")
+    if (ast.propertySignatures.length > 0) {
+      return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
+    } else {
+      return `{ ${formattedIndexSignatures} }`
+    }
+  } else {
+    if (ast.propertySignatures.length > 0) {
+      return `{ ${formattedPropertySignatures} }`
+    } else {
+      return "{}"
+    }
+  }
+}
+
+const formatTemplateLiteralSpan = (span: TemplateLiteralSpan): string => {
+  switch (span.type._tag) {
+    case "StringKeyword":
+      return "${string}"
+    case "NumberKeyword":
+      return "${number}"
+  }
 }

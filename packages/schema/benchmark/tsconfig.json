@@ -3,6 +3,11 @@
     "strict": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2022"
+    "target": "ES2022",
+    "paths": {
+      "@effect/schema": ["../src/index.js"],
+      "@effect/schema/*": ["../src/*.js"],
+      "effect/*": ["../../effect/src/*.js"]
+    }
   }
 }

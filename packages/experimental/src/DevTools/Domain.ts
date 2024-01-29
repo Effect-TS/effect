@@ -56,7 +56,7 @@ export interface ExternalSpan extends Schema.Schema.To<typeof ExternalSpan> {}
  * @since 1.0.0
  * @category schemas
  */
-export const Span: Schema.Schema<SpanFrom, Span> = Schema.struct({
+export const Span: Schema.Schema<never, SpanFrom, Span> = Schema.struct({
   _tag: Schema.literal("Span"),
   spanId: Schema.string,
   traceId: Schema.string,
@@ -166,7 +166,7 @@ export const MetricLabel = Schema.struct({
  * @since 1.0.0
  * @category schemas
  */
-export const metric = <Tag extends string, IS, S>(tag: Tag, state: Schema.Schema<IS, S>) =>
+export const metric = <Tag extends string, R, IS, S>(tag: Tag, state: Schema.Schema<R, IS, S>) =>
   Schema.struct({
     _tag: Schema.literal(tag),
     name: Schema.string,

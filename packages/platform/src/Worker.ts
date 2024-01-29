@@ -233,13 +233,13 @@ export interface SerializedWorker<I extends Schema.TaggedRequest.Any> {
   readonly id: number
   readonly execute: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
-    ? Stream.Stream<never, E | WorkerError | ParseResult.ParseError, A>
+  ) => Req extends Serializable.WithResult<infer R, infer _IE, infer E, infer _IA, infer A>
+    ? Stream.Stream<R, E | WorkerError | ParseResult.ParseError, A>
     : never
   readonly executeEffect: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
-    ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, A>
+  ) => Req extends Serializable.WithResult<infer R, infer _IE, infer E, infer _IA, infer A>
+    ? Effect.Effect<R, E | WorkerError | ParseResult.ParseError, A>
     : never
 }
 
@@ -279,18 +279,18 @@ export interface SerializedWorkerPool<I extends Schema.TaggedRequest.Any> {
   readonly backing: Pool.Pool<WorkerError, SerializedWorker<I>>
   readonly broadcast: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer _A>
-    ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, void>
+  ) => Req extends Serializable.WithResult<infer R, infer _IE, infer E, infer _IA, infer _A>
+    ? Effect.Effect<R, E | WorkerError | ParseResult.ParseError, void>
     : never
   readonly execute: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
-    ? Stream.Stream<never, E | WorkerError | ParseResult.ParseError, A>
+  ) => Req extends Serializable.WithResult<infer R, infer _IE, infer E, infer _IA, infer A>
+    ? Stream.Stream<R, E | WorkerError | ParseResult.ParseError, A>
     : never
   readonly executeEffect: <Req extends I>(
     message: Req
-  ) => Req extends Serializable.WithResult<infer _IE, infer E, infer _IA, infer A>
-    ? Effect.Effect<never, E | WorkerError | ParseResult.ParseError, A>
+  ) => Req extends Serializable.WithResult<infer R, infer _IE, infer E, infer _IA, infer A>
+    ? Effect.Effect<R, E | WorkerError | ParseResult.ParseError, A>
     : never
 }
 

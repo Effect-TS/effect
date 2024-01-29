@@ -12,7 +12,7 @@ describe("Schema/SecretFromSelf", () => {
   })
 
   it("decoding", () => {
-    Util.expectParseSuccess(
+    Util.expectDecodeUnknownSuccess(
       schema,
       Secret.fromString("keep me safe"),
       Secret.fromString("keep me safe")

@@ -6,14 +6,14 @@ describe("bigint > lessThanBigint", () => {
   const schema = S.bigintFromSelf.pipe(S.lessThanBigint(0n))
 
   it("decoding", async () => {
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       0n,
       `a negative bigint
 └─ Predicate refinement failure
    └─ Expected a negative bigint, actual 0n`
     )
-    await Util.expectParseFailure(
+    await Util.expectDecodeUnknownFailure(
       schema,
       1n,
       `a negative bigint

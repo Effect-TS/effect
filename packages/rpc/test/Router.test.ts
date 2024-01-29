@@ -22,7 +22,7 @@ const SomeError_ = S.struct({
   message: S.string
 })
 interface SomeError extends S.Schema.To<typeof SomeError_> {}
-const SomeError: S.Schema<SomeError> = SomeError_
+const SomeError: S.Schema<never, SomeError> = SomeError_
 
 const posts = RS.make({
   create: {

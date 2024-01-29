@@ -130,12 +130,14 @@ export const make: Effect.Effect<Scope.Scope | Socket.Socket, never, ClientImpl>
         Schedule.union(Schedule.spaced("10 seconds"))
       )
     ),
+    Effect.interruptible,
     Effect.forkScoped
   )
   yield* _(
     Queue.offer(requests, { _tag: "Ping" }),
     Effect.delay("3 seconds"),
     Effect.forever,
+    Effect.interruptible,
     Effect.forkScoped
   )
 

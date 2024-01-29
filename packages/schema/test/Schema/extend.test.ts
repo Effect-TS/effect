@@ -6,7 +6,7 @@ describe("Schema > extend", () => {
   describe("decoding", () => {
     it(`struct extend struct (dual)`, async () => {
       const schema = S.extend(S.struct({ a: S.string }), S.struct({ b: S.number }))
-      await Util.expectParseSuccess(schema, { a: "a", b: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: 1 })
     })
 
     it(`struct with defaults extend struct`, async () => {
@@ -17,7 +17,7 @@ describe("Schema > extend", () => {
         .pipe(
           S.extend(S.struct({ c: S.number }))
         )
-      await Util.expectParseSuccess(schema, { b: "b", c: 1 }, { a: "", b: "b", c: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { b: "b", c: 1 }, { a: "", b: "b", c: 1 })
     })
 
     it(`struct extend struct with defaults`, async () => {
@@ -26,7 +26,7 @@ describe("Schema > extend", () => {
           S.struct({ b: S.string, c: S.optional(S.string, { exact: true, default: () => "" }) })
         )
       )
-      await Util.expectParseSuccess(schema, { a: 1, b: "b" }, { a: 1, b: "b", c: "" })
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: "b" }, { a: 1, b: "b", c: "" })
     })
 
     it(`struct with defaults extend struct with defaults `, async () => {
@@ -42,7 +42,7 @@ describe("Schema > extend", () => {
             })
           )
         )
-      await Util.expectParseSuccess(schema, { b: "b", d: true }, { a: "", b: "b", c: 0, d: true })
+      await Util.expectDecodeUnknownSuccess(schema, { b: "b", d: true }, { a: "", b: "b", c: 0, d: true })
     })
 
     it(`union with defaults extend union with defaults `, async () => {
@@ -69,13 +69,13 @@ describe("Schema > extend", () => {
           )
         )
       )
-      await Util.expectParseSuccess(schema, { b: "b", f: "f" }, {
+      await Util.expectDecodeUnknownSuccess(schema, { b: "b", f: "f" }, {
         a: "a",
         b: "b",
         e: "e",
         f: "f"
       })
-      await Util.expectParseSuccess(schema, { d: "d", h: "h" }, {
+      await Util.expectDecodeUnknownSuccess(schema, { d: "d", h: "h" }, {
         c: "c",
         d: "d",
         g: "g",
@@ -196,31 +196,31 @@ describe("Schema > extend", () => {
       const schema = S.struct({ a: S.string }).pipe(
         S.extend(S.record(S.string, S.string))
       )
-      await Util.expectParseSuccess(schema, { a: "a" })
-      await Util.expectParseSuccess(schema, { a: "a", b: "b" })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "b" })
 
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         {},
         `{ a: string; [x: string]: string }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { b: "b" },
         `{ a: string; [x: string]: string }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1 },
         `{ a: string; [x: string]: string }
 └─ ["a"]
    └─ Expected a string, actual 1`
       )
-      await Util.expectParseFailure(
+      await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: 1 },
         `{ a: string; [x: string]: string }
@@ -245,7 +245,7 @@ describe("Schema > extend", () => {
       //   readonly a: string
       // }
       // const a: A = { a: "a" } // OK
-      await Util.expectParseSuccess(schema, { a: "a" })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
     })
 
     describe("both operands are transformations", () => {
@@ -267,7 +267,7 @@ describe("Schema > extend", () => {
           )
         )
 
-        await Util.expectParseSuccess(schema, {
+        await Util.expectDecodeUnknownSuccess(schema, {
           b: ["a"]
         }, { a: true, b: [true] })
       })
@@ -283,7 +283,7 @@ describe("Schema > extend", () => {
           )
         )
 
-        await Util.expectParseSuccess(schema, {
+        await Util.expectDecodeUnknownSuccess(schema, {
           b: ["a"]
         }, { a: true, b: [true] })
       })

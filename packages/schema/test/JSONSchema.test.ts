@@ -22,7 +22,7 @@ type Json =
   | JsonArray
   | JsonObject
 
-const propertyTo = <I, A>(schema: S.Schema<I, A>, options?: {
+const propertyTo = <I, A>(schema: S.Schema<never, I, A>, options?: {
   params?: fc.Parameters<[A]>
 }) => {
   const arbitrary = A.make(schema)
@@ -725,13 +725,13 @@ describe("JSONSchema", () => {
   describe("record", () => {
     it("record(symbol, number)", () => {
       expect(() => JSONSchema.make(S.record(S.symbolFromSelf, JsonNumber))).toThrow(
-        new Error("Unsupported index signature parameter SymbolKeyword")
+        new Error("Unsupported index signature parameter (symbol)")
       )
     })
 
     it("record(refinement, number)", () => {
       expect(() => JSONSchema.make(S.record(S.string.pipe(S.minLength(1)), JsonNumber))).toThrow(
-        new Error("Unsupported index signature parameter Refinement")
+        new Error("Unsupported index signature parameter (a string at least 1 character(s) long)")
       )
     })
 
@@ -1013,7 +1013,7 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.struct({
+      const schema: S.Schema<never, A> = S.struct({
         a: S.string,
         as: S.array(S.suspend(() => schema))
       })
@@ -1029,7 +1029,7 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.suspend(() =>
+      const schema: S.Schema<never, A> = S.suspend(() =>
         S.struct({
           a: S.string,
           as: S.array(schema)
@@ -1081,7 +1081,7 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.struct({
+      const schema: S.Schema<never, A> = S.struct({
         a: S.string,
         as: S.array(S.suspend(() => schema).pipe(S.identifier("A")))
       })
@@ -1149,7 +1149,7 @@ describe("JSONSchema", () => {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
       }
-      const schema: S.Schema<Category> = S.struct({
+      const schema: S.Schema<never, Category> = S.struct({
         name: S.string,
         categories: S.array(S.suspend(() => schema))
       }).pipe(S.identifier("Category"))
@@ -1214,14 +1214,14 @@ describe("JSONSchema", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.suspend(() =>
+      const Expression: S.Schema<never, Expression> = S.suspend(() =>
         S.struct({
           type: S.literal("expression"),
           value: S.union(JsonNumber, Operation)
         })
       ).pipe(S.identifier("Expression"))
 
-      const Operation: S.Schema<Operation> = S.suspend(() =>
+      const Operation: S.Schema<never, Operation> = S.suspend(() =>
         S.struct({
           type: S.literal("operation"),
           operator: S.union(S.literal("+"), S.literal("-")),
@@ -1319,7 +1319,7 @@ describe("JSONSchema", () => {
         readonly categories: ReadonlyArray<Category>
       }
 
-      const schema: S.Schema<Category> = S.struct({
+      const schema: S.Schema<never, Category> = S.struct({
         name: S.string,
         categories: S.array(S.suspend(() => schema).pipe(S.identifier("Category")))
       })
@@ -1723,7 +1723,7 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.struct({
+      const schema: S.Schema<never, A> = S.struct({
         a: S.string,
         as: S.array(S.suspend(() => schema).pipe(S.jsonSchema({ "type": "custom JSON Schema" })))
       })
@@ -1784,7 +1784,8 @@ describe("JSONSchema", () => {
   })
 })
 
-export const decode = <A>(schema: JSONSchema.JsonSchema7Root): S.Schema<A> => S.make(decodeAST(schema, schema.$defs))
+export const decode = <A>(schema: JSONSchema.JsonSchema7Root): S.Schema<never, A> =>
+  S.make(decodeAST(schema, schema.$defs))
 
 const emptyTypeLiteralAST = AST.createTypeLiteral([], [])
 
