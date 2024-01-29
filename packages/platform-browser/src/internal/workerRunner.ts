@@ -54,6 +54,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           package: "@effect/platform-browser",
           module: "WorkerRunner"
         }),
+        Effect.interruptible,
         Effect.forkScoped
       )
       const send = (message: O, transfer?: ReadonlyArray<unknown>) =>

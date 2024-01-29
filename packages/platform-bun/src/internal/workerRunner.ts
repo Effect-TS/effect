@@ -45,6 +45,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           package: "@effect/platform-bun",
           module: "WorkerRunner"
         }),
+        Effect.interruptible,
         Effect.forkScoped
       )
       const send = (message: O, transfer?: ReadonlyArray<unknown>) =>
