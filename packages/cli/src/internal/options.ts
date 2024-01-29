@@ -1279,6 +1279,7 @@ const parseInternal = (
     case "Variadic": {
       const min = Option.getOrElse(self.min, () => 0)
       const max = Option.getOrElse(self.max, () => Number.MAX_SAFE_INTEGER)
+      const matchedArgument = ReadonlyArray.filterMap(getNames(self), (name) => HashMap.get(args, name))
       const validateMinMax = (values: ReadonlyArray<string>) => {
         if (values.length < min) {
           const name = self.argumentOption.fullName
@@ -1297,16 +1298,16 @@ const parseInternal = (
           )
         return Effect.forEach(values, (value) => validatePrimitive(value))
       }
+      // If we did not receive any variadic arguments then perform the bounds
+      // checks with an empty array
+      if (ReadonlyArray.every(matchedArgument, ReadonlyArray.isEmptyReadonlyArray)) {
+        return validateMinMax(ReadonlyArray.empty())
+      }
       return parseInternal(self.argumentOption, args, config).pipe(Effect.matchEffect({
-        onFailure: (error) => {
-          if (InternalValidationError.isInvalidValue(error)) {
-            return validateMinMax(ReadonlyArray.empty<string>())
-          }
-          if (InternalValidationError.isMultipleValuesDetected(error)) {
-            return validateMinMax(error.values)
-          }
-          return Effect.fail(error)
-        },
+        onFailure: (error) =>
+          InternalValidationError.isMultipleValuesDetected(error)
+            ? validateMinMax(error.values)
+            : Effect.fail(error),
         onSuccess: (value) => validateMinMax(ReadonlyArray.of(value as string))
       }))
     }
