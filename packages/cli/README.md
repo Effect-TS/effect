@@ -236,6 +236,9 @@ const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbo
 })
 
 // minigit clone [--depth <depth>] [--] <repository> [<directory>]
+const repository = Args.text({ name: 'repository' })
+const directory = Args.text({ name: 'directory' }).pipe(Args.optional)
+const depth = Options.integer('depth').pipe(Options.optional)
 const minigitClone = Command.make("clone", { repository, directory, depth }, (config) => {
   const depth = Option.map(config.depth, (depth) => `--depth ${depth}`)
   const repository = Option.some(config.repository)
@@ -253,7 +256,7 @@ const cli = Command.run(command, {
   version: "v1.0.0"
 })
 
-Effect.suspend(() => cli(process.argv.slice(2))).pipe(
+Effect.suspend(() => cli(process.argv)).pipe(
   Effect.provide(NodeContext.layer),
   Runtime.runMain
 )
@@ -264,12 +267,7 @@ Some things to note in the above example:
   2. We've also imported the `Runtime` and `NodeContext` modules from `@effect/platform-node`
   3. We've used `Command.withSubcommands` to add our `add` and `clone` commands as subcommands of `minigit`
   4. We've used `Command.run` to create a `CliApp` with a `name` and a `version`
-  5. We've used `Effect.suspend` to lazily evaluate `process.argv`, passing all but the first two command-line arguments to our CLI application
-      - **Note**: we've sliced off the first two command-line arguments because we assume that our CLI will be run using:
-        ```
-        node ./my-cli.js ...
-        ```
-      - Make sure to adjust for your own use case
+  5. We've used `Effect.suspend` to lazily evaluate `process.argv`
 
 #### Running the CLI Application
 
