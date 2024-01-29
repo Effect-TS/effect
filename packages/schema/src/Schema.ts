@@ -915,16 +915,16 @@ export const optional: {
   ): PropertySignature<R, I | null | undefined, true, A, false>
   <R, I, A>(
     schema: Schema<R, I, A>,
-    options: { readonly default: () => A }
-  ): PropertySignature<R, I | undefined, true, A, false>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
     options: { readonly nullable: true; readonly as: "Option" }
   ): PropertySignature<R, I | undefined | null, true, Option.Option<A>, false>
   <R, I, A>(
     schema: Schema<R, I, A>,
     options: { readonly as: "Option" }
   ): PropertySignature<R, I | undefined, true, Option.Option<A>, false>
+  <R, I, A>(
+    schema: Schema<R, I, A>,
+    options: { readonly default: () => A }
+  ): PropertySignature<R, I | undefined, true, A, false>
   <R, I, A>(schema: Schema<R, I, A>): PropertySignature<R, I | undefined, true, A | undefined, true>
 } = <R, I, A>(
   schema: Schema<R, I, A>,
