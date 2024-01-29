@@ -1,5 +1,14 @@
 # @effect/schema
 
+## 0.61.4
+
+### Patch Changes
+
+- [#2005](https://github.com/Effect-TS/effect/pull/2005) [`6bf02c7`](https://github.com/Effect-TS/effect/commit/6bf02c70fe10a04d1b34d6666f95416e42a6225a) Thanks [@gcanti](https://github.com/gcanti)! - optional: rearrange overloads to enhance DX, closes #2002
+
+- Updated dependencies [[`22794e0`](https://github.com/Effect-TS/effect/commit/22794e0ba00e40281f30a22fa84412003c24877d), [`f73e6c0`](https://github.com/Effect-TS/effect/commit/f73e6c033fb0729a9cfa5eb4bc39f79d3126e247)]:
+  - effect@2.2.3
+
 ## 0.61.3
 
 ### Patch Changes
