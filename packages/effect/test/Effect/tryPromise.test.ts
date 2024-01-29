@@ -57,7 +57,8 @@ describe("Effect", () => {
     })
     const program = effect.pipe(
       Effect.timeout("10 millis"),
-      Effect.optionFromOptional
+      Effect.asSome,
+      Effect.catchTag("TimeoutException", () => Effect.succeedNone)
     )
     const exit = await Effect.runPromiseExit(program)
     expect(exit._tag).toBe("Success")
@@ -81,7 +82,8 @@ describe("Effect", () => {
     })
     const program = effect.pipe(
       Effect.timeout("10 millis"),
-      Effect.optionFromOptional
+      Effect.asSome,
+      Effect.catchTag("TimeoutException", () => Effect.succeedNone)
     )
     const exit = await Effect.runPromiseExit(program)
     expect(exit._tag).toBe("Success")

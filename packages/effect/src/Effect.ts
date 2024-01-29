@@ -2924,8 +2924,8 @@ export const timedWith: {
  * @category delays & timeouts
  */
 export const timeout: {
-  (duration: Duration.DurationInput): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E | Cause.NoSuchElementException, A>
-  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput): Effect<R, Cause.NoSuchElementException | E, A>
+  (duration: Duration.DurationInput): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E | Cause.TimeoutException, A>
+  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput): Effect<R, Cause.TimeoutException | E, A>
 } = circular.timeout
 
 /**
