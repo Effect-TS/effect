@@ -77,7 +77,6 @@ class Runtime implements FiberId.Runtime {
     return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
-    console.log("EQUAL")
     return isFiberId(that) &&
       that._tag === OP_RUNTIME &&
       this.id === that.id &&
@@ -103,18 +102,20 @@ class Runtime implements FiberId.Runtime {
 class Composite implements FiberId.Composite {
   readonly [FiberIdTypeId]: FiberId.FiberIdTypeId = FiberIdTypeId
   readonly _tag = OP_COMPOSITE
-  readonly _hash: number
   constructor(
     readonly left: FiberId.FiberId,
     readonly right: FiberId.FiberId
   ) {
-    this._hash = pipe(
-      Hash.string(`${FiberIdSymbolKey}-${this._tag}`),
-      Hash.combine(Hash.hash(this.left)),
-      Hash.combine(Hash.hash(this.right))
-    )
   }
+  _hash: number | undefined;
   [Hash.symbol](): number {
+    if (this._hash == undefined) {
+      this._hash = pipe(
+        Hash.string(`${FiberIdSymbolKey}-${this._tag}`),
+        Hash.combine(Hash.hash(this.left)),
+        Hash.combine(Hash.hash(this.right))
+      )
+    }
     return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
