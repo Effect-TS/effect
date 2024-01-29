@@ -35,16 +35,14 @@ const OP_COMPOSITE = "Composite" as const
 /** @internal */
 export type OP_COMPOSITE = typeof OP_COMPOSITE
 
+const emptyHash = Hash.string(`${FiberIdSymbolKey}-${OP_NONE}`)
+
 /** @internal */
 class None implements FiberId.None {
   readonly [FiberIdTypeId]: FiberId.FiberIdTypeId = FiberIdTypeId
-  readonly _tag = OP_NONE
-  readonly _hash: number
-  constructor() {
-    this._hash = Hash.string(`${FiberIdSymbolKey}-${this._tag}`)
-  }
+  readonly _tag = OP_NONE;
   [Hash.symbol](): number {
-    return this._hash
+    return emptyHash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberId(that) && that._tag === OP_NONE
@@ -67,17 +65,19 @@ class None implements FiberId.None {
 class Runtime implements FiberId.Runtime {
   readonly [FiberIdTypeId]: FiberId.FiberIdTypeId = FiberIdTypeId
   readonly _tag = OP_RUNTIME
-  readonly _hash: number
   constructor(
     readonly id: number,
     readonly startTimeMillis: number
-  ) {
-    this._hash = Hash.string(`${FiberIdSymbolKey}-${this._tag}-${this.id}-${this.startTimeMillis}`)
-  }
+  ) {}
+  _hash: number | undefined;
   [Hash.symbol](): number {
+    if (this._hash == undefined) {
+      this._hash = Hash.string(`${FiberIdSymbolKey}-${this._tag}-${this.id}-${this.startTimeMillis}`)
+    }
     return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
+    console.log("EQUAL")
     return isFiberId(that) &&
       that._tag === OP_RUNTIME &&
       this.id === that.id &&
