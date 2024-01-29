@@ -101,7 +101,8 @@ describe("HttpClient", () => {
         client,
         Effect.flatMap((_) => _.text),
         Effect.timeout(1),
-        Effect.optionFromOptional
+        Effect.asSome,
+        Effect.catchTag("TimeoutException", () => Effect.succeedNone)
       )
       expect(response._tag).toEqual("None")
     }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
