@@ -3306,6 +3306,11 @@ export const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either
 export const exit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Exit.Exit<E, A>> = core.exit
 
 /**
+ * Returns an effect that will succeed or fail the specified `Deferred` based
+ * upon the result of the effect. Also synchronizes interruption, so if the
+ * provided effect is interrupted, the specified `Deferred` will be interrupted
+ * as well.
+ *
  * @since 2.0.0
  * @category conversions
  */
