@@ -40,6 +40,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
             resume(Effect.fail(WorkerError("unknown", new Error(`exited with code ${code}`))))
           })
         }),
+        Effect.interruptible,
         Effect.forkScoped
       )
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>

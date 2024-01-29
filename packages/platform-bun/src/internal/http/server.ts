@@ -80,6 +80,7 @@ export const make = (
               })
             })
           ),
+          Effect.interruptible,
           Effect.forkScoped,
           Effect.asUnit
         )
