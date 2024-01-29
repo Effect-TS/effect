@@ -115,6 +115,18 @@ export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityE
  * @since 2.0.0
  * @category symbols
  */
+export const TimeoutExceptionTypeId: unique symbol = core.TimeoutExceptionTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type TimeoutExceptionTypeId = typeof TimeoutExceptionTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
 export const UnknownExceptionTypeId: unique symbol = core.UnknownExceptionTypeId
 
 /**
@@ -257,6 +269,18 @@ export interface NoSuchElementException extends YieldableError {
 export interface InvalidPubSubCapacityException extends YieldableError {
   readonly _tag: "InvalidPubSubCapacityException"
   readonly [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
+}
+
+/**
+ * Represents a checked exception which occurs when a computation doesn't
+ * finish on schedule.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export interface TimeoutException extends YieldableError {
+  readonly _tag: "TimeoutException"
+  readonly [TimeoutExceptionTypeId]: TimeoutExceptionTypeId
 }
 
 /**
@@ -861,6 +885,15 @@ export const RuntimeException: new(message?: string | undefined) => RuntimeExcep
  * @category refinements
  */
 export const isRuntimeException: (u: unknown) => u is RuntimeException = core.isRuntimeException
+
+/**
+ * Represents a checked exception which occurs when a computation doesn't
+ * finish on schedule.
+ *
+ * @since 2.0.0
+ * @category errors
+ */
+export const TimeoutException: new(message?: string | undefined) => TimeoutException = core.TimeoutException
 
 /**
  * Represents a checked exception which occurs when an unknown error is thrown, such as
