@@ -286,6 +286,9 @@ S.struct({
   c: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
 })
 
+// @ts-expect-error
+S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", exact: true }) })
+
 // ---------------------------------------------
 // optional { default: () => A }
 // ---------------------------------------------
@@ -296,6 +299,9 @@ S.struct({ a: S.string, b: S.number, c: S.optional(S.boolean, { default: () => f
 // $ExpectType Schema<never, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, { readonly a: string; readonly b: number; readonly c: number; }>
 S.struct({ a: S.string, b: S.number, c: S.optional(S.NumberFromString, { default: () => 0 }) })
 
+// @ts-expect-error
+S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a" }) })
+
 // ---------------------------------------------
 // optional { nullable: true, default: () => A }
 // ---------------------------------------------
@@ -305,6 +311,9 @@ S.struct({ a: S.optional(S.NumberFromString, { nullable: true, default: () => 0 
 
 // $ExpectType Schema<never, { readonly a?: string | null; }, { readonly a: number; }>
 S.struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
+
+// @ts-expect-error
+S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", nullable: true }) })
 
 // ---------------------------------------------
 // optional { exact: true, as: "Option" }
