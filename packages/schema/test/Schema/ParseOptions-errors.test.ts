@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > allErrors option", () => {
+describe("Schema > `errors` option", () => {
   describe("decoding", () => {
     describe("tuple", () => {
       it("e r e", async () => {

@@ -688,17 +688,18 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         return fromRefinement(ast, Predicate.isNotNullable)
       }
 
-      const propertySignatures: Array<Parser> = []
+      const propertySignatures: Array<readonly [Parser, AST.PropertySignature]> = []
       const expectedKeys: Record<PropertyKey, null> = {}
       for (const ps of ast.propertySignatures) {
-        propertySignatures.push(goMemo(ps.type, isDecoding))
+        propertySignatures.push([goMemo(ps.type, isDecoding), ps])
         expectedKeys[ps.name] = null
       }
 
       const indexSignatures = ast.indexSignatures.map((is) =>
         [
           goMemo(is.parameter, isDecoding),
-          goMemo(is.type, isDecoding)
+          goMemo(is.type, isDecoding),
+          is.parameter
         ] as const
       )
       const expectedAST = AST.createUnion(
@@ -722,16 +723,24 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // handle excess properties
         // ---------------------------------------------
         const onExcessPropertyError = options?.onExcessProperty === "error"
-        if (onExcessPropertyError) {
+        const onExcessPropertyPreserve = options?.onExcessProperty === "preserve"
+        const output: any = {}
+        if (onExcessPropertyError || onExcessPropertyPreserve) {
           for (const key of Internal.ownKeys(input)) {
-            const eu = InternalParser.eitherOrUndefined(expected(key, options))
-            if (eu && Either.isLeft(eu)) {
-              const e = InternalParser.key(key, InternalParser.unexpected(expectedAST))
-              if (allErrors) {
-                es.push([stepKey++, e])
-                continue
+            const eu = InternalParser.eitherOrUndefined(expected(key, options))!
+            if (Either.isLeft(eu)) {
+              // key is unexpected
+              if (onExcessPropertyError) {
+                const e = InternalParser.key(key, InternalParser.unexpected(expectedAST))
+                if (allErrors) {
+                  es.push([stepKey++, e])
+                  continue
+                } else {
+                  return Either.left(InternalParser.typeLiteral(ast, input, [e]))
+                }
               } else {
-                return Either.left(InternalParser.typeLiteral(ast, input, [e]))
+                // preserve key
+                output[key] = input[key]
               }
             }
           }
@@ -740,7 +749,6 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         // handle property signatures
         // ---------------------------------------------
-        const output: any = {}
         type State = {
           es: typeof es
           output: typeof output
@@ -751,7 +759,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
 
         const isExact = options?.isExact === true
         for (let i = 0; i < propertySignatures.length; i++) {
-          const ps = ast.propertySignatures[i]
+          const ps = propertySignatures[i][1]
           const name = ps.name
           const hasKey = Object.prototype.hasOwnProperty.call(input, name)
           if (!hasKey) {
@@ -767,7 +775,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               }
             }
           }
-          const parser = propertySignatures[i]
+          const parser = propertySignatures[i][0]
           const te = parser(input[name], options)
           const eu = InternalParser.eitherOrUndefined(te)
           if (eu) {
@@ -813,7 +821,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const indexSignature = indexSignatures[i]
           const parameter = indexSignature[0]
           const type = indexSignature[1]
-          const keys = Internal.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
+          const keys = Internal.getKeysForIndexSignature(input, indexSignature[2])
           for (const key of keys) {
             // ---------------------------------------------
             // handle keys

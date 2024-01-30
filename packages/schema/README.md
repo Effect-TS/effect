@@ -447,11 +447,11 @@ As shown in the code above, the first approach returns a `Forbidden` error, indi
 
 ### Excess properties
 
-When using a `Schema` to parse a value, any properties that are not specified in the `Schema` will be stripped out from the output. This is because the `Schema` is expecting a specific shape for the parsed value, and any excess properties do not conform to that shape.
+When using a `Schema` to parse a value, by default any properties that are not specified in the `Schema` will be stripped out from the output. This is because the `Schema` is expecting a specific shape for the parsed value, and any excess properties do not conform to that shape.
 
 However, you can use the `onExcessProperty` option (default value: `"ignore"`) to trigger a parsing error. This can be particularly useful in cases where you need to detect and handle potential errors or unexpected values.
 
-Here's an example of how you might use `onExcessProperty`:
+Here's an example of how you might use `onExcessProperty` set to `"error"`:
 
 ```ts
 import * as S from "@effect/schema/Schema";
@@ -483,9 +483,34 @@ S.decodeUnknownSync(Person)(
 );
 /*
 throws
-Error: error(s) found
+Error: { name: string; age: number }
 └─ ["email"]
-   └─ is unexpected, expected "name" or "age"
+   └─ is unexpected, expected "name" | "age"
+*/
+```
+
+If you want to allow excess properties to remain, you can use `onExcessProperty` set to `"preserve"`:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const Person = S.struct({
+  name: S.string,
+  age: S.number,
+});
+
+console.log(
+  S.decodeUnknownSync(Person)(
+    {
+      name: "Bob",
+      age: 40,
+      email: "bob@example.com",
+    },
+    { onExcessProperty: "preserve" }
+  )
+);
+/*
+{ email: 'bob@example.com', name: 'Bob', age: 40 }
 */
 ```
 

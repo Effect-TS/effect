@@ -122,6 +122,10 @@ export const onExcessPropertyError: ParseOptions = {
   onExcessProperty: "error"
 }
 
+export const onExcessPropertyPreserve: ParseOptions = {
+  onExcessProperty: "preserve"
+}
+
 export const allErrors: ParseOptions = {
   errors: "all"
 }
