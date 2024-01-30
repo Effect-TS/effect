@@ -1077,7 +1077,9 @@ export type ToStruct<Fields extends StructFields> =
  */
 export const struct = <Fields extends StructFields>(
   fields: Fields
-): Schema<Schema.Context<Fields[keyof Fields]>, Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>> => {
+): Schema<Schema.Context<Fields[keyof Fields]>, Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>> & {
+  fields: Fields
+} => {
   const ownKeys = Internal.ownKeys(fields)
   const pss: Array<AST.PropertySignature> = []
   const pssFrom: Array<AST.PropertySignature> = []
@@ -1117,17 +1119,25 @@ export const struct = <Fields extends StructFields>(
     }
   }
   if (ReadonlyArray.isNonEmptyReadonlyArray(psTransformations)) {
-    return make(
-      AST.createTransform(
-        AST.createTypeLiteral(pssFrom, []),
-        AST.createTypeLiteral(pssTo, []),
-        AST.createTypeLiteralTransformation(
-          psTransformations
+    return Object.assign(
+      make<Schema.Context<Fields[keyof Fields]>, Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>>(
+        AST.createTransform(
+          AST.createTypeLiteral(pssFrom, []),
+          AST.createTypeLiteral(pssTo, []),
+          AST.createTypeLiteralTransformation(
+            psTransformations
+          )
         )
-      )
+      ),
+      { fields }
     )
   }
-  return make(AST.createTypeLiteral(pss, []))
+  return Object.assign(
+    make<Schema.Context<Fields[keyof Fields]>, Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>>(
+      AST.createTypeLiteral(pss, [])
+    ),
+    { fields }
+  )
 }
 
 /**
