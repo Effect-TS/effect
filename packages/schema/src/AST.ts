@@ -977,7 +977,7 @@ export interface ParseOptions {
   /** default "first" */
   readonly errors?: "first" | "all" | undefined
   /** default "ignore" */
-  readonly onExcessProperty?: "ignore" | "error" | undefined
+  readonly onExcessProperty?: "ignore" | "error" | "preserve" | undefined
 }
 
 /**
