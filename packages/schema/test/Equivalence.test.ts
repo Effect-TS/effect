@@ -66,7 +66,16 @@ const symbol = S.symbolFromSelf.pipe(
 )
 
 describe("Equivalence", () => {
-  it("E.to(S.from(schema))", () => {
+  it("transformation", () => {
+    const schema = S.NumberFromString
+    const equivalence = E.make(schema)
+
+    expect(equivalence(1, 1)).toBe(true)
+
+    expect(equivalence(1, 2)).toBe(false)
+  })
+
+  it("E.make(S.from(schema))", () => {
     const schema = S.NumberFromString
     const equivalence = E.make(S.from(schema))
 
