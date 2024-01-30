@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.61.5
+
+### Patch Changes
+
+- [#2011](https://github.com/Effect-TS/effect/pull/2011) [`f1ff44b`](https://github.com/Effect-TS/effect/commit/f1ff44b58cdb1886b38681e8fedc309eb9ac6853) Thanks [@gcanti](https://github.com/gcanti)! - add option to preserve excess properties, closes #2008
+
+- [#2017](https://github.com/Effect-TS/effect/pull/2017) [`13785cf`](https://github.com/Effect-TS/effect/commit/13785cf4a5082d8d9cf8d7c991141dee0d2b4d31) Thanks [@gcanti](https://github.com/gcanti)! - Equivalence: handle transformations
+
 ## 0.61.4
 
 ### Patch Changes
