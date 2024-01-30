@@ -42,52 +42,43 @@ export const get = (u: unknown): ReadonlyArray<globalThis.Transferable> => {
  * @category schema
  */
 export const schema: {
-  <A>(
+  <A extends object>(
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
   ): <R, I>(self: Schema.Schema<R, I, A>) => Schema.Schema<R, I, A>
-  <R, I, A>(self: Schema.Schema<R, I, A>, f: (_: A) => ReadonlyArray<globalThis.Transferable>): Schema.Schema<R, I, A>
-} = dual<
-  <A>(
-    f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ) => <R, I>(self: Schema.Schema<R, I, A>) => Schema.Schema<R, I, A>,
-  <R, I, A>(
+  <R, I, A extends object>(
     self: Schema.Schema<R, I, A>,
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ) => Schema.Schema<R, I, A>
->(2, <R, I, A>(
+  ): Schema.Schema<R, I, A>
+} = dual(2, <R, I, A extends object>(
   self: Schema.Schema<R, I, A>,
   f: (_: A) => ReadonlyArray<globalThis.Transferable>
-) =>
-  Schema.transform(
+) => {
+  const fn: Transferable[typeof symbol] = function(this: A) {
+    return f(this)
+  }
+  return Schema.transform(
     self,
     schemaFromSelf(Schema.to(self)),
-    (input) =>
-      ({
-        ...input,
-        [symbol]() {
-          return f(this as any)
-        }
-      }) as A,
+    (input) => addProxy(input, fn),
     identity
-  ))
+  )
+})
 
 const schemaParse =
-  <R, A>(parse: ParseResult.DecodeUnknown<R, A>): ParseResult.DeclarationDecodeUnknown<R, A> => (u, options, ast) => {
+  <R, A extends object>(parse: ParseResult.DecodeUnknown<R, A>): ParseResult.DeclarationDecodeUnknown<R, A> =>
+  (u, options, ast) => {
     if (!isTransferable(u)) {
       return ParseResult.fail(ParseResult.type(ast, u))
     }
-    const proto = {
-      __proto__: Object.getPrototypeOf(u),
-      [symbol]: u[symbol]
-    }
-    return ParseResult.map(parse(u, options), (a): A => Object.setPrototypeOf(a, proto))
+    const f = u[symbol]
+    return ParseResult.map(parse(u, options), (a): A => addProxy(a, f))
   }
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaFromSelf = <R, I, A>(
+export const schemaFromSelf = <R, I extends object, A extends object>(
   item: Schema.Schema<R, I, A>
 ): Schema.Schema<R, I, A> => {
   return Schema.declare(
@@ -96,4 +87,21 @@ export const schemaFromSelf = <R, I, A>(
     (item) => schemaParse(ParseResult.encodeUnknown(item)),
     { identifier: "Transferable" }
   )
+}
+
+const addProxy = <A extends object>(self: A, f: Transferable[typeof symbol]): A & Transferable => {
+  return new Proxy(self, {
+    get(target, key) {
+      if (key === symbol) {
+        return f
+      }
+      return target[key as keyof A]
+    },
+    has(target, p) {
+      if (p === symbol) {
+        return true
+      }
+      return p in target
+    }
+  }) as any
 }
