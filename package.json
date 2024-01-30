@@ -23,7 +23,7 @@
     "changeset-publish": "pnpm build && changeset publish"
   },
   "devDependencies": {
-    "@arktype/attest": "^0.5.0",
+    "@arktype/attest": "^0.5.3",
     "@babel/cli": "^7.23.4",
     "@babel/core": "^7.23.6",
     "@babel/plugin-transform-export-namespace-from": "^7.23.4",

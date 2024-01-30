@@ -14,8 +14,8 @@ importers:
   .:
     devDependencies:
       '@arktype/attest':
-        specifier: ^0.5.0
-        version: 0.5.0(typescript@5.3.3)
+        specifier: ^0.5.3
+        version: 0.5.3(typescript@5.3.3)
       '@babel/cli':
         specifier: ^7.23.4
         version: 7.23.4(@babel/core@7.23.6)
@@ -497,14 +497,14 @@ packages:
       '@jridgewell/trace-mapping': 0.3.20
     dev: true
 
-  /@arktype/attest@0.5.0(typescript@5.3.3):
-    resolution: {integrity: sha512-MRWnjq2rAJLhPZP9GqWHLyIOBomzxcJxHdzANNcEZV/EXdutS4YumdoHi3NEsk6zt0kscqk4reRRPnUa2zwhrQ==}
+  /@arktype/attest@0.5.3(typescript@5.3.3):
+    resolution: {integrity: sha512-Ab6zduZSLRTsvnZuOZsaGn8uJbvNyFBZeHOc7B5k+01zxIHW+qnzlwIjSLlWeUjHTM2EFoFPmRObkUbM+6e+mA==}
     hasBin: true
     peerDependencies:
       typescript: '*'
     dependencies:
-      '@arktype/fs': 0.0.10
-      '@arktype/util': 0.0.16
+      '@arktype/fs': 0.0.11
+      '@arktype/util': 0.0.19
       '@typescript/vfs': 1.5.0
       arktype: 1.0.29-alpha
       typescript: 5.3.3
@@ -512,12 +512,12 @@ packages:
       - supports-color
     dev: true
 
-  /@arktype/fs@0.0.10:
-    resolution: {integrity: sha512-aPYLmcdS7eHUftTQOyPZRdoMWrvuk4m0LwO6dB9fwKqJTngnizWAeP0AS+tMincPhdZEahRyX0ju9Czvdm/zkQ==}
+  /@arktype/fs@0.0.11:
+    resolution: {integrity: sha512-f3p8apUMOTl6KlFNTrOX6twQJDeSdSmtYPVca7SaQjUUTAxfUlaROY1/i1C3y2llYDrrQBEbsggk8k2Oxxgrvw==}
     dev: true
 
-  /@arktype/util@0.0.16:
-    resolution: {integrity: sha512-a10hhQ5E95tV0wfi8N9/74Uo6mRDHjeGWaHsyZriq4a9srZ9AbJ3UlYUQfIaQgsxLIuMw3kdClsE/H3tMdZKvw==}
+  /@arktype/util@0.0.19:
+    resolution: {integrity: sha512-RrpoYDWPqa1ol9G05HNCa6QaZGunWjxRlwMjj0bBBxarLwMTXM8jFhNVyQAfmDhvtadzGd7LaNsFGZN+Zl9Puw==}
     dev: true
 
   /@babel/cli@7.23.4(@babel/core@7.23.6):
