@@ -12,7 +12,7 @@ import { assert, describe } from "vitest"
 describe("Channel.Foreign", () => {
   it.effect("Tag", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.Tag<number>("number")
       const result = yield* $(tag, Channel.run, Effect.provideService(tag, 10))
       assert.deepEqual(result, 10)
     }))

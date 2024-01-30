@@ -34,7 +34,7 @@ export const ConfigProviderTypeId: ConfigProvider.ConfigProviderTypeId = Symbol.
 
 /** @internal */
 export const configProviderTag: Context.Tag<ConfigProvider.ConfigProvider, ConfigProvider.ConfigProvider> = Context.Tag(
-  ConfigProviderTypeId
+  "effect/ConfigProvider"
 )
 
 /** @internal */

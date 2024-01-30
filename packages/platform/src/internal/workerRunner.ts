@@ -26,7 +26,7 @@ export const PlatformRunnerTypeId: WorkerRunner.PlatformRunnerTypeId = Symbol.fo
 
 /** @internal */
 export const PlatformRunner = Context.Tag<WorkerRunner.PlatformRunner>(
-  PlatformRunnerTypeId
+  "@effect/platform/Runner/PlatformRunner"
 )
 
 /** @internal */

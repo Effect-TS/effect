@@ -7,12 +7,12 @@ import { assert, describe, expect, it } from "vitest"
 interface A {
   a: number
 }
-const A = Context.Tag<A>()
+const A = Context.Tag<A>("A")
 
 interface B {
   b: number
 }
-const B = Context.Tag<B>()
+const B = Context.Tag<B>("B")
 
 interface C {
   c: number
@@ -33,12 +33,6 @@ describe("Context", () => {
     expect(json["services"]).toEqual([])
   })
 
-  it("global tag", () => {
-    const a = Context.Tag<number>("effect-test/Context/Tag")
-    const b = Context.Tag<number>("effect-test/Context/Tag")
-    expect(a).toBe(b)
-  })
-
   it("aliased tags", () => {
     interface Foo {
       readonly _tag: "Foo"
@@ -49,7 +43,7 @@ describe("Context", () => {
     interface FooBar {
       readonly FooBar: unique symbol
     }
-    const Service = Context.Tag<FooBar, Foo | Bar>()
+    const Service = Context.Tag<FooBar, Foo | Bar>("FooBar")
     const context = Context.make(Service, { _tag: "Foo" })
     expect(Context.get(context, Service)).toStrictEqual({ _tag: "Foo" })
   })
@@ -190,9 +184,9 @@ describe("Context", () => {
     assert.deepNestedPropertyVal(result, "first._tag", "AndThen")
     assert.deepNestedPropertyVal(result, "first.first._tag", "Empty")
     assert.deepNestedPropertyVal(result, "first.second._tag", "UpdateService")
-    assert.deepNestedPropertyVal(result, "first.second.tag", B)
+    assert.deepNestedPropertyVal(result, "first.second.key", B.key)
     assert.deepNestedPropertyVal(result, "second._tag", "RemoveService")
-    assert.deepNestedPropertyVal(result, "second.tag", C)
+    assert.deepNestedPropertyVal(result, "second.key", C.key)
   })
 
   it("error messages", () => {
@@ -236,7 +230,7 @@ describe("Context", () => {
   })
 
   it("isTag", () => {
-    expect(Context.isTag(Context.Tag())).toEqual(true)
+    expect(Context.isTag(Context.Tag("Demo"))).toEqual(true)
     expect(Context.isContext(null)).toEqual(false)
   })
 })

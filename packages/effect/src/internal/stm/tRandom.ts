@@ -83,7 +83,7 @@ const shuffleWith = <A>(
 }
 
 /** @internal */
-export const Tag = Context.Tag<TRandom.TRandom>()
+export const Tag = Context.Tag<TRandom.TRandom>("effect/TRandom")
 
 class TRandomImpl implements TRandom.TRandom {
   readonly [TRandomTypeId]: TRandom.TRandomTypeId = TRandomTypeId

@@ -23,7 +23,7 @@ export interface Name {
   readonly name: string
 }
 
-export const Name = Tag<Name>()
+export const Name = Tag<Name>("Name")
 
 export const schemaWithSetup = Schema.make({
   __setup: {

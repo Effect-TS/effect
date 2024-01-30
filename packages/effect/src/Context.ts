@@ -37,10 +37,29 @@ export interface Tag<in out Identifier, in out Service> extends Pipeable, Inspec
   of(self: Service): Service
   context(self: Service): Context<Identifier>
   readonly stack?: string | undefined
-  readonly identifier?: unknown
+  readonly key: string
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: TagUnify<this>
   [Unify.ignoreSymbol]?: TagUnifyIgnore
+}
+
+/**
+ * @since 2.0.0
+ * @category models
+ */
+export interface TagClassShape<Id, Shape> {
+  readonly [TagTypeId]: {
+    readonly Id: Id
+    readonly Shape: Shape
+  }
+}
+
+/**
+ * @since 2.0.0
+ * @category models
+ */
+export interface TagClass<Self, Id, Shape> extends Tag<Self, Shape> {
+  new(_: never): TagClassShape<Id, Shape>
 }
 
 /**
@@ -64,35 +83,31 @@ export declare namespace Tag {
   /**
    * @since 2.0.0
    */
-  export type Service<T extends Tag<any, any>> = T extends Tag<any, infer A> ? A : never
+  export type Service<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<any, infer A> ? A
+    : T extends TagClassShape<any, infer A> ? A
+    : never
   /**
    * @since 2.0.0
    */
-  export type Identifier<T extends Tag<any, any>> = T extends Tag<infer A, any> ? A : never
+  export type Identifier<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<infer A, any> ? A
+    : T extends TagClassShape<infer A, any> ? A
+    : never
 }
 
 /**
  * Creates a new `Tag` instance with an optional key parameter.
  *
- * Specifying the `key` will make the `Tag` global, meaning two tags with the same
- * key will map to the same instance.
- *
- * Note: this is useful for cases where live reload can happen and it is
- * desireable to preserve the instance across reloads.
- *
- * @param key - An optional key that makes the `Tag` global.
+ * @param key - A key that will be used to compare tags.
  *
  * @example
  * import * as Context from "effect/Context"
  *
- * assert.strictEqual(Context.Tag() === Context.Tag(), false)
- * assert.strictEqual(Context.Tag("PORT") === Context.Tag("PORT"), true)
+ * assert.strictEqual(Context.Tag("PORT").key === Context.Tag("PORT").key, true)
  *
  * @since 2.0.0
  * @category constructors
  */
-export const Tag: <Identifier, Service = Identifier>(identifier?: unknown) => Tag<Identifier, Service> =
-  internal.makeTag
+export const Tag: <Identifier, Service = Identifier>(key: string) => Tag<Identifier, Service> = internal.makeTag
 
 const TypeId: unique symbol = internal.TypeId as TypeId
 
@@ -116,14 +131,14 @@ export interface Context<in Services> extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _Services: Types.Contravariant<Services>
   }
-  readonly unsafeMap: Map<Tag<any, any>, any>
+  readonly unsafeMap: Map<string, any>
 }
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const unsafeMake: <Services>(unsafeMap: Map<Tag<any, any>, any>) => Context<Services> = internal.makeContext
+export const unsafeMake: <Services>(unsafeMap: Map<string, any>) => Context<Services> = internal.makeContext
 
 /**
  * Checks if the provided argument is a `Context`.
@@ -148,7 +163,7 @@ export const isContext: (input: unknown) => input is Context<never> = internal.i
  * @example
  * import * as Context from "effect/Context"
  *
- * assert.strictEqual(Context.isTag(Context.Tag()), true)
+ * assert.strictEqual(Context.isTag(Context.Tag("Tag")), true)
  *
  * @since 2.0.0
  * @category guards
@@ -174,7 +189,7 @@ export const empty: () => Context<never> = internal.empty
  * @example
  * import * as Context from "effect/Context"
  *
- * const Port = Context.Tag<{ PORT: number }>()
+ * const Port = Context.Tag<{ PORT: number }>("Port")
  *
  * const Services = Context.make(Port, { PORT: 8080 })
  *
@@ -193,8 +208,8 @@ export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) =>
  * import * as Context from "effect/Context"
  * import { pipe } from "effect/Function"
  *
- * const Port = Context.Tag<{ PORT: number }>()
- * const Timeout = Context.Tag<{ TIMEOUT: number }>()
+ * const Port = Context.Tag<{ PORT: number }>("Port")
+ * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
  *
  * const someContext = Context.make(Port, { PORT: 8080 })
  *
@@ -230,8 +245,8 @@ export const add: {
  * import * as Context from "effect/Context"
  * import { pipe } from "effect/Function"
  *
- * const Port = Context.Tag<{ PORT: number }>()
- * const Timeout = Context.Tag<{ TIMEOUT: number }>()
+ * const Port = Context.Tag<{ PORT: number }>("Port")
+ * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
  *
  * const Services = pipe(
  *   Context.make(Port, { PORT: 8080 }),
@@ -260,8 +275,8 @@ export const get: {
  * @example
  * import * as Context from "effect/Context"
  *
- * const Port = Context.Tag<{ PORT: number }>()
- * const Timeout = Context.Tag<{ TIMEOUT: number }>()
+ * const Port = Context.Tag<{ PORT: number }>("Port")
+ * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
  *
  * const Services = Context.make(Port, { PORT: 8080 })
  *
@@ -287,8 +302,8 @@ export const unsafeGet: {
  * import * as Context from "effect/Context"
  * import * as O from "effect/Option"
  *
- * const Port = Context.Tag<{ PORT: number }>()
- * const Timeout = Context.Tag<{ TIMEOUT: number }>()
+ * const Port = Context.Tag<{ PORT: number }>("Port")
+ * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
  *
  * const Services = Context.make(Port, { PORT: 8080 })
  *
@@ -312,8 +327,8 @@ export const getOption: {
  * @example
  * import * as Context from "effect/Context"
  *
- * const Port = Context.Tag<{ PORT: number }>()
- * const Timeout = Context.Tag<{ TIMEOUT: number }>()
+ * const Port = Context.Tag<{ PORT: number }>("Port")
+ * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
  *
  * const firstContext = Context.make(Port, { PORT: 8080 })
  * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
@@ -341,8 +356,8 @@ export const merge: {
  * import { pipe } from "effect/Function"
  * import * as O from "effect/Option"
  *
- * const Port = Context.Tag<{ PORT: number }>()
- * const Timeout = Context.Tag<{ TIMEOUT: number }>()
+ * const Port = Context.Tag<{ PORT: number }>("Port")
+ * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
  *
  * const someContext = pipe(
  *   Context.make(Port, { PORT: 8080 }),
@@ -367,3 +382,15 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
   ...tags: S
 ) => (self: Context<Services>) => Context<Exclude<Services, { [k in keyof S]: Tag.Identifier<S[k]> }[keyof S]>> =
   internal.omit
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const TagClass = <const Id extends string>(id: Id) => <Self, Shape>(): TagClass<Self, Id, Shape> => {
+  function TagClass() {}
+  const original = Tag(id)
+  Object.assign(TagClass, original)
+  Object.setPrototypeOf(TagClass, Object.getPrototypeOf(original))
+  return TagClass as any
+}

@@ -9,7 +9,7 @@ import type * as WWResolver from "../Resolver.js"
 import * as schema from "../Schema.js"
 
 /** @internal */
-export const RpcWorkerPool = Tag<WWResolver.RpcWorkerPool>()
+export const RpcWorkerPool = Tag<WWResolver.RpcWorkerPool>("@effect/rpc-workers/RpcWorkerPool")
 
 /** @internal */
 export const makePool = (

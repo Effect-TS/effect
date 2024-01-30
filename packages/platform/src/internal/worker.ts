@@ -40,7 +40,7 @@ export const PlatformWorkerTypeId: Worker.PlatformWorkerTypeId = Symbol.for(
 
 /** @internal */
 export const PlatformWorker = Context.Tag<Worker.PlatformWorker>(
-  PlatformWorkerTypeId
+  "@effect/platform/Worker/PlatformWorker"
 )
 
 /** @internal */
@@ -50,7 +50,7 @@ export const WorkerManagerTypeId: Worker.WorkerManagerTypeId = Symbol.for(
 
 /** @internal */
 export const WorkerManager = Context.Tag<Worker.WorkerManager>(
-  WorkerManagerTypeId
+  "@effect/platform/Worker/WorkerManager"
 )
 
 /** @internal */

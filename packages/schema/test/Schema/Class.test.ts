@@ -20,7 +20,7 @@ class Person extends S.Class<Person>()({
   }
 }
 
-const Name = Context.Tag<"Name", string>()
+const Name = Context.Tag<"Name", string>("Name")
 const NameString = S.string.pipe(
   S.nonEmpty(),
   S.transformOrFail(
@@ -36,7 +36,7 @@ const NameString = S.string.pipe(
   )
 )
 
-const Id = Context.Tag<"Id", number>()
+const Id = Context.Tag<"Id", number>("Name")
 const IdNumber = S.number.pipe(
   S.transformOrFail(
     S.number,

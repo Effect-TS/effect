@@ -11,11 +11,11 @@ import { describe, expect } from "vitest"
 interface Counter {
   readonly _: unique symbol
 }
-const Counter = Context.Tag<Counter, { count: number }>()
+const Counter = Context.Tag<Counter, { count: number }>("counter")
 interface Requests {
   readonly _: unique symbol
 }
-const Requests = Context.Tag<Requests, { count: number }>()
+const Requests = Context.Tag<Requests, { count: number }>("requests")
 
 interface Parent {
   readonly id: number

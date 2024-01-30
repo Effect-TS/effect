@@ -8,7 +8,7 @@ import * as Logger from "effect/Logger"
 import { assert, describe } from "vitest"
 
 const ref = FiberRef.unsafeMake(List.empty<string>())
-const env = Tag<"context", number>()
+const env = Tag<"context", number>("context")
 
 const withValue = (value: string) => Effect.locallyWith(ref, List.prepend(value))
 

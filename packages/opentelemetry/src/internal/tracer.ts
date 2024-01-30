@@ -124,7 +124,7 @@ export const make = Effect.map(Tracer, (tracer) =>
       )
     },
     context(execution, fiber) {
-      const currentSpan = fiber.getFiberRef(FiberRef.currentContext).unsafeMap.get(EffectTracer.ParentSpan) as
+      const currentSpan = fiber.getFiberRef(FiberRef.currentContext).unsafeMap.get(EffectTracer.ParentSpan.key) as
         | EffectTracer.ParentSpan
         | undefined
 

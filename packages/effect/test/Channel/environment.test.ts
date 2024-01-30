@@ -18,7 +18,7 @@ export interface NumberService extends Equal.Equal {
   readonly n: number
 }
 
-export const NumberService = Context.Tag<NumberService>()
+export const NumberService = Context.Tag<NumberService>("NumberService")
 
 export class NumberServiceImpl implements NumberService {
   readonly [NumberServiceTypeId]: NumberServiceTypeId = NumberServiceTypeId

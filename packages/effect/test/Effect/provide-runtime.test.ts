@@ -12,7 +12,7 @@ import { assert, describe } from "vitest"
 interface A {
   readonly value: number
 }
-const A = Context.Tag<A>()
+const A = Context.Tag<A>("A")
 const LiveA = Layer.succeed(A, { value: 1 })
 const ref = FiberRef.unsafeMake(0)
 const LiveEnv = Layer.mergeAll(
@@ -29,7 +29,7 @@ describe("Effect", () => {
     interface SomeService {
       readonly _: unique symbol
     }
-    const SomeService = Context.Tag<SomeService, typeof someServiceImpl>()
+    const SomeService = Context.Tag<SomeService, typeof someServiceImpl>("SomeService")
     return Effect.gen(function*(_) {
       const rt = yield* _(Layer.succeedContext(Context.empty()), Layer.toRuntime)
       const pre = yield* _(Effect.context<never>())

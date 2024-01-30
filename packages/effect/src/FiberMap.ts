@@ -326,7 +326,7 @@ export const run: {
  * }
  * const Users = Context.Tag<Users, {
  *    getAll: Effect.Effect<never, never, Array<unknown>>
- * }>()
+ * }>("Users")
  *
  * Effect.gen(function*(_) {
  *   const map = yield* _(FiberMap.make<string>())

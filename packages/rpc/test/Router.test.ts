@@ -15,7 +15,7 @@ const makeCounter = () => {
   }
 }
 interface Counter extends ReturnType<typeof makeCounter> {}
-const Counter = Tag<Counter>()
+const Counter = Tag<Counter>("Counter")
 
 const SomeError_ = S.struct({
   _tag: S.literal("SomeError"),

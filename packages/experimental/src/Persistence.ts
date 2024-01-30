@@ -75,7 +75,7 @@ export interface BackingPersistenceStore {
  * @category tags
  */
 export const BackingPersistence: Context.Tag<BackingPersistence, BackingPersistence> = Context.Tag<BackingPersistence>(
-  BackingPersistenceTypeId
+  "@effect/experimental/BackingPersistence"
 )
 
 /**
@@ -138,7 +138,7 @@ export declare namespace ResultPersistence {
  * @category tags
  */
 export const ResultPersistence: Context.Tag<ResultPersistence, ResultPersistence> = Context.Tag<ResultPersistence>(
-  ResultPersistenceTypeId
+  "@effect/experimental/ResultPersistence"
 )
 
 /**

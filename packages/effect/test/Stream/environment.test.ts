@@ -14,7 +14,7 @@ interface StringService {
   readonly string: string
 }
 
-const StringService = Context.Tag<StringService>()
+const StringService = Context.Tag<StringService>("string")
 
 describe("Stream", () => {
   it.effect("context", () =>

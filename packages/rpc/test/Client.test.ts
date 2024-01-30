@@ -30,7 +30,7 @@ const makeCounter = () => {
   } as const
 }
 interface Counter extends ReturnType<typeof makeCounter> {}
-const Counter = Tag<Counter>()
+const Counter = Tag<Counter>("Counter")
 
 const posts = RS.withServiceError(
   RS.make({

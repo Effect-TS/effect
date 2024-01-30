@@ -287,7 +287,7 @@ export const AsyncDeclaration = S.declare(
 
 export const AsyncString = effectify(S.string).pipe(S.identifier("AsyncString"))
 
-const Name = Context.Tag<"Name", string>()
+const Name = Context.Tag<"Name", string>("Name")
 
 export const DependencyString = S.transformOrFail(
   S.string,
