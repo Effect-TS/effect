@@ -20,7 +20,7 @@ const OkTodo = Schema.struct({
 const makeJsonPlaceholder = Effect.gen(function*(_) {
   const defaultClient = yield* _(Http.client.Client)
   const client = defaultClient.pipe(
-    Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
+    Http.client.mapRequest(Http.request.prependUrl(new URL("https://jsonplaceholder.typicode.com")))
   )
   const todoClient = client.pipe(
     Http.client.mapEffect(Http.response.schemaBodyJson(Todo))
@@ -54,7 +54,7 @@ describe("HttpClient", () => {
   it("google stream", () =>
     Effect.gen(function*(_) {
       const response = yield* _(
-        Http.request.get("https://www.google.com/"),
+        Http.request.get(new URL("https://www.google.com/")),
         Http.client.fetchOk(),
         Effect.map((_) => _.stream),
         Stream.unwrap,

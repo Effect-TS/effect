@@ -46,14 +46,14 @@ export const empty: ClientRequest.ClientRequest = new ClientRequestImpl(
 
 /** @internal */
 export const make: {
-  (method: "GET" | "HEAD"): (url: string, options?: ClientRequest.Options.NoBody) => ClientRequest.ClientRequest
+  (method: "GET" | "HEAD"): (url: string | URL, options?: ClientRequest.Options.NoBody) => ClientRequest.ClientRequest
   (
     method: Exclude<Method, "GET" | "HEAD">
-  ): (url: string, options?: ClientRequest.Options.NoUrl) => ClientRequest.ClientRequest
-} = (method: Method) => (url: string, options?: ClientRequest.Options.NoUrl) =>
+  ): (url: string | URL, options?: ClientRequest.Options.NoUrl) => ClientRequest.ClientRequest
+} = (method: Method) => (url: string | URL, options?: ClientRequest.Options.NoUrl) =>
   modify(empty, {
     method,
-    url,
+    url: url.toString(),
     ...(options ?? undefined)
   })
 
@@ -172,12 +172,12 @@ export const setMethod = dual<
 
 /** @internal */
 export const setUrl = dual<
-  (url: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
+  (url: string | URL) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, url: string) => ClientRequest.ClientRequest
 >(2, (self, url) =>
   new ClientRequestImpl(
     self.method,
-    url,
+    url.toString(),
     self.urlParams,
     self.headers,
     self.body
@@ -198,12 +198,12 @@ export const appendUrl = dual<
 
 /** @internal */
 export const prependUrl = dual<
-  (path: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
+  (path: string | URL) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, path: string) => ClientRequest.ClientRequest
 >(2, (self, url) =>
   new ClientRequestImpl(
     self.method,
-    url + self.url,
+    url.toString() + self.url,
     self.urlParams,
     self.headers,
     self.body
