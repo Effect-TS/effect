@@ -74,53 +74,53 @@ export declare namespace Options {
  * @category constructors
  */
 export const make: {
-  (method: "GET" | "HEAD"): (url: string, options?: Options.NoBody) => ClientRequest
+  (method: "GET" | "HEAD"): (url: string | URL, options?: Options.NoBody) => ClientRequest
   (
     method: Exclude<Method, "GET" | "HEAD">
-  ): (url: string, options?: Options.NoUrl) => ClientRequest
+  ): (url: string | URL, options?: Options.NoUrl) => ClientRequest
 } = internal.make
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const get: (url: string, options?: Options.NoBody) => ClientRequest = internal.get
+export const get: (url: string | URL, options?: Options.NoBody) => ClientRequest = internal.get
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const post: (url: string, options?: Options.NoUrl) => ClientRequest = internal.post
+export const post: (url: string | URL, options?: Options.NoUrl) => ClientRequest = internal.post
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const patch: (url: string, options?: Options.NoUrl) => ClientRequest = internal.patch
+export const patch: (url: string | URL, options?: Options.NoUrl) => ClientRequest = internal.patch
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const put: (url: string, options?: Options.NoUrl) => ClientRequest = internal.put
+export const put: (url: string | URL, options?: Options.NoUrl) => ClientRequest = internal.put
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const del: (url: string, options?: Options.NoUrl) => ClientRequest = internal.del
+export const del: (url: string | URL, options?: Options.NoUrl) => ClientRequest = internal.del
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const head: (url: string, options?: Options.NoBody) => ClientRequest = internal.head
+export const head: (url: string | URL, options?: Options.NoBody) => ClientRequest = internal.head
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const options: (url: string, options?: Options.NoUrl) => ClientRequest = internal.options
+export const options: (url: string | URL, options?: Options.NoUrl) => ClientRequest = internal.options
 
 /**
  * @since 1.0.0
@@ -196,7 +196,7 @@ export const acceptJson: (self: ClientRequest) => ClientRequest = internal.accep
  * @category combinators
  */
 export const setUrl: {
-  (url: string): (self: ClientRequest) => ClientRequest
+  (url: string | URL): (self: ClientRequest) => ClientRequest
   (self: ClientRequest, url: string): ClientRequest
 } = internal.setUrl
 
@@ -205,7 +205,7 @@ export const setUrl: {
  * @category combinators
  */
 export const prependUrl: {
-  (path: string): (self: ClientRequest) => ClientRequest
+  (path: string | URL): (self: ClientRequest) => ClientRequest
   (self: ClientRequest, path: string): ClientRequest
 } = internal.prependUrl
 
