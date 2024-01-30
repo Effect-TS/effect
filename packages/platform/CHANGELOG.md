@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.43.6
+
+### Patch Changes
+
+- [#2016](https://github.com/Effect-TS/effect/pull/2016) [`c96bb17`](https://github.com/Effect-TS/effect/commit/c96bb17043e2cec1eaeb319614a4c2904d876beb) Thanks [@thewilkybarkid](https://github.com/thewilkybarkid)! - Support URL objects in client requests
+
 ## 0.43.5
 
 ### Patch Changes
