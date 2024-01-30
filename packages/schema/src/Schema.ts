@@ -385,7 +385,8 @@ const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<n
  */
 export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-): Schema<never, Literals[number]> => union(...literals.map((literal) => makeLiteral(literal)))
+): Schema<never, Literals[number]> & { literals: Literals } =>
+  Object.assign(union(...literals.map((literal) => makeLiteral(literal))), { literals })
 
 /**
  * @category constructors
