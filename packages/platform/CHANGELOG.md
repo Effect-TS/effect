@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.43.7
+
+### Patch Changes
+
+- [#2020](https://github.com/Effect-TS/effect/pull/2020) [`cde08f3`](https://github.com/Effect-TS/effect/commit/cde08f354ed2ff2921d1d98bd539c7d65a2ddd73) Thanks [@tim-smart](https://github.com/tim-smart)! - use Proxy for platform schema Transferable
+
 ## 0.43.6
 
 ### Patch Changes
