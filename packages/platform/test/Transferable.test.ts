@@ -17,11 +17,22 @@ describe("Transferable", () => {
       Schema.struct({
         data: Schema.Uint8ArrayFromSelf
       }),
-      (_) => [_.data]
+      (_) => [_.data.buffer]
     )
+    const array = new Uint8Array([1, 2, 3])
     const data = Schema.decodeSync(schema)({
-      data: new Uint8Array([1, 2, 3])
+      data: array
     })
-    assert.deepEqual(Transferable.get(data), [new Uint8Array([1, 2, 3])])
+    assert.deepEqual(Transferable.get(data), [array.buffer])
+  })
+
+  test("schema Uint8Array", () => {
+    const array = new Uint8Array([1, 2, 3])
+    const schema = Transferable.schema(
+      Schema.Uint8ArrayFromSelf,
+      (_) => [_.buffer]
+    )
+    const data = Schema.decodeSync(schema)(array)
+    assert.deepEqual(Transferable.get(data), [array.buffer])
   })
 })
