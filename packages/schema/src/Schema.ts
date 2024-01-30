@@ -4543,7 +4543,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
+export interface Class<R, I, A, C, Self, Fields, Inherited> extends Schema<R, I, Self> {
   new(
     ...args: [R] extends [never] ? [
         props: Equals<C, {}> extends true ? void | {} : C,
@@ -4557,6 +4557,8 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
 
   readonly struct: Schema<R, I, A>
 
+  readonly fields: Fields
+
   readonly extend: <Extended>() => <FieldsB extends StructFields>(
     fields: FieldsB
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
@@ -4566,6 +4568,7 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Extended,
+      Simplify<Omit<Fields, keyof FieldsB> & FieldsB>,
       Self
     >
 
@@ -4592,6 +4595,7 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
+      Simplify<Omit<Fields, keyof FieldsB> & FieldsB>,
       Self
     >
 
@@ -4618,6 +4622,7 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
+      Simplify<Omit<Fields, keyof FieldsB> & FieldsB>,
       Self
     >
 }
@@ -4636,6 +4641,7 @@ export const Class = <Self>() =>
     Simplify<ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
     Self,
+    Fields,
     Data.Case
   > => makeClass(struct(fields), fields, Data.Class)
 
@@ -4654,6 +4660,7 @@ export const TaggedClass = <Self>() =>
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
     Self,
+    Fields,
     Data.Case
   > =>
 {
@@ -4676,6 +4683,7 @@ export const TaggedError = <Self>() =>
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
     Self,
+    Fields,
     Effect.Effect<never, Self, never> & globalThis.Error
   > =>
 {
@@ -4729,6 +4737,7 @@ export const TaggedRequest = <Self>() =>
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
     Self,
+    Fields,
     TaggedRequest<
       Tag,
       Schema.Context<Fields[keyof Fields]>,
@@ -4759,9 +4768,9 @@ export const TaggedRequest = <Self>() =>
   )
 }
 
-const makeClass = <R, I, A>(
+const makeClass = <R, I, A, Fields extends StructFields>(
   selfSchema: Schema<R, I, A>,
-  selfFields: StructFields,
+  selfFields: Fields,
   Base: any,
   additionalProps?: any
 ): any => {
@@ -4809,6 +4818,7 @@ const makeClass = <R, I, A>(
     }
 
     static struct = selfSchema
+    static fields = selfFields
 
     static extend() {
       return (fields: StructFields) => {
