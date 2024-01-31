@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Brand from "effect/Brand"
 import { dual } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -23,13 +22,16 @@ export type HeadersTypeId = typeof HeadersTypeId
  * @since 1.0.0
  * @category models
  */
-export type Headers = Brand.Branded<ReadonlyRecord.ReadonlyRecord<string>, HeadersTypeId>
+export interface Headers {
+  readonly [HeadersTypeId]: HeadersTypeId
+  readonly [key: string]: string
+}
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Input = ReadonlyRecord.ReadonlyRecord<string> | Iterable<readonly [string, string]>
+export type Input = ReadonlyRecord.ReadonlyRecord<string, string> | Iterable<readonly [string, string]>
 
 /**
  * @since 1.0.0
@@ -59,7 +61,7 @@ export const fromInput: (input?: Input) => Headers = (input) => {
  * @since 1.0.0
  * @category constructors
  */
-export const unsafeFromRecord = (input: ReadonlyRecord.ReadonlyRecord<string>): Headers => input as Headers
+export const unsafeFromRecord = (input: ReadonlyRecord.ReadonlyRecord<string, string>): Headers => input as Headers
 
 /**
  * @since 1.0.0
@@ -71,7 +73,7 @@ export const has: {
 } = dual<
   (key: string) => (self: Headers) => boolean,
   (self: Headers, key: string) => boolean
->(2, (self, key) => ReadonlyRecord.has(self, key.toLowerCase()))
+>(2, (self, key) => ReadonlyRecord.has(self as Record<string, string>, key.toLowerCase()))
 
 /**
  * @since 1.0.0
@@ -83,7 +85,7 @@ export const get: {
 } = dual<
   (key: string) => (self: Headers) => Option.Option<string>,
   (self: Headers, key: string) => Option.Option<string>
->(2, (self, key) => ReadonlyRecord.get(self, key.toLowerCase()))
+>(2, (self, key) => ReadonlyRecord.get(self as Record<string, string>, key.toLowerCase()))
 
 /**
  * @since 1.0.0
@@ -140,4 +142,4 @@ export const remove: {
 } = dual<
   (key: string) => (self: Headers) => Headers,
   (self: Headers, key: string) => Headers
->(2, (self, key) => ReadonlyRecord.remove(self, key.toLowerCase()) as Headers)
+>(2, (self, key) => ReadonlyRecord.remove(self as Record<string, string>, key.toLowerCase()) as Headers)

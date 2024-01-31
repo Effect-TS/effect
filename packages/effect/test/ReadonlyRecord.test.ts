@@ -5,32 +5,64 @@ import * as Option from "effect/Option"
 import * as RR from "effect/ReadonlyRecord"
 import { assert, describe, expect, it } from "vitest"
 
+const symA = Symbol.for("a")
+const symB = Symbol.for("b")
+
 describe("ReadonlyRecord", () => {
   it("get", () => {
-    expect(pipe({}, RR.get("a"))).toEqual(Option.none())
+    expect(pipe(RR.empty(), RR.get("a"))).toEqual(Option.none())
     expect(pipe({ a: 1 }, RR.get("a"))).toEqual(Option.some(1))
+
+    expect(pipe(RR.empty(), RR.get(symA))).toEqual(Option.none())
+    expect(pipe({ [symA]: 1 }, RR.get(symA))).toEqual(Option.some(1))
+  })
+
+  it("replaceOption", () => {
+    expect(pipe(RR.empty<string, number>(), RR.replaceOption("a", 2))).toEqual(Option.none())
+    expect(pipe({ a: 1 }, RR.replaceOption("a", 2))).toEqual(Option.some({ a: 2 }))
+    expect(pipe({ a: 1 }, RR.replaceOption("a", true))).toEqual(Option.some({ a: true }))
+
+    expect(pipe(RR.empty<symbol, number>(), RR.replaceOption(symA, 2))).toEqual(Option.none())
+    expect(pipe({ [symA]: 1 }, RR.replaceOption(symA, 2))).toEqual(Option.some({ [symA]: 2 }))
+    expect(pipe({ [symA]: 1 }, RR.replaceOption(symA, true))).toEqual(Option.some({ [symA]: true }))
   })
 
   it("modify", () => {
-    expect(pipe({}, RR.modify("a", (n: number) => n + 1))).toEqual({})
+    expect(pipe(RR.empty<string, number>(), RR.modify("a", (n: number) => n + 1))).toEqual({})
     expect(pipe({ a: 1 }, RR.modify("a", (n: number) => n + 1))).toEqual({ a: 2 })
     expect(pipe({ a: 1 }, RR.modify("a", (n: number) => String(n)))).toEqual(
       { a: "1" }
     )
+
+    expect(pipe(RR.empty<symbol, number>(), RR.modify(symA, (n: number) => n + 1))).toEqual({})
+    expect(pipe({ [symA]: 1 }, RR.modify(symA, (n: number) => n + 1))).toEqual({ [symA]: 2 })
+    expect(pipe({ [symA]: 1 }, RR.modify(symA, (n: number) => String(n)))).toEqual(
+      { [symA]: "1" }
+    )
   })
 
   it("modifyOption", () => {
-    expect(pipe({}, RR.modifyOption("a", (n: number) => n + 1))).toEqual(Option.none())
+    expect(pipe(RR.empty<string, number>(), RR.modifyOption("a", (n) => n + 1))).toEqual(Option.none())
     expect(pipe({ a: 1 }, RR.modifyOption("a", (n: number) => n + 1))).toEqual(Option.some({ a: 2 }))
     expect(pipe({ a: 1 }, RR.modifyOption("a", (n: number) => String(n)))).toEqual(
       Option.some({ a: "1" })
     )
+
+    expect(pipe(RR.empty<symbol, number>(), RR.modifyOption(symA, (n) => n + 1))).toEqual(Option.none())
+    expect(pipe({ [symA]: 1 }, RR.modifyOption(symA, (n: number) => n + 1))).toEqual(Option.some({ [symA]: 2 }))
+    expect(pipe({ [symA]: 1 }, RR.modifyOption(symA, (n: number) => String(n)))).toEqual(
+      Option.some({ [symA]: "1" })
+    )
   })
 
   it("replaceOption", () => {
-    expect(pipe({}, RR.replaceOption("a", 2))).toEqual(Option.none())
+    expect(pipe(RR.empty(), RR.replaceOption("a", 2))).toEqual(Option.none())
     expect(pipe({ a: 1 }, RR.replaceOption("a", 2))).toEqual(Option.some({ a: 2 }))
     expect(pipe({ a: 1 }, RR.replaceOption("a", true))).toEqual(Option.some({ a: true }))
+
+    expect(pipe(RR.empty(), RR.replaceOption(symA, 2))).toEqual(Option.none())
+    expect(pipe({ [symA]: 1 }, RR.replaceOption(symA, 2))).toEqual(Option.some({ [symA]: 2 }))
+    expect(pipe({ [symA]: 1 }, RR.replaceOption(symA, true))).toEqual(Option.some({ [symA]: true }))
   })
 
   it("map", () => {
@@ -39,24 +71,20 @@ describe("ReadonlyRecord", () => {
       a: "a-1",
       b: "b-2"
     })
-  })
 
-  it("fromIterable", () => {
-    const input = [["1", 2], ["2", 4], ["3", 6], ["4", 8]] as const
-    expect(RR.fromIterable(input)).toEqual({
-      "1": 2,
-      "2": 4,
-      "3": 6,
-      "4": 8
+    expect(pipe({ [symA]: 1, [symB]: 2 }, RR.map((n) => n * 2))).toEqual({ [symA]: 2, [symB]: 4 })
+    expect(pipe({ [symA]: 1, [symB]: 2 }, RR.map((n, k) => `${String(k)}-${n}`))).toEqual({
+      [symA]: "Symbol(a)-1",
+      [symB]: "Symbol(b)-2"
     })
   })
 
   it("fromIterableWith", () => {
     const input = [1, 2, 3, 4]
-    expect(RR.fromIterableWith(input, (a) => [String(a), a * 2])).toEqual({
+    expect(RR.fromIterableWith(input, (a) => [a === 3 ? symA : String(a), a * 2])).toEqual({
       "1": 2,
       "2": 4,
-      "3": 6,
+      [symA]: 6,
       "4": 8
     })
   })
@@ -73,31 +101,42 @@ describe("ReadonlyRecord", () => {
   })
 
   it("fromEntries", () => {
-    const input: Array<[string, number]> = [["a", 1], ["b", 2]]
-    expect(RR.fromEntries(input)).toEqual({ a: 1, b: 2 })
+    const input = [["1", 2], ["2", 4], ["3", 6], ["4", 8], [symA, 10], [symB, 12]] as const
+    expect(RR.fromEntries(input)).toEqual({
+      "1": 2,
+      "2": 4,
+      "3": 6,
+      "4": 8,
+      [symA]: 10,
+      [symB]: 12
+    })
   })
 
   it("collect", () => {
-    const x = { a: 1, b: 2, c: 3 }
-    assert.deepStrictEqual(RR.collect(x, (key, n) => [key, n]), [["a", 1], ["b", 2], ["c", 3]])
+    const x = { a: 1, b: 2, c: 3, [symA]: 4 }
+    assert.deepStrictEqual(RR.collect(x, (key, n) => [key, n]), [["a", 1], ["b", 2], ["c", 3], [symA, 4]])
   })
 
   it("toEntries", () => {
-    const x = { a: 1, b: 2, c: 3 }
-    assert.deepStrictEqual(RR.toEntries(x), [["a", 1], ["b", 2], ["c", 3]])
+    const x = { a: 1, b: 2, c: 3, [symA]: 4 }
+    assert.deepStrictEqual(RR.toEntries(x), [["a", 1], ["b", 2], ["c", 3], [symA, 4]])
   })
 
   it("remove", () => {
-    assert.deepStrictEqual(RR.remove({ a: 1, b: 2 }, "a"), { b: 2 })
-    assert.deepStrictEqual(RR.remove({ a: 1, b: 2 }, "c"), { a: 1, b: 2 })
+    assert.deepStrictEqual(RR.remove({ a: 1, b: 2, [symA]: 3 }, "a"), { b: 2, [symA]: 3 })
+    assert.deepStrictEqual(RR.remove({ a: 1, b: 2, [symA]: 3 } as Record<string | symbol, number>, "c"), {
+      a: 1,
+      b: 2,
+      [symA]: 3
+    })
   })
 
   describe("pop", () => {
     it("should return the value associated with the given key, if the key is present in the record", () => {
-      const record = { a: 1, b: 2 }
-      const result = RR.pop("a")(record)
+      const record = { a: 1, b: 2, [symA]: 3 }
+      const result = RR.pop(record, "a")
 
-      assert.deepStrictEqual(result, Option.some([1, { b: 2 }] as [number, Record<string, number>]))
+      assert.deepStrictEqual(result, Option.some([1, { b: 2, [symA]: 3 }]))
     })
 
     it("should return none if the key is not present in the record", () => {
@@ -122,29 +161,29 @@ describe("ReadonlyRecord", () => {
   })
 
   it("filter", () => {
-    const x = { a: 1, b: 2, c: 3, d: 4 }
-    assert.deepStrictEqual(RR.filter(x, (value) => value > 2), { c: 3, d: 4 })
+    const x = { a: 1, b: 2, c: 3, d: 4, [symA]: 5 }
+    assert.deepStrictEqual(RR.filter(x, (value) => value > 2), { c: 3, d: 4, [symA]: 5 })
   })
 
   it("partitionMap", () => {
     const f = (n: number) => (n > 2 ? Either.right(n + 1) : Either.left(n - 1))
     assert.deepStrictEqual(RR.partitionMap({}, f), [{}, {}])
-    assert.deepStrictEqual(RR.partitionMap({ a: 1, b: 3 }, f), [{ a: 0 }, { b: 4 }])
+    assert.deepStrictEqual(RR.partitionMap({ a: 1, b: 3, [symA]: 5 }, f), [{ a: 0 }, { b: 4, [symA]: 6 }])
   })
 
   it("partition", () => {
     const f = (n: number) => n > 2
     assert.deepStrictEqual(RR.partition({}, f), [{}, {}])
-    assert.deepStrictEqual(RR.partition({ a: 1, b: 3 }, f), [{ a: 1 }, { b: 3 }])
+    assert.deepStrictEqual(RR.partition({ a: 1, b: 3, [symA]: 5 }, f), [{ a: 1 }, { b: 3, [symA]: 5 }])
   })
 
   it("separate", () => {
     assert.deepStrictEqual(
-      RR.separate({ a: Either.left("e"), b: Either.right(1) }),
-      [{ a: "e" }, { b: 1 }]
+      RR.separate({ a: Either.left("e"), b: Either.right(1), [symA]: Either.right(2) }),
+      [{ a: "e" }, { b: 1, [symA]: 2 }]
     )
     // should ignore non own properties
-    const o: RR.ReadonlyRecord<Either.Either<number, string>> = Object.create({ a: 1 })
+    const o: RR.ReadonlyRecord<"a", Either.Either<number, string>> = Object.create({ a: 1 })
     assert.deepStrictEqual(pipe(o, RR.separate), [{}, {}])
   })
 
@@ -163,40 +202,42 @@ describe("ReadonlyRecord", () => {
   })
 
   it("size", () => {
-    assert.deepStrictEqual(RR.size({ a: "a", b: 1, c: true }), 3)
+    assert.deepStrictEqual(RR.size({ a: "a", b: 1, c: true, [symA]: 2 }), 4)
   })
 
   it("has", () => {
     assert.deepStrictEqual(RR.has({ a: 1, b: 2 }, "a"), true)
-    assert.deepStrictEqual(RR.has({ a: 1, b: 2 }, "c"), false)
+    assert.deepStrictEqual(RR.has({ a: 1, b: 2 } as Record<string, number>, "c"), false)
   })
 
   it("keys", () => {
-    assert.deepStrictEqual(RR.keys({ a: 1, b: 2 }), ["a", "b"])
+    assert.deepStrictEqual(RR.keys({ a: 1, b: 2, [symA]: 3 }), ["a", "b", symA])
   })
 
   it("values", () => {
-    assert.deepStrictEqual(RR.values({ a: 1, b: 2 }), [1, 2])
+    assert.deepStrictEqual(RR.values({ a: 1, b: 2, [symA]: 3 }), [1, 2, 3])
   })
 
   it("set", () => {
     assert.deepStrictEqual(RR.set({ a: 1, b: 2 }, "c", 3), { a: 1, b: 2, c: 3 })
     assert.deepStrictEqual(RR.set({ a: 1, b: 2 }, "a", 3), { a: 3, b: 2 })
+    assert.deepStrictEqual(RR.set({ a: 1, b: 2 }, symA, 3), { a: 1, b: 2, [symA]: 3 })
   })
 
   it("replace", () => {
-    expect(RR.replace({ a: 1, b: 2 }, "c", 3)).toStrictEqual({ a: 1, b: 2 })
+    expect(RR.replace({ a: 1, b: 2 } as Record<string, number>, "c", 3)).toStrictEqual({ a: 1, b: 2 })
     expect(RR.replace({ a: 1, b: 2 }, "a", 3)).toStrictEqual({ a: 3, b: 2 })
+    expect(RR.replace({ a: 1, b: 2, [symA]: 3 }, symA, 4)).toStrictEqual({ a: 1, b: 2, [symA]: 4 })
   })
 
   it("isSubrecord", () => {
-    expect(RR.isSubrecord({}, {})).toBe(true)
-    expect(RR.isSubrecord({}, { a: 1 })).toBe(true)
+    expect(RR.isSubrecord(RR.empty(), {})).toBe(true)
+    expect(RR.isSubrecord(RR.empty(), { a: 1 })).toBe(true)
     expect(RR.isSubrecord({ a: 1 }, { a: 1 })).toBe(true)
-    expect(RR.isSubrecord({ a: 1 }, { a: 1, b: 2 })).toBe(true)
+    expect(RR.isSubrecord({ a: 1 } as Record<string, number>, { a: 1, b: 2 })).toBe(true)
     expect(RR.isSubrecord({ b: 2, a: 1 }, { a: 1, b: 2 })).toBe(true)
     expect(RR.isSubrecord({ a: 1 }, { a: 2 })).toBe(false)
-    expect(RR.isSubrecord({ b: 2 }, { a: 1 })).toBe(false)
+    expect(RR.isSubrecord({ b: 2 } as Record<string, number>, { a: 1 })).toBe(false)
   })
 
   it("reduce", () => {
@@ -224,12 +265,12 @@ describe("ReadonlyRecord", () => {
 
   it("union", () => {
     const combine = (s1: string, s2: string) => s1 + s2
-    const x: RR.ReadonlyRecord<string> = {
+    const x: RR.ReadonlyRecord<string, string> = {
       a: "a1",
       b: "b1",
       c: "c1"
     }
-    const y: RR.ReadonlyRecord<string> = {
+    const y: RR.ReadonlyRecord<string, string> = {
       b: "b2",
       c: "c2",
       d: "d2"
@@ -248,12 +289,12 @@ describe("ReadonlyRecord", () => {
 
   it("intersection", () => {
     const combine = (s1: string, s2: string) => s1 + s2
-    const x: RR.ReadonlyRecord<string> = {
+    const x: RR.ReadonlyRecord<string, string> = {
       a: "a1",
       b: "b1",
       c: "c1"
     }
-    const y: RR.ReadonlyRecord<string> = {
+    const y: RR.ReadonlyRecord<string, string> = {
       b: "b2",
       c: "c2",
       d: "d2"
@@ -267,12 +308,12 @@ describe("ReadonlyRecord", () => {
   })
 
   it("difference", () => {
-    const x: RR.ReadonlyRecord<string> = {
+    const x: RR.ReadonlyRecord<string, string> = {
       a: "a1",
       b: "b1",
       c: "c1"
     }
-    const y: RR.ReadonlyRecord<string> = {
+    const y: RR.ReadonlyRecord<string, string> = {
       b: "b2",
       c: "c2",
       d: "d2"
