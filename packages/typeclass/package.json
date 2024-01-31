@@ -27,7 +27,8 @@
   ],
   "publishConfig": {
     "access": "public",
-    "directory": "dist"
+    "directory": "dist",
+    "provenance": true
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",

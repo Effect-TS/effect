@@ -25,7 +25,8 @@
   ],
   "publishConfig": {
     "access": "public",
-    "directory": "dist"
+    "directory": "dist",
+    "provenance": true
   },
   "engines": {
     "node": ">=18.0.0"
