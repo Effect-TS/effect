@@ -11,10 +11,12 @@ describe("ReadonlyRecord", () => {
     expect(pipe({ a: 1 }, RR.get("a"))).toEqual(Option.some(1))
   })
 
-  it("modifyOption", () => {
-    expect(pipe({}, RR.replaceOption("a", 2))).toEqual(Option.none())
-    expect(pipe({ a: 1 }, RR.replaceOption("a", 2))).toEqual(Option.some({ a: 2 }))
-    expect(pipe({ a: 1 }, RR.replaceOption("a", true))).toEqual(Option.some({ a: true }))
+  it("modify", () => {
+    expect(pipe({}, RR.modify("a", (n: number) => n + 1))).toEqual({})
+    expect(pipe({ a: 1 }, RR.modify("a", (n: number) => n + 1))).toEqual({ a: 2 })
+    expect(pipe({ a: 1 }, RR.modify("a", (n: number) => String(n)))).toEqual(
+      { a: "1" }
+    )
   })
 
   it("modifyOption", () => {
@@ -23,6 +25,12 @@ describe("ReadonlyRecord", () => {
     expect(pipe({ a: 1 }, RR.modifyOption("a", (n: number) => String(n)))).toEqual(
       Option.some({ a: "1" })
     )
+  })
+
+  it("replaceOption", () => {
+    expect(pipe({}, RR.replaceOption("a", 2))).toEqual(Option.none())
+    expect(pipe({ a: 1 }, RR.replaceOption("a", 2))).toEqual(Option.some({ a: 2 }))
+    expect(pipe({ a: 1 }, RR.replaceOption("a", true))).toEqual(Option.some({ a: true }))
   })
 
   it("map", () => {
@@ -171,14 +179,14 @@ describe("ReadonlyRecord", () => {
     assert.deepStrictEqual(RR.values({ a: 1, b: 2 }), [1, 2])
   })
 
-  it("upsertAt", () => {
-    assert.deepStrictEqual(RR.upsert({ a: 1, b: 2 }, "c", 3), { a: 1, b: 2, c: 3 })
-    assert.deepStrictEqual(RR.upsert({ a: 1, b: 2 }, "a", 3), { a: 3, b: 2 })
+  it("set", () => {
+    assert.deepStrictEqual(RR.set({ a: 1, b: 2 }, "c", 3), { a: 1, b: 2, c: 3 })
+    assert.deepStrictEqual(RR.set({ a: 1, b: 2 }, "a", 3), { a: 3, b: 2 })
   })
 
-  it("update", () => {
-    expect(RR.update({ a: 1, b: 2 }, "c", 3)).toStrictEqual({ a: 1, b: 2 })
-    expect(RR.update({ a: 1, b: 2 }, "a", 3)).toStrictEqual({ a: 3, b: 2 })
+  it("replace", () => {
+    expect(RR.replace({ a: 1, b: 2 }, "c", 3)).toStrictEqual({ a: 1, b: 2 })
+    expect(RR.replace({ a: 1, b: 2 }, "a", 3)).toStrictEqual({ a: 3, b: 2 })
   })
 
   it("isSubrecord", () => {
