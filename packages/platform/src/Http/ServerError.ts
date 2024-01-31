@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import type * as Cause from "effect/Cause"
-import type * as Data from "effect/Data"
 import type * as FiberId from "effect/FiberId"
 import * as internal from "../internal/http/serverError.js"
 import type * as ServerRequest from "./ServerRequest.js"
@@ -34,7 +33,7 @@ export declare namespace HttpError {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto extends Data.Case {
+  export interface Proto {
     readonly [TypeId]: TypeId
     readonly _tag: string
   }
@@ -42,7 +41,7 @@ export declare namespace HttpError {
   /**
    * @since 1.0.0
    */
-  export type ProvidedFields = TypeId | "_tag" | keyof Data.Case
+  export type ProvidedFields = TypeId | "_tag"
 }
 
 /**

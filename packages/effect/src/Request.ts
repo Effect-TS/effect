@@ -3,7 +3,6 @@
  */
 import type * as _Cache from "./Cache.js"
 import type { Cause } from "./Cause.js"
-import type * as Data from "./Data.js"
 import type { Deferred } from "./Deferred.js"
 import type { DurationInput } from "./Duration.js"
 import type * as Effect from "./Effect.js"
@@ -36,7 +35,7 @@ export type RequestTypeId = typeof RequestTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Request<out E, out A> extends Request.Variance<E, A>, Data.Case {}
+export interface Request<out E, out A> extends Request.Variance<E, A> {}
 
 /**
  * @since 2.0.0
@@ -58,7 +57,7 @@ export declare namespace Request {
    * @category models
    */
   export interface Constructor<R extends Request<any, any>, T extends keyof R = never> {
-    (args: Omit<R, T | keyof (Data.Case & Request.Variance<Request.Error<R>, Request.Success<R>>)>): R
+    (args: Omit<R, T | keyof (Request.Variance<Request.Error<R>, Request.Success<R>>)>): R
   }
 
   /**
