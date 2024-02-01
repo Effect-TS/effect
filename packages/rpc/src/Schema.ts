@@ -90,7 +90,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export type Input<S> = S extends {
-    readonly input: Schema.Schema<infer _R, infer _I, infer A>
+    readonly input: Schema.Schema<infer A, infer _I, infer _R>
   } ? A
     : never
 
@@ -99,7 +99,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export type Error<S> = S extends {
-    readonly error: Schema.Schema<infer _R, infer _I, infer A>
+    readonly error: Schema.Schema<infer A, infer _I, infer _R>
   } ? A
     : never
 
@@ -107,16 +107,16 @@ export namespace RpcSchema {
    * @category utils
    * @since 1.0.0
    */
-  export type Output<S> = S extends { readonly output: Schema.Schema<infer _R, infer _I, infer A> } ? A : never
+  export type Output<S> = S extends { readonly output: Schema.Schema<infer A, infer _I, infer _R> } ? A : never
 
   /**
    * @category utils
    * @since 1.0.0
    */
   export type Context<S> =
-    | (S extends { readonly output: Schema.Schema<infer R, infer _I, infer _A> } ? R : never)
-    | (S extends { readonly input: Schema.Schema<infer R, infer _I, infer _A> } ? R : never)
-    | (S extends { readonly error: Schema.Schema<infer R, infer _I, infer _A> } ? R : never)
+    | (S extends { readonly output: Schema.Schema<infer _A, infer _I, infer R> } ? R : never)
+    | (S extends { readonly input: Schema.Schema<infer _A, infer _I, infer R> } ? R : never)
+    | (S extends { readonly error: Schema.Schema<infer _A, infer _I, infer R> } ? R : never)
 }
 
 /**
