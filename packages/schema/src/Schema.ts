@@ -63,7 +63,7 @@ export type TypeId = typeof TypeId
  * @category model
  * @since 1.0.0
  */
-export interface Schema<out R, in out From, in out To = From> extends Schema.Variance<R, From, To>, Pipeable {
+export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly ast: AST.AST
 }
 
@@ -71,13 +71,13 @@ export interface Schema<out R, in out From, in out To = From> extends Schema.Var
  * @category hashing
  * @since 1.0.0
  */
-export const hash = <R, I, A>(schema: Schema<R, I, A>): number => AST.hash(schema.ast)
+export const hash = <A, I, R>(schema: Schema<A, I, R>): number => AST.hash(schema.ast)
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const format = <R, I, A>(schema: Schema<R, I, A>): string => AST.format(schema.ast)
+export const format = <A, I, R>(schema: Schema<A, I, R>): string => AST.format(schema.ast)
 
 /**
  * @since 1.0.0
@@ -86,33 +86,33 @@ export declare module Schema {
   /**
    * @since 1.0.0
    */
-  export interface Variance<R, From, To> {
+  export interface Variance<A, I, R> {
     readonly [TypeId]: {
-      readonly R: Covariant<R>
-      readonly From: Invariant<From>
-      readonly To: Invariant<To>
+      readonly _A: Invariant<A>
+      readonly _I: Invariant<I>
+      readonly _R: Covariant<R>
     }
   }
 
   /**
    * @since 1.0.0
    */
-  export type Context<S> = S extends Schema.Variance<infer R, any, any> ? R : never
+  export type Context<S> = S extends Schema.Variance<infer _A, infer _I, infer R> ? R : never
 
   /**
    * @since 1.0.0
    */
-  export type From<S> = S extends Schema.Variance<any, infer From, any> ? From : never
+  export type From<S> = S extends Schema.Variance<infer _A, infer I, infer _R> ? I : never
 
   /**
    * @since 1.0.0
    */
-  export type To<S> = S extends Schema.Variance<any, any, infer To> ? To : never
+  export type To<S> = S extends Schema.Variance<infer A, infer _I, infer _R> ? A : never
 
   /**
    * @since 1.0.0
    */
-  export type ToAsserts<S extends Schema<never, any>> = (
+  export type ToAsserts<S extends Schema<any>> = (
     input: unknown,
     options?: AST.ParseOptions
   ) => asserts input is Schema.To<S>
@@ -121,12 +121,12 @@ export declare module Schema {
 /**
  * @since 1.0.0
  */
-export const from = <R, I, A>(schema: Schema<R, I, A>): Schema<never, I> => make(AST.from(schema.ast))
+export const from = <A, I, R>(schema: Schema<A, I, R>): Schema<I> => make(AST.from(schema.ast))
 
 /**
  * @since 1.0.0
  */
-export const to = <R, I, A>(schema: Schema<R, I, A>): Schema<never, A> => make(AST.to(schema.ast))
+export const to = <A, I, R>(schema: Schema<A, I, R>): Schema<A> => make(AST.to(schema.ast))
 
 /* c8 ignore start */
 export {
@@ -197,8 +197,8 @@ export {
  * @category encoding
  * @since 1.0.0
  */
-export const encodeUnknown = <R, I, A>(
-  schema: Schema<R, I, A>,
+export const encodeUnknown = <A, I, R>(
+  schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => {
   const encodeUnknown = Parser.encodeUnknown(schema, options)
@@ -210,8 +210,8 @@ export const encodeUnknown = <R, I, A>(
  * @category encoding
  * @since 1.0.0
  */
-export const encodeUnknownEither = <I, A>(
-  schema: Schema<never, I, A>,
+export const encodeUnknownEither = <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => {
   const encodeUnknownEither = Parser.encodeUnknownEither(schema, options)
@@ -223,8 +223,8 @@ export const encodeUnknownEither = <I, A>(
  * @category encoding
  * @since 1.0.0
  */
-export const encodeUnknownPromise = <I, A>(
-  schema: Schema<never, I, A>,
+export const encodeUnknownPromise = <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => {
   const parser = encodeUnknown(schema, options)
@@ -235,8 +235,8 @@ export const encodeUnknownPromise = <I, A>(
  * @category encoding
  * @since 1.0.0
  */
-export const encode: <R, I, A>(
-  schema: Schema<R, I, A>,
+export const encode: <A, I, R>(
+  schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => (a: A, overrideOptions?: ParseOptions) => Effect.Effect<R, ParseResult.ParseError, I> = encodeUnknown
 
@@ -244,8 +244,8 @@ export const encode: <R, I, A>(
  * @category encoding
  * @since 1.0.0
  */
-export const encodeEither: <I, A>(
-  schema: Schema<never, I, A>,
+export const encodeEither: <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => (a: A, overrideOptions?: ParseOptions) => Either.Either<ParseResult.ParseError, I> = encodeUnknownEither
 
@@ -253,8 +253,8 @@ export const encodeEither: <I, A>(
  * @category encoding
  * @since 1.0.0
  */
-export const encodePromise: <I, A>(
-  schema: Schema<never, I, A>,
+export const encodePromise: <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => (a: A, overrideOptions?: ParseOptions) => Promise<I> = encodeUnknownPromise
 
@@ -262,8 +262,8 @@ export const encodePromise: <I, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decodeUnknown = <R, I, A>(
-  schema: Schema<R, I, A>,
+export const decodeUnknown = <A, I, R>(
+  schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => {
   const decodeUnknown = ParseResult.decodeUnknown(schema, options)
@@ -275,8 +275,8 @@ export const decodeUnknown = <R, I, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decodeUnknownEither = <I, A>(
-  schema: Schema<never, I, A>,
+export const decodeUnknownEither = <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => {
   const decodeUnknownEither = ParseResult.decodeUnknownEither(schema, options)
@@ -288,8 +288,8 @@ export const decodeUnknownEither = <I, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decodeUnknownPromise = <I, A>(
-  schema: Schema<never, I, A>,
+export const decodeUnknownPromise = <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => {
   const parser = decodeUnknown(schema, options)
@@ -300,8 +300,8 @@ export const decodeUnknownPromise = <I, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decode: <R, I, A>(
-  schema: Schema<R, I, A>,
+export const decode: <A, I, R>(
+  schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => (i: I, overrideOptions?: ParseOptions) => Effect.Effect<R, ParseResult.ParseError, A> = decodeUnknown
 
@@ -309,8 +309,8 @@ export const decode: <R, I, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decodeEither: <I, A>(
-  schema: Schema<never, I, A>,
+export const decodeEither: <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => (i: I, overrideOptions?: ParseOptions) => Either.Either<ParseResult.ParseError, A> = decodeUnknownEither
 
@@ -318,8 +318,8 @@ export const decodeEither: <I, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decodePromise: <I, A>(
-  schema: Schema<never, I, A>,
+export const decodePromise: <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => (i: I, overrideOptions?: ParseOptions) => Promise<A> = decodeUnknownPromise
 
@@ -327,8 +327,8 @@ export const decodePromise: <I, A>(
  * @category validation
  * @since 1.0.0
  */
-export const validate = <R, I, A>(
-  schema: Schema<R, I, A>,
+export const validate = <A, I, R>(
+  schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => {
   const validate = Parser.validate(schema, options)
@@ -340,8 +340,8 @@ export const validate = <R, I, A>(
  * @category validation
  * @since 1.0.0
  */
-export const validateEither = <I, A>(
-  schema: Schema<never, I, A>,
+export const validateEither = <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => {
   const validateEither = Parser.validateEither(schema, options)
@@ -353,8 +353,8 @@ export const validateEither = <I, A>(
  * @category validation
  * @since 1.0.0
  */
-export const validatePromise = <I, A>(
-  schema: Schema<never, I, A>,
+export const validatePromise = <A, I>(
+  schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => {
   const parser = validate(schema, options)
@@ -367,16 +367,15 @@ export const validatePromise = <I, A>(
  * @category guards
  * @since 1.0.0
  */
-export const isSchema = (u: unknown): u is Schema<unknown, unknown> =>
-  Predicate.isObject(u) && TypeId in u && "ast" in u
+export const isSchema = (u: unknown): u is Schema<unknown> => Predicate.isObject(u) && TypeId in u && "ast" in u
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make: <R, I, A>(ast: AST.AST) => Schema<R, I, A> = InternalSchema.make
+export const make: <A, I, R>(ast: AST.AST) => Schema<A, I, R> = InternalSchema.make
 
-const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<never, Literal> =>
+const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   make(AST.createLiteral(value))
 
 /**
@@ -385,7 +384,7 @@ const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<n
  */
 export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-): Schema<never, Literals[number]> => union(...literals.map((literal) => makeLiteral(literal)))
+): Schema<Literals[number]> => union(...literals.map((literal) => makeLiteral(literal)))
 
 /**
  * @category constructors
@@ -394,7 +393,7 @@ export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
 export const uniqueSymbol = <S extends symbol>(
   symbol: S,
   annotations?: AST.Annotations
-): Schema<never, S> => make(AST.createUniqueSymbol(symbol, annotations))
+): Schema<S> => make(AST.createUniqueSymbol(symbol, annotations))
 
 /**
  * @category constructors
@@ -402,7 +401,7 @@ export const uniqueSymbol = <S extends symbol>(
  */
 export const enums = <A extends { [x: string]: string | number }>(
   enums: A
-): Schema<never, A[keyof A]> =>
+): Schema<A[keyof A]> =>
   make(
     AST.createEnums(
       Object.keys(enums).filter(
@@ -423,9 +422,9 @@ export type Join<T> = T extends [infer Head, ...infer Tail]
  * @category constructors
  * @since 1.0.0
  */
-export const templateLiteral = <T extends [Schema<never, any>, ...Array<Schema<never, any>>]>(
+export const templateLiteral = <T extends [Schema<any, any, never>, ...Array<Schema<any, any, never>>]>(
   ...[head, ...tail]: T
-): Schema<never, Join<{ [K in keyof T]: Schema.To<T[K]> }>> => {
+): Schema<Join<{ [K in keyof T]: Schema.To<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
   for (const span of tail) {
     types = ReadonlyArray.flatMap(
@@ -482,7 +481,12 @@ const getTemplateLiterals = (
   }
 }
 
-const declareConstructor = <const P extends ReadonlyArray<Schema<any, any>>, R extends Schema.Context<P[number]>, I, A>(
+const declareConstructor = <
+  const P extends ReadonlyArray<Schema<any, any, any>>,
+  R extends Schema.Context<P[number]>,
+  I,
+  A
+>(
   typeParameters: P,
   decodeUnknown: (
     ...typeParameters: P
@@ -502,7 +506,7 @@ const declareConstructor = <const P extends ReadonlyArray<Schema<any, any>>, R e
 const declarePrimitive = <A>(
   is: (input: unknown) => input is A,
   annotations?: DeclareAnnotations<[], A>
-): Schema<never, A> => {
+): Schema<A> => {
   const decodeUnknown = () => (input: unknown, _: ParseOptions, ast: AST.Declaration) =>
     is(input) ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input))
   const encodeUnknown = decodeUnknown
@@ -533,8 +537,8 @@ export const declare: {
   <A>(
     is: (input: unknown) => input is A,
     annotations?: DeclareAnnotations<readonly [], A>
-  ): Schema<never, A>
-  <const P extends ReadonlyArray<Schema<any, any>>, R extends Schema.Context<P[number]>, I, A>(
+  ): Schema<A>
+  <const P extends ReadonlyArray<Schema<any, any, any>>, R extends Schema.Context<P[number]>, I, A>(
     typeParameters: P,
     decodeUnknown: (
       ...typeParameters: P
@@ -543,7 +547,7 @@ export const declare: {
       ...typeParameters: P
     ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
     annotations?: DeclareAnnotations<{ readonly [K in keyof P]: Schema.To<P[K]> }, A>
-  ): Schema<Schema.Context<P[number]>, I, A>
+  ): Schema<A, I, Schema.Context<P[number]>>
 } = function() {
   if (Array.isArray(arguments[0])) {
     const typeParameters = arguments[0]
@@ -571,7 +575,7 @@ export const fromBrand = <C extends Brand.Brand<string | symbol>>(
   constructor: Brand.Brand.Constructor<C>,
   options?: FilterAnnotations<Brand.Brand.Unbranded<C>>
 ) =>
-<R, I, A extends Brand.Brand.Unbranded<C>>(self: Schema<R, I, A>): Schema<R, I, A & C> => {
+<R, I, A extends Brand.Brand.Unbranded<C>>(self: Schema<A, I, R>): Schema<A & C, I, R> => {
   return make(AST.createRefinement(
     self.ast,
     (a: A, _: ParseOptions, ast: AST.AST): Option.Option<ParseResult.ParseIssue> => {
@@ -597,7 +601,7 @@ export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
   options?: DeclareAnnotations<[], InstanceType<A>>
-): Schema<never, InstanceType<A>> =>
+): Schema<InstanceType<A>> =>
   declare(
     (u): u is InstanceType<A> => u instanceof constructor,
     {
@@ -609,11 +613,11 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
     }
   )
 
-const _undefined: Schema<never, undefined> = make(AST.undefinedKeyword)
+const _undefined: Schema<undefined> = make(AST.undefinedKeyword)
 
-const _void: Schema<never, void> = make(AST.voidKeyword)
+const _void: Schema<void> = make(AST.voidKeyword)
 
-const _null: Schema<never, null> = make(AST._null)
+const _null: Schema<null> = make(AST._null)
 
 export {
   /**
@@ -637,103 +641,103 @@ export {
  * @category primitives
  * @since 1.0.0
  */
-export const never: Schema<never, never> = make(AST.neverKeyword)
+export const never: Schema<never> = make(AST.neverKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const unknown: Schema<never, unknown> = make(AST.unknownKeyword)
+export const unknown: Schema<unknown> = make(AST.unknownKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const any: Schema<never, any> = make(AST.anyKeyword)
+export const any: Schema<any> = make(AST.anyKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const string: Schema<never, string> = make(AST.stringKeyword)
+export const string: Schema<string> = make(AST.stringKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const number: Schema<never, number> = make(AST.numberKeyword)
+export const number: Schema<number> = make(AST.numberKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const boolean: Schema<never, boolean> = make(AST.booleanKeyword)
+export const boolean: Schema<boolean> = make(AST.booleanKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const bigintFromSelf: Schema<never, bigint> = make(AST.bigIntKeyword)
+export const bigintFromSelf: Schema<bigint> = make(AST.bigIntKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const symbolFromSelf: Schema<never, symbol> = make(AST.symbolKeyword)
+export const symbolFromSelf: Schema<symbol> = make(AST.symbolKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const object: Schema<never, object> = make(AST.objectKeyword)
+export const object: Schema<object> = make(AST.objectKeyword)
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<Schema<any, any>>>(
+export const union = <Members extends ReadonlyArray<Schema<any, any, any>>>(
   ...members: Members
-): Schema<Schema.Context<Members[number]>, Schema.From<Members[number]>, Schema.To<Members[number]>> =>
+): Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>> =>
   make(AST.createUnion(members.map((m) => m.ast)))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nullable = <R, I, A>(self: Schema<R, I, A>): Schema<R, I | null, A | null> => union(_null, self)
+export const nullable = <A, I, R>(self: Schema<A, I, R>): Schema<A | null, I | null, R> => union(_null, self)
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const orUndefined = <R, I, A>(
-  self: Schema<R, I, A>
-): Schema<R, I | undefined, A | undefined> => union(_undefined, self)
+export const orUndefined = <A, I, R>(
+  self: Schema<A, I, R>
+): Schema<A | undefined, I | undefined, R> => union(_undefined, self)
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nullish = <R, I, A>(
-  self: Schema<R, I, A>
-): Schema<R, I | null | undefined, A | null | undefined> => union(_null, _undefined, self)
+export const nullish = <A, I, R>(
+  self: Schema<A, I, R>
+): Schema<A | null | undefined, I | null | undefined, R> => union(_null, _undefined, self)
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const keyof = <R, I, A>(schema: Schema<R, I, A>): Schema<never, keyof A> => make(AST.keyof(schema.ast))
+export const keyof = <A, I, R>(schema: Schema<A, I, R>): Schema<keyof A> => make(AST.keyof(schema.ast))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const tuple = <Elements extends ReadonlyArray<Schema<any, any>>>(
+export const tuple = <Elements extends ReadonlyArray<Schema<any, any, any>>>(
   ...elements: Elements
 ): Schema<
-  Schema.Context<Elements[number]>,
+  { readonly [K in keyof Elements]: Schema.To<Elements[K]> },
   { readonly [K in keyof Elements]: Schema.From<Elements[K]> },
-  { readonly [K in keyof Elements]: Schema.To<Elements[K]> }
+  Schema.Context<Elements[number]>
 > =>
   make(
     AST.createTuple(
@@ -748,10 +752,10 @@ export const tuple = <Elements extends ReadonlyArray<Schema<any, any>>>(
  * @since 1.0.0
  */
 export const rest =
-  <R2, IB, B>(rest: Schema<R2, IB, B>) =>
-  <R1, I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
-    self: Schema<R1, I, A>
-  ): Schema<R1 | R2, readonly [...I, ...Array<IB>], readonly [...A, ...Array<B>]> => {
+  <B, IB, R2>(rest: Schema<B, IB, R2>) =>
+  <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R1>(
+    self: Schema<A, I, R1>
+  ): Schema<readonly [...A, ...Array<B>], readonly [...I, ...Array<IB>], R1 | R2> => {
     if (AST.isTuple(self.ast)) {
       return make(AST.appendRestElement(self.ast, rest.ast))
     }
@@ -763,10 +767,10 @@ export const rest =
  * @since 1.0.0
  */
 export const element =
-  <R2, IB, B>(element: Schema<R2, IB, B>) =>
-  <R1, I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
-    self: Schema<R1, I, A>
-  ): Schema<R1 | R2, readonly [...I, IB], readonly [...A, B]> => {
+  <B, IB, R2>(element: Schema<B, IB, R2>) =>
+  <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R1>(
+    self: Schema<A, I, R1>
+  ): Schema<readonly [...A, B], readonly [...I, IB], R1 | R2> => {
     if (AST.isTuple(self.ast)) {
       return make(AST.appendElement(self.ast, AST.createElement(element.ast, false)))
     }
@@ -778,10 +782,10 @@ export const element =
  * @since 1.0.0
  */
 export const optionalElement =
-  <R2, IB, B>(element: Schema<R2, IB, B>) =>
-  <R1, I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
-    self: Schema<R1, I, A>
-  ): Schema<R1 | R2, readonly [...I, IB?], readonly [...A, B?]> => {
+  <B, IB, R2>(element: Schema<B, IB, R2>) =>
+  <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R1>(
+    self: Schema<A, I, R1>
+  ): Schema<readonly [...A, B?], readonly [...I, IB?], R1 | R2> => {
     if (AST.isTuple(self.ast)) {
       return make(AST.appendElement(self.ast, AST.createElement(element.ast, true)))
     }
@@ -792,22 +796,22 @@ export const optionalElement =
  * @category combinators
  * @since 1.0.0
  */
-export const array = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray<I>, ReadonlyArray<A>> =>
+export const array = <A, I, R>(item: Schema<A, I, R>): Schema<ReadonlyArray<A>, ReadonlyArray<I>, R> =>
   make(AST.createTuple([], Option.some([item.ast]), true))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nonEmptyArray = <R, I, A>(
-  item: Schema<R, I, A>
-): Schema<R, readonly [I, ...Array<I>], readonly [A, ...Array<A>]> => tuple(item).pipe(rest(item))
+export const nonEmptyArray = <A, I, R>(
+  item: Schema<A, I, R>
+): Schema<readonly [A, ...Array<A>], readonly [I, ...Array<I>], R> => tuple(item).pipe(rest(item))
 
 /**
  * @since 1.0.0
  */
-export interface PropertySignature<R, From, FromIsOptional, To, ToIsOptional>
-  extends Schema.Variance<R, From, To>, Pipeable
+export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R = never>
+  extends Schema.Variance<To, From, R>, Pipeable
 {
   readonly FromIsOptional: FromIsOptional
   readonly ToIsOptional: ToIsOptional
@@ -831,7 +835,7 @@ type PropertySignatureAST =
 
 /** @internal */
 export class PropertySignatureImpl<R, From, FromIsOptional, To, ToIsOptional> {
-  readonly [TypeId]: Schema.Variance<R, From, To>[TypeId] = InternalSchema.variance
+  readonly [TypeId]: Schema.Variance<To, From, R>[TypeId] = InternalSchema.variance
   readonly FromIsOptional!: FromIsOptional
   readonly ToIsOptional!: ToIsOptional
 
@@ -850,7 +854,7 @@ export class PropertySignatureImpl<R, From, FromIsOptional, To, ToIsOptional> {
 export const propertySignatureAnnotations = (annotations: DocAnnotations) =>
 <S extends StructFields[PropertyKey]>(
   self: S
-): S extends Schema<infer R, infer I, infer A> ? PropertySignature<R, I, false, A, false> : S => {
+): S extends Schema<infer A, infer I, infer R> ? PropertySignature<I, false, A, false, R> : S => {
   if (isSchema(self)) {
     return new PropertySignatureImpl({
       _tag: "Declaration",
@@ -869,13 +873,13 @@ export const propertySignatureAnnotations = (annotations: DocAnnotations) =>
  * @category optional
  * @since 1.0.0
  */
-export const optionalToRequired = <R, I, A, B>(
-  from: Schema<R, I, A>,
-  to: Schema<never, B>,
+export const optionalToRequired = <A, I, R, B>(
+  from: Schema<A, I, R>,
+  to: Schema<B>,
   decode: (o: Option.Option<A>) => B, // `none` here means: the value is missing in the input
   encode: (b: B) => Option.Option<A>, // `none` here means: the value will be missing in the output
   options?: DocAnnotations
-): PropertySignature<R, I, true, B, false> =>
+): PropertySignature<I, true, B, false, R> =>
   new PropertySignatureImpl({
     _tag: "OptionalToRequired",
     from: from.ast,
@@ -889,52 +893,52 @@ export const optionalToRequired = <R, I, A, B>(
  * @since 1.0.0
  */
 export const optional: {
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly exact: true; readonly default: () => A; readonly nullable: true }
-  ): PropertySignature<R, I | null, true, A, false>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  ): PropertySignature<I | null, true, A, false, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly exact: true; readonly default: () => A }
-  ): PropertySignature<R, I, true, A, false>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  ): PropertySignature<I, true, A, false, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly exact: true; readonly nullable: true; readonly as: "Option" }
-  ): PropertySignature<R, I | null, true, Option.Option<A>, false>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  ): PropertySignature<I | null, true, Option.Option<A>, false, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly exact: true; readonly as: "Option" }
-  ): PropertySignature<R, I, true, Option.Option<A>, false>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  ): PropertySignature<I, true, Option.Option<A>, false, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly exact: true }
-  ): PropertySignature<R, I, true, A, true>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  ): PropertySignature<I, true, A, true, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly default: () => A; readonly nullable: true }
-  ): PropertySignature<R, I | null | undefined, true, A, false>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  ): PropertySignature<I | null | undefined, true, A, false, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly nullable: true; readonly as: "Option" }
-  ): PropertySignature<R, I | undefined | null, true, Option.Option<A>, false>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  ): PropertySignature<I | undefined | null, true, Option.Option<A>, false, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly as: "Option" }
-  ): PropertySignature<R, I | undefined, true, Option.Option<A>, false>
-  <R, I, A>(
-    schema: Schema<R, I, A>,
+  ): PropertySignature<I | undefined, true, Option.Option<A>, false, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
     options: { readonly default: () => A }
-  ): PropertySignature<R, I | undefined, true, A, false>
-  <R, I, A>(schema: Schema<R, I, A>): PropertySignature<R, I | undefined, true, A | undefined, true>
-} = <R, I, A>(
-  schema: Schema<R, I, A>,
+  ): PropertySignature<I | undefined, true, A, false, R>
+  <A, I, R>(schema: Schema<A, I, R>): PropertySignature<I | undefined, true, A | undefined, true, R>
+} = <A, I, R>(
+  schema: Schema<A, I, R>,
   options?: {
     readonly exact?: true
     readonly default?: () => A
     readonly nullable?: true
     readonly as?: "Option"
   }
-): PropertySignature<R, any, any, any, any> => {
+): PropertySignature<any, any, any, any, R> => {
   const isExact = options?.exact
   const value = options?.default
   const isNullable = options?.nullable
@@ -1030,8 +1034,8 @@ export const optional: {
  */
 export type FromOptionalKeys<Fields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<any, any, true, any, boolean>
-    | PropertySignature<any, never, true, never, boolean> ? K
+    | PropertySignature<any, true, any, boolean, any>
+    | PropertySignature<never, true, never, boolean, any> ? K
     : never
 }[keyof Fields]
 
@@ -1040,8 +1044,8 @@ export type FromOptionalKeys<Fields> = {
  */
 export type ToOptionalKeys<Fields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<any, any, boolean, any, true>
-    | PropertySignature<any, never, boolean, never, true> ? K
+    | PropertySignature<any, boolean, any, true, any>
+    | PropertySignature<never, boolean, never, true, any> ? K
     : never
 }[keyof Fields]
 
@@ -1051,9 +1055,9 @@ export type ToOptionalKeys<Fields> = {
 export type StructFields = Record<
   PropertyKey,
   | Schema<any, any, any>
-  | Schema<any, never, never>
-  | PropertySignature<any, any, boolean, any, boolean>
-  | PropertySignature<any, never, boolean, never, boolean>
+  | Schema<never, never, any>
+  | PropertySignature<any, boolean, any, boolean, any>
+  | PropertySignature<never, boolean, never, boolean, any>
 >
 
 /**
@@ -1076,7 +1080,7 @@ export type ToStruct<Fields extends StructFields> =
  */
 export const struct = <Fields extends StructFields>(
   fields: Fields
-): Schema<Schema.Context<Fields[keyof Fields]>, Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>> => {
+): Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, Schema.Context<Fields[keyof Fields]>> => {
   const ownKeys = Internal.ownKeys(fields)
   const pss: Array<AST.PropertySignature> = []
   const pssFrom: Array<AST.PropertySignature> = []
@@ -1135,8 +1139,8 @@ export const struct = <Fields extends StructFields>(
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 <R, I extends { [K in keyof A]?: any }>(
-  self: Schema<R, I, A>
-): Schema<R, Simplify<Pick<I, Keys[number]>>, Simplify<Pick<A, Keys[number]>>> => {
+  self: Schema<A, I, R>
+): Schema<Simplify<Pick<A, Keys[number]>>, Simplify<Pick<I, Keys[number]>>, R> => {
   const ast = self.ast
   if (AST.isTransform(ast)) {
     if (AST.isTypeLiteralTransformation(ast.transformation)) {
@@ -1165,8 +1169,8 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 <R, I extends { [K in keyof A]?: any }>(
-  self: Schema<R, I, A>
-): Schema<R, Simplify<Omit<I, Keys[number]>>, Simplify<Omit<A, Keys[number]>>> => {
+  self: Schema<A, I, R>
+): Schema<Simplify<Omit<A, Keys[number]>>, Simplify<Omit<I, Keys[number]>>, R> => {
   const ast = self.ast
   if (AST.isTransform(ast)) {
     if (AST.isTypeLiteralTransformation(ast.transformation)) {
@@ -1194,11 +1198,11 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @since 1.0.0
  */
 export const pluck: {
-  <A, K extends keyof A>(key: K): <R, I>(schema: Schema<R, I, A>) => Schema<R, I, A[K]>
-  <R, I, A, K extends keyof A>(schema: Schema<R, I, A>, key: K): Schema<R, I, A[K]>
-} = dual(2, <R, I, A, K extends keyof A>(schema: Schema<R, I, A>, key: K): Schema<R, I, A[K]> => {
+  <A, K extends keyof A>(key: K): <I, R>(schema: Schema<A, I, R>) => Schema<A[K], I, R>
+  <A, I, R, K extends keyof A>(schema: Schema<A, I, R>, key: K): Schema<A[K], I, R>
+} = dual(2, <A, I, R, K extends keyof A>(schema: Schema<A, I, R>, key: K): Schema<A[K], I, R> => {
   const ps = AST.getPropertyKeyIndexedAccess(to(schema).ast, key)
-  const value = make<R, A[K], A[K]>(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
+  const value = make<A[K], A[K], R>(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
   return transform(
     schema,
     value,
@@ -1211,7 +1215,7 @@ export const pluck: {
  * @category model
  * @since 1.0.0
  */
-export interface BrandSchema<R, I, A extends Brand.Brand<any>> extends Schema<R, I, A>, Brand.Brand.Constructor<A> {}
+export interface BrandSchema<A extends Brand.Brand<any>, I, R> extends Schema<A, I, R>, Brand.Brand.Constructor<A> {}
 
 const appendBrandAnnotation = <B extends string | symbol>(
   ast: AST.AST,
@@ -1245,9 +1249,9 @@ const appendBrandAnnotation = <B extends string | symbol>(
  */
 export const brand =
   <B extends string | symbol, A>(brand: B, options?: DocAnnotations) =>
-  <I>(self: Schema<never, I, A>): BrandSchema<never, I, A & Brand.Brand<B>> => {
+  <I>(self: Schema<A, I, never>): BrandSchema<A & Brand.Brand<B>, I, never> => {
     const ast = appendBrandAnnotation(self.ast, brand, options)
-    const schema = make<never, I, A>(ast)
+    const schema = make<I, A, never>(ast)
     const validateSync = Parser.validateSync(schema)
     const validateOption = Parser.validateOption(schema)
     const _validateEither = validateEither(schema)
@@ -1278,17 +1282,17 @@ export const brand =
  * @category combinators
  * @since 1.0.0
  */
-export const partial = <R, I, A>(
-  self: Schema<R, I, A>
-): Schema<R, Simplify<Partial<I>>, Simplify<Partial<A>>> => make(AST.partial(self.ast))
+export const partial = <A, I, R>(
+  self: Schema<A, I, R>
+): Schema<Simplify<Partial<A>>, Simplify<Partial<I>>, R> => make(AST.partial(self.ast))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const required = <R, I, A>(
-  self: Schema<R, I, A>
-): Schema<R, Simplify<Required<I>>, Simplify<Required<A>>> => make(AST.required(self.ast))
+export const required = <A, I, R>(
+  self: Schema<A, I, R>
+): Schema<Simplify<Required<A>>, Simplify<Required<I>>, R> => make(AST.required(self.ast))
 
 /**
  * Creates a new schema with shallow mutability applied to its properties.
@@ -1298,9 +1302,9 @@ export const required = <R, I, A>(
  * @category combinators
  * @since 1.0.0
  */
-export const mutable = <R, I, A>(
-  schema: Schema<R, I, A>
-): Schema<R, Simplify<Mutable<I>>, Simplify<Mutable<A>>> => {
+export const mutable = <A, I, R>(
+  schema: Schema<A, I, R>
+): Schema<Simplify<Mutable<A>>, Simplify<Mutable<I>>, R> => {
   const ast = AST.mutable(schema.ast)
   return ast === schema.ast ? schema as any : make(ast)
 }
@@ -1309,10 +1313,10 @@ export const mutable = <R, I, A>(
  * @category combinators
  * @since 1.0.0
  */
-export const record = <R1, IK extends string | symbol, AK extends IK, R2, IV, AV>(
-  key: Schema<R1, IK, AK>,
-  value: Schema<R2, IV, AV>
-): Schema<R1 | R2, { readonly [k in IK]: IV }, { readonly [k in AK]: AV }> =>
+export const record = <AK extends string | symbol, IK extends string | symbol, R1, AV, IV, R2>(
+  key: Schema<AK, IK, R1>,
+  value: Schema<AV, IV, R2>
+): Schema<{ readonly [K in AK]: AV }, { readonly [K in IK]: IV }, R1 | R2> =>
   make(AST.createRecord(key.ast, value.ast, true))
 
 /** @internal */
@@ -1404,19 +1408,19 @@ export const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyAr
  * @since 1.0.0
  */
 export const extend: {
-  <R2, IB, B>(
-    that: Schema<R2, IB, B>
-  ): <R1, I, A>(self: Schema<R1, I, A>) => Schema<R1 | R2, Simplify<I & IB>, Simplify<A & B>>
-  <R1, I, A, R2, IB, B>(
-    self: Schema<R1, I, A>,
-    that: Schema<R2, IB, B>
-  ): Schema<R1 | R2, Simplify<I & IB>, Simplify<A & B>>
+  <B, IB, R2>(
+    that: Schema<B, IB, R2>
+  ): <A, I, R1>(self: Schema<A, I, R1>) => Schema<Simplify<A & B>, Simplify<I & IB>, R1 | R2>
+  <A, I, R1, B, IB, R2>(
+    self: Schema<A, I, R1>,
+    that: Schema<B, IB, R2>
+  ): Schema<Simplify<A & B>, Simplify<I & IB>, R1 | R2>
 } = dual(
   2,
-  <R1, I, A, R2, IB, B>(
-    self: Schema<R1, I, A>,
-    that: Schema<R2, IB, B>
-  ): Schema<R1 | R2, Simplify<I & IB>, Simplify<A & B>> =>
+  <A, I, R1, B, IB, R2>(
+    self: Schema<A, I, R1>,
+    that: Schema<B, IB, R2>
+  ): Schema<Simplify<A & B>, Simplify<I & IB>, R1 | R2> =>
     make(
       intersectUnionMembers(
         AST.isUnion(self.ast) ? self.ast.types : [self.ast],
@@ -1430,27 +1434,27 @@ export const extend: {
  * @since 1.0.0
  */
 export const compose: {
-  <R2, B, C>(bc: Schema<R2, B, C>): <R1, A>(ab: Schema<R1, A, B>) => Schema<R1 | R2, A, C>
-  <R2, C, D>(
-    bc: Schema<R2, C, D>,
+  <C, B, R2>(to: Schema<C, B, R2>): <A, R1>(from: Schema<B, A, R1>) => Schema<C, A, R1 | R2>
+  <D, C, R2>(
+    to: Schema<D, C, R2>,
     options: { strict: false }
-  ): <R1, A, B>(ab: Schema<R1, A, B>) => Schema<R1 | R2, A, D>
-  <R1, A, B, R2, C>(ab: Schema<R1, A, B>, cd: Schema<R2, B, C>): Schema<R1 | R2, A, C>
-  <R1, A, B, R2, C, D>(ab: Schema<R1, A, B>, cd: Schema<R2, C, D>, options: { strict: false }): Schema<R1 | R2, A, D>
+  ): <B, A, R1>(from: Schema<B, A, R1>) => Schema<D, A, R1 | R2>
+  <B, A, R1, C, R2>(from: Schema<B, A, R1>, to: Schema<C, B, R2>): Schema<C, A, R1 | R2>
+  <A, B, R1, D, C, R2>(from: Schema<B, A, R1>, to: Schema<D, C, R2>, options: { strict: false }): Schema<D, A, R1 | R2>
 } = dual(
   (args) => isSchema(args[1]),
-  <R1, A, B, R2, C, D>(ab: Schema<R1, A, B>, cd: Schema<R2, C, D>): Schema<R1 | R2, A, D> =>
-    make(AST.compose(ab.ast, cd.ast))
+  <A, B, R1, D, C, R2>(from: Schema<A, B, R1>, to: Schema<D, C, R2>): Schema<D, A, R1 | R2> =>
+    make(AST.compose(from.ast, to.ast))
 )
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const suspend = <R, I, A = I>(
-  f: () => Schema<R, I, A>,
+export const suspend = <A, I, R>(
+  f: () => Schema<A, I, R>,
   annotations?: AST.Annotations
-): Schema<R, I, A> => make(AST.createSuspend(() => f().ast, annotations))
+): Schema<A, I, R> => make(AST.createSuspend(() => f().ast, annotations))
 
 /**
  * @category combinators
@@ -1459,19 +1463,19 @@ export const suspend = <R, I, A = I>(
 export function filter<A>(
   f: (a: A, options: ParseOptions, self: AST.Refinement) => Option.Option<ParseResult.ParseIssue>,
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A>
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
 export function filter<C extends A, B extends A, A = C>(
   refinement: Predicate.Refinement<A, B>,
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, C>) => Schema<R, I, C & B>
+): <I, R>(self: Schema<C, I, R>) => Schema<C & B, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<NoInfer<A>>,
   options?: FilterAnnotations<NoInfer<A>>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A>
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<A> | AST.Refinement["filter"],
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> {
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> {
   return (self) =>
     make(AST.createRefinement(
       self.ast,
@@ -1496,36 +1500,36 @@ export function filter<A>(
  * @since 1.0.0
  */
 export const transformOrFail: {
-  <R2, C, D, B, R3, R4>(
-    to: Schema<R2, C, D>,
+  <D, C, R2, B, R3, R4>(
+    to: Schema<D, C, R2>,
     decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, C>,
     encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, B>
-  ): <R1, A>(self: Schema<R1, A, B>) => Schema<R1 | R2 | R3 | R4, A, D>
-  <R2, C, D, B, R3, R4>(
-    to: Schema<R2, C, D>,
+  ): <A, R1>(self: Schema<B, A, R1>) => Schema<D, A, R1 | R2 | R3 | R4>
+  <D, C, R2, B, R3, R4>(
+    to: Schema<D, C, R2>,
     decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, unknown>,
     encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, unknown>,
     options: { strict: false }
-  ): <R1, A>(self: Schema<R1, A, B>) => Schema<R1 | R2 | R3 | R4, A, D>
-  <R1, A, B, R2, C, D, R3, R4>(
-    from: Schema<R1, A, B>,
-    to: Schema<R2, C, D>,
+  ): <A, R1>(self: Schema<B, A, R1>) => Schema<D, A, R1 | R2 | R3 | R4>
+  <B, A, R1, D, C, R2, R3, R4>(
+    from: Schema<B, A, R1>,
+    to: Schema<D, C, R2>,
     decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, C>,
     encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, B>
-  ): Schema<R1 | R2 | R3 | R4, A, D>
-  <R1, A, B, R2, C, D, R3, R4>(
-    from: Schema<R1, A, B>,
-    to: Schema<R2, C, D>,
+  ): Schema<D, A, R1 | R2 | R3 | R4>
+  <B, A, R1, D, C, R2, R3, R4>(
+    from: Schema<B, A, R1>,
+    to: Schema<D, C, R2>,
     decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, unknown>,
     encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, unknown>,
     options: { strict: false }
-  ): Schema<R1 | R2 | R3 | R4, A, D>
-} = dual((args) => isSchema(args[0]) && isSchema(args[1]), <R1, A, B, R2, C, D, R3, R4>(
-  from: Schema<R1, A, B>,
-  to: Schema<R2, C, D>,
-  decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, unknown>,
-  encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, unknown>
-): Schema<R1 | R2 | R3 | R4, A, D> =>
+  ): Schema<D, A, R1 | R2 | R3 | R4>
+} = dual((args) => isSchema(args[0]) && isSchema(args[1]), <A, B, R1, C, D, R2, R3, R4>(
+  from: Schema<A, B, R1>,
+  to: Schema<C, D, R2>,
+  decode: (a: A, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, D>,
+  encode: (d: D, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, A>
+): Schema<C, B, R1 | R2 | R3 | R4> =>
   make(
     AST.createTransform(
       from.ast,
@@ -1542,38 +1546,38 @@ export const transformOrFail: {
  * @since 1.0.0
  */
 export const transform: {
-  <R2, C, D, B>(
-    to: Schema<R2, C, D>,
+  <D, C, R2, B>(
+    to: Schema<D, C, R2>,
     decode: (b: B) => C,
     encode: (c: C) => B
-  ): <R1, A>(self: Schema<R1, A, B>) => Schema<R1 | R2, A, D>
-  <R2, C, D, B>(
-    to: Schema<R2, C, D>,
+  ): <A, R1>(from: Schema<B, A, R1>) => Schema<D, A, R1 | R2>
+  <D, C, R2, B>(
+    to: Schema<D, C, R2>,
     decode: (b: B) => unknown,
     encode: (c: C) => unknown,
     options: { strict: false }
-  ): <R1, A>(self: Schema<R1, A, B>) => Schema<R1 | R2, A, D>
-  <R1, A, B, R2, C, D>(
-    from: Schema<R1, A, B>,
-    to: Schema<R2, C, D>,
+  ): <A, R1>(from: Schema<B, A, R1>) => Schema<D, A, R1 | R2>
+  <B, A, R1, D, C, R2>(
+    from: Schema<B, A, R1>,
+    to: Schema<D, C, R2>,
     decode: (b: B) => C,
     encode: (c: C) => B
-  ): Schema<R1 | R2, A, D>
-  <R1, A, B, R2, C, D>(
-    from: Schema<R1, A, B>,
-    to: Schema<R2, C, D>,
+  ): Schema<D, A, R1 | R2>
+  <B, A, R1, D, C, R2>(
+    from: Schema<B, A, R1>,
+    to: Schema<D, C, R2>,
     decode: (b: B) => unknown,
     encode: (c: C) => unknown,
     options: { strict: false }
-  ): Schema<R1 | R2, A, D>
+  ): Schema<D, A, R1 | R2>
 } = dual(
   (args) => isSchema(args[0]) && isSchema(args[1]),
-  <R1, A, B, R2, C, D>(
-    from: Schema<R1, A, B>,
-    to: Schema<R2, C, D>,
-    decode: (b: B) => C,
-    encode: (c: C) => B
-  ): Schema<R1 | R2, A, D> =>
+  <A, B, R1, C, D, R2>(
+    from: Schema<A, B, R1>,
+    to: Schema<C, D, R2>,
+    decode: (a: A) => D,
+    encode: (d: D) => A
+  ): Schema<C, B, R1 | R2> =>
     transformOrFail(from, to, (a) => ParseResult.succeed(decode(a)), (b) => ParseResult.succeed(encode(b)))
 )
 
@@ -1593,7 +1597,7 @@ export const transform: {
 export const transformLiteral = <From extends AST.LiteralValue, To extends AST.LiteralValue>(
   from: From,
   to: To
-): Schema<never, From, To> => transform(literal(from), literal(to), () => to, () => from)
+): Schema<To, From, never> => transform(literal(from), literal(to), () => to, () => from)
 
 /**
  * Creates a new `Schema` which maps between corresponding literal values.
@@ -1616,7 +1620,7 @@ export const transformLiterals = <
   const A extends ReadonlyArray<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>
 >(
   ...pairs: A
-): Schema<never, A[number][0], A[number][1]> => union(...pairs.map(([from, to]) => transformLiteral(from, to)))
+): Schema<A[number][1], A[number][0], never> => union(...pairs.map(([from, to]) => transformLiteral(from, to)))
 
 /**
  * Attaches a property signature with the specified key and value to the schema.
@@ -1651,23 +1655,23 @@ export const attachPropertySignature: {
     key: K,
     value: V,
     options?: DocAnnotations
-  ): <R, I, A extends object>(
-    schema: Schema<R, I, A>
-  ) => Schema<R, I, Simplify<A & { readonly [k in K]: V }>>
-  <R, I, A, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
-    schema: Schema<R, I, A>,
+  ): <A extends object, I, R>(
+    schema: Schema<A, I, R>
+  ) => Schema<Simplify<A & { readonly [k in K]: V }>, I, R>
+  <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
+    schema: Schema<A, I, R>,
     key: K,
     value: V,
     options?: DocAnnotations
-  ): Schema<R, I, Simplify<A & { readonly [k in K]: V }>>
+  ): Schema<Simplify<A & { readonly [k in K]: V }>, I, R>
 } = dual(
   (args) => isSchema(args[0]),
-  <R, I, A, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
-    schema: Schema<R, I, A>,
+  <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
+    schema: Schema<A, I, R>,
     key: K,
     value: V,
     options?: DocAnnotations
-  ): Schema<R, I, Simplify<A & { readonly [k in K]: V }>> => {
+  ): Schema<Simplify<A & { readonly [k in K]: V }>, I, R> => {
     const attached = extend(
       to(schema),
       struct({ [key]: Predicate.isSymbol(value) ? uniqueSymbol(value) : literal(value) })
@@ -1763,28 +1767,28 @@ export interface FilterAnnotations<A> extends DeclareAnnotations<readonly [A], A
  * @category annotations
  * @since 1.0.0
  */
-export const annotations = (annotations: AST.Annotations) => <R, I, A>(self: Schema<R, I, A>): Schema<R, I, A> =>
+export const annotations = (annotations: AST.Annotations) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   make(AST.mergeAnnotations(self.ast, annotations))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const message = (message: AST.MessageAnnotation<unknown>) => <R, I, A>(self: Schema<R, I, A>): Schema<R, I, A> =>
+export const message = (message: AST.MessageAnnotation<unknown>) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   make(AST.setAnnotation(self.ast, AST.MessageAnnotationId, message))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const identifier = (identifier: AST.IdentifierAnnotation) => <R, I, A>(self: Schema<R, I, A>): Schema<R, I, A> =>
+export const identifier = (identifier: AST.IdentifierAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   make(AST.setAnnotation(self.ast, AST.IdentifierAnnotationId, identifier))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const title = (title: AST.TitleAnnotation) => <R, I, A>(self: Schema<R, I, A>): Schema<R, I, A> =>
+export const title = (title: AST.TitleAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   make(AST.setAnnotation(self.ast, AST.TitleAnnotationId, title))
 
 /**
@@ -1792,17 +1796,17 @@ export const title = (title: AST.TitleAnnotation) => <R, I, A>(self: Schema<R, I
  * @since 1.0.0
  */
 export const description =
-  (description: AST.DescriptionAnnotation) => <R, I, A>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  (description: AST.DescriptionAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     make(AST.setAnnotation(self.ast, AST.DescriptionAnnotationId, description))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const examples = (examples: AST.ExamplesAnnotation) => <R, I, A>(self: Schema<R, I, A>): Schema<R, I, A> =>
+export const examples = (examples: AST.ExamplesAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   make(AST.setAnnotation(self.ast, AST.ExamplesAnnotationId, examples))
 
-const _default = <A>(value: A) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+const _default = <A>(value: A) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   make(AST.setAnnotation(self.ast, AST.DefaultAnnotationId, value))
 
 export {
@@ -1818,7 +1822,7 @@ export {
  * @since 1.0.0
  */
 export const documentation =
-  (documentation: AST.DocumentationAnnotation) => <R, I, A>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  (documentation: AST.DocumentationAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     make(AST.setAnnotation(self.ast, AST.DocumentationAnnotationId, documentation))
 
 /**
@@ -1829,7 +1833,7 @@ export const documentation =
  * @category annotations
  * @since 1.0.0
  */
-export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <R, I, A>(self: Schema<R, I, A>): Schema<R, I, A> =>
+export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
 
 /**
@@ -1837,7 +1841,7 @@ export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <R, I, A>(se
  * @since 1.0.0
  */
 export const equivalence =
-  <A>(equivalence: Equivalence.Equivalence<A>) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <A>(equivalence: Equivalence.Equivalence<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     make(AST.setAnnotation(self.ast, hooks.EquivalenceHookId, () => equivalence))
 
 type Rename<A, M> = {
@@ -1860,31 +1864,31 @@ export const rename: {
       & { readonly [K in Exclude<keyof M, keyof A>]: never }
   >(
     mapping: M
-  ): <R, I>(self: Schema<R, I, A>) => Schema<R, I, Simplify<Rename<A, M>>>
+  ): <I, R>(self: Schema<A, I, R>) => Schema<Simplify<Rename<A, M>>, I, R>
   <
-    R,
-    I,
     A,
+    I,
+    R,
     const M extends
       & { readonly [K in keyof A]?: PropertyKey }
       & { readonly [K in Exclude<keyof M, keyof A>]: never }
   >(
-    self: Schema<R, I, A>,
+    self: Schema<A, I, R>,
     mapping: M
-  ): Schema<R, I, Simplify<Rename<A, M>>>
+  ): Schema<Simplify<Rename<A, M>>, I, R>
 } = dual(
   2,
   <
-    R,
-    I,
     A,
+    I,
+    R,
     const M extends
       & { readonly [K in keyof A]?: PropertyKey }
       & { readonly [K in Exclude<keyof M, keyof A>]: never }
   >(
-    self: Schema<R, I, A>,
+    self: Schema<A, I, R>,
     mapping: M
-  ): Schema<R, I, Simplify<Rename<A, M>>> => {
+  ): Schema<Simplify<Rename<A, M>>, I, R> => {
     return make(AST.rename(self.ast, mapping))
   }
 )
@@ -1905,7 +1909,7 @@ export const TrimmedTypeId = Symbol.for("@effect/schema/TypeId/Trimmed")
  * @since 1.0.0
  */
 export const trimmed =
-  <A extends string>(options?: FilterAnnotations<A>) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <A extends string>(options?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => a === a.trim(), {
         typeId: TrimmedTypeId,
@@ -1934,7 +1938,7 @@ export const maxLength = <A extends string>(
   maxLength: number,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter(
       (a): a is A => a.length <= maxLength,
@@ -1967,7 +1971,7 @@ export const minLength = <A extends string>(
   minLength: number,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter(
       (a): a is A => a.length >= minLength,
@@ -1994,7 +1998,7 @@ export const pattern = <A extends string>(
   regex: RegExp,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> => {
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> => {
   const pattern = regex.source
   return self.pipe(
     filter(
@@ -2028,7 +2032,7 @@ export const startsWith = <A extends string>(
   startsWith: string,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter(
       (a): a is A => a.startsWith(startsWith),
@@ -2055,7 +2059,7 @@ export const endsWith = <A extends string>(
   endsWith: string,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter(
       (a): a is A => a.endsWith(endsWith),
@@ -2082,7 +2086,7 @@ export const includes = <A extends string>(
   searchString: string,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter(
       (a): a is A => a.includes(searchString),
@@ -2108,7 +2112,7 @@ export const LowercasedTypeId = Symbol.for("@effect/schema/TypeId/Lowercased")
  * @since 1.0.0
  */
 export const lowercased =
-  <A extends string>(options?: FilterAnnotations<A>) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <A extends string>(options?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => a === a.toLowerCase(), {
         typeId: LowercasedTypeId,
@@ -2121,7 +2125,7 @@ export const lowercased =
  * @category string constructors
  * @since 1.0.0
  */
-export const Lowercased: Schema<never, string> = string.pipe(
+export const Lowercased: Schema<string> = string.pipe(
   lowercased({ identifier: "Lowercased", title: "Lowercased" })
 )
 
@@ -2138,7 +2142,7 @@ export const UppercasedTypeId = Symbol.for("@effect/schema/TypeId/Uppercased")
  * @since 1.0.0
  */
 export const uppercased =
-  <A extends string>(options?: FilterAnnotations<A>) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <A extends string>(options?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => a === a.toUpperCase(), {
         typeId: UppercasedTypeId,
@@ -2151,7 +2155,7 @@ export const uppercased =
  * @category string constructors
  * @since 1.0.0
  */
-export const Uppercased: Schema<never, string> = string.pipe(
+export const Uppercased: Schema<string> = string.pipe(
   uppercased({ identifier: "Uppercased", title: "Uppercased" })
 )
 
@@ -2175,7 +2179,7 @@ export const length = <A extends string>(
   length: number,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a.length === length, {
       typeId: LengthTypeId,
@@ -2199,7 +2203,7 @@ export const Char = string.pipe(length(1), identifier("Char"))
  */
 export const nonEmpty = <A extends string>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> =>
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> =>
   minLength(1, {
     description: "a non empty string",
     ...options
@@ -2211,7 +2215,7 @@ export const nonEmpty = <A extends string>(
  * @category string transformations
  * @since 1.0.0
  */
-export const Lowercase: Schema<never, string> = transform(
+export const Lowercase: Schema<string> = transform(
   string,
   Lowercased,
   (s) => s.toLowerCase(),
@@ -2224,7 +2228,7 @@ export const Lowercase: Schema<never, string> = transform(
  * @category string transformations
  * @since 1.0.0
  */
-export const Uppercase: Schema<never, string> = transform(
+export const Uppercase: Schema<string> = transform(
   string,
   Uppercased,
   (s) => s.toUpperCase(),
@@ -2235,7 +2239,7 @@ export const Uppercase: Schema<never, string> = transform(
  * @category string constructors
  * @since 1.0.0
  */
-export const Trimmed: Schema<never, string> = string.pipe(
+export const Trimmed: Schema<string> = string.pipe(
   trimmed({ identifier: "Trimmed", title: "Trimmed" })
 )
 
@@ -2245,7 +2249,7 @@ export const Trimmed: Schema<never, string> = string.pipe(
  * @category string transformations
  * @since 1.0.0
  */
-export const Trim: Schema<never, string> = transform(
+export const Trim: Schema<string> = transform(
   string,
   Trimmed,
   (s) => s.trim(),
@@ -2258,7 +2262,7 @@ export const Trim: Schema<never, string> = transform(
  * @category string transformations
  * @since 1.0.0
  */
-export const split = (separator: string): Schema<never, string, ReadonlyArray<string>> =>
+export const split = (separator: string): Schema<ReadonlyArray<string>, string> =>
   transform(
     string,
     array(string),
@@ -2287,7 +2291,7 @@ const JsonString = string.pipe(annotations({
  *
  * You can optionally provide a `ParseJsonOptions` to configure both `JSON.parse` and `JSON.stringify` executions.
  *
- * Optionally, you can pass a schema `Schema<R, I, A>` to obtain an `A` type instead of `unknown`.
+ * Optionally, you can pass a schema `Schema<A, I, R>` to obtain an `A` type instead of `unknown`.
  *
  * @example
  * import * as S from "@effect/schema/Schema"
@@ -2299,9 +2303,9 @@ const JsonString = string.pipe(annotations({
  * @since 1.0.0
  */
 export const parseJson: {
-  <R, I, A>(schema: Schema<R, I, A>, options?: ParseJsonOptions): Schema<R, string, A>
-  (options?: ParseJsonOptions): Schema<never, string, unknown>
-} = <R, I, A>(schema?: Schema<R, I, A> | ParseJsonOptions, o?: ParseJsonOptions) => {
+  <A, I, R>(schema: Schema<A, I, R>, options?: ParseJsonOptions): Schema<A, string, R>
+  (options?: ParseJsonOptions): Schema<unknown, string>
+} = <A, I, R>(schema?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) => {
   if (isSchema(schema)) {
     return compose(parseJson(o), schema) as any
   }
@@ -2326,7 +2330,7 @@ export const parseJson: {
  * @category string constructors
  * @since 1.0.0
  */
-export const NonEmpty: Schema<never, string> = string.pipe(
+export const NonEmpty: Schema<string> = string.pipe(
   nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
 )
 
@@ -2346,7 +2350,7 @@ const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
  * @category string constructors
  * @since 1.0.0
  */
-export const UUID: Schema<never, string> = string.pipe(
+export const UUID: Schema<string> = string.pipe(
   pattern(uuidRegex, {
     typeId: UUIDTypeId,
     identifier: "UUID",
@@ -2373,7 +2377,7 @@ const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
  * @category string constructors
  * @since 1.0.0
  */
-export const ULID: Schema<never, string> = string.pipe(
+export const ULID: Schema<string> = string.pipe(
   pattern(ulidRegex, {
     typeId: ULIDTypeId,
     identifier: "ULID",
@@ -2398,7 +2402,7 @@ export const FiniteTypeId = Symbol.for("@effect/schema/TypeId/Finite")
  * @since 1.0.0
  */
 export const finite =
-  <A extends number>(options?: FilterAnnotations<A>) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <A extends number>(options?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => Number.isFinite(a), {
         typeId: FiniteTypeId,
@@ -2429,7 +2433,7 @@ export const greaterThan = <A extends number>(
   min: number,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a > min, {
       typeId: GreaterThanTypeId,
@@ -2461,7 +2465,7 @@ export const greaterThanOrEqualTo = <A extends number>(
   min: number,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a >= min, {
       typeId: GreaterThanOrEqualToTypeId,
@@ -2485,7 +2489,7 @@ export const multipleOf = <A extends number>(
   divisor: number,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => N.remainder(a, divisor) === 0, {
       typeId: MultipleOfTypeId,
@@ -2512,7 +2516,7 @@ export type IntTypeId = typeof IntTypeId
  * @since 1.0.0
  */
 export const int =
-  <A extends number>(options?: FilterAnnotations<A>) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <A extends number>(options?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => Number.isSafeInteger(a), {
         typeId: IntTypeId,
@@ -2542,7 +2546,7 @@ export type LessThanTypeId = typeof LessThanTypeId
  * @since 1.0.0
  */
 export const lessThan =
-  <A extends number>(max: number, options?: FilterAnnotations<A>) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <A extends number>(max: number, options?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => a < max, {
         typeId: LessThanTypeId,
@@ -2574,7 +2578,7 @@ export const lessThanOrEqualTo = <A extends number>(
   max: number,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a <= max, {
       typeId: LessThanOrEqualToTypeId,
@@ -2607,7 +2611,7 @@ export const between = <A extends number>(
   max: number,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a >= min && a <= max, {
       typeId: BetweenTypeId,
@@ -2628,7 +2632,7 @@ export const NonNaNTypeId = Symbol.for("@effect/schema/TypeId/NonNaN")
  * @since 1.0.0
  */
 export const nonNaN =
-  <A extends number>(options?: FilterAnnotations<A>) => <R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <A extends number>(options?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => !Number.isNaN(a), {
         typeId: NonNaNTypeId,
@@ -2643,7 +2647,7 @@ export const nonNaN =
  */
 export const positive = <A extends number>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> => greaterThan(0, options)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThan(0, options)
 
 /**
  * @category number filters
@@ -2651,7 +2655,7 @@ export const positive = <A extends number>(
  */
 export const negative = <A extends number>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> => lessThan(0, options)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThan(0, options)
 
 /**
  * @category number filters
@@ -2659,7 +2663,7 @@ export const negative = <A extends number>(
  */
 export const nonPositive = <A extends number>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> => lessThanOrEqualTo(0, options)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanOrEqualTo(0, options)
 
 /**
  * @category number filters
@@ -2667,7 +2671,7 @@ export const nonPositive = <A extends number>(
  */
 export const nonNegative = <A extends number>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> => greaterThanOrEqualTo(0, options)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanOrEqualTo(0, options)
 
 /**
  * Clamps a number between a minimum and a maximum value.
@@ -2676,7 +2680,7 @@ export const nonNegative = <A extends number>(
  * @since 1.0.0
  */
 export const clamp =
-  (minimum: number, maximum: number) => <R, I, A extends number>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  (minimum: number, maximum: number) => <R, I, A extends number>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
       self.pipe(to, between(minimum, maximum)),
@@ -2695,7 +2699,7 @@ export const clamp =
  * @category number constructors
  * @since 1.0.0
  */
-export const NumberFromString: Schema<never, string, number> = transformOrFail(
+export const NumberFromString: Schema<number, string> = transformOrFail(
   string,
   number,
   (s, _, ast) => {
@@ -2723,25 +2727,25 @@ export const NumberFromString: Schema<never, string, number> = transformOrFail(
  * @category number constructors
  * @since 1.0.0
  */
-export const Finite: Schema<never, number> = number.pipe(finite({ identifier: "Finite", title: "Finite" }))
+export const Finite: Schema<number> = number.pipe(finite({ identifier: "Finite", title: "Finite" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Int: Schema<never, number> = number.pipe(int({ identifier: "Int", title: "Int" }))
+export const Int: Schema<number> = number.pipe(int({ identifier: "Int", title: "Int" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNaN: Schema<never, number> = number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
+export const NonNaN: Schema<number> = number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Positive: Schema<never, number> = number.pipe(
+export const Positive: Schema<number> = number.pipe(
   positive({ identifier: "Positive", title: "Positive" })
 )
 
@@ -2749,7 +2753,7 @@ export const Positive: Schema<never, number> = number.pipe(
  * @category number constructors
  * @since 1.0.0
  */
-export const Negative: Schema<never, number> = number.pipe(
+export const Negative: Schema<number> = number.pipe(
   negative({ identifier: "Negative", title: "Negative" })
 )
 
@@ -2757,7 +2761,7 @@ export const Negative: Schema<never, number> = number.pipe(
  * @category number constructors
  * @since 1.0.0
  */
-export const NonPositive: Schema<never, number> = number.pipe(
+export const NonPositive: Schema<number> = number.pipe(
   nonPositive({ identifier: "NonPositive", title: "NonPositive" })
 )
 
@@ -2765,7 +2769,7 @@ export const NonPositive: Schema<never, number> = number.pipe(
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNegative: Schema<never, number> = number.pipe(
+export const NonNegative: Schema<number> = number.pipe(
   nonNegative({ identifier: "NonNegative", title: "NonNegative" })
 )
 
@@ -2793,7 +2797,7 @@ export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
  * @category number constructors
  * @since 1.0.0
  */
-export const JsonNumber: Schema<never, number> = number.pipe(
+export const JsonNumber: Schema<number> = number.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
     identifier: "JsonNumber",
@@ -2807,7 +2811,7 @@ export const JsonNumber: Schema<never, number> = number.pipe(
  * @category boolean transformations
  * @since 1.0.0
  */
-export const Not: Schema<never, boolean> = transform(
+export const Not: Schema<boolean> = transform(
   boolean,
   boolean,
   (self) => !self,
@@ -2820,7 +2824,7 @@ export const Not: Schema<never, boolean> = transform(
  * @category symbol transformations
  * @since 1.0.0
  */
-export const symbol: Schema<never, string, symbol> = transform(
+export const symbol: Schema<symbol, string> = transform(
   string,
   symbolFromSelf,
   (s) => Symbol.for(s),
@@ -2848,7 +2852,7 @@ export const greaterThanBigint = <A extends bigint>(
   min: bigint,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a > min, {
       typeId: { id: GreaterThanBigintTypeId, annotation: { min } },
@@ -2877,7 +2881,7 @@ export const greaterThanOrEqualToBigint = <A extends bigint>(
   min: bigint,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a >= min, {
       typeId: { id: GreaterThanOrEqualToBigintTypeId, annotation: { min } },
@@ -2908,7 +2912,7 @@ export const lessThanBigint = <A extends bigint>(
   max: bigint,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a < max, {
       typeId: { id: LessThanBigintTypeId, annotation: { max } },
@@ -2937,7 +2941,7 @@ export const lessThanOrEqualToBigint = <A extends bigint>(
   max: bigint,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a <= max, {
       typeId: { id: LessThanOrEqualToBigintTypeId, annotation: { max } },
@@ -2967,7 +2971,7 @@ export const betweenBigint = <A extends bigint>(
   max: bigint,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a >= min && a <= max, {
       typeId: { id: BetweenBigintTypeId, annotation: { max, min } },
@@ -2982,7 +2986,7 @@ export const betweenBigint = <A extends bigint>(
  */
 export const positiveBigint = <A extends bigint>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> => greaterThanBigint(0n, options)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanBigint(0n, options)
 
 /**
  * @category bigint filters
@@ -2990,7 +2994,7 @@ export const positiveBigint = <A extends bigint>(
  */
 export const negativeBigint = <A extends bigint>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> => lessThanBigint(0n, options)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanBigint(0n, options)
 
 /**
  * @category bigint filters
@@ -2998,7 +3002,7 @@ export const negativeBigint = <A extends bigint>(
  */
 export const nonNegativeBigint = <A extends bigint>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> => greaterThanOrEqualToBigint(0n, options)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanOrEqualToBigint(0n, options)
 
 /**
  * @category bigint filters
@@ -3006,7 +3010,7 @@ export const nonNegativeBigint = <A extends bigint>(
  */
 export const nonPositiveBigint = <A extends bigint>(
   options?: FilterAnnotations<A>
-): <R, I>(self: Schema<R, I, A>) => Schema<R, I, A> => lessThanOrEqualToBigint(0n, options)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanOrEqualToBigint(0n, options)
 
 /**
  * Clamps a bigint between a minimum and a maximum value.
@@ -3015,7 +3019,7 @@ export const nonPositiveBigint = <A extends bigint>(
  * @since 1.0.0
  */
 export const clampBigint =
-  (minimum: bigint, maximum: bigint) => <R, I, A extends bigint>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  (minimum: bigint, maximum: bigint) => <R, I, A extends bigint>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
       self.pipe(to, betweenBigint(minimum, maximum)),
@@ -3032,7 +3036,7 @@ export const clampBigint =
  * @category bigint transformations
  * @since 1.0.0
  */
-export const bigint: Schema<never, string, bigint> = transformOrFail(
+export const bigint: Schema<bigint, string> = transformOrFail(
   string,
   bigintFromSelf,
   (s, _, ast) => {
@@ -3052,7 +3056,7 @@ export const bigint: Schema<never, string, bigint> = transformOrFail(
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigintFromSelf: Schema<never, bigint> = bigintFromSelf.pipe(
+export const PositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
   positiveBigint({ identifier: "PositiveBigintFromSelf", title: "PositiveBigintFromSelf" })
 )
 
@@ -3060,7 +3064,7 @@ export const PositiveBigintFromSelf: Schema<never, bigint> = bigintFromSelf.pipe
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigint: Schema<never, string, bigint> = bigint.pipe(
+export const PositiveBigint: Schema<bigint, string> = bigint.pipe(
   positiveBigint({ identifier: "PositiveBigint", title: "PositiveBigint" })
 )
 
@@ -3068,7 +3072,7 @@ export const PositiveBigint: Schema<never, string, bigint> = bigint.pipe(
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NegativeBigintFromSelf: Schema<never, bigint> = bigintFromSelf.pipe(
+export const NegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
   negativeBigint({ identifier: "NegativeBigintFromSelf", title: "NegativeBigintFromSelf" })
 )
 
@@ -3076,7 +3080,7 @@ export const NegativeBigintFromSelf: Schema<never, bigint> = bigintFromSelf.pipe
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NegativeBigint: Schema<never, string, bigint> = bigint.pipe(
+export const NegativeBigint: Schema<bigint, string> = bigint.pipe(
   negativeBigint({ identifier: "NegativeBigint", title: "NegativeBigint" })
 )
 
@@ -3084,7 +3088,7 @@ export const NegativeBigint: Schema<never, string, bigint> = bigint.pipe(
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonPositiveBigintFromSelf: Schema<never, bigint> = bigintFromSelf.pipe(
+export const NonPositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
   nonPositiveBigint({ identifier: "NonPositiveBigintFromSelf", title: "NonPositiveBigintFromSelf" })
 )
 
@@ -3092,7 +3096,7 @@ export const NonPositiveBigintFromSelf: Schema<never, bigint> = bigintFromSelf.p
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonPositiveBigint: Schema<never, string, bigint> = bigint.pipe(
+export const NonPositiveBigint: Schema<bigint, string> = bigint.pipe(
   nonPositiveBigint({ identifier: "NonPositiveBigint", title: "NonPositiveBigint" })
 )
 
@@ -3100,7 +3104,7 @@ export const NonPositiveBigint: Schema<never, string, bigint> = bigint.pipe(
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonNegativeBigintFromSelf: Schema<never, bigint> = bigintFromSelf.pipe(
+export const NonNegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
   nonNegativeBigint({ identifier: "NonNegativeBigintFromSelf", title: "NonNegativeBigintFromSelf" })
 )
 
@@ -3108,7 +3112,7 @@ export const NonNegativeBigintFromSelf: Schema<never, bigint> = bigintFromSelf.p
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonNegativeBigint: Schema<never, string, bigint> = bigint.pipe(
+export const NonNegativeBigint: Schema<bigint, string> = bigint.pipe(
   nonNegativeBigint({ identifier: "NonNegativeBigint", title: "NonNegativeBigint" })
 )
 
@@ -3120,7 +3124,7 @@ export const NonNegativeBigint: Schema<never, string, bigint> = bigint.pipe(
  * @category bigint transformations
  * @since 1.0.0
  */
-export const BigintFromNumber: Schema<never, number, bigint> = transformOrFail(
+export const BigintFromNumber: Schema<bigint, number> = transformOrFail(
   number,
   bigintFromSelf,
   (n, _, ast) =>
@@ -3140,7 +3144,7 @@ export const BigintFromNumber: Schema<never, number, bigint> = transformOrFail(
  * @category Secret constructors
  * @since 1.0.0
  */
-export const SecretFromSelf: Schema<never, Secret.Secret> = declare(
+export const SecretFromSelf: Schema<Secret.Secret> = declare(
   Secret.isSecret,
   {
     identifier: "SecretFromSelf",
@@ -3149,7 +3153,7 @@ export const SecretFromSelf: Schema<never, Secret.Secret> = declare(
   }
 )
 
-const _Secret: Schema<never, string, Secret.Secret> = transform(
+const _Secret: Schema<Secret.Secret, string> = transform(
   string,
   SecretFromSelf,
   (str) => Secret.fromString(str),
@@ -3171,7 +3175,7 @@ export {
  * @category Duration constructors
  * @since 1.0.0
  */
-export const DurationFromSelf: Schema<never, Duration.Duration> = declare(
+export const DurationFromSelf: Schema<Duration.Duration> = declare(
   Duration.isDuration,
   {
     identifier: "DurationFromSelf",
@@ -3199,7 +3203,7 @@ export const DurationFromSelf: Schema<never, Duration.Duration> = declare(
  * @category Duration transformations
  * @since 1.0.0
  */
-export const DurationFromNanos: Schema<never, bigint, Duration.Duration> = transformOrFail(
+export const DurationFromNanos: Schema<Duration.Duration, bigint> = transformOrFail(
   bigintFromSelf,
   DurationFromSelf,
   (nanos) => ParseResult.succeed(Duration.nanos(nanos)),
@@ -3217,14 +3221,14 @@ export const DurationFromNanos: Schema<never, bigint, Duration.Duration> = trans
  * @category Duration transformations
  * @since 1.0.0
  */
-export const DurationFromMillis: Schema<never, number, Duration.Duration> = transform(
+export const DurationFromMillis: Schema<Duration.Duration, number> = transform(
   number,
   DurationFromSelf,
   (ms) => Duration.millis(ms),
   (n) => Duration.toMillis(n)
 ).pipe(identifier("DurationFromMillis"))
 
-const hrTime: Schema<never, readonly [seconds: number, nanos: number]> = tuple(
+const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   NonNegative.pipe(
     finite({
       [AST.TitleAnnotationId]: "seconds",
@@ -3239,7 +3243,7 @@ const hrTime: Schema<never, readonly [seconds: number, nanos: number]> = tuple(
   )
 )
 
-const _Duration: Schema<never, readonly [seconds: number, nanos: number], Duration.Duration> = transform(
+const _Duration: Schema<Duration.Duration, readonly [seconds: number, nanos: number]> = transform(
   hrTime,
   DurationFromSelf,
   ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
@@ -3264,7 +3268,7 @@ export {
  */
 export const clampDuration =
   (minimum: Duration.DurationInput, maximum: Duration.DurationInput) =>
-  <R, I, A extends Duration.Duration>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <R, I, A extends Duration.Duration>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
       self.pipe(to, betweenDuration(minimum, maximum)),
@@ -3287,7 +3291,7 @@ export const lessThanDuration = <A extends Duration.Duration>(
   max: Duration.DurationInput,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => Duration.lessThan(a, max), {
       typeId: { id: LessThanDurationTypeId, annotation: { max } },
@@ -3312,7 +3316,7 @@ export const lessThanOrEqualToDuration = <A extends Duration.Duration>(
   max: Duration.DurationInput,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => Duration.lessThanOrEqualTo(a, max), {
       typeId: { id: LessThanDurationTypeId, annotation: { max } },
@@ -3335,7 +3339,7 @@ export const greaterThanDuration = <A extends Duration.Duration>(
   min: Duration.DurationInput,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => Duration.greaterThan(a, min), {
       typeId: { id: GreaterThanDurationTypeId, annotation: { min } },
@@ -3360,7 +3364,7 @@ export const greaterThanOrEqualToDuration = <A extends Duration.Duration>(
   min: Duration.DurationInput,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => Duration.greaterThanOrEqualTo(a, min), {
       typeId: { id: GreaterThanOrEqualToDurationTypeId, annotation: { min } },
@@ -3384,7 +3388,7 @@ export const betweenDuration = <A extends Duration.Duration>(
   maximum: Duration.DurationInput,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => Duration.between(a, { minimum, maximum }), {
       typeId: { id: BetweenDurationTypeId, annotation: { maximum, minimum } },
@@ -3397,7 +3401,7 @@ export const betweenDuration = <A extends Duration.Duration>(
  * @category Uint8Array constructors
  * @since 1.0.0
  */
-export const Uint8ArrayFromSelf: Schema<never, Uint8Array> = declare(
+export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   Predicate.isUint8Array,
   {
     identifier: "Uint8ArrayFromSelf",
@@ -3407,7 +3411,7 @@ export const Uint8ArrayFromSelf: Schema<never, Uint8Array> = declare(
   }
 )
 
-const _Uint8Array: Schema<never, ReadonlyArray<number>, Uint8Array> = transform(
+const _Uint8Array: Schema<Uint8Array, ReadonlyArray<number>> = transform(
   array(number.pipe(
     between(0, 255, {
       title: "8-bit unsigned integer",
@@ -3433,7 +3437,7 @@ const makeEncodingTransformation = (
   id: string,
   decode: (s: string) => Either.Either<Encoding.DecodeException, Uint8Array>,
   encode: (u: Uint8Array) => string
-): Schema<never, string, Uint8Array> =>
+): Schema<Uint8Array, string> =>
   transformOrFail(
     string,
     Uint8ArrayFromSelf,
@@ -3450,7 +3454,7 @@ const makeEncodingTransformation = (
  * @category Encoding transformations
  * @since 1.0.0
  */
-export const Base64: Schema<never, string, Uint8Array> = makeEncodingTransformation(
+export const Base64: Schema<Uint8Array, string> = makeEncodingTransformation(
   "Base64",
   Encoding.decodeBase64,
   Encoding.encodeBase64
@@ -3460,7 +3464,7 @@ export const Base64: Schema<never, string, Uint8Array> = makeEncodingTransformat
  * @category Encoding transformations
  * @since 1.0.0
  */
-export const Base64Url: Schema<never, string, Uint8Array> = makeEncodingTransformation(
+export const Base64Url: Schema<Uint8Array, string> = makeEncodingTransformation(
   "Base64Url",
   Encoding.decodeBase64Url,
   Encoding.encodeBase64Url
@@ -3470,7 +3474,7 @@ export const Base64Url: Schema<never, string, Uint8Array> = makeEncodingTransfor
  * @category Encoding transformations
  * @since 1.0.0
  */
-export const Hex: Schema<never, string, Uint8Array> = makeEncodingTransformation(
+export const Hex: Schema<Uint8Array, string> = makeEncodingTransformation(
   "Hex",
   Encoding.decodeHex,
   Encoding.encodeHex
@@ -3496,7 +3500,7 @@ export const minItems = <A>(
   n: number,
   options?: FilterAnnotations<ReadonlyArray<A>>
 ) =>
-<R, I>(self: Schema<R, I, ReadonlyArray<A>>): Schema<R, I, ReadonlyArray<A>> =>
+<I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<ReadonlyArray<A>, I, R> =>
   self.pipe(
     filter((a): a is ReadonlyArray<A> => a.length >= n, {
       typeId: MinItemsTypeId,
@@ -3526,7 +3530,7 @@ export const maxItems = <A>(
   n: number,
   options?: FilterAnnotations<ReadonlyArray<A>>
 ) =>
-<R, I>(self: Schema<R, I, ReadonlyArray<A>>): Schema<R, I, ReadonlyArray<A>> =>
+<I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<ReadonlyArray<A>, I, R> =>
   self.pipe(
     filter((a): a is ReadonlyArray<A> => a.length <= n, {
       typeId: MaxItemsTypeId,
@@ -3556,7 +3560,7 @@ export const itemsCount = <A>(
   n: number,
   options?: FilterAnnotations<ReadonlyArray<A>>
 ) =>
-<R, I>(self: Schema<R, I, ReadonlyArray<A>>): Schema<R, I, ReadonlyArray<A>> =>
+<I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<ReadonlyArray<A>, I, R> =>
   self.pipe(
     filter((a): a is ReadonlyArray<A> => a.length === n, {
       typeId: ItemsCountTypeId,
@@ -3570,9 +3574,9 @@ export const itemsCount = <A>(
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const getNumberIndexedAccess = <R, I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
-  self: Schema<R, I, A>
-): Schema<R, I[number], A[number]> => make(AST.getNumberIndexedAccess(self.ast))
+export const getNumberIndexedAccess = <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R>(
+  self: Schema<A, I, R>
+): Schema<A[number], I[number], R> => make(AST.getNumberIndexedAccess(self.ast))
 
 /**
  * Get the first element of a `ReadonlyArray`, or `None` if the array is empty.
@@ -3580,7 +3584,7 @@ export const getNumberIndexedAccess = <R, I extends ReadonlyArray<any>, A extend
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const head = <R, I, A>(self: Schema<R, I, ReadonlyArray<A>>): Schema<R, I, Option.Option<A>> =>
+export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<Option.Option<A>, I, R> =>
   transform(
     self,
     optionFromSelf(getNumberIndexedAccess(to(self))),
@@ -3596,7 +3600,7 @@ export const head = <R, I, A>(self: Schema<R, I, ReadonlyArray<A>>): Schema<R, I
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const headOr = <R, I, A>(self: Schema<R, I, ReadonlyArray<A>>, fallback?: LazyArg<A>): Schema<R, I, A> =>
+export const headOr = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>, fallback?: LazyArg<A>): Schema<A, I, R> =>
   transformOrFail(
     self,
     getNumberIndexedAccess(to(self)),
@@ -3621,7 +3625,7 @@ export const ValidDateTypeId = Symbol.for("@effect/schema/TypeId/ValidDate")
  * @category Date filters
  * @since 1.0.0
  */
-export const validDate = (options?: FilterAnnotations<Date>) => <R, I>(self: Schema<R, I, Date>): Schema<R, I, Date> =>
+export const validDate = (options?: FilterAnnotations<Date>) => <I, R>(self: Schema<Date, I, R>): Schema<Date, I, R> =>
   self.pipe(
     filter((a) => !Number.isNaN(a.getTime()), {
       typeId: ValidDateTypeId,
@@ -3636,7 +3640,7 @@ export const validDate = (options?: FilterAnnotations<Date>) => <R, I>(self: Sch
  * @category Date constructors
  * @since 1.0.0
  */
-export const DateFromSelf: Schema<never, Date> = declare(
+export const DateFromSelf: Schema<Date> = declare(
   Predicate.isDate,
   {
     identifier: "DateFromSelf",
@@ -3653,7 +3657,7 @@ export const DateFromSelf: Schema<never, Date> = declare(
  * @category Date constructors
  * @since 1.0.0
  */
-export const ValidDateFromSelf: Schema<never, Date> = DateFromSelf.pipe(
+export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(
   validDate({
     identifier: "ValidDateFromSelf",
     description: "a valid Date instance"
@@ -3666,14 +3670,14 @@ export const ValidDateFromSelf: Schema<never, Date> = DateFromSelf.pipe(
  * @category Date transformations
  * @since 1.0.0
  */
-export const DateFromString: Schema<never, string, Date> = transform(
+export const DateFromString: Schema<Date, string> = transform(
   string,
   DateFromSelf,
   (s) => new Date(s),
   (n) => n.toISOString()
 ).pipe(identifier("DateFromString"))
 
-const _Date: Schema<never, string, Date> = DateFromString.pipe(
+const _Date: Schema<Date, string> = DateFromString.pipe(
   validDate({ identifier: "Date" })
 )
 
@@ -3704,13 +3708,13 @@ const OptionNoneFrom = struct({
   _tag: literal("None")
 })
 
-const optionSomeFrom = <R, I, A>(value: Schema<R, I, A>) =>
+const optionSomeFrom = <A, I, R>(value: Schema<A, I, R>) =>
   struct({
     _tag: literal("Some"),
     value
   })
 
-const optionFrom = <R, I, A>(value: Schema<R, I, A>): Schema<R, OptionFrom<I>, OptionFrom<A>> =>
+const optionFrom = <A, I, R>(value: Schema<A, I, R>): Schema<OptionFrom<A>, OptionFrom<I>, R> =>
   union(
     OptionNoneFrom,
     optionSomeFrom(value)
@@ -3743,9 +3747,9 @@ const optionParse =
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromSelf = <R, I, A>(
-  value: Schema<R, I, A>
-): Schema<R, Option.Option<I>, Option.Option<A>> => {
+export const optionFromSelf = <A, I, R>(
+  value: Schema<A, I, R>
+): Schema<Option.Option<A>, Option.Option<I>, R> => {
   return declare(
     [value],
     (value) => optionParse(ParseResult.decodeUnknown(value)),
@@ -3763,9 +3767,9 @@ export const optionFromSelf = <R, I, A>(
  * @category Option transformations
  * @since 1.0.0
  */
-export const option = <R, I, A>(
-  value: Schema<R, I, A>
-): Schema<R, OptionFrom<I>, Option.Option<A>> =>
+export const option = <A, I, R>(
+  value: Schema<A, I, R>
+): Schema<Option.Option<A>, OptionFrom<I>, R> =>
   transform(
     optionFrom(value),
     optionFromSelf(to(value)),
@@ -3780,19 +3784,19 @@ export const option = <R, I, A>(
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromNullable = <R, I, A>(
-  value: Schema<R, I, A>
-): Schema<R, I | null, Option.Option<A>> =>
+export const optionFromNullable = <A, I, R>(
+  value: Schema<A, I, R>
+): Schema<Option.Option<A>, I | null, R> =>
   transform(nullable(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrNull)
 
 /**
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromNullish = <R, I, A>(
-  value: Schema<R, I, A>,
+export const optionFromNullish = <A, I, R>(
+  value: Schema<A, I, R>,
   onNoneEncoding: null | undefined
-): Schema<R, I | null | undefined, Option.Option<A>> =>
+): Schema<Option.Option<A>, I | null | undefined, R> =>
   transform(
     nullish(value),
     optionFromSelf(to(value)),
@@ -3804,9 +3808,9 @@ export const optionFromNullish = <R, I, A>(
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromOrUndefined = <R, I, A>(
-  value: Schema<R, I, A>
-): Schema<R, I | undefined, Option.Option<A>> =>
+export const optionFromOrUndefined = <A, I, R>(
+  value: Schema<A, I, R>
+): Schema<Option.Option<A>, I | undefined, R> =>
   transform(orUndefined(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrUndefined)
 
 /**
@@ -3833,22 +3837,22 @@ export type LeftFrom<IE> = {
  */
 export type EitherFrom<IE, IA> = LeftFrom<IE> | RightFrom<IA>
 
-const rightFrom = <R, IA, A>(right: Schema<R, IA, A>): Schema<R, RightFrom<IA>, RightFrom<A>> =>
+const rightFrom = <A, IA, R>(right: Schema<A, IA, R>): Schema<RightFrom<A>, RightFrom<IA>, R> =>
   struct({
     _tag: literal("Right"),
     right
   }).pipe(description(`RightFrom<${format(right)}>`))
 
-const leftFrom = <R, IE, E>(left: Schema<R, IE, E>): Schema<R, LeftFrom<IE>, LeftFrom<E>> =>
+const leftFrom = <E, IE, R>(left: Schema<E, IE, R>): Schema<LeftFrom<E>, LeftFrom<IE>, R> =>
   struct({
     _tag: literal("Left"),
     left
   }).pipe(description(`LeftFrom<${format(left)}>`))
 
-const eitherFrom = <R1, IE, E, R2, IA, A>(
-  left: Schema<R1, IE, E>,
-  right: Schema<R2, IA, A>
-): Schema<R1 | R2, EitherFrom<IE, IA>, EitherFrom<E, A>> =>
+const eitherFrom = <E, IE, R1, A, IA, R2>(
+  left: Schema<E, IE, R1>,
+  right: Schema<A, IA, R2>
+): Schema<EitherFrom<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
   union(rightFrom(right), leftFrom(left)).pipe(
     description(`EitherFrom<${format(left)}, ${format(right)}>`)
   )
@@ -3889,10 +3893,10 @@ const eitherParse = <RE, E, RA, A>(
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromSelf = <RE, IE, E, RA, IA, A>(
-  left: Schema<RE, IE, E>,
-  right: Schema<RA, IA, A>
-): Schema<RE | RA, Either.Either<IE, IA>, Either.Either<E, A>> => {
+export const eitherFromSelf = <E, IE, RE, A, IA, RA>(
+  left: Schema<E, IE, RE>,
+  right: Schema<A, IA, RA>
+): Schema<Either.Either<E, A>, Either.Either<IE, IA>, RE | RA> => {
   return declare(
     [left, right],
     (left, right) => eitherParse(ParseResult.decodeUnknown(left), ParseResult.decodeUnknown(right)),
@@ -3913,10 +3917,10 @@ const makeRightFrom = <A>(right: A) => ({ _tag: "Right", right }) as const
  * @category Either transformations
  * @since 1.0.0
  */
-export const either = <R1, IE, E, R2, IA, A>(
-  left: Schema<R1, IE, E>,
-  right: Schema<R2, IA, A>
-): Schema<R1 | R2, EitherFrom<IE, IA>, Either.Either<E, A>> =>
+export const either = <E, IE, R1, A, IA, R2>(
+  left: Schema<E, IE, R1>,
+  right: Schema<A, IA, R2>
+): Schema<Either.Either<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
   transform(
     eitherFrom(left, right),
     eitherFromSelf(to(left), to(right)),
@@ -3934,10 +3938,10 @@ export const either = <R1, IE, E, R2, IA, A>(
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromUnion = <R1, EI, EA, R2, AI, AA>(
-  left: Schema<R1, EI, EA>,
-  right: Schema<R2, AI, AA>
-): Schema<R1 | R2, EI | AI, Either.Either<EA, AA>> => {
+export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>(
+  left: Schema<EA, EI, R1>,
+  right: Schema<AA, AI, R2>
+): Schema<Either.Either<EA, AA>, EI | AI, R1 | R2> => {
   const toleft = to(left)
   const toright = to(right)
   const fromLeft = transform(left, leftFrom(toleft), makeLeftFrom, (l) => l.left)
@@ -3991,10 +3995,10 @@ const readonlyMapParse = <R, K, V>(
  * @category ReadonlyMap transformations
  * @since 1.0.0
  */
-export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
-  key: Schema<RK, IK, K>,
-  value: Schema<RV, IV, V>
-): Schema<RK | RV, ReadonlyMap<IK, IV>, ReadonlyMap<K, V>> => {
+export const readonlyMapFromSelf = <K, IK, RK, V, IV, RV>(
+  key: Schema<K, IK, RK>,
+  value: Schema<V, IV, RV>
+): Schema<ReadonlyMap<K, V>, ReadonlyMap<IK, IV>, RK | RV> => {
   return declare(
     [key, value],
     (key, value) => readonlyMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
@@ -4012,10 +4016,10 @@ export const readonlyMapFromSelf = <RK, IK, K, RV, IV, V>(
  * @category ReadonlyMap transformations
  * @since 1.0.0
  */
-export const readonlyMap = <R1, IK, K, R2, IV, V>(
-  key: Schema<R1, IK, K>,
-  value: Schema<R2, IV, V>
-): Schema<R1 | R2, ReadonlyArray<readonly [IK, IV]>, ReadonlyMap<K, V>> =>
+export const readonlyMap = <K, IK, R1, V, IV, R2>(
+  key: Schema<K, IK, R1>,
+  value: Schema<V, IV, R2>
+): Schema<ReadonlyMap<K, V>, ReadonlyArray<readonly [IK, IV]>, R1 | R2> =>
   transform(
     array(tuple(key, value)),
     readonlyMapFromSelf(to(key), to(value)),
@@ -4050,9 +4054,9 @@ const readonlySetParse = <R, A>(
  * @category ReadonlySet transformations
  * @since 1.0.0
  */
-export const readonlySetFromSelf = <R, I, A>(
-  item: Schema<R, I, A>
-): Schema<R, ReadonlySet<I>, ReadonlySet<A>> => {
+export const readonlySetFromSelf = <A, I, R>(
+  item: Schema<A, I, R>
+): Schema<ReadonlySet<A>, ReadonlySet<I>, R> => {
   return declare(
     [item],
     (item) => readonlySetParse(ParseResult.decodeUnknown(array(item))),
@@ -4070,7 +4074,7 @@ export const readonlySetFromSelf = <R, I, A>(
  * @category ReadonlySet transformations
  * @since 1.0.0
  */
-export const readonlySet = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray<I>, ReadonlySet<A>> =>
+export const readonlySet = <A, I, R>(item: Schema<A, I, R>): Schema<ReadonlySet<A>, ReadonlyArray<I>, R> =>
   transform(
     array(item),
     readonlySetFromSelf(to(item)),
@@ -4088,7 +4092,7 @@ const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
  * @category BigDecimal constructors
  * @since 1.0.0
  */
-export const BigDecimalFromSelf: Schema<never, BigDecimal.BigDecimal> = declare(
+export const BigDecimalFromSelf: Schema<BigDecimal.BigDecimal> = declare(
   BigDecimal.isBigDecimal,
   {
     identifier: "BigDecimalFromSelf",
@@ -4098,7 +4102,7 @@ export const BigDecimalFromSelf: Schema<never, BigDecimal.BigDecimal> = declare(
   }
 )
 
-const _BigDecimal: Schema<never, string, BigDecimal.BigDecimal> = transformOrFail(
+const _BigDecimal: Schema<BigDecimal.BigDecimal, string> = transformOrFail(
   string,
   BigDecimalFromSelf,
   (num, _, ast) =>
@@ -4124,7 +4128,7 @@ export {
  * @category BigDecimal transformations
  * @since 1.0.0
  */
-export const BigDecimalFromNumber: Schema<never, number, BigDecimal.BigDecimal> = transformOrFail(
+export const BigDecimalFromNumber: Schema<BigDecimal.BigDecimal, number> = transformOrFail(
   number,
   BigDecimalFromSelf,
   (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
@@ -4145,7 +4149,7 @@ export const greaterThanBigDecimal = <A extends BigDecimal.BigDecimal>(
   min: BigDecimal.BigDecimal,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => BigDecimal.greaterThan(a, min), {
       typeId: { id: GreaterThanBigDecimalTypeId, annotation: { min } },
@@ -4170,7 +4174,7 @@ export const greaterThanOrEqualToBigDecimal = <A extends BigDecimal.BigDecimal>(
   min: BigDecimal.BigDecimal,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => BigDecimal.greaterThanOrEqualTo(a, min), {
       typeId: { id: GreaterThanOrEqualToBigDecimalTypeId, annotation: { min } },
@@ -4193,7 +4197,7 @@ export const lessThanBigDecimal = <A extends BigDecimal.BigDecimal>(
   max: BigDecimal.BigDecimal,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => BigDecimal.lessThan(a, max), {
       typeId: { id: LessThanBigDecimalTypeId, annotation: { max } },
@@ -4218,7 +4222,7 @@ export const lessThanOrEqualToBigDecimal = <A extends BigDecimal.BigDecimal>(
   max: BigDecimal.BigDecimal,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => BigDecimal.lessThanOrEqualTo(a, max), {
       typeId: { id: LessThanOrEqualToBigDecimalTypeId, annotation: { max } },
@@ -4242,7 +4246,7 @@ export const PositiveBigDecimalTypeId = Symbol.for(
 export const positiveBigDecimal = <A extends BigDecimal.BigDecimal>(
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => BigDecimal.isPositive(a), {
       typeId: { id: PositiveBigDecimalTypeId, annotation: {} },
@@ -4277,7 +4281,7 @@ export const NonNegativeBigDecimalTypeId = Symbol.for(
 export const nonNegativeBigDecimal = <A extends BigDecimal.BigDecimal>(
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a.value >= 0n, {
       typeId: { id: NonNegativeBigDecimalTypeId, annotation: {} },
@@ -4312,7 +4316,7 @@ export const NegativeBigDecimalTypeId = Symbol.for(
 export const negativeBigDecimal = <A extends BigDecimal.BigDecimal>(
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => BigDecimal.isNegative(a), {
       typeId: { id: NegativeBigDecimalTypeId, annotation: {} },
@@ -4347,7 +4351,7 @@ export const NonPositiveBigDecimalTypeId = Symbol.for(
 export const nonPositiveBigDecimal = <A extends BigDecimal.BigDecimal>(
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a.value <= 0n, {
       typeId: { id: NonPositiveBigDecimalTypeId, annotation: {} },
@@ -4382,7 +4386,7 @@ export const betweenBigDecimal = <A extends BigDecimal.BigDecimal>(
   maximum: BigDecimal.BigDecimal,
   options?: FilterAnnotations<A>
 ) =>
-<R, I>(self: Schema<R, I, A>): Schema<R, I, A> =>
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => BigDecimal.between(a, { minimum, maximum }), {
       typeId: { id: BetweenBigDecimalTypeId, annotation: { maximum, minimum } },
@@ -4399,7 +4403,7 @@ export const betweenBigDecimal = <A extends BigDecimal.BigDecimal>(
  */
 export const clampBigDecimal =
   (minimum: BigDecimal.BigDecimal, maximum: BigDecimal.BigDecimal) =>
-  <R, I, A extends BigDecimal.BigDecimal>(self: Schema<R, I, A>): Schema<R, I, A> =>
+  <R, I, A extends BigDecimal.BigDecimal>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
       self.pipe(to, betweenBigDecimal(minimum, maximum)),
@@ -4415,8 +4419,8 @@ export const clampBigDecimal =
  * @since 1.0.0
  */
 export const negateBigDecimal = <R, I, A extends BigDecimal.BigDecimal>(
-  self: Schema<R, I, A>
-): Schema<R, I, A> =>
+  self: Schema<A, I, R>
+): Schema<A, I, R> =>
   transform(
     self,
     to(self),
@@ -4445,7 +4449,7 @@ const chunkParse = <R, A>(
  * @category Chunk transformations
  * @since 1.0.0
  */
-export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.Chunk<I>, Chunk.Chunk<A>> => {
+export const chunkFromSelf = <A, I, R>(item: Schema<A, I, R>): Schema<Chunk.Chunk<A>, Chunk.Chunk<I>, R> => {
   return declare(
     [item],
     (item) => chunkParse(ParseResult.decodeUnknown(array(item))),
@@ -4463,7 +4467,7 @@ export const chunkFromSelf = <R, I, A>(item: Schema<R, I, A>): Schema<R, Chunk.C
  * @category Chunk transformations
  * @since 1.0.0
  */
-export const chunk = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray<I>, Chunk.Chunk<A>> =>
+export const chunk = <A, I, R>(item: Schema<A, I, R>): Schema<Chunk.Chunk<A>, ReadonlyArray<I>, R> =>
   transform(
     array(item),
     chunkFromSelf(to(item)),
@@ -4501,8 +4505,8 @@ export const dataFromSelf = <
   I extends Readonly<Record<string, any>> | ReadonlyArray<any>,
   A extends Readonly<Record<string, any>> | ReadonlyArray<any>
 >(
-  item: Schema<R, I, A>
-): Schema<R, Data.Data<I>, Data.Data<A>> => {
+  item: Schema<A, I, R>
+): Schema<Data.Data<A>, Data.Data<I>, R> => {
   return declare(
     [item],
     (item) => dataParse(ParseResult.decodeUnknown(item)),
@@ -4525,8 +4529,8 @@ export const data = <
   I extends Readonly<Record<string, any>> | ReadonlyArray<any>,
   A extends Readonly<Record<string, any>> | ReadonlyArray<any>
 >(
-  item: Schema<R, I, A>
-): Schema<R, I, Data.Data<A>> =>
+  item: Schema<A, I, R>
+): Schema<Data.Data<A>, I, R> =>
   transform(
     item,
     dataFromSelf(to(item)),
@@ -4542,7 +4546,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
+export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
   new(
     ...args: [R] extends [never] ? [
         props: Equals<C, {}> extends true ? void | {} : C,
@@ -4554,15 +4558,15 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
       ]
   ): A & Omit<Inherited, keyof A>
 
-  readonly struct: Schema<R, I, A>
+  readonly struct: Schema<A, I, R>
 
   readonly extend: <Extended>() => <FieldsB extends StructFields>(
     fields: FieldsB
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
     : Class<
-      R | Schema.Context<FieldsB[keyof FieldsB]>,
-      Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
+      R | Schema.Context<FieldsB[keyof FieldsB]>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Extended,
       Self
@@ -4586,9 +4590,9 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     ) => Effect.Effect<R3, ParseResult.ParseIssue, A>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
-      R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
-      I,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      I,
+      R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
       Self
@@ -4612,9 +4616,9 @@ export interface Class<R, I, A, C, Self, Inherited> extends Schema<R, I, Self> {
     ) => Effect.Effect<R3, ParseResult.ParseIssue, I>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
-      R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
-      I,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      I,
+      R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
       Self
@@ -4630,9 +4634,9 @@ export const Class = <Self>() =>
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
   : Class<
-    Schema.Context<Fields[keyof Fields]>,
-    Simplify<FromStruct<Fields>>,
     Simplify<ToStruct<Fields>>,
+    Simplify<FromStruct<Fields>>,
+    Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
     Data.Case
@@ -4648,9 +4652,9 @@ export const TaggedClass = <Self>() =>
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
-    Schema.Context<Fields[keyof Fields]>,
-    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
+    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+    Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
     Data.Case
@@ -4670,9 +4674,9 @@ export const TaggedError = <Self>() =>
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
-    Schema.Context<Fields[keyof Fields]>,
-    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
+    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+    Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
     Effect.Effect<never, Self, never> & globalThis.Error
@@ -4716,16 +4720,16 @@ export declare namespace TaggedRequest {
  * @since 1.0.0
  */
 export const TaggedRequest = <Self>() =>
-<Tag extends string, Fields extends StructFields, ER, EI, EA, AR, AI, AA>(
+<Tag extends string, Fields extends StructFields, EA, EI, ER, AA, AI, AR>(
   tag: Tag,
-  Failure: Schema<ER, EI, EA>,
-  Success: Schema<AR, AI, AA>,
+  Failure: Schema<EA, EI, ER>,
+  Success: Schema<AA, AI, AR>,
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
   : Class<
-    Schema.Context<Fields[keyof Fields]>,
-    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
+    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+    Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
     TaggedRequest<
@@ -4758,8 +4762,8 @@ export const TaggedRequest = <Self>() =>
   )
 }
 
-const makeClass = <R, I, A>(
-  selfSchema: Schema<R, I, A>,
+const makeClass = <A, I, R>(
+  selfSchema: Schema<A, I, R>,
   selfFields: StructFields,
   Base: any,
   additionalProps?: any
@@ -4791,7 +4795,7 @@ const makeClass = <R, I, A>(
       const toSchema = to(selfSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
-      const declaration: Schema<never, any, any> = declare((input): input is any => input instanceof this, {
+      const declaration: Schema<any, any, never> = declare((input): input is any => input instanceof this, {
         identifier: this.name,
         title: this.name,
         description: `an instance of ${this.name}`,
@@ -4898,7 +4902,7 @@ const FiberIdRuntimeFrom = struct({
   }))
 }).pipe(identifier("FiberIdRuntimeFrom"))
 
-const FiberIdFrom: Schema<never, FiberIdFrom, FiberIdFrom> = union(
+const FiberIdFrom: Schema<FiberIdFrom> = union(
   FiberIdCompositeFrom,
   FiberIdNoneFrom,
   FiberIdRuntimeFrom
@@ -4923,7 +4927,7 @@ const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
  * @category FiberId constructors
  * @since 1.0.0
  */
-export const FiberIdFromSelf: Schema<never, FiberId.FiberId, FiberId.FiberId> = declare(
+export const FiberIdFromSelf: Schema<FiberId.FiberId> = declare(
   FiberId.isFiberId,
   {
     identifier: "FiberIdFromSelf",
@@ -4959,7 +4963,7 @@ const fiberIdEncode = (input: FiberId.FiberId): FiberIdFrom => {
   }
 }
 
-const _FiberId: Schema<never, FiberIdFrom, FiberId.FiberId> = transform(
+const _FiberId: Schema<FiberId.FiberId, FiberIdFrom> = transform(
   FiberIdFrom,
   FiberIdFromSelf,
   fiberIdDecode,
@@ -5005,7 +5009,7 @@ export type CauseFrom<E> =
     readonly right: CauseFrom<E>
   }
 
-const causeDieFrom = <R>(defect: Schema<R, unknown, unknown>) =>
+const causeDieFrom = <R>(defect: Schema<unknown, unknown, R>) =>
   struct({
     _tag: literal("Die"),
     defect
@@ -5015,7 +5019,7 @@ const CauseEmptyFrom = struct({
   _tag: literal("Empty")
 })
 
-const causeFailFrom = <R, EI, E>(error: Schema<R, EI, E>) =>
+const causeFailFrom = <E, EI, R>(error: Schema<E, EI, R>) =>
   struct({
     _tag: literal("Fail"),
     error
@@ -5026,26 +5030,26 @@ const CauseInterruptFrom = struct({
   fiberId: FiberIdFrom
 })
 
-const causeParallelFrom = <R, EI, E>(causeFrom: Schema<R, CauseFrom<EI>, CauseFrom<E>>) =>
+const causeParallelFrom = <E, EI, R>(causeFrom: Schema<CauseFrom<E>, CauseFrom<EI>, R>) =>
   struct({
     _tag: literal("Parallel"),
     left: causeFrom,
     right: causeFrom
   })
 
-const causeSequentialFrom = <R, EI, E>(causeFrom: Schema<R, CauseFrom<EI>, CauseFrom<E>>) =>
+const causeSequentialFrom = <E, EI, R>(causeFrom: Schema<CauseFrom<E>, CauseFrom<EI>, R>) =>
   struct({
     _tag: literal("Sequential"),
     left: causeFrom,
     right: causeFrom
   })
 
-const causeFrom = <R1, EI, E, R2>(
-  error: Schema<R1, EI, E>,
-  defect: Schema<R2, unknown, unknown>
-): Schema<R1 | R2, CauseFrom<EI>, CauseFrom<E>> => {
+const causeFrom = <E, EI, R1, R2>(
+  error: Schema<E, EI, R1>,
+  defect: Schema<unknown, unknown, R2>
+): Schema<CauseFrom<E>, CauseFrom<EI>, R1 | R2> => {
   const recur = suspend(() => out)
-  const out: Schema<R1 | R2, CauseFrom<EI>, CauseFrom<E>> = union(
+  const out: Schema<CauseFrom<E>, CauseFrom<EI>, R1 | R2> = union(
     causeDieFrom(defect),
     CauseEmptyFrom,
     causeFailFrom(error),
@@ -5096,10 +5100,10 @@ const causeParse = <R, A>(
  * @category Cause transformations
  * @since 1.0.0
  */
-export const causeFromSelf = <R1, I, A, R2 = never>(
-  error: Schema<R1, I, A>,
-  defect: Schema<R2, unknown, unknown> = unknown
-): Schema<R1 | R2, Cause.Cause<I>, Cause.Cause<A>> => {
+export const causeFromSelf = <A, I, R1, R2 = never>(
+  error: Schema<A, I, R1>,
+  defect: Schema<unknown, unknown, R2> = unknown
+): Schema<Cause.Cause<A>, Cause.Cause<I>, R1 | R2> => {
   return declare(
     [error, defect],
     (error, defect) => causeParse(ParseResult.decodeUnknown(causeFrom(error, defect))),
@@ -5155,7 +5159,7 @@ function causeEncode<E>(cause: Cause.Cause<E>): CauseFrom<E> {
   }
 }
 
-const causeDefectPretty: Schema<never, unknown, unknown> = transform(
+const causeDefectPretty: Schema<unknown> = transform(
   unknown,
   unknown,
   identity,
@@ -5171,10 +5175,10 @@ const causeDefectPretty: Schema<never, unknown, unknown> = transform(
  * @category Cause transformations
  * @since 1.0.0
  */
-export const cause = <R1, EI, E, R2 = never>(
-  error: Schema<R1, EI, E>,
-  defect: Schema<R2, unknown, unknown> = causeDefectPretty
-): Schema<R1 | R2, CauseFrom<EI>, Cause.Cause<E>> =>
+export const cause = <E, EI, R1, R2 = never>(
+  error: Schema<E, EI, R1>,
+  defect: Schema<unknown, unknown, R2> = causeDefectPretty
+): Schema<Cause.Cause<E>, CauseFrom<EI>, R1 | R2> =>
   transform(
     causeFrom(error, defect),
     causeFromSelf(to(error), to(defect)),
@@ -5196,28 +5200,28 @@ export type ExitFrom<E, A> =
     readonly value: A
   }
 
-const exitFailureFrom = <R1, EI, E, R2>(
-  error: Schema<R1, EI, E>,
-  defect: Schema<R2, unknown, unknown>
+const exitFailureFrom = <E, EI, R1, R2>(
+  error: Schema<E, EI, R1>,
+  defect: Schema<unknown, unknown, R2>
 ) =>
   struct({
     _tag: literal("Failure"),
     cause: causeFrom(error, defect)
   })
 
-const exitSuccessFrom = <R, AI, A>(
-  value: Schema<R, AI, A>
+const exitSuccessFrom = <A, AI, R>(
+  value: Schema<A, AI, R>
 ) =>
   struct({
     _tag: literal("Success"),
     value
   })
 
-const exitFrom = <R1, EI, E, R2, AI, A, R3>(
-  error: Schema<R1, EI, E>,
-  value: Schema<R2, AI, A>,
-  defect: Schema<R3, unknown, unknown>
-): Schema<R1 | R2 | R3, ExitFrom<EI, AI>, ExitFrom<E, A>> =>
+const exitFrom = <E, EI, R1, A, AI, R2, R3>(
+  error: Schema<E, EI, R1>,
+  value: Schema<A, AI, R2>,
+  defect: Schema<unknown, unknown, R3>
+): Schema<ExitFrom<E, A>, ExitFrom<EI, AI>, R1 | R2 | R3> =>
   union(
     exitFailureFrom(error, defect),
     exitSuccessFrom(value)
@@ -5264,11 +5268,11 @@ const exitParse = <RE, E, RA, A>(
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exitFromSelf = <RE, IE, E, RA, IA, A>(
-  error: Schema<RE, IE, E>,
-  value: Schema<RA, IA, A>,
-  defect: Schema<never, unknown, unknown> = unknown
-): Schema<RE | RA, Exit.Exit<IE, IA>, Exit.Exit<E, A>> =>
+export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>(
+  error: Schema<E, IE, RE>,
+  value: Schema<A, IA, RA>,
+  defect: Schema<unknown, unknown, RD> = unknown
+): Schema<Exit.Exit<E, A>, Exit.Exit<IE, IA>, RE | RA | RD> =>
   declare(
     [error, value, defect],
     (error, value, defect) =>
@@ -5287,11 +5291,11 @@ export const exitFromSelf = <RE, IE, E, RA, IA, A>(
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exit = <R1, IE, E, R2, IA, A, R3 = never>(
-  error: Schema<R1, IE, E>,
-  value: Schema<R2, IA, A>,
-  defect: Schema<R3, unknown, unknown> = causeDefectPretty
-): Schema<R1 | R2 | R3, ExitFrom<IE, IA>, Exit.Exit<E, A>> =>
+export const exit = <E, IE, R1, A, IA, R2, R3 = never>(
+  error: Schema<E, IE, R1>,
+  value: Schema<A, IA, R2>,
+  defect: Schema<unknown, unknown, R3> = causeDefectPretty
+): Schema<Exit.Exit<E, A>, ExitFrom<IE, IA>, R1 | R2 | R3> =>
   transform(
     exitFrom(error, value, defect),
     exitFromSelf(to(error), to(value), to(defect)),
@@ -5330,9 +5334,9 @@ const hashSetParse = <R, A>(
  * @category HashSet transformations
  * @since 1.0.0
  */
-export const hashSetFromSelf = <R, I, A>(
-  item: Schema<R, I, A>
-): Schema<R, HashSet.HashSet<I>, HashSet.HashSet<A>> => {
+export const hashSetFromSelf = <A, I, R>(
+  item: Schema<A, I, R>
+): Schema<HashSet.HashSet<A>, HashSet.HashSet<I>, R> => {
   return declare(
     [item],
     (item) => hashSetParse(ParseResult.decodeUnknown(array(item))),
@@ -5350,7 +5354,7 @@ export const hashSetFromSelf = <R, I, A>(
  * @category HashSet transformations
  * @since 1.0.0
  */
-export const hashSet = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray<I>, HashSet.HashSet<A>> =>
+export const hashSet = <A, I, R>(item: Schema<A, I, R>): Schema<HashSet.HashSet<A>, ReadonlyArray<I>, R> =>
   transform(
     array(item),
     hashSetFromSelf(to(item)),
@@ -5397,10 +5401,10 @@ const hashMapParse = <R, K, V>(
  * @category HashMap transformations
  * @since 1.0.0
  */
-export const hashMapFromSelf = <RK, IK, K, RV, IV, V>(
-  key: Schema<RK, IK, K>,
-  value: Schema<RV, IV, V>
-): Schema<RK | RV, HashMap.HashMap<IK, IV>, HashMap.HashMap<K, V>> => {
+export const hashMapFromSelf = <K, IK, RK, V, IV, RV>(
+  key: Schema<K, IK, RK>,
+  value: Schema<V, IV, RV>
+): Schema<HashMap.HashMap<K, V>, HashMap.HashMap<IK, IV>, RK | RV> => {
   return declare(
     [key, value],
     (key, value) => hashMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
@@ -5418,10 +5422,10 @@ export const hashMapFromSelf = <RK, IK, K, RV, IV, V>(
  * @category HashMap transformations
  * @since 1.0.0
  */
-export const hashMap = <R1, IK, K, R2, IV, V>(
-  key: Schema<R1, IK, K>,
-  value: Schema<R2, IV, V>
-): Schema<R1 | R2, ReadonlyArray<readonly [IK, IV]>, HashMap.HashMap<K, V>> =>
+export const hashMap = <K, IK, R1, V, IV, R2>(
+  key: Schema<K, IK, R1>,
+  value: Schema<V, IV, R2>
+): Schema<HashMap.HashMap<K, V>, ReadonlyArray<readonly [IK, IV]>, R1 | R2> =>
   transform(
     array(tuple(key, value)),
     hashMapFromSelf(to(key), to(value)),
@@ -5457,9 +5461,9 @@ const listParse = <R, A>(
  * @category List transformations
  * @since 1.0.0
  */
-export const listFromSelf = <R, I, A>(
-  item: Schema<R, I, A>
-): Schema<R, List.List<I>, List.List<A>> => {
+export const listFromSelf = <A, I, R>(
+  item: Schema<A, I, R>
+): Schema<List.List<A>, List.List<I>, R> => {
   return declare(
     [item],
     (item) => listParse(ParseResult.decodeUnknown(array(item))),
@@ -5477,7 +5481,7 @@ export const listFromSelf = <R, I, A>(
  * @category List transformations
  * @since 1.0.0
  */
-export const list = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray<I>, List.List<A>> =>
+export const list = <A, I, R>(item: Schema<A, I, R>): Schema<List.List<A>, ReadonlyArray<I>, R> =>
   transform(
     array(item),
     listFromSelf(to(item)),
@@ -5485,7 +5489,7 @@ export const list = <R, I, A>(item: Schema<R, I, A>): Schema<R, ReadonlyArray<I>
     (set) => Array.from(set)
   )
 
-const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<never, A> =>
-  suspend<never, A>(() => any).pipe(annotations({
+const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
+  suspend<A, A, never>(() => any).pipe(annotations({
     [hooks.ArbitraryHookId]: () => value
   }))

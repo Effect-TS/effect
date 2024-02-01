@@ -44,13 +44,13 @@ export const get = (u: unknown): ReadonlyArray<globalThis.Transferable> => {
 export const schema: {
   <A extends object>(
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ): <R, I>(self: Schema.Schema<R, I, A>) => Schema.Schema<R, I, A>
+  ): <R, I>(self: Schema.Schema<A, I, R>) => Schema.Schema<A, I, R>
   <R, I, A extends object>(
-    self: Schema.Schema<R, I, A>,
+    self: Schema.Schema<A, I, R>,
     f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ): Schema.Schema<R, I, A>
+  ): Schema.Schema<A, I, R>
 } = dual(2, <R, I, A extends object>(
-  self: Schema.Schema<R, I, A>,
+  self: Schema.Schema<A, I, R>,
   f: (_: A) => ReadonlyArray<globalThis.Transferable>
 ) => {
   const fn: Transferable[typeof symbol] = function(this: A) {
@@ -79,8 +79,8 @@ const schemaParse =
  * @category schema
  */
 export const schemaFromSelf = <R, I extends object, A extends object>(
-  item: Schema.Schema<R, I, A>
-): Schema.Schema<R, I, A> => {
+  item: Schema.Schema<A, I, R>
+): Schema.Schema<A, I, R> => {
   return Schema.declare(
     [item],
     (item) => schemaParse(ParseResult.decodeUnknown(item)),

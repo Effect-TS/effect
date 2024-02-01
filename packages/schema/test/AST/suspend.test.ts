@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 describe("AST > suspend", () => {
   it("should memoize the AST", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
+    const schema: S.Schema<A> = S.suspend( // intended outer suspend
       () => S.tuple(S.number, S.union(schema, S.literal(null)))
     )
     const ast = schema.ast as AST.Suspend

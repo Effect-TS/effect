@@ -31,14 +31,14 @@ export type EquivalenceHookId = typeof EquivalenceHookId
  */
 export const equivalence =
   <A>(handler: (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<A>) =>
-  <R, I>(self: Schema.Schema<R, I, A>): Schema.Schema<R, I, A> =>
+  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
     InternalSchema.make(AST.setAnnotation(self.ast, EquivalenceHookId, handler))
 
 /**
  * @category Equivalence
  * @since 1.0.0
  */
-export const make = <R, I, A>(schema: Schema.Schema<R, I, A>): Equivalence.Equivalence<A> => go(schema.ast)
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Equivalence.Equivalence<A> => go(schema.ast)
 
 const getHook = AST.getAnnotation<
   (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<any>

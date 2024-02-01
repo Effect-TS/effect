@@ -9,7 +9,7 @@ describe("Schema > suspend", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<never, A> = S.struct({
+      const schema: S.Schema<A> = S.struct({
         a: S.string,
         as: S.array(S.suspend(() => schema))
       })
@@ -57,12 +57,12 @@ describe("Schema > suspend", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<never, Expression> = S.struct({
+      const Expression: S.Schema<Expression> = S.struct({
         type: S.literal("expression"),
         value: S.union(S.number, S.suspend(() => Operation))
       })
 
-      const Operation: S.Schema<never, Operation> = S.struct({
+      const Operation: S.Schema<Operation> = S.struct({
         type: S.literal("operation"),
         operator: S.union(S.literal("+"), S.literal("-")),
         left: Expression,
@@ -107,7 +107,7 @@ describe("Schema > suspend", () => {
         readonly a: string
         readonly as: ReadonlyArray<FromA>
       }
-      const schema: S.Schema<never, FromA, A> = S.struct({
+      const schema: S.Schema<A, FromA> = S.struct({
         a: Util.NumberFromChar,
         as: S.array(S.suspend(() => schema))
       })
