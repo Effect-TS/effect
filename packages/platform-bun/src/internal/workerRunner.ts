@@ -72,12 +72,12 @@ export const layer = <I, R, E, O>(
 
 /** @internal */
 export const layerSerialized = <
-  R,
-  I,
   A extends Schema.TaggedRequest.Any,
+  I,
+  R,
   Handlers extends Runner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<R, I, A>,
+  schema: Schema.Schema<A, I, R>,
   handlers: Handlers
 ): Layer.Layer<
   R | Runner.SerializedRunner.HandlersContext<Handlers>,

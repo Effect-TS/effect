@@ -101,9 +101,9 @@ describe("Schema > brand", () => {
   })
 
   it("composition", () => {
-    const int = <I, A extends number>(self: S.Schema<never, I, A>) => self.pipe(S.int(), S.brand("Int"))
+    const int = <A extends number, I>(self: S.Schema<A, I>) => self.pipe(S.int(), S.brand("Int"))
 
-    const positive = <I, A extends number>(self: S.Schema<never, I, A>) => self.pipe(S.positive(), S.brand("Positive"))
+    const positive = <A extends number, I>(self: S.Schema<A, I>) => self.pipe(S.positive(), S.brand("Positive"))
 
     const PositiveInt = S.NumberFromString.pipe(int, positive)
 
