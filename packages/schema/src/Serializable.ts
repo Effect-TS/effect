@@ -21,8 +21,8 @@ export const symbol: unique symbol = Internal.symbol as any
  * @since 1.0.0
  * @category model
  */
-export interface Serializable<R, I, A> {
-  readonly [symbol]: Schema.Schema<R, I, A>
+export interface Serializable<A, I, R> {
+  readonly [symbol]: Schema.Schema<A, I, R>
 }
 
 /**
@@ -33,14 +33,14 @@ export declare namespace Serializable {
   /**
    * @since 1.0.0
    */
-  export type Context<T> = T extends Serializable<infer R, infer _I, infer _A> ? R : never
+  export type Context<T> = T extends Serializable<infer _A, infer _I, infer R> ? R : never
 }
 
 /**
  * @since 1.0.0
  * @category accessor
  */
-export const selfSchema = <R, I, A>(self: Serializable<R, I, A>): Schema.Schema<R, I, A> => self[symbol]
+export const selfSchema = <A, I, R>(self: Serializable<A, I, R>): Schema.Schema<A, I, R> => self[symbol]
 
 /**
  * @since 1.0.0
@@ -54,8 +54,8 @@ export const symbolResult: unique symbol = Internal.symbolResult as any
  */
 export interface WithResult<R, IE, E, IA, A> {
   readonly [symbolResult]: {
-    readonly Failure: Schema.Schema<R, IE, E>
-    readonly Success: Schema.Schema<R, IA, A>
+    readonly Failure: Schema.Schema<E, IE, R>
+    readonly Success: Schema.Schema<A, IA, R>
   }
 }
 
@@ -76,7 +76,7 @@ export declare namespace WithResult {
  */
 export const failureSchema = <R, IE, E, IA, A>(
   self: WithResult<R, IE, E, IA, A>
-): Schema.Schema<R, IE, E> => self[symbolResult].Failure
+): Schema.Schema<E, IE, R> => self[symbolResult].Failure
 
 /**
  * @since 1.0.0
@@ -84,11 +84,11 @@ export const failureSchema = <R, IE, E, IA, A>(
  */
 export const successSchema = <R, IE, E, IA, A>(
   self: WithResult<R, IE, E, IA, A>
-): Schema.Schema<R, IA, A> => self[symbolResult].Success
+): Schema.Schema<A, IA, R> => self[symbolResult].Success
 
 const exitSchemaCache = globalValue(
   "@effect/schema/Serializable/exitSchemaCache",
-  () => new WeakMap<object, Schema.Schema<any, any>>()
+  () => new WeakMap<object, Schema.Schema<any, any, any>>()
 )
 
 /**
@@ -97,7 +97,7 @@ const exitSchemaCache = globalValue(
  */
 export const exitSchema = <R, IE, E, IA, A>(
   self: WithResult<R, IE, E, IA, A>
-): Schema.Schema<R, Schema.ExitFrom<IE, IA>, Exit.Exit<E, A>> => {
+): Schema.Schema<Exit.Exit<E, A>, Schema.ExitFrom<IE, IA>, R> => {
   const proto = Object.getPrototypeOf(self)
   if (!(symbolResult in proto)) {
     return Schema.exit(failureSchema(self), successSchema(self))
@@ -115,7 +115,7 @@ export const exitSchema = <R, IE, E, IA, A>(
  * @category model
  */
 export interface SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
-  extends Serializable<R, IS, S>, WithResult<RR, IE, E, IA, A>
+  extends Serializable<S, IS, R>, WithResult<RR, IE, E, IA, A>
 {}
 
 /**
@@ -135,8 +135,8 @@ export declare namespace SerializableWithResult {
  * @since 1.0.0
  * @category encoding
  */
-export const serialize = <R, I, A>(
-  self: Serializable<R, I, A>
+export const serialize = <A, I, R>(
+  self: Serializable<A, I, R>
 ): Effect.Effect<R, ParseResult.ParseError, I> => Schema.encode(self[symbol])(self as A)
 
 /**
@@ -146,14 +146,14 @@ export const serialize = <R, I, A>(
 export const deserialize: {
   (
     value: unknown
-  ): <R, I, A>(self: Serializable<R, I, A>) => Effect.Effect<R, ParseResult.ParseError, A>
-  <R, I, A>(self: Serializable<R, I, A>, value: unknown): Effect.Effect<R, ParseResult.ParseError, A>
+  ): <A, I, R>(self: Serializable<A, I, R>) => Effect.Effect<R, ParseResult.ParseError, A>
+  <A, I, R>(self: Serializable<A, I, R>, value: unknown): Effect.Effect<R, ParseResult.ParseError, A>
 } = dual<
-  (value: unknown) => <R, I, A>(
-    self: Serializable<R, I, A>
+  (value: unknown) => <A, I, R>(
+    self: Serializable<A, I, R>
   ) => Effect.Effect<R, ParseResult.ParseError, A>,
-  <R, I, A>(
-    self: Serializable<R, I, A>,
+  <A, I, R>(
+    self: Serializable<A, I, R>,
     value: unknown
   ) => Effect.Effect<R, ParseResult.ParseError, A>
 >(2, (self, value) => Schema.decodeUnknown(self[symbol])(value))
