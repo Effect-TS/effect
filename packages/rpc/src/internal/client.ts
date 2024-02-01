@@ -24,12 +24,12 @@ const makeRecursive = <const S extends RpcService.DefinitionWithId>(
   schemas: S,
   transport: RpcResolver<never>,
   options: client.RpcClientOptions,
-  serviceErrors: ReadonlyArray<Schema.Schema<any, any>> = [],
+  serviceErrors: ReadonlyArray<Schema.Schema<any, any, any>> = [],
   prefix = ""
 ): client.RpcClient<S, never> => {
   serviceErrors = [
     ...serviceErrors,
-    schemas[RpcServiceErrorId] as Schema.Schema<any, any>
+    schemas[RpcServiceErrorId] as Schema.Schema<any, any, any>
   ]
 
   return Object.entries(schemas).reduce(
@@ -107,7 +107,7 @@ export const make: <
 
 const makeRpc = <const S extends RpcSchema.Any>(
   resolver: RpcResolver<never>,
-  serviceErrors: ReadonlyArray<Schema.Schema<any, any>>,
+  serviceErrors: ReadonlyArray<Schema.Schema<any, any, any>>,
   schema: S,
   method: string,
   { spanPrefix = "RpcClient" }: client.RpcClientOptions
@@ -121,7 +121,7 @@ const makeRpc = <const S extends RpcSchema.Any>(
   const parseOutput = "output" in schema ? codec.decode(schema.output) : (_: any) => Effect.unit
 
   if ("input" in schema) {
-    const encodeInput = codec.encode(schema.input as Schema.Schema<any, any>)
+    const encodeInput = codec.encode(schema.input as Schema.Schema<any, any, any>)
 
     return ((input: any) => {
       const inputHash = schemaHash(schema.input, input)

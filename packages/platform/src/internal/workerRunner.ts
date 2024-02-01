@@ -168,7 +168,7 @@ export const makeSerialized = <
   A extends Schema.TaggedRequest.Any,
   const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<R, I, A>,
+  schema: Schema.Schema<A, I, R>,
   handlers: Handlers
 ): Effect.Effect<
   | R
@@ -226,7 +226,7 @@ export const layerSerialized = <
   A extends Schema.TaggedRequest.Any,
   const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<R, I, A>,
+  schema: Schema.Schema<A, I, R>,
   handlers: Handlers
 ): Layer.Layer<
   | R

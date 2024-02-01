@@ -252,7 +252,7 @@ export const fileParse: (name: string, format?: "json" | "yaml" | "ini" | "toml"
  */
 export const fileSchema: <I, A>(
   name: string,
-  schema: Schema<FileSystem | Path | Terminal, I, A>,
+  schema: Schema<A, I, FileSystem | Path | Terminal>,
   format?: "json" | "yaml" | "ini" | "toml" | undefined
 ) => Options<A> = InternalOptions.fileSchema
 
@@ -537,8 +537,8 @@ export const withPseudoName: {
  * @category combinators
  */
 export const withSchema: {
-  <A, I extends A, B>(schema: Schema<FileSystem | Path | Terminal, I, B>): (self: Options<A>) => Options<B>
-  <A, I extends A, B>(self: Options<A>, schema: Schema<FileSystem | Path | Terminal, I, B>): Options<B>
+  <A, I extends A, B>(schema: Schema<B, I, FileSystem | Path | Terminal>): (self: Options<A>) => Options<B>
+  <A, I extends A, B>(self: Options<A>, schema: Schema<B, I, FileSystem | Path | Terminal>): Options<B>
 } = InternalOptions.withSchema
 
 /**

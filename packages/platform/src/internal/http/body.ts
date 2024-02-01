@@ -90,7 +90,7 @@ export const urlParams = (urlParams: UrlParams.UrlParams): Body.Uint8Array =>
   text(UrlParams.toString(urlParams), "application/x-www-form-urlencoded")
 
 /** @internal */
-export const jsonSchema = <R, I, A>(schema: Schema.Schema<R, I, A>) => {
+export const jsonSchema = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
   const encode = Schema.encode(schema)
   return (body: A): Effect.Effect<R, Body.BodyError, Body.Uint8Array> =>
     Effect.flatMap(

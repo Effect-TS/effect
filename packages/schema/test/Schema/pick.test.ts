@@ -62,7 +62,7 @@ describe("Schema > pick", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<never, A> = S.suspend( // intended outer suspend
+    const A: S.Schema<A> = S.suspend( // intended outer suspend
       () =>
         S.struct({
           a: S.string,
