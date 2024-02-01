@@ -336,6 +336,38 @@ importers:
         version: 6.2.0
     publishDirectory: dist
 
+  packages/platform-node-shared:
+    dependencies:
+      mime:
+        specifier: ^3.0.0
+        version: 3.0.0
+      multipasta:
+        specifier: ^0.1.21
+        version: 0.1.21
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
+      '@types/mime':
+        specifier: ^3.0.4
+        version: 3.0.4
+      '@types/node':
+        specifier: ^20.10.5
+        version: 20.10.5
+      '@types/tar':
+        specifier: ^6.1.10
+        version: 6.1.10
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+      tar:
+        specifier: ^6.2.0
+        version: 6.2.0
+    publishDirectory: dist
+
   packages/printer:
     devDependencies:
       '@effect/typeclass':
