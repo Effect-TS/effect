@@ -3,11 +3,14 @@
  */
 import * as app from "./Http/App.js"
 import * as body from "./Http/Body.js"
+import * as etag from "./Http/Etag.js"
 import * as headers from "./Http/Headers.js"
 import * as middleware from "./Http/Middleware.js"
 import * as multipart from "./Http/Multipart.js"
 import * as multiplex from "./Http/Multiplex.js"
+import * as platform from "./Http/Platform.js"
 import * as router from "./Http/Router.js"
+import * as server from "./Http/Server.js"
 import * as error from "./Http/ServerError.js"
 import * as request from "./Http/ServerRequest.js"
 import * as response from "./Http/ServerResponse.js"
@@ -35,6 +38,13 @@ export {
    * - Module: `@effect/platform/Http/ServerError`
    */
   error,
+  /**
+   * @since 1.0.0
+   *
+   * - Docs: [Http/Etag](https://effect-ts.github.io/effect/platform/Http/Etag.ts.html)
+   * - Module: `@effect/platform/Http/Etag`
+   */
+  etag,
   /**
    * @since 1.0.0
    *
@@ -66,6 +76,13 @@ export {
   /**
    * @since 1.0.0
    *
+   * - Docs: [Http/Platform](https://effect-ts.github.io/effect/platform/Http/Platform.ts.html)
+   * - Module: `@effect/platform/Http/Platform`
+   */
+  platform,
+  /**
+   * @since 1.0.0
+   *
    * - Docs: [Http/ServerRequest](https://effect-ts.github.io/effect/platform/Http/ServerRequest.ts.html)
    * - Module: `@effect/platform/Http/ServerRequest`
    */
@@ -84,6 +101,13 @@ export {
    * - Module: `@effect/platform/Http/Router`
    */
   router,
+  /**
+   * @since 1.0.0
+   *
+   * - Docs: [Http/Server](https://effect-ts.github.io/effect/platform/Http/Server.ts.html)
+   * - Module: `@effect/platform/Http/Server`
+   */
+  server,
   /**
    * @since 1.0.0
    *

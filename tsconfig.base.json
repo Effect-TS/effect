@@ -63,6 +63,15 @@
       "@effect/platform-node": ["./packages/platform-node/src/index.js"],
       "@effect/platform-node/*": ["./packages/platform-node/src/*.js"],
       "@effect/platform-node/test/*": ["./packages/platform-node/test/*.js"],
+      "@effect/platform-node-shared": [
+        "./packages/platform-node-shared/src/index.js"
+      ],
+      "@effect/platform-node-shared/*": [
+        "./packages/platform-node-shared/src/*.js"
+      ],
+      "@effect/platform-node-shared/test/*": [
+        "./packages/platform-node-shared/test/*.js"
+      ],
       "@effect/printer": ["./packages/printer/src/index.js"],
       "@effect/printer/*": ["./packages/printer/src/*.js"],
       "@effect/printer/test/*": ["./packages/printer/test/*.js"],

@@ -1,16 +1,14 @@
 import * as ConfigFile from "@effect/cli/ConfigFile"
-import * as FileSystem from "@effect/platform-node/FileSystem"
-import * as Path from "@effect/platform-node/Path"
-import { Layer } from "effect"
+import type { FileSystem } from "@effect/platform"
+import { Path } from "@effect/platform"
+import { NodeContext } from "@effect/platform-node"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import { assert, describe, it } from "vitest"
 
-const MainLive = Layer.mergeAll(FileSystem.layer, Path.layer)
-
 const runEffect = <E, A>(
   self: Effect.Effect<FileSystem.FileSystem | Path.Path, E, A>
-): Promise<A> => Effect.provide(self, MainLive).pipe(Effect.runPromise)
+): Promise<A> => Effect.provide(self, NodeContext.layer).pipe(Effect.runPromise)
 
 describe("ConfigFile", () => {
   it("loads json files", () =>

@@ -6,7 +6,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
 import type * as Http from "node:http"
-import * as NodeStream from "../../Stream.js"
+import * as NodeStream from "../../NodeStream.js"
 
 /** @internal */
 export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E> {

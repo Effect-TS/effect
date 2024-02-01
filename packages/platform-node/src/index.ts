@@ -1,44 +1,7 @@
 /**
  * @since 1.0.0
  */
-export * as Command from "./Command.js"
-
-/**
- * @since 1.0.0
- */
-export * as CommandExecutor from "./CommandExecutor.js"
-
-/**
- * @since 1.0.0
- */
-export * as Effectify from "./Effectify.js"
-
-/**
- * @since 1.0.0
- */
-export * as Error from "./Error.js"
-
-/**
- * @since 1.0.0
- */
-export * as FileSystem from "./FileSystem.js"
-
-/**
- * @since 1.0.0
- */
-export * as HttpClient from "./HttpClient.js"
-
-/**
- * @since 1.0.0
- */
-export * as HttpServer from "./HttpServer.js"
-
-/**
- * @since 1.0.0
- *
- * Also includes exports from [`@effect/platform/KeyValueStore`](https://effect-ts.github.io/effect/platform/KeyValueStore.ts.html).
- */
-export * as KeyValueStore from "./KeyValueStore.js"
+export * as NodeCommandExecutor from "./NodeCommandExecutor.js"
 
 /**
  * @since 1.0.0
@@ -48,45 +11,54 @@ export * as NodeContext from "./NodeContext.js"
 /**
  * @since 1.0.0
  */
-export * as Path from "./Path.js"
+export * as NodeFileSystem from "./NodeFileSystem.js"
 
 /**
  * @since 1.0.0
  */
-export * as Runtime from "./Runtime.js"
+export * as NodeHttpClient from "./NodeHttpClient.js"
 
 /**
  * @since 1.0.0
  */
-export * as Sink from "./Sink.js"
+export * as NodeHttpServer from "./NodeHttpServer.js"
 
 /**
  * @since 1.0.0
  */
-export * as Stream from "./Stream.js"
+export * as NodeKeyValueStore from "./NodeKeyValueStore.js"
 
 /**
  * @since 1.0.0
  */
-export * as Terminal from "./Terminal.js"
+export * as NodePath from "./NodePath.js"
 
 /**
  * @since 1.0.0
- *
- * Also includes exports from [`@effect/platform/Transferable`](https://effect-ts.github.io/effect/platform/Transferable.ts.html).
  */
-export * as Transferable from "./Transferable.js"
+export * as NodeRuntime from "./NodeRuntime.js"
 
 /**
  * @since 1.0.0
- *
- * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/effect/platform/Worker.ts.html).
  */
-export * as Worker from "./Worker.js"
+export * as NodeSink from "./NodeSink.js"
 
 /**
  * @since 1.0.0
- *
- * Also includes exports from [`@effect/platform/WorkerRunner`](https://effect-ts.github.io/effect/platform/WorkerRunner.ts.html).
  */
-export * as WorkerRunner from "./WorkerRunner.js"
+export * as NodeStream from "./NodeStream.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeTerminal from "./NodeTerminal.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeWorker from "./NodeWorker.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeWorkerRunner from "./NodeWorkerRunner.js"

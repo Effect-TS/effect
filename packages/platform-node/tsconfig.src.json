@@ -3,12 +3,14 @@
   "include": ["src"],
   "references": [
     { "path": "../platform" },
+    { "path": "../platform-node-shared" },
     { "path": "../effect" },
     { "path": "../schema" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
     "rootDir": "src",
-    "outDir": "build/src"
+    "outDir": "build/src",
+    "types": ["node"]
   }
 }
