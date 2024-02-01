@@ -1,11 +1,13 @@
 /// <reference types="bun-types" />
-import * as Multipart from "@effect/platform-node/Http/Multipart"
+import * as Etag from "@effect/platform-node-shared/Http/Etag"
+import * as MultipartNode from "@effect/platform-node-shared/Http/Multipart"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
 import * as Middleware from "@effect/platform/Http/Middleware"
+import type * as Multipart from "@effect/platform/Http/Multipart"
 import * as Server from "@effect/platform/Http/Server"
 import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
@@ -23,6 +25,7 @@ import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Readable } from "node:stream"
+import * as BunContext from "../../BunContext.js"
 import * as Platform from "../../Http/Platform.js"
 
 /** @internal */
@@ -155,21 +158,30 @@ const respond = Middleware.make((httpApp) =>
 )
 
 /** @internal */
+export const layerServer = (
+  options: Omit<ServeOptions, "fetch" | "error">
+) => Layer.scoped(Server.Server, make(options))
+
+/** @internal */
 export const layer = (
   options: Omit<ServeOptions, "fetch" | "error">
 ) =>
-  Layer.merge(
+  Layer.mergeAll(
     Layer.scoped(Server.Server, make(options)),
-    Platform.layer
+    Platform.layer,
+    Etag.layerWeak,
+    BunContext.layer
   )
 
 /** @internal */
 export const layerConfig = (
   options: Config.Config.Wrap<Omit<ServeOptions, "fetch" | "error">>
 ) =>
-  Layer.merge(
+  Layer.mergeAll(
     Layer.scoped(Server.Server, Effect.flatMap(Config.unwrap(options), make)),
-    Platform.layer
+    Platform.layer,
+    Etag.layerWeak,
+    BunContext.layer
   )
 
 class ServerRequestImpl implements ServerRequest.ServerRequest {
@@ -291,13 +303,13 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       return this.multipartEffect
     }
     this.multipartEffect = Effect.runSync(Effect.cached(
-      Multipart.persisted(Readable.fromWeb(this.source.body! as any), this.headers)
+      MultipartNode.persisted(Readable.fromWeb(this.source.body! as any), this.headers)
     ))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<never, Multipart.MultipartError, Multipart.Part> {
-    return Multipart.stream(Readable.fromWeb(this.source.body! as any), this.headers)
+    return MultipartNode.stream(Readable.fromWeb(this.source.body! as any), this.headers)
   }
 
   private arrayBufferEffect: Effect.Effect<never, Error.RequestError, ArrayBuffer> | undefined

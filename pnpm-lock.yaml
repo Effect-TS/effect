@@ -286,13 +286,14 @@ importers:
     publishDirectory: dist
 
   packages/platform-bun:
+    dependencies:
+      '@effect/platform-node-shared':
+        specifier: workspace:^
+        version: link:../platform-node-shared/dist
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform-node/dist
       '@effect/schema':
         specifier: workspace:^
         version: link:../schema/dist
@@ -306,12 +307,12 @@ importers:
 
   packages/platform-node:
     dependencies:
+      '@effect/platform-node-shared':
+        specifier: workspace:^
+        version: link:../platform-node-shared/dist
       mime:
         specifier: ^3.0.0
         version: 3.0.0
-      multipasta:
-        specifier: ^0.1.21
-        version: 0.1.21
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -322,6 +323,26 @@ importers:
       '@types/mime':
         specifier: ^3.0.4
         version: 3.0.4
+      '@types/node':
+        specifier: ^20.10.5
+        version: 20.10.5
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
+  packages/platform-node-shared:
+    dependencies:
+      multipasta:
+        specifier: ^0.1.21
+        version: 0.1.21
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
       '@types/node':
         specifier: ^20.10.5
         version: 20.10.5
