@@ -40,12 +40,13 @@
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/platform-node": "workspace:^",
     "effect": "workspace:^"
+  },
+  "dependencies": {
+    "@effect/platform-node-shared": "workspace:^"
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/platform-node": "workspace:^",
     "@effect/schema": "workspace:^",
     "bun-types": "1.0.18-1",
     "effect": "workspace:^"

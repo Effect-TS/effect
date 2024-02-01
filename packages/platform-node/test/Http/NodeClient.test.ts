@@ -1,4 +1,4 @@
-import * as NodeClient from "@effect/platform-node/Http/NodeClient"
+import * as NodeClient from "@effect/platform-node/NodeHttpClient"
 import * as Http from "@effect/platform/HttpClient"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
