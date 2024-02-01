@@ -253,7 +253,7 @@ export const fileParse: (config?: Args.FormatArgsConfig | undefined) => Args<unk
  * @category constructors
  */
 export const fileSchema: <I, A>(
-  schema: Schema<FileSystem | Path | Terminal, I, A>,
+  schema: Schema<A, I, FileSystem | Path | Terminal>,
   config?: Args.FormatArgsConfig | undefined
 ) => Args<A> = InternalArgs.fileSchema
 
@@ -444,8 +444,8 @@ export const withDescription: {
  * @category combinators
  */
 export const withSchema: {
-  <A, I extends A, B>(schema: Schema<FileSystem | Path | Terminal, I, B>): (self: Args<A>) => Args<B>
-  <A, I extends A, B>(self: Args<A>, schema: Schema<FileSystem | Path | Terminal, I, B>): Args<B>
+  <A, I extends A, B>(schema: Schema<B, I, FileSystem | Path | Terminal>): (self: Args<A>) => Args<B>
+  <A, I extends A, B>(self: Args<A>, schema: Schema<B, I, FileSystem | Path | Terminal>): Args<B>
 } = InternalArgs.withSchema
 
 /**

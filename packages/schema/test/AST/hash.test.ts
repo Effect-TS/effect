@@ -2,11 +2,11 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-const expectToString = <R, I, A>(schema: S.Schema<R, I, A>, s: string) => {
+const expectToString = <A, I, R>(schema: S.Schema<A, I, R>, s: string) => {
   expect(AST.toString(schema.ast)).toBe(s)
 }
 
-const expectHash = <R, I, A>(schema: S.Schema<R, I, A>, n: number) => {
+const expectHash = <A, I, R>(schema: S.Schema<A, I, R>, n: number) => {
   expect(AST.hash(schema.ast)).toBe(n)
 }
 
@@ -75,7 +75,7 @@ describe("AST > toString", () => {
   describe("suspend", () => {
     it("outer", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
+      const schema: S.Schema<A> = S.suspend( // intended outer suspend
         () => S.tuple(S.number, S.union(schema, S.literal(null)))
       )
       expectToString(
@@ -122,7 +122,7 @@ describe("AST > toString", () => {
 
   it("inner/outer", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<never, A> = S.tuple(
+    const schema: S.Schema<A> = S.tuple(
       S.number,
       S.union(S.suspend(() => schema), S.literal(null))
     )
@@ -170,7 +170,7 @@ describe("AST > toString", () => {
 
   it("inner/inner", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<never, A> = S.tuple(
+    const schema: S.Schema<A> = S.tuple(
       S.number,
       S.union(
         S.suspend(() => schema),
@@ -241,7 +241,7 @@ describe("AST > hash", () => {
   describe("suspend", () => {
     it("outer", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
+      const schema: S.Schema<A> = S.suspend( // intended outer suspend
         () => S.tuple(S.number, S.union(schema, S.literal(null)))
       )
       expectHash(schema, -1069774720)
@@ -249,7 +249,7 @@ describe("AST > hash", () => {
 
     it("inner/outer", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<never, A> = S.tuple(
+      const schema: S.Schema<A> = S.tuple(
         S.number,
         S.union(S.suspend(() => schema), S.literal(null))
       )
@@ -259,7 +259,7 @@ describe("AST > hash", () => {
 
     it("inner/inner", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<never, A> = S.tuple(
+      const schema: S.Schema<A> = S.tuple(
         S.number,
         S.union(
           S.suspend(() => schema),

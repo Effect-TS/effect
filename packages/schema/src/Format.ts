@@ -8,7 +8,7 @@ import * as Schema from "./Schema.js"
  * @category formatting
  * @since 1.0.0
  */
-export const format: <R, I, A>(schema: Schema.Schema<R, I, A>) => string = Schema.format
+export const format: <A, I, R>(schema: Schema.Schema<A, I, R>) => string = Schema.format
 
 /**
  * @category formatting

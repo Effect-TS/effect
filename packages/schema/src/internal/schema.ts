@@ -10,19 +10,19 @@ import type * as Schema from "../Schema.js"
 export const TypeId: Schema.TypeId = Symbol.for("@effect/schema/Schema") as Schema.TypeId
 
 /** @internal */
-export const make = <R, I, A>(ast: AST.AST): Schema.Schema<R, I, A> => new SchemaImpl(ast)
+export const make = <A, I, R>(ast: AST.AST): Schema.Schema<A, I, R> => new SchemaImpl(ast)
 
 /** @internal */
 export const variance = {
   /* c8 ignore next */
-  R: (_: never) => _,
+  _A: (_: any) => _,
   /* c8 ignore next */
-  From: (_: any) => _,
+  _I: (_: any) => _,
   /* c8 ignore next */
-  To: (_: any) => _
+  _R: (_: never) => _
 }
 
-class SchemaImpl<R, From, To> implements Schema.Schema<R, From, To> {
+class SchemaImpl<A, I, R> implements Schema.Schema<A, I, R> {
   readonly [TypeId] = variance
   constructor(readonly ast: AST.AST) {}
   pipe() {

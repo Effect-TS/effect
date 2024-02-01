@@ -230,7 +230,7 @@ export const fileParse = (
 
 /** @internal */
 export const fileSchema = <I, A>(
-  schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, A>,
+  schema: Schema.Schema<A, I, FileSystem.FileSystem | Path.Path | Terminal.Terminal>,
   config?: Args.Args.FormatArgsConfig
 ): Args.Args<A> => withSchema(fileParse(config), schema)
 
@@ -423,11 +423,11 @@ export const withFallbackConfig: {
 /** @internal */
 export const withSchema = dual<
   <A, I extends A, B>(
-    schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, B>
+    schema: Schema.Schema<B, I, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => (self: Args.Args<A>) => Args.Args<B>,
   <A, I extends A, B>(
     self: Args.Args<A>,
-    schema: Schema.Schema<FileSystem.FileSystem | Path.Path | Terminal.Terminal, I, B>
+    schema: Schema.Schema<B, I, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => Args.Args<B>
 >(2, (self, schema) => {
   const decode = Schema.decode(schema)
