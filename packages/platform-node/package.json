@@ -42,8 +42,8 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "mime": "^3.0.0",
-    "multipasta": "^0.1.21"
+    "@effect/platform-node-shared": "workspace:^",
+    "mime": "^3.0.0"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
@@ -54,15 +54,18 @@
     "@effect/schema": "workspace:^",
     "@types/mime": "^3.0.4",
     "@types/node": "^20.10.5",
-    "@types/tar": "^6.1.10",
-    "effect": "workspace:^",
-    "tar": "^6.2.0"
+    "effect": "workspace:^"
   },
   "effect": {
     "generateExports": {
       "include": [
         "*.ts",
         "Http/*.ts"
+      ]
+    },
+    "generateIndex": {
+      "include": [
+        "*.ts"
       ]
     }
   }
