@@ -97,17 +97,17 @@ export declare module Schema {
   /**
    * @since 1.0.0
    */
-  export type Context<S> = S extends Schema.Variance<any, any, infer R> ? R : never
+  export type Context<S> = S extends Schema.Variance<infer _A, infer _I, infer R> ? R : never
 
   /**
    * @since 1.0.0
    */
-  export type From<S> = S extends Schema.Variance<any, infer I, any> ? I : never
+  export type From<S> = S extends Schema.Variance<infer _A, infer I, infer _R> ? I : never
 
   /**
    * @since 1.0.0
    */
-  export type To<S> = S extends Schema.Variance<infer A, any, any> ? A : never
+  export type To<S> = S extends Schema.Variance<infer A, infer _I, infer _R> ? A : never
 
   /**
    * @since 1.0.0

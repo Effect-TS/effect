@@ -2,7 +2,7 @@
 
 Welcome to the documentation for `@effect/schema`, **a library for defining and using schemas** to validate and transform data in TypeScript.
 
-`@effect/schema` allows you to define a `Schema<R, I, A>` that provides a blueprint for describing the structure and data types of your data. Once defined, you can leverage this schema to perform a range of operations, including:
+`@effect/schema` allows you to define a `Schema<A, I, R>` that provides a blueprint for describing the structure and data types of your data. Once defined, you can leverage this schema to perform a range of operations, including:
 
 | Operation       | Description                                                                                                    |
 | --------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -20,20 +20,20 @@ If you're eager to learn how to define your first schema, jump straight to the [
 
 ```mermaid
 sequenceDiagram
-    participant U1 as unknown
-    participant I
+    participant UA as unknown
     participant A
-    participant U2 as unknown
-    U1->>A: decodeUnknown
+    participant I
+    participant UI as unknown
+    UI->>A: decodeUnknown
     I->>A: decode
     A->>I: encode
-    U2->>I: encodeUnknown
-    U2->>A: validate
-    U2->>A: is
-    U2->>A: asserts
+    UA->>I: encodeUnknown
+    UA->>A: validate
+    UA->>A: is
+    UA->>A: asserts
 ```
 
-We'll break down these concepts using an example with a `Schema<never, string, Date>`. This schema serves as a tool to transform a `string` into a `Date` and vice versa.
+We'll break down these concepts using an example with a `Schema<Date, string, never>`. This schema serves as a tool to transform a `string` into a `Date` and vice versa.
 
 **Encoding**
 
@@ -107,11 +107,11 @@ Let's delve into this with an example.
 import * as S from "@effect/schema/Schema";
 
 /*
-const schema: S.Schema<never, {
+const schema: S.Schema<{
     readonly myfield?: string; // the type is strict
 }, {
     readonly myfield?: string; // the type is strict
-}>
+}, never>
 */
 const schema = S.struct({
   myfield: S.optional(S.string.pipe(S.nonEmpty()), {
@@ -138,11 +138,11 @@ If, for some reason, you can't enable the `exactOptionalPropertyTypes` option (p
 import * as S from "@effect/schema/Schema";
 
 /*
-const schema: S.Schema<never, {
+const schema: S.Schema<{
     readonly myfield?: string | undefined; // the type is widened to string | undefined
 }, {
     readonly myfield?: string | undefined; // the type is widened to string | undefined
-}>
+}, never>
 */
 const schema = S.struct({
   myfield: S.optional(S.string.pipe(S.nonEmpty()), {
@@ -209,7 +209,7 @@ In addition to the provided `struct` and `union` functions, `@effect/schema/Sche
 
 ## Extracting Inferred Types
 
-After you've defined a `Schema<R, I, A>`, you can extract the inferred type `A` that represents the data described by the schema using the `Schema.To` type.
+After you've defined a `Schema<A, I, R>`, you can extract the inferred type `A` that represents the data described by the schema using the `Schema.To` type.
 
 For instance, with the `Person` schema we defined earlier, you can extract the inferred type of a `Person` object as demonstrated below:
 
@@ -278,7 +278,7 @@ const _Person = S.struct({
 interface Person extends S.Schema.To<typeof _Person> {}
 
 // Re-declare the schema to create a schema with an opaque type
-const Person: S.Schema<never, Person> = _Person;
+const Person: S.Schema<Person> = _Person;
 ```
 
 Alternatively, you can use `Schema.Class` (see the [Class](#classes) section below for more details).
@@ -289,13 +289,13 @@ Note that the technique shown above becomes more complex when the schema is defi
 import * as S from "@effect/schema/Schema";
 
 /*
-const _Person: S.Schema<never, {
-    readonly name: string;
-    readonly age: string;
-}, {
+const _Person: S.Schema<{
     readonly name: string;
     readonly age: number;
-}>
+}, {
+    readonly name: string;
+    readonly age: string;
+}, never>
 */
 const _Person = S.struct({
   name: S.string,
@@ -307,7 +307,7 @@ interface Person extends S.Schema.To<typeof _Person> {}
 interface PersonFrom extends S.Schema.From<typeof _Person> {}
 
 // Re-declare the schema to create a schema with an opaque type
-const Person: S.Schema<never, PersonFrom, Person> = _Person;
+const Person: S.Schema<Person, PersonFrom> = _Person;
 ```
 
 In this case, the field `"age"` is of type `string` in the `From` type of the schema and is of type `number` in the `To` type of the schema. Therefore, we need to define **two** interfaces (`PersonFrom` and `Person`) and use both to redeclare our final schema `Person`.
@@ -941,7 +941,7 @@ interface Category {
   readonly categories: ReadonlyArray<Category>;
 }
 
-const schema: S.Schema<never, Category> = S.struct({
+const schema: S.Schema<Category> = S.struct({
   name: S.string,
   categories: S.array(S.suspend(() => schema)),
 }).pipe(S.identifier("Category"));
@@ -1086,9 +1086,9 @@ import * as S from "@effect/schema/Schema";
 // primitive values
 S.string;
 S.number;
-S.bigint; // Schema<never, string, bigint>
+S.bigint; // Schema<bigint, string>
 S.boolean;
-S.symbol; // Schema<never, string, symbol>
+S.symbol; // Schema<symbol, string>
 S.object;
 
 // empty types
@@ -1128,14 +1128,14 @@ The `templateLiteral` combinator allows you to create a schema for a TypeScript 
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, `a${string}`>
+// Schema<`a${string}`>
 S.templateLiteral(S.literal("a"), S.string);
 
 // example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
 const EmailLocaleIDs = S.literal("welcome_email", "email_heading");
 const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff");
 
-// $ExpectType Schema<never, "welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
+// Schema<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
 S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"));
 ```
 
@@ -1400,7 +1400,7 @@ enum Fruits {
   Banana,
 }
 
-// $ExpectType Schema<never, Fruits>
+// Schema<Fruits>
 S.enums(Fruits);
 ```
 
@@ -1409,10 +1409,10 @@ S.enums(Fruits);
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string | null>
+// Schema<string | null>
 S.nullable(S.string);
 
-// $ExpectType Schema<never, string | null | undefined>
+// Schema<string | null | undefined>
 S.nullish(S.string);
 ```
 
@@ -1423,7 +1423,7 @@ S.nullish(S.string);
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string | number>
+// Schema<string | number>
 S.union(S.string, S.number);
 ```
 
@@ -1434,7 +1434,7 @@ While the following is perfectly acceptable:
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, "a" | "b" | "c">
+// Schema<"a" | "b" | "c">
 const schema = S.union(S.literal("a"), S.literal("b"), S.literal("c"));
 ```
 
@@ -1443,7 +1443,7 @@ It is possible to use `literal` and pass multiple literals, which is less cumber
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, "a" | "b" | "c">
+// Schema<"a" | "b" | "c">
 const schema = S.literal("a", "b", "c");
 ```
 
@@ -1606,7 +1606,7 @@ assert.deepStrictEqual(
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, readonly [string, number]>
+// Schema<readonly [string, number]>
 S.tuple(S.string, S.number);
 ```
 
@@ -1615,7 +1615,7 @@ S.tuple(S.string, S.number);
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, readonly [string, number, boolean]>
+// Schema<readonly [string, number, boolean]>
 S.tuple(S.string, S.number).pipe(S.element(S.boolean));
 ```
 
@@ -1624,7 +1624,7 @@ S.tuple(S.string, S.number).pipe(S.element(S.boolean));
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, readonly [string, number, boolean?]>
+// Schema<readonly [string, number, boolean?]>
 S.tuple(S.string, S.number).pipe(S.optionalElement(S.boolean));
 ```
 
@@ -1633,7 +1633,7 @@ S.tuple(S.string, S.number).pipe(S.optionalElement(S.boolean));
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, readonly [string, number, ...boolean[]]>
+// Schema<readonly [string, number, ...boolean[]]>
 S.tuple(S.string, S.number).pipe(S.rest(S.boolean));
 ```
 
@@ -1642,7 +1642,7 @@ S.tuple(S.string, S.number).pipe(S.rest(S.boolean));
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, readonly number[]>
+// Schema<readonly number[]>
 S.array(S.number);
 ```
 
@@ -1653,7 +1653,7 @@ By default, when you use `S.array`, it generates a type marked as readonly. The 
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, number[]>
+// Schema<number[]>
 S.mutable(S.array(S.number));
 ```
 
@@ -1662,7 +1662,7 @@ S.mutable(S.array(S.number));
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, readonly [number, ...number[]]>
+// Schema<readonly [number, ...number[]]>
 S.nonEmptyArray(S.number);
 ```
 
@@ -1671,7 +1671,7 @@ S.nonEmptyArray(S.number);
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly a: string; readonly b: number; }>
+// Schema<{ readonly a: string; readonly b: number; }>
 S.struct({ a: S.string, b: S.number });
 ```
 
@@ -1682,7 +1682,7 @@ By default, when you use `S.struct`, it generates a type with properties that ar
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { a: string; b: number; }>
+// Schema<{ a: string; b: number; }>
 S.mutable(S.struct({ a: S.string, b: S.number }));
 ```
 
@@ -1692,8 +1692,8 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 | Combinator | From                                 | To                                                                 |
 | ---------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `optional` | `Schema<R, I, A>`                    | `PropertySignature<R, I \| undefined, true, A \| undefined, true>` |
-| `optional` | `Schema<R, I, A>`, `{ exact: true }` | `PropertySignature<R, I, true, A, true>`                           |
+| `optional` | `Schema<A, I, R>`                    | `PropertySignature<R, I \| undefined, true, A \| undefined, true>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true }` | `PropertySignature<R, I, true, A, true>`                           |
 
 #### optional(schema)
 
@@ -1719,10 +1719,10 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 | Combinator | From                                                                   | To                                                             |
 | ---------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `optional` | `Schema<R, I, A>`, `{ default: () => A }`                              | `PropertySignature<R, I \| undefined, true, A, false>`         |
-| `optional` | `Schema<R, I, A>`, `{ exact: true, default: () => A }`                 | `PropertySignature<R, I, true, A, false>`                      |
-| `optional` | `Schema<R, I, A>`, `{ nullable: true, default: () => A }`              | `PropertySignature<R, I \| null \| undefined, true, A, false>` |
-| `optional` | `Schema<R, I, A>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<R, I \| null, true, A, false>`              |
+| `optional` | `Schema<A, I, R>`, `{ default: () => A }`                              | `PropertySignature<R, I \| undefined, true, A, false>`         |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, default: () => A }`                 | `PropertySignature<R, I, true, A, false>`                      |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<R, I \| null \| undefined, true, A, false>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<R, I \| null, true, A, false>`              |
 
 #### optional(schema, { default: () => A })
 
@@ -1764,10 +1764,10 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 | Combinator | From                                                               | To                                                                     |
 | ---------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| `optional` | `Schema<R, I, A>`, `{ as: "Option" }`                              | `PropertySignature<R, I \| undefined, true, Option<A>, false>`         |
-| `optional` | `Schema<R, I, A>`, `{ exact: true, as: "Option" }`                 | `PropertySignature<R, I, true, Option<A>, false>`                      |
-| `optional` | `Schema<R, I, A>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<R, I \| undefined \| null, true, Option<A>, false>` |
-| `optional` | `Schema<R, I, A>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<R, I \| null, true, Option<A>, false>`              |
+| `optional` | `Schema<A, I, R>`, `{ as: "Option" }`                              | `PropertySignature<R, I \| undefined, true, Option<A>, false>`         |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, as: "Option" }`                 | `PropertySignature<R, I, true, Option<A>, false>`                      |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<R, I \| undefined \| null, true, Option<A>, false>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<R, I \| null, true, Option<A>, false>`              |
 
 #### optional(schema, { as: "Option" })
 
@@ -1908,7 +1908,7 @@ class Person extends S.Class<Person>()({
 
 console.log(S.isSchema(Person)); // true
 
-// $ExpectType Schema<never, { readonly id: number; name: string; }, { readonly id: number; name: string; }>
+// Schema<{ readonly id: number; name: string; }>
 Person.struct;
 ```
 
@@ -2057,10 +2057,10 @@ The `pick` operation is used to select specific properties from a schema.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly a: string; }>
+// Schema<{ readonly a: string; }>
 S.struct({ a: S.string, b: S.number, c: S.boolean }).pipe(S.pick("a"));
 
-// $ExpectType Schema<never, { readonly a: string; readonly c: boolean; }>
+// Schema<{ readonly a: string; readonly c: boolean; }>
 S.struct({ a: S.string, b: S.number, c: S.boolean }).pipe(S.pick("a", "c"));
 ```
 
@@ -2071,10 +2071,10 @@ The `omit` operation is employed to exclude certain properties from a schema.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly b: number; readonly c: boolean; }>
+// Schema<{ readonly b: number; readonly c: boolean; }>
 S.struct({ a: S.string, b: S.number, c: S.boolean }).pipe(S.omit("a"));
 
-// $ExpectType Schema<never, { readonly b: number; }>
+// Schema<{ readonly b: number; }>
 S.struct({ a: S.string, b: S.number, c: S.boolean }).pipe(S.omit("a", "c"));
 ```
 
@@ -2085,7 +2085,7 @@ The `partial` operation makes all properties within a schema optional.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly a?: string; readonly b?: number; }>
+// Schema<{ readonly a?: string; readonly b?: number; }>
 S.partial(S.struct({ a: S.string, b: S.number }));
 ```
 
@@ -2096,7 +2096,7 @@ The `required` operation ensures that all properties in a schema are mandatory.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly a: string; readonly b: number; }>
+// Schema<{ readonly a: string; readonly b: number; }>
 S.required(
   S.struct({
     a: S.optional(S.string, { exact: true }),
@@ -2112,10 +2112,10 @@ S.required(
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly [x: string]: string; }>
+// Schema<{ readonly [x: string]: string; }>
 S.record(S.string, S.string);
 
-// $ExpectType Schema<never, { readonly a: string; readonly b: string; }>
+// Schema<{ readonly a: string; readonly b: string; }>
 S.record(S.union(S.literal("a"), S.literal("b")), S.string);
 ```
 
@@ -2124,7 +2124,7 @@ S.record(S.union(S.literal("a"), S.literal("b")), S.string);
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly [x: string]: string; }>
+// Schema<{ readonly [x: string]: string; }>
 S.record(S.string.pipe(S.minLength(2)), S.string);
 ```
 
@@ -2133,7 +2133,7 @@ S.record(S.string.pipe(S.minLength(2)), S.string);
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly [x: symbol]: string; }>
+// Schema<{ readonly [x: symbol]: string; }>
 S.record(S.symbolFromSelf, S.string);
 ```
 
@@ -2142,7 +2142,7 @@ S.record(S.symbolFromSelf, S.string);
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly [x: `a${string}`]: string; }>
+// Schema<{ readonly [x: `a${string}`]: string; }>
 S.record(S.templateLiteral(S.literal("a"), S.string), S.string);
 ```
 
@@ -2153,7 +2153,7 @@ By default, when you use `S.record`, it generates a type marked as readonly. The
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { [x: string]: string; }>
+// Schema<{ [x: string]: string; }>
 S.mutable(S.record(S.string, S.string););
 ```
 
@@ -2164,7 +2164,7 @@ The `extend` combinator allows you to add additional fields or index signatures 
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, { readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
+// Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
 S.struct({ a: S.string, b: S.string }).pipe(
   S.extend(S.struct({ c: S.string })), // <= you can add more fields
   S.extend(S.record(S.string, S.string)) // <= you can add index signatures
@@ -2173,18 +2173,18 @@ S.struct({ a: S.string, b: S.string }).pipe(
 
 ## Compose
 
-Combining and reusing schemas is a common requirement, the `compose` combinator allows you to do just that. It enables you to combine two schemas, `Schema<R1, A, B>` and `Schema<R2, B, C>`, into a single schema `Schema<R1 | R2, A, C>`:
+Combining and reusing schemas is a common requirement, the `compose` combinator allows you to do just that. It enables you to combine two schemas, `Schema<B, A, R1>` and `Schema<C, B, R2>`, into a single schema `Schema<C, A, R1 | R2>`:
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, readonly string[]>
+// Schema<readonly string[], string>
 const schema1 = S.split(",");
 
-// $ExpectType Schema<never, readonly string[], readonly number[]>
+// Schema<readonly number[], readonly string[]>
 const schema2 = S.array(S.NumberFromString);
 
-// $ExpectType Schema<never, string, readonly number[]>
+// Schema<readonly number[], string>
 const composedSchema = S.compose(schema1, schema2);
 ```
 
@@ -2197,11 +2197,11 @@ Now, by using the `compose` combinator, we can create a new schema, `composedSch
 If you need to be less restrictive when composing your schemas, i.e., when you have something like `Schema<R1, A, B>` and `Schema<R2, C, D>` where `C` is different from `B`, you can make use of the `{ strict: false }` option:
 
 ```ts
-declare const compose: <R1, A, B, R2, C, D>(
-  ab: Schema<R1, A, B>,
-  cd: Schema<R2, C, D>, // Less strict constraint
+declare const compose: <A, B, R1, D, C, R2>(
+  from: Schema<B, A, R1>,
+  to: Schema<D, C, R2>, // Less strict constraint
   options: { strict: false }
-) => Schema<R1 | R2, A, D>;
+) => Schema<D, A, R1 | R2>;
 ```
 
 This is useful when you want to relax the type constraints imposed by the `decode` and `encode` functions, making them more permissive:
@@ -2227,7 +2227,7 @@ class Test {
   constructor(readonly name: string) {}
 }
 
-// $ExpectType Schema<never, Test>
+// Schema<Test>
 S.instanceOf(Test);
 ```
 
@@ -2243,7 +2243,7 @@ interface Category {
   readonly subcategories: ReadonlyArray<Category>;
 }
 
-const Category: S.Schema<never, Category> = S.struct({
+const Category: S.Schema<Category> = S.struct({
   name: S.string,
   subcategories: S.array(S.suspend(() => Category)),
 });
@@ -2266,7 +2266,7 @@ interface Operation {
   readonly right: Expression;
 }
 
-const Expression: S.Schema<never, Expression> = S.struct({
+const Expression: S.Schema<Expression> = S.struct({
   type: S.literal("expression"),
   value: S.union(
     S.number,
@@ -2274,7 +2274,7 @@ const Expression: S.Schema<never, Expression> = S.struct({
   ),
 });
 
-const Operation: S.Schema<never, Operation> = S.struct({
+const Operation: S.Schema<Operation> = S.struct({
   type: S.literal("operation"),
   operator: S.union(S.literal("+"), S.literal("-")),
   left: Expression,
@@ -2291,18 +2291,18 @@ To perform these kinds of transformations, the `@effect/schema` library provides
 ### transform
 
 ```ts
-declare const transform: <R1, A, B, R2, C, D>(
-  from: Schema<R1, A, B>,
-  to: Schema<R2, C, D>,
+declare const transform: <B, A, R1, D, C, R2>(
+  from: Schema<B, A, R1>,
+  to: Schema<D, C, R2>,
   decode: (b: B) => C,
   encode: (c: C) => B
-) => Schema<R1 | R2, A, D>;
+) => Schema<D, A, R1 | R2>;
 ```
 
 ```mermaid
 flowchart TD
-  schema1["from: Schema&lt;A, B&gt;"]
-  schema2["to: Schema&lt;C, D&gt;"]
+  schema1["from: Schema&lt;B, A&gt;"]
+  schema2["to: Schema&lt;D, C&gt;"]
   schema1--decode: B -> C-->schema2
   schema2--encode: C -> B-->schema1
 ```
@@ -2313,7 +2313,7 @@ The `transform` combinator takes a source schema, a target schema, a transformat
 import * as S from "@effect/schema/Schema";
 
 // use the transform combinator to convert the string schema into the tuple schema
-export const transformedSchema: S.Schema<never, string, readonly [string]> =
+export const transformedSchema: S.Schema<readonly [string], string> =
   S.transform(
     S.string,
     S.tuple(S.string),
@@ -2331,13 +2331,13 @@ In the example above, we defined a schema for the `string` type and a schema for
 If you need to be less restrictive in your `decode` and `encode` functions, you can make use of the `{ strict: false }` option:
 
 ```ts
-declare const transform: <R1, A, B, R2, C, D>(
-  from: Schema<R1, A, B>,
-  to: Schema<R2, C, D>,
+declare const transform: <B, A, R1, D, C, R2>(
+  from: Schema<B, A, R1>,
+  to: Schema<D, C, R2>,
   decode: (b: B) => unknown, // Less strict constraint
   encode: (c: C) => unknown, // Less strict constraint
   options: { strict: false }
-) => Schema<R1 | R2, A, D>;
+) => Schema<D, A, R1 | R2>;
 ```
 
 This is useful when you want to relax the type constraints imposed by the `decode` and `encode` functions, making them more permissive.
@@ -2350,22 +2350,19 @@ The `transformOrFail` combinator works in a similar way, but allows the transfor
 import * as ParseResult from "@effect/schema/ParseResult";
 import * as S from "@effect/schema/Schema";
 
-export const transformedSchema: S.Schema<never, string, boolean> =
-  S.transformOrFail(
-    S.string,
-    S.boolean,
-    // define a function that converts a string into a boolean
-    (s) =>
-      s === "true"
-        ? ParseResult.succeed(true)
-        : s === "false"
-          ? ParseResult.succeed(false)
-          : ParseResult.fail(
-              ParseResult.type(S.literal("true", "false").ast, s)
-            ),
-    // define a function that converts a boolean into a string
-    (b) => ParseResult.succeed(String(b))
-  );
+export const transformedSchema: S.Schema<boolean, string> = S.transformOrFail(
+  S.string,
+  S.boolean,
+  // define a function that converts a string into a boolean
+  (s) =>
+    s === "true"
+      ? ParseResult.succeed(true)
+      : s === "false"
+        ? ParseResult.succeed(false)
+        : ParseResult.fail(ParseResult.type(S.literal("true", "false").ast, s)),
+  // define a function that converts a boolean into a string
+  (b) => ParseResult.succeed(String(b))
+);
 ```
 
 The transformation may also be async:
@@ -2509,7 +2506,7 @@ The `split` combinator allows splitting a string into an array of strings.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, string[]>
+// Schema<string[], string>
 const schema = S.split(",");
 const parse = S.decodeUnknownSync(schema);
 
@@ -2526,7 +2523,7 @@ The `Trim` schema allows removing whitespaces from the beginning and end of a st
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, string>
+// Schema<string>
 const schema = S.Trim;
 const parse = S.decodeUnknownSync(schema);
 
@@ -2545,7 +2542,7 @@ The `Lowercase` schema converts a string to lowercase.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// const schema: S.Schema<never, string, string>
+// S.Schema<string>
 const schema = S.Lowercase;
 const parse = S.decodeUnknownSync(schema);
 
@@ -2564,7 +2561,7 @@ The `parseJson` constructor offers a method to convert JSON strings into the `un
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, unknown>
+// Schema<unknown, string>
 const schema = S.parseJson();
 const parse = S.decodeUnknownSync(schema);
 
@@ -2587,7 +2584,7 @@ Additionally, you can refine the parsing result by providing a schema to the `pa
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, { readonly a: number; }>
+// Schema<{ readonly a: number; }, string>
 const schema = S.parseJson(S.struct({ a: S.number }));
 ```
 
@@ -2604,7 +2601,7 @@ The following special string values are supported: "NaN", "Infinity", "-Infinity
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, number>
+// Schema<number, string>
 const schema = S.NumberFromString;
 const parse = S.decodeUnknownSync(schema);
 
@@ -2633,7 +2630,7 @@ Clamps a `number` between a minimum and a maximum value.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, number, number>
+// Schema<number>
 const schema = S.number.pipe(S.clamp(-1, 1)); // clamps the input to -1 <= x <= 1
 
 const parse = S.decodeUnknownSync(schema);
@@ -2652,7 +2649,7 @@ Transforms a `string` into a `BigDecimal`.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, BigDecimal>
+// Schema<BigDecimal, string>
 const schema = S.BigDecimal;
 const parse = S.decodeUnknownSync(schema);
 
@@ -2669,7 +2666,7 @@ Transforms a `number` into a `BigDecimal`.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, number, BigDecimal>
+// Schema<BigDecimal, number>
 const schema = S.BigDecimalFromNumber;
 const parse = S.decodeUnknownSync(schema);
 
@@ -2684,7 +2681,7 @@ Clamps a `BigDecimal` between a minimum and a maximum value.
 import * as S from "@effect/schema/Schema";
 import * as BigDecimal from "effect/BigDecimal";
 
-// $ExpectType Schema<never, string, BigDecimal.BigDecimal>
+// Schema<BigDecimal, string>
 const schema = S.BigDecimal.pipe(
   S.clampBigDecimal(BigDecimal.fromNumber(-1), BigDecimal.fromNumber(1))
 );
@@ -2703,7 +2700,7 @@ Negates a `BigDecimal`.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, BigDecimal.BigDecimal>
+// Schema<BigDecimal, string>
 const schema = S.BigDecimal.pipe(S.negateBigDecimal);
 
 const parse = S.decodeUnknownSync(schema);
@@ -2722,7 +2719,7 @@ Converts an hrtime(i.e. `[seconds: number, nanos: number]`) into a `Duration`.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, number, Duration>
+// Schema<Duration, number>
 const schema = S.Duration;
 
 const parse = S.decodeUnknownSync(schema);
@@ -2738,7 +2735,7 @@ Converts a `number` into a `Duration` where the number represents the number of 
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, number, Duration>
+// Schema<Duration, number>
 const schema = S.DurationFromMillis;
 
 const parse = S.decodeUnknownSync(schema);
@@ -2754,7 +2751,7 @@ Converts a `bigint` into a `Duration` where the number represents the number of 
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, bigint, Duration>
+// Schema<Duration, bigint>
 const schema = S.DurationFromNanos;
 
 const parse = S.decodeUnknownSync(schema);
@@ -2771,7 +2768,7 @@ Clamps a `Duration` between a minimum and a maximum value.
 import * as S from "@effect/schema/Schema";
 import * as Duration from "effect/Duration";
 
-// $ExpectType Schema<never, Duration.Duration, Duration.Duration>
+// Schema<Duration>
 const schema = S.DurationFromSelf.pipe(
   S.clampDuration("5 seconds", "10 seconds")
 );
@@ -2792,7 +2789,7 @@ Converts a `string` into a `Secret`.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, Secret>
+// Schema<Secret, string>
 const schema = S.Secret;
 
 const parse = S.decodeUnknownSync(schema);
@@ -2809,7 +2806,7 @@ Transforms a `string` into a `symbol` by parsing the string using `Symbol.for`.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, symbol>
+// Schema<symbol, string>
 const schema = S.symbol;
 const parse = S.decodeUnknownSync(schema);
 
@@ -2825,7 +2822,7 @@ Transforms a `string` into a `bigint` by parsing the string using `BigInt`.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, bigint>
+// Schema<bigint, string>
 const schema = S.bigint;
 const parse = S.decodeUnknownSync(schema);
 
@@ -2854,7 +2851,7 @@ Transforms a `number` into a `bigint` by parsing the number using `BigInt`.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// const schema: S.Schema<never, number, bigint>
+// Schema<bigint, number>
 const schema = S.BigintFromNumber;
 const parse = S.decodeUnknownSync(schema);
 const encode = S.encodeSync(schema);
@@ -2887,7 +2884,7 @@ Clamps a `bigint` between a minimum and a maximum value.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, bigint, bigint>
+// Schema<bigint>
 const schema = S.bigintFromSelf.pipe(S.clampBigint(-1n, 1n)); // clamps the input to -1n <= x <= 1n
 
 const parse = S.decodeUnknownSync(schema);
@@ -2906,7 +2903,7 @@ Negates a boolean value.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, boolean, boolean>
+// Schema<boolean>
 const schema = S.Not;
 
 const parse = S.decodeUnknownSync(schema);
@@ -2924,7 +2921,7 @@ Transforms a `string` into a **valid** `Date`, ensuring that invalid dates, such
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, string, Date>
+// Schema<Date, string>
 const schema = S.Date;
 const parse = S.decodeUnknownSync(schema);
 
@@ -2971,13 +2968,13 @@ import * as S from "@effect/schema/Schema";
 import * as Equal from "effect/Equal";
 
 /*
-S.Schema<never, {
+Schema<Data.Data<{
     readonly name: string;
     readonly age: number;
-}, Data.Data<{
+}>, {
     readonly name: string;
     readonly age: number;
-}>>
+}>
 */
 const schema = S.data(
   S.struct({
@@ -3000,10 +2997,10 @@ console.log(Equal.equals(person1, person2)); // true
 
 | Combinator           | From                                   | To                                             |
 | -------------------- | -------------------------------------- | ---------------------------------------------- |
-| `option`             | `Schema<R, I, A>`                      | `Schema<R, OptionFrom<I>, Option<A>>`          |
-| `optionFromSelf`     | `Schema<R, I, A>`                      | `Schema<R, Option<I>, Option<A>>`              |
-| `optionFromNullable` | `Schema<R, I, A>`                      | `Schema<R, I \| null, Option<A>>`              |
-| `optionFromNullish`  | `Schema<R, I, A>`, `null \| undefined` | `Schema<R, I \| null \| undefined, Option<A>>` |
+| `option`             | `Schema<A, I, R>`                      | `Schema<Option<A>, OptionFrom<I>, R>`          |
+| `optionFromSelf`     | `Schema<A, I, R>`                      | `Schema<Option<A>, Option<I>, R>`              |
+| `optionFromNullable` | `Schema<A, I, R>`                      | `Schema<Option<A>, I \| null, R>`              |
+| `optionFromNullish`  | `Schema<A, I, R>`, `null \| undefined` | `Schema<Option<A>, I \| null \| undefined, R>` |
 
 where
 
@@ -3062,7 +3059,7 @@ In the following section, we demonstrate how to use the `readonlySet` combinator
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, readonly number[], ReadonlySet<number>>
+// Schema<ReadonlySet<number>, readonly number[]>
 const schema = S.readonlySet(S.number); // define a schema for ReadonlySet with number values
 const parse = S.decodeUnknownSync(schema);
 
@@ -3076,7 +3073,7 @@ In the following section, we demonstrate how to use the `readonlyMap` combinator
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// $ExpectType Schema<never, readonly (readonly [number, string])[], ReadonlyMap<number, string>>
+// Schema<ReadonlyMap<number, string>, readonly (readonly [number, string])[]>
 const schema = S.readonlyMap(S.number, S.string); // define the schema for ReadonlyMap with number keys and string values
 const parse = S.decodeUnknownSync(schema);
 
@@ -3102,7 +3099,7 @@ import * as S from "@effect/schema/Schema";
 
 const isFile = (input: unknown): input is File => input instanceof File;
 
-// const FileFromSelf: S.Schema<never, File, File>
+// const FileFromSelf: S.Schema<File>
 const FileFromSelf = S.declare(isFile, {
   identifier: "FileFromSelf",
 });
@@ -3126,10 +3123,10 @@ Type constructors are generic types that take one or more types as arguments and
 import * as ParseResult from "@effect/schema/ParseResult";
 import * as S from "@effect/schema/Schema";
 
-export const myReadonlySet = <R, I, A>(
+export const myReadonlySet = <A, I, R>(
   // Schema for the elements of the Set
-  item: S.Schema<R, I, A>
-): S.Schema<R, ReadonlySet<I>, ReadonlySet<A>> =>
+  item: S.Schema<A, I, R>
+): S.Schema<ReadonlySet<A>, ReadonlySet<I>, R> =>
   S.declare(
     // Store the schema for the elements
     [item],
@@ -3164,7 +3161,7 @@ export const myReadonlySet = <R, I, A>(
     }
   );
 
-// const setOfNumbers: S.Schema<never, ReadonlySet<string>, ReadonlySet<number>>
+// const setOfNumbers: S.Schema<ReadonlySet<string>, ReadonlySet<number>>
 const setOfNumbers = myReadonlySet(S.NumberFromString);
 
 const parseSync = S.decodeUnknownSync(setOfNumbers);
@@ -3275,7 +3272,7 @@ Multiple environments like the Browser or Node provide a built-in `URL` class th
 ```ts
 import * as S from "@effect/schema/Schema";
 
-const UrlString: S.Schema<never, string, string> = S.string.pipe(
+const UrlString: S.Schema<string> = S.string.pipe(
   S.filter((value) => {
     try {
       new URL(value);
@@ -3297,7 +3294,7 @@ In case you prefer to normalize URLs you can combine `transformOrFail` with `URL
 import * as ParseResult from "@effect/schema/ParseResult";
 import * as S from "@effect/schema/Schema";
 
-const NormalizedUrlString: S.Schema<never, string, string> = S.string.pipe(
+const NormalizedUrlString: S.Schema<string> = S.string.pipe(
   S.filter((value) => {
     try {
       return new URL(value).toString() === value;
@@ -3307,7 +3304,7 @@ const NormalizedUrlString: S.Schema<never, string, string> = S.string.pipe(
   })
 );
 
-const NormalizeUrlString: S.Schema<never, string, string> = S.transformOrFail(
+const NormalizeUrlString: S.Schema<string> = S.transformOrFail(
   S.string,
   NormalizedUrlString,
   (value, _, ast) =>
@@ -3337,7 +3334,7 @@ A schema is a description of a data structure that can be used to generate vario
 From a technical point of view a schema is just a typed wrapper of an `AST` value:
 
 ```ts
-interface Schema<R, I, A> {
+interface Schema<A, I, R> {
   readonly ast: AST;
 }
 ```
@@ -3347,16 +3344,16 @@ i.e. products (like structs and tuples) and unions, plus a custom transformation
 
 This means that you can define your own schema constructors / combinators as long as you are able to manipulate the `AST` value accordingly, let's see an example.
 
-Say we want to define a `pair` schema constructor, which takes a `Schema<R, I, A>` as input and returns a `Schema<R, readonly [I, I], readonly [A, A]>` as output.
+Say we want to define a `pair` schema constructor, which takes a `Schema<A, I, R>` as input and returns a `Schema<readonly [A, A], readonly [I, I], R>` as output.
 
 First of all we need to define the signature of `pair`
 
 ```ts
 import type * as S from "@effect/schema/Schema";
 
-declare const pair: <R, I, A>(
-  schema: S.Schema<R, I, A>
-) => S.Schema<R, readonly [I, I], readonly [A, A]>;
+declare const pair: <A, I, R>(
+  schema: S.Schema<A, I, R>
+) => S.Schema<readonly [A, A], readonly [I, I], R>;
 ```
 
 Then we can implement the body using the APIs exported by the `@effect/schema/AST` module:
@@ -3366,9 +3363,9 @@ import * as AST from "@effect/schema/AST";
 import * as S from "@effect/schema/Schema";
 import * as Option from "effect/Option";
 
-const pair = <R, I, A>(
-  schema: S.Schema<R, I, A>
-): S.Schema<R, readonly [I, I], readonly [A, A]> => {
+const pair = <A, I, R>(
+  schema: S.Schema<A, I, R>
+): S.Schema<readonly [A, A], readonly [I, I], R> => {
   const element = AST.createElement(
     schema.ast, // <= the element type
     false // <= is optional?
@@ -3387,9 +3384,9 @@ This example demonstrates the use of the low-level APIs of the `AST` module, how
 ```ts
 import * as S from "@effect/schema/Schema";
 
-const pair = <R, I, A>(
-  schema: S.Schema<R, I, A>
-): S.Schema<R, readonly [I, I], readonly [A, A]> => S.tuple(schema, schema);
+const pair = <A, I, R>(
+  schema: S.Schema<A, I, R>
+): S.Schema<readonly [A, A], readonly [I, I], R> => S.tuple(schema, schema);
 ```
 
 ## Annotations
@@ -3441,7 +3438,7 @@ const DeprecatedId = Symbol.for(
   "some/unique/identifier/for/the/custom/annotation"
 );
 
-const deprecated = <R, I, A>(self: S.Schema<R, I, A>): S.Schema<R, I, A> =>
+const deprecated = <A, I, R>(self: S.Schema<A, I, R>): S.Schema<A, I, R> =>
   S.make(AST.setAnnotation(self.ast, DeprecatedId, true));
 
 const schema = deprecated(S.string);
@@ -3474,12 +3471,12 @@ const DeprecatedId = Symbol.for(
   "some/unique/identifier/for/the/custom/annotation"
 );
 
-const deprecated = <R, I, A>(self: S.Schema<R, I, A>): S.Schema<R, I, A> =>
+const deprecated = <A, I, R>(self: S.Schema<A, I, R>): S.Schema<A, I, R> =>
   S.make(AST.setAnnotation(self.ast, DeprecatedId, true));
 
 const schema = deprecated(S.string);
 
-const isDeprecated = <R, I, A>(schema: S.Schema<R, I, A>): boolean =>
+const isDeprecated = <A, I, R>(schema: S.Schema<A, I, R>): boolean =>
   AST.getAnnotation<boolean>(DeprecatedId)(schema.ast).pipe(
     Option.getOrElse(() => false)
   );
