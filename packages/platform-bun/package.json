@@ -42,6 +42,9 @@
     "@effect/platform": "workspace:^",
     "effect": "workspace:^"
   },
+  "dependencies": {
+    "@effect/platform-node-shared": "workspace:^"
+  },
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
@@ -55,8 +58,5 @@
         "Http/*.ts"
       ]
     }
-  },
-  "dependencies": {
-    "@effect/platform-node-shared": "workspace:^"
   }
 }

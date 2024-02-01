@@ -326,15 +326,9 @@ importers:
       '@types/node':
         specifier: ^20.10.5
         version: 20.10.5
-      '@types/tar':
-        specifier: ^6.1.10
-        version: 6.1.10
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-      tar:
-        specifier: ^6.2.0
-        version: 6.2.0
     publishDirectory: dist
 
   packages/platform-node-shared:
