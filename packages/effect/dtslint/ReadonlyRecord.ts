@@ -91,6 +91,16 @@ pipe(numbers, ReadonlyRecord.replaceOption("a", 2))
 pipe(numbers, ReadonlyRecord.replaceOption("a", true))
 
 // -------------------------------------------------------------------------------------
+// modify
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Record<string, number>
+pipe(numbers, ReadonlyRecord.modify("a", () => 2))
+
+// $ExpectType Record<string, number | boolean>
+pipe(numbers, ReadonlyRecord.modify("a", () => true))
+
+// -------------------------------------------------------------------------------------
 // modifyOption
 // -------------------------------------------------------------------------------------
 
@@ -342,16 +352,16 @@ ReadonlyRecord.keys(structNumbers)
 ReadonlyRecord.values(structNumbers)
 
 // -------------------------------------------------------------------------------------
-// upsert
+// set
 // -------------------------------------------------------------------------------------
 // $ExpectType Record<string, number | boolean>
-ReadonlyRecord.upsert(numbers, "a", true)
+ReadonlyRecord.set(numbers, "a", true)
 
 // -------------------------------------------------------------------------------------
-// update
+// replace
 // -------------------------------------------------------------------------------------
 // $ExpectType Record<string, number | boolean>
-ReadonlyRecord.update(numbers, "a", true)
+ReadonlyRecord.replace(numbers, "a", true)
 
 // -------------------------------------------------------------------------------------
 // reduce
