@@ -2,14 +2,14 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-const expectValidateSuccess = async <I, A>(
-  schema: S.Schema<never, I, A>,
+const expectValidateSuccess = async <A, I>(
+  schema: S.Schema<A, I, never>,
   input: unknown,
   expected: A = input as any
 ) => Util.expectSuccess(S.validate(schema)(input), expected)
 
-const expectValidateFailure = async <I, A>(
-  schema: S.Schema<never, I, A>,
+const expectValidateFailure = async <A, I>(
+  schema: S.Schema<A, I, never>,
   input: unknown,
   message: string
 ) => Util.expectFailure(S.validate(schema)(input), message)

@@ -34,7 +34,7 @@ describe("Schema/to", () => {
     interface A {
       prop: A | number
     }
-    const schema: S.Schema<never, I, A> = S.suspend( // intended outer suspend
+    const schema: S.Schema<A, I> = S.suspend( // intended outer suspend
       () =>
         S.struct({
           prop: S.union(S.NumberFromString, schema)

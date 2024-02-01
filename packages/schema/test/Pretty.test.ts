@@ -42,7 +42,7 @@ describe("Pretty", () => {
       "BooleanKeyword": () => (b: boolean) => b ? "True" : "False"
     }
     const go = AST.getCompiler(match)
-    const pretty = <A>(schema: S.Schema<never, A>) => (a: A): string => go(schema.ast)(a)
+    const pretty = <A>(schema: S.Schema<A>) => (a: A): string => go(schema.ast)(a)
     expect(pretty(S.boolean)(true)).toEqual(`True`)
     const schema = S.tuple(S.string, S.boolean)
     expect(pretty(schema)(["a", true])).toEqual(`["a", True]`)
@@ -412,7 +412,7 @@ describe("Pretty", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<never, A> = S.struct({
+    const A: S.Schema<A> = S.struct({
       a: S.string,
       as: S.array(S.suspend(() => A))
     })
@@ -428,7 +428,7 @@ describe("Pretty", () => {
   })
 
   describe("should handle annotations", () => {
-    const expectHook = <I, A>(source: S.Schema<never, I, A>) => {
+    const expectHook = <A, I>(source: S.Schema<A, I>) => {
       const schema = source.pipe(Pretty.pretty(() => () => "custom pretty"))
       const pretty = Pretty.make(schema)
       expect(pretty(null as any)).toEqual("custom pretty")
@@ -515,7 +515,7 @@ describe("Pretty", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<never, A> = S.struct({
+      const schema: S.Schema<A> = S.struct({
         a: S.string,
         as: S.array(S.suspend(() => schema))
       })

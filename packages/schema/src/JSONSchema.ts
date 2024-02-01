@@ -207,7 +207,7 @@ export type JsonSchema7Root = JsonSchema7 & {
  * @category encoding
  * @since 1.0.0
  */
-export const make = <R, I, A>(schema: Schema.Schema<R, I, A>): JsonSchema7Root => goRoot(schema.ast)
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => goRoot(schema.ast)
 
 const anyJsonSchema: JsonSchema7 = { $id: "/schemas/any" }
 
