@@ -1,5 +1,5 @@
-import * as Http from "@effect/platform-node/HttpServer"
-import { runMain } from "@effect/platform-node/Runtime"
+import { HttpServerNode, RuntimeNode } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpServer"
 import * as Router from "@effect/rpc-http/Router"
 import * as Server from "@effect/rpc-http/Server"
 import { Chunk, Console, Effect, Layer } from "effect"
@@ -16,7 +16,7 @@ const HttpLive = Http.router.empty.pipe(
   Http.router.post("/rpc", Server.make(router)),
   Http.server.serve(Http.middleware.logger),
   Layer.provide(
-    Http.server.layer(createServer, {
+    HttpServerNode.server.layer(createServer, {
       port: 3000
     })
   )
@@ -25,5 +25,5 @@ const HttpLive = Http.router.empty.pipe(
 // Create the HTTP, which can be served with the platform HTTP server.
 Console.log("Listening on http://localhost:3000").pipe(
   Effect.zipRight(Layer.launch(HttpLive)),
-  runMain
+  RuntimeNode.runMain
 )

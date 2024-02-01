@@ -1,5 +1,6 @@
-import * as HttpC from "@effect/platform-node/HttpClient"
-import * as Http from "@effect/platform-node/HttpServer"
+import { HttpServerNode } from "@effect/platform-node"
+import * as HttpC from "@effect/platform/HttpClient"
+import * as Http from "@effect/platform/HttpServer"
 import * as Client from "@effect/rpc-http/Client"
 import * as Router from "@effect/rpc-http/Router"
 import * as RS from "@effect/rpc-http/Schema"
@@ -28,7 +29,7 @@ const router = Router.make(schema, {
 })
 
 const HttpLive = Http.server.serve(_.make(router))
-const ServerLive = Http.server.layer(createServer, { port: 0 })
+const ServerLive = HttpServerNode.server.layer(createServer, { port: 0 })
 const serverPort = Http.server.Server.pipe(Effect.map((_) => (_.address as Http.server.TcpAddress).port))
 
 describe("Server", () => {

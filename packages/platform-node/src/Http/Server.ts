@@ -1,7 +1,5 @@
 /**
  * @since 1.0.0
- *
- * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/effect/platform/Http/Server.ts.html).
  */
 import type * as App from "@effect/platform/Http/App"
 import type * as Middleware from "@effect/platform/Http/Middleware"
@@ -18,11 +16,6 @@ import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
 import * as internal from "../internal/http/server.js"
-
-/**
- * @since 1.0.0
- */
-export * from "@effect/platform/Http/Server"
 
 /**
  * @since 1.0.0

@@ -1,10 +1,8 @@
-import * as Http from "@effect/platform-bun/HttpClient"
-import { runMain } from "@effect/platform-bun/Runtime"
+import { RuntimeBun } from "@effect/platform-bun"
+import * as Http from "@effect/platform/HttpClient"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
+import { Context, Effect, Layer } from "effect"
 
 class Todo extends Schema.Class<Todo>()({
   userId: Schema.number,
@@ -54,5 +52,5 @@ Effect.flatMap(
 ).pipe(
   Effect.tap(Effect.log),
   Effect.provide(TodoServiceLive),
-  runMain
+  RuntimeBun.runMain
 )

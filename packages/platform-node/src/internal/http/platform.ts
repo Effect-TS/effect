@@ -1,3 +1,4 @@
+import * as EtagImpl from "@effect/platform-node-shared/Http/Etag"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as Platform from "@effect/platform/Http/Platform"
 import * as ServerResponse from "@effect/platform/Http/ServerResponse"
@@ -6,8 +7,7 @@ import * as Layer from "effect/Layer"
 import Mime from "mime"
 import * as Fs from "node:fs"
 import { Readable } from "node:stream"
-import * as FileSystem from "../../FileSystem.js"
-import * as Etag from "../../Http/Etag.js"
+import * as FileSystem from "../../FileSystemNode.js"
 
 /** @internal */
 export const make = Platform.make({
@@ -42,5 +42,5 @@ export const make = Platform.make({
 export const layer = pipe(
   Layer.effect(Platform.Platform, make),
   Layer.provide(FileSystem.layer),
-  Layer.provide(Etag.layer)
+  Layer.provide(EtagImpl.layer)
 )

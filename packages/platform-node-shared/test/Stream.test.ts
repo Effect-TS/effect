@@ -1,4 +1,4 @@
-import * as NodeStream from "@effect/platform-node-shared/Stream"
+import * as StreamNode from "@effect/platform-node-shared/StreamNode"
 import { Channel, Chunk, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import { Duplex, Readable, Transform } from "stream"
@@ -8,7 +8,7 @@ import { createGzip, createUnzip } from "zlib"
 describe("Stream", () => {
   it("should read a stream", () =>
     Effect.gen(function*(_) {
-      const stream = NodeStream.fromReadable<"error", string>(() => Readable.from(["a", "b", "c"]), () => "error")
+      const stream = StreamNode.fromReadable<"error", string>(() => Readable.from(["a", "b", "c"]), () => "error")
       const items = yield* _(Stream.runCollect(stream))
       assert.deepEqual(
         Chunk.toReadonlyArray(items),
@@ -18,7 +18,7 @@ describe("Stream", () => {
 
   it("fromDuplex", () =>
     Effect.gen(function*(_) {
-      const channel = NodeStream.fromDuplex<never, "error", string>(
+      const channel = StreamNode.fromDuplex<never, "error", string>(
         () =>
           new Transform({
             transform(chunk, _encoding, callback) {
@@ -44,7 +44,7 @@ describe("Stream", () => {
 
   it("fromDuplex failure", () =>
     Effect.gen(function*(_) {
-      const channel = NodeStream.fromDuplex<never, "error", string>(
+      const channel = StreamNode.fromDuplex<never, "error", string>(
         () =>
           new Transform({
             transform(_chunk, _encoding, callback) {
@@ -68,7 +68,7 @@ describe("Stream", () => {
     Effect.gen(function*(_) {
       const result = yield* _(
         Stream.make("a", "b", "c"),
-        NodeStream.pipeThroughDuplex(
+        StreamNode.pipeThroughDuplex(
           () =>
             new Transform({
               transform(chunk, _encoding, callback) {
@@ -92,7 +92,7 @@ describe("Stream", () => {
     Effect.gen(function*(_) {
       const result = yield* _(
         Stream.make("a", "b", "c"),
-        NodeStream.pipeThroughDuplex(
+        StreamNode.pipeThroughDuplex(
           () =>
             new Duplex({
               read() {},
@@ -113,7 +113,7 @@ describe("Stream", () => {
     Effect.gen(function*(_) {
       const result = yield* _(
         Stream.make("a", Buffer.from("b"), "c"),
-        NodeStream.pipeThroughSimple(
+        StreamNode.pipeThroughSimple(
           () =>
             new Transform({
               transform(chunk, _encoding, callback) {
@@ -137,9 +137,9 @@ describe("Stream", () => {
       const text = "abcdefg1234567890"
       const encoder = new TextEncoder()
       const input = encoder.encode(text)
-      const stream = NodeStream.fromReadable<"error", Uint8Array>(() => Readable.from([input]), () => "error")
-      const deflate = NodeStream.fromDuplex<"error", "error", Uint8Array>(() => createGzip(), () => "error")
-      const inflate = NodeStream.fromDuplex<never, "error", Uint8Array>(() => createUnzip(), () => "error")
+      const stream = StreamNode.fromReadable<"error", Uint8Array>(() => Readable.from([input]), () => "error")
+      const deflate = StreamNode.fromDuplex<"error", "error", Uint8Array>(() => createGzip(), () => "error")
+      const inflate = StreamNode.fromDuplex<never, "error", Uint8Array>(() => createUnzip(), () => "error")
       const channel = Channel.pipeToOrFail(deflate, inflate)
       const items = yield* _(
         stream,

@@ -1,5 +1,5 @@
-import * as Http from "@effect/platform-node/HttpClient"
-import { runMain } from "@effect/platform-node/Runtime"
+import { runMain } from "@effect/platform-node/RuntimeNode"
+import * as Http from "@effect/platform/HttpClient"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"

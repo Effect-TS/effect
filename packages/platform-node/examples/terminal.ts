@@ -1,5 +1,5 @@
-import * as Runtime from "@effect/platform-node/Runtime"
-import * as Terminal from "@effect/platform-node/Terminal"
+import { Terminal } from "@effect/platform"
+import { RuntimeNode, TerminalNode } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
 const program = Effect.gen(function*(_) {
@@ -15,9 +15,9 @@ const program = Effect.gen(function*(_) {
   yield* _(Console.log(`Third line: ${line3}`))
 })
 
-const MainLive = Terminal.layer
+const MainLive = TerminalNode.layer
 
 program.pipe(
   Effect.provide(MainLive),
-  Runtime.runMain
+  RuntimeNode.runMain
 )

@@ -1,5 +1,5 @@
 import { Args, Command, Options } from "@effect/cli"
-import { NodeContext, Runtime } from "@effect/platform-node"
+import { NodeContext, RuntimeNode } from "@effect/platform-node"
 import { Config, ConfigProvider, Console, Effect, Option, ReadonlyArray } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
@@ -66,5 +66,5 @@ const cli = Command.run(command, {
 Effect.suspend(() => cli(process.argv)).pipe(
   Effect.withConfigProvider(ConfigProvider.nested(ConfigProvider.fromEnv(), "GIT")),
   Effect.provide(NodeContext.layer),
-  Runtime.runMain
+  RuntimeNode.runMain
 )

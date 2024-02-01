@@ -1,4 +1,4 @@
-import * as FileSystemNode from "@effect/platform-node-shared/FileSystem"
+import * as FileSystemNode from "@effect/platform-node-shared/FileSystemNode"
 import * as Fs from "@effect/platform/FileSystem"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"

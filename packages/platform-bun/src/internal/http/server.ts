@@ -1,11 +1,12 @@
 /// <reference types="bun-types" />
-import * as Multipart from "@effect/platform-node/Http/Multipart"
+import * as MultipartNode from "@effect/platform-node-shared/Http/Multipart"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
 import * as Middleware from "@effect/platform/Http/Middleware"
+import type * as Multipart from "@effect/platform/Http/Multipart"
 import * as Server from "@effect/platform/Http/Server"
 import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
@@ -291,13 +292,13 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       return this.multipartEffect
     }
     this.multipartEffect = Effect.runSync(Effect.cached(
-      Multipart.persisted(Readable.fromWeb(this.source.body! as any), this.headers)
+      MultipartNode.persisted(Readable.fromWeb(this.source.body! as any), this.headers)
     ))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<never, Multipart.MultipartError, Multipart.Part> {
-    return Multipart.stream(Readable.fromWeb(this.source.body! as any), this.headers)
+    return MultipartNode.stream(Readable.fromWeb(this.source.body! as any), this.headers)
   }
 
   private arrayBufferEffect: Effect.Effect<never, Error.RequestError, ArrayBuffer> | undefined

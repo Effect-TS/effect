@@ -1,7 +1,7 @@
 import * as Command from "@effect/cli/Command"
 import * as Prompt from "@effect/cli/Prompt"
 import * as NodeContext from "@effect/platform-node/NodeContext"
-import * as Runtime from "@effect/platform-node/Runtime"
+import * as Runtime from "@effect/platform-node/RuntimeNode"
 import * as Effect from "effect/Effect"
 
 const colorPrompt = Prompt.select({

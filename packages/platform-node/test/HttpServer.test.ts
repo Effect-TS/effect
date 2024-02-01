@@ -1,10 +1,9 @@
-import * as Etag from "@effect/platform-node/Http/Etag"
-import * as Platform from "@effect/platform-node/Http/Platform"
-import * as HttpC from "@effect/platform-node/HttpClient"
-import * as Http from "@effect/platform-node/HttpServer"
+import { HttpClientNode, HttpServerNode } from "@effect/platform-node"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as ServerError from "@effect/platform/Http/ServerError"
 import type { ServerResponse } from "@effect/platform/Http/ServerResponse"
+import * as HttpC from "@effect/platform/HttpClient"
+import * as Http from "@effect/platform/HttpServer"
 import * as Schema from "@effect/schema/Schema"
 import { Deferred, Fiber } from "effect"
 import * as Effect from "effect/Effect"
@@ -14,18 +13,22 @@ import { createServer } from "http"
 import * as Buffer from "node:buffer"
 import { assert, describe, expect, it } from "vitest"
 
-const ServerLive = Http.server.layer(createServer, { port: 0 })
+const ServerLive = HttpServerNode.server.layer(createServer, { port: 0 })
 const EnvLive = Layer.mergeAll(
   NodeContext.layer,
-  Etag.layer,
+  HttpServerNode.etag.layer,
   ServerLive,
-  HttpC.nodeClient.layerWithoutAgent
+  HttpClientNode.layerWithoutAgent
 ).pipe(
-  Layer.provide(HttpC.nodeClient.makeAgentLayer({ keepAlive: false }))
+  Layer.provide(HttpClientNode.makeAgentLayer({ keepAlive: false }))
 )
 const runPromise = <E, A>(
   effect: Effect.Effect<
-    NodeContext.NodeContext | Etag.Generator | Http.server.Server | Platform.Platform | HttpC.client.Client.Default,
+    | NodeContext.NodeContext
+    | Http.etag.Generator
+    | Http.server.Server
+    | Http.platform.Platform
+    | HttpC.client.Client.Default,
     E,
     A
   >
@@ -232,7 +235,7 @@ describe("HttpServer", () => {
         yield* _(
           Http.response.file(`${__dirname}/fixtures/text.txt`),
           Effect.updateService(
-            Platform.Platform,
+            Http.platform.Platform,
             (_) => ({
               ..._,
               fileResponse: (path, options) =>
@@ -269,7 +272,7 @@ describe("HttpServer", () => {
       yield* _(
         Http.response.fileWeb(file),
         Effect.updateService(
-          Platform.Platform,
+          Http.platform.Platform,
           (_) => ({
             ..._,
             fileWebResponse: (path, options) =>

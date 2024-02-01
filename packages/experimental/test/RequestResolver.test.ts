@@ -1,8 +1,8 @@
 import * as Persistence from "@effect/experimental/Persistence"
 import * as PersistenceLmdb from "@effect/experimental/Persistence/Lmdb"
 import * as RequestResolverX from "@effect/experimental/RequestResolver"
-import { FileSystem } from "@effect/platform-node"
-import * as KeyValueStore from "@effect/platform-node/KeyValueStore"
+import { FileSystem, KeyValueStore } from "@effect/platform"
+import { NodeContext } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import { Effect, Layer, PrimaryKey, ReadonlyArray, RequestResolver } from "effect"
 import { assert, describe, test } from "vitest"
@@ -95,7 +95,7 @@ describe("RequestResolver", () => {
         )
       }).pipe(
         Effect.scoped,
-        Effect.provide(FileSystem.layer),
+        Effect.provide(NodeContext.layer),
         Effect.runPromise
       ))
   })

@@ -1,12 +1,13 @@
 import * as CliConfig from "@effect/cli/CliConfig"
 import * as Primitive from "@effect/cli/Primitive"
-import * as FileSystem from "@effect/platform-node/FileSystem"
+import type { FileSystem } from "@effect/platform"
+import { FileSystemNode } from "@effect/platform-node"
 import { Effect, Equal, Function, Option, ReadonlyArray } from "effect"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(self: Effect.Effect<FileSystem.FileSystem, E, A>): Promise<A> =>
-  Effect.provide(self, FileSystem.layer).pipe(Effect.runPromise)
+  Effect.provide(self, FileSystemNode.layer).pipe(Effect.runPromise)
 
 describe("Primitive", () => {
   describe("Bool", () => {

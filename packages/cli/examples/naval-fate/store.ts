@@ -1,4 +1,4 @@
-import * as KeyValueStore from "@effect/platform-node/KeyValueStore"
+import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"

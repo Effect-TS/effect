@@ -306,6 +306,9 @@ importers:
 
   packages/platform-node:
     dependencies:
+      '@effect/platform-node-shared':
+        specifier: workspace:^
+        version: link:../platform-node-shared/dist
       mime:
         specifier: ^3.0.0
         version: 3.0.0
@@ -338,9 +341,6 @@ importers:
 
   packages/platform-node-shared:
     dependencies:
-      mime:
-        specifier: ^3.0.0
-        version: 3.0.0
       multipasta:
         specifier: ^0.1.21
         version: 0.1.21
@@ -351,9 +351,6 @@ importers:
       '@effect/schema':
         specifier: workspace:^
         version: link:../schema/dist
-      '@types/mime':
-        specifier: ^3.0.4
-        version: 3.0.4
       '@types/node':
         specifier: ^20.10.5
         version: 20.10.5

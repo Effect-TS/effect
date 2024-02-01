@@ -1,5 +1,5 @@
-import { runMain } from "@effect/platform-bun/Runtime"
-import * as Worker from "@effect/platform-bun/Worker"
+import type { Worker } from "@effect/platform"
+import { RuntimeBun, WorkerBun } from "@effect/platform-bun"
 import { Console, Context, Effect, Stream } from "effect"
 import * as OS from "node:os"
 
@@ -7,7 +7,7 @@ interface MyWorkerPool {
   readonly _: unique symbol
 }
 const Pool = Context.Tag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
-const PoolLive = Worker.makePoolLayer(Pool, {
+const PoolLive = WorkerBun.makePoolLayer(Pool, {
   spawn: () => new globalThis.Worker("./examples/worker/range.ts"),
   minSize: 0,
   maxSize: OS.availableParallelism(),
@@ -29,4 +29,4 @@ Effect.gen(function*(_) {
       )
     ], { concurrency: "inherit" })
   )
-}).pipe(Effect.provide(PoolLive), runMain)
+}).pipe(Effect.provide(PoolLive), RuntimeBun.runMain)
