@@ -202,7 +202,7 @@ export const encodeUnknown = <A, I, R>(
   options?: ParseOptions
 ) => {
   const encodeUnknown = Parser.encodeUnknown(schema, options)
-  return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<R, ParseResult.ParseError, I> =>
+  return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<I, ParseResult.ParseError, R> =>
     ParseResult.mapError(encodeUnknown(u, overrideOptions), ParseResult.parseError)
 }
 
@@ -238,7 +238,7 @@ export const encodeUnknownPromise = <A, I>(
 export const encode: <A, I, R>(
   schema: Schema<A, I, R>,
   options?: ParseOptions
-) => (a: A, overrideOptions?: ParseOptions) => Effect.Effect<R, ParseResult.ParseError, I> = encodeUnknown
+) => (a: A, overrideOptions?: ParseOptions) => Effect.Effect<I, ParseResult.ParseError, R> = encodeUnknown
 
 /**
  * @category encoding
@@ -267,7 +267,7 @@ export const decodeUnknown = <A, I, R>(
   options?: ParseOptions
 ) => {
   const decodeUnknown = ParseResult.decodeUnknown(schema, options)
-  return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<R, ParseResult.ParseError, A> =>
+  return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<A, ParseResult.ParseError, R> =>
     ParseResult.mapError(decodeUnknown(u, overrideOptions), ParseResult.parseError)
 }
 
@@ -303,7 +303,7 @@ export const decodeUnknownPromise = <A, I>(
 export const decode: <A, I, R>(
   schema: Schema<A, I, R>,
   options?: ParseOptions
-) => (i: I, overrideOptions?: ParseOptions) => Effect.Effect<R, ParseResult.ParseError, A> = decodeUnknown
+) => (i: I, overrideOptions?: ParseOptions) => Effect.Effect<A, ParseResult.ParseError, R> = decodeUnknown
 
 /**
  * @category decoding
@@ -332,7 +332,7 @@ export const validate = <A, I, R>(
   options?: ParseOptions
 ) => {
   const validate = Parser.validate(schema, options)
-  return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<R, ParseResult.ParseError, A> =>
+  return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<A, ParseResult.ParseError, R> =>
     ParseResult.mapError(validate(u, overrideOptions), ParseResult.parseError)
 }
 
@@ -367,7 +367,8 @@ export const validatePromise = <A, I>(
  * @category guards
  * @since 1.0.0
  */
-export const isSchema = (u: unknown): u is Schema<unknown> => Predicate.isObject(u) && TypeId in u && "ast" in u
+export const isSchema = (u: unknown): u is Schema<unknown, unknown, unknown> =>
+  Predicate.isObject(u) && TypeId in u && "ast" in u
 
 /**
  * @category constructors
@@ -490,12 +491,12 @@ const declareConstructor = <
   typeParameters: P,
   decodeUnknown: (
     ...typeParameters: P
-  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, A>,
+  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<A, ParseResult.ParseIssue, R>,
   encodeUnknown: (
     ...typeParameters: P
-  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
+  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<I, ParseResult.ParseIssue, R>,
   annotations?: DeclareAnnotations<P, A>
-): Schema<Schema.Context<P[number]>, I, A> =>
+): Schema<A, I, Schema.Context<P[number]>> =>
   make(AST.createDeclaration(
     typeParameters.map((tp) => tp.ast),
     (...typeParameters) => decodeUnknown(...typeParameters.map((ast) => make(ast)) as any),
@@ -542,10 +543,10 @@ export const declare: {
     typeParameters: P,
     decodeUnknown: (
       ...typeParameters: P
-    ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, A>,
+    ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<A, ParseResult.ParseIssue, R>,
     encodeUnknown: (
       ...typeParameters: P
-    ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<R, ParseResult.ParseIssue, I>,
+    ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<I, ParseResult.ParseIssue, R>,
     annotations?: DeclareAnnotations<{ readonly [K in keyof P]: Schema.To<P[K]> }, A>
   ): Schema<A, I, Schema.Context<P[number]>>
 } = function() {
@@ -1502,34 +1503,34 @@ export function filter<A>(
 export const transformOrFail: {
   <D, C, R2, B, R3, R4>(
     to: Schema<D, C, R2>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, C>,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, B>
+    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<C, ParseResult.ParseIssue, R3>,
+    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<B, ParseResult.ParseIssue, R4>
   ): <A, R1>(self: Schema<B, A, R1>) => Schema<D, A, R1 | R2 | R3 | R4>
   <D, C, R2, B, R3, R4>(
     to: Schema<D, C, R2>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, unknown>,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, unknown>,
+    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<unknown, ParseResult.ParseIssue, R3>,
+    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<unknown, ParseResult.ParseIssue, R4>,
     options: { strict: false }
   ): <A, R1>(self: Schema<B, A, R1>) => Schema<D, A, R1 | R2 | R3 | R4>
   <B, A, R1, D, C, R2, R3, R4>(
     from: Schema<B, A, R1>,
     to: Schema<D, C, R2>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, C>,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, B>
+    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<C, ParseResult.ParseIssue, R3>,
+    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<B, ParseResult.ParseIssue, R4>
   ): Schema<D, A, R1 | R2 | R3 | R4>
   <B, A, R1, D, C, R2, R3, R4>(
     from: Schema<B, A, R1>,
     to: Schema<D, C, R2>,
-    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, unknown>,
-    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, unknown>,
+    decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<unknown, ParseResult.ParseIssue, R3>,
+    encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<unknown, ParseResult.ParseIssue, R4>,
     options: { strict: false }
   ): Schema<D, A, R1 | R2 | R3 | R4>
-} = dual((args) => isSchema(args[0]) && isSchema(args[1]), <A, B, R1, C, D, R2, R3, R4>(
-  from: Schema<A, B, R1>,
-  to: Schema<C, D, R2>,
-  decode: (a: A, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R3, ParseResult.ParseIssue, D>,
-  encode: (d: D, options: ParseOptions, ast: AST.Transform) => Effect.Effect<R4, ParseResult.ParseIssue, A>
-): Schema<C, B, R1 | R2 | R3 | R4> =>
+} = dual((args) => isSchema(args[0]) && isSchema(args[1]), <B, A, R1, D, C, R2, R3, R4>(
+  from: Schema<B, A, R1>,
+  to: Schema<D, C, R2>,
+  decode: (b: B, options: ParseOptions, ast: AST.Transform) => Effect.Effect<C, ParseResult.ParseIssue, R3>,
+  encode: (c: C, options: ParseOptions, ast: AST.Transform) => Effect.Effect<B, ParseResult.ParseIssue, R4>
+): Schema<D, A, R1 | R2 | R3 | R4> =>
   make(
     AST.createTransform(
       from.ast,
@@ -3735,7 +3736,7 @@ const optionPretty = <A>(value: Pretty.Pretty<A>): Pretty.Pretty<Option.Option<A
   })
 
 const optionParse =
-  <R, A>(decodeUnknown: ParseResult.DecodeUnknown<R, A>): ParseResult.DeclarationDecodeUnknown<R, Option.Option<A>> =>
+  <R, A>(decodeUnknown: ParseResult.DecodeUnknown<A, R>): ParseResult.DeclarationDecodeUnknown<Option.Option<A>, R> =>
   (u, options, ast) =>
     Option.isOption(u) ?
       Option.isNone(u) ?
@@ -3878,9 +3879,9 @@ const eitherPretty = <E, A>(
   })
 
 const eitherParse = <RE, E, RA, A>(
-  decodeUnknownLeft: ParseResult.DecodeUnknown<RE, E>,
-  parseright: ParseResult.DecodeUnknown<RA, A>
-): ParseResult.DeclarationDecodeUnknown<RE | RA, Either.Either<E, A>> =>
+  decodeUnknownLeft: ParseResult.DecodeUnknown<E, RE>,
+  parseright: ParseResult.DecodeUnknown<A, RA>
+): ParseResult.DeclarationDecodeUnknown<Either.Either<E, A>, RE | RA> =>
 (u, options, ast) =>
   Either.isEither(u) ?
     Either.match(u, {
@@ -3984,8 +3985,8 @@ const readonlyMapEquivalence = <K, V>(
 }
 
 const readonlyMapParse = <R, K, V>(
-  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<readonly [K, V]>>
-): ParseResult.DeclarationDecodeUnknown<R, ReadonlyMap<K, V>> =>
+  decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<readonly [K, V]>, R>
+): ParseResult.DeclarationDecodeUnknown<ReadonlyMap<K, V>, R> =>
 (u, options, ast) =>
   isMap(u) ?
     ParseResult.map(decodeUnknown(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
@@ -4043,8 +4044,8 @@ const readonlySetEquivalence = <A>(
 }
 
 const readonlySetParse = <R, A>(
-  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<A>>
-): ParseResult.DeclarationDecodeUnknown<R, ReadonlySet<A>> =>
+  decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
+): ParseResult.DeclarationDecodeUnknown<ReadonlySet<A>, R> =>
 (u, options, ast) =>
   isSet(u) ?
     ParseResult.map(decodeUnknown(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
@@ -4436,8 +4437,8 @@ const chunkPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<Chunk.Chunk<A>> =
   `Chunk(${Chunk.toReadonlyArray(c).map(item).join(", ")})`
 
 const chunkParse = <R, A>(
-  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<A>>
-): ParseResult.DeclarationDecodeUnknown<R, Chunk.Chunk<A>> =>
+  decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
+): ParseResult.DeclarationDecodeUnknown<Chunk.Chunk<A>, R> =>
 (u, options, ast) =>
   Chunk.isChunk(u) ?
     Chunk.isEmpty(u) ?
@@ -4489,8 +4490,8 @@ const dataPretty = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>
 (d) => `Data(${item(d)})`
 
 const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
-  decodeUnknown: ParseResult.DecodeUnknown<R, A>
-): ParseResult.DeclarationDecodeUnknown<R, A> =>
+  decodeUnknown: ParseResult.DecodeUnknown<A, R>
+): ParseResult.DeclarationDecodeUnknown<A, R> =>
 (u, options, ast) =>
   Equal.isEqual(u) ?
     ParseResult.map(decodeUnknown(u, options), toData)
@@ -5089,8 +5090,8 @@ const causePretty = <E>(error: Pretty.Pretty<E>): Pretty.Pretty<Cause.Cause<E>> 
 }
 
 const causeParse = <R, A>(
-  decodeUnknown: ParseResult.DecodeUnknown<R, CauseFrom<A>>
-): ParseResult.DeclarationDecodeUnknown<R, Cause.Cause<A>> =>
+  decodeUnknown: ParseResult.DecodeUnknown<CauseFrom<A>, R>
+): ParseResult.DeclarationDecodeUnknown<Cause.Cause<A>, R> =>
 (u, options, ast) =>
   Cause.isCause(u) ?
     ParseResult.map(decodeUnknown(causeEncode(u), options), causeDecode)
@@ -5253,9 +5254,9 @@ const exitPretty = <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pre
     : `Exit.succeed(${value(exit.value)})`
 
 const exitParse = <RE, E, RA, A>(
-  decodeUnknownCause: ParseResult.DecodeUnknown<RE, Cause.Cause<E>>,
-  decodeUnknownValue: ParseResult.DecodeUnknown<RA, A>
-): ParseResult.DeclarationDecodeUnknown<RE | RA, Exit.Exit<E, A>> =>
+  decodeUnknownCause: ParseResult.DecodeUnknown<Cause.Cause<E>, RE>,
+  decodeUnknownValue: ParseResult.DecodeUnknown<A, RA>
+): ParseResult.DeclarationDecodeUnknown<Exit.Exit<E, A>, RE | RA> =>
 (u, options, ast) =>
   Exit.isExit(u) ?
     Exit.match(u, {
@@ -5320,8 +5321,8 @@ const hashSetEquivalence = <A>(
 }
 
 const hashSetParse = <R, A>(
-  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<A>>
-): ParseResult.DeclarationDecodeUnknown<R, HashSet.HashSet<A>> =>
+  decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
+): ParseResult.DeclarationDecodeUnknown<HashSet.HashSet<A>, R> =>
 (u, options, ast) =>
   HashSet.isHashSet(u) ?
     ParseResult.map(
@@ -5390,8 +5391,8 @@ const hashMapEquivalence = <K, V>(
 }
 
 const hashMapParse = <R, K, V>(
-  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<readonly [K, V]>>
-): ParseResult.DeclarationDecodeUnknown<R, HashMap.HashMap<K, V>> =>
+  decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<readonly [K, V]>, R>
+): ParseResult.DeclarationDecodeUnknown<HashMap.HashMap<K, V>, R> =>
 (u, options, ast) =>
   HashMap.isHashMap(u) ?
     ParseResult.map(decodeUnknown(Array.from(u), options), (as): HashMap.HashMap<K, V> => HashMap.fromIterable(as))
@@ -5447,8 +5448,8 @@ const listEquivalence = <A>(
 }
 
 const listParse = <R, A>(
-  decodeUnknown: ParseResult.DecodeUnknown<R, ReadonlyArray<A>>
-): ParseResult.DeclarationDecodeUnknown<R, List.List<A>> =>
+  decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
+): ParseResult.DeclarationDecodeUnknown<List.List<A>, R> =>
 (u, options, ast) =>
   List.isList(u) ?
     ParseResult.map(

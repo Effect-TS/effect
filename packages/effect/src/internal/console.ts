@@ -11,13 +11,13 @@ import * as fiberRuntime from "./fiberRuntime.js"
 import * as layer from "./layer.js"
 
 /** @internal */
-export const console: Effect.Effect<never, never, Console.Console> = core.map(
+export const console: Effect.Effect<Console.Console> = core.map(
   core.fiberRefGet(defaultServices.currentServices),
   Context.get(defaultConsole.consoleTag)
 )
 
 /** @internal */
-export const consoleWith = <R, E, A>(f: (console: Console.Console) => Effect.Effect<R, E, A>) =>
+export const consoleWith = <A, E, R>(f: (console: Console.Console) => Effect.Effect<A, E, R>) =>
   core.fiberRefGetWith(
     defaultServices.currentServices,
     (services) => f(Context.get(services, defaultConsole.consoleTag))
@@ -25,8 +25,8 @@ export const consoleWith = <R, E, A>(f: (console: Console.Console) => Effect.Eff
 
 /** @internal */
 export const withConsole = dual<
-  <A extends Console.Console>(console: A) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A extends Console.Console>(effect: Effect.Effect<R, E, A>, console: A) => Effect.Effect<R, E, A>
+  <A extends Console.Console>(console: A) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A extends Console.Console, E, R>(effect: Effect.Effect<A, E, R>, console: A) => Effect.Effect<A, E, R>
 >(2, (effect, value) =>
   core.fiberRefLocallyWith(
     effect,
@@ -35,7 +35,7 @@ export const withConsole = dual<
   ))
 
 /** @internal */
-export const withConsoleScoped = <A extends Console.Console>(console: A): Effect.Effect<Scope.Scope, never, void> =>
+export const withConsoleScoped = <A extends Console.Console>(console: A): Effect.Effect<void, never, Scope.Scope> =>
   fiberRuntime.fiberRefLocallyScopedWith(
     defaultServices.currentServices,
     Context.add(defaultConsole.consoleTag, console)
@@ -122,14 +122,14 @@ export const withGroup = dual<
       readonly label?: string | undefined
       readonly collapsed?: boolean | undefined
     }
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     options?: {
       readonly label?: string | undefined
       readonly collapsed?: boolean | undefined
     }
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >((args) => core.isEffect(args[0]), (self, options) =>
   consoleWith((_) =>
     core.acquireUseRelease(
@@ -141,8 +141,8 @@ export const withGroup = dual<
 
 /** @internal */
 export const withTime = dual<
-  (label?: string) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, label?: string) => Effect.Effect<R, E, A>
+  (label?: string) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(self: Effect.Effect<A, E, R>, label?: string) => Effect.Effect<A, E, R>
 >((args) => core.isEffect(args[0]), (self, label) =>
   consoleWith((_) =>
     core.acquireUseRelease(

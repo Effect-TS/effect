@@ -44,11 +44,11 @@ export interface Scope extends Pipeable {
   /**
    * @internal
    */
-  fork(strategy: ExecutionStrategy.ExecutionStrategy): Effect.Effect<never, never, Scope.Closeable>
+  fork(strategy: ExecutionStrategy.ExecutionStrategy): Effect.Effect<Scope.Closeable>
   /**
    * @internal
    */
-  addFinalizer(finalizer: Scope.Finalizer): Effect.Effect<never, never, void>
+  addFinalizer(finalizer: Scope.Finalizer): Effect.Effect<void>
 }
 
 /**
@@ -61,7 +61,7 @@ export interface CloseableScope extends Scope, Pipeable {
   /**
    * @internal
    */
-  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<never, never, void>
+  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void>
 }
 
 /**
@@ -78,7 +78,7 @@ export declare namespace Scope {
    * @since 2.0.0
    * @category model
    */
-  export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+  export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
   /**
    * @since 2.0.0
    * @category model
@@ -95,8 +95,8 @@ export declare namespace Scope {
  */
 export const addFinalizer: (
   self: Scope,
-  finalizer: Effect.Effect<never, never, unknown>
-) => Effect.Effect<never, never, void> = core.scopeAddFinalizer
+  finalizer: Effect.Effect<unknown>
+) => Effect.Effect<void> = core.scopeAddFinalizer
 
 /**
  * A simplified version of `addFinalizerWith` when the `finalizer` does not
@@ -105,7 +105,7 @@ export const addFinalizer: (
  * @since 2.0.0
  * @category utils
  */
-export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect.Effect<never, never, void> =
+export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect.Effect<void> =
   core.scopeAddFinalizerExit
 
 /**
@@ -115,8 +115,7 @@ export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effe
  * @since 2.0.0
  * @category destructors
  */
-export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void> =
-  core.scopeClose
+export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void> = core.scopeClose
 
 /**
  * Extends the scope of an `Effect` workflow that needs a scope into this
@@ -128,8 +127,8 @@ export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) =>
  * @category utils
  */
 export const extend: {
-  (scope: Scope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope>, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope): Effect.Effect<Exclude<R, Scope>, E, A>
+  (scope: Scope): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Scope>>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, scope: Scope): Effect.Effect<A, E, Exclude<R, Scope>>
 } = fiberRuntime.scopeExtend
 
 /**
@@ -142,7 +141,7 @@ export const extend: {
 export const fork: (
   self: Scope,
   strategy: ExecutionStrategy.ExecutionStrategy
-) => Effect.Effect<never, never, CloseableScope> = core.scopeFork
+) => Effect.Effect<CloseableScope> = core.scopeFork
 
 /**
  * Uses the scope by providing it to an `Effect` workflow that needs a scope,
@@ -154,8 +153,8 @@ export const fork: (
  * @category destructors
  */
 export const use: {
-  (scope: CloseableScope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope>, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: CloseableScope): Effect.Effect<Exclude<R, Scope>, E, A>
+  (scope: CloseableScope): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Scope>>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, scope: CloseableScope): Effect.Effect<A, E, Exclude<R, Scope>>
 } = fiberRuntime.scopeUse
 
 /**
@@ -168,4 +167,4 @@ export const use: {
  */
 export const make: (
   executionStrategy?: ExecutionStrategy.ExecutionStrategy
-) => Effect.Effect<never, never, CloseableScope> = fiberRuntime.scopeMake
+) => Effect.Effect<CloseableScope> = fiberRuntime.scopeMake

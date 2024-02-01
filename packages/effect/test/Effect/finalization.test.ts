@@ -14,13 +14,13 @@ import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
 
-const asyncExampleError = <A>(): Effect.Effect<never, unknown, A> => {
+const asyncExampleError = <A>(): Effect.Effect<A, unknown> => {
   return Effect.async((cb) => {
     cb(Effect.fail(ExampleError))
   })
 }
 
-const asyncUnit = <E>(): Effect.Effect<never, E, void> => {
+const asyncUnit = <E>(): Effect.Effect<void, E> => {
   return Effect.async((cb) => {
     cb(Effect.unit)
   })
@@ -210,7 +210,7 @@ describe("Effect", () => {
   it.live("acquireUseRelease regression 1", () =>
     Effect.gen(function*($) {
       const makeLogger = (ref: Ref.Ref<Chunk.Chunk<string>>) => {
-        return (line: string): Effect.Effect<never, never, void> => {
+        return (line: string): Effect.Effect<void> => {
           return Ref.update(ref, Chunk.prepend(line))
         }
       }

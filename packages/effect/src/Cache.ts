@@ -49,14 +49,14 @@ export interface Cache<in out Key, out Error, out Value> extends ConsumerCache<K
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it.
    */
-  get(key: Key): Effect.Effect<never, Error, Value>
+  get(key: Key): Effect.Effect<Value, Error>
 
   /**
    * Retrieves the value associated with the specified key if it exists as a left.
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it as a right.
    */
-  getEither(key: Key): Effect.Effect<never, Error, Either<Value, Value>>
+  getEither(key: Key): Effect.Effect<Either<Value, Value>, Error>
 
   /**
    * Computes the value associated with the specified key, with the lookup
@@ -67,12 +67,12 @@ export interface Cache<in out Key, out Error, out Value> extends ConsumerCache<K
    * by the lookup function. Additionally, `refresh` always triggers the
    * lookup function, disregarding the last `Error`.
    */
-  refresh(key: Key): Effect.Effect<never, Error, void>
+  refresh(key: Key): Effect.Effect<void, Error>
 
   /**
    * Associates the specified value with the specified key in the cache.
    */
-  set(key: Key, value: Value): Effect.Effect<never, never, void>
+  set(key: Key, value: Value): Effect.Effect<void>
 }
 
 /**
@@ -88,64 +88,64 @@ export interface ConsumerCache<in out Key, out Error, out Value> extends Cache.V
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  getOption(key: Key): Effect.Effect<never, Error, Option.Option<Value>>
+  getOption(key: Key): Effect.Effect<Option.Option<Value>, Error>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getOptionComplete(key: Key): Effect.Effect<never, never, Option.Option<Value>>
+  getOptionComplete(key: Key): Effect.Effect<Option.Option<Value>>
 
   /**
    * Returns statistics for this cache.
    */
-  readonly cacheStats: Effect.Effect<never, never, CacheStats>
+  readonly cacheStats: Effect.Effect<CacheStats>
 
   /**
    * Returns whether a value associated with the specified key exists in the
    * cache.
    */
-  contains(key: Key): Effect.Effect<never, never, boolean>
+  contains(key: Key): Effect.Effect<boolean>
 
   /**
    * Returns statistics for the specified entry.
    */
-  entryStats(key: Key): Effect.Effect<never, never, Option.Option<EntryStats>>
+  entryStats(key: Key): Effect.Effect<Option.Option<EntryStats>>
 
   /**
    * Invalidates the value associated with the specified key.
    */
-  invalidate(key: Key): Effect.Effect<never, never, void>
+  invalidate(key: Key): Effect.Effect<void>
 
   /**
    * Invalidates the value associated with the specified key if the predicate holds.
    */
-  invalidateWhen(key: Key, predicate: Predicate.Predicate<Value>): Effect.Effect<never, never, void>
+  invalidateWhen(key: Key, predicate: Predicate.Predicate<Value>): Effect.Effect<void>
 
   /**
    * Invalidates all values in the cache.
    */
-  readonly invalidateAll: Effect.Effect<never, never, void>
+  readonly invalidateAll: Effect.Effect<void>
 
   /**
    * Returns the approximate number of values in the cache.
    */
-  readonly size: Effect.Effect<never, never, number>
+  readonly size: Effect.Effect<number>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  readonly keys: Effect.Effect<never, never, Array<Key>>
+  readonly keys: Effect.Effect<Array<Key>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  readonly values: Effect.Effect<never, never, Array<Value>>
+  readonly values: Effect.Effect<Array<Value>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  readonly entries: Effect.Effect<never, never, Array<[Key, Value]>>
+  readonly entries: Effect.Effect<Array<[Key, Value]>>
 }
 
 /**
@@ -178,7 +178,7 @@ export const make: <Key, Environment, Error, Value>(
     readonly timeToLive: Duration.DurationInput
     readonly lookup: Lookup<Key, Environment, Error, Value>
   }
-) => Effect.Effect<Environment, never, Cache<Key, Error, Value>> = internal.make
+) => Effect.Effect<Cache<Key, Error, Value>, never, Environment> = internal.make
 
 /**
  * Constructs a new cache with the specified capacity, time to live, and
@@ -194,7 +194,7 @@ export const makeWith: <Key, Environment, Error, Value>(
     readonly lookup: Lookup<Key, Environment, Error, Value>
     readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
   }
-) => Effect.Effect<Environment, never, Cache<Key, Error, Value>> = internal.makeWith
+) => Effect.Effect<Cache<Key, Error, Value>, never, Environment> = internal.makeWith
 
 /**
  * `CacheStats` represents a snapshot of statistics for the cache as of a
@@ -249,4 +249,4 @@ export const makeEntryStats: (loadedMillis: number) => EntryStats = internal.mak
  * @since 2.0.0
  * @category models
  */
-export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect.Effect<Environment, Error, Value>
+export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect.Effect<Value, Error, Environment>

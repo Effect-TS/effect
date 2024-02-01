@@ -156,7 +156,7 @@ const unsafeForkAs = (
 export const fiberRefs = (self: FiberRefs.FiberRefs) => HashSet.fromIterable(self.locals.keys())
 
 /** @internal */
-export const setAll = (self: FiberRefs.FiberRefs): Effect.Effect<never, never, void> =>
+export const setAll = (self: FiberRefs.FiberRefs): Effect.Effect<void> =>
   core.forEachSequentialDiscard(
     fiberRefs(self),
     (fiberRef) => core.fiberRefSet(fiberRef, getOrDefault(self, fiberRef))

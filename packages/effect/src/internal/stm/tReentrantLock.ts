@@ -225,7 +225,7 @@ export const fiberWriteLocks = (self: TReentrantLock.TReentrantLock): STM.STM<ne
   )
 
 /** @internal */
-export const lock = (self: TReentrantLock.TReentrantLock): Effect.Effect<Scope.Scope, never, number> => writeLock(self)
+export const lock = (self: TReentrantLock.TReentrantLock): Effect.Effect<number, never, Scope.Scope> => writeLock(self)
 
 /** @internal */
 export const locked = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, boolean> =>
@@ -242,7 +242,7 @@ export const make: STM.STM<never, never, TReentrantLock.TReentrantLock> = core.m
 )
 
 /** @internal */
-export const readLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<Scope.Scope, never, number> =>
+export const readLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<number, never, Scope.Scope> =>
   Effect.acquireRelease(
     core.commit(acquireRead(self)),
     () => core.commit(releaseRead(self))
@@ -288,22 +288,22 @@ export const releaseWrite = (self: TReentrantLock.TReentrantLock): STM.STM<never
 export const withLock = dual<
   (
     self: TReentrantLock.TReentrantLock
-  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(
-    effect: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
     self: TReentrantLock.TReentrantLock
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(2, (effect, self) => withWriteLock(effect, self))
 
 /** @internal */
 export const withReadLock = dual<
-  (self: TReentrantLock.TReentrantLock) => <R, E, A>(
-    effect: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R, E, A>,
-  <R, E, A>(
-    effect: Effect.Effect<R, E, A>,
+  (self: TReentrantLock.TReentrantLock) => <A, E, R>(
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E, R>,
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
     self: TReentrantLock.TReentrantLock
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(2, (effect, self) =>
   Effect.uninterruptibleMask((restore) =>
     Effect.zipRight(
@@ -317,8 +317,8 @@ export const withReadLock = dual<
 
 /** @internal */
 export const withWriteLock = dual<
-  (self: TReentrantLock.TReentrantLock) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock.TReentrantLock) => Effect.Effect<R, E, A>
+  (self: TReentrantLock.TReentrantLock) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, self: TReentrantLock.TReentrantLock) => Effect.Effect<A, E, R>
 >(2, (effect, self) =>
   Effect.uninterruptibleMask((restore) =>
     Effect.zipRight(
@@ -331,7 +331,7 @@ export const withWriteLock = dual<
   ))
 
 /** @internal */
-export const writeLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<Scope.Scope, never, number> =>
+export const writeLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<number, never, Scope.Scope> =>
   Effect.acquireRelease(
     core.commit(acquireWrite(self)),
     () => core.commit(releaseWrite(self))

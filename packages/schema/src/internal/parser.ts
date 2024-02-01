@@ -11,17 +11,17 @@ import type * as ParseResult from "../ParseResult.js"
 
 /** @internal */
 export const flatMap: {
-  <A, R2, E2, B>(
-    f: (self: A) => Effect.Effect<R2, E2, B>
-  ): <R1, E1>(self: Effect.Effect<R1, E1, A>) => Effect.Effect<R1 | R2, E1 | E2, B>
-  <R1, E1, A, R2, E2, B>(
-    self: Effect.Effect<R1, E1, A>,
-    f: (self: A) => Effect.Effect<R2, E2, B>
-  ): Effect.Effect<R1 | R2, E1 | E2, B>
-} = dual(2, <R1, E1, A, R2, E2, B>(
-  self: Effect.Effect<R1, E1, A>,
-  f: (self: A) => Effect.Effect<R2, E2, B>
-): Effect.Effect<R1 | R2, E1 | E2, B> => {
+  <A, B, E1, R1>(
+    f: (a: A) => Effect.Effect<B, E1, R1>
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E1 | E, R1 | R>
+  <A, E, R, B, E1, R1>(
+    self: Effect.Effect<A, E, R>,
+    f: (a: A) => Effect.Effect<B, E1, R1>
+  ): Effect.Effect<B, E | E1, R | R1>
+} = dual(2, <A, E, R, B, E1, R1>(
+  self: Effect.Effect<A, E, R>,
+  f: (a: A) => Effect.Effect<B, E1, R1>
+): Effect.Effect<B, E | E1, R | R1> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -34,9 +34,9 @@ export const flatMap: {
 
 /** @internal */
 export const map: {
-  <A, B>(f: (self: A) => B): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-  <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B): Effect.Effect<R, E, B>
-} = dual(2, <R, E, A, B>(self: Effect.Effect<R, E, A>, f: (self: A) => B): Effect.Effect<R, E, B> => {
+  <A, B>(f: (a: A) => B): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
+  <A, E, R, B>(self: Effect.Effect<A, E, R>, f: (a: A) => B): Effect.Effect<B, E, R>
+} = dual(2, <A, E, R, B>(self: Effect.Effect<A, E, R>, f: (a: A) => B): Effect.Effect<B, E, R> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -49,12 +49,9 @@ export const map: {
 
 /** @internal */
 export const mapError: {
-  <E1, E2>(f: (error: E1) => E2): <R, A>(self: Effect.Effect<R, E1, A>) => Effect.Effect<R, E2, A>
-  <R, E1, A, E2>(self: Effect.Effect<R, E1, A>, f: (error: E1) => E2): Effect.Effect<R, E2, A>
-} = dual(2, <R, E1, A, E2>(
-  self: Effect.Effect<R, E1, A>,
-  f: (error: E1) => E2
-): Effect.Effect<R, E2, A> => {
+  <E, E2>(f: (e: E) => E2): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E2, R>
+  <A, E, R, E2>(self: Effect.Effect<A, E, R>, f: (e: E) => E2): Effect.Effect<A, E2, R>
+} = dual(2, <A, E, R, E2>(self: Effect.Effect<A, E, R>, f: (e: E) => E2): Effect.Effect<A, E2, R> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(f(s.left))

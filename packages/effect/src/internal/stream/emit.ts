@@ -8,7 +8,7 @@ import type * as Emit from "../../StreamEmit.js"
 
 /** @internal */
 export const make = <R, E, A, B>(
-  emit: (f: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>) => Promise<B>
+  emit: (f: Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, R>) => Promise<B>
 ): Emit.Emit<R, E, A, B> => {
   const ops: Emit.EmitOps<R, E, A, B> = {
     chunk(this: Emit.Emit<R, E, A, B>, as: Chunk.Chunk<A>) {
@@ -29,10 +29,10 @@ export const make = <R, E, A, B>(
     fail(this: Emit.Emit<R, E, A, B>, e: E) {
       return this(Effect.fail(Option.some(e)))
     },
-    fromEffect(this: Emit.Emit<R, E, A, B>, effect: Effect.Effect<R, E, A>) {
+    fromEffect(this: Emit.Emit<R, E, A, B>, effect: Effect.Effect<A, E, R>) {
       return this(Effect.mapBoth(effect, { onFailure: Option.some, onSuccess: Chunk.of }))
     },
-    fromEffectChunk(this: Emit.Emit<R, E, A, B>, effect: Effect.Effect<R, E, Chunk.Chunk<A>>) {
+    fromEffectChunk(this: Emit.Emit<R, E, A, B>, effect: Effect.Effect<Chunk.Chunk<A>, E, R>) {
       return this(pipe(effect, Effect.mapError(Option.some)))
     },
     halt(this: Emit.Emit<R, E, A, B>, cause: Cause.Cause<E>) {

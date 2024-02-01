@@ -63,7 +63,7 @@ describe("Effect", () => {
   it.effect("environment - async can use environment", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Effect.async<NumberService, never, number>((cb) => cb(Effect.map(NumberService, ({ n }) => n))),
+        Effect.async<number, never, NumberService>((cb) => cb(Effect.map(NumberService, ({ n }) => n))),
         Effect.provide(Context.make(NumberService, { n: 10 }))
       )
       assert.strictEqual(result, 10)
@@ -98,7 +98,7 @@ describe("Effect", () => {
 
   it.effect("serviceFunctions - expose service functions", () => {
     interface Service {
-      foo: (x: string, y: number) => Effect.Effect<never, never, string>
+      foo: (x: string, y: number) => Effect.Effect<string>
     }
     const Service = Context.GenericTag<Service>("Service")
     const { foo } = Effect.serviceFunctions(Service)
@@ -117,7 +117,7 @@ describe("Effect", () => {
 
   it.effect("serviceConstants - expose service constants", () => {
     interface Service {
-      baz: Effect.Effect<never, never, string>
+      baz: Effect.Effect<string>
     }
     const Service = Context.GenericTag<Service>("Service")
     const { baz } = Effect.serviceConstants(Service)
@@ -136,8 +136,8 @@ describe("Effect", () => {
 
   it.effect("serviceMembers - expose both service functions and constants", () => {
     interface Service {
-      foo: (x: string, y: number) => Effect.Effect<never, never, string>
-      baz: Effect.Effect<never, never, string>
+      foo: (x: string, y: number) => Effect.Effect<string>
+      baz: Effect.Effect<string>
     }
     const Service = Context.GenericTag<Service>("Service")
     const { constants, functions } = Effect.serviceMembers(Service)

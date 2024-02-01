@@ -115,7 +115,7 @@ export const joinAs: {
  * @since 2.0.0
  * @category utils
  */
-export const setAll: (self: FiberRefs) => Effect.Effect<never, never, void> = internal.setAll
+export const setAll: (self: FiberRefs) => Effect.Effect<void> = internal.setAll
 
 /**
  * Updates the value of the specified `FiberRef` using the provided `FiberId`

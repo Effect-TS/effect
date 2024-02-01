@@ -318,14 +318,14 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   /**
    * The status of the fiber.
    */
-  get status(): Effect.Effect<never, never, FiberStatus.FiberStatus> {
+  get status(): Effect.Effect<FiberStatus.FiberStatus> {
     return this.ask((_, status) => status)
   }
 
   /**
    * Gets the fiber runtime flags.
    */
-  get runtimeFlags(): Effect.Effect<never, never, RuntimeFlags.RuntimeFlags> {
+  get runtimeFlags(): Effect.Effect<RuntimeFlags.RuntimeFlags> {
     return this.ask((state, status) => {
       if (FiberStatus.isDone(status)) {
         return state._runtimeFlags
@@ -344,7 +344,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   /**
    * Retrieves the immediate children of the fiber.
    */
-  get children(): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> {
+  get children(): Effect.Effect<Array<Fiber.RuntimeFiber<any, any>>> {
     return this.ask((fiber) => Array.from(fiber.getChildren()))
   }
 
@@ -373,7 +373,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   /**
    * Retrieves the whole set of fiber refs.
    */
-  fiberRefs(): Effect.Effect<never, never, FiberRefs.FiberRefs> {
+  fiberRefs(): Effect.Effect<FiberRefs.FiberRefs> {
     return this.ask((fiber) => fiber.getFiberRefs())
   }
 
@@ -386,7 +386,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
    */
   ask<Z>(
     f: (runtime: FiberRuntime<any, any>, status: FiberStatus.FiberStatus) => Z
-  ): Effect.Effect<never, never, Z> {
+  ): Effect.Effect<Z> {
     return core.suspend(() => {
       const deferred = core.deferredUnsafeMake<never, Z>(this._fiberId)
       this.tell(
@@ -409,8 +409,8 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
     }
   }
 
-  get await(): Effect.Effect<never, never, Exit.Exit<E, A>> {
-    return core.async<never, never, Exit.Exit<E, A>>((resume) => {
+  get await(): Effect.Effect<Exit.Exit<E, A>> {
+    return core.async((resume) => {
       const cb = (exit: Exit.Exit<E, A>) => resume(core.succeed(exit))
       this.tell(
         FiberMessage.stateful((fiber, _) => {
@@ -431,8 +431,8 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
     }, this.id())
   }
 
-  get inheritAll(): Effect.Effect<never, never, void> {
-    return core.withFiberRuntime<never, never, void>((parentFiber, parentStatus) => {
+  get inheritAll(): Effect.Effect<void> {
+    return core.withFiberRuntime((parentFiber, parentStatus) => {
       const parentFiberId = parentFiber.id()
       const parentFiberRefs = parentFiber.getFiberRefs()
       const parentRuntimeFlags = parentStatus.runtimeFlags
@@ -458,7 +458,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  get poll(): Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>> {
+  get poll(): Effect.Effect<Option.Option<Exit.Exit<E, A>>> {
     return core.sync(() => Option.fromNullable(this._exitValue))
   }
 
@@ -473,7 +473,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   /**
    * In the background, interrupts the fiber as if interrupted from the specified fiber.
    */
-  interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<never, never, void> {
+  interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<void> {
     return core.sync(() => this.tell(FiberMessage.interruptSignal(internalCause.interrupt(fiberId))))
   }
 
@@ -924,7 +924,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
    * This is not the normal way of starting a fiber, but it is useful when the
    * express goal of executing the fiber is to synchronously produce its exit.
    */
-  start<R>(effect: Effect.Effect<R, E, A>): void {
+  start<R>(effect: Effect.Effect<A, E, R>): void {
     if (!this._running) {
       this._running = true
       const prev = (globalThis as any)[internalFiber.currentFiberURI]
@@ -953,7 +953,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
    * off" execution of a fiber after it has been created, in hopes that the
    * effect can be executed synchronously.
    */
-  startFork<R>(effect: Effect.Effect<R, E, A>): void {
+  startFork<R>(effect: Effect.Effect<A, E, R>): void {
     this.tell(FiberMessage.resume(effect))
   }
 
@@ -1436,63 +1436,37 @@ export const currentLoggers: FiberRef.FiberRef<
 
 /* @internal */
 export const acquireRelease: {
-  <A, R2, X>(
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-  ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R2 | R | Scope.Scope, E, A>
-  <R, E, A, R2, X>(
-    acquire: Effect.Effect<R, E, A>,
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-  ): Effect.Effect<Scope.Scope | R | R2, E, A>
-} = dual<
-  {
-    <A, R2, X>(
-      release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-    ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R | R2 | Scope.Scope, E, A>
-  },
-  {
-    <R, E, A, R2, X>(
-      acquire: Effect.Effect<R, E, A>,
-      release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-    ): Effect.Effect<R | R2 | Scope.Scope, E, A>
-  }
->((args) => core.isEffect(args[0]), (acquire, release) => {
-  return core.uninterruptible(
+  <A, X, R2>(
+    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
+  ): <E, R>(acquire: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R2 | R | Scope.Scope>
+  <A, E, R, X, R2>(
+    acquire: Effect.Effect<A, E, R>,
+    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
+  ): Effect.Effect<A, E, R2 | R | Scope.Scope>
+} = dual((args) => core.isEffect(args[0]), (acquire, release) =>
+  core.uninterruptible(
     core.tap(acquire, (a) => addFinalizer((exit) => release(a, exit)))
-  )
-})
+  ))
 
 /* @internal */
 export const acquireReleaseInterruptible: {
-  <A, R2, X>(
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-  ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E, A>
-  <R, E, A, R2, X>(
-    acquire: Effect.Effect<R, E, A>,
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-  ): Effect.Effect<Scope.Scope | R | R2, E, A>
-} = dual<
-  {
-    <A, R2, X>(
-      release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-    ): <R, E>(acquire: Effect.Effect<R, E, A>) => Effect.Effect<R | R2 | Scope.Scope, E, A>
-  },
-  {
-    <R, E, A, R2, X>(
-      acquire: Effect.Effect<R, E, A>,
-      release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, X>
-    ): Effect.Effect<R | R2 | Scope.Scope, E, A>
-  }
->((args) => core.isEffect(args[0]), (acquire, release) => {
-  return ensuring(
+  <X, R2>(
+    release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
+  ): <A, E, R>(acquire: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Scope.Scope | R2 | R>
+  <A, E, R, X, R2>(
+    acquire: Effect.Effect<A, E, R>,
+    release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
+  ): Effect.Effect<A, E, Scope.Scope | R2 | R>
+} = dual((args) => core.isEffect(args[0]), (acquire, release) =>
+  ensuring(
     acquire,
     addFinalizer((exit) => release(exit))
-  )
-})
+  ))
 
 /* @internal */
-export const addFinalizer = <R, X>(
-  finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R, never, X>
-): Effect.Effect<R | Scope.Scope, never, void> =>
+export const addFinalizer = <X, R>(
+  finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R>
+): Effect.Effect<void, never, R | Scope.Scope> =>
   core.withFiberRuntime(
     (runtime) => {
       const acquireRefs = runtime.getFiberRefs()
@@ -1510,7 +1484,7 @@ export const addFinalizer = <R, X>(
             )
 
             return ensuring(
-              core.withRuntimeFlags(finalizer(exit) as Effect.Effect<never, never, X>, patchFlags),
+              core.withRuntimeFlags(finalizer(exit) as Effect.Effect<X>, patchFlags),
               core.sync(() => {
                 runtimeFinalizer.setFiberRefs(
                   FiberRefsPatch.patch(inverseRefs, runtimeFinalizer.id(), runtimeFinalizer.getFiberRefs())
@@ -1522,7 +1496,7 @@ export const addFinalizer = <R, X>(
   )
 
 /* @internal */
-export const daemonChildren = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> => {
+export const daemonChildren = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
   const forkScope = core.fiberRefLocally(core.currentForkScopeOverride, Option.some(fiberScope.globalScope))
   return forkScope(self)
 }
@@ -1531,38 +1505,44 @@ export const daemonChildren = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Ef
 const _existsParFound = Symbol.for("effect/Effect/existsPar/found")
 
 /* @internal */
-export const exists = dual<
-  <R, E, A>(f: (a: A, i: number) => Effect.Effect<R, E, boolean>, options?: {
+export const exists: {
+  <A, E, R>(f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
-  }) => (elements: Iterable<A>) => Effect.Effect<R, E, boolean>,
-  <R, E, A>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<R, E, boolean>, options?: {
+  }): (elements: Iterable<A>) => Effect.Effect<boolean, E, R>
+  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
-  }) => Effect.Effect<R, E, boolean>
->((args) => Predicate.isIterable(args[0]), (elements, f, options) =>
-  concurrency.matchSimple(
-    options?.concurrency,
-    () => core.suspend(() => existsLoop(elements[Symbol.iterator](), 0, f)),
-    () =>
-      core.matchEffect(
-        forEach(
-          elements,
-          (a, i) => core.if_(f(a, i), { onTrue: core.fail(_existsParFound), onFalse: core.unit }),
-          options
-        ),
-        {
-          onFailure: (e) => e === _existsParFound ? core.succeed(true) : core.fail(e),
-          onSuccess: () => core.succeed(false)
-        }
-      )
-  ))
+  }): Effect.Effect<boolean, E, R>
+} = dual(
+  (args) => Predicate.isIterable(args[0]),
+  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
+    readonly concurrency?: Concurrency | undefined
+    readonly batching?: boolean | "inherit" | undefined
+  }) =>
+    concurrency.matchSimple(
+      options?.concurrency,
+      () => core.suspend(() => existsLoop(elements[Symbol.iterator](), 0, f)),
+      () =>
+        core.matchEffect(
+          forEach(
+            elements,
+            (a, i) => core.if_(f(a, i), { onTrue: core.fail(_existsParFound), onFalse: core.unit }),
+            options
+          ),
+          {
+            onFailure: (e) => e === _existsParFound ? core.succeed(true) : core.fail(e),
+            onSuccess: () => core.succeed(false)
+          }
+        )
+    )
+)
 
-const existsLoop = <R, E, A>(
+const existsLoop = <A, E, R>(
   iterator: Iterator<A>,
   index: number,
-  f: (a: A, i: number) => Effect.Effect<R, E, boolean>
-): Effect.Effect<R, E, boolean> => {
+  f: (a: A, i: number) => Effect.Effect<boolean, E, R>
+): Effect.Effect<boolean, E, R> => {
   const next = iterator.next()
   if (next.done) {
     return core.succeed(false)
@@ -1575,22 +1555,22 @@ const existsLoop = <R, E, A>(
 
 /* @internal */
 export const filter = dual<
-  <A, R, E>(
-    f: (a: A, i: number) => Effect.Effect<R, E, boolean>,
+  <A, E, R>(
+    f: (a: A, i: number) => Effect.Effect<boolean, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly negate?: boolean | undefined
     }
-  ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
-  <A, R, E>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<R, E, boolean>, options?: {
+  ) => (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>,
+  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly negate?: boolean | undefined
-  }) => Effect.Effect<R, E, Array<A>>
+  }) => Effect.Effect<Array<A>, E, R>
 >(
   (args) => Predicate.isIterable(args[0]),
-  <A, R, E>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<R, E, boolean>, options?: {
+  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly negate?: boolean | undefined
@@ -1607,7 +1587,7 @@ export const filter = dual<
                 core.suspend(() => predicate(a, i)),
                 (list, b) => b ? [a, ...list] : list
               ),
-            core.sync(() => new Array<A>()) as Effect.Effect<R, E, Array<A>>
+            core.sync(() => new Array<A>()) as Effect.Effect<Array<A>, E, R>
           )
         ),
       () =>
@@ -1772,13 +1752,13 @@ export const allWith = <
 ): Effect.All.Return<Arg, O> => all(arg, options)
 
 /* @internal */
-export const allSuccesses = <R, E, A>(
-  elements: Iterable<Effect.Effect<R, E, A>>,
+export const allSuccesses = <A, E, R>(
+  elements: Iterable<Effect.Effect<A, E, R>>,
   options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
   }
-): Effect.Effect<R, never, Array<A>> =>
+): Effect.Effect<Array<A>, never, R> =>
   core.map(
     all(RA.fromIterable(elements).map(core.exit), options),
     RA.filterMap((exit) => core.exitIsSuccess(exit) ? Option.some(exit.i0) : Option.none())
@@ -1786,8 +1766,8 @@ export const allSuccesses = <R, E, A>(
 
 /* @internal */
 export const replicate = dual<
-  (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) => Array<Effect.Effect<R, E, A>>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, n: number) => Array<Effect.Effect<R, E, A>>
+  (n: number) => <A, E, R>(self: Effect.Effect<A, E, R>) => Array<Effect.Effect<A, E, R>>,
+  <A, E, R>(self: Effect.Effect<A, E, R>, n: number) => Array<Effect.Effect<A, E, R>>
 >(2, (self, n) => Array.from({ length: n }, () => self))
 
 /* @internal */
@@ -1799,7 +1779,7 @@ export const replicateEffect: {
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
-  ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Array<A>>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Array<A>, E, R>
   (
     n: number,
     options: {
@@ -1807,25 +1787,25 @@ export const replicateEffect: {
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
-  ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, void>
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     n: number,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
-  ): Effect.Effect<R, E, Array<A>>
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+  ): Effect.Effect<Array<A>, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     n: number,
     options: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
-  ): Effect.Effect<R, E, void>
+  ): Effect.Effect<void, E, R>
 } = dual(
   (args) => core.isEffect(args[0]),
   (self, n, options) => all(replicate(self, n), options)
@@ -1833,50 +1813,50 @@ export const replicateEffect: {
 
 /* @internal */
 export const forEach: {
-  <A, R, E, B>(
-    f: (a: A, i: number) => Effect.Effect<R, E, B>,
+  <A, B, E, R>(
+    f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
-  ): (self: Iterable<A>) => Effect.Effect<R, E, Array<B>>
-  <A, R, E, B>(
-    f: (a: A, i: number) => Effect.Effect<R, E, B>,
+  ): (self: Iterable<A>) => Effect.Effect<Array<B>, E, R>
+  <A, B, E, R>(
+    f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
-  ): (self: Iterable<A>) => Effect.Effect<R, E, void>
-  <A, R, E, B>(
+  ): (self: Iterable<A>) => Effect.Effect<void, E, R>
+  <A, B, E, R>(
     self: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<R, E, B>,
+    f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
-  ): Effect.Effect<R, E, Array<B>>
-  <A, R, E, B>(
+  ): Effect.Effect<Array<B>, E, R>
+  <A, B, E, R>(
     self: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<R, E, B>,
+    f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
-  ): Effect.Effect<R, E, void>
+  ): Effect.Effect<void, E, R>
 } = dual((args) => Predicate.isIterable(args[0]), <A, R, E, B>(
   self: Iterable<A>,
-  f: (a: A, i: number) => Effect.Effect<R, E, B>,
+  f: (a: A, i: number) => Effect.Effect<B, E, R>,
   options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
   }
 ) =>
-  core.withFiberRuntime<R, E, A | void>((r) => {
+  core.withFiberRuntime<A | void, E, R>((r) => {
     const isRequestBatchingEnabled = options?.batching === true ||
       (options?.batching === "inherit" && r.getFiberRef(core.currentRequestBatching))
 
@@ -1920,11 +1900,11 @@ export const forEach: {
   }))
 
 /* @internal */
-export const forEachParUnbounded = <A, R, E, B>(
+export const forEachParUnbounded = <A, B, E, R>(
   self: Iterable<A>,
-  f: (a: A, i: number) => Effect.Effect<R, E, B>,
+  f: (a: A, i: number) => Effect.Effect<B, E, R>,
   batching: boolean
-): Effect.Effect<R, E, Array<B>> =>
+): Effect.Effect<Array<B>, E, R> =>
   core.suspend(() => {
     const as = RA.fromIterable(self)
     const array = new Array<B>(as.length)
@@ -1933,13 +1913,13 @@ export const forEachParUnbounded = <A, R, E, B>(
   })
 
 /** @internal */
-export const forEachConcurrentDiscard = <R, E, A, _>(
+export const forEachConcurrentDiscard = <A, _, E, R>(
   self: Iterable<A>,
-  f: (a: A, i: number) => Effect.Effect<R, E, _>,
+  f: (a: A, i: number) => Effect.Effect<_, E, R>,
   batching: boolean,
   processAll: boolean,
   n?: number
-): Effect.Effect<R, E, void> =>
+): Effect.Effect<void, E, R> =>
   core.uninterruptibleMask((restore) =>
     core.transplant((graft) =>
       core.withFiberRuntime((parent) => {
@@ -1972,7 +1952,7 @@ export const forEachConcurrentDiscard = <R, E, A, _>(
           }
           return exits
         }
-        const runFiber = <R, E, A>(eff: Effect.Effect<R, E, A>) => {
+        const runFiber = <A, E, R>(eff: Effect.Effect<A, E, R>) => {
           const runnable = core.uninterruptible(graft(eff))
           const fiber = unsafeForkUnstarted(
             runnable,
@@ -2021,7 +2001,7 @@ export const forEachConcurrentDiscard = <R, E, A, _>(
                 }
                 const onRes = (
                   res: Exit.Exit<E, _> | Effect.Blocked<E, _>
-                ): Effect.Effect<R, never, Exit.Exit<E, _> | Effect.Blocked<E, _>> => {
+                ): Effect.Effect<Exit.Exit<E, _> | Effect.Blocked<E, _>, never, R> => {
                   if (todos.length > 0) {
                     pushResult(res, index)
                     if (todos.length > 0) {
@@ -2101,12 +2081,12 @@ export const forEachConcurrentDiscard = <R, E, A, _>(
   )
 
 /* @internal */
-export const forEachParN = <A, R, E, B>(
+export const forEachParN = <A, B, E, R>(
   self: Iterable<A>,
   n: number,
-  f: (a: A, i: number) => Effect.Effect<R, E, B>,
+  f: (a: A, i: number) => Effect.Effect<B, E, R>,
   batching: boolean
-): Effect.Effect<R, E, Array<B>> =>
+): Effect.Effect<Array<B>, E, R> =>
   core.suspend(() => {
     const as = RA.fromIterable(self)
     const array = new Array<B>(as.length)
@@ -2115,40 +2095,36 @@ export const forEachParN = <A, R, E, B>(
   })
 
 /* @internal */
-export const fork = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, never, Fiber.RuntimeFiber<E, A>> =>
-  core.withFiberRuntime<R, never, Fiber.RuntimeFiber<E, A>>((state, status) =>
-    core.succeed(unsafeFork(self, state, status.runtimeFlags))
-  )
+export const fork = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R> =>
+  core.withFiberRuntime((state, status) => core.succeed(unsafeFork(self, state, status.runtimeFlags)))
 
 /* @internal */
-export const forkDaemon = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, never, Fiber.RuntimeFiber<E, A>> =>
+export const forkDaemon = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R> =>
   forkWithScopeOverride(self, fiberScope.globalScope)
 
 /* @internal */
 export const forkWithErrorHandler = dual<
   <E, X>(
-    handler: (e: E) => Effect.Effect<never, never, X>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Fiber.RuntimeFiber<E, A>>,
-  <R, E, A, X>(
-    self: Effect.Effect<R, E, A>,
-    handler: (e: E) => Effect.Effect<never, never, X>
-  ) => Effect.Effect<R, never, Fiber.RuntimeFiber<E, A>>
+    handler: (e: E) => Effect.Effect<X>
+  ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R>,
+  <A, E, R, X>(
+    self: Effect.Effect<A, E, R>,
+    handler: (e: E) => Effect.Effect<X>
+  ) => Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R>
 >(2, (self, handler) =>
   fork(core.onError(self, (cause) => {
     const either = internalCause.failureOrCause(cause)
     switch (either._tag) {
-      case "Left": {
+      case "Left":
         return handler(either.left)
-      }
-      case "Right": {
+      case "Right":
         return core.failCause(either.right)
-      }
     }
   })))
 
 /** @internal */
-export const unsafeFork = <R, E, A, E2, B>(
-  effect: Effect.Effect<R, E, A>,
+export const unsafeFork = <A, E, R, E2, B>(
+  effect: Effect.Effect<A, E, R>,
   parentFiber: FiberRuntime<E2, B>,
   parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
@@ -2159,8 +2135,8 @@ export const unsafeFork = <R, E, A, E2, B>(
 }
 
 /** @internal */
-export const unsafeForkUnstarted = <R, E, A, E2, B>(
-  effect: Effect.Effect<R, E, A>,
+export const unsafeForkUnstarted = <A, E, R, E2, B>(
+  effect: Effect.Effect<A, E, R>,
   parentFiber: FiberRuntime<E2, B>,
   parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
@@ -2170,8 +2146,8 @@ export const unsafeForkUnstarted = <R, E, A, E2, B>(
 }
 
 /** @internal */
-export const unsafeMakeChildFiber = <R, E, A, E2, B>(
-  effect: Effect.Effect<R, E, A>,
+export const unsafeMakeChildFiber = <A, E, R, E2, B>(
+  effect: Effect.Effect<A, E, R>,
   parentFiber: FiberRuntime<E2, B>,
   parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
@@ -2206,11 +2182,11 @@ export const unsafeMakeChildFiber = <R, E, A, E2, B>(
 }
 
 /* @internal */
-const forkWithScopeOverride = <R, E, A>(
-  self: Effect.Effect<R, E, A>,
+const forkWithScopeOverride = <A, E, R>(
+  self: Effect.Effect<A, E, R>,
   scopeOverride: fiberScope.FiberScope
-): Effect.Effect<R, never, Fiber.RuntimeFiber<E, A>> =>
-  core.withFiberRuntime<R, never, Fiber.RuntimeFiber<E, A>>((parentFiber, parentStatus) =>
+): Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R> =>
+  core.withFiberRuntime((parentFiber, parentStatus) =>
     core.succeed(unsafeFork(self, parentFiber, parentStatus.runtimeFlags, scopeOverride))
   )
 
@@ -2219,14 +2195,14 @@ export const mergeAll = dual<
   <Z, A>(zero: Z, f: (z: Z, a: A, i: number) => Z, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
-  }) => <R, E>(elements: Iterable<Effect.Effect<R, E, A>>) => Effect.Effect<R, E, Z>,
-  <R, E, A, Z>(elements: Iterable<Effect.Effect<R, E, A>>, zero: Z, f: (z: Z, a: A, i: number) => Z, options?: {
+  }) => <E, R>(elements: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<Z, E, R>,
+  <A, E, R, Z>(elements: Iterable<Effect.Effect<A, E, R>>, zero: Z, f: (z: Z, a: A, i: number) => Z, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
-  }) => Effect.Effect<R, E, Z>
+  }) => Effect.Effect<Z, E, R>
 >(
   (args) => Predicate.isFunction(args[2]),
-  <R, E, A, Z>(elements: Iterable<Effect.Effect<R, E, A>>, zero: Z, f: (z: Z, a: A, i: number) => Z, options?: {
+  <A, E, R, Z>(elements: Iterable<Effect.Effect<A, E, R>>, zero: Z, f: (z: Z, a: A, i: number) => Z, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
   }) =>
@@ -2235,7 +2211,7 @@ export const mergeAll = dual<
       () =>
         RA.fromIterable(elements).reduce(
           (acc, a, i) => core.zipWith(acc, a, (acc, a) => f(acc, a, i)),
-          core.succeed(zero) as Effect.Effect<R, E, Z>
+          core.succeed(zero) as Effect.Effect<Z, E, R>
         ),
       () =>
         core.flatMap(Ref.make(zero), (acc) =>
@@ -2252,21 +2228,21 @@ export const mergeAll = dual<
 
 /* @internal */
 export const partition = dual<
-  <R, E, A, B>(
-    f: (a: A, i: number) => Effect.Effect<R, E, B>,
+  <A, B, E, R>(
+    f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => (elements: Iterable<A>) => Effect.Effect<R, never, [excluded: Array<E>, satisfying: Array<B>]>,
-  <R, E, A, B>(
+  ) => (elements: Iterable<A>) => Effect.Effect<[excluded: Array<E>, satisfying: Array<B>], never, R>,
+  <A, B, E, R>(
     elements: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<R, E, B>,
+    f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R, never, [excluded: Array<E>, satisfying: Array<B>]>
+  ) => Effect.Effect<[excluded: Array<E>, satisfying: Array<B>], never, R>
 >((args) => Predicate.isIterable(args[0]), (elements, f, options) =>
   pipe(
     forEach(elements, (a, i) => core.either(f(a, i)), options),
@@ -2276,50 +2252,50 @@ export const partition = dual<
 /* @internal */
 export const validateAll = dual<
   {
-    <R, E, A, B>(
-      f: (a: A, i: number) => Effect.Effect<R, E, B>,
+    <A, B, E, R>(
+      f: (a: A, i: number) => Effect.Effect<B, E, R>,
       options?: {
         readonly concurrency?: Concurrency | undefined
         readonly batching?: boolean | "inherit" | undefined
         readonly discard?: false | undefined
       }
-    ): (elements: Iterable<A>) => Effect.Effect<R, Array<E>, Array<B>>
-    <R, E, A, B>(
-      f: (a: A, i: number) => Effect.Effect<R, E, B>,
+    ): (elements: Iterable<A>) => Effect.Effect<Array<B>, Array<E>, R>
+    <A, B, E, R>(
+      f: (a: A, i: number) => Effect.Effect<B, E, R>,
       options: {
         readonly concurrency?: Concurrency | undefined
         readonly batching?: boolean | "inherit" | undefined
         readonly discard: true
       }
-    ): (elements: Iterable<A>) => Effect.Effect<R, Array<E>, void>
+    ): (elements: Iterable<A>) => Effect.Effect<void, Array<E>, R>
   },
   {
-    <R, E, A, B>(
+    <A, B, E, R>(
       elements: Iterable<A>,
-      f: (a: A, i: number) => Effect.Effect<R, E, B>,
+      f: (a: A, i: number) => Effect.Effect<B, E, R>,
       options?: {
         readonly concurrency?: Concurrency | undefined
         readonly batching?: boolean | "inherit" | undefined
         readonly discard?: false | undefined
       }
-    ): Effect.Effect<R, Array<E>, Array<B>>
-    <R, E, A, B>(
+    ): Effect.Effect<Array<B>, Array<E>, R>
+    <A, B, E, R>(
       elements: Iterable<A>,
-      f: (a: A, i: number) => Effect.Effect<R, E, B>,
+      f: (a: A, i: number) => Effect.Effect<B, E, R>,
       options: {
         readonly concurrency?: Concurrency | undefined
         readonly batching?: boolean | "inherit" | undefined
         readonly discard: true
       }
-    ): Effect.Effect<R, Array<E>, void>
+    ): Effect.Effect<void, Array<E>, R>
   }
 >(
   (args) => Predicate.isIterable(args[0]),
-  <R, E, A, B>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<R, E, B>, options?: {
+  <A, B, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<B, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
-  }): Effect.Effect<R, Array<E>, any> =>
+  }): Effect.Effect<any, Array<E>, R> =>
     core.flatMap(
       partition(elements, f, {
         concurrency: options?.concurrency,
@@ -2333,7 +2309,7 @@ export const validateAll = dual<
 )
 
 /* @internal */
-export const raceAll = <R, E, A>(all: Iterable<Effect.Effect<R, E, A>>) => {
+export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> => {
   const list = Chunk.fromIterable(all)
   if (!Chunk.isNonEmpty(list)) {
     return core.dieSync(() => new core.IllegalArgumentException(`Received an empty collection of effects`))
@@ -2351,14 +2327,14 @@ export const raceAll = <R, E, A>(all: Iterable<Effect.Effect<R, E, A>>) => {
       pipe(
         Ref.make(effects.length),
         core.flatMap((fails) =>
-          core.uninterruptibleMask<R, E, A>((restore) =>
+          core.uninterruptibleMask<A, E, R>((restore) =>
             pipe(
               fork(core.interruptible(self)),
               core.flatMap((head) =>
                 pipe(
                   effects,
                   core.forEachSequential((effect) => fork(core.interruptible(effect))),
-                  core.map(Chunk.unsafeFromArray),
+                  core.map((fibers) => Chunk.unsafeFromArray(fibers)),
                   core.map((tail) => pipe(tail, Chunk.prepend(head)) as Chunk.Chunk<Fiber.RuntimeFiber<E, A>>),
                   core.tap((fibers) =>
                     pipe(
@@ -2408,7 +2384,7 @@ const raceAllArbiter = <E, E1, A, A1>(
   deferred: Deferred.Deferred<E | E1, readonly [A | A1, Fiber.Fiber<E | E1, A | A1>]>,
   fails: Ref.Ref<number>
 ) =>
-(exit: Exit.Exit<E | E1, A | A1>): Effect.Effect<never, never, void> =>
+(exit: Exit.Exit<E | E1, A | A1>): Effect.Effect<void> =>
   core.exitMatchEffect(exit, {
     onFailure: (cause) =>
       pipe(
@@ -2421,7 +2397,7 @@ const raceAllArbiter = <E, E1, A, A1>(
           ] as const),
         core.flatten
       ),
-    onSuccess: (value): Effect.Effect<never, never, void> =>
+    onSuccess: (value): Effect.Effect<void> =>
       pipe(
         core.deferredSucceed(deferred, [value, winner] as const),
         core.flatMap((set) =>
@@ -2443,26 +2419,26 @@ const raceAllArbiter = <E, E1, A, A1>(
 
 /* @internal */
 export const reduceEffect = dual<
-  <R, E, A>(
-    zero: Effect.Effect<R, E, A>,
+  <A, E, R>(
+    zero: Effect.Effect<A, E, R>,
     f: (acc: A, a: A, i: number) => A,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => (elements: Iterable<Effect.Effect<R, E, A>>) => Effect.Effect<R, E, A>,
-  <R, E, A>(
-    elements: Iterable<Effect.Effect<R, E, A>>,
-    zero: Effect.Effect<R, E, A>,
+  ) => (elements: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<A, E, R>,
+  <A, E, R>(
+    elements: Iterable<Effect.Effect<A, E, R>>,
+    zero: Effect.Effect<A, E, R>,
     f: (acc: A, a: A, i: number) => A,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R, E, A>
->((args) => Predicate.isIterable(args[0]), <R, E, A>(
-  elements: Iterable<Effect.Effect<R, E, A>>,
-  zero: Effect.Effect<R, E, A>,
+  ) => Effect.Effect<A, E, R>
+>((args) => Predicate.isIterable(args[0]), <A, E, R>(
+  elements: Iterable<Effect.Effect<A, E, R>>,
+  zero: Effect.Effect<A, E, R>,
   f: (acc: A, a: A, i: number) => A,
   options?: {
     readonly concurrency?: Concurrency | undefined
@@ -2507,7 +2483,7 @@ export const reduceEffect = dual<
   ))
 
 /* @internal */
-export const parallelFinalizers = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+export const parallelFinalizers = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   core.contextWithEffect((context) =>
     Option.match(Context.getOption(context, scopeTag), {
       onNone: () => self,
@@ -2528,7 +2504,7 @@ export const parallelFinalizers = <R, E, A>(self: Effect.Effect<R, E, A>): Effec
 
 /* @internal */
 export const parallelNFinalizers =
-  (parallelism: number) => <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+  (parallelism: number) => <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     core.contextWithEffect((context) =>
       Option.match(Context.getOption(context, scopeTag), {
         onNone: () => self,
@@ -2546,9 +2522,9 @@ export const parallelNFinalizers =
 
 /* @internal */
 export const finalizersMask = (strategy: ExecutionStrategy.ExecutionStrategy) =>
-<R, E, A>(
-  self: (restore: <R1, E1, A1>(self: Effect.Effect<R1, E1, A1>) => Effect.Effect<R1, E1, A1>) => Effect.Effect<R, E, A>
-): Effect.Effect<R, E, A> =>
+<A, E, R>(
+  self: (restore: <A1, E1, R1>(self: Effect.Effect<A1, E1, R1>) => Effect.Effect<A1, E1, R1>) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
   core.contextWithEffect((context) =>
     Option.match(Context.getOption(context, scopeTag), {
       onNone: () => self(identity),
@@ -2571,16 +2547,16 @@ export const finalizersMask = (strategy: ExecutionStrategy.ExecutionStrategy) =>
   )
 
 /* @internal */
-export const scopeWith = <R, E, A>(
-  f: (scope: Scope.Scope) => Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, E, A> => core.flatMap(scopeTag, f)
+export const scopeWith = <A, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R | Scope.Scope> => core.flatMap(scopeTag, f)
 
 /* @internal */
-export const scopedEffect = <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<Exclude<R, Scope.Scope>, E, A> =>
+export const scopedEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
   core.flatMap(scopeMake(), (scope) => scopeUse(scope)(effect))
 
 /* @internal */
-export const sequentialFinalizers = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+export const sequentialFinalizers = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   core.contextWithEffect((context) =>
     Option.match(Context.getOption(context, scopeTag), {
       onNone: () => self,
@@ -2600,24 +2576,24 @@ export const sequentialFinalizers = <R, E, A>(self: Effect.Effect<R, E, A>): Eff
   )
 
 /* @internal */
-export const tagMetricsScoped = (key: string, value: string): Effect.Effect<Scope.Scope, never, void> =>
+export const tagMetricsScoped = (key: string, value: string): Effect.Effect<void, never, Scope.Scope> =>
   labelMetricsScoped([metricLabel.make(key, value)])
 
 /* @internal */
 export const labelMetricsScoped = (
   labels: Iterable<MetricLabel.MetricLabel>
-): Effect.Effect<Scope.Scope, never, void> =>
+): Effect.Effect<void, never, Scope.Scope> =>
   fiberRefLocallyScopedWith(core.currentMetricLabels, (old) => RA.union(old, labels))
 
 /* @internal */
 export const using = dual<
-  <A, R2, E2, A2>(
-    use: (a: A) => Effect.Effect<R2, E2, A2>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope.Scope> | R2, E | E2, A2>,
-  <R, E, A, R2, E2, A2>(
-    self: Effect.Effect<R, E, A>,
-    use: (a: A) => Effect.Effect<R2, E2, A2>
-  ) => Effect.Effect<Exclude<R, Scope.Scope> | R2, E | E2, A2>
+  <A, A2, E2, R2>(
+    use: (a: A) => Effect.Effect<A2, E2, R2>
+  ) => <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2, E | E2, Exclude<R, Scope.Scope> | R2>,
+  <A, E, R, A2, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    use: (a: A) => Effect.Effect<A2, E2, R2>
+  ) => Effect.Effect<A2, E | E2, Exclude<R, Scope.Scope> | R2>
 >(2, (self, use) =>
   core.acquireUseRelease(
     scopeMake(),
@@ -2627,21 +2603,21 @@ export const using = dual<
 
 /** @internal */
 export const validate = dual<
-  <R1, E1, B>(
-    that: Effect.Effect<R1, E1, B>,
+  <B, E1, R1>(
+    that: Effect.Effect<B, E1, R1>,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E1, [A, B]>,
-  <R, E, A, R1, E1, B>(
-    self: Effect.Effect<R, E, A>,
-    that: Effect.Effect<R1, E1, B>,
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<[A, B], E | E1, R | R1>,
+  <A, E, R, B, E1, R1>(
+    self: Effect.Effect<A, E, R>,
+    that: Effect.Effect<B, E1, R1>,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R | R1, E | E1, [A, B]>
+  ) => Effect.Effect<[A, B], E | E1, R | R1>
 >(
   (args) => core.isEffect(args[1]),
   (self, that, options) => validateWith(self, that, (a, b) => [a, b], options)
@@ -2649,23 +2625,23 @@ export const validate = dual<
 
 /** @internal */
 export const validateWith = dual<
-  <A, R1, E1, B, C>(
-    that: Effect.Effect<R1, E1, B>,
+  <B, E1, R1, A, C>(
+    that: Effect.Effect<B, E1, R1>,
     f: (a: A, b: B) => C,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E1, C>,
-  <R, E, A, R1, E1, B, C>(
-    self: Effect.Effect<R, E, A>,
-    that: Effect.Effect<R1, E1, B>,
+  ) => <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<C, E | E1, R | R1>,
+  <A, E, R, B, E1, R1, C>(
+    self: Effect.Effect<A, E, R>,
+    that: Effect.Effect<B, E1, R1>,
     f: (a: A, b: B) => C,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R | R1, E | E1, C>
+  ) => Effect.Effect<C, E | E1, R | R1>
 >((args) => core.isEffect(args[1]), (self, that, f, options) =>
   core.flatten(zipWithOptions(
     core.exit(self),
@@ -2680,13 +2656,13 @@ export const validateWith = dual<
 
 /* @internal */
 export const validateAllPar = dual<
-  <R, E, A, B>(
-    f: (a: A) => Effect.Effect<R, E, B>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, Array<E>, Array<B>>,
-  <R, E, A, B>(
+  <A, B, E, R>(
+    f: (a: A) => Effect.Effect<B, E, R>
+  ) => (elements: Iterable<A>) => Effect.Effect<Array<B>, Array<E>, R>,
+  <A, B, E, R>(
     elements: Iterable<A>,
-    f: (a: A) => Effect.Effect<R, E, B>
-  ) => Effect.Effect<R, Array<E>, Array<B>>
+    f: (a: A) => Effect.Effect<B, E, R>
+  ) => Effect.Effect<Array<B>, Array<E>, R>
 >(2, (elements, f) =>
   core.flatMap(
     partition(elements, f),
@@ -2698,10 +2674,10 @@ export const validateAllPar = dual<
 
 /* @internal */
 export const validateAllParDiscard = dual<
-  <R, E, A, B>(
-    f: (a: A) => Effect.Effect<R, E, B>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, Array<E>, void>,
-  <R, E, A, B>(elements: Iterable<A>, f: (a: A) => Effect.Effect<R, E, B>) => Effect.Effect<R, Array<E>, void>
+  <A, B, E, R>(
+    f: (a: A) => Effect.Effect<B, E, R>
+  ) => (elements: Iterable<A>) => Effect.Effect<void, Array<E>, R>,
+  <A, B, E, R>(elements: Iterable<A>, f: (a: A) => Effect.Effect<B, E, R>) => Effect.Effect<void, Array<E>, R>
 >(2, (elements, f) =>
   core.flatMap(
     partition(elements, f),
@@ -2713,14 +2689,14 @@ export const validateAllParDiscard = dual<
 
 /* @internal */
 export const validateFirst = dual<
-  <R, E, A, B>(f: (a: A, i: number) => Effect.Effect<R, E, B>, options?: {
+  <A, B, E, R>(f: (a: A, i: number) => Effect.Effect<B, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
-  }) => (elements: Iterable<A>) => Effect.Effect<R, Array<E>, B>,
-  <R, E, A, B>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<R, E, B>, options?: {
+  }) => (elements: Iterable<A>) => Effect.Effect<B, Array<E>, R>,
+  <A, B, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<B, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
-  }) => Effect.Effect<R, Array<E>, B>
+  }) => Effect.Effect<B, Array<E>, R>
 >(
   (args) => Predicate.isIterable(args[0]),
   (elements, f, options) => core.flip(forEach(elements, (a, i) => core.flip(f(a, i)), options))
@@ -2735,9 +2711,9 @@ export const withConfigProviderScoped = (value: ConfigProvider) =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(configProviderTag, value))
 
 /* @internal */
-export const withEarlyRelease = <R, E, A>(
-  self: Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, E, [Effect.Effect<never, never, void>, A]> =>
+export const withEarlyRelease = <A, E, R>(
+  self: Effect.Effect<A, E, R>
+): Effect.Effect<[Effect.Effect<void>, A], E, R | Scope.Scope> =>
   scopeWith((parent) =>
     core.flatMap(core.scopeFork(parent, executionStrategy.sequential), (child) =>
       pipe(
@@ -2752,23 +2728,23 @@ export const withEarlyRelease = <R, E, A>(
 
 /** @internal */
 export const zipOptions = dual<
-  <R2, E2, A2>(
-    that: Effect.Effect<R2, E2, A2>,
+  <A2, E2, R2>(
+    that: Effect.Effect<A2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R2, E | E2, [A, A2]>,
-  <R, E, A, R2, E2, A2>(
-    self: Effect.Effect<R, E, A>,
-    that: Effect.Effect<R2, E2, A2>,
+  ) => <A, E, R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<[A, A2], E | E2, R | R2>,
+  <A, E, R, A2, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    that: Effect.Effect<A2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R | R2, E | E2, [A, A2]>
+  ) => Effect.Effect<[A, A2], E | E2, R | R2>
 >((args) => core.isEffect(args[1]), (
   self,
   that,
@@ -2777,77 +2753,82 @@ export const zipOptions = dual<
 
 /** @internal */
 export const zipLeftOptions = dual<
-  <R2, E2, A2>(
-    that: Effect.Effect<R2, E2, A2>,
+  <A2, E2, R2>(
+    that: Effect.Effect<A2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R2, E | E2, A>,
-  <R, E, A, R2, E2, A2>(
-    self: Effect.Effect<R, E, A>,
-    that: Effect.Effect<R2, E2, A2>,
+  ) => <A, E, R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E | E2, R | R2>,
+  <A, E, R, A2, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    that: Effect.Effect<A2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R | R2, E | E2, A>
+  ) => Effect.Effect<A, E | E2, R | R2>
 >(
   (args) => core.isEffect(args[1]),
   (self, that, options) => zipWithOptions(self, that, (a, _) => a, options)
 )
 
 /** @internal */
-export const zipRightOptions = dual<
-  <R2, E2, A2>(
-    that: Effect.Effect<R2, E2, A2>,
+export const zipRightOptions: {
+  <A2, E2, R2>(
+    that: Effect.Effect<A2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A2>,
-  <R, E, A, R2, E2, A2>(
-    self: Effect.Effect<R, E, A>,
-    that: Effect.Effect<R2, E2, A2>,
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    that: Effect.Effect<A2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R | R2, E | E2, A2>
->((args) => core.isEffect(args[1]), (self, that, options) => zipWithOptions(self, that, (_, b) => b, options))
+  ): Effect.Effect<A2, E2 | E, R2 | R>
+} = dual((args) => core.isEffect(args[1]), <A, E, R, A2, E2, R2>(
+  self: Effect.Effect<A, E, R>,
+  that: Effect.Effect<A2, E2, R2>,
+  options: {
+    readonly concurrent?: boolean | undefined
+    readonly batching?: boolean | "inherit" | undefined
+  }
+): Effect.Effect<A2, E2 | E, R2 | R> => zipWithOptions(self, that, (_, b) => b, options))
 
 /** @internal */
-export const zipWithOptions = dual<
-  <R2, E2, A2, A, B>(
-    that: Effect.Effect<R2, E2, A2>,
+export const zipWithOptions: {
+  <A2, E2, R2, A, B>(
+    that: Effect.Effect<A2, E2, R2>,
     f: (a: A, b: A2) => B,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => <R, E>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R2, E | E2, B>,
-  <R, E, A, R2, E2, A2, B>(
-    self: Effect.Effect<R, E, A>,
-    that: Effect.Effect<R2, E2, A2>,
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2, B>(
+    self: Effect.Effect<A, E, R>,
+    that: Effect.Effect<A2, E2, R2>,
     f: (a: A, b: A2) => B,
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R | R2, E | E2, B>
->((args) => core.isEffect(args[1]), <R, E, A, R2, E2, A2, B>(
-  self: Effect.Effect<R, E, A>,
-  that: Effect.Effect<R2, E2, A2>,
+  ): Effect.Effect<B, E2 | E, R2 | R>
+} = dual((args) => core.isEffect(args[1]), <A, E, R, A2, E2, R2, B>(
+  self: Effect.Effect<A, E, R>,
+  that: Effect.Effect<A2, E2, R2>,
   f: (a: A, b: A2) => B,
   options?: {
     readonly concurrent?: boolean | undefined
     readonly batching?: boolean | "inherit" | undefined
   }
-): Effect.Effect<R | R2, E | E2, B> =>
+): Effect.Effect<B, E2 | E, R2 | R> =>
   core.map(
     all([self, that], {
       concurrency: options?.concurrent ? 2 : 1,
@@ -2859,7 +2840,7 @@ export const zipWithOptions = dual<
 /* @internal */
 export const withRuntimeFlagsScoped = (
   update: RuntimeFlagsPatch.RuntimeFlagsPatch
-): Effect.Effect<Scope.Scope, never, void> => {
+): Effect.Effect<void, never, Scope.Scope> => {
   if (update === RuntimeFlagsPatch.empty) {
     return core.unit
   }
@@ -2885,7 +2866,7 @@ export const releaseMapReleaseAll = (
   strategy: ExecutionStrategy.ExecutionStrategy,
   exit: Exit.Exit<unknown, unknown>
 ) =>
-(self: core.ReleaseMap): Effect.Effect<never, never, void> =>
+(self: core.ReleaseMap): Effect.Effect<void> =>
   core.suspend(() => {
     switch (self.state._tag) {
       case "Exited": {
@@ -2944,7 +2925,7 @@ export const scope: Effect.Effect<Scope.Scope, never, Scope.Scope> = scopeTag
 /* @internal */
 export const scopeMake = (
   strategy: ExecutionStrategy.ExecutionStrategy = executionStrategy.sequential
-): Effect.Effect<never, never, Scope.Scope.Closeable> =>
+): Effect.Effect<Scope.Scope.Closeable> =>
   core.map(core.releaseMapMake, (rm): Scope.Scope.Closeable => ({
     [core.ScopeTypeId]: core.ScopeTypeId,
     [core.CloseableScopeTypeId]: core.CloseableScopeTypeId,
@@ -2971,12 +2952,12 @@ export const scopeMake = (
 
 /* @internal */
 export const scopeExtend = dual<
-  (scope: Scope.Scope) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope.Scope>, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope.Scope) => Effect.Effect<Exclude<R, Scope.Scope>, E, A>
+  (scope: Scope.Scope) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Scope.Scope>>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, scope: Scope.Scope) => Effect.Effect<A, E, Exclude<R, Scope.Scope>>
 >(
   2,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope.Scope) =>
-    core.mapInputContext<Exclude<R, Scope.Scope>, R, E, A>(
+  <A, E, R>(effect: Effect.Effect<A, E, R>, scope: Scope.Scope) =>
+    core.mapInputContext<A, E, R, Exclude<R, Scope.Scope>>(
       effect,
       // @ts-expect-error
       Context.merge(Context.make(scopeTag, scope))
@@ -2987,11 +2968,11 @@ export const scopeExtend = dual<
 export const scopeUse = dual<
   (
     scope: Scope.Scope.Closeable
-  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope.Scope>, E, A>,
-  <R, E, A>(
-    effect: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Scope.Scope>>,
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
     scope: Scope.Scope.Closeable
-  ) => Effect.Effect<Exclude<R, Scope.Scope>, E, A>
+  ) => Effect.Effect<A, E, Exclude<R, Scope.Scope>>
 >(2, (effect, scope) =>
   pipe(
     effect,
@@ -3014,8 +2995,8 @@ export const fiberRefUnsafeMakeSupervisor = (
 
 /* @internal */
 export const fiberRefLocallyScoped = dual<
-  <A>(value: A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<Scope.Scope, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, value: A) => Effect.Effect<Scope.Scope, never, void>
+  <A>(value: A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<void, never, Scope.Scope>,
+  <A>(self: FiberRef.FiberRef<A>, value: A) => Effect.Effect<void, never, Scope.Scope>
 >(2, (self, value) =>
   core.asUnit(
     acquireRelease(
@@ -3029,8 +3010,8 @@ export const fiberRefLocallyScoped = dual<
 
 /* @internal */
 export const fiberRefLocallyScopedWith = dual<
-  <A>(f: (a: A) => A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<Scope.Scope, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect.Effect<Scope.Scope, never, void>
+  <A>(f: (a: A) => A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<void, never, Scope.Scope>,
+  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect.Effect<void, never, Scope.Scope>
 >(2, (self, f) => core.fiberRefGetWith(self, (a) => fiberRefLocallyScoped(self, f(a))))
 
 /* @internal */
@@ -3040,13 +3021,13 @@ export const fiberRefMake = <A>(
     readonly fork?: ((a: A) => A) | undefined
     readonly join?: ((left: A, right: A) => A) | undefined
   }
-): Effect.Effect<Scope.Scope, never, FiberRef.FiberRef<A>> =>
+): Effect.Effect<FiberRef.FiberRef<A>, never, Scope.Scope> =>
   fiberRefMakeWith(() => core.fiberRefUnsafeMake(initial, options))
 
 /* @internal */
 export const fiberRefMakeWith = <Value>(
   ref: LazyArg<FiberRef.FiberRef<Value>>
-): Effect.Effect<Scope.Scope, never, FiberRef.FiberRef<Value>> =>
+): Effect.Effect<FiberRef.FiberRef<Value>, never, Scope.Scope> =>
   acquireRelease(
     core.tap(core.sync(ref), (ref) => core.fiberRefUpdate(ref, identity)),
     (fiberRef) => core.fiberRefDelete(fiberRef)
@@ -3055,13 +3036,13 @@ export const fiberRefMakeWith = <Value>(
 /* @internal */
 export const fiberRefMakeContext = <A>(
   initial: Context.Context<A>
-): Effect.Effect<Scope.Scope, never, FiberRef.FiberRef<Context.Context<A>>> =>
+): Effect.Effect<FiberRef.FiberRef<Context.Context<A>>, never, Scope.Scope> =>
   fiberRefMakeWith(() => core.fiberRefUnsafeMakeContext(initial))
 
 /* @internal */
 export const fiberRefMakeRuntimeFlags = (
   initial: RuntimeFlags.RuntimeFlags
-): Effect.Effect<Scope.Scope, never, FiberRef.FiberRef<RuntimeFlags.RuntimeFlags>> =>
+): Effect.Effect<FiberRef.FiberRef<RuntimeFlags.RuntimeFlags>, never, Scope.Scope> =>
   fiberRefMakeWith(() => core.fiberRefUnsafeMakeRuntimeFlags(initial))
 
 /** @internal */
@@ -3077,7 +3058,7 @@ export const currentSupervisor: FiberRef.FiberRef<Supervisor.Supervisor<any>> = 
 // circular with Fiber
 
 /* @internal */
-export const fiberAwaitAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect.Effect<never, never, void> =>
+export const fiberAwaitAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect.Effect<void> =>
   core.asUnit(internalFiber._await(fiberAll(fibers)))
 
 /** @internal */
@@ -3122,15 +3103,15 @@ export const fiberAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Fiber.Fiber
 })
 
 /* @internal */
-export const fiberInterruptFork = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, void> =>
+export const fiberInterruptFork = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<void> =>
   core.asUnit(forkDaemon(core.interruptFiber(self)))
 
 /* @internal */
-export const fiberJoinAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Effect.Effect<never, E, void> =>
+export const fiberJoinAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Effect.Effect<void, E> =>
   core.asUnit(internalFiber.join(fiberAll(fibers)))
 
 /* @internal */
-export const fiberScoped = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Scope.Scope, never, Fiber.Fiber<E, A>> =>
+export const fiberScoped = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Fiber.Fiber<E, A>, never, Scope.Scope> =>
   acquireRelease(core.succeed(self), core.interruptFiber)
 
 //
@@ -3139,29 +3120,22 @@ export const fiberScoped = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Scope.
 
 /** @internal */
 export const raceWith = dual<
-  <E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
-    other: Effect.Effect<R1, E1, A1>,
+  <A1, E1, R1, E, A, A2, E2, R2, A3, E3, R3>(
+    other: Effect.Effect<A1, E1, R1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect.Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect.Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect.Effect<A2, E2, R2>
+      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect.Effect<A3, E3, R3>
     }
-  ) => <R>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>,
-  <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
-    self: Effect.Effect<R, E, A>,
-    other: Effect.Effect<R1, E1, A1>,
+  ) => <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2 | A3, E2 | E3, R | R1 | R2 | R3>,
+  <A, E, R, A1, E1, R1, A2, E2, R2, A3, E3, R3>(
+    self: Effect.Effect<A, E, R>,
+    other: Effect.Effect<A1, E1, R1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect.Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect.Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect.Effect<A2, E2, R2>
+      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect.Effect<A3, E3, R3>
     }
-  ) => Effect.Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>
->(3, <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
-  self: Effect.Effect<R, E, A>,
-  other: Effect.Effect<R1, E1, A1>,
-  options: {
-    readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect.Effect<R2, E2, A2>
-    readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect.Effect<R3, E3, A3>
-  }
-) =>
+  ) => Effect.Effect<A2 | A3, E2 | E3, R | R1 | R2 | R3>
+>(3, (self, other, options) =>
   raceFibersWith(self, other, {
     onSelfWin: (winner, loser) =>
       core.flatMap(winner.await, (exit) => {
@@ -3194,7 +3168,7 @@ export const raceWith = dual<
   }))
 
 /** @internal */
-export const disconnect = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+export const disconnect = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   core.uninterruptibleMask((restore) =>
     core.fiberIdWith((fiberId) =>
       core.flatMap(forkDaemon(restore(self)), (fiber) =>
@@ -3207,15 +3181,15 @@ export const disconnect = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect
 
 /** @internal */
 export const race = dual<
-  <R2, E2, A2>(
-    that: Effect.Effect<R2, E2, A2>
-  ) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R2, E | E2, A | A2>,
-  <R, E, A, R2, E2, A2>(
-    self: Effect.Effect<R, E, A>,
-    that: Effect.Effect<R2, E2, A2>
-  ) => Effect.Effect<R | R2, E | E2, A | A2>
+  <A2, E2, R2>(
+    that: Effect.Effect<A2, E2, R2>
+  ) => <A, E, R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A | A2, E | E2, R | R2>,
+  <A, E, R, A2, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    that: Effect.Effect<A2, E2, R2>
+  ) => Effect.Effect<A | A2, E | E2, R | R2>
 >(
   2,
   (self, that) =>
@@ -3255,62 +3229,54 @@ export const race = dual<
 
 /** @internal */
 export const raceFibersWith = dual<
-  <E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
-    other: Effect.Effect<R1, E1, A1>,
+  <A1, E1, R1, E, A, A2, E2, R2, A3, E3, R3>(
+    other: Effect.Effect<A1, E1, R1>,
     options: {
       readonly onSelfWin: (
         winner: Fiber.RuntimeFiber<E, A>,
         loser: Fiber.RuntimeFiber<E1, A1>
-      ) => Effect.Effect<R2, E2, A2>
+      ) => Effect.Effect<A2, E2, R2>
       readonly onOtherWin: (
         winner: Fiber.RuntimeFiber<E1, A1>,
         loser: Fiber.RuntimeFiber<E, A>
-      ) => Effect.Effect<R3, E3, A3>
+      ) => Effect.Effect<A3, E3, R3>
       readonly selfScope?: fiberScope.FiberScope | undefined
       readonly otherScope?: fiberScope.FiberScope | undefined
     }
-  ) => <R>(self: Effect.Effect<R, E, A>) => Effect.Effect<
-    R | R1 | R2 | R3,
-    E2 | E3,
-    A2 | A3
-  >,
-  <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
-    self: Effect.Effect<R, E, A>,
-    other: Effect.Effect<R1, E1, A1>,
+  ) => <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2 | A3, E2 | E3, R | R1 | R2 | R3>,
+  <A, E, R, A1, E1, R1, A2, E2, R2, A3, E3, R3>(
+    self: Effect.Effect<A, E, R>,
+    other: Effect.Effect<A1, E1, R1>,
     options: {
       readonly onSelfWin: (
         winner: Fiber.RuntimeFiber<E, A>,
         loser: Fiber.RuntimeFiber<E1, A1>
-      ) => Effect.Effect<R2, E2, A2>
+      ) => Effect.Effect<A2, E2, R2>
       readonly onOtherWin: (
         winner: Fiber.RuntimeFiber<E1, A1>,
         loser: Fiber.RuntimeFiber<E, A>
-      ) => Effect.Effect<R3, E3, A3>
+      ) => Effect.Effect<A3, E3, R3>
       readonly selfScope?: fiberScope.FiberScope | undefined
       readonly otherScope?: fiberScope.FiberScope | undefined
     }
-  ) => Effect.Effect<
-    R | R1 | R2 | R3,
-    E2 | E3,
-    A2 | A3
-  >
->(3, <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
-  self: Effect.Effect<R, E, A>,
-  other: Effect.Effect<R1, E1, A1>,
+  ) => Effect.Effect<A2 | A3, E2 | E3, R | R1 | R2 | R3>
+>(3, <A, E, R, A1, E1, R1, A2, E2, R2, A3, E3, R3>(
+  self: Effect.Effect<A, E, R>,
+  other: Effect.Effect<A1, E1, R1>,
   options: {
     readonly onSelfWin: (
       winner: Fiber.RuntimeFiber<E, A>,
       loser: Fiber.RuntimeFiber<E1, A1>
-    ) => Effect.Effect<R2, E2, A2>
+    ) => Effect.Effect<A2, E2, R2>
     readonly onOtherWin: (
       winner: Fiber.RuntimeFiber<E1, A1>,
       loser: Fiber.RuntimeFiber<E, A>
-    ) => Effect.Effect<R3, E3, A3>
+    ) => Effect.Effect<A3, E3, R3>
     readonly selfScope?: fiberScope.FiberScope | undefined
     readonly otherScope?: fiberScope.FiberScope | undefined
   }
 ) =>
-  core.withFiberRuntime<R | R1 | R2 | R3, E2 | E3, A2 | A3>((parentFiber, parentStatus) => {
+  core.withFiberRuntime((parentFiber, parentStatus) => {
     const parentRuntimeFlags = parentStatus.runtimeFlags
     const raceIndicator = MRef.make(true)
     const leftFiber: FiberRuntime<E, A> = unsafeMakeChildFiber(
@@ -3325,7 +3291,7 @@ export const raceFibersWith = dual<
       parentRuntimeFlags,
       options.otherScope
     )
-    return core.async<R | R1 | R2 | R3, E2 | E3, A2 | A3>((cb) => {
+    return core.async((cb) => {
       leftFiber.addObserver(() => completeRace(leftFiber, rightFiber, options.onSelfWin, raceIndicator, cb))
       rightFiber.addObserver(() => completeRace(rightFiber, leftFiber, options.onOtherWin, raceIndicator, cb))
       leftFiber.startFork(self)
@@ -3338,7 +3304,7 @@ const completeRace = <R, R1, R2, E2, A2, R3, E3, A3>(
   loser: Fiber.RuntimeFiber<any, any>,
   cont: (winner: Fiber.RuntimeFiber<any, any>, loser: Fiber.RuntimeFiber<any, any>) => Effect.Effect<any, any, any>,
   ab: MRef.MutableRef<boolean>,
-  cb: (_: Effect.Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>) => void
+  cb: (_: Effect.Effect<A2 | A3, E2 | E3, R | R1 | R2 | R3>) => void
 ): void => {
   if (MRef.compareAndSet(true, false)(ab)) {
     cb(cont(winner, loser))
@@ -3346,40 +3312,38 @@ const completeRace = <R, R1, R2, E2, A2, R3, E3, A3>(
 }
 
 /** @internal */
-export const ensuring = dual<
-  <R1, X>(
-    finalizer: Effect.Effect<R1, never, X>
-  ) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R1, E, A>,
-  <R, E, A, R1, X>(
-    self: Effect.Effect<R, E, A>,
-    finalizer: Effect.Effect<R1, never, X>
-  ) => Effect.Effect<R | R1, E, A>
->(2, (self, finalizer) =>
-  core.uninterruptibleMask((restore) =>
-    core.matchCauseEffect(restore(self), {
-      onFailure: (cause1) =>
-        core.matchCauseEffect(finalizer, {
-          onFailure: (cause2) => core.failCause(internalCause.sequential(cause1, cause2)),
-          onSuccess: () => core.failCause(cause1)
-        }),
-      onSuccess: (a) => core.as(finalizer, a)
-    })
-  ))
+export const ensuring: {
+  <X, R1>(
+    finalizer: Effect.Effect<X, never, R1>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R1 | R>
+  <A, E, R, X, R1>(self: Effect.Effect<A, E, R>, finalizer: Effect.Effect<X, never, R1>): Effect.Effect<A, E, R1 | R>
+} = dual(
+  2,
+  <A, E, R, X, R1>(self: Effect.Effect<A, E, R>, finalizer: Effect.Effect<X, never, R1>): Effect.Effect<A, E, R1 | R> =>
+    core.uninterruptibleMask((restore) =>
+      core.matchCauseEffect(restore(self), {
+        onFailure: (cause1) =>
+          core.matchCauseEffect(finalizer, {
+            onFailure: (cause2) => core.failCause(internalCause.sequential(cause1, cause2)),
+            onSuccess: () => core.failCause(cause1)
+          }),
+        onSuccess: (a) => core.as(finalizer, a)
+      })
+    )
+)
 
 /** @internal */
-export const invokeWithInterrupt: <R, E, A>(
-  self: Effect.Effect<R, E, A>,
+export const invokeWithInterrupt: <A, E, R>(
+  self: Effect.Effect<A, E, R>,
   entries: ReadonlyArray<Entry<unknown>>
-) => Effect.Effect<R, E, void> = <R, E, A>(dataSource: Effect.Effect<R, E, A>, all: ReadonlyArray<Entry<unknown>>) =>
+) => Effect.Effect<void, E, R> = <A, E, R>(self: Effect.Effect<A, E, R>, entries: ReadonlyArray<Entry<unknown>>) =>
   core.fiberIdWith((id) =>
     core.flatMap(
       core.flatMap(
-        forkDaemon(core.interruptible(dataSource)),
+        forkDaemon(core.interruptible(self)),
         (processing) =>
-          core.async<never, E, void>((cb) => {
-            const counts = all.map((_) => _.listeners.count)
+          core.async<void, E, never>((cb) => {
+            const counts = entries.map((_) => _.listeners.count)
             const checkDone = () => {
               if (counts.every((count) => count === 0)) {
                 cleanup.forEach((f) => f())
@@ -3390,7 +3354,7 @@ export const invokeWithInterrupt: <R, E, A>(
               cleanup.forEach((f) => f())
               cb(exit)
             })
-            const cleanup = all.map((r, i) => {
+            const cleanup = entries.map((r, i) => {
               const observer = (count: number) => {
                 counts[i] = count
                 checkDone()
@@ -3406,7 +3370,7 @@ export const invokeWithInterrupt: <R, E, A>(
       ),
       () =>
         core.suspend(() => {
-          const residual = all.flatMap((entry) => {
+          const residual = entries.flatMap((entry) => {
             if (!entry.state.completed) {
               return [entry]
             }
@@ -3422,13 +3386,13 @@ export const invokeWithInterrupt: <R, E, A>(
 
 /** @internal */
 export const interruptWhenPossible = dual<
-  (all: Iterable<Request<any, any>>) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R, E, void>,
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+  (all: Iterable<Request<any, any>>) => <A, E, R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<void, E, R>,
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     all: Iterable<Request<any, any>>
-  ) => Effect.Effect<R, E, void>
+  ) => Effect.Effect<void, E, R>
 >(2, (self, all) =>
   core.fiberRefGetWith(
     currentRequestMap,
@@ -3451,7 +3415,7 @@ export const makeSpanScoped = (
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }
-): Effect.Effect<Scope.Scope, never, Tracer.Span> =>
+): Effect.Effect<Tracer.Span, never, Scope.Scope> =>
   acquireRelease(
     internalEffect.makeSpan(name, options),
     (span, exit) =>
@@ -3462,7 +3426,7 @@ export const makeSpanScoped = (
   )
 
 /* @internal */
-export const withTracerScoped = (value: Tracer.Tracer): Effect.Effect<Scope.Scope, never, void> =>
+export const withTracerScoped = (value: Tracer.Tracer): Effect.Effect<void, never, Scope.Scope> =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(tracer.tracerTag, value))
 
 /** @internal */
@@ -3473,14 +3437,14 @@ export const withSpanScoped = dual<
     readonly parent?: Tracer.ParentSpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
-  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
+  }) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>,
+  <A, E, R>(self: Effect.Effect<A, E, R>, name: string, options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
     readonly parent?: Tracer.ParentSpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
-  }) => Effect.Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>
+  }) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
 >(
   (args) => typeof args[0] !== "string",
   (self, name, options) =>
