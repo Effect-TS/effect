@@ -84,15 +84,15 @@ export const persistedMultipart: Effect.Effect<
  * @category schema
  */
 export const schemaHeaders: <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<R, I, A>
+  schema: Schema.Schema<A, I, R>
 ) => Effect.Effect<ServerRequest | R, ParseResult.ParseError, A> = internal.schemaHeaders
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyJson: <R, I, A>(
-  schema: Schema.Schema<R, I, A>
+export const schemaBodyJson: <A, I, R>(
+  schema: Schema.Schema<A, I, R>
 ) => Effect.Effect<ServerRequest | R, Error.RequestError | ParseResult.ParseError, A> = internal.schemaBodyJson
 
 /**
@@ -100,7 +100,7 @@ export const schemaBodyJson: <R, I, A>(
  * @category schema
  */
 export const schemaBodyForm: <R, I extends Multipart.Persisted, A>(
-  schema: Schema.Schema<R, I, A>
+  schema: Schema.Schema<A, I, R>
 ) => Effect.Effect<
   ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path | R,
   Multipart.MultipartError | Error.RequestError | ParseResult.ParseError,
@@ -112,7 +112,7 @@ export const schemaBodyForm: <R, I extends Multipart.Persisted, A>(
  * @category schema
  */
 export const schemaBodyUrlParams: <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<R, I, A>
+  schema: Schema.Schema<A, I, R>
 ) => Effect.Effect<ServerRequest | R, Error.RequestError | ParseResult.ParseError, A> = internal.schemaBodyUrlParams
 
 /**
@@ -120,7 +120,7 @@ export const schemaBodyUrlParams: <R, I extends Readonly<Record<string, string>>
  * @category schema
  */
 export const schemaBodyMultipart: <R, I extends Multipart.Persisted, A>(
-  schema: Schema.Schema<R, I, A>
+  schema: Schema.Schema<A, I, R>
 ) => Effect.Effect<
   R | ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
   Multipart.MultipartError | ParseResult.ParseError,
@@ -131,8 +131,8 @@ export const schemaBodyMultipart: <R, I extends Multipart.Persisted, A>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyFormJson: <R, I, A>(
-  schema: Schema.Schema<R, I, A>
+export const schemaBodyFormJson: <A, I, R>(
+  schema: Schema.Schema<A, I, R>
 ) => (
   field: string
 ) => Effect.Effect<
