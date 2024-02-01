@@ -359,16 +359,16 @@ export const retry: {
  * @category schema
  */
 export const schemaFunction: {
-  <SR, SI, SA>(
-    schema: Schema.Schema<SR, SI, SA>
+  <SA, SI, SR>(
+    schema: Schema.Schema<SA, SI, SR>
   ): <R, E, A>(
     self: Client<R, E, A>
   ) => (
     request: ClientRequest.ClientRequest
   ) => (a: SA) => Effect.Effect<SR | R, E | ParseResult.ParseError | Error.RequestError, A>
-  <R, E, A, SR, SI, SA>(
+  <R, E, A, SA, SI, SR>(
     self: Client<R, E, A>,
-    schema: Schema.Schema<SR, SI, SA>
+    schema: Schema.Schema<SA, SI, SR>
   ): (
     request: ClientRequest.ClientRequest
   ) => (a: SA) => Effect.Effect<R | SR, ParseResult.ParseError | Error.RequestError | E, A>

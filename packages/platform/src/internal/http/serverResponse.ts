@@ -117,8 +117,8 @@ export const unsafeJson = (
   )
 
 /** @internal */
-export const schemaJson = <R, I, A>(
-  schema: Schema.Schema<R, I, A>
+export const schemaJson = <A, I, R>(
+  schema: Schema.Schema<A, I, R>
 ) => {
   const encode = internalBody.jsonSchema(schema)
   return (
