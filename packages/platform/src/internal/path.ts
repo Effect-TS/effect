@@ -2,7 +2,7 @@ import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as PathB from "path-browserify"
+import PathB from "path-browserify"
 import { BadArgument } from "../Error.js"
 import type { Path as _Path } from "../Path.js"
 

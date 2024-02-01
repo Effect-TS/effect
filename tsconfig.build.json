@@ -10,6 +10,7 @@
     { "path": "packages/platform-browser/tsconfig.build.json" },
     { "path": "packages/platform-bun/tsconfig.build.json" },
     { "path": "packages/platform-node/tsconfig.build.json" },
+    { "path": "packages/platform-node-shared/tsconfig.build.json" },
     { "path": "packages/printer/tsconfig.build.json" },
     { "path": "packages/printer-ansi/tsconfig.build.json" },
     { "path": "packages/rpc/tsconfig.build.json" },

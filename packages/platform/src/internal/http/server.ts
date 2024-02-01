@@ -127,3 +127,44 @@ export const serveEffect = dual<
       (server) => server.serve(httpApp, middleware)
     )) as any
 )
+
+/** @internal */
+export const formatAddress = (address: Server.Address): string => {
+  switch (address._tag) {
+    case "UnixAddress":
+      return `unix://${address.path}`
+    case "TcpAddress":
+      return `http://${address.hostname}:${address.port}`
+  }
+}
+
+/** @internal */
+export const addressWith = <R, E, A>(
+  effect: (address: Server.Address) => Effect.Effect<R, E, A>
+): Effect.Effect<Server.Server | R, E, A> =>
+  Effect.flatMap(
+    serverTag,
+    (server) => effect(server.address)
+  )
+
+/** @internal */
+export const addressFormattedWith = <R, E, A>(
+  effect: (address: string) => Effect.Effect<R, E, A>
+): Effect.Effect<Server.Server | R, E, A> =>
+  Effect.flatMap(
+    serverTag,
+    (server) => effect(formatAddress(server.address))
+  )
+
+/** @internal */
+export const logAddress: Effect.Effect<Server.Server, never, void> = addressFormattedWith((_) =>
+  Effect.log(`Listening on ${_}`)
+)
+
+/** @internal */
+export const withLogAddress = <R, E, A>(
+  layer: Layer.Layer<R, E, A>
+): Layer.Layer<R | Exclude<Server.Server, A>, E, A> =>
+  Layer.effectDiscard(logAddress).pipe(
+    Layer.provideMerge(layer)
+  )
