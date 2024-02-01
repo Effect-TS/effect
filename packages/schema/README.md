@@ -1692,8 +1692,8 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 | Combinator | From                                 | To                                                                 |
 | ---------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `optional` | `Schema<A, I, R>`                    | `PropertySignature<R, I \| undefined, true, A \| undefined, true>` |
-| `optional` | `Schema<A, I, R>`, `{ exact: true }` | `PropertySignature<R, I, true, A, true>`                           |
+| `optional` | `Schema<A, I, R>`                    | `PropertySignature<I \| undefined, true, A \| undefined, true, R>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true }` | `PropertySignature<I, true, A, true, R>`                           |
 
 #### optional(schema)
 
@@ -1719,10 +1719,10 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 | Combinator | From                                                                   | To                                                             |
 | ---------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `optional` | `Schema<A, I, R>`, `{ default: () => A }`                              | `PropertySignature<R, I \| undefined, true, A, false>`         |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, default: () => A }`                 | `PropertySignature<R, I, true, A, false>`                      |
-| `optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<R, I \| null \| undefined, true, A, false>` |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<R, I \| null, true, A, false>`              |
+| `optional` | `Schema<A, I, R>`, `{ default: () => A }`                              | `PropertySignature<I \| undefined, true, A, false, R>`         |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, default: () => A }`                 | `PropertySignature<I, true, A, false, R>`                      |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<I \| null \| undefined, true, A, false, R>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<I \| null, true, A, false, R>`              |
 
 #### optional(schema, { default: () => A })
 
@@ -1764,10 +1764,10 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 | Combinator | From                                                               | To                                                                     |
 | ---------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| `optional` | `Schema<A, I, R>`, `{ as: "Option" }`                              | `PropertySignature<R, I \| undefined, true, Option<A>, false>`         |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, as: "Option" }`                 | `PropertySignature<R, I, true, Option<A>, false>`                      |
-| `optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<R, I \| undefined \| null, true, Option<A>, false>` |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<R, I \| null, true, Option<A>, false>`              |
+| `optional` | `Schema<A, I, R>`, `{ as: "Option" }`                              | `PropertySignature<I \| undefined, true, Option<A>, false, R>`         |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, as: "Option" }`                 | `PropertySignature<I, true, Option<A>, false, R>`                      |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<I \| undefined \| null, true, Option<A>, false, R>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<I \| null, true, Option<A>, false, R>`              |
 
 #### optional(schema, { as: "Option" })
 

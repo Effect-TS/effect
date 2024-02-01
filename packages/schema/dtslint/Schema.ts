@@ -916,10 +916,10 @@ S.SecretFromSelf
 // propertySignatureAnnotations
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<never, string, false, string, false>
+// $ExpectType PropertySignature<string, false, string, false, never>
 S.string.pipe(S.propertySignatureAnnotations({ description: "description" }))
 
-// $ExpectType PropertySignature<never, string | undefined, true, string | undefined, true>
+// $ExpectType PropertySignature<string | undefined, true, string | undefined, true, never>
 S.optional(S.string).pipe(S.propertySignatureAnnotations({ description: "description" }))
 
 // ---------------------------------------------

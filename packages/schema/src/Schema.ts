@@ -810,7 +810,7 @@ export const nonEmptyArray = <A, I, R>(
 /**
  * @since 1.0.0
  */
-export interface PropertySignature<R, From, FromIsOptional, To, ToIsOptional>
+export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R = never>
   extends Schema.Variance<To, From, R>, Pipeable
 {
   readonly FromIsOptional: FromIsOptional
@@ -854,7 +854,7 @@ export class PropertySignatureImpl<R, From, FromIsOptional, To, ToIsOptional> {
 export const propertySignatureAnnotations = (annotations: DocAnnotations) =>
 <S extends StructFields[PropertyKey]>(
   self: S
-): S extends Schema<infer A, infer I, infer R> ? PropertySignature<R, I, false, A, false> : S => {
+): S extends Schema<infer A, infer I, infer R> ? PropertySignature<I, false, A, false, R> : S => {
   if (isSchema(self)) {
     return new PropertySignatureImpl({
       _tag: "Declaration",
@@ -879,7 +879,7 @@ export const optionalToRequired = <A, I, R, B>(
   decode: (o: Option.Option<A>) => B, // `none` here means: the value is missing in the input
   encode: (b: B) => Option.Option<A>, // `none` here means: the value will be missing in the output
   options?: DocAnnotations
-): PropertySignature<R, I, true, B, false> =>
+): PropertySignature<I, true, B, false, R> =>
   new PropertySignatureImpl({
     _tag: "OptionalToRequired",
     from: from.ast,
@@ -896,40 +896,40 @@ export const optional: {
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly exact: true; readonly default: () => A; readonly nullable: true }
-  ): PropertySignature<R, I | null, true, A, false>
+  ): PropertySignature<I | null, true, A, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly exact: true; readonly default: () => A }
-  ): PropertySignature<R, I, true, A, false>
+  ): PropertySignature<I, true, A, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly exact: true; readonly nullable: true; readonly as: "Option" }
-  ): PropertySignature<R, I | null, true, Option.Option<A>, false>
+  ): PropertySignature<I | null, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly exact: true; readonly as: "Option" }
-  ): PropertySignature<R, I, true, Option.Option<A>, false>
+  ): PropertySignature<I, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly exact: true }
-  ): PropertySignature<R, I, true, A, true>
+  ): PropertySignature<I, true, A, true, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly default: () => A; readonly nullable: true }
-  ): PropertySignature<R, I | null | undefined, true, A, false>
+  ): PropertySignature<I | null | undefined, true, A, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly nullable: true; readonly as: "Option" }
-  ): PropertySignature<R, I | undefined | null, true, Option.Option<A>, false>
+  ): PropertySignature<I | undefined | null, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly as: "Option" }
-  ): PropertySignature<R, I | undefined, true, Option.Option<A>, false>
+  ): PropertySignature<I | undefined, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: { readonly default: () => A }
-  ): PropertySignature<R, I | undefined, true, A, false>
-  <A, I, R>(schema: Schema<A, I, R>): PropertySignature<R, I | undefined, true, A | undefined, true>
+  ): PropertySignature<I | undefined, true, A, false, R>
+  <A, I, R>(schema: Schema<A, I, R>): PropertySignature<I | undefined, true, A | undefined, true, R>
 } = <A, I, R>(
   schema: Schema<A, I, R>,
   options?: {
@@ -938,7 +938,7 @@ export const optional: {
     readonly nullable?: true
     readonly as?: "Option"
   }
-): PropertySignature<R, any, any, any, any> => {
+): PropertySignature<any, any, any, any, R> => {
   const isExact = options?.exact
   const value = options?.default
   const isNullable = options?.nullable
@@ -1034,8 +1034,8 @@ export const optional: {
  */
 export type FromOptionalKeys<Fields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<any, any, true, any, boolean>
-    | PropertySignature<any, never, true, never, boolean> ? K
+    | PropertySignature<any, true, any, boolean, any>
+    | PropertySignature<never, true, never, boolean, any> ? K
     : never
 }[keyof Fields]
 
@@ -1044,8 +1044,8 @@ export type FromOptionalKeys<Fields> = {
  */
 export type ToOptionalKeys<Fields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<any, any, boolean, any, true>
-    | PropertySignature<any, never, boolean, never, true> ? K
+    | PropertySignature<any, boolean, any, true, any>
+    | PropertySignature<never, boolean, never, true, any> ? K
     : never
 }[keyof Fields]
 
@@ -1056,8 +1056,8 @@ export type StructFields = Record<
   PropertyKey,
   | Schema<any, any, any>
   | Schema<never, never, any>
-  | PropertySignature<any, any, boolean, any, boolean>
-  | PropertySignature<any, never, boolean, never, boolean>
+  | PropertySignature<any, boolean, any, boolean, any>
+  | PropertySignature<never, boolean, never, boolean, any>
 >
 
 /**
