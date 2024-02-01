@@ -69,7 +69,7 @@ export const make = (
         } :
         {
           _tag: "TcpAddress",
-          hostname: address.address,
+          hostname: address.address === "::" ? "0.0.0.0" : address.address,
           port: address.port
         },
       serve: (httpApp, middleware) =>

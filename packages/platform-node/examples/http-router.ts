@@ -31,6 +31,7 @@ const HttpLive = Http.router.empty.pipe(
     }).pipe(Effect.scoped)
   ),
   Http.server.serve(Http.middleware.logger),
+  Http.server.withLogAddress,
   Layer.provide(ServerLive),
   Layer.provide(NodeContext.layer)
 )
