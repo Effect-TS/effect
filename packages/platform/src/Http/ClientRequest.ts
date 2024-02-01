@@ -300,8 +300,8 @@ export const unsafeJsonBody: {
  * @since 1.0.0
  * @category combinators
  */
-export const schemaBody: <R, I, A>(
-  schema: Schema.Schema<R, I, A>
+export const schemaBody: <A, I, R>(
+  schema: Schema.Schema<A, I, R>
 ) => {
   (body: A): (self: ClientRequest) => Effect.Effect<R, Body.BodyError, ClientRequest>
   (self: ClientRequest, body: A): Effect.Effect<R, Body.BodyError, ClientRequest>
