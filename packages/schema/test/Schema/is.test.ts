@@ -473,7 +473,7 @@ describe("Schema > is", () => {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
       }
-      const schema: S.Schema<never, Category> = S.struct({
+      const schema: S.Schema<Category> = S.struct({
         name: S.string,
         categories: S.array(S.suspend(() => schema))
       })
@@ -500,11 +500,11 @@ describe("Schema > is", () => {
         readonly b: number
         readonly as: ReadonlyArray<A>
       }
-      const schemaA: S.Schema<never, A> = S.struct({
+      const schemaA: S.Schema<A> = S.struct({
         a: S.string,
         bs: S.array(S.suspend(() => schemaB))
       })
-      const schemaB: S.Schema<never, B> = S.struct({
+      const schemaB: S.Schema<B> = S.struct({
         b: S.number,
         as: S.array(S.suspend(() => schemaA))
       })

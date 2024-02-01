@@ -40,7 +40,7 @@ export type ArbitraryHookId = typeof ArbitraryHookId
  */
 export const arbitrary =
   <A>(handler: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<A>) =>
-  <R, I>(self: Schema.Schema<R, I, A>): Schema.Schema<R, I, A> =>
+  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
     InternalSchema.make(AST.setAnnotation(self.ast, ArbitraryHookId, handler))
 
 /**
@@ -49,7 +49,7 @@ export const arbitrary =
  * @category arbitrary
  * @since 1.0.0
  */
-export const make = <R, I, A>(schema: Schema.Schema<R, I, A>): Arbitrary<A> => go(schema.ast, {})
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Arbitrary<A> => go(schema.ast, {})
 
 const depthSize = 1
 
