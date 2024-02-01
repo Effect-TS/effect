@@ -1,5 +1,5 @@
 import * as DevTools from "@effect/experimental/DevTools"
-import { runMain } from "@effect/platform-node/Runtime"
+import { runMain } from "@effect/platform-node/NodeRuntime"
 import { Effect } from "effect"
 
 const program = Effect.log("Hello!").pipe(

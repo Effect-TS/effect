@@ -24,6 +24,7 @@ const config: UserConfig = {
       ...alias("opentelemetry"),
       ...alias("platform"),
       ...alias("platform-node"),
+      ...alias("platform-node-shared"),
       ...alias("platform-bun"),
       ...alias("platform-browser"),
       ...alias("printer"),

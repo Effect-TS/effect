@@ -1,3 +1,9 @@
-import { it } from "vitest"
+/// <reference types="bun-types" />
+import { it, test } from "vitest"
 
-it("HttpServer", () => {})
+const isBun = typeof process !== "undefined" && !!process.isBun
+
+it.runIf(isBun)("HttpServer", () => {
+  test("upload", () => {
+  })
+})

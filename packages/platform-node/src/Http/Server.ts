@@ -1,9 +1,8 @@
 /**
  * @since 1.0.0
- *
- * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/effect/platform/Http/Server.ts.html).
  */
 import type * as App from "@effect/platform/Http/App"
+import type * as Etag from "@effect/platform/Http/Etag"
 import type * as Middleware from "@effect/platform/Http/Middleware"
 import type * as Platform from "@effect/platform/Http/Platform"
 import type * as Server from "@effect/platform/Http/Server"
@@ -18,11 +17,7 @@ import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
 import * as internal from "../internal/http/server.js"
-
-/**
- * @since 1.0.0
- */
-export * from "@effect/platform/Http/Server"
+import type * as NodeContext from "../NodeContext.js"
 
 /**
  * @since 1.0.0
@@ -63,10 +58,20 @@ export const makeHandler: {
  * @since 1.0.0
  * @category layers
  */
+export const layerServer: (
+  evaluate: LazyArg<Http.Server>,
+  options: Net.ListenOptions
+) => Layer.Layer<never, ServeError, Server.Server> = internal.layerServer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
 export const layer: (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
-) => Layer.Layer<never, ServeError, Server.Server | Platform.Platform> = internal.layer
+) => Layer.Layer<never, ServeError, Platform.Platform | Etag.Generator | NodeContext.NodeContext | Server.Server> =
+  internal.layer
 
 /**
  * @since 1.0.0
@@ -75,4 +80,8 @@ export const layer: (
 export const layerConfig: (
   evaluate: LazyArg<Http.Server>,
   options: Config.Config.Wrap<Net.ListenOptions>
-) => Layer.Layer<never, ServeError | ConfigError.ConfigError, Server.Server | Platform.Platform> = internal.layerConfig
+) => Layer.Layer<
+  never,
+  ServeError | ConfigError.ConfigError,
+  Platform.Platform | Etag.Generator | NodeContext.NodeContext | Server.Server
+> = internal.layerConfig
