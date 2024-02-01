@@ -276,6 +276,47 @@ export const get: {
 )
 
 /**
+ * Apply a function to the element at the specified key, creating a new record.
+ * If the key does not exist, the record is returned unchanged.
+ *
+ * @param self - The record to be updated.
+ * @param key - The key of the element to modify.
+ * @param f - The function to apply to the element.
+ *
+ * @example
+ * import { modify } from "effect/ReadonlyRecord"
+ * import { some, none } from "effect/Option"
+ *
+ * const f = (x: number) => x * 2
+ *
+ * assert.deepStrictEqual(
+ *  modify({ a: 3 }, 'a', f),
+ *  { a: 6 }
+ * )
+ * assert.deepStrictEqual(
+ *  modify({ a: 3 }, 'b', f),
+ *  { a: 3 }
+ * )
+ *
+ * @since 2.0.0
+ */
+export const modify: {
+  <A, B>(
+    key: string,
+    f: (a: A) => B
+  ): (self: ReadonlyRecord<A>) => Record<string, A | B>
+  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Record<string, A | B>
+} = dual(
+  3,
+  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Record<string, A | B> => {
+    if (!has(self, key)) {
+      return { ...self }
+    }
+    return { ...self, [key]: f(self[key]) }
+  }
+)
+
+/**
  * Apply a function to the element at the specified key, creating a new record,
  * or return `None` if the key doesn't exist.
  *
@@ -771,14 +812,14 @@ export const values = <A>(self: ReadonlyRecord<A>): Array<A> => collect(self, (_
  * @param values - The value you want to associate with the key.
  *
  * @example
- * import { upsert } from "effect/ReadonlyRecord"
+ * import { set } from "effect/ReadonlyRecord"
  *
- * assert.deepStrictEqual(upsert("a", 5)({ a: 1, b: 2 }), { a: 5, b: 2 });
- * assert.deepStrictEqual(upsert("c", 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 });
+ * assert.deepStrictEqual(set("a", 5)({ a: 1, b: 2 }), { a: 5, b: 2 });
+ * assert.deepStrictEqual(set("c", 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 });
  *
  * @since 2.0.0
  */
-export const upsert: {
+export const set: {
   <B>(key: string, value: B): <A>(self: ReadonlyRecord<A>) => Record<string, A | B>
   <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B>
 } = dual(3, <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B> => {
@@ -795,15 +836,15 @@ export const upsert: {
  * @param value - The new value to associate with the key.
  *
  * @example
- * import { update } from "effect/ReadonlyRecord"
+ * import { replace } from "effect/ReadonlyRecord"
  * import { some, none } from "effect/Option"
  *
- * assert.deepStrictEqual(update("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });
- * assert.deepStrictEqual(update("c", 3)({ a: 1, b: 2 }), { a: 1, b: 2 });
+ * assert.deepStrictEqual(replace("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });
+ * assert.deepStrictEqual(replace("c", 3)({ a: 1, b: 2 }), { a: 1, b: 2 });
  *
  * @since 2.0.0
  */
-export const update: {
+export const replace: {
   <B>(key: string, value: B): <A>(self: ReadonlyRecord<A>) => Record<string, A | B>
   <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B>
 } = dual(3, <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B> => {
