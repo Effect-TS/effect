@@ -56,13 +56,13 @@ export interface ServeOptions {
 
 /**
  * @since 1.0.0
- * @category models
+ * @category address
  */
 export type Address = UnixAddress | TcpAddress
 
 /**
  * @since 1.0.0
- * @category models
+ * @category address
  */
 export interface TcpAddress {
   readonly _tag: "TcpAddress"
@@ -72,7 +72,7 @@ export interface TcpAddress {
 
 /**
  * @since 1.0.0
- * @category models
+ * @category address
  */
 export interface UnixAddress {
   readonly _tag: "UnixAddress"
@@ -150,3 +150,38 @@ export const serveEffect: {
     middleware: Middleware.Middleware.Applied<R, E, App>
   ): Effect.Effect<Scope.Scope | Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>, never, void>
 } = internal.serveEffect
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const formatAddress: (address: Address) => string = internal.formatAddress
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const addressWith: <R, E, A>(
+  effect: (address: Address) => Effect.Effect<R, E, A>
+) => Effect.Effect<Server | R, E, A> = internal.addressWith
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const addressFormattedWith: <R, E, A>(
+  effect: (address: string) => Effect.Effect<R, E, A>
+) => Effect.Effect<Server | R, E, A> = internal.addressFormattedWith
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const logAddress: Effect.Effect<Server, never, void> = internal.logAddress
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const withLogAddress: <R, E, A>(layer: Layer.Layer<R, E, A>) => Layer.Layer<R | Exclude<Server, A>, E, A> =
+  internal.withLogAddress

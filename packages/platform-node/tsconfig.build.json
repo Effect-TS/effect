@@ -2,6 +2,7 @@
   "extends": "./tsconfig.src.json",
   "references": [
     { "path": "../platform" },
+    { "path": "../platform-node-shared" },
     { "path": "../effect" },
     { "path": "../schema" }
   ],
