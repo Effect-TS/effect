@@ -43,8 +43,7 @@
   },
   "dependencies": {
     "@effect/platform-node-shared": "workspace:^",
-    "mime": "^3.0.0",
-    "multipasta": "^0.1.21"
+    "mime": "^3.0.0"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",

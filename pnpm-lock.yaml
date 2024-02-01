@@ -286,13 +286,14 @@ importers:
     publishDirectory: dist
 
   packages/platform-bun:
+    dependencies:
+      '@effect/platform-node-shared':
+        specifier: workspace:^
+        version: link:../platform-node-shared/dist
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform-node/dist
       '@effect/schema':
         specifier: workspace:^
         version: link:../schema/dist
@@ -312,9 +313,6 @@ importers:
       mime:
         specifier: ^3.0.0
         version: 3.0.0
-      multipasta:
-        specifier: ^0.1.21
-        version: 0.1.21
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
