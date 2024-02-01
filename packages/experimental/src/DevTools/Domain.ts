@@ -56,7 +56,7 @@ export interface ExternalSpan extends Schema.Schema.To<typeof ExternalSpan> {}
  * @since 1.0.0
  * @category schemas
  */
-export const Span: Schema.Schema<Span, SpanFrom, never> = Schema.struct({
+export const Span: Schema.Schema<Span, SpanFrom> = Schema.struct({
   _tag: Schema.literal("Span"),
   spanId: Schema.string,
   traceId: Schema.string,
