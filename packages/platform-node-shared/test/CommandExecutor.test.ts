@@ -112,7 +112,7 @@ describe("Command", () => {
         Command.workingDirectory(path.join(__dirname, "..", "src"))
       )
       const result = yield* _(Command.lines(command))
-      expect(result).toContain("CommandExecutor.ts")
+      expect(result).toContain("CommandExecutorNode.ts")
     })))
 
   it("should be able to fall back to a different program", () =>
