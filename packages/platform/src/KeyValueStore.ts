@@ -76,7 +76,7 @@ export interface KeyValueStore {
   /**
    * Create a SchemaStore for the specified schema.
    */
-  readonly forSchema: <R, I, A>(schema: Schema.Schema<R, I, A>) => SchemaStore<R, A>
+  readonly forSchema: <A, I, R>(schema: Schema.Schema<A, I, R>) => SchemaStore<R, A>
 }
 
 /**
@@ -198,8 +198,8 @@ export interface SchemaStore<R, A> {
  * @since 1.0.0
  * @category layers
  */
-export const layerSchema: <R, I, A>(
-  schema: Schema.Schema<R, I, A>,
+export const layerSchema: <A, I, R>(
+  schema: Schema.Schema<A, I, R>,
   tagIdentifier?: unknown
 ) => {
   readonly tag: Context.Tag<SchemaStore<R, A>, SchemaStore<R, A>>

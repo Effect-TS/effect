@@ -189,7 +189,7 @@ export const makeSerialized: <
   A extends Schema.TaggedRequest.Any,
   const Handlers extends SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<R, I, A>,
+  schema: Schema.Schema<A, I, R>,
   handlers: Handlers
 ) => Effect.Effect<PlatformRunner | Scope.Scope | R | SerializedRunner.HandlersContext<Handlers>, WorkerError, void> =
   internal.makeSerialized
@@ -204,7 +204,7 @@ export const layerSerialized: <
   A extends Schema.TaggedRequest.Any,
   const Handlers extends SerializedRunner.Handlers<A>
 >(
-  schema: Schema.Schema<R, I, A>,
+  schema: Schema.Schema<A, I, R>,
   handlers: Handlers
 ) => Layer.Layer<PlatformRunner | R | SerializedRunner.HandlersContext<Handlers>, WorkerError, never> =
   internal.layerSerialized

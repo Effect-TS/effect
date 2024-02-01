@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
-const expectIssues = <I, A>(schema: S.Schema<never, I, A>, input: unknown, issues: Array<_.Issue>) => {
+const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Array<_.Issue>) => {
   const result = S.decodeUnknownEither(schema)(input, options).pipe(
     Either.mapLeft((e) => _.formatIssues([e.error]))
   )
@@ -389,7 +389,7 @@ describe("ArrayFormatter", () => {
     describe("suspend", () => {
       it("outer", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
+        const schema: S.Schema<A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
         ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
 
@@ -407,7 +407,7 @@ describe("ArrayFormatter", () => {
 
       it("inner/outer", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<never, A> = S.tuple(
+        const schema: S.Schema<A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
         ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
@@ -426,7 +426,7 @@ describe("ArrayFormatter", () => {
 
       it("inner/inner", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<never, A> = S.tuple(
+        const schema: S.Schema<A> = S.tuple(
           S.number,
           S.union(
             S.suspend(() => schema).pipe(
@@ -454,7 +454,7 @@ describe("ArrayFormatter", () => {
 
       it("inner/inner/inner", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<never, A> = S.tuple(
+        const schema: S.Schema<A> = S.tuple(
           S.number,
           S.union(
             S.suspend(() =>

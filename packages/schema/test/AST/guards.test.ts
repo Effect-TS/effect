@@ -15,7 +15,7 @@ describe("AST/guards", () => {
 
   it("isSuspend", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<never, A> = S.suspend( // intended outer suspend
+    const schema: S.Schema<A> = S.suspend( // intended outer suspend
       () => S.tuple(S.number, S.union(schema, S.literal(null)))
     )
     expect(AST.isSuspend(schema.ast)).toEqual(true)

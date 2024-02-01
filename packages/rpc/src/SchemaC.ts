@@ -13,7 +13,7 @@ import type { Option } from "effect/Option"
  * @category models
  * @since 1.0.0
  */
-export interface SchemaC<I, A, C> extends Schema.Schema<never, I, A> {
+export interface SchemaC<I, A, C> extends Schema.Schema<A, I> {
   (input: C): A
   readonly either: (input: C) => Either<ParseError, A>
   readonly effect: (input: C) => Effect<never, ParseError, A>
@@ -25,12 +25,12 @@ export interface SchemaC<I, A, C> extends Schema.Schema<never, I, A> {
  * @since 1.0.0
  */
 export const withConstructor: {
-  <A, C>(f: (input: C) => A): <I>(self: Schema.Schema<never, I, A>) => SchemaC<I, A, C>
-  <I, A, C>(self: Schema.Schema<never, I, A>, f: (input: C) => A): SchemaC<I, A, C>
+  <A, C>(f: (input: C) => A): <I>(self: Schema.Schema<A, I>) => SchemaC<I, A, C>
+  <I, A, C>(self: Schema.Schema<A, I>, f: (input: C) => A): SchemaC<I, A, C>
 } = dual(
   2,
   <I, A, C>(
-    self: Schema.Schema<never, I, A>,
+    self: Schema.Schema<A, I>,
     f: (input: C) => A
   ): SchemaC<I, A, C> => {
     const validate = Schema.validateSync(self)
@@ -60,8 +60,8 @@ export const withConstructor: {
  * @category combinators
  * @since 1.0.0
  */
-export const withConstructorSelf = <I, A>(
-  self: Schema.Schema<never, I, A>
+export const withConstructorSelf = <A, I>(
+  self: Schema.Schema<A, I>
 ): SchemaC<I, A, A> => withConstructor(self, identity)
 
 /**
@@ -71,16 +71,16 @@ export const withConstructorSelf = <I, A>(
 export const withConstructorTagged: {
   <A extends { readonly _tag: string }>(
     tag: A["_tag"]
-  ): <I>(self: Schema.Schema<never, I, A>) => SchemaC<I, A, Omit<A, "_tag">>
+  ): <I>(self: Schema.Schema<A, I>) => SchemaC<I, A, Omit<A, "_tag">>
 
-  <I, A extends { readonly _tag: string }>(
-    self: Schema.Schema<never, I, A>,
+  <A extends { readonly _tag: string }, I>(
+    self: Schema.Schema<A, I>,
     tag: A["_tag"]
   ): SchemaC<I, A, Omit<A, "_tag">>
 } = dual(
   2,
-  <I, A extends { readonly _tag: string }>(
-    self: Schema.Schema<never, I, A>,
+  <A extends { readonly _tag: string }, I>(
+    self: Schema.Schema<A, I>,
     tag: A["_tag"]
   ): SchemaC<I, A, Omit<A, "_tag">> =>
     withConstructor(
@@ -99,16 +99,16 @@ export const withConstructorTagged: {
 export const withConstructorDataTagged: {
   <A extends { readonly _tag: string }>(
     tag: A["_tag"]
-  ): <I>(self: Schema.Schema<never, I, A>) => SchemaC<I, Data.Data<A>, Omit<A, "_tag">>
+  ): <I>(self: Schema.Schema<A, I>) => SchemaC<I, Data.Data<A>, Omit<A, "_tag">>
 
-  <I extends Record<string, any>, A extends { readonly _tag: string }>(
-    self: Schema.Schema<never, I, A>,
+  <A extends { readonly _tag: string }, I extends Record<string, any>>(
+    self: Schema.Schema<A, I>,
     tag: A["_tag"]
   ): SchemaC<I, Data.Data<A>, Omit<A, "_tag">>
 } = dual(
   2,
-  <I extends Record<string, any>, A extends { readonly _tag: string }>(
-    self: Schema.Schema<never, I, A>,
+  <A extends { readonly _tag: string }, I extends Record<string, any>>(
+    self: Schema.Schema<A, I>,
     tag: A["_tag"]
   ): SchemaC<I, Data.Data<A>, Omit<A, "_tag">> => withConstructor(Schema.data(self), Data.tagged(tag) as any)
 )
