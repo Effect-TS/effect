@@ -1,5 +1,13 @@
 ---
+"@effect/platform-browser": minor
+"@effect/platform-node": minor
+"@effect/experimental": minor
+"@effect/platform-bun": minor
+"@effect/rpc-workers": minor
+"@effect/platform": minor
 "@effect/schema": minor
+"@effect/cli": minor
+"@effect/rpc": minor
 ---
 
 - Schema: change type parameters order from `Schema<R, I, A>` to `Schema<A, I = A, R = never>`
