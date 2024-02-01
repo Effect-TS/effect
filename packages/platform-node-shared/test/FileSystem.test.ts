@@ -1,4 +1,4 @@
-import * as FileSystemNode from "@effect/platform-node-shared/FileSystemNode"
+import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as Fs from "@effect/platform/FileSystem"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -7,7 +7,7 @@ import { assert, describe, expect, it } from "vitest"
 
 const runPromise = <E, A>(self: Effect.Effect<Fs.FileSystem, E, A>) =>
   Effect.runPromise(
-    Effect.provide(self, FileSystemNode.layer)
+    Effect.provide(self, NodeFileSystem.layer)
   )
 
 describe("FileSystem", () => {

@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Sink from "effect/Sink"
 import type { Writable } from "node:stream"
-import type { FromWritableOptions } from "../StreamNode.js"
+import type { FromWritableOptions } from "../NodeStream.js"
 import { writeInput } from "./stream.js"
 
 /** @internal */

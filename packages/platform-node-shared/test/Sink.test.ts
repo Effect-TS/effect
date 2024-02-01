@@ -1,5 +1,5 @@
-import * as NodeSink from "@effect/platform-node-shared/SinkNode"
-import * as NodeStream from "@effect/platform-node-shared/StreamNode"
+import * as NodeSink from "@effect/platform-node-shared/NodeSink"
+import * as NodeStream from "@effect/platform-node-shared/NodeStream"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"

@@ -1,4 +1,4 @@
-import * as KvN from "@effect/platform-node-shared/KeyValueStoreNode"
+import * as KvN from "@effect/platform-node-shared/NodeKeyValueStore"
 // @ts-ignore
 import { testLayer } from "@effect/platform/test/KeyValueStore.test"
 import { describe } from "vitest"

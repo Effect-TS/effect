@@ -4,7 +4,7 @@ import * as Options from "@effect/cli/Options"
 import * as MockConsole from "@effect/cli/test/services/MockConsole"
 import * as MockTerminal from "@effect/cli/test/services/MockTerminal"
 import {} from "@effect/platform"
-import { FileSystemNode, PathNode } from "@effect/platform-node"
+import { NodeFileSystem, NodePath } from "@effect/platform-node"
 import { Effect, ReadonlyArray } from "effect"
 import * as Console from "effect/Console"
 import * as Fiber from "effect/Fiber"
@@ -15,9 +15,9 @@ const MainLive = Effect.gen(function*(_) {
   const console = yield* _(MockConsole.make)
   return Layer.mergeAll(
     Console.setConsole(console),
-    FileSystemNode.layer,
+    NodeFileSystem.layer,
     MockTerminal.layer,
-    PathNode.layer
+    NodePath.layer
   )
 }).pipe(Layer.unwrapEffect)
 

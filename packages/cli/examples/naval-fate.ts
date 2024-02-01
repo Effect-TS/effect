@@ -1,5 +1,5 @@
 import { Args, Command, Options } from "@effect/cli"
-import { KeyValueStoreNode, NodeContext, RuntimeNode } from "@effect/platform-node"
+import { NodeContext, NodeKeyValueStore, NodeRuntime } from "@effect/platform-node"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -104,7 +104,7 @@ const command = Command.make("naval_fate").pipe(
 )
 
 const MainLayer = NavalFateStore.layer.pipe(
-  Layer.provide(KeyValueStoreNode.layerFileSystem("naval-fate-store")),
+  Layer.provide(NodeKeyValueStore.layerFileSystem("naval-fate-store")),
   Layer.merge(NodeContext.layer)
 )
 
@@ -116,5 +116,5 @@ const cli = Command.run(command, {
 Effect.suspend(() => cli(process.argv)).pipe(
   Effect.provide(MainLayer),
   Effect.tapErrorCause(Effect.logError),
-  RuntimeNode.runMain
+  NodeRuntime.runMain
 )

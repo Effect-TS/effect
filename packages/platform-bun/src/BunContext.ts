@@ -8,11 +8,11 @@ import type * as Terminal from "@effect/platform/Terminal"
 import type * as Worker from "@effect/platform/Worker"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as CommandExecutorBun from "./CommandExecutorBun.js"
-import * as FileSystemBun from "./FileSystemBun.js"
-import * as PathBun from "./PathBun.js"
-import * as TerminalBun from "./TerminalBun.js"
-import * as WorkerBun from "./WorkerBun.js"
+import * as CommandExecutorBun from "./BunCommandExecutor.js"
+import * as FileSystemBun from "./BunFileSystem.js"
+import * as PathBun from "./BunPath.js"
+import * as TerminalBun from "./BunTerminal.js"
+import * as WorkerBun from "./BunWorker.js"
 
 /**
  * @since 1.0.0

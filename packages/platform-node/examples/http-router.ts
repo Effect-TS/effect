@@ -1,10 +1,10 @@
-import { HttpServerNode, NodeContext, RuntimeNode } from "@effect/platform-node"
+import { NodeContext, NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import * as Http from "@effect/platform/HttpServer"
 import * as Schema from "@effect/schema/Schema"
 import { Effect, Layer } from "effect"
 import { createServer } from "node:http"
 
-const ServerLive = HttpServerNode.server.layer(() => createServer(), { port: 3000 })
+const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
 
 const HttpLive = Http.router.empty.pipe(
   Http.router.get(
@@ -35,4 +35,4 @@ const HttpLive = Http.router.empty.pipe(
   Layer.provide(NodeContext.layer)
 )
 
-RuntimeNode.runMain(Layer.launch(HttpLive))
+NodeRuntime.runMain(Layer.launch(HttpLive))

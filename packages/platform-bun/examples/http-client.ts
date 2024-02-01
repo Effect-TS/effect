@@ -1,4 +1,4 @@
-import { RuntimeBun } from "@effect/platform-bun"
+import { BunRuntime } from "@effect/platform-bun"
 import * as Http from "@effect/platform/HttpClient"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
@@ -52,5 +52,5 @@ Effect.flatMap(
 ).pipe(
   Effect.tap(Effect.log),
   Effect.provide(TodoServiceLive),
-  RuntimeBun.runMain
+  BunRuntime.runMain
 )

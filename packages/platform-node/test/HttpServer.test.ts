@@ -1,4 +1,4 @@
-import { HttpClientNode, HttpServerNode } from "@effect/platform-node"
+import { NodeHttpClient, NodeHttpServer } from "@effect/platform-node"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as ServerError from "@effect/platform/Http/ServerError"
 import type { ServerResponse } from "@effect/platform/Http/ServerResponse"
@@ -13,14 +13,14 @@ import { createServer } from "http"
 import * as Buffer from "node:buffer"
 import { assert, describe, expect, it } from "vitest"
 
-const ServerLive = HttpServerNode.server.layer(createServer, { port: 0 })
+const ServerLive = NodeHttpServer.server.layer(createServer, { port: 0 })
 const EnvLive = Layer.mergeAll(
   NodeContext.layer,
-  HttpServerNode.etag.layer,
+  NodeHttpServer.etag.layer,
   ServerLive,
-  HttpClientNode.layerWithoutAgent
+  NodeHttpClient.layerWithoutAgent
 ).pipe(
-  Layer.provide(HttpClientNode.makeAgentLayer({ keepAlive: false }))
+  Layer.provide(NodeHttpClient.makeAgentLayer({ keepAlive: false }))
 )
 const runPromise = <E, A>(
   effect: Effect.Effect<

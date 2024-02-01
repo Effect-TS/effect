@@ -1,4 +1,5 @@
 /// <reference types="bun-types" />
+import * as Etag from "@effect/platform-node-shared/Http/Etag"
 import * as MultipartNode from "@effect/platform-node-shared/Http/Multipart"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
@@ -24,6 +25,7 @@ import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Readable } from "node:stream"
+import * as BunContext from "../../BunContext.js"
 import * as Platform from "../../Http/Platform.js"
 
 /** @internal */
@@ -156,21 +158,30 @@ const respond = Middleware.make((httpApp) =>
 )
 
 /** @internal */
+export const layerServer = (
+  options: Omit<ServeOptions, "fetch" | "error">
+) => Layer.scoped(Server.Server, make(options))
+
+/** @internal */
 export const layer = (
   options: Omit<ServeOptions, "fetch" | "error">
 ) =>
-  Layer.merge(
+  Layer.mergeAll(
     Layer.scoped(Server.Server, make(options)),
-    Platform.layer
+    Platform.layer,
+    Etag.layerWeak,
+    BunContext.layer
   )
 
 /** @internal */
 export const layerConfig = (
   options: Config.Config.Wrap<Omit<ServeOptions, "fetch" | "error">>
 ) =>
-  Layer.merge(
+  Layer.mergeAll(
     Layer.scoped(Server.Server, Effect.flatMap(Config.unwrap(options), make)),
-    Platform.layer
+    Platform.layer,
+    Etag.layerWeak,
+    BunContext.layer
   )
 
 class ServerRequestImpl implements ServerRequest.ServerRequest {

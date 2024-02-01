@@ -14,8 +14,8 @@ import * as Http from "node:http"
 import * as Https from "node:https"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
-import type * as NodeClient from "../../HttpClientNode.js"
-import * as NodeSink from "../../SinkNode.js"
+import type * as NodeClient from "../../NodeHttpClient.js"
+import * as NodeSink from "../../NodeSink.js"
 import { IncomingMessageImpl } from "./incomingMessage.js"
 
 /** @internal */

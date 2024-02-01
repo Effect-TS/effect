@@ -12,7 +12,7 @@ import * as Queue from "effect/Queue"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 import * as Stream from "effect/Stream"
 import type { Duplex, Readable, Writable } from "node:stream"
-import type { FromReadableOptions, FromWritableOptions } from "../StreamNode.js"
+import type { FromReadableOptions, FromWritableOptions } from "../NodeStream.js"
 
 /** @internal */
 export const fromReadable = <E, A = Uint8Array>(

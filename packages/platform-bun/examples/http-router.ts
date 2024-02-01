@@ -1,9 +1,9 @@
-import { BunContext, HttpServerBun, RuntimeBun } from "@effect/platform-bun"
+import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import * as Http from "@effect/platform/HttpServer"
 import { Schema } from "@effect/schema"
 import { Effect, Layer } from "effect"
 
-const ServerLive = HttpServerBun.server.layer({ port: 3000 })
+const ServerLive = BunHttpServer.server.layer({ port: 3000 })
 
 const HttpLive = Http.router.empty.pipe(
   Http.router.get(
@@ -26,8 +26,8 @@ const HttpLive = Http.router.empty.pipe(
     })
   ),
   Http.server.serve(Http.middleware.logger),
-  Layer.provide(ServerLive),
-  Layer.provide(BunContext.layer)
+  Http.server.withLogAddress,
+  Layer.provide(ServerLive)
 )
 
-RuntimeBun.runMain(Layer.launch(HttpLive))
+BunRuntime.runMain(Layer.launch(HttpLive))

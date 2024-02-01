@@ -7,7 +7,7 @@ import type { LazyArg } from "effect/Function"
 import type { Sink } from "effect/Sink"
 import type { Writable } from "stream"
 import * as internal from "./internal/sink.js"
-import type { FromWritableOptions } from "./StreamNode.js"
+import type { FromWritableOptions } from "./NodeStream.js"
 
 /**
  * @category constructor

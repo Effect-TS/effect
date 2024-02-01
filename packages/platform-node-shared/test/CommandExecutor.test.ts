@@ -1,6 +1,6 @@
-import * as CommandExecutorNode from "@effect/platform-node-shared/CommandExecutorNode"
-import * as FileSystemNode from "@effect/platform-node-shared/FileSystemNode"
-import * as PathNode from "@effect/platform-node-shared/PathNode"
+import * as NodeCommandExecutor from "@effect/platform-node-shared/NodeCommandExecutor"
+import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
+import * as NodePath from "@effect/platform-node-shared/NodePath"
 import * as Command from "@effect/platform/Command"
 import type * as CommandExecutor from "@effect/platform/CommandExecutor"
 import { SystemError } from "@effect/platform/Error"
@@ -20,9 +20,9 @@ import { describe, expect, it } from "vitest"
 
 const TEST_BASH_SCRIPTS_PATH = [__dirname, "fixtures", "bash"]
 
-const TestLive = CommandExecutorNode.layer.pipe(
-  Layer.provideMerge(FileSystemNode.layer),
-  Layer.merge(PathNode.layer)
+const TestLive = NodeCommandExecutor.layer.pipe(
+  Layer.provideMerge(NodeFileSystem.layer),
+  Layer.merge(NodePath.layer)
 )
 
 const runPromise = <E, A>(
@@ -112,7 +112,7 @@ describe("Command", () => {
         Command.workingDirectory(path.join(__dirname, "..", "src"))
       )
       const result = yield* _(Command.lines(command))
-      expect(result).toContain("CommandExecutorNode.ts")
+      expect(result).toContain("NodeCommandExecutor.ts")
     })))
 
   it("should be able to fall back to a different program", () =>

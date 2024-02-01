@@ -1,5 +1,5 @@
-import * as FileSystem from "@effect/platform-node-shared/FileSystemNode"
 import * as Etag from "@effect/platform-node-shared/Http/Etag"
+import * as FileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as Platform from "@effect/platform/Http/Platform"
 import * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import { pipe } from "effect/Function"

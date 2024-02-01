@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 import Mime from "mime"
 import * as Fs from "node:fs"
 import { Readable } from "node:stream"
-import * as FileSystem from "../../FileSystemNode.js"
+import * as FileSystem from "../../NodeFileSystem.js"
 
 /** @internal */
 export const make = Platform.make({

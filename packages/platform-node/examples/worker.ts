@@ -1,5 +1,5 @@
 import type { Worker } from "@effect/platform"
-import { RuntimeNode, WorkerNode } from "@effect/platform-node"
+import { NodeRuntime, NodeWorker } from "@effect/platform-node"
 import { Console, Context, Effect, Stream } from "effect"
 import * as WT from "node:worker_threads"
 
@@ -7,7 +7,7 @@ interface MyWorkerPool {
   readonly _: unique symbol
 }
 const Pool = Context.Tag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
-const PoolLive = WorkerNode.makePoolLayer(Pool, {
+const PoolLive = NodeWorker.makePoolLayer(Pool, {
   spawn: () => new WT.Worker("./examples/worker/range.ts"),
   minSize: 0,
   maxSize: 3,
@@ -29,4 +29,4 @@ Effect.gen(function*(_) {
       )
     ], { concurrency: "inherit" })
   )
-}).pipe(Effect.provide(PoolLive), RuntimeNode.runMain)
+}).pipe(Effect.provide(PoolLive), NodeRuntime.runMain)

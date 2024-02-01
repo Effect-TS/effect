@@ -1,3 +1,4 @@
+import * as Etag from "@effect/platform-node-shared/Http/Etag"
 import * as MultipartNode from "@effect/platform-node-shared/Http/Multipart"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
@@ -24,7 +25,8 @@ import type * as Http from "node:http"
 import type * as Net from "node:net"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
-import * as NodeSink from "../../SinkNode.js"
+import * as NodeContext from "../../NodeContext.js"
+import * as NodeSink from "../../NodeSink.js"
 import { IncomingMessageImpl } from "./incomingMessage.js"
 import * as internalPlatform from "./platform.js"
 
@@ -248,13 +250,21 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
 }
 
 /** @internal */
+export const layerServer = (
+  evaluate: LazyArg<Http.Server>,
+  options: Net.ListenOptions
+) => Layer.scoped(Server.Server, make(evaluate, options))
+
+/** @internal */
 export const layer = (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
 ) =>
-  Layer.merge(
+  Layer.mergeAll(
     Layer.scoped(Server.Server, make(evaluate, options)),
-    internalPlatform.layer
+    internalPlatform.layer,
+    Etag.layerWeak,
+    NodeContext.layer
   )
 
 /** @internal */
@@ -262,12 +272,14 @@ export const layerConfig = (
   evaluate: LazyArg<Http.Server>,
   options: Config.Config.Wrap<Net.ListenOptions>
 ) =>
-  Layer.merge(
+  Layer.mergeAll(
     Layer.scoped(
       Server.Server,
       Effect.flatMap(Config.unwrap(options), (options) => make(evaluate, options))
     ),
-    internalPlatform.layer
+    internalPlatform.layer,
+    Etag.layerWeak,
+    NodeContext.layer
   )
 
 const handleResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse) =>

@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import * as RuntimeNode from "@effect/platform-node-shared/RuntimeNode"
+import * as NodeRuntime from "@effect/platform-node-shared/NodeRuntime"
 import type { RunMain } from "@effect/platform/Runtime"
 
 /**
  * @since 1.0.0
  * @category runtime
  */
-export const runMain: RunMain = RuntimeNode.runMain
+export const runMain: RunMain = NodeRuntime.runMain
