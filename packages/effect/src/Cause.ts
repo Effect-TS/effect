@@ -23,7 +23,6 @@
  */
 import type * as Channel from "./Channel.js"
 import type * as Chunk from "./Chunk.js"
-import type * as Data from "./Data.js"
 import type * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
 import type * as Equal from "./Equal.js"
@@ -190,7 +189,7 @@ export interface CauseReducer<in C, in E, in out Z> {
  * @since 2.0.0
  * @category models
  */
-export interface YieldableError extends Data.Case, Pipeable, Inspectable, Readonly<Error> {
+export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
   readonly [Effect.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Stream.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>

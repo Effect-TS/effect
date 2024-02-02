@@ -10,7 +10,6 @@ import type * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
 import type * as Either from "./Either.js"
-import type * as Equal from "./Equal.js"
 import type { Equivalence } from "./Equivalence.js"
 import type { ExecutionStrategy } from "./ExecutionStrategy.js"
 import type * as Exit from "./Exit.js"
@@ -54,7 +53,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, NoInfer } from "./Types.js"
+import type * as Types from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 // -------------------------------------------------------------------------------------
@@ -99,7 +98,7 @@ export type EffectTypeId = typeof EffectTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Effect<out R, out E, out A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
+export interface Effect<out R, out E, out A> extends Effect.Variance<R, E, A>, Pipeable {
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
@@ -209,9 +208,9 @@ export declare namespace Effect {
    */
   export interface VarianceStruct<out R, out E, out A> {
     readonly _V: string
-    readonly _R: Covariant<R>
-    readonly _E: Covariant<E>
-    readonly _A: Covariant<A>
+    readonly _R: Types.Covariant<R>
+    readonly _E: Types.Covariant<E>
+    readonly _A: Types.Covariant<A>
   }
   /**
    * @since 2.0.0
@@ -358,7 +357,7 @@ export const once: <R, E, A>(self: Effect<R, E, A>) => Effect<never, never, Effe
 export const all: <
   const Arg extends Iterable<Effect<any, any, any>> | Record<string, Effect<any, any, any>>,
   O extends {
-    readonly concurrency?: Concurrency | undefined
+    readonly concurrency?: Types.Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
     readonly mode?: "default" | "validate" | "either" | undefined
@@ -377,7 +376,7 @@ export const all: <
  */
 export const allWith: <
   O extends {
-    readonly concurrency?: Concurrency | undefined
+    readonly concurrency?: Types.Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
     readonly mode?: "default" | "validate" | "either" | undefined
@@ -475,7 +474,7 @@ export declare namespace All {
   export type Return<
     Arg extends Iterable<EffectAny> | Record<string, EffectAny>,
     O extends {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: boolean | undefined
       readonly mode?: "default" | "validate" | "either" | undefined
@@ -496,7 +495,7 @@ export declare namespace All {
 export const allSuccesses: <R, E, A>(
   elements: Iterable<Effect<R, E, A>>,
   options?: {
-    readonly concurrency?: Concurrency | undefined
+    readonly concurrency?: Types.Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
   }
 ) => Effect<R, never, Array<A>> = fiberRuntime.allSuccesses
@@ -509,7 +508,7 @@ export const allSuccesses: <R, E, A>(
  */
 export const dropUntil: {
   <A, R, E>(
-    predicate: (a: NoInfer<A>, i: number) => Effect<R, E, boolean>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect<R, E, boolean>
   ): (elements: Iterable<A>) => Effect<R, E, Array<A>>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropUntil
@@ -522,7 +521,7 @@ export const dropUntil: {
  */
 export const dropWhile: {
   <A, R, E>(
-    predicate: (a: NoInfer<A>, i: number) => Effect<R, E, boolean>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect<R, E, boolean>
   ): (elements: Iterable<A>) => Effect<R, E, Array<A>>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropWhile
@@ -550,7 +549,7 @@ export const exists: {
   <R, E, A>(
     f: (a: A, i: number) => Effect<R, E, boolean>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): (elements: Iterable<A>) => Effect<R, E, boolean>
@@ -558,7 +557,7 @@ export const exists: {
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, boolean>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): Effect<R, E, boolean>
@@ -574,7 +573,7 @@ export const filter: {
   <A, R, E>(
     f: (a: A, i: number) => Effect<R, E, boolean>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly negate?: boolean | undefined
     }
@@ -583,7 +582,7 @@ export const filter: {
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, boolean>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly negate?: boolean | undefined
     }
@@ -630,7 +629,7 @@ export const forEach: {
   <A, R, E, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
@@ -638,7 +637,7 @@ export const forEach: {
   <A, R, E, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
     options: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
@@ -647,7 +646,7 @@ export const forEach: {
     self: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
@@ -656,7 +655,7 @@ export const forEach: {
     self: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
     options: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
@@ -685,7 +684,7 @@ export const mergeAll: {
     zero: Z,
     f: (z: Z, a: A, i: number) => Z,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): <R, E>(elements: Iterable<Effect<R, E, A>>) => Effect<R, E, Z>
@@ -694,7 +693,7 @@ export const mergeAll: {
     zero: Z,
     f: (z: Z, a: A, i: number) => Z,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): Effect<R, E, Z>
@@ -711,12 +710,12 @@ export const partition: {
   <R, E, A, B>(
     f: (a: A) => Effect<R, E, B>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): (elements: Iterable<A>) => Effect<R, never, [excluded: Array<E>, satisfying: Array<B>]>
   <R, E, A, B>(elements: Iterable<A>, f: (a: A) => Effect<R, E, B>, options?: {
-    readonly concurrency?: Concurrency | undefined
+    readonly concurrency?: Types.Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
   }): Effect<R, never, [excluded: Array<E>, satisfying: Array<B>]>
 } = fiberRuntime.partition
@@ -744,7 +743,7 @@ export const reduceEffect: {
     zero: Effect<R, E, A>,
     f: (acc: A, a: A, i: number) => A,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): (elements: Iterable<Effect<R, E, A>>) => Effect<R, E, A>
@@ -753,7 +752,7 @@ export const reduceEffect: {
     zero: Effect<R, E, A>,
     f: (acc: A, a: A, i: number) => A,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): Effect<R, E, A>
@@ -817,7 +816,7 @@ export const replicateEffect: {
   (
     n: number,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
@@ -825,7 +824,7 @@ export const replicateEffect: {
   (
     n: number,
     options: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
@@ -834,7 +833,7 @@ export const replicateEffect: {
     self: Effect<R, E, A>,
     n: number,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
@@ -843,7 +842,7 @@ export const replicateEffect: {
     self: Effect<R, E, A>,
     n: number,
     options: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
@@ -858,7 +857,7 @@ export const replicateEffect: {
  */
 export const takeUntil: {
   <A, R, E>(
-    predicate: (a: NoInfer<A>, i: number) => Effect<R, E, boolean>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect<R, E, boolean>
   ): (elements: Iterable<A>) => Effect<R, E, Array<A>>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.takeUntil
@@ -871,7 +870,7 @@ export const takeUntil: {
  */
 export const takeWhile: {
   <R, E, A>(
-    predicate: (a: NoInfer<A>, i: number) => Effect<R, E, boolean>
+    predicate: (a: Types.NoInfer<A>, i: number) => Effect<R, E, boolean>
   ): (elements: Iterable<A>) => Effect<R, E, Array<A>>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.takeWhile
@@ -890,7 +889,7 @@ export const validateAll: {
   <R, E, A, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
@@ -898,7 +897,7 @@ export const validateAll: {
   <R, E, A, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
     options: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
@@ -907,7 +906,7 @@ export const validateAll: {
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     }
@@ -916,7 +915,7 @@ export const validateAll: {
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
     options: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
     }
@@ -948,7 +947,7 @@ export const validateFirst: {
   <R, E, A, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): (elements: Iterable<A>) => Effect<R, Array<E>, B>
@@ -956,7 +955,7 @@ export const validateFirst: {
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
     options?: {
-      readonly concurrency?: Concurrency | undefined
+      readonly concurrency?: Types.Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
   ): Effect<R, Array<E>, B>
@@ -1560,12 +1559,12 @@ export const catchAllDefect: {
  */
 export const catchIf: {
   <E, EB extends E, R2, E2, A2>(
-    refinement: Refinement<NoInfer<E>, EB>,
+    refinement: Refinement<Types.NoInfer<E>, EB>,
     f: (e: EB) => Effect<R2, E2, A2>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | Exclude<E, EB>, A2 | A>
   <E, R2, E2, A2>(
-    predicate: Predicate<NoInfer<E>>,
-    f: (e: NoInfer<E>) => Effect<R2, E2, A2>
+    predicate: Predicate<Types.NoInfer<E>>,
+    f: (e: Types.NoInfer<E>) => Effect<R2, E2, A2>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
   <R, E, A, EA extends E, EB extends EA, R2, E2, A2>(
     self: Effect<R, E, A>,
@@ -3364,12 +3363,12 @@ export {
  */
 export const filterOrDie: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orDieWith: (a: NoInfer<A>) => unknown
+    refinement: Refinement<Types.NoInfer<A>, B>,
+    orDieWith: (a: Types.NoInfer<A>) => unknown
   ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
   <A>(
-    predicate: Predicate<NoInfer<A>>,
-    orDieWith: (a: NoInfer<A>) => unknown
+    predicate: Predicate<Types.NoInfer<A>>,
+    orDieWith: (a: Types.NoInfer<A>) => unknown
   ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, B extends A>(
     self: Effect<R, E, A>,
@@ -3388,10 +3387,10 @@ export const filterOrDie: {
  */
 export const filterOrDieMessage: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>,
+    refinement: Refinement<Types.NoInfer<A>, B>,
     message: string
   ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
-  <A>(predicate: Predicate<NoInfer<A>>, message: string): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <A>(predicate: Predicate<Types.NoInfer<A>>, message: string): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, B extends A>(self: Effect<R, E, A>, refinement: Refinement<A, B>, message: string): Effect<R, E, B>
   <R, E, A>(self: Effect<R, E, A>, predicate: Predicate<A>, message: string): Effect<R, E, A>
 } = effect.filterOrDieMessage
@@ -3405,12 +3404,12 @@ export const filterOrDieMessage: {
  */
 export const filterOrElse: {
   <A, B extends A, R2, E2, C>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orElse: (a: NoInfer<A>) => Effect<R2, E2, C>
+    refinement: Refinement<Types.NoInfer<A>, B>,
+    orElse: (a: Types.NoInfer<A>) => Effect<R2, E2, C>
   ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, B | C>
   <A, R2, E2, B>(
-    predicate: Predicate<NoInfer<A>>,
-    orElse: (a: NoInfer<A>) => Effect<R2, E2, B>
+    predicate: Predicate<Types.NoInfer<A>>,
+    orElse: (a: Types.NoInfer<A>) => Effect<R2, E2, B>
   ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A | B>
   <R, E, A, B extends A, R2, E2, C>(
     self: Effect<R, E, A>,
@@ -3459,12 +3458,12 @@ export const filterOrElse: {
  */
 export const filterOrFail: {
   <A, B extends A, E2>(
-    refinement: Refinement<NoInfer<A>, B>,
-    orFailWith: (a: NoInfer<A>) => E2
+    refinement: Refinement<Types.NoInfer<A>, B>,
+    orFailWith: (a: Types.NoInfer<A>) => E2
   ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, B>
   <A, E2>(
-    predicate: Predicate<NoInfer<A>>,
-    orFailWith: (a: NoInfer<A>) => E2
+    predicate: Predicate<Types.NoInfer<A>>,
+    orFailWith: (a: Types.NoInfer<A>) => E2
   ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, A>
   <R, E, A, B extends A, E2>(
     self: Effect<R, E, A>,
@@ -3622,7 +3621,7 @@ export const flatMap: {
  */
 export const andThen: {
   <A, X>(
-    f: (a: NoInfer<A>) => X
+    f: (a: Types.NoInfer<A>) => X
   ): <R, E>(
     self: Effect<R, E, A>
   ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1>
@@ -3637,7 +3636,7 @@ export const andThen: {
     : Effect<R, E, X>
   <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: (a: NoInfer<A>) => X
+    f: (a: Types.NoInfer<A>) => X
   ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1>
     : [X] extends [Promise<infer A1>] ? Effect<R, Cause.UnknownException | E, A1>
     : Effect<R, E, X>
@@ -3751,7 +3750,7 @@ export const summarized: {
  */
 export const tap: {
   <A, X>(
-    f: (a: NoInfer<A>) => X
+    f: (a: Types.NoInfer<A>) => X
   ): <R, E>(
     self: Effect<R, E, A>
   ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A>
@@ -3766,7 +3765,7 @@ export const tap: {
     : Effect<R, E, A>
   <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: (a: NoInfer<A>) => X
+    f: (a: Types.NoInfer<A>) => X
   ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A>
     : [X] extends [Promise<infer _A1>] ? Effect<R, Cause.UnknownException | E, A>
     : Effect<R, E, A>
