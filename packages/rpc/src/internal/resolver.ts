@@ -10,7 +10,7 @@ import type { RpcError, RpcTransportError } from "../Error.js"
 import type * as resolver from "../Resolver.js"
 import * as Codec from "./codec.js"
 
-const requestProto: Request.Request<any, any> = {
+const requestProto: Request.Request<any, any> & Equal.Equal = {
   [Request.RequestTypeId]: {
     _E: (_: never) => _,
     _A: (_: never) => _
@@ -19,7 +19,7 @@ const requestProto: Request.Request<any, any> = {
     return this.hash
   },
   [Equal.symbol](this: resolver.RpcRequest, that: Equal.Equal) {
-    return this.hash === (that as resolver.RpcRequest).hash
+    return this.hash === (that as resolver.RpcRequest & Equal.Equal).hash
   }
 }
 
