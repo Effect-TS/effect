@@ -65,7 +65,7 @@ export const complete = <Key, Error, Value>(
   timeToLiveMillis: number
 ): MapValue<Key, Error, Value> =>
   Data.struct({
-    _tag: "Complete",
+    _tag: "Complete" as const,
     key,
     exit,
     entryStats,
@@ -78,7 +78,7 @@ export const pending = <Key, Error, Value>(
   deferred: Deferred.Deferred<Error, Value>
 ): MapValue<Key, Error, Value> =>
   Data.struct({
-    _tag: "Pending",
+    _tag: "Pending" as const,
     key,
     deferred
   })
@@ -89,7 +89,7 @@ export const refreshing = <Key, Error, Value>(
   complete: Complete<Key, Error, Value>
 ): MapValue<Key, Error, Value> =>
   Data.struct({
-    _tag: "Refreshing",
+    _tag: "Refreshing" as const,
     deferred,
     complete
   })

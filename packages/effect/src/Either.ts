@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 
-import type * as Data from "./Data.js"
 import * as Equivalence from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity } from "./Function.js"
@@ -39,7 +38,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface Left<out E, out A> extends Data.Case, Pipeable, Inspectable {
+export interface Left<out E, out A> extends Pipeable, Inspectable {
   readonly _tag: "Left"
   readonly _op: "Left"
   readonly left: E
@@ -56,7 +55,7 @@ export interface Left<out E, out A> extends Data.Case, Pipeable, Inspectable {
  * @category models
  * @since 2.0.0
  */
-export interface Right<out E, out A> extends Data.Case, Pipeable, Inspectable {
+export interface Right<out E, out A> extends Pipeable, Inspectable {
   readonly _tag: "Right"
   readonly _op: "Right"
   readonly right: A

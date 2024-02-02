@@ -5,7 +5,6 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
-import type * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type * as Option from "effect/Option"
@@ -107,7 +106,7 @@ export type ErrorTypeId = typeof ErrorTypeId
  * @since 1.0.0
  * @category errors
  */
-export interface MultipartError extends Data.Case {
+export interface MultipartError {
   readonly [ErrorTypeId]: ErrorTypeId
   readonly _tag: "MultipartError"
   readonly reason: "FileTooLarge" | "FieldTooLarge" | "BodyTooLarge" | "TooManyParts" | "InternalError" | "Parse"
