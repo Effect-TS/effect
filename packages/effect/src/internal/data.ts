@@ -1,4 +1,3 @@
-import type * as Data from "../Data.js"
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
 import type * as Types from "../Types.js"
@@ -22,7 +21,7 @@ export const ArrayProto: Equal.Equal = Object.assign(Object.create(Array.prototy
 export const Structural: new<A>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
-) => Data.Case = (function() {
+) => {} = (function() {
   function Structural(this: any, args: any) {
     if (args) {
       Object.assign(this, args)
@@ -33,5 +32,5 @@ export const Structural: new<A>(
 })()
 
 /** @internal */
-export const struct = <As extends Readonly<Record<string, any>>>(as: As): Data.Data<As> =>
+export const struct = <As extends Readonly<Record<string, any>>>(as: As): As =>
   Object.assign(Object.create(StructuralPrototype), as)
