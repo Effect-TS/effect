@@ -14,9 +14,9 @@ describe("Data", () => {
     expect(Equal.equals(x, Data.struct({ a: 0 }))).toBe(false)
 
     // different keys length
-    expect(Data.struct({ a: 0, b: 1 })[Equal.symbol](Data.struct({ a: 0 }))).toBe(false)
+    expect(Equal.equals(Data.struct({ a: 0, b: 1 }), Data.struct({ a: 0 }))).toBe(false)
     // same length but different keys
-    expect(Data.struct({ a: 0 })[Equal.symbol](Data.struct({ b: 1 }))).toBe(false)
+    expect(Equal.equals(Data.struct({ a: 0 }), Data.struct({ b: 1 }))).toBe(false)
   })
 
   it("unsafeStruct", () => {
@@ -52,11 +52,11 @@ describe("Data", () => {
     expect(Equal.equals(x, Data.array([0, 1]))).toBe(false)
 
     // different length
-    expect(Data.array([0, 1, 2])[Equal.symbol](Data.array([0, 1]))).toBe(false)
+    expect(Equal.equals(Data.array([0, 1, 2]), Data.array([0, 1]))).toBe(false)
   })
 
   it("case", () => {
-    interface Person extends Data.Case {
+    interface Person {
       readonly name: string
     }
 
@@ -77,7 +77,7 @@ describe("Data", () => {
   })
 
   it("tagged", () => {
-    interface Person extends Data.Case {
+    interface Person {
       readonly _tag: "Person"
       readonly name: string
     }
@@ -111,11 +111,11 @@ describe("Data", () => {
     // different keys length
     class D extends Data.Class<{ d: string; e: string }> {}
     const d = new D({ d: "d", e: "e" })
-    expect(a[Equal.symbol](d)).toBe(false)
+    expect(Equal.equals(a, d)).toBe(false)
     // same length but different keys
     class E extends Data.Class<{ e: string }> {}
     const e = new E({ e: "e" })
-    expect(a[Equal.symbol](e)).toBe(false)
+    expect(Equal.equals(a, e)).toBe(false)
   })
 
   it("tagged class", () => {
@@ -133,7 +133,7 @@ describe("Data", () => {
   })
 
   it("tagged - empty", () => {
-    interface Person extends Data.Case {
+    interface Person {
       readonly _tag: "Person"
     }
 
@@ -155,12 +155,12 @@ describe("Data", () => {
   })
 
   it("tagged - don't override tag", () => {
-    interface Foo extends Data.Case {
+    interface Foo {
       readonly _tag: "Foo"
       readonly value: string
     }
     const Foo = Data.tagged<Foo>("Foo")
-    interface Bar extends Data.Case {
+    interface Bar {
       readonly _tag: "Bar"
       readonly value: number
     }

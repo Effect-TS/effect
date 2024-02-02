@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Data from "effect/Data"
 import * as internal from "./internal/error.js"
 
 /**
@@ -30,7 +29,7 @@ export declare namespace PlatformError {
    * @since 1.0.0
    * @category models
    */
-  export interface Base extends Data.Case {
+  export interface Base {
     readonly [PlatformErrorTypeId]: typeof PlatformErrorTypeId
     readonly _tag: string
     readonly module: "Clipboard" | "Command" | "FileSystem" | "KeyValueStore" | "Path" | "Stream" | "Terminal"
@@ -41,7 +40,7 @@ export declare namespace PlatformError {
   /**
    * @since 1.0.0
    */
-  export type ProvidedFields = PlatformErrorTypeId | "_tag" | keyof Data.Case
+  export type ProvidedFields = PlatformErrorTypeId | "_tag"
 }
 
 /**

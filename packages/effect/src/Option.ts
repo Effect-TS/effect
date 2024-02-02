@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-import type * as Data from "./Data.js"
 import type { Either } from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
@@ -41,7 +40,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface None<out A> extends Data.Case, Pipeable, Inspectable {
+export interface None<out A> extends Pipeable, Inspectable {
   readonly _tag: "None"
   readonly _op: "None"
   readonly [TypeId]: {
@@ -56,7 +55,7 @@ export interface None<out A> extends Data.Case, Pipeable, Inspectable {
  * @category models
  * @since 2.0.0
  */
-export interface Some<out A> extends Data.Case, Pipeable, Inspectable {
+export interface Some<out A> extends Pipeable, Inspectable {
   readonly _tag: "Some"
   readonly _op: "Some"
   readonly value: A
