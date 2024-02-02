@@ -4475,22 +4475,22 @@ export const chunk = <A, I, R>(item: Schema<A, I, R>): Schema<Chunk.Chunk<A>, Re
     Chunk.toReadonlyArray
   )
 
-const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a: A): Data.Data<A> =>
+const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a: A): A =>
   Array.isArray(a) ? Data.array(a) : Data.struct(a)
 
 const dataArbitrary = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
   item: Arbitrary<A>
-): Arbitrary<Data.Data<A>> =>
+): Arbitrary<A> =>
 (fc) => item(fc).map(toData)
 
 const dataPretty = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
   item: Pretty.Pretty<A>
-): Pretty.Pretty<Data.Data<A>> =>
+): Pretty.Pretty<A> =>
 (d) => `Data(${item(d)})`
 
 const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
   decodeUnknown: ParseResult.DecodeUnknown<R, A>
-): ParseResult.DeclarationDecodeUnknown<R, Data.Data<A>> =>
+): ParseResult.DeclarationDecodeUnknown<R, A> =>
 (u, options, ast) =>
   Equal.isEqual(u) ?
     ParseResult.map(decodeUnknown(u, options), toData)
@@ -4506,7 +4506,7 @@ export const dataFromSelf = <
   A extends Readonly<Record<string, any>> | ReadonlyArray<any>
 >(
   item: Schema<A, I, R>
-): Schema<Data.Data<A>, Data.Data<I>, R> => {
+): Schema<A, I, R> => {
   return declare(
     [item],
     (item) => dataParse(ParseResult.decodeUnknown(item)),
@@ -4530,7 +4530,7 @@ export const data = <
   A extends Readonly<Record<string, any>> | ReadonlyArray<any>
 >(
   item: Schema<A, I, R>
-): Schema<Data.Data<A>, I, R> =>
+): Schema<A, I, R> =>
   transform(
     item,
     dataFromSelf(to(item)),
@@ -4639,7 +4639,7 @@ export const Class = <Self>() =>
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
-    Data.Case
+    {}
   > => makeClass(struct(fields), fields, Data.Class)
 
 /**
@@ -4657,7 +4657,7 @@ export const TaggedClass = <Self>() =>
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
-    Data.Case
+    {}
   > =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }

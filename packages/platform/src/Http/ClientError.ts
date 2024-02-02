@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Data from "effect/Data"
 import * as internal from "../internal/http/clientError.js"
 import type * as ClientRequest from "./ClientRequest.js"
 import type * as ClientResponse from "./ClientResponse.js"
@@ -32,7 +31,7 @@ export declare namespace HttpError {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto extends Data.Case {
+  export interface Proto {
     readonly [TypeId]: TypeId
     readonly _tag: string
   }
@@ -40,7 +39,7 @@ export declare namespace HttpError {
   /**
    * @since 1.0.0
    */
-  export type ProvidedFields = TypeId | "_tag" | keyof Data.Case
+  export type ProvidedFields = TypeId | "_tag"
 }
 
 /**
