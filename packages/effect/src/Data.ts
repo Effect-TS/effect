@@ -2,29 +2,10 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.js"
-import type * as Equal from "./Equal.js"
 import * as core from "./internal/core.js"
 import * as internal from "./internal/data.js"
 import { StructuralPrototype } from "./internal/effectable.js"
 import type * as Types from "./Types.js"
-
-/**
- * @category models
- * @since 2.0.0
- */
-export type Data<A> =
-  & { readonly [P in keyof A]: A[P] }
-  & Equal.Equal
-
-/**
- * `Case` represents a datatype similar to a case class in Scala. Namely, a
- * datatype created using `Case` will, by default, provide an implementation
- * for a constructor, `Hash`, and `Equal`.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Case extends Equal.Equal {}
 
 /**
  * @since 2.0.0
@@ -34,10 +15,10 @@ export declare namespace Case {
    * @since 2.0.0
    * @category models
    */
-  export interface Constructor<A extends Case, Tag extends keyof A = never> {
+  export interface Constructor<A, Tag extends keyof A = never> {
     (
-      args: Types.Equals<Omit<A, Tag | keyof Equal.Equal>, {}> extends true ? void
-        : { readonly [P in keyof A as P extends Tag | keyof Equal.Equal ? never : P]: A[P] }
+      args: Types.Equals<Omit<A, Tag>, {}> extends true ? void
+        : { readonly [P in keyof A as P extends Tag ? never : P]: A[P] }
     ): A
   }
 }
@@ -60,13 +41,13 @@ export declare namespace Case {
  * @category constructors
  * @since 2.0.0
  */
-export const struct: <A extends Record<string, any>>(a: A) => Data<{ readonly [P in keyof A]: A[P] }> = internal.struct
+export const struct: <A extends Record<string, any>>(a: A) => { readonly [P in keyof A]: A[P] } = internal.struct
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const unsafeStruct = <A extends Record<string, any>>(as: A): Data<{ readonly [P in keyof A]: A[P] }> =>
+export const unsafeStruct = <A extends Record<string, any>>(as: A): { readonly [P in keyof A]: A[P] } =>
   Object.setPrototypeOf(as, StructuralPrototype)
 
 /**
@@ -87,7 +68,7 @@ export const unsafeStruct = <A extends Record<string, any>>(as: A): Data<{ reado
  * @category constructors
  * @since 2.0.0
  */
-export const tuple = <As extends ReadonlyArray<any>>(...as: As): Data<Readonly<As>> => unsafeArray(as)
+export const tuple = <As extends ReadonlyArray<any>>(...as: As): Readonly<As> => unsafeArray(as)
 
 /**
  * @example
@@ -113,17 +94,16 @@ export const tuple = <As extends ReadonlyArray<any>>(...as: As): Data<Readonly<A
  * @category constructors
  * @since 2.0.0
  */
-export const array = <As extends ReadonlyArray<any>>(as: As): Data<Readonly<As>> =>
-  unsafeArray(as.slice(0) as unknown as As)
+export const array = <As extends ReadonlyArray<any>>(as: As): Readonly<As> => unsafeArray(as.slice(0) as unknown as As)
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<Readonly<As>> =>
+export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Readonly<As> =>
   Object.setPrototypeOf(as, internal.ArrayProto)
 
-const _case = <A extends Case>(): Case.Constructor<A> => (args) =>
+const _case = <A>(): Case.Constructor<A> => (args) =>
   (args === undefined ? Object.create(StructuralPrototype) : struct(args)) as any
 
 export {
@@ -134,8 +114,7 @@ export {
    * import * as Data from "effect/Data"
    * import * as Equal from "effect/Equal"
    *
-   * // Extending Data.Case to implement Equal
-   * interface Person extends Data.Case {
+   * interface Person {
    *   readonly name: string
    * }
    *
@@ -163,7 +142,7 @@ export {
  * @example
  * import * as Data from "effect/Data"
  *
- * interface Person extends Data.Case {
+ * interface Person {
  *   readonly _tag: "Person" // the tag
  *   readonly name: string
  * }
@@ -177,7 +156,7 @@ export {
  * @since 2.0.0
  * @category constructors
  */
-export const tagged = <A extends Case & { readonly _tag: string }>(
+export const tagged = <A extends { readonly _tag: string }>(
   tag: A["_tag"]
 ): Case.Constructor<A, "_tag"> =>
 (args) => {
@@ -208,9 +187,9 @@ export const tagged = <A extends Case & { readonly _tag: string }>(
  * @category constructors
  */
 export const Class: new<A extends Record<string, any> = {}>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
-) => Data<Readonly<A>> = internal.Structural as any
+  args: Types.Equals<A, {}> extends true ? void
+    : { readonly [P in keyof A]: A[P] }
+) => Readonly<A> = internal.Structural as any
 
 /**
  * Provides a Tagged constructor for a Case Class.
@@ -238,9 +217,9 @@ export const Class: new<A extends Record<string, any> = {}>(
 export const TaggedClass = <Tag extends string>(
   tag: Tag
 ): new<A extends Record<string, any> = {}>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
-) => Data<Readonly<A> & { readonly _tag: Tag }> => {
+  args: Types.Equals<A, {}> extends true ? void
+    : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
+) => Readonly<A> & { readonly _tag: Tag } => {
   class Base extends Class<any> {
     readonly _tag = tag
   }
@@ -252,9 +231,9 @@ export const TaggedClass = <Tag extends string>(
  * @category constructors
  */
 export const Structural: new<A>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
-) => Case = internal.Structural as any
+  args: Types.Equals<A, {}> extends true ? void
+    : { readonly [P in keyof A]: A[P] }
+) => {} = internal.Structural as any
 
 /**
  * Create a tagged enum data type, which is a union of `Data` structs.
@@ -269,16 +248,16 @@ export const Structural: new<A>(
  *
  * // Equivalent to:
  * type HttpErrorPlain =
- *   | Data.Data<{
+ *   | {
  *     readonly _tag: "BadRequest"
  *     readonly status: 400
  *     readonly message: string
- *   }>
- *   | Data.Data<{
+ *   }
+ *   | {
  *     readonly _tag: "NotFound"
  *     readonly status: 404
  *     readonly message: string
- *   }>
+ *   }
  * ```
  *
  * @since 2.0.0
@@ -286,9 +265,8 @@ export const Structural: new<A>(
  */
 export type TaggedEnum<
   A extends Record<string, Record<string, any>> & UntaggedChildren<A>
-> = keyof A extends infer Tag ? Tag extends keyof A ? Data<
-      Types.Simplify<{ readonly _tag: Tag } & { readonly [K in keyof A[Tag]]: A[Tag][K] }>
-    >
+> = keyof A extends infer Tag ?
+  Tag extends keyof A ? Types.Simplify<{ readonly _tag: Tag } & { readonly [K in keyof A[Tag]]: A[Tag][K] }>
   : never
   : never
 
@@ -310,7 +288,7 @@ export declare namespace TaggedEnum {
    * @category models
    */
   export interface WithGenerics<Count extends number> {
-    readonly taggedEnum: Data<{ readonly _tag: string }>
+    readonly taggedEnum: { readonly _tag: string }
     readonly numberOfGenerics: Count
 
     readonly A: unknown
@@ -340,18 +318,17 @@ export declare namespace TaggedEnum {
    * @since 2.0.0
    */
   export type Args<
-    A extends { readonly _tag: string } & Equal.Equal,
+    A extends { readonly _tag: string },
     K extends A["_tag"],
     E = Extract<A, { readonly _tag: K }>
-  > = { readonly [K in keyof E as K extends "_tag" | keyof Case ? never : K]: E[K] } extends infer T ?
-    {} extends T ? void : T
+  > = { readonly [K in keyof E as K extends "_tag" ? never : K]: E[K] } extends infer T ? {} extends T ? void : T
     : never
 
   /**
    * @since 2.0.0
    */
   export type Value<
-    A extends { readonly _tag: string } & Equal.Equal,
+    A extends { readonly _tag: string },
     K extends A["_tag"]
   > = Extract<A, { readonly _tag: K }>
 }
@@ -366,8 +343,8 @@ export declare namespace TaggedEnum {
  * import * as Data from "effect/Data"
  *
  * const { BadRequest, NotFound } = Data.taggedEnum<
- *   | Data.Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }>
- *   | Data.Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
+ *   | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
+ *   | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
  * >()
  *
  * const notFound = NotFound({ status: 404, message: "Not Found" })
@@ -430,7 +407,7 @@ export const taggedEnum: {
     ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C, D>, Tag>
   }
 
-  <A extends { readonly _tag: string } & Equal.Equal>(): {
+  <A extends { readonly _tag: string }>(): {
     readonly [Tag in A["_tag"]]: Case.Constructor<Extract<A, { readonly _tag: Tag }>, "_tag">
   }
 } = () =>
@@ -447,8 +424,8 @@ export const taggedEnum: {
  * @category constructors
  */
 export const Error: new<A extends Record<string, any> = {}>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
+  args: Types.Equals<A, {}> extends true ? void
+    : { readonly [P in keyof A]: A[P] }
 ) => Cause.YieldableError & Readonly<A> = (function() {
   return class Base extends core.YieldableError {
     constructor(args: any) {
@@ -465,8 +442,8 @@ export const Error: new<A extends Record<string, any> = {}>(
  * @category constructors
  */
 export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any> = {}>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
+  args: Types.Equals<A, {}> extends true ? void
+    : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
 ) => Cause.YieldableError & { readonly _tag: Tag } & Readonly<A> => {
   class Base extends Error<{}> {
     readonly _tag = tag
