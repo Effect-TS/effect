@@ -10,13 +10,13 @@ declare const mutableArray: Array<string>
 // struct
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Data<{ readonly a: string; }>
+// $ExpectType { readonly a: string; }
 const struct1 = Data.struct(mutableStruct)
 
 // @ts-expect-error
 struct1.a = "a"
 
-// $ExpectType Data<{ readonly a: string; }>
+// $ExpectType { readonly a: string; }
 const struct2 = Data.struct(readonlyStruct)
 
 // @ts-expect-error
@@ -26,13 +26,13 @@ struct2.a = "a"
 // unsafeStruct
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Data<{ readonly a: string; }>
+// $ExpectType { readonly a: string; }
 const struct3 = Data.unsafeStruct(mutableStruct)
 
 // @ts-expect-error
 struct3.a = "a"
 
-// $ExpectType Data<{ readonly a: string; }>
+// $ExpectType { readonly a: string; }
 const struct4 = Data.unsafeStruct(readonlyStruct)
 
 // @ts-expect-error
@@ -42,7 +42,7 @@ struct4.a = "a"
 // tuple
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Data<readonly [string, number]>
+// $ExpectType readonly [string, number]
 const tuple1 = Data.tuple("a", 1)
 
 // @ts-expect-error
@@ -54,13 +54,13 @@ tuple1[1] = 1
 // array
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Data<readonly string[]>
+// $ExpectType readonly string[]
 const array1 = Data.array(mutableArray)
 
 // @ts-expect-error
 array1[0] = "a"
 
-// $ExpectType Data<readonly string[]>
+// $ExpectType readonly string[]
 const array2 = Data.array(readonlyArray)
 
 // @ts-expect-error
@@ -70,13 +70,13 @@ array2[0] = "a"
 // unsafeArray
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Data<readonly string[]>
+// $ExpectType readonly string[]
 const array3 = Data.unsafeArray(mutableArray)
 
 // @ts-expect-error
 array3[0] = "a"
 
-// $ExpectType Data<readonly string[]>
+// $ExpectType readonly string[]
 const array4 = Data.unsafeArray(readonlyArray)
 
 // @ts-expect-error
@@ -86,7 +86,7 @@ array4[0] = "a"
 // case
 // -------------------------------------------------------------------------------------
 
-interface Person extends Data.Case {
+interface Person {
   readonly name: string
 }
 
@@ -96,13 +96,13 @@ const person = Data.case<Person>()
 export type PersonInput = Parameters<typeof person>[0]
 
 // @ts-expect-error
-person.name = "a"
+person({ name: "" }).name = "a"
 
 // -------------------------------------------------------------------------------------
 // tagged
 // -------------------------------------------------------------------------------------
 
-interface TaggedPerson extends Data.Case {
+interface TaggedPerson {
   readonly _tag: "Person"
   readonly name: string
   readonly optional?: string
@@ -124,9 +124,9 @@ type HttpError = Data.TaggedEnum<{
   BadRequest: { readonly status: 400; readonly a: string }
   NotFound: { readonly status: 404; readonly b: number }
 }>
-// $ExpectType Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly a: string; }>
+// $ExpectType { readonly _tag: "BadRequest"; readonly status: 400; readonly a: string; }
 export type BadRequest = Extract<HttpError, { _tag: "BadRequest" }>
-// $ExpectType Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly b: number; }>
+// $ExpectType { readonly _tag: "NotFound"; readonly status: 404; readonly b: number; }
 export type NotFound = Extract<HttpError, { _tag: "NotFound" }>
 
 // @ts-expect-error
@@ -140,14 +140,14 @@ export type Err = Data.TaggedEnum<{
 // -------------------------------------------------------------------------------------
 
 const { NotFound } = Data.taggedEnum<
-  | Data.Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }>
-  | Data.Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
+  | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
+  | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
 >()
 
 // $ExpectType { readonly status: 404; readonly message: string; }
 export type notFoundInput = Parameters<typeof NotFound>[0]
 
-// $ExpectType Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string; }>
+// $ExpectType { readonly _tag: "NotFound"; readonly status: 404; readonly message: string; }
 export type notFoundOutput = ReturnType<typeof NotFound>
 
 const notFound = NotFound({ status: 404, message: "mesage" })

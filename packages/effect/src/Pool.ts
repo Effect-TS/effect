@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-import type * as Data from "./Data.js"
 import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import * as internal from "./internal/pool.js"
@@ -29,7 +28,7 @@ export type PoolTypeId = typeof PoolTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Pool<out E, in out A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
+export interface Pool<out E, in out A> extends Pool.Variance<E, A>, Pipeable {
   /**
    * Retrieves an item from the pool in a scoped effect. Note that if
    * acquisition fails, then the returned effect will fail for that same reason.

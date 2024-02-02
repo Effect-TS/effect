@@ -99,18 +99,18 @@ export const withConstructorTagged: {
 export const withConstructorDataTagged: {
   <A extends { readonly _tag: string }>(
     tag: A["_tag"]
-  ): <I>(self: Schema.Schema<A, I>) => SchemaC<I, Data.Data<A>, Omit<A, "_tag">>
+  ): <I>(self: Schema.Schema<A, I>) => SchemaC<I, A, Omit<A, "_tag">>
 
   <A extends { readonly _tag: string }, I extends Record<string, any>>(
     self: Schema.Schema<A, I>,
     tag: A["_tag"]
-  ): SchemaC<I, Data.Data<A>, Omit<A, "_tag">>
+  ): SchemaC<I, A, Omit<A, "_tag">>
 } = dual(
   2,
   <A extends { readonly _tag: string }, I extends Record<string, any>>(
     self: Schema.Schema<A, I>,
     tag: A["_tag"]
-  ): SchemaC<I, Data.Data<A>, Omit<A, "_tag">> => withConstructor(Schema.data(self), Data.tagged(tag) as any)
+  ): SchemaC<I, A, Omit<A, "_tag">> => withConstructor(Schema.data(self), Data.tagged(tag) as any)
 )
 
 /**
