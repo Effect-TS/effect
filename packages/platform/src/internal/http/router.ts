@@ -27,7 +27,7 @@ export const RouteContextTypeId: Router.RouteContextTypeId = Symbol.for(
 ) as Router.RouteContextTypeId
 
 /** @internal */
-export const RouteContext = Context.Tag<Router.RouteContext>("@effect/platform/Http/Router/RouteContext")
+export const RouteContext = Context.GenericTag<Router.RouteContext>("@effect/platform/Http/Router/RouteContext")
 
 /** @internal */
 export const params = Effect.map(RouteContext, (_) => _.params)

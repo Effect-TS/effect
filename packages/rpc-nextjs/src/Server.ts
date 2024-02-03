@@ -12,7 +12,7 @@ import type { NextApiRequest, NextApiResponse } from "next"
  * @category tags
  * @since 1.0.0
  */
-export const ApiRequest = Context.Tag<NextApiRequest>("@effect/rpc-nextjs/ApiRequest")
+export const ApiRequest = Context.GenericTag<NextApiRequest>("@effect/rpc-nextjs/ApiRequest")
 
 /**
  * @category models

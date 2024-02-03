@@ -19,7 +19,7 @@ import type * as Path from "../../Path.js"
 export const TypeId: ServerRequest.TypeId = Symbol.for("@effect/platform/Http/ServerRequest") as ServerRequest.TypeId
 
 /** @internal */
-export const serverRequestTag = Context.Tag<ServerRequest.ServerRequest>(TypeId)
+export const serverRequestTag = Context.GenericTag<ServerRequest.ServerRequest>("@effect/platform/Http/ServerRequest")
 
 /** @internal */
 export const multipartPersisted = Effect.flatMap(serverRequestTag, (request) => request.multipart)

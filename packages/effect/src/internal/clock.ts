@@ -14,7 +14,7 @@ const ClockSymbolKey = "effect/Clock"
 export const ClockTypeId: Clock.ClockTypeId = Symbol.for(ClockSymbolKey) as Clock.ClockTypeId
 
 /** @internal */
-export const clockTag: Context.Tag<Clock.Clock, Clock.Clock> = Context.Tag(ClockTypeId)
+export const clockTag: Context.Tag<Clock.Clock, Clock.Clock> = Context.GenericTag("effect/Clock")
 
 /** @internal */
 export const MAX_TIMER_MILLIS = 2 ** 31 - 1

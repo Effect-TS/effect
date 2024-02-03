@@ -23,7 +23,7 @@ describe("Foreign", () => {
     }))
   it.effect("Tag", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.GenericTag<number>("number")
       const result = yield* $(tag, Effect.provideService(tag, 10))
       assert.deepEqual(result, 10)
     }))

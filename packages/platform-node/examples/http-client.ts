@@ -21,7 +21,7 @@ interface TodoService {
     _: TodoWithoutId
   ) => Effect.Effect<never, Http.error.HttpClientError | Http.body.BodyError | ParseResult.ParseError, Todo>
 }
-const TodoService = Context.Tag<TodoService>()
+const TodoService = Context.GenericTag<TodoService>("@effect/platform-node/examples/TodoService")
 
 const makeTodoService = Effect.gen(function*(_) {
   const defaultClient = yield* _(Http.client.Client)

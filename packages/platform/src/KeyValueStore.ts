@@ -200,7 +200,7 @@ export interface SchemaStore<R, A> {
  */
 export const layerSchema: <A, I, R>(
   schema: Schema.Schema<A, I, R>,
-  tagIdentifier?: unknown
+  tagIdentifier: string
 ) => {
   readonly tag: Context.Tag<SchemaStore<R, A>, SchemaStore<R, A>>
   readonly layer: Layer.Layer<KeyValueStore, never, SchemaStore<R, A>>
