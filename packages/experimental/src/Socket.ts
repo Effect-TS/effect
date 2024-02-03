@@ -31,7 +31,7 @@ export type SocketTypeId = typeof SocketTypeId
  * @since 1.0.0
  * @category tags
  */
-export const Socket: Context.Tag<Socket, Socket> = Context.Tag<Socket>(
+export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
   "@effect/experimental/Socket"
 )
 
@@ -165,7 +165,7 @@ export interface WebSocket {
  * @since 1.0.0
  * @category tags
  */
-export const WebSocket: Context.Tag<WebSocket, globalThis.WebSocket> = Context.Tag(
+export const WebSocket: Context.Tag<WebSocket, globalThis.WebSocket> = Context.GenericTag(
   "@effect/experimental/Socket/WebSocket"
 )
 

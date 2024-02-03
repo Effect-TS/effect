@@ -14,7 +14,7 @@ import { assert, describe } from "vitest"
 describe("Stream.Foreign", () => {
   it.effect("Tag", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.GenericTag<number>("number")
       const result = yield* $(
         tag,
         Stream.runCollect,
@@ -38,7 +38,7 @@ describe("Stream.Foreign", () => {
 
   it.effect("Either.right", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.GenericTag<number>("number")
 
       const result = yield* $(
         Either.right(10),
@@ -51,7 +51,7 @@ describe("Stream.Foreign", () => {
 
   it.effect("Either.left", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.GenericTag<number>("number")
       const result = yield* $(
         Either.left(10),
         Stream.runCollect,
@@ -63,7 +63,7 @@ describe("Stream.Foreign", () => {
 
   it.effect("Option.some", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.GenericTag<number>("number")
       const result = yield* $(
         Option.some(10),
         Stream.runCollect,
@@ -75,7 +75,7 @@ describe("Stream.Foreign", () => {
 
   it.effect("Option.none", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.GenericTag<number>("number")
       const result = yield* $(
         Option.none(),
         Stream.runCollect,
@@ -87,7 +87,7 @@ describe("Stream.Foreign", () => {
 
   it.effect("Effect.fail", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.GenericTag<number>("number")
       const result = yield* $(
         Effect.fail("ok"),
         Stream.runCollect,
@@ -99,7 +99,7 @@ describe("Stream.Foreign", () => {
 
   it.effect("Effect.succeed", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>()
+      const tag = Context.GenericTag<number>("number")
       const result = yield* $(
         Effect.succeed("ok"),
         Stream.runCollect,

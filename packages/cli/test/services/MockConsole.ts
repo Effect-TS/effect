@@ -12,7 +12,7 @@ export interface MockConsole extends Console.Console {
   ) => Effect.Effect<never, never, ReadonlyArray<string>>
 }
 
-export const MockConsole = Context.Tag<Console.Console, MockConsole>(
+export const MockConsole = Context.GenericTag<Console.Console, MockConsole>(
   "effect/Console"
 )
 const pattern = new RegExp(
