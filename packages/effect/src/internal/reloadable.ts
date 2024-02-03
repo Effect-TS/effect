@@ -1,7 +1,6 @@
 import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
 import { pipe } from "../Function.js"
-import { globalValue } from "../GlobalValue.js"
 import type * as Layer from "../Layer.js"
 import type * as Reloadable from "../Reloadable.js"
 import type * as Schedule from "../Schedule.js"
@@ -121,24 +120,13 @@ export const manual = <Out extends Context.Tag<any, any>, In, E>(
   )
 
 /** @internal */
-const tagMap = globalValue(
-  Symbol.for("effect/Reloadable/tagMap"),
-  () => new WeakMap<Context.Tag<any, any>, Context.Tag<any, any>>([])
-)
-
-/** @internal */
 export const reloadableTag = <T extends Context.Tag<any, any>>(
   tag: T
 ): Context.Tag<Reloadable.Reloadable<Context.Tag.Identifier<T>>, Reloadable.Reloadable<Context.Tag.Service<T>>> => {
-  if (tagMap.has(tag)) {
-    return tagMap.get(tag)!
-  }
-  const newTag = Context.Tag<
+  return Context.GenericTag<
     Reloadable.Reloadable<Context.Tag.Identifier<T>>,
     Reloadable.Reloadable<Context.Tag.Service<T>>
-  >()
-  tagMap.set(tag, newTag)
-  return newTag
+  >(`effect/Reloadable<${tag.key}>`)
 }
 
 /** @internal */

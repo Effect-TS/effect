@@ -24,7 +24,7 @@ export const HttpAgentTypeId: NodeClient.HttpAgentTypeId = Symbol.for(
 ) as NodeClient.HttpAgentTypeId
 
 /** @internal */
-export const HttpAgent = Context.Tag<NodeClient.HttpAgent>(HttpAgentTypeId)
+export const HttpAgent = Context.GenericTag<NodeClient.HttpAgent>("@effect/platform-node/Http/NodeClient/HttpAgent")
 
 /** @internal */
 export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<Scope.Scope, never, NodeClient.HttpAgent> =>

@@ -107,9 +107,7 @@ export const makeData = (
 /**
  * @since 2.0.0
  */
-export const TestClock: Context.Tag<TestClock, TestClock> = Context.Tag<TestClock>(
-  Symbol.for("effect/TestClock")
-)
+export const TestClock: Context.Tag<TestClock, TestClock> = Context.GenericTag<TestClock>("effect/TestClock")
 
 /**
  * The warning message that will be displayed if a test is using time but is

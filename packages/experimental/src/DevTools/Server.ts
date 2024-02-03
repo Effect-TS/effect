@@ -41,7 +41,7 @@ export interface Server {
  * @since 1.0.0
  * @category tags
  */
-export const Server = Context.Tag<Server, ServerImpl>("@effect/experimental/DevTools/Server")
+export const Server = Context.GenericTag<Server, ServerImpl>("@effect/experimental/DevTools/Server")
 
 /**
  * @since 1.0.0
