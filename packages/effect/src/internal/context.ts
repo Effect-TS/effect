@@ -1,7 +1,6 @@
 import type * as C from "../Context.js"
 import * as Equal from "../Equal.js"
 import { dual } from "../Function.js"
-import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as O from "../Option.js"
@@ -23,7 +22,7 @@ export const STMTypeId: STM.STMTypeId = Symbol.for(
 ) as STM.STMTypeId
 
 /** @internal */
-export const TagProto: C.Tag<unknown, unknown> = {
+export const TagProto: any = {
   ...EffectPrototype,
   _tag: "Tag",
   _op: "Tag",
@@ -38,7 +37,7 @@ export const TagProto: C.Tag<unknown, unknown> = {
   toJSON<I, A>(this: C.Tag<I, A>) {
     return {
       _id: "Tag",
-      identifier: this.identifier,
+      key: this.key,
       stack: this.stack
     }
   },
@@ -56,13 +55,8 @@ export const TagProto: C.Tag<unknown, unknown> = {
   }
 }
 
-const tagRegistry = globalValue("effect/Context/Tag/tagRegistry", () => new Map<any, C.Tag<any, any>>())
-
 /** @internal */
-export const makeTag = <Identifier, Service = Identifier>(identifier?: unknown): C.Tag<Identifier, Service> => {
-  if (identifier && tagRegistry.has(identifier)) {
-    return tagRegistry.get(identifier)!
-  }
+export const makeGenericTag = <Identifier, Service = Identifier>(key: string): C.Tag<Identifier, Service> => {
   const limit = Error.stackTraceLimit
   Error.stackTraceLimit = 2
   const creationError = new Error()
@@ -73,11 +67,26 @@ export const makeTag = <Identifier, Service = Identifier>(identifier?: unknown):
       return creationError.stack
     }
   })
-  if (identifier) {
-    tag.identifier = identifier
-    tagRegistry.set(identifier, tag)
-  }
+  tag.key = key
   return tag
+}
+
+/** @internal */
+export const Tag = <const Id extends string>(id: Id) => <Self, Shape>(): C.TagClass<Self, Id, Shape> => {
+  const limit = Error.stackTraceLimit
+  Error.stackTraceLimit = 2
+  const creationError = new Error()
+  Error.stackTraceLimit = limit
+
+  function TagClass() {}
+  Object.setPrototypeOf(TagClass, TagProto)
+  TagClass.key = id
+  Object.defineProperty(TagClass, "stack", {
+    get() {
+      return creationError.stack
+    }
+  })
+  return TagClass as any
 }
 
 /** @internal */
@@ -122,14 +131,14 @@ export const ContextProto: Omit<C.Context<unknown>, "unsafeMap"> = {
 }
 
 /** @internal */
-export const makeContext = <Services>(unsafeMap: Map<C.Tag<any, any>, any>): C.Context<Services> => {
+export const makeContext = <Services>(unsafeMap: Map<string, any>): C.Context<Services> => {
   const context = Object.create(ContextProto)
   context.unsafeMap = unsafeMap
   return context
 }
 
 const serviceNotFoundError = (tag: C.Tag<any, any>) => {
-  const error = new Error(`Service not found${tag.identifier ? `: ${String(tag.identifier)}` : ""}`)
+  const error = new Error(`Service not found${tag.key ? `: ${String(tag.key)}` : ""}`)
   if (tag.stack) {
     const lines = tag.stack.split("\n")
     if (lines.length > 2) {
@@ -162,7 +171,7 @@ export const empty = (): C.Context<never> => _empty
 export const make = <T extends C.Tag<any, any>>(
   tag: T,
   service: C.Tag.Service<T>
-): C.Context<C.Tag.Identifier<T>> => makeContext(new Map([[tag, service]]))
+): C.Context<C.Tag.Identifier<T>> => makeContext(new Map([[tag.key, service]]))
 
 /** @internal */
 export const add = dual<
@@ -179,7 +188,7 @@ export const add = dual<
   ) => C.Context<Services | C.Tag.Identifier<T>>
 >(3, (self, tag, service) => {
   const map = new Map(self.unsafeMap)
-  map.set(tag as C.Tag<unknown, unknown>, service)
+  map.set(tag.key, service)
   return makeContext(map)
 })
 
@@ -188,10 +197,10 @@ export const unsafeGet = dual<
   <S, I>(tag: C.Tag<I, S>) => <Services>(self: C.Context<Services>) => S,
   <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => S
 >(2, (self, tag) => {
-  if (!self.unsafeMap.has(tag)) {
+  if (!self.unsafeMap.has(tag.key)) {
     throw serviceNotFoundError(tag as any)
   }
-  return self.unsafeMap.get(tag)! as any
+  return self.unsafeMap.get(tag.key)! as any
 })
 
 /** @internal */
@@ -205,10 +214,10 @@ export const getOption = dual<
   <S, I>(tag: C.Tag<I, S>) => <Services>(self: C.Context<Services>) => O.Option<S>,
   <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => O.Option<S>
 >(2, (self, tag) => {
-  if (!self.unsafeMap.has(tag)) {
+  if (!self.unsafeMap.has(tag.key)) {
     return option.none
   }
-  return option.some(self.unsafeMap.get(tag)! as any)
+  return option.some(self.unsafeMap.get(tag.key)! as any)
 })
 
 /** @internal */
@@ -229,7 +238,7 @@ export const pick =
   (self: C.Context<Services>): C.Context<
     { [k in keyof S]: C.Tag.Identifier<S[k]> }[number]
   > => {
-    const tagSet = new Set<unknown>(tags)
+    const tagSet = new Set<string>(tags.map((_) => _.key))
     const newEnv = new Map()
     for (const [tag, s] of self.unsafeMap.entries()) {
       if (tagSet.has(tag)) {
@@ -247,7 +256,7 @@ export const omit =
   > => {
     const newEnv = new Map(self.unsafeMap)
     for (const tag of tags) {
-      newEnv.delete(tag)
+      newEnv.delete(tag.key)
     }
     return makeContext(newEnv)
   }

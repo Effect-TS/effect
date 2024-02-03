@@ -1864,12 +1864,13 @@ export const serviceFunctions = <SR, SE, S>(
 export const serviceConstants = <SR, SE, S>(
   getService: Effect.Effect<SR, SE, S>
 ): {
-  [k in { [k in keyof S]: S[k] extends Effect.Effect<any, any, any> ? k : never }[keyof S]]: S[k] extends
-    Effect.Effect<infer R, infer E, infer A> ? Effect.Effect<R | SR, E | SE, A> : never
+  [k in { [k in keyof S]: k }[keyof S]]: S[k] extends Effect.Effect<infer R, infer E, infer A> ?
+    Effect.Effect<R | SR, E | SE, A> :
+    Effect.Effect<SR, SE, S[k]>
 } =>
   new Proxy({} as any, {
     get(_target: any, prop: any, _receiver) {
-      return core.flatMap(getService, (s: any) => s[prop])
+      return core.flatMap(getService, (s: any) => core.isEffect(s[prop]) ? s[prop] : core.succeed(s[prop]))
     }
   })
 
@@ -1882,8 +1883,9 @@ export const serviceMembers = <SR, SE, S>(getService: Effect.Effect<SR, SE, S>):
         : never
   }
   constants: {
-    [k in { [k in keyof S]: S[k] extends Effect.Effect<any, any, any> ? k : never }[keyof S]]: S[k] extends
-      Effect.Effect<infer R, infer E, infer A> ? Effect.Effect<R | SR, E | SE, A> : never
+    [k in { [k in keyof S]: k }[keyof S]]: S[k] extends Effect.Effect<infer R, infer E, infer A> ?
+      Effect.Effect<R | SR, E | SE, A> :
+      Effect.Effect<SR, SE, S[k]>
   }
 } => ({
   functions: serviceFunctions(getService),
@@ -1961,7 +1963,7 @@ export const currentParentSpan: Effect.Effect<never, Cause.NoSuchElementExceptio
 export const currentSpan: Effect.Effect<never, Cause.NoSuchElementException, Tracer.Span> = core.flatMap(
   core.context<never>(),
   (context) => {
-    const span = context.unsafeMap.get(internalTracer.spanTag) as Tracer.ParentSpan | undefined
+    const span = context.unsafeMap.get(internalTracer.spanTag.key) as Tracer.ParentSpan | undefined
     return span !== undefined && span._tag === "Span"
       ? core.succeed(span)
       : core.fail(new core.NoSuchElementException())

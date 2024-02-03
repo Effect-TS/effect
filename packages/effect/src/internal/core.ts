@@ -3008,6 +3008,8 @@ export const mapInputContext = dual<
 
 /** @internal */
 export const currentSpanFromFiber = <E, A>(fiber: Fiber.RuntimeFiber<E, A>): Option.Option<Tracer.Span> => {
-  const span = fiber.getFiberRef(currentContext).unsafeMap.get(internalTracer.spanTag) as Tracer.ParentSpan | undefined
+  const span = fiber.getFiberRef(currentContext).unsafeMap.get(internalTracer.spanTag.key) as
+    | Tracer.ParentSpan
+    | undefined
   return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
 }
