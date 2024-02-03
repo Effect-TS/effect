@@ -56,7 +56,7 @@ export const TagProto: any = {
 }
 
 /** @internal */
-export const makeTag = <Identifier, Service = Identifier>(key: string): C.Tag<Identifier, Service> => {
+export const makeGenericTag = <Identifier, Service = Identifier>(key: string): C.Tag<Identifier, Service> => {
   const limit = Error.stackTraceLimit
   Error.stackTraceLimit = 2
   const creationError = new Error()
@@ -69,6 +69,24 @@ export const makeTag = <Identifier, Service = Identifier>(key: string): C.Tag<Id
   })
   tag.key = key
   return tag
+}
+
+/** @internal */
+export const Tag = <const Id extends string>(id: Id) => <Self, Shape>(): C.TagClass<Self, Id, Shape> => {
+  const limit = Error.stackTraceLimit
+  Error.stackTraceLimit = 2
+  const creationError = new Error()
+  Error.stackTraceLimit = limit
+
+  function TagClass() {}
+  Object.setPrototypeOf(TagClass, TagProto)
+  TagClass.key = id
+  Object.defineProperty(TagClass, "stack", {
+    get() {
+      return creationError.stack
+    }
+  })
+  return TagClass as any
 }
 
 /** @internal */
@@ -180,7 +198,6 @@ export const unsafeGet = dual<
   <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => S
 >(2, (self, tag) => {
   if (!self.unsafeMap.has(tag.key)) {
-    console.log(self.unsafeMap, tag.key)
     throw serviceNotFoundError(tag as any)
   }
   return self.unsafeMap.get(tag.key)! as any

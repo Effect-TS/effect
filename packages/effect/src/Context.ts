@@ -107,7 +107,7 @@ export declare namespace Tag {
  * @since 2.0.0
  * @category constructors
  */
-export const Tag: <Identifier, Service = Identifier>(key: string) => Tag<Identifier, Service> = internal.makeTag
+export const Tag: <Identifier, Service = Identifier>(key: string) => Tag<Identifier, Service> = internal.makeGenericTag
 
 const TypeId: unique symbol = internal.TypeId as TypeId
 
@@ -387,10 +387,4 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
  * @since 2.0.0
  * @category constructors
  */
-export const TagClass = <const Id extends string>(id: Id) => <Self, Shape>(): TagClass<Self, Id, Shape> => {
-  function TagClass() {}
-  const original = Tag(id)
-  Object.assign(TagClass, original)
-  Object.setPrototypeOf(TagClass, Object.getPrototypeOf(original))
-  return TagClass as any
-}
+export const TagClass: <const Id extends string>(id: Id) => <Self, Shape>() => TagClass<Self, Id, Shape> = internal.Tag
