@@ -10,7 +10,7 @@ export const make = (params?: Partial<CliConfig.CliConfig>): CliConfig.CliConfig
 })
 
 /** @internal */
-export const Tag = Context.Tag<CliConfig.CliConfig>("@effect/cli/CliConfig")
+export const Tag = Context.GenericTag<CliConfig.CliConfig>("@effect/cli/CliConfig")
 
 /** @internal */
 export const defaultConfig: CliConfig.CliConfig = {

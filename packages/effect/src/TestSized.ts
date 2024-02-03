@@ -29,7 +29,7 @@ export interface TestSized {
 /**
  * @since 2.0.0
  */
-export const TestSized: Context.Tag<TestSized, TestSized> = Context.Tag("effect/TestSized")
+export const TestSized: Context.Tag<TestSized, TestSized> = Context.GenericTag("effect/TestSized")
 
 /** @internal */
 class SizedImpl implements TestSized {

@@ -7,10 +7,10 @@ declare const aContext: Schema.Schema<string, string, "a">
 declare const bContext: Schema.Schema<number, number, "b">
 declare const cContext: Schema.Schema<string, string, "c">
 
-const Taga = Context.Tag<"a", string>("a")
-const Tagb = Context.Tag<"b", number>("b")
-const Tag1 = Context.Tag<"Tag1", string>("Tag1")
-const Tag2 = Context.Tag<"Tag2", number>("Tag2")
+const Taga = Context.GenericTag<"a", string>("a")
+const Tagb = Context.GenericTag<"b", number>("b")
+const Tag1 = Context.GenericTag<"Tag1", string>("Tag1")
+const Tag2 = Context.GenericTag<"Tag2", number>("Tag2")
 
 // ---------------------------------------------
 // declare

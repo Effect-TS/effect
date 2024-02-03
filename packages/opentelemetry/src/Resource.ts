@@ -3,7 +3,7 @@
  */
 import * as Resources from "@opentelemetry/resources"
 import { SemanticResourceAttributes, TelemetrySdkLanguageValues } from "@opentelemetry/semantic-conventions"
-import { Tag } from "effect/Context"
+import { GenericTag } from "effect/Context"
 import * as Layer from "effect/Layer"
 
 /**
@@ -18,7 +18,7 @@ export interface Resource {
  * @since 1.0.0
  * @category tag
  */
-export const Resource = Tag<Resource, Resources.Resource>("@effect/opentelemetry/Resource")
+export const Resource = GenericTag<Resource, Resources.Resource>("@effect/opentelemetry/Resource")
 
 /**
  * @since 1.0.0

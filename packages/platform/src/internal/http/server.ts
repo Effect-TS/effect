@@ -12,7 +12,7 @@ import type * as ServerRequest from "../../Http/ServerRequest.js"
 export const TypeId: Server.TypeId = Symbol.for("@effect/platform/Http/Server") as Server.TypeId
 
 /** @internal */
-export const serverTag = Context.Tag<Server.Server>("@effect/platform/Http/Server")
+export const serverTag = Context.GenericTag<Server.Server>("@effect/platform/Http/Server")
 
 const serverProto = {
   [TypeId]: TypeId

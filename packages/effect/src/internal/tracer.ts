@@ -18,10 +18,10 @@ export const make = (options: Omit<Tracer.Tracer, Tracer.TracerTypeId>): Tracer.
 })
 
 /** @internal */
-export const tracerTag = Context.Tag<Tracer.Tracer>("effect/Tracer")
+export const tracerTag = Context.GenericTag<Tracer.Tracer>("effect/Tracer")
 
 /** @internal */
-export const spanTag = Context.Tag<Tracer.ParentSpan>("effect/ParentSpan")
+export const spanTag = Context.GenericTag<Tracer.ParentSpan>("effect/ParentSpan")
 
 const ids = globalValue("effect/Tracer/SpanId.ids", () => MutableRef.make(0))
 

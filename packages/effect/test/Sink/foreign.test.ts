@@ -15,7 +15,7 @@ const runSink = <R, E, A>(sink: Sink.Sink<R, E, unknown, unknown, A>) => Stream.
 describe("Channel.Foreign", () => {
   it.effect("Tag", () =>
     Effect.gen(function*($) {
-      const tag = Context.Tag<number>("number")
+      const tag = Context.GenericTag<number>("number")
       const result = yield* $(tag, runSink, Effect.provideService(tag, 10))
       assert.deepEqual(result, 10)
     }))

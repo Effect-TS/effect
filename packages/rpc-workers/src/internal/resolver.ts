@@ -1,7 +1,7 @@
 import * as Worker from "@effect/platform/Worker"
 import { RpcTransportError } from "@effect/rpc/Error"
 import * as Resolver from "@effect/rpc/Resolver"
-import { Tag } from "effect/Context"
+import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type { Scope } from "effect/Scope"
@@ -9,7 +9,7 @@ import type * as WWResolver from "../Resolver.js"
 import * as schema from "../Schema.js"
 
 /** @internal */
-export const RpcWorkerPool = Tag<WWResolver.RpcWorkerPool>("@effect/rpc-workers/RpcWorkerPool")
+export const RpcWorkerPool = GenericTag<WWResolver.RpcWorkerPool>("@effect/rpc-workers/RpcWorkerPool")
 
 /** @internal */
 export const makePool = (

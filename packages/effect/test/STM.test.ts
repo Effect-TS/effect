@@ -20,7 +20,7 @@ interface STMEnv {
   readonly ref: TRef.TRef<number>
 }
 
-const STMEnv = Context.Tag<STMEnv>("STMEnv")
+const STMEnv = Context.GenericTag<STMEnv>("STMEnv")
 
 const makeSTMEnv = (n: number): Effect.Effect<never, never, STMEnv> =>
   pipe(

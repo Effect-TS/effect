@@ -783,7 +783,7 @@ export const retry = dual<
   ) => Layer.Layer<RIn | RIn2, E, ROut>
 >(2, (self, schedule) =>
   suspend(() => {
-    const stateTag = Context.Tag<{ state: unknown }>("effect/Layer/retry/{ state: unknown }")
+    const stateTag = Context.GenericTag<{ state: unknown }>("effect/Layer/retry/{ state: unknown }")
     return pipe(
       succeed(stateTag, { state: schedule.initial }),
       flatMap((env: Context.Context<{ state: unknown }>) =>
@@ -1079,7 +1079,7 @@ export const zipWith = dual<
 export const unwrapEffect = <R, E, R1, E1, A>(
   self: Effect.Effect<R, E, Layer.Layer<R1, E1, A>>
 ): Layer.Layer<R | R1, E | E1, A> => {
-  const tag = Context.Tag<Layer.Layer<R1, E1, A>>("effect/Layer/unwrapEffect/Layer.Layer<R1, E1, A>")
+  const tag = Context.GenericTag<Layer.Layer<R1, E1, A>>("effect/Layer/unwrapEffect/Layer.Layer<R1, E1, A>")
   return flatMap(fromEffect(tag, self), (context) => Context.get(context, tag))
 }
 
@@ -1087,7 +1087,7 @@ export const unwrapEffect = <R, E, R1, E1, A>(
 export const unwrapScoped = <R, E, R1, E1, A>(
   self: Effect.Effect<R, E, Layer.Layer<R1, E1, A>>
 ): Layer.Layer<R1 | Exclude<R, Scope.Scope>, E | E1, A> => {
-  const tag = Context.Tag<Layer.Layer<R1, E1, A>>("effect/Layer/unwrapScoped/Layer.Layer<R1, E1, A>")
+  const tag = Context.GenericTag<Layer.Layer<R1, E1, A>>("effect/Layer/unwrapScoped/Layer.Layer<R1, E1, A>")
   return flatMap(scoped(tag, self), (context) => Context.get(context, tag))
 }
 

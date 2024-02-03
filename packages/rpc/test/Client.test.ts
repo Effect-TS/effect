@@ -7,7 +7,7 @@ import * as Server from "@effect/rpc/Server"
 import { typeEquals } from "@effect/rpc/test/utils"
 import * as S from "@effect/schema/Schema"
 import { Cause } from "effect"
-import { Tag } from "effect/Context"
+import { GenericTag } from "effect/Context"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -30,7 +30,7 @@ const makeCounter = () => {
   } as const
 }
 interface Counter extends ReturnType<typeof makeCounter> {}
-const Counter = Tag<Counter>("Counter")
+const Counter = GenericTag<Counter>("Counter")
 
 const posts = RS.withServiceError(
   RS.make({

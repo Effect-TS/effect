@@ -8,15 +8,15 @@ interface NumberService {
   readonly n: number
 }
 
-const NumberService = Context.Tag<NumberService>("NumberService")
+const NumberService = Context.GenericTag<NumberService>("NumberService")
 
 interface StringService {
   readonly s: string
 }
 
-const StringService = Context.Tag<StringService>("StringService")
+const StringService = Context.GenericTag<StringService>("StringService")
 
-class NumberRepo extends Context.TagClass("NumberRepo")<NumberRepo, {
+class NumberRepo extends Context.Tag("NumberRepo")<NumberRepo, {
   readonly numbers: Array<number>
 }>() {
   static numbers = Effect.serviceConstants(NumberRepo).numbers
@@ -100,7 +100,7 @@ describe("Effect", () => {
     interface Service {
       foo: (x: string, y: number) => Effect.Effect<never, never, string>
     }
-    const Service = Context.Tag<Service>("Service")
+    const Service = Context.GenericTag<Service>("Service")
     const { foo } = Effect.serviceFunctions(Service)
     return pipe(
       Effect.gen(function*(_) {
@@ -119,7 +119,7 @@ describe("Effect", () => {
     interface Service {
       baz: Effect.Effect<never, never, string>
     }
-    const Service = Context.Tag<Service>("Service")
+    const Service = Context.GenericTag<Service>("Service")
     const { baz } = Effect.serviceConstants(Service)
     return pipe(
       Effect.gen(function*(_) {
@@ -139,7 +139,7 @@ describe("Effect", () => {
       foo: (x: string, y: number) => Effect.Effect<never, never, string>
       baz: Effect.Effect<never, never, string>
     }
-    const Service = Context.Tag<Service>("Service")
+    const Service = Context.GenericTag<Service>("Service")
     const { constants, functions } = Effect.serviceMembers(Service)
     return pipe(
       Effect.gen(function*(_) {

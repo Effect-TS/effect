@@ -23,7 +23,7 @@ export interface NavalFateStore {
   removeMine(x: number, y: number): Effect.Effect<never, never, void>
 }
 
-export const NavalFateStore = Context.Tag<NavalFateStore>("NavalFateStore")
+export const NavalFateStore = Context.GenericTag<NavalFateStore>("NavalFateStore")
 
 export const make = Effect.gen(function*($) {
   const shipsStore = yield* $(Effect.map(

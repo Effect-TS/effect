@@ -18,11 +18,11 @@ import { describe, expect } from "vitest"
 interface Counter {
   readonly _: unique symbol
 }
-const Counter = Context.Tag<Counter, { count: number }>("counter")
+const Counter = Context.GenericTag<Counter, { count: number }>("counter")
 interface Requests {
   readonly _: unique symbol
 }
-const Requests = Context.Tag<Requests, { count: number }>("requests")
+const Requests = Context.GenericTag<Requests, { count: number }>("requests")
 
 export const userIds: ReadonlyArray<number> = ReadonlyArray.range(1, 26)
 

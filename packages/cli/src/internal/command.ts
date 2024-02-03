@@ -191,7 +191,7 @@ export const fromDescriptor = dual<
       descriptor,
       handler ??
         ((_) => Effect.failSync(() => ValidationError.helpRequested(getDescriptor(self)))),
-      Context.Tag(`@effect/cli/Command/(${Array.from(InternalDescriptor.getNames(descriptor)).join("|")})`)
+      Context.GenericTag(`@effect/cli/Command/(${Array.from(InternalDescriptor.getNames(descriptor)).join("|")})`)
     )
     return self as any
   }
@@ -307,7 +307,7 @@ export const prompt = <Name extends string, A, R, E>(
       (_) => _.value
     ),
     handler,
-    Context.Tag(`@effect/cli/Prompt/${name}`)
+    Context.GenericTag(`@effect/cli/Prompt/${name}`)
   )
 
 /** @internal */

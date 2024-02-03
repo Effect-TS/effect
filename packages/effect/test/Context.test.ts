@@ -7,19 +7,19 @@ import { assert, describe, expect, it } from "vitest"
 interface A {
   a: number
 }
-const A = Context.Tag<A>("A")
+const A = Context.GenericTag<A>("A")
 
 interface B {
   b: number
 }
-const B = Context.Tag<B>("B")
+const B = Context.GenericTag<B>("B")
 
 interface C {
   c: number
 }
-const C = Context.Tag<C>("C")
+const C = Context.GenericTag<C>("C")
 
-class D extends Context.TagClass("D")<D, { readonly d: number }>() {}
+class D extends Context.Tag("D")<D, { readonly d: number }>() {}
 
 describe("Context", () => {
   it("Tag.toJson()", () => {
@@ -52,7 +52,7 @@ describe("Context", () => {
     interface FooBar {
       readonly FooBar: unique symbol
     }
-    const Service = Context.Tag<FooBar, Foo | Bar>("FooBar")
+    const Service = Context.GenericTag<FooBar, Foo | Bar>("FooBar")
     const context = Context.make(Service, { _tag: "Foo" })
     expect(Context.get(context, Service)).toStrictEqual({ _tag: "Foo" })
   })
@@ -253,7 +253,7 @@ describe("Context", () => {
   })
 
   it("isTag", () => {
-    expect(Context.isTag(Context.Tag("Demo"))).toEqual(true)
+    expect(Context.isTag(Context.GenericTag("Demo"))).toEqual(true)
     expect(Context.isContext(null)).toEqual(false)
   })
 })

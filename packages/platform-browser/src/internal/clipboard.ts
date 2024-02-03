@@ -1,11 +1,11 @@
 import * as PlatformError from "@effect/platform/Error"
-import { Tag } from "effect/Context"
+import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Clipboard from "../Clipboard.js"
 
 /** @internal */
-export const tag = Tag<Clipboard.Clipboard>("@effect/platform-browser/Clipboard")
+export const tag = GenericTag<Clipboard.Clipboard>("@effect/platform-browser/Clipboard")
 
 /** @internal */
 export const make = (

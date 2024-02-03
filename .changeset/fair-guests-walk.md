@@ -14,7 +14,7 @@
 "@effect/rpc": minor
 ---
 
-With this change we now require a string key to be provided for all tags, so when previously you could do:
+With this change we now require a string key to be provided for all tags and renames the dear old `Tag` to `GenericTag`, so when previously you could do:
 
 ```ts
 import { Effect, Context } from "effect";
@@ -36,7 +36,7 @@ import { Effect, Context } from "effect";
 interface Service {
   readonly _: unique symbol;
 }
-const Service = Context.Tag<
+const Service = Context.GenericTag<
   Service,
   {
     number: Effect.Effect<never, never, number>;
@@ -50,7 +50,7 @@ Furthermore we introduce a new way of constructing tags that should be considere
 
 ```ts
 import { Effect, Context } from "effect";
-class Service extends Context.TagClass("Service")<
+class Service extends Context.Tag("Service")<
   Service,
   {
     number: Effect.Effect<never, never, number>;

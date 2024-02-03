@@ -5,7 +5,7 @@ import { Person, User, WorkerMessage } from "./schema.js"
 interface Name {
   readonly _: unique symbol
 }
-const Name = Context.Tag<Name, string>("Name")
+const Name = Context.GenericTag<Name, string>("Name")
 
 const WorkerLive = Runner.layerSerialized(WorkerMessage, {
   GetPersonById: (req) =>

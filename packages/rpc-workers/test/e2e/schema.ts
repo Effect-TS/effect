@@ -1,6 +1,6 @@
 import * as Schema from "@effect/rpc-workers/Schema"
 import * as S from "@effect/schema/Schema"
-import { Tag } from "effect/Context"
+import { GenericTag } from "effect/Context"
 
 export const schema = Schema.make({
   currentDate: {
@@ -23,7 +23,7 @@ export interface Name {
   readonly name: string
 }
 
-export const Name = Tag<Name>("Name")
+export const Name = GenericTag<Name>("Name")
 
 export const schemaWithSetup = Schema.make({
   __setup: {

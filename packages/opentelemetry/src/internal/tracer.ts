@@ -104,10 +104,10 @@ export class OtelSpan implements EffectTracer.Span {
 }
 
 /** @internal */
-export const TracerProvider = Context.Tag<OtelApi.TracerProvider>("@effect/opentelemetry/Tracer/TracerProvider")
+export const TracerProvider = Context.GenericTag<OtelApi.TracerProvider>("@effect/opentelemetry/Tracer/TracerProvider")
 
 /** @internal */
-export const Tracer = Context.Tag<OtelApi.Tracer>("@effect/opentelemetry/Tracer/Tracer")
+export const Tracer = Context.GenericTag<OtelApi.Tracer>("@effect/opentelemetry/Tracer/Tracer")
 
 /** @internal */
 export const make = Effect.map(Tracer, (tracer) =>
@@ -140,10 +140,10 @@ export const make = Effect.map(Tracer, (tracer) =>
   }))
 
 /** @internal */
-export const traceFlagsTag = Context.Tag<OtelApi.TraceFlags>("@effect/opentelemetry/traceFlags")
+export const traceFlagsTag = Context.GenericTag<OtelApi.TraceFlags>("@effect/opentelemetry/traceFlags")
 
 /** @internal */
-export const traceStateTag = Context.Tag<OtelApi.TraceState>("@effect/opentelemetry/traceState")
+export const traceStateTag = Context.GenericTag<OtelApi.TraceState>("@effect/opentelemetry/traceState")
 
 /** @internal */
 export const makeExternalSpan = (options: {

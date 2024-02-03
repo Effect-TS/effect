@@ -2936,7 +2936,7 @@ export const releaseMapReleaseAll = (
 // circular with Scope
 
 /** @internal */
-export const scopeTag = Context.Tag<Scope.Scope>("effect/Scope")
+export const scopeTag = Context.GenericTag<Scope.Scope>("effect/Scope")
 
 /* @internal */
 export const scope: Effect.Effect<Scope.Scope, never, Scope.Scope> = scopeTag

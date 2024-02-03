@@ -123,7 +123,7 @@ export const manual = <Out extends Context.Tag<any, any>, In, E>(
 export const reloadableTag = <T extends Context.Tag<any, any>>(
   tag: T
 ): Context.Tag<Reloadable.Reloadable<Context.Tag.Identifier<T>>, Reloadable.Reloadable<Context.Tag.Service<T>>> => {
-  return Context.Tag<
+  return Context.GenericTag<
     Reloadable.Reloadable<Context.Tag.Identifier<T>>,
     Reloadable.Reloadable<Context.Tag.Service<T>>
   >(`effect/Reloadable<${tag.key}>`)

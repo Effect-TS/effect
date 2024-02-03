@@ -36,7 +36,7 @@ export interface Client {
  * @since 1.0.0
  * @category tags
  */
-export const Client = Context.Tag<Client, ClientImpl>("@effect/experimental/DevTools/Client")
+export const Client = Context.GenericTag<Client, ClientImpl>("@effect/experimental/DevTools/Client")
 
 /**
  * @since 1.0.0

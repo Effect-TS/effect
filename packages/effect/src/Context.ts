@@ -102,12 +102,13 @@ export declare namespace Tag {
  * @example
  * import * as Context from "effect/Context"
  *
- * assert.strictEqual(Context.Tag("PORT").key === Context.Tag("PORT").key, true)
+ * assert.strictEqual(Context.GenericTag("PORT").key === Context.GenericTag("PORT").key, true)
  *
  * @since 2.0.0
  * @category constructors
  */
-export const Tag: <Identifier, Service = Identifier>(key: string) => Tag<Identifier, Service> = internal.makeGenericTag
+export const GenericTag: <Identifier, Service = Identifier>(key: string) => Tag<Identifier, Service> =
+  internal.makeGenericTag
 
 const TypeId: unique symbol = internal.TypeId as TypeId
 
@@ -163,7 +164,7 @@ export const isContext: (input: unknown) => input is Context<never> = internal.i
  * @example
  * import * as Context from "effect/Context"
  *
- * assert.strictEqual(Context.isTag(Context.Tag("Tag")), true)
+ * assert.strictEqual(Context.isTag(Context.GenericTag("Tag")), true)
  *
  * @since 2.0.0
  * @category guards
@@ -189,7 +190,7 @@ export const empty: () => Context<never> = internal.empty
  * @example
  * import * as Context from "effect/Context"
  *
- * const Port = Context.Tag<{ PORT: number }>("Port")
+ * const Port = Context.GenericTag<{ PORT: number }>("Port")
  *
  * const Services = Context.make(Port, { PORT: 8080 })
  *
@@ -208,8 +209,8 @@ export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) =>
  * import * as Context from "effect/Context"
  * import { pipe } from "effect/Function"
  *
- * const Port = Context.Tag<{ PORT: number }>("Port")
- * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
+ * const Port = Context.GenericTag<{ PORT: number }>("Port")
+ * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
  *
  * const someContext = Context.make(Port, { PORT: 8080 })
  *
@@ -245,8 +246,8 @@ export const add: {
  * import * as Context from "effect/Context"
  * import { pipe } from "effect/Function"
  *
- * const Port = Context.Tag<{ PORT: number }>("Port")
- * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
+ * const Port = Context.GenericTag<{ PORT: number }>("Port")
+ * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
  *
  * const Services = pipe(
  *   Context.make(Port, { PORT: 8080 }),
@@ -275,8 +276,8 @@ export const get: {
  * @example
  * import * as Context from "effect/Context"
  *
- * const Port = Context.Tag<{ PORT: number }>("Port")
- * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
+ * const Port = Context.GenericTag<{ PORT: number }>("Port")
+ * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
  *
  * const Services = Context.make(Port, { PORT: 8080 })
  *
@@ -302,8 +303,8 @@ export const unsafeGet: {
  * import * as Context from "effect/Context"
  * import * as O from "effect/Option"
  *
- * const Port = Context.Tag<{ PORT: number }>("Port")
- * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
+ * const Port = Context.GenericTag<{ PORT: number }>("Port")
+ * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
  *
  * const Services = Context.make(Port, { PORT: 8080 })
  *
@@ -327,8 +328,8 @@ export const getOption: {
  * @example
  * import * as Context from "effect/Context"
  *
- * const Port = Context.Tag<{ PORT: number }>("Port")
- * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
+ * const Port = Context.GenericTag<{ PORT: number }>("Port")
+ * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
  *
  * const firstContext = Context.make(Port, { PORT: 8080 })
  * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
@@ -356,8 +357,8 @@ export const merge: {
  * import { pipe } from "effect/Function"
  * import * as O from "effect/Option"
  *
- * const Port = Context.Tag<{ PORT: number }>("Port")
- * const Timeout = Context.Tag<{ TIMEOUT: number }>("Timeout")
+ * const Port = Context.GenericTag<{ PORT: number }>("Port")
+ * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
  *
  * const someContext = pipe(
  *   Context.make(Port, { PORT: 8080 }),
@@ -387,4 +388,4 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
  * @since 2.0.0
  * @category constructors
  */
-export const TagClass: <const Id extends string>(id: Id) => <Self, Shape>() => TagClass<Self, Id, Shape> = internal.Tag
+export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() => TagClass<Self, Id, Shape> = internal.Tag

@@ -74,7 +74,9 @@ export interface BackingPersistenceStore {
  * @since 1.0.0
  * @category tags
  */
-export const BackingPersistence: Context.Tag<BackingPersistence, BackingPersistence> = Context.Tag<BackingPersistence>(
+export const BackingPersistence: Context.Tag<BackingPersistence, BackingPersistence> = Context.GenericTag<
+  BackingPersistence
+>(
   "@effect/experimental/BackingPersistence"
 )
 
@@ -137,7 +139,9 @@ export declare namespace ResultPersistence {
  * @since 1.0.0
  * @category tags
  */
-export const ResultPersistence: Context.Tag<ResultPersistence, ResultPersistence> = Context.Tag<ResultPersistence>(
+export const ResultPersistence: Context.Tag<ResultPersistence, ResultPersistence> = Context.GenericTag<
+  ResultPersistence
+>(
   "@effect/experimental/ResultPersistence"
 )
 

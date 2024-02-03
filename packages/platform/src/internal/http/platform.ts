@@ -12,7 +12,7 @@ import type * as ServerResponse from "../../Http/ServerResponse.js"
 export const TypeId: Platform.TypeId = Symbol.for("@effect/platform/Http/Platform") as Platform.TypeId
 
 /** @internal */
-export const tag = Context.Tag<Platform.Platform>("@effect/platform/Http/Platform")
+export const tag = Context.GenericTag<Platform.Platform>("@effect/platform/Http/Platform")
 
 /** @internal */
 export const make = (impl: {
