@@ -1,5 +1,5 @@
 import * as Chunk from "../../Chunk.js"
-import type { Context, Tag } from "../../Context.js"
+import type { Context } from "../../Context.js"
 import type { Differ } from "../../Differ.js"
 import * as Equal from "../../Equal.js"
 import * as Dual from "../../Function.js"
@@ -63,7 +63,7 @@ const makeAndThen = <Input, Output, Output2>(
 /** @internal */
 export interface AddService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env, Env | I> {
   readonly _tag: "AddService"
-  readonly tag: Tag<T, I>
+  readonly key: string
   readonly service: T
 }
 
@@ -72,37 +72,37 @@ const AddServiceProto = Object.assign(Object.create(PatchProto), {
 })
 
 const makeAddService = <Env, I, T>(
-  tag: Tag<T, I>,
+  key: string,
   service: T
 ): Differ.Context.Patch<Env, Env | I> => {
   const o = Object.create(AddServiceProto)
-  o.tag = tag
+  o.key = key
   o.service = service
   return o
 }
 
 /** @internal */
-export interface RemoveService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env, Exclude<Env, I>> {
+export interface RemoveService<in out Env, in out I> extends Differ.Context.Patch<Env, Exclude<Env, I>> {
   readonly _tag: "RemoveService"
-  readonly tag: Tag<T, I>
+  readonly key: string
 }
 
 const RemoveServiceProto = Object.assign(Object.create(PatchProto), {
   _tag: "RemoveService"
 })
 
-const makeRemoveService = <Env, I, T>(
-  tag: Tag<T, I>
+const makeRemoveService = <Env, I>(
+  key: string
 ): Differ.Context.Patch<Env, Exclude<Env, I>> => {
   const o = Object.create(RemoveServiceProto)
-  o.tag = tag
+  o.key = key
   return o
 }
 
 /** @internal */
 export interface UpdateService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env | I, Env | I> {
   readonly _tag: "UpdateService"
-  readonly tag: Tag<T, I>
+  readonly key: string
   update(service: T): T
 }
 
@@ -111,11 +111,11 @@ const UpdateServiceProto = Object.assign(Object.create(PatchProto), {
 })
 
 const makeUpdateService = <Env, I, T>(
-  tag: Tag<T, I>,
+  key: string,
   update: (service: T) => T
 ): Differ.Context.Patch<Env | I, Env | I> => {
   const o = Object.create(UpdateServiceProto)
-  o.tag = tag
+  o.key = key
   o.update = update
   return o
 }
@@ -124,7 +124,7 @@ type Instruction =
   | Empty<any, any>
   | AndThen<any, any, any>
   | AddService<any, any, any>
-  | RemoveService<any, any, any>
+  | RemoveService<any, any>
   | UpdateService<any, any, any>
 
 /** @internal */
@@ -184,7 +184,7 @@ export const patch = Dual.dual<
   let patches: Chunk.Chunk<Differ.Context.Patch<unknown, unknown>> = Chunk.of(
     self as Differ.Context.Patch<unknown, unknown>
   )
-  const updatedContext: Map<Tag<any, any>, unknown> = new Map(context.unsafeMap)
+  const updatedContext: Map<string, unknown> = new Map(context.unsafeMap)
   while (Chunk.isNonEmpty(patches)) {
     const head: Instruction = Chunk.headNonEmpty(patches) as Instruction
     const tail = Chunk.tailNonEmpty(patches)
@@ -194,7 +194,7 @@ export const patch = Dual.dual<
         break
       }
       case "AddService": {
-        updatedContext.set(head.tag, head.service)
+        updatedContext.set(head.key, head.service)
         patches = tail
         break
       }
@@ -203,12 +203,12 @@ export const patch = Dual.dual<
         break
       }
       case "RemoveService": {
-        updatedContext.delete(head.tag)
+        updatedContext.delete(head.key)
         patches = tail
         break
       }
       case "UpdateService": {
-        updatedContext.set(head.tag, head.update(updatedContext.get(head.tag)))
+        updatedContext.set(head.key, head.update(updatedContext.get(head.key)))
         wasServiceUpdated = true
         patches = tail
         break

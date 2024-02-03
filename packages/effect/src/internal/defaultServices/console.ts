@@ -6,7 +6,9 @@ import * as core from "../core.js"
 export const TypeId: Console.TypeId = Symbol.for("effect/Console") as Console.TypeId
 
 /** @internal */
-export const consoleTag: Context.Tag<Console.Console, Console.Console> = Context.Tag<Console.Console>(TypeId)
+export const consoleTag: Context.Tag<Console.Console, Console.Console> = Context.GenericTag<Console.Console>(
+  "effect/Console"
+)
 
 /** @internal */
 export const defaultConsole: Console.Console = {

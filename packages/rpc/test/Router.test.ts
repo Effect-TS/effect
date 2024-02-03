@@ -2,7 +2,7 @@ import * as _ from "@effect/rpc/Router"
 import * as RS from "@effect/rpc/Schema"
 import { typeEquals } from "@effect/rpc/test/utils"
 import * as S from "@effect/schema/Schema"
-import { Tag } from "effect/Context"
+import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { describe, expect, it } from "vitest"
@@ -15,7 +15,7 @@ const makeCounter = () => {
   }
 }
 interface Counter extends ReturnType<typeof makeCounter> {}
-const Counter = Tag<Counter>()
+const Counter = GenericTag<Counter>("Counter")
 
 const SomeError_ = S.struct({
   _tag: S.literal("SomeError"),
