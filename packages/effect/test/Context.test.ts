@@ -19,11 +19,20 @@ interface C {
 }
 const C = Context.Tag<C>("C")
 
+class D extends Context.TagClass("D")<D, { readonly d: number }>() {}
+
 describe("Context", () => {
   it("Tag.toJson()", () => {
     const json: any = A.toJSON()
     expect(json["_id"]).toEqual("Tag")
-    expect(json["identifier"]).toEqual(undefined)
+    expect(json["key"]).toEqual("A")
+    expect(typeof json["stack"]).toEqual("string")
+  })
+
+  it("TagClass.toJson()", () => {
+    const json: any = D.toJSON()
+    expect(json["_id"]).toEqual("Tag")
+    expect(json["key"]).toEqual("D")
     expect(typeof json["stack"]).toEqual("string")
   })
 
@@ -51,7 +60,8 @@ describe("Context", () => {
   it("adds and retrieve services", () => {
     const Services = pipe(
       Context.make(A, { a: 0 }),
-      Context.add(B, { b: 1 })
+      Context.add(B, { b: 1 }),
+      Context.add(D, { d: 2 })
     )
 
     expect(Context.get(Services, A)).toEqual({ a: 0 })
@@ -60,6 +70,11 @@ describe("Context", () => {
       Services,
       Context.getOption(B)
     )).toEqual(O.some({ b: 1 }))
+
+    expect(pipe(
+      Services,
+      Context.get(D)
+    )).toEqual({ d: 2 })
 
     expect(pipe(
       Services,
@@ -209,6 +224,14 @@ describe("Context", () => {
         assert.match(
           String(e),
           new RegExp(/Error: Service not found: C \(defined at (.*)Context.test.ts:20:19\)/)
+        )
+      }
+      try {
+        Context.get(Context.empty(), D as never)
+      } catch (e) {
+        assert.match(
+          String(e),
+          new RegExp(/Error: Service not found: D \(defined at (.*)Context.test.ts:22:37\)/)
         )
       }
     }
