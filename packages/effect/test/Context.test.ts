@@ -231,7 +231,7 @@ describe("Context", () => {
       } catch (e) {
         assert.match(
           String(e),
-          new RegExp(/Error: Service not found: D \(defined at (.*)Context.test.ts:22:37\)/)
+          new RegExp(/Error: Service not found: D \(defined at (.*)Context.test.ts:22:32\)/)
         )
       }
     }
