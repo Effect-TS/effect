@@ -1167,26 +1167,32 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 <R, I extends { [K in keyof A]?: any }>(
   self: Schema<R, I, A>
 ): Schema<R, Simplify<Omit<I, Keys[number]>>, Simplify<Omit<A, Keys[number]>>> => {
-  const ast = self.ast
+  return make(omitAST(self.ast, keys))
+}
+
+const omitAST = (ast: AST.AST, keys: ReadonlyArray<PropertyKey>): AST.AST => {
   if (AST.isTransform(ast)) {
     if (AST.isTypeLiteralTransformation(ast.transformation)) {
       const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
         .filter((t) => !(keys as ReadonlyArray<PropertyKey>).includes(t.to))
       if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
-        return make(
-          AST.createTransform(
-            AST.omit(ast.from, keys),
-            AST.omit(ast.to, keys),
-            AST.createTypeLiteralTransformation(propertySignatureTransformations)
-          )
+        return AST.createTransform(
+          AST.omit(ast.from, keys),
+          AST.omit(ast.to, keys),
+          AST.createTypeLiteralTransformation(propertySignatureTransformations)
         )
       } else {
-        return make(AST.omit(ast.from, keys))
+        return omitAST(ast.from, keys)
       }
     }
     throw new Error(`omit: cannot handle this kind of transformation`)
   }
-  return make(AST.omit(ast, keys))
+
+  if (AST.isUnion(ast)) {
+    return AST.createUnion(ast.types.map((t) => omitAST(t, keys)), ast.annotations)
+  }
+
+  return AST.omit(ast, keys)
 }
 
 /**

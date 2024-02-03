@@ -1,5 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { Option } from "effect"
 import { describe, it } from "vitest"
 
 describe("Schema > union", () => {
@@ -180,5 +181,15 @@ describe("Schema > union", () => {
         Util.onExcessPropertyError
       )
     })
+  })
+
+  it("omit with union", () => {
+    const schema1 = S.union(
+      S.struct({ a: S.string, b: S.optionFromNullable(S.string) }),
+      S.struct({ a: S.string, c: S.string })
+    )
+    const schema2 = schema1.pipe(S.omit("a"))
+
+    Util.expectDecodeUnknownSuccess(schema2, { b: "a" }, { b: Option.some("a") })
   })
 })
