@@ -46,16 +46,25 @@ jobs:
       - run: pnpm lint
 
   test:
-    name: Test (${{ matrix.shard }})
+    name: Test (${{ matrix.runtime }} ${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         shard: [1/3, 2/3, 3/3]
+        runtime: [Node, Bun]
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
+      - uses: oven-sh/setup-bun@v1
+        if: matrix.runtime == 'Bun'
+        with:
+          bun-version: 1.0.25
       - name: Test
         run: pnpm vitest --shard ${{ matrix.shard }}
+        if: matrix.runtime == 'Node'
+      - name: Test
+        run: bun vitest --shard ${{ matrix.shard }}
+        if: matrix.runtime == 'Bun'
