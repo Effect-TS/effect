@@ -30,7 +30,7 @@ export interface NetSocket {
  * @since 1.0.0
  * @category tags
  */
-export const NetSocket: Context.Tag<NetSocket, Net.Socket> = Context.Tag(
+export const NetSocket: Context.Tag<NetSocket, Net.Socket> = Context.GenericTag(
   "@effect/experimental/Socket/Node/NetSocket"
 )
 

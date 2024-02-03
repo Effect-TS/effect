@@ -2434,7 +2434,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-const Fetch = Context.Tag<"Fetch", typeof fetch>();
+const Fetch = Context.GenericTag<"Fetch", typeof fetch>();
 
 const api = (url: string): Effect.Effect<"Fetch", Error, unknown> =>
   Fetch.pipe(

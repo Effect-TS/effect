@@ -14,7 +14,7 @@ import type { Readable } from "node:stream"
  * @category tags
  * @since 1.0.0
  */
-export const IncomingMessage = Context.Tag<Http.IncomingMessage>("@effect/rpc-http-node/IncomingMessage")
+export const IncomingMessage = Context.GenericTag<Http.IncomingMessage>("@effect/rpc-http-node/IncomingMessage")
 
 /**
  * @category models

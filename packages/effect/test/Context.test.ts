@@ -7,23 +7,32 @@ import { assert, describe, expect, it } from "vitest"
 interface A {
   a: number
 }
-const A = Context.Tag<A>()
+const A = Context.GenericTag<A>("A")
 
 interface B {
   b: number
 }
-const B = Context.Tag<B>()
+const B = Context.GenericTag<B>("B")
 
 interface C {
   c: number
 }
-const C = Context.Tag<C>("C")
+const C = Context.GenericTag<C>("C")
+
+class D extends Context.Tag("D")<D, { readonly d: number }>() {}
 
 describe("Context", () => {
   it("Tag.toJson()", () => {
     const json: any = A.toJSON()
     expect(json["_id"]).toEqual("Tag")
-    expect(json["identifier"]).toEqual(undefined)
+    expect(json["key"]).toEqual("A")
+    expect(typeof json["stack"]).toEqual("string")
+  })
+
+  it("TagClass.toJson()", () => {
+    const json: any = D.toJSON()
+    expect(json["_id"]).toEqual("Tag")
+    expect(json["key"]).toEqual("D")
     expect(typeof json["stack"]).toEqual("string")
   })
 
@@ -31,12 +40,6 @@ describe("Context", () => {
     const json: any = Context.empty().toJSON()
     expect(json["_id"]).toEqual("Context")
     expect(json["services"]).toEqual([])
-  })
-
-  it("global tag", () => {
-    const a = Context.Tag<number>("effect-test/Context/Tag")
-    const b = Context.Tag<number>("effect-test/Context/Tag")
-    expect(a).toBe(b)
   })
 
   it("aliased tags", () => {
@@ -49,7 +52,7 @@ describe("Context", () => {
     interface FooBar {
       readonly FooBar: unique symbol
     }
-    const Service = Context.Tag<FooBar, Foo | Bar>()
+    const Service = Context.GenericTag<FooBar, Foo | Bar>("FooBar")
     const context = Context.make(Service, { _tag: "Foo" })
     expect(Context.get(context, Service)).toStrictEqual({ _tag: "Foo" })
   })
@@ -57,7 +60,8 @@ describe("Context", () => {
   it("adds and retrieve services", () => {
     const Services = pipe(
       Context.make(A, { a: 0 }),
-      Context.add(B, { b: 1 })
+      Context.add(B, { b: 1 }),
+      Context.add(D, { d: 2 })
     )
 
     expect(Context.get(Services, A)).toEqual({ a: 0 })
@@ -66,6 +70,11 @@ describe("Context", () => {
       Services,
       Context.getOption(B)
     )).toEqual(O.some({ b: 1 }))
+
+    expect(pipe(
+      Services,
+      Context.get(D)
+    )).toEqual({ d: 2 })
 
     expect(pipe(
       Services,
@@ -190,9 +199,9 @@ describe("Context", () => {
     assert.deepNestedPropertyVal(result, "first._tag", "AndThen")
     assert.deepNestedPropertyVal(result, "first.first._tag", "Empty")
     assert.deepNestedPropertyVal(result, "first.second._tag", "UpdateService")
-    assert.deepNestedPropertyVal(result, "first.second.tag", B)
+    assert.deepNestedPropertyVal(result, "first.second.key", B.key)
     assert.deepNestedPropertyVal(result, "second._tag", "RemoveService")
-    assert.deepNestedPropertyVal(result, "second.tag", C)
+    assert.deepNestedPropertyVal(result, "second.key", C.key)
   })
 
   it("error messages", () => {
@@ -217,6 +226,14 @@ describe("Context", () => {
           new RegExp(/Error: Service not found: C \(defined at (.*)Context.test.ts:20:19\)/)
         )
       }
+      try {
+        Context.get(Context.empty(), D as never)
+      } catch (e) {
+        assert.match(
+          String(e),
+          new RegExp(/Error: Service not found: D \(defined at (.*)Context.test.ts:22:32\)/)
+        )
+      }
     }
   })
 
@@ -236,7 +253,7 @@ describe("Context", () => {
   })
 
   it("isTag", () => {
-    expect(Context.isTag(Context.Tag())).toEqual(true)
+    expect(Context.isTag(Context.GenericTag("Demo"))).toEqual(true)
     expect(Context.isContext(null)).toEqual(false)
   })
 })

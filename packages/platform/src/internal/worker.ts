@@ -39,8 +39,8 @@ export const PlatformWorkerTypeId: Worker.PlatformWorkerTypeId = Symbol.for(
 ) as Worker.PlatformWorkerTypeId
 
 /** @internal */
-export const PlatformWorker = Context.Tag<Worker.PlatformWorker>(
-  PlatformWorkerTypeId
+export const PlatformWorker = Context.GenericTag<Worker.PlatformWorker>(
+  "@effect/platform/Worker/PlatformWorker"
 )
 
 /** @internal */
@@ -49,8 +49,8 @@ export const WorkerManagerTypeId: Worker.WorkerManagerTypeId = Symbol.for(
 ) as Worker.WorkerManagerTypeId
 
 /** @internal */
-export const WorkerManager = Context.Tag<Worker.WorkerManager>(
-  WorkerManagerTypeId
+export const WorkerManager = Context.GenericTag<Worker.WorkerManager>(
+  "@effect/platform/Worker/WorkerManager"
 )
 
 /** @internal */
