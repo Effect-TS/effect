@@ -3168,24 +3168,26 @@ export const serviceFunctions: <SR, SE, S>(
 export const serviceConstants: <SR, SE, S>(
   getService: Effect<SR, SE, S>
 ) => {
-  [k in { [k in keyof S]: S[k] extends Effect<any, any, any> ? k : never }[keyof S]]: S[k] extends
-    Effect<infer R, infer E, infer A> ? Effect<R | SR, E | SE, A> : never
+  [k in { [k in keyof S]: k }[keyof S]]: S[k] extends Effect<infer R, infer E, infer A> ? Effect<SR | R, SE | E, A>
+    : Effect<SR, SE, S[k]>
 } = effect.serviceConstants
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const serviceMembers: <SR, SE, S>(getService: Effect<SR, SE, S>) => {
+export const serviceMembers: <SR, SE, S>(
+  getService: Effect<SR, SE, S>
+) => {
   functions: {
     [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never }[keyof S]]:
       S[k] extends (...args: infer Args) => Effect<infer R, infer E, infer A> ?
-        (...args: Args) => Effect<R | SR, E | SE, A> :
-        never
+        (...args: Args) => Effect<SR | R, SE | E, A>
+        : never
   }
   constants: {
-    [k in { [k in keyof S]: S[k] extends Effect<any, any, any> ? k : never }[keyof S]]: S[k] extends
-      Effect<infer R, infer E, infer A> ? Effect<R | SR, E | SE, A> : never
+    [k in { [k in keyof S]: k }[keyof S]]: S[k] extends Effect<infer R, infer E, infer A> ? Effect<SR | R, SE | E, A>
+      : Effect<SR, SE, S[k]>
   }
 } = effect.serviceMembers
 
