@@ -217,9 +217,9 @@ export const run: {
  * interface Users {
  *   readonly _: unique symbol
  * }
- * const Users = Context.Tag<Users, {
+ * const Users = Context.GenericTag<Users, {
  *    getAll: Effect.Effect<never, never, Array<unknown>>
- * }>()
+ * }>("Users")
  *
  * Effect.gen(function*(_) {
  *   const set = yield* _(FiberSet.make())

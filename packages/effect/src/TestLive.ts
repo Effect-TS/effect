@@ -33,9 +33,7 @@ export interface TestLive {
 /**
  * @since 2.0.0
  */
-export const TestLive: Context.Tag<TestLive, TestLive> = Context.Tag<TestLive>(
-  Symbol.for("effect/TestLive")
-)
+export const TestLive: Context.Tag<TestLive, TestLive> = Context.GenericTag<TestLive>("effect/TestLive")
 
 /** @internal */
 class LiveImpl implements TestLive {

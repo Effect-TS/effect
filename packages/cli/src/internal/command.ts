@@ -136,14 +136,14 @@ const getDescriptor = <Name extends string, R, E, A>(self: Command.Command<Name,
 const makeProto = <Name extends string, R, E, A>(
   descriptor: Descriptor.Command<A>,
   handler: (_: A) => Effect.Effect<R, E, void>,
-  tag?: Context.Tag<any, any>,
+  tag: Context.Tag<any, any>,
   transform: Command.Command.Transform<R, E, A> = identity
 ): Command.Command<Name, R, E, A> => {
   const self = Object.create(Prototype)
   self.descriptor = descriptor
   self.handler = handler
   self.transform = transform
-  self.tag = tag ?? Context.Tag()
+  self.tag = tag
   return self
 }
 
@@ -190,7 +190,8 @@ export const fromDescriptor = dual<
     const self: Command.Command<any, any, any, any> = makeProto(
       descriptor,
       handler ??
-        ((_) => Effect.failSync(() => ValidationError.helpRequested(getDescriptor(self))))
+        ((_) => Effect.failSync(() => ValidationError.helpRequested(getDescriptor(self)))),
+      Context.GenericTag(`@effect/cli/Command/(${Array.from(InternalDescriptor.getNames(descriptor)).join("|")})`)
     )
     return self as any
   }
@@ -305,7 +306,8 @@ export const prompt = <Name extends string, A, R, E>(
       InternalDescriptor.prompt(name, prompt),
       (_) => _.value
     ),
-    handler
+    handler,
+    Context.GenericTag(`@effect/cli/Prompt/${name}`)
   )
 
 /** @internal */

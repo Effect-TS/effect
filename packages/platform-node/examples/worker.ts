@@ -6,7 +6,7 @@ import * as WT from "node:worker_threads"
 interface MyWorkerPool {
   readonly _: unique symbol
 }
-const Pool = Context.Tag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
+const Pool = Context.GenericTag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
 const PoolLive = NodeWorker.makePoolLayer(Pool, {
   spawn: () => new WT.Worker("./examples/worker/range.ts"),
   minSize: 0,

@@ -31,7 +31,7 @@ export interface IncomingMessage {
  * @since 1.0.0
  * @category tags
  */
-export const IncomingMessage = Context.Tag<IncomingMessage, Http.IncomingMessage>(
+export const IncomingMessage = Context.GenericTag<IncomingMessage, Http.IncomingMessage>(
   "@effect/experimental/SocketServer/Node/IncomingMessage"
 )
 

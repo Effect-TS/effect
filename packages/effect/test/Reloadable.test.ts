@@ -18,7 +18,7 @@ const DummyService: DummyService = {
   [DummyServiceTypeId]: DummyServiceTypeId
 }
 
-const Tag = Context.Tag<DummyService>()
+const Tag = Context.GenericTag<DummyService>("DummyService")
 
 describe("Reloadable", () => {
   it.effect("initialization", () =>

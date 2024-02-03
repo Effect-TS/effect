@@ -22,7 +22,7 @@ export type SocketServerTypeId = typeof SocketServerTypeId
  * @since 1.0.0
  * @category tags
  */
-export const SocketServer: Context.Tag<SocketServer, SocketServer> = Context.Tag<SocketServer>(
+export const SocketServer: Context.Tag<SocketServer, SocketServer> = Context.GenericTag<SocketServer>(
   "@effect/experimental/SocketServer"
 )
 
