@@ -46,9 +46,9 @@ export const schemaBodyForm = <R, I extends Multipart.Persisted, A>(
   const parseMultipart = Multipart.schemaPersisted(schema)
   const parseUrlParams = IncomingMessage.schemaBodyUrlParams(schema as Schema.Schema<A, any, R>)
   return Effect.flatMap(serverRequestTag, (request): Effect.Effect<
-    R | ServerRequest.ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,
+    A,
     Multipart.MultipartError | ParseResult.ParseError | Error.RequestError,
-    A
+    R | ServerRequest.ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path
   > => {
     if (isMultipart(request)) {
       return Effect.flatMap(request.multipart, parseMultipart)
@@ -83,9 +83,9 @@ export const schemaBodyFormJson = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
       (
         request
       ): Effect.Effect<
-        R | FileSystem.FileSystem | Path.Path | Scope.Scope | ServerRequest.ServerRequest,
+        A,
         ParseResult.ParseError | Error.RequestError,
-        A
+        R | FileSystem.FileSystem | Path.Path | Scope.Scope | ServerRequest.ServerRequest
       > => {
         if (isMultipart(request)) {
           return Effect.flatMap(
@@ -162,8 +162,8 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       }))
   }
 
-  private textEffect: Effect.Effect<never, Error.RequestError, string> | undefined
-  get text(): Effect.Effect<never, Error.RequestError, string> {
+  private textEffect: Effect.Effect<string, Error.RequestError> | undefined
+  get text(): Effect.Effect<string, Error.RequestError> {
     if (this.textEffect) {
       return this.textEffect
     }
@@ -181,7 +181,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     return this.textEffect
   }
 
-  get json(): Effect.Effect<never, Error.RequestError, unknown> {
+  get json(): Effect.Effect<unknown, Error.RequestError> {
     return Effect.tryMap(this.text, {
       try: (_) => JSON.parse(_) as unknown,
       catch: (error) =>
@@ -193,7 +193,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     })
   }
 
-  get urlParamsBody(): Effect.Effect<never, Error.RequestError, UrlParams.UrlParams> {
+  get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.RequestError> {
     return Effect.flatMap(this.text, (_) =>
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),
@@ -208,15 +208,15 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
 
   private multipartEffect:
     | Effect.Effect<
-      Scope.Scope | FileSystem.FileSystem | Path.Path,
+      Multipart.Persisted,
       Multipart.MultipartError,
-      Multipart.Persisted
+      Scope.Scope | FileSystem.FileSystem | Path.Path
     >
     | undefined
   get multipart(): Effect.Effect<
-    Scope.Scope | FileSystem.FileSystem | Path.Path,
+    Multipart.Persisted,
     Multipart.MultipartError,
-    Multipart.Persisted
+    Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
     if (this.multipartEffect) {
       return this.multipartEffect
@@ -234,8 +234,8 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     )
   }
 
-  private arrayBufferEffect: Effect.Effect<never, Error.RequestError, ArrayBuffer> | undefined
-  get arrayBuffer(): Effect.Effect<never, Error.RequestError, ArrayBuffer> {
+  private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.RequestError> | undefined
+  get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.RequestError> {
     if (this.arrayBuffer) {
       return this.arrayBuffer
     }

@@ -32,7 +32,7 @@ export const make = (impl: {
     headers: Headers.Headers,
     options?: FileSystem.StreamOptions
   ) => ServerResponse.ServerResponse
-}): Effect.Effect<FileSystem.FileSystem | Etag.Generator, never, Platform.Platform> =>
+}): Effect.Effect<Platform.Platform, never, FileSystem.FileSystem | Etag.Generator> =>
   Effect.gen(function*(_) {
     const fs = yield* _(FileSystem.FileSystem)
     const etagGen = yield* _(Etag.Generator)

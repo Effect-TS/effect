@@ -53,7 +53,7 @@ const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 
 const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
-  return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<any, R, ParseResult.ParseIssue, R> =>
+  return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<any, ParseResult.ParseIssue, R> =>
     parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true })
 }
 

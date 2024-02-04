@@ -341,7 +341,7 @@ export const makeSerialized = <
   W = unknown
 >(
   options: Worker.SerializedWorker.Options<I, W>
-): Effect.Effect<Worker.WorkerManager | Scope.Scope, WorkerError, Worker.SerializedWorker<I>> =>
+): Effect.Effect<Worker.SerializedWorker<I>, WorkerError, Worker.WorkerManager | Scope.Scope> =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
     const backing = yield* _(

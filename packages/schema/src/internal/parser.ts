@@ -63,8 +63,8 @@ export const mapError: {
 })
 
 /** @internal */
-export const eitherOrUndefined = <R, E, A>(
-  self: Effect.Effect<R, E, A>
+export const eitherOrUndefined = <A, E, R>(
+  self: Effect.Effect<A, E, R>
 ): Either.Either<E, A> | undefined => {
   const s: any = self
   if (s["_tag"] === "Left" || s["_tag"] === "Right") {

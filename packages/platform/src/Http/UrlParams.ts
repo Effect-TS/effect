@@ -182,7 +182,7 @@ export const toString = (self: UrlParams): string => new URLSearchParams(self as
  * @since 1.0.0
  * @category constructors
  */
-export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown) => E): Effect.Effect<never, E, URL> =>
+export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown) => E): Effect.Effect<URL, E> =>
   Effect.try({
     try: () => {
       const urlInstance = new URL(url, baseUrl())
@@ -210,15 +210,15 @@ const baseUrl = (): string | undefined => {
 export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>): {
   (
     field: string
-  ): (self: UrlParams) => Effect.Effect<R, ParseResult.ParseError, A>
+  ): (self: UrlParams) => Effect.Effect<A, ParseResult.ParseError, R>
   (
     self: UrlParams,
     field: string
-  ): Effect.Effect<R, ParseResult.ParseError, A>
+  ): Effect.Effect<A, ParseResult.ParseError, R>
 } => {
   const parse = Schema.decodeUnknown(Schema.parseJson(schema))
   return dual<
-    (field: string) => (self: UrlParams) => Effect.Effect<R, ParseResult.ParseError, A>,
-    (self: UrlParams, field: string) => Effect.Effect<R, ParseResult.ParseError, A>
+    (field: string) => (self: UrlParams) => Effect.Effect<A, ParseResult.ParseError, R>,
+    (self: UrlParams, field: string) => Effect.Effect<A, ParseResult.ParseError, R>
   >(2, (self, field) => parse(Option.getOrElse(getLast(self, field), () => "")))
 }

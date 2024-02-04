@@ -4583,12 +4583,12 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
       input: A,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<R2, ParseResult.ParseIssue, Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+    ) => Effect.Effect<Omit<A, keyof FieldsB> & ToStruct<FieldsB>, ParseResult.ParseIssue, R2>,
     encode: (
       input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<R3, ParseResult.ParseIssue, A>
+    ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4609,12 +4609,12 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
       input: I,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<R2, ParseResult.ParseIssue, Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
+    ) => Effect.Effect<Omit<I, keyof FieldsB> & FromStruct<FieldsB>, ParseResult.ParseIssue, R2>,
     encode: (
       input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<R3, ParseResult.ParseIssue, I>
+    ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,

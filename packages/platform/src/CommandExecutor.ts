@@ -20,24 +20,24 @@ export interface CommandExecutor {
    * Returns the exit code of the command after the process has completed
    * execution.
    */
-  readonly exitCode: (command: Command) => Effect<never, PlatformError, ExitCode>
+  readonly exitCode: (command: Command) => Effect<ExitCode, PlatformError>
   /**
    * Start running the command and return a handle to the running process.
    */
-  readonly start: (command: Command) => Effect<Scope, PlatformError, Process>
+  readonly start: (command: Command) => Effect<Process, PlatformError, Scope>
   /**
    * Runs the command returning the entire output as a string with the
    * specified encoding.
    *
    * If an encoding is not specified, the encoding will default to `utf-8`.
    */
-  readonly string: (command: Command, encoding?: string) => Effect<never, PlatformError, string>
+  readonly string: (command: Command, encoding?: string) => Effect<string, PlatformError>
   /**
    * Runs the command returning the entire output as an array of lines.
    *
    * If an encoding is not specified, the encoding will default to `utf-8`.
    */
-  readonly lines: (command: Command, encoding?: string) => Effect<never, PlatformError, ReadonlyArray<string>>
+  readonly lines: (command: Command, encoding?: string) => Effect<ReadonlyArray<string>, PlatformError>
   /**
    * Runs the command returning the output as a `Stream`.
    */
@@ -80,17 +80,17 @@ export interface Process {
    * Waits for the process to exit and returns the `ExitCode` of the command
    * that was run.
    */
-  readonly exitCode: Effect<never, PlatformError, ExitCode>
+  readonly exitCode: Effect<ExitCode, PlatformError>
   /**
    * Returns `true` if the process is still running, otherwise returns `false`.
    */
-  readonly isRunning: Effect<never, PlatformError, boolean>
+  readonly isRunning: Effect<boolean, PlatformError>
   /**
    * Kills the running process with the provided signal.
    *
    * If no signal is provided, the signal will defaults to `SIGTERM`.
    */
-  readonly kill: (signal?: Signal) => Effect<never, PlatformError, void>
+  readonly kill: (signal?: Signal) => Effect<void, PlatformError>
   /**
    * The standard error stream of the process.
    */
@@ -188,5 +188,5 @@ export const ProcessId: Brand.Brand.Constructor<Process.Id> = internal.ProcessId
  * @category constructors
  */
 export const makeExecutor: (
-  start: (command: Command) => Effect<Scope, PlatformError, Process>
+  start: (command: Command) => Effect<Process, PlatformError, Scope>
 ) => CommandExecutor = internal.makeExecutor
