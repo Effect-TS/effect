@@ -12,7 +12,8 @@ export class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserByI
 
 export class Person extends Schema.Class<Person>()({
   id: Schema.number,
-  name: Schema.string
+  name: Schema.string,
+  data: Transferable.Uint8Array
 }) {}
 
 export class GetPersonById extends Schema.TaggedRequest<GetPersonById>()("GetPersonById", Schema.never, Person, {
@@ -21,13 +22,10 @@ export class GetPersonById extends Schema.TaggedRequest<GetPersonById>()("GetPer
 
 export class InitialMessage
   extends Schema.TaggedRequest<InitialMessage>()("InitialMessage", Schema.never, Schema.void, {
-    name: Schema.string
+    name: Schema.string,
+    data: Transferable.Uint8Array
   })
-{
-  [Transferable.symbol]() {
-    return [new Uint8Array([1, 2, 3]).buffer]
-  }
-}
+{}
 
 export class GetSpan extends Schema.TaggedRequest<GetSpan>()(
   "GetSpan",

@@ -1,121 +1,126 @@
 /**
  * @since 1.0.0
  */
-
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import { dual, identity } from "effect/Function"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
+import * as Option from "effect/Option"
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category tags
  */
-export const symbol = Symbol.for("@effect/platform/Transferable")
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Transferable {
-  readonly [symbol]: () => ReadonlyArray<globalThis.Transferable>
+export interface CollectorService {
+  readonly addAll: (_: Iterable<globalThis.Transferable>) => Effect.Effect<void>
+  readonly unsafeAddAll: (_: Iterable<globalThis.Transferable>) => void
+  readonly read: Effect.Effect<ReadonlyArray<globalThis.Transferable>>
+  readonly unsafeRead: () => ReadonlyArray<globalThis.Transferable>
+  readonly unsafeClear: () => void
+  readonly clear: Effect.Effect<void>
 }
 
 /**
  * @since 1.0.0
- * @category predicates
+ * @category tags
  */
-export const isTransferable = (u: unknown): u is Transferable => typeof u === "object" && u !== null && symbol in u
+export class Collector extends Context.Tag("@effect/platform/Transferable/Collector")<
+  Collector,
+  CollectorService
+>() {}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const unsafeMakeCollector = (): CollectorService => {
+  const tranferables: Array<globalThis.Transferable> = []
+  const unsafeAddAll = (transferables: Iterable<globalThis.Transferable>): void => {
+    tranferables.push(...transferables)
+  }
+  const unsafeRead = (): ReadonlyArray<globalThis.Transferable> => tranferables
+  const unsafeClear = (): void => {
+    tranferables.length = 0
+  }
+  return Collector.of({
+    unsafeAddAll,
+    addAll: (transferables) => Effect.sync(() => unsafeAddAll(transferables)),
+    unsafeRead,
+    read: Effect.sync(unsafeRead),
+    unsafeClear,
+    clear: Effect.sync(unsafeClear)
+  })
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeCollector: Effect.Effect<CollectorService> = Effect.sync(unsafeMakeCollector)
 
 /**
  * @since 1.0.0
  * @category accessors
  */
-export const get = (u: unknown): ReadonlyArray<globalThis.Transferable> => {
-  if (isTransferable(u)) {
-    return u[symbol]()
-  }
-  return []
-}
-
-/**
- * @since 1.0.0
- * @category schema
- */
-export interface TransferableSchema<A extends object, I, R> extends Schema.Schema<A & Transferable, I, R> {
-  (_: A): A & Transferable
-}
+export const addAll = (tranferables: Iterable<globalThis.Transferable>): Effect.Effect<void> =>
+  Effect.flatMap(
+    Effect.serviceOption(Collector),
+    Option.match({
+      onNone: () => {
+        console.log("No collector", tranferables)
+        return Effect.unit
+      },
+      onSome: (_) => _.addAll(tranferables)
+    })
+  )
 
 /**
  * @since 1.0.0
  * @category schema
  */
 export const schema: {
-  <A extends object>(
-    f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ): <R, I>(self: Schema.Schema<A, I, R>) => TransferableSchema<A, I, R>
-  <R, I, A extends object>(
+  <I>(
+    f: (_: I) => Iterable<globalThis.Transferable>
+  ): <A, R>(self: Schema.Schema<A, I, R>) => Schema.Schema<A, I, R>
+  <R, I, A>(
     self: Schema.Schema<A, I, R>,
-    f: (_: A) => ReadonlyArray<globalThis.Transferable>
-  ): TransferableSchema<A, I, R>
-} = dual(2, <R, I, A extends object>(
+    f: (_: I) => Iterable<globalThis.Transferable>
+  ): Schema.Schema<A, I, R>
+} = dual(2, <R, I, A>(
   self: Schema.Schema<A, I, R>,
-  f: (_: A) => ReadonlyArray<globalThis.Transferable>
-) => {
-  const fn: Transferable[typeof symbol] = function(this: A) {
-    return f(this)
-  }
-  const schema = Schema.transform(
+  f: (_: I) => Iterable<globalThis.Transferable>
+) =>
+  Schema.transformOrFail(
+    Schema.from(self),
     self,
-    schemaFromSelf(Schema.to(self)),
-    (input) => addProxy(input, fn),
-    identity
-  )
-  function make(self: A): A & Transferable {
-    return addProxy(self, fn)
-  }
-  Object.setPrototypeOf(make, Object.getPrototypeOf(schema))
-  make.ast = schema.ast
-  return make
-})
-
-const schemaParse = <A extends object, R>(
-  parse: ParseResult.DecodeUnknown<A, R>
-): ParseResult.DeclarationDecodeUnknown<A & Transferable, R> =>
-(u, options, ast) => {
-  if (!isTransferable(u)) {
-    return ParseResult.fail(ParseResult.type(ast, u))
-  }
-  const f = u[symbol]
-  return ParseResult.map(parse(u, options), (a) => addProxy(a, f))
-}
+    ParseResult.succeed,
+    (i) => Effect.as(addAll(f(i)), i)
+  ))
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaFromSelf = <A extends object, I extends object, R>(
-  item: Schema.Schema<A, I, R>
-): Schema.Schema<A & Transferable, I & Transferable, R> =>
-  Schema.declare(
-    [item],
-    (item) => schemaParse(ParseResult.decodeUnknown(item)),
-    (item) => schemaParse(ParseResult.encodeUnknown(item)),
-    { identifier: "Transferable" }
-  )
+export const ImageData: Schema.Schema<ImageData> = schema(
+  Schema.any,
+  (_) => [(_ as ImageData).data.buffer]
+)
 
-const addProxy = <A extends object>(self: A, f: Transferable[typeof symbol]): A & Transferable => {
-  return new Proxy(self, {
-    get(target, key) {
-      if (key === symbol) {
-        return f
-      }
-      return target[key as keyof A]
-    },
-    has(target, p) {
-      if (p === symbol) {
-        return true
-      }
-      return p in target
-    }
-  }) as any
-}
+/**
+ * @since 1.0.0
+ * @category schema
+ */
+export const MessagePort: Schema.Schema<MessagePort> = schema(
+  Schema.any,
+  (_) => [_ as MessagePort]
+)
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
+export const Uint8Array: Schema.Schema<Uint8Array> = schema(
+  Schema.Uint8ArrayFromSelf,
+  (_) => [_.buffer]
+)
