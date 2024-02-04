@@ -230,7 +230,7 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
     return this.multipartEffect
   }
 
-  get multipartStream(): Stream.Stream<never, Multipart.MultipartError, Multipart.Part> {
+  get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return MultipartNode.stream(this.source, this.source.headers)
   }
 

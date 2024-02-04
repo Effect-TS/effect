@@ -19,7 +19,7 @@ export const fromReadable = <E, A = Uint8Array>(
   evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   { chunkSize }: FromReadableOptions = {}
-): Stream.Stream<never, E, A> =>
+): Stream.Stream<A, E> =>
   Stream.fromChannel(
     fromReadableChannel<E, A>(evaluate, onError, chunkSize ? Number(chunkSize) : undefined)
   )
@@ -148,13 +148,13 @@ export const pipeThroughDuplex = dual<
     duplex: LazyArg<Duplex>,
     onError: (error: unknown) => E2,
     options?: FromReadableOptions & FromWritableOptions
-  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E | E2, B>,
+  ) => <R, E, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<B, E | E2, R>,
   <R, E, A, E2, B = Uint8Array>(
-    self: Stream.Stream<R, E, A>,
+    self: Stream.Stream<A, E, R>,
     duplex: LazyArg<Duplex>,
     onError: (error: unknown) => E2,
     options?: FromReadableOptions & FromWritableOptions
-  ) => Stream.Stream<R, E | E2, B>
+  ) => Stream.Stream<B, E | E2, R>
 >(
   (args) => Stream.StreamTypeId in args[0],
   (self, duplex, onError, options) =>
@@ -168,11 +168,11 @@ export const pipeThroughDuplex = dual<
 export const pipeThroughSimple = dual<
   (
     duplex: LazyArg<Duplex>
-  ) => <R, E>(self: Stream.Stream<R, E, string | Uint8Array>) => Stream.Stream<R, E | PlatformError, Uint8Array>,
+  ) => <R, E>(self: Stream.Stream<string | Uint8Array, E, R>) => Stream.Stream<Uint8Array, E | PlatformError, R>,
   <R, E>(
-    self: Stream.Stream<R, E, string | Uint8Array>,
+    self: Stream.Stream<string | Uint8Array, E, R>,
     duplex: LazyArg<Duplex>
-  ) => Stream.Stream<R, E | PlatformError, Uint8Array>
+  ) => Stream.Stream<Uint8Array, E | PlatformError, R>
 >(
   2,
   (self, duplex) =>

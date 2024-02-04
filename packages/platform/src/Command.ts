@@ -65,7 +65,7 @@ export declare namespace Command {
  * @since 1.0.0
  * @category models
  */
-export type CommandInput = Stream<never, PlatformError, Uint8Array>
+export type CommandInput = Stream<Uint8Array, PlatformError>
 
 /**
  * Configures the pipes that are established between the parent and child
@@ -220,7 +220,7 @@ export const start: (command: Command) => Effect<Process, PlatformError, Command
  * @since 1.0.0
  * @category execution
  */
-export const stream: (command: Command) => Stream<CommandExecutor, PlatformError, Uint8Array> = internal.stream
+export const stream: (command: Command) => Stream<Uint8Array, PlatformError, CommandExecutor> = internal.stream
 
 /**
  * Runs the command returning the output as an stream of lines with the
@@ -229,7 +229,7 @@ export const stream: (command: Command) => Stream<CommandExecutor, PlatformError
  * @since 1.0.0
  * @category execution
  */
-export const streamLines: (command: Command) => Stream<CommandExecutor, PlatformError, string> = internal.streamLines
+export const streamLines: (command: Command) => Stream<string, PlatformError, CommandExecutor> = internal.streamLines
 
 /**
  * Runs the command returning the entire output as a string with the

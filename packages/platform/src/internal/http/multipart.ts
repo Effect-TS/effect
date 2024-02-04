@@ -347,7 +347,7 @@ class FileImpl implements Multipart.File {
   readonly key: string
   readonly name: string
   readonly contentType: string
-  readonly content: Stream.Stream<never, Multipart.MultipartError, Uint8Array>
+  readonly content: Stream.Stream<Uint8Array, Multipart.MultipartError>
 
   constructor(
     info: MP.PartInfo,
@@ -373,7 +373,7 @@ const defaultWriteFile = (path: string, file: Multipart.File) =>
 
 /** @internal */
 export const toPersisted = (
-  stream: Stream.Stream<never, Multipart.MultipartError, Multipart.Part>,
+  stream: Stream.Stream<Multipart.Part, Multipart.MultipartError>,
   writeFile = defaultWriteFile
 ): Effect.Effect<Multipart.Persisted, Multipart.MultipartError, FileSystem.FileSystem | Path.Path | Scope.Scope> =>
   pipe(
