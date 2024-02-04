@@ -2440,7 +2440,7 @@ export const partition: {
     options?: { bufferSize?: number | undefined } | undefined
   ): <R, E>(
     self: Stream<C, E, R>
-  ) => Effect.Effect<[excluded: Stream<never, E, Exclude<C, B>>, satisfying: Stream<never, E, B>], E, Scope.Scope | R>
+  ) => Effect.Effect<[excluded: Stream<Exclude<C, B>, E, never>, satisfying: Stream<B, E, never>], E, Scope.Scope | R>
   <A>(
     predicate: Predicate<A>,
     options?: { bufferSize?: number | undefined } | undefined
@@ -2451,7 +2451,7 @@ export const partition: {
     self: Stream<C, E, R>,
     refinement: Refinement<A, B>,
     options?: { bufferSize?: number | undefined } | undefined
-  ): Effect.Effect<[excluded: Stream<never, E, Exclude<C, B>>, satisfying: Stream<never, E, B>], E, Scope.Scope | R>
+  ): Effect.Effect<[excluded: Stream<Exclude<C, B>, E, never>, satisfying: Stream<B, E, never>], E, Scope.Scope | R>
   <A, E, R>(
     self: Stream<A, E, R>,
     predicate: Predicate<A>,
@@ -3451,7 +3451,7 @@ export const someOrFail: {
  * @category utils
  */
 export const split: {
-  <A>(predicate: Predicate<A>): <R, E>(self: Stream<A, E, R>) => Stream<Chunk.Chunk<A>, E, R>
+  <A>(predicate: Predicate<NoInfer<A>>): <R, E>(self: Stream<A, E, R>) => Stream<Chunk.Chunk<A>, E, R>
   <A, E, R>(self: Stream<A, E, R>, predicate: Predicate<A>): Stream<Chunk.Chunk<A>, E, R>
 } = internal.split
 

@@ -4383,7 +4383,7 @@ export const partition: {
   ): <R, E>(
     self: Stream.Stream<C, E, R>
   ) => Effect.Effect<
-    [excluded: Stream.Stream<never, E, Exclude<C, B>>, satisfying: Stream.Stream<never, E, B>],
+    [excluded: Stream.Stream<Exclude<C, B>, E>, satisfying: Stream.Stream<B, E>],
     E,
     Scope.Scope | R
   >
@@ -4402,7 +4402,7 @@ export const partition: {
       bufferSize?: number | undefined
     }
   ): Effect.Effect<
-    [excluded: Stream.Stream<never, E, Exclude<C, B>>, satisfying: Stream.Stream<never, E, B>],
+    [excluded: Stream.Stream<Exclude<C, B>, E>, satisfying: Stream.Stream<B, E>],
     E,
     Scope.Scope | R
   >
@@ -5794,7 +5794,7 @@ export const slidingSize = dual<
 
 /** @internal */
 export const split = dual<
-  <A>(predicate: Predicate<A>) => <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<A>, E, R>,
+  <A>(predicate: Predicate<NoInfer<A>>) => <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<A>, E, R>,
   <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>) => Stream.Stream<Chunk.Chunk<A>, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<Chunk.Chunk<A>, E, R> => {
   const split = (

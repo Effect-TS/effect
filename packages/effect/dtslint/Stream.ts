@@ -2,8 +2,8 @@ import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 
-declare const numbers: Stream.Stream<never, never, number>
-declare const numbersOrStrings: Stream.Stream<never, never, number | string>
+declare const numbers: Stream.Stream<number>
+declare const numbersOrStrings: Stream.Stream<number | string>
 
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
@@ -22,22 +22,22 @@ pipe(
   ) => true)
 )
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 Stream.filter(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.filter(numbers, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 pipe(numbersOrStrings, Stream.filter(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbers, Stream.filter(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.filter(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbersOrStrings, Stream.filter(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
@@ -55,16 +55,16 @@ pipe(
   ) => true)
 )
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 Stream.find(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 pipe(numbersOrStrings, Stream.find(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.find(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbersOrStrings, Stream.find(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
@@ -82,32 +82,32 @@ pipe(
   ) => true)
 )
 
-// $ExpectType Effect<[excluded: Stream<never, never, string | number>, satisfying: Stream<never, never, string | number>], never, Scope>
+// $ExpectType Effect<[excluded: Stream<string | number, never, never>, satisfying: Stream<string | number, never, never>], never, Scope>
 Stream.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType Effect<[excluded: Stream<never, never, string | number>, satisfying: Stream<never, never, string | number>], never, Scope>
+// $ExpectType Effect<[excluded: Stream<string | number, never, never>, satisfying: Stream<string | number, never, never>], never, Scope>
 pipe(numbersOrStrings, Stream.partition(predicateNumbersOrStrings))
 
-// $ExpectType Effect<[excluded: Stream<never, never, string>, satisfying: Stream<never, never, number>], never, Scope>
+// $ExpectType Effect<[excluded: Stream<string, never, never>, satisfying: Stream<number, never, never>], never, Scope>
 Stream.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Effect<[excluded: Stream<never, never, string>, satisfying: Stream<never, never, number>], never, Scope>
+// $ExpectType Effect<[excluded: Stream<string, never, never>, satisfying: Stream<number, never, never>], never, Scope>
 pipe(numbersOrStrings, Stream.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // takeWhile
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 Stream.takeWhile(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 pipe(numbersOrStrings, Stream.takeWhile(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.takeWhile(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbersOrStrings, Stream.takeWhile(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
@@ -125,84 +125,84 @@ pipe(
   ) => true)
 )
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 Stream.takeWhile(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.takeWhile(numbers, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 pipe(numbersOrStrings, Stream.takeWhile(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbers, Stream.takeWhile(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.takeWhile(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbersOrStrings, Stream.takeWhile(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // dropWhile
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.dropWhile(numbers, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbers, Stream.dropWhile(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 Stream.dropWhile(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 pipe(numbersOrStrings, Stream.dropWhile(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // dropUntil
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.dropUntil(numbers, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbers, Stream.dropUntil(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 Stream.dropUntil(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 pipe(numbersOrStrings, Stream.dropUntil(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // splitWhere
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Stream<never, never, Chunk<number>>
+// $ExpectType Stream<Chunk<number>, never, never>
 Stream.split(numbers, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, Chunk<number>>
+// $ExpectType Stream<Chunk<number>, never, never>
 pipe(numbers, Stream.split(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, Chunk<string | number>>
+// $ExpectType Stream<Chunk<string | number>, never, never>
 Stream.split(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<never, never, Chunk<string | number>>
+// $ExpectType Stream<Chunk<string | number>, never, never>
 pipe(numbersOrStrings, Stream.split(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // takeUntil
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 Stream.takeUntil(numbers, predicateNumbersOrStrings)
 
-// $ExpectType Stream<never, never, number>
+// $ExpectType Stream<number, never, never>
 pipe(numbers, Stream.takeUntil(predicateNumbersOrStrings))
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 Stream.takeUntil(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<never, never, string | number>
+// $ExpectType Stream<string | number, never, never>
 pipe(numbersOrStrings, Stream.takeUntil(Predicate.isNumber))
