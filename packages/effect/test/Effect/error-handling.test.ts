@@ -269,7 +269,7 @@ describe("Effect", () => {
         Effect.exit
       )
       assert.deepStrictEqual(result, Exit.fail({ _tag: "ErrorB" as const }))
-      satisfies<true>(assertType<Exit.Exit<ErrorB, ErrorA>>()(result))
+      satisfies<true>(assertType<Exit.Exit<ErrorA, ErrorB>>()(result))
     }))
   it.effect("catchTags - recovers from one of several tagged errors", () =>
     Effect.gen(function*($) {

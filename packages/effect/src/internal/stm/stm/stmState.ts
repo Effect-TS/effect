@@ -23,7 +23,7 @@ export type STMState<E, A> = Done<E, A> | Interrupted | Running
 export interface Done<out E, out A> extends Equal.Equal {
   readonly [STMStateTypeId]: STMStateTypeId
   readonly _tag: OpCodes.OP_DONE
-  readonly exit: Exit.Exit<E, A>
+  readonly exit: Exit.Exit<A, E>
 }
 
 /** @internal */
@@ -57,7 +57,7 @@ export const isInterrupted = <E, A>(self: STMState<E, A>): self is Interrupted =
 }
 
 /** @internal */
-export const done = <E, A>(exit: Exit.Exit<E, A>): STMState<E, A> => {
+export const done = <A, E>(exit: Exit.Exit<A, E>): STMState<E, A> => {
   return {
     [STMStateTypeId]: STMStateTypeId,
     _tag: OpCodes.OP_DONE,

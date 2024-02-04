@@ -47,7 +47,7 @@ export interface EmitOps<in R, in E, in A, out B> {
    * Either emits the specified value if this `Exit` is a `Success` or else
    * terminates with the specified cause if this `Exit` is a `Failure`.
    */
-  done(exit: Exit.Exit<E, A>): Promise<B>
+  done(exit: Exit.Exit<A, E>): Promise<B>
 
   /**
    * Terminates with an end of stream signal.

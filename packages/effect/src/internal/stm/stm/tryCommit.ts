@@ -8,7 +8,7 @@ export type TryCommit<E, A> = Done<E, A> | Suspend
 /** @internal */
 export interface Done<out E, out A> {
   readonly _tag: OpCodes.OP_DONE
-  readonly exit: Exit.Exit<E, A>
+  readonly exit: Exit.Exit<A, E>
 }
 
 /** @internal */
@@ -18,7 +18,7 @@ export interface Suspend {
 }
 
 /** @internal */
-export const done = <E, A>(exit: Exit.Exit<E, A>): TryCommit<E, A> => {
+export const done = <A, E>(exit: Exit.Exit<A, E>): TryCommit<E, A> => {
   return {
     _tag: OpCodes.OP_DONE,
     exit
