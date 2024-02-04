@@ -519,11 +519,11 @@ export const ensuring: {
  */
 export const ensuringWith: {
   <E, Z, R2, _>(
-    finalizer: (exit: Exit.Exit<E, Z>) => Effect.Effect<_, never, R2>
+    finalizer: (exit: Exit.Exit<Z, E>) => Effect.Effect<_, never, R2>
   ): <R, In, L>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E, In, L, Z>
   <R, In, L, E, Z, R2, _>(
     self: Sink<R, E, In, L, Z>,
-    finalizer: (exit: Exit.Exit<E, Z>) => Effect.Effect<_, never, R2>
+    finalizer: (exit: Exit.Exit<Z, E>) => Effect.Effect<_, never, R2>
   ): Sink<R | R2, E, In, L, Z>
 } = internal.ensuringWith
 
@@ -1223,8 +1223,8 @@ export const raceWith: {
   <R2, E2, In2, L2, Z2, E, Z, Z3, Z4>(
     options: {
       readonly other: Sink<R2, E2, In2, L2, Z2>
-      readonly onSelfDone: (exit: Exit.Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
-      readonly onOtherDone: (exit: Exit.Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
+      readonly onSelfDone: (exit: Exit.Exit<Z, E>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
+      readonly onOtherDone: (exit: Exit.Exit<Z2, E2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number | undefined
     }
   ): <R, In, L>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L2 | L, Z3 | Z4>
@@ -1232,8 +1232,8 @@ export const raceWith: {
     self: Sink<R, E, In, L, Z>,
     options: {
       readonly other: Sink<R2, E2, In2, L2, Z2>
-      readonly onSelfDone: (exit: Exit.Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
-      readonly onOtherDone: (exit: Exit.Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
+      readonly onSelfDone: (exit: Exit.Exit<Z, E>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
+      readonly onOtherDone: (exit: Exit.Exit<Z2, E2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number | undefined
     }
   ): Sink<R | R2, E2 | E, In & In2, L | L2, Z3 | Z4>

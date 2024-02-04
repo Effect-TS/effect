@@ -117,7 +117,7 @@ export const fromDuplex = <IE, E, I = Uint8Array | string, O = Uint8Array>(
     Effect.tap(
       Effect.zip(
         Effect.sync(evaluate),
-        Queue.unbounded<Either.Either<Exit.Exit<IE | E, void>, void>>()
+        Queue.unbounded<Either.Either<Exit.Exit<void, IE | E>, void>>()
       ),
       ([duplex, queue]) => readableOffer(duplex, queue, onError)
     ),
@@ -199,7 +199,7 @@ export const fromReadableChannel = <E, A = Uint8Array>(
     Effect.tap(
       Effect.zip(
         Effect.sync(evaluate),
-        Queue.unbounded<Either.Either<Exit.Exit<E, void>, void>>()
+        Queue.unbounded<Either.Either<Exit.Exit<void, E>, void>>()
       ),
       ([readable, queue]) => readableOffer(readable, queue, onError)
     ),
@@ -270,7 +270,7 @@ export const writeEffect = <A>(
 
 const readableOffer = <E>(
   readable: Readable | NodeJS.ReadableStream,
-  queue: Queue.Queue<Either.Either<Exit.Exit<E, void>, void>>,
+  queue: Queue.Queue<Either.Either<Exit.Exit<void, E>, void>>,
   onError: (error: unknown) => E
 ) =>
   Effect.sync(() => {
@@ -293,7 +293,7 @@ const readableOffer = <E>(
 
 const readableTake = <E, A>(
   readable: Readable | NodeJS.ReadableStream,
-  queue: Queue.Queue<Either.Either<Exit.Exit<E, void>, void>>,
+  queue: Queue.Queue<Either.Either<Exit.Exit<void, E>, void>>,
   chunkSize: number | undefined
 ) => {
   const read = readChunkChannel<A>(readable, chunkSize)
