@@ -40,7 +40,7 @@ interface PoolState {
 }
 
 interface Attempted<E, A> {
-  readonly result: Exit.Exit<E, A>
+  readonly result: Exit.Exit<A, E>
   readonly finalizer: Effect.Effect<unknown>
 }
 
@@ -57,7 +57,7 @@ interface Strategy<S, R, E, A> {
    * Describes how the state of the strategy should be updated when an item is
    * added to the pool or returned to the pool.
    */
-  track(state: S, attempted: Exit.Exit<E, A>): Effect.Effect<void>
+  track(state: S, attempted: Exit.Exit<A, E>): Effect.Effect<void>
   /**
    * Describes how excess items that are not being used should shrink down.
    */
@@ -143,7 +143,7 @@ class PoolImpl<in out E, in out A> implements Pool.Pool<E, A> {
     readonly state: Ref.Ref<PoolState>,
     readonly items: Queue.Queue<Attempted<E, A>>,
     readonly invalidated: Ref.Ref<HashSet.HashSet<A>>,
-    readonly track: (exit: Exit.Exit<E, A>) => Effect.Effect<unknown>
+    readonly track: (exit: Exit.Exit<A, E>) => Effect.Effect<unknown>
   ) {}
 
   [Hash.symbol](): number {
@@ -267,7 +267,7 @@ const allocate = <E, A>(
       (exit) =>
         core.flatMap(
           core.succeed<Attempted<E, A>>({
-            result: exit as Exit.Exit<E, A>,
+            result: exit as Exit.Exit<A, E>,
             finalizer: core.scopeClose(scope, core.exitSucceed(void 0))
           }),
           (attempted) =>

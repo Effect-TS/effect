@@ -224,12 +224,12 @@ describe("Effect", () => {
     }))
   it.effect("interrupted cause persists after catching", () =>
     Effect.gen(function*($) {
-      const process = (list: Chunk.Chunk<Exit.Exit<never, any>>): Chunk.Chunk<Exit.Exit<never, any>> => {
+      const process = (list: Chunk.Chunk<Exit.Exit<any>>): Chunk.Chunk<Exit.Exit<any>> => {
         return pipe(list, Chunk.map(Exit.mapErrorCause((cause) => cause)))
       }
       const latch1 = yield* $(Deferred.make<never, void>())
       const latch2 = yield* $(Deferred.make<never, void>())
-      const exits = yield* $(Ref.make(Chunk.empty<Exit.Exit<never, any>>()))
+      const exits = yield* $(Ref.make(Chunk.empty<Exit.Exit<any>>()))
       const fiber = yield* $(
         Effect.uninterruptibleMask((restore) =>
           pipe(

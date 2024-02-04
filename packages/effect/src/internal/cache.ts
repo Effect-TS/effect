@@ -38,7 +38,7 @@ export type MapValue<Key, Error, Value> =
 export interface Complete<out Key, out Error, out Value> {
   readonly _tag: "Complete"
   readonly key: MapKey<Key>
-  readonly exit: Exit.Exit<Error, Value>
+  readonly exit: Exit.Exit<Value, Error>
   readonly entryStats: Cache.EntryStats
   readonly timeToLiveMillis: number
 }
@@ -60,7 +60,7 @@ export interface Refreshing<out Key, in out Error, in out Value> {
 /** @internal */
 export const complete = <Key, Error, Value>(
   key: MapKey<Key>,
-  exit: Exit.Exit<Error, Value>,
+  exit: Exit.Exit<Value, Error>,
   entryStats: Cache.EntryStats,
   timeToLiveMillis: number
 ): MapValue<Key, Error, Value> =>
@@ -299,7 +299,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
     readonly context: Context.Context<any>,
     readonly fiberId: FiberId.FiberId,
     readonly lookup: Cache.Lookup<Key, any, Error, Value>,
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   ) {
     this.cacheState = initialCacheState()
   }
@@ -684,7 +684,7 @@ export const makeWith = <Key, Environment, Error, Value>(
   options: {
     readonly capacity: number
     readonly lookup: Cache.Lookup<Key, Environment, Error, Value>
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   }
 ): Effect.Effect<Cache.Cache<Key, Error, Value>, never, Environment> =>
   core.map(
@@ -703,7 +703,7 @@ export const makeWith = <Key, Environment, Error, Value>(
 export const unsafeMakeWith = <Key, Error, Value>(
   capacity: number,
   lookup: Cache.Lookup<Key, never, Error, Value>,
-  timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+  timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
 ): Cache.Cache<Key, Error, Value> =>
   new CacheImpl<Key, Error, Value>(
     capacity,

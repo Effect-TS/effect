@@ -361,8 +361,8 @@ export class ChannelExecutor<in out Env, in InErr, in InElem, in InDone, out Out
     return result
   }
 
-  getDone(): Exit.Exit<OutErr, OutDone> {
-    return this._done as Exit.Exit<OutErr, OutDone>
+  getDone(): Exit.Exit<OutDone, OutErr> {
+    return this._done as Exit.Exit<OutDone, OutErr>
   }
 
   getEmit(): OutElem {
@@ -1016,7 +1016,7 @@ const runFinalizers = <Env>(
   return pipe(
     Effect.forEach(finalizers, (fin) => Effect.exit(fin(exit))),
     Effect.map((exits) => pipe(Exit.all(exits), Option.getOrElse(() => Exit.unit))),
-    Effect.flatMap((exit) => Effect.suspend(() => exit as Exit.Exit<never, unknown>))
+    Effect.flatMap((exit) => Effect.suspend(() => exit as Exit.Exit<unknown>))
   )
 }
 

@@ -61,7 +61,7 @@ export interface LeftDone<out Env, _Err, in Err1, out Err2, _Elem, _Done, in Don
   extends MergeState.Proto
 {
   readonly _tag: "LeftDone"
-  f(exit: Exit.Exit<Err1, Done1>): Effect.Effect<Done2, Err2, Env>
+  f(exit: Exit.Exit<Done1, Err1>): Effect.Effect<Done2, Err2, Env>
 }
 
 /**
@@ -72,7 +72,7 @@ export interface RightDone<out Env, in Err, _Err1, out Err2, _Elem, in Done, _Do
   extends MergeState.Proto
 {
   readonly _tag: "RightDone"
-  f(exit: Exit.Exit<Err, Done>): Effect.Effect<Done2, Err2, Env>
+  f(exit: Exit.Exit<Done, Err>): Effect.Effect<Done2, Err2, Env>
 }
 
 /**
@@ -89,7 +89,7 @@ export const BothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
  * @category constructors
  */
 export const LeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Done2, Err2, Env>
+  f: (exit: Exit.Exit<Done1, Err1>) => Effect.Effect<Done2, Err2, Env>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> = internal.LeftDone
 
 /**
@@ -97,7 +97,7 @@ export const LeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
  * @category constructors
  */
 export const RightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Done2, Err2, Env>
+  f: (exit: Exit.Exit<Done, Err>) => Effect.Effect<Done2, Err2, Env>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> = internal.RightDone
 
 /**
@@ -154,8 +154,8 @@ export const match: {
         left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
         right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
       ) => Z
-      readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>) => Z
-      readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>) => Z
+      readonly onLeftDone: (f: (exit: Exit.Exit<Done1, Err1>) => Effect.Effect<Done2, Err2, Env>) => Z
+      readonly onRightDone: (f: (exit: Exit.Exit<Done, Err>) => Effect.Effect<Done2, Err2, Env>) => Z
     }
   ): (self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>) => Z
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
@@ -165,8 +165,8 @@ export const match: {
         left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
         right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
       ) => Z
-      readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>) => Z
-      readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>) => Z
+      readonly onLeftDone: (f: (exit: Exit.Exit<Done1, Err1>) => Effect.Effect<Done2, Err2, Env>) => Z
+      readonly onRightDone: (f: (exit: Exit.Exit<Done, Err>) => Effect.Effect<Done2, Err2, Env>) => Z
     }
   ): Z
 } = internal.match

@@ -175,7 +175,7 @@ export interface ChannelException<out E> {
 export const acquireUseRelease: <Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone, Acquired>(
   acquire: Effect.Effect<Acquired, OutErr, Env>,
   use: (a: Acquired) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
-  release: (a: Acquired, exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<any, never, Env>
+  release: (a: Acquired, exit: Exit.Exit<OutDone, OutErr>) => Effect.Effect<any, never, Env>
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> = channel.acquireUseRelease
 
 /**
@@ -714,13 +714,13 @@ export const ensuring: {
  */
 export const ensuringWith: {
   <Env2, OutErr, OutDone>(
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect.Effect<unknown, never, Env2>
+    finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, never, Env2>
   ): <Env, InErr, InElem, InDone, OutElem>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env2 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   <Env, InErr, InElem, InDone, OutElem, Env2, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect.Effect<unknown, never, Env2>
+    finalizer: (e: Exit.Exit<OutDone, OutErr>) => Effect.Effect<unknown, never, Env2>
   ): Channel<Env | Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 } = core.ensuringWith
 
@@ -1079,7 +1079,7 @@ export const fromInput: <Err, Elem, Done>(
  * @category constructors
  */
 export const fromPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Done, Err>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromPubSub
 
 /**
@@ -1089,7 +1089,7 @@ export const fromPubSub: <Err, Done, Elem>(
  * @category constructors
  */
 export const fromPubSubScoped: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Done, Err>, Elem>>
 ) => Effect.Effect<Channel<never, unknown, unknown, unknown, Err, Elem, Done>, never, Scope.Scope> =
   channel.fromPubSubScoped
 
@@ -1110,7 +1110,7 @@ export const fromOption: <A>(
  * @category constructors
  */
 export const fromQueue: <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either.Either<Exit.Exit<Done, Err>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromQueue
 
 /**
@@ -1520,10 +1520,10 @@ export const mergeWith: {
     options: {
       readonly other: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
       readonly onSelfDone: (
-        exit: Exit.Exit<OutErr, OutDone>
+        exit: Exit.Exit<OutDone, OutErr>
       ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
       readonly onOtherDone: (
-        ex: Exit.Exit<OutErr1, OutDone1>
+        ex: Exit.Exit<OutDone1, OutErr1>
       ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
     }
   ): <Env, InErr, InElem, InDone, OutElem>(
@@ -1561,10 +1561,10 @@ export const mergeWith: {
     options: {
       readonly other: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
       readonly onSelfDone: (
-        exit: Exit.Exit<OutErr, OutDone>
+        exit: Exit.Exit<OutDone, OutErr>
       ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
       readonly onOtherDone: (
-        ex: Exit.Exit<OutErr1, OutDone1>
+        ex: Exit.Exit<OutDone1, OutErr1>
       ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
     }
   ): Channel<
@@ -1969,7 +1969,7 @@ export const sync: <OutDone>(
  * @category destructors
  */
 export const toPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Done, Err>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown> = channel.toPubSub
 
 /**
@@ -1993,7 +1993,7 @@ export const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  * @category destructors
  */
 export const toQueue: <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either.Either<Exit.Exit<Done, Err>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown> = channel.toQueue
 
 /** Converts this channel to a `Sink`.

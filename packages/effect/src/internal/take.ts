@@ -25,7 +25,7 @@ const takeVariance = {
 /** @internal */
 export class TakeImpl<out E, out A> implements Take.Take<E, A> {
   readonly [TakeTypeId] = takeVariance
-  constructor(readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) {
+  constructor(readonly exit: Exit.Exit<Chunk.Chunk<A>, Option.Option<E>>) {
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -61,7 +61,7 @@ export const fromEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effe
   Effect.matchCause(effect, { onFailure: failCause, onSuccess: of })
 
 /** @internal */
-export const fromExit = <E, A>(exit: Exit.Exit<E, A>): Take.Take<E, A> =>
+export const fromExit = <A, E>(exit: Exit.Exit<A, E>): Take.Take<E, A> =>
   new TakeImpl(pipe(exit, Exit.mapBoth({ onFailure: Option.some, onSuccess: Chunk.of })))
 
 /** @internal */
@@ -99,8 +99,8 @@ export const isSuccess = <E, A>(self: Take.Take<E, A>): boolean =>
   })
 
 /** @internal */
-export const make = <E, A>(
-  exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>
+export const make = <A, E>(
+  exit: Exit.Exit<Chunk.Chunk<A>, Option.Option<E>>
 ): Take.Take<E, A> => new TakeImpl(exit)
 
 /** @internal */

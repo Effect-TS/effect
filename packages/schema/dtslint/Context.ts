@@ -407,5 +407,5 @@ MyRequest.struct
 
 declare const myRequest: MyRequest
 
-// $ExpectType Schema<Exit<number, string>, ExitFrom<number, string>, "b" | "c">
+// $ExpectType Schema<Exit<string, number>, ExitFrom<string, number>, "b" | "c">
 Serializable.exitSchema(myRequest)
