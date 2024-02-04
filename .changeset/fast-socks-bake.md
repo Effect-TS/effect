@@ -18,4 +18,4 @@
 "@effect/rpc": minor
 ---
 
-change Effect type parameters order
+change Effect type parameters order from `Effect<R, E, A>` to `Effect<A, E = never, R = never>`

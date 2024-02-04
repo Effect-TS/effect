@@ -75,7 +75,7 @@ export const toChannel = <IE>(
     Effect.gen(function*(_) {
       const writeScope = yield* _(Scope.make())
       const write = yield* _(Scope.extend(self.writer, writeScope))
-      const exitQueue = yield* _(Queue.unbounded<Exit.Exit<SocketError | IE, Chunk.Chunk<Uint8Array>>>())
+      const exitQueue = yield* _(Queue.unbounded<Exit.Exit<Chunk.Chunk<Uint8Array>, SocketError | IE>>())
 
       const input: AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array>, unknown> = {
         awaitRead: () => Effect.unit,

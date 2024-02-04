@@ -5191,7 +5191,7 @@ export const cause = <E, EI, R1, R2 = never>(
  * @category Exit utils
  * @since 1.0.0
  */
-export type ExitFrom<E, A> =
+export type ExitFrom<A, E> =
   | {
     readonly _tag: "Failure"
     readonly cause: CauseFrom<E>
@@ -5222,13 +5222,13 @@ const exitFrom = <E, EI, R1, A, AI, R2, R3>(
   error: Schema<E, EI, R1>,
   value: Schema<A, AI, R2>,
   defect: Schema<unknown, unknown, R3>
-): Schema<ExitFrom<E, A>, ExitFrom<EI, AI>, R1 | R2 | R3> =>
+): Schema<ExitFrom<A, E>, ExitFrom<AI, EI>, R1 | R2 | R3> =>
   union(
     exitFailureFrom(error, defect),
     exitSuccessFrom(value)
   )
 
-const exitDecode = <E, A>(input: ExitFrom<E, A>): Exit.Exit<E, A> => {
+const exitDecode = <A, E>(input: ExitFrom<A, E>): Exit.Exit<A, E> => {
   switch (input._tag) {
     case "Failure":
       return Exit.failCause(causeDecode(input.cause))
@@ -5241,14 +5241,14 @@ const exitArbitrary = <E, A>(
   error: Arbitrary<E>,
   value: Arbitrary<A>,
   defect: Arbitrary<unknown>
-): Arbitrary<Exit.Exit<E, A>> => {
+): Arbitrary<Exit.Exit<A, E>> => {
   const arb = arbitrary.make(
     exitFrom(schemaFromArbitrary(error), schemaFromArbitrary(value), schemaFromArbitrary(defect))
   )
   return (fc) => arb(fc).map(exitDecode)
 }
 
-const exitPretty = <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pretty.Pretty<Exit.Exit<E, A>> => (exit) =>
+const exitPretty = <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pretty.Pretty<Exit.Exit<A, E>> => (exit) =>
   exit._tag === "Failure"
     ? `Exit.failCause(${causePretty(error)(exit.cause)})`
     : `Exit.succeed(${value(exit.value)})`
@@ -5256,7 +5256,7 @@ const exitPretty = <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pre
 const exitParse = <RE, E, RA, A>(
   decodeUnknownCause: ParseResult.DecodeUnknown<Cause.Cause<E>, RE>,
   decodeUnknownValue: ParseResult.DecodeUnknown<A, RA>
-): ParseResult.DeclarationDecodeUnknown<Exit.Exit<E, A>, RE | RA> =>
+): ParseResult.DeclarationDecodeUnknown<Exit.Exit<A, E>, RE | RA> =>
 (u, options, ast) =>
   Exit.isExit(u) ?
     Exit.match(u, {
@@ -5273,7 +5273,7 @@ export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>(
   error: Schema<E, IE, RE>,
   value: Schema<A, IA, RA>,
   defect: Schema<unknown, unknown, RD> = unknown
-): Schema<Exit.Exit<E, A>, Exit.Exit<IE, IA>, RE | RA | RD> =>
+): Schema<Exit.Exit<A, E>, Exit.Exit<IA, IE>, RE | RA | RD> =>
   declare(
     [error, value, defect],
     (error, value, defect) =>
@@ -5296,7 +5296,7 @@ export const exit = <E, IE, R1, A, IA, R2, R3 = never>(
   error: Schema<E, IE, R1>,
   value: Schema<A, IA, R2>,
   defect: Schema<unknown, unknown, R3> = causeDefectPretty
-): Schema<Exit.Exit<E, A>, ExitFrom<IE, IA>, R1 | R2 | R3> =>
+): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
   transform(
     exitFrom(error, value, defect),
     exitFromSelf(to(error), to(value), to(defect)),
