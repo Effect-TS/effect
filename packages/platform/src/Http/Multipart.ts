@@ -67,7 +67,7 @@ export interface File extends Part.Proto {
   readonly key: string
   readonly name: string
   readonly contentType: string
-  readonly content: Stream.Stream<never, MultipartError, Uint8Array>
+  readonly content: Stream.Stream<Uint8Array, MultipartError>
 }
 
 /**
@@ -234,6 +234,6 @@ export const makeConfig: (headers: Record<string, string>) => Effect.Effect<Mult
  * @category constructors
  */
 export const toPersisted: (
-  stream: Stream.Stream<never, MultipartError, Part>,
+  stream: Stream.Stream<Part, MultipartError>,
   writeFile?: (path: string, file: File) => Effect.Effect<void, MultipartError, FileSystem.FileSystem>
 ) => Effect.Effect<Persisted, MultipartError, FileSystem.FileSystem | Path.Path | Scope.Scope> = internal.toPersisted

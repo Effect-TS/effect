@@ -189,7 +189,7 @@ export const formData = (
 
 /** @internal */
 export const stream = (
-  body: Stream.Stream<never, unknown, Uint8Array>,
+  body: Stream.Stream<Uint8Array, unknown>,
   options?: ServerResponse.Options
 ): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
