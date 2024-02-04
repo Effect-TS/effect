@@ -32,7 +32,7 @@ export type PromptTypeId = typeof PromptTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Prompt<Output> extends Prompt.Variance<Output>, Pipeable, Effect<Terminal, QuitException, Output> {}
+export interface Prompt<Output> extends Prompt.Variance<Output>, Pipeable, Effect<Output, QuitException, Terminal> {}
 
 /**
  * @since 1.0.0
@@ -125,7 +125,7 @@ export declare namespace Prompt {
      * An effectful function that can be used to validate the value entered into
      * the prompt before final submission.
      */
-    readonly validate?: (value: globalThis.Date) => Effect<never, string, globalThis.Date>
+    readonly validate?: (value: globalThis.Date) => Effect<globalThis.Date, string>
     /**
      * Custom locales that can be used in place of the defaults.
      */
@@ -206,7 +206,7 @@ export declare namespace Prompt {
      * An effectful function that can be used to validate the value entered into
      * the prompt before final submission.
      */
-    readonly validate?: (value: number) => Effect<never, string, number>
+    readonly validate?: (value: number) => Effect<number, string>
   }
 
   /**
@@ -291,7 +291,7 @@ export declare namespace Prompt {
      * An effectful function that can be used to validate the value entered into
      * the prompt before final submission.
      */
-    readonly validate?: (value: string) => Effect<never, string, string>
+    readonly validate?: (value: string) => Effect<string, string>
   }
 
   /**
@@ -389,11 +389,11 @@ export const custom: <State, Output>(
     prevState: Option<State>,
     nextState: State,
     action: Prompt.Action<State, Output>
-  ) => Effect<Terminal, never, string>,
+  ) => Effect<string, never, Terminal>,
   process: (
     input: UserInput,
     state: State
-  ) => Effect<Terminal, never, Prompt.Action<State, Output>>
+  ) => Effect<Prompt.Action<State, Output>, never, Terminal>
 ) => Prompt<Output> = InternalPrompt.custom
 
 /**
@@ -458,7 +458,7 @@ export const password: (options: Prompt.TextOptions) => Prompt<Secret> = Interna
  * @since 1.0.0
  * @category execution
  */
-export const run: <Output>(self: Prompt<Output>) => Effect<Terminal, QuitException, Output> = InternalPrompt.run
+export const run: <Output>(self: Prompt<Output>) => Effect<Output, QuitException, Terminal> = InternalPrompt.run
 
 /**
  * @since 1.0.0

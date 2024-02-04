@@ -35,7 +35,7 @@ export interface Clock {
   /**
    * Returns the current time in milliseconds.
    */
-  readonly currentTimeMillis: Effect.Effect<never, never, number>
+  readonly currentTimeMillis: Effect.Effect<number>
   /**
    * Unsafely returns the current time in nanoseconds.
    */
@@ -43,11 +43,11 @@ export interface Clock {
   /**
    * Returns the current time in nanoseconds.
    */
-  readonly currentTimeNanos: Effect.Effect<never, never, bigint>
+  readonly currentTimeNanos: Effect.Effect<bigint>
   /**
    * Asynchronously sleeps for the specified duration.
    */
-  sleep(duration: Duration.Duration): Effect.Effect<never, never, void>
+  sleep(duration: Duration.Duration): Effect.Effect<void>
 }
 
 /**
@@ -83,25 +83,25 @@ export const make: (_: void) => Clock = internal.make
  * @since 2.0.0
  * @category constructors
  */
-export const sleep: (duration: Duration.DurationInput) => Effect.Effect<never, never, void> = defaultServices.sleep
+export const sleep: (duration: Duration.DurationInput) => Effect.Effect<void> = defaultServices.sleep
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const currentTimeMillis: Effect.Effect<never, never, number> = defaultServices.currentTimeMillis
+export const currentTimeMillis: Effect.Effect<number> = defaultServices.currentTimeMillis
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const currentTimeNanos: Effect.Effect<never, never, bigint> = defaultServices.currentTimeNanos
+export const currentTimeNanos: Effect.Effect<bigint> = defaultServices.currentTimeNanos
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const clockWith: <R, E, A>(f: (clock: Clock) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A> =
+export const clockWith: <A, E, R>(f: (clock: Clock) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
   defaultServices.clockWith
 
 /**

@@ -13,7 +13,7 @@ import * as pageWidth from "./pageWidth.js"
 /** @internal */
 export const render = <A>(self: DocStream.DocStream<A>): string => Effect.runSync(renderSafe(self))
 
-const renderSafe = <A>(self: DocStream.DocStream<A>): Effect.Effect<never, never, string> => {
+const renderSafe = <A>(self: DocStream.DocStream<A>): Effect.Effect<string> => {
   switch (self._tag) {
     case "FailedStream": {
       throw new Error("bug, we ended up with a failed in render!")

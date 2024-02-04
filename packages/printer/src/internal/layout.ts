@@ -42,7 +42,7 @@ const wadlerLeijenSafe = <A>(
   x: pipeline.LayoutPipeline<A>,
   fits: Layout.Layout.FittingPredicate<A>,
   options: Layout.Layout.Options
-): Effect.Effect<never, never, DocStream.DocStream<A>> => {
+): Effect.Effect<DocStream.DocStream<A>> => {
   switch (x._tag) {
     case "Nil": {
       return Effect.succeed(docStream.empty)
@@ -173,7 +173,7 @@ export const compact = <A>(self: Doc.Doc<A>): DocStream.DocStream<A> => Effect.r
 const compactSafe = <A>(
   docs: List.List<Doc.Doc<A>>,
   i: number
-): Effect.Effect<never, never, DocStream.DocStream<A>> => {
+): Effect.Effect<DocStream.DocStream<A>> => {
   if (List.isNil(docs)) {
     return Effect.succeed(DocStream.empty)
   }

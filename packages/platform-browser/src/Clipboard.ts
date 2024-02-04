@@ -13,12 +13,12 @@ import * as internal from "./internal/clipboard.js"
  * @category interface
  */
 export interface Clipboard {
-  readonly read: Effect.Effect<never, PlatformError, ClipboardItems>
-  readonly readString: Effect.Effect<never, PlatformError, string>
-  readonly write: (items: ClipboardItems) => Effect.Effect<never, PlatformError, void>
-  readonly writeString: (text: string) => Effect.Effect<never, PlatformError, void>
-  readonly writeBlob: (blob: Blob) => Effect.Effect<never, PlatformError, void>
-  readonly clear: Effect.Effect<never, PlatformError, void>
+  readonly read: Effect.Effect<ClipboardItems, PlatformError>
+  readonly readString: Effect.Effect<string, PlatformError>
+  readonly write: (items: ClipboardItems) => Effect.Effect<void, PlatformError>
+  readonly writeString: (text: string) => Effect.Effect<void, PlatformError>
+  readonly writeBlob: (blob: Blob) => Effect.Effect<void, PlatformError>
+  readonly clear: Effect.Effect<void, PlatformError>
 }
 
 /**

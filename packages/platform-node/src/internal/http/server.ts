@@ -34,12 +34,12 @@ import * as internalPlatform from "./platform.js"
 export const make = (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
-): Effect.Effect<Scope.Scope, Error.ServeError, Server.Server> =>
+): Effect.Effect<Server.Server, Error.ServeError, Scope.Scope> =>
   Effect.gen(function*(_) {
     const server = yield* _(Effect.acquireRelease(
       Effect.sync(evaluate),
       (server) =>
-        Effect.async<never, never, void>((resume) => {
+        Effect.async<void, never, never>((resume) => {
           server.close((error) => {
             if (error) {
               resume(Effect.die(error))
@@ -50,7 +50,7 @@ export const make = (
         })
     ))
 
-    yield* _(Effect.async<never, Error.ServeError, void>((resume) => {
+    yield* _(Effect.async<void, Error.ServeError, never>((resume) => {
       server.on("error", (error) => {
         resume(Effect.fail(Error.ServeError({ error })))
       })
@@ -93,17 +93,17 @@ export const make = (
 /** @internal */
 export const makeHandler: {
   <R, E>(httpApp: App.Default<R, E>): Effect.Effect<
-    Exclude<R, ServerRequest.ServerRequest | Scope.Scope>,
+    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void,
     never,
-    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void
+    Exclude<R, ServerRequest.ServerRequest | Scope.Scope>
   >
   <R, E, App extends App.Default<any, any>>(
     httpApp: App.Default<R, E>,
     middleware: Middleware.Middleware.Applied<R, E, App>
   ): Effect.Effect<
-    Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>,
+    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void,
     never,
-    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void
+    Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
   >
 } = <R, E>(httpApp: App.Default<R, E>, middleware?: Middleware.Middleware) => {
   const handledApp = Effect.scoped(
@@ -211,15 +211,15 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
 
   private multipartEffect:
     | Effect.Effect<
-      Scope.Scope | FileSystem.FileSystem | Path.Path,
+      Multipart.Persisted,
       Multipart.MultipartError,
-      Multipart.Persisted
+      Scope.Scope | FileSystem.FileSystem | Path.Path
     >
     | undefined
   get multipart(): Effect.Effect<
-    Scope.Scope | FileSystem.FileSystem | Path.Path,
+    Multipart.Persisted,
     Multipart.MultipartError,
-    Multipart.Persisted
+    Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
     if (this.multipartEffect) {
       return this.multipartEffect
@@ -283,7 +283,7 @@ export const layerConfig = (
   )
 
 const handleResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse) =>
-  Effect.suspend((): Effect.Effect<never, Error.ResponseError, void> => {
+  Effect.suspend((): Effect.Effect<void, Error.ResponseError> => {
     const nodeResponse = (request as ServerRequestImpl).response
     if (request.method === "HEAD") {
       nodeResponse.writeHead(response.status, response.headers)
@@ -323,7 +323,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
         return Effect.unit
       }
       case "FormData": {
-        return Effect.async<never, Error.ResponseError, void>((resume) => {
+        return Effect.async<void, Error.ResponseError, never>((resume) => {
           const r = new Response(body.formData)
           const headers = {
             ...response.headers,

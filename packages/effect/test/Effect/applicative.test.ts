@@ -33,7 +33,7 @@ describe("Effect", () => {
   it.effect("an applicative operation that starts with a failure should fail", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        (Effect.fail("a") as Effect.Effect<never, string, typeof add>).pipe(
+        (Effect.fail("a") as Effect.Effect<typeof add, string>).pipe(
           Effect.ap(Effect.succeed(1)),
           Effect.ap(Effect.succeed(2))
         ),

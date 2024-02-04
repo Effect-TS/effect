@@ -77,9 +77,9 @@ export interface Map extends
   Op<"Map", {
     readonly args: Args.Args<unknown>
     readonly f: (value: unknown) => Effect.Effect<
-      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      unknown,
       HelpDoc.HelpDoc,
-      unknown
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
     >
   }>
 {}
@@ -341,11 +341,11 @@ export const map = dual<
 /** @internal */
 export const mapEffect = dual<
   <A, B>(
-    f: (a: A) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, HelpDoc.HelpDoc, B>
+    f: (a: A) => Effect.Effect<B, HelpDoc.HelpDoc, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => (self: Args.Args<A>) => Args.Args<B>,
   <A, B>(
     self: Args.Args<A>,
-    f: (a: A) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, HelpDoc.HelpDoc, B>
+    f: (a: A) => Effect.Effect<B, HelpDoc.HelpDoc, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => Args.Args<B>
 >(2, (self, f) => makeMap(self, f))
 
@@ -382,18 +382,18 @@ export const validate = dual<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => <A>(self: Args.Args<A>) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    [Array<string>, A],
     ValidationError.ValidationError,
-    [Array<string>, A]
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >,
   <A>(
     self: Args.Args<A>,
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    [Array<string>, A],
     ValidationError.ValidationError,
-    [Array<string>, A]
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >
 >(3, (self, args, config) => validateInternal(self as Instruction, args, config))
 
@@ -447,14 +447,14 @@ export const withDescription = dual<
 /** @internal */
 export const wizard = dual<
   (config: CliConfig.CliConfig) => <A>(self: Args.Args<A>) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    Array<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    Array<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >,
   <A>(self: Args.Args<A>, config: CliConfig.CliConfig) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    Array<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    Array<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >
 >(2, (self, config) => wizardInternal(self as Instruction, config))
 
@@ -676,7 +676,7 @@ const makeSingle = <A>(
 
 const makeMap = <A, B>(
   self: Args.Args<A>,
-  f: (value: A) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, HelpDoc.HelpDoc, B>
+  f: (value: A) => Effect.Effect<B, HelpDoc.HelpDoc, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
 ): Args.Args<B> => {
   const op = Object.create(proto)
   op._tag = "Map"
@@ -733,9 +733,9 @@ const validateInternal = (
   args: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+  [Array<string>, any],
   ValidationError.ValidationError,
-  [Array<string>, any]
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal
 > => {
   switch (self._tag) {
     case "Empty": {
@@ -801,9 +801,9 @@ const validateInternal = (
         args: ReadonlyArray<string>,
         acc: ReadonlyArray<any>
       ): Effect.Effect<
-        FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+        [ReadonlyArray<string>, ReadonlyArray<any>],
         ValidationError.ValidationError,
-        [ReadonlyArray<string>, ReadonlyArray<any>]
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal
       > => {
         if (acc.length >= max1) {
           return Effect.succeed([args, acc])
@@ -882,9 +882,9 @@ const withDescriptionInternal = (self: Instruction, description: string): Args.A
 }
 
 const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.Effect<
-  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+  Array<string>,
   Terminal.QuitException | ValidationError.ValidationError,
-  Array<string>
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal
 > => {
   switch (self._tag) {
     case "Empty": {

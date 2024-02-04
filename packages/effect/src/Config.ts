@@ -33,7 +33,7 @@ export type ConfigTypeId = typeof ConfigTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Config<out A> extends Config.Variance<A>, Effect.Effect<never, ConfigError.ConfigError, A> {}
+export interface Config<out A> extends Config.Variance<A>, Effect.Effect<A, ConfigError.ConfigError> {}
 
 /**
  * @since 2.0.0

@@ -32,7 +32,7 @@ export type Exit<E, A> = Failure<E, A> | Success<E, A>
  * @since 2.0.0
  * @category models
  */
-export interface Failure<out E, out A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Failure<out E, out A> extends Effect.Effect<A, E>, Pipeable, Inspectable {
   readonly _tag: "Failure"
   readonly _op: "Failure"
   readonly cause: Cause.Cause<E>
@@ -66,7 +66,7 @@ export interface ExitUnifyIgnore extends Effect.EffectUnifyIgnore {
  * @since 2.0.0
  * @category models
  */
-export interface Success<out E, out A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Success<out E, out A> extends Effect.Effect<A, E>, Pipeable, Inspectable {
   readonly _tag: "Success"
   readonly _op: "Success"
   readonly value: A
@@ -206,13 +206,10 @@ export const flatMap: {
  * @category sequencing
  */
 export const flatMapEffect: {
-  <E, A, R, E2, A2>(
-    f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>
-  ): (self: Exit<E, A>) => Effect.Effect<R, E2, Exit<E, A2>>
-  <E, A, R, E2, A2>(
-    self: Exit<E, A>,
-    f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>
-  ): Effect.Effect<R, E2, Exit<E, A2>>
+  <A, E, A2, E2, R>(
+    f: (a: A) => Effect.Effect<Exit<E, A2>, E2, R>
+  ): (self: Exit<E, A>) => Effect.Effect<Exit<E, A2>, E2, R>
+  <E, A, A2, E2, R>(self: Exit<E, A>, f: (a: A) => Effect.Effect<Exit<E, A2>, E2, R>): Effect.Effect<Exit<E, A2>, E2, R>
 } = core.exitFlatMapEffect
 
 /**
@@ -226,8 +223,8 @@ export const flatten: <E, E1, A>(self: Exit<E, Exit<E1, A>>) => Exit<E | E1, A> 
  * @category traversing
  */
 export const forEachEffect: {
-  <A, R, E2, B>(f: (a: A) => Effect.Effect<R, E2, B>): <E>(self: Exit<E, A>) => Effect.Effect<R, never, Exit<E2 | E, B>>
-  <E, A, R, E2, B>(self: Exit<E, A>, f: (a: A) => Effect.Effect<R, E2, B>): Effect.Effect<R, never, Exit<E | E2, B>>
+  <A, B, E2, R>(f: (a: A) => Effect.Effect<B, E2, R>): <E>(self: Exit<E, A>) => Effect.Effect<Exit<E2 | E, B>, never, R>
+  <E, A, B, E2, R>(self: Exit<E, A>, f: (a: A) => Effect.Effect<B, E2, R>): Effect.Effect<Exit<E | E2, B>, never, R>
 } = core.exitForEachEffect
 
 /**
@@ -352,19 +349,19 @@ export const match: {
  * @category folding
  */
 export const matchEffect: {
-  <E, A, R, E2, A2, R2, E3, A3>(
+  <A2, E2, R, A, A3, E3, R2, E>(
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
-      readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
+      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<A2, E2, R>
+      readonly onSuccess: (a: A) => Effect.Effect<A3, E3, R2>
     }
-  ): (self: Exit<E, A>) => Effect.Effect<R | R2, E2 | E3, A2 | A3>
-  <E, A, R, E2, A2, R2, E3, A3>(
+  ): (self: Exit<E, A>) => Effect.Effect<A2 | A3, E2 | E3, R | R2>
+  <E, A, A2, E2, R, A3, E3, R2>(
     self: Exit<E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
-      readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
+      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<A2, E2, R>
+      readonly onSuccess: (a: A) => Effect.Effect<A3, E3, R2>
     }
-  ): Effect.Effect<R | R2, E2 | E3, A2 | A3>
+  ): Effect.Effect<A2 | A3, E2 | E3, R | R2>
 } = core.exitMatchEffect
 
 /**

@@ -3,6 +3,7 @@
  */
 import { identity } from "./Function.js"
 import type { Kind, TypeLambda } from "./HKT.js"
+import { isNullable } from "./Predicate.js"
 import type * as Types from "./Types.js"
 
 /*
@@ -17,8 +18,6 @@ import type * as Types from "./Types.js"
  *
  * @since 2.0.0
  */
-
-import { isNullable } from "./Predicate.js"
 
 /**
  * @category symbols

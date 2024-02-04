@@ -88,9 +88,9 @@ export interface Map extends
   Op<"Map", {
     readonly command: Instruction
     readonly f: (value: unknown) => Effect.Effect<
-      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      unknown,
       ValidationError.ValidationError,
-      unknown
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
     >
   }>
 {}
@@ -175,19 +175,19 @@ export const getNames = <A>(self: Descriptor.Command<A>): HashSet.HashSet<string
 export const getBashCompletions = <A>(
   self: Descriptor.Command<A>,
   executable: string
-): Effect.Effect<never, never, Array<string>> => getBashCompletionsInternal(self as Instruction, executable)
+): Effect.Effect<Array<string>> => getBashCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getFishCompletions = <A>(
   self: Descriptor.Command<A>,
   executable: string
-): Effect.Effect<never, never, Array<string>> => getFishCompletionsInternal(self as Instruction, executable)
+): Effect.Effect<Array<string>> => getFishCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getZshCompletions = <A>(
   self: Descriptor.Command<A>,
   executable: string
-): Effect.Effect<never, never, Array<string>> => getZshCompletionsInternal(self as Instruction, executable)
+): Effect.Effect<Array<string>> => getZshCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getSubcommands = <A>(
@@ -208,17 +208,17 @@ export const map = dual<
 export const mapEffect = dual<
   <A, B>(
     f: (a: A) => Effect.Effect<
-      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      B,
       ValidationError.ValidationError,
-      B
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
     >
   ) => (self: Descriptor.Command<A>) => Descriptor.Command<B>,
   <A, B>(
     self: Descriptor.Command<A>,
     f: (a: A) => Effect.Effect<
-      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      B,
       ValidationError.ValidationError,
-      B
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
     >
   ) => Descriptor.Command<B>
 >(2, (self, f) => {
@@ -235,18 +235,18 @@ export const parse = dual<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => <A>(self: Descriptor.Command<A>) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    Directive.CommandDirective<A>,
     ValidationError.ValidationError,
-    Directive.CommandDirective<A>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >,
   <A>(
     self: Descriptor.Command<A>,
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    Directive.CommandDirective<A>,
     ValidationError.ValidationError,
-    Directive.CommandDirective<A>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >
 >(3, (self, args, config) => parseInternal(self as Instruction, args, config))
 
@@ -305,18 +305,18 @@ export const wizard = dual<
     prefix: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => <A>(self: Descriptor.Command<A>) => Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
+    Array<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    Array<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >,
   <A>(
     self: Descriptor.Command<A>,
     prefix: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    Array<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    Array<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >
 >(3, (self, prefix, config) => wizardInternal(self as Instruction, prefix, config))
 
@@ -504,15 +504,15 @@ const parseInternal = (
   args: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+  Directive.CommandDirective<any>,
   ValidationError.ValidationError,
-  Directive.CommandDirective<any>
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal
 > => {
   switch (self._tag) {
     case "Standard": {
       const parseCommandLine = (
         args: ReadonlyArray<string>
-      ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> =>
+      ): Effect.Effect<ReadonlyArray<string>, ValidationError.ValidationError> =>
         ReadonlyArray.matchLeft(args, {
           onEmpty: () => {
             const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
@@ -534,9 +534,9 @@ const parseInternal = (
       const parseBuiltInArgs = (
         args: ReadonlyArray<string>
       ): Effect.Effect<
-        FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+        Directive.CommandDirective<never>,
         ValidationError.ValidationError,
-        Directive.CommandDirective<never>
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal
       > =>
         ReadonlyArray.matchLeft(args, {
           onEmpty: () => {
@@ -568,9 +568,9 @@ const parseInternal = (
       const parseUserDefinedArgs = (
         args: ReadonlyArray<string>
       ): Effect.Effect<
-        FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+        Directive.CommandDirective<unknown>,
         ValidationError.ValidationError,
-        Directive.CommandDirective<unknown>
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal
       > =>
         parseCommandLine(args).pipe(Effect.flatMap((commandOptionsAndArgs) => {
           const [optionsAndArgs, forcedCommandArgs] = splitForcedArgs(commandOptionsAndArgs)
@@ -601,9 +601,9 @@ const parseInternal = (
       const exhaustiveSearch = (
         args: ReadonlyArray<string>
       ): Effect.Effect<
-        FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+        Directive.CommandDirective<never>,
         ValidationError.ValidationError,
-        Directive.CommandDirective<never>
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal
       > => {
         if (ReadonlyArray.contains(args, "--help") || ReadonlyArray.contains(args, "-h")) {
           return parseBuiltInArgs(ReadonlyArray.make(self.name, "--help"))
@@ -676,9 +676,9 @@ const parseInternal = (
         const loop = (
           next: Instruction
         ): Effect.Effect<
-          FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+          Directive.CommandDirective<any>,
           ValidationError.ValidationError,
-          Directive.CommandDirective<any>
+          FileSystem.FileSystem | Path.Path | Terminal.Terminal
         > => {
           return parseInternal(next, childArgs, config).pipe(
             Effect.catchIf(InternalValidationError.isCommandMismatch, (e) => {
@@ -837,17 +837,17 @@ const wizardInternal = (
   prefix: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+  Array<string>,
   Terminal.QuitException | ValidationError.ValidationError,
-  Array<string>
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal
 > => {
   const loop = (
     self: Instruction,
     commandLineRef: Ref.Ref<ReadonlyArray<string>>
   ): Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    ReadonlyArray<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   > => {
     switch (self._tag) {
       case "GetUserInput":
@@ -921,7 +921,7 @@ const wizardInternal = (
   return Ref.make(prefix).pipe(
     Effect.flatMap((commandLineRef) =>
       loop(self, commandLineRef).pipe(
-        Effect.zipRight(Ref.get(commandLineRef) as Effect.Effect<never, never, Array<string>>)
+        Effect.zipRight(Ref.get(commandLineRef) as Effect.Effect<Array<string>>)
       )
     )
   )
@@ -962,15 +962,15 @@ interface CommandInfo {
 const traverseCommand = <S>(
   self: Instruction,
   initialState: S,
-  f: (state: S, info: CommandInfo) => Effect.Effect<never, never, S>
-): Effect.Effect<never, never, S> =>
+  f: (state: S, info: CommandInfo) => Effect.Effect<S>
+): Effect.Effect<S> =>
   SynchronizedRef.make(initialState).pipe(Effect.flatMap((ref) => {
     const loop = (
       self: Instruction,
       parentCommands: ReadonlyArray<string>,
       subcommands: ReadonlyArray<[string, Standard | GetUserInput]>,
       level: number
-    ): Effect.Effect<never, never, void> => {
+    ): Effect.Effect<void, never, never> => {
       switch (self._tag) {
         case "Standard": {
           const info: CommandInfo = {
@@ -1022,7 +1022,7 @@ const indentAll = dual<
 const getBashCompletionsInternal = (
   self: Instruction,
   executable: string
-): Effect.Effect<never, never, Array<string>> =>
+): Effect.Effect<Array<string>> =>
   traverseCommand(
     self,
     ReadonlyArray.empty<[ReadonlyArray<string>, ReadonlyArray<string>]>(),
@@ -1113,7 +1113,7 @@ const getBashCompletionsInternal = (
 const getFishCompletionsInternal = (
   self: Instruction,
   executable: string
-): Effect.Effect<never, never, Array<string>> =>
+): Effect.Effect<Array<string>> =>
   traverseCommand(self, ReadonlyArray.empty(), (state, info) => {
     const baseTemplate = ReadonlyArray.make("complete", "-c", executable)
     const options = isStandard(info.command)
@@ -1195,7 +1195,7 @@ const getFishCompletionsInternal = (
 const getZshCompletionsInternal = (
   self: Instruction,
   executable: string
-): Effect.Effect<never, never, Array<string>> =>
+): Effect.Effect<Array<string>> =>
   traverseCommand(self, ReadonlyArray.empty<string>(), (state, info) => {
     const preformatted = ReadonlyArray.isEmptyReadonlyArray(info.parentCommands)
       ? ReadonlyArray.of(info.command.name)

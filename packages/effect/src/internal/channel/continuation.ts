@@ -122,7 +122,7 @@ export interface ContinuationFinalizer<out Env, out OutErr, out OutDone> extends
   >
 {
   readonly _tag: OpCodes.OP_CONTINUATION_FINALIZER
-  finalizer(exit: Exit.Exit<OutErr, OutDone>): Effect.Effect<Env, never, unknown>
+  finalizer(exit: Exit.Exit<OutErr, OutDone>): Effect.Effect<unknown, never, Env>
 }
 
 const continuationVariance = {
@@ -195,6 +195,6 @@ export class ContinuationFinalizerImpl<out Env, in out OutErr, in out OutDone>
 {
   readonly _tag = OpCodes.OP_CONTINUATION_FINALIZER
   readonly [ContinuationTypeId] = continuationVariance
-  constructor(readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, unknown>) {
+  constructor(readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<unknown, never, Env>) {
   }
 }

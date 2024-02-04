@@ -23,9 +23,9 @@ export interface RpcNextjsHandler<R extends RpcRouter.Base> {
     request: NextApiRequest,
     response: NextApiResponse
   ): Effect.Effect<
-    Exclude<RpcHandlers.Services<R["handlers"]>, NextApiRequest>,
+    void,
     never,
-    void
+    Exclude<RpcHandlers.Services<R["handlers"]>, NextApiRequest>
   >
 }
 

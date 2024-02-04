@@ -23,16 +23,16 @@ export type Rpc<C extends RpcSchema.Any, R, SE> = C extends RpcSchema.IO<
   infer RO,
   infer _IO,
   infer O
-> ? (input: I) => Effect<R | RE | RI | RO, RpcError | SE | E, O>
+> ? (input: I) => Effect<O, RpcError | SE | E, R | RE | RI | RO>
   : C extends RpcSchema.NoError<infer RI, infer _II, infer I, infer RO, infer _IO, infer O> ?
-    (input: I) => Effect<R | RI | RO, RpcError | SE, O>
+    (input: I) => Effect<O, RpcError | SE, R | RI | RO>
   : C extends RpcSchema.NoOutput<infer RE, infer _IE, infer E, infer RI, infer _II, infer I>
-    ? (input: I) => Effect<R | RE | RI, RpcError | SE | E, void>
+    ? (input: I) => Effect<void, RpcError | SE | E, R | RE | RI>
   : C extends RpcSchema.NoErrorNoOutput<infer RI, infer _II, infer I> ?
-    (input: I) => Effect<R | RI, RpcError | SE, void>
+    (input: I) => Effect<void, RpcError | SE, R | RI>
   : C extends RpcSchema.NoInput<infer RE, infer _IE, infer E, infer RO, infer _IO, infer O> ?
-    Effect<R | RE | RO, RpcError | SE | E, O>
-  : C extends RpcSchema.NoInputNoError<infer RO, infer _IO, infer O> ? Effect<R | RO, RpcError | SE, O>
+    Effect<O, RpcError | SE | E, R | RE | RO>
+  : C extends RpcSchema.NoInputNoError<infer RO, infer _IO, infer O> ? Effect<O, RpcError | SE, R | RO>
   : never
 
 type RpcClientRpcs<S extends RpcService.DefinitionWithId, R, SE = never, Depth extends ReadonlyArray<number> = []> = {
@@ -54,10 +54,7 @@ type RpcClientRpcs<S extends RpcService.DefinitionWithId, R, SE = never, Depth e
  * @since 1.0.0
  */
 export type RpcClient<S extends RpcService.DefinitionWithId, R> =
-  & RpcClientRpcs<
-    S,
-    R
-  >
+  & RpcClientRpcs<S, R>
   & {
     readonly _schemas: S
     readonly _unsafeDecode: <
@@ -85,7 +82,7 @@ export interface RpcClientOptions {
  */
 export const make: <
   const S extends RpcService.DefinitionWithId,
-  Resolver extends RpcResolver<never> | Effect<any, never, RpcResolver<never>>
+  Resolver extends RpcResolver<never> | Effect<RpcResolver<never>, never, any>
 >(
   schemas: S,
   resolver: Resolver,
@@ -93,8 +90,7 @@ export const make: <
     ? [init: RpcSchema.Input<S["__setup"]>, options?: RpcClientOptions | undefined]
     : [options?: RpcClientOptions | undefined]
 ) => [S] extends [RpcService.DefinitionWithSetup] ? Effect<
-    never,
-    RpcError | RpcSchema.Error<S["__setup"]>,
-    RpcClient<S, [Resolver] extends [Effect<any, any, any>] ? Effect.Context<Resolver> : never>
+    RpcClient<S, [Resolver] extends [Effect<any, any, any>] ? Effect.Context<Resolver> : never>,
+    RpcError | RpcSchema.Error<S["__setup"]>
   >
   : RpcClient<S, [Resolver] extends [Effect<any, any, any>] ? Effect.Context<Resolver> : never> = internal.make

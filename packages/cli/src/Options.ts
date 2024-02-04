@@ -386,8 +386,8 @@ export const map: {
  * @category combinators
  */
 export const mapEffect: {
-  <A, B>(f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): (self: Options<A>) => Options<B>
-  <A, B>(self: Options<A>, f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): Options<B>
+  <A, B>(f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): (self: Options<A>) => Options<B>
+  <A, B>(self: Options<A>, f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): Options<B>
 } = InternalOptions.mapEffect
 
 /**
@@ -431,12 +431,12 @@ export const parse: {
   (
     args: HashMap<string, ReadonlyArray<string>>,
     config: CliConfig
-  ): <A>(self: Options<A>) => Effect<FileSystem, ValidationError, A>
+  ): <A>(self: Options<A>) => Effect<A, ValidationError, FileSystem>
   <A>(
     self: Options<A>,
     args: HashMap<string, ReadonlyArray<string>>,
     config: CliConfig
-  ): Effect<FileSystem, ValidationError, A>
+  ): Effect<A, ValidationError, FileSystem>
 } = InternalOptions.parse
 
 /**
@@ -472,18 +472,18 @@ export const processCommandLine: {
   ): <A>(
     self: Options<A>
   ) => Effect<
-    FileSystem | Path | Terminal,
+    [Option<ValidationError>, Array<string>, A],
     ValidationError,
-    [Option<ValidationError>, Array<string>, A]
+    FileSystem | Path | Terminal
   >
   <A>(
     self: Options<A>,
     args: ReadonlyArray<string>,
     config: CliConfig
   ): Effect<
-    FileSystem | Path | Terminal,
+    [Option<ValidationError>, Array<string>, A],
     ValidationError,
-    [Option<ValidationError>, Array<string>, A]
+    FileSystem | Path | Terminal
   >
 } = InternalOptions.processCommandLine
 
@@ -551,16 +551,16 @@ export const wizard: {
   ): <A>(
     self: Options<A>
   ) => Effect<
-    FileSystem | Path | Terminal,
+    Array<string>,
     QuitException | ValidationError,
-    Array<string>
+    FileSystem | Path | Terminal
   >
   <A>(
     self: Options<A>,
     config: CliConfig
   ): Effect<
-    FileSystem | Path | Terminal,
+    Array<string>,
     QuitException | ValidationError,
-    Array<string>
+    FileSystem | Path | Terminal
   >
 } = InternalOptions.wizard

@@ -27,9 +27,9 @@ export const make: (
   evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
   options: Net.ListenOptions
 ) => Effect.Effect<
-  Scope.Scope,
+  Server.Server,
   ServeError,
-  Server.Server
+  Scope.Scope
 > = internal.make
 
 /**

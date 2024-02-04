@@ -559,7 +559,7 @@ export const fillBreak = dual<
 /** @internal */
 export const flatten = <A>(self: Doc.Doc<A>): Doc.Doc<A> => Effect.runSync(flattenSafe(self))
 
-const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<never, never, Doc.Doc<A>> => {
+const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> => {
   switch (self._tag) {
     case "Line":
       return Effect.succeed(fail)
@@ -606,7 +606,7 @@ export const changesUponFlattening = <A>(self: Doc.Doc<A>): Flatten.Flatten<Doc.
 
 const changesUponFlatteningSafe = <A>(
   self: Doc.Doc<A>
-): Effect.Effect<never, never, Flatten.Flatten<Doc.Doc<A>>> => {
+): Effect.Effect<Flatten.Flatten<Doc.Doc<A>>> => {
   switch (self._tag) {
     case "Fail": {
       return Effect.succeed(_flatten.neverFlat)
@@ -698,7 +698,7 @@ export const alterAnnotations = dual<
 const alterAnnotationsSafe = <A, B>(
   self: Doc.Doc<A>,
   f: (a: A) => Iterable<B>
-): Effect.Effect<never, never, Doc.Doc<B>> => {
+): Effect.Effect<Doc.Doc<B>> => {
   switch (self._tag) {
     case "Cat": {
       return Effect.zipWith(

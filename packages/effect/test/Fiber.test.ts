@@ -125,8 +125,8 @@ describe("Fiber", () => {
       const shard = <R, E, A>(
         queue: Queue.Queue<A>,
         n: number,
-        worker: (a: A) => Effect.Effect<R, E, void>
-      ): Effect.Effect<R, E, never> => {
+        worker: (a: A) => Effect.Effect<void, E, R>
+      ): Effect.Effect<never, E, R> => {
         const worker1 = pipe(
           Queue.take(queue),
           Effect.flatMap((a) => Effect.uninterruptible(worker(a))),
@@ -164,7 +164,7 @@ describe("Fiber", () => {
     }))
   it.effect("dual roots", () =>
     Effect.gen(function*($) {
-      const rootContains = (fiber: Fiber.RuntimeFiber<any, any>): Effect.Effect<never, never, boolean> => {
+      const rootContains = (fiber: Fiber.RuntimeFiber<any, any>): Effect.Effect<boolean> => {
         return pipe(Fiber.roots, Effect.map(Chunk.unsafeFromArray), Effect.map(ReadonlyArray.contains(fiber)))
       }
       const fiber1 = yield* $(Effect.forkDaemon(Effect.never))

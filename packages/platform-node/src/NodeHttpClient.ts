@@ -42,7 +42,7 @@ export const HttpAgent: Context.Tag<HttpAgent, HttpAgent> = internal.HttpAgent
  * @since 1.0.0
  * @category agent
  */
-export const makeAgent: (options?: Https.AgentOptions) => Effect.Effect<Scope.Scope, never, HttpAgent> =
+export const makeAgent: (options?: Https.AgentOptions) => Effect.Effect<HttpAgent, never, Scope.Scope> =
   internal.makeAgent
 
 /**
@@ -62,7 +62,7 @@ export const makeAgentLayer: (options?: Https.AgentOptions) => Layer.Layer<never
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<HttpAgent, never, Client.Client.Default> = internal.make
+export const make: Effect.Effect<Client.Client.Default, never, HttpAgent> = internal.make
 
 /**
  * @since 1.0.0

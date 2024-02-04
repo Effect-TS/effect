@@ -40,13 +40,13 @@ type ExitCodeDeferred = Deferred.Deferred<never, ExitCode>
 
 const runCommand =
   (fileSystem: FileSystem.FileSystem) =>
-  (command: Command.Command): Effect.Effect<Scope.Scope, Error.PlatformError, CommandExecutor.Process> => {
+  (command: Command.Command): Effect.Effect<CommandExecutor.Process, Error.PlatformError, Scope.Scope> => {
     switch (command._tag) {
       case "StandardCommand": {
         const spawn = Effect.flatMap(
           Deferred.make<never, ExitCode>(),
           (exitCode) =>
-            Effect.async<never, Error.PlatformError, readonly [ChildProcess.ChildProcess, ExitCodeDeferred]>(
+            Effect.async<readonly [ChildProcess.ChildProcess, ExitCodeDeferred], Error.PlatformError, never>(
               (resume) => {
                 const handle = ChildProcess.spawn(command.command, command.args, {
                   stdio: [
