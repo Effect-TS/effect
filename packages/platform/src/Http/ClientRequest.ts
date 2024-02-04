@@ -74,7 +74,7 @@ export declare namespace Options {
  * @category constructors
  */
 export const make: <M extends Method>(
-  method: Method
+  method: M
 ) => (
   url: string | URL,
   options?: (M extends "GET" | "HEAD" ? Options.NoBody : Options.NoUrl) | undefined
