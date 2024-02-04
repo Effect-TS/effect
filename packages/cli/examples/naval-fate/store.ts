@@ -12,15 +12,15 @@ import { CoordinatesOccupiedError, Mine, Ship, ShipExistsError, ShipNotFoundErro
  * Represents the storage layer for the Naval Fate command-line application.
  */
 export interface NavalFateStore {
-  createShip(name: string): Effect.Effect<never, ShipExistsError, Ship>
+  createShip(name: string): Effect.Effect<Ship, ShipExistsError>
   moveShip(
     name: string,
     x: number,
     y: number
-  ): Effect.Effect<never, CoordinatesOccupiedError | ShipNotFoundError, Ship>
-  shoot(x: number, y: number): Effect.Effect<never, never, void>
-  setMine(x: number, y: number): Effect.Effect<never, never, void>
-  removeMine(x: number, y: number): Effect.Effect<never, never, void>
+  ): Effect.Effect<Ship, CoordinatesOccupiedError | ShipNotFoundError>
+  shoot(x: number, y: number): Effect.Effect<void>
+  setMine(x: number, y: number): Effect.Effect<void>
+  removeMine(x: number, y: number): Effect.Effect<void>
 }
 
 export const NavalFateStore = Context.GenericTag<NavalFateStore>("NavalFateStore")

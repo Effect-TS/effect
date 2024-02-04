@@ -147,7 +147,7 @@ describe.concurrent("DocTree", () => {
 
       const renderTreeSafe = (
         tree: DocTree.DocTree<SimpleHtml>
-      ): Effect.Effect<never, never, string> => {
+      ): Effect.Effect<string> => {
         switch (tree._tag) {
           case "EmptyTree": {
             return Effect.succeed("")

@@ -39,10 +39,10 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Command<Name extends string, R, E, A> extends Pipeable, Effect<Command.Context<Name>, never, A> {
+export interface Command<Name extends string, R, E, A> extends Pipeable, Effect<A, never, Command.Context<Name>> {
   readonly [TypeId]: TypeId
   readonly descriptor: Descriptor.Command<A>
-  readonly handler: (_: A) => Effect<R, E, void>
+  readonly handler: (_: A) => Effect<void, E, R>
   readonly tag: Tag<Command.Context<Name>, A>
   readonly transform: Command.Transform<R, E, A>
 }
@@ -120,7 +120,7 @@ export declare namespace Command {
    * @since 1.0.0
    * @category models
    */
-  export type Transform<R, E, A> = (effect: Effect<any, any, void>, config: A) => Effect<R, E, void>
+  export type Transform<R, E, A> = (effect: Effect<void, any, any>, config: A) => Effect<void, E, R>
 }
 
 /**
@@ -133,7 +133,7 @@ export const fromDescriptor: {
   ) => Command<A["name"], never, never, A>
 
   <A extends { readonly name: string }, R, E>(
-    handler: (_: A) => Effect<R, E, void>
+    handler: (_: A) => Effect<void, E, R>
   ): (command: Descriptor.Command<A>) => Command<A["name"], R, E, A>
 
   <A extends { readonly name: string }>(
@@ -142,7 +142,7 @@ export const fromDescriptor: {
 
   <A extends { readonly name: string }, R, E>(
     descriptor: Descriptor.Command<A>,
-    handler: (_: A) => Effect<R, E, void>
+    handler: (_: A) => Effect<void, E, R>
   ): Command<A["name"], R, E, A>
 } = Internal.fromDescriptor
 
@@ -170,7 +170,7 @@ export const getNames: <Name extends string, R, E, A>(
 export const getBashCompletions: <Name extends string, R, E, A>(
   self: Command<Name, R, E, A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getBashCompletions
+) => Effect<ReadonlyArray<string>> = Internal.getBashCompletions
 
 /**
  * @since 1.0.0
@@ -179,7 +179,7 @@ export const getBashCompletions: <Name extends string, R, E, A>(
 export const getFishCompletions: <Name extends string, R, E, A>(
   self: Command<Name, R, E, A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getFishCompletions
+) => Effect<ReadonlyArray<string>> = Internal.getFishCompletions
 
 /**
  * @since 1.0.0
@@ -188,7 +188,7 @@ export const getFishCompletions: <Name extends string, R, E, A>(
 export const getZshCompletions: <Name extends string, R, E, A>(
   self: Command<Name, R, E, A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getZshCompletions
+) => Effect<ReadonlyArray<string>> = Internal.getZshCompletions
 
 /**
  * @since 1.0.0
@@ -229,7 +229,7 @@ export const make: {
   <Name extends string, const Config extends Command.Config, R, E>(
     name: Name,
     config: Config,
-    handler: (_: Types.Simplify<Command.ParseConfig<Config>>) => Effect<R, E, void>
+    handler: (_: Types.Simplify<Command.ParseConfig<Config>>) => Effect<void, E, R>
   ): Command<
     Name,
     R,
@@ -245,7 +245,7 @@ export const make: {
 export const prompt: <Name extends string, A, R, E>(
   name: Name,
   prompt: Prompt<A>,
-  handler: (_: A) => Effect<R, E, void>
+  handler: (_: A) => Effect<void, E, R>
 ) => Command<string, R, E, A> = Internal.prompt
 
 /**
@@ -271,14 +271,14 @@ export const provide: {
 export const provideEffect: {
   <I, S, A, R2, E2>(
     tag: Tag<I, S>,
-    effect: Effect<R2, E2, S> | ((_: A) => Effect<R2, E2, S>)
+    effect: Effect<S, E2, R2> | ((_: A) => Effect<S, E2, R2>)
   ): <Name extends string, R, E>(
     self: Command<Name, R, E, A>
   ) => Command<Name, R2 | Exclude<R, I>, E2 | E, A>
   <Name extends string, R, E, A, I, S, R2, E2>(
     self: Command<Name, R, E, A>,
     tag: Tag<I, S>,
-    effect: Effect<R2, E2, S> | ((_: A) => Effect<R2, E2, S>)
+    effect: Effect<S, E2, R2> | ((_: A) => Effect<S, E2, R2>)
   ): Command<Name, R2 | Exclude<R, I>, E | E2, A>
 } = Internal.provideEffect
 
@@ -288,11 +288,11 @@ export const provideEffect: {
  */
 export const provideEffectDiscard: {
   <A, R2, E2, _>(
-    effect: Effect<R2, E2, _> | ((_: A) => Effect<R2, E2, _>)
+    effect: Effect<_, E2, R2> | ((_: A) => Effect<_, E2, R2>)
   ): <Name extends string, R, E>(self: Command<Name, R, E, A>) => Command<Name, R2 | R, E2 | E, A>
   <Name extends string, R, E, A, R2, E2, _>(
     self: Command<Name, R, E, A>,
-    effect: Effect<R2, E2, _> | ((_: A) => Effect<R2, E2, _>)
+    effect: Effect<_, E2, R2> | ((_: A) => Effect<_, E2, R2>)
   ): Command<Name, R | R2, E | E2, A>
 } = Internal.provideEffectDiscard
 
@@ -318,11 +318,11 @@ export const provideSync: {
  */
 export const transformHandler: {
   <R, E, A, R2, E2>(
-    f: (effect: Effect<R, E, void>, config: A) => Effect<R2, E2, void>
+    f: (effect: Effect<void, E, R>, config: A) => Effect<void, E2, R2>
   ): <Name extends string>(self: Command<Name, R, E, A>) => Command<Name, R | R2, E | E2, A>
   <Name extends string, R, E, A, R2, E2>(
     self: Command<Name, R, E, A>,
-    f: (effect: Effect<R, E, void>, config: A) => Effect<R2, E2, void>
+    f: (effect: Effect<void, E, R>, config: A) => Effect<void, E2, R2>
   ): Command<Name, R | R2, E | E2, A>
 } = Internal.transformHandler
 
@@ -346,11 +346,11 @@ export const withDescription: {
  */
 export const withHandler: {
   <A, R, E>(
-    handler: (_: A) => Effect<R, E, void>
+    handler: (_: A) => Effect<void, E, R>
   ): <Name extends string, XR, XE>(self: Command<Name, XR, XE, A>) => Command<Name, R, E, A>
   <Name extends string, XR, XE, A, R, E>(
     self: Command<Name, XR, XE, A>,
-    handler: (_: A) => Effect<R, E, void>
+    handler: (_: A) => Effect<void, E, R>
   ): Command<Name, R, E, A>
 } = Internal.withHandler
 
@@ -411,18 +411,18 @@ export const wizard: {
   ): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
   ) => Effect<
-    FileSystem | Path | Terminal,
+    ReadonlyArray<string>,
     QuitException | ValidationError,
-    ReadonlyArray<string>
+    FileSystem | Path | Terminal
   >
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
     prefix: ReadonlyArray<string>,
     config: CliConfig
   ): Effect<
-    FileSystem | Path | Terminal,
+    ReadonlyArray<string>,
     QuitException | ValidationError,
-    ReadonlyArray<string>
+    FileSystem | Path | Terminal
   >
 } = Internal.wizard
 
@@ -435,9 +435,9 @@ export const run: {
     config: Omit<CliApp.ConstructorArgs<never>, "command">
   ): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
-  ) => (args: ReadonlyArray<string>) => Effect<R | CliApp.Environment, E | ValidationError, void>
+  ) => (args: ReadonlyArray<string>) => Effect<void, E | ValidationError, R | CliApp.Environment>
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
     config: Omit<CliApp.ConstructorArgs<never>, "command">
-  ): (args: ReadonlyArray<string>) => Effect<CliApp.Environment | R, ValidationError | E, void>
+  ): (args: ReadonlyArray<string>) => Effect<void, E | ValidationError, R | CliApp.Environment>
 } = Internal.run

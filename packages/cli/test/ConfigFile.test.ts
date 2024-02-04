@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 import { assert, describe, it } from "vitest"
 
 const runEffect = <E, A>(
-  self: Effect.Effect<FileSystem.FileSystem | Path.Path, E, A>
+  self: Effect.Effect<A, E, FileSystem.FileSystem | Path.Path>
 ): Promise<A> => Effect.provide(self, NodeContext.layer).pipe(Effect.runPromise)
 
 describe("ConfigFile", () => {

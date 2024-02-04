@@ -16,7 +16,7 @@ import { Effect, Option, ReadonlyArray, String } from "effect"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(
-  self: Effect.Effect<NodeContext.NodeContext, E, A>
+  self: Effect.Effect<A, E, NodeContext.NodeContext>
 ): Promise<A> =>
   Effect.provide(self, NodeContext.layer).pipe(
     Effect.runPromise

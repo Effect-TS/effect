@@ -97,9 +97,9 @@ export interface Map extends
   Op<"Map", {
     readonly options: Options.Options<unknown>
     readonly f: (a: unknown) => Effect.Effect<
-      FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+      unknown,
       ValidationError.ValidationError,
-      unknown
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
     >
   }>
 {}
@@ -461,13 +461,13 @@ export const mapEffect = dual<
   <A, B>(
     f: (
       a: A
-    ) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, ValidationError.ValidationError, B>
+    ) => Effect.Effect<B, ValidationError.ValidationError, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => (self: Options.Options<A>) => Options.Options<B>,
   <A, B>(
     self: Options.Options<A>,
     f: (
       a: A
-    ) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, ValidationError.ValidationError, B>
+    ) => Effect.Effect<B, ValidationError.ValidationError, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => Options.Options<B>
 >(2, (self, f) => makeMap(self, f))
 
@@ -516,12 +516,12 @@ export const parse = dual<
     config: CliConfig.CliConfig
   ) => <A>(
     self: Options.Options<A>
-  ) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, A>,
+  ) => Effect.Effect<A, ValidationError.ValidationError, FileSystem.FileSystem>,
   <A>(
     self: Options.Options<A>,
     args: HashMap.HashMap<string, ReadonlyArray<string>>,
     config: CliConfig.CliConfig
-  ) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, A>
+  ) => Effect.Effect<A, ValidationError.ValidationError, FileSystem.FileSystem>
 >(3, (self, args, config) => parseInternal(self as Instruction, args, config) as any)
 
 /** @internal */
@@ -532,18 +532,18 @@ export const processCommandLine = dual<
   ) => <A>(
     self: Options.Options<A>
   ) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A],
     ValidationError.ValidationError,
-    [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >,
   <A>(
     self: Options.Options<A>,
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A],
     ValidationError.ValidationError,
-    [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >
 >(
   3,
@@ -657,14 +657,14 @@ export const withSchema = dual<
 /** @internal */
 export const wizard = dual<
   (config: CliConfig.CliConfig) => <A>(self: Options.Options<A>) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    ReadonlyArray<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >,
   <A>(self: Options.Options<A>, config: CliConfig.CliConfig) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    ReadonlyArray<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >
 >(2, (self, config) => wizardInternal(self as Instruction, config))
 
@@ -968,7 +968,7 @@ const makeKeyValueMap = (
 
 const makeMap = <A, B>(
   options: Options.Options<A>,
-  f: (a: A) => Effect.Effect<FileSystem.FileSystem | Path.Path | Terminal.Terminal, ValidationError.ValidationError, B>
+  f: (a: A) => Effect.Effect<B, ValidationError.ValidationError, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
 ): Options.Options<B> => {
   const op = Object.create(proto)
   op._tag = "Map"
@@ -1152,9 +1152,9 @@ const parseInternal = (
   args: HashMap.HashMap<string, ReadonlyArray<string>>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+  unknown,
   ValidationError.ValidationError,
-  unknown
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal
 > => {
   switch (self._tag) {
     case "Empty": {
@@ -1195,7 +1195,7 @@ const parseInternal = (
     case "KeyValueMap": {
       const extractKeyValue = (
         value: string
-      ): Effect.Effect<never, ValidationError.ValidationError, [string, string]> => {
+      ): Effect.Effect<[string, string], ValidationError.ValidationError> => {
         const split = value.trim().split("=")
         if (ReadonlyArray.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
           return Effect.succeed(split as unknown as [string, string])
@@ -1328,9 +1328,9 @@ const parseInternal = (
 }
 
 const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.Effect<
-  FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+  ReadonlyArray<string>,
   Terminal.QuitException | ValidationError.ValidationError,
-  ReadonlyArray<string>
+  FileSystem.FileSystem | Path.Path | Terminal.Terminal
 > => {
   switch (self._tag) {
     case "Empty": {
@@ -1484,8 +1484,6 @@ const matchOptions = (
   options: ReadonlyArray<ParseableInstruction>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  never,
-  never,
   [
     Option.Option<ValidationError.ValidationError>,
     ReadonlyArray<string>,
@@ -1543,13 +1541,12 @@ const findOptions = (
   options: ReadonlyArray<ParseableInstruction>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  never,
-  ValidationError.ValidationError,
   [
     ReadonlyArray<string>,
     ReadonlyArray<ParseableInstruction>,
     HashMap.HashMap<string, ReadonlyArray<string>>
-  ]
+  ],
+  ValidationError.ValidationError
 > =>
   ReadonlyArray.matchLeft(options, {
     onEmpty: () => Effect.succeed([input, ReadonlyArray.empty(), HashMap.empty()]),
@@ -1628,7 +1625,7 @@ const FLAG_REGEX = /^(--[^=]+)(?:=(.+))?$/
  */
 const processArgs = (
   args: ReadonlyArray<string>
-): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> =>
+): Effect.Effect<ReadonlyArray<string>, ValidationError.ValidationError> =>
   ReadonlyArray.matchLeft(args, {
     onEmpty: () => Effect.succeed(ReadonlyArray.empty()),
     onNonEmpty: (head, tail) => {
@@ -1667,11 +1664,7 @@ const parseCommandLine = (
   self: ParseableInstruction,
   args: ReadonlyArray<string>,
   config: CliConfig.CliConfig
-): Effect.Effect<
-  never,
-  ValidationError.ValidationError,
-  ParsedCommandLine
-> => {
+): Effect.Effect<ParsedCommandLine, ValidationError.ValidationError> => {
   switch (self._tag) {
     case "Single": {
       return processArgs(args).pipe(Effect.flatMap((args) =>
@@ -1823,13 +1816,12 @@ const matchUnclustered = (
   options: ReadonlyArray<ParseableInstruction>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  never,
-  ValidationError.ValidationError,
   [
     ReadonlyArray<string>,
     ReadonlyArray<ParseableInstruction>,
     HashMap.HashMap<string, ReadonlyArray<string>>
-  ]
+  ],
+  ValidationError.ValidationError
 > => {
   if (ReadonlyArray.isNonEmptyReadonlyArray(input)) {
     const flag = ReadonlyArray.headNonEmpty(input)
