@@ -194,7 +194,7 @@ export const formData: (body: globalThis.FormData) => FormData = internal.formDa
  */
 export interface Stream extends Body.Proto {
   readonly _tag: "Stream"
-  readonly stream: Stream_.Stream<never, unknown, globalThis.Uint8Array>
+  readonly stream: Stream_.Stream<globalThis.Uint8Array, unknown>
   readonly contentType: string
   readonly contentLength?: number
 }
@@ -204,7 +204,7 @@ export interface Stream extends Body.Proto {
  * @category constructors
  */
 export const stream: (
-  body: Stream_.Stream<never, unknown, globalThis.Uint8Array>,
+  body: Stream_.Stream<globalThis.Uint8Array, unknown>,
   contentType?: string,
   contentLength?: number,
   etag?: string

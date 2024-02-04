@@ -37,7 +37,7 @@ class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A
   pipe() {
     return pipeArguments(this, arguments)
   }
-  get changes(): Stream<never, never, A> {
+  get changes(): Stream<A> {
     return pipe(
       Ref.get(this.ref),
       Effect.flatMap((a) =>

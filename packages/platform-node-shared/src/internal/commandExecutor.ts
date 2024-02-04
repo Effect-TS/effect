@@ -135,7 +135,7 @@ const runCommand =
               () => handle.stderr!,
               (err) => toPlatformError("fromReadable(stderr)", toError(err), command)
             )
-            let stdout: Stream.Stream<never, Error.PlatformError, Uint8Array> = fromReadable<
+            let stdout: Stream.Stream<Uint8Array, Error.PlatformError> = fromReadable<
               Error.PlatformError,
               Uint8Array
             >(

@@ -52,7 +52,7 @@ export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.Req
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   >
-  readonly multipartStream: Stream.Stream<never, Multipart.MultipartError, Multipart.Part>
+  readonly multipartStream: Stream.Stream<Multipart.Part, Multipart.MultipartError>
 
   readonly modify: (
     options: {
