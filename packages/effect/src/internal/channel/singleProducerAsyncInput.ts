@@ -198,10 +198,10 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
     )
   }
 
-  get take(): Effect.Effect<Exit.Exit<Either.Either<Err, Done>, Elem>> {
+  get take(): Effect.Effect<Exit.Exit<Elem, Either.Either<Err, Done>>> {
     return this.takeWith(
       (cause) => Exit.failCause(Cause.map(cause, Either.left)),
-      (elem) => Exit.succeed(elem) as Exit.Exit<Either.Either<Err, Done>, Elem>,
+      (elem) => Exit.succeed(elem) as Exit.Exit<Elem, Either.Either<Err, Done>>,
       (done) => Exit.fail(Either.right(done))
     )
   }
