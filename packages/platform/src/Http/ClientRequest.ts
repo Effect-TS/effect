@@ -73,12 +73,12 @@ export declare namespace Options {
  * @since 1.0.0
  * @category constructors
  */
-export const make: {
-  (method: "GET" | "HEAD"): (url: string | URL, options?: Options.NoBody) => ClientRequest
-  (
-    method: Exclude<Method, "GET" | "HEAD">
-  ): (url: string | URL, options?: Options.NoUrl) => ClientRequest
-} = internal.make
+export const make: <M extends Method>(
+  method: Method
+) => (
+  url: string | URL,
+  options?: (M extends "GET" | "HEAD" ? Options.NoBody : Options.NoUrl) | undefined
+) => ClientRequest = internal.make
 
 /**
  * @since 1.0.0
