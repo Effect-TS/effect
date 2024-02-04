@@ -16,7 +16,7 @@ import type { Option } from "effect/Option"
 export interface SchemaC<I, A, C> extends Schema.Schema<A, I> {
   (input: C): A
   readonly either: (input: C) => Either<ParseError, A>
-  readonly effect: (input: C) => Effect<never, ParseError, A>
+  readonly effect: (input: C) => Effect<A, ParseError>
   readonly option: (input: C) => Option<A>
 }
 
@@ -45,7 +45,7 @@ export const withConstructor: {
     make.either = function makeEither(input: C): Either<ParseError, A> {
       return validateEither(f(input))
     }
-    make.effect = function makeEffect(input: C): Effect<never, ParseError, A> {
+    make.effect = function makeEffect(input: C): Effect<A, ParseError> {
       return validateEffect(f(input))
     }
     make.option = function makeOption(input: C): Option<A> {

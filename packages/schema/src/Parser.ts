@@ -53,7 +53,7 @@ const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 
 const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
-  return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<R, ParseResult.ParseIssue, any> =>
+  return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<any, ParseResult.ParseIssue, R> =>
     parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true })
 }
 
@@ -104,7 +104,7 @@ export const decodeUnknownPromise = <A, I>(
 export const decodeUnknown = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<A, ParseResult.ParseIssue, R> =>
   getEffect(schema.ast, true, options)
 
 /**
@@ -154,7 +154,7 @@ export const encodeUnknownPromise = <A, I>(
 export const encodeUnknown = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<I, ParseResult.ParseIssue, R> =>
   getEffect(schema.ast, false, options)
 
 /**
@@ -200,7 +200,7 @@ export const decodePromise: <A, I>(
 export const decode: <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
-) => (i: I, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> = decodeUnknown
+) => (i: I, overrideOptions?: AST.ParseOptions) => Effect.Effect<A, ParseResult.ParseIssue, R> = decodeUnknown
 
 /**
  * @category validation
@@ -249,7 +249,7 @@ export const validatePromise = <A, I>(
 export const validate = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
-): (a: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, A> =>
+): (a: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<A, ParseResult.ParseIssue, R> =>
   getEffect(AST.to(schema.ast), true, options)
 
 /**
@@ -322,7 +322,7 @@ export const encodePromise: <A, I>(
 export const encode: <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
-) => (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<R, ParseResult.ParseIssue, I> = encodeUnknown
+) => (a: A, overrideOptions?: AST.ParseOptions) => Effect.Effect<I, ParseResult.ParseIssue, R> = encodeUnknown
 
 interface InternalOptions extends AST.ParseOptions {
   readonly isEffectAllowed?: boolean
@@ -512,7 +512,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           output: typeof output
         }
         let queue:
-          | Array<(_: State) => Effect.Effect<any, ParseResult.ParseIssue, void>>
+          | Array<(_: State) => Effect.Effect<void, ParseResult.ParseIssue, any>>
           | undefined = undefined
 
         // ---------------------------------------------
@@ -754,7 +754,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           output: typeof output
         }
         let queue:
-          | Array<(state: State) => Effect.Effect<any, ParseResult.ParseIssue, void>>
+          | Array<(state: State) => Effect.Effect<void, ParseResult.ParseIssue, any>>
           | undefined = undefined
 
         const isExact = options?.isExact === true
@@ -964,7 +964,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         }
 
         let queue:
-          | Array<(state: State) => Effect.Effect<any, ParseResult.ParseIssue, unknown>>
+          | Array<(state: State) => Effect.Effect<unknown, ParseResult.ParseIssue, any>>
           | undefined = undefined
 
         type State = {
@@ -1143,11 +1143,11 @@ export const getSearchTree = (
 const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? dropRightRefinement(ast.from) : ast
 
 const handleForbidden = <R, A>(
-  effect: Effect.Effect<R, ParseResult.ParseIssue, A>,
+  effect: Effect.Effect<A, ParseResult.ParseIssue, R>,
   ast: AST.AST,
   actual: unknown,
   options: InternalOptions | undefined
-): Effect.Effect<R, ParseResult.ParseIssue, A> => {
+): Effect.Effect<A, ParseResult.ParseIssue, R> => {
   const eu = InternalParser.eitherOrUndefined(effect)
   if (eu) {
     return eu
@@ -1156,7 +1156,7 @@ const handleForbidden = <R, A>(
     return effect
   }
   try {
-    return Effect.runSync(Effect.either(effect as Effect.Effect<never, ParseResult.ParseIssue, A>))
+    return Effect.runSync(Effect.either(effect as Effect.Effect<A, ParseResult.ParseIssue>))
   } catch (e) {
     return Either.left(InternalParser.forbidden(ast, actual, e instanceof Error ? e.message : undefined))
   }

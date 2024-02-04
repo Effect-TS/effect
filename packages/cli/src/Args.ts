@@ -333,8 +333,8 @@ export const map: {
  * @category mapping
  */
 export const mapEffect: {
-  <A, B>(f: (a: A) => Effect<FileSystem | Path | Terminal, HelpDoc, B>): (self: Args<A>) => Args<B>
-  <A, B>(self: Args<A>, f: (a: A) => Effect<FileSystem | Path | Terminal, HelpDoc, B>): Args<B>
+  <A, B>(f: (a: A) => Effect<B, HelpDoc, FileSystem | Path | Terminal>): (self: Args<A>) => Args<B>
+  <A, B>(self: Args<A>, f: (a: A) => Effect<B, HelpDoc, FileSystem | Path | Terminal>): Args<B>
 } = InternalArgs.mapEffect
 
 /**
@@ -405,18 +405,18 @@ export const validate: {
     args: ReadonlyArray<string>,
     config: CliConfig
   ): <A>(self: Args<A>) => Effect<
-    FileSystem | Path | Terminal,
+    [ReadonlyArray<string>, A],
     ValidationError,
-    [ReadonlyArray<string>, A]
+    FileSystem | Path | Terminal
   >
   <A>(
     self: Args<A>,
     args: ReadonlyArray<string>,
     config: CliConfig
   ): Effect<
-    FileSystem | Path | Terminal,
+    [ReadonlyArray<string>, A],
     ValidationError,
-    [ReadonlyArray<string>, A]
+    FileSystem | Path | Terminal
   >
 } = InternalArgs.validate
 
@@ -466,16 +466,16 @@ export const wizard: {
   ): <A>(
     self: Args<A>
   ) => Effect<
-    FileSystem | Path | Terminal,
+    ReadonlyArray<string>,
     ValidationError | QuitException,
-    ReadonlyArray<string>
+    FileSystem | Path | Terminal
   >
   <A>(
     self: Args<A>,
     config: CliConfig
   ): Effect<
-    FileSystem | Path | Terminal,
+    ReadonlyArray<string>,
     ValidationError | QuitException,
-    ReadonlyArray<string>
+    FileSystem | Path | Terminal
   >
 } = InternalArgs.wizard

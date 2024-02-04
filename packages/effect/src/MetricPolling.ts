@@ -37,7 +37,7 @@ export interface MetricPolling<in out Type, in out In, out R, out E, out Out> ex
   /**
    * An effect that polls a value that may be fed to the metric.
    */
-  readonly poll: Effect.Effect<R, E, In>
+  readonly poll: Effect.Effect<In, E, R>
 }
 
 /**
@@ -48,7 +48,7 @@ export interface MetricPolling<in out Type, in out In, out R, out E, out Out> ex
  */
 export const make: <Type, In, Out, R, E>(
   metric: Metric.Metric<Type, In, Out>,
-  poll: Effect.Effect<R, E, In>
+  poll: Effect.Effect<In, E, R>
 ) => MetricPolling<Type, In, R, E, Out> = internal.make
 
 /**
@@ -74,11 +74,11 @@ export const launch: {
     schedule: Schedule.Schedule<R2, unknown, A2>
   ): <Type, In, R, E, Out>(
     self: MetricPolling<Type, In, R, E, Out>
-  ) => Effect.Effect<R2 | R | Scope.Scope, never, Fiber.Fiber<E, A2>>
+  ) => Effect.Effect<Fiber.Fiber<E, A2>, never, Scope.Scope | R2 | R>
   <Type, In, R, E, Out, R2, A2>(
     self: MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
-  ): Effect.Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
+  ): Effect.Effect<Fiber.Fiber<E, A2>, never, Scope.Scope | R | R2>
 } = internal.launch
 
 /**
@@ -87,7 +87,7 @@ export const launch: {
  * @since 2.0.0
  * @category utils
  */
-export const poll: <Type, In, R, E, Out>(self: MetricPolling<Type, In, R, E, Out>) => Effect.Effect<R, E, In> =
+export const poll: <Type, In, R, E, Out>(self: MetricPolling<Type, In, R, E, Out>) => Effect.Effect<In, E, R> =
   internal.poll
 
 /**
@@ -98,7 +98,7 @@ export const poll: <Type, In, R, E, Out>(self: MetricPolling<Type, In, R, E, Out
  */
 export const pollAndUpdate: <Type, In, R, E, Out>(
   self: MetricPolling<Type, In, R, E, Out>
-) => Effect.Effect<R, E, void> = internal.pollAndUpdate
+) => Effect.Effect<void, E, R> = internal.pollAndUpdate
 
 /**
  * Returns a new polling metric whose poll function will be retried with the

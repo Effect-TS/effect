@@ -237,7 +237,7 @@ const alterAnnotationSafe = <A, B>(
   self: DocStream.DocStream<A>,
   f: (a: A) => Option.Option<B>,
   stack: List.List<AnnotationRemoval>
-): Effect.Effect<never, never, DocStream.DocStream<B>> => {
+): Effect.Effect<DocStream.DocStream<B>> => {
   switch (self._tag) {
     case "CharStream": {
       return Effect.map(
@@ -297,7 +297,7 @@ export const reAnnotate = dual<
 const reAnnotateSafe = <A, B>(
   self: DocStream.DocStream<A>,
   f: (a: A) => B
-): Effect.Effect<never, never, DocStream.DocStream<B>> => {
+): Effect.Effect<DocStream.DocStream<B>> => {
   switch (self._tag) {
     case "CharStream": {
       return Effect.map(
@@ -338,7 +338,7 @@ export const unAnnotate = <A>(self: DocStream.DocStream<A>): DocStream.DocStream
 
 const unAnnotateSafe = <A>(
   self: DocStream.DocStream<A>
-): Effect.Effect<never, never, DocStream.DocStream<never>> => {
+): Effect.Effect<DocStream.DocStream<never>> => {
   switch (self._tag) {
     case "CharStream": {
       return Effect.map(
@@ -382,7 +382,7 @@ const foldMapSafe = <A, M>(
   self: DocStream.DocStream<A>,
   M: monoid.Monoid<M>,
   f: (a: A) => M
-): Effect.Effect<never, never, M> => {
+): Effect.Effect<M> => {
   switch (self._tag) {
     case "CharStream": {
       return Effect.suspend(() => foldMapSafe(self.stream, M, f))

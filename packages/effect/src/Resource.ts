@@ -32,7 +32,7 @@ export interface Resource<in out E, in out A> extends Resource.Variance<E, A> {
   /** @internal */
   readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<E, A>>
   /** @internal */
-  readonly acquire: Effect.Effect<Scope.Scope, E, A>
+  readonly acquire: Effect.Effect<A, E, Scope.Scope>
 }
 
 /**
@@ -61,10 +61,10 @@ export declare namespace Resource {
  * @since 2.0.0
  * @category constructors
  */
-export const auto: <R, E, A, R2, Out>(
-  acquire: Effect.Effect<R, E, A>,
+export const auto: <A, E, R, R2, Out>(
+  acquire: Effect.Effect<A, E, R>,
   policy: Schedule.Schedule<R2, unknown, Out>
-) => Effect.Effect<Scope.Scope | R | R2, never, Resource<E, A>> = internal.auto
+) => Effect.Effect<Resource<E, A>, never, Scope.Scope | R | R2> = internal.auto
 
 /**
  * Retrieves the current value stored in the cache.
@@ -72,7 +72,7 @@ export const auto: <R, E, A, R2, Out>(
  * @since 2.0.0
  * @category getters
  */
-export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A> = internal.get
+export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<A, E> = internal.get
 
 /**
  * Creates a new `Resource` value that must be manually refreshed by calling
@@ -84,9 +84,9 @@ export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A> = i
  * @since 2.0.0
  * @category constructors
  */
-export const manual: <R, E, A>(
-  acquire: Effect.Effect<R, E, A>
-) => Effect.Effect<Scope.Scope | R, never, Resource<E, A>> = internal.manual
+export const manual: <A, E, R>(
+  acquire: Effect.Effect<A, E, R>
+) => Effect.Effect<Resource<E, A>, never, Scope.Scope | R> = internal.manual
 
 /**
  * Refreshes the cache. This method will not return until either the refresh
@@ -95,4 +95,4 @@ export const manual: <R, E, A>(
  * @since 2.0.0
  * @category utils
  */
-export const refresh: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, void> = internal.refresh
+export const refresh: <E, A>(self: Resource<E, A>) => Effect.Effect<void, E> = internal.refresh

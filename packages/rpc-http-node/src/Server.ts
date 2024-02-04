@@ -25,9 +25,9 @@ export interface RpcNodeHttpHandler<R extends RpcRouter.Base> {
     request: Http.IncomingMessage,
     response: Http.ServerResponse
   ): Effect.Effect<
-    Exclude<RpcHandlers.Services<R["handlers"]>, Http.IncomingMessage>,
+    void,
     never,
-    void
+    Exclude<RpcHandlers.Services<R["handlers"]>, Http.IncomingMessage>
   >
 }
 
@@ -74,7 +74,7 @@ export function make<R extends RpcRouter.Base>(
 }
 
 const bodyToString = (stream: Readable) =>
-  Effect.async<never, Error, string>((resume) => {
+  Effect.async<string, Error, never>((resume) => {
     let data = ""
     stream.setEncoding("utf8")
     stream.on("data", (chunk) => {

@@ -60,26 +60,26 @@ export type ChannelTypeId = Channel.ChannelTypeId
  * @category models
  */
 export interface CommitPrimitive {
-  new<R, E, A>(): Effect.Effect<R, E, A>
+  new<R, E, A>(): Effect.Effect<A, E, R>
 }
 
 /**
  * @since 2.0.0
  * @category prototypes
  */
-export const EffectPrototype: Effect.Effect<never, never, never> = internal.EffectPrototype
+export const EffectPrototype: Effect.Effect<never> = internal.EffectPrototype
 
 /**
  * @since 2.0.0
  * @category prototypes
  */
-export const CommitPrototype: Effect.Effect<never, never, never> = internal.CommitPrototype
+export const CommitPrototype: Effect.Effect<never> = internal.CommitPrototype
 
 /**
  * @since 2.0.0
  * @category prototypes
  */
-export const StructuralCommitPrototype: Effect.Effect<never, never, never> = internal.StructuralCommitPrototype
+export const StructuralCommitPrototype: Effect.Effect<never> = internal.StructuralCommitPrototype
 
 const Base: CommitPrimitive = internal.Base
 const StructuralBase: CommitPrimitive = internal.StructuralBase
@@ -92,7 +92,7 @@ export abstract class Class<R, E, A> extends Base<R, E, A> {
   /**
    * @since 2.0.0
    */
-  abstract commit(): Effect.Effect<R, E, A>
+  abstract commit(): Effect.Effect<A, E, R>
 }
 
 /**
@@ -103,5 +103,5 @@ export abstract class StructuralClass<R, E, A> extends StructuralBase<R, E, A> {
   /**
    * @since 2.0.0
    */
-  abstract commit(): Effect.Effect<R, E, A>
+  abstract commit(): Effect.Effect<A, E, R>
 }

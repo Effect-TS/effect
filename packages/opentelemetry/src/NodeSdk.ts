@@ -61,14 +61,14 @@ export const layerTracerProvider = (
  */
 export const layer: {
   (evaluate: LazyArg<Configuration>): Layer.Layer<never, never, Resource.Resource>
-  <R, E>(evaluate: Effect.Effect<R, E, Configuration>): Layer.Layer<R, E, Resource.Resource>
+  <R, E>(evaluate: Effect.Effect<Configuration, E, R>): Layer.Layer<R, E, Resource.Resource>
 } = (
-  evaluate: LazyArg<Configuration> | Effect.Effect<any, any, Configuration>
+  evaluate: LazyArg<Configuration> | Effect.Effect<Configuration, any, any>
 ): Layer.Layer<never, never, Resource.Resource> =>
   Layer.unwrapEffect(
     Effect.map(
       Effect.isEffect(evaluate)
-        ? evaluate as Effect.Effect<never, never, Configuration>
+        ? evaluate as Effect.Effect<Configuration>
         : Effect.sync(evaluate),
       (config) => {
         const ResourceLive = Resource.layer(config.resource)

@@ -19,7 +19,7 @@ type TodoWithoutId = Schema.Schema.To<typeof TodoWithoutId>
 interface TodoService {
   readonly create: (
     _: TodoWithoutId
-  ) => Effect.Effect<never, Http.error.HttpClientError | Http.body.BodyError | ParseResult.ParseError, Todo>
+  ) => Effect.Effect<Todo, Http.error.HttpClientError | Http.body.BodyError | ParseResult.ParseError>
 }
 const TodoService = Context.GenericTag<TodoService>("@effect/platform-node/examples/TodoService")
 

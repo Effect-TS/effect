@@ -27,7 +27,7 @@ export interface Multiplex<R, E> extends App.Default<R, E | Error.RouteNotFound>
   readonly [TypeId]: TypeId
   readonly apps: ReadonlyArray<
     readonly [
-      predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R, E, boolean>,
+      predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>,
       app: App.Default<R, E>
     ]
   >
@@ -45,7 +45,7 @@ export const empty: Multiplex<never, never> = internal.empty
  */
 export const make: <R, E>(
   apps: Iterable<
-    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R, E, boolean>, app: App.Default<R, E>]
+    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>, app: App.Default<R, E>]
   >
 ) => Multiplex<R, E> = internal.make
 
@@ -55,12 +55,12 @@ export const make: <R, E>(
  */
 export const add: {
   <R2, E2, R3, E3>(
-    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R2, E2, boolean>,
+    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E2, R2>,
     app: App.Default<R3, E3>
   ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R3 | R, E2 | E3 | E>
   <R, E, R2, E2, R3, E3>(
     self: Multiplex<R, E>,
-    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R2, E2, boolean>,
+    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E2, R2>,
     app: App.Default<R3, E3>
   ): Multiplex<R | R2 | R3, E | E2 | E3>
 } = internal.add

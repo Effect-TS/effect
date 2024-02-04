@@ -32,10 +32,10 @@ export const SocketServer: Context.Tag<SocketServer, SocketServer> = Context.Gen
  */
 export interface SocketServer {
   readonly [SocketServerTypeId]: SocketServerTypeId
-  readonly address: Effect.Effect<never, never, Address>
+  readonly address: Effect.Effect<Address>
   readonly run: <R, E, _>(
-    handler: (socket: Socket.Socket) => Effect.Effect<R, E, _>
-  ) => Effect.Effect<R, SocketServerError, never>
+    handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>
+  ) => Effect.Effect<never, SocketServerError, R>
 }
 
 /**

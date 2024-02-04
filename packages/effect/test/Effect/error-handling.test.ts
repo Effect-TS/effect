@@ -21,7 +21,7 @@ export const InterruptError3 = new Error("Oh noes 3!")
 
 const ExampleErrorFail: Effect.Effect<never, Error, never> = Effect.fail(ExampleError)
 
-const deepErrorEffect = (n: number): Effect.Effect<never, Cause.UnknownException, void> => {
+const deepErrorEffect = (n: number): Effect.Effect<void, Cause.UnknownException> => {
   if (n === 0) {
     return Effect.try(() => {
       throw ExampleError
@@ -30,7 +30,7 @@ const deepErrorEffect = (n: number): Effect.Effect<never, Cause.UnknownException
   return pipe(Effect.unit, Effect.zipRight(deepErrorEffect(n - 1)))
 }
 
-const deepErrorFail = (n: number): Effect.Effect<never, Error, never> => {
+const deepErrorFail = (n: number): Effect.Effect<never, Error> => {
   if (n === 0) {
     return Effect.fail(ExampleError)
   }
@@ -405,8 +405,8 @@ describe("Effect", () => {
     const causes = causesArb(1, smallInts, fc.string())
     const successes = smallInts.map(Effect.succeed)
     const exits = fc.oneof(
-      causes.map((s): Either.Either<Cause.Cause<number>, Effect.Effect<never, never, number>> => Either.left(s)),
-      successes.map((s): Either.Either<Cause.Cause<number>, Effect.Effect<never, never, number>> => Either.right(s))
+      causes.map((s): Either.Either<Cause.Cause<number>, Effect.Effect<number>> => Either.left(s)),
+      successes.map((s): Either.Either<Cause.Cause<number>, Effect.Effect<number>> => Either.right(s))
     ).map(Either.match({
       onLeft: Exit.failCause,
       onRight: Exit.succeed
@@ -521,7 +521,7 @@ describe("Effect", () => {
     }))
   it.effect("no information is lost during composition", () =>
     Effect.gen(function*($) {
-      const cause = <R, E>(effect: Effect.Effect<R, E, never>): Effect.Effect<R, never, Cause.Cause<E>> => {
+      const cause = <R, E>(effect: Effect.Effect<never, E, R>): Effect.Effect<Cause.Cause<E>, never, R> => {
         return Effect.cause(effect)
       }
       const expectedCause = Cause.fail("oh no")

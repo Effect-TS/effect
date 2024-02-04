@@ -6,7 +6,7 @@ import { Effect, Equal, Function, Option, ReadonlyArray } from "effect"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-const runEffect = <E, A>(self: Effect.Effect<FileSystem.FileSystem, E, A>): Promise<A> =>
+const runEffect = <E, A>(self: Effect.Effect<A, E, FileSystem.FileSystem>): Promise<A> =>
   Effect.provide(self, NodeFileSystem.layer).pipe(Effect.runPromise)
 
 describe("Primitive", () => {

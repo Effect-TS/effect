@@ -46,7 +46,7 @@ export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
   /**
    * Loads the specified configuration, or fails with a config error.
    */
-  load<A>(config: Config.Config<A>): Effect.Effect<never, ConfigError.ConfigError, A>
+  load<A>(config: Config.Config<A>): Effect.Effect<A, ConfigError.ConfigError>
   /**
    * Flattens this config provider into a simplified config provider that knows
    * only how to deal with flat (key/value) properties.
@@ -81,10 +81,10 @@ export declare namespace ConfigProvider {
       path: ReadonlyArray<string>,
       config: Config.Config.Primitive<A>,
       split?: boolean
-    ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+    ): Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
     enumerateChildren(
       path: ReadonlyArray<string>
-    ): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+    ): Effect.Effect<HashSet.HashSet<string>, ConfigError.ConfigError>
   }
 
   /**
@@ -146,7 +146,7 @@ export const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider> = inter
  */
 export const make: (
   options: {
-    readonly load: <A>(config: Config.Config<A>) => Effect.Effect<never, ConfigError.ConfigError, A>
+    readonly load: <A>(config: Config.Config<A>) => Effect.Effect<A, ConfigError.ConfigError>
     readonly flattened: ConfigProvider.Flat
   }
 ) => ConfigProvider = internal.make
@@ -162,10 +162,10 @@ export const makeFlat: (options: {
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
     split: boolean
-  ) => Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+  ) => Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
-  ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+  ) => Effect.Effect<HashSet.HashSet<string>, ConfigError.ConfigError>
   readonly patch: PathPatch.PathPatch
 }) => ConfigProvider.Flat = internal.makeFlat
 

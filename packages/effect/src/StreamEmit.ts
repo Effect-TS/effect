@@ -10,7 +10,7 @@ import type * as Option from "./Option.js"
 /**
  * An `Emit<R, E, A, B>` represents an asynchronous callback that can be
  * called multiple times. The callback can be called with a value of type
- * `Effect<R, Option<E>, Chunk<A>>`, where succeeding with a `Chunk<A>`
+ * `Effect<Chunk<A>, Option<E>, R>`, where succeeding with a `Chunk<A>`
  * indicates to emit those elements, failing with `Some<E>` indicates to
  * terminate with that error, and failing with `None` indicates to terminate
  * with an end of stream signal.
@@ -19,7 +19,7 @@ import type * as Option from "./Option.js"
  * @category models
  */
 export interface Emit<in R, in E, in A, out B> extends EmitOps<R, E, A, B> {
-  (f: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>): Promise<B>
+  (f: Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, R>): Promise<B>
 }
 
 /**
@@ -63,13 +63,13 @@ export interface EmitOps<in R, in E, in A, out B> {
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  fromEffect(effect: Effect.Effect<R, E, A>): Promise<B>
+  fromEffect(effect: Effect.Effect<A, E, R>): Promise<B>
 
   /**
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  fromEffectChunk(effect: Effect.Effect<R, E, Chunk.Chunk<A>>): Promise<B>
+  fromEffectChunk(effect: Effect.Effect<Chunk.Chunk<A>, E, R>): Promise<B>
 
   /**
    * Terminates the stream with the specified cause.

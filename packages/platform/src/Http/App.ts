@@ -20,7 +20,7 @@ import * as ServerResponse from "./ServerResponse.js"
  * @since 1.0.0
  * @category models
  */
-export interface HttpApp<R, E, A> extends Effect.Effect<R | ServerRequest.ServerRequest, E, A> {}
+export interface HttpApp<R, E, A> extends Effect.Effect<A, E, R | ServerRequest.ServerRequest> {}
 
 /**
  * @since 1.0.0
@@ -43,7 +43,7 @@ export const withDefaultMiddleware = <R, E>(
 export type PreResponseHandler = (
   request: ServerRequest.ServerRequest,
   response: ServerResponse.ServerResponse
-) => Effect.Effect<never, ServerError.ResponseError, ServerResponse.ServerResponse>
+) => Effect.Effect<ServerResponse.ServerResponse, ServerError.ResponseError>
 
 /**
  * @since 1.0.0
@@ -62,7 +62,7 @@ function noopHandler(_request: ServerRequest.ServerRequest, response: ServerResp
  * @since 1.0.0
  * @category fiber refs
  */
-export const preResponseHandler: Effect.Effect<never, never, PreResponseHandler> = Effect.map(
+export const preResponseHandler: Effect.Effect<PreResponseHandler> = Effect.map(
   FiberRef.get(currentPreResponseHandlers),
   (handlers): PreResponseHandler =>
     handlers.length === 0 ?
@@ -81,7 +81,7 @@ export const preResponseHandler: Effect.Effect<never, never, PreResponseHandler>
  * @since 1.0.0
  * @category fiber refs
  */
-export const appendPreResponseHandler: (handler: PreResponseHandler) => Effect.Effect<never, never, void> = (
+export const appendPreResponseHandler: (handler: PreResponseHandler) => Effect.Effect<void> = (
   handler: PreResponseHandler
 ) =>
   FiberRef.update(

@@ -55,7 +55,7 @@ export interface RequestResolver<in A, out R = never> extends RequestResolver.Va
    * of requests that must be performed sequentially. The inner `Chunk`
    * represents a batch of requests that can be performed in parallel.
    */
-  runAll(requests: Array<Array<Request.Entry<A>>>): Effect.Effect<R, never, void>
+  runAll(requests: Array<Array<Request.Entry<A>>>): Effect.Effect<void, never, R>
 
   /**
    * Identify the data source using the specific identifier
@@ -95,9 +95,9 @@ export const contextFromServices =
   <R, A extends Request.Request<any, any>>(
     self: RequestResolver<A, R>
   ): Effect.Effect<
-    { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number],
+    RequestResolver<A, Exclude<R, { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number]>>,
     never,
-    RequestResolver<A, Exclude<R, { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number]>>
+    { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number]
   > => Effect.contextWith((_) => provideContext(self as any, Context.pick(...services)(_ as any)))
 
 /**
@@ -116,7 +116,7 @@ export const isRequestResolver: (u: unknown) => u is RequestResolver<unknown, un
  * @category constructors
  */
 export const make: <R, A>(
-  runAll: (requests: Array<Array<A>>) => Effect.Effect<R, never, void>
+  runAll: (requests: Array<Array<A>>) => Effect.Effect<void, never, R>
 ) => RequestResolver<A, R> = internal.make
 
 /**
@@ -127,7 +127,7 @@ export const make: <R, A>(
  * @category constructors
  */
 export const makeWithEntry: <R, A>(
-  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<R, never, void>
+  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<void, never, R>
 ) => RequestResolver<A, R> = internal.makeWithEntry
 
 /**
@@ -138,7 +138,7 @@ export const makeWithEntry: <R, A>(
  * @category constructors
  */
 export const makeBatched: <R, A extends Request.Request<any, any>>(
-  run: (requests: Array<A>) => Effect.Effect<R, never, void>
+  run: (requests: Array<A>) => Effect.Effect<void, never, R>
 ) => RequestResolver<A, R> = internal.makeBatched
 
 /**
@@ -150,13 +150,13 @@ export const makeBatched: <R, A extends Request.Request<any, any>>(
  */
 export const around: {
   <R2, A2, R3, _>(
-    before: Effect.Effect<R2, never, A2>,
-    after: (a: A2) => Effect.Effect<R3, never, _>
+    before: Effect.Effect<A2, never, R2>,
+    after: (a: A2) => Effect.Effect<_, never, R3>
   ): <R, A>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
   <R, A, R2, A2, R3, _>(
     self: RequestResolver<A, R>,
-    before: Effect.Effect<R2, never, A2>,
-    after: (a: A2) => Effect.Effect<R3, never, _>
+    before: Effect.Effect<A2, never, R2>,
+    after: (a: A2) => Effect.Effect<_, never, R3>
   ): RequestResolver<A, R | R2 | R3>
 } = internal.around
 
@@ -242,7 +242,7 @@ export const fromFunctionBatched: <A extends Request.Request<never, any>>(
  * @category constructors
  */
 export const fromEffect: <R, A extends Request.Request<any, any>>(
-  f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+  f: (a: A) => Effect.Effect<Request.Request.Success<A>, Request.Request.Error<A>, R>
 ) => RequestResolver<A, R> = internal.fromEffect
 
 /**
@@ -258,13 +258,13 @@ export const fromEffectTagged: <A extends Request.Request<any, any> & { readonly
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
       ? Req extends Request.Request<infer ReqE, infer ReqA>
-        ? (requests: Array<Req>) => Effect.Effect<any, ReqE, Iterable<ReqA>>
+        ? (requests: Array<Req>) => Effect.Effect<Iterable<ReqA>, ReqE, any>
       : never
       : never
   }
 >(
   fns: Fns
-) => RequestResolver<A, ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer R, infer _E, infer _A> ? R : never> =
+) => RequestResolver<A, ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer _A, infer _E, infer R> ? R : never> =
   internal.fromEffectTagged
 
 /**

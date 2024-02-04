@@ -5,7 +5,7 @@ import * as Layer from "effect/Layer"
 import * as NodePath from "node:path"
 import * as NodeUrl from "node:url"
 
-const fromFileUrl = (url: URL): Effect.Effect<never, BadArgument, string> =>
+const fromFileUrl = (url: URL): Effect.Effect<string, BadArgument> =>
   Effect.try({
     try: () => NodeUrl.fileURLToPath(url),
     catch: (error) =>
@@ -16,7 +16,7 @@ const fromFileUrl = (url: URL): Effect.Effect<never, BadArgument, string> =>
       })
   })
 
-const toFileUrl = (path: string): Effect.Effect<never, BadArgument, URL> =>
+const toFileUrl = (path: string): Effect.Effect<URL, BadArgument> =>
   Effect.try({
     try: () => NodeUrl.pathToFileURL(path),
     catch: (error) =>

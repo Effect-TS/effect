@@ -131,5 +131,5 @@ export const externalSpan: (
  * @since 2.0.0
  * @category constructors
  */
-export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A> =
+export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
   defaultServices.tracerWith

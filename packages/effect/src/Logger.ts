@@ -88,7 +88,7 @@ export const add: <B>(logger: Logger<unknown, B>) => Layer.Layer<never, never, n
  * @since 2.0.0
  * @category context
  */
-export const addEffect: <R, E, A>(effect: Effect<R, E, Logger<unknown, A>>) => Layer.Layer<R, E, never> =
+export const addEffect: <R, E, A>(effect: Effect<Logger<unknown, A>, E, R>) => Layer.Layer<R, E, never> =
   circular.addLoggerEffect
 
 /**
@@ -96,7 +96,7 @@ export const addEffect: <R, E, A>(effect: Effect<R, E, Logger<unknown, A>>) => L
  * @category context
  */
 export const addScoped: <R, E, A>(
-  effect: Effect<R, E, Logger<unknown, A>>
+  effect: Effect<Logger<unknown, A>, E, R>
 ) => Layer.Layer<Exclude<R, Scope>, E, never> = circular.addLoggerScoped
 
 /**
@@ -186,8 +186,8 @@ export const replace: {
  * @category context
  */
 export const replaceEffect: {
-  <R, E, B>(that: Effect<R, E, Logger<unknown, B>>): <A>(self: Logger<unknown, A>) => Layer.Layer<R, E, never>
-  <A, R, E, B>(self: Logger<unknown, A>, that: Effect<R, E, Logger<unknown, B>>): Layer.Layer<R, E, never>
+  <R, E, B>(that: Effect<Logger<unknown, B>, E, R>): <A>(self: Logger<unknown, A>) => Layer.Layer<R, E, never>
+  <A, R, E, B>(self: Logger<unknown, A>, that: Effect<Logger<unknown, B>, E, R>): Layer.Layer<R, E, never>
 } = circular.replaceLoggerEffect
 
 /**
@@ -196,11 +196,11 @@ export const replaceEffect: {
  */
 export const replaceScoped: {
   <R, E, B>(
-    that: Effect<R, E, Logger<unknown, B>>
+    that: Effect<Logger<unknown, B>, E, R>
   ): <A>(self: Logger<unknown, A>) => Layer.Layer<Exclude<R, Scope>, E, never>
   <A, R, E, B>(
     self: Logger<unknown, A>,
-    that: Effect<R, E, Logger<unknown, B>>
+    that: Effect<Logger<unknown, B>, E, R>
   ): Layer.Layer<Exclude<R, Scope>, E, never>
 } = circular.replaceLoggerScoped
 
@@ -236,8 +236,8 @@ export const test: {
  * @category context
  */
 export const withMinimumLogLevel: {
-  (level: LogLevel.LogLevel): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, level: LogLevel.LogLevel): Effect<R, E, A>
+  (level: LogLevel.LogLevel): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <R, E, A>(self: Effect<A, E, R>, level: LogLevel.LogLevel): Effect<A, E, R>
 } = circular.withMinimumLogLevel
 
 /**

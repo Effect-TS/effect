@@ -97,7 +97,7 @@ const unsafeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
  * @since 2.0.0
  * @categories constructors
  */
-export const make = <K, E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, never, FiberMap<K, E, A>> =>
+export const make = <K, E = unknown, A = unknown>(): Effect.Effect<FiberMap<K, E, A>, never, Scope.Scope> =>
   Effect.acquireRelease(Effect.sync(() => unsafeMake<K, E, A>()), clear)
 
 /**
@@ -107,13 +107,13 @@ export const make = <K, E = unknown, A = unknown>(): Effect.Effect<Scope.Scope, 
  * @categories constructors
  */
 export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
-  Scope.Scope | R,
-  never,
   <XE extends E, XA extends A>(
     key: K,
-    effect: Effect.Effect<R, XE, XA>,
+    effect: Effect.Effect<XA, XE, R>,
     options?: Runtime.RunForkOptions | undefined
-  ) => Fiber.RuntimeFiber<XE, XA>
+  ) => Fiber.RuntimeFiber<XE, XA>,
+  never,
+  Scope.Scope | R
 > =>
   Effect.flatMap(
     make<K, E, A>(),
@@ -179,22 +179,22 @@ export const set: {
   <K, E, A, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XE, XA>
-  ): (self: FiberMap<K, E, A>) => Effect.Effect<never, never, void>
+  ): (self: FiberMap<K, E, A>) => Effect.Effect<void>
   <K, E, A, XE extends E, XA extends A>(
     self: FiberMap<K, E, A>,
     key: K,
     fiber: Fiber.RuntimeFiber<XE, XA>
-  ): Effect.Effect<never, never, void>
+  ): Effect.Effect<void>
 } = dual<
   <K, E, A, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XE, XA>
-  ) => (self: FiberMap<K, E, A>) => Effect.Effect<never, never, void>,
+  ) => (self: FiberMap<K, E, A>) => Effect.Effect<void>,
   <K, E, A, XE extends E, XA extends A>(
     self: FiberMap<K, E, A>,
     key: K,
     fiber: Fiber.RuntimeFiber<XE, XA>
-  ) => Effect.Effect<never, never, void>
+  ) => Effect.Effect<void>
 >(3, (self, key, fiber) =>
   Effect.fiberIdWith(
     (fiberId) => Effect.sync(() => unsafeSet(self, key, fiber, fiberId))
@@ -226,16 +226,16 @@ export const unsafeGet: {
  * @categories combinators
  */
 export const get: {
-  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<never, NoSuchElementException, Fiber.RuntimeFiber<E, A>>
-  <K, E, A>(self: FiberMap<K, E, A>, key: K): Effect.Effect<never, NoSuchElementException, Fiber.RuntimeFiber<E, A>>
+  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<Fiber.RuntimeFiber<E, A>, NoSuchElementException>
+  <K, E, A>(self: FiberMap<K, E, A>, key: K): Effect.Effect<Fiber.RuntimeFiber<E, A>, NoSuchElementException>
 } = dual<
   <K>(
     key: K
-  ) => <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<never, NoSuchElementException, Fiber.RuntimeFiber<E, A>>,
+  ) => <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<Fiber.RuntimeFiber<E, A>, NoSuchElementException>,
   <K, E, A>(
     self: FiberMap<K, E, A>,
     key: K
-  ) => Effect.Effect<never, NoSuchElementException, Fiber.RuntimeFiber<E, A>>
+  ) => Effect.Effect<Fiber.RuntimeFiber<E, A>, NoSuchElementException>
 >(2, (self, key) => Effect.suspend(() => MutableHashMap.get(self.backing, key)))
 
 /**
@@ -245,16 +245,16 @@ export const get: {
  * @categories combinators
  */
 export const remove: {
-  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<never, never, void>
-  <K, E, A>(self: FiberMap<K, E, A>, key: K): Effect.Effect<never, never, void>
+  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<void>
+  <K, E, A>(self: FiberMap<K, E, A>, key: K): Effect.Effect<void>
 } = dual<
   <K>(
     key: K
-  ) => <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<never, never, void>,
+  ) => <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<void>,
   <K, E, A>(
     self: FiberMap<K, E, A>,
     key: K
-  ) => Effect.Effect<never, never, void>
+  ) => Effect.Effect<void>
 >(2, (self, key) =>
   Effect.suspend(() => {
     const fiber = MutableHashMap.get(self.backing, key)
@@ -269,7 +269,7 @@ export const remove: {
  * @since 2.0.0
  * @categories combinators
  */
-export const clear = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<never, never, void> =>
+export const clear = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<void> =>
   Effect.zipRight(
     Effect.forEach(self.backing, ([_, fiber]) => Fiber.interrupt(fiber)),
     Effect.sync(() => {
@@ -289,13 +289,13 @@ export const run: {
     self: FiberMap<K, E, A>,
     key: K
   ): <R, XE extends E, XA extends A>(
-    effect: Effect.Effect<R, XE, XA>
-  ) => Effect.Effect<R, never, Fiber.RuntimeFiber<XE, XA>>
+    effect: Effect.Effect<XA, XE, R>
+  ) => Effect.Effect<Fiber.RuntimeFiber<XE, XA>, never, R>
   <K, E, A, R, XE extends E, XA extends A>(
     self: FiberMap<K, E, A>,
     key: K,
-    effect: Effect.Effect<R, XE, XA>
-  ): Effect.Effect<R, never, Fiber.RuntimeFiber<XE, XA>>
+    effect: Effect.Effect<XA, XE, R>
+  ): Effect.Effect<Fiber.RuntimeFiber<XE, XA>, never, R>
 } = function() {
   if (arguments.length === 2) {
     const self = arguments[0] as FiberMap<any>
@@ -325,7 +325,7 @@ export const run: {
  *   readonly _: unique symbol
  * }
  * const Users = Context.GenericTag<Users, {
- *    getAll: Effect.Effect<never, never, Array<unknown>>
+ *    getAll: Effect.Effect<Array<unknown>>
  * }>("Users")
  *
  * Effect.gen(function*(_) {
@@ -345,13 +345,13 @@ export const run: {
 export const runtime: <K, E, A>(
   self: FiberMap<K, E, A>
 ) => <R>() => Effect.Effect<
-  R,
-  never,
   <XE extends E, XA extends A>(
     key: K,
-    effect: Effect.Effect<R, XE, XA>,
+    effect: Effect.Effect<XA, XE, R>,
     options?: Runtime.RunForkOptions | undefined
-  ) => Fiber.RuntimeFiber<XE, XA>
+  ) => Fiber.RuntimeFiber<XE, XA>,
+  never,
+  R
 > = <K, E, A>(self: FiberMap<K, E, A>) => <R>() =>
   Effect.map(
     Effect.runtime<R>(),
@@ -359,7 +359,7 @@ export const runtime: <K, E, A>(
       const runFork = Runtime.runFork(runtime)
       return <XE extends E, XA extends A>(
         key: K,
-        effect: Effect.Effect<R, XE, XA>,
+        effect: Effect.Effect<XA, XE, R>,
         options?: Runtime.RunForkOptions | undefined
       ) => {
         const fiber = runFork(effect, options)
@@ -373,5 +373,5 @@ export const runtime: <K, E, A>(
  * @since 2.0.0
  * @categories combinators
  */
-export const size = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<never, never, number> =>
+export const size = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<number> =>
   Effect.sync(() => MutableHashMap.size(self.backing))

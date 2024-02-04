@@ -59,7 +59,7 @@ const renderNextFrame = (
   prevState: Option.Option<State>,
   nextState: State,
   options: Required<Prompt.Prompt.ConfirmOptions>
-): Effect.Effect<Terminal.Terminal, never, string> =>
+): Effect.Effect<string, never, Terminal.Terminal> =>
   Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)
@@ -114,7 +114,7 @@ const FALSE_VALUE_REGEX = /^n|f$/
 
 const processInputValue = (
   value: string
-): Effect.Effect<never, never, PromptAction.PromptAction<State, boolean>> => {
+): Effect.Effect<PromptAction.PromptAction<State, boolean>> => {
   if (TRUE_VALUE_REGEX.test(value.toLowerCase())) {
     return Effect.succeed(InternalPromptAction.submit(true))
   }
