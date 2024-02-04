@@ -42,10 +42,10 @@ const EOF = Symbol.for("@effect/experimental/Socket/Node/EOF")
  */
 export const makeNet = (
   options: Net.NetConnectOpts
-): Effect.Effect<Scope.Scope, Socket.SocketError, Socket.Socket> =>
+): Effect.Effect<Socket.Socket, Socket.SocketError, Scope.Scope> =>
   fromNetSocket(
     Effect.acquireRelease(
-      Effect.async<never, Socket.SocketError, Net.Socket>((resume) => {
+      Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
         const conn = Net.createConnection(options)
         conn.on("connect", () => {
           conn.removeAllListeners()
@@ -73,12 +73,12 @@ export const makeNet = (
  * @category constructors
  */
 export const fromNetSocket = (
-  open: Effect.Effect<Scope.Scope, Socket.SocketError, Net.Socket>
-): Effect.Effect<never, never, Socket.Socket> =>
+  open: Effect.Effect<Net.Socket, Socket.SocketError, Scope.Scope>
+): Effect.Effect<Socket.Socket> =>
   Effect.gen(function*(_) {
     const sendQueue = yield* _(Queue.unbounded<Uint8Array | typeof EOF>())
 
-    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<R, E, _>) =>
+    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const conn = yield* _(open)
         const runtime = yield* _(Effect.runtime<R>(), Effect.provideService(NetSocket, conn))
@@ -86,7 +86,7 @@ export const fromNetSocket = (
         const writeFiber = yield* _(
           Queue.take(sendQueue),
           Effect.tap((chunk) =>
-            Effect.async<never, Socket.SocketError, void>((resume) => {
+            Effect.async<void, Socket.SocketError, never>((resume) => {
               if (chunk === EOF) {
                 conn.end(() => resume(Effect.unit))
               } else {
@@ -108,7 +108,7 @@ export const fromNetSocket = (
           )
         })
         yield* _(Effect.race(
-          Effect.async<never, Socket.SocketError, void>((resume) => {
+          Effect.async<void, Socket.SocketError, never>((resume) => {
             conn.on("end", () => {
               resume(Effect.unit)
             })
