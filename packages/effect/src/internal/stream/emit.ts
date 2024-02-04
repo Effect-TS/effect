@@ -20,7 +20,7 @@ export const make = <R, E, A, B>(
     dieMessage(this: Emit.Emit<R, E, A, B>, message: string) {
       return this(Effect.dieMessage(message))
     },
-    done(this: Emit.Emit<R, E, A, B>, exit: Exit.Exit<E, A>) {
+    done(this: Emit.Emit<R, E, A, B>, exit: Exit.Exit<A, E>) {
       return this(Effect.suspend(() => Exit.mapBoth(exit, { onFailure: Option.some, onSuccess: Chunk.of })))
     },
     end(this: Emit.Emit<R, E, A, B>) {

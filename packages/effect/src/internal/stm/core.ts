@@ -188,7 +188,7 @@ export const commit = <R, E, A>(self: STM.STM<R, E, A>): Effect.Effect<A, E, R> 
 /** @internal */
 export const unsafeAtomically = <R, E, A>(
   self: STM.STM<R, E, A>,
-  onDone: (exit: Exit.Exit<E, A>) => unknown,
+  onDone: (exit: Exit.Exit<A, E>) => unknown,
   onInterrupt: LazyArg<unknown>
 ): Effect.Effect<A, E, R> =>
   withFiberRuntime((state) => {
@@ -381,8 +381,8 @@ const tryCommitAsync = <R, E, A>(
 }
 
 /** @internal */
-const completeTodos = <E, A>(
-  exit: Exit.Exit<E, A>,
+const completeTodos = <A, E>(
+  exit: Exit.Exit<A, E>,
   journal: Journal.Journal,
   scheduler: Scheduler.Scheduler,
   priority: number
@@ -395,8 +395,8 @@ const completeTodos = <E, A>(
 }
 
 /** @internal */
-const completeTryCommit = <R, E, A>(
-  exit: Exit.Exit<E, A>,
+const completeTryCommit = <A, E, R>(
+  exit: Exit.Exit<A, E>,
   k: (effect: Effect.Effect<A, E, R>) => unknown
 ): void => {
   k(exit)

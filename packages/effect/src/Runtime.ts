@@ -82,7 +82,7 @@ export const runFork: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>) => Exit.Exit<E, A> =
+export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E> =
   internal.unsafeRunSyncExit
 
 /**
@@ -101,7 +101,7 @@ export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<A
  * @category models
  */
 export interface RunCallbackOptions<E, A> extends RunForkOptions {
-  readonly onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
+  readonly onExit?: ((exit: Exit.Exit<A, E>) => void) | undefined
 }
 
 /**
@@ -148,7 +148,7 @@ export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effec
  */
 export const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <E, A>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<E, A>> = internal.unsafeRunPromiseExit
+) => <E, A>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<A, E>> = internal.unsafeRunPromiseExit
 
 /**
  * @since 2.0.0

@@ -83,7 +83,7 @@ export type MapValue<Key, Error, Value> =
 export interface Complete<out Key, out Error, out Value> {
   readonly _tag: "Complete"
   readonly key: _cache.MapKey<Key>
-  readonly exit: Exit.Exit<Error, readonly [Value, Scope.Scope.Finalizer]>
+  readonly exit: Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>
   readonly ownerCount: MutableRef.MutableRef<number>
   readonly entryStats: Cache.EntryStats
   readonly timeToLive: number
@@ -106,7 +106,7 @@ export interface Refreshing<out Key, out Error, out Value> {
 /** @internal */
 export const complete = <Key, Error, Value>(
   key: _cache.MapKey<Key>,
-  exit: Exit.Exit<Error, readonly [Value, Scope.Scope.Finalizer]>,
+  exit: Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>,
   ownerCount: MutableRef.MutableRef<number>,
   entryStats: Cache.EntryStats,
   timeToLive: number
@@ -194,7 +194,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
     readonly capacity: number,
     readonly scopedLookup: ScopedCache.Lookup<Key, Environment, Error, Value>,
     readonly clock: Clock.Clock,
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.Duration,
+    readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.Duration,
     readonly context: Context.Context<Environment>
   ) {
     this.cacheState = initialCacheState()
@@ -455,7 +455,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
         const expiredAt = now + Duration.toMillis(this.timeToLive(exit))
         switch (exit._tag) {
           case "Success": {
-            const exitWithFinalizer: Exit.Exit<never, [Value, Scope.Scope.Finalizer]> = Exit.succeed([
+            const exitWithFinalizer: Exit.Exit<[Value, Scope.Scope.Finalizer]> = Exit.succeed([
               exit.value,
               release
             ])
@@ -483,7 +483,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
           case "Failure": {
             const completedResult = complete<Key, Error, Value>(
               _cache.makeMapKey(key),
-              exit as Exit.Exit<Error, readonly [Value, Scope.Scope.Finalizer]>,
+              exit as Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>,
               MutableRef.make(0),
               _cache.makeEntryStats(now),
               expiredAt
@@ -606,7 +606,7 @@ export const makeWith = <Key, Environment, Error, Value>(
   options: {
     readonly capacity: number
     readonly lookup: ScopedCache.Lookup<Key, Environment, Error, Value>
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   }
 ): Effect.Effect<ScopedCache.ScopedCache<Key, Error, Value>, never, Environment | Scope.Scope> =>
   core.flatMap(
@@ -624,7 +624,7 @@ const buildWith = <Key, Environment, Error, Value>(
   capacity: number,
   scopedLookup: ScopedCache.Lookup<Key, Environment, Error, Value>,
   clock: Clock.Clock,
-  timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.Duration
+  timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.Duration
 ): Effect.Effect<ScopedCache.ScopedCache<Key, Error, Value>, never, Environment | Scope.Scope> =>
   fiberRuntime.acquireRelease(
     core.flatMap(
