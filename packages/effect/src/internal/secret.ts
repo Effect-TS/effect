@@ -40,6 +40,12 @@ export const make = (bytes: Array<number>): Secret.Secret => {
       return "Secret(<redacted>)"
     }
   })
+  Object.defineProperty(secret, "toJSON", {
+    enumerable: false,
+    value() {
+      return "<redacted>"
+    }
+  })
   Object.defineProperty(secret, "raw", {
     enumerable: false,
     value: bytes
