@@ -1,5 +1,22 @@
 # @effect/platform
 
+## 0.43.8
+
+### Patch Changes
+
+- [#2037](https://github.com/Effect-TS/effect/pull/2037) [`32bf796`](https://github.com/Effect-TS/effect/commit/32bf796c3e5db1b2b68e8b1b20db664295991643) Thanks [@tim-smart](https://github.com/tim-smart)! - remove overloads from ClientRequest.make
+
+  This makes it easier to programatically create client request instances:
+
+  ```
+  import * as Http from "@effect/platform/HttpClient"
+
+  declare const method: "GET" | "POST"
+  declare const url: string
+
+  Http.request.make(method)(url)
+  ```
+
 ## 0.43.7
 
 ### Patch Changes
