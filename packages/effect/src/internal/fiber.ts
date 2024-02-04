@@ -68,7 +68,7 @@ export const isRuntimeFiber = <E, A>(self: Fiber.Fiber<E, A>): self is Fiber.Run
   RuntimeFiberTypeId in self
 
 /** @internal */
-export const _await = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Exit.Exit<E, A>> => self.await
+export const _await = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Exit.Exit<A, E>> => self.await
 
 /** @internal */
 export const children = <E, A>(
@@ -76,7 +76,7 @@ export const children = <E, A>(
 ): Effect.Effect<Array<Fiber.RuntimeFiber<any, any>>> => self.children
 
 /** @internal */
-export const done = <E, A>(exit: Exit.Exit<E, A>): Fiber.Fiber<E, A> => ({
+export const done = <A, E>(exit: Exit.Exit<A, E>): Fiber.Fiber<E, A> => ({
   ...fiberProto,
   id: () => FiberId.none,
   await: core.succeed(exit),
@@ -265,7 +265,7 @@ export const orElseEither = dual<
 >(2, (self, that) => orElse(map(self, Either.left), map(that, Either.right)))
 
 /** @internal */
-export const poll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Option.Option<Exit.Exit<E, A>>> => self.poll
+export const poll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Option.Option<Exit.Exit<A, E>>> => self.poll
 
 // forked from https://github.com/sindresorhus/parse-ms/blob/4da2ffbdba02c6e288c08236695bdece0adca173/index.js
 // MIT License

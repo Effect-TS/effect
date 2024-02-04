@@ -74,7 +74,7 @@ describe("Effect", () => {
     }))
   it.effect("finalizer errors reported", () =>
     Effect.gen(function*($) {
-      let reported: Exit.Exit<never, number> | undefined
+      let reported: Exit.Exit<number> | undefined
       const result = yield* $(
         pipe(
           Effect.succeed(42),

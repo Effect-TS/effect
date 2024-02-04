@@ -158,7 +158,7 @@ export const groupBy = dual<
             >()
           )
           const output = yield* $(Effect.acquireRelease(
-            Queue.bounded<Exit.Exit<Option.Option<E | E2>, readonly [K, Queue.Dequeue<Take.Take<E | E2, V>>]>>(
+            Queue.bounded<Exit.Exit<readonly [K, Queue.Dequeue<Take.Take<E | E2, V>>], Option.Option<E | E2>>>(
               options?.bufferSize ?? 16
             ),
             (queue) => Queue.shutdown(queue)

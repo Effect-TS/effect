@@ -54,7 +54,7 @@ export interface Supervisor<out T> extends Supervisor.Variance<T> {
   /**
    * Supervises the end of a `Fiber`.
    */
-  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void
+  onEnd<A, E>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void
 
   /**
    * Supervises the execution of an `Effect` by a `Fiber`.
@@ -173,8 +173,8 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  onEnd<E, A>(
-    _value: Exit.Exit<E, A>,
+  onEnd<A, E>(
+    _value: Exit.Exit<A, E>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     //

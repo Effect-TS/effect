@@ -103,7 +103,7 @@ export interface ContinuationK<
     c: Cause.Cause<OutErr>
   ): Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
   onExit(
-    exit: Exit.Exit<OutErr, OutDone>
+    exit: Exit.Exit<OutDone, OutErr>
   ): Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
 }
 
@@ -183,7 +183,7 @@ export class ContinuationKImpl<
   ) {
   }
   onExit(
-    exit: Exit.Exit<OutErr, OutDone>
+    exit: Exit.Exit<OutDone, OutErr>
   ): Channel.Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
     return Exit.isFailure(exit) ? this.onHalt(exit.cause) : this.onSuccess(exit.value)
   }

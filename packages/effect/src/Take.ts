@@ -32,7 +32,7 @@ export type TakeTypeId = typeof TakeTypeId
  */
 export interface Take<out E, out A> extends Take.Variance<E, A>, Pipeable {
   /** @internal */
-  readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>
+  readonly exit: Exit.Exit<Chunk.Chunk<A>, Option.Option<E>>
 }
 
 /**
@@ -124,7 +124,7 @@ export const fromEffect: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Eff
  * @since 2.0.0
  * @category constructors
  */
-export const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A> = internal.fromExit
+export const fromExit: <A, E>(exit: Exit.Exit<A, E>) => Take<E, A> = internal.fromExit
 
 /**
  * Creates effect from `Effect<Chunk<A>, Option<E>, R>` that does not fail, but
@@ -168,7 +168,7 @@ export const isSuccess: <E, A>(self: Take<E, A>) => boolean = internal.isSuccess
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>(exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A> = internal.make
+export const make: <E, A>(exit: Exit.Exit<Chunk.Chunk<A>, Option.Option<E>>) => Take<E, A> = internal.make
 
 /**
  * Transforms `Take<E, A>` to `Take<E, B>` by applying function `f`.

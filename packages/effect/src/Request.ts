@@ -82,7 +82,7 @@ export declare namespace Request {
    * @since 2.0.0
    * @category type-level
    */
-  export type Result<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit.Exit<E, A> : never
+  export type Result<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit.Exit<A, E> : never
 
   /**
    * A utility type to extract the optional result type from a `Request`.
@@ -91,7 +91,7 @@ export declare namespace Request {
    * @category type-level
    */
   export type OptionalResult<T extends Request<any, any>> = T extends Request<infer E, infer A>
-    ? Exit.Exit<E, Option.Option<A>>
+    ? Exit.Exit<Option.Option<A>, E>
     : never
 }
 

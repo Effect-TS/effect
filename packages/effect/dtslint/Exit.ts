@@ -2,19 +2,19 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 
-declare const number: Exit.Exit<string, number>
-declare const numberOrString: Exit.Exit<string, string | number>
+declare const number: Exit.Exit<number, string>
+declare const numberOrString: Exit.Exit<string | number, string>
 
 // -------------------------------------------------------------------------------------
 // exists
 // -------------------------------------------------------------------------------------
 
 if (Exit.exists(Predicate.isString)(numberOrString)) {
-  numberOrString // $ExpectType Exit<never, string>
+  numberOrString // $ExpectType Exit<string, never>
 }
 
 if (Exit.exists(numberOrString, Predicate.isString)) {
-  numberOrString // $ExpectType Exit<never, string>
+  numberOrString // $ExpectType Exit<string, never>
 }
 
 if (
@@ -25,7 +25,7 @@ if (
     ) => true)
   )
 ) {
-  number // $ExpectType Exit<string, number>
+  number // $ExpectType Exit<number, string>
 }
 
 if (
@@ -36,7 +36,7 @@ if (
     ) => true)
   )
 ) {
-  number // $ExpectType Exit<string, number>
+  number // $ExpectType Exit<number, string>
 }
 
 // $ExpectType boolean
