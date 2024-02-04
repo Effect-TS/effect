@@ -134,7 +134,7 @@ export const makeWith: <Key, Environment, Error, Value>(
   options: {
     readonly capacity: number
     readonly lookup: Lookup<Key, Environment, Error, Value>
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   }
 ) => Effect.Effect<ScopedCache<Key, Error, Value>, never, Scope.Scope | Environment> = internal.makeWith
 

@@ -48,7 +48,7 @@ export class ProxySupervisor<out T> implements Supervisor.Supervisor<T> {
     this.underlying.onStart(context, effect, parent, fiber)
   }
 
-  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void {
     this.underlying.onEnd(value, fiber)
   }
 
@@ -98,7 +98,7 @@ export class Zip<out T0, out T1> implements Supervisor.Supervisor<readonly [T0, 
     this.right.onStart(context, effect, parent, fiber)
   }
 
-  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void {
     this.left.onEnd(value, fiber)
     this.right.onEnd(value, fiber)
   }
@@ -150,7 +150,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
     this.fibers.add(fiber)
   }
 
-  onEnd<E, A>(_value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void {
     this.fibers.delete(fiber)
   }
 
@@ -201,7 +201,7 @@ export class Const<out T> implements Supervisor.Supervisor<T> {
     //
   }
 
-  onEnd<E, A>(_value: Exit.Exit<E, A>, _fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit.Exit<A, E>, _fiber: Fiber.RuntimeFiber<E, A>): void {
     //
   }
 
@@ -249,7 +249,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
     pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.add(fiber))))
   }
 
-  onEnd<E, A>(_value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void {
     pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.remove(fiber))))
   }
 

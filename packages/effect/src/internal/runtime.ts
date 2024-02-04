@@ -215,7 +215,7 @@ export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => 
 /** @internal */
 export const isFiberFailure = (u: unknown): u is Runtime.FiberFailure => Predicate.hasProperty(u, FiberFailureId)
 
-const fastPath = <A, E, R>(effect: Effect.Effect<A, E, R>): Exit.Exit<E, A> | undefined => {
+const fastPath = <A, E, R>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> | undefined => {
   const op = effect as core.Primitive
   switch (op._op) {
     case "Failure":
@@ -241,7 +241,7 @@ const fastPath = <A, E, R>(effect: Effect.Effect<A, E, R>): Exit.Exit<E, A> | un
 
 /** @internal */
 export const unsafeRunSyncExit =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>): Exit.Exit<E, A> => {
+  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
     const op = fastPath(effect)
     if (op) {
       return op
@@ -272,7 +272,7 @@ export const unsafeRunPromise =
 
 /** @internal */
 export const unsafeRunPromiseExit =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<E, A>> =>
+  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<A, E>> =>
     new Promise((resolve) => {
       const op = fastPath(effect)
       if (op) {
