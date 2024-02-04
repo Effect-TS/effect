@@ -74,7 +74,7 @@ export const PlatformWorker: Context.Tag<PlatformWorker, PlatformWorker> = inter
  */
 export interface Worker<I, E, O> {
   readonly id: number
-  readonly execute: (message: I) => Stream.Stream<never, E | WorkerError, O>
+  readonly execute: (message: I) => Stream.Stream<O, E | WorkerError>
   readonly executeEffect: (message: I) => Effect.Effect<O, E | WorkerError>
 }
 
@@ -129,7 +129,7 @@ export declare namespace Worker {
 export interface WorkerPool<I, E, O> {
   readonly backing: Pool.Pool<WorkerError, Worker<I, E, O>>
   readonly broadcast: (message: I) => Effect.Effect<void, E | WorkerError>
-  readonly execute: (message: I) => Stream.Stream<never, E | WorkerError, O>
+  readonly execute: (message: I) => Stream.Stream<O, E | WorkerError>
   readonly executeEffect: (message: I) => Effect.Effect<O, E | WorkerError>
 }
 
@@ -234,7 +234,7 @@ export interface SerializedWorker<I extends Schema.TaggedRequest.Any> {
   readonly execute: <Req extends I>(
     message: Req
   ) => Req extends Serializable.WithResult<infer R, infer _IE, infer E, infer _IA, infer A>
-    ? Stream.Stream<R, E | WorkerError | ParseResult.ParseError, A>
+    ? Stream.Stream<A, E | WorkerError | ParseResult.ParseError, R>
     : never
   readonly executeEffect: <Req extends I>(
     message: Req
@@ -285,7 +285,7 @@ export interface SerializedWorkerPool<I extends Schema.TaggedRequest.Any> {
   readonly execute: <Req extends I>(
     message: Req
   ) => Req extends Serializable.WithResult<infer R, infer _IE, infer E, infer _IA, infer A>
-    ? Stream.Stream<R, E | WorkerError | ParseResult.ParseError, A>
+    ? Stream.Stream<A, E | WorkerError | ParseResult.ParseError, R>
     : never
   readonly executeEffect: <Req extends I>(
     message: Req

@@ -63,11 +63,11 @@ describe("Sink", () => {
 
   it.effect("foldEffect - short circuits", () =>
     Effect.gen(function*($) {
-      const empty: Stream.Stream<never, never, number> = Stream.empty
+      const empty: Stream.Stream<number> = Stream.empty
       const single = Stream.make(1)
       const double = Stream.make(1, 2)
       const failed = Stream.fail("Ouch")
-      const run = <E>(stream: Stream.Stream<never, E, number>) =>
+      const run = <E>(stream: Stream.Stream<number, E>) =>
         pipe(
           Ref.make(Chunk.empty<number>()),
           Effect.flatMap((ref) =>

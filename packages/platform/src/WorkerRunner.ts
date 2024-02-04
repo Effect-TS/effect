@@ -95,7 +95,7 @@ export declare namespace Runner {
  * @category constructors
  */
 export const make: <I, R, E, O>(
-  process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<O, E, R>,
+  process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: Runner.Options<I, E, O> | undefined
 ) => Effect.Effect<void, WorkerError, Scope.Scope | R | PlatformRunner> = internal.make
 
@@ -104,7 +104,7 @@ export const make: <I, R, E, O>(
  * @category layers
  */
 export const layer: <I, R, E, O>(
-  process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<O, E, R>,
+  process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: Runner.Options<I, E, O> | undefined
 ) => Layer.Layer<R | PlatformRunner, WorkerError, never> = internal.layer
 
@@ -132,7 +132,7 @@ export declare namespace SerializedRunner {
     > ? (
         _: S
       ) =>
-        | Stream.Stream<any, E, O>
+        | Stream.Stream<O, E, any>
         | Effect.Effect<O, E, any>
         | Layer.Layer<any, E, any>
         | Layer.Layer<any, E, never>
@@ -148,9 +148,9 @@ export declare namespace SerializedRunner {
     | Exclude<
       {
         [K in keyof Handlers]: ReturnType<Handlers[K]> extends Stream.Stream<
-          infer R,
+          infer _A,
           infer _E,
-          infer _A
+          infer R
         > ? R
           : never
       }[keyof Handlers],

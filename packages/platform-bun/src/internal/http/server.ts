@@ -228,7 +228,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     return this.headersOverride
   }
 
-  get stream(): Stream.Stream<never, Error.RequestError, Uint8Array> {
+  get stream(): Stream.Stream<Uint8Array, Error.RequestError> {
     return this.source.body
       ? Stream.fromReadableStream(() => this.source.body as any, (_) =>
         Error.RequestError({
@@ -308,7 +308,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     return this.multipartEffect
   }
 
-  get multipartStream(): Stream.Stream<never, Multipart.MultipartError, Multipart.Part> {
+  get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return MultipartNode.stream(Readable.fromWeb(this.source.body! as any), this.headers)
   }
 

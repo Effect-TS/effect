@@ -57,7 +57,7 @@ export const layerPlatform = Layer.succeed(Runner.PlatformRunner, platformRunner
 
 /** @internal */
 export const layer = <I, R, E, O>(
-  process: (request: I) => Stream.Stream<R, E, O>,
+  process: (request: I) => Stream.Stream<O, E, R>,
   options?: Runner.Runner.Options<I, E, O>
 ): Layer.Layer<R, WorkerError, never> => Layer.provide(Runner.layer(process, options), layerPlatform)
 

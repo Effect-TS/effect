@@ -198,13 +198,13 @@ export const start = (
 /** @internal */
 export const stream = (
   command: Command.Command
-): Stream.Stream<CommandExecutor.CommandExecutor, PlatformError, Uint8Array> =>
+): Stream.Stream<Uint8Array, PlatformError, CommandExecutor.CommandExecutor> =>
   Stream.flatMap(commandExecutor.CommandExecutor, (process) => process.stream(command))
 
 /** @internal */
 export const streamLines = (
   command: Command.Command
-): Stream.Stream<CommandExecutor.CommandExecutor, PlatformError, string> =>
+): Stream.Stream<string, PlatformError, CommandExecutor.CommandExecutor> =>
   Stream.flatMap(commandExecutor.CommandExecutor, (process) => process.streamLines(command))
 
 /** @internal */

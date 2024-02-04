@@ -97,7 +97,7 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.whenCase(
           constVoid,
-          (): Option.Option<Stream.Stream<never, never, void>> => {
+          (): Option.Option<Stream.Stream<void>> => {
             throw error
           }
         ),
@@ -154,7 +154,7 @@ describe("Stream", () => {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Effect.unit,
-        Stream.whenCaseEffect((): Option.Option<Stream.Stream<never, never, void>> => {
+        Stream.whenCaseEffect((): Option.Option<Stream.Stream<void>> => {
           throw error
         }),
         Stream.runCollect,

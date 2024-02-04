@@ -15,7 +15,7 @@ import * as NodeStream from "../stream.js"
 export const stream = (
   source: Readable,
   headers: IncomingHttpHeaders
-): Stream.Stream<never, Multipart.MultipartError, Multipart.Part> =>
+): Stream.Stream<Multipart.Part, Multipart.MultipartError> =>
   pipe(
     Multipart.makeConfig(headers as any),
     Effect.map(
@@ -68,7 +68,7 @@ class FileImpl implements Multipart.File {
   readonly key: string
   readonly name: string
   readonly contentType: string
-  readonly content: Stream.Stream<never, Multipart.MultipartError, Uint8Array>
+  readonly content: Stream.Stream<Uint8Array, Multipart.MultipartError>
 
   constructor(readonly file: MP.FileStream) {
     this[Multipart.TypeId] = Multipart.TypeId

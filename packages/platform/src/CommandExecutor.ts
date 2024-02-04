@@ -41,11 +41,11 @@ export interface CommandExecutor {
   /**
    * Runs the command returning the output as a `Stream`.
    */
-  readonly stream: (command: Command) => Stream<never, PlatformError, Uint8Array>
+  readonly stream: (command: Command) => Stream<Uint8Array, PlatformError>
   /**
    * Runs the command returning the output as a `Stream` of lines.
    */
-  readonly streamLines: (command: Command, encoding?: string) => Stream<never, PlatformError, string>
+  readonly streamLines: (command: Command, encoding?: string) => Stream<string, PlatformError>
 }
 
 /**
@@ -94,7 +94,7 @@ export interface Process {
   /**
    * The standard error stream of the process.
    */
-  readonly stderr: Stream<never, PlatformError, Uint8Array>
+  readonly stderr: Stream<Uint8Array, PlatformError>
   /**
    * The standard input sink of the process.
    */
@@ -102,7 +102,7 @@ export interface Process {
   /**
    * The standard output stream of the process.
    */
-  readonly stdout: Stream<never, PlatformError, Uint8Array>
+  readonly stdout: Stream<Uint8Array, PlatformError>
 }
 
 /**
