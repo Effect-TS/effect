@@ -5191,7 +5191,7 @@ export const cause = <E, EI, R1, R2 = never>(
  * @category Exit utils
  * @since 1.0.0
  */
-export type ExitFrom<E, A> =
+export type ExitFrom<A, E> =
   | {
     readonly _tag: "Failure"
     readonly cause: CauseFrom<E>
@@ -5222,13 +5222,13 @@ const exitFrom = <E, EI, R1, A, AI, R2, R3>(
   error: Schema<E, EI, R1>,
   value: Schema<A, AI, R2>,
   defect: Schema<unknown, unknown, R3>
-): Schema<ExitFrom<E, A>, ExitFrom<EI, AI>, R1 | R2 | R3> =>
+): Schema<ExitFrom<A, E>, ExitFrom<AI, EI>, R1 | R2 | R3> =>
   union(
     exitFailureFrom(error, defect),
     exitSuccessFrom(value)
   )
 
-const exitDecode = <E, A>(input: ExitFrom<E, A>): Exit.Exit<A, E> => {
+const exitDecode = <A, E>(input: ExitFrom<A, E>): Exit.Exit<A, E> => {
   switch (input._tag) {
     case "Failure":
       return Exit.failCause(causeDecode(input.cause))
@@ -5296,7 +5296,7 @@ export const exit = <E, IE, R1, A, IA, R2, R3 = never>(
   error: Schema<E, IE, R1>,
   value: Schema<A, IA, R2>,
   defect: Schema<unknown, unknown, R3> = causeDefectPretty
-): Schema<Exit.Exit<A, E>, ExitFrom<IE, IA>, R1 | R2 | R3> =>
+): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
   transform(
     exitFrom(error, value, defect),
     exitFromSelf(to(error), to(value), to(defect)),

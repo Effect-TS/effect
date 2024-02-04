@@ -97,7 +97,7 @@ const exitSchemaCache = globalValue(
  */
 export const exitSchema = <R, IE, E, IA, A>(
   self: WithResult<R, IE, E, IA, A>
-): Schema.Schema<Exit.Exit<A, E>, Schema.ExitFrom<IE, IA>, R> => {
+): Schema.Schema<Exit.Exit<A, E>, Schema.ExitFrom<IA, IE>, R> => {
   const proto = Object.getPrototypeOf(self)
   if (!(symbolResult in proto)) {
     return Schema.exit(failureSchema(self), successSchema(self))
@@ -257,19 +257,19 @@ export const serializeExit: {
     value: Exit.Exit<A, E>
   ): <R, IE, IA>(
     self: WithResult<R, IE, E, IA, A>
-  ) => Effect.Effect<Schema.ExitFrom<IE, IA>, ParseResult.ParseError, R>
+  ) => Effect.Effect<Schema.ExitFrom<IA, IE>, ParseResult.ParseError, R>
   <R, IE, E, IA, A>(
     self: WithResult<R, IE, E, IA, A>,
     value: Exit.Exit<A, E>
-  ): Effect.Effect<Schema.ExitFrom<IE, IA>, ParseResult.ParseError, R>
+  ): Effect.Effect<Schema.ExitFrom<IA, IE>, ParseResult.ParseError, R>
 } = dual<
   <E, A>(value: Exit.Exit<A, E>) => <R, IE, IA>(
     self: WithResult<R, IE, E, IA, A>
-  ) => Effect.Effect<Schema.ExitFrom<IE, IA>, ParseResult.ParseError, R>,
+  ) => Effect.Effect<Schema.ExitFrom<IA, IE>, ParseResult.ParseError, R>,
   <R, IE, E, IA, A>(
     self: WithResult<R, IE, E, IA, A>,
     value: Exit.Exit<A, E>
-  ) => Effect.Effect<Schema.ExitFrom<IE, IA>, ParseResult.ParseError, R>
+  ) => Effect.Effect<Schema.ExitFrom<IA, IE>, ParseResult.ParseError, R>
 >(2, (self, value) => Schema.encode(exitSchema(self))(value))
 
 /**
