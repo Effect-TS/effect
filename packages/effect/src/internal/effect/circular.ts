@@ -365,7 +365,7 @@ export const raceFirst = dual<
   pipe(
     core.exit(self),
     fiberRuntime.race(core.exit(that)),
-    (effect: Effect.Effect<Exit.Exit<E | E2, A | A2>, never, R | R2>) => core.flatten(effect)
+    (effect: Effect.Effect<Exit.Exit<A | A2, E | E2>, never, R | R2>) => core.flatten(effect)
   ))
 
 /** @internal */

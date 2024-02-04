@@ -67,7 +67,7 @@ export interface Fiber<out E, out A> extends Fiber.Variance<E, A>, Pipeable {
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  readonly await: Effect.Effect<Exit.Exit<E, A>>
+  readonly await: Effect.Effect<Exit.Exit<A, E>>
 
   /**
    * Retrieves the immediate children of the fiber.
@@ -84,7 +84,7 @@ export interface Fiber<out E, out A> extends Fiber.Variance<E, A>, Pipeable {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  readonly poll: Effect.Effect<Option.Option<Exit.Exit<E, A>>>
+  readonly poll: Effect.Effect<Option.Option<Exit.Exit<A, E>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
@@ -130,13 +130,13 @@ export interface RuntimeFiber<out E, out A> extends Fiber<E, A>, Fiber.RuntimeVa
   /**
    * Adds an observer to the list of observers.
    */
-  addObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  addObserver(observer: (exit: Exit.Exit<A, E>) => void): void
 
   /**
    * Removes the specified observer from the list of observers that will be
    * notified when the fiber exits.
    */
-  removeObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  removeObserver(observer: (exit: Exit.Exit<A, E>) => void): void
 
   /**
    * Retrieves all fiber refs of the fiber.
@@ -147,7 +147,7 @@ export interface RuntimeFiber<out E, out A> extends Fiber<E, A>, Fiber.RuntimeVa
    * Unsafely observes the fiber, but returns immediately if it is not
    * already done.
    */
-  unsafePoll(): Exit.Exit<E, A> | null
+  unsafePoll(): Exit.Exit<A, E> | null
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
@@ -256,7 +256,8 @@ export const isRuntimeFiber: <E, A>(self: Fiber<E, A>) => self is RuntimeFiber<E
  */
 export const id: <E, A>(self: Fiber<E, A>) => FiberId.FiberId = internal.id
 
-const _await: <E, A>(self: Fiber<E, A>) => Effect.Effect<Exit.Exit<E, A>> = internal._await
+const _await: <E, A>(self: Fiber<E, A>) => Effect.Effect<Exit.Exit<A, E>> = internal._await
+
 export {
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
@@ -299,7 +300,7 @@ export const all: <E, A>(fibers: Iterable<Fiber<E, A>>) => Fiber<E, ReadonlyArra
  * @since 2.0.0
  * @category constructors
  */
-export const done: <E, A>(exit: Exit.Exit<E, A>) => Fiber<E, A> = internal.done
+export const done: <A, E>(exit: Exit.Exit<A, E>) => Fiber<E, A> = internal.done
 
 /**
  * @since 2.0.0
@@ -365,7 +366,7 @@ export const inheritAll: <E, A>(self: Fiber<E, A>) => Effect.Effect<void> = inte
  * @since 2.0.0
  * @category interruption
  */
-export const interrupt: <E, A>(self: Fiber<E, A>) => Effect.Effect<Exit.Exit<E, A>> = core.interruptFiber
+export const interrupt: <E, A>(self: Fiber<E, A>) => Effect.Effect<Exit.Exit<A, E>> = core.interruptFiber
 
 /**
  * Constructrs a `Fiber` that is already interrupted.
@@ -384,8 +385,8 @@ export const interrupted: (fiberId: FiberId.FiberId) => Fiber<never, never> = in
  * @category interruption
  */
 export const interruptAs: {
-  (fiberId: FiberId.FiberId): <E, A>(self: Fiber<E, A>) => Effect.Effect<Exit.Exit<E, A>>
-  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId): Effect.Effect<Exit.Exit<E, A>>
+  (fiberId: FiberId.FiberId): <E, A>(self: Fiber<E, A>) => Effect.Effect<Exit.Exit<A, E>>
+  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId): Effect.Effect<Exit.Exit<A, E>>
 } = core.interruptAsFiber
 
 /**
@@ -550,7 +551,7 @@ export const orElseEither: {
  * @since 2.0.0
  * @category getters
  */
-export const poll: <E, A>(self: Fiber<E, A>) => Effect.Effect<Option.Option<Exit.Exit<E, A>>> = internal.poll
+export const poll: <E, A>(self: Fiber<E, A>) => Effect.Effect<Option.Option<Exit.Exit<A, E>>> = internal.poll
 
 /**
  * Pretty-prints a `RuntimeFiber`.

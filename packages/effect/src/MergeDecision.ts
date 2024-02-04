@@ -54,7 +54,7 @@ export const Done: <Z, E, R>(effect: Effect.Effect<Z, E, R>) => MergeDecision<R,
  * @category constructors
  */
 export const Await: <R, E0, Z0, E, Z>(
-  f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<Z, E, R>
+  f: (exit: Exit.Exit<Z0, E0>) => Effect.Effect<Z, E, R>
 ) => MergeDecision<R, E0, Z0, E, Z> = internal.Await
 
 /**
@@ -82,14 +82,14 @@ export const match: {
   <R, E0, Z0, E, Z, Z2>(
     options: {
       readonly onDone: (effect: Effect.Effect<Z, E, R>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<Z, E, R>) => Z2
+      readonly onAwait: (f: (exit: Exit.Exit<Z0, E0>) => Effect.Effect<Z, E, R>) => Z2
     }
   ): (self: MergeDecision<R, E0, Z0, E, Z>) => Z2
   <R, E0, Z0, E, Z, Z2>(
     self: MergeDecision<R, E0, Z0, E, Z>,
     options: {
       readonly onDone: (effect: Effect.Effect<Z, E, R>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<Z, E, R>) => Z2
+      readonly onAwait: (f: (exit: Exit.Exit<Z0, E0>) => Effect.Effect<Z, E, R>) => Z2
     }
   ): Z2
 } = internal.match

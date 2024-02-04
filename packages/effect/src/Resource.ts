@@ -30,7 +30,7 @@ export type ResourceTypeId = typeof ResourceTypeId
  */
 export interface Resource<in out E, in out A> extends Resource.Variance<E, A> {
   /** @internal */
-  readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<E, A>>
+  readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<A, E>>
   /** @internal */
   readonly acquire: Effect.Effect<A, E, Scope.Scope>
 }
