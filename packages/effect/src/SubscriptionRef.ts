@@ -43,7 +43,7 @@ export interface SubscriptionRef<in out A>
    * A stream containing the current value of the `Ref` as well as all changes
    * to that value.
    */
-  readonly changes: Stream.Stream<never, never, A>
+  readonly changes: Stream.Stream<A>
 }
 
 /**

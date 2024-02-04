@@ -44,7 +44,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
     return Option.none()
   }
 
-  get stream(): Stream.Stream<never, Error.ResponseError, Uint8Array> {
+  get stream(): Stream.Stream<Uint8Array, Error.ResponseError> {
     return this.source.body
       ? Stream.fromReadableStream(() => this.source.body!, (_) =>
         internalError.responseError({

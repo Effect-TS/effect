@@ -331,12 +331,12 @@ export const formDataBody: {
  */
 export const streamBody: {
   (
-    body: Stream.Stream<never, unknown, Uint8Array>,
+    body: Stream.Stream<Uint8Array, unknown>,
     options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined } | undefined
   ): (self: ClientRequest) => ClientRequest
   (
     self: ClientRequest,
-    body: Stream.Stream<never, unknown, Uint8Array>,
+    body: Stream.Stream<Uint8Array, unknown>,
     options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined } | undefined
   ): ClientRequest
 } = internal.streamBody

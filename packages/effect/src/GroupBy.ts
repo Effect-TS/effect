@@ -30,7 +30,7 @@ export type GroupByTypeId = typeof GroupByTypeId
  * @category models
  */
 export interface GroupBy<out R, out E, out K, out V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
-  readonly grouped: Stream.Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
+  readonly grouped: Stream.Stream<readonly [K, Queue.Dequeue<Take.Take<E, V>>], E, R>
 }
 
 /**
@@ -60,18 +60,14 @@ export declare namespace GroupBy {
  */
 export const evaluate: {
   <K, E, V, R2, E2, A>(
-    f: (key: K, stream: Stream.Stream<never, E, V>) => Stream.Stream<R2, E2, A>,
-    options?: {
-      readonly bufferSize?: number | undefined
-    }
-  ): <R>(self: GroupBy<R, E, K, V>) => Stream.Stream<R2 | R, E | E2, A>
+    f: (key: K, stream: Stream.Stream<V, E, never>) => Stream.Stream<A, E2, R2>,
+    options?: { readonly bufferSize?: number | undefined } | undefined
+  ): <R>(self: GroupBy<R, E, K, V>) => Stream.Stream<A, E | E2, R2 | R>
   <R, K, E, V, R2, E2, A>(
     self: GroupBy<R, E, K, V>,
-    f: (key: K, stream: Stream.Stream<never, E, V>) => Stream.Stream<R2, E2, A>,
-    options?: {
-      readonly bufferSize?: number | undefined
-    }
-  ): Stream.Stream<R | R2, E | E2, A>
+    f: (key: K, stream: Stream.Stream<V, E, never>) => Stream.Stream<A, E2, R2>,
+    options?: { readonly bufferSize?: number | undefined } | undefined
+  ): Stream.Stream<A, E | E2, R | R2>
 } = internal.evaluate
 
 /**
@@ -103,5 +99,5 @@ export const first: {
  * @category constructors
  */
 export const make: <R, E, K, V>(
-  grouped: Stream.Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
+  grouped: Stream.Stream<readonly [K, Queue.Dequeue<Take.Take<E, V>>], E, R>
 ) => GroupBy<R, E, K, V> = internal.make

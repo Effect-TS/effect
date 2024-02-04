@@ -18,7 +18,7 @@ import * as internal from "../internal/http/multipart.js"
 export const stream: (
   source: Readable,
   headers: IncomingHttpHeaders
-) => Stream.Stream<never, Multipart.MultipartError, Multipart.Part> = internal.stream
+) => Stream.Stream<Multipart.Part, Multipart.MultipartError> = internal.stream
 
 /**
  * @since 1.0.0

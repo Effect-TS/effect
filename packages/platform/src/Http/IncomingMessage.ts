@@ -39,7 +39,7 @@ export interface IncomingMessage<E> {
   readonly text: Effect.Effect<string, E>
   readonly urlParamsBody: Effect.Effect<UrlParams.UrlParams, E>
   readonly arrayBuffer: Effect.Effect<ArrayBuffer, E>
-  readonly stream: Stream.Stream<never, E, Uint8Array>
+  readonly stream: Stream.Stream<Uint8Array, E>
 }
 
 /**

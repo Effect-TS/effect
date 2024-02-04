@@ -152,7 +152,7 @@ class StreamImpl implements Body.Stream {
   readonly [TypeId]: Body.TypeId
   readonly _tag = "Stream"
   constructor(
-    readonly stream: Stream_.Stream<never, unknown, Uint8Array>,
+    readonly stream: Stream_.Stream<Uint8Array, unknown>,
     readonly contentType: string,
     readonly contentLength?: number
   ) {
@@ -162,7 +162,7 @@ class StreamImpl implements Body.Stream {
 
 /** @internal */
 export const stream = (
-  body: Stream_.Stream<never, unknown, Uint8Array>,
+  body: Stream_.Stream<Uint8Array, unknown>,
   contentType?: string,
   contentLength?: number
 ): Body.Stream => new StreamImpl(body, contentType ?? "application/octet-stream", contentLength)
