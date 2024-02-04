@@ -97,7 +97,7 @@ export const toString: <E>(
     readonly encoding?: BufferEncoding | undefined
     readonly maxBytes?: SizeInput | undefined
   }
-) => Effect<never, E, string> = internal.toString
+) => Effect<string, E> = internal.toString
 
 /**
  * @since 1.0.0
@@ -106,4 +106,4 @@ export const toString: <E>(
 export const toUint8Array: <E>(
   readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options: { readonly onFailure: (error: unknown) => E; readonly maxBytes?: SizeInput | undefined }
-) => Effect<never, E, Uint8Array> = internal.toUint8Array
+) => Effect<Uint8Array, E> = internal.toUint8Array

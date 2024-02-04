@@ -13,7 +13,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const worker = worker_ as WorkerThreads.Worker
       yield* _(Effect.addFinalizer(() =>
         pipe(
-          Effect.async<never, never, void>((resume) => {
+          Effect.async<void, never, never>((resume) => {
             worker.once("exit", () => {
               resume(Effect.unit)
             })
