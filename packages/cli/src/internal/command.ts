@@ -135,7 +135,7 @@ const getDescriptor = <Name extends string, R, E, A>(self: Command.Command<Name,
 
 const makeProto = <Name extends string, R, E, A>(
   descriptor: Descriptor.Command<A>,
-  handler: (_: A) => Effect.Effect<R, E, void>,
+  handler: (_: A) => Effect.Effect<void, E, R>,
   tag: Context.Tag<any, any>,
   transform: Command.Command.Transform<R, E, A> = identity
 ): Command.Command<Name, R, E, A> => {
@@ -151,7 +151,7 @@ const makeDerive = <Name extends string, R, E, A>(
   self: Command.Command<Name, any, any, A>,
   options: {
     readonly descriptor?: Descriptor.Command<A>
-    readonly handler?: (_: A) => Effect.Effect<R, E, void>
+    readonly handler?: (_: A) => Effect.Effect<void, E, R>
     readonly transform?: Command.Command.Transform<R, E, A>
   }
 ): Command.Command<Name, R, E, A> => {
@@ -159,7 +159,7 @@ const makeDerive = <Name extends string, R, E, A>(
   command.descriptor = options.descriptor ?? self.descriptor
   command.handler = options.handler ?? self.handler
   command.transform = options.transform
-    ? ((effect: Effect.Effect<R, E, void>, opts: A) => options.transform!(self.transform(effect, opts), opts))
+    ? ((effect: Effect.Effect<void, E, R>, opts: A) => options.transform!(self.transform(effect, opts), opts))
     : self.transform
   command.tag = self.tag
   return command
@@ -172,7 +172,7 @@ export const fromDescriptor = dual<
       command: Descriptor.Command<A>
     ) => Command.Command<A["name"], never, never, A>
     <A extends { readonly name: string }, R, E>(
-      handler: (_: A) => Effect.Effect<R, E, void>
+      handler: (_: A) => Effect.Effect<void, E, R>
     ): (command: Descriptor.Command<A>) => Command.Command<A["name"], R, E, A>
   },
   {
@@ -181,7 +181,7 @@ export const fromDescriptor = dual<
     ): Command.Command<A["name"], never, never, A>
     <A extends { readonly name: string }, R, E>(
       descriptor: Descriptor.Command<A>,
-      handler: (_: A) => Effect.Effect<R, E, void>
+      handler: (_: A) => Effect.Effect<void, E, R>
     ): Command.Command<A["name"], R, E, A>
   }
 >(
@@ -230,7 +230,7 @@ export const make: {
   <Name extends string, const Config extends Command.Command.Config, R, E>(
     name: Name,
     config: Config,
-    handler: (_: Types.Simplify<Command.Command.ParseConfig<Config>>) => Effect.Effect<R, E, void>
+    handler: (_: Types.Simplify<Command.Command.ParseConfig<Config>>) => Effect.Effect<void, E, R>
   ): Command.Command<
     Name,
     R,
@@ -258,19 +258,19 @@ export const getNames = <Name extends string, R, E, A>(
 export const getBashCompletions = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>,
   programName: string
-): Effect.Effect<never, never, Array<string>> => InternalDescriptor.getBashCompletions(self.descriptor, programName)
+): Effect.Effect<Array<string>> => InternalDescriptor.getBashCompletions(self.descriptor, programName)
 
 /** @internal */
 export const getFishCompletions = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>,
   programName: string
-): Effect.Effect<never, never, Array<string>> => InternalDescriptor.getFishCompletions(self.descriptor, programName)
+): Effect.Effect<Array<string>> => InternalDescriptor.getFishCompletions(self.descriptor, programName)
 
 /** @internal */
 export const getZshCompletions = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>,
   programName: string
-): Effect.Effect<never, never, Array<string>> => InternalDescriptor.getZshCompletions(self.descriptor, programName)
+): Effect.Effect<Array<string>> => InternalDescriptor.getZshCompletions(self.descriptor, programName)
 
 /** @internal */
 export const getSubcommands = <Name extends string, R, E, A>(
@@ -296,7 +296,7 @@ const mapDescriptor = dual<
 export const prompt = <Name extends string, A, R, E>(
   name: Name,
   prompt: Prompt.Prompt<A>,
-  handler: (_: A) => Effect.Effect<R, E, void>
+  handler: (_: A) => Effect.Effect<void, E, R>
 ) =>
   makeProto(
     InternalDescriptor.map(
@@ -310,26 +310,26 @@ export const prompt = <Name extends string, A, R, E>(
 /** @internal */
 export const withHandler = dual<
   <A, R, E>(
-    handler: (_: A) => Effect.Effect<R, E, void>
+    handler: (_: A) => Effect.Effect<void, E, R>
   ) => <Name extends string, XR, XE>(
     self: Command.Command<Name, XR, XE, A>
   ) => Command.Command<Name, R, E, A>,
   <Name extends string, XR, XE, A, R, E>(
     self: Command.Command<Name, XR, XE, A>,
-    handler: (_: A) => Effect.Effect<R, E, void>
+    handler: (_: A) => Effect.Effect<void, E, R>
   ) => Command.Command<Name, R, E, A>
 >(2, (self, handler) => makeDerive(self, { handler, transform: identity }))
 
 /** @internal */
 export const transformHandler = dual<
   <R, E, A, R2, E2>(
-    f: (effect: Effect.Effect<R, E, void>, config: A) => Effect.Effect<R2, E2, void>
+    f: (effect: Effect.Effect<void, E, R>, config: A) => Effect.Effect<void, E2, R2>
   ) => <Name extends string>(
     self: Command.Command<Name, R, E, A>
   ) => Command.Command<Name, R | R2, E | E2, A>,
   <Name extends string, R, E, A, R2, E2>(
     self: Command.Command<Name, R, E, A>,
-    f: (effect: Effect.Effect<R, E, void>, config: A) => Effect.Effect<R2, E2, void>
+    f: (effect: Effect.Effect<void, E, R>, config: A) => Effect.Effect<void, E2, R2>
   ) => Command.Command<Name, R | R2, E | E2, A>
 >(2, (self, f) => makeDerive(self, { transform: f }))
 
@@ -353,14 +353,14 @@ export const provide = dual<
 export const provideEffect = dual<
   <I, S, A, R2, E2>(
     tag: Context.Tag<I, S>,
-    effect: Effect.Effect<R2, E2, S> | ((_: A) => Effect.Effect<R2, E2, S>)
+    effect: Effect.Effect<S, E2, R2> | ((_: A) => Effect.Effect<S, E2, R2>)
   ) => <Name extends string, R, E>(
     self: Command.Command<Name, R, E, A>
   ) => Command.Command<Name, Exclude<R, I> | R2, E | E2, A>,
   <Name extends string, R, E, A, I, S, R2, E2>(
     self: Command.Command<Name, R, E, A>,
     tag: Context.Tag<I, S>,
-    effect: Effect.Effect<R2, E2, S> | ((_: A) => Effect.Effect<R2, E2, S>)
+    effect: Effect.Effect<S, E2, R2> | ((_: A) => Effect.Effect<S, E2, R2>)
   ) => Command.Command<Name, Exclude<R, I> | R2, E | E2, A>
 >(3, (self, tag, effect_) =>
   makeDerive(self, {
@@ -373,13 +373,13 @@ export const provideEffect = dual<
 /** @internal */
 export const provideEffectDiscard = dual<
   <A, R2, E2, _>(
-    effect: Effect.Effect<R2, E2, _> | ((_: A) => Effect.Effect<R2, E2, _>)
+    effect: Effect.Effect<_, E2, R2> | ((_: A) => Effect.Effect<_, E2, R2>)
   ) => <Name extends string, R, E>(
     self: Command.Command<Name, R, E, A>
   ) => Command.Command<Name, R | R2, E | E2, A>,
   <Name extends string, R, E, A, R2, E2, _>(
     self: Command.Command<Name, R, E, A>,
-    effect: Effect.Effect<R2, E2, _> | ((_: A) => Effect.Effect<R2, E2, _>)
+    effect: Effect.Effect<_, E2, R2> | ((_: A) => Effect.Effect<_, E2, R2>)
   ) => Command.Command<Name, R | R2, E | E2, A>
 >(2, (self, effect_) =>
   makeDerive(self, {
@@ -517,18 +517,18 @@ export const wizard = dual<
   ) => <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>
   ) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    Array<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    Array<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >,
   <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>,
     prefix: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem | Path.Path | Terminal.Terminal,
+    Array<string>,
     Terminal.QuitException | ValidationError.ValidationError,
-    Array<string>
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
   >
 >(3, (self, prefix, config) => InternalDescriptor.wizard(self.descriptor, prefix, config))
 
@@ -540,13 +540,13 @@ export const run = dual<
     self: Command.Command<Name, R, E, A>
   ) => (
     args: ReadonlyArray<string>
-  ) => Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void>,
+  ) => Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>,
   <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>,
     config: Omit<CliApp.CliApp.ConstructorArgs<never>, "command">
   ) => (
     args: ReadonlyArray<string>
-  ) => Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void>
+  ) => Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>
 >(2, (self, config) => {
   const app = InternalCliApp.make({
     ...config,

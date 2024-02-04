@@ -39,7 +39,7 @@ const isAcquire = (self: Action): self is Use => self.op === OP_ACQUIRE
 const isUse = (self: Action): self is Use => self.op === OP_USE
 const isRelease = (self: Action): self is Use => self.op === OP_RELEASE
 
-const resource = (id: number, ref: Ref.Ref<ReadonlyArray<Action>>): Effect.Effect<Scope.Scope, never, number> => {
+const resource = (id: number, ref: Ref.Ref<ReadonlyArray<Action>>): Effect.Effect<number, never, Scope.Scope> => {
   return pipe(
     Ref.update(ref, (actions) => [...actions, acquire(id)]),
     Effect.as(id),

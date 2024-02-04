@@ -38,27 +38,27 @@ export const handleSingle: {
   <R extends RpcRouter.WithSetup>(
     router: R
   ): Effect.Effect<
-    Scope,
-    never,
     (
       request: unknown
     ) => Effect.Effect<
+      RpcResponse,
+      never,
       Exclude<
         RpcHandlers.Services<R["handlers"]>,
         RpcRouter.SetupServices<R>
-      >,
-      never,
-      RpcResponse
-    >
+      >
+    >,
+    never,
+    Scope
   >
   <R extends RpcRouter.WithoutSetup>(
     router: R
   ): (
     request: unknown
   ) => Effect.Effect<
-    RpcHandlers.Services<R["handlers"]> | Scope,
+    RpcResponse,
     never,
-    RpcResponse
+    RpcHandlers.Services<R["handlers"]> | Scope
   >
 } = (router: RpcRouter.Base) => {
   const codecsMap = methodCodecs(router.schema)
@@ -120,7 +120,7 @@ export const handleSingle: {
             Effect.asUnit,
             Effect.either,
             Effect.provideService(Scope, scope)
-          ) as Effect.Effect<any, never, Either.Either<RpcError, unknown>>
+          ) as Effect.Effect<Either.Either<RpcError, unknown>, never, any>
         }
 
         return Effect.matchEffect(effect, {
@@ -129,7 +129,7 @@ export const handleSingle: {
             codecs.output ?
               Effect.map(codecs.output(value), Either.right) :
               Effect.succeed(Either.right(void 0))
-        }) as Effect.Effect<any, RpcEncodeFailure, Either.Either<RpcError, unknown>>
+        }) as Effect.Effect<Either.Either<RpcError, unknown>, RpcEncodeFailure, any>
       }),
       Effect.matchCause({
         onFailure: (cause) => ({
@@ -187,27 +187,27 @@ export const handleSingleWithSchema: {
   <R extends RpcRouter.WithSetup>(
     router: R
   ): Effect.Effect<
-    Scope,
-    never,
     (
       request: unknown
     ) => Effect.Effect<
+      readonly [RpcResponse, Option.Option<RpcSchema.Base>],
+      never,
       Exclude<
         RpcHandlers.Services<R["handlers"]>,
         RpcRouter.SetupServices<R>
-      >,
-      never,
-      readonly [RpcResponse, Option.Option<RpcSchema.Base>]
-    >
+      >
+    >,
+    never,
+    Scope
   >
   <R extends RpcRouter.WithoutSetup>(
     router: R
   ): (
     request: unknown
   ) => Effect.Effect<
-    RpcHandlers.Services<R["handlers"]>,
+    readonly [RpcResponse, Option.Option<RpcSchema.Base>],
     never,
-    readonly [RpcResponse, Option.Option<RpcSchema.Base>]
+    RpcHandlers.Services<R["handlers"]>
   >
 } = ((router: RpcRouter.Base) => {
   const handler = handleSingle(router)
@@ -216,7 +216,7 @@ export const handleSingleWithSchema: {
   const run = (
     handle: (
       request: unknown
-    ) => Effect.Effect<unknown, unknown, RpcResponse>
+    ) => Effect.Effect<RpcResponse, unknown, unknown>
   ) =>
   (request: RpcRequest.Payload) =>
     Effect.map(handle(request), (response) => [
@@ -256,32 +256,32 @@ export const handler: {
   <const R extends RpcRouter.WithSetup>(
     router: R
   ): Effect.Effect<
-    Scope,
-    never,
     (
       request: unknown
     ) => Effect.Effect<
+      ReadonlyArray<RpcResponse>,
+      never,
       Exclude<
         RpcHandlers.Services<R["handlers"]>,
         RpcRouter.SetupServices<R>
-      >,
-      never,
-      ReadonlyArray<RpcResponse>
-    >
+      >
+    >,
+    never,
+    Scope
   >
   <R extends RpcRouter.WithoutSetup>(
     router: R
   ): (
     request: unknown
   ) => Effect.Effect<
-    RpcHandlers.Services<R["handlers"]>,
+    ReadonlyArray<RpcResponse>,
     never,
-    ReadonlyArray<RpcResponse>
+    RpcHandlers.Services<R["handlers"]>
   >
 } = (router: RpcRouter.Base) => {
   const handler = handleSingle(router) as any
 
-  const run = (handler: () => Effect.Effect<unknown, unknown, RpcResponse>) => (u: Array<unknown>) =>
+  const run = (handler: () => Effect.Effect<RpcResponse, unknown, unknown>) => (u: Array<unknown>) =>
     Array.isArray(u)
       ? Effect.all(u.map(handler), { concurrency: "unbounded" })
       : Effect.die(new Error("expected an array of requests"))

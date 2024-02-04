@@ -13,18 +13,18 @@ import { complete } from "./request.js"
 
 /** @internal */
 export const make = <R, A>(
-  runAll: (requests: Array<Array<A>>) => Effect.Effect<R, never, void>
+  runAll: (requests: Array<Array<A>>) => Effect.Effect<void, never, R>
 ): RequestResolver.RequestResolver<A, R> =>
   new core.RequestResolverImpl((requests) => runAll(requests.map((_) => _.map((_) => _.request))))
 
 /** @internal */
 export const makeWithEntry = <R, A>(
-  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<R, never, void>
+  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<void, never, R>
 ): RequestResolver.RequestResolver<A, R> => new core.RequestResolverImpl((requests) => runAll(requests))
 
 /** @internal */
 export const makeBatched = <R, A extends Request.Request<any, any>>(
-  run: (requests: Array<A>) => Effect.Effect<R, never, void>
+  run: (requests: Array<A>) => Effect.Effect<void, never, R>
 ): RequestResolver.RequestResolver<A, R> =>
   new core.RequestResolverImpl<R, A>(
     (requests) =>
@@ -50,15 +50,15 @@ export const makeBatched = <R, A extends Request.Request<any, any>>(
 /** @internal */
 export const around = dual<
   <R2, A2, R3, _>(
-    before: Effect.Effect<R2, never, A2>,
-    after: (a: A2) => Effect.Effect<R3, never, _>
+    before: Effect.Effect<A2, never, R2>,
+    after: (a: A2) => Effect.Effect<_, never, R3>
   ) => <R, A>(
     self: RequestResolver.RequestResolver<A, R>
   ) => RequestResolver.RequestResolver<A, R | R2 | R3>,
   <R, A, R2, A2, R3, _>(
     self: RequestResolver.RequestResolver<A, R>,
-    before: Effect.Effect<R2, never, A2>,
-    after: (a: A2) => Effect.Effect<R3, never, _>
+    before: Effect.Effect<A2, never, R2>,
+    after: (a: A2) => Effect.Effect<_, never, R3>
   ) => RequestResolver.RequestResolver<A, R | R2 | R3>
 >(3, (self, before, after) =>
   new core.RequestResolverImpl(
@@ -205,7 +205,7 @@ export const fromFunctionBatched = <A extends Request.Request<never, any>>(
 
 /** @internal */
 export const fromEffect = <R, A extends Request.Request<any, any>>(
-  f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+  f: (a: A) => Effect.Effect<Request.Request.Success<A>, Request.Request.Error<A>, R>
 ): RequestResolver.RequestResolver<A, R> =>
   makeBatched((requests: Array<A>) =>
     Effect.forEach(
@@ -225,7 +225,7 @@ export const fromEffectTagged = <
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req] ?
       Req extends Request.Request<infer ReqE, infer ReqA> ?
-        (requests: Array<Req>) => Effect.Effect<any, ReqE, Iterable<ReqA>>
+        (requests: Array<Req>) => Effect.Effect<Iterable<ReqA>, ReqE, any>
       : never
       : never
   }
@@ -233,7 +233,7 @@ export const fromEffectTagged = <
   fns: Fns
 ): RequestResolver.RequestResolver<
   A,
-  ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer R, infer _E, infer _A> ? R : never
+  ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer _A, infer _E, infer R> ? R : never
 > =>
   makeBatched<any, A>((requests: Array<A>) => {
     const grouped: Record<string, Array<A>> = {}
@@ -249,7 +249,7 @@ export const fromEffectTagged = <
     return Effect.forEach(
       tags,
       (tag) =>
-        Effect.matchCauseEffect((fns[tag] as any)(grouped[tag]) as Effect.Effect<unknown, unknown, Array<any>>, {
+        Effect.matchCauseEffect((fns[tag] as any)(grouped[tag]) as Effect.Effect<Array<any>, unknown, unknown>, {
           onFailure: (cause) =>
             Effect.forEach(grouped[tag], (req) => complete(req, core.exitFail(cause) as any), { discard: true }),
           onSuccess: (res) =>

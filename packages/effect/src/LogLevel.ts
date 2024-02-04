@@ -178,12 +178,13 @@ export const allLevels = core.allLogLevels
  * @category utils
  */
 export const locally: {
-  (self: LogLevel): <R, E, B>(use: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>
-  <R, E, B>(use: Effect.Effect<R, E, B>, self: LogLevel): Effect.Effect<R, E, B>
-} = dual<
-  (self: LogLevel) => <R, E, B>(use: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>,
-  <R, E, B>(use: Effect.Effect<R, E, B>, self: LogLevel) => Effect.Effect<R, E, B>
->(2, (use, self) => core.fiberRefLocally(use, core.currentLogLevel, self))
+  (self: LogLevel): <A, E, R>(use: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(use: Effect.Effect<A, E, R>, self: LogLevel): Effect.Effect<A, E, R>
+} = dual(
+  2,
+  <A, E, R>(use: Effect.Effect<A, E, R>, self: LogLevel): Effect.Effect<A, E, R> =>
+    core.fiberRefLocally(use, core.currentLogLevel, self)
+)
 
 /**
  * @since 2.0.0

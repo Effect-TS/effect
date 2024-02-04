@@ -86,9 +86,9 @@ export declare namespace Route {
    * @since 1.0.0
    */
   export type Handler<R, E> = Effect.Effect<
-    R | RouteContext | ServerRequest.ServerRequest,
+    ServerResponse.ServerResponse,
     E,
-    ServerResponse.ServerResponse
+    R | RouteContext | ServerRequest.ServerRequest
   >
 }
 
@@ -126,9 +126,9 @@ export const RouteContext: Context.Tag<RouteContext, RouteContext> = internal.Ro
  * @category route context
  */
 export const params: Effect.Effect<
-  RouteContext,
+  Readonly<Record<string, string | undefined>>,
   never,
-  Readonly<Record<string, string | undefined>>
+  RouteContext
 > = internal.params
 
 /**
@@ -136,9 +136,9 @@ export const params: Effect.Effect<
  * @category route context
  */
 export const searchParams: Effect.Effect<
-  RouteContext,
+  Readonly<Record<string, string>>,
   never,
-  Readonly<Record<string, string>>
+  RouteContext
 > = internal.searchParams
 
 /**
@@ -147,7 +147,7 @@ export const searchParams: Effect.Effect<
  */
 export const schemaParams: <R, I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<A, I, R>
-) => Effect.Effect<RouteContext | R, ParseResult.ParseError, A> = internal.schemaParams
+) => Effect.Effect<A, ParseResult.ParseError, RouteContext | R> = internal.schemaParams
 
 /**
  * @since 1.0.0
@@ -155,7 +155,7 @@ export const schemaParams: <R, I extends Readonly<Record<string, string>>, A>(
  */
 export const schemaPathParams: <R, I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<A, I, R>
-) => Effect.Effect<RouteContext | R, ParseResult.ParseError, A> = internal.schemaPathParams
+) => Effect.Effect<A, ParseResult.ParseError, RouteContext | R> = internal.schemaPathParams
 
 /**
  * @since 1.0.0
@@ -163,7 +163,7 @@ export const schemaPathParams: <R, I extends Readonly<Record<string, string>>, A
  */
 export const schemaSearchParams: <R, I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<A, I, R>
-) => Effect.Effect<RouteContext | R, ParseResult.ParseError, A> = internal.schemaSearchParams
+) => Effect.Effect<A, ParseResult.ParseError, RouteContext | R> = internal.schemaSearchParams
 
 /**
  * @since 1.0.0
@@ -590,7 +590,7 @@ export const catchTags: {
     | Exclude<R, RouteContext | ServerRequest.ServerRequest | Scope.Scope>
     | Exclude<
       {
-        [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<infer R, any, any> ? R : never
+        [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, any, infer R> ? R : never
       }[keyof Cases],
       RouteContext | ServerRequest.ServerRequest | Scope.Scope
     >,
@@ -618,7 +618,7 @@ export const catchTags: {
     | Exclude<R, RouteContext | ServerRequest.ServerRequest | Scope.Scope>
     | Exclude<
       {
-        [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<infer R, any, any> ? R : never
+        [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, any, infer R> ? R : never
       }[keyof Cases],
       RouteContext | ServerRequest.ServerRequest | Scope.Scope
     >,
@@ -657,7 +657,7 @@ export const provideService: {
 export const provideServiceEffect: {
   <T extends Context.Tag<any, any>, R1, E1>(
     tag: T,
-    effect: Effect.Effect<R1, E1, Context.Tag.Service<T>>
+    effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
   ): <R, E>(
     self: Router<R, E>
   ) => Router<
@@ -668,7 +668,7 @@ export const provideServiceEffect: {
   <R, E, T extends Context.Tag<any, any>, R1, E1>(
     self: Router<R, E>,
     tag: T,
-    effect: Effect.Effect<R1, E1, Context.Tag.Service<T>>
+    effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
   ): Router<
     | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>
     | Exclude<Exclude<R, Context.Tag.Identifier<T>>, RouteContext | ServerRequest.ServerRequest | Scope.Scope>,

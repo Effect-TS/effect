@@ -3,12 +3,12 @@ import type { Concurrency } from "../Types.js"
 import * as core from "./core.js"
 
 /** @internal */
-export const match = <R, E, A>(
+export const match = <A, E, R>(
   concurrency: Concurrency | undefined,
-  sequential: () => Effect<R, E, A>,
-  unbounded: () => Effect<R, E, A>,
-  bounded: (limit: number) => Effect<R, E, A>
-): Effect<R, E, A> => {
+  sequential: () => Effect<A, E, R>,
+  unbounded: () => Effect<A, E, R>,
+  bounded: (limit: number) => Effect<A, E, R>
+): Effect<A, E, R> => {
   switch (concurrency) {
     case undefined:
       return sequential()
@@ -30,11 +30,11 @@ export const match = <R, E, A>(
 }
 
 /** @internal */
-export const matchSimple = <R, E, A>(
+export const matchSimple = <A, E, R>(
   concurrency: Concurrency | undefined,
-  sequential: () => Effect<R, E, A>,
-  concurrent: () => Effect<R, E, A>
-): Effect<R, E, A> => {
+  sequential: () => Effect<A, E, R>,
+  concurrent: () => Effect<A, E, R>
+): Effect<A, E, R> => {
   switch (concurrency) {
     case undefined:
       return sequential()

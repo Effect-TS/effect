@@ -81,7 +81,7 @@ export interface Schedule<out Env, in In, out Out> extends Schedule.Variance<Env
     now: number,
     input: In,
     state: any
-  ): Effect.Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]>
+  ): Effect.Effect<readonly [any, Out, ScheduleDecision.ScheduleDecision], never, Env>
 }
 
 /**
@@ -117,10 +117,10 @@ export declare namespace Schedule {
  * @category models
  */
 export interface ScheduleDriver<out Env, in In, out Out> extends Schedule.DriverVariance<Env, In, Out> {
-  readonly state: Effect.Effect<never, never, unknown>
-  readonly last: Effect.Effect<never, Cause.NoSuchElementException, Out>
-  readonly reset: Effect.Effect<never, never, void>
-  next(input: In): Effect.Effect<Env, Option.Option<never>, Out>
+  readonly state: Effect.Effect<unknown>
+  readonly last: Effect.Effect<Out, Cause.NoSuchElementException>
+  readonly reset: Effect.Effect<void>
+  next(input: In): Effect.Effect<Out, Option.Option<never>, Env>
 }
 
 /**
@@ -136,7 +136,7 @@ export const makeWithState: <S, Env, In, Out>(
     now: number,
     input: In,
     state: S
-  ) => Effect.Effect<Env, never, readonly [S, Out, ScheduleDecision.ScheduleDecision]>
+  ) => Effect.Effect<readonly [S, Out, ScheduleDecision.ScheduleDecision], never, Env>
 ) => Schedule<Env, In, Out> = internal.makeWithState
 
 /**
@@ -310,7 +310,7 @@ export const collectUntil: <A>(f: Predicate<A>) => Schedule<never, A, Chunk.Chun
  * @category utils
  */
 export const collectUntilEffect: <Env, A>(
-  f: (a: A) => Effect.Effect<Env, never, boolean>
+  f: (a: A) => Effect.Effect<boolean, never, Env>
 ) => Schedule<Env, A, Chunk.Chunk<A>> = internal.collectUntilEffect
 
 /**
@@ -330,7 +330,7 @@ export const collectWhile: <A>(f: Predicate<A>) => Schedule<never, A, Chunk.Chun
  * @since 2.0.0
  */
 export const collectWhileEffect: <Env, A>(
-  f: (a: A) => Effect.Effect<Env, never, boolean>
+  f: (a: A) => Effect.Effect<boolean, never, Env>
 ) => Schedule<Env, A, Chunk.Chunk<A>> = internal.collectWhileEffect
 
 /**
@@ -550,7 +550,7 @@ export const mapBothEffect: {
  */
 export const driver: <Env, In, Out>(
   self: Schedule<Env, In, Out>
-) => Effect.Effect<never, never, ScheduleDriver<Env, In, Out>> = internal.driver
+) => Effect.Effect<ScheduleDriver<Env, In, Out>> = internal.driver
 
 /**
  * A schedule that can recur one time, the specified amount of time into the
@@ -617,8 +617,8 @@ export const elapsed: Schedule<never, unknown, Duration.Duration> = internal.ela
  * @category finalization
  */
 export const ensuring: {
-  <X>(finalizer: Effect.Effect<never, never, X>): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Out>
-  <Env, In, Out, X>(self: Schedule<Env, In, Out>, finalizer: Effect.Effect<never, never, X>): Schedule<Env, In, Out>
+  <X>(finalizer: Effect.Effect<X>): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Out>
+  <Env, In, Out, X>(self: Schedule<Env, In, Out>, finalizer: Effect.Effect<X>): Schedule<Env, In, Out>
 } = internal.ensuring
 
 /**
@@ -868,11 +868,11 @@ export const modifyDelay: {
  */
 export const modifyDelayEffect: {
   <Out, Env2>(
-    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, Env2>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.modifyDelayEffect
 
@@ -886,11 +886,11 @@ export const modifyDelayEffect: {
  */
 export const onDecision: {
   <Out, Env2, X>(
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<Env2, never, X>
+    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<X, never, Env2>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2, X>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<Env2, never, X>
+    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<X, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.onDecision
 
@@ -957,7 +957,7 @@ export const recurUntil: <A>(f: Predicate<A>) => Schedule<never, A, A> = interna
  * @since 2.0.0
  * @category utils
  */
-export const recurUntilEffect: <Env, A>(f: (a: A) => Effect.Effect<Env, never, boolean>) => Schedule<Env, A, A> =
+export const recurUntilEffect: <Env, A>(f: (a: A) => Effect.Effect<boolean, never, Env>) => Schedule<Env, A, A> =
   internal.recurUntilEffect
 
 /**
@@ -994,7 +994,7 @@ export const recurWhile: <A>(f: Predicate<A>) => Schedule<never, A, A> = interna
  * @since 2.0.0
  * @category utils
  */
-export const recurWhileEffect: <Env, A>(f: (a: A) => Effect.Effect<Env, never, boolean>) => Schedule<Env, A, A> =
+export const recurWhileEffect: <Env, A>(f: (a: A) => Effect.Effect<boolean, never, Env>) => Schedule<Env, A, A> =
   internal.recurWhileEffect
 
 /**
@@ -1087,12 +1087,12 @@ export const run: {
   <In>(
     now: number,
     input: Iterable<In>
-  ): <Env, Out>(self: Schedule<Env, In, Out>) => Effect.Effect<Env, never, Chunk.Chunk<Out>>
+  ): <Env, Out>(self: Schedule<Env, In, Out>) => Effect.Effect<Chunk.Chunk<Out>, never, Env>
   <Env, In, Out>(
     self: Schedule<Env, In, Out>,
     now: number,
     input: Iterable<In>
-  ): Effect.Effect<Env, never, Chunk.Chunk<Out>>
+  ): Effect.Effect<Chunk.Chunk<Out>, never, Env>
 } = internal.run
 
 /**

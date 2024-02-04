@@ -56,7 +56,7 @@ export type BackingPersistenceTypeId = typeof BackingPersistenceTypeId
  */
 export interface BackingPersistence {
   readonly [BackingPersistenceTypeId]: BackingPersistenceTypeId
-  readonly make: (storeId: string) => Effect.Effect<Scope.Scope, never, BackingPersistenceStore>
+  readonly make: (storeId: string) => Effect.Effect<BackingPersistenceStore, never, Scope.Scope>
 }
 
 /**
@@ -64,10 +64,10 @@ export interface BackingPersistence {
  * @category models
  */
 export interface BackingPersistenceStore {
-  readonly get: (key: string) => Effect.Effect<never, PersistenceError, Option.Option<unknown>>
-  readonly getMany: (key: Array<string>) => Effect.Effect<never, PersistenceError, Array<Option.Option<unknown>>>
-  readonly set: (key: string, value: unknown) => Effect.Effect<never, PersistenceError, void>
-  readonly remove: (key: string) => Effect.Effect<never, PersistenceError, void>
+  readonly get: (key: string) => Effect.Effect<Option.Option<unknown>, PersistenceError>
+  readonly getMany: (key: Array<string>) => Effect.Effect<Array<Option.Option<unknown>>, PersistenceError>
+  readonly set: (key: string, value: unknown) => Effect.Effect<void, PersistenceError>
+  readonly remove: (key: string) => Effect.Effect<void, PersistenceError>
 }
 
 /**
@@ -98,7 +98,7 @@ export type ResultPersistenceTypeId = typeof ResultPersistenceTypeId
  */
 export interface ResultPersistence {
   readonly [ResultPersistenceTypeId]: ResultPersistenceTypeId
-  readonly make: (storeId: string) => Effect.Effect<Scope.Scope, never, ResultPersistenceStore>
+  readonly make: (storeId: string) => Effect.Effect<ResultPersistenceStore, never, Scope.Scope>
 }
 
 /**
@@ -108,17 +108,17 @@ export interface ResultPersistence {
 export interface ResultPersistenceStore {
   readonly get: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>
-  ) => Effect.Effect<R, PersistenceError, Option.Option<Exit.Exit<E, A>>>
+  ) => Effect.Effect<Option.Option<Exit.Exit<E, A>>, PersistenceError, R>
   readonly getMany: <R, IE, E, IA, A>(
     key: ReadonlyArray<ResultPersistence.Key<R, IE, E, IA, A>>
-  ) => Effect.Effect<R, PersistenceError, Array<Option.Option<Exit.Exit<E, A>>>>
+  ) => Effect.Effect<Array<Option.Option<Exit.Exit<E, A>>>, PersistenceError, R>
   readonly set: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>,
     value: Exit.Exit<E, A>
-  ) => Effect.Effect<R, PersistenceError, void>
+  ) => Effect.Effect<void, PersistenceError, R>
   readonly remove: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>
-  ) => Effect.Effect<never, PersistenceError, void>
+  ) => Effect.Effect<void, PersistenceError>
 }
 
 /**

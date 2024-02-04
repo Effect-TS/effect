@@ -283,8 +283,8 @@ export const textBody: {
  * @category combinators
  */
 export const jsonBody: {
-  (body: unknown): (self: ClientRequest) => Effect.Effect<never, Body.BodyError, ClientRequest>
-  (self: ClientRequest, body: unknown): Effect.Effect<never, Body.BodyError, ClientRequest>
+  (body: unknown): (self: ClientRequest) => Effect.Effect<ClientRequest, Body.BodyError>
+  (self: ClientRequest, body: unknown): Effect.Effect<ClientRequest, Body.BodyError>
 } = internal.jsonBody
 
 /**
@@ -303,8 +303,8 @@ export const unsafeJsonBody: {
 export const schemaBody: <A, I, R>(
   schema: Schema.Schema<A, I, R>
 ) => {
-  (body: A): (self: ClientRequest) => Effect.Effect<R, Body.BodyError, ClientRequest>
-  (self: ClientRequest, body: A): Effect.Effect<R, Body.BodyError, ClientRequest>
+  (body: A): (self: ClientRequest) => Effect.Effect<ClientRequest, Body.BodyError, R>
+  (self: ClientRequest, body: A): Effect.Effect<ClientRequest, Body.BodyError, R>
 } = internal.schemaBody
 
 /**
@@ -349,12 +349,12 @@ export const fileBody: {
   (
     path: string,
     options?: FileSystem.StreamOptions & { readonly contentType?: string }
-  ): (self: ClientRequest) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest>
+  ): (self: ClientRequest) => Effect.Effect<ClientRequest, PlatformError.PlatformError, FileSystem.FileSystem>
   (
     self: ClientRequest,
     path: string,
     options?: FileSystem.StreamOptions & { readonly contentType?: string }
-  ): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest>
+  ): Effect.Effect<ClientRequest, PlatformError.PlatformError, FileSystem.FileSystem>
 } = internal.fileBody
 
 /**

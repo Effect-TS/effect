@@ -34,7 +34,7 @@ export const BothRunning = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 
 /** @internal */
 export const LeftDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>
+  f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Done2, Err2, Env>
 ): MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_LEFT_DONE
@@ -44,7 +44,7 @@ export const LeftDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 
 /** @internal */
 export const RightDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>
+  f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Done2, Err2, Env>
 ): MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_RIGHT_DONE
@@ -87,8 +87,8 @@ export const match = dual<
         left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
         right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
       ) => Z
-      readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>) => Z
-      readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>) => Z
+      readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Done2, Err2, Env>) => Z
+      readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Done2, Err2, Env>) => Z
     }
   ) => (self: MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>) => Z,
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
@@ -98,8 +98,8 @@ export const match = dual<
         left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
         right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
       ) => Z
-      readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>) => Z
-      readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>) => Z
+      readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Done2, Err2, Env>) => Z
+      readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Done2, Err2, Env>) => Z
     }
   ) => Z
 >(2, (

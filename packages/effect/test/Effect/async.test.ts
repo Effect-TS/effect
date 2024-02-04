@@ -15,14 +15,14 @@ import { assert, describe } from "vitest"
 describe("Effect", () => {
   it.effect("simple async must return", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Effect.async<never, unknown, number>((cb) => {
+      const result = yield* $(Effect.async<number, unknown, never>((cb) => {
         cb(Effect.succeed(42))
       }))
       assert.strictEqual(result, 42)
     }))
   it.effect("simple asyncEffect must return", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Effect.asyncEffect<never, unknown, unknown, never, never, void>((cb) => {
+      const result = yield* $(Effect.asyncEffect<unknown, unknown, never, void, never, never>((cb) => {
         return Effect.succeed(cb(Effect.succeed(42)))
       }))
       assert.strictEqual(result, 42)
@@ -32,7 +32,7 @@ describe("Effect", () => {
     const os = require("node:os")
     it.effect("deep asyncEffect doesn't block", () =>
       Effect.gen(function*($) {
-        const asyncIO = (cont: Effect.Effect<never, never, number>): Effect.Effect<never, never, number> => {
+        const asyncIO = (cont: Effect.Effect<number>): Effect.Effect<number> => {
           return Effect.asyncEffect((cb) => {
             return pipe(
               Effect.sleep(Duration.millis(5)),
@@ -41,7 +41,7 @@ describe("Effect", () => {
             )
           })
         }
-        const stackIOs = (count: number): Effect.Effect<never, never, number> => {
+        const stackIOs = (count: number): Effect.Effect<number> => {
           return count < 0 ? Effect.succeed(42) : asyncIO(stackIOs(count - 1))
         }
         const procNum = Effect.sync(() => os.cpus().length)
@@ -54,7 +54,7 @@ describe("Effect", () => {
       const release = yield* $(Deferred.make<never, void>())
       const acquire = yield* $(Deferred.make<never, void>())
       const fiber = yield* $(
-        Effect.asyncEffect<never, unknown, unknown, never, never, never>(() =>
+        Effect.asyncEffect<unknown, unknown, never, never, never, never>(() =>
           // This will never complete because we never call the callback
           Effect.acquireUseRelease(
             Deferred.succeed(acquire, void 0),
@@ -77,13 +77,13 @@ describe("Effect", () => {
       const unexpectedPlace = yield* $(Ref.make(Chunk.empty<number>()))
       const runtime = yield* $(Effect.runtime<never>())
       const fiber = yield* $(
-        Effect.async<never, never, void>((cb) => {
+        Effect.async<void, never, never>((cb) => {
           Runtime.runCallback(runtime)(pipe(
             Deferred.await(step),
             Effect.zipRight(Effect.sync(() => cb(Ref.update(unexpectedPlace, Chunk.prepend(1)))))
           ))
         }),
-        Effect.ensuring(Effect.async<never, never, void>(() => {
+        Effect.ensuring(Effect.async<void, never, never>(() => {
           // The callback is never called so this never completes
           Runtime.runCallback(runtime)(Deferred.succeed(step, undefined))
         })),
@@ -101,7 +101,7 @@ describe("Effect", () => {
       const unexpectedPlace = yield* $(Ref.make(Chunk.empty<number>()))
       const runtime = yield* $(Effect.runtime<never>())
       const fiber = yield* $(
-        Effect.asyncOption<never, never, void>((cb) => {
+        Effect.asyncOption<void, never, never>((cb) => {
           Runtime.runCallback(runtime)(pipe(
             Deferred.await(step),
             Effect.zipRight(Effect.sync(() => cb(Ref.update(unexpectedPlace, Chunk.prepend(1)))))
@@ -109,7 +109,7 @@ describe("Effect", () => {
           return Option.some(Effect.unit)
         }),
         Effect.flatMap(() =>
-          Effect.async<never, never, void>(() => {
+          Effect.async<void, never, never>(() => {
             // The callback is never called so this never completes
             Runtime.runCallback(runtime)(Deferred.succeed(step, void 0))
           })
@@ -135,7 +135,7 @@ describe("Effect", () => {
         pipe(
           acc,
           Effect.flatMap((n) =>
-            Effect.async<never, never, number>((cb) => {
+            Effect.async<number, never, never>((cb) => {
               cb(Effect.succeed(n + 1))
             })
           )
@@ -145,7 +145,7 @@ describe("Effect", () => {
   it.effect("asyncEffect can fail before registering", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Effect.asyncEffect<never, unknown, unknown, never, string, never>((_) => {
+        Effect.asyncEffect<unknown, unknown, never, never, string, never>((_) => {
           return Effect.fail("ouch")
         }),
         Effect.flip
@@ -155,7 +155,7 @@ describe("Effect", () => {
   it.effect("asyncEffect can defect before registering", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Effect.asyncEffect<never, unknown, unknown, never, string, never>((_) =>
+        Effect.asyncEffect<unknown, unknown, never, never, string, never>((_) =>
           Effect.sync(() => {
             throw new Error("ouch")
           })

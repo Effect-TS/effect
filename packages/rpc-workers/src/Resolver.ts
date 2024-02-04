@@ -46,7 +46,7 @@ export const RpcWorkerPool: Tag<RpcWorkerPool, RpcWorkerPool> = internal.RpcWork
  */
 export const makePool: (
   options: RpcWorkerPool.Options
-) => Effect.Effect<Scope | Worker.WorkerManager, never, RpcWorkerPool> = internal.makePool
+) => Effect.Effect<RpcWorkerPool, never, Scope | Worker.WorkerManager> = internal.makePool
 
 /**
  * @category constructors
@@ -66,5 +66,5 @@ export const make: (pool: RpcWorkerPool) => Resolver.RpcResolver<never> = intern
  * @category constructors
  * @since 1.0.0
  */
-export const makeFromContext: Effect.Effect<RpcWorkerPool, never, Resolver.RpcResolver<never>> =
+export const makeFromContext: Effect.Effect<Resolver.RpcResolver<never>, never, RpcWorkerPool> =
   internal.makeFromContext

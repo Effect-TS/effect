@@ -78,9 +78,9 @@ export const schema: {
   return make
 })
 
-const schemaParse = <R, A extends object>(
-  parse: ParseResult.DecodeUnknown<R, A>
-): ParseResult.DeclarationDecodeUnknown<R, A & Transferable> =>
+const schemaParse = <A extends object, R>(
+  parse: ParseResult.DecodeUnknown<A, R>
+): ParseResult.DeclarationDecodeUnknown<A & Transferable, R> =>
 (u, options, ast) => {
   if (!isTransferable(u)) {
     return ParseResult.fail(ParseResult.type(ast, u))

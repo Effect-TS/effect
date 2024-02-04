@@ -29,8 +29,8 @@ import * as internal from "./internal/channel/singleProducerAsyncInput.js"
 export interface SingleProducerAsyncInput<in out Err, in out Elem, in out Done>
   extends AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done>
 {
-  readonly close: Effect.Effect<never, never, unknown>
-  readonly take: Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>>
+  readonly close: Effect.Effect<unknown>
+  readonly take: Effect.Effect<Exit.Exit<Either.Either<Err, Done>, Elem>>
 }
 
 /**
@@ -40,10 +40,10 @@ export interface SingleProducerAsyncInput<in out Err, in out Elem, in out Done>
  * @category models
  */
 export interface AsyncInputProducer<in Err, in Elem, in Done> {
-  awaitRead(): Effect.Effect<never, never, unknown>
-  done(value: Done): Effect.Effect<never, never, unknown>
-  emit(element: Elem): Effect.Effect<never, never, unknown>
-  error(cause: Cause.Cause<Err>): Effect.Effect<never, never, unknown>
+  awaitRead(): Effect.Effect<unknown>
+  done(value: Done): Effect.Effect<unknown>
+  emit(element: Elem): Effect.Effect<unknown>
+  error(cause: Cause.Cause<Err>): Effect.Effect<unknown>
 }
 
 /**
@@ -57,12 +57,11 @@ export interface AsyncInputConsumer<out Err, out Elem, out Done> {
     onError: (cause: Cause.Cause<Err>) => A,
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
-  ): Effect.Effect<never, never, A>
+  ): Effect.Effect<A>
 }
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const make: <Err, Elem, Done>() => Effect.Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>> =
-  internal.make
+export const make: <Err, Elem, Done>() => Effect.Effect<SingleProducerAsyncInput<Err, Elem, Done>> = internal.make

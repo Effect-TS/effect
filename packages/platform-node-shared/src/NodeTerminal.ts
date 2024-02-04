@@ -10,7 +10,7 @@ import * as InternalTerminal from "./internal/terminal.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Scope, never, Terminal> =
+export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Terminal, never, Scope> =
   InternalTerminal.make
 
 /**

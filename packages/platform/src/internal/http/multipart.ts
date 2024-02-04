@@ -49,8 +49,8 @@ export const maxParts: FiberRef.FiberRef<Option.Option<number>> = globalValue(
 
 /** @internal */
 export const withMaxParts = dual<
-  (count: Option.Option<number>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>) => Effect.Effect<R, E, A>
+  (count: Option.Option<number>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(effect: Effect.Effect<A, E, R>, count: Option.Option<number>) => Effect.Effect<A, E, R>
 >(2, (effect, count) => Effect.locally(effect, maxParts, count))
 
 /** @internal */
@@ -61,8 +61,8 @@ export const maxFieldSize: FiberRef.FiberRef<FileSystem.Size> = globalValue(
 
 /** @internal */
 export const withMaxFieldSize = dual<
-  (size: FileSystem.SizeInput) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, size: FileSystem.SizeInput) => Effect.Effect<R, E, A>
+  (size: FileSystem.SizeInput) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(effect: Effect.Effect<A, E, R>, size: FileSystem.SizeInput) => Effect.Effect<A, E, R>
 >(2, (effect, size) => Effect.locally(effect, maxFieldSize, FileSystem.Size(size)))
 
 /** @internal */
@@ -73,8 +73,8 @@ export const maxFileSize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = gl
 
 /** @internal */
 export const withMaxFileSize = dual<
-  (size: Option.Option<FileSystem.SizeInput>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<R, E, A>
+  (size: Option.Option<FileSystem.SizeInput>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
 >(2, (effect, size) => Effect.locally(effect, maxFileSize, Option.map(size, FileSystem.Size)))
 
 /** @internal */
@@ -85,8 +85,8 @@ export const fieldMimeTypes: FiberRef.FiberRef<Chunk.Chunk<string>> = globalValu
 
 /** @internal */
 export const withFieldMimeTypes = dual<
-  (mimeTypes: ReadonlyArray<string>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<R, E, A>
+  (mimeTypes: ReadonlyArray<string>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(effect: Effect.Effect<A, E, R>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<A, E, R>
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
 const fileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.struct({
@@ -113,11 +113,11 @@ export const schemaPersisted = <R, I extends Multipart.Persisted, A>(
 export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>): {
   (
     field: string
-  ): (persisted: Multipart.Persisted) => Effect.Effect<R, ParseResult.ParseError, A>
+  ): (persisted: Multipart.Persisted) => Effect.Effect<A, ParseResult.ParseError, R>
   (
     persisted: Multipart.Persisted,
     field: string
-  ): Effect.Effect<R, ParseResult.ParseError, A>
+  ): Effect.Effect<A, ParseResult.ParseError, R>
 } => {
   const fromJson = Schema.parseJson(schema)
   return dual<
@@ -125,11 +125,11 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>): {
       field: string
     ) => (
       persisted: Multipart.Persisted
-    ) => Effect.Effect<R, ParseResult.ParseError, A>,
+    ) => Effect.Effect<A, ParseResult.ParseError, R>,
     (
       persisted: Multipart.Persisted,
       field: string
-    ) => Effect.Effect<R, ParseResult.ParseError, A>
+    ) => Effect.Effect<A, ParseResult.ParseError, R>
   >(2, (persisted, field) =>
     Effect.map(
       Schema.decodeUnknown(
@@ -144,7 +144,7 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>): {
 /** @internal */
 export const makeConfig = (
   headers: Record<string, string>
-): Effect.Effect<never, never, MP.BaseConfig> =>
+): Effect.Effect<MP.BaseConfig> =>
   Effect.map(
     Effect.all({
       maxParts: Effect.map(FiberRef.get(maxParts), Option.getOrUndefined),
@@ -375,7 +375,7 @@ const defaultWriteFile = (path: string, file: Multipart.File) =>
 export const toPersisted = (
   stream: Stream.Stream<never, Multipart.MultipartError, Multipart.Part>,
   writeFile = defaultWriteFile
-): Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, Multipart.MultipartError, Multipart.Persisted> =>
+): Effect.Effect<Multipart.Persisted, Multipart.MultipartError, FileSystem.FileSystem | Path.Path | Scope.Scope> =>
   pipe(
     Effect.Do,
     Effect.bind("fs", () => FileSystem.FileSystem),

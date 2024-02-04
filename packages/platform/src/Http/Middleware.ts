@@ -50,7 +50,7 @@ export const loggerDisabled: FiberRef.FiberRef<boolean> = internal.loggerDisable
  * @since 1.0.0
  * @category fiber refs
  */
-export const withLoggerDisabled: <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A> =
+export const withLoggerDisabled: <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
   internal.withLoggerDisabled
 
 /**
@@ -67,11 +67,11 @@ export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<Se
 export const withTracerDisabledWhen: {
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <R, E, A>(
-    effect: Effect.Effect<R, E, A>,
+    effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ): Effect.Effect<R, E, A>
+  ): Effect.Effect<A, E, R>
 } = internal.withTracerDisabledWhen
 
 /**
