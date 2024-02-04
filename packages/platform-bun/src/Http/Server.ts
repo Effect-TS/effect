@@ -19,7 +19,7 @@ import * as internal from "../internal/http/server.js"
  */
 export const make: (
   options: Omit<ServeOptions, "fetch" | "error">
-) => Effect.Effect<Scope.Scope, never, Server.Server> = internal.make
+) => Effect.Effect<Server.Server, never, Scope.Scope> = internal.make
 
 /**
  * @since 1.0.0

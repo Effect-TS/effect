@@ -26,7 +26,7 @@ export declare namespace RpcHandler {
    * @category handler models
    * @since 1.0.0
    */
-  export type IO<R, E, I, O> = (input: I) => Effect<R, E, O>
+  export type IO<R, E, I, O> = (input: I) => Effect<O, E, R>
 
   /**
    * @category handler models
@@ -38,7 +38,7 @@ export declare namespace RpcHandler {
    * @category handler models
    * @since 1.0.0
    */
-  export type NoInput<R, E, O> = Effect<R, E, O>
+  export type NoInput<R, E, O> = Effect<O, E, R>
 
   /**
    * @category handler models
@@ -163,8 +163,8 @@ export declare namespace RpcHandlers {
       ? H[K] extends { readonly handlers: RpcHandlers } ?
         Depth["length"] extends 3 ? never : Map<H[K]["handlers"], XR, E2, `${P}${K}.`, [0, ...Depth]>
       : H[K] extends RpcHandler.IO<infer R, infer E, infer _I, infer O>
-        ? [`${P}${K}`, Effect<Exclude<R, XR>, E | E2, O>]
-      : H[K] extends Effect<infer R, infer E, infer O> ? [`${P}${K}`, Effect<Exclude<R, XR>, E | E2, O>]
+        ? [`${P}${K}`, Effect<O, E | E2, Exclude<R, XR>>]
+      : H[K] extends Effect<infer O, infer E, infer R> ? [`${P}${K}`, Effect<O, E | E2, Exclude<R, XR>>]
       : never
     : never
     : never
@@ -333,7 +333,7 @@ export const provideServiceEffect: {
     E extends RpcService.Errors<Router["schema"]>
   >(
     tag: T,
-    effect: Effect<R, E, Tag.Service<T>>
+    effect: Effect<Tag.Service<T>, E, R>
   ): (self: Router) => RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
   <
     const Router extends RpcRouter.Base,
@@ -343,7 +343,7 @@ export const provideServiceEffect: {
   >(
     self: Router,
     tag: T,
-    effect: Effect<R, E, Tag.Service<T>>
+    effect: Effect<Tag.Service<T>, E, R>
   ): RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
 } = internal.provideServiceEffect
 

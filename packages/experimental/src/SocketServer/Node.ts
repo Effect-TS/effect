@@ -41,13 +41,13 @@ export const IncomingMessage = Context.GenericTag<IncomingMessage, Http.Incoming
  */
 export const make = (
   options: Net.ServerOpts & Net.ListenOptions
-): Effect.Effect<Scope.Scope, SocketServer.SocketServerError, SocketServer.SocketServer> =>
+): Effect.Effect<SocketServer.SocketServer, SocketServer.SocketServerError, Scope.Scope> =>
   Effect.gen(function*(_) {
     const fiberId = yield* _(Effect.fiberId)
     const semaphore = yield* _(Effect.makeSemaphore(1))
     let serverDeferred = yield* _(Deferred.make<never, Net.Server>())
 
-    const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<R, E, _>) =>
+    const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const runtime = yield* _(Effect.runtime<R>())
         const run = Runtime.runFork(runtime)
@@ -142,13 +142,13 @@ export const layer = (
  */
 export const makeWebSocket = (
   options: WS.ServerOptions
-): Effect.Effect<Scope.Scope, SocketServer.SocketServerError, SocketServer.SocketServer> =>
+): Effect.Effect<SocketServer.SocketServer, SocketServer.SocketServerError, Scope.Scope> =>
   Effect.gen(function*(_) {
     const fiberId = yield* _(Effect.fiberId)
     const semaphore = yield* _(Effect.makeSemaphore(1))
 
     let serverDeferred = yield* _(Deferred.make<never, WS.WebSocketServer>())
-    const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<R, E, _>) =>
+    const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const runtime = yield* _(Effect.runtime<R>())
         const run = Runtime.runFork(runtime)

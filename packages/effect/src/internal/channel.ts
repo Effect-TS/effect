@@ -36,14 +36,14 @@ import * as tracer from "./tracer.js"
 
 /** @internal */
 export const acquireUseRelease = <Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone, Acquired>(
-  acquire: Effect.Effect<Env, OutErr, Acquired>,
+  acquire: Effect.Effect<Acquired, OutErr, Env>,
   use: (a: Acquired) => Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
-  release: (a: Acquired, exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, any>
+  release: (a: Acquired, exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<any, never, Env>
 ): Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> =>
   core.flatMap(
     core.fromEffect(
       Ref.make<
-        (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, any>
+        (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<any, never, Env>
       >(() => Effect.unit)
     ),
     (ref) =>
@@ -287,17 +287,17 @@ export const mapInput = dual<
 /** @internal */
 export const mapInputEffect = dual<
   <Env1, InErr, InDone0, InDone>(
-    f: (i: InDone0) => Effect.Effect<Env1, InErr, InDone>
+    f: (i: InDone0) => Effect.Effect<InDone, InErr, Env1>
   ) => <Env, InElem, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone0, OutErr, OutElem, OutDone>,
   <Env, InElem, OutErr, OutElem, OutDone, Env1, InErr, InDone0, InDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (i: InDone0) => Effect.Effect<Env1, InErr, InDone>
+    f: (i: InDone0) => Effect.Effect<InDone, InErr, Env1>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone0, OutErr, OutElem, OutDone>
 >(2, <Env, InElem, OutErr, OutElem, OutDone, Env1, InErr, InDone0, InDone>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  f: (i: InDone0) => Effect.Effect<Env1, InErr, InDone>
+  f: (i: InDone0) => Effect.Effect<InDone, InErr, Env1>
 ): Channel.Channel<Env | Env1, InErr, InElem, InDone0, OutErr, OutElem, OutDone> => {
   const reader: Channel.Channel<Env1, InErr, InElem, InDone0, InErr, InElem, InDone> = core.readWith({
     onInput: (inElem) => core.flatMap(core.write(inElem), () => reader),
@@ -333,17 +333,17 @@ export const mapInputError = dual<
 /** @internal */
 export const mapInputErrorEffect = dual<
   <Env1, InErr0, InErr, InDone>(
-    f: (error: InErr0) => Effect.Effect<Env1, InErr, InDone>
+    f: (error: InErr0) => Effect.Effect<InDone, InErr, Env1>
   ) => <Env, InElem, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env1 | Env, InErr0, InElem, InDone, OutErr, OutElem, OutDone>,
   <Env, InElem, OutErr, OutElem, OutDone, Env1, InErr0, InErr, InDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (error: InErr0) => Effect.Effect<Env1, InErr, InDone>
+    f: (error: InErr0) => Effect.Effect<InDone, InErr, Env1>
   ) => Channel.Channel<Env1 | Env, InErr0, InElem, InDone, OutErr, OutElem, OutDone>
 >(2, <Env, InElem, OutErr, OutElem, OutDone, Env1, InErr0, InErr, InDone>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  f: (error: InErr0) => Effect.Effect<Env1, InErr, InDone>
+  f: (error: InErr0) => Effect.Effect<InDone, InErr, Env1>
 ): Channel.Channel<Env | Env1, InErr0, InElem, InDone, OutErr, OutElem, OutDone> => {
   const reader: Channel.Channel<Env1, InErr0, InElem, InDone, InErr, InElem, InDone> = core.readWith({
     onInput: (inElem) => core.flatMap(core.write(inElem), () => reader),
@@ -379,17 +379,17 @@ export const mapInputIn = dual<
 /** @internal */
 export const mapInputInEffect = dual<
   <Env1, InErr, InElem0, InElem>(
-    f: (a: InElem0) => Effect.Effect<Env1, InErr, InElem>
+    f: (a: InElem0) => Effect.Effect<InElem, InErr, Env1>
   ) => <Env, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env1 | Env, InErr, InElem0, InDone, OutErr, OutElem, OutDone>,
   <Env, InDone, OutErr, OutElem, OutDone, Env1, InErr, InElem0, InElem>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (a: InElem0) => Effect.Effect<Env1, InErr, InElem>
+    f: (a: InElem0) => Effect.Effect<InElem, InErr, Env1>
   ) => Channel.Channel<Env1 | Env, InErr, InElem0, InDone, OutErr, OutElem, OutDone>
 >(2, <Env, InDone, OutErr, OutElem, OutDone, Env1, InErr, InElem0, InElem>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  f: (a: InElem0) => Effect.Effect<Env1, InErr, InElem>
+  f: (a: InElem0) => Effect.Effect<InElem, InErr, Env1>
 ): Channel.Channel<Env | Env1, InErr, InElem0, InDone, OutErr, OutElem, OutDone> => {
   const reader: Channel.Channel<Env1, InErr, InElem0, InDone, InErr, InElem, InDone> = core.readWith({
     onInput: (inElem) => core.flatMap(core.flatMap(core.fromEffect(f(inElem)), core.write), () => reader),
@@ -458,17 +458,17 @@ export const emitCollect = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
 /** @internal */
 export const ensuring = dual<
   <Env1, Z>(
-    finalizer: Effect.Effect<Env1, never, Z>
+    finalizer: Effect.Effect<Z, never, Env1>
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, Z>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: Effect.Effect<Env1, never, Z>
+    finalizer: Effect.Effect<Z, never, Env1>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 >(2, <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, Z>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  finalizer: Effect.Effect<Env1, never, Z>
+  finalizer: Effect.Effect<Z, never, Env1>
 ): Channel.Channel<Env | Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> =>
   core.ensuringWith(self, () => finalizer))
 
@@ -504,7 +504,7 @@ export const contextWithChannel = <
 
 /** @internal */
 export const contextWithEffect = <Env, Env1, OutErr, OutDone>(
-  f: (env: Context.Context<Env>) => Effect.Effect<Env1, OutErr, OutDone>
+  f: (env: Context.Context<Env>) => Effect.Effect<OutDone, OutErr, Env1>
 ): Channel.Channel<Env | Env1, unknown, unknown, unknown, OutErr, never, OutDone> => mapEffect(context<Env>(), f)
 
 /** @internal */
@@ -701,7 +701,7 @@ export const fromPubSub = <Err, Done, Elem>(
 /** @internal */
 export const fromPubSubScoped = <Err, Done, Elem>(
   pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-): Effect.Effect<Scope.Scope, never, Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =>
+): Effect.Effect<Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done>, never, Scope.Scope> =>
   Effect.map(PubSub.subscribe(pubsub), fromQueue)
 
 /** @internal */
@@ -750,17 +750,17 @@ export const identityChannel = <Err, Elem, Done>(): Channel.Channel<never, Err, 
 /** @internal */
 export const interruptWhen = dual<
   <Env1, OutErr1, OutDone1>(
-    effect: Effect.Effect<Env1, OutErr1, OutDone1>
+    effect: Effect.Effect<OutDone1, OutErr1, Env1>
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1 | OutDone>,
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, OutErr1, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    effect: Effect.Effect<Env1, OutErr1, OutDone1>
+    effect: Effect.Effect<OutDone1, OutErr1, Env1>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1 | OutDone>
 >(2, <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, OutErr1, OutDone1>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  effect: Effect.Effect<Env1, OutErr1, OutDone1>
+  effect: Effect.Effect<OutDone1, OutErr1, Env1>
 ): Channel.Channel<
   Env1 | Env,
   InErr,
@@ -813,17 +813,17 @@ export const map = dual<
 /** @internal */
 export const mapEffect = dual<
   <Env1, OutErr1, OutDone, OutDone1>(
-    f: (o: OutDone) => Effect.Effect<Env1, OutErr1, OutDone1>
+    f: (o: OutDone) => Effect.Effect<OutDone1, OutErr1, Env1>
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1>,
   <Env, InErr, InElem, InDone, OutErr, OutElem, Env1, OutErr1, OutDone, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (o: OutDone) => Effect.Effect<Env1, OutErr1, OutDone1>
+    f: (o: OutDone) => Effect.Effect<OutDone1, OutErr1, Env1>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1>
 >(2, <Env, InErr, InElem, InDone, OutErr, OutElem, Env1, OutErr1, OutDone, OutDone1>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  f: (o: OutDone) => Effect.Effect<Env1, OutErr1, OutDone1>
+  f: (o: OutDone) => Effect.Effect<OutDone1, OutErr1, Env1>
 ): Channel.Channel<Env | Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone1> =>
   core.flatMap(self, (z) => core.fromEffect(f(z))))
 
@@ -887,17 +887,17 @@ export const mapOut = dual<
 /** @internal */
 export const mapOutEffect = dual<
   <OutElem, Env1, OutErr1, OutElem1>(
-    f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>
+    f: (o: OutElem) => Effect.Effect<OutElem1, OutErr1, Env1>
   ) => <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem1, OutDone>,
   <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, Env1, OutErr1, OutElem1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>
+    f: (o: OutElem) => Effect.Effect<OutElem1, OutErr1, Env1>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem1, OutDone>
 >(2, <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, Env1, OutErr1, OutElem1>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>
+  f: (o: OutElem) => Effect.Effect<OutElem1, OutErr1, Env1>
 ): Channel.Channel<Env | Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem1, OutDone> => {
   const reader: Channel.Channel<Env | Env1, OutErr, OutElem, OutDone, OutErr | OutErr1, OutElem1, OutDone> = core
     .readWithCause({
@@ -916,26 +916,26 @@ export const mapOutEffect = dual<
 /** @internal */
 export const mapOutEffectPar = dual<
   <OutElem, Env1, OutErr1, OutElem1>(
-    f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>,
+    f: (o: OutElem) => Effect.Effect<OutElem1, OutErr1, Env1>,
     n: number
   ) => <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem1, OutDone>,
   <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, Env1, OutErr1, OutElem1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>,
+    f: (o: OutElem) => Effect.Effect<OutElem1, OutErr1, Env1>,
     n: number
   ) => Channel.Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem1, OutDone>
 >(3, <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, Env1, OutErr1, OutElem1>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>,
+  f: (o: OutElem) => Effect.Effect<OutElem1, OutErr1, Env1>,
   n: number
 ): Channel.Channel<Env | Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem1, OutDone> =>
   pipe(
     Effect.gen(function*($) {
       const queue = yield* $(
         Effect.acquireRelease(
-          Queue.bounded<Effect.Effect<Env1, OutErr | OutErr1, Either.Either<OutDone, OutElem1>>>(n),
+          Queue.bounded<Effect.Effect<Either.Either<OutDone, OutElem1>, OutErr | OutErr1, Env1>>(n),
           (queue) => Queue.shutdown(queue)
         )
       )
@@ -1187,7 +1187,7 @@ export const mergeAllWith = (
       const queueReader = fromInput(input)
       const queue = yield* $(
         Effect.acquireRelease(
-          Queue.bounded<Effect.Effect<Env, OutErr | OutErr1, Either.Either<OutDone, OutElem>>>(bufferSize),
+          Queue.bounded<Effect.Effect<Either.Either<OutDone, OutElem>, OutErr | OutErr1, Env>>(bufferSize),
           (queue) => Queue.shutdown(queue)
         )
       )
@@ -1203,7 +1203,7 @@ export const mergeAllWith = (
         .withPermits
       const pull = yield* $(toPull(channels))
       const evaluatePull = (
-        pull: Effect.Effect<Env | Env1, OutErr | OutErr1, Either.Either<OutDone, OutElem>>
+        pull: Effect.Effect<Either.Either<OutDone, OutElem>, OutErr | OutErr1, Env | Env1>
       ) =>
         pipe(
           Effect.flatMap(
@@ -1270,7 +1270,7 @@ export const mergeAllWith = (
                 onBackPressure: () =>
                   Effect.gen(function*($) {
                     const latch = yield* $(Deferred.make<never, void>())
-                    const raceEffects: Effect.Effect<Env | Env1, OutErr | OutErr1, void> = pipe(
+                    const raceEffects: Effect.Effect<void, OutErr | OutErr1, Env | Env1> = pipe(
                       queueReader,
                       core.pipeTo(channel),
                       toPull,
@@ -1303,7 +1303,7 @@ export const mergeAllWith = (
                       Effect.when(() => size >= concurrencyN)
                     )
                     yield* $(Queue.offer(cancelers, canceler))
-                    const raceEffects: Effect.Effect<Env | Env1, OutErr | OutErr1, void> = pipe(
+                    const raceEffects: Effect.Effect<void, OutErr | OutErr1, Env | Env1> = pipe(
                       queueReader,
                       core.pipeTo(channel),
                       toPull,
@@ -1676,7 +1676,7 @@ export const mergeWith = dual<
             const handleSide = <Err, Done, Err2, Done2>(
               exit: Exit.Exit<Err, Either.Either<Done, OutElem | OutElem1>>,
               fiber: Fiber.Fiber<Err2, Either.Either<Done2, OutElem | OutElem1>>,
-              pull: Effect.Effect<Env | Env1, Err, Either.Either<Done, OutElem | OutElem1>>
+              pull: Effect.Effect<Either.Either<Done, OutElem | OutElem1>, Err, Env | Env1>
             ) =>
             (
               done: (
@@ -1695,11 +1695,9 @@ export const mergeWith = dual<
               single: (
                 f: (
                   ex: Exit.Exit<Err2, Done2>
-                ) => Effect.Effect<Env | Env1, OutErr2 | OutErr3, OutDone2 | OutDone3>
+                ) => Effect.Effect<OutDone2 | OutDone3, OutErr2 | OutErr3, Env | Env1>
               ) => State
             ): Effect.Effect<
-              Env | Env1,
-              never,
               Channel.Channel<
                 Env | Env1,
                 unknown,
@@ -1708,7 +1706,9 @@ export const mergeWith = dual<
                 OutErr2 | OutErr3,
                 OutElem | OutElem1,
                 OutDone2 | OutDone3
-              >
+              >,
+              never,
+              Env | Env1
             > => {
               const onDecision = (
                 decision: MergeDecision.MergeDecision<
@@ -1719,8 +1719,6 @@ export const mergeWith = dual<
                   OutDone2 | OutDone3
                 >
               ): Effect.Effect<
-                never,
-                never,
                 Channel.Channel<
                   Env | Env1,
                   unknown,
@@ -2110,28 +2108,28 @@ export const repeated = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 /** @internal */
 export const run = <Env, InErr, InDone, OutErr, OutDone>(
   self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
-): Effect.Effect<Env, OutErr, OutDone> => Effect.scoped(executor.runScoped(self))
+): Effect.Effect<OutDone, OutErr, Env> => Effect.scoped(executor.runScoped(self))
 
 /** @internal */
 export const runCollect = <Env, InErr, InDone, OutErr, OutElem, OutDone>(
   self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>
-): Effect.Effect<Env, OutErr, [Chunk.Chunk<OutElem>, OutDone]> => executor.run(core.collectElements(self))
+): Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Env> => executor.run(core.collectElements(self))
 
 /** @internal */
 export const runDrain = <Env, InErr, InDone, OutElem, OutErr, OutDone>(
   self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>
-): Effect.Effect<Env, OutErr, OutDone> => executor.run(drain(self))
+): Effect.Effect<OutDone, OutErr, Env> => executor.run(drain(self))
 
 /** @internal */
-export const scoped = <R, E, A>(
-  effect: Effect.Effect<R, E, A>
+export const scoped = <A, E, R>(
+  effect: Effect.Effect<A, E, R>
 ): Channel.Channel<Exclude<R, Scope.Scope>, unknown, unknown, unknown, E, A, unknown> =>
   unwrap(
     Effect.uninterruptibleMask((restore) =>
       Effect.map(Scope.make(), (scope) =>
         core.acquireReleaseOut(
           Effect.tapErrorCause(
-            restore(Scope.extend(scope)(effect)),
+            restore(Scope.extend(effect, scope)),
             (cause) => Scope.close(scope, Exit.failCause(cause))
           ),
           (_, exit) => Scope.close(scope, exit)
@@ -2162,7 +2160,7 @@ export const serviceWithChannel =
 /** @internal */
 export const serviceWithEffect = <T extends Context.Tag<any, any>>(tag: T) =>
 <Env, OutErr, OutDone>(
-  f: (resource: Context.Tag.Service<T>) => Effect.Effect<Env, OutErr, OutDone>
+  f: (resource: Context.Tag.Service<T>) => Effect.Effect<OutDone, OutErr, Env>
 ): Channel.Channel<Env | Context.Tag.Identifier<T>, unknown, unknown, unknown, OutErr, never, OutDone> =>
   mapEffect(service(tag), f)
 
@@ -2174,7 +2172,7 @@ export const toPubSub = <Err, Done, Elem>(
 /** @internal */
 export const toPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Effect.Effect<Env | Scope.Scope, never, Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>> =>
+): Effect.Effect<Effect.Effect<Either.Either<OutDone, OutElem>, OutErr, Env>, never, Env | Scope.Scope> =>
   Effect.map(
     Effect.acquireRelease(
       Effect.sync(() => new executor.ChannelExecutor(self, void 0, identity)),
@@ -2190,13 +2188,13 @@ export const toPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   channelState: ChannelState.ChannelState<Env, OutErr>,
   exec: executor.ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>> => {
+): Effect.Effect<Either.Either<OutDone, OutElem>, OutErr, Env> => {
   const state = channelState as ChannelState.Primitive
   switch (state._tag) {
     case ChannelStateOpCodes.OP_DONE: {
       return Exit.match(exec.getDone(), {
         onFailure: Effect.failCause,
-        onSuccess: (done): Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>> =>
+        onSuccess: (done): Effect.Effect<Either.Either<OutDone, OutElem>, OutErr, Env> =>
           Effect.succeed(Either.left(done))
       })
     }
@@ -2205,7 +2203,7 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     }
     case ChannelStateOpCodes.OP_FROM_EFFECT: {
       return pipe(
-        state.effect as Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>,
+        state.effect as Effect.Effect<Either.Either<OutDone, OutElem>, OutErr, Env>,
         Effect.flatMap(() => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
       )
     }
@@ -2213,7 +2211,7 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
       return executor.readUpstream(
         state,
         () => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
-        (cause) => Effect.failCause(cause) as Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>
+        (cause) => Effect.failCause(cause) as Effect.Effect<Either.Either<OutDone, OutElem>, OutErr, Env>
       )
     }
   }
@@ -2240,32 +2238,14 @@ const toQueueInternal = <Err, Done, Elem>(
 }
 
 /** @internal */
-export const unwrap = <R, E, R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-  channel: Effect.Effect<R, E, Channel.Channel<R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+export const unwrap = <R2, InErr, InElem, InDone, OutErr, OutElem, OutDone, E, R>(
+  channel: Effect.Effect<Channel.Channel<R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>, E, R>
 ): Channel.Channel<R | R2, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> => flatten(core.fromEffect(channel))
 
 /** @internal */
-export const unwrapScoped = <
-  R,
-  E,
-  Env,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
-  OutElem,
-  OutDone
->(
-  self: Effect.Effect<R, E, Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
-): Channel.Channel<
-  Exclude<R, Scope.Scope> | Env,
-  InErr,
-  InElem,
-  InDone,
-  E | OutErr,
-  OutElem,
-  OutDone
-> =>
+export const unwrapScoped = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, E, R>(
+  self: Effect.Effect<Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>, E, R>
+): Channel.Channel<Env | Exclude<R, Scope.Scope>, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> =>
   core.concatAllWith(
     scoped(self),
     (d, _) => d,

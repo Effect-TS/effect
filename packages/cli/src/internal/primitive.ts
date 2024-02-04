@@ -226,18 +226,18 @@ export const validate = dual<
     value: Option.Option<string>,
     config: CliConfig.CliConfig
   ) => <A>(self: Primitive.Primitive<A>) => Effect.Effect<
-    FileSystem.FileSystem,
+    A,
     string,
-    A
+    FileSystem.FileSystem
   >,
   <A>(
     self: Primitive.Primitive<A>,
     value: Option.Option<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    FileSystem.FileSystem,
+    A,
     string,
-    A
+    FileSystem.FileSystem
   >
 >(3, (self, value, config) => validateInternal(self as Instruction, value, config))
 
@@ -377,7 +377,7 @@ const validateInternal = (
   self: Instruction,
   value: Option.Option<string>,
   config: CliConfig.CliConfig
-): Effect.Effect<FileSystem.FileSystem, string, any> => {
+): Effect.Effect<any, string, FileSystem.FileSystem> => {
   switch (self._tag) {
     case "Bool": {
       return Option.map(value, (str) => InternalCliConfig.normalizeCase(config, str)).pipe(
@@ -458,8 +458,8 @@ const validateInternal = (
 const attempt = <E, A>(
   option: Option.Option<string>,
   typeName: string,
-  parse: (value: string) => Effect.Effect<never, E, A>
-): Effect.Effect<never, string, A> =>
+  parse: (value: string) => Effect.Effect<A, E>
+): Effect.Effect<A, string> =>
   Effect.orElseFail(
     option,
     () => `${typeName} options do not have a default value`
@@ -476,7 +476,7 @@ const validatePathExistence = (
   path: string,
   shouldPathExist: Primitive.Primitive.PathExists,
   pathExists: boolean
-): Effect.Effect<never, string, void> => {
+): Effect.Effect<void, string> => {
   if (shouldPathExist === "no" && pathExists) {
     return Effect.fail(`Path '${path}' must not exist`)
   }
@@ -490,7 +490,7 @@ const validatePathType = (
   path: string,
   pathType: Primitive.Primitive.PathType,
   fileSystem: FileSystem.FileSystem
-): Effect.Effect<never, string, void> => {
+): Effect.Effect<void, string> => {
   switch (pathType) {
     case "file": {
       const checkIsFile = fileSystem.stat(path).pipe(

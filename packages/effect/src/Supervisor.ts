@@ -39,14 +39,14 @@ export interface Supervisor<out T> extends Supervisor.Variance<T> {
    * supervisor. This value may change over time, reflecting what the supervisor
    * produces as it supervises fibers.
    */
-  readonly value: Effect.Effect<never, never, T>
+  readonly value: Effect.Effect<T>
 
   /**
    * Supervises the start of a `Fiber`.
    */
   onStart<R, E, A>(
     context: Context.Context<R>,
-    effect: Effect.Effect<R, E, A>,
+    effect: Effect.Effect<A, E, R>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void
@@ -114,7 +114,7 @@ export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never,
  */
 export const fibersIn: (
   ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
-) => Effect.Effect<never, never, Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>> = internal.fibersIn
+) => Effect.Effect<Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>> = internal.fibersIn
 
 /**
  * Creates a new supervisor that constantly yields effect when polled
@@ -122,7 +122,7 @@ export const fibersIn: (
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffect: <A>(effect: Effect.Effect<never, never, A>) => Supervisor<A> = internal.fromEffect
+export const fromEffect: <A>(effect: Effect.Effect<A>) => Supervisor<A> = internal.fromEffect
 
 /**
  * A supervisor that doesn't do anything in response to supervision events.
@@ -138,7 +138,7 @@ export const none: Supervisor<void> = internal.none
  * @since 2.0.0
  * @category constructors
  */
-export const track: Effect.Effect<never, never, Supervisor<Array<Fiber.RuntimeFiber<any, any>>>> = internal.track
+export const track: Effect.Effect<Supervisor<Array<Fiber.RuntimeFiber<any, any>>>> = internal.track
 
 /**
  * Unsafely creates a new supervisor that tracks children in a set.
@@ -156,14 +156,14 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  abstract value: Effect.Effect<never, never, T>
+  abstract value: Effect.Effect<T>
 
   /**
    * @since 2.0.0
    */
   onStart<R, E, A>(
     _context: Context.Context<R>,
-    _effect: Effect.Effect<R, E, A>,
+    _effect: Effect.Effect<A, E, R>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void {

@@ -55,8 +55,8 @@ export type GeneratorTypeId = typeof GeneratorTypeId
  */
 export interface Generator {
   readonly [GeneratorTypeId]: GeneratorTypeId
-  readonly fromFileInfo: (info: FileSystem.File.Info) => Effect.Effect<never, never, Etag>
-  readonly fromFileWeb: (file: Body.Body.FileLike) => Effect.Effect<never, never, Etag>
+  readonly fromFileInfo: (info: FileSystem.File.Info) => Effect.Effect<Etag>
+  readonly fromFileWeb: (file: Body.Body.FileLike) => Effect.Effect<Etag>
 }
 
 /**

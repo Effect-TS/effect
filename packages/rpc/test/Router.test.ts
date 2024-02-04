@@ -54,31 +54,31 @@ const router = _.make(schema, {
 describe("Router", () => {
   it("provideServiceSync/", () => {
     typeEquals(router.handlers.getCount)<
-      Effect.Effect<Counter, never, readonly [number, number]>
+      Effect.Effect<readonly [number, number], never, Counter>
     >() satisfies true
 
     const provided = _.provideServiceSync(router, Counter, makeCounter)
     typeEquals(provided.handlers.getCount)<
-      Effect.Effect<never, never, readonly [number, number]>
+      Effect.Effect<readonly [number, number]>
     >() satisfies true
 
     expect(Effect.runSync(provided.handlers.getCount)).toEqual([0, 1])
   })
 
   it("provideServiceEffect/ error", () => {
-    const counterEffect: Effect.Effect<never, SomeError, Counter> = Effect.sync(makeCounter)
+    const counterEffect: Effect.Effect<Counter, SomeError> = Effect.sync(makeCounter)
 
     const provided = _.provideServiceEffect(router, Counter, counterEffect)
 
     typeEquals(provided.handlers.getCount)<
-      Effect.Effect<never, SomeError, readonly [number, number]>
+      Effect.Effect<readonly [number, number], SomeError>
     >() satisfies true
 
     expect(Effect.runSync(provided.handlers.getCount)).toEqual([0, 1])
   })
 
   it("provideServiceEffect/ error fail", () => {
-    const counterEffect: Effect.Effect<never, SomeError, Counter> = Effect.fail(
+    const counterEffect: Effect.Effect<Counter, SomeError> = Effect.fail(
       { _tag: "SomeError", message: "boom" }
     )
 
@@ -90,7 +90,7 @@ describe("Router", () => {
   })
 
   it("provideServiceEffect/ error fail nested", () => {
-    const counterEffect: Effect.Effect<never, SomeError, Counter> = Effect.fail(
+    const counterEffect: Effect.Effect<Counter, SomeError> = Effect.fail(
       { _tag: "SomeError", message: "boom" }
     )
 
@@ -105,11 +105,11 @@ describe("Router", () => {
     interface Foo {
       readonly _: unique symbol
     }
-    const counterEffect: Effect.Effect<Foo, SomeError, Counter> = Effect.sync(makeCounter)
+    const counterEffect: Effect.Effect<Counter, SomeError, Foo> = Effect.sync(makeCounter)
 
     const provided = _.provideServiceEffect(router, Counter, counterEffect)
     typeEquals(provided.handlers.getCount)<
-      Effect.Effect<Foo, SomeError, readonly [number, number]>
+      Effect.Effect<readonly [number, number], SomeError, Foo>
     >() satisfies true
   })
 })

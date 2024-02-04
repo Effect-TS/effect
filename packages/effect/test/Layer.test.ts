@@ -377,8 +377,6 @@ describe("Layer", () => {
         readonly ref: Ref.Ref<number>
         readonly string: string
         readonly get: Effect.Effect<
-          never,
-          never,
           readonly [
             number,
             string
@@ -413,8 +411,6 @@ describe("Layer", () => {
         readonly ref: Ref.Ref<number>
         readonly string: string
         readonly get: Effect.Effect<
-          never,
-          never,
           readonly [
             number,
             string
@@ -707,11 +703,11 @@ describe("Layer", () => {
       }))
   })
 })
-export const makeRef = (): Effect.Effect<never, never, Ref.Ref<Chunk.Chunk<string>>> => {
+export const makeRef = (): Effect.Effect<Ref.Ref<Chunk.Chunk<string>>> => {
   return Ref.make(Chunk.empty())
 }
 export class Service1 {
-  one(): Effect.Effect<never, never, number> {
+  one(): Effect.Effect<number> {
     return Effect.succeed(1)
   }
 }
@@ -726,7 +722,7 @@ export const makeLayer1 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never
   )
 }
 export class Service2 {
-  two(): Effect.Effect<never, never, number> {
+  two(): Effect.Effect<number> {
     return Effect.succeed(2)
   }
 }
@@ -741,7 +737,7 @@ export const makeLayer2 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never
   )
 }
 export class Service3 {
-  three(): Effect.Effect<never, never, number> {
+  three(): Effect.Effect<number> {
     return Effect.succeed(3)
   }
 }

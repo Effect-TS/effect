@@ -44,7 +44,7 @@ export const make = (
 
     // Handle the `"keypress"` event emitted by `stdin` (forced by readline)
     const handleKeypressEvent = (input: typeof globalThis.process.stdin) =>
-      Effect.async<never, Terminal.QuitException, Terminal.UserInput>((resume) => {
+      Effect.async<Terminal.UserInput, Terminal.QuitException, never>((resume) => {
         const handleKeypress = (input: string | undefined, key: readline.Key) => {
           const userInput: Terminal.UserInput = {
             input: Option.fromNullable(input),
@@ -69,7 +69,7 @@ export const make = (
 
     // Handle the `"line"` event emitted by the readline interface
     const handleLineEvent = (rl: readline.Interface) =>
-      Effect.async<never, Terminal.QuitException, string>((resume) => {
+      Effect.async<string, Terminal.QuitException, never>((resume) => {
         const handleLine = (line: string) => {
           resume(Effect.succeed(line))
         }
@@ -91,7 +91,7 @@ export const make = (
       releaseReadlineInterface
     )
 
-    const display = (prompt: string): Effect.Effect<never, Error.PlatformError, void> =>
+    const display = (prompt: string): Effect.Effect<void, Error.PlatformError> =>
       Effect.uninterruptible(
         Effect.async((resume) => {
           output.write(prompt, (err) => {

@@ -4,8 +4,8 @@ import * as Option from "effect/Option"
 
 export const unfoldEffect = <A, R, E, S>(
   s: S,
-  f: (s: S) => Effect.Effect<R, E, Option.Option<readonly [A, S]>>
-): Effect.Effect<R, E, ReadonlyArray<A>> =>
+  f: (s: S) => Effect.Effect<Option.Option<readonly [A, S]>, E, R>
+): Effect.Effect<ReadonlyArray<A>, E, R> =>
   Effect.map(
     unfoldEffectLoop(s, f, List.empty()),
     (list) => Array.from(List.reverse(list))
@@ -13,9 +13,9 @@ export const unfoldEffect = <A, R, E, S>(
 
 const unfoldEffectLoop = <A, R, E, S>(
   s: S,
-  f: (s: S) => Effect.Effect<R, E, Option.Option<readonly [A, S]>>,
+  f: (s: S) => Effect.Effect<Option.Option<readonly [A, S]>, E, R>,
   acc: List.List<A>
-): Effect.Effect<R, E, List.List<A>> =>
+): Effect.Effect<List.List<A>, E, R> =>
   Effect.flatMap(f(s), (option) => {
     if (Option.isSome(option)) {
       return unfoldEffectLoop(option.value[1], f, List.prepend(acc, option.value[0]))

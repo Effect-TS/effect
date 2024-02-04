@@ -24,13 +24,13 @@ const EnvLive = Layer.mergeAll(
 )
 const runPromise = <E, A>(
   effect: Effect.Effect<
+    A,
+    E,
     | NodeContext.NodeContext
     | Http.etag.Generator
     | Http.server.Server
     | Http.platform.Platform
-    | HttpC.client.Client.Default,
-    E,
-    A
+    | HttpC.client.Client.Default
   >
 ) => Effect.runPromise(Effect.provide(effect, EnvLive))
 

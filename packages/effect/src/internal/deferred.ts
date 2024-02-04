@@ -24,23 +24,23 @@ export type State</* in out */ E, /* in out */ A> = Pending<E, A> | Done<E, A>
 /** @internal */
 export interface Pending<in E, in A> {
   readonly _tag: "Pending"
-  readonly joiners: Array<(effect: Effect.Effect<never, E, A>) => void>
+  readonly joiners: Array<(effect: Effect.Effect<A, E>) => void>
 }
 
 /** @internal */
 export interface Done<out E, out A> {
   readonly _tag: "Done"
-  readonly effect: Effect.Effect<never, E, A>
+  readonly effect: Effect.Effect<A, E>
 }
 
 /** @internal */
 export const pending = <E, A>(
-  joiners: Array<(effect: Effect.Effect<never, E, A>) => void>
+  joiners: Array<(effect: Effect.Effect<A, E>) => void>
 ): State<E, A> => {
   return { _tag: OpCodes.OP_STATE_PENDING, joiners }
 }
 
 /** @internal */
-export const done = <E, A>(effect: Effect.Effect<never, E, A>): State<E, A> => {
+export const done = <E, A>(effect: Effect.Effect<A, E>): State<E, A> => {
   return { _tag: OpCodes.OP_STATE_DONE, effect }
 }

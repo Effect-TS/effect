@@ -77,16 +77,16 @@ class ClockImpl implements Clock.Clock {
     return processOrPerformanceNow()
   }
 
-  currentTimeMillis: Effect.Effect<never, never, number> = core.sync(() => this.unsafeCurrentTimeMillis())
+  currentTimeMillis: Effect.Effect<number> = core.sync(() => this.unsafeCurrentTimeMillis())
 
-  currentTimeNanos: Effect.Effect<never, never, bigint> = core.sync(() => this.unsafeCurrentTimeNanos())
+  currentTimeNanos: Effect.Effect<bigint> = core.sync(() => this.unsafeCurrentTimeNanos())
 
-  scheduler(): Effect.Effect<never, never, Clock.ClockScheduler> {
+  scheduler(): Effect.Effect<Clock.ClockScheduler> {
     return core.succeed(globalClockScheduler)
   }
 
-  sleep(duration: Duration.Duration): Effect.Effect<never, never, void> {
-    return core.asyncEither<never, never, void>((cb) => {
+  sleep(duration: Duration.Duration): Effect.Effect<void> {
+    return core.asyncEither<void, never, never>((cb) => {
       const canceler = globalClockScheduler.unsafeSchedule(() => cb(core.unit), duration)
       return Either.left(core.asUnit(core.sync(canceler)))
     })

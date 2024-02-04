@@ -47,11 +47,11 @@ export interface Loop extends
       prevState: Option.Option<unknown>,
       nextState: unknown,
       action: Prompt.Prompt.Action<unknown, unknown>
-    ) => Effect.Effect<never, never, string>
+    ) => Effect.Effect<string>
     readonly process: (
       input: Terminal.UserInput,
       state: unknown
-    ) => Effect.Effect<never, never, Prompt.Prompt.Action<unknown, unknown>>
+    ) => Effect.Effect<Prompt.Prompt.Action<unknown, unknown>>
   }>
 {}
 
@@ -114,11 +114,11 @@ export const custom = <State, Output>(
     prevState: Option.Option<State>,
     nextState: State,
     action: Prompt.Prompt.Action<State, Output>
-  ) => Effect.Effect<Terminal.Terminal, never, string>,
+  ) => Effect.Effect<string, never, Terminal.Terminal>,
   process: (
     input: Terminal.UserInput,
     state: State
-  ) => Effect.Effect<Terminal.Terminal, never, Prompt.Prompt.Action<State, Output>>
+  ) => Effect.Effect<Prompt.Prompt.Action<State, Output>, never, Terminal.Terminal>
 ): Prompt.Prompt<Output> => {
   const op = Object.create(proto)
   op._tag = "Loop"
@@ -163,7 +163,7 @@ export const flatMap = dual<
 /** @internal */
 export const run = <Output>(
   self: Prompt.Prompt<Output>
-): Effect.Effect<Terminal.Terminal, Terminal.QuitException, Output> =>
+): Effect.Effect<Output, Terminal.QuitException, Terminal.Terminal> =>
   Effect.flatMap(Terminal.Terminal, (terminal) => {
     const op = self as Primitive
     switch (op._tag) {
@@ -175,7 +175,7 @@ export const run = <Output>(
           Effect.flatMap(([prevStateRef, nextStateRef]) => {
             const loop = (
               action: Exclude<PromptAction.PromptAction<unknown, unknown>, { _tag: "Submit" }>
-            ): Effect.Effect<never, Terminal.QuitException, any> =>
+            ): Effect.Effect<any, Terminal.QuitException> =>
               Effect.all([Ref.get(prevStateRef), Ref.get(nextStateRef)]).pipe(
                 Effect.flatMap(([prevState, nextState]) =>
                   op.render(prevState, nextState, action).pipe(

@@ -12,7 +12,7 @@ import * as internal from "../internal/http/platform.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<FileSystem.FileSystem | Etag.Generator, never, Platform.Platform> = internal.make
+export const make: Effect.Effect<Platform.Platform, never, FileSystem.FileSystem | Etag.Generator> = internal.make
 
 /**
  * @since 1.0.0

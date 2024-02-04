@@ -31,7 +31,7 @@ import * as Platform from "../../Http/Platform.js"
 /** @internal */
 export const make = (
   options: Omit<ServeOptions, "fetch" | "error">
-): Effect.Effect<Scope.Scope, never, Server.Server> =>
+): Effect.Effect<Server.Server, never, Scope.Scope> =>
   Effect.gen(function*(_) {
     const handlerStack: Array<(request: Request, server: BunServer) => Response | Promise<Response>> = [
       function(_request, _server) {
@@ -243,8 +243,8 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       }))
   }
 
-  private textEffect: Effect.Effect<never, Error.RequestError, string> | undefined
-  get text(): Effect.Effect<never, Error.RequestError, string> {
+  private textEffect: Effect.Effect<string, Error.RequestError> | undefined
+  get text(): Effect.Effect<string, Error.RequestError> {
     if (this.textEffect) {
       return this.textEffect
     }
@@ -262,7 +262,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     return this.textEffect
   }
 
-  get json(): Effect.Effect<never, Error.RequestError, unknown> {
+  get json(): Effect.Effect<unknown, Error.RequestError> {
     return Effect.tryMap(this.text, {
       try: (_) => JSON.parse(_) as unknown,
       catch: (error) =>
@@ -274,7 +274,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     })
   }
 
-  get urlParamsBody(): Effect.Effect<never, Error.RequestError, UrlParams.UrlParams> {
+  get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.RequestError> {
     return Effect.flatMap(this.text, (_) =>
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),
@@ -289,15 +289,15 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
 
   private multipartEffect:
     | Effect.Effect<
-      Scope.Scope | FileSystem.FileSystem | Path.Path,
+      Multipart.Persisted,
       Multipart.MultipartError,
-      Multipart.Persisted
+      Scope.Scope | FileSystem.FileSystem | Path.Path
     >
     | undefined
   get multipart(): Effect.Effect<
-    Scope.Scope | FileSystem.FileSystem | Path.Path,
+    Multipart.Persisted,
     Multipart.MultipartError,
-    Multipart.Persisted
+    Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
     if (this.multipartEffect) {
       return this.multipartEffect
@@ -312,8 +312,8 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     return MultipartNode.stream(Readable.fromWeb(this.source.body! as any), this.headers)
   }
 
-  private arrayBufferEffect: Effect.Effect<never, Error.RequestError, ArrayBuffer> | undefined
-  get arrayBuffer(): Effect.Effect<never, Error.RequestError, ArrayBuffer> {
+  private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.RequestError> | undefined
+  get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.RequestError> {
     if (this.arrayBuffer) {
       return this.arrayBuffer
     }

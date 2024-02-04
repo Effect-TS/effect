@@ -16,7 +16,7 @@ const sum = (n: number): number => {
 describe("Effect", () => {
   it.effect("sync - effect", () =>
     Effect.gen(function*($) {
-      const sumEffect = (n: number): Effect.Effect<never, unknown, number> => {
+      const sumEffect = (n: number): Effect.Effect<number, unknown> => {
         if (n < 0) {
           return Effect.sync(() => 0)
         }
