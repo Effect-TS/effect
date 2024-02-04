@@ -54,7 +54,7 @@ export const provideServiceEffect: {
     E extends RpcService.Errors<Router["schema"]>
   >(
     tag: T,
-    effect: Effect.Effect<R, E, Tag.Service<T>>
+    effect: Effect.Effect<Tag.Service<T>, E, R>
   ): (self: Router) => RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
   <
     const Router extends RpcRouter.Base,
@@ -64,14 +64,14 @@ export const provideServiceEffect: {
   >(
     self: Router,
     tag: T,
-    effect: Effect.Effect<R, E, Tag.Service<T>>
+    effect: Effect.Effect<Tag.Service<T>, E, R>
   ): RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
 } = dual(
   3,
   <Router extends RpcRouter.Base, T extends Tag<any, any>, R, E>(
     self: Router,
     tag: T,
-    effect: Effect.Effect<R, E, Tag.Service<T>>
+    effect: Effect.Effect<Tag.Service<T>, E, R>
   ): RpcRouter.Provide<Router, Tag.Identifier<T>, R, E> => {
     return {
       ...self,

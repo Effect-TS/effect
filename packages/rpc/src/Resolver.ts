@@ -102,7 +102,7 @@ export namespace RpcResponse {
 export const make: <R>(
   send: (
     requests: ReadonlyArray<RpcRequest.Payload>
-  ) => Effect.Effect<R, RpcTransportError, unknown>
+  ) => Effect.Effect<unknown, RpcTransportError, R>
 ) => RpcResolver<R> = internal.make
 
 /**
@@ -112,7 +112,7 @@ export const make: <R>(
 export const makeWithSchema: <R>(
   send: (
     requests: ReadonlyArray<RpcRequest>
-  ) => Effect.Effect<R, RpcTransportError, unknown>
+  ) => Effect.Effect<unknown, RpcTransportError, R>
 ) => RpcResolver<R> = internal.makeWithSchema
 
 /**
@@ -122,7 +122,7 @@ export const makeWithSchema: <R>(
 export const makeSingle: <R>(
   send: (
     request: RpcRequest.Payload
-  ) => Effect.Effect<R, RpcTransportError, unknown>
+  ) => Effect.Effect<unknown, RpcTransportError, R>
 ) => RpcResolver<R> = internal.makeSingle
 
 /**
@@ -130,5 +130,5 @@ export const makeSingle: <R>(
  * @since 1.0.0
  */
 export const makeSingleWithSchema: <R>(
-  send: (request: RpcRequest) => Effect.Effect<R, RpcTransportError, unknown>
+  send: (request: RpcRequest) => Effect.Effect<unknown, RpcTransportError, R>
 ) => RpcResolver<R> = internal.makeSingleWithSchema
