@@ -205,7 +205,7 @@ export interface FileSystem {
   readonly stream: (
     path: string,
     options?: StreamOptions
-  ) => Stream<never, PlatformError, Uint8Array>
+  ) => Stream<Uint8Array, PlatformError>
   /**
    * Create a symbolic link from `fromPath` to `toPath`.
    */

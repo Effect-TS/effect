@@ -134,8 +134,7 @@ export const formData: (body: FormData, options?: Options.WithContent) => Server
  * @since 1.0.0
  * @category constructors
  */
-export const stream: (body: Stream.Stream<never, unknown, Uint8Array>, options?: Options) => ServerResponse =
-  internal.stream
+export const stream: (body: Stream.Stream<Uint8Array, unknown>, options?: Options) => ServerResponse = internal.stream
 
 /**
  * @since 1.0.0

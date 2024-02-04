@@ -121,8 +121,8 @@ class TarError extends Data.TaggedError("TarError")<{
 }> {}
 
 const entries = <R, E>(
-  input: Stream.Stream<R, E, Uint8Array>
-): Stream.Stream<R, TarError | E, Tar.ReadEntry> =>
+  input: Stream.Stream<Uint8Array, E, R>
+): Stream.Stream<Tar.ReadEntry, TarError | E, R> =>
   Stream.suspend(() => {
     const parser = new Tar.Parse()
 
