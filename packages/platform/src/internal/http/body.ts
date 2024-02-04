@@ -79,7 +79,7 @@ export const text = (body: string, contentType?: string): Body.Uint8Array =>
 export const unsafeJson = (body: unknown): Body.Uint8Array => text(JSON.stringify(body), "application/json")
 
 /** @internal */
-export const json = (body: unknown): Effect.Effect<never, Body.BodyError, Body.Uint8Array> =>
+export const json = (body: unknown): Effect.Effect<Body.Uint8Array, Body.BodyError> =>
   Effect.try({
     try: () => unsafeJson(body),
     catch: (error) => BodyError({ _tag: "JsonError", error })
@@ -92,7 +92,7 @@ export const urlParams = (urlParams: UrlParams.UrlParams): Body.Uint8Array =>
 /** @internal */
 export const jsonSchema = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
   const encode = Schema.encode(schema)
-  return (body: A): Effect.Effect<R, Body.BodyError, Body.Uint8Array> =>
+  return (body: A): Effect.Effect<Body.Uint8Array, Body.BodyError, R> =>
     Effect.flatMap(
       Effect.mapError(encode(body), (error) => BodyError({ _tag: "SchemaError", error })),
       json
@@ -103,7 +103,7 @@ export const jsonSchema = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
 export const file = (
   path: string,
   options?: FileSystem.StreamOptions & { readonly contentType?: string }
-): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Body.Stream> =>
+): Effect.Effect<Body.Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.flatMap(
     FileSystem.FileSystem,
     (fs) =>
@@ -120,7 +120,7 @@ export const fileInfo = (
   path: string,
   info: FileSystem.File.Info,
   options?: FileSystem.StreamOptions & { readonly contentType?: string }
-): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Body.Stream> =>
+): Effect.Effect<Body.Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.map(
     FileSystem.FileSystem,
     (fs) =>

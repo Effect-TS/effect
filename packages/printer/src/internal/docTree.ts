@@ -187,7 +187,7 @@ export const alterAnnotations = dual<
 const alterAnnotationsSafe = <A, B>(
   self: DocTree.DocTree<A>,
   f: (a: A) => Iterable<B>
-): Effect.Effect<never, never, DocTree.DocTree<B>> => {
+): Effect.Effect<DocTree.DocTree<B>> => {
   switch (self._tag) {
     case "EmptyTree": {
       return Effect.succeed(empty)
@@ -240,7 +240,7 @@ const foldMapSafe = <A, M>(
   self: DocTree.DocTree<A>,
   M: monoid.Monoid<M>,
   f: (a: A) => M
-): Effect.Effect<never, never, M> => {
+): Effect.Effect<M> => {
   switch (self._tag) {
     case "EmptyTree":
     case "CharTree":
@@ -298,7 +298,7 @@ const renderSimplyDecoratedSafe = <A, M>(
   M: monoid.Monoid<M>,
   renderText: (text: string) => M,
   renderAnnotation: (annotation: A, out: M) => M
-): Effect.Effect<never, never, M> => {
+): Effect.Effect<M> => {
   switch (self._tag) {
     case "EmptyTree": {
       return Effect.succeed(M.empty)

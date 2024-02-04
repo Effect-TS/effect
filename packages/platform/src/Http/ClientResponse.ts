@@ -46,7 +46,7 @@ export type TypeId = typeof TypeId
 export interface ClientResponse extends IncomingMessage.IncomingMessage<Error.ResponseError> {
   readonly [TypeId]: TypeId
   readonly status: number
-  readonly formData: Effect.Effect<never, Error.ResponseError, FormData>
+  readonly formData: Effect.Effect<FormData, Error.ResponseError>
 }
 
 /**
@@ -69,7 +69,7 @@ export const schemaJson: <
   A
 >(
   schema: Schema.Schema<A, I, R>
-) => (self: ClientResponse) => Effect.Effect<R, Error.ResponseError | ParseResult.ParseError, A> = internal.schemaJson
+) => (self: ClientResponse) => Effect.Effect<A, Error.ResponseError | ParseResult.ParseError, R> = internal.schemaJson
 
 /**
  * @since 1.0.0
@@ -79,5 +79,5 @@ export const schemaNoBody: <
   R,
   I extends { readonly status?: number | undefined; readonly headers?: Readonly<Record<string, string>> | undefined },
   A
->(schema: Schema.Schema<A, I, R>) => (self: ClientResponse) => Effect.Effect<R, ParseResult.ParseError, A> =
+>(schema: Schema.Schema<A, I, R>) => (self: ClientResponse) => Effect.Effect<A, ParseResult.ParseError, R> =
   internal.schemaNoBody

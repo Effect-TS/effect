@@ -15,7 +15,7 @@ import * as internal from "./internal/worker.js"
  */
 export const makePool: <I, E, O>(
   options: Worker.WorkerPool.Options<I, Worker>
-) => Effect.Effect<Worker.WorkerManager | Scope.Scope, never, Worker.WorkerPool<I, E, O>> = internal.makePool
+) => Effect.Effect<Worker.WorkerPool<I, E, O>, never, Worker.WorkerManager | Scope.Scope> = internal.makePool
 
 /**
  * @since 1.0.0
@@ -32,7 +32,7 @@ export const makePoolLayer: <Tag, I, E, O>(
  */
 export const makePoolSerialized: <I extends Schema.TaggedRequest.Any>(
   options: Worker.SerializedWorkerPool.Options<I, Worker>
-) => Effect.Effect<Worker.WorkerManager | Scope.Scope, never, Worker.SerializedWorkerPool<I>> =
+) => Effect.Effect<Worker.SerializedWorkerPool<I>, never, Worker.WorkerManager | Scope.Scope> =
   internal.makePoolSerialized
 
 /**

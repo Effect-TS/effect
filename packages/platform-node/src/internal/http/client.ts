@@ -27,7 +27,7 @@ export const HttpAgentTypeId: NodeClient.HttpAgentTypeId = Symbol.for(
 export const HttpAgent = Context.GenericTag<NodeClient.HttpAgent>("@effect/platform-node/Http/NodeClient/HttpAgent")
 
 /** @internal */
-export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<Scope.Scope, never, NodeClient.HttpAgent> =>
+export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<NodeClient.HttpAgent, never, Scope.Scope> =>
   Effect.map(
     Effect.all([
       Effect.acquireRelease(
@@ -93,8 +93,8 @@ const sendBody = (
   nodeRequest: Http.ClientRequest,
   request: ClientRequest.ClientRequest,
   body: Body.Body
-): Effect.Effect<never, Error.RequestError, void> =>
-  Effect.suspend((): Effect.Effect<never, Error.RequestError, void> => {
+): Effect.Effect<void, Error.RequestError> =>
+  Effect.suspend((): Effect.Effect<void, Error.RequestError> => {
     switch (body._tag) {
       case "Empty": {
         nodeRequest.end()
@@ -142,7 +142,7 @@ const sendBody = (
   })
 
 const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
-  Effect.async<never, Error.RequestError, Http.IncomingMessage>((resume) => {
+  Effect.async<Http.IncomingMessage, Error.RequestError, never>((resume) => {
     function onError(error: Error) {
       resume(Effect.fail(Error.RequestError({
         request,
@@ -167,7 +167,7 @@ const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest
   })
 
 const waitForFinish = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
-  Effect.async<never, Error.RequestError, void>((resume) => {
+  Effect.async<void, Error.RequestError, never>((resume) => {
     function onError(error: Error) {
       resume(Effect.fail(Error.RequestError({
         request,
@@ -210,7 +210,7 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
     return this.source.statusCode!
   }
 
-  get formData(): Effect.Effect<never, Error.ResponseError, FormData> {
+  get formData(): Effect.Effect<FormData, Error.ResponseError> {
     return Effect.tryPromise({
       try: () => {
         const init: {

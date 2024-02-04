@@ -52,20 +52,20 @@ export const make = <A>(config: CliApp.CliApp.ConstructorArgs<A>): CliApp.CliApp
 export const run = dual<
   <R, E, A>(
     args: ReadonlyArray<string>,
-    execute: (a: A) => Effect.Effect<R, E, void>
+    execute: (a: A) => Effect.Effect<void, E, R>
   ) => (
     self: CliApp.CliApp<A>
-  ) => Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void>,
+  ) => Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>,
   <R, E, A>(
     self: CliApp.CliApp<A>,
     args: ReadonlyArray<string>,
-    execute: (a: A) => Effect.Effect<R, E, void>
-  ) => Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void>
+    execute: (a: A) => Effect.Effect<void, E, R>
+  ) => Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>
 >(3, <R, E, A>(
   self: CliApp.CliApp<A>,
   args: ReadonlyArray<string>,
-  execute: (a: A) => Effect.Effect<R, E, void>
-): Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void> =>
+  execute: (a: A) => Effect.Effect<void, E, R>
+): Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment> =>
   Effect.contextWithEffect((context: Context.Context<CliApp.CliApp.Environment>) => {
     // Attempt to parse the CliConfig from the environment, falling back to the
     // default CliConfig if none was provided
@@ -128,8 +128,7 @@ const splitExecutable = <A>(self: CliApp.CliApp<A>, args: ReadonlyArray<string>)
   return [`${runtime} ${script}`, optionsAndArgs]
 }
 
-const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<never, never, void> =>
-  Console.log(InternalHelpDoc.toAnsiText(error))
+const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<void> => Console.log(InternalHelpDoc.toAnsiText(error))
 
 // TODO: move to `/platform`
 const isQuitException = (u: unknown): u is Terminal.QuitException =>
@@ -140,12 +139,12 @@ const handleBuiltInOption = <R, E, A>(
   executable: string,
   args: ReadonlyArray<string>,
   builtIn: BuiltInOptions.BuiltInOptions,
-  execute: (a: A) => Effect.Effect<R, E, void>,
+  execute: (a: A) => Effect.Effect<void, E, R>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  R | CliApp.CliApp.Environment | Terminal.Terminal,
+  void,
   E | ValidationError.ValidationError,
-  void
+  R | CliApp.CliApp.Environment | Terminal.Terminal
 > => {
   switch (builtIn._tag) {
     case "ShowHelp": {

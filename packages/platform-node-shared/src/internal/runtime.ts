@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 
 /** @internal */
 export const runMain: RunMain = <E, A>(
-  effect: Effect.Effect<never, E, A>,
+  effect: Effect.Effect<A, E>,
   teardown = defaultTeardown
 ) => {
   const keepAlive = setInterval(() => {}, 2 ** 31 - 1)

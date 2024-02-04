@@ -366,26 +366,17 @@ export const mapError = InternalParser.mapError
  * @since 1.0.0
  */
 export const mapBoth: {
-  <E1, A, E2, B>(
-    options: {
-      readonly onFailure: (error: E1) => E2
-      readonly onSuccess: (a: A) => B
-    }
-  ): <R>(self: Effect.Effect<R, E1, A>) => Effect.Effect<R, E2, B>
-  <R, E1, A, E2, B>(
-    self: Effect.Effect<R, E1, A>,
-    options: {
-      readonly onFailure: (error: E1) => E2
-      readonly onSuccess: (a: A) => B
-    }
-  ): Effect.Effect<R, E2, B>
-} = dual(2, <R, E1, A, E2, B>(
-  self: Effect.Effect<R, E1, A>,
-  options: {
-    readonly onFailure: (error: E1) => E2
-    readonly onSuccess: (a: A) => B
-  }
-): Effect.Effect<R, E2, B> => {
+  <E, E2, A, A2>(
+    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+  ): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2, E2, R>
+  <A, E, R, E2, A2>(
+    self: Effect.Effect<A, E, R>,
+    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+  ): Effect.Effect<A2, E2, R>
+} = dual(2, <A, E, R, E2, A2>(
+  self: Effect.Effect<A, E, R>,
+  options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+): Effect.Effect<A2, E2, R> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(options.onFailure(s.left))
@@ -401,17 +392,17 @@ export const mapBoth: {
  * @since 1.0.0
  */
 export const orElse: {
-  <E1, A, R2, E2, B>(
-    f: (error: E1) => Effect.Effect<R2, E2, B>
-  ): <R1>(self: Effect.Effect<R1, E1, A>) => Effect.Effect<R1 | R2, E2, A | B>
-  <R1, E1, A, R2, E2, B>(
-    self: Effect.Effect<R1, E1, A>,
-    f: (error: E1) => Effect.Effect<R2, E2, B>
-  ): Effect.Effect<R1 | R2, E2, A | B>
-} = dual(2, <R1, E1, A, R2, E2, B>(
-  self: Effect.Effect<R1, E1, A>,
-  f: (error: E1) => Effect.Effect<R2, E2, B>
-): Effect.Effect<R1 | R2, E2, A | B> => {
+  <E, A2, E2, R2>(
+    f: (e: E) => Effect.Effect<A2, E2, R2>
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2 | A, E2, R2 | R>
+  <A, E, R, A2, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    f: (e: E) => Effect.Effect<A2, E2, R2>
+  ): Effect.Effect<A2 | A, E2, R2 | R>
+} = dual(2, <A, E, R, A2, E2, R2>(
+  self: Effect.Effect<A, E, R>,
+  f: (e: E) => Effect.Effect<A2, E2, R2>
+): Effect.Effect<A2 | A, E2, R2 | R> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return f(s.left)
@@ -480,13 +471,13 @@ export {
 /**
  * @since 1.0.0
  */
-export type DecodeUnknown<R, Out> = (u: unknown, options?: AST.ParseOptions) => Effect.Effect<R, ParseIssue, Out>
+export type DecodeUnknown<Out, R> = (u: unknown, options?: AST.ParseOptions) => Effect.Effect<Out, ParseIssue, R>
 
 /**
  * @since 1.0.0
  */
-export type DeclarationDecodeUnknown<R, Out> = (
+export type DeclarationDecodeUnknown<Out, R> = (
   u: unknown,
   options: AST.ParseOptions,
   ast: AST.Declaration
-) => Effect.Effect<R, ParseIssue, Out>
+) => Effect.Effect<Out, ParseIssue, R>

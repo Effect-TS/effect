@@ -26,27 +26,27 @@ export type TypeId = typeof TypeId
  */
 export interface Console {
   readonly [TypeId]: TypeId
-  assert(condition: boolean, ...args: ReadonlyArray<any>): Effect<never, never, void>
-  readonly clear: Effect<never, never, void>
-  count(label?: string): Effect<never, never, void>
-  countReset(label?: string): Effect<never, never, void>
-  debug(...args: ReadonlyArray<any>): Effect<never, never, void>
-  dir(item: any, options?: any): Effect<never, never, void>
-  dirxml(...args: ReadonlyArray<any>): Effect<never, never, void>
-  error(...args: ReadonlyArray<any>): Effect<never, never, void>
+  assert(condition: boolean, ...args: ReadonlyArray<any>): Effect<void>
+  readonly clear: Effect<void>
+  count(label?: string): Effect<void>
+  countReset(label?: string): Effect<void>
+  debug(...args: ReadonlyArray<any>): Effect<void>
+  dir(item: any, options?: any): Effect<void>
+  dirxml(...args: ReadonlyArray<any>): Effect<void>
+  error(...args: ReadonlyArray<any>): Effect<void>
   group(options?: {
     readonly label?: string | undefined
     readonly collapsed?: boolean | undefined
-  }): Effect<never, never, void>
-  readonly groupEnd: Effect<never, never, void>
-  info(...args: ReadonlyArray<any>): Effect<never, never, void>
-  log(...args: ReadonlyArray<any>): Effect<never, never, void>
-  table(tabularData: any, properties?: ReadonlyArray<string>): Effect<never, never, void>
-  time(label?: string): Effect<never, never, void>
-  timeEnd(label?: string): Effect<never, never, void>
-  timeLog(label?: string, ...args: ReadonlyArray<any>): Effect<never, never, void>
-  trace(...args: ReadonlyArray<any>): Effect<never, never, void>
-  warn(...args: ReadonlyArray<any>): Effect<never, never, void>
+  }): Effect<void>
+  readonly groupEnd: Effect<void>
+  info(...args: ReadonlyArray<any>): Effect<void>
+  log(...args: ReadonlyArray<any>): Effect<void>
+  table(tabularData: any, properties?: ReadonlyArray<string>): Effect<void>
+  time(label?: string): Effect<void>
+  timeEnd(label?: string): Effect<void>
+  timeLog(label?: string, ...args: ReadonlyArray<any>): Effect<void>
+  trace(...args: ReadonlyArray<any>): Effect<void>
+  warn(...args: ReadonlyArray<any>): Effect<void>
   readonly unsafe: UnsafeConsole
 }
 
@@ -89,8 +89,8 @@ export const Console: Context.Tag<Console, Console> = defaultConsole.consoleTag
  * @category default services
  */
 export const withConsole: {
-  <A extends Console>(console: A): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A extends Console>(effect: Effect<R, E, A>, console: A): Effect<R, E, A>
+  <A extends Console>(console: A): <R, E, A>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <R, E, A extends Console>(effect: Effect<A, E, R>, console: A): Effect<A, E, R>
 } = internal.withConsole
 
 /**
@@ -103,109 +103,105 @@ export const setConsole: <A extends Console>(console: A) => Layer.Layer<never, n
  * @since 2.0.0
  * @category accessor
  */
-export const consoleWith: <R, E, A>(f: (console: Console) => Effect<R, E, A>) => Effect<R, E, A> = internal.consoleWith
+export const consoleWith: <R, E, A>(f: (console: Console) => Effect<A, E, R>) => Effect<A, E, R> = internal.consoleWith
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const assert: (condition: boolean, ...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.assert
+export const assert: (condition: boolean, ...args: ReadonlyArray<any>) => Effect<void> = internal.assert
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const clear: Effect<never, never, void> = internal.clear
+export const clear: Effect<void> = internal.clear
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const count: (label?: string) => Effect<never, never, void> = internal.count
+export const count: (label?: string) => Effect<void> = internal.count
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const countReset: (label?: string) => Effect<never, never, void> = internal.countReset
+export const countReset: (label?: string) => Effect<void> = internal.countReset
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const debug: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.debug
+export const debug: (...args: ReadonlyArray<any>) => Effect<void> = internal.debug
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const dir: (item: any, options?: any) => Effect<never, never, void> = internal.dir
+export const dir: (item: any, options?: any) => Effect<void> = internal.dir
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const dirxml: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.dirxml
+export const dirxml: (...args: ReadonlyArray<any>) => Effect<void> = internal.dirxml
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const error: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.error
+export const error: (...args: ReadonlyArray<any>) => Effect<void> = internal.error
 
 /**
  * @since 2.0.0
  * @category accessor
  */
 export const group: (
-  options?: {
-    label?: string | undefined
-    collapsed?: boolean | undefined
-  }
-) => Effect<Scope, never, void> = internal.group
+  options?: { label?: string | undefined; collapsed?: boolean | undefined } | undefined
+) => Effect<void, never, Scope> = internal.group
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const info: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.info
+export const info: (...args: ReadonlyArray<any>) => Effect<void> = internal.info
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const log: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.log
+export const log: (...args: ReadonlyArray<any>) => Effect<void> = internal.log
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const table: (tabularData: any, properties?: ReadonlyArray<string>) => Effect<never, never, void> =
-  internal.table
+export const table: (tabularData: any, properties?: ReadonlyArray<string>) => Effect<void> = internal.table
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const time: (label?: string) => Effect<Scope, never, void> = internal.time
+export const time: (label?: string | undefined) => Effect<void, never, Scope> = internal.time
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const timeLog: (label?: string, ...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.timeLog
+export const timeLog: (label?: string, ...args: ReadonlyArray<any>) => Effect<void> = internal.timeLog
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const trace: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.trace
+export const trace: (...args: ReadonlyArray<any>) => Effect<void> = internal.trace
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const warn: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.warn
+export const warn: (...args: ReadonlyArray<any>) => Effect<void> = internal.warn
 
 /**
  * @since 2.0.0
@@ -215,11 +211,11 @@ export const withGroup: {
   (options?: {
     readonly label?: string | undefined
     readonly collapsed?: boolean | undefined
-  }): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, options?: {
+  }): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <R, E, A>(self: Effect<A, E, R>, options?: {
     readonly label?: string | undefined
     readonly collapsed?: boolean | undefined
-  }): Effect<R, E, A>
+  }): Effect<A, E, R>
 } = internal.withGroup
 
 /**
@@ -227,6 +223,6 @@ export const withGroup: {
  * @category accessor
  */
 export const withTime: {
-  (label?: string): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, label?: string): Effect<R, E, A>
+  (label?: string): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <R, E, A>(self: Effect<A, E, R>, label?: string): Effect<A, E, R>
 } = internal.withTime

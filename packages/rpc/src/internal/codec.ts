@@ -6,14 +6,14 @@ import { RpcDecodeFailure, RpcEncodeFailure } from "../Error.js"
 /** @internal */
 export const decode = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
   const decode = Schema.decodeUnknown(schema)
-  return (input: unknown): Effect.Effect<R, RpcDecodeFailure, A> =>
+  return (input: unknown): Effect.Effect<A, RpcDecodeFailure, R> =>
     Effect.mapError(decode(input, { errors: "all" }), (error) => RpcDecodeFailure({ error: error.error }))
 }
 
 /** @internal */
 export const encode: <A, I, R>(
   schema: Schema.Schema<A, I, R>
-) => (input: A, options?: ParseOptions | undefined) => Effect.Effect<R, RpcEncodeFailure, I> = <A, I, R>(
+) => (input: A, options?: ParseOptions | undefined) => Effect.Effect<I, RpcEncodeFailure, R> = <A, I, R>(
   schema: Schema.Schema<A, I, R>
 ) => {
   const encode = Schema.encode(schema)

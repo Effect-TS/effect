@@ -27,7 +27,7 @@ export const make = (
     readonly serve: (
       httpApp: App.Default<never, unknown>,
       middleware?: Middleware.Middleware
-    ) => Effect.Effect<Scope.Scope, never, void>
+    ) => Effect.Effect<void, never, Scope.Scope>
     readonly address: Server.Address
   }
 ): Server.Server => Object.assign(Object.create(serverProto), options)
@@ -87,29 +87,29 @@ export const serveEffect = dual<
     (): <R, E>(
       httpApp: App.Default<R, E>
     ) => Effect.Effect<
-      Server.Server | Scope.Scope | Exclude<R, ServerRequest.ServerRequest>,
+      void,
       never,
-      void
+      Server.Server | Scope.Scope | Exclude<R, ServerRequest.ServerRequest>
     >
     <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<R, E, App>): (
       httpApp: App.Default<R, E>
     ) => Effect.Effect<
-      Server.Server | Scope.Scope | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+      void,
       never,
-      void
+      Server.Server | Scope.Scope | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>
     >
   },
   {
     <R, E>(
       httpApp: App.Default<R, E>
-    ): Effect.Effect<Server.Server | Scope.Scope | Exclude<R, ServerRequest.ServerRequest>, never, void>
+    ): Effect.Effect<void, never, Server.Server | Scope.Scope | Exclude<R, ServerRequest.ServerRequest>>
     <R, E, App extends App.Default<any, any>>(
       httpApp: App.Default<R, E>,
       middleware: Middleware.Middleware.Applied<R, E, App>
     ): Effect.Effect<
-      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest> | Scope.Scope,
+      void,
       never,
-      void
+      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest> | Scope.Scope
     >
   }
 >(
@@ -118,9 +118,9 @@ export const serveEffect = dual<
     httpApp: App.Default<R, E>,
     middleware: Middleware.Middleware.Applied<R, E, App>
   ): Effect.Effect<
-    Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest> | Scope.Scope,
+    void,
     never,
-    void
+    Server.Server | Exclude<R, ServerRequest.ServerRequest> | Scope.Scope
   > =>
     Effect.flatMap(
       serverTag,
@@ -140,8 +140,8 @@ export const formatAddress = (address: Server.Address): string => {
 
 /** @internal */
 export const addressWith = <R, E, A>(
-  effect: (address: Server.Address) => Effect.Effect<R, E, A>
-): Effect.Effect<Server.Server | R, E, A> =>
+  effect: (address: Server.Address) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, Server.Server | R> =>
   Effect.flatMap(
     serverTag,
     (server) => effect(server.address)
@@ -149,15 +149,15 @@ export const addressWith = <R, E, A>(
 
 /** @internal */
 export const addressFormattedWith = <R, E, A>(
-  effect: (address: string) => Effect.Effect<R, E, A>
-): Effect.Effect<Server.Server | R, E, A> =>
+  effect: (address: string) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, Server.Server | R> =>
   Effect.flatMap(
     serverTag,
     (server) => effect(formatAddress(server.address))
   )
 
 /** @internal */
-export const logAddress: Effect.Effect<Server.Server, never, void> = addressFormattedWith((_) =>
+export const logAddress: Effect.Effect<void, never, Server.Server> = addressFormattedWith((_) =>
   Effect.log(`Listening on ${_}`)
 )
 

@@ -160,11 +160,7 @@ describe("Client", () => {
     typeEquals(client.posts.create)<
       (input: {
         readonly body: string
-      }) => Effect.Effect<
-        never,
-        SomeError | RpcError,
-        { readonly id: number; readonly body: string }
-      >
+      }) => Effect.Effect<{ readonly id: number; readonly body: string }, SomeError | RpcError>
     >() satisfies true
   })
 

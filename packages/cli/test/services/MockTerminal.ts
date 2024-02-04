@@ -12,11 +12,11 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 // =============================================================================
 
 export interface MockTerminal extends Terminal.Terminal {
-  readonly inputText: (text: string) => Effect.Effect<never, never, void>
+  readonly inputText: (text: string) => Effect.Effect<void>
   readonly inputKey: (
     key: string,
     modifiers?: Partial<MockTerminal.Modifiers>
-  ) => Effect.Effect<never, never, void>
+  ) => Effect.Effect<void>
 }
 
 export declare namespace MockTerminal {

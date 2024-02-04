@@ -30,17 +30,17 @@ export interface Server {
   readonly [TypeId]: TypeId
   readonly serve: {
     <R, E>(httpApp: App.Default<R, E>): Effect.Effect<
-      Exclude<R, ServerRequest.ServerRequest> | Scope.Scope,
+      void,
       never,
-      void
+      Exclude<R, ServerRequest.ServerRequest> | Scope.Scope
     >
     <R, E, App extends App.Default<any, any>>(
       httpApp: App.Default<R, E>,
       middleware: Middleware.Middleware.Applied<R, E, App>
     ): Effect.Effect<
-      Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest> | Scope.Scope,
+      void,
       never,
-      void
+      Exclude<R, ServerRequest.ServerRequest> | Scope.Scope
     >
   }
   readonly address: Address
@@ -94,7 +94,7 @@ export const make: (
     readonly serve: (
       httpApp: App.Default<never, unknown>,
       middleware?: Middleware.Middleware
-    ) => Effect.Effect<Scope.Scope, never, void>
+    ) => Effect.Effect<void, never, Scope.Scope>
     readonly address: Address
   }
 ) => Server = internal.make
@@ -132,23 +132,23 @@ export const serve: {
 export const serveEffect: {
   (): <R, E>(
     httpApp: App.Default<R, E>
-  ) => Effect.Effect<Scope.Scope | Server | Exclude<R, ServerRequest.ServerRequest>, never, void>
+  ) => Effect.Effect<void, never, Scope.Scope | Server | Exclude<R, ServerRequest.ServerRequest>>
   <R, E, App extends App.Default<any, any>>(
     middleware: Middleware.Middleware.Applied<R, E, App>
   ): (
     httpApp: App.Default<R, E>
   ) => Effect.Effect<
-    Scope.Scope | Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+    void,
     never,
-    void
+    Scope.Scope | Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>
   >
   <R, E>(
     httpApp: App.Default<R, E>
-  ): Effect.Effect<Scope.Scope | Server | Exclude<R, ServerRequest.ServerRequest>, never, void>
+  ): Effect.Effect<void, never, Scope.Scope | Server | Exclude<R, ServerRequest.ServerRequest>>
   <R, E, App extends App.Default<any, any>>(
     httpApp: App.Default<R, E>,
     middleware: Middleware.Middleware.Applied<R, E, App>
-  ): Effect.Effect<Scope.Scope | Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>, never, void>
+  ): Effect.Effect<void, never, Scope.Scope | Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>>
 } = internal.serveEffect
 
 /**
@@ -162,22 +162,22 @@ export const formatAddress: (address: Address) => string = internal.formatAddres
  * @category address
  */
 export const addressWith: <R, E, A>(
-  effect: (address: Address) => Effect.Effect<R, E, A>
-) => Effect.Effect<Server | R, E, A> = internal.addressWith
+  effect: (address: Address) => Effect.Effect<A, E, R>
+) => Effect.Effect<A, E, Server | R> = internal.addressWith
 
 /**
  * @since 1.0.0
  * @category address
  */
 export const addressFormattedWith: <R, E, A>(
-  effect: (address: string) => Effect.Effect<R, E, A>
-) => Effect.Effect<Server | R, E, A> = internal.addressFormattedWith
+  effect: (address: string) => Effect.Effect<A, E, R>
+) => Effect.Effect<A, E, Server | R> = internal.addressFormattedWith
 
 /**
  * @since 1.0.0
  * @category address
  */
-export const logAddress: Effect.Effect<Server, never, void> = internal.logAddress
+export const logAddress: Effect.Effect<void, never, Server> = internal.logAddress
 
 /**
  * @since 1.0.0

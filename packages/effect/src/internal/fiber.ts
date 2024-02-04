@@ -68,12 +68,12 @@ export const isRuntimeFiber = <E, A>(self: Fiber.Fiber<E, A>): self is Fiber.Run
   RuntimeFiberTypeId in self
 
 /** @internal */
-export const _await = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, Exit.Exit<E, A>> => self.await
+export const _await = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Exit.Exit<E, A>> => self.await
 
 /** @internal */
 export const children = <E, A>(
   self: Fiber.Fiber<E, A>
-): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> => self.children
+): Effect.Effect<Array<Fiber.RuntimeFiber<any, any>>> => self.children
 
 /** @internal */
 export const done = <E, A>(exit: Exit.Exit<E, A>): Fiber.Fiber<E, A> => ({
@@ -87,13 +87,13 @@ export const done = <E, A>(exit: Exit.Exit<E, A>): Fiber.Fiber<E, A> => ({
 })
 
 /** @internal */
-export const dump = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<never, never, Fiber.Fiber.Dump> =>
+export const dump = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<Fiber.Fiber.Dump> =>
   core.map(self.status, (status) => ({ id: self.id(), status }))
 
 /** @internal */
 export const dumpAll = (
   fibers: Iterable<Fiber.RuntimeFiber<unknown, unknown>>
-): Effect.Effect<never, never, Array<Fiber.Fiber.Dump>> => core.forEachSequential(fibers, dump)
+): Effect.Effect<Array<Fiber.Fiber.Dump>> => core.forEachSequential(fibers, dump)
 
 /** @internal */
 export const fail = <E>(error: E): Fiber.Fiber<E, never> => done(Exit.fail(error))
@@ -102,26 +102,26 @@ export const fail = <E>(error: E): Fiber.Fiber<E, never> => done(Exit.fail(error
 export const failCause = <E>(cause: Cause.Cause<E>): Fiber.Fiber<E, never> => done(Exit.failCause(cause))
 
 /** @internal */
-export const fromEffect = <E, A>(effect: Effect.Effect<never, E, A>): Effect.Effect<never, never, Fiber.Fiber<E, A>> =>
+export const fromEffect = <E, A>(effect: Effect.Effect<A, E>): Effect.Effect<Fiber.Fiber<E, A>> =>
   core.map(core.exit(effect), done)
 
 /** @internal */
 export const id = <E, A>(self: Fiber.Fiber<E, A>): FiberId.FiberId => self.id()
 
 /** @internal */
-export const inheritAll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, void> => self.inheritAll
+export const inheritAll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<void> => self.inheritAll
 
 /** @internal */
 export const interrupted = (fiberId: FiberId.FiberId): Fiber.Fiber<never, never> => done(Exit.interrupt(fiberId))
 
 /** @internal */
-export const interruptAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect.Effect<never, never, void> =>
+export const interruptAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect.Effect<void> =>
   core.flatMap(core.fiberId, (fiberId) => pipe(fibers, interruptAllAs(fiberId)))
 
 /** @internal */
 export const interruptAllAs = dual<
-  (fiberId: FiberId.FiberId) => (fibers: Iterable<Fiber.Fiber<any, any>>) => Effect.Effect<never, never, void>,
-  (fibers: Iterable<Fiber.Fiber<any, any>>, fiberId: FiberId.FiberId) => Effect.Effect<never, never, void>
+  (fiberId: FiberId.FiberId) => (fibers: Iterable<Fiber.Fiber<any, any>>) => Effect.Effect<void>,
+  (fibers: Iterable<Fiber.Fiber<any, any>>, fiberId: FiberId.FiberId) => Effect.Effect<void>
 >(2, (fibers, fiberId) =>
   pipe(
     core.forEachSequentialDiscard(fibers, interruptAsFork(fiberId)),
@@ -130,12 +130,12 @@ export const interruptAllAs = dual<
 
 /** @internal */
 export const interruptAsFork = dual<
-  (fiberId: FiberId.FiberId) => <E, A>(self: Fiber.Fiber<E, A>) => Effect.Effect<never, never, void>,
-  <E, A>(self: Fiber.Fiber<E, A>, fiberId: FiberId.FiberId) => Effect.Effect<never, never, void>
+  (fiberId: FiberId.FiberId) => <E, A>(self: Fiber.Fiber<E, A>) => Effect.Effect<void>,
+  <E, A>(self: Fiber.Fiber<E, A>, fiberId: FiberId.FiberId) => Effect.Effect<void>
 >(2, (self, fiberId) => self.interruptAsFork(fiberId))
 
 /** @internal */
-export const join = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, E, A> =>
+export const join = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<A, E> =>
   core.zipLeft(core.flatten(self.await), self.inheritAll)
 
 /** @internal */
@@ -146,8 +146,8 @@ export const map = dual<
 
 /** @internal */
 export const mapEffect = dual<
-  <A, E2, A2>(f: (a: A) => Effect.Effect<never, E2, A2>) => <E>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, A2>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, f: (a: A) => Effect.Effect<never, E2, A2>) => Fiber.Fiber<E | E2, A2>
+  <A, A2, E2>(f: (a: A) => Effect.Effect<A2, E2>) => <E>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, A2>,
+  <E, A, A2, E2>(self: Fiber.Fiber<E, A>, f: (a: A) => Effect.Effect<A2, E2>) => Fiber.Fiber<E | E2, A2>
 >(2, (self, f) => ({
   ...fiberProto,
   id: () => self.id(),
@@ -156,15 +156,13 @@ export const mapEffect = dual<
   inheritAll: self.inheritAll,
   poll: core.flatMap(self.poll, (result) => {
     switch (result._tag) {
-      case "None": {
+      case "None":
         return core.succeed(Option.none())
-      }
-      case "Some": {
+      case "Some":
         return pipe(
           Exit.forEachEffect(result.value, f),
           core.map(Option.some)
         )
-      }
     }
   }),
   interruptAsFork: (id) => self.interruptAsFork(id)
@@ -174,11 +172,11 @@ export const mapEffect = dual<
 export const mapFiber = dual<
   <E, E2, A, B>(
     f: (a: A) => Fiber.Fiber<E2, B>
-  ) => (self: Fiber.Fiber<E, A>) => Effect.Effect<never, never, Fiber.Fiber<E | E2, B>>,
+  ) => (self: Fiber.Fiber<E, A>) => Effect.Effect<Fiber.Fiber<E | E2, B>>,
   <E, A, E2, B>(
     self: Fiber.Fiber<E, A>,
     f: (a: A) => Fiber.Fiber<E2, B>
-  ) => Effect.Effect<never, never, Fiber.Fiber<E | E2, B>>
+  ) => Effect.Effect<Fiber.Fiber<E | E2, B>>
 >(2, <E, A, E2, B>(
   self: Fiber.Fiber<E, A>,
   f: (a: A) => Fiber.Fiber<E2, B>
@@ -267,8 +265,7 @@ export const orElseEither = dual<
 >(2, (self, that) => orElse(map(self, Either.left), map(that, Either.right)))
 
 /** @internal */
-export const poll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>> =>
-  self.poll
+export const poll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Option.Option<Exit.Exit<E, A>>> => self.poll
 
 // forked from https://github.com/sindresorhus/parse-ms/blob/4da2ffbdba02c6e288c08236695bdece0adca173/index.js
 // MIT License
@@ -303,7 +300,7 @@ const renderStatus = (status: FiberStatus.FiberStatus): string => {
 }
 
 /** @internal */
-export const pretty = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<never, never, string> =>
+export const pretty = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<string> =>
   core.flatMap(Clock.currentTimeMillis, (now) =>
     core.map(dump(self), (dump) => {
       const time = now - dump.id.startTimeMillis
@@ -329,11 +326,10 @@ export const pretty = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<neve
 export const unsafeRoots = (): Array<Fiber.RuntimeFiber<any, any>> => Array.from(fiberScope.globalScope.roots)
 
 /** @internal */
-export const roots: Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> = core.sync(unsafeRoots)
+export const roots: Effect.Effect<Array<Fiber.RuntimeFiber<any, any>>> = core.sync(unsafeRoots)
 
 /** @internal */
-export const status = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<never, never, FiberStatus.FiberStatus> =>
-  self.status
+export const status = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<FiberStatus.FiberStatus> => self.status
 
 /** @internal */
 export const succeed = <A>(value: A): Fiber.Fiber<never, A> => done(Exit.succeed(value))

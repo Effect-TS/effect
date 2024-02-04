@@ -13,7 +13,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
 
       yield* _(Effect.addFinalizer(() =>
         pipe(
-          Effect.async<never, never, void>((resume, signal) => {
+          Effect.async<void, never, never>((resume, signal) => {
             port.addEventListener("close", () => resume(Effect.unit), { once: true, signal })
             port.postMessage([1])
           }),

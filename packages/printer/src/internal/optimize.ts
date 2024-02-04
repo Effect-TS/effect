@@ -13,7 +13,7 @@ export const optimize = dual<
 const optimizeSafe = <A>(
   self: Doc.Doc<A>,
   depth: Optimize.Optimize.Depth
-): Effect.Effect<never, never, Doc.Doc<A>> => {
+): Effect.Effect<Doc.Doc<A>> => {
   switch (self._tag) {
     case "FlatAlt": {
       return Effect.zipWith(

@@ -9,7 +9,7 @@ export const it: API = V.it
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self: () => Effect.Effect<never, E, A>,
+    self: () => Effect.Effect<A, E>,
     timeout = 5_000
   ) => {
     return it(
@@ -25,7 +25,7 @@ export const effect = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: () => Effect.Effect<never, E, A>,
+      self: () => Effect.Effect<A, E>,
       timeout = 5_000
     ) => {
       return it.skip(
@@ -40,7 +40,7 @@ export const effect = (() => {
     },
     only: <E, A>(
       name: string,
-      self: () => Effect.Effect<never, E, A>,
+      self: () => Effect.Effect<A, E>,
       timeout = 5_000
     ) => {
       return it.only(

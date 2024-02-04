@@ -36,7 +36,7 @@ const SharedPoolLive = Resolver.makePoolLayer({
 
 const client = Client.make(schema)
 
-const runPromise = <E, A>(effect: Effect.Effect<never, E, A>) =>
+const runPromise = <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.runPromiseExit(effect).then((exit) => {
     if (Exit.isFailure(exit) && !Exit.isInterrupted(exit)) {
       throw Cause.squash(exit.cause)

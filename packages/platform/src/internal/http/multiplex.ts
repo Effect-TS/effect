@@ -20,7 +20,7 @@ class MultiplexImpl<R, E>
   constructor(
     readonly apps: ReadonlyArray<
       readonly [
-        predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R, E, boolean>,
+        predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>,
         app: App.Default<R, E>
       ]
     >
@@ -57,19 +57,19 @@ export const empty: Multiplex.Multiplex<never, never> = new MultiplexImpl([])
 /** @internal */
 export const make = <R, E>(
   apps: Iterable<
-    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R, E, boolean>, app: App.Default<R, E>]
+    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>, app: App.Default<R, E>]
   >
 ): Multiplex.Multiplex<R, E> => new MultiplexImpl(ReadonlyArray.fromIterable(apps))
 
 /** @internal */
 export const add = dual<
   <R2, E2, R3, E3>(
-    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R2, E2, boolean>,
+    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E2, R2>,
     app: App.Default<R3, E3>
   ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2 | R3, E | E2 | E3>,
   <R, E, R2, E2, R3, E3>(
     self: Multiplex.Multiplex<R, E>,
-    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<R2, E2, boolean>,
+    predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E2, R2>,
     app: App.Default<R3, E3>
   ) => Multiplex.Multiplex<R | R2 | R3, E | E2 | E3>
 >(
