@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.43.9
+
+### Patch Changes
+
+- [#2039](https://github.com/Effect-TS/effect/pull/2039) [`1b841a9`](https://github.com/Effect-TS/effect/commit/1b841a91fed86825cd2867cf1e68e41d8ff26b4e) Thanks [@tim-smart](https://github.com/tim-smart)! - fix ClientRequest.make signature (generic was unused)
+
 ## 0.43.8
 
 ### Patch Changes
