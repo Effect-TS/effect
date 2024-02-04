@@ -108,13 +108,13 @@ export interface ResultPersistence {
 export interface ResultPersistenceStore {
   readonly get: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>
-  ) => Effect.Effect<Option.Option<Exit.Exit<E, A>>, PersistenceError, R>
+  ) => Effect.Effect<Option.Option<Exit.Exit<A, E>>, PersistenceError, R>
   readonly getMany: <R, IE, E, IA, A>(
     key: ReadonlyArray<ResultPersistence.Key<R, IE, E, IA, A>>
-  ) => Effect.Effect<Array<Option.Option<Exit.Exit<E, A>>>, PersistenceError, R>
+  ) => Effect.Effect<Array<Option.Option<Exit.Exit<A, E>>>, PersistenceError, R>
   readonly set: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>,
-    value: Exit.Exit<E, A>
+    value: Exit.Exit<A, E>
   ) => Effect.Effect<void, PersistenceError, R>
   readonly remove: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>
@@ -170,7 +170,7 @@ export const layerResult = Layer.effect(
           const encode = <R, IE, E, IA, A>(
             method: string,
             key: ResultPersistence.Key<R, IE, E, IA, A>,
-            value: Exit.Exit<E, A>
+            value: Exit.Exit<A, E>
           ) =>
             Effect.mapError(
               Serializable.serializeExit(key, value),
