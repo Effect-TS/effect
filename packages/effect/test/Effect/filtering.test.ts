@@ -8,8 +8,8 @@ import { assert, describe } from "vitest"
 
 const exactlyOnce = <R, A, A1>(
   value: A,
-  f: (_: Effect.Effect<never, never, A>) => Effect.Effect<R, string, A1>
-): Effect.Effect<R, string, A1> => {
+  f: (_: Effect.Effect<A>) => Effect.Effect<A1, string, R>
+): Effect.Effect<A1, string, R> => {
   return Effect.gen(function*($) {
     const ref = yield* $(Ref.make(0))
     const res = yield* $(f(pipe(Ref.update(ref, (n) => n + 1), Effect.zipRight(Effect.succeed(value)))))

@@ -38,14 +38,14 @@ export const dataLoader = dual<
     }
   ) => <A extends Request.Request<any, any>>(
     self: RequestResolver.RequestResolver<A, never>
-  ) => Effect.Effect<Scope.Scope, never, RequestResolver.RequestResolver<A, never>>,
+  ) => Effect.Effect<RequestResolver.RequestResolver<A, never>, never, Scope.Scope>,
   <A extends Request.Request<any, any>>(
     self: RequestResolver.RequestResolver<A, never>,
     options: {
       readonly window: Duration.DurationInput
       readonly maxBatchSize?: number
     }
-  ) => Effect.Effect<Scope.Scope, never, RequestResolver.RequestResolver<A, never>>
+  ) => Effect.Effect<RequestResolver.RequestResolver<A, never>, never, Scope.Scope>
 >(2, <A extends Request.Request<any, any>>(
   self: RequestResolver.RequestResolver<A, never>,
   options: {
@@ -114,25 +114,25 @@ export const persisted = dual<
   (storeId: string) => <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
     self: RequestResolver.RequestResolver<Req, never>
   ) => Effect.Effect<
-    Persistence.ResultPersistence | Scope.Scope,
+    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
     never,
-    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>
+    Persistence.ResultPersistence | Scope.Scope
   >,
   <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
     self: RequestResolver.RequestResolver<Req, never>,
     storeId: string
   ) => Effect.Effect<
-    Persistence.ResultPersistence | Scope.Scope,
+    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
     never,
-    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>
+    Persistence.ResultPersistence | Scope.Scope
   >
 >(2, <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
   self: RequestResolver.RequestResolver<Req, never>,
   storeId: string
 ): Effect.Effect<
-  Persistence.ResultPersistence | Scope.Scope,
+  RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
   never,
-  RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>
+  Persistence.ResultPersistence | Scope.Scope
 > =>
   Effect.gen(function*(_) {
     const storage = yield* _(
@@ -155,18 +155,13 @@ export const persisted = dual<
     const set = (
       request: Req,
       result: Request.Request.Result<Req>
-    ): Effect.Effect<any, never, void> => Effect.ignoreLogged(storage.set(request as any, result))
+    ): Effect.Effect<void, never, any> => Effect.ignoreLogged(storage.set(request as any, result))
 
     return RequestResolver.makeBatched((requests: Array<Req>) =>
       Effect.flatMap(partition(requests), ([remaining, results]) => {
         const completeCached = Effect.forEach(
           results,
-          ([request, result]) =>
-            Request.complete(request, result as any) as Effect.Effect<
-              never,
-              never,
-              void
-            >,
+          ([request, result]) => Request.complete(request, result as any) as Effect.Effect<void>,
           { discard: true }
         )
         const completeUncached = pipe(

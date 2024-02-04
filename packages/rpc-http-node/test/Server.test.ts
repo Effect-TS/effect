@@ -27,7 +27,7 @@ describe("Server", () => {
   it("e2e", () =>
     pipe(
       Effect.acquireRelease(
-        Effect.async<never, never, Http.Server>((resume) => {
+        Effect.async<Http.Server, never, never>((resume) => {
           const server = Http.createServer((req, res) => Effect.runFork(handler(req, res)))
           server.listen(() => resume(Effect.succeed(server)))
         }),

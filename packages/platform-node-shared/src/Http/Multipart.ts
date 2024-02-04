@@ -28,9 +28,9 @@ export const persisted: (
   source: Readable,
   headers: IncomingHttpHeaders
 ) => Effect.Effect<
-  FileSystem.FileSystem | Path.Path | Scope.Scope,
+  Multipart.Persisted,
   Multipart.MultipartError,
-  Multipart.Persisted
+  FileSystem.FileSystem | Path.Path | Scope.Scope
 > = internal.persisted
 
 /**

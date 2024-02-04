@@ -94,8 +94,8 @@ export const releaseN: {
  * @category mutations
  */
 export const withPermit: {
-  (semaphore: TSemaphore): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(self: Effect.Effect<R, E, A>, semaphore: TSemaphore): Effect.Effect<R, E, A>
+  (semaphore: TSemaphore): <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <R, E, A>(self: Effect.Effect<A, E, R>, semaphore: TSemaphore): Effect.Effect<A, E, R>
 } = internal.withPermit
 
 /**
@@ -103,23 +103,23 @@ export const withPermit: {
  * @category mutations
  */
 export const withPermits: {
-  (semaphore: TSemaphore, permits: number): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(self: Effect.Effect<R, E, A>, semaphore: TSemaphore, permits: number): Effect.Effect<R, E, A>
+  (semaphore: TSemaphore, permits: number): <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <R, E, A>(self: Effect.Effect<A, E, R>, semaphore: TSemaphore, permits: number): Effect.Effect<A, E, R>
 } = internal.withPermits
 
 /**
  * @since 2.0.0
  * @category mutations
  */
-export const withPermitScoped: (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void> = internal.withPermitScoped
+export const withPermitScoped: (self: TSemaphore) => Effect.Effect<void, never, Scope.Scope> = internal.withPermitScoped
 
 /**
  * @since 2.0.0
  * @category mutations
  */
 export const withPermitsScoped: {
-  (permits: number): (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void>
-  (self: TSemaphore, permits: number): Effect.Effect<Scope.Scope, never, void>
+  (permits: number): (self: TSemaphore) => Effect.Effect<void, never, Scope.Scope>
+  (self: TSemaphore, permits: number): Effect.Effect<void, never, Scope.Scope>
 } = internal.withPermitsScoped
 
 /**

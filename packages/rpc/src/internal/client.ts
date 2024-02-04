@@ -60,7 +60,7 @@ export const make: <
   const S extends RpcService.DefinitionWithId,
   Resolver extends
     | RpcResolver<never>
-    | Effect.Effect<any, never, RpcResolver<never>>
+    | Effect.Effect<RpcResolver<never>, never, any>
 >(
   schemas: S,
   resolver: Resolver,
@@ -72,13 +72,12 @@ export const make: <
       options?: client.RpcClientOptions | undefined
     ]
 ) => [S] extends [RpcService.DefinitionWithSetup] ? Effect.Effect<
-    never,
-    RpcService.SetupError<S> | RpcError,
     client.RpcClient<
       S,
       [Resolver] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Resolver>
         : never
-    >
+    >,
+    RpcService.SetupError<S> | RpcError
   > :
   client.RpcClient<
     S,
@@ -86,7 +85,7 @@ export const make: <
       : never
   > = (
     schemas: RpcService.DefinitionWithId,
-    resolver: RpcResolver<never> | Effect.Effect<any, never, RpcResolver<never>>,
+    resolver: RpcResolver<never> | Effect.Effect<RpcResolver<never>, never, any>,
     initOrOptions?: unknown,
     options?: client.RpcClientOptions
   ) => {

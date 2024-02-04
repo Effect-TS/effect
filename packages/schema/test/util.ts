@@ -21,8 +21,8 @@ const doRoundtrip = true
 export const sleep = Effect.sleep(Duration.millis(10))
 
 const effectifyDecode = <R>(
-  decode: (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<R, ParseResult.ParseIssue, any>
-): (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<R, ParseResult.ParseIssue, any> =>
+  decode: (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, R>
+): (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, R> =>
 (input, options, ast) => ParseResult.flatMap(sleep, () => decode(input, options, ast))
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
@@ -224,7 +224,7 @@ export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).pipe(
 )
 
 export const expectFailure = async <A>(
-  effect: Either.Either<ParseResult.ParseError, A> | Effect.Effect<never, ParseResult.ParseError, A>,
+  effect: Either.Either<ParseResult.ParseError, A> | Effect.Effect<A, ParseResult.ParseError>,
   message: string
 ) => {
   if (Either.isEither(effect)) {
@@ -235,7 +235,7 @@ export const expectFailure = async <A>(
 }
 
 export const expectSuccess = async <E, A>(
-  effect: Either.Either<E, A> | Effect.Effect<never, E, A>,
+  effect: Either.Either<E, A> | Effect.Effect<A, E>,
   a: A
 ) => {
   if (Either.isEither(effect)) {
@@ -246,7 +246,7 @@ export const expectSuccess = async <E, A>(
 }
 
 export const expectEffectFailure = async <A>(
-  effect: Effect.Effect<never, ParseResult.ParseError, A>,
+  effect: Effect.Effect<A, ParseResult.ParseError>,
   message: string
 ) => {
   expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatError)))).toStrictEqual(
@@ -254,7 +254,7 @@ export const expectEffectFailure = async <A>(
   )
 }
 
-export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<never, E, A>, a: A) => {
+export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<A, E>, a: A) => {
   expect(await Effect.runPromise(Effect.either(effect))).toStrictEqual(
     Either.right(a)
   )

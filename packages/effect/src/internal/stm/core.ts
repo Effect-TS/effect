@@ -182,7 +182,7 @@ class STMPrimitive implements STM.STM<any, any, any> {
 export const isSTM = (u: unknown): u is STM.STM<unknown, unknown, unknown> => hasProperty(u, STMTypeId)
 
 /** @internal */
-export const commit = <R, E, A>(self: STM.STM<R, E, A>): Effect.Effect<R, E, A> =>
+export const commit = <R, E, A>(self: STM.STM<R, E, A>): Effect.Effect<A, E, R> =>
   unsafeAtomically(self, constVoid, constVoid)
 
 /** @internal */
@@ -190,8 +190,8 @@ export const unsafeAtomically = <R, E, A>(
   self: STM.STM<R, E, A>,
   onDone: (exit: Exit.Exit<E, A>) => unknown,
   onInterrupt: LazyArg<unknown>
-): Effect.Effect<R, E, A> =>
-  withFiberRuntime<R, E, A>((state) => {
+): Effect.Effect<A, E, R> =>
+  withFiberRuntime((state) => {
     const fiberId = state.id()
     const env = state.getFiberRef(FiberRef.currentContext) as Context.Context<R>
     const scheduler = state.getFiberRef(FiberRef.currentScheduler)
@@ -206,7 +206,7 @@ export const unsafeAtomically = <R, E, A>(
         const txnId = TxnId.make()
         const state: { value: STMState.STMState<E, A> } = { value: STMState.running }
         const effect = Effect.async(
-          (k: (effect: Effect.Effect<R, E, A>) => unknown): void =>
+          (k: (effect: Effect.Effect<A, E, R>) => unknown): void =>
             tryCommitAsync(fiberId, self, txnId, state, env, scheduler, priority, k)
         )
         return Effect.uninterruptibleMask((restore) =>
@@ -359,7 +359,7 @@ const tryCommitAsync = <R, E, A>(
   context: Context.Context<R>,
   scheduler: Scheduler.Scheduler,
   priority: number,
-  k: (effect: Effect.Effect<R, E, A>) => unknown
+  k: (effect: Effect.Effect<A, E, R>) => unknown
 ) => {
   if (STMState.isRunning(state.value)) {
     const result = tryCommit(fiberId, self, state, context, scheduler, priority)
@@ -397,7 +397,7 @@ const completeTodos = <E, A>(
 /** @internal */
 const completeTryCommit = <R, E, A>(
   exit: Exit.Exit<E, A>,
-  k: (effect: Effect.Effect<R, E, A>) => unknown
+  k: (effect: Effect.Effect<A, E, R>) => unknown
 ): void => {
   k(exit)
 }

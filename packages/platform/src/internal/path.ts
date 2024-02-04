@@ -28,7 +28,7 @@ export const layer = Layer.succeed(
  * - MIT
  */
 
-function fromFileUrl(url: URL): Effect.Effect<never, BadArgument, string> {
+function fromFileUrl(url: URL): Effect.Effect<string, BadArgument> {
   if (url.protocol !== "file:") {
     return Effect.fail(BadArgument({
       module: "Path",

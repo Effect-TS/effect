@@ -7,7 +7,7 @@ import { Effect, ReadonlyArray } from "effect"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(
-  self: Effect.Effect<CliApp.CliApp.Environment, E, A>
+  self: Effect.Effect<A, E, CliApp.CliApp.Environment>
 ): Promise<A> =>
   Effect.provide(self, NodeContext.layer).pipe(
     Effect.runPromise

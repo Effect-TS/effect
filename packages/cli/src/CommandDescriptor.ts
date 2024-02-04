@@ -114,7 +114,7 @@ export const getHelp: <A>(self: Command<A>, config: CliConfig) => HelpDoc = Inte
 export const getBashCompletions: <A>(
   self: Command<A>,
   programName: string
-) => Effect<never, never, Array<string>> = Internal.getBashCompletions
+) => Effect<Array<string>> = Internal.getBashCompletions
 
 /**
  * @since 1.0.0
@@ -123,7 +123,7 @@ export const getBashCompletions: <A>(
 export const getFishCompletions: <A>(
   self: Command<A>,
   programName: string
-) => Effect<never, never, Array<string>> = Internal.getFishCompletions
+) => Effect<Array<string>> = Internal.getFishCompletions
 
 /**
  * @since 1.0.0
@@ -132,7 +132,7 @@ export const getFishCompletions: <A>(
 export const getZshCompletions: <A>(
   self: Command<A>,
   programName: string
-) => Effect<never, never, Array<string>> = Internal.getZshCompletions
+) => Effect<Array<string>> = Internal.getZshCompletions
 
 /**
  * @since 1.0.0
@@ -166,8 +166,8 @@ export const map: {
  * @category combinators
  */
 export const mapEffect: {
-  <A, B>(f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): (self: Command<A>) => Command<B>
-  <A, B>(self: Command<A>, f: (a: A) => Effect<FileSystem | Path | Terminal, ValidationError, B>): Command<B>
+  <A, B>(f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): (self: Command<A>) => Command<B>
+  <A, B>(self: Command<A>, f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): Command<B>
 } = Internal.mapEffect
 
 /**
@@ -180,12 +180,12 @@ export const parse: {
     config: CliConfig
   ): <A>(
     self: Command<A>
-  ) => Effect<FileSystem | Path | Terminal, ValidationError, CommandDirective<A>>
+  ) => Effect<CommandDirective<A>, ValidationError, FileSystem | Path | Terminal>
   <A>(
     self: Command<A>,
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<FileSystem | Path | Terminal, ValidationError, CommandDirective<A>>
+  ): Effect<CommandDirective<A>, ValidationError, FileSystem | Path | Terminal>
 } = Internal.parse
 
 /**
@@ -262,17 +262,17 @@ export const wizard: {
   ): <A>(
     self: Command<A>
   ) => Effect<
-    FileSystem | Path | Terminal,
+    Array<string>,
     ValidationError | QuitException,
-    Array<string>
+    FileSystem | Path | Terminal
   >
   <A>(
     self: Command<A>,
     prefix: ReadonlyArray<string>,
     config: CliConfig
   ): Effect<
-    FileSystem | Path | Terminal,
+    Array<string>,
     ValidationError | QuitException,
-    Array<string>
+    FileSystem | Path | Terminal
   >
 } = Internal.wizard

@@ -11,7 +11,7 @@ import * as WorkerThreads from "node:worker_threads"
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>(shutdown: Effect.Effect<never, never, void>) {
+  start<I, O>(shutdown: Effect.Effect<void>) {
     return Effect.gen(function*(_) {
       if (!WorkerThreads.parentPort) {
         return yield* _(Effect.fail(WorkerError("spawn", "not in worker")))

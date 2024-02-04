@@ -116,7 +116,7 @@ export interface MemoMap {
   readonly getOrElseMemoize: <RIn, E, ROut>(
     layer: Layer<RIn, E, ROut>,
     scope: Scope.Scope
-  ) => Effect.Effect<RIn, E, Context.Context<ROut>>
+  ) => Effect.Effect<Context.Context<ROut>, E, RIn>
 }
 
 /**
@@ -144,7 +144,7 @@ export const isFresh: <R, E, A>(self: Layer<R, E, A>) => boolean = internal.isFr
  */
 export const build: <RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
-) => Effect.Effect<Scope.Scope | RIn, E, Context.Context<ROut>> = internal.build
+) => Effect.Effect<Context.Context<ROut>, E, Scope.Scope | RIn> = internal.build
 
 /**
  * Builds a layer into an `Effect` value. Any resources associated with this
@@ -157,8 +157,8 @@ export const build: <RIn, E, ROut>(
  * @category destructors
  */
 export const buildWithScope: {
-  (scope: Scope.Scope): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
-  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, scope: Scope.Scope): Effect.Effect<RIn, E, Context.Context<ROut>>
+  (scope: Scope.Scope): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<Context.Context<ROut>, E, RIn>
+  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, scope: Scope.Scope): Effect.Effect<Context.Context<ROut>, E, RIn>
 } = internal.buildWithScope
 
 /**
@@ -231,10 +231,10 @@ export const discard: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn, E,
 export const effect: {
   <T extends Context.Tag<any, any>>(
     tag: T
-  ): <R, E>(effect: Effect.Effect<R, E, Context.Tag.Service<T>>) => Layer<R, E, Context.Tag.Identifier<T>>
-  <T extends Context.Tag<any, any>, R, E>(
+  ): <E, R>(effect: Effect.Effect<Context.Tag.Service<T>, E, R>) => Layer<R, E, Context.Tag.Identifier<T>>
+  <T extends Context.Tag<any, any>, E, R>(
     tag: T,
-    effect: Effect.Effect<R, E, Context.Tag.Service<T>>
+    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ): Layer<R, E, Context.Tag.Identifier<T>>
 } = internal.fromEffect
 
@@ -244,7 +244,7 @@ export const effect: {
  * @since 2.0.0
  * @category constructors
  */
-export const effectDiscard: <R, E, _>(effect: Effect.Effect<R, E, _>) => Layer<R, E, never> = internal.fromEffectDiscard
+export const effectDiscard: <_, E, R>(effect: Effect.Effect<_, E, R>) => Layer<R, E, never> = internal.fromEffectDiscard
 
 /**
  * Constructs a layer from the specified effect, which must return one or more
@@ -253,7 +253,7 @@ export const effectDiscard: <R, E, _>(effect: Effect.Effect<R, E, _>) => Layer<R
  * @since 2.0.0
  * @category constructors
  */
-export const effectContext: <R, E, A>(effect: Effect.Effect<R, E, Context.Context<A>>) => Layer<R, E, A> =
+export const effectContext: <A, E, R>(effect: Effect.Effect<Context.Context<A>, E, R>) => Layer<R, E, A> =
   internal.fromEffectContext
 
 /**
@@ -366,7 +366,7 @@ export {
  * @since 2.0.0
  * @category conversions
  */
-export const launch: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, never> = internal.launch
+export const launch: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<never, E, RIn> = internal.launch
 
 /**
  * Returns a new layer whose output is mapped by the specified function.
@@ -447,7 +447,7 @@ export const matchCause: {
  */
 export const memoize: <RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
-) => Effect.Effect<Scope.Scope, never, Layer<RIn, E, ROut>> = internal.memoize
+) => Effect.Effect<Layer<RIn, E, ROut>, never, Scope.Scope> = internal.memoize
 
 /**
  * Merges this layer with the specified layer concurrently, producing a new layer with combined input and output types.
@@ -620,11 +620,11 @@ export const scoped: {
   <T extends Context.Tag<any, any>>(
     tag: T
   ): <R, E>(
-    effect: Effect.Effect<R, E, Context.Tag.Service<T>>
+    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ) => Layer<Exclude<R, Scope.Scope>, E, Context.Tag.Identifier<T>>
   <T extends Context.Tag<any, any>, R, E>(
     tag: T,
-    effect: Effect.Effect<R, E, Context.Tag.Service<T>>
+    effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ): Layer<Exclude<R, Scope.Scope>, E, Context.Tag.Identifier<T>>
 } = internal.scoped
 
@@ -634,7 +634,7 @@ export const scoped: {
  * @since 2.0.0
  * @category constructors
  */
-export const scopedDiscard: <R, E, T>(effect: Effect.Effect<R, E, T>) => Layer<Exclude<R, Scope.Scope>, E, never> =
+export const scopedDiscard: <_, E, R>(effect: Effect.Effect<_, E, R>) => Layer<Exclude<R, Scope.Scope>, E, never> =
   internal.scopedDiscard
 
 /**
@@ -644,8 +644,8 @@ export const scopedDiscard: <R, E, T>(effect: Effect.Effect<R, E, T>) => Layer<E
  * @since 2.0.0
  * @category constructors
  */
-export const scopedContext: <R, E, A>(
-  effect: Effect.Effect<R, E, Context.Context<A>>
+export const scopedContext: <A, E, R>(
+  effect: Effect.Effect<Context.Context<A>, E, R>
 ) => Layer<Exclude<R, Scope.Scope>, E, A> = internal.scopedContext
 
 /**
@@ -726,11 +726,11 @@ export const syncContext: <A>(evaluate: LazyArg<Context.Context<A>>) => Layer<ne
  */
 export const tap: {
   <ROut, XR extends ROut, RIn2, E2, X>(
-    f: (context: Context.Context<XR>) => Effect.Effect<RIn2, E2, X>
+    f: (context: Context.Context<XR>) => Effect.Effect<X, E2, RIn2>
   ): <RIn, E>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E2 | E, ROut>
   <RIn, E, ROut, XR extends ROut, RIn2, E2, X>(
     self: Layer<RIn, E, ROut>,
-    f: (context: Context.Context<XR>) => Effect.Effect<RIn2, E2, X>
+    f: (context: Context.Context<XR>) => Effect.Effect<X, E2, RIn2>
   ): Layer<RIn | RIn2, E | E2, ROut>
 } = internal.tap
 
@@ -742,11 +742,11 @@ export const tap: {
  */
 export const tapError: {
   <E, XE extends E, RIn2, E2, X>(
-    f: (e: XE) => Effect.Effect<RIn2, E2, X>
+    f: (e: XE) => Effect.Effect<X, E2, RIn2>
   ): <RIn, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E | E2, ROut>
   <RIn, E, XE extends E, ROut, RIn2, E2, X>(
     self: Layer<RIn, E, ROut>,
-    f: (e: XE) => Effect.Effect<RIn2, E2, X>
+    f: (e: XE) => Effect.Effect<X, E2, RIn2>
   ): Layer<RIn | RIn2, E | E2, ROut>
 } = internal.tapError
 
@@ -758,11 +758,11 @@ export const tapError: {
  */
 export const tapErrorCause: {
   <E, XE extends E, RIn2, E2, X>(
-    f: (cause: Cause.Cause<XE>) => Effect.Effect<RIn2, E2, X>
+    f: (cause: Cause.Cause<XE>) => Effect.Effect<X, E2, RIn2>
   ): <RIn, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E | E2, ROut>
   <RIn, E, XE extends E, ROut, RIn2, E2, X>(
     self: Layer<RIn, E, ROut>,
-    f: (cause: Cause.Cause<XE>) => Effect.Effect<RIn2, E2, X>
+    f: (cause: Cause.Cause<XE>) => Effect.Effect<X, E2, RIn2>
   ): Layer<RIn | RIn2, E | E2, ROut>
 } = internal.tapErrorCause
 
@@ -775,7 +775,7 @@ export const tapErrorCause: {
  */
 export const toRuntime: <RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
-) => Effect.Effect<Scope.Scope | RIn, E, Runtime.Runtime<ROut>> = internal.toRuntime
+) => Effect.Effect<Runtime.Runtime<ROut>, E, Scope.Scope | RIn> = internal.toRuntime
 
 /**
  * Feeds the output services of this builder into the input of the specified
@@ -836,7 +836,7 @@ export const zipWith: {
  * @since 2.0.0
  * @category utils
  */
-export const unwrapEffect: <R, E, R1, E1, A>(self: Effect.Effect<R, E, Layer<R1, E1, A>>) => Layer<R | R1, E | E1, A> =
+export const unwrapEffect: <R, E, R1, E1, A>(self: Effect.Effect<Layer<R1, E1, A>, E, R>) => Layer<R | R1, E | E1, A> =
   internal.unwrapEffect
 
 /**
@@ -844,7 +844,7 @@ export const unwrapEffect: <R, E, R1, E1, A>(self: Effect.Effect<R, E, Layer<R1,
  * @category utils
  */
 export const unwrapScoped: <R, E, R1, E1, A>(
-  self: Effect.Effect<R, E, Layer<R1, E1, A>>
+  self: Effect.Effect<Layer<R1, E1, A>, E, R>
 ) => Layer<R1 | Exclude<R, Scope.Scope>, E | E1, A> = internal.unwrapScoped
 
 /**
@@ -902,13 +902,13 @@ export const setRequestCaching: (requestCaching: boolean) => Layer<never, never,
  * @category requests & batching
  */
 export const setRequestCache: {
-  <R, E>(
-    cache: Effect.Effect<R, E, Request.Cache>
+  <E, R>(
+    cache: Effect.Effect<Request.Cache, E, R>
   ): Layer<Exclude<R, Scope.Scope>, E, never>
   (
     cache: Request.Cache
   ): Layer<never, never, never>
-} = (<R, E>(cache: Request.Cache | Effect.Effect<R, E, Request.Cache>) =>
+} = (<R, E>(cache: Request.Cache | Effect.Effect<Request.Cache, E, R>) =>
   scopedDiscard(
     core.isEffect(cache) ?
       core.flatMap(cache, (x) => fiberRuntime.fiberRefLocallyScoped(query.currentCache as any, x)) :
@@ -943,7 +943,7 @@ export const span: (
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
     readonly onEnd?:
-      | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+      | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
       | undefined
   }
 ) => Layer<never, never, Tracer.ParentSpan> = circularLayer.span
@@ -990,7 +990,7 @@ export const withSpan: {
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
       readonly onEnd?:
-        | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+        | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
         | undefined
     }
   ): <R, E, A>(self: Layer<R, E, A>) => Layer<Exclude<R, Tracer.ParentSpan>, E, A>
@@ -1004,7 +1004,7 @@ export const withSpan: {
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
       readonly onEnd?:
-        | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+        | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
         | undefined
     }
   ): Layer<Exclude<R, Tracer.ParentSpan>, E, A>
@@ -1029,7 +1029,7 @@ export const withParentSpan: {
  * @since 2.0.0
  * @category memo map
  */
-export const makeMemoMap: Effect.Effect<never, never, MemoMap> = internal.makeMemoMap
+export const makeMemoMap: Effect.Effect<MemoMap> = internal.makeMemoMap
 
 /**
  * Builds a layer into an `Effect` value, using the specified `MemoMap` to memoize
@@ -1042,10 +1042,10 @@ export const buildWithMemoMap: {
   (
     memoMap: MemoMap,
     scope: Scope.Scope
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
+  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<Context.Context<ROut>, E, RIn>
   <RIn, E, ROut>(
     self: Layer<RIn, E, ROut>,
     memoMap: MemoMap,
     scope: Scope.Scope
-  ): Effect.Effect<RIn, E, Context.Context<ROut>>
+  ): Effect.Effect<Context.Context<ROut>, E, RIn>
 } = internal.buildWithMemoMap

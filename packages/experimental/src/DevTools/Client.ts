@@ -42,7 +42,7 @@ export const Client = Context.GenericTag<Client, ClientImpl>("@effect/experiment
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<Scope.Scope | Socket.Socket, never, ClientImpl> = Effect.gen(function*(_) {
+export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*(_) {
   const socket = yield* _(Socket.Socket)
   const requests = yield* _(Effect.acquireRelease(
     Queue.sliding<Domain.Request>(1024),
@@ -156,7 +156,7 @@ export const layer: Layer.Layer<Socket.Socket, never, Client> = Layer.scoped(Cli
  * @since 1.0.0
  * @category constructors
  */
-export const makeTracer: Effect.Effect<Client, never, Tracer.Tracer> = Effect.gen(function*(_) {
+export const makeTracer: Effect.Effect<Tracer.Tracer, never, Client> = Effect.gen(function*(_) {
   const client = yield* _(Client)
   const currentTracer = yield* _(Effect.tracer)
 

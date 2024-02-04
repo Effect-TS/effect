@@ -157,7 +157,7 @@ export const unsafeJson: (body: unknown) => Uint8Array = internal.unsafeJson
  * @since 1.0.0
  * @category constructors
  */
-export const json: (body: unknown) => Effect.Effect<never, BodyError, Uint8Array> = internal.json
+export const json: (body: unknown) => Effect.Effect<Uint8Array, BodyError> = internal.json
 
 /**
  * @since 1.0.0
@@ -165,7 +165,7 @@ export const json: (body: unknown) => Effect.Effect<never, BodyError, Uint8Array
  */
 export const jsonSchema: <A, I, R>(
   schema: Schema.Schema<A, I, R>
-) => (body: A) => Effect.Effect<R, BodyError, Uint8Array> = internal.jsonSchema
+) => (body: A) => Effect.Effect<Uint8Array, BodyError, R> = internal.jsonSchema
 
 /**
  * @since 1.0.0
@@ -217,7 +217,7 @@ export const stream: (
 export const file: (
   path: string,
   options?: FileSystem.StreamOptions & { readonly contentType?: string }
-) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Stream> = internal.file
+) => Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> = internal.file
 
 /**
  * @since 1.0.0
@@ -227,7 +227,7 @@ export const fileInfo: (
   path: string,
   info: FileSystem.File.Info,
   options?: FileSystem.StreamOptions & { readonly contentType?: string }
-) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Stream> = internal.fileInfo
+) => Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> = internal.fileInfo
 
 /**
  * @since 1.0.0

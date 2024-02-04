@@ -28,8 +28,8 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
     return Option.fromNullable(this.remoteAddressOverride ?? this.source.socket.remoteAddress)
   }
 
-  private textEffect: Effect.Effect<never, E, string> | undefined
-  get text(): Effect.Effect<never, E, string> {
+  private textEffect: Effect.Effect<string, E> | undefined
+  get text(): Effect.Effect<string, E> {
     if (this.textEffect) {
       return this.textEffect
     }
@@ -46,14 +46,14 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
     return this.textEffect
   }
 
-  get json(): Effect.Effect<never, E, unknown> {
+  get json(): Effect.Effect<unknown, E> {
     return Effect.tryMap(this.text, {
       try: (_) => _ === "" ? null : JSON.parse(_) as unknown,
       catch: this.onError
     })
   }
 
-  get urlParamsBody(): Effect.Effect<never, E, UrlParams.UrlParams> {
+  get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, E> {
     return Effect.flatMap(this.text, (_) =>
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),
@@ -68,7 +68,7 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
     )
   }
 
-  get arrayBuffer(): Effect.Effect<never, E, ArrayBuffer> {
+  get arrayBuffer(): Effect.Effect<ArrayBuffer, E> {
     return Effect.flatMap(
       FiberRef.get(IncomingMessage.maxBodySize),
       (maxBodySize) =>

@@ -1,5 +1,5 @@
 /**
- * The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
+ * The `Effect<A, E, R>` type is polymorphic in values of type `E` and we can
  * work with any error type that we want. However, there is a lot of information
  * that is not inside an arbitrary `E` value. So as a result, an `Effect` needs
  * somewhere to store things like unexpected errors or defects, stack and
