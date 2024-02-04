@@ -45,7 +45,7 @@ export const empty: ClientRequest.ClientRequest = new ClientRequestImpl(
 )
 
 /** @internal */
-export const make = <M extends Method>(method: Method) =>
+export const make = <M extends Method>(method: M) =>
 (
   url: string | URL,
   options?: M extends "GET" | "HEAD" ? ClientRequest.Options.NoBody : ClientRequest.Options.NoUrl
