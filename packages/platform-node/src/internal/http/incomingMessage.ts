@@ -61,7 +61,7 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
       }))
   }
 
-  get stream(): Stream.Stream<never, E, Uint8Array> {
+  get stream(): Stream.Stream<Uint8Array, E> {
     return NodeStream.fromReadable<E, Uint8Array>(
       () => this.source,
       this.onError

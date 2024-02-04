@@ -2013,7 +2013,7 @@ export const toSink: <Env, InErr, InElem, OutErr, OutElem, OutDone>(
  */
 export const toStream: <Env, OutErr, OutElem, OutDone>(
   self: Channel<Env, unknown, unknown, unknown, OutErr, Chunk.Chunk<OutElem>, OutDone>
-) => Stream.Stream<Env, OutErr, OutElem> = stream.channelToStream
+) => Stream.Stream<OutElem, OutErr, Env> = stream.channelToStream
 
 /**
  * @since 2.0.0
