@@ -1,5 +1,12 @@
 # @effect/rpc-http
 
+## 0.25.22
+
+### Patch Changes
+
+- Updated dependencies [[`32bf796`](https://github.com/Effect-TS/effect/commit/32bf796c3e5db1b2b68e8b1b20db664295991643)]:
+  - @effect/platform@0.43.8
+
 ## 0.25.21
 
 ### Patch Changes
