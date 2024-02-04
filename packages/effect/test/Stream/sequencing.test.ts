@@ -67,7 +67,7 @@ describe("Stream", () => {
 
   it.effect("flatMap - deep flatMap stack safety", () =>
     Effect.gen(function*($) {
-      const fib = (n: number): Stream.Stream<never, never, number> =>
+      const fib = (n: number): Stream.Stream<number> =>
         n <= 1 ?
           Stream.succeed(n) :
           pipe(
