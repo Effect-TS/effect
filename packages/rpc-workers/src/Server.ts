@@ -13,7 +13,7 @@ import * as internal from "./internal/server.js"
  * @since 1.0.0
  */
 export const make: <R extends RpcRouter.Base>(router: R) => Effect.Effect<
-  Scope | Runner.PlatformRunner | RpcRouter.Services<R>,
+  void,
   Error.WorkerError,
-  void
+  Scope | Runner.PlatformRunner | RpcRouter.Services<R>
 > = internal.make
