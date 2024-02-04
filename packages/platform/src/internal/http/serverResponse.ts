@@ -42,7 +42,7 @@ class ServerResponseImpl extends Effectable.StructuralClass<never, never, Server
     }
   }
 
-  commit(): Effect.Effect<never, never, ServerResponse.ServerResponse> {
+  commit(): Effect.Effect<ServerResponse.ServerResponse> {
     return Effect.succeed(this)
   }
 
@@ -95,7 +95,7 @@ export const text = (body: string, options?: ServerResponse.Options.WithContentT
 export const json = (
   body: unknown,
   options?: ServerResponse.Options.WithContent
-): Effect.Effect<never, Body.BodyError, ServerResponse.ServerResponse> =>
+): Effect.Effect<ServerResponse.ServerResponse, Body.BodyError> =>
   Effect.map(internalBody.json(body), (body) =>
     new ServerResponseImpl(
       options?.status ?? 200,
@@ -124,7 +124,7 @@ export const schemaJson = <A, I, R>(
   return (
     body: A,
     options?: ServerResponse.Options.WithContent
-  ): Effect.Effect<R, Body.BodyError, ServerResponse.ServerResponse> =>
+  ): Effect.Effect<ServerResponse.ServerResponse, Body.BodyError, R> =>
     Effect.map(encode(body), (body) =>
       new ServerResponseImpl(
         options?.status ?? 200,
@@ -138,7 +138,7 @@ export const schemaJson = <A, I, R>(
 export const file = (
   path: string,
   options?: ServerResponse.Options & FileSystem.StreamOptions
-): Effect.Effect<Platform.Platform, PlatformError.PlatformError, ServerResponse.ServerResponse> =>
+): Effect.Effect<ServerResponse.ServerResponse, PlatformError.PlatformError, Platform.Platform> =>
   Effect.flatMap(
     Platform.Platform,
     (platform) => platform.fileResponse(path, options)
@@ -148,7 +148,7 @@ export const file = (
 export const fileWeb = (
   file: Body.Body.FileLike,
   options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
-): Effect.Effect<Platform.Platform, never, ServerResponse.ServerResponse> =>
+): Effect.Effect<ServerResponse.ServerResponse, never, Platform.Platform> =>
   Effect.flatMap(
     Platform.Platform,
     (platform) => platform.fileWebResponse(file, options)

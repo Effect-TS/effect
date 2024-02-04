@@ -64,11 +64,11 @@ export const make: <A>(config: CliApp.ConstructorArgs<A>) => CliApp<A> = Interna
 export const run: {
   <R, E, A>(
     args: ReadonlyArray<string>,
-    execute: (a: A) => Effect<R, E, void>
-  ): (self: CliApp<A>) => Effect<CliApp.Environment | R, ValidationError | E, void>
+    execute: (a: A) => Effect<void, E, R>
+  ): (self: CliApp<A>) => Effect<void | E, CliApp.Environment | R, ValidationError>
   <R, E, A>(
     self: CliApp<A>,
     args: ReadonlyArray<string>,
-    execute: (a: A) => Effect<R, E, void>
-  ): Effect<CliApp.Environment | R, ValidationError | E, void>
+    execute: (a: A) => Effect<void, E, R>
+  ): Effect<void | E, CliApp.Environment | R, ValidationError>
 } = InternalCliApp.run

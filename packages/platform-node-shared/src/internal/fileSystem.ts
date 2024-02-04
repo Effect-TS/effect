@@ -326,7 +326,7 @@ const makeFile = (() => {
       )
     }
 
-    private writeAllChunk(buffer: Uint8Array): Effect.Effect<never, Error.PlatformError, void> {
+    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, Error.PlatformError> {
       return Effect.flatMap(
         Effect.suspend(() =>
           nodeWriteAll(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(this.position))
@@ -396,13 +396,13 @@ const readDirectory = (() => {
   )
 
   return (path: string, options?: FileSystem.ReadDirectoryOptions) =>
-    nodeReadDirectory(path, options) as Effect.Effect<never, Error.PlatformError, ReadonlyArray<string>>
+    nodeReadDirectory(path, options) as Effect.Effect<ReadonlyArray<string>, Error.PlatformError>
 })()
 
 // == readFile
 
 const readFile = (path: string) =>
-  Effect.async<never, Error.PlatformError, Uint8Array>((resume, signal) => {
+  Effect.async<Uint8Array, Error.PlatformError, never>((resume, signal) => {
     try {
       NFS.readFile(path, { signal }, (err, data) => {
         if (err) {
@@ -527,7 +527,7 @@ const utimes = (() => {
 // == writeFile
 
 const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFileOptions) =>
-  Effect.async<never, Error.PlatformError, void>((resume, signal) => {
+  Effect.async<void, Error.PlatformError, never>((resume, signal) => {
     try {
       NFS.writeFile(path, data, {
         signal,

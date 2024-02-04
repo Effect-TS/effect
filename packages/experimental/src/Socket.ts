@@ -42,9 +42,9 @@ export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
 export interface Socket {
   readonly [SocketTypeId]: SocketTypeId
   readonly run: <R, E, _>(
-    handler: (_: Uint8Array) => Effect.Effect<R, E, _>
-  ) => Effect.Effect<R, SocketError, void>
-  readonly writer: Effect.Effect<Scope.Scope, never, (chunk: Uint8Array) => Effect.Effect<never, never, void>>
+    handler: (_: Uint8Array) => Effect.Effect<_, E, R>
+  ) => Effect.Effect<void, SocketError, R>
+  readonly writer: Effect.Effect<(chunk: Uint8Array) => Effect.Effect<void>, never, Scope.Scope>
   // readonly messages: Queue.Dequeue<Uint8Array>
 }
 
@@ -173,9 +173,9 @@ export const WebSocket: Context.Tag<WebSocket, globalThis.WebSocket> = Context.G
  * @since 1.0.0
  * @category constructors
  */
-export const makeWebSocket = (url: string | Effect.Effect<never, never, string>, options?: {
+export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Effect.Effect<never, never, Socket> =>
+}): Effect.Effect<Socket> =>
   fromWebSocket(
     Effect.acquireRelease(
       Effect.map(
@@ -195,16 +195,16 @@ export const makeWebSocket = (url: string | Effect.Effect<never, never, string>,
  * @category constructors
  */
 export const fromWebSocket = (
-  acquire: Effect.Effect<Scope.Scope, SocketError, globalThis.WebSocket>,
+  acquire: Effect.Effect<globalThis.WebSocket, SocketError, Scope.Scope>,
   options?: {
     readonly closeCodeIsError?: (code: number) => boolean
   }
-): Effect.Effect<never, never, Socket> =>
+): Effect.Effect<Socket> =>
   Effect.gen(function*(_) {
     const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
     const sendQueue = yield* _(Queue.unbounded<Uint8Array>())
 
-    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<R, E, _>) =>
+    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const ws = yield* _(acquire)
         const encoder = new TextEncoder()
@@ -227,7 +227,7 @@ export const fromWebSocket = (
         }
 
         if (ws.readyState !== IsoWebSocket.OPEN) {
-          yield* _(Effect.async<never, SocketError, void>((resume) => {
+          yield* _(Effect.async<void, SocketError, never>((resume) => {
             ws.onopen = () => {
               resume(Effect.unit)
             }
@@ -250,7 +250,7 @@ export const fromWebSocket = (
         )
 
         yield* _(
-          Effect.async<never, SocketError, void>((resume) => {
+          Effect.async<void, SocketError, never>((resume) => {
             ws.onclose = (event) => {
               if (closeCodeIsError(event.code)) {
                 resume(Effect.fail(new SocketError({ reason: "Close", error: event })))

@@ -17,7 +17,7 @@ export const fileParsers: Record<string, (content: string) => unknown> = {
 /** @internal */
 export const read = (
   path: string
-): Effect.Effect<FileSystem.FileSystem, string, readonly [path: string, content: Uint8Array]> =>
+): Effect.Effect<readonly [path: string, content: Uint8Array], string, FileSystem.FileSystem> =>
   Effect.flatMap(
     FileSystem.FileSystem,
     (fs) =>
@@ -30,7 +30,7 @@ export const read = (
 /** @internal */
 export const readString = (
   path: string
-): Effect.Effect<FileSystem.FileSystem, string, readonly [path: string, content: string]> =>
+): Effect.Effect<readonly [path: string, content: string], string, FileSystem.FileSystem> =>
   Effect.flatMap(
     FileSystem.FileSystem,
     (fs) =>
@@ -45,7 +45,7 @@ export const parse = (
   path: string,
   content: string,
   format?: "json" | "yaml" | "ini" | "toml"
-): Effect.Effect<never, string, unknown> => {
+): Effect.Effect<unknown, string> => {
   const parser = fileParsers[format ?? path.split(".").pop() as string]
   if (parser === undefined) {
     return Effect.fail(`Unsupported file format: ${format}`)

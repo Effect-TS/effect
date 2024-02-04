@@ -43,7 +43,7 @@ export const dieMessage = (message: string): Take.Take<never, never> =>
   new TakeImpl(Exit.die(new Cause.RuntimeException(message)))
 
 /** @internal */
-export const done = <E, A>(self: Take.Take<E, A>): Effect.Effect<never, Option.Option<E>, Chunk.Chunk<A>> =>
+export const done = <E, A>(self: Take.Take<E, A>): Effect.Effect<Chunk.Chunk<A>, Option.Option<E>> =>
   Effect.suspend(() => self.exit)
 
 /** @internal */
@@ -57,7 +57,7 @@ export const failCause = <E>(cause: Cause.Cause<E>): Take.Take<E, never> =>
   new TakeImpl(Exit.failCause(pipe(cause, Cause.map(Option.some))))
 
 /** @internal */
-export const fromEffect = <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, never, Take.Take<E, A>> =>
+export const fromEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<Take.Take<E, A>, never, R> =>
   Effect.matchCause(effect, { onFailure: failCause, onSuccess: of })
 
 /** @internal */
@@ -65,9 +65,9 @@ export const fromExit = <E, A>(exit: Exit.Exit<E, A>): Take.Take<E, A> =>
   new TakeImpl(pipe(exit, Exit.mapBoth({ onFailure: Option.some, onSuccess: Chunk.of })))
 
 /** @internal */
-export const fromPull = <R, E, A>(
-  pull: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>
-): Effect.Effect<R, never, Take.Take<E, A>> =>
+export const fromPull = <A, E, R>(
+  pull: Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, R>
+): Effect.Effect<Take.Take<E, A>, never, R> =>
   Effect.matchCause(pull, {
     onFailure: (cause) =>
       Option.match(Cause.flipCauseOption(cause), {
@@ -141,30 +141,30 @@ export const match = dual<
 export const matchEffect = dual<
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     options: {
-      readonly onEnd: Effect.Effect<R, E2, Z>
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+      readonly onEnd: Effect.Effect<Z, E2, R>
+      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<Z2, E2, R2>
+      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<Z3, E3, R3>
     }
-  ) => (self: Take.Take<E, A>) => Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>,
+  ) => (self: Take.Take<E, A>) => Effect.Effect<Z | Z2 | Z3, E2 | E | E3, R | R2 | R3>,
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     self: Take.Take<E, A>,
     options: {
-      readonly onEnd: Effect.Effect<R, E2, Z>
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+      readonly onEnd: Effect.Effect<Z, E2, R>
+      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<Z2, E2, R2>
+      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<Z3, E3, R3>
     }
-  ) => Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+  ) => Effect.Effect<Z | Z2 | Z3, E2 | E | E3, R | R2 | R3>
 >(2, <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
   self: Take.Take<E, A>,
   { onEnd, onFailure, onSuccess }: {
-    readonly onEnd: Effect.Effect<R, E2, Z>
-    readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-    readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+    readonly onEnd: Effect.Effect<Z, E2, R>
+    readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<Z2, E2, R2>
+    readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<Z3, E3, R3>
   }
-): Effect.Effect<R | R2 | R3, E | E2 | E3, Z | Z2 | Z3> =>
-  Exit.matchEffect<Option.Option<E>, Chunk.Chunk<A>, R | R2, E | E2, Z | Z2, R3, E3, Z3>(self.exit, {
+): Effect.Effect<Z | Z2 | Z3, E2 | E | E3, R | R2 | R3> =>
+  Exit.matchEffect(self.exit, {
     onFailure: (cause) =>
-      Option.match(Cause.flipCauseOption(cause), {
+      Option.match<Cause.Cause<E>, Effect.Effect<Z | Z2, E2 | E, R | R2>>(Cause.flipCauseOption(cause), {
         onNone: () => onEnd,
         onSome: onFailure
       }),
@@ -187,13 +187,13 @@ export const of = <A>(value: A): Take.Take<never, A> => new TakeImpl(Exit.succee
 /** @internal */
 export const tap = dual<
   <A, R, E2, _>(
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ) => <E>(self: Take.Take<E, A>) => Effect.Effect<R, E2 | E, void>,
+    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
+  ) => <E>(self: Take.Take<E, A>) => Effect.Effect<void, E2 | E, R>,
   <E, A, R, E2, _>(
     self: Take.Take<E, A>,
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ) => Effect.Effect<R, E2 | E, void>
+    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
+  ) => Effect.Effect<void, E2 | E, R>
 >(2, <E, A, R, E2, _>(
   self: Take.Take<E, A>,
-  f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-): Effect.Effect<R, E | E2, void> => pipe(self.exit, Exit.forEachEffect(f), Effect.asUnit))
+  f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
+): Effect.Effect<void, E2 | E, R> => pipe(self.exit, Exit.forEachEffect(f), Effect.asUnit))

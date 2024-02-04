@@ -22,7 +22,7 @@ const MainLive = Effect.gen(function*(_) {
 }).pipe(Layer.unwrapEffect)
 
 const runEffect = <E, A>(
-  self: Effect.Effect<CliApp.CliApp.Environment, E, A>
+  self: Effect.Effect<A, E, CliApp.CliApp.Environment>
 ): Promise<A> => Effect.provide(self, MainLive).pipe(Effect.runPromise)
 
 describe("Wizard", () => {

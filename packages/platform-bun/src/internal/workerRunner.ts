@@ -12,7 +12,7 @@ declare const self: Worker
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>(shutdown: Effect.Effect<never, never, void>) {
+  start<I, O>(shutdown: Effect.Effect<void>) {
     return Effect.gen(function*(_) {
       if (!("postMessage" in self)) {
         return yield* _(Effect.die("not in a worker"))

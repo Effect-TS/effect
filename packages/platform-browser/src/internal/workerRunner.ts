@@ -11,11 +11,11 @@ import type { WorkerRunner } from "../index.js"
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>(shutdown: Effect.Effect<never, never, void>) {
+  start<I, O>(shutdown: Effect.Effect<void>) {
     return Effect.gen(function*(_) {
       const port = "postMessage" in self ?
         self :
-        (yield* _(Effect.async<never, never, MessagePort>((resume, signal) => {
+        (yield* _(Effect.async<MessagePort, never, never>((resume, signal) => {
           self.addEventListener("connect", function(event) {
             const port = (event as MessageEvent).ports[0]
             port.start()

@@ -23,7 +23,7 @@ export interface FileSystem {
   readonly access: (
     path: string,
     options?: AccessFileOptions
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Copy a file or directory from `fromPath` to `toPath`.
    *
@@ -33,21 +33,21 @@ export interface FileSystem {
     fromPath: string,
     toPath: string,
     options?: CopyOptions
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Copy a file from `fromPath` to `toPath`.
    */
   readonly copyFile: (
     fromPath: string,
     toPath: string
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Change the permissions of a file.
    */
   readonly chmod: (
     path: string,
     mode: number
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Change the owner and group of a file.
    */
@@ -55,20 +55,20 @@ export interface FileSystem {
     path: string,
     uid: number,
     gid: number
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Check if a path exists.
    */
   readonly exists: (
     path: string
-  ) => Effect.Effect<never, PlatformError, boolean>
+  ) => Effect.Effect<boolean, PlatformError>
   /**
    * Create a hard link from `fromPath` to `toPath`.
    */
   readonly link: (
     fromPath: string,
     toPath: string
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Create a directory at `path`. You can optionally specify the mode and
    * whether to recursively create nested directories.
@@ -76,7 +76,7 @@ export interface FileSystem {
   readonly makeDirectory: (
     path: string,
     options?: MakeDirectoryOptions
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Create a temporary directory.
    *
@@ -89,7 +89,7 @@ export interface FileSystem {
    */
   readonly makeTempDirectory: (
     options?: MakeTempDirectoryOptions
-  ) => Effect.Effect<never, PlatformError, string>
+  ) => Effect.Effect<string, PlatformError>
   /**
    * Create a temporary directory inside a scope.
    *
@@ -98,7 +98,7 @@ export interface FileSystem {
    */
   readonly makeTempDirectoryScoped: (
     options?: MakeTempDirectoryOptions
-  ) => Effect.Effect<Scope, PlatformError, string>
+  ) => Effect.Effect<string, PlatformError, Scope>
   /**
    * Create a temporary file.
    * The directory creation is functionally equivalent to `makeTempDirectory`.
@@ -106,7 +106,7 @@ export interface FileSystem {
    */
   readonly makeTempFile: (
     options?: MakeTempFileOptions
-  ) => Effect.Effect<never, PlatformError, string>
+  ) => Effect.Effect<string, PlatformError>
   /**
    * Create a temporary file inside a scope.
    *
@@ -115,7 +115,7 @@ export interface FileSystem {
    */
   readonly makeTempFileScoped: (
     options?: MakeTempFileOptions
-  ) => Effect.Effect<Scope, PlatformError, string>
+  ) => Effect.Effect<string, PlatformError, Scope>
   /**
    * Open a file at `path` with the specified `options`.
    *
@@ -124,7 +124,7 @@ export interface FileSystem {
   readonly open: (
     path: string,
     options?: OpenFileOptions
-  ) => Effect.Effect<Scope, PlatformError, File>
+  ) => Effect.Effect<File, PlatformError, Scope>
   /**
    * List the contents of a directory.
    *
@@ -134,32 +134,32 @@ export interface FileSystem {
   readonly readDirectory: (
     path: string,
     options?: ReadDirectoryOptions
-  ) => Effect.Effect<never, PlatformError, ReadonlyArray<string>>
+  ) => Effect.Effect<ReadonlyArray<string>, PlatformError>
   /**
    * Read the contents of a file.
    */
   readonly readFile: (
     path: string
-  ) => Effect.Effect<never, PlatformError, Uint8Array>
+  ) => Effect.Effect<Uint8Array, PlatformError>
   /**
    * Read the contents of a file.
    */
   readonly readFileString: (
     path: string,
     encoding?: string
-  ) => Effect.Effect<never, PlatformError, string>
+  ) => Effect.Effect<string, PlatformError>
   /**
    * Read the destination of a symbolic link.
    */
   readonly readLink: (
     path: string
-  ) => Effect.Effect<never, PlatformError, string>
+  ) => Effect.Effect<string, PlatformError>
   /**
    * Resolve a path to its canonicalized absolute pathname.
    */
   readonly realPath: (
     path: string
-  ) => Effect.Effect<never, PlatformError, string>
+  ) => Effect.Effect<string, PlatformError>
   /**
    * Remove a file or directory.
    *
@@ -169,14 +169,14 @@ export interface FileSystem {
   readonly remove: (
     path: string,
     options?: RemoveOptions
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Rename a file or directory.
    */
   readonly rename: (
     oldPath: string,
     newPath: string
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Create a writable `Sink` for the specified `path`.
    */
@@ -189,7 +189,7 @@ export interface FileSystem {
    */
   readonly stat: (
     path: string
-  ) => Effect.Effect<never, PlatformError, File.Info>
+  ) => Effect.Effect<File.Info, PlatformError>
   /**
    * Create a readable `Stream` for the specified `path`.
    *
@@ -212,7 +212,7 @@ export interface FileSystem {
   readonly symlink: (
     fromPath: string,
     toPath: string
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Truncate a file to a specified length. If the `length` is not specified,
    * the file will be truncated to length `0`.
@@ -220,7 +220,7 @@ export interface FileSystem {
   readonly truncate: (
     path: string,
     length?: SizeInput
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Change the file system timestamps of the file at `path`.
    */
@@ -228,7 +228,7 @@ export interface FileSystem {
     path: string,
     atime: Date | number,
     mtime: Date | number
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Write data to a file at `path`.
    */
@@ -236,7 +236,7 @@ export interface FileSystem {
     path: string,
     data: Uint8Array,
     options?: WriteFileOptions
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
   /**
    * Write a string to a file at `path`.
    */
@@ -244,7 +244,7 @@ export interface FileSystem {
     path: string,
     data: string,
     options?: WriteFileStringOptions
-  ) => Effect.Effect<never, PlatformError, void>
+  ) => Effect.Effect<void, PlatformError>
 }
 
 /**
@@ -462,13 +462,13 @@ export const isFile = (u: unknown): u is File => typeof u === "object" && u !== 
 export interface File {
   readonly [FileTypeId]: FileTypeId
   readonly fd: File.Descriptor
-  readonly stat: Effect.Effect<never, PlatformError, File.Info>
-  readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<never, never, void>
-  readonly read: (buffer: Uint8Array) => Effect.Effect<never, PlatformError, Size>
-  readonly readAlloc: (size: SizeInput) => Effect.Effect<never, PlatformError, Option<Uint8Array>>
-  readonly truncate: (length?: SizeInput) => Effect.Effect<never, PlatformError, void>
-  readonly write: (buffer: Uint8Array) => Effect.Effect<never, PlatformError, Size>
-  readonly writeAll: (buffer: Uint8Array) => Effect.Effect<never, PlatformError, void>
+  readonly stat: Effect.Effect<File.Info, PlatformError>
+  readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<void>
+  readonly read: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError>
+  readonly readAlloc: (size: SizeInput) => Effect.Effect<Option<Uint8Array>, PlatformError>
+  readonly truncate: (length?: SizeInput) => Effect.Effect<void, PlatformError>
+  readonly write: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError>
+  readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, PlatformError>
 }
 
 /**

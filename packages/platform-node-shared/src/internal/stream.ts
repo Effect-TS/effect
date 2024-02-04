@@ -32,7 +32,7 @@ export const toString = <E>(
     readonly encoding?: BufferEncoding | undefined
     readonly maxBytes?: SizeInput | undefined
   }
-): Effect.Effect<never, E, string> => {
+): Effect.Effect<string, E> => {
   const maxBytesNumber = options.maxBytes ? Number(options.maxBytes) : undefined
   return Effect.acquireUseRelease(
     Effect.sync(() => {
@@ -75,7 +75,7 @@ export const toUint8Array = <E>(
     readonly onFailure: (error: unknown) => E
     readonly maxBytes?: SizeInput | undefined
   }
-): Effect.Effect<never, E, Uint8Array> => {
+): Effect.Effect<Uint8Array, E> => {
   const maxBytesNumber = options.maxBytes ? Number(options.maxBytes) : undefined
   return Effect.acquireUseRelease(
     Effect.sync(readable),
@@ -219,13 +219,13 @@ export const fromReadableChannel = <E, A = Uint8Array>(
 /** @internal */
 export const writeInput = <IE, A>(
   writable: Writable | NodeJS.WritableStream,
-  onFailure: (cause: Cause.Cause<IE>) => Effect.Effect<never, never, void>,
+  onFailure: (cause: Cause.Cause<IE>) => Effect.Effect<void>,
   { encoding, endOnDone = true }: FromWritableOptions = {},
   onDone = Effect.unit
 ): AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<A>, unknown> => {
   const write = writeEffect(writable, encoding)
   const close = endOnDone
-    ? Effect.async<never, never, void>((resume) => {
+    ? Effect.async<void, never, never>((resume) => {
       if ("closed" in writable && writable.closed) {
         resume(Effect.unit)
       } else {
@@ -250,7 +250,7 @@ export const writeEffect = <A>(
 (chunk: Chunk.Chunk<A>) =>
   chunk.length === 0 ?
     Effect.unit :
-    Effect.async<never, never, void>((resume) => {
+    Effect.async<void, never, never>((resume) => {
       const iterator = chunk[Symbol.iterator]()
       let next = iterator.next()
       function loop() {

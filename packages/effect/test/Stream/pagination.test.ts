@@ -27,7 +27,7 @@ describe("Stream", () => {
           s,
           (
             [n, nums]
-          ): Effect.Effect<never, never, readonly [number, Option.Option<readonly [number, Array<number>]>]> =>
+          ): Effect.Effect<readonly [number, Option.Option<readonly [number, Array<number>]>]> =>
             nums.length === 0 ?
               Effect.succeed([n, Option.none()]) :
               Effect.succeed([n, Option.some([nums[0], nums.slice(1)])])

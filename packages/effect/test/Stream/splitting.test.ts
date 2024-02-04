@@ -17,7 +17,7 @@ const weirdStringForSplitLines: fc.Arbitrary<ReadonlyArray<string>> = fc.array(
 
 const testSplitLines = (
   input: ReadonlyArray<Chunk.Chunk<string>>
-): Effect.Effect<never, never, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> => {
+): Effect.Effect<readonly [ReadonlyArray<string>, ReadonlyArray<string>]> => {
   const str = input.flatMap((chunk) => Chunk.toReadonlyArray(chunk).join("")).join("")
   const expected = str.split(/\r?\n/)
   return pipe(

@@ -3,9 +3,9 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 
-export const withLatch = <R, E, A>(
-  f: (release: Effect.Effect<never, never, void>) => Effect.Effect<R, E, A>
-): Effect.Effect<R, E, A> => {
+export const withLatch = <A, E, R>(
+  f: (release: Effect.Effect<void>) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> => {
   return pipe(
     Deferred.make<never, void>(),
     Effect.flatMap((latch) =>
@@ -14,9 +14,9 @@ export const withLatch = <R, E, A>(
   )
 }
 
-export const withLatchAwait = <R, E, A>(
-  f: (release: Effect.Effect<never, never, void>, wait: Effect.Effect<never, never, void>) => Effect.Effect<R, E, A>
-): Effect.Effect<R, E, A> => {
+export const withLatchAwait = <A, E, R>(
+  f: (release: Effect.Effect<void>, wait: Effect.Effect<void>) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> => {
   return Effect.gen(function*($) {
     const ref = yield* $(Ref.make(true))
     const latch = yield* $(Deferred.make<never, void>())

@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import { assert, describe, expect, it } from "vitest"
 
-const runPromise = <E, A>(self: Effect.Effect<Fs.FileSystem, E, A>) =>
+const runPromise = <E, A>(self: Effect.Effect<A, E, Fs.FileSystem>) =>
   Effect.runPromise(
     Effect.provide(self, NodeFileSystem.layer)
   )

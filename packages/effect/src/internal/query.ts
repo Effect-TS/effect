@@ -43,19 +43,17 @@ export const fromRequest = <
   A extends Request.Request<any, any>,
   Ds extends
     | RequestResolver.RequestResolver<A, never>
-    | Effect.Effect<any, any, RequestResolver.RequestResolver<A, never>>
+    | Effect.Effect<RequestResolver.RequestResolver<A, never>, any, any>
 >(
   request: A,
   dataSource: Ds
 ): Effect.Effect<
-  [Ds] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Ds> : never,
+  Request.Request.Success<A>,
   Request.Request.Error<A>,
-  Request.Request.Success<A>
+  [Ds] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Ds> : never
 > =>
   core.flatMap(
     (core.isEffect(dataSource) ? dataSource : core.succeed(dataSource)) as Effect.Effect<
-      never,
-      never,
       RequestResolver.RequestResolver<A, never>
     >,
     (ds) =>
@@ -145,7 +143,7 @@ export const fromRequest = <
 export const cacheRequest = <A extends Request.Request<any, any>>(
   request: A,
   result: Request.Request.Result<A>
-): Effect.Effect<never, never, void> => {
+): Effect.Effect<void> => {
   return core.fiberRefGetWith(currentCacheEnabled, (cacheEnabled) => {
     if (cacheEnabled) {
       return core.fiberRefGetWith(currentCache, (cache) =>
@@ -166,36 +164,36 @@ export const cacheRequest = <A extends Request.Request<any, any>>(
 
 /** @internal */
 export const withRequestCaching: {
-  (strategy: boolean): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+  (strategy: boolean): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     strategy: boolean
-  ): Effect.Effect<R, E, A>
+  ): Effect.Effect<A, E, R>
 } = dual<
   (
     strategy: boolean
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     strategy: boolean
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(2, (self, strategy) => core.fiberRefLocally(self, currentCacheEnabled, strategy))
 
 /** @internal */
 export const withRequestCache: {
-  (cache: Request.Cache): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+  (cache: Request.Cache): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     cache: Request.Cache
-  ): Effect.Effect<R, E, A>
+  ): Effect.Effect<A, E, R>
 } = dual<
   (
     cache: Request.Cache
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     cache: Request.Cache
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(
   2,
   // @ts-expect-error

@@ -86,7 +86,7 @@ export const autoFromConfig = <Out extends Context.Tag<any, any>, In, E, R>(
 /** @internal */
 export const get = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>> =>
+): Effect.Effect<Context.Tag.Service<T>, never, Reloadable.Reloadable<Context.Tag.Identifier<T>>> =>
   core.flatMap(
     reloadableTag(tag),
     (reloadable) => scopedRef.get(reloadable.scopedRef)
@@ -132,7 +132,7 @@ export const reloadableTag = <T extends Context.Tag<any, any>>(
 /** @internal */
 export const reload = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
+): Effect.Effect<void, unknown, Reloadable.Reloadable<Context.Tag.Identifier<T>>> =>
   core.flatMap(
     reloadableTag(tag),
     (reloadable) => reloadable.reload
@@ -141,7 +141,7 @@ export const reload = <T extends Context.Tag<any, any>>(
 /** @internal */
 export const reloadFork = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
+): Effect.Effect<void, unknown, Reloadable.Reloadable<Context.Tag.Identifier<T>>> =>
   core.flatMap(reloadableTag(tag), (reloadable) =>
     pipe(
       reloadable.reload,

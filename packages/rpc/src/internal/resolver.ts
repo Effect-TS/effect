@@ -62,7 +62,7 @@ const decodeResponses = Codec.decode(Schema.array(RpcResponse))
 export const makeWithSchema = <R>(
   send: (
     requests: ReadonlyArray<resolver.RpcRequest>
-  ) => Effect.Effect<R, RpcTransportError, unknown>
+  ) => Effect.Effect<unknown, RpcTransportError, R>
 ): resolver.RpcResolver<R> =>
   Resolver.makeBatched<R, resolver.RpcRequest>((requests) =>
     pipe(
@@ -91,14 +91,14 @@ export const makeWithSchema = <R>(
 export const make = <R>(
   send: (
     requests: ReadonlyArray<resolver.RpcRequest.Payload>
-  ) => Effect.Effect<R, RpcTransportError, unknown>
+  ) => Effect.Effect<unknown, RpcTransportError, R>
 ): resolver.RpcResolver<R> => makeWithSchema((requests) => send(requests.map((_) => _.payload)))
 
 /** @internal */
 export const makeSingleWithSchema = <R>(
   send: (
     request: resolver.RpcRequest
-  ) => Effect.Effect<R, RpcTransportError, unknown>
+  ) => Effect.Effect<unknown, RpcTransportError, R>
 ): resolver.RpcResolver<R> =>
   Resolver.fromEffect<R, resolver.RpcRequest>((request) =>
     pipe(
@@ -116,5 +116,5 @@ export const makeSingleWithSchema = <R>(
 export const makeSingle = <R>(
   send: (
     request: resolver.RpcRequest.Payload
-  ) => Effect.Effect<R, RpcTransportError, unknown>
+  ) => Effect.Effect<unknown, RpcTransportError, R>
 ): resolver.RpcResolver<R> => makeSingleWithSchema((request) => send(request.payload))

@@ -18,7 +18,7 @@ const update2 = "update2"
 
 const increment = (n: number): number => n + 1
 
-const loseTimeAndCpu: Effect.Effect<never, never, void> = Effect.yieldNow().pipe(
+const loseTimeAndCpu: Effect.Effect<void> = Effect.yieldNow().pipe(
   Effect.zipLeft(Clock.sleep(Duration.millis(1))),
   Effect.repeatN(100)
 )

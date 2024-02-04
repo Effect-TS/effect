@@ -26,17 +26,17 @@ export const acquireUseRelease = dual<
     release: (resource: A) => STM.STM<R3, E3, A3>
   ) => <R, E>(
     acquire: STM.STM<R, E, A>
-  ) => Effect.Effect<R | R2 | R3, E | E2 | E3, A2>,
+  ) => Effect.Effect<A2, E | E2 | E3, R | R2 | R3>,
   <R, E, A, R2, E2, A2, R3, E3, A3>(
     acquire: STM.STM<R, E, A>,
     use: (resource: A) => STM.STM<R2, E2, A2>,
     release: (resource: A) => STM.STM<R3, E3, A3>
-  ) => Effect.Effect<R | R2 | R3, E | E2 | E3, A2>
+  ) => Effect.Effect<A2, E | E2 | E3, R | R2 | R3>
 >(3, <R, E, A, R2, E2, A2, R3, E3, A3>(
   acquire: STM.STM<R, E, A>,
   use: (resource: A) => STM.STM<R2, E2, A2>,
   release: (resource: A) => STM.STM<R3, E3, A3>
-): Effect.Effect<R | R2 | R3, E | E2 | E3, A2> =>
+): Effect.Effect<A2, E | E2 | E3, R | R2 | R3> =>
   Effect.uninterruptibleMask((restore) => {
     let state: STMState.STMState<E, A> = STMState.running
     return pipe(
@@ -314,7 +314,7 @@ export const collectSTM = dual<
   }))
 
 /** @internal */
-export const commitEither = <R, E, A>(self: STM.STM<R, E, A>): Effect.Effect<R, E, A> =>
+export const commitEither = <R, E, A>(self: STM.STM<R, E, A>): Effect.Effect<A, E, R> =>
   Effect.flatten(core.commit(either(self)))
 
 /** @internal */

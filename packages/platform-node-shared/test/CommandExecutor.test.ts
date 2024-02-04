@@ -26,7 +26,7 @@ const TestLive = NodeCommandExecutor.layer.pipe(
 )
 
 const runPromise = <E, A>(
-  self: Effect.Effect<CommandExecutor.CommandExecutor | FileSystem.FileSystem | Path.Path, E, A>
+  self: Effect.Effect<A, E, CommandExecutor.CommandExecutor | FileSystem.FileSystem | Path.Path>
 ) => Effect.runPromise(Effect.provide(self, TestLive))
 
 describe("Command", () => {

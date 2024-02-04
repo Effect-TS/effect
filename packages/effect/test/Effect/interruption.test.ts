@@ -41,7 +41,7 @@ describe("Effect", () => {
     }))
   it.effect("async is interruptible", () =>
     Effect.gen(function*($) {
-      const fiber = yield* $(Effect.async<never, never, void>(constVoid), Effect.fork)
+      const fiber = yield* $(Effect.async<void, never, never>(constVoid), Effect.fork)
       const result = yield* $(Fiber.interrupt(fiber))
       assert.isTrue(Exit.isFailure(result) && Cause.isInterruptedOnly(result.i0))
     }))
@@ -592,7 +592,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       let signal: AbortSignal
       const fiber = yield* $(
-        Effect.async<never, never, void>((_cb, signal_) => {
+        Effect.async<void, never, never>((_cb, signal_) => {
           signal = signal_
         }),
         Effect.fork

@@ -39,13 +39,13 @@ const keyedPoolVariance = {
 class KeyedPoolImpl<in K, out E, in out A> implements KeyedPool.KeyedPool<K, E, A> {
   readonly [KeyedPoolTypeId] = keyedPoolVariance
   constructor(
-    readonly getOrCreatePool: (key: K) => Effect.Effect<never, never, Pool.Pool<E, A>>,
-    readonly activePools: Effect.Effect<never, never, Array<Pool.Pool<E, A>>>
+    readonly getOrCreatePool: (key: K) => Effect.Effect<Pool.Pool<E, A>>,
+    readonly activePools: Effect.Effect<Array<Pool.Pool<E, A>>>
   ) {}
-  get(key: K): Effect.Effect<Scope.Scope, E, A> {
+  get(key: K): Effect.Effect<A, E, Scope.Scope> {
     return core.flatMap(this.getOrCreatePool(key), pool.get)
   }
-  invalidate(item: A): Effect.Effect<never, never, void> {
+  invalidate(item: A): Effect.Effect<void> {
     return core.flatMap(this.activePools, core.forEachSequentialDiscard((pool) => pool.invalidate(item)))
   }
   pipe() {
@@ -92,11 +92,11 @@ const isPending = (u: unknown): u is Pending<unknown, unknown> =>
   Predicate.isTagged(u, "Pending") && KeyedPoolMapValueSymbol in u
 
 const makeImpl = <K, R, E, A>(
-  get: (key: K) => Effect.Effect<R, E, A>,
+  get: (key: K) => Effect.Effect<A, E, R>,
   min: (key: K) => number,
   max: (key: K) => number,
   timeToLive: (key: K) => Option.Option<Duration.Duration>
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
+): Effect.Effect<KeyedPool.KeyedPool<K, E, A>, never, R | Scope.Scope> =>
   pipe(
     fiberRuntime.all([
       core.context<R>(),
@@ -105,7 +105,7 @@ const makeImpl = <K, R, E, A>(
       fiberRuntime.scopeMake()
     ]),
     core.map(([context, fiberId, map, scope]) => {
-      const getOrCreatePool = (key: K): Effect.Effect<never, never, Pool.Pool<E, A>> =>
+      const getOrCreatePool = (key: K): Effect.Effect<Pool.Pool<E, A>> =>
         core.suspend(() => {
           let value: MapValue<E, A> | undefined = Option.getOrUndefined(HashMap.get(MutableRef.get(map), key))
           if (value === undefined) {
@@ -171,7 +171,7 @@ const makeImpl = <K, R, E, A>(
             }
           }
         })
-      const activePools: Effect.Effect<never, never, Array<Pool.Pool<E, A>>> = core.suspend(() =>
+      const activePools: Effect.Effect<Array<Pool.Pool<E, A>>> = core.suspend(() =>
         core.forEachSequential(Array.from(HashMap.values(MutableRef.get(map))), (value) => {
           switch (value._tag) {
             case "Complete": {
@@ -190,30 +190,30 @@ const makeImpl = <K, R, E, A>(
 /** @internal */
 export const make = <K, R, E, A>(
   options: {
-    readonly acquire: (key: K) => Effect.Effect<R, E, A>
+    readonly acquire: (key: K) => Effect.Effect<A, E, R>
     readonly size: number
   }
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
+): Effect.Effect<KeyedPool.KeyedPool<K, E, A>, never, R | Scope.Scope> =>
   makeImpl(options.acquire, () => options.size, () => options.size, () => Option.none())
 
 /** @internal */
 export const makeWith = <K, R, E, A>(
   options: {
-    readonly acquire: (key: K) => Effect.Effect<R, E, A>
+    readonly acquire: (key: K) => Effect.Effect<A, E, R>
     readonly size: (key: K) => number
   }
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
+): Effect.Effect<KeyedPool.KeyedPool<K, E, A>, never, R | Scope.Scope> =>
   makeImpl(options.acquire, options.size, options.size, () => Option.none())
 
 /** @internal */
 export const makeWithTTL = <K, R, E, A>(
   options: {
-    readonly acquire: (key: K) => Effect.Effect<R, E, A>
+    readonly acquire: (key: K) => Effect.Effect<A, E, R>
     readonly min: (key: K) => number
     readonly max: (key: K) => number
     readonly timeToLive: Duration.DurationInput
   }
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> => {
+): Effect.Effect<KeyedPool.KeyedPool<K, E, A>, never, R | Scope.Scope> => {
   const timeToLive = Duration.decode(options.timeToLive)
   return makeImpl(options.acquire, options.min, options.max, () => Option.some(timeToLive))
 }
@@ -221,22 +221,22 @@ export const makeWithTTL = <K, R, E, A>(
 /** @internal */
 export const makeWithTTLBy = <K, R, E, A>(
   options: {
-    readonly acquire: (key: K) => Effect.Effect<R, E, A>
+    readonly acquire: (key: K) => Effect.Effect<A, E, R>
     readonly min: (key: K) => number
     readonly max: (key: K) => number
     readonly timeToLive: (key: K) => Duration.DurationInput
   }
-): Effect.Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
+): Effect.Effect<KeyedPool.KeyedPool<K, E, A>, never, R | Scope.Scope> =>
   makeImpl(options.acquire, options.min, options.max, (key) => Option.some(Duration.decode(options.timeToLive(key))))
 
 /** @internal */
 export const get = dual<
-  <K>(key: K) => <E, A>(self: KeyedPool.KeyedPool<K, E, A>) => Effect.Effect<Scope.Scope, E, A>,
-  <K, E, A>(self: KeyedPool.KeyedPool<K, E, A>, key: K) => Effect.Effect<Scope.Scope, E, A>
+  <K>(key: K) => <E, A>(self: KeyedPool.KeyedPool<K, E, A>) => Effect.Effect<A, E, Scope.Scope>,
+  <K, E, A>(self: KeyedPool.KeyedPool<K, E, A>, key: K) => Effect.Effect<A, E, Scope.Scope>
 >(2, (self, key) => self.get(key))
 
 /** @internal */
 export const invalidate = dual<
-  <A>(item: A) => <K, E>(self: KeyedPool.KeyedPool<K, E, A>) => Effect.Effect<never, never, void>,
-  <K, E, A>(self: KeyedPool.KeyedPool<K, E, A>, item: A) => Effect.Effect<never, never, void>
+  <A>(item: A) => <K, E>(self: KeyedPool.KeyedPool<K, E, A>) => Effect.Effect<void>,
+  <K, E, A>(self: KeyedPool.KeyedPool<K, E, A>, item: A) => Effect.Effect<void>
 >(2, (self, item) => self.invalidate(item))
