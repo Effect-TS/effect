@@ -68,7 +68,7 @@ export const layer: {
   Layer.unwrapEffect(
     Effect.map(
       Effect.isEffect(evaluate)
-        ? evaluate as Effect.Effect<never, never, Configuration>
+        ? evaluate as Effect.Effect<Configuration>
         : Effect.sync(evaluate),
       (config) => {
         const ResourceLive = Resource.layer(config.resource)

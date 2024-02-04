@@ -5040,14 +5040,13 @@ export const annotateCurrentSpan: {
  * @since 2.0.0
  * @category tracing
  */
-export const currentSpan: Effect<Tracer.Span, Cause.NoSuchElementException, never> = effect.currentSpan
+export const currentSpan: Effect<Tracer.Span, Cause.NoSuchElementException> = effect.currentSpan
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const currentParentSpan: Effect<Tracer.ParentSpan, Cause.NoSuchElementException, never> =
-  effect.currentParentSpan
+export const currentParentSpan: Effect<Tracer.ParentSpan, Cause.NoSuchElementException> = effect.currentParentSpan
 
 /**
  * @since 2.0.0

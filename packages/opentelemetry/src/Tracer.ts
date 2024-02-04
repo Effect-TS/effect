@@ -14,7 +14,7 @@ import type { Resource } from "./Resource.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect<Otel.Tracer, never, EffectTracer> = internal.make
+export const make: Effect<EffectTracer, never, Otel.Tracer> = internal.make
 
 /**
  * @since 1.0.0
@@ -33,7 +33,7 @@ export const makeExternalSpan: (
  * @since 1.0.0
  * @category accessors
  */
-export const currentOtelSpan: Effect<never, NoSuchElementException, Otel.Span> = internal.currentOtelSpan
+export const currentOtelSpan: Effect<Otel.Span, NoSuchElementException> = internal.currentOtelSpan
 
 /**
  * @since 1.0.0
