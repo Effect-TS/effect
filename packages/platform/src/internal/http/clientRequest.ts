@@ -45,12 +45,11 @@ export const empty: ClientRequest.ClientRequest = new ClientRequestImpl(
 )
 
 /** @internal */
-export const make: {
-  (method: "GET" | "HEAD"): (url: string | URL, options?: ClientRequest.Options.NoBody) => ClientRequest.ClientRequest
-  (
-    method: Exclude<Method, "GET" | "HEAD">
-  ): (url: string | URL, options?: ClientRequest.Options.NoUrl) => ClientRequest.ClientRequest
-} = (method: Method) => (url: string | URL, options?: ClientRequest.Options.NoUrl) =>
+export const make = <M extends Method>(method: Method) =>
+(
+  url: string | URL,
+  options?: M extends "GET" | "HEAD" ? ClientRequest.Options.NoBody : ClientRequest.Options.NoUrl
+) =>
   modify(empty, {
     method,
     url: url.toString(),
