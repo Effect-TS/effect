@@ -127,14 +127,14 @@ export const make = <R, E, K, V>(
 /** @internal */
 export const groupBy = dual<
   <A, R2, E2, K, V>(
-    f: (a: A) => Effect.Effect<R2, E2, readonly [K, V]>,
+    f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
   ) => <R, E>(self: Stream.Stream<R, E, A>) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>,
   <R, E, A, R2, E2, K, V>(
     self: Stream.Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, readonly [K, V]>,
+    f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
@@ -143,7 +143,7 @@ export const groupBy = dual<
   (args) => stream.isStream(args[0]),
   <R, E, A, R2, E2, K, V>(
     self: Stream.Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, readonly [K, V]>,
+    f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
@@ -154,7 +154,7 @@ export const groupBy = dual<
           const decider = yield* $(
             Deferred.make<
               never,
-              (key: K, value: V) => Effect.Effect<never, never, Predicate<number>>
+              (key: K, value: V) => Effect.Effect<Predicate<number>>
             >()
           )
           const output = yield* $(Effect.acquireRelease(
@@ -213,14 +213,14 @@ export const groupBy = dual<
 export const mapEffectOptions = dual<
   {
     <A, R2, E2, A2>(
-      f: (a: A) => Effect.Effect<R2, E2, A2>,
+      f: (a: A) => Effect.Effect<A2, E2, R2>,
       options?: {
         readonly concurrency?: number | "unbounded" | undefined
         readonly unordered?: boolean | undefined
       }
     ): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, A2>
     <A, R2, E2, A2, K>(
-      f: (a: A) => Effect.Effect<R2, E2, A2>,
+      f: (a: A) => Effect.Effect<A2, E2, R2>,
       options: {
         readonly key: (a: A) => K
         readonly bufferSize?: number | undefined
@@ -230,7 +230,7 @@ export const mapEffectOptions = dual<
   {
     <R, E, A, R2, E2, A2>(
       self: Stream.Stream<R, E, A>,
-      f: (a: A) => Effect.Effect<R2, E2, A2>,
+      f: (a: A) => Effect.Effect<A2, E2, R2>,
       options?: {
         readonly concurrency?: number | "unbounded" | undefined
         readonly unordered?: boolean | undefined
@@ -238,7 +238,7 @@ export const mapEffectOptions = dual<
     ): Stream.Stream<R2 | R, E2 | E, A2>
     <R, E, A, R2, E2, A2, K>(
       self: Stream.Stream<R, E, A>,
-      f: (a: A) => Effect.Effect<R2, E2, A2>,
+      f: (a: A) => Effect.Effect<A2, E2, R2>,
       options: {
         readonly key: (a: A) => K
         readonly bufferSize?: number | undefined
@@ -249,7 +249,7 @@ export const mapEffectOptions = dual<
   (args) => typeof args[0] !== "function",
   (<R, E, A, R2, E2, A2, K>(
     self: Stream.Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, A2>,
+    f: (a: A) => Effect.Effect<A2, E2, R2>,
     options?: {
       readonly key?: ((a: A) => K) | undefined
       readonly concurrency?: number | "unbounded" | undefined
@@ -279,7 +279,7 @@ export const mapEffectOptions = dual<
 export const bindEffect = dual<
   <N extends string, K, R2, E2, A>(
     tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<R2, E2, A>,
+    f: (_: K) => Effect.Effect<A, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
@@ -292,7 +292,7 @@ export const bindEffect = dual<
   <R, E, N extends string, K, R2, E2, A>(
     self: Stream.Stream<R, E, K>,
     tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<R2, E2, A>,
+    f: (_: K) => Effect.Effect<A, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly unordered?: boolean | undefined
@@ -305,7 +305,7 @@ export const bindEffect = dual<
 >((args) => typeof args[0] !== "string", <R, E, N extends string, K, R2, E2, A>(
   self: Stream.Stream<R, E, K>,
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect.Effect<R2, E2, A>,
+  f: (_: K) => Effect.Effect<A, E2, R2>,
   options?: {
     readonly concurrency?: number | "unbounded" | undefined
     readonly unordered?: boolean | undefined
@@ -334,7 +334,7 @@ class MapDequeue<in out A, out B> implements Queue.Dequeue<B> {
     return Queue.capacity(this.dequeue)
   }
 
-  get size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<number> {
     return Queue.size(this.dequeue)
   }
 
@@ -342,7 +342,7 @@ class MapDequeue<in out A, out B> implements Queue.Dequeue<B> {
     return this.dequeue.unsafeSize()
   }
 
-  get awaitShutdown(): Effect.Effect<never, never, void> {
+  get awaitShutdown(): Effect.Effect<void> {
     return Queue.awaitShutdown(this.dequeue)
   }
 
@@ -350,43 +350,43 @@ class MapDequeue<in out A, out B> implements Queue.Dequeue<B> {
     return this.dequeue.isActive()
   }
 
-  get isShutdown(): Effect.Effect<never, never, boolean> {
+  get isShutdown(): Effect.Effect<boolean> {
     return Queue.isShutdown(this.dequeue)
   }
 
-  get shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<void> {
     return Queue.shutdown(this.dequeue)
   }
 
-  get isFull(): Effect.Effect<never, never, boolean> {
+  get isFull(): Effect.Effect<boolean> {
     return Queue.isFull(this.dequeue)
   }
 
-  get isEmpty(): Effect.Effect<never, never, boolean> {
+  get isEmpty(): Effect.Effect<boolean> {
     return Queue.isEmpty(this.dequeue)
   }
 
-  get take(): Effect.Effect<never, never, B> {
+  get take(): Effect.Effect<B> {
     return pipe(Queue.take(this.dequeue), Effect.map((a) => this.f(a)))
   }
 
-  get takeAll(): Effect.Effect<never, never, Chunk.Chunk<B>> {
+  get takeAll(): Effect.Effect<Chunk.Chunk<B>> {
     return pipe(Queue.takeAll(this.dequeue), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
-  takeUpTo(max: number): Effect.Effect<never, never, Chunk.Chunk<B>> {
+  takeUpTo(max: number): Effect.Effect<Chunk.Chunk<B>> {
     return pipe(Queue.takeUpTo(this.dequeue, max), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
-  takeBetween(min: number, max: number): Effect.Effect<never, never, Chunk.Chunk<B>> {
+  takeBetween(min: number, max: number): Effect.Effect<Chunk.Chunk<B>> {
     return pipe(Queue.takeBetween(this.dequeue, min, max), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
-  takeN(n: number): Effect.Effect<never, never, Chunk.Chunk<B>> {
+  takeN(n: number): Effect.Effect<Chunk.Chunk<B>> {
     return pipe(Queue.takeN(this.dequeue, n), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
-  poll(): Effect.Effect<never, never, Option.Option<B>> {
+  poll(): Effect.Effect<Option.Option<B>> {
     return pipe(Queue.poll(this.dequeue), Effect.map(Option.map((a) => this.f(a))))
   }
 

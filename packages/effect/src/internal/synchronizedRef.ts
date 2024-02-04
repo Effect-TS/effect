@@ -7,8 +7,8 @@ import * as _ref from "./ref.js"
 
 /** @internal */
 export const getAndUpdateEffect = dual<
-  <A, R, E>(f: (a: A) => Effect.Effect<R, E, A>) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<R, E, A>,
-  <A, R, E>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <A, R, E>(f: (a: A) => Effect.Effect<A, E, R>) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<A, E, R>,
+  <A, R, E>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 >(2, (self, f) =>
   self.modifyEffect(
     (value) => core.map(f(value), (result) => [value, result] as const)
@@ -17,12 +17,12 @@ export const getAndUpdateEffect = dual<
 /** @internal */
 export const getAndUpdateSomeEffect = dual<
   <A, R, E>(
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
-  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<R, E, A>,
+    pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
+  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<A, E, R>,
   <A, R, E>(
     self: Synchronized.SynchronizedRef<A>,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
-  ) => Effect.Effect<R, E, A>
+    pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
+  ) => Effect.Effect<A, E, R>
 >(2, (self, pf) =>
   self.modifyEffect((value) => {
     const result = pf(value)
@@ -38,32 +38,32 @@ export const getAndUpdateSomeEffect = dual<
 
 /** @internal */
 export const modify = dual<
-  <A, B>(f: (a: A) => readonly [B, A]) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<never, never, B>,
-  <A, B>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => readonly [B, A]) => Effect.Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<B>,
+  <A, B>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => readonly [B, A]) => Effect.Effect<B>
 >(2, (self, f) => self.modify(f))
 
 /** @internal */
 export const modifyEffect = dual<
-  <A, R, E, B>(
-    f: (a: A) => Effect.Effect<R, E, readonly [B, A]>
-  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<R, E, B>,
-  <A, R, E, B>(
+  <A, B, E, R>(
+    f: (a: A) => Effect.Effect<readonly [B, A], E, R>
+  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<B, E, R>,
+  <A, B, E, R>(
     self: Synchronized.SynchronizedRef<A>,
-    f: (a: A) => Effect.Effect<R, E, readonly [B, A]>
-  ) => Effect.Effect<R, E, B>
+    f: (a: A) => Effect.Effect<readonly [B, A], E, R>
+  ) => Effect.Effect<B, E, R>
 >(2, (self, f) => self.modifyEffect(f))
 
 /** @internal */
 export const modifySomeEffect = dual<
   <A, B, R, E>(
     fallback: B,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>
-  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<R, E, B>,
+    pf: (a: A) => Option.Option<Effect.Effect<readonly [B, A], E, R>>
+  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<B, E, R>,
   <A, B, R, E>(
     self: Synchronized.SynchronizedRef<A>,
     fallback: B,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>
-  ) => Effect.Effect<R, E, B>
+    pf: (a: A) => Option.Option<Effect.Effect<readonly [B, A], E, R>>
+  ) => Effect.Effect<B, E, R>
 >(3, (self, fallback, pf) =>
   self.modifyEffect(
     (value) => pipe(pf(value), Option.getOrElse(() => core.succeed([fallback, value] as const)))
@@ -72,9 +72,9 @@ export const modifySomeEffect = dual<
 /** @internal */
 export const updateEffect = dual<
   <A, R, E>(
-    f: (a: A) => Effect.Effect<R, E, A>
-  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<R, E, void>,
-  <A, R, E>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, void>
+    f: (a: A) => Effect.Effect<A, E, R>
+  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<void, E, R>,
+  <A, R, E>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
 >(2, (self, f) =>
   self.modifyEffect((value) =>
     core.map(
@@ -85,8 +85,8 @@ export const updateEffect = dual<
 
 /** @internal */
 export const updateAndGetEffect = dual<
-  <A, R, E>(f: (a: A) => Effect.Effect<R, E, A>) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<R, E, A>,
-  <A, R, E>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <A, R, E>(f: (a: A) => Effect.Effect<A, E, R>) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<A, E, R>,
+  <A, R, E>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 >(2, (self, f) =>
   self.modifyEffect(
     (value) => core.map(f(value), (result) => [result, result] as const)
@@ -95,12 +95,12 @@ export const updateAndGetEffect = dual<
 /** @internal */
 export const updateSomeEffect = dual<
   <A, R, E>(
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
-  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<R, E, void>,
+    pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
+  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<void, E, R>,
   <A, R, E>(
     self: Synchronized.SynchronizedRef<A>,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
-  ) => Effect.Effect<R, E, void>
+    pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
+  ) => Effect.Effect<void, E, R>
 >(2, (self, pf) =>
   self.modifyEffect((value) => {
     const result = pf(value)

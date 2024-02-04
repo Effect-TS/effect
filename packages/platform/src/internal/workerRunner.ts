@@ -31,7 +31,7 @@ export const PlatformRunner = Context.GenericTag<WorkerRunner.PlatformRunner>(
 
 /** @internal */
 export const make = <I, R, E, O>(
-  process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
+  process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<O, E, R>,
   options?: WorkerRunner.Runner.Options<I, E, O>
 ) =>
   Effect.gen(function*(_) {
@@ -51,7 +51,7 @@ export const make = <I, R, E, O>(
     yield* _(
       Queue.take(backing.queue),
       options?.decode ?
-        Effect.flatMap((req): Effect.Effect<never, WorkerError.WorkerError, Worker.Worker.Request<I>> => {
+        Effect.flatMap((req): Effect.Effect<Worker.Worker.Request<I>, WorkerError.WorkerError> => {
           if (req[1] === 1) {
             return Effect.succeed(req)
           }
@@ -156,7 +156,7 @@ export const make = <I, R, E, O>(
 
 /** @internal */
 export const layer = <I, R, E, O>(
-  process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
+  process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<O, E, R>,
   options?: WorkerRunner.Runner.Options<I, E, O>
 ): Layer.Layer<WorkerRunner.PlatformRunner | R, WorkerError.WorkerError, never> =>
   Layer.scopedDiscard(make(process, options))
@@ -171,17 +171,17 @@ export const makeSerialized = <
   schema: Schema.Schema<A, I, R>,
   handlers: Handlers
 ): Effect.Effect<
+  void,
+  WorkerError.WorkerError,
   | R
   | WorkerRunner.PlatformRunner
   | Scope.Scope
-  | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
-  WorkerError.WorkerError,
-  void
+  | WorkerRunner.SerializedRunner.HandlersContext<Handlers>
 > =>
   Effect.gen(function*(_) {
     const scope = yield* _(Effect.scope)
     let context = Context.empty() as Context.Context<any>
-    const parseRequest = Schema.decodeUnknown(schema) as (_: unknown) => Effect.Effect<never, never, A>
+    const parseRequest = Schema.decodeUnknown(schema) as (_: unknown) => Effect.Effect<A>
 
     return yield* _(make((request: A) => {
       const result = (handlers as any)[request._tag](request)

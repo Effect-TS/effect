@@ -8,14 +8,14 @@ import * as Ref from "effect/Ref"
 
 export interface ChunkCoordination<A> {
   readonly queue: Queue.Queue<Exit.Exit<Option.Option<never>, Chunk.Chunk<A>>>
-  readonly offer: Effect.Effect<never, never, void>
-  readonly proceed: Effect.Effect<never, never, void>
-  readonly awaitNext: Effect.Effect<never, never, void>
+  readonly offer: Effect.Effect<void>
+  readonly proceed: Effect.Effect<void>
+  readonly awaitNext: Effect.Effect<void>
 }
 
 export const chunkCoordination = <A>(
   _chunks: Iterable<Chunk.Chunk<A>>
-): Effect.Effect<never, never, ChunkCoordination<A>> =>
+): Effect.Effect<ChunkCoordination<A>> =>
   Effect.gen(function*($) {
     const chunks = Chunk.fromIterable(_chunks)
     const queue = yield* $(Queue.unbounded<Exit.Exit<Option.Option<never>, Chunk.Chunk<A>>>())

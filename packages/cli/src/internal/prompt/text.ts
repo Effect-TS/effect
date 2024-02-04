@@ -135,7 +135,7 @@ const renderNextFrame = (
   prevState: Option.Option<State>,
   nextState: State,
   options: Options
-): Effect.Effect<Terminal.Terminal, never, string> =>
+): Effect.Effect<string, never, Terminal.Terminal> =>
   Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
     const figures = yield* _(InternalAnsiUtils.figures)

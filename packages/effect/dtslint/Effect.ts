@@ -4,17 +4,17 @@ import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
 
-declare const string: Effect.Effect<"dep-1", "err-1", string>
-declare const number: Effect.Effect<"dep-2", "err-2", number>
-declare const boolean: Effect.Effect<"dep-3", never, boolean>
-declare const stringArray: Array<Effect.Effect<"dep-3", "err-3", string>>
-declare const numberRecord: Record<string, Effect.Effect<"dep-4", "err-4", number>>
+declare const string: Effect.Effect<string, "err-1", "dep-1">
+declare const number: Effect.Effect<number, "err-2", "dep-2">
+declare const boolean: Effect.Effect<boolean, never, "dep-3">
+declare const stringArray: Array<Effect.Effect<string, "err-3", "dep-3">>
+declare const numberRecord: Record<string, Effect.Effect<number, "err-4", "dep-4">>
 
 // -------------------------------------------------------------------------------------
 // forEach
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-1", "err-1", string[]>
+// $ExpectType Effect<string[], "err-1", "dep-1">
 Effect.forEach(["a", "b"], (
   // $ExpectType string
   _a,
@@ -22,7 +22,7 @@ Effect.forEach(["a", "b"], (
   _i
 ) => string)
 
-// $ExpectType Effect<"dep-1", "err-1", void>
+// $ExpectType Effect<void, "err-1", "dep-1">
 Effect.forEach(["a", "b"], (
   // $ExpectType string
   _a,
@@ -30,7 +30,7 @@ Effect.forEach(["a", "b"], (
   _i
 ) => string, { discard: true })
 
-// $ExpectType Effect<"dep-1", "err-1", string[]>
+// $ExpectType Effect<string[], "err-1", "dep-1">
 pipe(
   ["a", "b"],
   Effect.forEach((
@@ -41,7 +41,7 @@ pipe(
   ) => string)
 )
 
-// $ExpectType Effect<"dep-1", "err-1", void>
+// $ExpectType Effect<void, "err-1", "dep-1">
 pipe(
   ["a", "b"],
   Effect.forEach((
@@ -56,320 +56,320 @@ pipe(
 // all - tuple
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", [string, number]>
+// $ExpectType Effect<[string, number], "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all([string, number])
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", [string, number]>
+// $ExpectType Effect<[string, number], "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all([string, number], undefined)
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", [string, number]>
+// $ExpectType Effect<[string, number], "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all([string, number], {})
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", [string, number]>
+// $ExpectType Effect<[string, number], "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all([string, number], { concurrency: "unbounded" })
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", void>
+// $ExpectType Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all([string, number], { discard: true })
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", void>
+// $ExpectType Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all([string, number], { discard: true, concurrency: "unbounded" })
 
-// $ExpectType Effect<"dep-1" | "dep-2", [Option<"err-1">, Option<"err-2">], [string, number]>
+// $ExpectType Effect<[string, number], [Option<"err-1">, Option<"err-2">], "dep-1" | "dep-2">
 Effect.all([string, number], { mode: "validate" })
 
-// $ExpectType Effect<"dep-1" | "dep-2", [Option<"err-1">, Option<"err-2">], void>
+// $ExpectType Effect<void, [Option<"err-1">, Option<"err-2">], "dep-1" | "dep-2">
 Effect.all([string, number], { mode: "validate", discard: true })
 
-// $ExpectType Effect<"dep-1" | "dep-2", never, [Either<"err-1", string>, Either<"err-2", number>]>
+// $ExpectType Effect<[Either<"err-1", string>, Either<"err-2", number>], never, "dep-1" | "dep-2">
 Effect.all([string, number], { mode: "either" })
 
-// $ExpectType Effect<"dep-1" | "dep-2", never, void>
+// $ExpectType Effect<void, never, "dep-1" | "dep-2">
 Effect.all([string, number], { mode: "either", discard: true })
 // -------------------------------------------------------------------------------------
 // all - struct
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all({ a: string, b: number })
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, undefined)
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, {})
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { concurrency: "unbounded" })
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", void>
+// $ExpectType Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { discard: true })
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", void>
+// $ExpectType Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { discard: true, concurrency: "unbounded" })
 
-// $ExpectType Effect<"dep-1" | "dep-2", { a: Option<"err-1">; b: Option<"err-2">; }, { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, { a: Option<"err-1">; b: Option<"err-2">; }, "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { mode: "validate" })
 
-// $ExpectType Effect<"dep-1" | "dep-2", { a: Option<"err-1">; b: Option<"err-2">; }, void>
+// $ExpectType Effect<void, { a: Option<"err-1">; b: Option<"err-2">; }, "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { mode: "validate", discard: true })
 
-// $ExpectType Effect<"dep-1" | "dep-2", never, { a: Either<"err-1", string>; b: Either<"err-2", number>; }>
+// $ExpectType Effect<{ a: Either<"err-1", string>; b: Either<"err-2", number>; }, never, "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { mode: "either" })
 
-// $ExpectType Effect<"dep-1" | "dep-2", never, void>
+// $ExpectType Effect<void, never, "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { mode: "either", discard: true })
 
 // -------------------------------------------------------------------------------------
 // all - array
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-3", "err-3", string[]>
+// $ExpectType Effect<string[], "err-3", "dep-3">
 Effect.all(stringArray)
 
-// $ExpectType Effect<"dep-3", "err-3", string[]>
+// $ExpectType Effect<string[], "err-3", "dep-3">
 Effect.all(stringArray, undefined)
 
-// $ExpectType Effect<"dep-3", "err-3", string[]>
+// $ExpectType Effect<string[], "err-3", "dep-3">
 Effect.all(stringArray, {})
 
-// $ExpectType Effect<"dep-3", "err-3", string[]>
+// $ExpectType Effect<string[], "err-3", "dep-3">
 Effect.all(stringArray, { concurrency: "unbounded" })
 
-// $ExpectType Effect<"dep-3", "err-3", void>
+// $ExpectType Effect<void, "err-3", "dep-3">
 Effect.all(stringArray, { discard: true })
 
-// $ExpectType Effect<"dep-3", "err-3", void>
+// $ExpectType Effect<void, "err-3", "dep-3">
 Effect.all(stringArray, { discard: true, concurrency: "unbounded" })
 
-// $ExpectType Effect<"dep-3", Option<"err-3">[], string[]>
+// $ExpectType Effect<string[], Option<"err-3">[], "dep-3">
 Effect.all(stringArray, { mode: "validate" })
 
-// $ExpectType Effect<"dep-3", Option<"err-3">[], void>
+// $ExpectType Effect<void, Option<"err-3">[], "dep-3">
 Effect.all(stringArray, { mode: "validate", discard: true })
 
-// $ExpectType Effect<"dep-3", never, Either<"err-3", string>[]>
+// $ExpectType Effect<Either<"err-3", string>[], never, "dep-3">
 Effect.all(stringArray, { mode: "either" })
 
-// $ExpectType Effect<"dep-3", never, void>
+// $ExpectType Effect<void, never, "dep-3">
 Effect.all(stringArray, { mode: "either", discard: true })
 
 // -------------------------------------------------------------------------------------
 // all - record
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-4", "err-4", { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, "err-4", "dep-4">
 Effect.all(numberRecord)
 
-// $ExpectType Effect<"dep-4", "err-4", { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, "err-4", "dep-4">
 Effect.all(numberRecord, undefined)
 
-// $ExpectType Effect<"dep-4", "err-4", { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, "err-4", "dep-4">
 Effect.all(numberRecord, {})
 
-// $ExpectType Effect<"dep-4", "err-4", { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, "err-4", "dep-4">
 Effect.all(numberRecord, { concurrency: "unbounded" })
 
-// $ExpectType Effect<"dep-4", "err-4", void>
+// $ExpectType Effect<void, "err-4", "dep-4">
 Effect.all(numberRecord, { discard: true })
 
-// $ExpectType Effect<"dep-4", "err-4", void>
+// $ExpectType Effect<void, "err-4", "dep-4">
 Effect.all(numberRecord, { discard: true, concurrency: "unbounded" })
 
-// $ExpectType Effect<"dep-4", { [x: string]: Option<"err-4">; }, { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, { [x: string]: Option<"err-4">; }, "dep-4">
 Effect.all(numberRecord, { mode: "validate" })
 
-// $ExpectType Effect<"dep-4", { [x: string]: Option<"err-4">; }, void>
+// $ExpectType Effect<void, { [x: string]: Option<"err-4">; }, "dep-4">
 Effect.all(numberRecord, { mode: "validate", discard: true })
 
-// $ExpectType Effect<"dep-4", never, { [x: string]: Either<"err-4", number>; }>
+// $ExpectType Effect<{ [x: string]: Either<"err-4", number>; }, never, "dep-4">
 Effect.all(numberRecord, { mode: "either" })
 
-// $ExpectType Effect<"dep-4", never, void>
+// $ExpectType Effect<void, never, "dep-4">
 Effect.all(numberRecord, { mode: "either", discard: true })
 
 // -------------------------------------------------------------------------------------
 // allWith - tuple
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", [string, number]>
+// $ExpectType Effect<[string, number], "err-1" | "err-2", "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith())
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", [string, number]>
+// $ExpectType Effect<[string, number], "err-1" | "err-2", "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith(undefined))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", [string, number]>
+// $ExpectType Effect<[string, number], "err-1" | "err-2", "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({}))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", [string, number]>
+// $ExpectType Effect<[string, number], "err-1" | "err-2", "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ concurrency: "unbounded" }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", void>
+// $ExpectType Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ discard: true }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", void>
+// $ExpectType Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ discard: true, concurrency: "unbounded" }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", [Option<"err-1">, Option<"err-2">], [string, number]>
+// $ExpectType Effect<[string, number], [Option<"err-1">, Option<"err-2">], "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ mode: "validate" }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", [Option<"err-1">, Option<"err-2">], void>
+// $ExpectType Effect<void, [Option<"err-1">, Option<"err-2">], "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ mode: "validate", discard: true }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", never, [Either<"err-1", string>, Either<"err-2", number>]>
+// $ExpectType Effect<[Either<"err-1", string>, Either<"err-2", number>], never, "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ mode: "either" }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", never, void>
+// $ExpectType Effect<void, never, "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ mode: "either", discard: true }))
 
 // -------------------------------------------------------------------------------------
 // allWith - struct
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, "err-1" | "err-2", "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith())
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, "err-1" | "err-2", "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith(undefined))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, "err-1" | "err-2", "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({}))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, "err-1" | "err-2", "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ concurrency: "unbounded" }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", void>
+// $ExpectType Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ discard: true }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", void>
+// $ExpectType Effect<void, "err-1" | "err-2", "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ discard: true, concurrency: "unbounded" }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", { a: Option<"err-1">; b: Option<"err-2">; }, { a: string; b: number; }>
+// $ExpectType Effect<{ a: string; b: number; }, { a: Option<"err-1">; b: Option<"err-2">; }, "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ mode: "validate" }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", { a: Option<"err-1">; b: Option<"err-2">; }, void>
+// $ExpectType Effect<void, { a: Option<"err-1">; b: Option<"err-2">; }, "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ mode: "validate", discard: true }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", never, { a: Either<"err-1", string>; b: Either<"err-2", number>; }>
+// $ExpectType Effect<{ a: Either<"err-1", string>; b: Either<"err-2", number>; }, never, "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ mode: "either" }))
 
-// $ExpectType Effect<"dep-1" | "dep-2", never, void>
+// $ExpectType Effect<void, never, "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ mode: "either", discard: true }))
 
 // -------------------------------------------------------------------------------------
 // allWith - array
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-3", "err-3", string[]>
+// $ExpectType Effect<string[], "err-3", "dep-3">
 pipe(stringArray, Effect.allWith())
 
-// $ExpectType Effect<"dep-3", "err-3", string[]>
+// $ExpectType Effect<string[], "err-3", "dep-3">
 pipe(stringArray, Effect.allWith(undefined))
 
-// $ExpectType Effect<"dep-3", "err-3", string[]>
+// $ExpectType Effect<string[], "err-3", "dep-3">
 pipe(stringArray, Effect.allWith({}))
 
-// $ExpectType Effect<"dep-3", "err-3", string[]>
+// $ExpectType Effect<string[], "err-3", "dep-3">
 pipe(stringArray, Effect.allWith({ concurrency: "unbounded" }))
 
-// $ExpectType Effect<"dep-3", "err-3", void>
+// $ExpectType Effect<void, "err-3", "dep-3">
 pipe(stringArray, Effect.allWith({ discard: true }))
 
-// $ExpectType Effect<"dep-3", "err-3", void>
+// $ExpectType Effect<void, "err-3", "dep-3">
 pipe(stringArray, Effect.allWith({ discard: true, concurrency: "unbounded" }))
 
-// $ExpectType Effect<"dep-3", Option<"err-3">[], string[]>
+// $ExpectType Effect<string[], Option<"err-3">[], "dep-3">
 pipe(stringArray, Effect.allWith({ mode: "validate" }))
 
-// $ExpectType Effect<"dep-3", Option<"err-3">[], void>
+// $ExpectType Effect<void, Option<"err-3">[], "dep-3">
 pipe(stringArray, Effect.allWith({ mode: "validate", discard: true }))
 
-// $ExpectType Effect<"dep-3", never, Either<"err-3", string>[]>
+// $ExpectType Effect<Either<"err-3", string>[], never, "dep-3">
 pipe(stringArray, Effect.allWith({ mode: "either" }))
 
-// $ExpectType Effect<"dep-3", never, void>
+// $ExpectType Effect<void, never, "dep-3">
 pipe(stringArray, Effect.allWith({ mode: "either", discard: true }))
 
 // -------------------------------------------------------------------------------------
 // allWith - record
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-4", "err-4", { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, "err-4", "dep-4">
 pipe(numberRecord, Effect.allWith())
 
-// $ExpectType Effect<"dep-4", "err-4", { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, "err-4", "dep-4">
 pipe(numberRecord, Effect.allWith(undefined))
 
-// $ExpectType Effect<"dep-4", "err-4", { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, "err-4", "dep-4">
 pipe(numberRecord, Effect.allWith({}))
 
-// $ExpectType Effect<"dep-4", "err-4", { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, "err-4", "dep-4">
 pipe(numberRecord, Effect.allWith({ concurrency: "unbounded" }))
 
-// $ExpectType Effect<"dep-4", "err-4", void>
+// $ExpectType Effect<void, "err-4", "dep-4">
 pipe(numberRecord, Effect.allWith({ discard: true }))
 
-// $ExpectType Effect<"dep-4", "err-4", void>
+// $ExpectType Effect<void, "err-4", "dep-4">
 pipe(numberRecord, Effect.allWith({ discard: true, concurrency: "unbounded" }))
 
-// $ExpectType Effect<"dep-4", { [x: string]: Option<"err-4">; }, { [x: string]: number; }>
+// $ExpectType Effect<{ [x: string]: number; }, { [x: string]: Option<"err-4">; }, "dep-4">
 pipe(numberRecord, Effect.allWith({ mode: "validate" }))
 
-// $ExpectType Effect<"dep-4", { [x: string]: Option<"err-4">; }, void>
+// $ExpectType Effect<void, { [x: string]: Option<"err-4">; }, "dep-4">
 pipe(numberRecord, Effect.allWith({ mode: "validate", discard: true }))
 
-// $ExpectType Effect<"dep-4", never, { [x: string]: Either<"err-4", number>; }>
+// $ExpectType Effect<{ [x: string]: Either<"err-4", number>; }, never, "dep-4">
 pipe(numberRecord, Effect.allWith({ mode: "either" }))
 
-// $ExpectType Effect<"dep-4", never, void>
+// $ExpectType Effect<void, never, "dep-4">
 pipe(numberRecord, Effect.allWith({ mode: "either", discard: true }))
 
 // -------------------------------------------------------------------------------------
 // tacit
 // -------------------------------------------------------------------------------------
 
-const tacitString = (s: string): Effect.Effect<never, never, string> => Effect.succeed(`string ${s}`)
-const tacitStringCause = (s: Cause<string>): Effect.Effect<never, never, string> => Effect.succeed(`string ${s}`)
+const tacitString = (s: string): Effect.Effect<string> => Effect.succeed(`string ${s}`)
+const tacitStringCause = (s: Cause<string>): Effect.Effect<string> => Effect.succeed(`string ${s}`)
 const tacitStringPredicate = (_s: string): boolean => true
 const tacitStringError = (_s: string): "a" => "a"
-const tacitStringErrorEffect = (_s: string): Effect.Effect<never, "a", never> => Effect.fail("a")
+const tacitStringErrorEffect = (_s: string): Effect.Effect<never, "a"> => Effect.fail("a")
 
-// $ExpectType Effect<never, "a", "a">
+// $ExpectType Effect<"a", "a", never>
 Effect.succeed("a" as const).pipe(Effect.filterOrFail(
   tacitStringPredicate,
   () => "a" as const
 ))
 
-// $ExpectType Effect<never, "a", "a">
+// $ExpectType Effect<"a", "a", never>
 Effect.succeed("a" as const).pipe(Effect.filterOrFail(
   () => true,
   tacitStringError
 ))
 
-// $ExpectType Effect<never, never, "a">
+// $ExpectType Effect<"a", never, never>
 Effect.succeed("a" as const).pipe(Effect.filterOrDie(
   tacitStringPredicate,
   () => "fail"
 ))
 
-// $ExpectType Effect<never, never, "a">
+// $ExpectType Effect<"a", never, never>
 Effect.succeed("a" as const).pipe(Effect.filterOrDieMessage(
   tacitStringPredicate,
   "fail"
 ))
 
-// $ExpectType Effect<never, "a", "a">
+// $ExpectType Effect<"a", "a", never>
 Effect.succeed("a" as const).pipe(Effect.filterOrElse(
   tacitStringPredicate,
   () => Effect.fail("a" as const)
 ))
 
-// $ExpectType Effect<never, "a", "a">
+// $ExpectType Effect<"a", "a", never>
 Effect.succeed("a" as const).pipe(Effect.filterOrElse(
   () => true,
   tacitStringErrorEffect
 ))
 
-// $ExpectType Effect<never, never, "a">
+// $ExpectType Effect<"a", never, never>
 Effect.succeed("a" as const).pipe(Effect.tap(tacitString))
 
 // $ExpectType Effect<never, "a", never>
@@ -381,9 +381,9 @@ Effect.fail("a" as const).pipe(Effect.tapErrorCause(tacitStringCause))
 // $ExpectType Effect<never, "a", never>
 Effect.fail("a" as const).pipe(Effect.tapDefect(tacitStringCause))
 
-// $ExpectType Effect<never, "a", "a">
+// $ExpectType Effect<"a", "a", never>
 pipe(
-  Effect.succeed("a" as const) as Effect.Effect<never, "a", "a">,
+  Effect.succeed("a" as const) as Effect.Effect<"a", "a">,
   Effect.tapBoth({
     onFailure: tacitString,
     onSuccess: tacitString
@@ -394,21 +394,21 @@ pipe(
 // zip
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<never, never, [number, string]>
+// $ExpectType Effect<[number, string], never, never>
 Effect.zip(Effect.succeed(1), Effect.succeed("a"))
 
 // -------------------------------------------------------------------------------------
 // validate
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<never, never, [number, string]>
+// $ExpectType Effect<[number, string], never, never>
 Effect.validate(Effect.succeed(1), Effect.succeed("a"))
 
 // -------------------------------------------------------------------------------------
 // promise
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<never, never, string>
+// $ExpectType Effect<string, never, never>
 Effect.promise<string>(
   () =>
     new Promise((resolve) => {
@@ -435,7 +435,7 @@ pipe(
   Effect.tapErrorTag("TestError1", () => Effect.fail(new Error("")))
 )
 
-// $ExpectType Effect<never, Error, number>
+// $ExpectType Effect<number, Error, never>
 pipe(
   Effect.fail<TestError1 | Error>(new TestError1()),
   Effect.catchTag("TestError1", () => Effect.succeed(1))
@@ -447,7 +447,7 @@ pipe(
   Effect.tapErrorTag("TestError1", () => Effect.succeed(1))
 )
 
-// $ExpectType Effect<never, Error, number>
+// $ExpectType Effect<number, Error, never>
 pipe(
   Effect.fail<TestError1 | Error>(new Error()),
   Effect.catchTags({
@@ -485,7 +485,7 @@ Effect.catchTags(Effect.fail(new TestError1() as TestError1 | string), {
   Other: () => Effect.succeed(1)
 })
 
-// $ExpectType Effect<never, unknown, number>
+// $ExpectType Effect<number, unknown, never>
 pipe(
   Effect.fail(new TestError1() as unknown),
   Effect.catchTags({
@@ -493,7 +493,7 @@ pipe(
   })
 )
 
-// $ExpectType Effect<never, unknown, number>
+// $ExpectType Effect<number, unknown, never>
 Effect.catchTags(Effect.fail(new TestError1() as unknown), {
   TestError1: () => Effect.succeed(1)
 })
@@ -504,7 +504,7 @@ Effect.catchTags(Effect.fail(new TestError1() as unknown), {
 
 // predicate
 
-// $ExpectType Effect<never, never, number>
+// $ExpectType Effect<number, never, never>
 Effect.iterate(100, {
   while: (
     n // $ExpectType number
@@ -516,7 +516,7 @@ Effect.iterate(100, {
 
 // refinement
 
-// $ExpectType Effect<never, never, number | null>
+// $ExpectType Effect<number | null, never, never>
 Effect.iterate(100 as null | number, {
   while: (
     n // $ExpectType number | null
@@ -532,14 +532,14 @@ Effect.iterate(100 as null | number, {
 
 // predicate
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 Effect.loop(0, {
   while: (n) => n < 5,
   step: (n) => n + 1,
   body: (n) => Effect.succeed(n * 2)
 })
 
-// $ExpectType Effect<never, never, void>
+// $ExpectType Effect<void, never, never>
 Effect.loop(0, {
   while: (n) => n < 5,
   step: (n) => n + 1,
@@ -549,7 +549,7 @@ Effect.loop(0, {
 
 // refinement
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 Effect.loop(0 as null | number, {
   while: (
     n // $ExpectType number | null
@@ -562,7 +562,7 @@ Effect.loop(0 as null | number, {
   ) => Effect.succeed(n * 2)
 })
 
-// $ExpectType Effect<never, never, void>
+// $ExpectType Effect<void, never, never>
 Effect.loop(0 as null | number, {
   while: (
     n // $ExpectType number | null
@@ -581,13 +581,13 @@ Effect.loop(0 as null | number, {
 // -------------------------------------------------------------------------------------
 
 declare const numbersArray: Array<number>
-declare const predicateNumbersOrStringsEffect: (input: number | string) => Effect.Effect<never, never, boolean>
+declare const predicateNumbersOrStringsEffect: (input: number | string) => Effect.Effect<boolean>
 
 Effect.dropWhile(numbersArray, (
   _item // $ExpectType number
 ) => Effect.succeed(true))
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(
   numbersArray,
   Effect.dropWhile((
@@ -595,7 +595,7 @@ pipe(
   ) => Effect.succeed(true))
 )
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(
   numbersArray,
   Effect.dropWhile((
@@ -603,10 +603,10 @@ pipe(
   ) => Effect.succeed(true))
 )
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 Effect.dropWhile(numbersArray, predicateNumbersOrStringsEffect)
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(numbersArray, Effect.dropWhile(predicateNumbersOrStringsEffect))
 
 // -------------------------------------------------------------------------------------
@@ -617,7 +617,7 @@ Effect.dropUntil(numbersArray, (
   _item // $ExpectType number
 ) => Effect.succeed(true))
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(
   numbersArray,
   Effect.dropUntil((
@@ -625,7 +625,7 @@ pipe(
   ) => Effect.succeed(true))
 )
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(
   numbersArray,
   Effect.dropUntil((
@@ -633,10 +633,10 @@ pipe(
   ) => Effect.succeed(true))
 )
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 Effect.dropUntil(numbersArray, predicateNumbersOrStringsEffect)
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(numbersArray, Effect.dropUntil(predicateNumbersOrStringsEffect))
 
 // -------------------------------------------------------------------------------------
@@ -647,7 +647,7 @@ Effect.takeUntil(numbersArray, (
   _item // $ExpectType number
 ) => Effect.succeed(true))
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(
   numbersArray,
   Effect.takeUntil((
@@ -655,7 +655,7 @@ pipe(
   ) => Effect.succeed(true))
 )
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(
   numbersArray,
   Effect.takeUntil((
@@ -663,22 +663,22 @@ pipe(
   ) => Effect.succeed(true))
 )
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 Effect.takeUntil(numbersArray, predicateNumbersOrStringsEffect)
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(numbersArray, Effect.takeUntil(predicateNumbersOrStringsEffect))
 
 // -------------------------------------------------------------------------------------
 // takeWhile
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 Effect.takeWhile(numbersArray, (
   _item // $ExpectType number
 ) => Effect.succeed(true))
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(
   numbersArray,
   Effect.takeWhile((
@@ -686,7 +686,7 @@ pipe(
   ) => Effect.succeed(true))
 )
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(
   numbersArray,
   Effect.takeWhile((
@@ -694,69 +694,69 @@ pipe(
   ) => Effect.succeed(true))
 )
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 Effect.takeWhile(numbersArray, predicateNumbersOrStringsEffect)
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 pipe(numbersArray, Effect.takeWhile(predicateNumbersOrStringsEffect))
 
 // -------------------------------------------------------------------------------------
 // andThen
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
+// $ExpectType Effect<number, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.andThen(string, number)
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
+// $ExpectType Effect<number, "err-1" | "err-2", "dep-1" | "dep-2">
 Effect.andThen(string, () => number)
 
-// $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
+// $ExpectType Effect<number, "err-1" | UnknownException, "dep-1">
 Effect.andThen(string, Promise.resolve(123))
 
-// $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
+// $ExpectType Effect<number, "err-1" | UnknownException, "dep-1">
 Effect.andThen(string, () => Promise.resolve(123))
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 Effect.andThen(string, 1)
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 Effect.andThen(string, () => 1)
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
+// $ExpectType Effect<number, "err-1" | "err-2", "dep-1" | "dep-2">
 string.pipe(Effect.andThen(number))
 
-// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
+// $ExpectType Effect<number, "err-1" | "err-2", "dep-1" | "dep-2">
 string.pipe(Effect.andThen(() => number))
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 string.pipe(Effect.andThen(1))
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 string.pipe(Effect.andThen(() => 1))
 
-// $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
+// $ExpectType Effect<number, "err-1" | UnknownException, "dep-1">
 string.pipe(Effect.andThen(Promise.resolve(123)))
 
-// $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
+// $ExpectType Effect<number, "err-1" | UnknownException, "dep-1">
 string.pipe(Effect.andThen(() => Promise.resolve(123)))
 
 // -------------------------------------------------------------------------------------
 // retry
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-1", "err-1", string>
+// $ExpectType Effect<string, "err-1", "dep-1">
 Effect.retry(string, Schedule.forever)
 
-// $ExpectType Effect<"dep-1", "err-1", string>
+// $ExpectType Effect<string, "err-1", "dep-1">
 string.pipe(Effect.retry(Schedule.forever))
 
-// $ExpectType Effect<"dep-1", "err-1", string>
+// $ExpectType Effect<string, "err-1", "dep-1">
 Effect.retry(string, { schedule: Schedule.forever })
 
-// $ExpectType Effect<"dep-1", "err-1", string>
+// $ExpectType Effect<string, "err-1", "dep-1">
 string.pipe(Effect.retry({ schedule: Schedule.forever }))
 
-// $ExpectType Effect<"dep-1", "err-1", string>
+// $ExpectType Effect<string, "err-1", "dep-1">
 Effect.retry(string, {
   schedule: Schedule.forever,
   until: (
@@ -764,7 +764,7 @@ Effect.retry(string, {
   ) => true
 })
 
-// $ExpectType Effect<"dep-1", "err-1", string>
+// $ExpectType Effect<string, "err-1", "dep-1">
 string.pipe(Effect.retry({
   schedule: Schedule.forever,
   until: (
@@ -772,7 +772,7 @@ string.pipe(Effect.retry({
   ) => true
 }))
 
-// $ExpectType Effect<"dep-1" | "dep-3", "err-1", string>
+// $ExpectType Effect<string, "err-1", "dep-1" | "dep-3">
 Effect.retry(string, {
   schedule: Schedule.forever,
   until: (
@@ -780,7 +780,7 @@ Effect.retry(string, {
   ) => boolean
 })
 
-// $ExpectType Effect<"dep-1" | "dep-3", "err-1", string>
+// $ExpectType Effect<string, "err-1", "dep-1" | "dep-3">
 string.pipe(Effect.retry({
   schedule: Schedule.forever,
   until: (
@@ -814,19 +814,19 @@ Effect.retry(Effect.fail(""), {
 // repeat
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 Effect.repeat(string, Schedule.forever)
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 string.pipe(Effect.repeat(Schedule.forever))
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 Effect.repeat(string, { schedule: Schedule.forever })
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 string.pipe(Effect.repeat({ schedule: Schedule.forever }))
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 Effect.repeat(string, {
   schedule: Schedule.forever,
   until: (
@@ -834,7 +834,7 @@ Effect.repeat(string, {
   ) => true
 })
 
-// $ExpectType Effect<"dep-1", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1">
 string.pipe(Effect.repeat({
   schedule: Schedule.forever,
   until: (
@@ -842,7 +842,7 @@ string.pipe(Effect.repeat({
   ) => true
 }))
 
-// $ExpectType Effect<"dep-1" | "dep-3", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1" | "dep-3">
 Effect.repeat(string, {
   schedule: Schedule.forever,
   until: (
@@ -850,7 +850,7 @@ Effect.repeat(string, {
   ) => boolean
 })
 
-// $ExpectType Effect<"dep-1" | "dep-3", "err-1", number>
+// $ExpectType Effect<number, "err-1", "dep-1" | "dep-3">
 string.pipe(Effect.repeat({
   schedule: Schedule.forever,
   until: (
@@ -858,21 +858,21 @@ string.pipe(Effect.repeat({
   ) => boolean
 }))
 
-// $ExpectType Effect<never, never, 123>
+// $ExpectType Effect<123, never, never>
 Effect.repeat(Effect.succeed(123), {
   until: (
     _ // $ExpectType number
   ): _ is 123 => true
 })
 
-// $ExpectType Effect<never, never, 123>
+// $ExpectType Effect<123, never, never>
 Effect.succeed(123).pipe(Effect.repeat({
   until: (
     _ // $ExpectType number
   ): _ is 123 => true
 }))
 
-// $ExpectType Effect<never, never, number>
+// $ExpectType Effect<number, never, never>
 Effect.repeat(Effect.succeed(""), {
   schedule: Schedule.forever,
   until: (

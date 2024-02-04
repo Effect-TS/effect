@@ -76,11 +76,11 @@ import * as Live from "./TestLive.js"
  * @since 2.0.0
  */
 export interface TestClock extends Clock.Clock {
-  adjust(duration: Duration.DurationInput): Effect.Effect<never, never, void>
-  adjustWith(duration: Duration.DurationInput): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  readonly save: Effect.Effect<never, never, Effect.Effect<never, never, void>>
-  setTime(time: number): Effect.Effect<never, never, void>
-  readonly sleeps: Effect.Effect<never, never, Chunk.Chunk<number>>
+  adjust(duration: Duration.DurationInput): Effect.Effect<void>
+  adjustWith(duration: Duration.DurationInput): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  readonly save: Effect.Effect<Effect.Effect<void>>
+  setTime(time: number): Effect.Effect<void>
+  readonly sleeps: Effect.Effect<Chunk.Chunk<number>>
 }
 
 /**
@@ -166,25 +166,25 @@ export class TestClockImpl implements TestClock {
   /**
    * Returns the current clock time in milliseconds.
    */
-  currentTimeMillis: Effect.Effect<never, never, number>
+  currentTimeMillis: Effect.Effect<number>
 
   /**
    * Returns the current clock time in nanoseconds.
    */
-  currentTimeNanos: Effect.Effect<never, never, bigint>
+  currentTimeNanos: Effect.Effect<bigint>
 
   /**
    * Saves the `TestClock`'s current state in an effect which, when run, will
    * restore the `TestClock` state to the saved state.
    */
-  get save(): Effect.Effect<never, never, Effect.Effect<never, never, void>> {
+  get save(): Effect.Effect<Effect.Effect<void>> {
     return core.map(ref.get(this.clockState), (data) => ref.set(this.clockState, data))
   }
   /**
    * Sets the current clock time to the specified instant. Any effects that
    * were scheduled to occur on or before the new time will be run in order.
    */
-  setTime(instant: number): Effect.Effect<never, never, void> {
+  setTime(instant: number): Effect.Effect<void> {
     return core.zipRight(this.warningDone(), this.run(() => instant))
   }
   /**
@@ -192,7 +192,7 @@ export class TestClockImpl implements TestClock {
    * greater than the specified duration. Once the clock time is adjusted to
    * on or after the duration, the fiber will automatically be resumed.
    */
-  sleep(durationInput: Duration.DurationInput): Effect.Effect<never, never, void> {
+  sleep(durationInput: Duration.DurationInput): Effect.Effect<void> {
     const duration = Duration.decode(durationInput)
     return core.flatMap(core.deferredMake<never, void>(), (deferred) =>
       pipe(
@@ -217,7 +217,7 @@ export class TestClockImpl implements TestClock {
    * Returns a list of the times at which all queued effects are scheduled to
    * resume.
    */
-  get sleeps(): Effect.Effect<never, never, Chunk.Chunk<number>> {
+  get sleeps(): Effect.Effect<Chunk.Chunk<number>> {
     return core.map(
       ref.get(this.clockState),
       (data) => Chunk.map(data.sleeps, (_) => _[0])
@@ -228,7 +228,7 @@ export class TestClockImpl implements TestClock {
    * that were scheduled to occur on or before the new time will be run in
    * order.
    */
-  adjust(durationInput: Duration.DurationInput): Effect.Effect<never, never, void> {
+  adjust(durationInput: Duration.DurationInput): Effect.Effect<void> {
     const duration = Duration.decode(durationInput)
     return core.zipRight(this.warningDone(), this.run((n) => n + Duration.toMillis(duration)))
   }
@@ -239,13 +239,13 @@ export class TestClockImpl implements TestClock {
    */
   adjustWith(durationInput: Duration.DurationInput) {
     const duration = Duration.decode(durationInput)
-    return <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+    return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
       fiberRuntime.zipLeftOptions(effect, this.adjust(duration), { concurrent: true })
   }
   /**
    * Returns a set of all fibers in this test.
    */
-  supervisedFibers(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
+  supervisedFibers(): Effect.Effect<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
     return this.annotations.supervisedFibers
   }
   /**
@@ -255,7 +255,7 @@ export class TestClockImpl implements TestClock {
    * synchronize on the status of multiple fibers at the same time this
    * snapshot may not be fully consistent.
    */
-  freeze(): Effect.Effect<never, void, HashMap.HashMap<FiberId.FiberId, FiberStatus.FiberStatus>> {
+  freeze(): Effect.Effect<HashMap.HashMap<FiberId.FiberId, FiberStatus.FiberStatus>, void> {
     return core.flatMap(this.supervisedFibers(), (fibers) =>
       pipe(
         fibers,
@@ -278,7 +278,7 @@ export class TestClockImpl implements TestClock {
    * Forks a fiber that will display a warning message if a test is using time
    * but is not advancing the `TestClock`.
    */
-  warningStart(): Effect.Effect<never, never, void> {
+  warningStart(): Effect.Effect<void> {
     return synchronized.updateSomeEffect(this.warningState, (data) =>
       WarningData.isStart(data) ?
         Option.some(
@@ -297,7 +297,7 @@ export class TestClockImpl implements TestClock {
    * Cancels the warning message that is displayed if a test is using time but
    * is not advancing the `TestClock`.
    */
-  warningDone(): Effect.Effect<never, never, void> {
+  warningDone(): Effect.Effect<void> {
     return synchronized.updateSomeEffect(this.warningState, (warningData) => {
       if (WarningData.isStart(warningData)) {
         return Option.some(core.succeed(WarningData.done))
@@ -311,7 +311,7 @@ export class TestClockImpl implements TestClock {
   /**
    * Returns whether all descendants of this fiber are done or suspended.
    */
-  suspended(): Effect.Effect<never, void, HashMap.HashMap<FiberId.FiberId, FiberStatus.FiberStatus>> {
+  suspended(): Effect.Effect<HashMap.HashMap<FiberId.FiberId, FiberStatus.FiberStatus>, void> {
     return pipe(
       this.freeze(),
       core.zip(this.live.provide(pipe(effect.sleep(Duration.millis(5)), core.zipRight(this.freeze())))),
@@ -325,7 +325,7 @@ export class TestClockImpl implements TestClock {
   /**
    * Polls until all descendants of this fiber are done or suspended.
    */
-  awaitSuspended(): Effect.Effect<never, never, void> {
+  awaitSuspended(): Effect.Effect<void> {
     return pipe(
       this.suspendedWarningStart(),
       core.zipRight(
@@ -346,7 +346,7 @@ export class TestClockImpl implements TestClock {
    * Forks a fiber that will display a warning message if a test is advancing
    * the `TestClock` but a fiber is not suspending.
    */
-  suspendedWarningStart(): Effect.Effect<never, never, void> {
+  suspendedWarningStart(): Effect.Effect<void> {
     return synchronized.updateSomeEffect(this.suspendedWarningState, (suspendedWarningData) => {
       if (SuspendedWarningData.isStart(suspendedWarningData)) {
         return Option.some(
@@ -371,7 +371,7 @@ export class TestClockImpl implements TestClock {
    * Cancels the warning message that is displayed if a test is advancing the
    * `TestClock` but a fiber is not suspending.
    */
-  suspendedWarningDone(): Effect.Effect<never, never, void> {
+  suspendedWarningDone(): Effect.Effect<void> {
     return synchronized.updateSomeEffect(this.suspendedWarningState, (suspendedWarningData) => {
       if (SuspendedWarningData.isPending(suspendedWarningData)) {
         return Option.some(pipe(core.interruptFiber(suspendedWarningData.fiber), core.as(SuspendedWarningData.start)))
@@ -383,7 +383,7 @@ export class TestClockImpl implements TestClock {
    * Runs all effects scheduled to occur on or before the specified instant,
    * which may depend on the current time, in order.
    */
-  run(f: (instant: number) => number): Effect.Effect<never, never, void> {
+  run(f: (instant: number) => number): Effect.Effect<void> {
     return pipe(
       this.awaitSuspended(),
       core.zipRight(pipe(
@@ -461,7 +461,7 @@ export const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.Te
  *
  * @since 2.0.0
  */
-export const adjust = (durationInput: Duration.DurationInput): Effect.Effect<never, never, void> => {
+export const adjust = (durationInput: Duration.DurationInput): Effect.Effect<void> => {
   const duration = Duration.decode(durationInput)
   return testClockWith((testClock) => testClock.adjust(duration))
 }
@@ -470,8 +470,8 @@ export const adjust = (durationInput: Duration.DurationInput): Effect.Effect<nev
  * @since 2.0.0
  */
 export const adjustWith = dual<
-  (duration: Duration.DurationInput) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, duration: Duration.DurationInput) => Effect.Effect<R, E, A>
+  (duration: Duration.DurationInput) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(effect: Effect.Effect<A, E, R>, duration: Duration.DurationInput) => Effect.Effect<A, E, R>
 >(2, (effect, durationInput) => {
   const duration = Duration.decode(durationInput)
   return testClockWith((testClock) => testClock.adjustWith(duration)(effect))
@@ -484,8 +484,7 @@ export const adjustWith = dual<
  *
  * @since 2.0.0
  */
-export const save = (): Effect.Effect<never, never, Effect.Effect<never, never, void>> =>
-  testClockWith((testClock) => testClock.save)
+export const save = (): Effect.Effect<Effect.Effect<void>> => testClockWith((testClock) => testClock.save)
 
 /**
  * Accesses a `TestClock` instance in the context and sets the clock time
@@ -494,7 +493,7 @@ export const save = (): Effect.Effect<never, never, Effect.Effect<never, never, 
  *
  * @since 2.0.0
  */
-export const setTime = (instant: number): Effect.Effect<never, never, void> =>
+export const setTime = (instant: number): Effect.Effect<void> =>
   testClockWith((testClock) => testClock.setTime(instant))
 
 /**
@@ -504,7 +503,7 @@ export const setTime = (instant: number): Effect.Effect<never, never, void> =>
  *
  * @since 2.0.0
  */
-export const sleep = (durationInput: Duration.DurationInput): Effect.Effect<never, never, void> => {
+export const sleep = (durationInput: Duration.DurationInput): Effect.Effect<void> => {
   const duration = Duration.decode(durationInput)
   return testClockWith((testClock) => testClock.sleep(duration))
 }
@@ -515,15 +514,14 @@ export const sleep = (durationInput: Duration.DurationInput): Effect.Effect<neve
  *
  * @since 2.0.0
  */
-export const sleeps = (): Effect.Effect<never, never, Chunk.Chunk<number>> =>
-  testClockWith((testClock) => testClock.sleeps)
+export const sleeps = (): Effect.Effect<Chunk.Chunk<number>> => testClockWith((testClock) => testClock.sleeps)
 
 /**
  * Retrieves the `TestClock` service for this test.
  *
  * @since 2.0.0
  */
-export const testClock = (): Effect.Effect<never, never, TestClock> => testClockWith(core.succeed)
+export const testClock = (): Effect.Effect<TestClock> => testClockWith(core.succeed)
 
 /**
  * Retrieves the `TestClock` service for this test and uses it to run the
@@ -531,7 +529,7 @@ export const testClock = (): Effect.Effect<never, never, TestClock> => testClock
  *
  * @since 2.0.0
  */
-export const testClockWith = <R, E, A>(f: (testClock: TestClock) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+export const testClockWith = <R, E, A>(f: (testClock: TestClock) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   core.fiberRefGetWith(
     defaultServices.currentServices,
     (services) => f(pipe(services, Context.get(clock.clockTag)) as TestClock)
@@ -543,6 +541,4 @@ export const testClockWith = <R, E, A>(f: (testClock: TestClock) => Effect.Effec
  *
  * @since 2.0.0
  */
-export const currentTimeMillis: Effect.Effect<never, never, number> = testClockWith((testClock) =>
-  testClock.currentTimeMillis
-)
+export const currentTimeMillis: Effect.Effect<number> = testClockWith((testClock) => testClock.currentTimeMillis)

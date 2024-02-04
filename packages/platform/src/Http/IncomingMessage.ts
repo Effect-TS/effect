@@ -35,10 +35,10 @@ export interface IncomingMessage<E> {
   readonly [TypeId]: TypeId
   readonly headers: Headers.Headers
   readonly remoteAddress: Option.Option<string>
-  readonly json: Effect.Effect<never, E, unknown>
-  readonly text: Effect.Effect<never, E, string>
-  readonly urlParamsBody: Effect.Effect<never, E, UrlParams.UrlParams>
-  readonly arrayBuffer: Effect.Effect<never, E, ArrayBuffer>
+  readonly json: Effect.Effect<unknown, E>
+  readonly text: Effect.Effect<string, E>
+  readonly urlParamsBody: Effect.Effect<UrlParams.UrlParams, E>
+  readonly arrayBuffer: Effect.Effect<ArrayBuffer, E>
   readonly stream: Stream.Stream<never, E, Uint8Array>
 }
 
@@ -48,7 +48,7 @@ export interface IncomingMessage<E> {
  */
 export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
   const parse = Schema.decodeUnknown(schema)
-  return <E>(self: IncomingMessage<E>): Effect.Effect<R, E | ParseResult.ParseError, A> =>
+  return <E>(self: IncomingMessage<E>): Effect.Effect<A, E | ParseResult.ParseError, R> =>
     Effect.flatMap(self.json, parse)
 }
 
@@ -60,7 +60,7 @@ export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>
   schema: Schema.Schema<A, I, R>
 ) => {
   const parse = Schema.decodeUnknown(schema)
-  return <E>(self: IncomingMessage<E>): Effect.Effect<R, E | ParseResult.ParseError, A> =>
+  return <E>(self: IncomingMessage<E>): Effect.Effect<A, E | ParseResult.ParseError, R> =>
     Effect.flatMap(self.urlParamsBody, (_) => parse(Object.fromEntries(_)))
 }
 
@@ -70,7 +70,7 @@ export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>
  */
 export const schemaHeaders = <R, I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<A, I, R>) => {
   const parse = Schema.decodeUnknown(schema)
-  return <E>(self: IncomingMessage<E>): Effect.Effect<R, ParseResult.ParseError, A> => parse(self.headers)
+  return <E>(self: IncomingMessage<E>): Effect.Effect<A, ParseResult.ParseError, R> => parse(self.headers)
 }
 
 const SpanSchema = Schema.struct({
@@ -150,6 +150,6 @@ export const maxBodySize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = Gl
  * @category fiber refs
  */
 export const withMaxBodySize = dual<
-  (size: Option.Option<FileSystem.SizeInput>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<R, E, A>
+  (size: Option.Option<FileSystem.SizeInput>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
 >(2, (effect, size) => Effect.locally(effect, maxBodySize, Option.map(size, FileSystem.Size)))

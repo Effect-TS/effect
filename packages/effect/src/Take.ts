@@ -81,7 +81,7 @@ export const dieMessage: (message: string) => Take<never, never> = internal.dieM
  * @since 2.0.0
  * @category destructors
  */
-export const done: <E, A>(self: Take<E, A>) => Effect.Effect<never, Option.Option<E>, Chunk.Chunk<A>> = internal.done
+export const done: <E, A>(self: Take<E, A>) => Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, never> = internal.done
 
 /**
  * Represents the end-of-stream marker.
@@ -108,14 +108,14 @@ export const fail: <E>(error: E) => Take<E, never> = internal.fail
 export const failCause: <E>(cause: Cause.Cause<E>) => Take<E, never> = internal.failCause
 
 /**
- * Creates an effect from `Effect<R, E, A>` that does not fail, but succeeds with
+ * Creates an effect from `Effect<A, E, R>` that does not fail, but succeeds with
  * the `Take<E, A>`. Error from stream when pulling is converted to
  * `Take.failCause`. Creates a single value chunk.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Take<E, A>> =
+export const fromEffect: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<Take<E, A>, never, R> =
   internal.fromEffect
 
 /**
@@ -127,16 +127,16 @@ export const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Eff
 export const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A> = internal.fromExit
 
 /**
- * Creates effect from `Effect<R, Option<E>, Chunk<A>>` that does not fail, but
+ * Creates effect from `Effect<Chunk<A>, Option<E>, R>` that does not fail, but
  * succeeds with the `Take<E, A>`. Errors from stream when pulling are converted
  * to `Take.failCause`, and the end-of-stream is converted to `Take.end`.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromPull: <R, E, A>(
-  pull: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>
-) => Effect.Effect<R, never, Take<E, A>> = internal.fromPull
+export const fromPull: <A, E, R>(
+  pull: Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, R>
+) => Effect.Effect<Take<E, A>, never, R> = internal.fromPull
 
 /**
  * Checks if this `take` is done (`Take.end`).
@@ -218,19 +218,19 @@ export const match: {
 export const matchEffect: {
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     options: {
-      readonly onEnd: Effect.Effect<R, E2, Z>
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+      readonly onEnd: Effect.Effect<Z, E2, R>
+      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<Z2, E2, R2>
+      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<Z3, E3, R3>
     }
-  ): (self: Take<E, A>) => Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+  ): (self: Take<E, A>) => Effect.Effect<Z | Z2 | Z3, E2 | E | E3, R | R2 | R3>
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     self: Take<E, A>,
     options: {
-      readonly onEnd: Effect.Effect<R, E2, Z>
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+      readonly onEnd: Effect.Effect<Z, E2, R>
+      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<Z2, E2, R2>
+      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<Z3, E3, R3>
     }
-  ): Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+  ): Effect.Effect<Z | Z2 | Z3, E2 | E | E3, R | R2 | R3>
 } = internal.matchEffect
 
 /**
@@ -249,10 +249,10 @@ export const of: <A>(value: A) => Take<never, A> = internal.of
  */
 export const tap: {
   <A, R, E2, _>(
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ): <E>(self: Take<E, A>) => Effect.Effect<R, E2 | E, void>
+    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
+  ): <E>(self: Take<E, A>) => Effect.Effect<void, E2 | E, R>
   <E, A, R, E2, _>(
     self: Take<E, A>,
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ): Effect.Effect<R, E | E2, void>
+    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
+  ): Effect.Effect<void, E | E2, R>
 } = internal.tap

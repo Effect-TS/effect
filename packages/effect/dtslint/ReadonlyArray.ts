@@ -657,23 +657,21 @@ ReadonlyArray.flatten(hole<ReadonlyArray.NonEmptyArray<Array<number>>>())
 // $ExpectType [number, ...number[]]
 ReadonlyArray.flatten(hole<ReadonlyArray.NonEmptyReadonlyArray<ReadonlyArray.NonEmptyReadonlyArray<number>>>())
 
-declare const flattenArray: Effect.Effect<never, never, ReadonlyArray<ReadonlyArray<number>>>
+declare const flattenArray: Effect.Effect<ReadonlyArray<ReadonlyArray<number>>>
 declare const flattenNonEmptyArray: Effect.Effect<
-  never,
-  never,
   ReadonlyArray.NonEmptyReadonlyArray<ReadonlyArray.NonEmptyReadonlyArray<number>>
 >
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 flattenArray.pipe(Effect.map((_) => ReadonlyArray.flatten(_)))
 
-// $ExpectType Effect<never, never, number[]>
+// $ExpectType Effect<number[], never, never>
 flattenArray.pipe(Effect.map(ReadonlyArray.flatten))
 
-// $ExpectType Effect<never, never, [number, ...number[]]>
+// $ExpectType Effect<[number, ...number[]], never, never>
 flattenNonEmptyArray.pipe(Effect.map((_) => ReadonlyArray.flatten(_)))
 
-// $ExpectType Effect<never, never, [number, ...number[]]>
+// $ExpectType Effect<[number, ...number[]], never, never>
 flattenNonEmptyArray.pipe(Effect.map(ReadonlyArray.flatten))
 
 // -------------------------------------------------------------------------------------

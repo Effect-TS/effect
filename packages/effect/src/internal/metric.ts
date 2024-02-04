@@ -53,7 +53,7 @@ export const make: Metric.MetricApply = function<Type, In, Out>(
   unsafeValue: (extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => Out
 ): Metric.Metric<Type, In, Out> {
   const metric: Metric.Metric<Type, In, Out> = Object.assign(
-    <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+    <A extends In, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
       core.tap(
         effect,
         (a) => core.sync(() => unsafeUpdate(a, []))
@@ -173,18 +173,17 @@ export const histogram = (name: string, boundaries: MetricBoundaries.MetricBound
 /* @internal */
 export const increment = (
   self: Metric.Metric.Counter<number> | Metric.Metric.Counter<bigint>
-): Effect.Effect<never, never, void> =>
-  update(self as Metric.Metric.Counter<number>, self.keyType.bigint ? BigInt(1) as any : 1)
+): Effect.Effect<void> => update(self as Metric.Metric.Counter<number>, self.keyType.bigint ? BigInt(1) as any : 1)
 
 /* @internal */
 export const incrementBy = dual<
   {
-    (amount: number): (self: Metric.Metric.Counter<number>) => Effect.Effect<never, never, void>
-    (amount: bigint): (self: Metric.Metric.Counter<bigint>) => Effect.Effect<never, never, void>
+    (amount: number): (self: Metric.Metric.Counter<number>) => Effect.Effect<void>
+    (amount: bigint): (self: Metric.Metric.Counter<bigint>) => Effect.Effect<void>
   },
   {
-    (self: Metric.Metric.Counter<number>, amount: number): Effect.Effect<never, never, void>
-    (self: Metric.Metric.Counter<bigint>, amount: bigint): Effect.Effect<never, never, void>
+    (self: Metric.Metric.Counter<number>, amount: number): Effect.Effect<void>
+    (self: Metric.Metric.Counter<bigint>, amount: bigint): Effect.Effect<void>
   }
 >(2, (self, amount) => update(self as any, amount))
 
@@ -215,12 +214,12 @@ export const mapType = dual<
 /* @internal */
 export const set = dual<
   {
-    (value: number): (self: Metric.Metric.Gauge<number>) => Effect.Effect<never, never, void>
-    (value: bigint): (self: Metric.Metric.Gauge<bigint>) => Effect.Effect<never, never, void>
+    (value: number): (self: Metric.Metric.Gauge<number>) => Effect.Effect<void>
+    (value: bigint): (self: Metric.Metric.Gauge<bigint>) => Effect.Effect<void>
   },
   {
-    (self: Metric.Metric.Gauge<number>, value: number): Effect.Effect<never, never, void>
-    (self: Metric.Metric.Gauge<bigint>, value: bigint): Effect.Effect<never, never, void>
+    (self: Metric.Metric.Gauge<number>, value: number): Effect.Effect<void>
+    (self: Metric.Metric.Gauge<bigint>, value: bigint): Effect.Effect<void>
   }
 >(2, (self, value) => update(self as any, value))
 
@@ -339,11 +338,11 @@ export const trackAll = dual<
     input: In
   ) => <Type, Out>(
     self: Metric.Metric<Type, In, Out>
-  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <Type, In, Out>(
     self: Metric.Metric<Type, In, Out>,
     input: In
-  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 >(2, (self, input) => (effect) =>
   core.matchCauseEffect(effect, {
     onFailure: (cause) => {
@@ -360,11 +359,11 @@ export const trackAll = dual<
 export const trackDefect = dual<
   <Type, Out>(
     metric: Metric.Metric<Type, unknown, Out>
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A, Type, Out>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R, Type, Out>(
+    self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, unknown, Out>
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(2, (self, metric) => trackDefectWith(self, metric, identity))
 
 /* @internal */
@@ -372,12 +371,12 @@ export const trackDefectWith = dual<
   <Type, In, Out>(
     metric: Metric.Metric<Type, In, Out>,
     f: (defect: unknown) => In
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R, Type, In, Out>(
+    self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, In, Out>,
     f: (defect: unknown) => In
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(3, (self, metric, f) => {
   const updater = (defect: unknown): void => metric.unsafeUpdate(f(defect), [])
   return _effect.tapDefect(self, (cause) =>
@@ -393,11 +392,11 @@ export const trackDefectWith = dual<
 export const trackDuration = dual<
   <Type, Out>(
     metric: Metric.Metric<Type, Duration.Duration, Out>
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A, Type, Out>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R, Type, Out>(
+    self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, Duration.Duration, Out>
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(2, (self, metric) => trackDurationWith(self, metric, identity))
 
 /* @internal */
@@ -405,12 +404,12 @@ export const trackDurationWith = dual<
   <Type, In, Out>(
     metric: Metric.Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
-  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R, Type, In, Out>(
+    self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(3, (self, metric, f) =>
   Clock.clockWith((clock) => {
     const startTime = clock.unsafeCurrentTimeNanos()
@@ -426,13 +425,13 @@ export const trackDurationWith = dual<
 export const trackError = dual<
   <Type, In, Out>(
     metric: Metric.Metric<Type, In, Out>
-  ) => <R, E extends In, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  ) => <R, E extends In, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <R, E extends In, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, In, Out>
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(2, <R, E extends In, A, Type, In, Out>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect.Effect<A, E, R>,
   metric: Metric.Metric<Type, In, Out>
 ) => trackErrorWith(self, metric, (a: In) => a))
 
@@ -441,18 +440,18 @@ export const trackErrorWith = dual<
   <Type, In, Out, In2>(
     metric: Metric.Metric<Type, In, Out>,
     f: (error: In2) => In
-  ) => <R, E extends In2, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  ) => <R, E extends In2, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <R, E extends In2, A, Type, In, Out, In2>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, In, Out>,
     f: (error: In2) => In
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(3, <R, E extends In2, A, Type, In, Out, In2>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect.Effect<A, E, R>,
   metric: Metric.Metric<Type, In, Out>,
   f: (error: In2) => In
 ) => {
-  const updater = (error: E): Effect.Effect<never, never, void> => update(metric, f(error))
+  const updater = (error: E): Effect.Effect<void> => update(metric, f(error))
   return _effect.tapError(self, updater)
 })
 
@@ -460,13 +459,13 @@ export const trackErrorWith = dual<
 export const trackSuccess = dual<
   <Type, In, Out>(
     metric: Metric.Metric<Type, In, Out>
-  ) => <R, E, A extends In>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A extends In, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A extends In, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A extends In, E, R, Type, In, Out>(
+    self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, In, Out>
-  ) => Effect.Effect<R, E, A>
->(2, <R, E, A extends In, Type, In, Out>(
-  self: Effect.Effect<R, E, A>,
+  ) => Effect.Effect<A, E, R>
+>(2, <A extends In, E, R, Type, In, Out>(
+  self: Effect.Effect<A, E, R>,
   metric: Metric.Metric<Type, In, Out>
 ) => trackSuccessWith(self, metric, (a: In) => a))
 
@@ -475,25 +474,25 @@ export const trackSuccessWith = dual<
   <Type, In, Out, In2>(
     metric: Metric.Metric<Type, In, Out>,
     f: (value: In2) => In
-  ) => <R, E, A extends In2>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A extends In2, Type, In, Out, In2>(
-    self: Effect.Effect<R, E, A>,
+  ) => <A extends In2, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A extends In2, E, R, Type, In, Out, In2>(
+    self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, In, Out>,
     f: (value: In2) => In
-  ) => Effect.Effect<R, E, A>
->(3, <R, E, A extends In2, Type, In, Out, In2>(
-  self: Effect.Effect<R, E, A>,
+  ) => Effect.Effect<A, E, R>
+>(3, <A extends In2, E, R, Type, In, Out, In2>(
+  self: Effect.Effect<A, E, R>,
   metric: Metric.Metric<Type, In, Out>,
   f: (value: In2) => In
 ) => {
-  const updater = (value: A): Effect.Effect<never, never, void> => update(metric, f(value))
+  const updater = (value: A): Effect.Effect<void> => update(metric, f(value))
   return core.tap(self, updater)
 })
 
 /* @internal */
 export const update = dual<
-  <In>(input: In) => <Type, Out>(self: Metric.Metric<Type, In, Out>) => Effect.Effect<never, never, void>,
-  <Type, In, Out>(self: Metric.Metric<Type, In, Out>, input: In) => Effect.Effect<never, never, void>
+  <In>(input: In) => <Type, Out>(self: Metric.Metric<Type, In, Out>) => Effect.Effect<void>,
+  <Type, In, Out>(self: Metric.Metric<Type, In, Out>, input: In) => Effect.Effect<void>
 >(2, (self, input) =>
   core.fiberRefGetWith(
     core.currentMetricLabels,
@@ -503,7 +502,7 @@ export const update = dual<
 /* @internal */
 export const value = <Type, In, Out>(
   self: Metric.Metric<Type, In, Out>
-): Effect.Effect<never, never, Out> =>
+): Effect.Effect<Out> =>
   core.fiberRefGetWith(
     core.currentMetricLabels,
     (tags) => core.sync(() => self.unsafeValue(tags))
@@ -543,6 +542,6 @@ export const zip = dual<
 export const unsafeSnapshot = (): ReadonlyArray<MetricPair.MetricPair.Untyped> => globalMetricRegistry.snapshot()
 
 /** @internal */
-export const snapshot: Effect.Effect<never, never, ReadonlyArray<MetricPair.MetricPair.Untyped>> = core.sync(
+export const snapshot: Effect.Effect<ReadonlyArray<MetricPair.MetricPair.Untyped>> = core.sync(
   unsafeSnapshot
 )

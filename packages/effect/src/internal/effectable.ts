@@ -64,7 +64,7 @@ const channelVariance = {
 }
 
 /** @internal */
-export const EffectPrototype: Effect.Effect<never, never, never> & Equal.Equal = {
+export const EffectPrototype: Effect.Effect<never> & Equal.Equal = {
   [EffectTypeId]: effectVariance,
   [StreamTypeId]: effectVariance,
   [SinkTypeId]: sinkVariance,
@@ -101,13 +101,13 @@ export const StructuralPrototype: Equal.Equal = {
 }
 
 /** @internal */
-export const CommitPrototype: Effect.Effect<never, never, never> = {
+export const CommitPrototype: Effect.Effect<never> = {
   ...EffectPrototype,
   _op: OpCodes.OP_COMMIT
 } as any
 
 /** @internal */
-export const StructuralCommitPrototype: Effect.Effect<never, never, never> = {
+export const StructuralCommitPrototype: Effect.Effect<never> = {
   ...CommitPrototype,
   ...StructuralPrototype
 } as any

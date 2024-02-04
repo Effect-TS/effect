@@ -34,14 +34,14 @@ export interface Pool<out E, in out A> extends Pool.Variance<E, A>, Pipeable {
    * acquisition fails, then the returned effect will fail for that same reason.
    * Retrying a failed acquisition attempt will repeat the acquisition attempt.
    */
-  readonly get: Effect.Effect<Scope.Scope, E, A>
+  readonly get: Effect.Effect<A, E, Scope.Scope>
 
   /**
    * Invalidates the specified item. This will cause the pool to eventually
    * reallocate the item, although this reallocation may occur lazily rather
    * than eagerly.
    */
-  invalidate(item: A): Effect.Effect<never, never, void>
+  invalidate(item: A): Effect.Effect<void>
 }
 
 /**
@@ -79,10 +79,10 @@ export const isPool: (u: unknown) => u is Pool<unknown, unknown> = internal.isPo
  */
 export const make: <R, E, A>(
   options: {
-    readonly acquire: Effect.Effect<R, E, A>
+    readonly acquire: Effect.Effect<A, E, R>
     readonly size: number
   }
-) => Effect.Effect<Scope.Scope | R, never, Pool<E, A>> = internal.make
+) => Effect.Effect<Pool<E, A>, never, Scope.Scope | R> = internal.make
 
 /**
  * Makes a new pool with the specified minimum and maximum sizes and time to
@@ -115,12 +115,12 @@ export const make: <R, E, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const makeWithTTL: <R, E, A>(options: {
-  readonly acquire: Effect.Effect<R, E, A>
+export const makeWithTTL: <A, E, R>(options: {
+  readonly acquire: Effect.Effect<A, E, R>
   readonly min: number
   readonly max: number
   readonly timeToLive: Duration.DurationInput
-}) => Effect.Effect<Scope.Scope | R, never, Pool<E, A>> = internal.makeWithTTL
+}) => Effect.Effect<Pool<E, A>, never, Scope.Scope | R> = internal.makeWithTTL
 
 /**
  * Retrieves an item from the pool in a scoped effect. Note that if
@@ -130,7 +130,7 @@ export const makeWithTTL: <R, E, A>(options: {
  * @since 2.0.0
  * @category getters
  */
-export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A> = internal.get
+export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<A, E, Scope.Scope> = internal.get
 
 /**
  * Invalidates the specified item. This will cause the pool to eventually
@@ -141,6 +141,6 @@ export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A> =
  * @category combinators
  */
 export const invalidate: {
-  <A>(value: A): <E>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, never, void>
-  <E, A>(self: Pool<E, A>, value: A): Effect.Effect<Scope.Scope, never, void>
+  <A>(value: A): <E>(self: Pool<E, A>) => Effect.Effect<void, never, Scope.Scope>
+  <E, A>(self: Pool<E, A>, value: A): Effect.Effect<void, never, Scope.Scope>
 } = internal.invalidate

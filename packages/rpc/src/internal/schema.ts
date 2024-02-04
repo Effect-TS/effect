@@ -104,8 +104,8 @@ export const rawClientCodecs = <S extends schema.RpcService.DefinitionWithId>(
 ): Record<
   string,
   {
-    readonly input: (input: unknown) => Effect.Effect<never, RpcEncodeFailure, unknown>
-    readonly output: (output: unknown) => Effect.Effect<never, RpcEncodeFailure, unknown>
+    readonly input: (input: unknown) => Effect.Effect<unknown, RpcEncodeFailure>
+    readonly output: (output: unknown) => Effect.Effect<unknown, RpcEncodeFailure>
   }
 > =>
   Object.entries(schemas).reduce((acc, [method, schema]) => {

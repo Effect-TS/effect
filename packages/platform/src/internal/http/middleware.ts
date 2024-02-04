@@ -20,7 +20,7 @@ export const loggerDisabled = globalValue(
 )
 
 /** @internal */
-export const withLoggerDisabled = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+export const withLoggerDisabled = <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.zipRight(
     FiberRef.set(loggerDisabled, true),
     self
@@ -36,11 +36,11 @@ export const currentTracerDisabledWhen = globalValue(
 export const withTracerDisabledWhen = dual<
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <R, E, A>(
-    effect: Effect.Effect<R, E, A>,
+    effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ) => Effect.Effect<R, E, A>
+  ) => Effect.Effect<A, E, R>
 >(2, (self, pred) => Effect.locally(self, currentTracerDisabledWhen, pred))
 
 /** @internal */

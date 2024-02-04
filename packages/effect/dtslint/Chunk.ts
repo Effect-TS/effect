@@ -457,17 +457,17 @@ Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>())
 // $ExpectType NonEmptyChunk<number>
 pipe(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>(), Chunk.flatten)
 
-declare const flattenChunk: Effect.Effect<never, never, Chunk.Chunk<Chunk.Chunk<number>>>
-declare const flattenNonEmptyChunk: Effect.Effect<never, never, Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>
+declare const flattenChunk: Effect.Effect<Chunk.Chunk<Chunk.Chunk<number>>>
+declare const flattenNonEmptyChunk: Effect.Effect<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>
 
-// $ExpectType Effect<never, never, Chunk<number>>
+// $ExpectType Effect<Chunk<number>, never, never>
 flattenChunk.pipe(Effect.map((_) => Chunk.flatten(_)))
 
-// $ExpectType Effect<never, never, Chunk<number>>
+// $ExpectType Effect<Chunk<number>, never, never>
 flattenChunk.pipe(Effect.map(Chunk.flatten))
 
-// $ExpectType Effect<never, never, NonEmptyChunk<number>>
+// $ExpectType Effect<NonEmptyChunk<number>, never, never>
 flattenNonEmptyChunk.pipe(Effect.map((_) => Chunk.flatten(_)))
 
-// $ExpectType Effect<never, never, NonEmptyChunk<number>>
+// $ExpectType Effect<NonEmptyChunk<number>, never, never>
 flattenNonEmptyChunk.pipe(Effect.map(Chunk.flatten))

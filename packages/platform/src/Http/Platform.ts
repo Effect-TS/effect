@@ -38,11 +38,11 @@ export interface Platform {
   readonly fileResponse: (
     path: string,
     options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
-  ) => Effect.Effect<never, Error.PlatformError, ServerResponse.ServerResponse>
+  ) => Effect.Effect<ServerResponse.ServerResponse, Error.PlatformError>
   readonly fileWebResponse: (
     file: Body.Body.FileLike,
     options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
-  ) => Effect.Effect<never, never, ServerResponse.ServerResponse>
+  ) => Effect.Effect<ServerResponse.ServerResponse>
 }
 
 /**
@@ -68,4 +68,4 @@ export const make: (
       options?: FileSystem.StreamOptions | undefined
     ) => ServerResponse.ServerResponse
   }
-) => Effect.Effect<FileSystem.FileSystem | Etag.Generator, never, Platform> = internal.make
+) => Effect.Effect<Platform, never, FileSystem.FileSystem | Etag.Generator> = internal.make

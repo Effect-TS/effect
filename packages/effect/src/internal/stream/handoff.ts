@@ -95,7 +95,7 @@ const handoffVariance = {
 }
 
 /** @internal */
-export const make = <A>(): Effect.Effect<never, never, Handoff<A>> =>
+export const make = <A>(): Effect.Effect<Handoff<A>> =>
   pipe(
     Deferred.make<never, void>(),
     Effect.flatMap((deferred) => Ref.make(handoffStateEmpty<A>(deferred))),
@@ -107,9 +107,9 @@ export const make = <A>(): Effect.Effect<never, never, Handoff<A>> =>
 
 /** @internal */
 export const offer = dual<
-  <A>(value: A) => (self: Handoff<A>) => Effect.Effect<never, never, void>,
-  <A>(self: Handoff<A>, value: A) => Effect.Effect<never, never, void>
->(2, (self, value): Effect.Effect<never, never, void> => {
+  <A>(value: A) => (self: Handoff<A>) => Effect.Effect<void>,
+  <A>(self: Handoff<A>, value: A) => Effect.Effect<void>
+>(2, (self, value): Effect.Effect<void> => {
   return Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>
@@ -136,7 +136,7 @@ export const offer = dual<
 })
 
 /** @internal */
-export const take = <A>(self: Handoff<A>): Effect.Effect<never, never, A> =>
+export const take = <A>(self: Handoff<A>): Effect.Effect<A> =>
   Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>
@@ -163,7 +163,7 @@ export const take = <A>(self: Handoff<A>): Effect.Effect<never, never, A> =>
     ))
 
 /** @internal */
-export const poll = <A>(self: Handoff<A>): Effect.Effect<never, never, Option.Option<A>> =>
+export const poll = <A>(self: Handoff<A>): Effect.Effect<Option.Option<A>> =>
   Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>

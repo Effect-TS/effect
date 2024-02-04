@@ -12,9 +12,9 @@ import { getTransferables } from "../Schema.js"
 
 /** @internal */
 export const make = <R extends RpcRouter.Base>(router: R): Effect.Effect<
-  Scope.Scope | Runner.PlatformRunner | RpcRouter.Services<R>,
+  void,
   Error.WorkerError,
-  void
+  Scope.Scope | Runner.PlatformRunner | RpcRouter.Services<R>
 > => {
   const run = (handler: Server.RpcServerSingleWithSchema) =>
     Runner.make<
@@ -43,6 +43,6 @@ export const make = <R extends RpcRouter.Base>(router: R): Effect.Effect<
 
   const handler = Server.handleSingleWithSchema(router) as unknown
   return Effect.isEffect(handler) ?
-    Effect.flatMap(handler as Effect.Effect<never, never, Server.RpcServerSingleWithSchema>, run)
+    Effect.flatMap(handler as Effect.Effect<Server.RpcServerSingleWithSchema>, run)
     : run(handler as any)
 }

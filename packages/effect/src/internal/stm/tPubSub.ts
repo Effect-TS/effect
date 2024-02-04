@@ -540,7 +540,7 @@ export const subscribe = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, TQ
   )
 
 /** @internal */
-export const subscribeScoped = <A>(self: TPubSub.TPubSub<A>): Effect.Effect<Scope.Scope, never, TQueue.TDequeue<A>> =>
+export const subscribeScoped = <A>(self: TPubSub.TPubSub<A>): Effect.Effect<TQueue.TDequeue<A>, never, Scope.Scope> =>
   Effect.acquireRelease(
     subscribe(self),
     (dequeue) => tQueue.shutdown(dequeue)

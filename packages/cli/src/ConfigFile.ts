@@ -56,7 +56,7 @@ export const makeProvider: (
       readonly searchPaths?: NonEmptyReadonlyArray<string>
     }
     | undefined
-) => Effect<Path | FileSystem, ConfigFileError, ConfigProvider> = Internal.makeProvider
+) => Effect<ConfigProvider, ConfigFileError, Path | FileSystem> = Internal.makeProvider
 
 /**
  * @since 2.0.0

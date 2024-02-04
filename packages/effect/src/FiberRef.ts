@@ -78,13 +78,13 @@ export const make: <A>(
     readonly fork?: ((a: A) => A) | undefined
     readonly join?: ((left: A, right: A) => A) | undefined
   }
-) => Effect.Effect<Scope.Scope, never, FiberRef<A>> = fiberRuntime.fiberRefMake
+) => Effect.Effect<FiberRef<A>, never, Scope.Scope> = fiberRuntime.fiberRefMake
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect.Effect<Scope.Scope, never, FiberRef<Value>> =
+export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect.Effect<FiberRef<Value>, never, Scope.Scope> =
   fiberRuntime.fiberRefMakeWith
 
 /**
@@ -93,7 +93,7 @@ export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect.Effect<S
  */
 export const makeContext: <A>(
   initial: Context.Context<A>
-) => Effect.Effect<Scope.Scope, never, FiberRef<Context.Context<A>>> = fiberRuntime.fiberRefMakeContext
+) => Effect.Effect<FiberRef<Context.Context<A>>, never, Scope.Scope> = fiberRuntime.fiberRefMakeContext
 
 /**
  * @since 2.0.0
@@ -101,7 +101,7 @@ export const makeContext: <A>(
  */
 export const makeRuntimeFlags: (
   initial: RuntimeFlags.RuntimeFlags
-) => Effect.Effect<Scope.Scope, never, FiberRef<RuntimeFlags.RuntimeFlags>> = fiberRuntime.fiberRefMakeRuntimeFlags
+) => Effect.Effect<FiberRef<RuntimeFlags.RuntimeFlags>, never, Scope.Scope> = fiberRuntime.fiberRefMakeRuntimeFlags
 
 /**
  * @since 2.0.0
@@ -153,15 +153,15 @@ export const unsafeMakePatch: <Value, Patch>(
  * @since 2.0.0
  * @category getters
  */
-export const get: <A>(self: FiberRef<A>) => Effect.Effect<never, never, A> = core.fiberRefGet
+export const get: <A>(self: FiberRef<A>) => Effect.Effect<A> = core.fiberRefGet
 
 /**
  * @since 2.0.0
  * @category utils
  */
 export const getAndSet: {
-  <A>(value: A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: FiberRef<A>) => Effect.Effect<A>
+  <A>(self: FiberRef<A>, value: A): Effect.Effect<A>
 } = core.fiberRefGetAndSet
 
 /**
@@ -169,8 +169,8 @@ export const getAndSet: {
  * @category utils
  */
 export const getAndUpdate: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<A>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<A>
 } = core.fiberRefGetAndUpdate
 
 /**
@@ -178,8 +178,8 @@ export const getAndUpdate: {
  * @category utils
  */
 export const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<A>
 } = core.fiberRefGetAndUpdateSome
 
 /**
@@ -187,8 +187,8 @@ export const getAndUpdateSome: {
  * @category utils
  */
 export const getWith: {
-  <A, R, E, B>(f: (a: A) => Effect.Effect<R, E, B>): (self: FiberRef<A>) => Effect.Effect<R, E, B>
-  <A, R, E, B>(self: FiberRef<A>, f: (a: A) => Effect.Effect<R, E, B>): Effect.Effect<R, E, B>
+  <A, B, E, R>(f: (a: A) => Effect.Effect<B, E, R>): (self: FiberRef<A>) => Effect.Effect<B, E, R>
+  <A, B, E, R>(self: FiberRef<A>, f: (a: A) => Effect.Effect<B, E, R>): Effect.Effect<B, E, R>
 } = core.fiberRefGetWith
 
 /**
@@ -196,11 +196,11 @@ export const getWith: {
  * @category utils
  */
 export const set: {
-  <A>(value: A): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, value: A): Effect.Effect<never, never, void>
+  <A>(value: A): (self: FiberRef<A>) => Effect.Effect<void>
+  <A>(self: FiberRef<A>, value: A): Effect.Effect<void>
 } = core.fiberRefSet
 
-const _delete: <A>(self: FiberRef<A>) => Effect.Effect<never, never, void> = core.fiberRefDelete
+const _delete: <A>(self: FiberRef<A>) => Effect.Effect<void> = core.fiberRefDelete
 
 export {
   /**
@@ -214,15 +214,15 @@ export {
  * @since 2.0.0
  * @category utils
  */
-export const reset: <A>(self: FiberRef<A>) => Effect.Effect<never, never, void> = core.fiberRefReset
+export const reset: <A>(self: FiberRef<A>) => Effect.Effect<void> = core.fiberRefReset
 
 /**
  * @since 2.0.0
  * @category utils
  */
 export const modify: {
-  <A, B>(f: (a: A) => readonly [B, A]): (self: FiberRef<A>) => Effect.Effect<never, never, B>
-  <A, B>(self: FiberRef<A>, f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]): (self: FiberRef<A>) => Effect.Effect<B>
+  <A, B>(self: FiberRef<A>, f: (a: A) => readonly [B, A]): Effect.Effect<B>
 } = core.fiberRefModify
 
 /**
@@ -233,15 +233,15 @@ export const modifySome: <A, B>(
   self: FiberRef<A>,
   def: B,
   f: (a: A) => Option.Option<readonly [B, A]>
-) => Effect.Effect<never, never, B> = core.fiberRefModifySome
+) => Effect.Effect<B> = core.fiberRefModifySome
 
 /**
  * @since 2.0.0
  * @category utils
  */
 export const update: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<void>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<void>
 } = core.fiberRefUpdate
 
 /**
@@ -249,8 +249,8 @@ export const update: {
  * @category utils
  */
 export const updateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, void>
+  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<void>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<void>
 } = core.fiberRefUpdateSome
 
 /**
@@ -258,8 +258,8 @@ export const updateSome: {
  * @category utils
  */
 export const updateAndGet: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<A>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<A>
 } = core.fiberRefUpdateAndGet
 
 /**
@@ -267,8 +267,8 @@ export const updateAndGet: {
  * @category utils
  */
 export const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<A>
 } = core.fiberRefUpdateSomeAndGet
 
 /**

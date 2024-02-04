@@ -74,7 +74,7 @@ export const children: ReadonlyMap<number, ReadonlyArray<Child>> = new Map(
   ])
 )
 
-const counted = <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
+const counted = <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
 
 const AllResolver = Resolver.makeBatched((
   requests: Array<GetParentChildren | GetAllParents | GetChildExtra | GetChildInfo>

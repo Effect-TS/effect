@@ -61,7 +61,7 @@ const unsafePop = (
 const renderSafe = (
   self: DocStream.DocStream<Ansi.Ansi>,
   stack: List.List<Ansi.Ansi>
-): Effect.Effect<never, never, string> => {
+): Effect.Effect<string> => {
   switch (self._tag) {
     case "FailedStream": {
       return Effect.dieMessage(

@@ -168,7 +168,7 @@ const processBackspace = (currentState: State) => {
 const defaultIntProcessor = (
   currentState: State,
   input: string
-): Effect.Effect<never, never, PromptAction.PromptAction<State, number>> => {
+): Effect.Effect<PromptAction.PromptAction<State, number>> => {
   if (currentState.value.length === 0 && input === "-") {
     return Effect.succeed(InternalPromptAction.nextFrame({
       ...currentState,
@@ -190,7 +190,7 @@ const defaultIntProcessor = (
 const defaultFloatProcessor = (
   currentState: State,
   input: string
-): Effect.Effect<never, never, PromptAction.PromptAction<State, number>> => {
+): Effect.Effect<PromptAction.PromptAction<State, number>> => {
   if (input === "." && currentState.value.includes(".")) {
     return Effect.succeed(InternalPromptAction.beep)
   }
