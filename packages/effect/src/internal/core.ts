@@ -434,7 +434,7 @@ export const as: {
 export const asUnit = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<void, E, R> => as(self, void 0)
 
 /* @internal */
-export const async = <A, E, R>(
+export const async = <A, E = never, R = never>(
   register: (
     callback: (_: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
@@ -481,7 +481,7 @@ export const async = <A, E, R>(
   })
 
 /* @internal */
-export const asyncEither = <A, E, R>(
+export const asyncEither = <A, E = never, R = never>(
   register: (
     resume: (effect: Effect.Effect<A, E, R>) => void
   ) => Either.Either<Effect.Effect<void, never, R>, Effect.Effect<A, E, R>>,

@@ -63,7 +63,7 @@ export const annotations = (): Effect.Effect<Annotations.TestAnnotations> => ann
  *
  * @since 2.0.0
  */
-export const annotationsWith = <R, E, A>(
+export const annotationsWith = <A, E, R>(
   f: (annotations: Annotations.TestAnnotations) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> =>
   core.fiberRefGetWith(
@@ -78,8 +78,8 @@ export const annotationsWith = <R, E, A>(
  * @since 2.0.0
  */
 export const withAnnotations = dual<
-  (annotations: Annotations.TestAnnotations) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, annotations: Annotations.TestAnnotations) => Effect.Effect<A, E, R>
+  (annotations: Annotations.TestAnnotations) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, annotations: Annotations.TestAnnotations) => Effect.Effect<A, E, R>
 >(2, (effect, annotations) =>
   core.fiberRefLocallyWith(
     currentServices,
@@ -148,7 +148,7 @@ export const supervisedFibers = (): Effect.Effect<
  *
  * @since 2.0.0
  */
-export const liveWith = <R, E, A>(f: (live: Live.TestLive) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+export const liveWith = <A, E, R>(f: (live: Live.TestLive) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, Live.TestLive)))
 
 /**
@@ -165,8 +165,8 @@ export const live: Effect.Effect<Live.TestLive> = liveWith(core.succeed)
  * @since 2.0.0
  */
 export const withLive = dual<
-  (live: Live.TestLive) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, live: Live.TestLive) => Effect.Effect<A, E, R>
+  (live: Live.TestLive) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, live: Live.TestLive) => Effect.Effect<A, E, R>
 >(2, (effect, live) =>
   core.fiberRefLocallyWith(
     currentServices,
@@ -202,7 +202,7 @@ export const liveLayer = (): Layer.Layer<Live.TestLive, never, DefaultServices.D
  *
  * @since 2.0.0
  */
-export const provideLive = <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+export const provideLive = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   liveWith((live) => live.provide(effect))
 
 /**
@@ -231,7 +231,7 @@ export const provideWithLive = dual<
  *
  * @since 2.0.0
  */
-export const sizedWith = <R, E, A>(f: (sized: Sized.TestSized) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+export const sizedWith = <A, E, R>(f: (sized: Sized.TestSized) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   core.fiberRefGetWith(
     currentServices,
     (services) => f(Context.get(services, Sized.TestSized))
@@ -251,8 +251,8 @@ export const sized: Effect.Effect<Sized.TestSized> = sizedWith(core.succeed)
  * @since 2.0.0
  */
 export const withSized = dual<
-  (sized: Sized.TestSized) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, sized: Sized.TestSized) => Effect.Effect<A, E, R>
+  (sized: Sized.TestSized) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, sized: Sized.TestSized) => Effect.Effect<A, E, R>
 >(2, (effect, sized) =>
   core.fiberRefLocallyWith(
     currentServices,
@@ -290,8 +290,8 @@ export const size: Effect.Effect<number> = sizedWith((sized) => sized.size)
  * @since 2.0.0
  */
 export const withSize = dual<
-  (size: number) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, size: number) => Effect.Effect<A, E, R>
+  (size: number) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, size: number) => Effect.Effect<A, E, R>
 >(2, (effect, size) => sizedWith((sized) => sized.withSize(size)(effect)))
 
 /**
@@ -300,7 +300,7 @@ export const withSize = dual<
  *
  * @since 2.0.0
  */
-export const testConfigWith = <R, E, A>(
+export const testConfigWith = <A, E, R>(
   f: (config: TestConfig.TestConfig) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> =>
   core.fiberRefGetWith(
@@ -322,8 +322,8 @@ export const testConfig: Effect.Effect<TestConfig.TestConfig> = testConfigWith(c
  * @since 2.0.0
  */
 export const withTestConfig = dual<
-  (config: TestConfig.TestConfig) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, config: TestConfig.TestConfig) => Effect.Effect<A, E, R>
+  (config: TestConfig.TestConfig) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, config: TestConfig.TestConfig) => Effect.Effect<A, E, R>
 >(2, (effect, config) =>
   core.fiberRefLocallyWith(
     currentServices,
