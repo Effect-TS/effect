@@ -68,26 +68,41 @@ export const make = <I, R, E, O>(
         }
 
         const stream = process(req[2])
+        const collector = Transferable.unsafeMakeCollector()
 
         let effect = Effect.isEffect(stream) ?
           Effect.matchCauseEffect(stream, {
             onFailure: (cause) =>
               Either.match(Cause.failureOrCause(cause), {
                 onLeft: (error) => {
-                  const transfers = options?.transfers ? options.transfers(error) : undefined
+                  const transfers = options?.transfers ? options.transfers(error) : []
                   return pipe(
-                    options?.encodeError ? options.encodeError(req[2], error) : Effect.succeed(error),
-                    Effect.flatMap((payload) => backing.send([id, 2, payload as any], transfers)),
+                    options?.encodeError
+                      ? Effect.provideService(options.encodeError(req[2], error), Transferable.Collector, collector)
+                      : Effect.succeed(error),
+                    Effect.flatMap((payload) =>
+                      backing.send([id, 2, payload as any], [
+                        ...transfers,
+                        ...collector.unsafeRead()
+                      ])
+                    ),
                     Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
                   )
                 },
                 onRight: (cause) => backing.send([id, 3, Cause.squash(cause)])
               }),
             onSuccess: (data) => {
-              const transfers = options?.transfers ? options.transfers(data) : undefined
+              const transfers = options?.transfers ? options.transfers(data) : []
               return pipe(
-                options?.encodeOutput ? options.encodeOutput(req[2], data) : Effect.succeed(data),
-                Effect.flatMap((payload) => backing.send([id, 0, [payload]], transfers)),
+                options?.encodeOutput
+                  ? Effect.provideService(options.encodeOutput(req[2], data), Transferable.Collector, collector)
+                  : Effect.succeed(data),
+                Effect.flatMap((payload) =>
+                  backing.send([id, 0, [payload]], [
+                    ...transfers,
+                    ...collector.unsafeRead()
+                  ])
+                ),
                 Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
               )
             }
@@ -103,7 +118,8 @@ export const make = <I, R, E, O>(
               }
 
               const transfers: Array<unknown> = []
-              return Effect.flatMap(
+              collector.unsafeClear()
+              return pipe(
                 Effect.forEach(data, (data) => {
                   if (options?.transfers) {
                     for (const option of options.transfers(data)) {
@@ -112,7 +128,11 @@ export const make = <I, R, E, O>(
                   }
                   return Effect.orDie(options.encodeOutput!(req[2], data))
                 }),
-                (payload) => backing.send([id, 0, payload], transfers)
+                Effect.provideService(Transferable.Collector, collector),
+                Effect.flatMap((payload) => {
+                  transfers.push(...collector.unsafeRead())
+                  return backing.send([id, 0, payload], transfers)
+                })
               )
             }),
             Stream.runDrain,
@@ -120,10 +140,18 @@ export const make = <I, R, E, O>(
               onFailure: (cause) =>
                 Either.match(Cause.failureOrCause(cause), {
                   onLeft: (error) => {
-                    const transfers = options?.transfers ? options.transfers(error) : undefined
+                    const transfers = options?.transfers ? options.transfers(error) : []
+                    collector.unsafeClear()
                     return pipe(
-                      options?.encodeError ? options.encodeError(req[2], error) : Effect.succeed(error),
-                      Effect.flatMap((payload) => backing.send([id, 2, payload as any], transfers)),
+                      options?.encodeError
+                        ? Effect.provideService(options.encodeError(req[2], error), Transferable.Collector, collector)
+                        : Effect.succeed(error),
+                      Effect.flatMap((payload) =>
+                        backing.send([id, 2, payload as any], [
+                          ...transfers,
+                          ...collector.unsafeRead()
+                        ])
+                      ),
                       Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
                     )
                   },
@@ -197,9 +225,6 @@ export const makeSerialized = <
       }
       return Stream.provideContext(result as any, context)
     }, {
-      transfers(message) {
-        return Transferable.get(message)
-      },
       decode(message) {
         return Effect.mapError(
           parseRequest(message),

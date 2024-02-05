@@ -10,8 +10,8 @@ const Name = Context.GenericTag<Name, string>("Name")
 const WorkerLive = Runner.layerSerialized(WorkerMessage, {
   GetPersonById: (req) =>
     Stream.make(
-      new Person({ id: req.id, name: "test" }),
-      new Person({ id: req.id, name: "ing" })
+      new Person({ id: req.id, name: "test", data: new Uint8Array([1, 2, 3]) }),
+      new Person({ id: req.id, name: "ing", data: new Uint8Array([4, 5, 6]) })
     ),
   GetUserById: (req) => Effect.map(Name, (name) => new User({ id: req.id, name })),
   InitialMessage: (req) => Layer.succeed(Name, req.name),
