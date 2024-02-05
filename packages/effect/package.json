@@ -40,6 +40,9 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
-    "@types/node": "^20.10.5"
+    "@types/jscodeshift": "^0.11.11",
+    "@types/node": "^20.10.5",
+    "ast-types": "^0.14.2",
+    "jscodeshift": "^0.15.1"
   }
 }

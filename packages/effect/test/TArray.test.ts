@@ -15,19 +15,19 @@ import { assert, describe } from "vitest"
 
 const largePrime = 223
 
-const makeRepeats = (blocks: number, length: number): STM.STM<never, never, TArray.TArray<number>> =>
+const makeRepeats = (blocks: number, length: number): STM.STM<TArray.TArray<number>> =>
   TArray.fromIterable(Array.from({ length: blocks * length }, (_, i) => (i % length) + 1))
 
-const makeStair = (length: number): STM.STM<never, never, TArray.TArray<number>> =>
+const makeStair = (length: number): STM.STM<TArray.TArray<number>> =>
   TArray.fromIterable(Array.from({ length }, (_, i) => i + 1))
 
-const makeStairWithHoles = (length: number): STM.STM<never, never, TArray.TArray<Option.Option<number>>> =>
+const makeStairWithHoles = (length: number): STM.STM<TArray.TArray<Option.Option<number>>> =>
   TArray.fromIterable(Array.from({ length }, (_, i) => i % 3 === 0 ? Option.none() : Option.some(i)))
 
-const makeTArray = <A>(length: number, value: A): STM.STM<never, never, TArray.TArray<A>> =>
+const makeTArray = <A>(length: number, value: A): STM.STM<TArray.TArray<A>> =>
   TArray.fromIterable(Array.from({ length }, () => value))
 
-const valuesOf = <A>(array: TArray.TArray<A>): STM.STM<never, never, Array<A>> =>
+const valuesOf = <A>(array: TArray.TArray<A>): STM.STM<Array<A>> =>
   pipe(array, TArray.reduce<Array<A>, A>([], (acc, a) => [...acc, a]))
 
 describe("TArray", () => {
@@ -1048,7 +1048,7 @@ describe("TArray", () => {
   it.effect("reduceSTM - returns failures", () =>
     Effect.gen(function*($) {
       const n = 1_000
-      const failInTheMiddle = (acc: number, n: number): STM.STM<never, string, number> =>
+      const failInTheMiddle = (acc: number, n: number): STM.STM<number, string> =>
         acc === Math.floor(n / 2) ? STM.fail("boom") : STM.succeed(acc + n)
       const array = yield* $(makeTArray(n, 1))
       const result = yield* $(pipe(array, TArray.reduceSTM(0, failInTheMiddle), STM.either))

@@ -66,7 +66,7 @@ const indexOf = <K>(k: K, capacity: number): number => hash(k) & (capacity - 1)
 const allocate = <K, V>(
   capacity: number,
   data: Chunk.Chunk<readonly [K, V]>
-): STM.STM<never, never, TMap.TMap<K, V>> => {
+): STM.STM<TMap.TMap<K, V>> => {
   const buckets = Array.from({ length: capacity }, () => Chunk.empty<readonly [K, V]>())
   const distinct = new Map<K, V>(data)
   let size = 0
@@ -92,17 +92,17 @@ const allocate = <K, V>(
 }
 
 /** @internal */
-export const empty = <K, V>(): STM.STM<never, never, TMap.TMap<K, V>> => fromIterable<K, V>([])
+export const empty = <K, V>(): STM.STM<TMap.TMap<K, V>> => fromIterable<K, V>([])
 
 /** @internal */
 export const find = dual<
   <K, V, A>(
     pf: (key: K, value: V) => Option.Option<A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Option.Option<A>>,
+  ) => (self: TMap.TMap<K, V>) => STM.STM<Option.Option<A>>,
   <K, V, A>(
     self: TMap.TMap<K, V>,
     pf: (key: K, value: V) => Option.Option<A>
-  ) => STM.STM<never, never, Option.Option<A>>
+  ) => STM.STM<Option.Option<A>>
 >(2, (self, pf) =>
   findSTM(self, (key, value) => {
     const option = pf(key, value)
@@ -115,15 +115,15 @@ export const find = dual<
 /** @internal */
 export const findSTM = dual<
   <K, V, R, E, A>(
-    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, Option.Option<A>>,
+    f: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<Option.Option<A>, E, R>,
   <K, V, R, E, A>(
     self: TMap.TMap<K, V>,
-    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => STM.STM<R, E, Option.Option<A>>
+    f: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
+  ) => STM.STM<Option.Option<A>, E, R>
 >(2, <K, V, R, E, A>(
   self: TMap.TMap<K, V>,
-  f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+  f: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
 ) =>
   reduceSTM(self, Option.none<A>(), (acc, value, key) =>
     Option.isNone(acc) ?
@@ -140,11 +140,11 @@ export const findSTM = dual<
 export const findAll = dual<
   <K, V, A>(
     pf: (key: K, value: V) => Option.Option<A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<A>>,
+  ) => (self: TMap.TMap<K, V>) => STM.STM<Array<A>>,
   <K, V, A>(
     self: TMap.TMap<K, V>,
     pf: (key: K, value: V) => Option.Option<A>
-  ) => STM.STM<never, never, Array<A>>
+  ) => STM.STM<Array<A>>
 >(2, (self, pf) =>
   findAllSTM(self, (key, value) => {
     const option = pf(key, value)
@@ -157,15 +157,15 @@ export const findAll = dual<
 /** @internal */
 export const findAllSTM = dual<
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, Array<A>>,
+    pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<Array<A>, E, R>,
   <K, V, R, E, A>(
     self: TMap.TMap<K, V>,
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => STM.STM<R, E, Array<A>>
+    pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
+  ) => STM.STM<Array<A>, E, R>
 >(2, <K, V, R, E, A>(
   self: TMap.TMap<K, V>,
-  pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+  pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
 ) =>
   core.map(
     reduceSTM(self, Chunk.empty<A>(), (acc, value, key) =>
@@ -181,8 +181,8 @@ export const findAllSTM = dual<
 
 /** @internal */
 export const forEach = dual<
-  <K, V, R, E, _>(f: (key: K, value: V) => STM.STM<R, E, _>) => (self: TMap.TMap<K, V>) => STM.STM<R, E, void>,
-  <K, V, R, E, _>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<R, E, _>) => STM.STM<R, E, void>
+  <K, V, R, E, _>(f: (key: K, value: V) => STM.STM<_, E, R>) => (self: TMap.TMap<K, V>) => STM.STM<void, E, R>,
+  <K, V, R, E, _>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<_, E, R>) => STM.STM<void, E, R>
 >(2, (self, f) =>
   reduceSTM(
     self,
@@ -191,7 +191,7 @@ export const forEach = dual<
   ))
 
 /** @internal */
-export const fromIterable = <K, V>(iterable: Iterable<readonly [K, V]>): STM.STM<never, never, TMap.TMap<K, V>> =>
+export const fromIterable = <K, V>(iterable: Iterable<readonly [K, V]>): STM.STM<TMap.TMap<K, V>> =>
   stm.suspend(() => {
     const data = Chunk.fromIterable(iterable)
     const capacity = data.length < InitialCapacity
@@ -202,8 +202,8 @@ export const fromIterable = <K, V>(iterable: Iterable<readonly [K, V]>): STM.STM
 
 /** @internal */
 export const get = dual<
-  <K>(key: K) => <V>(self: TMap.TMap<K, V>) => STM.STM<never, never, Option.Option<V>>,
-  <K, V>(self: TMap.TMap<K, V>, key: K) => STM.STM<never, never, Option.Option<V>>
+  <K>(key: K) => <V>(self: TMap.TMap<K, V>) => STM.STM<Option.Option<V>>,
+  <K, V>(self: TMap.TMap<K, V>, key: K) => STM.STM<Option.Option<V>>
 >(2, <K, V>(self: TMap.TMap<K, V>, key: K) =>
   core.effect<never, Option.Option<V>>((journal) => {
     const buckets = tRef.unsafeGet(self.tBuckets, journal)
@@ -217,8 +217,8 @@ export const get = dual<
 
 /** @internal */
 export const getOrElse = dual<
-  <K, V>(key: K, fallback: LazyArg<V>) => (self: TMap.TMap<K, V>) => STM.STM<never, never, V>,
-  <K, V>(self: TMap.TMap<K, V>, key: K, fallback: LazyArg<V>) => STM.STM<never, never, V>
+  <K, V>(key: K, fallback: LazyArg<V>) => (self: TMap.TMap<K, V>) => STM.STM<V>,
+  <K, V>(self: TMap.TMap<K, V>, key: K, fallback: LazyArg<V>) => STM.STM<V>
 >(3, (self, key, fallback) =>
   core.map(
     get(self, key),
@@ -227,26 +227,25 @@ export const getOrElse = dual<
 
 /** @internal */
 export const has = dual<
-  <K>(key: K) => <V>(self: TMap.TMap<K, V>) => STM.STM<never, never, boolean>,
-  <K, V>(self: TMap.TMap<K, V>, key: K) => STM.STM<never, never, boolean>
+  <K>(key: K) => <V>(self: TMap.TMap<K, V>) => STM.STM<boolean>,
+  <K, V>(self: TMap.TMap<K, V>, key: K) => STM.STM<boolean>
 >(2, (self, key) => core.map(get(self, key), Option.isSome))
 
 /** @internal */
-export const isEmpty = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, boolean> =>
+export const isEmpty = <K, V>(self: TMap.TMap<K, V>): STM.STM<boolean> =>
   core.map(tRef.get(self.tSize), (size) => size === 0)
 
 /** @internal */
-export const keys = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Array<K>> =>
+export const keys = <K, V>(self: TMap.TMap<K, V>): STM.STM<Array<K>> =>
   core.map(toReadonlyArray(self), RA.map((entry) => entry[0]))
 
 /** @internal */
-export const make = <K, V>(...entries: Array<readonly [K, V]>): STM.STM<never, never, TMap.TMap<K, V>> =>
-  fromIterable(entries)
+export const make = <K, V>(...entries: Array<readonly [K, V]>): STM.STM<TMap.TMap<K, V>> => fromIterable(entries)
 
 /** @internal */
 export const merge = dual<
-  <K, V>(key: K, value: V, f: (x: V, y: V) => V) => (self: TMap.TMap<K, V>) => STM.STM<never, never, V>,
-  <K, V>(self: TMap.TMap<K, V>, key: K, value: V, f: (x: V, y: V) => V) => STM.STM<never, never, V>
+  <K, V>(key: K, value: V, f: (x: V, y: V) => V) => (self: TMap.TMap<K, V>) => STM.STM<V>,
+  <K, V>(self: TMap.TMap<K, V>, key: K, value: V, f: (x: V, y: V) => V) => STM.STM<V>
 >(4, (self, key, value, f) =>
   core.flatMap(
     get(self, key),
@@ -261,8 +260,8 @@ export const merge = dual<
 
 /** @internal */
 export const reduce = dual<
-  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Z>,
-  <K, V, Z>(self: TMap.TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z) => STM.STM<never, never, Z>
+  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z) => (self: TMap.TMap<K, V>) => STM.STM<Z>,
+  <K, V, Z>(self: TMap.TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z) => STM.STM<Z>
 >(
   3,
   <K, V, Z>(self: TMap.TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z) =>
@@ -284,13 +283,13 @@ export const reduce = dual<
 export const reduceSTM = dual<
   <Z, V, K, R, E>(
     zero: Z,
-    f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, Z>,
+    f: (acc: Z, value: V, key: K) => STM.STM<Z, E, R>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<Z, E, R>,
   <Z, V, K, R, E>(
     self: TMap.TMap<K, V>,
     zero: Z,
-    f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>
-  ) => STM.STM<R, E, Z>
+    f: (acc: Z, value: V, key: K) => STM.STM<Z, E, R>
+  ) => STM.STM<Z, E, R>
 >(3, (self, zero, f) =>
   core.flatMap(
     toReadonlyArray(self),
@@ -299,8 +298,8 @@ export const reduceSTM = dual<
 
 /** @internal */
 export const remove = dual<
-  <K>(key: K) => <V>(self: TMap.TMap<K, V>) => STM.STM<never, never, void>,
-  <K, V>(self: TMap.TMap<K, V>, key: K) => STM.STM<never, never, void>
+  <K>(key: K) => <V>(self: TMap.TMap<K, V>) => STM.STM<void>,
+  <K, V>(self: TMap.TMap<K, V>, key: K) => STM.STM<void>
 >(2, (self, key) =>
   core.effect<never, void>((journal) => {
     const buckets = tRef.unsafeGet(self.tBuckets, journal)
@@ -316,8 +315,8 @@ export const remove = dual<
 
 /** @internal */
 export const removeAll = dual<
-  <K>(keys: Iterable<K>) => <V>(self: TMap.TMap<K, V>) => STM.STM<never, never, void>,
-  <K, V>(self: TMap.TMap<K, V>, keys: Iterable<K>) => STM.STM<never, never, void>
+  <K>(keys: Iterable<K>) => <V>(self: TMap.TMap<K, V>) => STM.STM<void>,
+  <K, V>(self: TMap.TMap<K, V>, keys: Iterable<K>) => STM.STM<void>
 >(2, <K, V>(self: TMap.TMap<K, V>, keys: Iterable<K>) =>
   core.effect<never, void>((journal) => {
     const iterator = keys[Symbol.iterator]()
@@ -342,27 +341,27 @@ export const removeIf: {
     options: {
       readonly discard: true
     }
-  ): (self: TMap.TMap<K, V>) => STM.STM<never, never, void>
+  ): (self: TMap.TMap<K, V>) => STM.STM<void>
   <K, V>(
     predicate: (key: K, value: V) => boolean,
     options?: {
       readonly discard: false
     }
-  ): (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
+  ): (self: TMap.TMap<K, V>) => STM.STM<Array<[K, V]>>
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
     options: {
       readonly discard: true
     }
-  ): STM.STM<never, never, void>
+  ): STM.STM<void>
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
     options?: {
       readonly discard: false
     }
-  ): STM.STM<never, never, Array<[K, V]>>
+  ): STM.STM<Array<[K, V]>>
 } = dual((args) => isTMap(args[0]), <K, V>(
   self: TMap.TMap<K, V>,
   predicate: (key: K, value: V) => boolean,
@@ -409,27 +408,27 @@ export const retainIf: {
     options: {
       readonly discard: true
     }
-  ): (self: TMap.TMap<K, V>) => STM.STM<never, never, void>
+  ): (self: TMap.TMap<K, V>) => STM.STM<void>
   <K, V>(
     predicate: (key: K, value: V) => boolean,
     options?: {
       readonly discard: false
     }
-  ): (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
+  ): (self: TMap.TMap<K, V>) => STM.STM<Array<[K, V]>>
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
     options: {
       readonly discard: true
     }
-  ): STM.STM<never, never, void>
+  ): STM.STM<void>
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
     options?: {
       readonly discard: false
     }
-  ): STM.STM<never, never, Array<[K, V]>>
+  ): STM.STM<Array<[K, V]>>
 } = dual(
   (args) => isTMap(args[0]),
   (self, predicate, options) => removeIf(self, (key, value) => !predicate(key, value), options)
@@ -437,8 +436,8 @@ export const retainIf: {
 
 /** @internal */
 export const set = dual<
-  <K, V>(key: K, value: V) => (self: TMap.TMap<K, V>) => STM.STM<never, never, void>,
-  <K, V>(self: TMap.TMap<K, V>, key: K, value: V) => STM.STM<never, never, void>
+  <K, V>(key: K, value: V) => (self: TMap.TMap<K, V>) => STM.STM<void>,
+  <K, V>(self: TMap.TMap<K, V>, key: K, value: V) => STM.STM<void>
 >(3, <K, V>(self: TMap.TMap<K, V>, key: K, value: V) => {
   const resize = (journal: Journal.Journal, buckets: TArray.TArray<Chunk.Chunk<readonly [K, V]>>): void => {
     const capacity = buckets.chunk.length
@@ -495,8 +494,8 @@ export const set = dual<
 
 /** @internal */
 export const setIfAbsent = dual<
-  <K, V>(key: K, value: V) => (self: TMap.TMap<K, V>) => STM.STM<never, never, void>,
-  <K, V>(self: TMap.TMap<K, V>, key: K, value: V) => STM.STM<never, never, void>
+  <K, V>(key: K, value: V) => (self: TMap.TMap<K, V>) => STM.STM<void>,
+  <K, V>(self: TMap.TMap<K, V>, key: K, value: V) => STM.STM<void>
 >(3, (self, key, value) =>
   core.flatMap(
     get(self, key),
@@ -507,12 +506,12 @@ export const setIfAbsent = dual<
   ))
 
 /** @internal */
-export const size = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, number> => tRef.get(self.tSize)
+export const size = <K, V>(self: TMap.TMap<K, V>): STM.STM<number> => tRef.get(self.tSize)
 
 /** @internal */
 export const takeFirst = dual<
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>) => (self: TMap.TMap<K, V>) => STM.STM<never, never, A>,
-  <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>) => STM.STM<never, never, A>
+  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>) => (self: TMap.TMap<K, V>) => STM.STM<A>,
+  <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>) => STM.STM<A>
 >(2, <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>) =>
   pipe(
     core.effect<never, Option.Option<A>>((journal) => {
@@ -555,9 +554,9 @@ export const takeFirst = dual<
 /** @internal */
 export const takeFirstSTM = dual<
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, A>,
-  <K, V, R, E, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>) => STM.STM<R, E, A>
+    pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<A, E, R>,
+  <K, V, R, E, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>) => STM.STM<A, E, R>
 >(2, (self, pf) =>
   pipe(
     findSTM(self, (key, value) => core.map(pf(key, value), (a) => [key, a] as const)),
@@ -569,11 +568,11 @@ export const takeFirstSTM = dual<
 export const takeSome = dual<
   <K, V, A>(
     pf: (key: K, value: V) => Option.Option<A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, RA.NonEmptyArray<A>>,
+  ) => (self: TMap.TMap<K, V>) => STM.STM<RA.NonEmptyArray<A>>,
   <K, V, A>(
     self: TMap.TMap<K, V>,
     pf: (key: K, value: V) => Option.Option<A>
-  ) => STM.STM<never, never, RA.NonEmptyArray<A>>
+  ) => STM.STM<RA.NonEmptyArray<A>>
 >(2, <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>) =>
   pipe(
     core.effect<never, Option.Option<RA.NonEmptyArray<A>>>((journal) => {
@@ -620,15 +619,15 @@ export const takeSome = dual<
 /** @internal */
 export const takeSomeSTM = dual<
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, RA.NonEmptyArray<A>>,
+    pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<RA.NonEmptyArray<A>, E, R>,
   <K, V, R, E, A>(
     self: TMap.TMap<K, V>,
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => STM.STM<R, E, RA.NonEmptyArray<A>>
+    pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
+  ) => STM.STM<RA.NonEmptyArray<A>, E, R>
 >(2, <K, V, R, E, A>(
   self: TMap.TMap<K, V>,
-  pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+  pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
 ) =>
   pipe(
     findAllSTM(
@@ -653,7 +652,7 @@ export const takeSomeSTM = dual<
     )
   ))
 
-const toReadonlyArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, ReadonlyArray<readonly [K, V]>> =>
+const toReadonlyArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<ReadonlyArray<readonly [K, V]>> =>
   core.effect<never, Array<readonly [K, V]>>((journal) => {
     const buckets = tRef.unsafeGet(self.tBuckets, journal)
     const capacity = buckets.chunk.length
@@ -670,7 +669,7 @@ const toReadonlyArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Rea
   })
 
 /** @internal */
-export const toChunk = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Chunk.Chunk<[K, V]>> =>
+export const toChunk = <K, V>(self: TMap.TMap<K, V>): STM.STM<Chunk.Chunk<[K, V]>> =>
   reduce(
     self,
     Chunk.empty<[K, V]>(),
@@ -678,7 +677,7 @@ export const toChunk = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Chun
   )
 
 /** @internal */
-export const toHashMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, HashMap.HashMap<K, V>> =>
+export const toHashMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<HashMap.HashMap<K, V>> =>
   reduce(
     self,
     HashMap.empty<K, V>(),
@@ -686,7 +685,7 @@ export const toHashMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Ha
   )
 
 /** @internal */
-export const toArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Array<[K, V]>> =>
+export const toArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<Array<[K, V]>> =>
   reduce(
     self,
     [] as Array<[K, V]>,
@@ -697,7 +696,7 @@ export const toArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Arra
   )
 
 /** @internal */
-export const toMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Map<K, V>> =>
+export const toMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<Map<K, V>> =>
   reduce(
     self,
     new Map<K, V>(),
@@ -706,8 +705,8 @@ export const toMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Map<K,
 
 /** @internal */
 export const transform = dual<
-  <K, V>(f: (key: K, value: V) => readonly [K, V]) => (self: TMap.TMap<K, V>) => STM.STM<never, never, void>,
-  <K, V>(self: TMap.TMap<K, V>, f: (key: K, value: V) => readonly [K, V]) => STM.STM<never, never, void>
+  <K, V>(f: (key: K, value: V) => readonly [K, V]) => (self: TMap.TMap<K, V>) => STM.STM<void>,
+  <K, V>(self: TMap.TMap<K, V>, f: (key: K, value: V) => readonly [K, V]) => STM.STM<void>
 >(
   2,
   <K, V>(self: TMap.TMap<K, V>, f: (key: K, value: V) => readonly [K, V]) =>
@@ -745,12 +744,12 @@ export const transform = dual<
 /** @internal */
 export const transformSTM = dual<
   <K, V, R, E>(
-    f: (key: K, value: V) => STM.STM<R, E, readonly [K, V]>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, void>,
-  <K, V, R, E>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<R, E, readonly [K, V]>) => STM.STM<R, E, void>
+    f: (key: K, value: V) => STM.STM<readonly [K, V], E, R>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<void, E, R>,
+  <K, V, R, E>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<readonly [K, V], E, R>) => STM.STM<void, E, R>
 >(
   2,
-  <K, V, R, E>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<R, E, readonly [K, V]>) =>
+  <K, V, R, E>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<readonly [K, V], E, R>) =>
     pipe(
       core.flatMap(
         toReadonlyArray(self),
@@ -785,14 +784,14 @@ export const transformSTM = dual<
 
 /** @internal */
 export const transformValues = dual<
-  <V>(f: (value: V) => V) => <K>(self: TMap.TMap<K, V>) => STM.STM<never, never, void>,
-  <K, V>(self: TMap.TMap<K, V>, f: (value: V) => V) => STM.STM<never, never, void>
+  <V>(f: (value: V) => V) => <K>(self: TMap.TMap<K, V>) => STM.STM<void>,
+  <K, V>(self: TMap.TMap<K, V>, f: (value: V) => V) => STM.STM<void>
 >(2, (self, f) => transform(self, (key, value) => [key, f(value)]))
 
 /** @internal */
 export const transformValuesSTM = dual<
-  <V, R, E>(f: (value: V) => STM.STM<R, E, V>) => <K>(self: TMap.TMap<K, V>) => STM.STM<R, E, void>,
-  <K, V, R, E>(self: TMap.TMap<K, V>, f: (value: V) => STM.STM<R, E, V>) => STM.STM<R, E, void>
+  <V, R, E>(f: (value: V) => STM.STM<V, E, R>) => <K>(self: TMap.TMap<K, V>) => STM.STM<void, E, R>,
+  <K, V, R, E>(self: TMap.TMap<K, V>, f: (value: V) => STM.STM<V, E, R>) => STM.STM<void, E, R>
 >(2, (self, f) =>
   transformSTM(
     self,
@@ -804,12 +803,12 @@ export const updateWith = dual<
   <K, V>(
     key: K,
     f: (value: Option.Option<V>) => Option.Option<V>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Option.Option<V>>,
+  ) => (self: TMap.TMap<K, V>) => STM.STM<Option.Option<V>>,
   <K, V>(
     self: TMap.TMap<K, V>,
     key: K,
     f: (value: Option.Option<V>) => Option.Option<V>
-  ) => STM.STM<never, never, Option.Option<V>>
+  ) => STM.STM<Option.Option<V>>
 >(3, (self, key, f) =>
   core.flatMap(get(self, key), (option) =>
     Option.match(
@@ -821,5 +820,5 @@ export const updateWith = dual<
     )))
 
 /** @internal */
-export const values = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Array<V>> =>
+export const values = <K, V>(self: TMap.TMap<K, V>): STM.STM<Array<V>> =>
   core.map(toReadonlyArray(self), RA.map((entry) => entry[1]))

@@ -338,8 +338,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Fiber<E, never> = internal
  * @since 2.0.0
  * @category conversions
  */
-export const fromEffect: <E, A>(effect: Effect.Effect<A, E, never>) => Effect.Effect<Fiber<E, A>, never, never> =
-  internal.fromEffect
+export const fromEffect: <E, A>(effect: Effect.Effect<A, E>) => Effect.Effect<Fiber<E, A>> = internal.fromEffect
 
 /**
  * Gets the current fiber if one is running.
@@ -452,7 +451,7 @@ export const join: <E, A>(self: Fiber<E, A>) => Effect.Effect<A, E> = internal.j
  * @since 2.0.0
  * @category destructors
  */
-export const joinAll: <E, A>(fibers: Iterable<Fiber<E, A>>) => Effect.Effect<void, E, never> = fiberRuntime.fiberJoinAll
+export const joinAll: <E, A>(fibers: Iterable<Fiber<E, A>>) => Effect.Effect<void, E> = fiberRuntime.fiberJoinAll
 
 /**
  * Maps over the value the Fiber computes.
@@ -472,8 +471,8 @@ export const map: {
  * @category mapping
  */
 export const mapEffect: {
-  <A, A2, E2>(f: (a: A) => Effect.Effect<A2, E2, never>): <E>(self: Fiber<E, A>) => Fiber<E2 | E, A2>
-  <E, A, A2, E2>(self: Fiber<E, A>, f: (a: A) => Effect.Effect<A2, E2, never>): Fiber<E | E2, A2>
+  <A, A2, E2>(f: (a: A) => Effect.Effect<A2, E2>): <E>(self: Fiber<E, A>) => Fiber<E2 | E, A2>
+  <E, A, A2, E2>(self: Fiber<E, A>, f: (a: A) => Effect.Effect<A2, E2>): Fiber<E | E2, A2>
 } = internal.mapEffect
 
 /**
