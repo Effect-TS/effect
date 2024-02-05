@@ -3,6 +3,8 @@ import type cs from "jscodeshift"
 
 const enabled = {
   swapSTMParams: false,
+  swapSTMGenParams: false,
+  cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
   cleanupExit: false
@@ -44,13 +46,14 @@ const cleanup = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
 const cleanupEffect = cleanup("Effect")
 const cleanupStream = cleanup("Stream")
 const cleanupExit = cleanup("Exit")
+const cleanupSTM = cleanup("STM")
 
-const swapSTMParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
+const swapParams = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
   const name = ast.value.typeName
-  const isSTM = (node: typeof name): boolean => {
+  const is = (node: typeof name): boolean => {
     switch (node.type) {
       case "Identifier": {
-        if (node.name === "STM") {
+        if (node.name === nodeName) {
           return true
         }
         return false
@@ -59,7 +62,7 @@ const swapSTMParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
         return false
       }
       case "TSQualifiedName": {
-        return isSTM(node.right)
+        return is(node.right)
       }
       case "TSTypeParameter": {
         return false
@@ -67,7 +70,7 @@ const swapSTMParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
     }
   }
   if (
-    isSTM(name) &&
+    is(name) &&
     ast.value.typeParameters &&
     ast.value.typeParameters.params.length === 3
   ) {
@@ -78,6 +81,9 @@ const swapSTMParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
     ast.value.typeParameters.params = newParams
   }
 }
+
+const swapSTMParams = swapParams("STM")
+const swapSTMGenParams = swapParams("STMGen")
 
 const popNever = (params: Array<k.TSTypeKind>) => {
   if (params.length > 0 && params[params.length - 1].type === "TSNeverKeyword") {
@@ -107,6 +113,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     if (enabled.swapSTMParams) {
       swapSTMParams(ast)
     }
+    if (enabled.swapSTMGenParams) {
+      swapSTMGenParams(ast)
+    }
     if (enabled.cleanupEffect) {
       cleanupEffect(ast)
     }
@@ -115,6 +124,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     }
     if (enabled.cleanupExit) {
       cleanupExit(ast)
+    }
+    if (enabled.cleanupSTM) {
+      cleanupSTM(ast)
     }
   })
 

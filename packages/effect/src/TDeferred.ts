@@ -50,7 +50,7 @@ export declare namespace TDeferred {
   }
 }
 
-const _await: <E, A>(self: TDeferred<E, A>) => STM.STM<never, E, A> = internal._await
+const _await: <E, A>(self: TDeferred<E, A>) => STM.STM<A, E> = internal._await
 export {
   /**
    * @since 2.0.0
@@ -64,8 +64,8 @@ export {
  * @category mutations
  */
 export const done: {
-  <E, A>(either: Either.Either<E, A>): (self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, either: Either.Either<E, A>): STM.STM<never, never, boolean>
+  <E, A>(either: Either.Either<E, A>): (self: TDeferred<E, A>) => STM.STM<boolean>
+  <E, A>(self: TDeferred<E, A>, either: Either.Either<E, A>): STM.STM<boolean>
 } = internal.done
 
 /**
@@ -73,21 +73,21 @@ export const done: {
  * @category mutations
  */
 export const fail: {
-  <E>(error: E): <A>(self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, error: E): STM.STM<never, never, boolean>
+  <E>(error: E): <A>(self: TDeferred<E, A>) => STM.STM<boolean>
+  <E, A>(self: TDeferred<E, A>, error: E): STM.STM<boolean>
 } = internal.fail
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>() => STM.STM<never, never, TDeferred<E, A>> = internal.make
+export const make: <E, A>() => STM.STM<TDeferred<E, A>> = internal.make
 
 /**
  * @since 2.0.0
  * @category getters
  */
-export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option.Option<Either.Either<E, A>>> =
+export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<Option.Option<Either.Either<E, A>>> =
   internal.poll
 
 /**
@@ -95,6 +95,6 @@ export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option
  * @category mutations
  */
 export const succeed: {
-  <A>(value: A): <E>(self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, value: A): STM.STM<never, never, boolean>
+  <A>(value: A): <E>(self: TDeferred<E, A>) => STM.STM<boolean>
+  <E, A>(self: TDeferred<E, A>, value: A): STM.STM<boolean>
 } = internal.succeed

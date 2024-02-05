@@ -31,7 +31,7 @@ export class TPriorityQueueImpl<in out A> implements TPriorityQueue.TPriorityQue
 }
 
 /** @internal */
-export const empty = <A>(order: Order.Order<A>): STM.STM<never, never, TPriorityQueue.TPriorityQueue<A>> =>
+export const empty = <A>(order: Order.Order<A>): STM.STM<TPriorityQueue.TPriorityQueue<A>> =>
   pipe(
     tRef.make(SortedMap.empty<A, [A, ...Array<A>]>(order)),
     core.map((ref) => new TPriorityQueueImpl(ref))
@@ -39,7 +39,7 @@ export const empty = <A>(order: Order.Order<A>): STM.STM<never, never, TPriority
 
 /** @internal */
 export const fromIterable =
-  <A>(order: Order.Order<A>) => (iterable: Iterable<A>): STM.STM<never, never, TPriorityQueue.TPriorityQueue<A>> =>
+  <A>(order: Order.Order<A>) => (iterable: Iterable<A>): STM.STM<TPriorityQueue.TPriorityQueue<A>> =>
     pipe(
       tRef.make(
         Array.from(iterable).reduce(
@@ -65,22 +65,22 @@ export const fromIterable =
     )
 
 /** @internal */
-export const isEmpty = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, boolean> =>
+export const isEmpty = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<boolean> =>
   core.map(tRef.get(self.ref), SortedMap.isEmpty)
 
 /** @internal */
-export const isNonEmpty = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, boolean> =>
+export const isNonEmpty = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<boolean> =>
   core.map(tRef.get(self.ref), SortedMap.isNonEmpty)
 
 /** @internal */
 export const make =
-  <A>(order: Order.Order<A>) => (...elements: Array<A>): STM.STM<never, never, TPriorityQueue.TPriorityQueue<A>> =>
+  <A>(order: Order.Order<A>) => (...elements: Array<A>): STM.STM<TPriorityQueue.TPriorityQueue<A>> =>
     fromIterable(order)(elements)
 
 /** @internal */
 export const offer = dual<
-  <A>(value: A) => (self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<never, never, void>,
-  <A>(self: TPriorityQueue.TPriorityQueue<A>, value: A) => STM.STM<never, never, void>
+  <A>(value: A) => (self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<void>,
+  <A>(self: TPriorityQueue.TPriorityQueue<A>, value: A) => STM.STM<void>
 >(2, (self, value) =>
   tRef.update(self.ref, (map) =>
     SortedMap.set(
@@ -94,8 +94,8 @@ export const offer = dual<
 
 /** @internal */
 export const offerAll = dual<
-  <A>(values: Iterable<A>) => (self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<never, never, void>,
-  <A>(self: TPriorityQueue.TPriorityQueue<A>, values: Iterable<A>) => STM.STM<never, never, void>
+  <A>(values: Iterable<A>) => (self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<void>,
+  <A>(self: TPriorityQueue.TPriorityQueue<A>, values: Iterable<A>) => STM.STM<void>
 >(2, (self, values) =>
   tRef.update(self.ref, (map) =>
     Array.from(values).reduce(
@@ -112,7 +112,7 @@ export const offerAll = dual<
     )))
 
 /** @internal */
-export const peek = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, A> =>
+export const peek = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<A> =>
   core.withSTMRuntime((runtime) => {
     const map = tRef.unsafeGet(self.ref, runtime.journal)
     return Option.match(
@@ -125,7 +125,7 @@ export const peek = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, 
   })
 
 /** @internal */
-export const peekOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Option.Option<A>> =>
+export const peekOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<Option.Option<A>> =>
   tRef.modify(self.ref, (map) => [
     Option.map(SortedMap.headOption(map), (elements) => elements[0]),
     map
@@ -133,14 +133,14 @@ export const peekOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<n
 
 /** @internal */
 export const removeIf = dual<
-  <A>(predicate: Predicate<A>) => (self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<never, never, void>,
-  <A>(self: TPriorityQueue.TPriorityQueue<A>, predicate: Predicate<A>) => STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>) => (self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<void>,
+  <A>(self: TPriorityQueue.TPriorityQueue<A>, predicate: Predicate<A>) => STM.STM<void>
 >(2, (self, predicate) => retainIf(self, (a) => !predicate(a)))
 
 /** @internal */
 export const retainIf = dual<
-  <A>(predicate: Predicate<A>) => (self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<never, never, void>,
-  <A>(self: TPriorityQueue.TPriorityQueue<A>, predicate: Predicate<A>) => STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>) => (self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<void>,
+  <A>(self: TPriorityQueue.TPriorityQueue<A>, predicate: Predicate<A>) => STM.STM<void>
 >(
   2,
   <A>(self: TPriorityQueue.TPriorityQueue<A>, predicate: Predicate<A>) =>
@@ -157,14 +157,14 @@ export const retainIf = dual<
 )
 
 /** @internal */
-export const size = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, number> =>
+export const size = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<number> =>
   tRef.modify(
     self.ref,
     (map) => [SortedMap.reduce(map, 0, (n, as) => n + as.length), map]
   )
 
 /** @internal */
-export const take = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, A> =>
+export const take = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<A> =>
   core.withSTMRuntime((runtime) => {
     const map = tRef.unsafeGet(self.ref, runtime.journal)
     return Option.match(SortedMap.headOption(map), {
@@ -185,7 +185,7 @@ export const take = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, 
   })
 
 /** @internal */
-export const takeAll = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Array<A>> =>
+export const takeAll = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<Array<A>> =>
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {
@@ -195,7 +195,7 @@ export const takeAll = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<neve
   })
 
 /** @internal */
-export const takeOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Option.Option<A>> =>
+export const takeOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<Option.Option<A>> =>
   core.effect<never, Option.Option<A>>((journal) => {
     const map = pipe(self.ref, tRef.unsafeGet(journal))
     return Option.match(SortedMap.headOption(map), {
@@ -216,8 +216,8 @@ export const takeOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<n
 
 /** @internal */
 export const takeUpTo = dual<
-  (n: number) => <A>(self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<never, never, Array<A>>,
-  <A>(self: TPriorityQueue.TPriorityQueue<A>, n: number) => STM.STM<never, never, Array<A>>
+  (n: number) => <A>(self: TPriorityQueue.TPriorityQueue<A>) => STM.STM<Array<A>>,
+  <A>(self: TPriorityQueue.TPriorityQueue<A>, n: number) => STM.STM<Array<A>>
 >(2, <A>(self: TPriorityQueue.TPriorityQueue<A>, n: number) =>
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
@@ -240,7 +240,7 @@ export const takeUpTo = dual<
   }))
 
 /** @internal */
-export const toChunk = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Chunk.Chunk<A>> =>
+export const toChunk = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<Chunk.Chunk<A>> =>
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {
@@ -250,7 +250,7 @@ export const toChunk = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<neve
   })
 
 /** @internal */
-export const toArray = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Array<A>> =>
+export const toArray = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<Array<A>> =>
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {
