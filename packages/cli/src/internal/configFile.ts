@@ -7,7 +7,6 @@ import * as DefaultServices from "effect/DefaultServices"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as ConfigFile from "../ConfigFile.js"
 import * as InternalFiles from "./files.js"
 

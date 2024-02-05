@@ -118,7 +118,7 @@ export declare namespace All {
    */
   export type Return<
     Arg extends Iterable<ArgsAny> | Record<string, ArgsAny>
-  > = [Arg] extends [Array<ArgsAny>] ? ReturnTuple<Arg>
+  > = [Arg] extends [ReadonlyArray<ArgsAny>] ? ReturnTuple<Arg>
     : [Arg] extends [Iterable<ArgsAny>] ? ReturnIterable<Arg>
     : [Arg] extends [Record<string, ArgsAny>] ? ReturnObject<Arg>
     : never
