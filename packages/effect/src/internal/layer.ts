@@ -178,7 +178,7 @@ class MemoMapImpl implements Layer.MemoMap {
     readonly ref: Synchronized.SynchronizedRef<
       Map<
         Layer.Layer<any, any, any>,
-        readonly [Effect.Effect<any, any, never>, Scope.Scope.Finalizer]
+        readonly [Effect.Effect<any, any>, Scope.Scope.Finalizer]
       >
     >
   ) {
@@ -303,7 +303,7 @@ export const makeMemoMap: Effect.Effect<Layer.MemoMap> = core.suspend(() =>
       Map<
         Layer.Layer<any, any, any>,
         readonly [
-          Effect.Effect<any, any, never>,
+          Effect.Effect<any, any>,
           Scope.Scope.Finalizer
         ]
       >

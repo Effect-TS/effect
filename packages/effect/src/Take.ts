@@ -81,7 +81,7 @@ export const dieMessage: (message: string) => Take<never, never> = internal.dieM
  * @since 2.0.0
  * @category destructors
  */
-export const done: <E, A>(self: Take<E, A>) => Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, never> = internal.done
+export const done: <E, A>(self: Take<E, A>) => Effect.Effect<Chunk.Chunk<A>, Option.Option<E>> = internal.done
 
 /**
  * Represents the end-of-stream marker.

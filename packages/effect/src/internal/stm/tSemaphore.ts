@@ -23,16 +23,16 @@ class TSemaphoreImpl implements TSemaphore.TSemaphore {
 }
 
 /** @internal */
-export const make = (permits: number): STM.STM<never, never, TSemaphore.TSemaphore> =>
+export const make = (permits: number): STM.STM<TSemaphore.TSemaphore> =>
   STM.map(tRef.make(permits), (permits) => new TSemaphoreImpl(permits))
 
 /** @internal */
-export const acquire = (self: TSemaphore.TSemaphore): STM.STM<never, never, void> => acquireN(self, 1)
+export const acquire = (self: TSemaphore.TSemaphore): STM.STM<void> => acquireN(self, 1)
 
 /** @internal */
 export const acquireN = dual<
-  (n: number) => (self: TSemaphore.TSemaphore) => STM.STM<never, never, void>,
-  (self: TSemaphore.TSemaphore, n: number) => STM.STM<never, never, void>
+  (n: number) => (self: TSemaphore.TSemaphore) => STM.STM<void>,
+  (self: TSemaphore.TSemaphore, n: number) => STM.STM<void>
 >(2, (self, n) =>
   core.withSTMRuntime((driver) => {
     if (n < 0) {
@@ -50,12 +50,12 @@ export const acquireN = dual<
 export const available = (self: TSemaphore.TSemaphore) => tRef.get(self.permits)
 
 /** @internal */
-export const release = (self: TSemaphore.TSemaphore): STM.STM<never, never, void> => releaseN(self, 1)
+export const release = (self: TSemaphore.TSemaphore): STM.STM<void> => releaseN(self, 1)
 
 /** @internal */
 export const releaseN = dual<
-  (n: number) => (self: TSemaphore.TSemaphore) => STM.STM<never, never, void>,
-  (self: TSemaphore.TSemaphore, n: number) => STM.STM<never, never, void>
+  (n: number) => (self: TSemaphore.TSemaphore) => STM.STM<void>,
+  (self: TSemaphore.TSemaphore, n: number) => STM.STM<void>
 >(2, (self, n) =>
   core.withSTMRuntime((driver) => {
     if (n < 0) {
