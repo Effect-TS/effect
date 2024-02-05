@@ -527,7 +527,7 @@ export const flatten = dual<
 >(2, (self, tag) => flatMap(self, Context.get(tag as any) as any))
 
 /** @internal */
-export const fresh = <R, E, A>(self: Layer.Layer<A, E, R>): Layer.Layer<A, E, R> => {
+export const fresh = <A, E, R>(self: Layer.Layer<A, E, R>): Layer.Layer<A, E, R> => {
   const fresh = Object.create(proto)
   fresh._tag = OpCodes.OP_FRESH
   fresh.layer = self
@@ -568,7 +568,7 @@ export function fromEffectContext<A, E, R>(
 
 /** @internal */
 export const fiberRefLocally = dual<
-  <X>(ref: FiberRef<X>, value: X) => <R, E, A>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <X>(ref: FiberRef<X>, value: X) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
   <R, E, A, X>(self: Layer.Layer<A, E, R>, ref: FiberRef<X>, value: X) => Layer.Layer<A, E, R>
 >(3, (self, ref, value) => locallyEffect(self, core.fiberRefLocally(ref, value)))
 
@@ -591,7 +591,7 @@ export const locallyEffect = dual<
 
 /** @internal */
 export const fiberRefLocallyWith = dual<
-  <X>(ref: FiberRef<X>, value: (_: X) => X) => <R, E, A>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <X>(ref: FiberRef<X>, value: (_: X) => X) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
   <R, E, A, X>(self: Layer.Layer<A, E, R>, ref: FiberRef<X>, value: (_: X) => X) => Layer.Layer<A, E, R>
 >(3, (self, ref, value) => locallyEffect(self, core.fiberRefLocallyWith(ref, value)))
 
@@ -735,14 +735,14 @@ export const mergeAll = <Layers extends [Layer.Layer<never, any, any>, ...Array<
 }
 
 /** @internal */
-export const orDie = <R, E, A>(self: Layer.Layer<A, E, R>): Layer.Layer<A, never, R> =>
+export const orDie = <A, E, R>(self: Layer.Layer<A, E, R>): Layer.Layer<A, never, R> =>
   catchAll(self, (defect) => die(defect))
 
 /** @internal */
 export const orElse = dual<
   <R2, E2, A2>(
     that: LazyArg<Layer.Layer<A2, E2, R2>>
-  ) => <R, E, A>(self: Layer.Layer<A, E, R>) => Layer.Layer<A & A2, E | E2, R | R2>,
+  ) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A & A2, E | E2, R | R2>,
   <R, E, A, R2, E2, A2>(
     self: Layer.Layer<A, E, R>,
     that: LazyArg<Layer.Layer<A2, E2, R2>>
@@ -1104,8 +1104,8 @@ export const withSpan = dual<
     readonly onEnd?:
       | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
       | undefined
-  }) => <R, E, A>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>,
-  <R, E, A>(self: Layer.Layer<A, E, R>, name: string, options?: {
+  }) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>,
+  <A, E, R>(self: Layer.Layer<A, E, R>, name: string, options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
     readonly parent?: Tracer.ParentSpan | undefined
@@ -1132,8 +1132,8 @@ export const withSpan = dual<
 export const withParentSpan = dual<
   (
     span: Tracer.ParentSpan
-  ) => <R, E, A>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>,
-  <R, E, A>(self: Layer.Layer<A, E, R>, span: Tracer.ParentSpan) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+  ) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>,
+  <A, E, R>(self: Layer.Layer<A, E, R>, span: Tracer.ParentSpan) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
 >(2, (self, span) => provide(self, succeedContext(Context.make(tracer.spanTag, span))))
 
 // circular with Effect
@@ -1141,7 +1141,7 @@ export const withParentSpan = dual<
 const provideSomeLayer = dual<
   <R2, E2, A2>(
     layer: Layer.Layer<A2, E2, R2>
-  ) => <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R2 | Exclude<R, A2>>,
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R2 | Exclude<R, A2>>,
   <R, E, A, R2, E2, A2>(
     self: Effect.Effect<A, E, R>,
     layer: Layer.Layer<A2, E2, R2>
@@ -1190,7 +1190,7 @@ export const effect_provide = dual<
   {
     <R2, E2, R3>(
       layer: Layer.Layer<R3, E2, R2>
-    ): <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R2 | Exclude<R, R3>>
+    ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R2 | Exclude<R, R3>>
     <R2>(
       context: Context.Context<R2>
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, R2>>

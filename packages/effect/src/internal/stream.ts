@@ -461,7 +461,7 @@ export const as = dual<
 >(2, <R, E, A, B>(self: Stream.Stream<A, E, R>, value: B): Stream.Stream<B, E, R> => map(self, () => value))
 
 /** @internal */
-export const _async = <A, E, R>(
+export const _async = <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => void,
   outputBuffer = 16
 ): Stream.Stream<A, E, R> =>
@@ -471,7 +471,7 @@ export const _async = <A, E, R>(
   }, outputBuffer)
 
 /** @internal */
-export const asyncEffect = <A, E, R>(
+export const asyncEffect = <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R>,
   outputBuffer = 16
 ): Stream.Stream<A, E, R> =>
@@ -526,7 +526,7 @@ export const asyncEffect = <A, E, R>(
   )
 
 /** @internal */
-export const asyncInterrupt = <A, E, R>(
+export const asyncInterrupt = <A, E = never, R = never>(
   register: (
     emit: Emit.Emit<R, E, A, void>
   ) => Either.Either<Effect.Effect<unknown, never, R>, Stream.Stream<A, E, R>>,
@@ -590,7 +590,7 @@ export const asyncInterrupt = <A, E, R>(
   )
 
 /** @internal */
-export const asyncOption = <A, E, R>(
+export const asyncOption = <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Option.Option<Stream.Stream<A, E, R>>,
   outputBuffer = 16
 ): Stream.Stream<A, E, R> =>
@@ -604,7 +604,7 @@ export const asyncOption = <A, E, R>(
   )
 
 /** @internal */
-export const asyncScoped = <A, E, R>(
+export const asyncScoped = <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R | Scope.Scope>,
   outputBuffer = 16
 ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
@@ -3343,7 +3343,7 @@ export const haltWhenDeferred = dual<
 )
 
 /** @internal */
-export const identityStream = <A, E, R>(): Stream.Stream<A, E, R> =>
+export const identityStream = <A, E = never, R = never>(): Stream.Stream<A, E, R> =>
   new StreamImpl(
     channel.identityChannel() as Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown>
   )
