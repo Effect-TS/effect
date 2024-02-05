@@ -51,8 +51,8 @@ describe("Effect", () => {
   }
   it.effect("interrupt of asyncEffect register", () =>
     Effect.gen(function*($) {
-      const release = yield* $(Deferred.make<never, void>())
-      const acquire = yield* $(Deferred.make<never, void>())
+      const release = yield* $(Deferred.make<void>())
+      const acquire = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Effect.asyncEffect<unknown, unknown, never, never, never, never>(() =>
           // This will never complete because we never call the callback
@@ -73,7 +73,7 @@ describe("Effect", () => {
     }))
   it.live("async should not resume fiber twice after interruption", () =>
     Effect.gen(function*($) {
-      const step = yield* $(Deferred.make<never, void>())
+      const step = yield* $(Deferred.make<void>())
       const unexpectedPlace = yield* $(Ref.make(Chunk.empty<number>()))
       const runtime = yield* $(Effect.runtime<never>())
       const fiber = yield* $(
@@ -97,7 +97,7 @@ describe("Effect", () => {
     }))
   it.live("asyncMaybe should not resume fiber twice after synchronous result", () =>
     Effect.gen(function*($) {
-      const step = yield* $(Deferred.make<never, void>())
+      const step = yield* $(Deferred.make<void>())
       const unexpectedPlace = yield* $(Ref.make(Chunk.empty<number>()))
       const runtime = yield* $(Effect.runtime<never>())
       const fiber = yield* $(

@@ -96,8 +96,8 @@ describe("SynchronizedRef", () => {
     }))
   it.effect("getAndUpdateSomeEffect - interrupt parent fiber and update", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, Synchronized.SynchronizedRef<State>>())
-      const latch = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<Synchronized.SynchronizedRef<State>>())
+      const latch = yield* $(Deferred.make<void>())
       const makeAndWait = Deferred.complete(deferred, Synchronized.make<State>(Active)).pipe(
         Effect.zipRight(Deferred.await(latch))
       )

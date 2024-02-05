@@ -47,9 +47,9 @@ describe("Effect", () => {
     }))
   it.effect("acquireUseRelease - acquire is uninterruptible", () =>
     Effect.gen(function*($) {
-      const awaiter = Deferred.unsafeMake<never, void>(FiberId.none)
+      const awaiter = Deferred.unsafeMake<void>(FiberId.none)
       const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<never, void>())
+        const deferred = yield* $(Deferred.make<void>())
         const fiber = yield* $(
           pipe(
             Effect.acquireUseRelease(
@@ -95,8 +95,8 @@ describe("Effect", () => {
     }))
   it.effect("acquireUseRelease - release is called on interrupt", () =>
     Effect.gen(function*($) {
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Effect.fork(
           Effect.acquireUseRelease(
@@ -120,9 +120,9 @@ describe("Effect", () => {
     }))
   it.effect("acquireUseRelease acquire returns immediately on interrupt", () =>
     Effect.gen(function*($) {
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, number>())
-      const deferred3 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<number, never>())
+      const deferred3 = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         pipe(
           Effect.acquireUseRelease(
@@ -155,8 +155,8 @@ describe("Effect", () => {
     }))
   it.effect("acquireUseRelease disconnect release called on interrupt in separate fiber", () =>
     Effect.gen(function*($) {
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         pipe(
           Effect.acquireUseRelease(
@@ -184,8 +184,8 @@ describe("Effect", () => {
     }))
   it.effect("catchAll + ensuring + interrupt", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
-      const deferred = yield* $(Deferred.make<never, boolean>())
+      const latch = yield* $(Deferred.make<void>())
+      const deferred = yield* $(Deferred.make<boolean>())
       const fiber = yield* $(
         pipe(
           Deferred.succeed(latch, void 0),
@@ -202,8 +202,8 @@ describe("Effect", () => {
     }))
   it.effect("finalizer can detect interruption", () =>
     Effect.gen(function*($) {
-      const deferred1 = yield* $(Deferred.make<never, boolean>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<boolean>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         pipe(
           Deferred.succeed(deferred2, void 0),
@@ -227,8 +227,8 @@ describe("Effect", () => {
       const process = (list: Chunk.Chunk<Exit.Exit<any>>): Chunk.Chunk<Exit.Exit<any>> => {
         return pipe(list, Chunk.map(Exit.mapErrorCause((cause) => cause)))
       }
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
       const exits = yield* $(Ref.make(Chunk.empty<Exit.Exit<any>>()))
       const fiber = yield* $(
         Effect.uninterruptibleMask((restore) =>
@@ -259,9 +259,9 @@ describe("Effect", () => {
   it.effect("interruption of raced", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<number>(0))
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
-      const make = (deferred: Deferred.Deferred<never, void>) => {
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
+      const make = (deferred: Deferred.Deferred<void, never>) => {
         return pipe(
           Deferred.succeed(deferred, void 0),
           Effect.zipRight(Effect.never),
@@ -409,7 +409,7 @@ describe("Effect", () => {
     }))
   it.effect("disconnect returns immediately on interrupt", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         pipe(
           Deferred.succeed(deferred, void 0),
@@ -426,8 +426,8 @@ describe("Effect", () => {
   it.live("disconnected effect that is then interrupted eventually performs interruption", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         pipe(
           Deferred.succeed(deferred1, void 0),
@@ -487,8 +487,8 @@ describe("Effect", () => {
     }))
   it.live("acquireRelease use inherits interrupt status 2", () =>
     Effect.gen(function*($) {
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make(false))
       const fiber = yield* $(
         Effect.acquireUseRelease(
@@ -530,7 +530,7 @@ describe("Effect", () => {
   it.live("closing scope is uninterruptible", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const child = pipe(
         Deferred.succeed(deferred, void 0),
         Effect.zipRight(Effect.sleep(Duration.millis(10))),
@@ -558,7 +558,7 @@ describe("Effect", () => {
     }))
   it.effect("interruption status is inheritable", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make(true))
       yield* $(
         Effect.checkInterruptible((isInterruptible) =>
@@ -573,7 +573,7 @@ describe("Effect", () => {
     }))
   it.effect("running an effect preserves interruption status", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         pipe(Deferred.succeed(deferred, void 0), Effect.zipRight(Effect.never), Effect.fork)
       )
@@ -583,7 +583,7 @@ describe("Effect", () => {
     }))
   it.effect("running an effect swallows inner interruption", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, number>())
+      const deferred = yield* $(Deferred.make<number>())
       yield* $(Effect.interrupt, Effect.exit, Effect.zipRight(Deferred.succeed(deferred, 42)))
       const result = yield* $(Deferred.await(deferred))
       assert.strictEqual(result, 42)

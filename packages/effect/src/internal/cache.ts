@@ -47,13 +47,13 @@ export interface Complete<out Key, out Error, out Value> {
 export interface Pending<out Key, in out Error, in out Value> {
   readonly _tag: "Pending"
   readonly key: MapKey<Key>
-  readonly deferred: Deferred.Deferred<Error, Value>
+  readonly deferred: Deferred.Deferred<Value, Error>
 }
 
 /** @internal */
 export interface Refreshing<out Key, in out Error, in out Value> {
   readonly _tag: "Refreshing"
-  readonly deferred: Deferred.Deferred<Error, Value>
+  readonly deferred: Deferred.Deferred<Value, Error>
   readonly complete: Complete<Key, Error, Value>
 }
 
@@ -75,7 +75,7 @@ export const complete = <Key, Error, Value>(
 /** @internal */
 export const pending = <Key, Error, Value>(
   key: MapKey<Key>,
-  deferred: Deferred.Deferred<Error, Value>
+  deferred: Deferred.Deferred<Value, Error>
 ): MapValue<Key, Error, Value> =>
   Data.struct({
     _tag: "Pending" as const,
@@ -85,7 +85,7 @@ export const pending = <Key, Error, Value>(
 
 /** @internal */
 export const refreshing = <Key, Error, Value>(
-  deferred: Deferred.Deferred<Error, Value>,
+  deferred: Deferred.Deferred<Value, Error>,
   complete: Complete<Key, Error, Value>
 ): MapValue<Key, Error, Value> =>
   Data.struct({
@@ -376,10 +376,10 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
     return core.suspend((): Effect.Effect<Either.Either<Value, Value>, Error> => {
       const k = key
       let mapKey: MapKey<Key> | undefined = undefined
-      let deferred: Deferred.Deferred<Error, Value> | undefined = undefined
+      let deferred: Deferred.Deferred<Value, Error> | undefined = undefined
       let value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, k))
       if (value === undefined) {
-        deferred = Deferred.unsafeMake<Error, Value>(this.fiberId)
+        deferred = Deferred.unsafeMake<Value, Error>(this.fiberId)
         mapKey = makeMapKey(k)
         if (MutableHashMap.has(this.cacheState.map, k)) {
           value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, k))
@@ -432,7 +432,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
     return effect.clockWith((clock) =>
       core.suspend(() => {
         const k = key
-        const deferred: Deferred.Deferred<Error, Value> = Deferred.unsafeMake(this.fiberId)
+        const deferred: Deferred.Deferred<Value, Error> = Deferred.unsafeMake(this.fiberId)
         let value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, k))
         if (value === undefined) {
           if (MutableHashMap.has(this.cacheState.map, k)) {
@@ -625,7 +625,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
 
   lookupValueOf(
     input: Key,
-    deferred: Deferred.Deferred<Error, Value>
+    deferred: Deferred.Deferred<Value, Error>
   ): Effect.Effect<Value, Error> {
     return effect.clockWith((clock) =>
       core.suspend(() => {

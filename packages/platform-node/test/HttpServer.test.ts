@@ -464,7 +464,7 @@ describe("HttpServer", () => {
 
   it("client abort", () =>
     Effect.gen(function*(_) {
-      const latch = yield* _(Deferred.make<never, ServerResponse>())
+      const latch = yield* _(Deferred.make<ServerResponse>())
       yield* _(
         Http.response.empty(),
         Effect.delay(1000),

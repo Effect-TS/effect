@@ -238,7 +238,7 @@ describe("Effect", () => {
     }))
   it.effect("forEach/concurrency - runs effects in parallel", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       yield* $(
         pipe(
           [Effect.never, Deferred.succeed(deferred, void 0)],
@@ -261,7 +261,7 @@ describe("Effect", () => {
   it.effect("forEach/concurrency - interrupts effects on first failure", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const actions = [
         Effect.never,
         Effect.succeed(1),
@@ -308,7 +308,7 @@ describe("Effect", () => {
     }))
   it.effect("forEach/concurrency - parallelism - runs effects in parallel", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       yield* $(
         pipe(
           [Effect.never, Deferred.succeed(deferred, void 0)],
@@ -346,7 +346,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const task = (
         started: Ref.Ref<number>,
-        trigger: Deferred.Deferred<never, void>,
+        trigger: Deferred.Deferred<void, never>,
         n: number
       ): Effect.Effect<void, number> => {
         return pipe(
@@ -362,7 +362,7 @@ describe("Effect", () => {
         )
       }
       const started = yield* $(Ref.make(0))
-      const trigger = yield* $(Deferred.make<never, void>())
+      const trigger = yield* $(Deferred.make<void>())
       const result = yield* $(
         [1, 2, 3],
         Effect.forEach((n) => pipe(task(started, trigger, n), Effect.uninterruptible), {

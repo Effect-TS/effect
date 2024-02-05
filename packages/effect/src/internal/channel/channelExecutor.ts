@@ -1110,8 +1110,8 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
   self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
 ): Effect.Effect<OutDone, OutErr, Env | Scope.Scope> => {
   const run = (
-    channelDeferred: Deferred.Deferred<OutErr, OutDone>,
-    scopeDeferred: Deferred.Deferred<never, void>,
+    channelDeferred: Deferred.Deferred<OutDone, OutErr>,
+    scopeDeferred: Deferred.Deferred<void, never>,
     scope: Scope.Scope
   ) =>
     Effect.acquireUseRelease(
@@ -1141,8 +1141,8 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       pipe(
         Effect.all([
           Scope.fork(parent, ExecutionStrategy.sequential),
-          Deferred.make<OutErr, OutDone>(),
-          Deferred.make<never, void>()
+          Deferred.make<OutDone, OutErr>(),
+          Deferred.make<void>()
         ]),
         Effect.flatMap(([child, channelDeferred, scopeDeferred]) =>
           pipe(

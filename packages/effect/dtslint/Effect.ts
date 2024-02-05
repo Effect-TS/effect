@@ -1,6 +1,7 @@
 import type { Cause } from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
 
@@ -9,6 +10,9 @@ declare const number: Effect.Effect<number, "err-2", "dep-2">
 declare const boolean: Effect.Effect<boolean, never, "dep-3">
 declare const stringArray: Array<Effect.Effect<string, "err-3", "dep-3">>
 declare const numberRecord: Record<string, Effect.Effect<number, "err-4", "dep-4">>
+
+declare const numberArray: Array<number>
+declare const numberEffectIterable: Array<Effect.Effect<number>>
 
 // -------------------------------------------------------------------------------------
 // forEach
@@ -85,6 +89,7 @@ Effect.all([string, number], { mode: "either" })
 
 // $ExpectType Effect<void, never, "dep-1" | "dep-2">
 Effect.all([string, number], { mode: "either", discard: true })
+
 // -------------------------------------------------------------------------------------
 // all - struct
 // -------------------------------------------------------------------------------------
@@ -640,67 +645,6 @@ Effect.dropUntil(numbersArray, predicateNumbersOrStringsEffect)
 pipe(numbersArray, Effect.dropUntil(predicateNumbersOrStringsEffect))
 
 // -------------------------------------------------------------------------------------
-// takeUntil
-// -------------------------------------------------------------------------------------
-
-Effect.takeUntil(numbersArray, (
-  _item // $ExpectType number
-) => Effect.succeed(true))
-
-// $ExpectType Effect<number[], never, never>
-pipe(
-  numbersArray,
-  Effect.takeUntil((
-    _item // $ExpectType number
-  ) => Effect.succeed(true))
-)
-
-// $ExpectType Effect<number[], never, never>
-pipe(
-  numbersArray,
-  Effect.takeUntil((
-    _item: number | string
-  ) => Effect.succeed(true))
-)
-
-// $ExpectType Effect<number[], never, never>
-Effect.takeUntil(numbersArray, predicateNumbersOrStringsEffect)
-
-// $ExpectType Effect<number[], never, never>
-pipe(numbersArray, Effect.takeUntil(predicateNumbersOrStringsEffect))
-
-// -------------------------------------------------------------------------------------
-// takeWhile
-// -------------------------------------------------------------------------------------
-
-// $ExpectType Effect<number[], never, never>
-Effect.takeWhile(numbersArray, (
-  _item // $ExpectType number
-) => Effect.succeed(true))
-
-// $ExpectType Effect<number[], never, never>
-pipe(
-  numbersArray,
-  Effect.takeWhile((
-    _item // $ExpectType number
-  ) => Effect.succeed(true))
-)
-
-// $ExpectType Effect<number[], never, never>
-pipe(
-  numbersArray,
-  Effect.takeWhile((
-    _item: unknown
-  ) => Effect.succeed(true))
-)
-
-// $ExpectType Effect<number[], never, never>
-Effect.takeWhile(numbersArray, predicateNumbersOrStringsEffect)
-
-// $ExpectType Effect<number[], never, never>
-pipe(numbersArray, Effect.takeWhile(predicateNumbersOrStringsEffect))
-
-// -------------------------------------------------------------------------------------
 // andThen
 // -------------------------------------------------------------------------------------
 
@@ -765,11 +709,23 @@ Effect.retry(string, {
 })
 
 // $ExpectType Effect<string, "err-1", "dep-1">
+Effect.retry(string, {
+  schedule: Schedule.forever,
+  until: (_: string) => true
+})
+
+// $ExpectType Effect<string, "err-1", "dep-1">
 string.pipe(Effect.retry({
   schedule: Schedule.forever,
   until: (
     _ // $ExpectType "err-1"
   ) => true
+}))
+
+// $ExpectType Effect<string, "err-1", "dep-1">
+string.pipe(Effect.retry({
+  schedule: Schedule.forever,
+  until: (_: string) => true
 }))
 
 // $ExpectType Effect<string, "err-1", "dep-1" | "dep-3">
@@ -879,3 +835,157 @@ Effect.repeat(Effect.succeed(""), {
     _ // $ExpectType string
   ): _ is "hello" => true
 })
+
+// -------------------------------------------------------------------------------------
+// filter
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<number[], never, never>
+Effect.filter(numberArray, (_n: unknown) => Effect.succeed(true))
+
+Effect.filter(numberArray, (
+  _n // $ExpectType number
+) => Effect.succeed(true))
+
+// $ExpectType Effect<number[], never, never>
+pipe(numberArray, Effect.filter((_n: unknown) => Effect.succeed(true)))
+
+pipe(
+  numberArray,
+  Effect.filter((
+    _n // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
+// -------------------------------------------------------------------------------------
+// findFirst
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<Option<number>, never, never>
+Effect.findFirst(numberArray, (_n: unknown) => Effect.succeed(true))
+
+Effect.findFirst(numberArray, (
+  _n // $ExpectType number
+) => Effect.succeed(true))
+
+// $ExpectType Effect<Option<number>, never, never>
+pipe(numberArray, Effect.findFirst((_n: unknown) => Effect.succeed(true)))
+
+pipe(
+  numberArray,
+  Effect.findFirst((
+    _n // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
+// -------------------------------------------------------------------------------------
+// reduceEffect
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<string | number, never, never>
+Effect.reduceEffect(numberEffectIterable, Effect.succeed(0), (_n: unknown): number | string => 0)
+
+Effect.reduceEffect(numberEffectIterable, Effect.succeed(0), (
+  _n // $ExpectType number
+) => 0)
+
+// $ExpectType Effect<string | number, never, never>
+pipe(numberEffectIterable, Effect.reduceEffect(Effect.succeed(0), (_n: unknown): number | string => 0))
+
+pipe(
+  numberEffectIterable,
+  Effect.reduceEffect(Effect.succeed(0), (
+    _n // $ExpectType number
+  ) => 0)
+)
+
+// -------------------------------------------------------------------------------------
+// takeUntil
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<number[], never, never>
+Effect.takeUntil(numberArray, (_n: unknown) => Effect.succeed(true))
+
+Effect.takeUntil(numberArray, (
+  _n // $ExpectType number
+) => Effect.succeed(true))
+
+// $ExpectType Effect<number[], never, never>
+pipe(numberArray, Effect.takeUntil((_n: unknown) => Effect.succeed(true)))
+
+pipe(
+  numberArray,
+  Effect.takeUntil((
+    _n // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
+// -------------------------------------------------------------------------------------
+// takeWhile
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<number[], never, never>
+Effect.takeWhile(numberArray, (_n: unknown) => Effect.succeed(true))
+
+Effect.takeWhile(numberArray, (
+  _n // $ExpectType number
+) => Effect.succeed(true))
+
+// $ExpectType Effect<number[], never, never>
+pipe(numberArray, Effect.takeWhile((_n: unknown) => Effect.succeed(true)))
+
+pipe(
+  numberArray,
+  Effect.takeWhile((
+    _n // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
+// -------------------------------------------------------------------------------------
+// catchSome
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<string | number, "err-1", "dep-1">
+pipe(string, Effect.catchSome((_e: string) => Option.some(Effect.succeed(1))))
+
+pipe(
+  string,
+  Effect.catchSome(
+    (
+      _e // $ExpectType "err-1"
+    ) => Option.some(Effect.succeed(1))
+  )
+)
+
+// $ExpectType Effect<string | number, "err-1", "dep-1">
+Effect.catchSome(string, (_e: string) => Option.some(Effect.succeed(1)))
+
+Effect.catchSome(string, (
+  _e // $ExpectType "err-1"
+) => Option.some(Effect.succeed(1)))
+
+// $ExpectType Effect<string, "err-1", "dep-1">
+Effect.retry(string, {
+  schedule: Schedule.forever,
+  until: (
+    _ // $ExpectType "err-1"
+  ) => true
+})
+
+// -------------------------------------------------------------------------------------
+// retryOrElse
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<string | number, "err-1", "dep-1">
+Effect.retryOrElse(string, Schedule.forever, (_e: string) => Effect.succeed(0))
+
+Effect.retryOrElse(string, Schedule.forever, (
+  _e // $ExpectType "err-1"
+) => Effect.succeed(0))
+
+// $ExpectType Effect<string | number, "err-1", "dep-1">
+string.pipe(Effect.retryOrElse(Schedule.forever, (_e: string) => Effect.succeed(0)))
+
+string.pipe(Effect.retryOrElse(Schedule.forever, (
+  _e // $ExpectType "err-1"
+) => Effect.succeed(0)))
