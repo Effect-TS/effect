@@ -10,7 +10,7 @@ import * as Option from "effect/Option"
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category models
  */
 export interface CollectorService {
   readonly addAll: (_: Iterable<globalThis.Transferable>) => Effect.Effect<void>
