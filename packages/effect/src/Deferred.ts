@@ -124,8 +124,8 @@ export const completeWith: {
  * @category utils
  */
 export const done: {
-  <A, E>(exit: Exit.Exit<A, E>): (self: Deferred<E, A>) => Effect.Effect<boolean, never, never>
-  <E, A>(self: Deferred<E, A>, exit: Exit.Exit<A, E>): Effect.Effect<boolean, never, never>
+  <A, E>(exit: Exit.Exit<A, E>): (self: Deferred<E, A>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<E, A>, exit: Exit.Exit<A, E>): Effect.Effect<boolean>
 } = core.deferredDone
 
 /**
