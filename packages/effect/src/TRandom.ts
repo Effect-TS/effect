@@ -76,7 +76,7 @@ export const Tag: Context.Tag<TRandom, TRandom> = internal.Tag
  * @since 2.0.0
  * @category context
  */
-export const live: Layer.Layer<never, never, TRandom> = internal.live
+export const live: Layer.Layer<TRandom> = internal.live
 
 /**
  * Returns the next number from the pseudo-random number generator.

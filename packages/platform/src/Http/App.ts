@@ -147,7 +147,7 @@ export const toWebHandler: <E>(self: Default<Scope.Scope, E>) => (request: Reque
  */
 export const toWebHandlerLayer = <R, E, RE>(
   self: Default<R | Scope.Scope, E>,
-  layer: Layer.Layer<never, RE, R>
+  layer: Layer.Layer<R, RE>
 ): {
   readonly close: () => Promise<void>
   readonly handler: (request: Request) => Promise<Response>

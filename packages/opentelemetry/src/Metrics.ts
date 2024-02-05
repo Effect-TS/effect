@@ -28,4 +28,4 @@ export const registerProducer: (
  * @since 1.0.0
  * @category layers
  */
-export const layer: (evaluate: LazyArg<MetricReader>) => Layer<Resource, never, never> = internal.layer
+export const layer: (evaluate: LazyArg<MetricReader>) => Layer<never, never, Resource> = internal.layer
