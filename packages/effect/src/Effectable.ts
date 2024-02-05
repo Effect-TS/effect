@@ -60,7 +60,7 @@ export type ChannelTypeId = Channel.ChannelTypeId
  * @category models
  */
 export interface CommitPrimitive {
-  new<R, E, A>(): Effect.Effect<A, E, R>
+  new<A, E = never, R = never>(): Effect.Effect<A, E, R>
 }
 
 /**
@@ -88,7 +88,7 @@ const StructuralBase: CommitPrimitive = internal.StructuralBase
  * @since 2.0.0
  * @category constructors
  */
-export abstract class Class<R, E, A> extends Base<R, E, A> {
+export abstract class Class<A, E = never, R = never> extends Base<A, E, R> {
   /**
    * @since 2.0.0
    */
@@ -99,7 +99,7 @@ export abstract class Class<R, E, A> extends Base<R, E, A> {
  * @since 2.0.0
  * @category constructors
  */
-export abstract class StructuralClass<R, E, A> extends StructuralBase<R, E, A> {
+export abstract class StructuralClass<A, E = never, R = never> extends StructuralBase<A, E, R> {
   /**
    * @since 2.0.0
    */
