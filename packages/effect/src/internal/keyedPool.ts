@@ -110,7 +110,7 @@ const makeImpl = <K, R, E, A>(
           let value: MapValue<E, A> | undefined = Option.getOrUndefined(HashMap.get(MutableRef.get(map), key))
           if (value === undefined) {
             return core.uninterruptibleMask((restore) => {
-              const deferred = core.deferredUnsafeMake<never, Pool.Pool<E, A>>(fiberId)
+              const deferred = core.deferredUnsafeMake<Pool.Pool<E, A>>(fiberId)
               value = new Pending(deferred)
               let previous: MapValue<E, A> | undefined = undefined
               if (HashMap.has(MutableRef.get(map), key)) {

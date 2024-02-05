@@ -148,7 +148,7 @@ describe("Stream", () => {
     }))
 
   it.it("unwrapScoped", async () => {
-    const awaiter = Deferred.unsafeMake<never, void>(FiberId.none)
+    const awaiter = Deferred.unsafeMake<void>(FiberId.none)
     const program = Effect.gen(function*($) {
       const stream = (deferred: Deferred.Deferred<void, never>, ref: Ref.Ref<ReadonlyArray<string>>) =>
         pipe(
@@ -156,20 +156,20 @@ describe("Stream", () => {
             Ref.update(ref, (array) => [...array, "acquire outer"]),
             () => Ref.update(ref, (array) => [...array, "release outer"])
           ),
-          Effect.zipRight(Deferred.succeed<never, void>(deferred, void 0)),
+          Effect.zipRight(Deferred.succeed(deferred, void 0)),
           Effect.zipRight(Deferred.await(awaiter)),
           Effect.zipRight(Effect.succeed(Stream.make(1, 2, 3))),
           Stream.unwrapScoped
         )
       const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const fiber = yield* $(stream(deferred, ref), Stream.runDrain, Effect.fork)
       yield* $(Deferred.await(deferred))
       yield* $(Fiber.interrupt(fiber))
       return yield* $(Ref.get(ref))
     })
     const result = await Effect.runPromise(program)
-    await Effect.runPromise(Deferred.succeed<never, void>(awaiter, void 0))
+    await Effect.runPromise(Deferred.succeed(awaiter, void 0))
     assert.deepStrictEqual(result, ["acquire outer", "release outer"])
   })
 })

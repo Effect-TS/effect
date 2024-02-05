@@ -388,7 +388,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
     f: (runtime: FiberRuntime<any, any>, status: FiberStatus.FiberStatus) => Z
   ): Effect.Effect<Z> {
     return core.suspend(() => {
-      const deferred = core.deferredUnsafeMake<never, Z>(this._fiberId)
+      const deferred = core.deferredUnsafeMake<Z>(this._fiberId)
       this.tell(
         FiberMessage.stateful((fiber, status) => {
           core.deferredUnsafeDone(deferred, core.sync(() => f(fiber, status)))
@@ -2322,7 +2322,7 @@ export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.
       core.as(res[0])
     )
   return pipe(
-    core.deferredMake<E, readonly [A, Fiber.Fiber<E, A>]>(),
+    core.deferredMake<readonly [A, Fiber.Fiber<E, A>], E>(),
     core.flatMap((done) =>
       pipe(
         Ref.make(effects.length),

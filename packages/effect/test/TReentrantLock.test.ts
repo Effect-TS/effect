@@ -58,9 +58,9 @@ describe("TReentrantLock", () => {
   it.effect("two read locks from different fibers", () =>
     Effect.gen(function*($) {
       const lock = yield* $(TReentrantLock.make)
-      const rLatch = yield* $(Deferred.make<never, void>())
-      const mLatch = yield* $(Deferred.make<never, void>())
-      const wLatch = yield* $(Deferred.make<never, void>())
+      const rLatch = yield* $(Deferred.make<void>())
+      const mLatch = yield* $(Deferred.make<void>())
+      const wLatch = yield* $(Deferred.make<void>())
       yield* $(pipe(
         TReentrantLock.readLock(lock),
         Effect.flatMap((count) =>
@@ -95,9 +95,9 @@ describe("TReentrantLock", () => {
   it.effect("one write lock, then one read lock, different fibers", () =>
     Effect.gen(function*($) {
       const lock = yield* $(TReentrantLock.make)
-      const rLatch = yield* $(Deferred.make<never, void>())
-      const mLatch = yield* $(Deferred.make<never, void>())
-      const wLatch = yield* $(Deferred.make<never, void>())
+      const rLatch = yield* $(Deferred.make<void>())
+      const mLatch = yield* $(Deferred.make<void>())
+      const wLatch = yield* $(Deferred.make<void>())
       yield* $(pipe(
         TReentrantLock.writeLock(lock),
         Effect.flatMap((count) =>
@@ -190,9 +190,9 @@ describe("TReentrantLock", () => {
   it.effect("read to writer upgrade with other readers", () =>
     Effect.gen(function*($) {
       const lock = yield* $(TReentrantLock.make)
-      const rLatch = yield* $(Deferred.make<never, void>())
-      const mLatch = yield* $(Deferred.make<never, void>())
-      const wLatch = yield* $(Deferred.make<never, void>())
+      const rLatch = yield* $(Deferred.make<void>())
+      const mLatch = yield* $(Deferred.make<void>())
+      const wLatch = yield* $(Deferred.make<void>())
       yield* $(pipe(
         TReentrantLock.readLock(lock),
         Effect.flatMap((count) =>

@@ -244,7 +244,7 @@ class QueueImpl<in out A> implements Queue.Queue<A> {
         // - Try to take again in case a value was added since
         // - Wait for the deferred to be completed
         // - Clean up resources in case of interruption
-        const deferred = core.deferredUnsafeMake<never, A>(state.id())
+        const deferred = core.deferredUnsafeMake<A>(state.id())
         return pipe(
           core.suspend(() => {
             pipe(this.takers, MutableQueue.offer(deferred))
@@ -389,7 +389,7 @@ export const make = <A>(
   strategy: Queue.Strategy<A>
 ): Effect.Effect<Queue.Queue<A>> =>
   pipe(
-    core.deferredMake<never, void>(),
+    core.deferredMake<void>(),
     core.map((deferred) =>
       unsafeMake(
         queue,
@@ -567,7 +567,7 @@ class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
     isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean> {
     return core.withFiberRuntime((state) => {
-      const deferred = core.deferredUnsafeMake<never, boolean>(state.id())
+      const deferred = core.deferredUnsafeMake<boolean>(state.id())
       return pipe(
         core.suspend(() => {
           this.unsafeOffer(iterable, deferred)

@@ -379,7 +379,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
       let deferred: Deferred.Deferred<Value, Error> | undefined = undefined
       let value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, k))
       if (value === undefined) {
-        deferred = Deferred.unsafeMake<Error, Value>(this.fiberId)
+        deferred = Deferred.unsafeMake<Value, Error>(this.fiberId)
         mapKey = makeMapKey(k)
         if (MutableHashMap.has(this.cacheState.map, k)) {
           value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, k))
@@ -400,7 +400,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
           })
         )
       }
-    });
+    })
   }
 
   invalidate(key: Key): Effect.Effect<void> {
@@ -477,7 +477,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
           }
         }
       })
-    );
+    )
   }
 
   set(key: Key, value: Value): Effect.Effect<void> {

@@ -18,8 +18,8 @@ describe("Stream", () => {
   it.effect("haltWhen - halts after the current element", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
-      const halt = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
+      const halt = yield* $(Deferred.make<void>())
       yield* $(
         Deferred.await(latch),
         Effect.onInterrupt(() => Ref.set(ref, true)),
@@ -28,15 +28,15 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(Deferred.succeed<never, void>(halt, void 0))
-      yield* $(Deferred.succeed<never, void>(latch, void 0))
+      yield* $(Deferred.succeed(halt, void 0))
+      yield* $(Deferred.succeed(latch, void 0))
       const result = yield* $(Ref.get(ref))
       assert.isFalse(result)
     }))
 
   it.effect("haltWhen - propagates errors", () =>
     Effect.gen(function*($) {
-      const halt = yield* $(Deferred.make<string, void>())
+      const halt = yield* $(Deferred.make<void, string>())
       yield* $(Deferred.fail(halt, "fail"))
       const result = yield* $(
         Stream.make(0),
@@ -51,8 +51,8 @@ describe("Stream", () => {
   it.effect("haltWhenDeferred - halts after the current element", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
-      const halt = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
+      const halt = yield* $(Deferred.make<void>())
       yield* $(
         Deferred.await(latch),
         Effect.onInterrupt(() => Ref.set(ref, true)),
@@ -61,15 +61,15 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.fork
       )
-      yield* $(Deferred.succeed<never, void>(halt, void 0))
-      yield* $(Deferred.succeed<never, void>(latch, void 0))
+      yield* $(Deferred.succeed(halt, void 0))
+      yield* $(Deferred.succeed(latch, void 0))
       const result = yield* $(Ref.get(ref))
       assert.isFalse(result)
     }))
 
   it.effect("haltWhenDeferred - propagates errors", () =>
     Effect.gen(function*($) {
-      const halt = yield* $(Deferred.make<string, void>())
+      const halt = yield* $(Deferred.make<void, string>())
       yield* $(Deferred.fail(halt, "fail"))
       const result = yield* $(
         Stream.make(1),

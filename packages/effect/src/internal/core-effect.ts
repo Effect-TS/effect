@@ -1096,7 +1096,7 @@ export const memoize = <A, E, R>(
   self: Effect.Effect<A, E, R>
 ): Effect.Effect<Effect.Effect<A, E, R>> =>
   pipe(
-    core.deferredMake<E, [[FiberRefsPatch.FiberRefsPatch, runtimeFlagsPatch.RuntimeFlagsPatch], A]>(),
+    core.deferredMake<[[FiberRefsPatch.FiberRefsPatch, runtimeFlagsPatch.RuntimeFlagsPatch], A], E>(),
     core.flatMap((deferred) =>
       pipe(
         diffFiberRefsAndRuntimeFlags(self),

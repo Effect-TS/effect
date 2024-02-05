@@ -159,7 +159,7 @@ const makeSubscription = <A>(
   subscribers: Subscribers<A>,
   strategy: PubSubStrategy<A>
 ): Effect.Effect<Queue.Dequeue<A>> =>
-  core.map(core.deferredMake<never, void>(), (deferred) =>
+  core.map(core.deferredMake<void>(), (deferred) =>
     unsafeMakeSubscription(
       pubsub,
       subscribers,
@@ -907,7 +907,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
         ? this.subscription.poll(MutableQueue.EmptyMutableQueue)
         : MutableQueue.EmptyMutableQueue
       if (message === MutableQueue.EmptyMutableQueue) {
-        const deferred = core.deferredUnsafeMake<never, A>(state.id())
+        const deferred = core.deferredUnsafeMake<A>(state.id())
         return pipe(
           core.suspend(() => {
             pipe(this.pollers, MutableQueue.offer(deferred))
@@ -1148,7 +1148,7 @@ export const makePubSub = <A>(
   core.flatMap(
     fiberRuntime.scopeMake(),
     (scope) =>
-      core.map(core.deferredMake<never, void>(), (deferred) =>
+      core.map(core.deferredMake<void>(), (deferred) =>
         unsafeMakePubSub(
           pubsub,
           new Map(),
@@ -1322,7 +1322,7 @@ class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
     isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean> {
     return core.withFiberRuntime((state) => {
-      const deferred = core.deferredUnsafeMake<never, boolean>(state.id())
+      const deferred = core.deferredUnsafeMake<boolean>(state.id())
       return pipe(
         core.suspend(() => {
           this.unsafeOffer(elements, deferred)

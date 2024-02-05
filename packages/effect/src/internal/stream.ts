@@ -972,7 +972,7 @@ const bufferSignal = <A, E, R>(
       pipe(
         Ref.get(ref),
         Effect.tap(Deferred.await),
-        Effect.zipRight(Deferred.make<never, void>()),
+        Effect.zipRight(Deferred.make<void>()),
         Effect.flatMap((deferred) =>
           pipe(
             Queue.offer(queue, [take, deferred] as const),
@@ -986,7 +986,7 @@ const bufferSignal = <A, E, R>(
     return core.readWithCause({
       onInput: (input: Chunk.Chunk<A>) =>
         pipe(
-          Deferred.make<never, void>(),
+          Deferred.make<void>(),
           Effect.flatMap(
             (deferred) =>
               pipe(
@@ -1009,7 +1009,7 @@ const bufferSignal = <A, E, R>(
       core.fromEffect(Queue.take(queue)),
       core.flatMap(([take, deferred]) =>
         channel.zipRight(
-          core.fromEffect(Deferred.succeed<never, void>(deferred, void 0)),
+          core.fromEffect(Deferred.succeed(deferred, void 0)),
           _take.match(take, {
             onEnd: () => core.unit,
             onFailure: core.failCause,
@@ -1025,8 +1025,8 @@ const bufferSignal = <A, E, R>(
       scoped,
       Effect.flatMap((queue) =>
         pipe(
-          Deferred.make<never, void>(),
-          Effect.tap((start) => Deferred.succeed<never, void>(start, void 0)),
+          Deferred.make<void>(),
+          Effect.tap((start) => Deferred.succeed(start, void 0)),
           Effect.flatMap((start) =>
             pipe(
               Ref.make(start),
@@ -1829,7 +1829,7 @@ export const distributedWith = dual<
     Scope.Scope | R
   > =>
     pipe(
-      Deferred.make<never, (a: A) => Effect.Effect<Predicate<number>>>(),
+      Deferred.make<(a: A) => Effect.Effect<Predicate<number>>>(),
       Effect.flatMap((deferred) =>
         pipe(
           self,
@@ -2097,7 +2097,7 @@ export const drainFork = dual<
     that: Stream.Stream<A2, E2, R2>
   ): Stream.Stream<A, E2 | E, R2 | R> =>
     pipe(
-      fromEffect(Deferred.make<E2, never>()),
+      fromEffect(Deferred.make<never, E2>()),
       flatMap((backgroundDied) =>
         pipe(
           scoped(
@@ -4284,7 +4284,7 @@ export const peel = dual<
     readonly _tag: OP_END
   }
   return pipe(
-    Deferred.make<E | E2, Z>(),
+    Deferred.make<Z, E | E2>(),
     Effect.flatMap((deferred) =>
       pipe(
         Handoff.make<Signal>(),
@@ -6233,7 +6233,7 @@ export const tapSink = dual<
     sink: Sink.Sink<R2, E2, A, unknown, unknown>
   ): Stream.Stream<A, E | E2, R | R2> =>
     pipe(
-      fromEffect(Effect.all([Queue.bounded<Take.Take<E | E2, A>>(1), Deferred.make<never, void>()])),
+      fromEffect(Effect.all([Queue.bounded<Take.Take<E | E2, A>>(1), Deferred.make<void>()])),
       flatMap(([queue, deferred]) => {
         const right = flattenTake(fromQueue(queue, { maxChunkSize: 1 }))
         const loop: Channel.Channel<R2, E, Chunk.Chunk<A>, unknown, E | E2, Chunk.Chunk<A>, unknown> = core

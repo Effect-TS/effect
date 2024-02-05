@@ -2825,7 +2825,7 @@ const exitCollectAllInternal = <A, E>(
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const deferredUnsafeMake = <E, A>(fiberId: FiberId.FiberId): Deferred.Deferred<A, E> => ({
+export const deferredUnsafeMake = <A, E = never>(fiberId: FiberId.FiberId): Deferred.Deferred<A, E> => ({
   [deferred.DeferredTypeId]: deferred.deferredVariance,
   state: MutableRef.make(deferred.pending([])),
   blockingOn: fiberId,
@@ -2835,16 +2835,16 @@ export const deferredUnsafeMake = <E, A>(fiberId: FiberId.FiberId): Deferred.Def
 })
 
 /* @internal */
-export const deferredMake = <E, A>(): Effect.Effect<Deferred.Deferred<A, E>> =>
-  flatMap(fiberId, (id) => deferredMakeAs<E, A>(id))
+export const deferredMake = <A, E = never>(): Effect.Effect<Deferred.Deferred<A, E>> =>
+  flatMap(fiberId, (id) => deferredMakeAs<A, E>(id))
 
 /* @internal */
-export const deferredMakeAs = <E, A>(fiberId: FiberId.FiberId): Effect.Effect<Deferred.Deferred<A, E>> =>
-  sync(() => deferredUnsafeMake<E, A>(fiberId))
+export const deferredMakeAs = <A, E = never>(fiberId: FiberId.FiberId): Effect.Effect<Deferred.Deferred<A, E>> =>
+  sync(() => deferredUnsafeMake<A, E>(fiberId))
 
 /* @internal */
-export const deferredAwait = <E, A>(self: Deferred.Deferred<A, E>): Effect.Effect<A, E> =>
-  asyncEither<A, E, never>((k) => {
+export const deferredAwait = <A, E>(self: Deferred.Deferred<A, E>): Effect.Effect<A, E> =>
+  asyncEither<A, E>((k) => {
     const state = MutableRef.get(self.state)
     switch (state._tag) {
       case DeferredOpCodes.OP_STATE_DONE: {
@@ -2872,8 +2872,8 @@ export const deferredComplete: {
 
 /* @internal */
 export const deferredCompleteWith = dual<
-  <E, A>(effect: Effect.Effect<A, E>) => (self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, effect: Effect.Effect<A, E>) => Effect.Effect<boolean>
+  <A, E>(effect: Effect.Effect<A, E>) => (self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
+  <A, E>(self: Deferred.Deferred<A, E>, effect: Effect.Effect<A, E>) => Effect.Effect<boolean>
 >(2, (self, effect) =>
   sync(() => {
     const state = MutableRef.get(self.state)
@@ -2894,61 +2894,61 @@ export const deferredCompleteWith = dual<
 /* @internal */
 export const deferredDone = dual<
   <A, E>(exit: Exit.Exit<A, E>) => (self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, exit: Exit.Exit<A, E>) => Effect.Effect<boolean>
+  <A, E>(self: Deferred.Deferred<A, E>, exit: Exit.Exit<A, E>) => Effect.Effect<boolean>
 >(2, (self, exit) => deferredCompleteWith(self, exit))
 
 /* @internal */
 export const deferredFail = dual<
   <E>(error: E) => <A>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, error: E) => Effect.Effect<boolean>
+  <A, E>(self: Deferred.Deferred<A, E>, error: E) => Effect.Effect<boolean>
 >(2, (self, error) => deferredCompleteWith(self, fail(error)))
 
 /* @internal */
 export const deferredFailSync = dual<
   <E>(evaluate: LazyArg<E>) => <A>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, evaluate: LazyArg<E>) => Effect.Effect<boolean>
+  <A, E>(self: Deferred.Deferred<A, E>, evaluate: LazyArg<E>) => Effect.Effect<boolean>
 >(2, (self, evaluate) => deferredCompleteWith(self, failSync(evaluate)))
 
 /* @internal */
 export const deferredFailCause = dual<
   <E>(cause: Cause.Cause<E>) => <A>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, cause: Cause.Cause<E>) => Effect.Effect<boolean>
+  <A, E>(self: Deferred.Deferred<A, E>, cause: Cause.Cause<E>) => Effect.Effect<boolean>
 >(2, (self, cause) => deferredCompleteWith(self, failCause(cause)))
 
 /* @internal */
 export const deferredFailCauseSync = dual<
   <E>(evaluate: LazyArg<Cause.Cause<E>>) => <A>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, evaluate: LazyArg<Cause.Cause<E>>) => Effect.Effect<boolean>
+  <A, E>(self: Deferred.Deferred<A, E>, evaluate: LazyArg<Cause.Cause<E>>) => Effect.Effect<boolean>
 >(2, (self, evaluate) => deferredCompleteWith(self, failCauseSync(evaluate)))
 
 /* @internal */
 export const deferredDie = dual<
-  (defect: unknown) => <E, A>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, defect: unknown) => Effect.Effect<boolean>
+  (defect: unknown) => <A, E>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
+  <A, E>(self: Deferred.Deferred<A, E>, defect: unknown) => Effect.Effect<boolean>
 >(2, (self, defect) => deferredCompleteWith(self, die(defect)))
 
 /* @internal */
 export const deferredDieSync = dual<
-  (evaluate: LazyArg<unknown>) => <E, A>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, evaluate: LazyArg<unknown>) => Effect.Effect<boolean>
+  (evaluate: LazyArg<unknown>) => <A, E>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
+  <A, E>(self: Deferred.Deferred<A, E>, evaluate: LazyArg<unknown>) => Effect.Effect<boolean>
 >(2, (self, evaluate) => deferredCompleteWith(self, dieSync(evaluate)))
 
 /* @internal */
-export const deferredInterrupt = <E, A>(self: Deferred.Deferred<A, E>): Effect.Effect<boolean> =>
+export const deferredInterrupt = <A, E>(self: Deferred.Deferred<A, E>): Effect.Effect<boolean> =>
   flatMap(fiberId, (fiberId) => deferredCompleteWith(self, interruptWith(fiberId)))
 
 /* @internal */
 export const deferredInterruptWith = dual<
-  (fiberId: FiberId.FiberId) => <E, A>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, fiberId: FiberId.FiberId) => Effect.Effect<boolean>
+  (fiberId: FiberId.FiberId) => <A, E>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
+  <A, E>(self: Deferred.Deferred<A, E>, fiberId: FiberId.FiberId) => Effect.Effect<boolean>
 >(2, (self, fiberId) => deferredCompleteWith(self, interruptWith(fiberId)))
 
 /* @internal */
-export const deferredIsDone = <E, A>(self: Deferred.Deferred<A, E>): Effect.Effect<boolean> =>
+export const deferredIsDone = <A, E>(self: Deferred.Deferred<A, E>): Effect.Effect<boolean> =>
   sync(() => MutableRef.get(self.state)._tag === DeferredOpCodes.OP_STATE_DONE)
 
 /* @internal */
-export const deferredPoll = <E, A>(
+export const deferredPoll = <A, E>(
   self: Deferred.Deferred<A, E>
 ): Effect.Effect<Option.Option<Effect.Effect<A, E>>> =>
   sync(() => {
@@ -2966,17 +2966,17 @@ export const deferredPoll = <E, A>(
 /* @internal */
 export const deferredSucceed = dual<
   <A>(value: A) => <E>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, value: A) => Effect.Effect<boolean>
+  <A, E>(self: Deferred.Deferred<A, E>, value: A) => Effect.Effect<boolean>
 >(2, (self, value) => deferredCompleteWith(self, succeed(value)))
 
 /* @internal */
 export const deferredSync = dual<
   <A>(evaluate: LazyArg<A>) => <E>(self: Deferred.Deferred<A, E>) => Effect.Effect<boolean>,
-  <E, A>(self: Deferred.Deferred<A, E>, evaluate: LazyArg<A>) => Effect.Effect<boolean>
+  <A, E>(self: Deferred.Deferred<A, E>, evaluate: LazyArg<A>) => Effect.Effect<boolean>
 >(2, (self, evaluate) => deferredCompleteWith(self, sync(evaluate)))
 
 /** @internal */
-export const deferredUnsafeDone = <E, A>(self: Deferred.Deferred<A, E>, effect: Effect.Effect<A, E>): void => {
+export const deferredUnsafeDone = <A, E>(self: Deferred.Deferred<A, E>, effect: Effect.Effect<A, E>): void => {
   const state = MutableRef.get(self.state)
   if (state._tag === DeferredOpCodes.OP_STATE_PENDING) {
     pipe(self.state, MutableRef.set(deferred.done(effect)))
@@ -2986,7 +2986,7 @@ export const deferredUnsafeDone = <E, A>(self: Deferred.Deferred<A, E>, effect: 
   }
 }
 
-const deferredInterruptJoiner = <E, A>(
+const deferredInterruptJoiner = <A, E>(
   self: Deferred.Deferred<A, E>,
   joiner: (effect: Effect.Effect<A, E>) => void
 ): Effect.Effect<void> =>

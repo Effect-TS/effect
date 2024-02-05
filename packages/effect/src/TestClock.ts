@@ -194,7 +194,7 @@ export class TestClockImpl implements TestClock {
    */
   sleep(durationInput: Duration.DurationInput): Effect.Effect<void> {
     const duration = Duration.decode(durationInput)
-    return core.flatMap(core.deferredMake<never, void>(), (deferred) =>
+    return core.flatMap(core.deferredMake<void>(), (deferred) =>
       pipe(
         ref.modify(this.clockState, (data) => {
           const end = data.instant + Duration.toMillis(duration)
@@ -422,7 +422,7 @@ export class TestClockImpl implements TestClock {
           }
         })
       ))
-    );
+    )
   }
 }
 

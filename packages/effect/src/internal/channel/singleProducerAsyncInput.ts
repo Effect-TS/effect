@@ -137,7 +137,7 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
   }
 
   emit(element: Elem): Effect.Effect<unknown> {
-    return Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
+    return Effect.flatMap(Deferred.make<void>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
           switch (state._tag) {
@@ -211,7 +211,7 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
   ): Effect.Effect<A> {
-    return Effect.flatMap(Deferred.make<Err, Either.Either<Done, Elem>>(), (deferred) =>
+    return Effect.flatMap(Deferred.make<Either.Either<Done, Elem>, Err>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
           switch (state._tag) {
@@ -253,7 +253,7 @@ export const make = <Err, Elem, Done>(): Effect.Effect<
   SingleProducerAsyncInput.SingleProducerAsyncInput<Err, Elem, Done>
 > =>
   pipe(
-    Deferred.make<never, void>(),
+    Deferred.make<void>(),
     Effect.flatMap((deferred) => Ref.make(stateEmpty(deferred) as State<Err, Elem, Done>)),
     Effect.map((ref) => new SingleProducerAsyncInputImpl(ref))
   )

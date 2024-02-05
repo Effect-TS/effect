@@ -241,8 +241,8 @@ describe("Stream", () => {
         Chunk.make(2)
       )
       const stream1 = Stream.fromChunks(Chunk.make(1), Chunk.make(1))
-      const deferred = yield* $(Deferred.make<never, number>())
-      const latch = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<number>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         stream0,
         Stream.concat(Stream.fromEffect(Deferred.await(deferred))),
@@ -250,7 +250,7 @@ describe("Stream", () => {
         Stream.zipLatestWith(
           pipe(
             Stream.make(1, 1),
-            Stream.ensuring(Deferred.succeed<never, void>(latch, void 0)),
+            Stream.ensuring(Deferred.succeed(latch, void 0)),
             Stream.concat(stream1)
           ),
           (_, n) => n

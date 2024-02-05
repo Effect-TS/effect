@@ -142,7 +142,7 @@ export const cachedInvalidateWithTTL: {
               invalidateCache(cache)
             ] as [Effect.Effect<A, E>, Effect.Effect<void>]
         )
-    );
+    )
   }
 )
 
@@ -154,7 +154,7 @@ const computeCachedValue = <A, E, R>(
 ): Effect.Effect<Option.Option<[number, Deferred.Deferred<A, E>]>, never, R> => {
   const timeToLiveMillis = Duration.toMillis(Duration.decode(timeToLive))
   return pipe(
-    core.deferredMake<E, A>(),
+    core.deferredMake<A, E>(),
     core.tap((deferred) => core.intoDeferred(self, deferred)),
     core.map((deferred) => Option.some([start + timeToLiveMillis, deferred]))
   )
@@ -327,7 +327,7 @@ export const cachedFunction = <A, B, E, R>(
           const result = pipe(map, MutableHashMap.get(new Key(a, eq)))
           if (Option.isNone(result)) {
             return pipe(
-              core.deferredMake<E, readonly [FiberRefsPatch.FiberRefsPatch, B]>(),
+              core.deferredMake<readonly [FiberRefsPatch.FiberRefsPatch, B], E>(),
               core.tap((deferred) =>
                 pipe(
                   effect.diffFiberRefs(f(a)),
@@ -344,7 +344,7 @@ export const cachedFunction = <A, B, E, R>(
         core.flatMap(([patch, b]) => pipe(effect.patchFiberRefs(patch), core.as(b)))
       )
     )
-  );
+  )
 }
 
 /** @internal */

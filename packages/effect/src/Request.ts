@@ -274,7 +274,8 @@ export const makeCache = (
 ): Effect.Effect<Cache> =>
   cache.make({
     ...options,
-    lookup: () => core.map(core.deferredMake(), (handle) => ({ listeners: new internal.Listeners(), handle }))
+    lookup: () =>
+      core.map(core.deferredMake<unknown, unknown>(), (handle) => ({ listeners: new internal.Listeners(), handle }))
   })
 
 /**

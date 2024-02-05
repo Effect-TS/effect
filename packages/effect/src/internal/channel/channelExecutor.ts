@@ -1141,8 +1141,8 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       pipe(
         Effect.all([
           Scope.fork(parent, ExecutionStrategy.sequential),
-          Deferred.make<OutErr, OutDone>(),
-          Deferred.make<never, void>()
+          Deferred.make<OutDone, OutErr>(),
+          Deferred.make<void>()
         ]),
         Effect.flatMap(([child, channelDeferred, scopeDeferred]) =>
           pipe(
