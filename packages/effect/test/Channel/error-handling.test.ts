@@ -26,11 +26,11 @@ describe("Channel", () => {
 
   it.effect("error cause is propagated on channel interruption", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
-      const finished = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
+      const finished = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make<Exit.Exit<void>>(Exit.unit))
       const effect = pipe(
-        Deferred.succeed<never, void>(deferred, void 0),
+        Deferred.succeed(deferred, void 0),
         Effect.zipRight(Effect.never)
       )
       yield* $(

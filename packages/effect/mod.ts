@@ -5,6 +5,7 @@ const enabled = {
   swapLayerParams: false,
   swapSTMParams: false,
   swapSTMGenParams: false,
+  swapDeferredParams: true,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
@@ -54,7 +55,7 @@ const filter = (ast: cs.ASTPath<cs.TSTypeReference>, nodeName: string) => {
   return is
 }
 
-const swapParams = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
+const swapParamsREA = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
   const is = filter(ast, nodeName)
   if (
     is(ast.value.typeName) &&
@@ -69,9 +70,22 @@ const swapParams = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) =
   }
 }
 
-const swapSTMParams = swapParams("STM")
-const swapSTMGenParams = swapParams("STMGen")
-const swapLayerParams = swapParams("Layer")
+const swapDeferredParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
+  const is = filter(ast, "Deferred")
+  if (
+    is(ast.value.typeName) &&
+    ast.value.typeParameters &&
+    ast.value.typeParameters.params.length === 2
+  ) {
+    const params = ast.value.typeParameters.params
+    const newParams = [params[1], params[0]]
+    ast.value.typeParameters.params = newParams
+  }
+}
+
+const swapSTMParams = swapParamsREA("STM")
+const swapSTMGenParams = swapParamsREA("STMGen")
+const swapLayerParams = swapParamsREA("Layer")
 
 const popNever = (params: Array<k.TSTypeKind>) => {
   if (params.length > 0 && params[params.length - 1].type === "TSNeverKeyword") {
@@ -106,6 +120,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     }
     if (enabled.swapSTMGenParams) {
       swapSTMGenParams(ast)
+    }
+    if (enabled.swapDeferredParams) {
+      swapDeferredParams(ast)
     }
     if (enabled.cleanupEffect) {
       cleanupEffect(ast)

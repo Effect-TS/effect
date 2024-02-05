@@ -32,14 +32,14 @@ describe("Stream", () => {
   it.effect("asyncEffect - simple example", () =>
     Effect.gen(function*($) {
       const array = [1, 2, 3, 4, 5]
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Stream.asyncEffect<number>((emit) => {
           array.forEach((n) => {
             emit(Effect.succeed(Chunk.of(n)))
           })
           return pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.unit)
           )
         }),
@@ -127,13 +127,13 @@ describe("Stream", () => {
   it.effect("asyncInterrupt - left", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Stream.asyncInterrupt<void>((emit) => {
           emit.chunk(Chunk.of(void 0))
           return Either.left(Ref.set(ref, true))
         }),
-        Stream.tap(() => Deferred.succeed<never, void>(latch, void 0)),
+        Stream.tap(() => Deferred.succeed(latch, void 0)),
         Stream.runDrain,
         Effect.fork
       )
@@ -326,14 +326,14 @@ describe("Stream", () => {
   it.effect("asyncScoped", () =>
     Effect.gen(function*($) {
       const array = [1, 2, 3, 4, 5]
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Stream.asyncScoped<number>((cb) => {
           array.forEach((n) => {
             cb(Effect.succeed(Chunk.of(n)))
           })
           return pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.asUnit
           )
         }),

@@ -116,7 +116,7 @@ export const fromRequest = <
           const listeners = new Listeners()
           listeners.increment()
           return core.flatMap(
-            core.deferredMake<Request.Request.Error<A>, Request.Request.Success<A>>(),
+            core.deferredMake<Request.Request.Success<A>, Request.Request.Error<A>>(),
             (ref) =>
               core.blocked(
                 BlockedRequests.single(

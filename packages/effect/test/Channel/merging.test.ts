@@ -117,12 +117,12 @@ describe("Channel", () => {
 
   it.effect("mergeWith - interrupts losing side", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const interrupted = yield* $(Ref.make(false))
       const left = Channel.zipRight(
         Channel.write(1),
         pipe(
-          Deferred.succeed<never, void>(latch, void 0),
+          Deferred.succeed(latch, void 0),
           Effect.zipRight(Effect.never),
           Effect.onInterrupt(() => Ref.set(interrupted, true)),
           Channel.fromEffect

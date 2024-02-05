@@ -2019,13 +2019,13 @@ export const retry_combined: {
 /** @internal */
 export const retryOrElse_Effect = dual<
   <R1, E, A1, A2, E2, R2>(
-    policy: Schedule.Schedule<R1, E, A1>,
-    orElse: (e: E, out: A1) => Effect.Effect<A2, E2, R2>
+    policy: Schedule.Schedule<R1, Types.NoInfer<E>, A1>,
+    orElse: (e: Types.NoInfer<E>, out: A1) => Effect.Effect<A2, E2, R2>
   ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | A2, E | E2, R | R1 | R2>,
   <A, E, R, A1, R1, A2, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    policy: Schedule.Schedule<R1, E, A1>,
-    orElse: (e: E, out: A1) => Effect.Effect<A2, E2, R2>
+    policy: Schedule.Schedule<R1, Types.NoInfer<E>, A1>,
+    orElse: (e: Types.NoInfer<E>, out: A1) => Effect.Effect<A2, E2, R2>
   ) => Effect.Effect<A | A2, E | E2, R | R1 | R2>
 >(3, (self, policy, orElse) =>
   core.flatMap(

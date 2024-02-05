@@ -266,8 +266,8 @@ describe("Effect", () => {
   it.live("interrupt waits for finalizer", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, number>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<number>())
       const fiber = yield* $(
         pipe(
           Deferred.succeed(deferred1, void 0),
@@ -312,8 +312,8 @@ describe("Effect", () => {
     }))
   it.effect("onExit - ensures that a cleanup function runs when an effect is interrupted", () =>
     Effect.gen(function*($) {
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         pipe(
           Deferred.succeed(latch1, void 0),

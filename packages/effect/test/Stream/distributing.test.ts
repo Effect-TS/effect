@@ -31,11 +31,11 @@ describe("Stream", () => {
             Stream.unwrap
           )
           return pipe(
-            Deferred.make<never, void>(),
+            Deferred.make<void>(),
             Effect.flatMap((onEnd) =>
               pipe(
                 subscribe,
-                Stream.ensuring(Deferred.succeed<never, void>(onEnd, void 0)),
+                Stream.ensuring(Deferred.succeed(onEnd, void 0)),
                 Stream.runDrain,
                 Effect.fork,
                 Effect.zipRight(Deferred.await(onEnd)),

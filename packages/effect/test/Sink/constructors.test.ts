@@ -54,14 +54,14 @@ describe("Sink", () => {
 
   it.effect("fromPubSub - should publish all elements", () =>
     Effect.gen(function*($) {
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.unbounded<number>())
       const fiber = yield* $(
         PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
-            Deferred.succeed<never, void>(deferred1, void 0),
+            Deferred.succeed(deferred1, void 0),
             Effect.zipRight(Deferred.await(deferred2)),
             Effect.zipRight(Queue.takeAll(subscription))
           )
@@ -71,7 +71,7 @@ describe("Sink", () => {
       )
       yield* $(Deferred.await(deferred1))
       yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub)))
-      yield* $(Deferred.succeed<never, void>(deferred2, void 0))
+      yield* $(Deferred.succeed(deferred2, void 0))
       const result = yield* $(Fiber.join(fiber))
       assert.deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
@@ -93,9 +93,9 @@ class QueueSpy<A> implements Queue.Queue<A> {
   private isShutdownInternal = false
   readonly queue: Queue.BackingQueue<A>
   readonly shutdownFlag: MutableRef.MutableRef<boolean>
-  readonly shutdownHook: Deferred.Deferred<never, void>
+  readonly shutdownHook: Deferred.Deferred<void, never>
   readonly strategy: Queue.Strategy<A>
-  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
 
   constructor(readonly backingQueue: Queue.Queue<A>) {
     this.queue = backingQueue.queue

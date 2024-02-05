@@ -69,7 +69,7 @@ describe("Stream", () => {
         Effect.flatMap(([evens, odds]) =>
           Effect.gen(function*($) {
             const ref = yield* $(Ref.make(Chunk.empty<number>()))
-            const latch = yield* $(Deferred.make<never, void>())
+            const latch = yield* $(Deferred.make<void>())
             const fiber = yield* $(
               evens,
               Stream.tap((n) =>
@@ -77,7 +77,7 @@ describe("Stream", () => {
                   Ref.update(ref, Chunk.prepend(n)),
                   Effect.zipRight(
                     pipe(
-                      Deferred.succeed<never, void>(latch, void 0),
+                      Deferred.succeed(latch, void 0),
                       Effect.when(() => n === 2)
                     )
                   )

@@ -41,14 +41,14 @@ describe("Stream", () => {
   it.effect("buffer - fast producer progresses independently", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const stream = pipe(
         Stream.range(1, 4),
         Stream.tap((n) =>
           pipe(
             Ref.update(ref, Chunk.append(n)),
             Effect.zipRight(pipe(
-              Deferred.succeed<never, void>(latch, void 0),
+              Deferred.succeed(latch, void 0),
               Effect.when(() => n === 4)
             ))
           )
@@ -93,14 +93,14 @@ describe("Stream", () => {
   it.effect("bufferChunks - fast producer progresses independently", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const stream = pipe(
         Stream.range(1, 4),
         Stream.tap((n) =>
           pipe(
             Ref.update(ref, Chunk.append(n)),
             Effect.zipRight(pipe(
-              Deferred.succeed<never, void>(latch, void 0),
+              Deferred.succeed(latch, void 0),
               Effect.when(() => n === 4)
             ))
           )
@@ -131,10 +131,10 @@ describe("Stream", () => {
   it.effect("bufferChunksDropping - fast producer progress independently", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
-      const latch3 = yield* $(Deferred.make<never, void>())
-      const latch4 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
+      const latch3 = yield* $(Deferred.make<void>())
+      const latch4 = yield* $(Deferred.make<void>())
       const stream1 = pipe(
         Stream.make(0),
         Stream.concat(
@@ -144,7 +144,7 @@ describe("Stream", () => {
               pipe(
                 Stream.range(1, 16),
                 Stream.rechunk(1),
-                Stream.ensuring(Deferred.succeed<never, void>(latch2, void 0))
+                Stream.ensuring(Deferred.succeed(latch2, void 0))
               )
             )
           )
@@ -156,7 +156,7 @@ describe("Stream", () => {
           pipe(
             Stream.range(17, 24),
             Stream.rechunk(1),
-            Stream.ensuring(Deferred.succeed<never, void>(latch4, void 0))
+            Stream.ensuring(Deferred.succeed(latch4, void 0))
           )
         )
       )
@@ -172,7 +172,7 @@ describe("Stream", () => {
         Effect.flatMap((pull) =>
           Effect.gen(function*($) {
             const result1 = yield* $(pull)
-            yield* $(Deferred.succeed<never, void>(latch1, void 0))
+            yield* $(Deferred.succeed(latch1, void 0))
             yield* $(Deferred.await(latch2))
             yield* $(
               pull,
@@ -184,7 +184,7 @@ describe("Stream", () => {
               Effect.repeatN(7)
             )
             const result2 = yield* $(Ref.get(ref))
-            yield* $(Deferred.succeed<never, void>(latch3, void 0))
+            yield* $(Deferred.succeed(latch3, void 0))
             yield* $(Deferred.await(latch4))
             yield* $(
               pull,
@@ -222,11 +222,11 @@ describe("Stream", () => {
   it.effect("bufferChunksSliding - fast producer progress independently", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
-      const latch3 = yield* $(Deferred.make<never, void>())
-      const latch4 = yield* $(Deferred.make<never, void>())
-      const latch5 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
+      const latch3 = yield* $(Deferred.make<void>())
+      const latch4 = yield* $(Deferred.make<void>())
+      const latch5 = yield* $(Deferred.make<void>())
       const stream1 = pipe(
         Stream.make(0),
         Stream.concat(
@@ -236,7 +236,7 @@ describe("Stream", () => {
               pipe(
                 Stream.range(1, 16),
                 Stream.rechunk(1),
-                Stream.ensuring(Deferred.succeed<never, void>(latch2, void 0))
+                Stream.ensuring(Deferred.succeed(latch2, void 0))
               )
             )
           )
@@ -248,7 +248,7 @@ describe("Stream", () => {
           pipe(
             Stream.range(17, 25),
             Stream.rechunk(1),
-            Stream.ensuring(Deferred.succeed<never, void>(latch4, void 0))
+            Stream.ensuring(Deferred.succeed(latch4, void 0))
           )
         )
       )
@@ -267,7 +267,7 @@ describe("Stream", () => {
         Effect.flatMap((pull) =>
           Effect.gen(function*($) {
             const result1 = yield* $(pull)
-            yield* $(Deferred.succeed<never, void>(latch1, void 0))
+            yield* $(Deferred.succeed(latch1, void 0))
             yield* $(Deferred.await(latch2))
             yield* $(
               pull,
@@ -275,7 +275,7 @@ describe("Stream", () => {
               Effect.repeatN(7)
             )
             const result2 = yield* $(Ref.get(ref))
-            yield* $(Deferred.succeed<never, void>(latch3, void 0))
+            yield* $(Deferred.succeed(latch3, void 0))
             yield* $(Deferred.await(latch4))
             yield* $(
               pull,
@@ -313,10 +313,10 @@ describe("Stream", () => {
   it.effect("bufferDropping - fast producer progress independently", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
-      const latch3 = yield* $(Deferred.make<never, void>())
-      const latch4 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
+      const latch3 = yield* $(Deferred.make<void>())
+      const latch4 = yield* $(Deferred.make<void>())
       const stream1 = pipe(
         Stream.make(0),
         Stream.concat(
@@ -326,7 +326,7 @@ describe("Stream", () => {
               pipe(
                 Stream.range(1, 17),
                 Stream.rechunk(1),
-                Stream.ensuring(Deferred.succeed<never, void>(latch2, void 0))
+                Stream.ensuring(Deferred.succeed(latch2, void 0))
               )
             )
           )
@@ -338,7 +338,7 @@ describe("Stream", () => {
           pipe(
             Stream.range(17, 24),
             Stream.rechunk(1),
-            Stream.ensuring(Deferred.succeed<never, void>(latch4, void 0))
+            Stream.ensuring(Deferred.succeed(latch4, void 0))
           )
         )
       )
@@ -354,7 +354,7 @@ describe("Stream", () => {
         Effect.flatMap((pull) =>
           Effect.gen(function*($) {
             const result1 = yield* $(pull)
-            yield* $(Deferred.succeed<never, void>(latch1, void 0))
+            yield* $(Deferred.succeed(latch1, void 0))
             yield* $(Deferred.await(latch2))
             yield* $(
               pull,
@@ -366,7 +366,7 @@ describe("Stream", () => {
               Effect.repeatN(7)
             )
             const result2 = yield* $(Ref.get(ref))
-            yield* $(Deferred.succeed<never, void>(latch3, void 0))
+            yield* $(Deferred.succeed(latch3, void 0))
             yield* $(Deferred.await(latch4))
             yield* $(
               pull,
@@ -404,10 +404,10 @@ describe("Stream", () => {
   it.effect("bufferSliding - fast producer progress independently", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
-      const latch3 = yield* $(Deferred.make<never, void>())
-      const latch4 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
+      const latch3 = yield* $(Deferred.make<void>())
+      const latch4 = yield* $(Deferred.make<void>())
       const stream1 = pipe(
         Stream.make(0),
         Stream.concat(
@@ -417,7 +417,7 @@ describe("Stream", () => {
               pipe(
                 Stream.range(1, 16),
                 Stream.rechunk(1),
-                Stream.ensuring(Deferred.succeed<never, void>(latch2, void 0))
+                Stream.ensuring(Deferred.succeed(latch2, void 0))
               )
             )
           )
@@ -429,7 +429,7 @@ describe("Stream", () => {
           pipe(
             Stream.range(17, 24),
             Stream.rechunk(1),
-            Stream.ensuring(Deferred.succeed<never, void>(latch4, void 0))
+            Stream.ensuring(Deferred.succeed(latch4, void 0))
           )
         )
       )
@@ -445,7 +445,7 @@ describe("Stream", () => {
         Effect.flatMap((pull) =>
           Effect.gen(function*($) {
             const result1 = yield* $(pull)
-            yield* $(Deferred.succeed<never, void>(latch1, void 0))
+            yield* $(Deferred.succeed(latch1, void 0))
             yield* $(Deferred.await(latch2))
             yield* $(
               pull,
@@ -453,7 +453,7 @@ describe("Stream", () => {
               Effect.repeatN(7)
             )
             const result2 = yield* $(Ref.get(ref))
-            yield* $(Deferred.succeed<never, void>(latch3, void 0))
+            yield* $(Deferred.succeed(latch3, void 0))
             yield* $(Deferred.await(latch4))
             yield* $(
               pull,
@@ -512,13 +512,13 @@ describe("Stream", () => {
   it.effect("bufferUnbounded - fast producer progress independently", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const stream = pipe(
         Stream.range(1, 999),
         Stream.tap((n) =>
           pipe(
             Ref.update(ref, Chunk.append(n)),
-            Effect.zipRight(pipe(Deferred.succeed<never, void>(latch, void 0), Effect.when(() => n === 999)))
+            Effect.zipRight(pipe(Deferred.succeed(latch, void 0), Effect.when(() => n === 999)))
           )
         ),
         Stream.rechunk(999),

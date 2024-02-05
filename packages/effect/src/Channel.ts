@@ -1156,13 +1156,13 @@ export const interruptWhen: {
  */
 export const interruptWhenDeferred: {
   <OutErr1, OutDone1>(
-    deferred: Deferred.Deferred<OutErr1, OutDone1>
+    deferred: Deferred.Deferred<OutDone1, OutErr1>
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1 | OutDone>
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutErr1, OutDone1>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    deferred: Deferred.Deferred<OutErr1, OutDone1>
+    deferred: Deferred.Deferred<OutDone1, OutErr1>
   ): Channel<Env, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone | OutDone1>
 } = channel.interruptWhenDeferred
 
