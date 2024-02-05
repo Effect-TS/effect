@@ -28,8 +28,8 @@ describe.sequential("Worker", () => {
       }))
       const people = yield* _(pool.execute(new GetPersonById({ id: 123 })), Stream.runCollect)
       assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
-        new Person({ id: 123, name: "test" }),
-        new Person({ id: 123, name: "ing" })
+        new Person({ id: 123, name: "test", data: new Uint8Array([1, 2, 3]) }),
+        new Person({ id: 123, name: "ing", data: new Uint8Array([4, 5, 6]) })
       ])
     }).pipe(
       Effect.scoped,
@@ -42,15 +42,15 @@ describe.sequential("Worker", () => {
       const pool = yield* _(EffectWorker.makePoolSerialized<WorkerMessage>({
         spawn: () => new globalThis.Worker(new URL("./fixtures/serializedWorker.ts", import.meta.url)),
         size: 1,
-        initialMessage: () => new InitialMessage({ name: "custom" })
+        initialMessage: () => new InitialMessage({ name: "custom", data: new Uint8Array([1, 2, 3]) })
       }))
       let user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
       user = yield* _(pool.executeEffect(new GetUserById({ id: 123 })))
       assert.deepStrictEqual(user, new User({ id: 123, name: "custom" }))
       const people = yield* _(pool.execute(new GetPersonById({ id: 123 })), Stream.runCollect)
       assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
-        new Person({ id: 123, name: "test" }),
-        new Person({ id: 123, name: "ing" })
+        new Person({ id: 123, name: "test", data: new Uint8Array([1, 2, 3]) }),
+        new Person({ id: 123, name: "ing", data: new Uint8Array([4, 5, 6]) })
       ])
     }).pipe(
       Effect.scoped,

@@ -80,6 +80,15 @@ export const makeManager = Effect.gen(function*(_) {
           Queue.shutdown
         ))
 
+        const collector = Transferable.unsafeMakeCollector()
+        const wrappedEncode = encode ?
+          ((message: I) =>
+            Effect.zipRight(
+              collector.clear,
+              Effect.provideService(encode(message), Transferable.Collector, collector)
+            )) :
+          Effect.succeed
+
         const outbound = queue ?? (yield* _(defaultQueue<I>()))
         yield* _(Effect.addFinalizer(() => outbound.shutdown))
 
@@ -244,8 +253,12 @@ export const makeManager = Effect.gen(function*(_) {
                 )
                 return pipe(
                   Effect.flatMap(
-                    encode ? encode(request) : Effect.succeed(request),
-                    (payload) => sendQueue.offer([[id, 0, payload, spanTuple], transferables])
+                    wrappedEncode(request),
+                    (payload) =>
+                      sendQueue.offer([[id, 0, payload, spanTuple], [
+                        ...transferables,
+                        ...collector.unsafeRead()
+                      ]])
                   ),
                   Effect.catchAllCause((cause) => Queue.offer(result[0], Exit.failCause(cause))),
                   Effect.zipRight(Deferred.await(result[1]))
@@ -347,9 +360,6 @@ export const makeSerialized = <
     const backing = yield* _(
       manager.spawn({
         ...options as any,
-        transfers(message) {
-          return Transferable.get(message)
-        },
         encode(message) {
           return Effect.mapError(Serializable.serialize(message as any), (error) => WorkerError("encode", error))
         }
