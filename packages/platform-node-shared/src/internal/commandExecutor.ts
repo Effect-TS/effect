@@ -36,7 +36,7 @@ const toPlatformError = (
 }
 
 type ExitCode = readonly [code: number | null, signal: NodeJS.Signals | null]
-type ExitCodeDeferred = Deferred.Deferred<never, ExitCode>
+type ExitCodeDeferred = Deferred.Deferred<ExitCode>
 
 const runCommand =
   (fileSystem: FileSystem.FileSystem) =>
@@ -44,7 +44,7 @@ const runCommand =
     switch (command._tag) {
       case "StandardCommand": {
         const spawn = Effect.flatMap(
-          Deferred.make<never, ExitCode>(),
+          Deferred.make<ExitCode>(),
           (exitCode) =>
             Effect.async<readonly [ChildProcess.ChildProcess, ExitCodeDeferred], Error.PlatformError, never>(
               (resume) => {

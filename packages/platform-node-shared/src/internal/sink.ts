@@ -24,7 +24,7 @@ export const fromWritableChannel = <IE, OE, A>(
   Channel.flatMap(
     Effect.zip(
       Effect.sync(() => writable()),
-      Deferred.make<IE | OE, void>()
+      Deferred.make<void, IE | OE>()
     ),
     ([writable, deferred]) =>
       Channel.embedInput(
@@ -40,7 +40,7 @@ export const fromWritableChannel = <IE, OE, A>(
 
 const writableOutput = <IE, E>(
   writable: Writable | NodeJS.WritableStream,
-  deferred: Deferred.Deferred<IE | E, void>,
+  deferred: Deferred.Deferred<void, IE | E>,
   onError: (error: unknown) => E
 ) =>
   Effect.suspend(() => {

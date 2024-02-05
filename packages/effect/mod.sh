@@ -1,5 +1,5 @@
 #!/bin/bash
-dirs=(../rpc-workers/test/e2e)
+dirs=(../effect/test)
 for dir in ${dirs[@]};
 do
 echo Refactoring $dir

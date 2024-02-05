@@ -11,14 +11,14 @@ import type * as FiberId from "../../FiberId.js"
  */
 export interface Sleep {
   readonly duration: Duration.Duration
-  readonly deferred: Deferred.Deferred<never, void>
+  readonly deferred: Deferred.Deferred<void, never>
   readonly fiberId: FiberId.FiberId
 }
 
 /** @internal */
 export const make = (
   duration: Duration.Duration,
-  deferred: Deferred.Deferred<never, void>,
+  deferred: Deferred.Deferred<void, never>,
   fiberId: FiberId.FiberId
 ): Sleep => ({
   duration,

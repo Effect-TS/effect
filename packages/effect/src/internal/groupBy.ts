@@ -152,10 +152,7 @@ export const groupBy = dual<
       stream.unwrapScoped(
         Effect.gen(function*($) {
           const decider = yield* $(
-            Deferred.make<
-              never,
-              (key: K, value: V) => Effect.Effect<Predicate<number>>
-            >()
+            Deferred.make<(key: K, value: V) => Effect.Effect<Predicate<number>>>()
           )
           const output = yield* $(Effect.acquireRelease(
             Queue.bounded<Exit.Exit<readonly [K, Queue.Dequeue<Take.Take<E | E2, V>>], Option.Option<E | E2>>>(

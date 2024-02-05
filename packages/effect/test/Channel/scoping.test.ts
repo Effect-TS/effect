@@ -12,7 +12,7 @@ import { assert, describe } from "vitest"
 
 describe("Channel", () => {
   it.it("acquireUseReleaseOut - acquire is executed uninterruptibly", async () => {
-    const latch = Deferred.unsafeMake<never, void>(FiberId.none)
+    const latch = Deferred.unsafeMake<void>(FiberId.none)
     const program = Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
       const acquire = Effect.zipRight(Ref.update(ref, (n) => n + 1), Effect.yieldNow())
@@ -28,12 +28,12 @@ describe("Channel", () => {
       return yield* $(Ref.get(ref))
     })
     const result = await Effect.runPromise(program)
-    await Effect.runPromise(Deferred.succeed<never, void>(latch, void 0))
+    await Effect.runPromise(Deferred.succeed(latch, void 0))
     assert.strictEqual(result, 0)
   }, 35_000)
 
   it.it("scoped closes the scope", async () => {
-    const latch = Deferred.unsafeMake<never, void>(FiberId.none)
+    const latch = Deferred.unsafeMake<void>(FiberId.none)
     const program = Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
       const acquire = Effect.zipRight(Ref.update(ref, (n) => n + 1), Effect.yieldNow())
@@ -49,7 +49,7 @@ describe("Channel", () => {
       return yield* $(Ref.get(ref))
     })
     const result = await Effect.runPromise(program)
-    await Effect.runPromise(Deferred.succeed<never, void>(latch, void 0))
+    await Effect.runPromise(Deferred.succeed(latch, void 0))
     assert.strictEqual(result, 0)
   }, 35_000)
 

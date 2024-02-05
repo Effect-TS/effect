@@ -38,7 +38,7 @@ import { currentScheduler, type Scheduler } from "../Scheduler.js"
 import type * as Scope from "../Scope.js"
 import type * as Supervisor from "../Supervisor.js"
 import type * as Tracer from "../Tracer.js"
-import type { Concurrency } from "../Types.js"
+import type { Concurrency, NoInfer } from "../Types.js"
 import * as _RequestBlock from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as clock from "./clock.js"
@@ -388,7 +388,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
     f: (runtime: FiberRuntime<any, any>, status: FiberStatus.FiberStatus) => Z
   ): Effect.Effect<Z> {
     return core.suspend(() => {
-      const deferred = core.deferredUnsafeMake<never, Z>(this._fiberId)
+      const deferred = core.deferredUnsafeMake<Z>(this._fiberId)
       this.tell(
         FiberMessage.stateful((fiber, status) => {
           core.deferredUnsafeDone(deferred, core.sync(() => f(fiber, status)))
@@ -1556,21 +1556,21 @@ const existsLoop = <A, E, R>(
 /* @internal */
 export const filter = dual<
   <A, E, R>(
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>,
+    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly negate?: boolean | undefined
     }
   ) => (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>,
-  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(elements: Iterable<A>, f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly negate?: boolean | undefined
   }) => Effect.Effect<Array<A>, E, R>
 >(
   (args) => Predicate.isIterable(args[0]),
-  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(elements: Iterable<A>, f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly negate?: boolean | undefined
@@ -1931,7 +1931,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
         let counter = 0
         let interrupted = false
         const fibersCount = n ? Math.min(todos.length, n) : todos.length
-        const fibers = new Set<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<E, _>>>()
+        const fibers = new Set<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
         const results = new Array()
         const interruptAll = () =>
           fibers.forEach((fiber) => {
@@ -1939,8 +1939,8 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
               fiber.unsafeInterruptAsFork(parent.id())
             }, 0)
           })
-        const startOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<E, _>>>()
-        const joinOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<E, _>>>()
+        const startOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
+        const joinOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
         const residual = new Array<core.Blocked>()
         const collectExits = () => {
           const exits: Array<Exit.Exit<any, E>> = results
@@ -1976,7 +1976,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
         const stepOrExit = batching ? core.step : core.exit
         const processingFiber = runFiber(
           core.async<any, any, any>((resume) => {
-            const pushResult = <_, E>(res: Exit.Exit<_, E> | Effect.Blocked<E, _>, index: number) => {
+            const pushResult = <_, E>(res: Exit.Exit<_, E> | Effect.Blocked<_, E>, index: number) => {
               if (res._op === "Blocked") {
                 residual.push(res as core.Blocked)
               } else {
@@ -2000,8 +2000,8 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
                     ))
                 }
                 const onRes = (
-                  res: Exit.Exit<_, E> | Effect.Blocked<E, _>
-                ): Effect.Effect<Exit.Exit<_, E> | Effect.Blocked<E, _>, never, R> => {
+                  res: Exit.Exit<_, E> | Effect.Blocked<_, E>
+                ): Effect.Effect<Exit.Exit<_, E> | Effect.Blocked<_, E>, never, R> => {
                   if (todos.length > 0) {
                     pushResult(res, index)
                     if (todos.length > 0) {
@@ -2322,7 +2322,7 @@ export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.
       core.as(res[0])
     )
   return pipe(
-    core.deferredMake<E, readonly [A, Fiber.Fiber<E, A>]>(),
+    core.deferredMake<readonly [A, Fiber.Fiber<E, A>], E>(),
     core.flatMap((done) =>
       pipe(
         Ref.make(effects.length),
@@ -2380,7 +2380,7 @@ export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.
 const raceAllArbiter = <E, E1, A, A1>(
   fibers: Iterable<Fiber.Fiber<E | E1, A | A1>>,
   winner: Fiber.Fiber<E | E1, A | A1>,
-  deferred: Deferred.Deferred<E | E1, readonly [A | A1, Fiber.Fiber<E | E1, A | A1>]>,
+  deferred: Deferred.Deferred<readonly [A | A1, Fiber.Fiber<E | E1, A | A1>], E | E1>,
   fails: Ref.Ref<number>
 ) =>
 (exit: Exit.Exit<A | A1, E | E1>): Effect.Effect<void> =>
@@ -2420,7 +2420,7 @@ const raceAllArbiter = <E, E1, A, A1>(
 export const reduceEffect = dual<
   <A, E, R>(
     zero: Effect.Effect<A, E, R>,
-    f: (acc: A, a: A, i: number) => A,
+    f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
@@ -2429,7 +2429,7 @@ export const reduceEffect = dual<
   <A, E, R>(
     elements: Iterable<Effect.Effect<A, E, R>>,
     zero: Effect.Effect<A, E, R>,
-    f: (acc: A, a: A, i: number) => A,
+    f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
@@ -2438,7 +2438,7 @@ export const reduceEffect = dual<
 >((args) => Predicate.isIterable(args[0]), <A, E, R>(
   elements: Iterable<Effect.Effect<A, E, R>>,
   zero: Effect.Effect<A, E, R>,
-  f: (acc: A, a: A, i: number) => A,
+  f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
   options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined

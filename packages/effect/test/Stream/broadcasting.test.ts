@@ -55,14 +55,14 @@ describe("Stream", () => {
         Effect.flatMap((streams) =>
           Effect.gen(function*($) {
             const ref = yield* $(Ref.make(Chunk.empty<number>()))
-            const latch = yield* $(Deferred.make<never, void>())
+            const latch = yield* $(Deferred.make<void>())
             const fiber = yield* $(
               streams[0],
               Stream.tap((n) =>
                 pipe(
                   Ref.update(ref, Chunk.append(n)),
                   Effect.zipRight(pipe(
-                    Deferred.succeed<never, void>(latch, void 0),
+                    Deferred.succeed(latch, void 0),
                     Effect.when(() => n === 1)
                   ))
                 )

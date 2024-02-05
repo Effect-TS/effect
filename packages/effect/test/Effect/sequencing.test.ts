@@ -247,9 +247,9 @@ describe("Effect", () => {
     }))
   it.effect("zip/parallel - does not kill fiber when forked on parent scope", () =>
     Effect.gen(function*($) {
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
-      const latch3 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
+      const latch3 = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make(false))
       const left = Effect.uninterruptibleMask((restore) =>
         pipe(
