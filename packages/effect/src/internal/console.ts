@@ -42,7 +42,7 @@ export const withConsoleScoped = <A extends Console.Console>(console: A): Effect
   )
 
 /** @internal */
-export const setConsole = <A extends Console.Console>(console: A): Layer.Layer<never, never, never> =>
+export const setConsole = <A extends Console.Console>(console: A): Layer.Layer<never> =>
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScopedWith(
       defaultServices.currentServices,

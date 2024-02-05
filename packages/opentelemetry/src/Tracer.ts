@@ -39,25 +39,25 @@ export const currentOtelSpan: Effect<Otel.Span, NoSuchElementException> = intern
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer<Resource | Otel.TracerProvider, never, never> = internal.layer
+export const layer: Layer<never, never, Resource | Otel.TracerProvider> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerGlobal: Layer<Resource, never, never> = internal.layerGlobal
+export const layerGlobal: Layer<never, never, Resource> = internal.layerGlobal
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerTracer: Layer<Resource | Otel.TracerProvider, never, Otel.Tracer> = internal.layerTracer
+export const layerTracer: Layer<Otel.Tracer, never, Resource | Otel.TracerProvider> = internal.layerTracer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerGlobalTracer: Layer<Resource, never, Otel.Tracer> = internal.layerGlobalTracer
+export const layerGlobalTracer: Layer<Otel.Tracer, never, Resource> = internal.layerGlobalTracer
 
 /**
  * @since 1.0.0

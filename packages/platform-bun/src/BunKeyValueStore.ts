@@ -12,4 +12,4 @@ import type * as Layer from "effect/Layer"
  */
 export const layerFileSystem: (
   directory: string
-) => Layer.Layer<never, PlatformError.PlatformError, KeyValueStore.KeyValueStore> = KVSN.layerFileSystem
+) => Layer.Layer<KeyValueStore.KeyValueStore, PlatformError.PlatformError> = KVSN.layerFileSystem

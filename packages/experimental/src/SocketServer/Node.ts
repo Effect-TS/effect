@@ -130,7 +130,7 @@ export const make = (
  */
 export const layer = (
   options: Net.ServerOpts & Net.ListenOptions
-): Layer.Layer<never, SocketServer.SocketServerError, SocketServer.SocketServer> =>
+): Layer.Layer<SocketServer.SocketServer, SocketServer.SocketServerError> =>
   Layer.scoped(
     SocketServer.SocketServer,
     make(options)
@@ -227,7 +227,7 @@ export const makeWebSocket = (
  */
 export const layerWebSocket = (
   options: WS.ServerOptions
-): Layer.Layer<never, SocketServer.SocketServerError, SocketServer.SocketServer> =>
+): Layer.Layer<SocketServer.SocketServer, SocketServer.SocketServerError> =>
   Layer.scoped(
     SocketServer.SocketServer,
     makeWebSocket(options)

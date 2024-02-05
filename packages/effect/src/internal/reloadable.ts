@@ -28,14 +28,10 @@ const reloadableVariance = {
 export const auto = <Out extends Context.Tag<any, any>, In, E, R>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
     readonly schedule: Schedule.Schedule<R, unknown, unknown>
   }
-): Layer.Layer<
-  R | In,
-  E,
-  Reloadable.Reloadable<Context.Tag.Identifier<Out>>
-> =>
+): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, R | In> =>
   _layer.scoped(
     reloadableTag(tag),
     pipe(
@@ -59,14 +55,10 @@ export const auto = <Out extends Context.Tag<any, any>, In, E, R>(
 export const autoFromConfig = <Out extends Context.Tag<any, any>, In, E, R>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
     readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<R, unknown, unknown>
   }
-): Layer.Layer<
-  R | In,
-  E,
-  Reloadable.Reloadable<Context.Tag.Identifier<Out>>
-> =>
+): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, R | In> =>
   _layer.scoped(
     reloadableTag(tag),
     pipe(
@@ -96,9 +88,9 @@ export const get = <T extends Context.Tag<any, any>>(
 export const manual = <Out extends Context.Tag<any, any>, In, E>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
   }
-): Layer.Layer<In, E, Reloadable.Reloadable<Context.Tag.Identifier<Out>>> =>
+): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, In> =>
   _layer.scoped(
     reloadableTag(tag),
     pipe(
