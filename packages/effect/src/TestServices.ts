@@ -105,7 +105,7 @@ export const withAnnotationsScoped = (
  *
  * @since 2.0.0
  */
-export const annotationsLayer = (): Layer.Layer<never, never, Annotations.TestAnnotations> =>
+export const annotationsLayer = (): Layer.Layer<Annotations.TestAnnotations> =>
   layer.scoped(
     Annotations.TestAnnotations,
     pipe(
@@ -187,7 +187,7 @@ export const withLiveScoped = (live: Live.TestLive): Effect.Effect<void, never, 
  *
  * @since 2.0.0
  */
-export const liveLayer = (): Layer.Layer<DefaultServices.DefaultServices, never, Live.TestLive> =>
+export const liveLayer = (): Layer.Layer<Live.TestLive, never, DefaultServices.DefaultServices> =>
   layer.scoped(
     Live.TestLive,
     pipe(
@@ -271,7 +271,7 @@ export const withSizedScoped = (sized: Sized.TestSized): Effect.Effect<void, nev
 /**
  * @since 2.0.0
  */
-export const sizedLayer = (size: number): Layer.Layer<never, never, Sized.TestSized> =>
+export const sizedLayer = (size: number): Layer.Layer<Sized.TestSized> =>
   layer.scoped(
     Sized.TestSized,
     pipe(
@@ -349,7 +349,7 @@ export const testConfigLayer = (params: {
   readonly retries: number
   readonly samples: number
   readonly shrinks: number
-}): Layer.Layer<never, never, TestConfig.TestConfig> =>
+}): Layer.Layer<TestConfig.TestConfig> =>
   layer.scoped(
     TestConfig.TestConfig,
     Effect.suspend(() => {

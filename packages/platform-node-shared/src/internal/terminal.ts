@@ -117,7 +117,7 @@ export const make = (
   })
 
 /** @internal */
-export const layer: Layer.Layer<never, never, Terminal.Terminal> = Layer.scoped(
+export const layer: Layer.Layer<Terminal.Terminal> = Layer.scoped(
   Terminal.Terminal,
   make(defaultShouldQuit)
 )

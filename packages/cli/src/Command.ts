@@ -254,13 +254,13 @@ export const prompt: <Name extends string, A, R, E>(
  */
 export const provide: {
   <A, LR, LE, LA>(
-    layer: Layer<LR, LE, LA> | ((_: A) => Layer<LR, LE, LA>)
+    layer: Layer<LA, LE, LR> | ((_: A) => Layer<LA, LE, LR>)
   ): <Name extends string, R, E>(
     self: Command<Name, R, E, A>
   ) => Command<Name, LR | Exclude<R, LA>, LE | E, A>
   <Name extends string, R, E, A, LR, LE, LA>(
     self: Command<Name, R, E, A>,
-    layer: Layer<LR, LE, LA> | ((_: A) => Layer<LR, LE, LA>)
+    layer: Layer<LA, LE, LR> | ((_: A) => Layer<LA, LE, LR>)
   ): Command<Name, LR | Exclude<R, LA>, E | LE, A>
 } = Internal.provide
 

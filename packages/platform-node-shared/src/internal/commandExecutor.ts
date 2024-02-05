@@ -194,7 +194,7 @@ const runCommand =
   }
 
 /** @internal */
-export const layer: Layer.Layer<FileSystem.FileSystem, never, CommandExecutor.CommandExecutor> = Layer.effect(
+export const layer: Layer.Layer<CommandExecutor.CommandExecutor, never, FileSystem.FileSystem> = Layer.effect(
   CommandExecutor.CommandExecutor,
   pipe(
     FileSystem.FileSystem,

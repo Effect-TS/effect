@@ -61,4 +61,4 @@ export const Path: Tag<Path, Path> = internal.Path
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer<never, never, Path> = internal.layer
+export const layer: Layer<Path> = internal.layer

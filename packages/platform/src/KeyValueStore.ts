@@ -116,7 +116,7 @@ export const prefix: {
  * @since 1.0.0
  * @category layers
  */
-export const layerMemory: Layer.Layer<never, never, KeyValueStore> = internal.layerMemory
+export const layerMemory: Layer.Layer<KeyValueStore> = internal.layerMemory
 
 /**
  * @since 1.0.0
@@ -124,7 +124,7 @@ export const layerMemory: Layer.Layer<never, never, KeyValueStore> = internal.la
  */
 export const layerFileSystem: (
   directory: string
-) => Layer.Layer<FileSystem.FileSystem | Path.Path, PlatformError.PlatformError, KeyValueStore> =
+) => Layer.Layer<KeyValueStore, PlatformError.PlatformError, FileSystem.FileSystem | Path.Path> =
   internal.layerFileSystem
 
 /**
@@ -203,5 +203,5 @@ export const layerSchema: <A, I, R>(
   tagIdentifier: string
 ) => {
   readonly tag: Context.Tag<SchemaStore<R, A>, SchemaStore<R, A>>
-  readonly layer: Layer.Layer<KeyValueStore, never, SchemaStore<R, A>>
+  readonly layer: Layer.Layer<SchemaStore<R, A>, never, KeyValueStore>
 } = internal.layerSchema

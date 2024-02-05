@@ -146,31 +146,31 @@ export const disableAll: {
  * @since 2.0.0
  * @category context
  */
-export const disableCooperativeYielding: Layer.Layer<never, never, never> = circular.disableCooperativeYielding
+export const disableCooperativeYielding: Layer.Layer<never> = circular.disableCooperativeYielding
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const disableInterruption: Layer.Layer<never, never, never> = circular.disableInterruption
+export const disableInterruption: Layer.Layer<never> = circular.disableInterruption
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const disableOpSupervision: Layer.Layer<never, never, never> = circular.disableOpSupervision
+export const disableOpSupervision: Layer.Layer<never> = circular.disableOpSupervision
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const disableRuntimeMetrics: Layer.Layer<never, never, never> = circular.disableRuntimeMetrics
+export const disableRuntimeMetrics: Layer.Layer<never> = circular.disableRuntimeMetrics
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const disableWindDown: Layer.Layer<never, never, never> = circular.disableWindDown
+export const disableWindDown: Layer.Layer<never> = circular.disableWindDown
 
 /**
  * Enables the specified `RuntimeFlag`.
@@ -198,31 +198,31 @@ export const enableAll: {
  * @since 2.0.0
  * @category context
  */
-export const enableCooperativeYielding: Layer.Layer<never, never, never> = circular.enableCooperativeYielding
+export const enableCooperativeYielding: Layer.Layer<never> = circular.enableCooperativeYielding
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const enableInterruption: Layer.Layer<never, never, never> = circular.enableInterruption
+export const enableInterruption: Layer.Layer<never> = circular.enableInterruption
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const enableOpSupervision: Layer.Layer<never, never, never> = circular.enableOpSupervision
+export const enableOpSupervision: Layer.Layer<never> = circular.enableOpSupervision
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const enableRuntimeMetrics: Layer.Layer<never, never, never> = circular.enableRuntimeMetrics
+export const enableRuntimeMetrics: Layer.Layer<never> = circular.enableRuntimeMetrics
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const enableWindDown: Layer.Layer<never, never, never> = circular.enableWindDown
+export const enableWindDown: Layer.Layer<never> = circular.enableWindDown
 
 /**
  * Returns true only if the `Interruption` flag is **enabled** and the

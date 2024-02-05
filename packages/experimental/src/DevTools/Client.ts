@@ -150,7 +150,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<Socket.Socket, never, Client> = Layer.scoped(Client, make)
+export const layer: Layer.Layer<Client, never, Socket.Socket> = Layer.scoped(Client, make)
 
 /**
  * @since 1.0.0
@@ -185,7 +185,7 @@ export const makeTracer: Effect.Effect<Tracer.Tracer, never, Client> = Effect.ge
  * @since 1.0.0
  * @category layers
  */
-export const layerTracer = (url = "ws://localhost:34437"): Layer.Layer<never, never, never> =>
+export const layerTracer = (url = "ws://localhost:34437"): Layer.Layer<never> =>
   pipe(
     makeTracer,
     Effect.map(Layer.setTracer),

@@ -2575,8 +2575,8 @@ export const provideContext: {
  * @category context
  */
 export const provideLayer: {
-  <RIn, E2, ROut>(layer: Layer.Layer<RIn, E2, ROut>): <E, A>(self: Stream<A, E, ROut>) => Stream<A, E2 | E, RIn>
-  <E, A, RIn, E2, ROut>(self: Stream<A, E, ROut>, layer: Layer.Layer<RIn, E2, ROut>): Stream<A, E | E2, RIn>
+  <RIn, E2, ROut>(layer: Layer.Layer<ROut, E2, RIn>): <E, A>(self: Stream<A, E, ROut>) => Stream<A, E2 | E, RIn>
+  <E, A, RIn, E2, ROut>(self: Stream<A, E, ROut>, layer: Layer.Layer<ROut, E2, RIn>): Stream<A, E | E2, RIn>
 } = internal.provideLayer
 
 /**
@@ -2657,11 +2657,11 @@ export const mapInputContext: {
  */
 export const provideSomeLayer: {
   <RIn, E2, ROut>(
-    layer: Layer.Layer<RIn, E2, ROut>
+    layer: Layer.Layer<ROut, E2, RIn>
   ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, RIn | Exclude<R, ROut>>
   <R, E, A, RIn, E2, ROut>(
     self: Stream<A, E, R>,
-    layer: Layer.Layer<RIn, E2, ROut>
+    layer: Layer.Layer<ROut, E2, RIn>
   ): Stream<A, E | E2, RIn | Exclude<R, ROut>>
 } = internal.provideSomeLayer
 
