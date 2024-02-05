@@ -44,7 +44,7 @@ export interface Supervisor<out T> extends Supervisor.Variance<T> {
   /**
    * Supervises the start of a `Fiber`.
    */
-  onStart<R, E, A>(
+  onStart<A, E, R>(
     context: Context.Context<R>,
     effect: Effect.Effect<A, E, R>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
@@ -161,7 +161,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  onStart<R, E, A>(
+  onStart<A, E, R>(
     _context: Context.Context<R>,
     _effect: Effect.Effect<A, E, R>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,

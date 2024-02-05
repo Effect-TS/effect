@@ -25,8 +25,8 @@ export const consoleWith = <A, E, R>(f: (console: Console.Console) => Effect.Eff
 
 /** @internal */
 export const withConsole = dual<
-  <A extends Console.Console>(console: A) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A extends Console.Console, E, R>(effect: Effect.Effect<A, E, R>, console: A) => Effect.Effect<A, E, R>
+  <C extends Console.Console>(console: C) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R, C extends Console.Console>(effect: Effect.Effect<A, E, R>, console: C) => Effect.Effect<A, E, R>
 >(2, (effect, value) =>
   core.fiberRefLocallyWith(
     effect,

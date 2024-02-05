@@ -126,7 +126,7 @@ const entries = <R, E>(
   Stream.suspend(() => {
     const parser = new Tar.Parse()
 
-    const entries = Stream.async<never, TarError, Tar.ReadEntry>((emit) => {
+    const entries = Stream.async<Tar.ReadEntry, TarError>((emit) => {
       parser.on("entry", (entry) => {
         emit.single(entry)
       })

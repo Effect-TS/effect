@@ -109,5 +109,5 @@ export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>
  * @since 2.0.0
  * @category constructors
  */
-export const randomWith: <R, E, A>(f: (random: Random) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
+export const randomWith: <A, E, R>(f: (random: Random) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
   defaultServices.randomWith
