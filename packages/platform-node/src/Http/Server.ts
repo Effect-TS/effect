@@ -80,4 +80,7 @@ export const layer: (
 export const layerConfig: (
   evaluate: LazyArg<Http.Server>,
   options: Config.Config.Wrap<Net.ListenOptions>
-) => Layer.Layer<Platform.Platform | Etag.Generator | NodeContext.NodeContext | Server.Server, ServeError | ConfigError.ConfigError> = internal.layerConfig
+) => Layer.Layer<
+  Platform.Platform | Etag.Generator | NodeContext.NodeContext | Server.Server,
+  ServeError | ConfigError.ConfigError
+> = internal.layerConfig

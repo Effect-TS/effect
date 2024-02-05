@@ -111,7 +111,11 @@ export const serve: {
     middleware: Middleware.Middleware.Applied<R, E, App>
   ): (
     httpApp: App.Default<R, E>
-  ) => Layer.Layer<never, never, Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>>
+  ) => Layer.Layer<
+    never,
+    never,
+    Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
+  >
   <R, E>(
     httpApp: App.Default<R, E>
   ): Layer.Layer<never, never, Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>

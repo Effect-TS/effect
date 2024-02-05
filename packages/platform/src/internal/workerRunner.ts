@@ -253,6 +253,10 @@ export const layerSerialized = <
 >(
   schema: Schema.Schema<A, I, R>,
   handlers: Handlers
-): Layer.Layer<never, WorkerError.WorkerError, | R
-| WorkerRunner.PlatformRunner
-| WorkerRunner.SerializedRunner.HandlersContext<Handlers>> => Layer.scopedDiscard(makeSerialized(schema, handlers))
+): Layer.Layer<
+  never,
+  WorkerError.WorkerError,
+  | R
+  | WorkerRunner.PlatformRunner
+  | WorkerRunner.SerializedRunner.HandlersContext<Handlers>
+> => Layer.scopedDiscard(makeSerialized(schema, handlers))

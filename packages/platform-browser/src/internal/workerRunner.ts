@@ -88,4 +88,5 @@ export const layerSerialized = <
 >(
   schema: Schema.Schema<A, I, R>,
   handlers: Handlers
-): Layer.Layer<never, WorkerError, R | WorkerRunner.SerializedRunner.HandlersContext<Handlers>> => Layer.provide(Runner.layerSerialized(schema, handlers), layerPlatform)
+): Layer.Layer<never, WorkerError, R | WorkerRunner.SerializedRunner.HandlersContext<Handlers>> =>
+  Layer.provide(Runner.layerSerialized(schema, handlers), layerPlatform)

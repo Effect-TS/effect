@@ -55,8 +55,7 @@ export const agentLayer: Layer.Layer<HttpAgent> = internal.agentLayer
  * @since 1.0.0
  * @category agent
  */
-export const makeAgentLayer: (options?: Https.AgentOptions) => Layer.Layer<HttpAgent> =
-  internal.makeAgentLayer
+export const makeAgentLayer: (options?: Https.AgentOptions) => Layer.Layer<HttpAgent> = internal.makeAgentLayer
 
 /**
  * @since 1.0.0

@@ -100,7 +100,7 @@ const renderOutput = (
         Doc.cat(parts)
       )
     }
-  });
+  })
 }
 
 const renderNextFrame = (
@@ -626,6 +626,6 @@ class Meridiem extends DatePart {
     const meridiem = this.date.getHours() > 12 ? "pm" : "am"
     return /A/.test(this.token)
       ? meridiem.toUpperCase()
-      : meridiem;
+      : meridiem
   }
 }

@@ -40,7 +40,11 @@ export const serve = dual<
     ) => Layer.Layer<never, never, Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
     <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<R, E, App>): (
       httpApp: App.Default<R, E>
-    ) => Layer.Layer<never, never, Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>>
+    ) => Layer.Layer<
+      never,
+      never,
+      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
+    >
   },
   {
     <R, E>(
@@ -49,14 +53,22 @@ export const serve = dual<
     <R, E, App extends App.Default<any, any>>(
       httpApp: App.Default<R, E>,
       middleware: Middleware.Middleware.Applied<R, E, App>
-    ): Layer.Layer<never, never, Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>>
+    ): Layer.Layer<
+      never,
+      never,
+      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
+    >
   }
 >(
   (args) => Effect.isEffect(args[0]),
   <R, E, App extends App.Default<any, any>>(
     httpApp: App.Default<R, E>,
     middleware?: Middleware.Middleware.Applied<R, E, App>
-  ): Layer.Layer<never, never, Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>> =>
+  ): Layer.Layer<
+    never,
+    never,
+    Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
+  > =>
     Layer.scopedDiscard(
       Effect.flatMap(
         serverTag,

@@ -34,8 +34,7 @@ export const layerServer: (options: Omit<ServeOptions, "fetch" | "error">) => La
  */
 export const layer: (
   options: Omit<ServeOptions, "fetch" | "error">
-) => Layer.Layer<Server.Server | Platform.Platform | Etag.Generator | BunContext.BunContext> =
-  internal.layer
+) => Layer.Layer<Server.Server | Platform.Platform | Etag.Generator | BunContext.BunContext> = internal.layer
 
 /**
  * @since 1.0.0
@@ -43,4 +42,5 @@ export const layer: (
  */
 export const layerConfig: (
   options: Config.Config.Wrap<Omit<ServeOptions, "fetch" | "error">>
-) => Layer.Layer<Server.Server | Platform.Platform | Etag.Generator | BunContext.BunContext, ConfigError.ConfigError> = internal.layerConfig
+) => Layer.Layer<Server.Server | Platform.Platform | Etag.Generator | BunContext.BunContext, ConfigError.ConfigError> =
+  internal.layerConfig
