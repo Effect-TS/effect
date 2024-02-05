@@ -68,7 +68,7 @@ export const fromAcquire: <A, E, R>(
  * @since 2.0.0
  * @category getters
  */
-export const get: <A>(self: ScopedRef<A>) => Effect.Effect<A, never, never> = internal.get
+export const get: <A>(self: ScopedRef<A>) => Effect.Effect<A> = internal.get
 
 /**
  * Creates a new `ScopedRef` from the specified value. This method should

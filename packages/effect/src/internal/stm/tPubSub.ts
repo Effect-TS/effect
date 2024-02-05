@@ -57,12 +57,12 @@ class TPubSubImpl<in out A> implements TPubSub.TPubSub<A> {
     readonly subscribers: TRef.TRef<HashSet.HashSet<TRef.TRef<TRef.TRef<Node<A>> | undefined>>>
   ) {}
 
-  isShutdown: STM.STM<never, never, boolean> = core.effect<never, boolean>((journal) => {
+  isShutdown: STM.STM<boolean> = core.effect<never, boolean>((journal) => {
     const currentPublisherTail = tRef.unsafeGet(this.publisherTail, journal)
     return currentPublisherTail === undefined
   })
 
-  awaitShutdown: STM.STM<never, never, void> = core.flatMap(
+  awaitShutdown: STM.STM<void> = core.flatMap(
     this.isShutdown,
     (isShutdown) => isShutdown ? stm.unit : core.retry
   )
@@ -71,7 +71,7 @@ class TPubSubImpl<in out A> implements TPubSub.TPubSub<A> {
     return this.requestedCapacity
   }
 
-  size: STM.STM<never, never, number> = core.withSTMRuntime((runtime) => {
+  size: STM.STM<number> = core.withSTMRuntime((runtime) => {
     const currentPublisherTail = tRef.unsafeGet(this.publisherTail, runtime.journal)
     if (currentPublisherTail === undefined) {
       return core.interruptAs(runtime.fiberId)
@@ -79,11 +79,11 @@ class TPubSubImpl<in out A> implements TPubSub.TPubSub<A> {
     return core.succeed(tRef.unsafeGet(this.pubsubSize, runtime.journal))
   })
 
-  isEmpty: STM.STM<never, never, boolean> = core.map(this.size, (size) => size === 0)
+  isEmpty: STM.STM<boolean> = core.map(this.size, (size) => size === 0)
 
-  isFull: STM.STM<never, never, boolean> = core.map(this.size, (size) => size === this.capacity())
+  isFull: STM.STM<boolean> = core.map(this.size, (size) => size === this.capacity())
 
-  offer(value: A): STM.STM<never, never, boolean> {
+  offer(value: A): STM.STM<boolean> {
     return core.withSTMRuntime((runtime) => {
       const currentPublisherTail = tRef.unsafeGet(this.publisherTail, runtime.journal)
       if (currentPublisherTail === undefined) {
@@ -155,14 +155,14 @@ class TPubSubImpl<in out A> implements TPubSub.TPubSub<A> {
     })
   }
 
-  offerAll(iterable: Iterable<A>): STM.STM<never, never, boolean> {
+  offerAll(iterable: Iterable<A>): STM.STM<boolean> {
     return core.map(
       stm.forEach(iterable, (a) => this.offer(a)),
       RA.every(identity)
     )
   }
 
-  shutdown: STM.STM<never, never, void> = core.effect<never, void>((journal) => {
+  shutdown: STM.STM<void> = core.effect<never, void>((journal) => {
     const currentPublisherTail = tRef.unsafeGet(this.publisherTail, journal)
     if (currentPublisherTail !== undefined) {
       tRef.unsafeSet<TRef.TRef<Node<A> | undefined> | undefined>(this.publisherTail, void 0, journal)
@@ -188,12 +188,12 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     readonly subscribers: TRef.TRef<HashSet.HashSet<TRef.TRef<TRef.TRef<Node<A>> | undefined>>>
   ) {}
 
-  isShutdown: STM.STM<never, never, boolean> = core.effect<never, boolean>((journal) => {
+  isShutdown: STM.STM<boolean> = core.effect<never, boolean>((journal) => {
     const currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, journal)
     return currentSubscriberHead === undefined
   })
 
-  awaitShutdown: STM.STM<never, never, void> = core.flatMap(
+  awaitShutdown: STM.STM<void> = core.flatMap(
     this.isShutdown,
     (isShutdown) => isShutdown ? stm.unit : core.retry
   )
@@ -201,7 +201,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
   capacity(): number {
     return this.requestedCapacity
   }
-  size: STM.STM<never, never, number> = core.withSTMRuntime((runtime) => {
+  size: STM.STM<number> = core.withSTMRuntime((runtime) => {
     let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, runtime.journal)
     if (currentSubscriberHead === undefined) {
       return core.interruptAs(runtime.fiberId)
@@ -227,11 +227,11 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     return core.succeed(size)
   })
 
-  isEmpty: STM.STM<never, never, boolean> = core.map(this.size, (size) => size === 0)
+  isEmpty: STM.STM<boolean> = core.map(this.size, (size) => size === 0)
 
-  isFull: STM.STM<never, never, boolean> = core.map(this.size, (size) => size === this.capacity())
+  isFull: STM.STM<boolean> = core.map(this.size, (size) => size === this.capacity())
 
-  peek: STM.STM<never, never, A> = core.withSTMRuntime((runtime) => {
+  peek: STM.STM<A> = core.withSTMRuntime((runtime) => {
     let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, runtime.journal)
     if (currentSubscriberHead === undefined) {
       return core.interruptAs(runtime.fiberId)
@@ -255,7 +255,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     return core.succeed(value as A)
   })
 
-  peekOption: STM.STM<never, never, Option.Option<A>> = core.withSTMRuntime((runtime) => {
+  peekOption: STM.STM<Option.Option<A>> = core.withSTMRuntime((runtime) => {
     let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, runtime.journal)
     if (currentSubscriberHead === undefined) {
       return core.interruptAs(runtime.fiberId)
@@ -281,7 +281,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     return core.succeed(value)
   })
 
-  shutdown: STM.STM<never, never, void> = core.effect<never, void>((journal) => {
+  shutdown: STM.STM<void> = core.effect<never, void>((journal) => {
     let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, journal)
     if (currentSubscriberHead !== undefined) {
       tRef.unsafeSet<TRef.TRef<Node<A> | undefined> | undefined>(this.subscriberHead, void 0, journal)
@@ -322,7 +322,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     }
   })
 
-  take: STM.STM<never, never, A> = core.withSTMRuntime((runtime) => {
+  take: STM.STM<A> = core.withSTMRuntime((runtime) => {
     let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, runtime.journal)
     if (currentSubscriberHead === undefined) {
       return core.interruptAs(runtime.fiberId)
@@ -362,9 +362,9 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     return core.succeed(value as A)
   })
 
-  takeAll: STM.STM<never, never, Array<A>> = this.takeUpTo(Number.POSITIVE_INFINITY)
+  takeAll: STM.STM<Array<A>> = this.takeUpTo(Number.POSITIVE_INFINITY)
 
-  takeUpTo(max: number): STM.STM<never, never, Array<A>> {
+  takeUpTo(max: number): STM.STM<Array<A>> {
     return core.withSTMRuntime((runtime) => {
       let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, runtime.journal)
       if (currentSubscriberHead === undefined) {
@@ -411,7 +411,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
 const makeTPubSub = <A>(
   requestedCapacity: number,
   strategy: tQueue.TQueueStrategy
-): STM.STM<never, never, TPubSub.TPubSub<A>> =>
+): STM.STM<TPubSub.TPubSub<A>> =>
   pipe(
     stm.all([
       tRef.make<Node<A> | undefined>(void 0),
@@ -447,7 +447,7 @@ const makeSubscription = <A>(
   requestedCapacity: number,
   subscriberCount: TRef.TRef<number>,
   subscribers: TRef.TRef<HashSet.HashSet<TRef.TRef<TRef.TRef<Node<A>> | undefined>>>
-): STM.STM<never, never, TQueue.TDequeue<A>> =>
+): STM.STM<TQueue.TDequeue<A>> =>
   pipe(
     tRef.get(publisherTail),
     core.flatMap((currentPublisherTail) =>
@@ -484,52 +484,52 @@ const makeSubscription = <A>(
   )
 
 /** @internal */
-export const awaitShutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, void> => self.awaitShutdown
+export const awaitShutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<void> => self.awaitShutdown
 
 /** @internal */
-export const bounded = <A>(requestedCapacity: number): STM.STM<never, never, TPubSub.TPubSub<A>> =>
+export const bounded = <A>(requestedCapacity: number): STM.STM<TPubSub.TPubSub<A>> =>
   makeTPubSub<A>(requestedCapacity, tQueue.BackPressure)
 
 /** @internal */
 export const capacity = <A>(self: TPubSub.TPubSub<A>): number => self.capacity()
 
 /** @internal */
-export const dropping = <A>(requestedCapacity: number): STM.STM<never, never, TPubSub.TPubSub<A>> =>
+export const dropping = <A>(requestedCapacity: number): STM.STM<TPubSub.TPubSub<A>> =>
   makeTPubSub<A>(requestedCapacity, tQueue.Dropping)
 
 /** @internal */
-export const isEmpty = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, boolean> => self.isEmpty
+export const isEmpty = <A>(self: TPubSub.TPubSub<A>): STM.STM<boolean> => self.isEmpty
 
 /** @internal */
-export const isFull = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, boolean> => self.isFull
+export const isFull = <A>(self: TPubSub.TPubSub<A>): STM.STM<boolean> => self.isFull
 
 /** @internal */
-export const isShutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, boolean> => self.isShutdown
+export const isShutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<boolean> => self.isShutdown
 
 /** @internal */
 export const publish = dual<
-  <A>(value: A) => (self: TPubSub.TPubSub<A>) => STM.STM<never, never, boolean>,
-  <A>(self: TPubSub.TPubSub<A>, value: A) => STM.STM<never, never, boolean>
+  <A>(value: A) => (self: TPubSub.TPubSub<A>) => STM.STM<boolean>,
+  <A>(self: TPubSub.TPubSub<A>, value: A) => STM.STM<boolean>
 >(2, (self, value) => self.offer(value))
 
 /** @internal */
 export const publishAll = dual<
-  <A>(iterable: Iterable<A>) => (self: TPubSub.TPubSub<A>) => STM.STM<never, never, boolean>,
-  <A>(self: TPubSub.TPubSub<A>, iterable: Iterable<A>) => STM.STM<never, never, boolean>
+  <A>(iterable: Iterable<A>) => (self: TPubSub.TPubSub<A>) => STM.STM<boolean>,
+  <A>(self: TPubSub.TPubSub<A>, iterable: Iterable<A>) => STM.STM<boolean>
 >(2, (self, iterable) => self.offerAll(iterable))
 
 /** @internal */
-export const size = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, number> => self.size
+export const size = <A>(self: TPubSub.TPubSub<A>): STM.STM<number> => self.size
 
 /** @internal */
-export const shutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, void> => self.shutdown
+export const shutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<void> => self.shutdown
 
 /** @internal */
-export const sliding = <A>(requestedCapacity: number): STM.STM<never, never, TPubSub.TPubSub<A>> =>
+export const sliding = <A>(requestedCapacity: number): STM.STM<TPubSub.TPubSub<A>> =>
   makeTPubSub<A>(requestedCapacity, tQueue.Sliding)
 
 /** @internal */
-export const subscribe = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, TQueue.TDequeue<A>> =>
+export const subscribe = <A>(self: TPubSub.TPubSub<A>): STM.STM<TQueue.TDequeue<A>> =>
   makeSubscription(
     self.pubsubSize,
     self.publisherHead,
@@ -547,5 +547,4 @@ export const subscribeScoped = <A>(self: TPubSub.TPubSub<A>): Effect.Effect<TQue
   )
 
 /** @internal */
-export const unbounded = <A>(): STM.STM<never, never, TPubSub.TPubSub<A>> =>
-  makeTPubSub<A>(Number.MAX_SAFE_INTEGER, tQueue.Dropping)
+export const unbounded = <A>(): STM.STM<TPubSub.TPubSub<A>> => makeTPubSub<A>(Number.MAX_SAFE_INTEGER, tQueue.Dropping)
