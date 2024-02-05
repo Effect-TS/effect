@@ -32,7 +32,7 @@ export class TRefImpl<in out A> implements TRef.TRef<A> {
     this.versioned = new Versioned.Versioned(value)
     this.todos = new Map()
   }
-  modify<B>(f: (a: A) => readonly [B, A]): STM.STM<never, never, B> {
+  modify<B>(f: (a: A) => readonly [B, A]): STM.STM<B> {
     return core.effect<never, B>((journal) => {
       const entry = getOrMakeEntry(this, journal)
       const [retValue, newValue] = f(Entry.unsafeGet(entry) as A)
@@ -43,7 +43,7 @@ export class TRefImpl<in out A> implements TRef.TRef<A> {
 }
 
 /** @internal */
-export const make = <A>(value: A): STM.STM<never, never, TRef.TRef<A>> =>
+export const make = <A>(value: A): STM.STM<TRef.TRef<A>> =>
   core.effect<never, TRef.TRef<A>>((journal) => {
     const ref = new TRefImpl(value)
     journal.set(ref, Entry.make(ref, true))
@@ -55,29 +55,29 @@ export const get = <A>(self: TRef.TRef<A>) => self.modify((a) => [a, a])
 
 /** @internal */
 export const set = dual<
-  <A>(value: A) => (self: TRef.TRef<A>) => STM.STM<never, never, void>,
-  <A>(self: TRef.TRef<A>, value: A) => STM.STM<never, never, void>
+  <A>(value: A) => (self: TRef.TRef<A>) => STM.STM<void>,
+  <A>(self: TRef.TRef<A>, value: A) => STM.STM<void>
 >(
   2,
-  <A>(self: TRef.TRef<A>, value: A): STM.STM<never, never, void> => self.modify((): [void, A] => [void 0, value])
+  <A>(self: TRef.TRef<A>, value: A): STM.STM<void> => self.modify((): [void, A] => [void 0, value])
 )
 
 /** @internal */
 export const getAndSet = dual<
-  <A>(value: A) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
-  <A>(self: TRef.TRef<A>, value: A) => STM.STM<never, never, A>
+  <A>(value: A) => (self: TRef.TRef<A>) => STM.STM<A>,
+  <A>(self: TRef.TRef<A>, value: A) => STM.STM<A>
 >(2, (self, value) => self.modify((a) => [a, value]))
 
 /** @internal */
 export const getAndUpdate = dual<
-  <A>(f: (a: A) => A) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => A) => STM.STM<never, never, A>
+  <A>(f: (a: A) => A) => (self: TRef.TRef<A>) => STM.STM<A>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => A) => STM.STM<A>
 >(2, (self, f) => self.modify((a) => [a, f(a)]))
 
 /** @internal */
 export const getAndUpdateSome = dual<
-  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<never, never, A>
+  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<A>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<A>
 >(2, (self, f) =>
   self.modify((a) =>
     Option.match(f(a), {
@@ -88,20 +88,20 @@ export const getAndUpdateSome = dual<
 
 /** @internal */
 export const setAndGet = dual<
-  <A>(value: A) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
-  <A>(self: TRef.TRef<A>, value: A) => STM.STM<never, never, A>
+  <A>(value: A) => (self: TRef.TRef<A>) => STM.STM<A>,
+  <A>(self: TRef.TRef<A>, value: A) => STM.STM<A>
 >(2, (self, value) => self.modify(() => [value, value]))
 
 /** @internal */
 export const modify = dual<
-  <A, B>(f: (a: A) => readonly [B, A]) => (self: TRef.TRef<A>) => STM.STM<never, never, B>,
-  <A, B>(self: TRef.TRef<A>, f: (a: A) => readonly [B, A]) => STM.STM<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]) => (self: TRef.TRef<A>) => STM.STM<B>,
+  <A, B>(self: TRef.TRef<A>, f: (a: A) => readonly [B, A]) => STM.STM<B>
 >(2, (self, f) => self.modify(f))
 
 /** @internal */
 export const modifySome = dual<
-  <A, B>(fallback: B, f: (a: A) => Option.Option<readonly [B, A]>) => (self: TRef.TRef<A>) => STM.STM<never, never, B>,
-  <A, B>(self: TRef.TRef<A>, fallback: B, f: (a: A) => Option.Option<readonly [B, A]>) => STM.STM<never, never, B>
+  <A, B>(fallback: B, f: (a: A) => Option.Option<readonly [B, A]>) => (self: TRef.TRef<A>) => STM.STM<B>,
+  <A, B>(self: TRef.TRef<A>, fallback: B, f: (a: A) => Option.Option<readonly [B, A]>) => STM.STM<B>
 >(3, (self, fallback, f) =>
   self.modify((a) =>
     Option.match(f(a), {
@@ -112,14 +112,14 @@ export const modifySome = dual<
 
 /** @internal */
 export const update = dual<
-  <A>(f: (a: A) => A) => (self: TRef.TRef<A>) => STM.STM<never, never, void>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => A) => STM.STM<never, never, void>
+  <A>(f: (a: A) => A) => (self: TRef.TRef<A>) => STM.STM<void>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => A) => STM.STM<void>
 >(2, (self, f) => self.modify((a) => [void 0, f(a)]))
 
 /** @internal */
 export const updateAndGet = dual<
-  <A>(f: (a: A) => A) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => A) => STM.STM<never, never, A>
+  <A>(f: (a: A) => A) => (self: TRef.TRef<A>) => STM.STM<A>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => A) => STM.STM<A>
 >(2, (self, f) =>
   self.modify((a) => {
     const b = f(a)
@@ -128,8 +128,8 @@ export const updateAndGet = dual<
 
 /** @internal */
 export const updateSome = dual<
-  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, void>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<never, never, void>
+  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<void>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<void>
 >(
   2,
   (self, f) =>
@@ -144,8 +144,8 @@ export const updateSome = dual<
 
 /** @internal */
 export const updateSomeAndGet = dual<
-  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<never, never, A>
+  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<A>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<A>
 >(
   2,
   (self, f) =>

@@ -2333,18 +2333,17 @@ export const execute = <R, E, _>(effect: Effect.Effect<_, E, R>): Stream.Stream<
   drain(fromEffect(effect))
 
 /** @internal */
-export const fail = <E>(error: E): Stream.Stream<never, E, never> => fromEffectOption(Effect.fail(Option.some(error)))
+export const fail = <E>(error: E): Stream.Stream<never, E> => fromEffectOption(Effect.fail(Option.some(error)))
 
 /** @internal */
-export const failSync = <E>(evaluate: LazyArg<E>): Stream.Stream<never, E, never> =>
+export const failSync = <E>(evaluate: LazyArg<E>): Stream.Stream<never, E> =>
   fromEffectOption(Effect.failSync(() => Option.some(evaluate())))
 
 /** @internal */
-export const failCause = <E>(cause: Cause.Cause<E>): Stream.Stream<never, E, never> =>
-  fromEffect(Effect.failCause(cause))
+export const failCause = <E>(cause: Cause.Cause<E>): Stream.Stream<never, E> => fromEffect(Effect.failCause(cause))
 
 /** @internal */
-export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Stream.Stream<never, E, never> =>
+export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Stream.Stream<never, E> =>
   fromEffect(Effect.failCauseSync(evaluate))
 
 /** @internal */
