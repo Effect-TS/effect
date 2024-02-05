@@ -9,7 +9,7 @@ describe("Streamable", () => {
     "allows creating custom Stream types",
     () =>
       Effect.gen(function*($) {
-        class MyStream extends Streamable.Class<never, never, number> {
+        class MyStream extends Streamable.Class<number> {
           toStream() {
             return Stream.fromIterable([1, 2, 3])
           }

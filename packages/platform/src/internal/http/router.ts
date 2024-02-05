@@ -56,9 +56,9 @@ export const schemaSearchParams = <R, I extends Readonly<Record<string, string>>
 }
 
 class RouterImpl<R, E> extends Effectable.StructuralClass<
-  Exclude<R, Router.RouteContext>,
+  ServerResponse.ServerResponse,
   E | Error.RouteNotFound,
-  ServerResponse.ServerResponse
+  Exclude<R, Router.RouteContext>
 > implements Router.Router<R, E> {
   readonly [TypeId]: Router.TypeId
   constructor(
