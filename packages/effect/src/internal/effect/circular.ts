@@ -139,7 +139,7 @@ export const cachedInvalidateWithTTL: {
       core.context<R>(),
       (env) =>
         core.map(
-          makeSynchronized<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>(Option.none()),
+          makeSynchronized<Option.Option<readonly [number, Deferred.Deferred<A, E>]>>(Option.none()),
           (cache) =>
             [
               core.provideContext(getCachedValue(self, duration, cache), env),
@@ -155,10 +155,10 @@ const computeCachedValue = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   timeToLive: Duration.DurationInput,
   start: number
-): Effect.Effect<Option.Option<[number, Deferred.Deferred<E, A>]>, never, R> => {
+): Effect.Effect<Option.Option<[number, Deferred.Deferred<A, E>]>, never, R> => {
   const timeToLiveMillis = Duration.toMillis(Duration.decode(timeToLive))
   return pipe(
-    core.deferredMake<E, A>(),
+    core.deferredMake<A, E>(),
     core.tap((deferred) => core.intoDeferred(self, deferred)),
     core.map((deferred) => Option.some([start + timeToLiveMillis, deferred]))
   )
@@ -168,7 +168,7 @@ const computeCachedValue = <A, E, R>(
 const getCachedValue = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   timeToLive: Duration.DurationInput,
-  cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>
+  cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<A, E>]>>
 ): Effect.Effect<A, E, R> =>
   core.uninterruptibleMask((restore) =>
     pipe(
@@ -200,7 +200,7 @@ const getCachedValue = <A, E, R>(
 
 /** @internal */
 const invalidateCache = <E, A>(
-  cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>
+  cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<A, E>]>>
 ): Effect.Effect<void> => internalRef.set(cache, Option.none())
 
 /** @internal */
@@ -323,7 +323,7 @@ export const cachedFunction = <A, B, E, R>(
   eq?: Equivalence<A>
 ): Effect.Effect<(a: A) => Effect.Effect<B, E, R>> => {
   return pipe(
-    core.sync(() => MutableHashMap.empty<Key<A>, Deferred.Deferred<E, readonly [FiberRefsPatch.FiberRefsPatch, B]>>()),
+    core.sync(() => MutableHashMap.empty<Key<A>, Deferred.Deferred<readonly [FiberRefsPatch.FiberRefsPatch, B], E>>()),
     core.flatMap(makeSynchronized),
     core.map((ref) => (a: A) =>
       pipe(
@@ -331,7 +331,7 @@ export const cachedFunction = <A, B, E, R>(
           const result = pipe(map, MutableHashMap.get(new Key(a, eq)))
           if (Option.isNone(result)) {
             return pipe(
-              core.deferredMake<E, readonly [FiberRefsPatch.FiberRefsPatch, B]>(),
+              core.deferredMake<readonly [FiberRefsPatch.FiberRefsPatch, B], E>(),
               core.tap((deferred) =>
                 pipe(
                   effect.diffFiberRefs(f(a)),

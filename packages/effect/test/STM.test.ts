@@ -1359,7 +1359,7 @@ describe("STM", () => {
   it.effect("condition locks - resume after satisfying the condition", () => {
     const barrier = new UnpureBarrier()
     return Effect.gen(function*($) {
-      const done = yield* $(Deferred.make<never, void>())
+      const done = yield* $(Deferred.make<void>())
       const ref1 = yield* $(TRef.make(0))
       const ref2 = yield* $(TRef.make("failed"))
       const transaction = pipe(

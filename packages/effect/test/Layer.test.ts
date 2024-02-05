@@ -25,7 +25,7 @@ describe("Layer", () => {
   it.effect("layers can be acquired in parallel", () =>
     Effect.gen(function*($) {
       const BoolTag = Context.GenericTag<boolean>("boolean")
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const layer1 = Layer.effectContext<never, never, never>(Effect.never)
       const layer2 = Layer.scopedContext(
         Effect.acquireRelease(

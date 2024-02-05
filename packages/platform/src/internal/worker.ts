@@ -73,7 +73,7 @@ export const makeManager = Effect.gen(function*(_) {
         const semaphore = yield* _(Effect.makeSemaphore(permits))
         const requestMap = new Map<
           number,
-          readonly [Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>, Deferred.Deferred<never, void>]
+          readonly [Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>, Deferred.Deferred<void>]
         >()
         const sendQueue = yield* _(Effect.acquireRelease(
           Queue.unbounded<readonly [message: Worker.Worker.Request, transfers?: ReadonlyArray<unknown>]>(),
@@ -94,7 +94,7 @@ export const makeManager = Effect.gen(function*(_) {
 
         yield* _(
           Effect.gen(function*(_) {
-            const readyLatch = yield* _(Deferred.make<never, void>())
+            const readyLatch = yield* _(Deferred.make<void>())
             const backing = yield* _(
               platform.spawn<Worker.Worker.Request, Worker.Worker.Response<E, O>>(spawn(id))
             )
@@ -182,7 +182,7 @@ export const makeManager = Effect.gen(function*(_) {
             Effect.all([
               Effect.sync(() => requestIdCounter++),
               Queue.unbounded<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>(),
-              Deferred.make<never, void>(),
+              Deferred.make<void>(),
               Effect.map(
                 Effect.serviceOption(Tracer.ParentSpan),
                 Option.filter((span): span is Tracer.Span => span._tag === "Span")
@@ -199,7 +199,7 @@ export const makeManager = Effect.gen(function*(_) {
           [id, , deferred]: [
             number,
             Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>,
-            Deferred.Deferred<never, void>,
+            Deferred.Deferred<void>,
             Option.Option<Tracer.Span>
           ],
           exit: Exit.Exit<unknown, unknown>

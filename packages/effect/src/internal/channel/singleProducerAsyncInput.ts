@@ -41,13 +41,13 @@ type OP_STATE_DONE = typeof OP_STATE_DONE
 /** @internal */
 interface Empty {
   readonly _tag: OP_STATE_EMPTY
-  readonly notifyProducer: Deferred.Deferred<never, void>
+  readonly notifyProducer: Deferred.Deferred<void, never>
 }
 
 /** @internal */
 interface Emit<Err, Elem, Done> {
   readonly _tag: OP_STATE_EMIT
-  readonly notifyConsumers: ReadonlyArray<Deferred.Deferred<Err, Either.Either<Done, Elem>>>
+  readonly notifyConsumers: ReadonlyArray<Deferred.Deferred<Either.Either<Done, Elem>, Err>>
 }
 
 /** @internal */
@@ -63,14 +63,14 @@ interface Done<_Done> {
 }
 
 /** @internal */
-const stateEmpty = (notifyProducer: Deferred.Deferred<never, void>): State<never, never, never> => ({
+const stateEmpty = (notifyProducer: Deferred.Deferred<void, never>): State<never, never, never> => ({
   _tag: OP_STATE_EMPTY,
   notifyProducer
 })
 
 /** @internal */
 const stateEmit = <Err, Elem, Done>(
-  notifyConsumers: ReadonlyArray<Deferred.Deferred<Err, Either.Either<Done, Elem>>>
+  notifyConsumers: ReadonlyArray<Deferred.Deferred<Either.Either<Done, Elem>, Err>>
 ): State<Err, Elem, Done> => ({
   _tag: OP_STATE_EMIT,
   notifyConsumers
@@ -137,7 +137,7 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
   }
 
   emit(element: Elem): Effect.Effect<unknown> {
-    return Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
+    return Effect.flatMap(Deferred.make<void>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
           switch (state._tag) {
@@ -211,7 +211,7 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
   ): Effect.Effect<A> {
-    return Effect.flatMap(Deferred.make<Err, Either.Either<Done, Elem>>(), (deferred) =>
+    return Effect.flatMap(Deferred.make<Either.Either<Done, Elem>, Err>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
           switch (state._tag) {
@@ -253,7 +253,7 @@ export const make = <Err, Elem, Done>(): Effect.Effect<
   SingleProducerAsyncInput.SingleProducerAsyncInput<Err, Elem, Done>
 > =>
   pipe(
-    Deferred.make<never, void>(),
+    Deferred.make<void>(),
     Effect.flatMap((deferred) => Ref.make(stateEmpty(deferred) as State<Err, Elem, Done>)),
     Effect.map((ref) => new SingleProducerAsyncInputImpl(ref))
   )

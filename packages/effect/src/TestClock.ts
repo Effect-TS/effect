@@ -90,7 +90,7 @@ export interface TestClock extends Clock.Clock {
  */
 export interface Data {
   readonly instant: number
-  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<void, never>]>
 }
 
 /**
@@ -98,7 +98,7 @@ export interface Data {
  */
 export const makeData = (
   instant: number,
-  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<void, never>]>
 ): Data => ({
   instant,
   sleeps
@@ -194,7 +194,7 @@ export class TestClockImpl implements TestClock {
    */
   sleep(durationInput: Duration.DurationInput): Effect.Effect<void> {
     const duration = Duration.decode(durationInput)
-    return core.flatMap(core.deferredMake<never, void>(), (deferred) =>
+    return core.flatMap(core.deferredMake<void>(), (deferred) =>
       pipe(
         ref.modify(this.clockState, (data) => {
           const end = data.instant + Duration.toMillis(duration)
@@ -391,7 +391,7 @@ export class TestClockImpl implements TestClock {
           const end = f(data.instant)
           const sorted = pipe(
             data.sleeps,
-            Chunk.sort<readonly [number, Deferred.Deferred<never, void>]>(
+            Chunk.sort<readonly [number, Deferred.Deferred<void, never>]>(
               pipe(number.Order, Order.mapInput((_) => _[0]))
             )
           )

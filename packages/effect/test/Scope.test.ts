@@ -63,7 +63,7 @@ describe("Scope", () => {
     }))
   it.effect("runs finalizers in parallel", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const result = yield* $(
         Effect.addFinalizer(() => Deferred.succeed(deferred, void 0)),
         Effect.zipRight(Effect.addFinalizer(() => Deferred.await(deferred)), { concurrent: true }),

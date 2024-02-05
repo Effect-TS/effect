@@ -16,11 +16,11 @@ describe("SubscriptionRef", () => {
   it.effect("multiple subscribers can receive changes", () =>
     Effect.gen(function*($) {
       const subscriptionRef = yield* $(SubscriptionRef.make(0))
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const subscriber1 = yield* $(
         subscriptionRef.changes,
-        Stream.tap(() => Deferred.succeed<never, void>(deferred1, void 0)),
+        Stream.tap(() => Deferred.succeed(deferred1, void 0)),
         Stream.take(3),
         Stream.runCollect,
         Effect.fork
@@ -29,7 +29,7 @@ describe("SubscriptionRef", () => {
       yield* $(SubscriptionRef.update(subscriptionRef, (n) => n + 1))
       const subscriber2 = yield* $(
         subscriptionRef.changes,
-        Stream.tap(() => Deferred.succeed<never, void>(deferred2, void 0)),
+        Stream.tap(() => Deferred.succeed(deferred2, void 0)),
         Stream.take(2),
         Stream.runCollect,
         Effect.fork
@@ -45,11 +45,11 @@ describe("SubscriptionRef", () => {
   it.effect("subscriptions are interruptible", () =>
     Effect.gen(function*($) {
       const subscriptionRef = yield* $(SubscriptionRef.make(0))
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const subscriber1 = yield* $(
         subscriptionRef.changes,
-        Stream.tap(() => Deferred.succeed<never, void>(deferred1, void 0)),
+        Stream.tap(() => Deferred.succeed(deferred1, void 0)),
         Stream.take(5),
         Stream.runCollect,
         Effect.fork
@@ -58,7 +58,7 @@ describe("SubscriptionRef", () => {
       yield* $(SubscriptionRef.update(subscriptionRef, (n) => n + 1))
       const subscriber2 = yield* $(
         subscriptionRef.changes,
-        Stream.tap(() => Deferred.succeed<never, void>(deferred2, void 0)),
+        Stream.tap(() => Deferred.succeed(deferred2, void 0)),
         Stream.take(2),
         Stream.runCollect,
         Effect.fork

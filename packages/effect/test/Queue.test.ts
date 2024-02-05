@@ -117,7 +117,7 @@ describe("Queue", () => {
   it.effect("awaitShutdown - once", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(3))
-      const deferred = yield* $(Deferred.make<never, boolean>())
+      const deferred = yield* $(Deferred.make<boolean>())
       yield* $(Queue.awaitShutdown(queue), Effect.zipRight(Deferred.succeed(deferred, true)), Effect.fork)
       yield* $(Queue.shutdown(queue))
       const result = yield* $(Deferred.await(deferred))
@@ -126,8 +126,8 @@ describe("Queue", () => {
   it.effect("awaitShutdown - multiple", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(3))
-      const deferred1 = yield* $(Deferred.make<never, boolean>())
-      const deferred2 = yield* $(Deferred.make<never, boolean>())
+      const deferred1 = yield* $(Deferred.make<boolean>())
+      const deferred2 = yield* $(Deferred.make<boolean>())
       yield* $(Queue.awaitShutdown(queue), Effect.zipRight(Deferred.succeed(deferred1, true)), Effect.fork)
       yield* $(Queue.awaitShutdown(queue), Effect.zipRight(Deferred.succeed(deferred2, true)), Effect.fork)
       yield* $(Queue.shutdown(queue))
