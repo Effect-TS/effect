@@ -76,7 +76,7 @@ const isComplete = (u: unknown): u is Complete<unknown, unknown> =>
 class Pending<in out E, in out A> implements Equal.Equal {
   readonly _tag = "Pending"
   readonly [KeyedPoolMapValueSymbol]: KeyedPoolMapValueSymbol = KeyedPoolMapValueSymbol
-  constructor(readonly deferred: Deferred.Deferred<never, Pool.Pool<E, A>>) {}
+  constructor(readonly deferred: Deferred.Deferred<Pool.Pool<E, A>, never>) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.string("effect/KeyedPool/Pending"),

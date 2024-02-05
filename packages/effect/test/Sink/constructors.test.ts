@@ -93,9 +93,9 @@ class QueueSpy<A> implements Queue.Queue<A> {
   private isShutdownInternal = false
   readonly queue: Queue.BackingQueue<A>
   readonly shutdownFlag: MutableRef.MutableRef<boolean>
-  readonly shutdownHook: Deferred.Deferred<never, void>
+  readonly shutdownHook: Deferred.Deferred<void, never>
   readonly strategy: Queue.Strategy<A>
-  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
 
   constructor(readonly backingQueue: Queue.Queue<A>) {
     this.queue = backingQueue.queue

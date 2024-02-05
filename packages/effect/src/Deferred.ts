@@ -37,7 +37,7 @@ export type DeferredTypeId = typeof DeferredTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Deferred<in out E, in out A> extends Deferred.Variance<E, A>, Pipeable {
+export interface Deferred<in out A, in out E> extends Deferred.Variance<E, A>, Pipeable {
   /** @internal */
   readonly state: MutableRef.MutableRef<internal.State<E, A>>
   /** @internal */
@@ -66,7 +66,7 @@ export declare namespace Deferred {
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>() => Effect.Effect<Deferred<E, A>> = core.deferredMake
+export const make: <E, A>() => Effect.Effect<Deferred<A, E>> = core.deferredMake
 
 /**
  * Creates a new `Deferred` from the specified `FiberId`.
@@ -74,9 +74,9 @@ export const make: <E, A>() => Effect.Effect<Deferred<E, A>> = core.deferredMake
  * @since 2.0.0
  * @category constructors
  */
-export const makeAs: <E, A>(fiberId: FiberId.FiberId) => Effect.Effect<Deferred<E, A>> = core.deferredMakeAs
+export const makeAs: <E, A>(fiberId: FiberId.FiberId) => Effect.Effect<Deferred<A, E>> = core.deferredMakeAs
 
-const _await: <E, A>(self: Deferred<E, A>) => Effect.Effect<A, E> = core.deferredAwait
+const _await: <E, A>(self: Deferred<A, E>) => Effect.Effect<A, E> = core.deferredAwait
 
 export {
   /**
@@ -100,8 +100,8 @@ export {
  * @category utils
  */
 export const complete: {
-  <A, E>(effect: Effect.Effect<A, E>): (self: Deferred<E, A>) => Effect.Effect<boolean>
-  <A, E>(self: Deferred<E, A>, effect: Effect.Effect<A, E>): Effect.Effect<boolean>
+  <A, E>(effect: Effect.Effect<A, E>): (self: Deferred<A, E>) => Effect.Effect<boolean>
+  <A, E>(self: Deferred<A, E>, effect: Effect.Effect<A, E>): Effect.Effect<boolean>
 } = core.deferredComplete
 
 /**
@@ -112,8 +112,8 @@ export const complete: {
  * @category utils
  */
 export const completeWith: {
-  <E, A>(effect: Effect.Effect<A, E>): (self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, effect: Effect.Effect<A, E>): Effect.Effect<boolean>
+  <E, A>(effect: Effect.Effect<A, E>): (self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, effect: Effect.Effect<A, E>): Effect.Effect<boolean>
 } = core.deferredCompleteWith
 
 /**
@@ -124,8 +124,8 @@ export const completeWith: {
  * @category utils
  */
 export const done: {
-  <A, E>(exit: Exit.Exit<A, E>): (self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, exit: Exit.Exit<A, E>): Effect.Effect<boolean>
+  <A, E>(exit: Exit.Exit<A, E>): (self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, exit: Exit.Exit<A, E>): Effect.Effect<boolean>
 } = core.deferredDone
 
 /**
@@ -136,8 +136,8 @@ export const done: {
  * @category utils
  */
 export const fail: {
-  <E>(error: E): <A>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, error: E): Effect.Effect<boolean>
+  <E>(error: E): <A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, error: E): Effect.Effect<boolean>
 } = core.deferredFail
 
 /**
@@ -148,8 +148,8 @@ export const fail: {
  * @category utils
  */
 export const failSync: {
-  <E>(evaluate: LazyArg<E>): <A>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<E>): Effect.Effect<boolean>
+  <E>(evaluate: LazyArg<E>): <A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, evaluate: LazyArg<E>): Effect.Effect<boolean>
 } = core.deferredFailSync
 
 /**
@@ -160,8 +160,8 @@ export const failSync: {
  * @category utils
  */
 export const failCause: {
-  <E>(cause: Cause.Cause<E>): <A>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, cause: Cause.Cause<E>): Effect.Effect<boolean>
+  <E>(cause: Cause.Cause<E>): <A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, cause: Cause.Cause<E>): Effect.Effect<boolean>
 } = core.deferredFailCause
 
 /**
@@ -172,8 +172,8 @@ export const failCause: {
  * @category utils
  */
 export const failCauseSync: {
-  <E>(evaluate: LazyArg<Cause.Cause<E>>): <A>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<Cause.Cause<E>>): Effect.Effect<boolean>
+  <E>(evaluate: LazyArg<Cause.Cause<E>>): <A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, evaluate: LazyArg<Cause.Cause<E>>): Effect.Effect<boolean>
 } = core.deferredFailCauseSync
 
 /**
@@ -184,8 +184,8 @@ export const failCauseSync: {
  * @category utils
  */
 export const die: {
-  (defect: unknown): <E, A>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, defect: unknown): Effect.Effect<boolean>
+  (defect: unknown): <E, A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, defect: unknown): Effect.Effect<boolean>
 } = core.deferredDie
 
 /**
@@ -196,8 +196,8 @@ export const die: {
  * @category utils
  */
 export const dieSync: {
-  (evaluate: LazyArg<unknown>): <E, A>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<unknown>): Effect.Effect<boolean>
+  (evaluate: LazyArg<unknown>): <E, A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, evaluate: LazyArg<unknown>): Effect.Effect<boolean>
 } = core.deferredDieSync
 
 /**
@@ -208,7 +208,7 @@ export const dieSync: {
  * @since 2.0.0
  * @category utils
  */
-export const interrupt: <E, A>(self: Deferred<E, A>) => Effect.Effect<boolean> = core.deferredInterrupt
+export const interrupt: <E, A>(self: Deferred<A, E>) => Effect.Effect<boolean> = core.deferredInterrupt
 
 /**
  * Completes the `Deferred` with interruption. This will interrupt all fibers
@@ -218,8 +218,8 @@ export const interrupt: <E, A>(self: Deferred<E, A>) => Effect.Effect<boolean> =
  * @category utils
  */
 export const interruptWith: {
-  (fiberId: FiberId.FiberId): <E, A>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, fiberId: FiberId.FiberId): Effect.Effect<boolean>
+  (fiberId: FiberId.FiberId): <E, A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, fiberId: FiberId.FiberId): Effect.Effect<boolean>
 } = core.deferredInterruptWith
 
 /**
@@ -229,7 +229,7 @@ export const interruptWith: {
  * @since 2.0.0
  * @category getters
  */
-export const isDone: <E, A>(self: Deferred<E, A>) => Effect.Effect<boolean> = core.deferredIsDone
+export const isDone: <E, A>(self: Deferred<A, E>) => Effect.Effect<boolean> = core.deferredIsDone
 
 /**
  * Returns a `Some<Effect<A, E, R>>` from the `Deferred` if this `Deferred` has
@@ -239,7 +239,7 @@ export const isDone: <E, A>(self: Deferred<E, A>) => Effect.Effect<boolean> = co
  * @category getters
  */
 export const poll: <E, A>(
-  self: Deferred<E, A>
+  self: Deferred<A, E>
 ) => Effect.Effect<Option.Option<Effect.Effect<A, E>>> = core.deferredPoll
 
 /**
@@ -249,8 +249,8 @@ export const poll: <E, A>(
  * @category utils
  */
 export const succeed: {
-  <A>(value: A): <E>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, value: A): Effect.Effect<boolean>
+  <A>(value: A): <E>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, value: A): Effect.Effect<boolean>
 } = core.deferredSucceed
 
 /**
@@ -260,8 +260,8 @@ export const succeed: {
  * @category utils
  */
 export const sync: {
-  <A>(evaluate: LazyArg<A>): <E>(self: Deferred<E, A>) => Effect.Effect<boolean>
-  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<A>): Effect.Effect<boolean>
+  <A>(evaluate: LazyArg<A>): <E>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  <E, A>(self: Deferred<A, E>, evaluate: LazyArg<A>): Effect.Effect<boolean>
 } = core.deferredSync
 
 /**
@@ -270,7 +270,7 @@ export const sync: {
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeMake: <E, A>(fiberId: FiberId.FiberId) => Deferred<E, A> = core.deferredUnsafeMake
+export const unsafeMake: <E, A>(fiberId: FiberId.FiberId) => Deferred<A, E> = core.deferredUnsafeMake
 
 /**
  * Unsafely exits the `Deferred` with the specified `Exit` value, which will be
@@ -279,4 +279,4 @@ export const unsafeMake: <E, A>(fiberId: FiberId.FiberId) => Deferred<E, A> = co
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeDone: <E, A>(self: Deferred<E, A>, effect: Effect.Effect<A, E>) => void = core.deferredUnsafeDone
+export const unsafeDone: <E, A>(self: Deferred<A, E>, effect: Effect.Effect<A, E>) => void = core.deferredUnsafeDone

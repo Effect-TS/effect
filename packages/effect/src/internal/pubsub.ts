@@ -41,12 +41,12 @@ interface Subscription<out A> {
 /** @internal */
 type Subscribers<A> = Map<
   Subscription<A>,
-  Set<MutableQueue.MutableQueue<Deferred.Deferred<never, A>>>
+  Set<MutableQueue.MutableQueue<Deferred.Deferred<A, never>>>
 >
 
 const addSubscribers = <A>(
   subscription: Subscription<A>,
-  pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
 ) =>
 (subscribers: Subscribers<A>) => {
   if (!subscribers.has(subscription)) {
@@ -58,7 +58,7 @@ const addSubscribers = <A>(
 
 const removeSubscribers = <A>(
   subscription: Subscription<A>,
-  pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
 ) =>
 (subscribers: Subscribers<A>) => {
   if (!subscribers.has(subscription)) {
@@ -164,7 +164,7 @@ const makeSubscription = <A>(
       pubsub,
       subscribers,
       pubsub.subscribe(),
-      MutableQueue.unbounded<Deferred.Deferred<never, A>>(),
+      MutableQueue.unbounded<Deferred.Deferred<A, never>>(),
       deferred,
       MutableRef.make(false),
       strategy
@@ -175,8 +175,8 @@ export const unsafeMakeSubscription = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   subscription: Subscription<A>,
-  pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-  shutdownHook: Deferred.Deferred<never, void>,
+  pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>,
+  shutdownHook: Deferred.Deferred<void, never>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
   strategy: PubSubStrategy<A>
 ): Queue.Dequeue<A> => {
@@ -826,8 +826,8 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     readonly pubsub: AtomicPubSub<A>,
     readonly subscribers: Subscribers<A>,
     readonly subscription: Subscription<A>,
-    readonly pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-    readonly shutdownHook: Deferred.Deferred<never, void>,
+    readonly pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>,
+    readonly shutdownHook: Deferred.Deferred<void, never>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     readonly strategy: PubSubStrategy<A>
   ) {
@@ -1004,7 +1004,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
     readonly pubsub: AtomicPubSub<A>,
     readonly subscribers: Subscribers<A>,
     readonly scope: Scope.Scope.Closeable,
-    readonly shutdownHook: Deferred.Deferred<never, void>,
+    readonly shutdownHook: Deferred.Deferred<void, never>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     readonly strategy: PubSubStrategy<A>
   ) {
@@ -1164,7 +1164,7 @@ export const unsafeMakePubSub = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   scope: Scope.Scope.Closeable,
-  shutdownHook: Deferred.Deferred<never, void>,
+  shutdownHook: Deferred.Deferred<void, never>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
   strategy: PubSubStrategy<A>
 ): PubSub.PubSub<A> => {
@@ -1185,7 +1185,7 @@ const ensureCapacity = (capacity: number): void => {
 }
 
 /** @internal */
-const unsafeCompleteDeferred = <A>(deferred: Deferred.Deferred<never, A>, a: A): void => {
+const unsafeCompleteDeferred = <A>(deferred: Deferred.Deferred<A, never>, a: A): void => {
   core.deferredUnsafeDone(deferred, core.succeed(a))
 }
 
@@ -1267,7 +1267,7 @@ export interface PubSubStrategy<in out A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
-    pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
   ): void
 
   /**
@@ -1293,7 +1293,7 @@ class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
   publishers: MutableQueue.MutableQueue<
     readonly [
       A,
-      Deferred.Deferred<never, boolean>,
+      Deferred.Deferred<boolean, never>,
       boolean
     ]
   > = MutableQueue.unbounded()
@@ -1365,7 +1365,7 @@ class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
-    pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
   ): void {
     return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
@@ -1374,7 +1374,7 @@ class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
     return unsafeStrategyCompleteSubscribers(this, pubsub, subscribers)
   }
 
-  private unsafeOffer(elements: Iterable<A>, deferred: Deferred.Deferred<never, boolean>): void {
+  private unsafeOffer(elements: Iterable<A>, deferred: Deferred.Deferred<boolean, never>): void {
     const iterator = elements[Symbol.iterator]()
     let next: IteratorResult<A> = iterator.next()
     if (!next.done) {
@@ -1397,7 +1397,7 @@ class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
     }
   }
 
-  unsafeRemove(deferred: Deferred.Deferred<never, boolean>): void {
+  unsafeRemove(deferred: Deferred.Deferred<boolean, never>): void {
     unsafeOfferAll(
       this.publishers,
       pipe(unsafePollAllQueue(this.publishers), Chunk.filter(([_, a]) => a !== deferred))
@@ -1440,7 +1440,7 @@ export class DroppingStrategy<in out A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
-    pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
   ): void {
     return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
@@ -1488,7 +1488,7 @@ export class SlidingStrategy<in out A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
-    pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
   ): void {
     return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
@@ -1522,7 +1522,7 @@ const unsafeStrategyCompletePollers = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   subscription: Subscription<A>,
-  pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  pollers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
 ): void => {
   let keepPolling = true
   while (keepPolling && !subscription.isEmpty()) {

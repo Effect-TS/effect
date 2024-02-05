@@ -1774,8 +1774,8 @@ export const haltWhen: {
  * @category utils
  */
 export const haltWhenDeferred: {
-  <E2, _>(deferred: Deferred.Deferred<E2, _>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R>
-  <R, E, A, E2, _>(self: Stream<A, E, R>, deferred: Deferred.Deferred<E2, _>): Stream<A, E | E2, R>
+  <E2, _>(deferred: Deferred.Deferred<_, E2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R>
+  <R, E, A, E2, _>(self: Stream<A, E, R>, deferred: Deferred.Deferred<_, E2>): Stream<A, E | E2, R>
 } = internal.haltWhenDeferred
 
 /**
@@ -1891,8 +1891,8 @@ export const interruptWhen: {
  * @category utils
  */
 export const interruptWhenDeferred: {
-  <E2, _>(deferred: Deferred.Deferred<E2, _>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R>
-  <R, E, A, E2, _>(self: Stream<A, E, R>, deferred: Deferred.Deferred<E2, _>): Stream<A, E | E2, R>
+  <E2, _>(deferred: Deferred.Deferred<_, E2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R>
+  <R, E, A, E2, _>(self: Stream<A, E, R>, deferred: Deferred.Deferred<_, E2>): Stream<A, E | E2, R>
 } = internal.interruptWhenDeferred
 
 /**

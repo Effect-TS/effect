@@ -150,7 +150,7 @@ describe("Stream", () => {
   it.it("unwrapScoped", async () => {
     const awaiter = Deferred.unsafeMake<never, void>(FiberId.none)
     const program = Effect.gen(function*($) {
-      const stream = (deferred: Deferred.Deferred<never, void>, ref: Ref.Ref<ReadonlyArray<string>>) =>
+      const stream = (deferred: Deferred.Deferred<void, never>, ref: Ref.Ref<ReadonlyArray<string>>) =>
         pipe(
           Effect.acquireRelease(
             Ref.update(ref, (array) => [...array, "acquire outer"]),

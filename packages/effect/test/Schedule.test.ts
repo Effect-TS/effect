@@ -74,7 +74,7 @@ describe("Schedule", () => {
     }))
   it.effect("reset after some inactivity", () =>
     Effect.gen(function*($) {
-      const io = (ref: Ref.Ref<number>, latch: Deferred.Deferred<never, void>): Effect.Effect<void, string> => {
+      const io = (ref: Ref.Ref<number>, latch: Deferred.Deferred<void, never>): Effect.Effect<void, string> => {
         return Ref.updateAndGet(ref, (n) => n + 1).pipe(
           Effect.flatMap((retries) => {
             // The 5th retry will fail after 10 seconds to let the schedule reset

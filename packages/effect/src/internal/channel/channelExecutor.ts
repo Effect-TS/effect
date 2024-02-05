@@ -1110,8 +1110,8 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
   self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
 ): Effect.Effect<OutDone, OutErr, Env | Scope.Scope> => {
   const run = (
-    channelDeferred: Deferred.Deferred<OutErr, OutDone>,
-    scopeDeferred: Deferred.Deferred<never, void>,
+    channelDeferred: Deferred.Deferred<OutDone, OutErr>,
+    scopeDeferred: Deferred.Deferred<void, never>,
     scope: Scope.Scope
   ) =>
     Effect.acquireUseRelease(

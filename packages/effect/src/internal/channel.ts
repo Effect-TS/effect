@@ -779,17 +779,17 @@ export const interruptWhen = dual<
 /** @internal */
 export const interruptWhenDeferred = dual<
   <OutErr1, OutDone1>(
-    deferred: Deferred.Deferred<OutErr1, OutDone1>
+    deferred: Deferred.Deferred<OutDone1, OutErr1>
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1 | OutDone>,
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutErr1, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    deferred: Deferred.Deferred<OutErr1, OutDone1>
+    deferred: Deferred.Deferred<OutDone1, OutErr1>
   ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1 | OutDone>
 >(2, <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutErr1, OutDone1>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  deferred: Deferred.Deferred<OutErr1, OutDone1>
+  deferred: Deferred.Deferred<OutDone1, OutErr1>
 ): Channel.Channel<Env, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone | OutDone1> =>
   interruptWhen(self, Deferred.await(deferred)))
 
@@ -1193,7 +1193,7 @@ export const mergeAllWith = (
       )
       const cancelers = yield* $(
         Effect.acquireRelease(
-          Queue.unbounded<Deferred.Deferred<never, void>>(),
+          Queue.unbounded<Deferred.Deferred<void, never>>(),
           (queue) => Queue.shutdown(queue)
         )
       )

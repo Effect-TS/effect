@@ -261,7 +261,7 @@ describe("Effect", () => {
       const ref = yield* $(Ref.make<number>(0))
       const latch1 = yield* $(Deferred.make<never, void>())
       const latch2 = yield* $(Deferred.make<never, void>())
-      const make = (deferred: Deferred.Deferred<never, void>) => {
+      const make = (deferred: Deferred.Deferred<void, never>) => {
         return pipe(
           Deferred.succeed(deferred, void 0),
           Effect.zipRight(Effect.never),

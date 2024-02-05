@@ -84,7 +84,7 @@ describe("Effect", () => {
     }))
   it.effect("daemon fiber race interruption", () =>
     Effect.gen(function*($) {
-      const plus1 = <X>(latch: Deferred.Deferred<never, void>, finalizer: Effect.Effect<X>) => {
+      const plus1 = <X>(latch: Deferred.Deferred<void, never>, finalizer: Effect.Effect<X>) => {
         return pipe(
           Deferred.succeed(latch, void 0),
           Effect.zipRight(Effect.sleep(Duration.hours(1))),
@@ -196,8 +196,8 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const forkWaiter = (
         interrupted: Ref.Ref<number>,
-        latch: Deferred.Deferred<never, void>,
-        done: Deferred.Deferred<never, void>
+        latch: Deferred.Deferred<void, never>,
+        done: Deferred.Deferred<void, never>
       ) => {
         return Effect.uninterruptibleMask((restore) =>
           pipe(

@@ -48,25 +48,25 @@ export declare namespace Handoff {
   /** @internal */
   export interface Empty {
     readonly _tag: OP_HANDOFF_STATE_EMPTY
-    readonly notifyConsumer: Deferred.Deferred<never, void>
+    readonly notifyConsumer: Deferred.Deferred<void, never>
   }
 
   /** @internal */
   export interface Full<out A> {
     readonly _tag: OP_HANDOFF_STATE_FULL
     readonly value: A
-    readonly notifyProducer: Deferred.Deferred<never, void>
+    readonly notifyProducer: Deferred.Deferred<void, never>
   }
 }
 
 /** @internal */
-const handoffStateEmpty = <A>(notifyConsumer: Deferred.Deferred<never, void>): Handoff.State<A> => ({
+const handoffStateEmpty = <A>(notifyConsumer: Deferred.Deferred<void, never>): Handoff.State<A> => ({
   _tag: OP_HANDOFF_STATE_EMPTY,
   notifyConsumer
 })
 
 /** @internal */
-const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<never, void>): Handoff.State<A> => ({
+const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<void, never>): Handoff.State<A> => ({
   _tag: OP_HANDOFF_STATE_FULL,
   value,
   notifyProducer
@@ -74,8 +74,8 @@ const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<never, 
 
 /** @internal */
 const handoffStateMatch = <A, Z>(
-  onEmpty: (notifyConsumer: Deferred.Deferred<never, void>) => Z,
-  onFull: (value: A, notifyProducer: Deferred.Deferred<never, void>) => Z
+  onEmpty: (notifyConsumer: Deferred.Deferred<void, never>) => Z,
+  onFull: (value: A, notifyProducer: Deferred.Deferred<void, never>) => Z
 ) => {
   return (self: Handoff.State<A>): Z => {
     switch (self._tag) {

@@ -187,17 +187,17 @@ export const catchAllDefect = dual<
 /* @internal */
 export const catchSomeCause: {
   <E, A2, E2, R2>(
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect.Effect<A2, E2, R2>>
+    f: (cause: Cause.Cause<NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2 | A, E | E2, R2 | R>
   <A, E, R, A2, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect.Effect<A2, E2, R2>>
+    f: (cause: Cause.Cause<NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
   ): Effect.Effect<A2 | A, E | E2, R2 | R>
 } = dual(
   2,
   <A, E, R, A2, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect.Effect<A2, E2, R2>>
+    f: (cause: Cause.Cause<NoInfer<E>>) => Option.Option<Effect.Effect<A2, E2, R2>>
   ): Effect.Effect<A2 | A, E | E2, R2 | R> =>
     core.matchCauseEffect(self, {
       onFailure: (cause): Effect.Effect<A2, E | E2, R2> => {
@@ -639,17 +639,17 @@ export const filterOrFail: {
 /* @internal */
 export const findFirst: {
   <A, E, R>(
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>
+    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<Option.Option<A>, E, R>
   <A, E, R>(
     elements: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>
+    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Option.Option<A>, E, R>
 } = dual(
   2,
   <A, E, R>(
     elements: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>
+    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Option.Option<A>, E, R> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
@@ -1436,13 +1436,13 @@ export const takeUntil: {
   ): (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>
   <A, E, R>(
     elements: Iterable<A>,
-    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Array<A>, E, R>
 } = dual(
   2,
   <A, E, R>(
     elements: Iterable<A>,
-    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Array<A>, E, R> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
@@ -1472,11 +1472,11 @@ export const takeWhile = dual<
   ) => (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>,
   <A, E, R>(
     elements: Iterable<A>,
-    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ) => Effect.Effect<Array<A>, E, R>
 >(
   2,
-  <A, E, R>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>) =>
+  <A, E, R>(elements: Iterable<A>, predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>) =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
       const builder: Array<A> = []

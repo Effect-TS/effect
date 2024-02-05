@@ -627,7 +627,7 @@ const transpose = <A>(array: ReadonlyArray<ReadonlyArray<A>>): ReadonlyArray<Rea
 }
 
 const escapeRegex = (string: string): string => {
-  return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&")
+  return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
 }
 
 const indicesFrom = (quotedIndices: HashSet.HashSet<string>): Effect.Effect<ReadonlyArray<number>> =>

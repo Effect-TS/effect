@@ -902,7 +902,7 @@ const bufferChunksDropping = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.dropping<readonly [Take.Take<E, A>, Deferred.Deferred<never, void>]>(capacity),
+    Queue.dropping<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(self)))
@@ -913,7 +913,7 @@ const bufferChunksSliding = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.sliding<readonly [Take.Take<E, A>, Deferred.Deferred<never, void>]>(capacity),
+    Queue.sliding<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(self)))
@@ -924,7 +924,7 @@ const bufferDropping = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.dropping<readonly [Take.Take<E, A>, Deferred.Deferred<never, void>]>(capacity),
+    Queue.dropping<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(rechunk(1)(self))))
@@ -935,7 +935,7 @@ const bufferSliding = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.sliding<readonly [Take.Take<E, A>, Deferred.Deferred<never, void>]>(capacity),
+    Queue.sliding<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(pipe(self, rechunk(1)))))
@@ -961,12 +961,12 @@ const bufferUnbounded = <A, E, R>(self: Stream.Stream<A, E, R>): Stream.Stream<A
 }
 
 const bufferSignal = <A, E, R>(
-  scoped: Effect.Effect<Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<never, void>]>, never, Scope.Scope>,
+  scoped: Effect.Effect<Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>, never, Scope.Scope>,
   bufferChannel: Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, void>
 ): Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> => {
   const producer = (
-    queue: Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<never, void>]>,
-    ref: Ref.Ref<Deferred.Deferred<never, void>>
+    queue: Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>,
+    ref: Ref.Ref<Deferred.Deferred<void, never>>
   ): Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, never, unknown> => {
     const terminate = (take: Take.Take<E, A>): Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, never, unknown> =>
       pipe(
@@ -1003,7 +1003,7 @@ const bufferSignal = <A, E, R>(
     })
   }
   const consumer = (
-    queue: Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<never, void>]>
+    queue: Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>
   ): Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> => {
     const process: Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> = pipe(
       core.fromEffect(Queue.take(queue)),
@@ -3316,11 +3316,11 @@ export const haltAfter = dual<
 
 /** @internal */
 export const haltWhenDeferred = dual<
-  <E2, _>(deferred: Deferred.Deferred<E2, _>) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R>,
-  <R, E, A, E2, _>(self: Stream.Stream<A, E, R>, deferred: Deferred.Deferred<E2, _>) => Stream.Stream<A, E2 | E, R>
+  <E2, _>(deferred: Deferred.Deferred<_, E2>) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R>,
+  <R, E, A, E2, _>(self: Stream.Stream<A, E, R>, deferred: Deferred.Deferred<_, E2>) => Stream.Stream<A, E2 | E, R>
 >(
   2,
-  <R, E, A, E2, _>(self: Stream.Stream<A, E, R>, deferred: Deferred.Deferred<E2, _>): Stream.Stream<A, E | E2, R> => {
+  <R, E, A, E2, _>(self: Stream.Stream<A, E, R>, deferred: Deferred.Deferred<_, E2>): Stream.Stream<A, E | E2, R> => {
     const writer: Channel.Channel<R, E | E2, Chunk.Chunk<A>, unknown, E | E2, Chunk.Chunk<A>, void> = pipe(
       Deferred.poll(deferred),
       Effect.map(Option.match({
@@ -3576,11 +3576,11 @@ export const interruptWhen = dual<
 
 /** @internal */
 export const interruptWhenDeferred = dual<
-  <E2, _>(deferred: Deferred.Deferred<E2, _>) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R>,
-  <R, E, A, E2, _>(self: Stream.Stream<A, E, R>, deferred: Deferred.Deferred<E2, _>) => Stream.Stream<A, E2 | E, R>
+  <E2, _>(deferred: Deferred.Deferred<_, E2>) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R>,
+  <R, E, A, E2, _>(self: Stream.Stream<A, E, R>, deferred: Deferred.Deferred<_, E2>) => Stream.Stream<A, E2 | E, R>
 >(
   2,
-  <R, E, A, E2, _>(self: Stream.Stream<A, E, R>, deferred: Deferred.Deferred<E2, _>): Stream.Stream<A, E2 | E, R> =>
+  <R, E, A, E2, _>(self: Stream.Stream<A, E, R>, deferred: Deferred.Deferred<_, E2>): Stream.Stream<A, E2 | E, R> =>
     new StreamImpl(pipe(toChannel(self), channel.interruptWhenDeferred(deferred)))
 )
 

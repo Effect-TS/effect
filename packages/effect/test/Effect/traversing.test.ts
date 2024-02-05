@@ -346,7 +346,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const task = (
         started: Ref.Ref<number>,
-        trigger: Deferred.Deferred<never, void>,
+        trigger: Deferred.Deferred<void, never>,
         n: number
       ): Effect.Effect<void, number> => {
         return pipe(

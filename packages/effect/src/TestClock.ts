@@ -90,7 +90,7 @@ export interface TestClock extends Clock.Clock {
  */
 export interface Data {
   readonly instant: number
-  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<void, never>]>
 }
 
 /**
@@ -98,7 +98,7 @@ export interface Data {
  */
 export const makeData = (
   instant: number,
-  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<void, never>]>
 ): Data => ({
   instant,
   sleeps
@@ -391,7 +391,7 @@ export class TestClockImpl implements TestClock {
           const end = f(data.instant)
           const sorted = pipe(
             data.sleeps,
-            Chunk.sort<readonly [number, Deferred.Deferred<never, void>]>(
+            Chunk.sort<readonly [number, Deferred.Deferred<void, never>]>(
               pipe(number.Order, Order.mapInput((_) => _[0]))
             )
           )
@@ -422,7 +422,7 @@ export class TestClockImpl implements TestClock {
           }
         })
       ))
-    )
+    );
   }
 }
 

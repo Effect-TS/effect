@@ -38,7 +38,7 @@ import { currentScheduler, type Scheduler } from "../Scheduler.js"
 import type * as Scope from "../Scope.js"
 import type * as Supervisor from "../Supervisor.js"
 import type * as Tracer from "../Tracer.js"
-import type { Concurrency } from "../Types.js"
+import type { Concurrency, NoInfer } from "../Types.js"
 import * as _RequestBlock from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as clock from "./clock.js"
@@ -1556,21 +1556,21 @@ const existsLoop = <A, E, R>(
 /* @internal */
 export const filter = dual<
   <A, E, R>(
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>,
+    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly negate?: boolean | undefined
     }
   ) => (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>,
-  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(elements: Iterable<A>, f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly negate?: boolean | undefined
   }) => Effect.Effect<Array<A>, E, R>
 >(
   (args) => Predicate.isIterable(args[0]),
-  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(elements: Iterable<A>, f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly negate?: boolean | undefined
@@ -2380,7 +2380,7 @@ export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.
 const raceAllArbiter = <E, E1, A, A1>(
   fibers: Iterable<Fiber.Fiber<E | E1, A | A1>>,
   winner: Fiber.Fiber<E | E1, A | A1>,
-  deferred: Deferred.Deferred<E | E1, readonly [A | A1, Fiber.Fiber<E | E1, A | A1>]>,
+  deferred: Deferred.Deferred<readonly [A | A1, Fiber.Fiber<E | E1, A | A1>], E | E1>,
   fails: Ref.Ref<number>
 ) =>
 (exit: Exit.Exit<A | A1, E | E1>): Effect.Effect<void> =>
@@ -2420,7 +2420,7 @@ const raceAllArbiter = <E, E1, A, A1>(
 export const reduceEffect = dual<
   <A, E, R>(
     zero: Effect.Effect<A, E, R>,
-    f: (acc: A, a: A, i: number) => A,
+    f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
@@ -2429,7 +2429,7 @@ export const reduceEffect = dual<
   <A, E, R>(
     elements: Iterable<Effect.Effect<A, E, R>>,
     zero: Effect.Effect<A, E, R>,
-    f: (acc: A, a: A, i: number) => A,
+    f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
@@ -2438,7 +2438,7 @@ export const reduceEffect = dual<
 >((args) => Predicate.isIterable(args[0]), <A, E, R>(
   elements: Iterable<Effect.Effect<A, E, R>>,
   zero: Effect.Effect<A, E, R>,
-  f: (acc: A, a: A, i: number) => A,
+  f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
   options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
