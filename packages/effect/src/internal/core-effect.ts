@@ -76,7 +76,7 @@ export const asSomeError = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effec
   core.mapError(self, Option.some)
 
 /* @internal */
-export const asyncOption = <A, E, R>(
+export const asyncOption = <A, E = never, R = never>(
   register: (callback: (_: Effect.Effect<A, E, R>) => void) => Option.Option<Effect.Effect<A, E, R>>,
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect.Effect<A, E, R> =>

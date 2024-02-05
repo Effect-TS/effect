@@ -512,11 +512,11 @@ export const timerWithBoundaries: (
 export const trackAll: {
   <In>(
     input: In
-  ): <Type, Out>(self: Metric<Type, In, Out>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  ): <Type, Out>(self: Metric<Type, In, Out>) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <Type, In, Out>(
     self: Metric<Type, In, Out>,
     input: In
-  ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 } = internal.trackAll
 
 /**
@@ -527,7 +527,7 @@ export const trackAll: {
  * @category aspects
  */
 export const trackDefect: {
-  <Type, Out>(metric: Metric<Type, unknown, Out>): <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <Type, Out>(metric: Metric<Type, unknown, Out>): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <R, E, A, Type, Out>(self: Effect.Effect<A, E, R>, metric: Metric<Type, unknown, Out>): Effect.Effect<A, E, R>
 } = internal.trackDefect
 
@@ -543,7 +543,7 @@ export const trackDefectWith: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
     f: (defect: unknown) => In
-  ): <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <R, E, A, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>,
@@ -562,7 +562,7 @@ export const trackDefectWith: {
 export const trackDuration: {
   <Type, Out>(
     metric: Metric<Type, Duration.Duration, Out>
-  ): <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <R, E, A, Type, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, Duration.Duration, Out>
@@ -581,7 +581,7 @@ export const trackDurationWith: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
-  ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <R, E, A, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>,

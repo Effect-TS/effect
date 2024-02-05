@@ -131,7 +131,6 @@ export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: 
   }
 }
 
-/** @internal */
 const asyncFiberException = <E, A>(fiber: Fiber.RuntimeFiber<E, A>): Runtime.AsyncFiberException<E, A> => {
   const limit = Error.stackTraceLimit
   Error.stackTraceLimit = 0

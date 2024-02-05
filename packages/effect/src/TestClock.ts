@@ -77,7 +77,7 @@ import * as Live from "./TestLive.js"
  */
 export interface TestClock extends Clock.Clock {
   adjust(duration: Duration.DurationInput): Effect.Effect<void>
-  adjustWith(duration: Duration.DurationInput): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  adjustWith(duration: Duration.DurationInput): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   readonly save: Effect.Effect<Effect.Effect<void>>
   setTime(time: number): Effect.Effect<void>
   readonly sleeps: Effect.Effect<Chunk.Chunk<number>>
@@ -239,7 +239,7 @@ export class TestClockImpl implements TestClock {
    */
   adjustWith(durationInput: Duration.DurationInput) {
     const duration = Duration.decode(durationInput)
-    return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    return <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
       fiberRuntime.zipLeftOptions(effect, this.adjust(duration), { concurrent: true })
   }
   /**
@@ -470,8 +470,8 @@ export const adjust = (durationInput: Duration.DurationInput): Effect.Effect<voi
  * @since 2.0.0
  */
 export const adjustWith = dual<
-  (duration: Duration.DurationInput) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, duration: Duration.DurationInput) => Effect.Effect<A, E, R>
+  (duration: Duration.DurationInput) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, duration: Duration.DurationInput) => Effect.Effect<A, E, R>
 >(2, (effect, durationInput) => {
   const duration = Duration.decode(durationInput)
   return testClockWith((testClock) => testClock.adjustWith(duration)(effect))
@@ -529,7 +529,7 @@ export const testClock = (): Effect.Effect<TestClock> => testClockWith(core.succ
  *
  * @since 2.0.0
  */
-export const testClockWith = <R, E, A>(f: (testClock: TestClock) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+export const testClockWith = <A, E, R>(f: (testClock: TestClock) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   core.fiberRefGetWith(
     defaultServices.currentServices,
     (services) => f(pipe(services, Context.get(clock.clockTag)) as TestClock)

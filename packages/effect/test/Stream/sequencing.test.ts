@@ -27,7 +27,7 @@ describe("Stream", () => {
         Stream.fromChunk(Chunk.range(0, 5)),
         Stream.branchAfter(1, (values) => {
           if (Equal.equals(values, Chunk.make(0))) {
-            return Stream.identity<never, never, number>()
+            return Stream.identity<number>()
           }
           throw new Error("should have branched after 0")
         }),
@@ -40,7 +40,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const result = yield* $(
         Stream.fromChunk(Chunk.range(1, 5)),
-        Stream.branchAfter(6, (chunk) => Stream.prepend(Stream.identity<never, never, number>(), chunk)),
+        Stream.branchAfter(6, (chunk) => Stream.prepend(Stream.identity<number>(), chunk)),
         Stream.runCollect
       )
       assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
@@ -51,7 +51,7 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.fromIterable(Chunk.range(1, 5)),
         Stream.rechunk(2),
-        Stream.branchAfter(1, (chunk) => Stream.prepend(Stream.identity<never, never, number>(), chunk)),
+        Stream.branchAfter(1, (chunk) => Stream.prepend(Stream.identity<number>(), chunk)),
         Stream.runCollect
       )
       assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
