@@ -88,14 +88,14 @@ export const add: <B>(logger: Logger<unknown, B>) => Layer.Layer<never> = circul
  * @since 2.0.0
  * @category context
  */
-export const addEffect: <R, E, A>(effect: Effect<Logger<unknown, A>, E, R>) => Layer.Layer<never, E, R> =
+export const addEffect: <A, E, R>(effect: Effect<Logger<unknown, A>, E, R>) => Layer.Layer<never, E, R> =
   circular.addLoggerEffect
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const addScoped: <R, E, A>(
+export const addScoped: <A, E, R>(
   effect: Effect<Logger<unknown, A>, E, R>
 ) => Layer.Layer<never, E, Exclude<R, Scope>> = circular.addLoggerScoped
 
@@ -236,8 +236,8 @@ export const test: {
  * @category context
  */
 export const withMinimumLogLevel: {
-  (level: LogLevel.LogLevel): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <R, E, A>(self: Effect<A, E, R>, level: LogLevel.LogLevel): Effect<A, E, R>
+  (level: LogLevel.LogLevel): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(self: Effect<A, E, R>, level: LogLevel.LogLevel): Effect<A, E, R>
 } = circular.withMinimumLogLevel
 
 /**

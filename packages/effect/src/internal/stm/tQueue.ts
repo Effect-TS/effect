@@ -108,7 +108,7 @@ class TQueueImpl<in out A> implements TQueue.TQueue<A> {
 
   isEmpty: STM.STM<boolean> = core.map(this.size, (size) => size === 0)
 
-  shutdown: STM.STM<void> = core.withSTMRuntime<never, never, void>((runtime) => {
+  shutdown: STM.STM<void> = core.withSTMRuntime((runtime) => {
     tRef.unsafeSet(this.ref, void 0, runtime.journal)
     return stm.unit
   })

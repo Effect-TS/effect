@@ -89,8 +89,8 @@ export const Console: Context.Tag<Console, Console> = defaultConsole.consoleTag
  * @category default services
  */
 export const withConsole: {
-  <A extends Console>(console: A): <R, E, A>(effect: Effect<A, E, R>) => Effect<A, E, R>
-  <R, E, A extends Console>(effect: Effect<A, E, R>, console: A): Effect<A, E, R>
+  <C extends Console>(console: C): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R, C extends Console>(effect: Effect<A, E, R>, console: C): Effect<A, E, R>
 } = internal.withConsole
 
 /**
@@ -103,7 +103,7 @@ export const setConsole: <A extends Console>(console: A) => Layer.Layer<never> =
  * @since 2.0.0
  * @category accessor
  */
-export const consoleWith: <R, E, A>(f: (console: Console) => Effect<A, E, R>) => Effect<A, E, R> = internal.consoleWith
+export const consoleWith: <A, E, R>(f: (console: Console) => Effect<A, E, R>) => Effect<A, E, R> = internal.consoleWith
 
 /**
  * @since 2.0.0
@@ -211,8 +211,8 @@ export const withGroup: {
   (options?: {
     readonly label?: string | undefined
     readonly collapsed?: boolean | undefined
-  }): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <R, E, A>(self: Effect<A, E, R>, options?: {
+  }): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(self: Effect<A, E, R>, options?: {
     readonly label?: string | undefined
     readonly collapsed?: boolean | undefined
   }): Effect<A, E, R>
@@ -223,6 +223,6 @@ export const withGroup: {
  * @category accessor
  */
 export const withTime: {
-  (label?: string): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <R, E, A>(self: Effect<A, E, R>, label?: string): Effect<A, E, R>
+  (label?: string): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(self: Effect<A, E, R>, label?: string): Effect<A, E, R>
 } = internal.withTime

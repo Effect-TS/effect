@@ -267,7 +267,7 @@ export const all: All.Signature = stm.all
  * @category mapping
  */
 export const as: {
-  <A2>(value: A2): <R, E, A>(self: STM<A, E, R>) => STM<A2, E, R>
+  <A2>(value: A2): <A, E, R>(self: STM<A, E, R>) => STM<A2, E, R>
   <R, E, A, A2>(self: STM<A, E, R>, value: A2): STM<A2, E, R>
 } = stm.as
 
@@ -277,7 +277,7 @@ export const as: {
  * @since 2.0.0
  * @category mapping
  */
-export const asSome: <R, E, A>(self: STM<A, E, R>) => STM<Option.Option<A>, E, R> = stm.asSome
+export const asSome: <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E, R> = stm.asSome
 
 /**
  * Maps the error value of this effect to an optional value.
@@ -285,7 +285,7 @@ export const asSome: <R, E, A>(self: STM<A, E, R>) => STM<Option.Option<A>, E, R
  * @since 2.0.0
  * @category mapping
  */
-export const asSomeError: <R, E, A>(self: STM<A, E, R>) => STM<A, Option.Option<E>, R> = stm.asSomeError
+export const asSomeError: <A, E, R>(self: STM<A, E, R>) => STM<A, Option.Option<E>, R> = stm.asSomeError
 
 /**
  * This function maps the success value of an `STM` to `void`. If the original
@@ -295,7 +295,7 @@ export const asSomeError: <R, E, A>(self: STM<A, E, R>) => STM<A, Option.Option<
  * @since 2.0.0
  * @category mapping
  */
-export const asUnit: <R, E, A>(self: STM<A, E, R>) => STM<void, E, R> = stm.asUnit
+export const asUnit: <A, E, R>(self: STM<A, E, R>) => STM<void, E, R> = stm.asUnit
 
 /**
  * Creates an `STM` value from a partial (but pure) function.
@@ -428,7 +428,7 @@ export const collectSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const commit: <R, E, A>(self: STM<A, E, R>) => Effect.Effect<A, E, R> = core.commit
+export const commit: <A, E, R>(self: STM<A, E, R>) => Effect.Effect<A, E, R> = core.commit
 
 /**
  * Commits this transaction atomically, regardless of whether the transaction
@@ -437,7 +437,7 @@ export const commit: <R, E, A>(self: STM<A, E, R>) => Effect.Effect<A, E, R> = c
  * @since 2.0.0
  * @category destructors
  */
-export const commitEither: <R, E, A>(self: STM<A, E, R>) => Effect.Effect<A, E, R> = stm.commitEither
+export const commitEither: <A, E, R>(self: STM<A, E, R>) => Effect.Effect<A, E, R> = stm.commitEither
 
 /**
  * Similar to Either.cond, evaluate the predicate, return the given A as
@@ -517,7 +517,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => STM<never> = core.dieSync
  * @since 2.0.0
  * @category mutations
  */
-export const either: <R, E, A>(self: STM<A, E, R>) => STM<Either.Either<E, A>, never, R> = stm.either
+export const either: <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<E, A>, never, R> = stm.either
 
 /**
  * Executes the specified finalization transaction whether or not this effect
@@ -528,7 +528,7 @@ export const either: <R, E, A>(self: STM<A, E, R>) => STM<Either.Either<E, A>, n
  * @category finalization
  */
 export const ensuring: {
-  <R1, B>(finalizer: STM<B, never, R1>): <R, E, A>(self: STM<A, E, R>) => STM<A, E, R1 | R>
+  <R1, B>(finalizer: STM<B, never, R1>): <A, E, R>(self: STM<A, E, R>) => STM<A, E, R1 | R>
   <R, E, A, R1, B>(self: STM<A, E, R>, finalizer: STM<B, never, R1>): STM<A, E, R | R1>
 } = core.ensuring
 
@@ -539,7 +539,7 @@ export const ensuring: {
  * @since 2.0.0
  * @category mutations
  */
-export const eventually: <R, E, A>(self: STM<A, E, R>) => STM<A, E, R> = stm.eventually
+export const eventually: <A, E, R>(self: STM<A, E, R>) => STM<A, E, R> = stm.eventually
 
 /**
  * Determines whether all elements of the `Iterable<A>` satisfy the effectual
@@ -625,7 +625,7 @@ export const filterOrDie: {
   ): <R, E>(self: STM<A, E, R>) => STM<B, E, R>
   <A>(predicate: Predicate<NoInfer<A>>, defect: LazyArg<unknown>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
   <R, E, A, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>, defect: LazyArg<unknown>): STM<B, E, R>
-  <R, E, A>(self: STM<A, E, R>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM<A, E, R>
+  <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM<A, E, R>
 } = stm.filterOrDie
 
 /**
@@ -639,7 +639,7 @@ export const filterOrDieMessage: {
   <A, B extends A>(refinement: Refinement<NoInfer<A>, B>, message: string): <R, E>(self: STM<A, E, R>) => STM<B, E, R>
   <A>(predicate: Predicate<NoInfer<A>>, message: string): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
   <R, E, A, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>, message: string): STM<B, E, R>
-  <R, E, A>(self: STM<A, E, R>, predicate: Predicate<A>, message: string): STM<A, E, R>
+  <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>, message: string): STM<A, E, R>
 } = stm.filterOrDieMessage
 
 /**
@@ -720,7 +720,7 @@ export const flatten: <R, E, R2, E2, A>(self: STM<STM<A, E2, R2>, E, R>) => STM<
  * @since 2.0.0
  * @category mutations
  */
-export const flip: <R, E, A>(self: STM<A, E, R>) => STM<E, A, R> = stm.flip
+export const flip: <A, E, R>(self: STM<A, E, R>) => STM<E, A, R> = stm.flip
 
 /**
  * Swaps the error/value parameters, applies the function `f` and flips the
@@ -832,7 +832,7 @@ export const fromOption: <A>(option: Option.Option<A>) => STM<A, Option.Option<n
  * @category models
  */
 export interface Adapter {
-  <R, E, A>(self: STM<A, E, R>): STMGen<A, E, R>
+  <A, E, R>(self: STM<A, E, R>): STMGen<A, E, R>
   <A, _R, _E, _A>(a: A, ab: (a: A) => STM<_A, _E, _R>): STMGen<_A, _E, _R>
   <A, B, _R, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => STM<_A, _E, _R>): STMGen<_A, _E, _R>
   <A, B, C, _R, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => STM<_A, _E, _R>): STMGen<_A, _E, _R>
@@ -1112,7 +1112,7 @@ export const gen: <Eff extends STMGen<any, any, any>, AEff>(
  * @since 2.0.0
  * @category getters
  */
-export const head: <R, E, A>(self: STM<Iterable<A>, E, R>) => STM<A, Option.Option<E>, R> = stm.head
+export const head: <A, E, R>(self: STM<Iterable<A>, E, R>) => STM<A, Option.Option<E>, R> = stm.head
 
 const if_: {
   <R1, R2, E1, E2, A, A1>(
@@ -1153,7 +1153,7 @@ export {
  * @since 2.0.0
  * @category mutations
  */
-export const ignore: <R, E, A>(self: STM<A, E, R>) => STM<void, never, R> = stm.ignore
+export const ignore: <A, E, R>(self: STM<A, E, R>) => STM<void, never, R> = stm.ignore
 
 /**
  * Interrupts the fiber running the effect.
@@ -1177,7 +1177,7 @@ export const interruptAs: (fiberId: FiberId.FiberId) => STM<never> = core.interr
  * @since 2.0.0
  * @category getters
  */
-export const isFailure: <R, E, A>(self: STM<A, E, R>) => STM<boolean, never, R> = stm.isFailure
+export const isFailure: <A, E, R>(self: STM<A, E, R>) => STM<boolean, never, R> = stm.isFailure
 
 /**
  * Returns whether this transactional effect is a success.
@@ -1185,7 +1185,7 @@ export const isFailure: <R, E, A>(self: STM<A, E, R>) => STM<boolean, never, R> 
  * @since 2.0.0
  * @category getters
  */
-export const isSuccess: <R, E, A>(self: STM<A, E, R>) => STM<boolean, never, R> = stm.isSuccess
+export const isSuccess: <A, E, R>(self: STM<A, E, R>) => STM<boolean, never, R> = stm.isSuccess
 
 /**
  * Iterates with the specified transactional function. The moral equivalent
@@ -1317,7 +1317,7 @@ export const mapError: {
  * @since 2.0.0
  * @category mutations
  */
-export const merge: <R, E, A>(self: STM<A, E, R>) => STM<E | A, never, R> = stm.merge
+export const merge: <A, E, R>(self: STM<A, E, R>) => STM<E | A, never, R> = stm.merge
 
 /**
  * Merges an `Iterable<STM>` to a single `STM`, working sequentially.
@@ -1344,7 +1344,7 @@ export const negate: <R, E>(self: STM<boolean, E, R>) => STM<boolean, E, R> = st
  * @since 2.0.0
  * @category mutations
  */
-export const none: <R, E, A>(self: STM<Option.Option<A>, E, R>) => STM<void, Option.Option<E>, R> = stm.none
+export const none: <A, E, R>(self: STM<Option.Option<A>, E, R>) => STM<void, Option.Option<E>, R> = stm.none
 
 /**
  * Converts the failure channel into an `Option`.
@@ -1352,7 +1352,7 @@ export const none: <R, E, A>(self: STM<Option.Option<A>, E, R>) => STM<void, Opt
  * @since 2.0.0
  * @category mutations
  */
-export const option: <R, E, A>(self: STM<A, E, R>) => STM<Option.Option<A>, never, R> = stm.option
+export const option: <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, never, R> = stm.option
 
 /**
  * Translates `STM` effect failure into death of the fiber, making all
@@ -1361,7 +1361,7 @@ export const option: <R, E, A>(self: STM<A, E, R>) => STM<Option.Option<A>, neve
  * @since 2.0.0
  * @category error handling
  */
-export const orDie: <R, E, A>(self: STM<A, E, R>) => STM<A, never, R> = stm.orDie
+export const orDie: <A, E, R>(self: STM<A, E, R>) => STM<A, never, R> = stm.orDie
 
 /**
  * Keeps none of the errors, and terminates the fiber running the `STM` effect
@@ -1383,7 +1383,7 @@ export const orDieWith: {
  * @category error handling
  */
 export const orElse: {
-  <R2, E2, A2>(that: LazyArg<STM<A2, E2, R2>>): <R, E, A>(self: STM<A, E, R>) => STM<A2 | A, E2, R2 | R>
+  <R2, E2, A2>(that: LazyArg<STM<A2, E2, R2>>): <A, E, R>(self: STM<A, E, R>) => STM<A2 | A, E2, R2 | R>
   <R, E, A, R2, E2, A2>(self: STM<A, E, R>, that: LazyArg<STM<A2, E2, R2>>): STM<A | A2, E2, R | R2>
 } = stm.orElse
 
@@ -1396,7 +1396,7 @@ export const orElse: {
  * @category error handling
  */
 export const orElseEither: {
-  <R2, E2, A2>(that: LazyArg<STM<A2, E2, R2>>): <R, E, A>(self: STM<A, E, R>) => STM<Either.Either<A, A2>, E2, R2 | R>
+  <R2, E2, A2>(that: LazyArg<STM<A2, E2, R2>>): <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<A, A2>, E2, R2 | R>
   <R, E, A, R2, E2, A2>(self: STM<A, E, R>, that: LazyArg<STM<A2, E2, R2>>): STM<Either.Either<A, A2>, E2, R | R2>
 } = stm.orElseEither
 
@@ -1408,7 +1408,7 @@ export const orElseEither: {
  * @category error handling
  */
 export const orElseFail: {
-  <E2>(error: LazyArg<E2>): <R, E, A>(self: STM<A, E, R>) => STM<A, E2, R>
+  <E2>(error: LazyArg<E2>): <A, E, R>(self: STM<A, E, R>) => STM<A, E2, R>
   <R, E, A, E2>(self: STM<A, E, R>, error: LazyArg<E2>): STM<A, E2, R>
 } = stm.orElseFail
 
@@ -1423,7 +1423,7 @@ export const orElseFail: {
 export const orElseOptional: {
   <R2, E2, A2>(
     that: LazyArg<STM<A2, Option.Option<E2>, R2>>
-  ): <R, E, A>(
+  ): <A, E, R>(
     self: STM<A, Option.Option<E>, R>
   ) => STM<A2 | A, Option.Option<E2 | E>, R2 | R>
   <R, E, A, R2, E2, A2>(
@@ -1440,7 +1440,7 @@ export const orElseOptional: {
  * @category error handling
  */
 export const orElseSucceed: {
-  <A2>(value: LazyArg<A2>): <R, E, A>(self: STM<A, E, R>) => STM<A2 | A, never, R>
+  <A2>(value: LazyArg<A2>): <A, E, R>(self: STM<A, E, R>) => STM<A2 | A, never, R>
   <R, E, A, A2>(self: STM<A, E, R>, value: LazyArg<A2>): STM<A | A2, never, R>
 } = stm.orElseSucceed
 
@@ -1452,7 +1452,7 @@ export const orElseSucceed: {
  * @category error handling
  */
 export const orTry: {
-  <R1, E1, A1>(that: LazyArg<STM<A1, E1, R1>>): <R, E, A>(self: STM<A, E, R>) => STM<A1 | A, E1 | E, R1 | R>
+  <R1, E1, A1>(that: LazyArg<STM<A1, E1, R1>>): <A, E, R>(self: STM<A, E, R>) => STM<A1 | A, E1 | E, R1 | R>
   <R, E, A, R1, E1, A1>(self: STM<A, E, R>, that: LazyArg<STM<A1, E1, R1>>): STM<A | A1, E | E1, R | R1>
 } = core.orTry
 
@@ -1508,7 +1508,7 @@ export const provideService: {
   <T extends Context.Tag<any, any>>(
     tag: T,
     resource: Context.Tag.Service<T>
-  ): <R, E, A>(self: STM<A, E, R>) => STM<A, E, Exclude<R, Context.Tag.Identifier<T>>>
+  ): <A, E, R>(self: STM<A, E, R>) => STM<A, E, Exclude<R, Context.Tag.Identifier<T>>>
   <R, E, A, T extends Context.Tag<any, any>>(
     self: STM<A, E, R>,
     tag: T,
@@ -1527,7 +1527,7 @@ export const provideServiceSTM: {
   <T extends Context.Tag<any, any>, R1, E1>(
     tag: T,
     stm: STM<Context.Tag.Service<T>, E1, R1>
-  ): <R, E, A>(self: STM<A, E, R>) => STM<A, E1 | E, R1 | Exclude<R, Context.Tag.Identifier<T>>>
+  ): <A, E, R>(self: STM<A, E, R>) => STM<A, E1 | E, R1 | Exclude<R, Context.Tag.Identifier<T>>>
   <R, E, A, T extends Context.Tag<any, any>, R1, E1>(
     self: STM<A, E, R>,
     tag: T,
@@ -1644,7 +1644,7 @@ export const rejectSTM: {
  */
 export const repeatUntil: {
   <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
-  <R, E, A>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
+  <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.repeatUntil
 
 /**
@@ -1665,7 +1665,7 @@ export const repeatUntil: {
  */
 export const repeatWhile: {
   <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
-  <R, E, A>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
+  <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.repeatWhile
 
 /**
@@ -1676,8 +1676,8 @@ export const repeatWhile: {
  * @category constructors
  */
 export const replicate: {
-  (n: number): <R, E, A>(self: STM<A, E, R>) => Array<STM<A, E, R>>
-  <R, E, A>(self: STM<A, E, R>, n: number): Array<STM<A, E, R>>
+  (n: number): <A, E, R>(self: STM<A, E, R>) => Array<STM<A, E, R>>
+  <A, E, R>(self: STM<A, E, R>, n: number): Array<STM<A, E, R>>
 } = stm.replicate
 
 /**
@@ -1688,8 +1688,8 @@ export const replicate: {
  * @category constructors
  */
 export const replicateSTM: {
-  (n: number): <R, E, A>(self: STM<A, E, R>) => STM<Array<A>, E, R>
-  <R, E, A>(self: STM<A, E, R>, n: number): STM<Array<A>, E, R>
+  (n: number): <A, E, R>(self: STM<A, E, R>) => STM<Array<A>, E, R>
+  <A, E, R>(self: STM<A, E, R>, n: number): STM<Array<A>, E, R>
 } = stm.replicateSTM
 
 /**
@@ -1700,8 +1700,8 @@ export const replicateSTM: {
  * @category constructors
  */
 export const replicateSTMDiscard: {
-  (n: number): <R, E, A>(self: STM<A, E, R>) => STM<void, E, R>
-  <R, E, A>(self: STM<A, E, R>, n: number): STM<void, E, R>
+  (n: number): <A, E, R>(self: STM<A, E, R>) => STM<void, E, R>
+  <A, E, R>(self: STM<A, E, R>, n: number): STM<void, E, R>
 } = stm.replicateSTMDiscard
 
 /**
@@ -1724,7 +1724,7 @@ export const retryUntil: {
   <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <R, E>(self: STM<A, E, R>) => STM<B, E, R>
   <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
   <R, E, A, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>): STM<B, E, R>
-  <R, E, A>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
+  <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.retryUntil
 
 /**
@@ -1736,7 +1736,7 @@ export const retryUntil: {
  */
 export const retryWhile: {
   <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
-  <R, E, A>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
+  <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.retryWhile
 
 /**
@@ -1745,7 +1745,7 @@ export const retryWhile: {
  * @since 2.0.0
  * @category getters
  */
-export const some: <R, E, A>(self: STM<Option.Option<A>, E, R>) => STM<A, Option.Option<E>, R> = stm.some
+export const some: <A, E, R>(self: STM<Option.Option<A>, E, R>) => STM<A, Option.Option<E>, R> = stm.some
 
 /**
  * Returns an `STM` effect that succeeds with the specified value.
@@ -1783,7 +1783,7 @@ export const summarized: {
   <R2, E2, A2, A3>(
     summary: STM<A2, E2, R2>,
     f: (before: A2, after: A2) => A3
-  ): <R, E, A>(
+  ): <A, E, R>(
     self: STM<A, E, R>
   ) => STM<[A3, A], E2 | E, R2 | R>
   <R, E, A, R2, E2, A2, A3>(
@@ -1799,7 +1799,7 @@ export const summarized: {
  * @since 2.0.0
  * @category constructors
  */
-export const suspend: <R, E, A>(evaluate: LazyArg<STM<A, E, R>>) => STM<A, E, R> = stm.suspend
+export const suspend: <A, E, R>(evaluate: LazyArg<STM<A, E, R>>) => STM<A, E, R> = stm.suspend
 
 /**
  * Returns an `STM` effect that succeeds with the specified lazily evaluated
@@ -1879,8 +1879,8 @@ export {
  * @category mutations
  */
 export const unless: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<A, E, R>) => STM<Option.Option<A>, E, R>
-  <R, E, A>(self: STM<A, E, R>, predicate: LazyArg<boolean>): STM<Option.Option<A>, E, R>
+  (predicate: LazyArg<boolean>): <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E, R>
+  <A, E, R>(self: STM<A, E, R>, predicate: LazyArg<boolean>): STM<Option.Option<A>, E, R>
 } = stm.unless
 
 /**
@@ -1890,7 +1890,7 @@ export const unless: {
  * @category mutations
  */
 export const unlessSTM: {
-  <R2, E2>(predicate: STM<boolean, E2, R2>): <R, E, A>(self: STM<A, E, R>) => STM<Option.Option<A>, E2 | E, R2 | R>
+  <R2, E2>(predicate: STM<boolean, E2, R2>): <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E2 | E, R2 | R>
   <R, E, A, R2, E2>(self: STM<A, E, R>, predicate: STM<boolean, E2, R2>): STM<Option.Option<A>, E | E2, R | R2>
 } = stm.unlessSTM
 
@@ -1900,7 +1900,7 @@ export const unlessSTM: {
  * @since 2.0.0
  * @category getters
  */
-export const unsome: <R, E, A>(self: STM<A, Option.Option<E>, R>) => STM<Option.Option<A>, E, R> = stm.unsome
+export const unsome: <A, E, R>(self: STM<A, Option.Option<E>, R>) => STM<Option.Option<A>, E, R> = stm.unsome
 
 /**
  * Returns an `STM` effect that succeeds with `Unit`.
@@ -1944,8 +1944,8 @@ export const validateFirst: {
  * @category mutations
  */
 export const when: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<A, E, R>) => STM<Option.Option<A>, E, R>
-  <R, E, A>(self: STM<A, E, R>, predicate: LazyArg<boolean>): STM<Option.Option<A>, E, R>
+  (predicate: LazyArg<boolean>): <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E, R>
+  <A, E, R>(self: STM<A, E, R>, predicate: LazyArg<boolean>): STM<Option.Option<A>, E, R>
 } = stm.when
 
 /**
@@ -1955,7 +1955,7 @@ export const when: {
  * @category mutations
  */
 export const whenSTM: {
-  <R2, E2>(predicate: STM<boolean, E2, R2>): <R, E, A>(self: STM<A, E, R>) => STM<Option.Option<A>, E2 | E, R2 | R>
+  <R2, E2>(predicate: STM<boolean, E2, R2>): <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E2 | E, R2 | R>
   <R, E, A, R2, E2>(self: STM<A, E, R>, predicate: STM<boolean, E2, R2>): STM<Option.Option<A>, E | E2, R | R2>
 } = stm.whenSTM
 
@@ -1966,7 +1966,7 @@ export const whenSTM: {
  * @category zipping
  */
 export const zip: {
-  <R1, E1, A1>(that: STM<A1, E1, R1>): <R, E, A>(self: STM<A, E, R>) => STM<[A, A1], E1 | E, R1 | R>
+  <R1, E1, A1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<[A, A1], E1 | E, R1 | R>
   <R, E, A, R1, E1, A1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<[A, A1], E | E1, R | R1>
 } = core.zip
 
@@ -1978,7 +1978,7 @@ export const zip: {
  * @category zipping
  */
 export const zipLeft: {
-  <R1, E1, A1>(that: STM<A1, E1, R1>): <R, E, A>(self: STM<A, E, R>) => STM<A, E1 | E, R1 | R>
+  <R1, E1, A1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<A, E1 | E, R1 | R>
   <R, E, A, R1, E1, A1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<A, E | E1, R | R1>
 } = core.zipLeft
 
@@ -1990,7 +1990,7 @@ export const zipLeft: {
  * @category zipping
  */
 export const zipRight: {
-  <R1, E1, A1>(that: STM<A1, E1, R1>): <R, E, A>(self: STM<A, E, R>) => STM<A1, E1 | E, R1 | R>
+  <R1, E1, A1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<A1, E1 | E, R1 | R>
   <R, E, A, R1, E1, A1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<A1, E | E1, R | R1>
 } = core.zipRight
 
@@ -2034,8 +2034,8 @@ export const zipWith: {
  * @since 2.0.0
  * @category elements
  */
-export const firstSuccessOf = <R, E, A>(effects: Iterable<STM<A, E, R>>): STM<A, E, R> =>
-  suspend<R, E, A>(() => {
+export const firstSuccessOf = <A, E, R>(effects: Iterable<STM<A, E, R>>): STM<A, E, R> =>
+  suspend<A, E, R>(() => {
     const list = Chunk.fromIterable(effects)
     if (!Chunk.isNonEmpty(list)) {
       return dieSync(() => new Cause.IllegalArgumentException(`Received an empty collection of effects`))
@@ -2093,6 +2093,6 @@ export {
  * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <R, E, A>(self: STM<A, E, R>) => STM<Record<N, A>, E, R>
+  <N extends string>(tag: N): <A, E, R>(self: STM<A, E, R>) => STM<Record<N, A>, E, R>
   <R, E, A, N extends string>(self: STM<A, E, R>, tag: N): STM<Record<N, A>, E, R>
 } = stm.bindTo

@@ -94,8 +94,8 @@ export const releaseN: {
  * @category mutations
  */
 export const withPermit: {
-  (semaphore: TSemaphore): <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(self: Effect.Effect<A, E, R>, semaphore: TSemaphore): Effect.Effect<A, E, R>
+  (semaphore: TSemaphore): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, semaphore: TSemaphore): Effect.Effect<A, E, R>
 } = internal.withPermit
 
 /**
@@ -103,8 +103,8 @@ export const withPermit: {
  * @category mutations
  */
 export const withPermits: {
-  (semaphore: TSemaphore, permits: number): <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(self: Effect.Effect<A, E, R>, semaphore: TSemaphore, permits: number): Effect.Effect<A, E, R>
+  (semaphore: TSemaphore, permits: number): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, semaphore: TSemaphore, permits: number): Effect.Effect<A, E, R>
 } = internal.withPermits
 
 /**
