@@ -2040,17 +2040,17 @@ export const provideService = dual<
 /** @internal */
 export const provideLayer = dual<
   <Env0, Env, OutErr2>(
-    layer: Layer.Layer<Env0, OutErr2, Env>
+    layer: Layer.Layer<Env, OutErr2, Env0>
   ) => <InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env0, InErr, InElem, InDone, OutErr2 | OutErr, OutElem, OutDone>,
   <InErr, InElem, InDone, OutErr, OutElem, OutDone, Env0, Env, OutErr2>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    layer: Layer.Layer<Env0, OutErr2, Env>
+    layer: Layer.Layer<Env, OutErr2, Env0>
   ) => Channel.Channel<Env0, InErr, InElem, InDone, OutErr2 | OutErr, OutElem, OutDone>
 >(2, <InErr, InElem, InDone, OutErr, OutElem, OutDone, Env0, Env, OutErr2>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  layer: Layer.Layer<Env0, OutErr2, Env>
+  layer: Layer.Layer<Env, OutErr2, Env0>
 ): Channel.Channel<Env0, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> =>
   unwrapScoped(Effect.map(Layer.build(layer), (env) => core.provideContext(self, env))))
 
@@ -2074,17 +2074,17 @@ export const mapInputContext = dual<
 /** @internal */
 export const provideSomeLayer = dual<
   <Env0, Env2, OutErr2>(
-    layer: Layer.Layer<Env0, OutErr2, Env2>
+    layer: Layer.Layer<Env2, OutErr2, Env0>
   ) => <R, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env0 | Exclude<R, Env2>, InErr, InElem, InDone, OutErr2 | OutErr, OutElem, OutDone>,
   <R, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env0, Env2, OutErr2>(
     self: Channel.Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    layer: Layer.Layer<Env0, OutErr2, Env2>
+    layer: Layer.Layer<Env2, OutErr2, Env0>
   ) => Channel.Channel<Env0 | Exclude<R, Env2>, InErr, InElem, InDone, OutErr2 | OutErr, OutElem, OutDone>
 >(2, <R, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env0, Env2, OutErr2>(
   self: Channel.Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  layer: Layer.Layer<Env0, OutErr2, Env2>
+  layer: Layer.Layer<Env2, OutErr2, Env0>
 ): Channel.Channel<Env0 | Exclude<R, Env2>, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> =>
   // @ts-expect-error
   provideLayer(self, Layer.merge(Layer.context<Exclude<R, Env2>>(), layer)))

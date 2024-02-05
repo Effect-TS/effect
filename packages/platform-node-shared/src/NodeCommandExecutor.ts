@@ -10,4 +10,4 @@ import * as internal from "./internal/commandExecutor.js"
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer<FileSystem, never, CommandExecutor> = internal.layer
+export const layer: Layer<CommandExecutor, never, FileSystem> = internal.layer

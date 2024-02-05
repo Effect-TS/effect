@@ -12,7 +12,7 @@ import * as internal from "./internal/workerRunner.js"
  * @since 1.0.0
  * @category layers
  */
-export const layerPlatform: Layer.Layer<never, never, Runner.PlatformRunner> = internal.layerPlatform
+export const layerPlatform: Layer.Layer<Runner.PlatformRunner> = internal.layerPlatform
 
 /**
  * @since 1.0.0
@@ -21,7 +21,7 @@ export const layerPlatform: Layer.Layer<never, never, Runner.PlatformRunner> = i
 export const layer: <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R>,
   options?: Runner.Runner.Options<I, E, O> | undefined
-) => Layer.Layer<R, WorkerError, never> = internal.layer
+) => Layer.Layer<never, WorkerError, R> = internal.layer
 
 /**
  * @since 1.0.0
@@ -35,4 +35,4 @@ export const layerSerialized: <
 >(
   schema: Schema.Schema<A, I, R>,
   handlers: Handlers
-) => Layer.Layer<R | Runner.SerializedRunner.HandlersContext<Handlers>, WorkerError, never> = internal.layerSerialized
+) => Layer.Layer<never, WorkerError, R | Runner.SerializedRunner.HandlersContext<Handlers>> = internal.layerSerialized

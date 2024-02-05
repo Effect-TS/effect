@@ -10,7 +10,7 @@ import * as TestClock from "./TestClock.js"
 import * as TestServices from "./TestServices.js"
 
 /** @internal */
-export const live: Layer.Layer<DefaultServices.DefaultServices, never, TestServices.TestServices> = pipe(
+export const live: Layer.Layer<TestServices.TestServices, never, DefaultServices.DefaultServices> = pipe(
   TestServices.annotationsLayer(),
   layer.merge(TestServices.liveLayer()),
   layer.merge(TestServices.sizedLayer(100)),
@@ -26,11 +26,11 @@ export const live: Layer.Layer<DefaultServices.DefaultServices, never, TestServi
 /**
  * @since 2.0.0
  */
-export const LiveContext: Layer.Layer<never, never, DefaultServices.DefaultServices> = layer.syncContext(() =>
+export const LiveContext: Layer.Layer<DefaultServices.DefaultServices> = layer.syncContext(() =>
   defaultServices.liveServices
 )
 
 /**
  * @since 2.0.0
  */
-export const TestContext: Layer.Layer<never, never, TestServices.TestServices> = layer.provideMerge(live, LiveContext)
+export const TestContext: Layer.Layer<TestServices.TestServices> = layer.provideMerge(live, LiveContext)

@@ -77,7 +77,7 @@ export const layerPlatform = Layer.succeed(Runner.PlatformRunner, platformRunner
 export const layer = <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R>,
   options?: Runner.Runner.Options<I, E, O>
-): Layer.Layer<R, WorkerError, never> => Layer.provide(Runner.layer(process, options), layerPlatform)
+): Layer.Layer<never, WorkerError, R> => Layer.provide(Runner.layer(process, options), layerPlatform)
 
 /** @internal */
 export const layerSerialized = <
@@ -88,8 +88,5 @@ export const layerSerialized = <
 >(
   schema: Schema.Schema<A, I, R>,
   handlers: Handlers
-): Layer.Layer<
-  R | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
-  WorkerError,
-  never
-> => Layer.provide(Runner.layerSerialized(schema, handlers), layerPlatform)
+): Layer.Layer<never, WorkerError, R | WorkerRunner.SerializedRunner.HandlersContext<Handlers>> =>
+  Layer.provide(Runner.layerSerialized(schema, handlers), layerPlatform)

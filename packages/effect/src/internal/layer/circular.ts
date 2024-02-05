@@ -21,7 +21,7 @@ import * as tracer from "../tracer.js"
 // circular with Logger
 
 /** @internal */
-export const minimumLogLevel = (level: LogLevel.LogLevel): Layer.Layer<never, never, never> =>
+export const minimumLogLevel = (level: LogLevel.LogLevel): Layer.Layer<never> =>
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScoped(
       fiberRuntime.currentMinimumLogLevel,
@@ -40,7 +40,7 @@ export const withMinimumLogLevel = dual<
   )(self))
 
 /** @internal */
-export const addLogger = <A>(logger: Logger.Logger<unknown, A>): Layer.Layer<never, never, never> =>
+export const addLogger = <A>(logger: Logger.Logger<unknown, A>): Layer.Layer<never> =>
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScopedWith(
       fiberRuntime.currentLoggers,
@@ -51,7 +51,7 @@ export const addLogger = <A>(logger: Logger.Logger<unknown, A>): Layer.Layer<nev
 /** @internal */
 export const addLoggerEffect = <A, E, R>(
   effect: Effect.Effect<Logger.Logger<unknown, A>, E, R>
-): Layer.Layer<R, E, never> =>
+): Layer.Layer<never, E, R> =>
   layer.unwrapEffect(
     core.map(effect, addLogger)
   )
@@ -59,13 +59,13 @@ export const addLoggerEffect = <A, E, R>(
 /** @internal */
 export const addLoggerScoped = <A, E, R>(
   effect: Effect.Effect<Logger.Logger<unknown, A>, E, R>
-): Layer.Layer<Exclude<R, Scope>, E, never> =>
+): Layer.Layer<never, E, Exclude<R, Scope>> =>
   layer.unwrapScoped(
     core.map(effect, addLogger)
   )
 
 /** @internal */
-export const removeLogger = <A>(logger: Logger.Logger<unknown, A>): Layer.Layer<never, never, never> =>
+export const removeLogger = <A>(logger: Logger.Logger<unknown, A>): Layer.Layer<never> =>
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScopedWith(
       fiberRuntime.currentLoggers,
@@ -75,34 +75,34 @@ export const removeLogger = <A>(logger: Logger.Logger<unknown, A>): Layer.Layer<
 
 /** @internal */
 export const replaceLogger = dual<
-  <B>(that: Logger.Logger<unknown, B>) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<never, never, never>,
-  <A, B>(self: Logger.Logger<unknown, A>, that: Logger.Logger<unknown, B>) => Layer.Layer<never, never, never>
+  <B>(that: Logger.Logger<unknown, B>) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<never>,
+  <A, B>(self: Logger.Logger<unknown, A>, that: Logger.Logger<unknown, B>) => Layer.Layer<never>
 >(2, (self, that) => layer.flatMap(removeLogger(self), () => addLogger(that)))
 
 /** @internal */
 export const replaceLoggerEffect = dual<
   <R, E, B>(
     that: Effect.Effect<Logger.Logger<unknown, B>, E, R>
-  ) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<R, E, never>,
+  ) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<never, E, R>,
   <A, R, E, B>(
     self: Logger.Logger<unknown, A>,
     that: Effect.Effect<Logger.Logger<unknown, B>, E, R>
-  ) => Layer.Layer<R, E, never>
+  ) => Layer.Layer<never, E, R>
 >(2, (self, that) => layer.flatMap(removeLogger(self), () => addLoggerEffect(that)))
 
 /** @internal */
 export const replaceLoggerScoped = dual<
   <R, E, B>(
     that: Effect.Effect<Logger.Logger<unknown, B>, E, R>
-  ) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<Exclude<R, Scope>, E, never>,
+  ) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<never, E, Exclude<R, Scope>>,
   <A, R, E, B>(
     self: Logger.Logger<unknown, A>,
     that: Effect.Effect<Logger.Logger<unknown, B>, E, R>
-  ) => Layer.Layer<Exclude<R, Scope>, E, never>
+  ) => Layer.Layer<never, E, Exclude<R, Scope>>
 >(2, (self, that) => layer.flatMap(removeLogger(self), () => addLoggerScoped(that)))
 
 /** @internal */
-export const addSupervisor = <A>(supervisor: Supervisor.Supervisor<A>): Layer.Layer<never, never, never> =>
+export const addSupervisor = <A>(supervisor: Supervisor.Supervisor<A>): Layer.Layer<never> =>
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScopedWith(
       fiberRuntime.currentSupervisor,
@@ -111,81 +111,81 @@ export const addSupervisor = <A>(supervisor: Supervisor.Supervisor<A>): Layer.La
   )
 
 /** @internal */
-export const enableCooperativeYielding: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const enableCooperativeYielding: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.enable(runtimeFlags.CooperativeYielding)
   )
 )
 
 /** @internal */
-export const enableInterruption: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const enableInterruption: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.enable(runtimeFlags.Interruption)
   )
 )
 
 /** @internal */
-export const enableOpSupervision: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const enableOpSupervision: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.enable(runtimeFlags.OpSupervision)
   )
 )
 
 /** @internal */
-export const enableRuntimeMetrics: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const enableRuntimeMetrics: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.enable(runtimeFlags.RuntimeMetrics)
   )
 )
 
 /** @internal */
-export const enableWindDown: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const enableWindDown: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.enable(runtimeFlags.WindDown)
   )
 )
 
 /** @internal */
-export const disableCooperativeYielding: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const disableCooperativeYielding: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.disable(runtimeFlags.CooperativeYielding)
   )
 )
 
 /** @internal */
-export const disableInterruption: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const disableInterruption: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.disable(runtimeFlags.Interruption)
   )
 )
 
 /** @internal */
-export const disableOpSupervision: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const disableOpSupervision: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.disable(runtimeFlags.OpSupervision)
   )
 )
 
 /** @internal */
-export const disableRuntimeMetrics: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const disableRuntimeMetrics: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.disable(runtimeFlags.RuntimeMetrics)
   )
 )
 
 /** @internal */
-export const disableWindDown: Layer.Layer<never, never, never> = layer.scopedDiscard(
+export const disableWindDown: Layer.Layer<never> = layer.scopedDiscard(
   fiberRuntime.withRuntimeFlagsScoped(
     runtimeFlagsPatch.disable(runtimeFlags.WindDown)
   )
 )
 
 /** @internal */
-export const setConfigProvider = (configProvider: ConfigProvider.ConfigProvider): Layer.Layer<never, never, never> =>
+export const setConfigProvider = (configProvider: ConfigProvider.ConfigProvider): Layer.Layer<never> =>
   layer.scopedDiscard(fiberRuntime.withConfigProviderScoped(configProvider))
 
 /** @internal */
-export const parentSpan = (span: Tracer.ParentSpan): Layer.Layer<never, never, Tracer.ParentSpan> =>
+export const parentSpan = (span: Tracer.ParentSpan): Layer.Layer<Tracer.ParentSpan> =>
   layer.succeedContext(Context.make(tracer.spanTag, span))
 
 /** @internal */
@@ -201,7 +201,7 @@ export const span = (
       | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
       | undefined
   }
-): Layer.Layer<never, never, Tracer.ParentSpan> =>
+): Layer.Layer<Tracer.ParentSpan> =>
   layer.scoped(
     tracer.spanTag,
     options?.onEnd
@@ -213,5 +213,5 @@ export const span = (
   )
 
 /** @internal */
-export const setTracer = (tracer: Tracer.Tracer): Layer.Layer<never, never, never> =>
+export const setTracer = (tracer: Tracer.Tracer): Layer.Layer<never> =>
   layer.scopedDiscard(fiberRuntime.withTracerScoped(tracer))

@@ -1728,13 +1728,13 @@ export const provideContext: {
  */
 export const provideLayer: {
   <Env0, Env, OutErr2>(
-    layer: Layer.Layer<Env0, OutErr2, Env>
+    layer: Layer.Layer<Env, OutErr2, Env0>
   ): <InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env0, InErr, InElem, InDone, OutErr2 | OutErr, OutElem, OutDone>
   <InErr, InElem, InDone, OutErr, OutElem, OutDone, Env0, Env, OutErr2>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    layer: Layer.Layer<Env0, OutErr2, Env>
+    layer: Layer.Layer<Env, OutErr2, Env0>
   ): Channel<Env0, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone>
 } = channel.provideLayer
 
@@ -1766,13 +1766,13 @@ export const mapInputContext: {
  */
 export const provideSomeLayer: {
   <Env0, Env2, OutErr2>(
-    layer: Layer.Layer<Env0, OutErr2, Env2>
+    layer: Layer.Layer<Env2, OutErr2, Env0>
   ): <R, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env0 | Exclude<R, Env2>, InErr, InElem, InDone, OutErr2 | OutErr, OutElem, OutDone>
   <R, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env0, Env2, OutErr2>(
     self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    layer: Layer.Layer<Env0, OutErr2, Env2>
+    layer: Layer.Layer<Env2, OutErr2, Env0>
   ): Channel<Env0 | Exclude<R, Env2>, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone>
 } = channel.provideSomeLayer
 

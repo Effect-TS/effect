@@ -106,7 +106,7 @@ export const make: <I, R, E, O>(
 export const layer: <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: Runner.Options<I, E, O> | undefined
-) => Layer.Layer<R | PlatformRunner, WorkerError, never> = internal.layer
+) => Layer.Layer<never, WorkerError, R | PlatformRunner> = internal.layer
 
 /**
  * @since 1.0.0
@@ -135,7 +135,7 @@ export declare namespace SerializedRunner {
         | Stream.Stream<O, E, any>
         | Effect.Effect<O, E, any>
         | Layer.Layer<any, E, any>
-        | Layer.Layer<any, E, never>
+        | Layer.Layer<never, E, any>
       : never
   }
 
@@ -165,7 +165,7 @@ export declare namespace SerializedRunner {
     Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>
   > = Handlers["InitialMessage"] extends (
     ...args: ReadonlyArray<any>
-  ) => Layer.Layer<infer _R, infer _E, infer A> ? A
+  ) => Layer.Layer<infer A, infer _E, infer _R> ? A
     : never
 
   /**
@@ -175,7 +175,7 @@ export declare namespace SerializedRunner {
     Handlers extends Record<string, (...args: ReadonlyArray<any>) => any>
   > = Handlers["InitialMessage"] extends (
     ...args: ReadonlyArray<any>
-  ) => Layer.Layer<infer R, infer _E, infer _A> ? R
+  ) => Layer.Layer<infer _A, infer _E, infer R> ? R
     : never
 }
 
@@ -206,5 +206,5 @@ export const layerSerialized: <
 >(
   schema: Schema.Schema<A, I, R>,
   handlers: Handlers
-) => Layer.Layer<PlatformRunner | R | SerializedRunner.HandlersContext<Handlers>, WorkerError, never> =
+) => Layer.Layer<never, WorkerError, PlatformRunner | R | SerializedRunner.HandlersContext<Handlers>> =
   internal.layerSerialized

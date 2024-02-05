@@ -37,30 +37,26 @@ export const serve = dual<
   {
     (): <R, E>(
       httpApp: App.Default<R, E>
-    ) => Layer.Layer<
-      Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>,
-      never,
-      never
-    >
+    ) => Layer.Layer<never, never, Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
     <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<R, E, App>): (
       httpApp: App.Default<R, E>
     ) => Layer.Layer<
-      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>,
       never,
-      never
+      never,
+      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
     >
   },
   {
     <R, E>(
       httpApp: App.Default<R, E>
-    ): Layer.Layer<Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>, never, never>
+    ): Layer.Layer<never, never, Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
     <R, E, App extends App.Default<any, any>>(
       httpApp: App.Default<R, E>,
       middleware: Middleware.Middleware.Applied<R, E, App>
     ): Layer.Layer<
-      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>,
       never,
-      never
+      never,
+      Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
     >
   }
 >(
@@ -69,9 +65,9 @@ export const serve = dual<
     httpApp: App.Default<R, E>,
     middleware?: Middleware.Middleware.Applied<R, E, App>
   ): Layer.Layer<
-    Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>,
     never,
-    never
+    never,
+    Server.Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
   > =>
     Layer.scopedDiscard(
       Effect.flatMap(
@@ -163,8 +159,8 @@ export const logAddress: Effect.Effect<void, never, Server.Server> = addressForm
 
 /** @internal */
 export const withLogAddress = <R, E, A>(
-  layer: Layer.Layer<R, E, A>
-): Layer.Layer<R | Exclude<Server.Server, A>, E, A> =>
+  layer: Layer.Layer<A, E, R>
+): Layer.Layer<A, E, R | Exclude<Server.Server, A>> =>
   Layer.effectDiscard(logAddress).pipe(
     Layer.provideMerge(layer)
   )

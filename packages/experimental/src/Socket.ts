@@ -303,4 +303,4 @@ export const makeWebSocketChannel = <IE = never>(
  */
 export const layerWebSocket = (url: string, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Layer.Layer<never, never, Socket> => Layer.scoped(Socket, makeWebSocket(url, options))
+}): Layer.Layer<Socket> => Layer.scoped(Socket, makeWebSocket(url, options))

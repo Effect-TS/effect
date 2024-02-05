@@ -342,7 +342,7 @@ export const makePool = <W>() =>
   })
 
 /** @internal */
-export const makePoolLayer = <W>(managerLayer: Layer.Layer<never, never, Worker.WorkerManager>) =>
+export const makePoolLayer = <W>(managerLayer: Layer.Layer<Worker.WorkerManager>) =>
 <Tag, I, E, O>(
   tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
   options: Worker.WorkerPool.Options<I, W>
@@ -443,7 +443,7 @@ export const makePoolSerialized = <W>() =>
 
 /** @internal */
 export const makePoolSerializedLayer =
-  <W>(managerLayer: Layer.Layer<never, never, Worker.WorkerManager>) =>
+  <W>(managerLayer: Layer.Layer<Worker.WorkerManager>) =>
   <Tag, I extends Schema.TaggedRequest.Any>(
     tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
     options: Worker.SerializedWorkerPool.Options<I, W>

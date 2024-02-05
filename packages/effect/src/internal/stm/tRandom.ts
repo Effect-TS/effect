@@ -109,7 +109,7 @@ class TRandomImpl implements TRandom.TRandom {
 }
 
 /** @internal */
-export const live: Layer.Layer<never, never, TRandom.TRandom> = Layer.effect(
+export const live: Layer.Layer<TRandom.TRandom> = Layer.effect(
   Tag,
   pipe(
     tRef.make(new Random.PCGRandom((Math.random() * 4294967296) >>> 0).getState()),
