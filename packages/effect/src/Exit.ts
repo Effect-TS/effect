@@ -157,7 +157,7 @@ export const all: <A, E>(
  * @since 2.0.0
  * @category constructors
  */
-export const die: (defect: unknown) => Exit<never, never> = core.exitDie
+export const die: (defect: unknown) => Exit<never> = core.exitDie
 
 /**
  * Executes the predicate on the value of the specified exit if it is a
@@ -167,9 +167,9 @@ export const die: (defect: unknown) => Exit<never, never> = core.exitDie
  * @category elements
  */
 export const exists: {
-  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <E>(self: Exit<A, E>) => self is Exit<B, never>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <E>(self: Exit<A, E>) => self is Exit<B>
   <A>(predicate: Predicate<NoInfer<A>>): <E>(self: Exit<A, E>) => boolean
-  <A, E, B extends A>(self: Exit<A, E>, refinement: Refinement<A, B>): self is Exit<B, never>
+  <A, E, B extends A>(self: Exit<A, E>, refinement: Refinement<A, B>): self is Exit<B>
   <A, E>(self: Exit<A, E>, predicate: Predicate<A>): boolean
 } = core.exitExists
 
@@ -261,7 +261,7 @@ export const getOrElse: {
  * @since 2.0.0
  * @category constructors
  */
-export const interrupt: (fiberId: FiberId.FiberId) => Exit<never, never> = core.exitInterrupt
+export const interrupt: (fiberId: FiberId.FiberId) => Exit<never> = core.exitInterrupt
 
 /**
  * Maps over the `Success` value of the specified exit using the provided

@@ -314,7 +314,7 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
 export const cachedFunction: <A, B, E, R>(
   f: (a: A) => Effect<B, E, R>,
   eq?: Equivalence<A>
-) => Effect<(a: A) => Effect<B, E, R>, never, never> = circular.cachedFunction
+) => Effect<(a: A) => Effect<B, E, R>> = circular.cachedFunction
 
 /**
  * Returns an effect that will be executed at most once, even if it is
@@ -1900,8 +1900,8 @@ export const tryMapPromise: {
 export const tryPromise: {
   <A, E>(
     options: { readonly try: (signal: AbortSignal) => Promise<A>; readonly catch: (error: unknown) => E }
-  ): Effect<A, E, never>
-  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect<A, Cause.UnknownException, never>
+  ): Effect<A, E>
+  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect<A, Cause.UnknownException>
 } = effect.tryPromise
 
 /**
@@ -2473,7 +2473,7 @@ export const using: {
  */
 export const withEarlyRelease: <A, E, R>(
   self: Effect<A, E, R>
-) => Effect<[Effect<void, never, never>, A], E, R | Scope.Scope> = fiberRuntime.withEarlyRelease
+) => Effect<[Effect<void>, A], E, R | Scope.Scope> = fiberRuntime.withEarlyRelease
 
 // -------------------------------------------------------------------------------------
 // supervision & fibers
@@ -4901,8 +4901,7 @@ export const ap: {
  * @category requests & batching
  * @since 2.0.0
  */
-export const blocked: <E, A>(blockedRequests: RequestBlock, _continue: Effect<A, E, never>) => Blocked<E, A> =
-  core.blocked
+export const blocked: <E, A>(blockedRequests: RequestBlock, _continue: Effect<A, E>) => Blocked<E, A> = core.blocked
 
 /**
  * @category requests & batching
@@ -5225,8 +5224,7 @@ export const withParentSpan: {
  * @since 2.0.0
  * @category optionality
  */
-export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchElementException, never> =
-  effect.fromNullable
+export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchElementException> = effect.fromNullable
 
 /**
  * Wraps the success value of this effect with `Option.some`, and maps

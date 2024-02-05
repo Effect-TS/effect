@@ -457,15 +457,14 @@ export interface Adapter<Z extends TypeLambda> {
  * @category adapters
  * @since 2.0.0
  */
-export const adapter: <F extends TypeLambda>() => Adapter<F> = () =>
-  // @ts-expect-error
-  function() {
-    let x = arguments[0]
-    for (let i = 1; i < arguments.length; i++) {
-      x = arguments[i](x)
-    }
-    return new GenKindImpl(x)
+export const adapter: <F extends TypeLambda>() => Adapter<F> = () => // @ts-expect-error
+(function() {
+  let x = arguments[0]
+  for (let i = 1; i < arguments.length; i++) {
+    x = arguments[i](x)
   }
+  return new GenKindImpl(x)
+})
 
 const defaultIncHi = 0x14057b7e
 const defaultIncLo = 0xf767814f
