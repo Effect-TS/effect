@@ -2073,7 +2073,7 @@ export const makeSpan = (
         options?.links !== undefined ?
           [
             ...Chunk.toReadonlyArray(linksFromEnv.value),
-            ...options?.links ?? []
+            ...(options?.links ?? [])
           ] :
           Chunk.toReadonlyArray(linksFromEnv.value) :
         options?.links ?? ReadonlyArray.empty()

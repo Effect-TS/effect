@@ -2442,8 +2442,8 @@ export const exitCollectAll = <A, E>(
   exitCollectAllInternal(exits, options?.parallel ? internalCause.parallel : internalCause.sequential)
 
 /** @internal */
-export const exitDie = (defect: unknown): Exit.Exit<never, never> =>
-  exitFailCause(internalCause.die(defect)) as Exit.Exit<never, never>
+export const exitDie = (defect: unknown): Exit.Exit<never> =>
+  exitFailCause(internalCause.die(defect)) as Exit.Exit<never>
 
 /** @internal */
 export const exitExists: {
@@ -2571,7 +2571,7 @@ export const exitGetOrElse = dual<
 })
 
 /** @internal */
-export const exitInterrupt = (fiberId: FiberId.FiberId): Exit.Exit<never, never> =>
+export const exitInterrupt = (fiberId: FiberId.FiberId): Exit.Exit<never> =>
   exitFailCause(internalCause.interrupt(fiberId))
 
 /** @internal */
