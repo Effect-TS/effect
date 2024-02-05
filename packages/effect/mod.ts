@@ -2,6 +2,7 @@ import type k from "ast-types/gen/kinds.js"
 import type cs from "jscodeshift"
 
 const enabled = {
+  swapLayerParams: true,
   swapSTMParams: false,
   swapSTMGenParams: false,
   cleanupSTM: false,
@@ -10,29 +11,10 @@ const enabled = {
   cleanupExit: false
 }
 
-const cleanup = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
-  const name = ast.value.typeName
-  const is = (node: typeof name): boolean => {
-    switch (node.type) {
-      case "Identifier": {
-        if (node.name === nodeName) {
-          return true
-        }
-        return false
-      }
-      case "JSXIdentifier": {
-        return false
-      }
-      case "TSQualifiedName": {
-        return is(node.right)
-      }
-      case "TSTypeParameter": {
-        return false
-      }
-    }
-  }
+const cleanup = (name: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
+  const is = filter(ast, name)
   if (
-    is(name) &&
+    is(ast.value.typeName) &&
     ast.value.typeParameters
   ) {
     const params = ast.value.typeParameters.params
@@ -48,7 +30,7 @@ const cleanupStream = cleanup("Stream")
 const cleanupExit = cleanup("Exit")
 const cleanupSTM = cleanup("STM")
 
-const swapParams = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
+const filter = (ast: cs.ASTPath<cs.TSTypeReference>, nodeName: string) => {
   const name = ast.value.typeName
   const is = (node: typeof name): boolean => {
     switch (node.type) {
@@ -69,8 +51,13 @@ const swapParams = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) =
       }
     }
   }
+  return is
+}
+
+const swapParams = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
+  const is = filter(ast, nodeName)
   if (
-    is(name) &&
+    is(ast.value.typeName) &&
     ast.value.typeParameters &&
     ast.value.typeParameters.params.length === 3
   ) {
@@ -84,6 +71,7 @@ const swapParams = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) =
 
 const swapSTMParams = swapParams("STM")
 const swapSTMGenParams = swapParams("STMGen")
+const swapLayerParams = swapParams("Layer")
 
 const popNever = (params: Array<k.TSTypeKind>) => {
   if (params.length > 0 && params[params.length - 1].type === "TSNeverKeyword") {
@@ -110,6 +98,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
   }
 
   forEveryTypeReference(root, (ast) => {
+    if (enabled.swapLayerParams) {
+      swapLayerParams(ast)
+    }
     if (enabled.swapSTMParams) {
       swapSTMParams(ast)
     }
