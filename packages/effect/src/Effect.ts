@@ -136,7 +136,7 @@ export interface EffectTypeLambda extends TypeLambda {
  * @since 2.0.0
  * @category models
  */
-export interface Blocked<out E, out A> extends Effect<A, E> {
+export interface Blocked<out A, out E> extends Effect<A, E> {
   readonly _op: "Blocked"
   readonly i0: RequestBlock
   readonly i1: Effect<A, E>
@@ -4901,7 +4901,7 @@ export const ap: {
  * @category requests & batching
  * @since 2.0.0
  */
-export const blocked: <E, A>(blockedRequests: RequestBlock, _continue: Effect<A, E>) => Blocked<E, A> = core.blocked
+export const blocked: <A, E>(blockedRequests: RequestBlock, _continue: Effect<A, E>) => Blocked<A, E> = core.blocked
 
 /**
  * @category requests & batching
@@ -4913,7 +4913,7 @@ export const runRequestBlock: (blockedRequests: RequestBlock) => Effect<void> = 
  * @category requests & batching
  * @since 2.0.0
  */
-export const step: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E> | Blocked<E, A>, never, R> = core.step
+export const step: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E> | Blocked<A, E>, never, R> = core.step
 
 /**
  * @since 2.0.0

@@ -1931,7 +1931,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
         let counter = 0
         let interrupted = false
         const fibersCount = n ? Math.min(todos.length, n) : todos.length
-        const fibers = new Set<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<E, _>>>()
+        const fibers = new Set<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
         const results = new Array()
         const interruptAll = () =>
           fibers.forEach((fiber) => {
@@ -1939,8 +1939,8 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
               fiber.unsafeInterruptAsFork(parent.id())
             }, 0)
           })
-        const startOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<E, _>>>()
-        const joinOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<E, _>>>()
+        const startOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
+        const joinOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
         const residual = new Array<core.Blocked>()
         const collectExits = () => {
           const exits: Array<Exit.Exit<any, E>> = results
@@ -1976,7 +1976,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
         const stepOrExit = batching ? core.step : core.exit
         const processingFiber = runFiber(
           core.async<any, any, any>((resume) => {
-            const pushResult = <_, E>(res: Exit.Exit<_, E> | Effect.Blocked<E, _>, index: number) => {
+            const pushResult = <_, E>(res: Exit.Exit<_, E> | Effect.Blocked<_, E>, index: number) => {
               if (res._op === "Blocked") {
                 residual.push(res as core.Blocked)
               } else {
@@ -2000,8 +2000,8 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
                     ))
                 }
                 const onRes = (
-                  res: Exit.Exit<_, E> | Effect.Blocked<E, _>
-                ): Effect.Effect<Exit.Exit<_, E> | Effect.Blocked<E, _>, never, R> => {
+                  res: Exit.Exit<_, E> | Effect.Blocked<_, E>
+                ): Effect.Effect<Exit.Exit<_, E> | Effect.Blocked<_, E>, never, R> => {
                   if (todos.length > 0) {
                     pushResult(res, index)
                     if (todos.length > 0) {

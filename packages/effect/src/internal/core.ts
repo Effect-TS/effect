@@ -82,10 +82,10 @@ export const makeEffectError = <E>(cause: Cause.Cause<E>): EffectError<E> => ({
 /**
  * @internal
  */
-export const blocked = <E, A>(
+export const blocked = <A, E>(
   blockedRequests: BlockedRequests.RequestBlock,
   _continue: Effect.Effect<A, E>
-): Effect.Blocked<E, A> => {
+): Effect.Blocked<A, E> => {
   const effect = new EffectPrimitive("Blocked") as any
   effect.i0 = blockedRequests
   effect.i1 = _continue
@@ -756,7 +756,7 @@ export const andThen: {
 /* @internal */
 export const step = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<Exit.Exit<A, E> | Effect.Blocked<E, A>, never, R> => {
+): Effect.Effect<Exit.Exit<A, E> | Effect.Blocked<A, E>, never, R> => {
   const effect = new EffectPrimitive("OnStep") as any
   effect.i0 = self
   return effect
