@@ -18,7 +18,7 @@ const streamVariance = {
  * @since 2.0.0
  * @category constructors
  */
-export abstract class Class<R, E, A> implements Stream.Stream<A, E, R> {
+export abstract class Class<A, E = never, R = never> implements Stream.Stream<A, E, R> {
   /**
    * @since 2.0.0
    */
