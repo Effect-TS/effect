@@ -4580,17 +4580,17 @@ export const provideContext = dual<
 /** @internal */
 export const provideLayer = dual<
   <RIn, E2, ROut>(
-    layer: Layer.Layer<RIn, E2, ROut>
+    layer: Layer.Layer<ROut, E2, RIn>
   ) => <E, A>(self: Stream.Stream<A, E, ROut>) => Stream.Stream<A, E2 | E, RIn>,
   <E, A, RIn, E2, ROut>(
     self: Stream.Stream<A, E, ROut>,
-    layer: Layer.Layer<RIn, E2, ROut>
+    layer: Layer.Layer<ROut, E2, RIn>
   ) => Stream.Stream<A, E2 | E, RIn>
 >(
   2,
   <E, A, RIn, E2, ROut>(
     self: Stream.Stream<A, E, ROut>,
-    layer: Layer.Layer<RIn, E2, ROut>
+    layer: Layer.Layer<ROut, E2, RIn>
   ): Stream.Stream<A, E2 | E, RIn> =>
     new StreamImpl(
       channel.unwrapScoped(pipe(
@@ -4686,17 +4686,17 @@ export const mapInputContext = dual<
 /** @internal */
 export const provideSomeLayer = dual<
   <RIn, E2, ROut>(
-    layer: Layer.Layer<RIn, E2, ROut>
+    layer: Layer.Layer<ROut, E2, RIn>
   ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, RIn | Exclude<R, ROut>>,
   <R, E, A, RIn, E2, ROut>(
     self: Stream.Stream<A, E, R>,
-    layer: Layer.Layer<RIn, E2, ROut>
+    layer: Layer.Layer<ROut, E2, RIn>
   ) => Stream.Stream<A, E2 | E, RIn | Exclude<R, ROut>>
 >(
   2,
   <R, E, A, RIn, E2, ROut>(
     self: Stream.Stream<A, E, R>,
-    layer: Layer.Layer<RIn, E2, ROut>
+    layer: Layer.Layer<ROut, E2, RIn>
   ): Stream.Stream<A, E2 | E, RIn | Exclude<R, ROut>> =>
     // @ts-expect-error
     pipe(

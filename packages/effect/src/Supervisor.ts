@@ -104,7 +104,7 @@ export declare namespace Supervisor {
  * @since 2.0.0
  * @category context
  */
-export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never, never, never> = circular.addSupervisor
+export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never> = circular.addSupervisor
 
 /**
  * Creates a new supervisor that tracks children in a set.

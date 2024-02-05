@@ -82,13 +82,13 @@ export const make: <Message, Output>(log: (options: Logger.Options<Message>) => 
  * @since 2.0.0
  * @category context
  */
-export const add: <B>(logger: Logger<unknown, B>) => Layer.Layer<never, never, never> = circular.addLogger
+export const add: <B>(logger: Logger<unknown, B>) => Layer.Layer<never> = circular.addLogger
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const addEffect: <R, E, A>(effect: Effect<Logger<unknown, A>, E, R>) => Layer.Layer<R, E, never> =
+export const addEffect: <R, E, A>(effect: Effect<Logger<unknown, A>, E, R>) => Layer.Layer<never, E, R> =
   circular.addLoggerEffect
 
 /**
@@ -97,7 +97,7 @@ export const addEffect: <R, E, A>(effect: Effect<Logger<unknown, A>, E, R>) => L
  */
 export const addScoped: <R, E, A>(
   effect: Effect<Logger<unknown, A>, E, R>
-) => Layer.Layer<Exclude<R, Scope>, E, never> = circular.addLoggerScoped
+) => Layer.Layer<never, E, Exclude<R, Scope>> = circular.addLoggerScoped
 
 /**
  * @since 2.0.0
@@ -170,15 +170,15 @@ export const none: Logger<unknown, void> = internal.none
  * @since 2.0.0
  * @category context
  */
-export const remove: <A>(logger: Logger<unknown, A>) => Layer.Layer<never, never, never> = circular.removeLogger
+export const remove: <A>(logger: Logger<unknown, A>) => Layer.Layer<never> = circular.removeLogger
 
 /**
  * @since 2.0.0
  * @category context
  */
 export const replace: {
-  <B>(that: Logger<unknown, B>): <A>(self: Logger<unknown, A>) => Layer.Layer<never, never, never>
-  <A, B>(self: Logger<unknown, A>, that: Logger<unknown, B>): Layer.Layer<never, never, never>
+  <B>(that: Logger<unknown, B>): <A>(self: Logger<unknown, A>) => Layer.Layer<never>
+  <A, B>(self: Logger<unknown, A>, that: Logger<unknown, B>): Layer.Layer<never>
 } = circular.replaceLogger
 
 /**
@@ -186,8 +186,8 @@ export const replace: {
  * @category context
  */
 export const replaceEffect: {
-  <R, E, B>(that: Effect<Logger<unknown, B>, E, R>): <A>(self: Logger<unknown, A>) => Layer.Layer<R, E, never>
-  <A, R, E, B>(self: Logger<unknown, A>, that: Effect<Logger<unknown, B>, E, R>): Layer.Layer<R, E, never>
+  <R, E, B>(that: Effect<Logger<unknown, B>, E, R>): <A>(self: Logger<unknown, A>) => Layer.Layer<never, E, R>
+  <A, R, E, B>(self: Logger<unknown, A>, that: Effect<Logger<unknown, B>, E, R>): Layer.Layer<never, E, R>
 } = circular.replaceLoggerEffect
 
 /**
@@ -197,11 +197,11 @@ export const replaceEffect: {
 export const replaceScoped: {
   <R, E, B>(
     that: Effect<Logger<unknown, B>, E, R>
-  ): <A>(self: Logger<unknown, A>) => Layer.Layer<Exclude<R, Scope>, E, never>
+  ): <A>(self: Logger<unknown, A>) => Layer.Layer<never, E, Exclude<R, Scope>>
   <A, R, E, B>(
     self: Logger<unknown, A>,
     that: Effect<Logger<unknown, B>, E, R>
-  ): Layer.Layer<Exclude<R, Scope>, E, never>
+  ): Layer.Layer<never, E, Exclude<R, Scope>>
 } = circular.replaceLoggerScoped
 
 /**
@@ -320,10 +320,10 @@ export const tracerLogger: Logger<unknown, void> = fiberRuntime.tracerLogger
  * @since 2.0.0
  * @category constructors
  */
-export const logFmt: Layer.Layer<never, never, never> = replace(fiberRuntime.defaultLogger, fiberRuntime.logFmtLogger)
+export const logFmt: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.logFmtLogger)
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const minimumLogLevel: (level: LogLevel.LogLevel) => Layer.Layer<never, never, never> = circular.minimumLogLevel
+export const minimumLogLevel: (level: LogLevel.LogLevel) => Layer.Layer<never> = circular.minimumLogLevel

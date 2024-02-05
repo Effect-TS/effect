@@ -29,7 +29,7 @@ export type BunContext =
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer.Layer<never, never, BunContext> = pipe(
+export const layer: Layer.Layer<BunContext> = pipe(
   Layer.mergeAll(
     BunPath.layer,
     BunCommandExecutor.layer,

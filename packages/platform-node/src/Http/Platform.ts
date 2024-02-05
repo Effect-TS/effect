@@ -18,4 +18,4 @@ export const make: Effect.Effect<Platform.Platform, never, FileSystem.FileSystem
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<never, never, Platform.Platform> = internal.layer
+export const layer: Layer.Layer<Platform.Platform> = internal.layer
