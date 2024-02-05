@@ -360,12 +360,12 @@ export const broadcast: {
     maximumLag: number
   ): <A, E, R>(
     self: Stream<A, E, R>
-  ) => Effect.Effect<Stream.DynamicTuple<Stream<A, E, never>, N>, never, Scope.Scope | R>
+  ) => Effect.Effect<Stream.DynamicTuple<Stream<A, E>, N>, never, Scope.Scope | R>
   <A, E, R, N extends number>(
     self: Stream<A, E, R>,
     n: N,
     maximumLag: number
-  ): Effect.Effect<Stream.DynamicTuple<Stream<A, E, never>, N>, never, Scope.Scope | R>
+  ): Effect.Effect<Stream.DynamicTuple<Stream<A, E>, N>, never, Scope.Scope | R>
 } = internal.broadcast
 
 /**
@@ -377,8 +377,8 @@ export const broadcast: {
  * @category utils
  */
 export const broadcastDynamic: {
-  (maximumLag: number): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E, never>, never, Scope.Scope | R>
-  <R, E, A>(self: Stream<A, E, R>, maximumLag: number): Effect.Effect<Stream<A, E, never>, never, Scope.Scope | R>
+  (maximumLag: number): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E>, never, Scope.Scope | R>
+  <R, E, A>(self: Stream<A, E, R>, maximumLag: number): Effect.Effect<Stream<A, E>, never, Scope.Scope | R>
 } = internal.broadcastDynamic
 
 /**
@@ -859,7 +859,7 @@ export const debounce: {
  * @since 2.0.0
  * @category constructors
  */
-export const die: (defect: unknown) => Stream<never, never, never> = internal.die
+export const die: (defect: unknown) => Stream<never> = internal.die
 
 /**
  * The stream that dies with the specified lazily evaluated defect.
@@ -867,7 +867,7 @@ export const die: (defect: unknown) => Stream<never, never, never> = internal.di
  * @since 2.0.0
  * @category constructors
  */
-export const dieSync: (evaluate: LazyArg<unknown>) => Stream<never, never, never> = internal.dieSync
+export const dieSync: (evaluate: LazyArg<unknown>) => Stream<never> = internal.dieSync
 
 /**
  * The stream that dies with an exception described by `message`.
@@ -875,7 +875,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Stream<never, never, never
  * @since 2.0.0
  * @category constructors
  */
-export const dieMessage: (message: string) => Stream<never, never, never> = internal.dieMessage
+export const dieMessage: (message: string) => Stream<never> = internal.dieMessage
 
 /**
  * More powerful version of `Stream.broadcast`. Allows to provide a function
@@ -890,7 +890,7 @@ export const distributedWith: {
     options: {
       readonly size: N
       readonly maximumLag: number
-      readonly decide: (a: A) => Effect.Effect<Predicate<number>, never, never>
+      readonly decide: (a: A) => Effect.Effect<Predicate<number>>
     }
   ): <R, E>(
     self: Stream<A, E, R>
@@ -900,7 +900,7 @@ export const distributedWith: {
     options: {
       readonly size: N
       readonly maximumLag: number
-      readonly decide: (a: A) => Effect.Effect<Predicate<number>, never, never>
+      readonly decide: (a: A) => Effect.Effect<Predicate<number>>
     }
   ): Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, N>, never, Scope.Scope | R>
 } = internal.distributedWith
@@ -918,19 +918,19 @@ export const distributedWith: {
  */
 export const distributedWithDynamic: {
   <E, A, _>(
-    options: { readonly maximumLag: number; readonly decide: (a: A) => Effect.Effect<Predicate<number>, never, never> }
+    options: { readonly maximumLag: number; readonly decide: (a: A) => Effect.Effect<Predicate<number>> }
   ): <R>(
     self: Stream<A, E, R>
   ) => Effect.Effect<
-    Effect.Effect<[number, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>], never, never>,
+    Effect.Effect<[number, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>]>,
     never,
     Scope.Scope | R
   >
   <R, E, A, _>(
     self: Stream<A, E, R>,
-    options: { readonly maximumLag: number; readonly decide: (a: A) => Effect.Effect<Predicate<number>, never, never> }
+    options: { readonly maximumLag: number; readonly decide: (a: A) => Effect.Effect<Predicate<number>> }
   ): Effect.Effect<
-    Effect.Effect<[number, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>], never, never>,
+    Effect.Effect<[number, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>]>,
     never,
     Scope.Scope | R
   >
@@ -1058,7 +1058,7 @@ export const either: <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<E,
  * @since 2.0.0
  * @category constructors
  */
-export const empty: Stream<never, never, never> = internal.empty
+export const empty: Stream<never> = internal.empty
 
 /**
  * Executes the provided finalizer after this stream's finalizers run.
@@ -1137,7 +1137,7 @@ export const execute: <R, E, _>(effect: Effect.Effect<_, E, R>) => Stream<never,
  * @since 2.0.0
  * @category constructors
  */
-export const fail: <E>(error: E) => Stream<never, E, never> = internal.fail
+export const fail: <E>(error: E) => Stream<never, E> = internal.fail
 
 /**
  * Terminates with the specified lazily evaluated error.
@@ -1145,7 +1145,7 @@ export const fail: <E>(error: E) => Stream<never, E, never> = internal.fail
  * @since 2.0.0
  * @category constructors
  */
-export const failSync: <E>(evaluate: LazyArg<E>) => Stream<never, E, never> = internal.failSync
+export const failSync: <E>(evaluate: LazyArg<E>) => Stream<never, E> = internal.failSync
 
 /**
  * The stream that always fails with the specified `Cause`.
@@ -1153,7 +1153,7 @@ export const failSync: <E>(evaluate: LazyArg<E>) => Stream<never, E, never> = in
  * @since 2.0.0
  * @category constructors
  */
-export const failCause: <E>(cause: Cause.Cause<E>) => Stream<never, E, never> = internal.failCause
+export const failCause: <E>(cause: Cause.Cause<E>) => Stream<never, E> = internal.failCause
 
 /**
  * The stream that always fails with the specified lazily evaluated `Cause`.
@@ -1161,7 +1161,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Stream<never, E, never> = 
  * @since 2.0.0
  * @category constructors
  */
-export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Stream<never, E, never> = internal.failCauseSync
+export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Stream<never, E> = internal.failCauseSync
 
 /**
  * Filters the elements emitted by this stream using the provided function.
@@ -1412,7 +1412,7 @@ export const forever: <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, R> = inte
  * @since 2.0.0
  * @category constructors
  */
-export const fromAsyncIterable: <E, A>(iterable: AsyncIterable<A>, onError: (e: unknown) => E) => Stream<A, E, never> =
+export const fromAsyncIterable: <E, A>(iterable: AsyncIterable<A>, onError: (e: unknown) => E) => Stream<A, E> =
   internal.fromAsyncIterable
 
 /**
@@ -2440,23 +2440,23 @@ export const partition: {
     options?: { bufferSize?: number | undefined } | undefined
   ): <R, E>(
     self: Stream<C, E, R>
-  ) => Effect.Effect<[excluded: Stream<Exclude<C, B>, E, never>, satisfying: Stream<B, E, never>], E, Scope.Scope | R>
+  ) => Effect.Effect<[excluded: Stream<Exclude<C, B>, E>, satisfying: Stream<B, E>], E, Scope.Scope | R>
   <A>(
     predicate: Predicate<A>,
     options?: { bufferSize?: number | undefined } | undefined
   ): <R, E>(
     self: Stream<A, E, R>
-  ) => Effect.Effect<[excluded: Stream<A, E, never>, satisfying: Stream<A, E, never>], E, Scope.Scope | R>
+  ) => Effect.Effect<[excluded: Stream<A, E>, satisfying: Stream<A, E>], E, Scope.Scope | R>
   <R, E, C extends A, B extends A, A = C>(
     self: Stream<C, E, R>,
     refinement: Refinement<A, B>,
     options?: { bufferSize?: number | undefined } | undefined
-  ): Effect.Effect<[excluded: Stream<Exclude<C, B>, E, never>, satisfying: Stream<B, E, never>], E, Scope.Scope | R>
+  ): Effect.Effect<[excluded: Stream<Exclude<C, B>, E>, satisfying: Stream<B, E>], E, Scope.Scope | R>
   <A, E, R>(
     self: Stream<A, E, R>,
     predicate: Predicate<A>,
     options?: { bufferSize?: number | undefined } | undefined
-  ): Effect.Effect<[excluded: Stream<A, E, never>, satisfying: Stream<A, E, never>], E, Scope.Scope | R>
+  ): Effect.Effect<[excluded: Stream<A, E>, satisfying: Stream<A, E>], E, Scope.Scope | R>
 } = internal.partition
 
 /**
@@ -2472,12 +2472,12 @@ export const partitionEither: {
     options?: { readonly bufferSize?: number | undefined } | undefined
   ): <R, E>(
     self: Stream<A, E, R>
-  ) => Effect.Effect<[left: Stream<A2, E2 | E, never>, right: Stream<A3, E2 | E, never>], E2 | E, Scope.Scope | R2 | R>
+  ) => Effect.Effect<[left: Stream<A2, E2 | E>, right: Stream<A3, E2 | E>], E2 | E, Scope.Scope | R2 | R>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<A, E, R>,
     predicate: (a: A) => Effect.Effect<Either.Either<A2, A3>, E2, R2>,
     options?: { readonly bufferSize?: number | undefined } | undefined
-  ): Effect.Effect<[left: Stream<A2, E | E2, never>, right: Stream<A3, E | E2, never>], E | E2, Scope.Scope | R | R2>
+  ): Effect.Effect<[left: Stream<A2, E | E2>, right: Stream<A3, E | E2>], E | E2, Scope.Scope | R | R2>
 } = internal.partitionEither
 
 /**
@@ -2492,11 +2492,11 @@ export const partitionEither: {
 export const peel: {
   <R2, E2, A, Z>(
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): <R, E>(self: Stream<A, E, R>) => Effect.Effect<[Z, Stream<A, E, never>], E2 | E, Scope.Scope | R2 | R>
+  ): <R, E>(self: Stream<A, E, R>) => Effect.Effect<[Z, Stream<A, E>], E2 | E, Scope.Scope | R2 | R>
   <R, E, R2, E2, A, Z>(
     self: Stream<A, E, R>,
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): Effect.Effect<[Z, Stream<A, E, never>], E | E2, Scope.Scope | R | R2>
+  ): Effect.Effect<[Z, Stream<A, E>], E | E2, Scope.Scope | R | R2>
 } = internal.peel
 
 /**
@@ -2564,8 +2564,8 @@ export const prepend: {
  * @category context
  */
 export const provideContext: {
-  <R>(context: Context.Context<R>): <E, A>(self: Stream<A, E, R>) => Stream<A, E, never>
-  <E, A, R>(self: Stream<A, E, R>, context: Context.Context<R>): Stream<A, E, never>
+  <R>(context: Context.Context<R>): <E, A>(self: Stream<A, E, R>) => Stream<A, E>
+  <E, A, R>(self: Stream<A, E, R>, context: Context.Context<R>): Stream<A, E>
 } = internal.provideContext
 
 /**
@@ -3871,7 +3871,7 @@ export const toQueueOfElements: {
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStream: <E, A>(source: Stream<A, E, never>) => ReadableStream<A> = internal.toReadableStream
+export const toReadableStream: <E, A>(source: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
 
 /**
  * Applies the transducer to the stream and emits its outputs.

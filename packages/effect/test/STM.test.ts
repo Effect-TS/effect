@@ -51,9 +51,9 @@ class UnpureBarrier {
 
 const chain = (depth: number) =>
 (
-  next: (stm: STM.STM<never, never, number>) => STM.STM<never, never, number>
+  next: (stm: STM.STM<number>) => STM.STM<number>
 ): Effect.Effect<number> => {
-  const loop = (_n: number, _acc: STM.STM<never, never, number>): Effect.Effect<number> => {
+  const loop = (_n: number, _acc: STM.STM<number>): Effect.Effect<number> => {
     let n = _n
     let acc = _acc
     while (n > 0) {
@@ -127,7 +127,7 @@ const compute3TRefN = (
     Effect.repeatN(n)
   )
 
-const permutation = (ref1: TRef.TRef<number>, ref2: TRef.TRef<number>): STM.STM<never, never, void> =>
+const permutation = (ref1: TRef.TRef<number>, ref2: TRef.TRef<number>): STM.STM<void> =>
   pipe(
     STM.all([TRef.get(ref1), TRef.get(ref2)]),
     STM.flatMap(([a, b]) =>
@@ -514,7 +514,7 @@ describe("STM", () => {
   it.effect("mergeAll - return zero element on empty input", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
-        Chunk.empty<STM.STM<never, never, number>>(),
+        Chunk.empty<STM.STM<number>>(),
         STM.mergeAll(42, () => 43)
       )
       const result = yield* $(STM.commit(transaction))
@@ -534,7 +534,7 @@ describe("STM", () => {
   it.effect("mergeAll - return error if it exists in list", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
-        [STM.unit, STM.fail(1)] as Array<STM.STM<never, number, void>>,
+        [STM.unit, STM.fail(1)] as Array<STM.STM<void, number>>,
         STM.mergeAll(void 0 as void, constVoid)
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
@@ -804,7 +804,7 @@ describe("STM", () => {
   it.effect("reduceAll - empty iterable", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
-        Chunk.empty<STM.STM<never, never, number>>(),
+        Chunk.empty<STM.STM<number>>(),
         STM.reduceAll(STM.succeed(1), (a, b) => a + b)
       )
       const result = yield* $(STM.commit(transaction))

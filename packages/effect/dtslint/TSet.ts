@@ -7,42 +7,42 @@ declare const string: TSet.TSet<string>
 // removeIf
 // -----------------------------------------------------------------------------
 
-// $ExpectType STM<never, never, string[]>
+// $ExpectType STM<string[], never, never>
 TSet.removeIf(string, (key) => key === "aa")
 
-// $ExpectType STM<never, never, string[]>
+// $ExpectType STM<string[], never, never>
 TSet.removeIf(string, (key) => key === "aa", { discard: false })
 
-// $ExpectType STM<never, never, string[]>
+// $ExpectType STM<string[], never, never>
 pipe(string, TSet.removeIf((key) => key === "aa"))
 
-// $ExpectType STM<never, never, string[]>
+// $ExpectType STM<string[], never, never>
 pipe(string, TSet.removeIf((key) => key === "aa", { discard: false }))
 
-// $ExpectType STM<never, never, void>
+// $ExpectType STM<void, never, never>
 TSet.removeIf(string, (key) => key === "aa", { discard: true })
 
-// $ExpectType STM<never, never, void>
+// $ExpectType STM<void, never, never>
 pipe(string, TSet.removeIf((key) => key === "aa", { discard: true }))
 
 // -----------------------------------------------------------------------------
 // retainIf
 // -----------------------------------------------------------------------------
 
-// $ExpectType STM<never, never, string[]>
+// $ExpectType STM<string[], never, never>
 TSet.retainIf(string, (key) => key === "aa")
 
-// $ExpectType STM<never, never, string[]>
+// $ExpectType STM<string[], never, never>
 TSet.retainIf(string, (key) => key === "aa", { discard: false })
 
-// $ExpectType STM<never, never, string[]>
+// $ExpectType STM<string[], never, never>
 pipe(string, TSet.retainIf((key) => key === "aa"))
 
-// $ExpectType STM<never, never, string[]>
+// $ExpectType STM<string[], never, never>
 pipe(string, TSet.retainIf((key) => key === "aa", { discard: false }))
 
-// $ExpectType STM<never, never, void>
+// $ExpectType STM<void, never, never>
 TSet.retainIf(string, (key) => key === "aa", { discard: true })
 
-// $ExpectType STM<never, never, void>
+// $ExpectType STM<void, never, never>
 pipe(string, TSet.retainIf((key) => key === "aa", { discard: true }))

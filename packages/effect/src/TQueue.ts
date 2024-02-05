@@ -45,7 +45,7 @@ export interface TEnqueue<in A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
   /**
    * Places one value in the queue.
    */
-  offer(value: A): STM.STM<never, never, boolean>
+  offer(value: A): STM.STM<boolean>
 
   /**
    * For Bounded TQueue: uses the `BackPressure` Strategy, places the values in
@@ -62,7 +62,7 @@ export interface TEnqueue<in A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
    * For Dropping TQueue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  offerAll(iterable: Iterable<A>): STM.STM<never, never, boolean>
+  offerAll(iterable: Iterable<A>): STM.STM<boolean>
 }
 
 /**
@@ -74,30 +74,30 @@ export interface TDequeue<out A> extends TQueue.TDequeueVariance<A>, BaseTQueue 
    * Views the next element in the queue without removing it, retrying if the
    * queue is empty.
    */
-  readonly peek: STM.STM<never, never, A>
+  readonly peek: STM.STM<A>
 
   /**
    * Views the next element in the queue without removing it, returning `None`
    * if the queue is empty.
    */
-  readonly peekOption: STM.STM<never, never, Option.Option<A>>
+  readonly peekOption: STM.STM<Option.Option<A>>
 
   /**
    * Takes the oldest value in the queue. If the queue is empty, this will return
    * a computation that resumes when an item has been added to the queue.
    */
-  readonly take: STM.STM<never, never, A>
+  readonly take: STM.STM<A>
 
   /**
    * Takes all the values in the queue and returns the values. If the queue is
    * empty returns an empty collection.
    */
-  readonly takeAll: STM.STM<never, never, Array<A>>
+  readonly takeAll: STM.STM<Array<A>>
 
   /**
    * Takes up to max number of values from the queue.
    */
-  takeUpTo(max: number): STM.STM<never, never, Array<A>>
+  takeUpTo(max: number): STM.STM<Array<A>>
 }
 
 /**
@@ -117,36 +117,36 @@ export interface BaseTQueue {
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue.
    */
-  readonly size: STM.STM<never, never, number>
+  readonly size: STM.STM<number>
 
   /**
    * Returns `true` if the `TQueue` contains at least one element, `false`
    * otherwise.
    */
-  readonly isFull: STM.STM<never, never, boolean>
+  readonly isFull: STM.STM<boolean>
 
   /**
    * Returns `true` if the `TQueue` contains zero elements, `false` otherwise.
    */
-  readonly isEmpty: STM.STM<never, never, boolean>
+  readonly isEmpty: STM.STM<boolean>
 
   /**
    * Interrupts any fibers that are suspended on `offer` or `take`. Future calls
    * to `offer*` and `take*` will be interrupted immediately.
    */
-  readonly shutdown: STM.STM<never, never, void>
+  readonly shutdown: STM.STM<void>
 
   /**
    * Returns `true` if `shutdown` has been called, otherwise returns `false`.
    */
-  readonly isShutdown: STM.STM<never, never, boolean>
+  readonly isShutdown: STM.STM<boolean>
 
   /**
    * Waits until the queue is shutdown. The `STM` returned by this method will
    * not resume until the queue has been shutdown. If the queue is already
    * shutdown, the `STM` will resume right away.
    */
-  readonly awaitShutdown: STM.STM<never, never, void>
+  readonly awaitShutdown: STM.STM<void>
 }
 
 /**
@@ -206,7 +206,7 @@ export const isTEnqueue: (u: unknown) => u is TEnqueue<unknown> = internal.isTEn
  * @since 2.0.0
  * @category mutations
  */
-export const awaitShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void> = internal.awaitShutdown
+export const awaitShutdown: <A>(self: TQueue<A>) => STM.STM<void> = internal.awaitShutdown
 
 /**
  * Creates a bounded queue with the back pressure strategy. The queue will
@@ -218,7 +218,7 @@ export const awaitShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void> 
  * @since 2.0.0
  * @category constructors
  */
-export const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>> = internal.bounded
+export const bounded: <A>(requestedCapacity: number) => STM.STM<TQueue<A>> = internal.bounded
 
 /**
  * Returns the number of elements the queue can hold.
@@ -237,7 +237,7 @@ export const capacity: <A>(self: TQueue<A>) => number = internal.capacity
  * @since 2.0.0
  * @category constructors
  */
-export const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>> = internal.dropping
+export const dropping: <A>(requestedCapacity: number) => STM.STM<TQueue<A>> = internal.dropping
 
 /**
  * Returns `true` if the `TQueue` contains zero elements, `false` otherwise.
@@ -245,7 +245,7 @@ export const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, T
  * @since 2.0.0
  * @category getters
  */
-export const isEmpty: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = internal.isEmpty
+export const isEmpty: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isEmpty
 
 /**
  * Returns `true` if the `TQueue` contains at least one element, `false`
@@ -254,7 +254,7 @@ export const isEmpty: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = i
  * @since 2.0.0
  * @category getters
  */
-export const isFull: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = internal.isFull
+export const isFull: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isFull
 
 /**
  * Returns `true` if `shutdown` has been called, otherwise returns `false`.
@@ -262,7 +262,7 @@ export const isFull: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = in
  * @since 2.0.0
  * @category getters
  */
-export const isShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = internal.isShutdown
+export const isShutdown: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isShutdown
 
 /**
  * Places one value in the queue.
@@ -271,8 +271,8 @@ export const isShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> 
  * @category mutations
  */
 export const offer: {
-  <A>(value: A): (self: TEnqueue<A>) => STM.STM<never, never, void>
-  <A>(self: TEnqueue<A>, value: A): STM.STM<never, never, void>
+  <A>(value: A): (self: TEnqueue<A>) => STM.STM<void>
+  <A>(self: TEnqueue<A>, value: A): STM.STM<void>
 } = internal.offer
 
 /**
@@ -294,8 +294,8 @@ export const offer: {
  * @category mutations
  */
 export const offerAll: {
-  <A>(iterable: Iterable<A>): (self: TEnqueue<A>) => STM.STM<never, never, boolean>
-  <A>(self: TEnqueue<A>, iterable: Iterable<A>): STM.STM<never, never, boolean>
+  <A>(iterable: Iterable<A>): (self: TEnqueue<A>) => STM.STM<boolean>
+  <A>(self: TEnqueue<A>, iterable: Iterable<A>): STM.STM<boolean>
 } = internal.offerAll
 
 /**
@@ -305,7 +305,7 @@ export const offerAll: {
  * @since 2.0.0
  * @category getters
  */
-export const peek: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal.peek
+export const peek: <A>(self: TDequeue<A>) => STM.STM<A> = internal.peek
 
 /**
  * Views the next element in the queue without removing it, returning `None`
@@ -314,7 +314,7 @@ export const peek: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal
  * @since 2.0.0
  * @category getters
  */
-export const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>> = internal.peekOption
+export const peekOption: <A>(self: TDequeue<A>) => STM.STM<Option.Option<A>> = internal.peekOption
 
 /**
  * Takes a single element from the queue, returning `None` if the queue is
@@ -323,7 +323,7 @@ export const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.
  * @since 2.0.0
  * @category getters
  */
-export const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>> = internal.poll
+export const poll: <A>(self: TDequeue<A>) => STM.STM<Option.Option<A>> = internal.poll
 
 /**
  * Drops elements from the queue while they do not satisfy the predicate,
@@ -334,8 +334,8 @@ export const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option
  * @category mutations
  */
 export const seek: {
-  <A>(predicate: Predicate<A>): (self: TDequeue<A>) => STM.STM<never, never, A>
-  <A>(self: TDequeue<A>, predicate: Predicate<A>): STM.STM<never, never, A>
+  <A>(predicate: Predicate<A>): (self: TDequeue<A>) => STM.STM<A>
+  <A>(self: TDequeue<A>, predicate: Predicate<A>): STM.STM<A>
 } = internal.seek
 
 /**
@@ -345,7 +345,7 @@ export const seek: {
  * @since 2.0.0
  * @category mutations
  */
-export const shutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void> = internal.shutdown
+export const shutdown: <A>(self: TQueue<A>) => STM.STM<void> = internal.shutdown
 
 /**
  * Retrieves the size of the queue, which is equal to the number of elements
@@ -355,7 +355,7 @@ export const shutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void> = int
  * @since 2.0.0
  * @category getters
  */
-export const size: <A>(self: TQueue<A>) => STM.STM<never, never, number> = internal.size
+export const size: <A>(self: TQueue<A>) => STM.STM<number> = internal.size
 
 /**
  * Creates a bounded queue with the sliding strategy. The queue will add new
@@ -366,7 +366,7 @@ export const size: <A>(self: TQueue<A>) => STM.STM<never, never, number> = inter
  * @since 2.0.0
  * @category constructors
  */
-export const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>> = internal.sliding
+export const sliding: <A>(requestedCapacity: number) => STM.STM<TQueue<A>> = internal.sliding
 
 /**
  * Takes the oldest value in the queue. If the queue is empty, this will return
@@ -375,7 +375,7 @@ export const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TQ
  * @since 2.0.0
  * @category mutations
  */
-export const take: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal.take
+export const take: <A>(self: TDequeue<A>) => STM.STM<A> = internal.take
 
 /**
  * Takes all the values in the queue and returns the values. If the queue is
@@ -384,7 +384,7 @@ export const take: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal
  * @since 2.0.0
  * @category mutations
  */
-export const takeAll: <A>(self: TDequeue<A>) => STM.STM<never, never, Array<A>> = internal.takeAll
+export const takeAll: <A>(self: TDequeue<A>) => STM.STM<Array<A>> = internal.takeAll
 
 /**
  * Takes a number of elements from the queue between the specified minimum and
@@ -395,8 +395,8 @@ export const takeAll: <A>(self: TDequeue<A>) => STM.STM<never, never, Array<A>> 
  * @category mutations
  */
 export const takeBetween: {
-  (min: number, max: number): <A>(self: TDequeue<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TDequeue<A>, min: number, max: number): STM.STM<never, never, Array<A>>
+  (min: number, max: number): <A>(self: TDequeue<A>) => STM.STM<Array<A>>
+  <A>(self: TDequeue<A>, min: number, max: number): STM.STM<Array<A>>
 } = internal.takeBetween
 
 /**
@@ -408,8 +408,8 @@ export const takeBetween: {
  * @category mutations
  */
 export const takeN: {
-  (n: number): <A>(self: TDequeue<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TDequeue<A>, n: number): STM.STM<never, never, Array<A>>
+  (n: number): <A>(self: TDequeue<A>) => STM.STM<Array<A>>
+  <A>(self: TDequeue<A>, n: number): STM.STM<Array<A>>
 } = internal.takeN
 
 /**
@@ -419,8 +419,8 @@ export const takeN: {
  * @category mutations
  */
 export const takeUpTo: {
-  (max: number): <A>(self: TDequeue<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TDequeue<A>, max: number): STM.STM<never, never, Array<A>>
+  (max: number): <A>(self: TDequeue<A>) => STM.STM<Array<A>>
+  <A>(self: TDequeue<A>, max: number): STM.STM<Array<A>>
 } = internal.takeUpTo
 
 /**
@@ -429,4 +429,4 @@ export const takeUpTo: {
  * @since 2.0.0
  * @category constructors
  */
-export const unbounded: <A>() => STM.STM<never, never, TQueue<A>> = internal.unbounded
+export const unbounded: <A>() => STM.STM<TQueue<A>> = internal.unbounded
