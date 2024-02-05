@@ -30,7 +30,7 @@ export const STMTypeId: unique symbol = core.STMTypeId
 export type STMTypeId = typeof STMTypeId
 
 /**
- * `STM<R, E, A>` represents an effect that can be performed transactionally,
+ * `STM<A, E, R>` represents an effect that can be performed transactionally,
  *  resulting in a failure `E` or a value `A` that may require an environment
  *  `R` to execute.
  *

@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { afterEach, describe, expect, it } from "vitest"
 
-export const testLayer = <E>(layer: Layer.Layer<never, E, KeyValueStore.KeyValueStore>) => {
+export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
   const run = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.KeyValueStore>) =>
     Effect.runPromise(Effect.provide(effect, layer))
 

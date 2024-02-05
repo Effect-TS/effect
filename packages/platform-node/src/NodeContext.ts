@@ -29,7 +29,7 @@ export type NodeContext =
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer.Layer<never, never, NodeContext> = pipe(
+export const layer: Layer.Layer<NodeContext> = pipe(
   Layer.mergeAll(
     NodePath.layer,
     NodeCommandExecutor.layer,

@@ -65,10 +65,10 @@ export declare namespace Reloadable {
 export const auto: <Out extends Context.Tag<any, any>, In, E, R>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
     readonly schedule: Schedule.Schedule<R, unknown, unknown>
   }
-) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.auto
+) => Layer.Layer<Reloadable<Context.Tag.Identifier<Out>>, E, In | R> = internal.auto
 
 /**
  * Makes a new reloadable service from a layer that describes the construction
@@ -81,10 +81,10 @@ export const auto: <Out extends Context.Tag<any, any>, In, E, R>(
 export const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, R>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
     readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<R, unknown, unknown>
   }
-) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.autoFromConfig
+) => Layer.Layer<Reloadable<Context.Tag.Identifier<Out>>, E, In | R> = internal.autoFromConfig
 
 /**
  * Retrieves the current version of the reloadable service.
@@ -105,8 +105,8 @@ export const get: <T extends Context.Tag<any, any>>(
  */
 export const manual: <Out extends Context.Tag<any, any>, In, E>(
   tag: Out,
-  options: { readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>> }
-) => Layer.Layer<In, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.manual
+  options: { readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In> }
+) => Layer.Layer<Reloadable<Context.Tag.Identifier<Out>>, E, In> = internal.manual
 
 /**
  * Reloads the specified service.

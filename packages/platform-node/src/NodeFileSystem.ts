@@ -9,4 +9,4 @@ import type { Layer } from "effect/Layer"
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer<never, never, FileSystem> = NodeFileSystem.layer
+export const layer: Layer<FileSystem> = NodeFileSystem.layer

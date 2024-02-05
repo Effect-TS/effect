@@ -712,7 +712,7 @@ export class Service1 {
   }
 }
 export const Service1Tag = Context.GenericTag<Service1>("Service1")
-export const makeLayer1 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, Service1> => {
+export const makeLayer1 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<Service1> => {
   return Layer.scoped(
     Service1Tag,
     Effect.acquireRelease(
@@ -727,7 +727,7 @@ export class Service2 {
   }
 }
 export const Service2Tag = Context.GenericTag<Service2>("Service2")
-export const makeLayer2 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, Service2> => {
+export const makeLayer2 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<Service2> => {
   return Layer.scoped(
     Service2Tag,
     Effect.acquireRelease(
@@ -742,7 +742,7 @@ export class Service3 {
   }
 }
 export const Service3Tag = Context.GenericTag<Service3>("Service3")
-export const makeLayer3 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never, never, Service3> => {
+export const makeLayer3 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<Service3> => {
   return Layer.scoped(
     Service3Tag,
     Effect.acquireRelease(

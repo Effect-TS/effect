@@ -54,7 +54,7 @@ export const makePool: (
  */
 export const makePoolLayer: (
   options: RpcWorkerPool.Options
-) => Layer.Layer<Worker.WorkerManager, never, RpcWorkerPool> = internal.makePoolLayer
+) => Layer.Layer<RpcWorkerPool, never, Worker.WorkerManager> = internal.makePoolLayer
 
 /**
  * @category constructors

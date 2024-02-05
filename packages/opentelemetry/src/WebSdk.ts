@@ -35,7 +35,7 @@ export interface Configuration {
 export const layerTracerProvider = (
   processor: SpanProcessor,
   config?: Omit<TracerConfig, "resource">
-): Layer.Layer<Resource.Resource, never, TracerProvider> =>
+): Layer.Layer<TracerProvider, never, Resource.Resource> =>
   Layer.scoped(
     Tracer.TracerProvider,
     Effect.flatMap(
@@ -60,11 +60,11 @@ export const layerTracerProvider = (
  * @category layer
  */
 export const layer: {
-  (evaluate: LazyArg<Configuration>): Layer.Layer<never, never, Resource.Resource>
-  <R, E>(evaluate: Effect.Effect<R, E, Configuration>): Layer.Layer<R, E, Resource.Resource>
+  (evaluate: LazyArg<Configuration>): Layer.Layer<Resource.Resource>
+  <R, E>(evaluate: Effect.Effect<R, E, Configuration>): Layer.Layer<Resource.Resource, E, R>
 } = (
   evaluate: LazyArg<Configuration> | Effect.Effect<any, any, Configuration>
-): Layer.Layer<never, never, Resource.Resource> =>
+): Layer.Layer<Resource.Resource> =>
   Layer.unwrapEffect(
     Effect.map(
       Effect.isEffect(evaluate)

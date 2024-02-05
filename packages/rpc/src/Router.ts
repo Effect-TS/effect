@@ -32,7 +32,7 @@ export declare namespace RpcHandler {
    * @category handler models
    * @since 1.0.0
    */
-  export type IOLayer<R, E, I, O> = (input: I) => Layer<R, E, O>
+  export type IOLayer<R, E, I, O> = (input: I) => Layer<O, E, R>
 
   /**
    * @category handler models

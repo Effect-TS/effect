@@ -61,7 +61,7 @@ export const makeProvider = (fileName: string, options?: {
 export const layer = (fileName: string, options?: {
   readonly formats?: ReadonlyArray<ConfigFile.Kind>
   readonly searchPaths?: ReadonlyArray<string>
-}): Layer.Layer<Path.Path | FileSystem.FileSystem, ConfigFile.ConfigFileError, never> =>
+}): Layer.Layer<never, ConfigFile.ConfigFileError, Path.Path | FileSystem.FileSystem> =>
   pipe(
     makeProvider(fileName, options),
     Effect.map((provider) =>

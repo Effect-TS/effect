@@ -204,7 +204,7 @@ export const makeManager: Effect.Effect<WorkerManager, never, PlatformWorker> = 
  * @since 1.0.0
  * @category layers
  */
-export const layerManager: Layer.Layer<PlatformWorker, never, WorkerManager> = internal.layerManager
+export const layerManager: Layer.Layer<WorkerManager, never, PlatformWorker> = internal.layerManager
 
 /**
  * @since 1.0.0
@@ -219,11 +219,11 @@ export const makePool: <W>() => <I, E, O>(
  * @category constructors
  */
 export const makePoolLayer: <W>(
-  managerLayer: Layer.Layer<never, never, WorkerManager>
+  managerLayer: Layer.Layer<WorkerManager>
 ) => <Tag, I, E, O>(
   tag: Context.Tag<Tag, WorkerPool<I, E, O>>,
   options: WorkerPool.Options<I, W>
-) => Layer.Layer<never, never, Tag> = internal.makePoolLayer
+) => Layer.Layer<Tag> = internal.makePoolLayer
 
 /**
  * @since 1.0.0
@@ -337,8 +337,8 @@ export const makePoolSerialized: <W>() => <I extends Schema.TaggedRequest.Any>(
  * @category layers
  */
 export const makePoolSerializedLayer: <W>(
-  managerLayer: Layer.Layer<never, never, WorkerManager>
+  managerLayer: Layer.Layer<WorkerManager>
 ) => <Tag, I extends Schema.TaggedRequest.Any>(
   tag: Context.Tag<Tag, SerializedWorkerPool<I>>,
   options: SerializedWorkerPool.Options<I, W>
-) => Layer.Layer<never, never, Tag> = internal.makePoolSerializedLayer
+) => Layer.Layer<Tag> = internal.makePoolSerializedLayer

@@ -219,7 +219,7 @@ export const layerResult = Layer.effect(
  * @since 1.0.0
  * @category layers
  */
-export const layerMemory: Layer.Layer<never, never, BackingPersistence> = Layer.succeed(
+export const layerMemory: Layer.Layer<BackingPersistence> = Layer.succeed(
   BackingPersistence,
   BackingPersistence.of({
     [BackingPersistenceTypeId]: BackingPersistenceTypeId,
@@ -240,7 +240,7 @@ export const layerMemory: Layer.Layer<never, never, BackingPersistence> = Layer.
  * @since 1.0.0
  * @category layers
  */
-export const layerKeyValueStore: Layer.Layer<KeyValueStore.KeyValueStore, never, BackingPersistence> = Layer.effect(
+export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValueStore.KeyValueStore> = Layer.effect(
   BackingPersistence,
   Effect.gen(function*(_) {
     const backing = yield* _(KeyValueStore.KeyValueStore)
@@ -294,7 +294,7 @@ export const layerKeyValueStore: Layer.Layer<KeyValueStore.KeyValueStore, never,
  * @since 1.0.0
  * @category layers
  */
-export const layerResultMemory: Layer.Layer<never, never, ResultPersistence> = layerResult.pipe(
+export const layerResultMemory: Layer.Layer<ResultPersistence> = layerResult.pipe(
   Layer.provide(layerMemory)
 )
 
@@ -302,7 +302,7 @@ export const layerResultMemory: Layer.Layer<never, never, ResultPersistence> = l
  * @since 1.0.0
  * @category layers
  */
-export const layerResultKeyValueStore: Layer.Layer<KeyValueStore.KeyValueStore, never, ResultPersistence> = layerResult
+export const layerResultKeyValueStore: Layer.Layer<ResultPersistence, never, KeyValueStore.KeyValueStore> = layerResult
   .pipe(
     Layer.provide(layerKeyValueStore)
   )
