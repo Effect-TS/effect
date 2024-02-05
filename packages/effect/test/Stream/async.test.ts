@@ -18,7 +18,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const array = [1, 2, 3, 4, 5]
       const result = yield* $(
-        Stream.async<never, never, number>((emit) => {
+        Stream.async<number>((emit) => {
           array.forEach((n) => {
             emit(Effect.succeed(Chunk.of(n)))
           })
@@ -34,7 +34,7 @@ describe("Stream", () => {
       const array = [1, 2, 3, 4, 5]
       const latch = yield* $(Deferred.make<never, void>())
       const fiber = yield* $(
-        Stream.asyncEffect<never, never, number>((emit) => {
+        Stream.asyncEffect<number>((emit) => {
           array.forEach((n) => {
             emit(Effect.succeed(Chunk.of(n)))
           })
@@ -56,7 +56,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Stream.asyncEffect<never, Cause.RuntimeException, number>((emit) => {
+        Stream.asyncEffect<number, Cause.RuntimeException>((emit) => {
           emit.fromEffect(Effect.fail(error))
           return Effect.unit
         }),
@@ -70,7 +70,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Stream.asyncEffect<never, Cause.RuntimeException, number>(() => {
+        Stream.asyncEffect<number, Cause.RuntimeException>(() => {
           throw error
         }),
         Stream.runCollect,
@@ -82,7 +82,7 @@ describe("Stream", () => {
   it.effect("asyncEffect - signals the end of the stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.asyncEffect<never, never, number>((emit) => {
+        Stream.asyncEffect<number>((emit) => {
           emit(Effect.fail(Option.none()))
           return Effect.unit
         }),
@@ -95,7 +95,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const refCount = yield* $(Ref.make(0))
       const refDone = yield* $(Ref.make(false))
-      const stream = Stream.asyncEffect<never, Option.Option<never>, number>((emit) => {
+      const stream = Stream.asyncEffect<number, Option.Option<never>>((emit) => {
         Promise.all(
           // 1st consumed by sink, 2-6 – in queue, 7th – back pressured
           [1, 2, 3, 4, 5, 6, 7].map((n) =>
@@ -129,7 +129,7 @@ describe("Stream", () => {
       const ref = yield* $(Ref.make(false))
       const latch = yield* $(Deferred.make<never, void>())
       const fiber = yield* $(
-        Stream.asyncInterrupt<never, never, void>((emit) => {
+        Stream.asyncInterrupt<void>((emit) => {
           emit.chunk(Chunk.of(void 0))
           return Either.left(Ref.set(ref, true))
         }),
@@ -147,7 +147,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const chunk = Chunk.range(1, 5)
       const result = yield* $(
-        Stream.asyncInterrupt<never, never, number>(() => Either.right(Stream.fromChunk(chunk))),
+        Stream.asyncInterrupt<number>(() => Either.right(Stream.fromChunk(chunk))),
         Stream.runCollect
       )
       assert.deepStrictEqual(Array.from(result), Array.from(chunk))
@@ -156,7 +156,7 @@ describe("Stream", () => {
   it.effect("asyncInterrupt - signals the end of the stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.asyncInterrupt<never, never, number>((emit) => {
+        Stream.asyncInterrupt<number>((emit) => {
           emit.end()
           return Either.left(Effect.unit)
         }),
@@ -169,7 +169,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Stream.asyncInterrupt<never, Cause.RuntimeException, number>((emit) => {
+        Stream.asyncInterrupt<number, Cause.RuntimeException>((emit) => {
           emit.fromEffect(Effect.fail(error))
           return Either.left(Effect.unit)
         }),
@@ -183,7 +183,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Stream.asyncInterrupt<never, Cause.RuntimeException, number>(() => {
+        Stream.asyncInterrupt<number, Cause.RuntimeException>(() => {
           throw error
         }),
         Stream.runCollect,
@@ -196,7 +196,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const refCount = yield* $(Ref.make(0))
       const refDone = yield* $(Ref.make(false))
-      const stream = Stream.asyncInterrupt<never, Option.Option<never>, number>((emit) => {
+      const stream = Stream.asyncInterrupt<number, Option.Option<never>>((emit) => {
         Promise.all(
           // 1st consumed by sink, 2-6 – in queue, 7th – back pressured
           [1, 2, 3, 4, 5, 6, 7].map((n) =>
@@ -228,7 +228,7 @@ describe("Stream", () => {
   it.effect("asyncOption - signals the end of the stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.asyncOption<never, never, number>((emit) => {
+        Stream.asyncOption<number>((emit) => {
           emit(Effect.fail(Option.none()))
           return Option.none()
         }),
@@ -241,7 +241,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const chunk = Chunk.range(1, 5)
       const result = yield* $(
-        Stream.asyncOption<never, never, number>(() => Option.some(Stream.fromChunk(chunk))),
+        Stream.asyncOption<number>(() => Option.some(Stream.fromChunk(chunk))),
         Stream.runCollect
       )
       assert.deepStrictEqual(Array.from(result), Array.from(chunk))
@@ -251,7 +251,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const array = [1, 2, 3, 4, 5]
       const result = yield* $(
-        Stream.asyncOption<never, never, number>((emit) => {
+        Stream.asyncOption<number>((emit) => {
           array.forEach((n) => {
             emit(Effect.succeed(Chunk.of(n)))
           })
@@ -267,7 +267,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Stream.asyncOption<never, Cause.RuntimeException, number>((emit) => {
+        Stream.asyncOption<number, Cause.RuntimeException>((emit) => {
           emit.fromEffect(Effect.fail(error))
           return Option.none()
         }),
@@ -281,7 +281,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Stream.asyncOption<never, Cause.RuntimeException, number>(() => {
+        Stream.asyncOption<number, Cause.RuntimeException>(() => {
           throw error
         }),
         Stream.runCollect,
@@ -294,7 +294,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const refCount = yield* $(Ref.make(0))
       const refDone = yield* $(Ref.make(false))
-      const stream = Stream.asyncOption<never, Option.Option<never>, number>((emit) => {
+      const stream = Stream.asyncOption<number, Option.Option<never>>((emit) => {
         Promise.all(
           // 1st consumed by sink, 2-6 – in queue, 7th – back pressured
           [1, 2, 3, 4, 5, 6, 7].map((n) =>
@@ -328,7 +328,7 @@ describe("Stream", () => {
       const array = [1, 2, 3, 4, 5]
       const latch = yield* $(Deferred.make<never, void>())
       const fiber = yield* $(
-        Stream.asyncScoped<never, never, number>((cb) => {
+        Stream.asyncScoped<number>((cb) => {
           array.forEach((n) => {
             cb(Effect.succeed(Chunk.of(n)))
           })
@@ -349,7 +349,7 @@ describe("Stream", () => {
   it.effect("asyncScoped - signals the end of the stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.asyncScoped<never, never, number>((cb) => {
+        Stream.asyncScoped<number>((cb) => {
           cb(Effect.fail(Option.none()))
           return Effect.unit
         }),
@@ -362,7 +362,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Stream.asyncScoped<never, Cause.RuntimeException, number>((cb) => {
+        Stream.asyncScoped<number, Cause.RuntimeException>((cb) => {
           cb(Effect.fail(Option.some(error)))
           return Effect.unit
         }),
@@ -376,7 +376,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Stream.asyncScoped<never, Cause.RuntimeException, number>(() => {
+        Stream.asyncScoped<number, Cause.RuntimeException>(() => {
           throw error
         }),
         Stream.runCollect,
@@ -389,7 +389,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const refCount = yield* $(Ref.make(0))
       const refDone = yield* $(Ref.make(false))
-      const stream = Stream.asyncScoped<never, Option.Option<never>, number>((cb) => {
+      const stream = Stream.asyncScoped<number, Option.Option<never>>((cb) => {
         Promise.all(
           // 1st consumed by sink, 2-6 – in queue, 7th – back pressured
           [1, 2, 3, 4, 5, 6, 7].map((n) =>

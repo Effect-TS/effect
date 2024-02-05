@@ -255,8 +255,10 @@ export const as: {
   <R, E, A, B>(self: Stream<A, E, R>, value: B): Stream<B, E, R>
 } = internal.as
 
-const _async: <R, E, A>(register: (emit: Emit.Emit<R, E, A, void>) => void, outputBuffer?: number) => Stream<A, E, R> =
-  internal._async
+const _async: <A, E = never, R = never>(
+  register: (emit: Emit.Emit<R, E, A, void>) => void,
+  outputBuffer?: number
+) => Stream<A, E, R> = internal._async
 
 export {
   /**
@@ -279,7 +281,7 @@ export {
  * @since 2.0.0
  * @category constructors
  */
-export const asyncEffect: <R, E, A>(
+export const asyncEffect: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R>,
   outputBuffer?: number
 ) => Stream<A, E, R> = internal.asyncEffect
@@ -293,7 +295,7 @@ export const asyncEffect: <R, E, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const asyncInterrupt: <R, E, A>(
+export const asyncInterrupt: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Either.Either<Effect.Effect<unknown, never, R>, Stream<A, E, R>>,
   outputBuffer?: number
 ) => Stream<A, E, R> = internal.asyncInterrupt
@@ -307,7 +309,7 @@ export const asyncInterrupt: <R, E, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const asyncOption: <R, E, A>(
+export const asyncOption: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Option.Option<Stream<A, E, R>>,
   outputBuffer?: number
 ) => Stream<A, E, R> = internal.asyncOption
@@ -321,7 +323,7 @@ export const asyncOption: <R, E, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const asyncScoped: <R, E, A>(
+export const asyncScoped: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R | Scope.Scope>,
   outputBuffer?: number
 ) => Stream<A, E, Exclude<R, Scope.Scope>> = internal.asyncScoped
@@ -378,7 +380,7 @@ export const broadcast: {
  */
 export const broadcastDynamic: {
   (maximumLag: number): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E>, never, Scope.Scope | R>
-  <R, E, A>(self: Stream<A, E, R>, maximumLag: number): Effect.Effect<Stream<A, E>, never, Scope.Scope | R>
+  <A, E, R>(self: Stream<A, E, R>, maximumLag: number): Effect.Effect<Stream<A, E>, never, Scope.Scope | R>
 } = internal.broadcastDynamic
 
 /**
@@ -764,7 +766,7 @@ export const concat: {
  * @since 2.0.0
  * @category constructors
  */
-export const concatAll: <R, E, A>(streams: Chunk.Chunk<Stream<A, E, R>>) => Stream<A, E, R> = internal.concatAll
+export const concatAll: <A, E, R>(streams: Chunk.Chunk<Stream<A, E, R>>) => Stream<A, E, R> = internal.concatAll
 
 /**
  * Composes this stream with the specified stream to create a cartesian
@@ -1386,7 +1388,7 @@ export const flattenExitOption: <R, E, E2, A>(
  * @since 2.0.0
  * @category sequencing
  */
-export const flattenIterables: <R, E, A>(self: Stream<Iterable<A>, E, R>) => Stream<A, E, R> = internal.flattenIterables
+export const flattenIterables: <A, E, R>(self: Stream<Iterable<A>, E, R>) => Stream<A, E, R> = internal.flattenIterables
 
 /**
  * Unwraps `Exit` values and flatten chunks that also signify end-of-stream
@@ -1421,7 +1423,7 @@ export const fromAsyncIterable: <E, A>(iterable: AsyncIterable<A>, onError: (e: 
  * @since 2.0.0
  * @category constructors
  */
-export const fromChannel: <R, E, A>(
+export const fromChannel: <A, E, R>(
   channel: Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown>
 ) => Stream<A, E, R> = internal.fromChannel
 
@@ -1431,7 +1433,7 @@ export const fromChannel: <R, E, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const toChannel: <R, E, A>(
+export const toChannel: <A, E, R>(
   stream: Stream<A, E, R>
 ) => Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown> = internal.toChannel
 
@@ -1542,7 +1544,7 @@ export const fromIterable: <A>(iterable: Iterable<A>) => Stream<A> = internal.fr
  * @since 2.0.0
  * @category constructors
  */
-export const fromIterableEffect: <R, E, A>(effect: Effect.Effect<Iterable<A>, E, R>) => Stream<A, E, R> =
+export const fromIterableEffect: <A, E, R>(effect: Effect.Effect<Iterable<A>, E, R>) => Stream<A, E, R> =
   internal.fromIterableEffect
 
 /**
@@ -1782,7 +1784,7 @@ export const haltWhenDeferred: {
  * @since 2.0.0
  * @category utils
  */
-export const identity: <R, E, A>() => Stream<A, E, R> = internal.identityStream
+export const identity: <A, E = never, R = never>() => Stream<A, E, R> = internal.identityStream
 
 /**
  * Interleaves this stream and the specified stream deterministically by
@@ -2141,8 +2143,8 @@ export const mergeAll: {
       readonly concurrency: number | "unbounded"
       readonly bufferSize?: number | undefined
     }
-  ): <R, E, A>(streams: Iterable<Stream<A, E, R>>) => Stream<A, E, R>
-  <R, E, A>(
+  ): <A, E, R>(streams: Iterable<Stream<A, E, R>>) => Stream<A, E, R>
+  <A, E, R>(
     streams: Iterable<Stream<A, E, R>>,
     options: {
       readonly concurrency: number | "unbounded"
@@ -2730,7 +2732,7 @@ export const repeat: {
  * @since 2.0.0
  * @category constructors
  */
-export const repeatEffect: <R, E, A>(effect: Effect.Effect<A, E, R>) => Stream<A, E, R> = internal.repeatEffect
+export const repeatEffect: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, R> = internal.repeatEffect
 
 /**
  * Creates a stream from an effect producing chunks of `A` values which
@@ -2739,7 +2741,7 @@ export const repeatEffect: <R, E, A>(effect: Effect.Effect<A, E, R>) => Stream<A
  * @since 2.0.0
  * @category constructors
  */
-export const repeatEffectChunk: <R, E, A>(effect: Effect.Effect<Chunk.Chunk<A>, E, R>) => Stream<A, E, R> =
+export const repeatEffectChunk: <A, E, R>(effect: Effect.Effect<Chunk.Chunk<A>, E, R>) => Stream<A, E, R> =
   internal.repeatEffectChunk
 
 /**
@@ -2749,7 +2751,7 @@ export const repeatEffectChunk: <R, E, A>(effect: Effect.Effect<Chunk.Chunk<A>, 
  * @since 2.0.0
  * @category constructors
  */
-export const repeatEffectChunkOption: <R, E, A>(
+export const repeatEffectChunkOption: <A, E, R>(
   effect: Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, R>
 ) => Stream<A, E, R> = internal.repeatEffectChunkOption
 
@@ -2760,7 +2762,7 @@ export const repeatEffectChunkOption: <R, E, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const repeatEffectOption: <R, E, A>(effect: Effect.Effect<A, Option.Option<E>, R>) => Stream<A, E, R> =
+export const repeatEffectOption: <A, E, R>(effect: Effect.Effect<A, Option.Option<E>, R>) => Stream<A, E, R> =
   internal.repeatEffectOption
 
 /**
@@ -3219,7 +3221,7 @@ export const runIntoQueueElementsScoped: {
   <E, A>(
     queue: Queue.Enqueue<Exit.Exit<A, Option.Option<E>>>
   ): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>
-  <R, E, A>(
+  <A, E, R>(
     self: Stream<A, E, R>,
     queue: Queue.Enqueue<Exit.Exit<A, Option.Option<E>>>
   ): Effect.Effect<void, never, Scope.Scope | R>
@@ -3497,7 +3499,7 @@ export const sync: <A>(evaluate: LazyArg<A>) => Stream<A> = internal.sync
  * @since 2.0.0
  * @category constructors
  */
-export const suspend: <R, E, A>(stream: LazyArg<Stream<A, E, R>>) => Stream<A, E, R> = internal.suspend
+export const suspend: <A, E, R>(stream: LazyArg<Stream<A, E, R>>) => Stream<A, E, R> = internal.suspend
 
 /**
  * Takes the specified number of elements from this stream.
@@ -3668,7 +3670,7 @@ export const throttle: {
       readonly strategy?: "enforce" | "shape" | undefined
     }
   ): <R, E>(self: Stream<A, E, R>) => Stream<A, E, R>
-  <R, E, A>(
+  <A, E, R>(
     self: Stream<A, E, R>,
     options: {
       readonly cost: (chunk: Chunk.Chunk<A>) => number
@@ -3798,7 +3800,7 @@ export const toPubSub: {
   (
     capacity: number
   ): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<PubSub.PubSub<Take.Take<E, A>>, never, Scope.Scope | R>
-  <R, E, A>(
+  <A, E, R>(
     self: Stream<A, E, R>,
     capacity: number
   ): Effect.Effect<PubSub.PubSub<Take.Take<E, A>>, never, Scope.Scope | R>
@@ -3813,7 +3815,7 @@ export const toPubSub: {
  * @since 2.0.0
  * @category destructors
  */
-export const toPull: <R, E, A>(
+export const toPull: <A, E, R>(
   self: Stream<A, E, R>
 ) => Effect.Effect<Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, R>, never, Scope.Scope | R> = internal.toPull
 
@@ -3833,7 +3835,7 @@ export const toQueue: {
       | { readonly strategy: "unbounded" }
       | undefined
   ): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, Scope.Scope | R>
-  <R, E, A>(
+  <A, E, R>(
     self: Stream<A, E, R>,
     options?:
       | { readonly strategy?: "dropping" | "sliding" | "suspend" | undefined; readonly capacity?: number | undefined }
@@ -3854,10 +3856,10 @@ export const toQueue: {
 export const toQueueOfElements: {
   (
     options?: { readonly capacity?: number | undefined } | undefined
-  ): <R, E, A>(
+  ): <A, E, R>(
     self: Stream<A, E, R>
   ) => Effect.Effect<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, never, Scope.Scope | R>
-  <R, E, A>(
+  <A, E, R>(
     self: Stream<A, E, R>,
     options?: { readonly capacity?: number | undefined } | undefined
   ): Effect.Effect<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, never, Scope.Scope | R>

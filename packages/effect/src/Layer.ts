@@ -349,7 +349,7 @@ export const flatten: {
  * @since 2.0.0
  * @category utils
  */
-export const fresh: <R, E, A>(self: Layer<A, E, R>) => Layer<A, E, R> = internal.fresh
+export const fresh: <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R> = internal.fresh
 
 const fromFunction: <A extends Context.Tag<any, any>, B extends Context.Tag<any, any>>(
   tagA: A,
@@ -494,7 +494,7 @@ export const mergeAll: <Layers extends [Layer<never, any, any>, ...Array<Layer<n
  * @since 2.0.0
  * @category error handling
  */
-export const orDie: <R, E, A>(self: Layer<A, E, R>) => Layer<A, never, R> = internal.orDie
+export const orDie: <A, E, R>(self: Layer<A, E, R>) => Layer<A, never, R> = internal.orDie
 
 /**
  * Executes this layer and returns its output, if it succeeds, but otherwise
@@ -504,7 +504,7 @@ export const orDie: <R, E, A>(self: Layer<A, E, R>) => Layer<A, never, R> = inte
  * @category error handling
  */
 export const orElse: {
-  <R2, E2, A2>(that: LazyArg<Layer<A2, E2, R2>>): <R, E, A>(self: Layer<A, E, R>) => Layer<A & A2, E2 | E, R2 | R>
+  <R2, E2, A2>(that: LazyArg<Layer<A2, E2, R2>>): <A, E, R>(self: Layer<A, E, R>) => Layer<A & A2, E2 | E, R2 | R>
   <R, E, A, R2, E2, A2>(self: Layer<A, E, R>, that: LazyArg<Layer<A2, E2, R2>>): Layer<A & A2, E | E2, R | R2>
 } = internal.orElse
 
@@ -560,7 +560,7 @@ export const locally: {
   <X>(
     ref: FiberRef<X>,
     value: X
-  ): <R, E, A>(self: Layer<A, E, R>) => Layer<A, E, R>
+  ): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R>
   <R, E, A, X>(
     self: Layer<A, E, R>,
     ref: FiberRef<X>,
@@ -573,7 +573,7 @@ export const locally: {
  * @category utils
  */
 export const locallyWith: {
-  <X>(ref: FiberRef<X>, value: (_: X) => X): <R, E, A>(self: Layer<A, E, R>) => Layer<A, E, R>
+  <X>(ref: FiberRef<X>, value: (_: X) => X): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R>
   <R, E, A, X>(self: Layer<A, E, R>, ref: FiberRef<X>, value: (_: X) => X): Layer<A, E, R>
 } = internal.fiberRefLocallyWith
 
@@ -999,8 +999,8 @@ export const withSpan: {
         | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
         | undefined
     }
-  ): <R, E, A>(self: Layer<A, E, R>) => Layer<A, E, Exclude<R, Tracer.ParentSpan>>
-  <R, E, A>(
+  ): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+  <A, E, R>(
     self: Layer<A, E, R>,
     name: string,
     options?: {
@@ -1021,8 +1021,8 @@ export const withSpan: {
  * @category tracing
  */
 export const withParentSpan: {
-  (span: Tracer.ParentSpan): <R, E, A>(self: Layer<A, E, R>) => Layer<A, E, Exclude<R, Tracer.ParentSpan>>
-  <R, E, A>(self: Layer<A, E, R>, span: Tracer.ParentSpan): Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+  (span: Tracer.ParentSpan): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+  <A, E, R>(self: Layer<A, E, R>, span: Tracer.ParentSpan): Layer<A, E, Exclude<R, Tracer.ParentSpan>>
 } = internal.withParentSpan
 
 // -----------------------------------------------------------------------------
