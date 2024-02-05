@@ -336,13 +336,13 @@ export const transformHandler = dual<
 /** @internal */
 export const provide = dual<
   <A, LR, LE, LA>(
-    layer: Layer.Layer<LR, LE, LA> | ((_: A) => Layer.Layer<LR, LE, LA>)
+    layer: Layer.Layer<LA, LE, LR> | ((_: A) => Layer.Layer<LA, LE, LR>)
   ) => <Name extends string, R, E>(
     self: Command.Command<Name, R, E, A>
   ) => Command.Command<Name, Exclude<R, LA> | LR, E | LE, A>,
   <Name extends string, R, E, A, LR, LE, LA>(
     self: Command.Command<Name, R, E, A>,
-    layer: Layer.Layer<LR, LE, LA> | ((_: A) => Layer.Layer<LR, LE, LA>)
+    layer: Layer.Layer<LA, LE, LR> | ((_: A) => Layer.Layer<LA, LE, LR>)
   ) => Command.Command<Name, Exclude<R, LA> | LR, E | LE, A>
 >(2, (self, layer) =>
   makeDerive(self, {

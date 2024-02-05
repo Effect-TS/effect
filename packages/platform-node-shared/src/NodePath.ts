@@ -10,16 +10,16 @@ import * as internal from "./internal/path.js"
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer<never, never, Path> = internal.layer
+export const layer: Layer<Path> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layer
  */
-export const layerPosix: Layer<never, never, Path> = internal.layerPosix
+export const layerPosix: Layer<Path> = internal.layerPosix
 
 /**
  * @since 1.0.0
  * @category layer
  */
-export const layerWin32: Layer<never, never, Path> = internal.layerWin32
+export const layerWin32: Layer<Path> = internal.layerWin32

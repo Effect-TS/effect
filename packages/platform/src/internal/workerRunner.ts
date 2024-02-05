@@ -186,7 +186,7 @@ export const make = <I, R, E, O>(
 export const layer = <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: WorkerRunner.Runner.Options<I, E, O>
-): Layer.Layer<WorkerRunner.PlatformRunner | R, WorkerError.WorkerError, never> =>
+): Layer.Layer<never, WorkerError.WorkerError, WorkerRunner.PlatformRunner | R> =>
   Layer.scopedDiscard(make(process, options))
 
 /** @internal */
@@ -253,10 +253,6 @@ export const layerSerialized = <
 >(
   schema: Schema.Schema<A, I, R>,
   handlers: Handlers
-): Layer.Layer<
-  | R
-  | WorkerRunner.PlatformRunner
-  | WorkerRunner.SerializedRunner.HandlersContext<Handlers>,
-  WorkerError.WorkerError,
-  never
-> => Layer.scopedDiscard(makeSerialized(schema, handlers))
+): Layer.Layer<never, WorkerError.WorkerError, | R
+| WorkerRunner.PlatformRunner
+| WorkerRunner.SerializedRunner.HandlersContext<Handlers>> => Layer.scopedDiscard(makeSerialized(schema, handlers))

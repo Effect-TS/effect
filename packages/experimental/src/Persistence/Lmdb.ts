@@ -59,7 +59,7 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
  */
 export const layer = (
   options: Lmdb.RootDatabaseOptionsWithPath
-): Layer.Layer<never, never, Persistence.BackingPersistence> =>
+): Layer.Layer<Persistence.BackingPersistence> =>
   Layer.scoped(
     Persistence.BackingPersistence,
     make(options)
@@ -71,7 +71,7 @@ export const layer = (
  */
 export const layerResult = (
   options: Lmdb.RootDatabaseOptionsWithPath
-): Layer.Layer<never, never, Persistence.ResultPersistence> =>
+): Layer.Layer<Persistence.ResultPersistence> =>
   Persistence.layerResult.pipe(
     Layer.provide(layer(options))
   )

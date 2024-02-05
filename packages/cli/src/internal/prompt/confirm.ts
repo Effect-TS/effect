@@ -52,7 +52,7 @@ const renderOutput = (
         Doc.cat(confirm)
       )
     }
-  })
+  });
 }
 
 const renderNextFrame = (

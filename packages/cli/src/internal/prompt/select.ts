@@ -121,7 +121,7 @@ const renderOutput = <A>(
         Doc.cat(Doc.space)
       )
     }
-  })
+  });
 }
 
 const renderNextFrame = <A>(

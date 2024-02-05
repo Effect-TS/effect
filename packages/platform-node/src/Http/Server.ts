@@ -61,7 +61,7 @@ export const makeHandler: {
 export const layerServer: (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
-) => Layer.Layer<never, ServeError, Server.Server> = internal.layerServer
+) => Layer.Layer<Server.Server, ServeError> = internal.layerServer
 
 /**
  * @since 1.0.0
@@ -70,7 +70,7 @@ export const layerServer: (
 export const layer: (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
-) => Layer.Layer<never, ServeError, Platform.Platform | Etag.Generator | NodeContext.NodeContext | Server.Server> =
+) => Layer.Layer<Platform.Platform | Etag.Generator | NodeContext.NodeContext | Server.Server, ServeError> =
   internal.layer
 
 /**
@@ -80,8 +80,4 @@ export const layer: (
 export const layerConfig: (
   evaluate: LazyArg<Http.Server>,
   options: Config.Config.Wrap<Net.ListenOptions>
-) => Layer.Layer<
-  never,
-  ServeError | ConfigError.ConfigError,
-  Platform.Platform | Etag.Generator | NodeContext.NodeContext | Server.Server
-> = internal.layerConfig
+) => Layer.Layer<Platform.Platform | Etag.Generator | NodeContext.NodeContext | Server.Server, ServeError | ConfigError.ConfigError> = internal.layerConfig

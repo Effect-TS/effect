@@ -24,7 +24,7 @@ export const makePool: <I, E, O>(
 export const makePoolLayer: <Tag, I, E, O>(
   tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
   options: Worker.WorkerPool.Options<I, Worker>
-) => Layer.Layer<never, never, Tag> = internal.makePoolLayer
+) => Layer.Layer<Tag> = internal.makePoolLayer
 
 /**
  * @since 1.0.0
@@ -42,16 +42,16 @@ export const makePoolSerialized: <I extends Schema.TaggedRequest.Any>(
 export const makePoolSerializedLayer: <Tag, I extends Schema.TaggedRequest.Any>(
   tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
   options: Worker.SerializedWorkerPool.Options<I, Worker>
-) => Layer.Layer<never, never, Tag> = internal.makePoolSerializedLayer
+) => Layer.Layer<Tag> = internal.makePoolSerializedLayer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerManager: Layer.Layer<never, never, Worker.WorkerManager> = internal.layerManager
+export const layerManager: Layer.Layer<Worker.WorkerManager> = internal.layerManager
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerWorker: Layer.Layer<never, never, Worker.PlatformWorker> = internal.layerWorker
+export const layerWorker: Layer.Layer<Worker.PlatformWorker> = internal.layerWorker

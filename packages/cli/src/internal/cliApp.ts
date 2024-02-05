@@ -306,7 +306,7 @@ const getWizardPrefix = (
     onEmpty: () => ReadonlyArray.filter(parentArgs, (arg) => arg !== "--wizard"),
     onNonEmpty: (head) => ReadonlyArray.append(parentArgs, head)
   })
-  return ReadonlyArray.appendAll(rootCommand.split(/\s+/), args)
+  return ReadonlyArray.appendAll(rootCommand.split(/\s+/), args);
 }
 
 const renderWizardArgs = (args: ReadonlyArray<string>) => {

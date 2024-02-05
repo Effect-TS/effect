@@ -94,7 +94,7 @@ export const Fetch: Context.Tag<Fetch, typeof globalThis.fetch> = internal.Fetch
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<never, never, Client.Default> = internal.layer
+export const layer: Layer.Layer<Client.Default> = internal.layer
 
 /**
  * @since 1.0.0

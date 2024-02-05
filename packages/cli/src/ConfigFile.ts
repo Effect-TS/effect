@@ -70,4 +70,4 @@ export const layer: (
       readonly searchPaths?: NonEmptyReadonlyArray<string>
     }
     | undefined
-) => Layer<Path | FileSystem, ConfigFileError, never> = Internal.layer
+) => Layer<never, ConfigFileError, Path | FileSystem> = Internal.layer

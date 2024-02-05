@@ -107,7 +107,7 @@ const renderOutput = (
         Doc.cat(renderInput(nextState, submitted))
       )
     }
-  })
+  });
 }
 
 const renderNextFrame = (

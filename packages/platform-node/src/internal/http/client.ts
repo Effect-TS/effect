@@ -47,7 +47,7 @@ export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<NodeClien
   )
 
 /** @internal */
-export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<never, never, NodeClient.HttpAgent> =>
+export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<NodeClient.HttpAgent> =>
   Layer.scoped(HttpAgent, makeAgent(options))
 
 /** @internal */

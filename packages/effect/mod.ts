@@ -2,7 +2,7 @@ import type k from "ast-types/gen/kinds.js"
 import type cs from "jscodeshift"
 
 const enabled = {
-  swapLayerParams: true,
+  swapLayerParams: false,
   swapSTMParams: false,
   swapSTMGenParams: false,
   cleanupSTM: false,

@@ -1,5 +1,5 @@
 /**
- * A `Layer<RIn, E, ROut>` describes how to build one or more services in your
+ * A `Layer<ROut, E, RIn>` describes how to build one or more services in your
  * application. Services can be injected into effects via
  * `Effect.provideService`. Effects can require services via `Effect.service`.
  *
