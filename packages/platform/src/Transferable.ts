@@ -67,10 +67,7 @@ export const addAll = (tranferables: Iterable<globalThis.Transferable>): Effect.
   Effect.flatMap(
     Effect.serviceOption(Collector),
     Option.match({
-      onNone: () => {
-        console.log("No collector", tranferables)
-        return Effect.unit
-      },
+      onNone: () => Effect.unit,
       onSome: (_) => _.addAll(tranferables)
     })
   )
