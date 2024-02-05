@@ -23,7 +23,7 @@ export interface TestSized {
   readonly [TestSizedTypeId]: TestSizedTypeId
   readonly fiberRef: FiberRef.FiberRef<number>
   readonly size: Effect.Effect<number>
-  withSize(size: number): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  withSize(size: number): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 }
 
 /**
@@ -39,7 +39,7 @@ class SizedImpl implements TestSized {
     return core.fiberRefGet(this.fiberRef)
   }
   withSize(size: number) {
-    return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    return <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
       core.fiberRefLocally(this.fiberRef, size)(effect)
   }
 }

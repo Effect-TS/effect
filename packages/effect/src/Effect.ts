@@ -979,7 +979,7 @@ export const validateFirst: {
  * @since 2.0.0
  * @category constructors
  */
-export const async: <A, E, R>(
+export const async: <A, E = never, R = never>(
   register: (callback: (_: Effect<A, E, R>) => void, signal: AbortSignal) => void | Effect<void, never, R>,
   blockingOn?: FiberId.FiberId
 ) => Effect<A, E, R> = core.async
@@ -1011,7 +1011,7 @@ export const asyncEffect: <A, E, R, X, E2, R2>(
  * @since 2.0.0
  * @category constructors
  */
-export const asyncOption: <A, E, R>(
+export const asyncOption: <A, E = never, R = never>(
   register: (callback: (_: Effect<A, E, R>) => void) => Option.Option<Effect<A, E, R>>,
   blockingOn?: FiberId.FiberId
 ) => Effect<A, E, R> = effect.asyncOption
@@ -1034,7 +1034,7 @@ export const asyncOption: <A, E, R>(
  * @since 2.0.0
  * @category constructors
  */
-export const asyncEither: <A, E, R>(
+export const asyncEither: <A, E = never, R = never>(
   register: (callback: (effect: Effect<A, E, R>) => void) => Either.Either<Effect<void, never, R>, Effect<A, E, R>>,
   blockingOn?: FiberId.FiberId
 ) => Effect<A, E, R> = core.asyncEither
@@ -2536,7 +2536,7 @@ export const diffFiberRefs: <A, E, R>(
 export const ensuringChild: {
   <X, R2>(
     f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<X, never, R2>
-  ): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E, R2 | R>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R2 | R>
   <A, E, R, X, R2>(
     self: Effect<A, E, R>,
     f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<X, never, R2>
@@ -2553,7 +2553,7 @@ export const ensuringChild: {
 export const ensuringChildren: {
   <X, R2>(
     children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect<X, never, R2>
-  ): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E, R2 | R>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R2 | R>
   <A, E, R, X, R2>(
     self: Effect<A, E, R>,
     children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect<X, never, R2>
@@ -2597,7 +2597,7 @@ export const fiberIdWith: <A, E, R>(f: (descriptor: FiberId.Runtime) => Effect<A
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fork: <R, E, A>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<E, A>, never, R> = fiberRuntime.fork
+export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<E, A>, never, R> = fiberRuntime.fork
 
 /**
  * Forks the effect into a new fiber attached to the global scope. Because the
@@ -2848,8 +2848,8 @@ export const withConsoleScoped: <A extends Console>(console: A) => Effect<void, 
  * @category console
  */
 export const withConsole: {
-  <A extends Console>(console: A): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
-  <R, E, A extends Console>(effect: Effect<A, E, R>, console: A): Effect<A, E, R>
+  <C extends Console>(console: C): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R, C extends Console>(effect: Effect<A, E, R>, console: C): Effect<A, E, R>
 } = _console.withConsole
 
 // ---------------------------------------------------------------------------------------
@@ -3075,7 +3075,7 @@ export const mapInputContext: {
 export const provide: {
   <R2, E2, R3>(
     layer: Layer.Layer<R3, E2, R2>
-  ): <R, E, A>(self: Effect<A, E, R>) => Effect<A, E2 | E, R2 | Exclude<R, R3>>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, R2 | Exclude<R, R3>>
   <R2>(context: Context.Context<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <R2>(runtime: Runtime.Runtime<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <A, E, R, R2, E2, R3>(self: Effect<A, E, R>, layer: Layer.Layer<R3, E2, R2>): Effect<A, E | E2, R2 | Exclude<R, R3>>

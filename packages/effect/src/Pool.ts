@@ -77,7 +77,7 @@ export const isPool: (u: unknown) => u is Pool<unknown, unknown> = internal.isPo
  * @since 2.0.0
  * @category constructors
  */
-export const make: <R, E, A>(
+export const make: <A, E, R>(
   options: {
     readonly acquire: Effect.Effect<A, E, R>
     readonly size: number

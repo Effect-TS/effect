@@ -182,11 +182,11 @@ class STMPrimitive implements STM.STM<any, any, any> {
 export const isSTM = (u: unknown): u is STM.STM<unknown, unknown, unknown> => hasProperty(u, STMTypeId)
 
 /** @internal */
-export const commit = <R, E, A>(self: STM.STM<A, E, R>): Effect.Effect<A, E, R> =>
+export const commit = <A, E, R>(self: STM.STM<A, E, R>): Effect.Effect<A, E, R> =>
   unsafeAtomically(self, constVoid, constVoid)
 
 /** @internal */
-export const unsafeAtomically = <R, E, A>(
+export const unsafeAtomically = <A, E, R>(
   self: STM.STM<A, E, R>,
   onDone: (exit: Exit.Exit<A, E>) => unknown,
   onInterrupt: LazyArg<unknown>
@@ -232,7 +232,7 @@ export const unsafeAtomically = <R, E, A>(
   })
 
 /** @internal */
-const tryCommit = <R, E, A>(
+const tryCommit = <A, E, R>(
   fiberId: FiberId.FiberId,
   stm: STM.STM<A, E, R>,
   state: { value: STMState.STMState<E, A> },
@@ -294,7 +294,7 @@ const tryCommit = <R, E, A>(
 }
 
 /** @internal */
-const tryCommitSync = <R, E, A>(
+const tryCommitSync = <A, E, R>(
   fiberId: FiberId.FiberId,
   stm: STM.STM<A, E, R>,
   env: Context.Context<R>,
@@ -351,7 +351,7 @@ const tryCommitSync = <R, E, A>(
 }
 
 /** @internal */
-const tryCommitAsync = <R, E, A>(
+const tryCommitAsync = <A, E, R>(
   fiberId: FiberId.FiberId,
   self: STM.STM<A, E, R>,
   txnId: TxnId.TxnId,
@@ -633,7 +633,7 @@ export const effect = <R, A>(
 
 /** @internal */
 export const ensuring = dual<
-  <R1, B>(finalizer: STM.STM<B, never, R1>) => <R, E, A>(self: STM.STM<A, E, R>) => STM.STM<A, E, R1 | R>,
+  <R1, B>(finalizer: STM.STM<B, never, R1>) => <A, E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E, R1 | R>,
   <R, E, A, R1, B>(self: STM.STM<A, E, R>, finalizer: STM.STM<B, never, R1>) => STM.STM<A, E, R1 | R>
 >(2, (self, finalizer) =>
   matchSTM(self, {
@@ -701,7 +701,7 @@ export const matchSTM = dual<
   ))
 
 /** @internal */
-export const withSTMRuntime = <R, E, A>(
+export const withSTMRuntime = <A, E = never, R = never>(
   f: (runtime: STMDriver<unknown, unknown, unknown>) => STM.STM<A, E, R>
 ): STM.STM<A, E, R> => {
   const stm = new STMPrimitive(OpCodes.OP_WITH_STM_RUNTIME)
@@ -733,7 +733,7 @@ export const map = dual<
 export const orTry = dual<
   <R1, E1, A1>(
     that: LazyArg<STM.STM<A1, E1, R1>>
-  ) => <R, E, A>(
+  ) => <A, E, R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<A1 | A, E1 | E, R1 | R>,
   <R, E, A, R1, E1, A1>(
@@ -768,7 +768,7 @@ export const sync = <A>(evaluate: () => A): STM.STM<A> => {
 export const zip = dual<
   <R1, E1, A1>(
     that: STM.STM<A1, E1, R1>
-  ) => <R, E, A>(
+  ) => <A, E, R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<[A, A1], E1 | E, R1 | R>,
   <R, E, A, R1, E1, A1>(
@@ -779,13 +779,13 @@ export const zip = dual<
 
 /** @internal */
 export const zipLeft = dual<
-  <R1, E1, A1>(that: STM.STM<A1, E1, R1>) => <R, E, A>(self: STM.STM<A, E, R>) => STM.STM<A, E1 | E, R1 | R>,
+  <R1, E1, A1>(that: STM.STM<A1, E1, R1>) => <A, E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E1 | E, R1 | R>,
   <R, E, A, R1, E1, A1>(self: STM.STM<A, E, R>, that: STM.STM<A1, E1, R1>) => STM.STM<A, E1 | E, R1 | R>
 >(2, (self, that) => pipe(self, flatMap((a) => pipe(that, map(() => a)))))
 
 /** @internal */
 export const zipRight = dual<
-  <R1, E1, A1>(that: STM.STM<A1, E1, R1>) => <R, E, A>(self: STM.STM<A, E, R>) => STM.STM<A1, E1 | E, R1 | R>,
+  <R1, E1, A1>(that: STM.STM<A1, E1, R1>) => <A, E, R>(self: STM.STM<A, E, R>) => STM.STM<A1, E1 | E, R1 | R>,
   <R, E, A, R1, E1, A1>(self: STM.STM<A, E, R>, that: STM.STM<A1, E1, R1>) => STM.STM<A1, E1 | E, R1 | R>
 >(2, (self, that) => pipe(self, flatMap(() => that)))
 
