@@ -17,4 +17,4 @@ export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Termin
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer<never, never, Terminal> = InternalTerminal.layer
+export const layer: Layer<Terminal> = InternalTerminal.layer

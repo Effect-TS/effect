@@ -8,4 +8,4 @@ import * as Client from "./DevTools/Client.js"
  * @since 1.0.0
  * @category layers
  */
-export const layer = (url = "ws://localhost:34437"): Layer.Layer<never, never, never> => Client.layerTracer(url)
+export const layer = (url = "ws://localhost:34437"): Layer.Layer<never> => Client.layerTracer(url)

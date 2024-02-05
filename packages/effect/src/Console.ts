@@ -97,7 +97,7 @@ export const withConsole: {
  * @since 2.0.0
  * @category default services
  */
-export const setConsole: <A extends Console>(console: A) => Layer.Layer<never, never, never> = internal.setConsole
+export const setConsole: <A extends Console>(console: A) => Layer.Layer<never> = internal.setConsole
 
 /**
  * @since 2.0.0

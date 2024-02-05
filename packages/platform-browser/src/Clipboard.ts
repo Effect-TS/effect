@@ -41,4 +41,4 @@ export const Clipboard: Tag<Clipboard, Clipboard> = internal.tag
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<never, never, Clipboard> = internal.layer
+export const layer: Layer.Layer<Clipboard> = internal.layer
