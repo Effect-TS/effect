@@ -272,8 +272,7 @@ export const catchTags: {
   }))
 
 /** @internal */
-export const check = (predicate: LazyArg<boolean>): STM.STM<void> =>
-  suspend(() => predicate() ? unit : core.retry)
+export const check = (predicate: LazyArg<boolean>): STM.STM<void> => suspend(() => predicate() ? unit : core.retry)
 
 /** @internal */
 export const collect = dual<
@@ -378,9 +377,7 @@ export const exists = dual<
 )
 
 /** @internal */
-export const fiberId: STM.STM<FiberId.FiberId> = core.effect<never, FiberId.FiberId>((_, fiberId) =>
-  fiberId
-)
+export const fiberId: STM.STM<FiberId.FiberId> = core.effect<never, FiberId.FiberId>((_, fiberId) => fiberId)
 
 /** @internal */
 export const filter = dual<
@@ -581,7 +578,7 @@ export const forEach = dual<
           })
           return loop
         })
-      );
+      )
     }
 
     return suspend(() =>
@@ -593,7 +590,7 @@ export const forEach = dual<
           }),
         core.succeed([]) as STM.STM<Array<A2>, E, R>
       )
-    );
+    )
   }
 )
 
@@ -709,7 +706,7 @@ export const if_ = dual<
       return self ? onTrue : onFalse
     }
 
-    return core.flatMap(self, (bool): STM.STM<A | A1, E1 | E2 | E, R1 | R2 | R> => bool ? onTrue : onFalse);
+    return core.flatMap(self, (bool): STM.STM<A | A1, E1 | E2 | E, R1 | R2 | R> => bool ? onTrue : onFalse)
   }
 )
 

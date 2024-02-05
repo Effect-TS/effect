@@ -617,8 +617,7 @@ export const mapInputContext = dual<
 export const die = (defect: unknown): STM.STM<never> => dieSync(() => defect)
 
 /** @internal */
-export const dieMessage = (message: string): STM.STM<never> =>
-  dieSync(() => new Cause.RuntimeException(message))
+export const dieMessage = (message: string): STM.STM<never> => dieSync(() => new Cause.RuntimeException(message))
 
 /** @internal */
 export const dieSync = (evaluate: LazyArg<unknown>): STM.STM<never> => {

@@ -87,8 +87,7 @@ export const make: <E, A>() => STM.STM<TDeferred<E, A>> = internal.make
  * @since 2.0.0
  * @category getters
  */
-export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<Option.Option<Either.Either<E, A>>> =
-  internal.poll
+export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<Option.Option<Either.Either<E, A>>> = internal.poll
 
 /**
  * @since 2.0.0

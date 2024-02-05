@@ -240,8 +240,7 @@ export const keys = <K, V>(self: TMap.TMap<K, V>): STM.STM<Array<K>> =>
   core.map(toReadonlyArray(self), RA.map((entry) => entry[0]))
 
 /** @internal */
-export const make = <K, V>(...entries: Array<readonly [K, V]>): STM.STM<TMap.TMap<K, V>> =>
-  fromIterable(entries)
+export const make = <K, V>(...entries: Array<readonly [K, V]>): STM.STM<TMap.TMap<K, V>> => fromIterable(entries)
 
 /** @internal */
 export const merge = dual<

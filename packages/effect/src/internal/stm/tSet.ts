@@ -181,8 +181,7 @@ export const retainIf: {
     ))
 
 /** @internal */
-export const size = <A>(self: TSet.TSet<A>): STM.STM<number> =>
-  core.map(toChunk(self), (chunk) => chunk.length)
+export const size = <A>(self: TSet.TSet<A>): STM.STM<number> => core.map(toChunk(self), (chunk) => chunk.length)
 
 /** @internal */
 export const takeFirst = dual<

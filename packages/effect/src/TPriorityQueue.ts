@@ -98,8 +98,7 @@ export const isNonEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<boolean> = inte
  * @since 2.0.0
  * @category constructors
  */
-export const make: <A>(order: Order.Order<A>) => (...elements: Array<A>) => STM.STM<TPriorityQueue<A>> =
-  internal.make
+export const make: <A>(order: Order.Order<A>) => (...elements: Array<A>) => STM.STM<TPriorityQueue<A>> = internal.make
 
 /**
  * Offers the specified value to the queue.

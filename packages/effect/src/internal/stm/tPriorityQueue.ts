@@ -73,9 +73,8 @@ export const isNonEmpty = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<b
   core.map(tRef.get(self.ref), SortedMap.isNonEmpty)
 
 /** @internal */
-export const make =
-  <A>(order: Order.Order<A>) => (...elements: Array<A>): STM.STM<TPriorityQueue.TPriorityQueue<A>> =>
-    fromIterable(order)(elements)
+export const make = <A>(order: Order.Order<A>) => (...elements: Array<A>): STM.STM<TPriorityQueue.TPriorityQueue<A>> =>
+  fromIterable(order)(elements)
 
 /** @internal */
 export const offer = dual<

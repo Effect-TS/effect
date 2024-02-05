@@ -251,8 +251,7 @@ export const isTEnqueue = (u: unknown): u is TQueue.TEnqueue<unknown> => hasProp
 export const isTDequeue = (u: unknown): u is TQueue.TDequeue<unknown> => hasProperty(u, TDequeueTypeId)
 
 /** @internal */
-export const awaitShutdown = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<void> =>
-  self.awaitShutdown
+export const awaitShutdown = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<void> => self.awaitShutdown
 
 /** @internal */
 export const bounded = <A>(requestedCapacity: number): STM.STM<TQueue.TQueue<A>> =>
@@ -268,15 +267,13 @@ export const dropping = <A>(requestedCapacity: number): STM.STM<TQueue.TQueue<A>
   makeQueue<A>(requestedCapacity, Dropping)
 
 /** @internal */
-export const isEmpty = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<boolean> =>
-  self.isEmpty
+export const isEmpty = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<boolean> => self.isEmpty
 
 /** @internal */
 export const isFull = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<boolean> => self.isFull
 
 /** @internal */
-export const isShutdown = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<boolean> =>
-  self.isShutdown
+export const isShutdown = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<boolean> => self.isShutdown
 
 /** @internal */
 export const offer = dual<
@@ -387,8 +384,7 @@ export const takeUpTo = dual<
 >(2, (self, max) => self.takeUpTo(max))
 
 /** @internal */
-export const unbounded = <A>(): STM.STM<TQueue.TQueue<A>> =>
-  makeQueue<A>(Number.MAX_SAFE_INTEGER, Dropping)
+export const unbounded = <A>(): STM.STM<TQueue.TQueue<A>> => makeQueue<A>(Number.MAX_SAFE_INTEGER, Dropping)
 
 const makeQueue = <A>(requestedCapacity: number, strategy: TQueueStrategy): STM.STM<TQueue.TQueue<A>> =>
   core.map(

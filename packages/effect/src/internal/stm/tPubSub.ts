@@ -547,5 +547,4 @@ export const subscribeScoped = <A>(self: TPubSub.TPubSub<A>): Effect.Effect<TQue
   )
 
 /** @internal */
-export const unbounded = <A>(): STM.STM<TPubSub.TPubSub<A>> =>
-  makeTPubSub<A>(Number.MAX_SAFE_INTEGER, tQueue.Dropping)
+export const unbounded = <A>(): STM.STM<TPubSub.TPubSub<A>> => makeTPubSub<A>(Number.MAX_SAFE_INTEGER, tQueue.Dropping)
