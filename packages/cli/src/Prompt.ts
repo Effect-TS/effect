@@ -435,7 +435,7 @@ export const integer: (options: Prompt.IntegerOptions) => Prompt<number> = Inter
  * @since 1.0.0
  * @category constructors
  */
-export const list: (options: Prompt.ListOptions) => Prompt<ReadonlyArray<string>> = InternalListPrompt.list
+export const list: (options: Prompt.ListOptions) => Prompt<Array<string>> = InternalListPrompt.list
 
 /**
  * @since 1.0.0

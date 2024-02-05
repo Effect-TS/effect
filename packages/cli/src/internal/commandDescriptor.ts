@@ -175,19 +175,19 @@ export const getNames = <A>(self: Descriptor.Command<A>): HashSet.HashSet<string
 export const getBashCompletions = <A>(
   self: Descriptor.Command<A>,
   executable: string
-): Effect.Effect<never, never, ReadonlyArray<string>> => getBashCompletionsInternal(self as Instruction, executable)
+): Effect.Effect<never, never, Array<string>> => getBashCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getFishCompletions = <A>(
   self: Descriptor.Command<A>,
   executable: string
-): Effect.Effect<never, never, ReadonlyArray<string>> => getFishCompletionsInternal(self as Instruction, executable)
+): Effect.Effect<never, never, Array<string>> => getFishCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getZshCompletions = <A>(
   self: Descriptor.Command<A>,
   executable: string
-): Effect.Effect<never, never, ReadonlyArray<string>> => getZshCompletionsInternal(self as Instruction, executable)
+): Effect.Effect<never, never, Array<string>> => getZshCompletionsInternal(self as Instruction, executable)
 
 /** @internal */
 export const getSubcommands = <A>(
@@ -307,7 +307,7 @@ export const wizard = dual<
   ) => <A>(self: Descriptor.Command<A>) => Effect.Effect<
     FileSystem.FileSystem | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >,
   <A>(
     self: Descriptor.Command<A>,
@@ -316,7 +316,7 @@ export const wizard = dual<
   ) => Effect.Effect<
     FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >
 >(3, (self, prefix, config) => wizardInternal(self as Instruction, prefix, config))
 
@@ -431,7 +431,7 @@ const getHelpInternal = (self: Instruction, config: CliConfig.CliConfig): HelpDo
   }
 }
 
-const getNamesInternal = (self: Instruction): ReadonlyArray<string> => {
+const getNamesInternal = (self: Instruction): Array<string> => {
   switch (self._tag) {
     case "Standard":
     case "GetUserInput": {
@@ -448,11 +448,11 @@ const getNamesInternal = (self: Instruction): ReadonlyArray<string> => {
 
 const getSubcommandsInternal = (
   self: Instruction
-): ReadonlyArray<[string, GetUserInput | Standard]> => {
+): Array<[string, GetUserInput | Standard]> => {
   const loop = (
     self: Instruction,
     isSubcommand: boolean
-  ): ReadonlyArray<[string, GetUserInput | Standard]> => {
+  ): Array<[string, GetUserInput | Standard]> => {
     switch (self._tag) {
       case "Standard":
       case "GetUserInput": {
@@ -787,7 +787,7 @@ const parseInternal = (
 
 const splitForcedArgs = (
   args: ReadonlyArray<string>
-): [ReadonlyArray<string>, ReadonlyArray<string>] => {
+): [Array<string>, Array<string>] => {
   const [remainingArgs, forcedArgs] = ReadonlyArray.span(args, (str) => str !== "--")
   return [remainingArgs, ReadonlyArray.drop(forcedArgs, 1)]
 }
@@ -839,7 +839,7 @@ const wizardInternal = (
 ): Effect.Effect<
   FileSystem.FileSystem | Path.Path | Terminal.Terminal,
   Terminal.QuitException | ValidationError.ValidationError,
-  ReadonlyArray<string>
+  Array<string>
 > => {
   const loop = (
     self: Instruction,
@@ -921,7 +921,7 @@ const wizardInternal = (
   return Ref.make(prefix).pipe(
     Effect.flatMap((commandLineRef) =>
       loop(self, commandLineRef).pipe(
-        Effect.zipRight(Ref.get(commandLineRef))
+        Effect.zipRight(Ref.get(commandLineRef) as Effect.Effect<never, never, Array<string>>)
       )
     )
   )
@@ -1012,9 +1012,9 @@ const traverseCommand = <S>(
   }))
 
 const indentAll = dual<
-  (indent: number) => (self: ReadonlyArray<string>) => ReadonlyArray<string>,
-  (self: ReadonlyArray<string>, indent: number) => ReadonlyArray<string>
->(2, (self: ReadonlyArray<string>, indent: number): ReadonlyArray<string> => {
+  (indent: number) => (self: ReadonlyArray<string>) => Array<string>,
+  (self: ReadonlyArray<string>, indent: number) => Array<string>
+>(2, (self: ReadonlyArray<string>, indent: number): Array<string> => {
   const indentation = new Array(indent + 1).join(" ")
   return ReadonlyArray.map(self, (line) => `${indentation}${line}`)
 })
@@ -1022,7 +1022,7 @@ const indentAll = dual<
 const getBashCompletionsInternal = (
   self: Instruction,
   executable: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
+): Effect.Effect<never, never, Array<string>> =>
   traverseCommand(
     self,
     ReadonlyArray.empty<[ReadonlyArray<string>, ReadonlyArray<string>]>(),
@@ -1113,7 +1113,7 @@ const getBashCompletionsInternal = (
 const getFishCompletionsInternal = (
   self: Instruction,
   executable: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
+): Effect.Effect<never, never, Array<string>> =>
   traverseCommand(self, ReadonlyArray.empty(), (state, info) => {
     const baseTemplate = ReadonlyArray.make("complete", "-c", executable)
     const options = isStandard(info.command)
@@ -1195,7 +1195,7 @@ const getFishCompletionsInternal = (
 const getZshCompletionsInternal = (
   self: Instruction,
   executable: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
+): Effect.Effect<never, never, Array<string>> =>
   traverseCommand(self, ReadonlyArray.empty<string>(), (state, info) => {
     const preformatted = ReadonlyArray.isEmptyReadonlyArray(info.parentCommands)
       ? ReadonlyArray.of(info.command.name)
@@ -1262,7 +1262,7 @@ const getZshSubcommandCases = (
   self: Instruction,
   parentCommands: ReadonlyArray<string>,
   subcommands: ReadonlyArray<[string, Standard | GetUserInput]>
-): ReadonlyArray<string> => {
+): Array<string> => {
   switch (self._tag) {
     case "Standard":
     case "GetUserInput": {

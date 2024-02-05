@@ -187,7 +187,7 @@ export const boolean = (config?: Args.Args.BaseArgsConfig): Args.Args<boolean> =
 
 /** @internal */
 export const choice = <A>(
-  choices: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>,
+  choices: ReadonlyArray<[string, A]>,
   config?: Args.Args.BaseArgsConfig
 ): Args.Args<A> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.choice(choices))
 
@@ -282,37 +282,37 @@ export const text = (config?: Args.Args.BaseArgsConfig): Args.Args<string> =>
 /** @internal */
 export const atLeast = dual<
   {
-    (times: 0): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray<A>>
-    (times: number): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
+    (times: 0): <A>(self: Args.Args<A>) => Args.Args<Array<A>>
+    (times: number): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray.NonEmptyArray<A>>
   },
   {
-    <A>(self: Args.Args<A>, times: 0): Args.Args<ReadonlyArray<A>>
-    <A>(self: Args.Args<A>, times: number): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
+    <A>(self: Args.Args<A>, times: 0): Args.Args<Array<A>>
+    <A>(self: Args.Args<A>, times: number): Args.Args<ReadonlyArray.NonEmptyArray<A>>
   }
 >(2, (self, times) => makeVariadic(self, Option.some(times), Option.none()) as any)
 
 /** @internal */
 export const atMost = dual<
-  (times: number) => <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray<A>>,
-  <A>(self: Args.Args<A>, times: number) => Args.Args<ReadonlyArray<A>>
+  (times: number) => <A>(self: Args.Args<A>) => Args.Args<Array<A>>,
+  <A>(self: Args.Args<A>, times: number) => Args.Args<Array<A>>
 >(2, (self, times) => makeVariadic(self, Option.none(), Option.some(times)))
 
 /** @internal */
 export const between = dual<
   {
-    (min: 0, max: number): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray<A>>
+    (min: 0, max: number): <A>(self: Args.Args<A>) => Args.Args<Array<A>>
     (
       min: number,
       max: number
-    ): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
+    ): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray.NonEmptyArray<A>>
   },
   {
-    <A>(self: Args.Args<A>, min: 0, max: number): Args.Args<ReadonlyArray<A>>
+    <A>(self: Args.Args<A>, min: 0, max: number): Args.Args<Array<A>>
     <A>(
       self: Args.Args<A>,
       min: number,
       max: number
-    ): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
+    ): Args.Args<ReadonlyArray.NonEmptyArray<A>>
   }
 >(3, (self, min, max) => makeVariadic(self, Option.some(min), Option.some(max)) as any)
 
@@ -374,8 +374,7 @@ export const optional = <A>(self: Args.Args<A>): Args.Args<Option.Option<A>> =>
   makeWithDefault(map(self, Option.some), Option.none())
 
 /** @internal */
-export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>
-  makeVariadic(self, Option.none(), Option.none())
+export const repeated = <A>(self: Args.Args<A>): Args.Args<Array<A>> => makeVariadic(self, Option.none(), Option.none())
 
 /** @internal */
 export const validate = dual<
@@ -385,7 +384,7 @@ export const validate = dual<
   ) => <A>(self: Args.Args<A>) => Effect.Effect<
     FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     ValidationError.ValidationError,
-    [ReadonlyArray<string>, A]
+    [Array<string>, A]
   >,
   <A>(
     self: Args.Args<A>,
@@ -394,7 +393,7 @@ export const validate = dual<
   ) => Effect.Effect<
     FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     ValidationError.ValidationError,
-    [ReadonlyArray<string>, A]
+    [Array<string>, A]
   >
 >(3, (self, args, config) => validateInternal(self as Instruction, args, config))
 
@@ -450,12 +449,12 @@ export const wizard = dual<
   (config: CliConfig.CliConfig) => <A>(self: Args.Args<A>) => Effect.Effect<
     FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >,
   <A>(self: Args.Args<A>, config: CliConfig.CliConfig) => Effect.Effect<
     FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >
 >(2, (self, config) => wizardInternal(self as Instruction, config))
 
@@ -720,7 +719,7 @@ const makeVariadic = <A>(
   args: Args.Args<A>,
   min: Option.Option<number>,
   max: Option.Option<number>
-): Args.Args<ReadonlyArray<A>> => {
+): Args.Args<Array<A>> => {
   const op = Object.create(proto)
   op._tag = "Variadic"
   op.args = args
@@ -736,11 +735,11 @@ const validateInternal = (
 ): Effect.Effect<
   FileSystem.FileSystem | Path.Path | Terminal.Terminal,
   ValidationError.ValidationError,
-  [ReadonlyArray<string>, any]
+  [Array<string>, any]
 > => {
   switch (self._tag) {
     case "Empty": {
-      return Effect.succeed([args, undefined])
+      return Effect.succeed([args as Array<string>, undefined])
     }
     case "Single": {
       return Effect.suspend(() => {
@@ -770,7 +769,7 @@ const validateInternal = (
             InternalPrimitive.validate(self.primitiveType, Option.some(head), config).pipe(
               Effect.mapBoth({
                 onFailure: (text) => InternalValidationError.invalidArgument(InternalHelpDoc.p(text)),
-                onSuccess: (a) => [tail, a] as [ReadonlyArray<string>, any]
+                onSuccess: (a) => [tail, a]
               })
             )
         })
@@ -818,14 +817,14 @@ const validateInternal = (
         }))
       }
       return loop(args, ReadonlyArray.empty()).pipe(
-        Effect.map(([args, acc]) => [args, acc])
+        Effect.map(([args, acc]) => [args as Array<string>, acc])
       )
     }
     case "WithDefault": {
       return validateInternal(self.args as Instruction, args, config).pipe(
         Effect.catchTag("MissingValue", () =>
-          Effect.succeed<[ReadonlyArray<string>, any]>([
-            args,
+          Effect.succeed<[Array<string>, any]>([
+            args as Array<string>,
             self.fallback
           ]))
       )
@@ -835,7 +834,7 @@ const validateInternal = (
         Effect.catchTag("MissingValue", (e) =>
           Effect.map(
             Effect.mapError(self.config, () => e),
-            (value) => [args, value] as [ReadonlyArray<string>, any]
+            (value) => [args, value] as [Array<string>, any]
           ))
       )
     }
@@ -885,7 +884,7 @@ const withDescriptionInternal = (self: Instruction, description: string): Args.A
 const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.Effect<
   FileSystem.FileSystem | Path.Path | Terminal.Terminal,
   Terminal.QuitException | ValidationError.ValidationError,
-  ReadonlyArray<string>
+  Array<string>
 > => {
   switch (self._tag) {
     case "Empty": {
@@ -1009,7 +1008,7 @@ const getShortDescription = (self: Instruction): string => {
 }
 
 /** @internal */
-export const getFishCompletions = (self: Instruction): ReadonlyArray<string> => {
+export const getFishCompletions = (self: Instruction): Array<string> => {
   switch (self._tag) {
     case "Empty": {
       return ReadonlyArray.empty()
@@ -1052,7 +1051,7 @@ interface ZshCompletionState {
 export const getZshCompletions = (
   self: Instruction,
   state: ZshCompletionState = { multiple: false, optional: false }
-): ReadonlyArray<string> => {
+): Array<string> => {
   switch (self._tag) {
     case "Empty": {
       return ReadonlyArray.empty()

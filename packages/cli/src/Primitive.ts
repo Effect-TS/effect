@@ -5,7 +5,6 @@ import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
-import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import type { Span } from "./HelpDoc/Span.js"
@@ -93,7 +92,7 @@ export const boolean: (defaultValue: Option<boolean>) => Primitive<boolean> = In
  * @since 1.0.0
  * @category constructors
  */
-export const choice: <A>(alternatives: NonEmptyReadonlyArray<[string, A]>) => Primitive<A> = InternalPrimitive.choice
+export const choice: <A>(alternatives: ReadonlyArray<[string, A]>) => Primitive<A> = InternalPrimitive.choice
 
 /**
  * Represents a date in ISO-8601 format, such as `2007-12-03T10:15:30`.
