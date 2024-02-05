@@ -71,7 +71,7 @@ describe("FiberRef", () => {
   it.scoped("set by a child doesn't update parent's value", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(initial))
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       yield* $(
         FiberRef.set(fiberRef, update).pipe(
           Effect.zipRight(Deferred.succeed(deferred, void 0)),
@@ -209,7 +209,7 @@ describe("FiberRef", () => {
   it.scopedLive("the value of the loser is inherited in zipPar", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(initial))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const winner = FiberRef.set(fiberRef, update1).pipe(Effect.zipRight(Deferred.succeed(latch, void 0)))
       const loser = Deferred.await(latch).pipe(
         Effect.zipRight(Clock.sleep(Duration.millis(1))),
@@ -257,7 +257,7 @@ describe("FiberRef", () => {
   it.scopedLive("its value is inherited after a race with a bad winner", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(initial))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const badWinner = FiberRef.set(fiberRef, update1).pipe(
         Effect.zipRight(Effect.fail("ups").pipe(Effect.ensuring(Deferred.succeed(latch, void 0))))
       )
@@ -288,7 +288,7 @@ describe("FiberRef", () => {
   it.scoped("the value of the winner is inherited when racing two effects with raceAll", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(initial))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const winner1 = FiberRef.set(fiberRef, update1).pipe(
         Effect.zipRight(Deferred.succeed(latch, void 0))
       )
@@ -309,7 +309,7 @@ describe("FiberRef", () => {
     Effect.gen(function*($) {
       const n = 63
       const fiberRef = yield* $(FiberRef.make(initial))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const winner1 = FiberRef.set(fiberRef, update1).pipe(
         Effect.zipRight(Deferred.succeed(latch, void 0)),
         Effect.asUnit
@@ -339,7 +339,7 @@ describe("FiberRef", () => {
   it.scoped("fork patch is applied when a fiber is unsafely run", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make<boolean>(true, { fork: constTrue }))
-      const deferred = yield* $(Deferred.make<never, boolean>())
+      const deferred = yield* $(Deferred.make<boolean>())
       const runtime: Runtime.Runtime<never> = yield* $(
         Effect.runtime<never>().pipe(Effect.locally(fiberRef, false))
       )
@@ -352,7 +352,7 @@ describe("FiberRef", () => {
   it.scoped("fork patch is applied when a fiber is unsafely forked", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make<boolean>(true, { fork: constTrue }))
-      const deferred = yield* $(Deferred.make<never, boolean>())
+      const deferred = yield* $(Deferred.make<boolean>())
       const runtime: Runtime.Runtime<never> = yield* $(Effect.locally(Effect.runtime<never>(), fiberRef, false))
       const fiber = yield* $(
         Effect.sync(() => Runtime.runFork(runtime)(Effect.intoDeferred(FiberRef.get(fiberRef), deferred)))

@@ -17,7 +17,7 @@ describe("Effect", () => {
     }))
   it.effect("fork - propagates interruption with zip of defect", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Deferred.succeed(latch, void 0),
         Effect.zipRight(Effect.die(new Error())),
@@ -31,7 +31,7 @@ describe("Effect", () => {
     }))
   it.effect("fork - interruption status is heritable", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make(true))
       yield* $(
         Effect.checkInterruptible((isInterruptible) =>
@@ -47,7 +47,7 @@ describe("Effect", () => {
     }))
   it.effect("forkWithErrorHandler - calls provided function when task fails", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       yield* $(
         Effect.fail<void>(void 0),
         Effect.forkWithErrorHandler((e) => pipe(Deferred.succeed(deferred, e), Effect.asUnit))

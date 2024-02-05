@@ -76,7 +76,7 @@ const isComplete = (u: unknown): u is Complete<unknown, unknown> =>
 class Pending<in out E, in out A> implements Equal.Equal {
   readonly _tag = "Pending"
   readonly [KeyedPoolMapValueSymbol]: KeyedPoolMapValueSymbol = KeyedPoolMapValueSymbol
-  constructor(readonly deferred: Deferred.Deferred<never, Pool.Pool<E, A>>) {}
+  constructor(readonly deferred: Deferred.Deferred<Pool.Pool<E, A>, never>) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.string("effect/KeyedPool/Pending"),
@@ -110,7 +110,7 @@ const makeImpl = <K, R, E, A>(
           let value: MapValue<E, A> | undefined = Option.getOrUndefined(HashMap.get(MutableRef.get(map), key))
           if (value === undefined) {
             return core.uninterruptibleMask((restore) => {
-              const deferred = core.deferredUnsafeMake<never, Pool.Pool<E, A>>(fiberId)
+              const deferred = core.deferredUnsafeMake<Pool.Pool<E, A>>(fiberId)
               value = new Pending(deferred)
               let previous: MapValue<E, A> | undefined = undefined
               if (HashMap.has(MutableRef.get(map), key)) {

@@ -21,8 +21,8 @@ import * as Persistence from "./Persistence.js"
 interface DataLoaderItem<A extends Request.Request<any, any>> {
   readonly request: A
   readonly deferred: Deferred.Deferred<
-    Request.Request.Error<A>,
-    Request.Request.Success<A>
+    Request.Request.Success<A>,
+    Request.Request.Error<A>
   >
 }
 
@@ -96,7 +96,7 @@ export const dataLoader = dual<
 
     return RequestResolver.fromEffect((request: A) =>
       Effect.flatMap(
-        Deferred.make<Request.Request.Error<A>, Request.Request.Success<A>>(),
+        Deferred.make<Request.Request.Success<A>, Request.Request.Error<A>>(),
         (deferred) =>
           Queue.offer(queue, { request, deferred }).pipe(
             Effect.zipRight(Deferred.await(deferred)),

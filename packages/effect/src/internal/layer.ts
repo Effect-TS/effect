@@ -213,7 +213,7 @@ class MemoMapImpl implements Layer.MemoMap {
           ref.make(0),
           core.flatMap((observers) =>
             pipe(
-              core.deferredMake<E, readonly [FiberRefsPatch.FiberRefsPatch, Context.Context<ROut>]>(),
+              core.deferredMake<readonly [FiberRefsPatch.FiberRefsPatch, Context.Context<ROut>], E>(),
               core.flatMap((deferred) =>
                 pipe(
                   ref.make<Scope.Scope.Finalizer>(() => core.unit),

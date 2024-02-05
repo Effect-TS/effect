@@ -48,25 +48,25 @@ export declare namespace Handoff {
   /** @internal */
   export interface Empty {
     readonly _tag: OP_HANDOFF_STATE_EMPTY
-    readonly notifyConsumer: Deferred.Deferred<never, void>
+    readonly notifyConsumer: Deferred.Deferred<void, never>
   }
 
   /** @internal */
   export interface Full<out A> {
     readonly _tag: OP_HANDOFF_STATE_FULL
     readonly value: A
-    readonly notifyProducer: Deferred.Deferred<never, void>
+    readonly notifyProducer: Deferred.Deferred<void, never>
   }
 }
 
 /** @internal */
-const handoffStateEmpty = <A>(notifyConsumer: Deferred.Deferred<never, void>): Handoff.State<A> => ({
+const handoffStateEmpty = <A>(notifyConsumer: Deferred.Deferred<void, never>): Handoff.State<A> => ({
   _tag: OP_HANDOFF_STATE_EMPTY,
   notifyConsumer
 })
 
 /** @internal */
-const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<never, void>): Handoff.State<A> => ({
+const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<void, never>): Handoff.State<A> => ({
   _tag: OP_HANDOFF_STATE_FULL,
   value,
   notifyProducer
@@ -74,8 +74,8 @@ const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<never, 
 
 /** @internal */
 const handoffStateMatch = <A, Z>(
-  onEmpty: (notifyConsumer: Deferred.Deferred<never, void>) => Z,
-  onFull: (value: A, notifyProducer: Deferred.Deferred<never, void>) => Z
+  onEmpty: (notifyConsumer: Deferred.Deferred<void, never>) => Z,
+  onFull: (value: A, notifyProducer: Deferred.Deferred<void, never>) => Z
 ) => {
   return (self: Handoff.State<A>): Z => {
     switch (self._tag) {
@@ -97,7 +97,7 @@ const handoffVariance = {
 /** @internal */
 export const make = <A>(): Effect.Effect<Handoff<A>> =>
   pipe(
-    Deferred.make<never, void>(),
+    Deferred.make<void>(),
     Effect.flatMap((deferred) => Ref.make(handoffStateEmpty<A>(deferred))),
     Effect.map((ref): Handoff<A> => ({
       [HandoffTypeId]: handoffVariance,
@@ -110,7 +110,7 @@ export const offer = dual<
   <A>(value: A) => (self: Handoff<A>) => Effect.Effect<void>,
   <A>(self: Handoff<A>, value: A) => Effect.Effect<void>
 >(2, (self, value): Effect.Effect<void> => {
-  return Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
+  return Effect.flatMap(Deferred.make<void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>
         pipe(
@@ -118,7 +118,7 @@ export const offer = dual<
           handoffStateMatch(
             (notifyConsumer) => [
               Effect.zipRight(
-                Deferred.succeed<never, void>(notifyConsumer, void 0),
+                Deferred.succeed(notifyConsumer, void 0),
                 Deferred.await(deferred)
               ),
               handoffStateFull(value, deferred)
@@ -137,7 +137,7 @@ export const offer = dual<
 
 /** @internal */
 export const take = <A>(self: Handoff<A>): Effect.Effect<A> =>
-  Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
+  Effect.flatMap(Deferred.make<void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>
         pipe(
@@ -153,7 +153,7 @@ export const take = <A>(self: Handoff<A>): Effect.Effect<A> =>
               ] as const,
             (value, notifyProducer) => [
               Effect.as(
-                Deferred.succeed<never, void>(notifyProducer, void 0),
+                Deferred.succeed(notifyProducer, void 0),
                 value
               ),
               handoffStateEmpty<A>(deferred)
@@ -164,7 +164,7 @@ export const take = <A>(self: Handoff<A>): Effect.Effect<A> =>
 
 /** @internal */
 export const poll = <A>(self: Handoff<A>): Effect.Effect<Option.Option<A>> =>
-  Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
+  Effect.flatMap(Deferred.make<void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>
         pipe(
@@ -177,7 +177,7 @@ export const poll = <A>(self: Handoff<A>): Effect.Effect<Option.Option<A>> =>
               ] as const,
             (value, notifyProducer) => [
               Effect.as(
-                Deferred.succeed<never, void>(notifyProducer, void 0),
+                Deferred.succeed(notifyProducer, void 0),
                 Option.some(value)
               ),
               handoffStateEmpty<A>(deferred)

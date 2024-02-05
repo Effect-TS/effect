@@ -64,14 +64,14 @@ describe("Stream", () => {
 
   it.effect("aggregate - interruption propagation #1", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make(false))
       const sink = Sink.foldEffect(Chunk.empty<number>(), constTrue, (acc, curr) => {
         if (curr === 1) {
           return Effect.succeed(Chunk.prepend(acc, curr))
         }
         return pipe(
-          Deferred.succeed<never, void>(latch, void 0),
+          Deferred.succeed(latch, void 0),
           Effect.zipRight(Effect.never),
           Effect.onInterrupt(() => Ref.set(ref, true))
         )
@@ -90,10 +90,10 @@ describe("Stream", () => {
 
   it.effect("aggregate - interruption propagation #2", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make(false))
       const sink = Sink.fromEffect(pipe(
-        Deferred.succeed<never, void>(latch, void 0),
+        Deferred.succeed(latch, void 0),
         Effect.zipRight(Effect.never),
         Effect.onInterrupt(() => Ref.set(ref, true))
       ))
@@ -283,14 +283,14 @@ describe("Stream", () => {
 
   it.effect("aggregateWithinEither - interruption propagation #1", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make(false))
       const sink = Sink.foldEffect(Chunk.empty<number>(), constTrue, (acc, curr) => {
         if (curr === 1) {
           return Effect.succeed(Chunk.prepend(acc, curr))
         }
         return pipe(
-          Deferred.succeed<never, void>(latch, void 0),
+          Deferred.succeed(latch, void 0),
           Effect.zipRight(Effect.never),
           Effect.onInterrupt(() => Ref.set(ref, true))
         )
@@ -309,10 +309,10 @@ describe("Stream", () => {
 
   it.effect("aggregateWithinEither - interruption propagation #2", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const ref = yield* $(Ref.make(false))
       const sink = Sink.fromEffect(pipe(
-        Deferred.succeed<never, void>(latch, void 0),
+        Deferred.succeed(latch, void 0),
         Effect.zipRight(Effect.never),
         Effect.onInterrupt(() => Ref.set(ref, true))
       ))

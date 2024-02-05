@@ -17,8 +17,8 @@ describe("TPubSub", () => {
   it.it("sequential publishers and subscribers - with one publisher and one subscriber", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.bounded<number>(n))
         const subscriber = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -51,9 +51,9 @@ describe("TPubSub", () => {
   it.it("sequential publishers and subscribers - with one publisher and two subscribers", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
-        const deferred3 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
+        const deferred3 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.bounded<number>(n))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -106,7 +106,7 @@ describe("TPubSub", () => {
   it.it("concurrent publishers and subscribers - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<never, void>())
+        const deferred = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.bounded<number>(n))
         const subscriber = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -134,8 +134,8 @@ describe("TPubSub", () => {
   it.it("concurrent publishers and subscribers - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer()), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.bounded<number>(n))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -178,8 +178,8 @@ describe("TPubSub", () => {
   it.it("concurrent publishers and subscribers - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.bounded<number>(n * 2))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -249,7 +249,7 @@ describe("TPubSub", () => {
   it.it("back pressure - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<never, void>())
+        const deferred = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.bounded<number>(n))
         const subscriber = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -274,8 +274,8 @@ describe("TPubSub", () => {
   it.it("back pressure - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.bounded<number>(n))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -316,8 +316,8 @@ describe("TPubSub", () => {
   it.it("back pressure - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.bounded<number>(n * 2))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -375,7 +375,7 @@ describe("TPubSub", () => {
   it.it("dropping - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<never, void>())
+        const deferred = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.dropping<number>(n))
         const subscriber = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -403,8 +403,8 @@ describe("TPubSub", () => {
   it.it("dropping - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.dropping<number>(n))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -451,8 +451,8 @@ describe("TPubSub", () => {
   it.it("dropping - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.dropping<number>(n * 2))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -522,7 +522,7 @@ describe("TPubSub", () => {
   it.it("sliding - one to one", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<never, void>())
+        const deferred = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.sliding<number>(n))
         const subscriber = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -551,8 +551,8 @@ describe("TPubSub", () => {
   it.it("sliding - one to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.sliding<number>(n))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -599,8 +599,8 @@ describe("TPubSub", () => {
   it.it("sliding - many to many", () =>
     fc.assert(fc.asyncProperty(fc.integer({ min: 1 }), fc.array(fc.integer({ min: 1 })), async (n, as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.sliding<number>(n * 2))
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -670,7 +670,7 @@ describe("TPubSub", () => {
   it.it("unbounded - one to one", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
       const program = Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<never, void>())
+        const deferred = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.unbounded<number>())
         const subscriber = yield* $(pipe(
           STM.commit(TPubSub.subscribe(pubsub)),
@@ -695,8 +695,8 @@ describe("TPubSub", () => {
   it.it("unbounded - one to many", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.unbounded<number>())
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -737,8 +737,8 @@ describe("TPubSub", () => {
   it.it("unbounded - many to many", () =>
     fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: 1 })), async (as) => {
       const program = Effect.gen(function*($) {
-        const deferred1 = yield* $(Deferred.make<never, void>())
-        const deferred2 = yield* $(Deferred.make<never, void>())
+        const deferred1 = yield* $(Deferred.make<void>())
+        const deferred2 = yield* $(Deferred.make<void>())
         const pubsub = yield* $(TPubSub.unbounded<number>())
         const subscriber1 = yield* $(pipe(
           TPubSub.subscribeScoped(pubsub),
@@ -796,8 +796,8 @@ describe("TPubSub", () => {
   it.effect("unbounded - undefined/null values", () =>
     Effect.gen(function*($) {
       const as = [null, undefined, null, undefined]
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(TPubSub.unbounded<null | undefined>())
       const subscriber1 = yield* $(pipe(
         TPubSub.subscribeScoped(pubsub),
@@ -835,8 +835,8 @@ describe("TPubSub", () => {
   it.effect("bounded - undefined/null values", () =>
     Effect.gen(function*($) {
       const as = [null, undefined]
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(TPubSub.bounded<null | undefined>(2))
       const subscriber1 = yield* $(pipe(
         TPubSub.subscribeScoped(pubsub),
@@ -875,7 +875,7 @@ describe("TPubSub", () => {
     Effect.gen(function*($) {
       const as = [null, undefined, null, undefined]
       const n = 2
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(TPubSub.dropping<null | undefined>(n))
       const subscriber = yield* $(pipe(
         TPubSub.subscribeScoped(pubsub),

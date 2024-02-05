@@ -45,7 +45,7 @@ export const make = (
   Effect.gen(function*(_) {
     const fiberId = yield* _(Effect.fiberId)
     const semaphore = yield* _(Effect.makeSemaphore(1))
-    let serverDeferred = yield* _(Deferred.make<never, Net.Server>())
+    let serverDeferred = yield* _(Deferred.make<Net.Server>())
 
     const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
@@ -147,7 +147,7 @@ export const makeWebSocket = (
     const fiberId = yield* _(Effect.fiberId)
     const semaphore = yield* _(Effect.makeSemaphore(1))
 
-    let serverDeferred = yield* _(Deferred.make<never, WS.WebSocketServer>())
+    let serverDeferred = yield* _(Deferred.make<WS.WebSocketServer>())
     const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const runtime = yield* _(Effect.runtime<R>())

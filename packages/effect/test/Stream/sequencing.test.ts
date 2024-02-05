@@ -118,7 +118,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
       const push = (n: number) => Ref.update(ref, Chunk.append(n))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Stream.make(
           Stream.acquireRelease(push(1), () => push(1)),
@@ -126,7 +126,7 @@ describe("Stream", () => {
           pipe(
             Stream.acquireRelease(push(3), () => push(3)),
             Stream.crossRight(Stream.fromEffect(pipe(
-              Deferred.succeed<never, void>(latch, void 0),
+              Deferred.succeed(latch, void 0),
               Effect.zipRight(Effect.never)
             )))
           )
@@ -304,12 +304,12 @@ describe("Stream", () => {
   it.effect("flatMapPar - interruption propagation", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Stream.make(void 0),
         Stream.flatMap(() =>
           pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true)),
             Stream.fromEffect
@@ -326,12 +326,12 @@ describe("Stream", () => {
   it.effect("flatMap - inner errors interrupt all fibers", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(
           Stream.fromEffect(
             pipe(
-              Deferred.succeed<never, void>(latch, void 0),
+              Deferred.succeed(latch, void 0),
               Effect.zipRight(Effect.never),
               Effect.onInterrupt(() => Ref.set(ref, true))
             )
@@ -355,7 +355,7 @@ describe("Stream", () => {
   it.effect("flatMapPar - outer errors interrupt all fiberrs", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(void 0),
         Stream.concat(Stream.fromEffect(pipe(
@@ -364,7 +364,7 @@ describe("Stream", () => {
         ))),
         Stream.flatMap(() =>
           pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true)),
             Stream.fromEffect
@@ -381,11 +381,11 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const defect = new Cause.RuntimeException("Ouch")
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(
           Stream.fromEffect(pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true))
           )),
@@ -407,7 +407,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const defect = new Cause.RuntimeException("Ouch")
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(void 0),
         Stream.concat(Stream.fromEffect(pipe(
@@ -416,7 +416,7 @@ describe("Stream", () => {
         ))),
         Stream.flatMap(() =>
           pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true)),
             Stream.fromEffect
@@ -522,12 +522,12 @@ describe("Stream", () => {
   it.effect("flatMapParSwitch - interruption propagation", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Stream.make(void 0),
         Stream.flatMap(() =>
           pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true)),
             Stream.fromEffect
@@ -544,12 +544,12 @@ describe("Stream", () => {
   it.effect("flatMapParSwitch - inner errors interrupt all fibers", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(
           Stream.fromEffect(
             pipe(
-              Deferred.succeed<never, void>(latch, void 0),
+              Deferred.succeed(latch, void 0),
               Effect.zipRight(Effect.never),
               Effect.onInterrupt(() => Ref.set(ref, true))
             )
@@ -573,7 +573,7 @@ describe("Stream", () => {
   it.effect("flatMapParSwitch - outer errors interrupt all fibers", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(void 0),
         Stream.concat(Stream.fromEffect(pipe(
@@ -582,7 +582,7 @@ describe("Stream", () => {
         ))),
         Stream.flatMap(() =>
           pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true)),
             Stream.fromEffect
@@ -599,12 +599,12 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("Ouch")
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(
           Stream.fromEffect(
             pipe(
-              Deferred.succeed<never, void>(latch, void 0),
+              Deferred.succeed(latch, void 0),
               Effect.zipRight(Effect.never),
               Effect.onInterrupt(() => Ref.set(ref, true))
             )
@@ -629,7 +629,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("Ouch")
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(void 0),
         Stream.concat(Stream.fromEffect(pipe(
@@ -638,7 +638,7 @@ describe("Stream", () => {
         ))),
         Stream.flatMap(() =>
           pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true)),
             Stream.fromEffect
