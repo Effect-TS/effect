@@ -173,7 +173,7 @@ describe("Pool", () => {
 
   it.scoped("max pool size", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const count = yield* $(Ref.make(0))
       const acquire = Effect.acquireRelease(
         Ref.updateAndGet(count, (n) => n + 1),

@@ -220,12 +220,12 @@ describe("Stream", () => {
   it.effect("mapEffectPar - interruption propagation", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Stream.make(void 0),
         Stream.mapEffect(() =>
           pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true))
           ), { concurrency: 2 }),
@@ -265,21 +265,21 @@ describe("Stream", () => {
   it.effect("mapEffectPar - interrupts pending tasks when one of the tasks fails", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.make(1, 2, 3),
         Stream.mapEffect(
           (n) =>
             n === 1 ?
               pipe(
-                Deferred.succeed<never, void>(latch1, void 0),
+                Deferred.succeed(latch1, void 0),
                 Effect.zipRight(Effect.never),
                 Effect.onInterrupt(() => Ref.update(ref, (n) => n + 1))
               ) :
               n === 2 ?
               pipe(
-                Deferred.succeed<never, void>(latch2, void 0),
+                Deferred.succeed(latch2, void 0),
                 Effect.zipRight(Effect.never),
                 Effect.onInterrupt(() => Ref.update(ref, (n) => n + 1))
               ) :

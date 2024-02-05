@@ -46,8 +46,8 @@ describe("Effect", () => {
     }))
   it.effect("asyncEffect creation is interruptible", () =>
     Effect.gen(function*($) {
-      const release = yield* $(Deferred.make<never, number>())
-      const acquire = yield* $(Deferred.make<never, void>())
+      const release = yield* $(Deferred.make<number>())
+      const acquire = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Effect.asyncEffect<unknown, unknown, never, unknown, unknown, never>((_) =>
           // This will never complete because the callback is never invoked
@@ -84,7 +84,7 @@ describe("Effect", () => {
     }))
   it.effect("daemon fiber race interruption", () =>
     Effect.gen(function*($) {
-      const plus1 = <X>(latch: Deferred.Deferred<never, void>, finalizer: Effect.Effect<X>) => {
+      const plus1 = <X>(latch: Deferred.Deferred<void, never>, finalizer: Effect.Effect<X>) => {
         return pipe(
           Deferred.succeed(latch, void 0),
           Effect.zipRight(Effect.sleep(Duration.hours(1))),
@@ -92,8 +92,8 @@ describe("Effect", () => {
         )
       }
       const interruptionRef = yield* $(Ref.make(0))
-      const latch1Start = yield* $(Deferred.make<never, void>())
-      const latch2Start = yield* $(Deferred.make<never, void>())
+      const latch1Start = yield* $(Deferred.make<void>())
+      const latch2Start = yield* $(Deferred.make<void>())
       const inc = Ref.updateAndGet(interruptionRef, (n) => n + 1)
       const left = plus1(latch1Start, inc)
       const right = plus1(latch2Start, inc)
@@ -110,10 +110,10 @@ describe("Effect", () => {
     }))
   it.effect("race in daemon is executed", () =>
     Effect.gen(function*($) {
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const loser1 = Effect.acquireUseRelease(
         Deferred.succeed(latch1, void 0),
         () => Effect.never,
@@ -179,7 +179,7 @@ describe("Effect", () => {
     }))
   it.effect("race in uninterruptible region", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, boolean>())
+      const latch = yield* $(Deferred.make<boolean>())
       const fiber = yield* $(
         Effect.unit,
         Effect.race(Effect.zip(Deferred.succeed(latch, true), Effect.sleep("45 seconds"))),
@@ -196,8 +196,8 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const forkWaiter = (
         interrupted: Ref.Ref<number>,
-        latch: Deferred.Deferred<never, void>,
-        done: Deferred.Deferred<never, void>
+        latch: Deferred.Deferred<void, never>,
+        done: Deferred.Deferred<void, never>
       ) => {
         return Effect.uninterruptibleMask((restore) =>
           pipe(
@@ -210,10 +210,10 @@ describe("Effect", () => {
         )
       }
       const interrupted = yield* $(Ref.make(0))
-      const latch1 = yield* $(Deferred.make<never, void>())
-      const latch2 = yield* $(Deferred.make<never, void>())
-      const done1 = yield* $(Deferred.make<never, void>())
-      const done2 = yield* $(Deferred.make<never, void>())
+      const latch1 = yield* $(Deferred.make<void>())
+      const latch2 = yield* $(Deferred.make<void>())
+      const done1 = yield* $(Deferred.make<void>())
+      const done2 = yield* $(Deferred.make<void>())
       const forkWaiter1 = forkWaiter(interrupted, latch1, done1)
       const forkWaiter2 = forkWaiter(interrupted, latch2, done2)
       yield* $(forkWaiter1, Effect.race(forkWaiter2))
@@ -263,8 +263,8 @@ describe("Effect", () => {
     }))
   it.effect("raceFirst interrupts loser on success", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
-      const effect = yield* $(Deferred.make<never, number>())
+      const deferred = yield* $(Deferred.make<void>())
+      const effect = yield* $(Deferred.make<number>())
       const winner = Either.right(void 0)
       const loser = Effect.acquireUseRelease(
         Deferred.succeed(deferred, void 0),
@@ -277,8 +277,8 @@ describe("Effect", () => {
     }))
   it.effect("raceFirst interrupts loser on failure", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, void>())
-      const effect = yield* $(Deferred.make<never, number>())
+      const deferred = yield* $(Deferred.make<void>())
+      const effect = yield* $(Deferred.make<number>())
       const winner = pipe(Deferred.await(deferred), Effect.zipRight(Either.left(new Error())))
       const loser = Effect.acquireUseRelease(
         Deferred.succeed(deferred, void 0),

@@ -355,7 +355,7 @@ export const asyncEffect = <A, E, R, X, E2, R2>(
   register: (callback: (_: Effect.Effect<A, E, R>) => void) => Effect.Effect<X, E2, R2>
 ): Effect.Effect<A, E | E2, R | R2> =>
   core.flatMap(
-    core.deferredMake<E | E2, A>(),
+    core.deferredMake<A, E | E2>(),
     (deferred) =>
       core.flatMap(runtime<R | R2>(), (runtime) =>
         core.uninterruptibleMask((restore) =>

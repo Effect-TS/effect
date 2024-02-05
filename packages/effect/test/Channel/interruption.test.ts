@@ -12,11 +12,11 @@ describe("Channel", () => {
   it.effect("interruptWhen - interrupts the current element", () =>
     Effect.gen(function*($) {
       const interrupted = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
-      const halt = yield* $(Deferred.make<never, void>())
-      const started = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
+      const halt = yield* $(Deferred.make<void>())
+      const started = yield* $(Deferred.make<void>())
       const channel = pipe(
-        Deferred.succeed<never, void>(started, void 0),
+        Deferred.succeed(started, void 0),
         Effect.zipRight(Deferred.await(latch)),
         Effect.onInterrupt(() => Ref.set(interrupted, true)),
         Channel.fromEffect,
@@ -25,7 +25,7 @@ describe("Channel", () => {
       const fiber = yield* $(Effect.fork(Channel.runDrain(channel)))
       yield* $(
         Deferred.await(started),
-        Effect.zipRight(Deferred.succeed<never, void>(halt, void 0))
+        Effect.zipRight(Deferred.succeed(halt, void 0))
       )
       yield* $(Fiber.await(fiber))
       const result = yield* $(Ref.get(interrupted))
@@ -34,7 +34,7 @@ describe("Channel", () => {
 
   it.effect("interruptWhen - propagates errors", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<string, never>())
+      const deferred = yield* $(Deferred.make<never, string>())
       const channel = pipe(
         Channel.fromEffect(Effect.never),
         Channel.interruptWhen(Deferred.await(deferred))
@@ -47,11 +47,11 @@ describe("Channel", () => {
   it.effect("interruptWhenDeferred - interrupts the current element", () =>
     Effect.gen(function*($) {
       const interrupted = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
-      const halt = yield* $(Deferred.make<never, void>())
-      const started = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
+      const halt = yield* $(Deferred.make<void>())
+      const started = yield* $(Deferred.make<void>())
       const channel = pipe(
-        Deferred.succeed<never, void>(started, void 0),
+        Deferred.succeed(started, void 0),
         Effect.zipRight(Deferred.await(latch)),
         Effect.onInterrupt(() => Ref.set(interrupted, true)),
         Channel.fromEffect,
@@ -60,7 +60,7 @@ describe("Channel", () => {
       const fiber = yield* $(Effect.fork(Channel.runDrain(channel)))
       yield* $(
         Deferred.await(started),
-        Effect.zipRight(Deferred.succeed<never, void>(halt, void 0))
+        Effect.zipRight(Deferred.succeed(halt, void 0))
       )
       yield* $(Fiber.await(fiber))
       const result = yield* $(Ref.get(interrupted))
@@ -69,7 +69,7 @@ describe("Channel", () => {
 
   it.effect("interruptWhenDeferred - propagates errors", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<string, never>())
+      const deferred = yield* $(Deferred.make<never, string>())
       const channel = pipe(
         Channel.fromEffect(Effect.never),
         Channel.interruptWhenDeferred(deferred)

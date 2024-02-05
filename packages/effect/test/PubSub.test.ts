@@ -66,8 +66,8 @@ describe("PubSub", () => {
   it.effect("sequential publishers and subscribers with one publisher and one subscriber", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 9)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(10))
       const subscriber = yield* $(
         pipe(
@@ -92,9 +92,9 @@ describe("PubSub", () => {
   it.effect("sequential publishers and subscribers with one publisher and two subscribers", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 9)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
-      const deferred3 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
+      const deferred3 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(10))
       const subscriber1 = yield* $(
         pubsub.pipe(
@@ -136,7 +136,7 @@ describe("PubSub", () => {
   it.effect("backpressured concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(64))
       const subscriber = yield* $(
         PubSub.subscribe(pubsub),
@@ -161,8 +161,8 @@ describe("PubSub", () => {
   it.effect("backpressured concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(64))
       const subscriber1 = yield* $(
         PubSub.subscribe(pubsub),
@@ -201,8 +201,8 @@ describe("PubSub", () => {
   it.effect("backpressured concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(1, 64)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(64 * 2))
       const subscriber1 = yield* $(
         PubSub.subscribe(pubsub),
@@ -259,7 +259,7 @@ describe("PubSub", () => {
   it.effect("dropping concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.dropping<number>(64))
       const subscriber = yield* $(
         PubSub.subscribe(pubsub),
@@ -284,8 +284,8 @@ describe("PubSub", () => {
   it.effect("dropping concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.dropping<number>(64))
       const subscriber1 = yield* $(
         PubSub.subscribe(pubsub),
@@ -324,8 +324,8 @@ describe("PubSub", () => {
   it.effect("dropping concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(1, 64)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.dropping<number>(64 * 2))
       const subscriber1 = yield* $(
         PubSub.subscribe(pubsub),
@@ -382,7 +382,7 @@ describe("PubSub", () => {
   it.effect("sliding concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.sliding<number>(64))
       const subscriber = yield* $(
         PubSub.subscribe(pubsub),
@@ -407,8 +407,8 @@ describe("PubSub", () => {
   it.effect("sliding concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.sliding<number>(64))
       const subscriber1 = yield* $(
         PubSub.subscribe(pubsub),
@@ -447,8 +447,8 @@ describe("PubSub", () => {
   it.effect("sliding concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(1, 64)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.sliding<number>(64 * 2))
       const subscriber1 = yield* $(
         PubSub.subscribe(pubsub),
@@ -505,7 +505,7 @@ describe("PubSub", () => {
   it.effect("unbounded concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
-      const deferred = yield* $(Deferred.make<never, void>())
+      const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.unbounded<number>())
       const subscriber = yield* $(
         PubSub.subscribe(pubsub),
@@ -531,8 +531,8 @@ describe("PubSub", () => {
   it.effect("unbounded concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.unbounded<number>())
       const subscriber1 = yield* $(
         PubSub.subscribe(pubsub),
@@ -571,8 +571,8 @@ describe("PubSub", () => {
   it.effect("unbounded concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(1, 64)
-      const deferred1 = yield* $(Deferred.make<never, void>())
-      const deferred2 = yield* $(Deferred.make<never, void>())
+      const deferred1 = yield* $(Deferred.make<void>())
+      const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.unbounded<number>())
       const subscriber1 = yield* $(
         PubSub.subscribe(pubsub),

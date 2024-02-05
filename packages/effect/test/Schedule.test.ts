@@ -74,7 +74,7 @@ describe("Schedule", () => {
     }))
   it.effect("reset after some inactivity", () =>
     Effect.gen(function*($) {
-      const io = (ref: Ref.Ref<number>, latch: Deferred.Deferred<never, void>): Effect.Effect<void, string> => {
+      const io = (ref: Ref.Ref<number>, latch: Deferred.Deferred<void, never>): Effect.Effect<void, string> => {
         return Ref.updateAndGet(ref, (n) => n + 1).pipe(
           Effect.flatMap((retries) => {
             // The 5th retry will fail after 10 seconds to let the schedule reset
@@ -93,7 +93,7 @@ describe("Schedule", () => {
       }
       const schedule = Schedule.recurs(5).pipe(Schedule.resetAfter("5 seconds"))
       const retriesCounter = yield* $(Ref.make(-1))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(io(retriesCounter, latch), Effect.retry(schedule), Effect.fork)
       yield* $(Deferred.await(latch))
       yield* $(TestClock.adjust("10 seconds"))
@@ -197,7 +197,7 @@ describe("Schedule", () => {
   describe("repeat an action two times and call ensuring should", () => {
     it.effect("run the specified finalizer as soon as the schedule is complete", () =>
       Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<never, void>())
+        const deferred = yield* $(Deferred.make<void>())
         const ref = yield* $(Ref.make(0))
         yield* $(
           Ref.update(ref, (n) => n + 2),
@@ -556,7 +556,7 @@ describe("Schedule", () => {
       }))
     it.effect("retry a failed action 2 times and call `ensuring` should run the specified finalizer as soon as the schedule is complete", () =>
       Effect.gen(function*($) {
-        const deferred = yield* $(Deferred.make<never, void>())
+        const deferred = yield* $(Deferred.make<void>())
         const value = yield* $(
           Effect.fail("oh no").pipe(
             Effect.retry(Schedule.recurs(2)),

@@ -317,7 +317,7 @@ class EntryImpl<A extends Request.Request<any, any>> implements Request.Entry<A>
   readonly [EntryTypeId] = blockedRequestVariance
   constructor(
     readonly request: A,
-    readonly result: Deferred.Deferred<Request.Request.Error<A>, Request.Request.Success<A>>,
+    readonly result: Deferred.Deferred<Request.Request.Success<A>, Request.Request.Error<A>>,
     readonly listeners: Request.Listeners,
     readonly ownerId: FiberId,
     readonly state: {
@@ -338,7 +338,7 @@ export const isEntry = (u: unknown): u is Request.Entry<unknown> => hasProperty(
 export const makeEntry = <A extends Request.Request<any, any>>(
   options: {
     readonly request: A
-    readonly result: Deferred.Deferred<Request.Request.Error<A>, Request.Request.Success<A>>
+    readonly result: Deferred.Deferred<Request.Request.Success<A>, Request.Request.Error<A>>
     readonly listeners: Request.Listeners
     readonly ownerId: FiberId
     readonly state: { completed: boolean }

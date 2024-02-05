@@ -274,7 +274,8 @@ export const makeCache = (
 ): Effect.Effect<Cache> =>
   cache.make({
     ...options,
-    lookup: () => core.map(core.deferredMake(), (handle) => ({ listeners: new internal.Listeners(), handle }))
+    lookup: () =>
+      core.map(core.deferredMake<unknown, unknown>(), (handle) => ({ listeners: new internal.Listeners(), handle }))
   })
 
 /**
@@ -302,8 +303,8 @@ export type EntryTypeId = typeof EntryTypeId
 export interface Entry<out R> extends Entry.Variance<R> {
   readonly request: R
   readonly result: Deferred<
-    [R] extends [Request<infer _E, infer _A>] ? _E : never,
-    [R] extends [Request<infer _E, infer _A>] ? _A : never
+    [R] extends [Request<infer _E, infer _A>] ? _A : never,
+    [R] extends [Request<infer _E, infer _A>] ? _E : never
   >
   readonly listeners: Listeners
   readonly ownerId: FiberId

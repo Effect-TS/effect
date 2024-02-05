@@ -41,10 +41,10 @@ describe("Stream", () => {
 
   it.effect("drainFork - runs the other stream in the background", () =>
     Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       const result = yield* $(
         Stream.fromEffect(Deferred.await(latch)),
-        Stream.drainFork(Stream.fromEffect(Deferred.succeed<never, void>(latch, void 0))),
+        Stream.drainFork(Stream.fromEffect(Deferred.succeed(latch, void 0))),
         Stream.runDrain
       )
       assert.isUndefined(result)
@@ -53,13 +53,13 @@ describe("Stream", () => {
   it.effect("drainFork - interrupts the background stream when the foreground exits", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const latch = yield* $(Deferred.make<never, void>())
+      const latch = yield* $(Deferred.make<void>())
       yield* $(
         Stream.make(1, 2, 3),
         Stream.concat(Stream.drain(Stream.fromEffect(Deferred.await(latch)))),
         Stream.drainFork(
           pipe(
-            Deferred.succeed<never, void>(latch, void 0),
+            Deferred.succeed(latch, void 0),
             Effect.zipRight(Effect.never),
             Effect.onInterrupt(() => Ref.set(ref, true)),
             Stream.fromEffect
