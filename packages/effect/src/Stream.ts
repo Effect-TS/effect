@@ -1424,7 +1424,7 @@ export const fromAsyncIterable: <A, E>(iterable: AsyncIterable<A>, onError: (e: 
  * @category constructors
  */
 export const fromChannel: <A, E, R>(
-  channel: Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown>
+  channel: Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, unknown, unknown, R>
 ) => Stream<A, E, R> = internal.fromChannel
 
 /**
@@ -1435,7 +1435,7 @@ export const fromChannel: <A, E, R>(
  */
 export const toChannel: <A, E, R>(
   stream: Stream<A, E, R>
-) => Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown> = internal.toChannel
+) => Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, unknown, unknown, R> = internal.toChannel
 
 /**
  * Creates a stream from a `Chunk` of values.
@@ -2522,11 +2522,11 @@ export const pipeThrough: {
  */
 export const pipeThroughChannel: {
   <R2, E, E2, A, A2>(
-    channel: Channel.Channel<R2, E, Chunk.Chunk<A>, unknown, E2, Chunk.Chunk<A2>, unknown>
+    channel: Channel.Channel<Chunk.Chunk<A2>, Chunk.Chunk<A>, E2, E, unknown, unknown, R2>
   ): <R>(self: Stream<A, E, R>) => Stream<A2, E2, R2 | R>
   <R, R2, E, E2, A, A2>(
     self: Stream<A, E, R>,
-    channel: Channel.Channel<R2, E, Chunk.Chunk<A>, unknown, E2, Chunk.Chunk<A2>, unknown>
+    channel: Channel.Channel<Chunk.Chunk<A2>, Chunk.Chunk<A>, E2, E, unknown, unknown, R2>
   ): Stream<A2, E2, R | R2>
 } = internal.pipeThroughChannel
 
@@ -2539,11 +2539,11 @@ export const pipeThroughChannel: {
  */
 export const pipeThroughChannelOrFail: {
   <R2, E, E2, A, A2>(
-    chan: Channel.Channel<R2, E, Chunk.Chunk<A>, unknown, E2, Chunk.Chunk<A2>, unknown>
+    chan: Channel.Channel<Chunk.Chunk<A2>, Chunk.Chunk<A>, E2, E, unknown, unknown, R2>
   ): <R>(self: Stream<A, E, R>) => Stream<A2, E | E2, R2 | R>
   <R, R2, E, E2, A, A2>(
     self: Stream<A, E, R>,
-    chan: Channel.Channel<R2, E, Chunk.Chunk<A>, unknown, E2, Chunk.Chunk<A2>, unknown>
+    chan: Channel.Channel<Chunk.Chunk<A2>, Chunk.Chunk<A>, E2, E, unknown, unknown, R2>
   ): Stream<A2, E | E2, R | R2>
 } = internal.pipeThroughChannelOrFail
 

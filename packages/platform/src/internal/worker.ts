@@ -220,8 +220,8 @@ export const makeManager = Effect.gen(function*(_) {
               executeRelease
             ),
             ([, queue]) => {
-              const loop: Channel.Channel<never, unknown, unknown, unknown, E | WorkerError, Chunk.Chunk<O>, void> =
-                Channel.flatMap(
+              const loop: Channel.Channel<Chunk.Chunk<O>, unknown, E | WorkerError, unknown, void, unknown> = Channel
+                .flatMap(
                   Queue.take(queue),
                   Exit.match({
                     onFailure: (cause) => Cause.isEmpty(cause) ? Channel.unit : Channel.failCause(cause),
