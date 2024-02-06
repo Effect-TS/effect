@@ -7,10 +7,12 @@ const enabled = {
   swapSTMGenParams: false,
   swapDeferredParams: false,
   swapTDeferredParams: false,
+  swapTakeParams: false,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
-  cleanupExit: false
+  cleanupExit: false,
+  cleanupTake: true
 }
 
 const cleanup = (name: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
@@ -31,6 +33,7 @@ const cleanupEffect = cleanup("Effect")
 const cleanupStream = cleanup("Stream")
 const cleanupExit = cleanup("Exit")
 const cleanupSTM = cleanup("STM")
+const cleanupTake = cleanup("Take")
 
 const filter = (ast: cs.ASTPath<cs.TSTypeReference>, nodeName: string) => {
   const name = ast.value.typeName
@@ -71,8 +74,8 @@ const swapParamsREA = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>
   }
 }
 
-const swapDeferredParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
-  const is = filter(ast, "Deferred")
+const swapParamsEA = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
+  const is = filter(ast, nodeName)
   if (
     is(ast.value.typeName) &&
     ast.value.typeParameters &&
@@ -80,22 +83,14 @@ const swapDeferredParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
   ) {
     const params = ast.value.typeParameters.params
     const newParams = [params[1], params[0]]
+    popNever(newParams)
     ast.value.typeParameters.params = newParams
   }
 }
 
-const swapTDeferredParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
-  const is = filter(ast, "TDeferred")
-  if (
-    is(ast.value.typeName) &&
-    ast.value.typeParameters &&
-    ast.value.typeParameters.params.length === 2
-  ) {
-    const params = ast.value.typeParameters.params
-    const newParams = [params[1], params[0]]
-    ast.value.typeParameters.params = newParams
-  }
-}
+const swapDeferredParams = swapParamsEA("Deferred")
+const swapTDeferredParams = swapParamsEA("TDeferred")
+const swapTakeParams = swapParamsEA("Take")
 
 const swapSTMParams = swapParamsREA("STM")
 const swapSTMGenParams = swapParamsREA("STMGen")
@@ -141,6 +136,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     if (enabled.swapTDeferredParams) {
       swapTDeferredParams(ast)
     }
+    if (enabled.swapTakeParams) {
+      swapTakeParams(ast)
+    }
     if (enabled.cleanupEffect) {
       cleanupEffect(ast)
     }
@@ -152,6 +150,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     }
     if (enabled.cleanupSTM) {
       cleanupSTM(ast)
+    }
+    if (enabled.cleanupTake) {
+      cleanupTake(ast)
     }
   })
 

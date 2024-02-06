@@ -141,7 +141,7 @@ describe("Stream", () => {
   // Explicitly uses live Clock
   it.effect("issue from zio-kafka", () =>
     Effect.gen(function*($) {
-      const queue = yield* $(Queue.unbounded<Take.Take<never, number>>())
+      const queue = yield* $(Queue.unbounded<Take.Take<number>>())
       const fiber = yield* $(
         Stream.fromQueue(queue),
         Stream.flattenTake,
