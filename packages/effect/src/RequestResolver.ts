@@ -219,7 +219,7 @@ export const eitherWith: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromFunction: <A extends Request.Request<never, any>>(
+export const fromFunction: <A extends Request.Request<any>>(
   f: (request: A) => Request.Request.Success<A>
 ) => RequestResolver<A, never> = internal.fromFunction
 
@@ -231,7 +231,7 @@ export const fromFunction: <A extends Request.Request<never, any>>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromFunctionBatched: <A extends Request.Request<never, any>>(
+export const fromFunctionBatched: <A extends Request.Request<any>>(
   f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
 ) => RequestResolver<A, never> = internal.fromFunctionBatched
 
@@ -257,7 +257,7 @@ export const fromEffect: <R, A extends Request.Request<any, any>>(
 export const fromEffectTagged: <A extends Request.Request<any, any> & { readonly _tag: string }>() => <
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
-      ? Req extends Request.Request<infer ReqE, infer ReqA>
+      ? Req extends Request.Request<infer ReqA, infer ReqE>
         ? (requests: Array<Req>) => Effect.Effect<Iterable<ReqA>, ReqE, any>
       : never
       : never

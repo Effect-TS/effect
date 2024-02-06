@@ -4697,7 +4697,7 @@ export const TaggedError = <Self>() =>
  * @since 1.0.0
  */
 export interface TaggedRequest<Tag extends string, R, IS, S, RR, IE, E, IA, A>
-  extends Request.Request<E, A>, Serializable.SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
+  extends Request.Request<A, E>, Serializable.SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
 {
   readonly _tag: Tag
 }
