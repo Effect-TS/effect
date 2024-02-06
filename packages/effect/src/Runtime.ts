@@ -21,7 +21,7 @@ import type { Scope } from "./Scope.js"
  */
 export interface AsyncFiberException<out E, out A> {
   readonly _tag: "AsyncFiberException"
-  readonly fiber: Fiber.RuntimeFiber<E, A>
+  readonly fiber: Fiber.RuntimeFiber<A, E>
 }
 
 /**
@@ -71,7 +71,7 @@ export interface RunForkOptions {
  */
 export const runFork: <R>(
   runtime: Runtime<R>
-) => <E, A>(self: Effect.Effect<A, E, R>, options?: RunForkOptions) => Fiber.RuntimeFiber<E, A> = internal.unsafeFork
+) => <E, A>(self: Effect.Effect<A, E, R>, options?: RunForkOptions) => Fiber.RuntimeFiber<A, E> = internal.unsafeFork
 
 /**
  * Executes the effect synchronously returning the exit.

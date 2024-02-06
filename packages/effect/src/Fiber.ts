@@ -101,7 +101,7 @@ export interface Fiber<out A, out E = never> extends Fiber.Variance<A, E>, Pipea
  * @since 2.0.0
  * @category models
  */
-export interface RuntimeFiber<out E, out A> extends Fiber<A, E>, Fiber.RuntimeVariance<E, A> {
+export interface RuntimeFiber<out A, out E = never> extends Fiber<A, E>, Fiber.RuntimeVariance<A, E> {
   /**
    * Reads the current number of ops that have occurred since the last yield
    */
@@ -165,7 +165,7 @@ export declare namespace Fiber {
    * @since 2.0.0
    * @category models
    */
-  export type Runtime<E, A> = RuntimeFiber<E, A>
+  export type Runtime<A, E = never> = RuntimeFiber<A, E>
 
   /**
    * @since 2.0.0
@@ -181,10 +181,10 @@ export declare namespace Fiber {
   /**
    * @since 2.0.0
    */
-  export interface RuntimeVariance<out E, out A> {
+  export interface RuntimeVariance<out A, out E> {
     readonly [RuntimeFiberTypeId]: {
-      readonly _E: Types.Covariant<E>
       readonly _A: Types.Covariant<A>
+      readonly _E: Types.Covariant<E>
     }
   }
 
@@ -246,7 +246,7 @@ export const isFiber: (u: unknown) => u is Fiber<unknown, unknown> = internal.is
  * @since 2.0.0
  * @category refinements
  */
-export const isRuntimeFiber: <A, E>(self: Fiber<A, E>) => self is RuntimeFiber<E, A> = internal.isRuntimeFiber
+export const isRuntimeFiber: <A, E>(self: Fiber<A, E>) => self is RuntimeFiber<A, E> = internal.isRuntimeFiber
 
 /**
  * The identity of the fiber.
@@ -306,7 +306,7 @@ export const done: <A, E>(exit: Exit.Exit<A, E>) => Fiber<A, E> = internal.done
  * @since 2.0.0
  * @category destructors
  */
-export const dump: <A, E>(self: RuntimeFiber<E, A>) => Effect.Effect<Fiber.Dump> = internal.dump
+export const dump: <A, E>(self: RuntimeFiber<A, E>) => Effect.Effect<Fiber.Dump> = internal.dump
 
 /**
  * @since 2.0.0
@@ -497,14 +497,14 @@ export const match: {
   <A, E, Z>(
     options: {
       readonly onFiber: (fiber: Fiber<A, E>) => Z
-      readonly onRuntimeFiber: (fiber: RuntimeFiber<E, A>) => Z
+      readonly onRuntimeFiber: (fiber: RuntimeFiber<A, E>) => Z
     }
   ): (self: Fiber<A, E>) => Z
   <A, E, Z>(
     self: Fiber<A, E>,
     options: {
       readonly onFiber: (fiber: Fiber<A, E>) => Z
-      readonly onRuntimeFiber: (fiber: RuntimeFiber<E, A>) => Z
+      readonly onRuntimeFiber: (fiber: RuntimeFiber<A, E>) => Z
     }
   ): Z
 } = internal.match
@@ -558,7 +558,7 @@ export const poll: <A, E>(self: Fiber<A, E>) => Effect.Effect<Option.Option<Exit
  * @since 2.0.0
  * @category destructors
  */
-export const pretty: <A, E>(self: RuntimeFiber<E, A>) => Effect.Effect<string> = internal.pretty
+export const pretty: <A, E>(self: RuntimeFiber<A, E>) => Effect.Effect<string> = internal.pretty
 
 /**
  * Returns a chunk containing all root fibers.
@@ -592,7 +592,7 @@ export const scoped: <A, E>(self: Fiber<A, E>) => Effect.Effect<Fiber<A, E>, nev
  * @since 2.0.0
  * @category getters
  */
-export const status: <A, E>(self: RuntimeFiber<E, A>) => Effect.Effect<FiberStatus.FiberStatus> = internal.status
+export const status: <A, E>(self: RuntimeFiber<A, E>) => Effect.Effect<FiberStatus.FiberStatus> = internal.status
 
 /**
  * Returns a fiber that has already succeeded with the specified value.

@@ -43,24 +43,24 @@ export class ProxySupervisor<out T> implements Supervisor.Supervisor<T> {
     context: Context.Context<R>,
     effect: Effect.Effect<A, E, R>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
-    fiber: Fiber.RuntimeFiber<E, A>
+    fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     this.underlying.onStart(context, effect, parent, fiber)
   }
 
-  onEnd<E, A>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>): void {
     this.underlying.onEnd(value, fiber)
   }
 
-  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(fiber: Fiber.RuntimeFiber<A, E>, effect: Effect.Effect<any, any, any>): void {
     this.underlying.onEffect(fiber, effect)
   }
 
-  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void {
+  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<A, E>): void {
     this.underlying.onSuspend(fiber)
   }
 
-  onResume<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void {
+  onResume<E, A>(fiber: Fiber.RuntimeFiber<A, E>): void {
     this.underlying.onResume(fiber)
   }
 
@@ -92,28 +92,28 @@ export class Zip<out T0, out T1> implements Supervisor.Supervisor<readonly [T0, 
     context: Context.Context<R>,
     effect: Effect.Effect<A, E, R>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
-    fiber: Fiber.RuntimeFiber<E, A>
+    fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     this.left.onStart(context, effect, parent, fiber)
     this.right.onStart(context, effect, parent, fiber)
   }
 
-  onEnd<E, A>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>): void {
     this.left.onEnd(value, fiber)
     this.right.onEnd(value, fiber)
   }
 
-  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(fiber: Fiber.RuntimeFiber<A, E>, effect: Effect.Effect<any, any, any>): void {
     this.left.onEffect(fiber, effect)
     this.right.onEffect(fiber, effect)
   }
 
-  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void {
+  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<A, E>): void {
     this.left.onSuspend(fiber)
     this.right.onSuspend(fiber)
   }
 
-  onResume<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void {
+  onResume<E, A>(fiber: Fiber.RuntimeFiber<A, E>): void {
     this.left.onResume(fiber)
     this.right.onResume(fiber)
   }
@@ -145,24 +145,24 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
     _context: Context.Context<R>,
     _effect: Effect.Effect<A, E, R>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
-    fiber: Fiber.RuntimeFiber<E, A>
+    fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     this.fibers.add(fiber)
   }
 
-  onEnd<E, A>(_value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>): void {
     this.fibers.delete(fiber)
   }
 
-  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<A, E>, _effect: Effect.Effect<any, any, any>): void {
     //
   }
 
-  onSuspend<E, A>(_fiber: Fiber.RuntimeFiber<E, A>): void {
+  onSuspend<E, A>(_fiber: Fiber.RuntimeFiber<A, E>): void {
     //
   }
 
-  onResume<E, A>(_fiber: Fiber.RuntimeFiber<E, A>): void {
+  onResume<E, A>(_fiber: Fiber.RuntimeFiber<A, E>): void {
     //
   }
 
@@ -176,7 +176,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
     return new Zip(this, right)
   }
 
-  onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<E, A>): X {
+  onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<A, E>): X {
     return execution()
   }
 }
@@ -196,24 +196,24 @@ export class Const<out T> implements Supervisor.Supervisor<T> {
     _context: Context.Context<R>,
     _effect: Effect.Effect<A, E, R>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
-    _fiber: Fiber.RuntimeFiber<E, A>
+    _fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     //
   }
 
-  onEnd<E, A>(_value: Exit.Exit<A, E>, _fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit.Exit<A, E>, _fiber: Fiber.RuntimeFiber<A, E>): void {
     //
   }
 
-  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<A, E>, _effect: Effect.Effect<any, any, any>): void {
     //
   }
 
-  onSuspend<E, A>(_fiber: Fiber.RuntimeFiber<E, A>): void {
+  onSuspend<E, A>(_fiber: Fiber.RuntimeFiber<A, E>): void {
     //
   }
 
-  onResume<E, A>(_fiber: Fiber.RuntimeFiber<E, A>): void {
+  onResume<E, A>(_fiber: Fiber.RuntimeFiber<A, E>): void {
     //
   }
 
@@ -225,7 +225,7 @@ export class Const<out T> implements Supervisor.Supervisor<T> {
     return new Zip(this, right)
   }
 
-  onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<E, A>): X {
+  onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<A, E>): X {
     return execution()
   }
 }
@@ -244,24 +244,24 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
     _context: Context.Context<R>,
     _effect: Effect.Effect<A, E, R>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
-    fiber: Fiber.RuntimeFiber<E, A>
+    fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.add(fiber))))
   }
 
-  onEnd<E, A>(_value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>): void {
     pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.remove(fiber))))
   }
 
-  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<A, E>, _effect: Effect.Effect<any, any, any>): void {
     //
   }
 
-  onSuspend<E, A>(_fiber: Fiber.RuntimeFiber<E, A>): void {
+  onSuspend<E, A>(_fiber: Fiber.RuntimeFiber<A, E>): void {
     //
   }
 
-  onResume<E, A>(_fiber: Fiber.RuntimeFiber<E, A>): void {
+  onResume<E, A>(_fiber: Fiber.RuntimeFiber<A, E>): void {
     //
   }
 
@@ -275,7 +275,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
     return new Zip(this, right)
   }
 
-  onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<E, A>): X {
+  onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<A, E>): X {
     return execution()
   }
 }
