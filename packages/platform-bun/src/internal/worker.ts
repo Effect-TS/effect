@@ -13,7 +13,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
 
       yield* _(Effect.addFinalizer(() =>
         pipe(
-          Effect.async<void, never, never>((resume, signal) => {
+          Effect.async<void>((resume, signal) => {
             port.addEventListener("close", () => resume(Effect.unit), { once: true, signal })
             port.postMessage([1])
           }),
@@ -27,7 +27,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
 
       const fiber = yield* _(
-        Effect.async<never, WorkerError, never>((resume) => {
+        Effect.async<never, WorkerError>((resume) => {
           function onMessage(event: MessageEvent) {
             queue.unsafeOffer((event as MessageEvent).data)
           }

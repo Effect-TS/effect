@@ -37,7 +37,7 @@ export interface Start {
 /** @internal */
 export interface Pending {
   readonly _tag: OP_WARNING_DATA_PENDING
-  readonly fiber: Fiber.Fiber<Error, void>
+  readonly fiber: Fiber.Fiber<void, Error>
 }
 
 /** @internal */
@@ -61,7 +61,7 @@ export const start: WarningData = {
  *
  * @internal
  */
-export const pending = (fiber: Fiber.Fiber<Error, void>): WarningData => {
+export const pending = (fiber: Fiber.Fiber<void, Error>): WarningData => {
   return {
     _tag: OP_WARNING_DATA_PENDING,
     fiber

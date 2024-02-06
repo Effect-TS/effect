@@ -1474,13 +1474,13 @@ export const never: Effect.Effect<never> = asyncEither<never, never, never>(() =
 // -----------------------------------------------------------------------------
 
 /* @internal */
-export const interruptFiber = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Exit.Exit<A, E>> =>
+export const interruptFiber = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<Exit.Exit<A, E>> =>
   flatMap(fiberId, (fiberId) => pipe(self, interruptAsFiber(fiberId)))
 
 /* @internal */
 export const interruptAsFiber = dual<
-  (fiberId: FiberId.FiberId) => <E, A>(self: Fiber.Fiber<E, A>) => Effect.Effect<Exit.Exit<A, E>>,
-  <E, A>(self: Fiber.Fiber<E, A>, fiberId: FiberId.FiberId) => Effect.Effect<Exit.Exit<A, E>>
+  (fiberId: FiberId.FiberId) => <A, E>(self: Fiber.Fiber<A, E>) => Effect.Effect<Exit.Exit<A, E>>,
+  <A, E>(self: Fiber.Fiber<A, E>, fiberId: FiberId.FiberId) => Effect.Effect<Exit.Exit<A, E>>
 >(2, (self, fiberId) => flatMap(self.interruptAsFork(fiberId), () => self.await))
 
 // -----------------------------------------------------------------------------

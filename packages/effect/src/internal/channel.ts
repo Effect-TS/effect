@@ -1675,7 +1675,7 @@ export const mergeWith = dual<
 
             const handleSide = <Err, Done, Err2, Done2>(
               exit: Exit.Exit<Either.Either<Done, OutElem | OutElem1>, Err>,
-              fiber: Fiber.Fiber<Err2, Either.Either<Done2, OutElem | OutElem1>>,
+              fiber: Fiber.Fiber<Either.Either<Done2, OutElem | OutElem1>, Err2>,
               pull: Effect.Effect<Either.Either<Done, OutElem | OutElem1>, Err, Env | Env1>
             ) =>
             (
@@ -1689,8 +1689,8 @@ export const mergeWith = dual<
                 OutDone2 | OutDone3
               >,
               both: (
-                f1: Fiber.Fiber<Err, Either.Either<Done, OutElem | OutElem1>>,
-                f2: Fiber.Fiber<Err2, Either.Either<Done2, OutElem | OutElem1>>
+                f1: Fiber.Fiber<Either.Either<Done, OutElem | OutElem1>, Err>,
+                f2: Fiber.Fiber<Either.Either<Done2, OutElem | OutElem1>, Err2>
               ) => State,
               single: (
                 f: (

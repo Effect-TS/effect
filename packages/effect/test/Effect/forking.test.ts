@@ -90,7 +90,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const boom = new Error("boom")
       const die = Effect.die(boom)
-      const joinDefect = (fiber: Fiber.Fiber<never, unknown>) => {
+      const joinDefect = (fiber: Fiber.Fiber<unknown>) => {
         return pipe(fiber, Fiber.join, Effect.sandbox, Effect.flip)
       }
       const fiber1 = yield* $(Effect.forkAll([die]))
