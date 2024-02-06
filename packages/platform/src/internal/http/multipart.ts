@@ -173,12 +173,11 @@ export const makeChannel = <IE>(
   headers: Record<string, string>,
   bufferSize = 16
 ): Channel.Channel<
-  never,
-  IE,
-  Chunk.Chunk<Uint8Array>,
-  unknown,
-  Multipart.MultipartError | IE,
   Chunk.Chunk<Multipart.Part>,
+  Chunk.Chunk<Uint8Array>,
+  Multipart.MultipartError | IE,
+  IE,
+  unknown,
   unknown
 > =>
   Channel.acquireUseRelease(
@@ -194,12 +193,11 @@ const makeFromQueue = <IE>(
   config: MP.BaseConfig,
   queue: Queue.Queue<Chunk.Chunk<Uint8Array> | null>
 ): Channel.Channel<
-  never,
-  IE,
-  Chunk.Chunk<Uint8Array>,
-  unknown,
-  IE | Multipart.MultipartError,
   Chunk.Chunk<Multipart.Part>,
+  Chunk.Chunk<Uint8Array>,
+  IE | Multipart.MultipartError,
+  IE,
+  unknown,
   unknown
 > =>
   Channel.suspend(() => {
@@ -229,7 +227,7 @@ const makeFromQueue = <IE>(
       onFile(info) {
         let chunks: Array<Uint8Array> = []
         let finished = false
-        const take: Channel.Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<Uint8Array>, void> = Channel
+        const take: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, never, unknown, void, unknown> = Channel
           .suspend(() => {
             if (chunks.length === 0) {
               return finished ? Channel.unit : Channel.zipRight(pump, take)
@@ -285,13 +283,12 @@ const makeFromQueue = <IE>(
     )
 
     const partsChannel: Channel.Channel<
-      never,
-      unknown,
-      unknown,
+      Chunk.Chunk<Multipart.Part>,
       unknown,
       IE | Multipart.MultipartError,
-      Chunk.Chunk<Multipart.Part>,
-      void
+      unknown,
+      void,
+      unknown
     > = Channel.suspend(() => {
       if (error._tag === "Some") {
         return Channel.failCause(error.value)
@@ -351,7 +348,7 @@ class FileImpl implements Multipart.File {
 
   constructor(
     info: MP.PartInfo,
-    channel: Channel.Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<Uint8Array>, void>
+    channel: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, never, unknown, void, unknown>
   ) {
     this[TypeId] = TypeId
     this.key = info.name

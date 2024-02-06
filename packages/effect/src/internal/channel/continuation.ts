@@ -98,13 +98,13 @@ export interface ContinuationK<
   readonly _tag: OpCodes.OP_CONTINUATION_K
   onSuccess(
     o: OutDone
-  ): Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  ): Channel.Channel<OutElem, InElem, OutErr2, InErr, OutDone2, InDone, Env>
   onHalt(
     c: Cause.Cause<OutErr>
-  ): Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  ): Channel.Channel<OutElem, InElem, OutErr2, InErr, OutDone2, InDone, Env>
   onExit(
     exit: Exit.Exit<OutDone, OutErr>
-  ): Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  ): Channel.Channel<OutElem, InElem, OutErr2, InErr, OutDone2, InDone, Env>
 }
 
 /** @internal */
@@ -176,15 +176,15 @@ export class ContinuationKImpl<
   constructor(
     readonly onSuccess: (
       o: OutDone
-    ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>,
+    ) => Channel.Channel<OutElem, InElem, OutErr2, InErr, OutDone2, InDone, Env>,
     readonly onHalt: (
       c: Cause.Cause<OutErr>
-    ) => Channel.Channel<Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+    ) => Channel.Channel<OutElem, InElem, OutErr2, InErr, OutDone2, InDone, Env2>
   ) {
   }
   onExit(
     exit: Exit.Exit<OutDone, OutErr>
-  ): Channel.Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
+  ): Channel.Channel<OutElem, InElem, OutErr2, InErr, OutDone2, InDone, Env | Env2> {
     return Exit.isFailure(exit) ? this.onHalt(exit.cause) : this.onSuccess(exit.value)
   }
 }

@@ -193,15 +193,7 @@ export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
   readonly [Effect.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Stream.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
-  readonly [Channel.ChannelTypeId]: Channel.Channel.VarianceStruct<
-    never,
-    unknown,
-    unknown,
-    unknown,
-    this,
-    never,
-    never
-  >
+  readonly [Channel.ChannelTypeId]: Channel.Channel.VarianceStruct<never, unknown, this, unknown, never, unknown, never>
 }
 
 /**
