@@ -27,7 +27,7 @@ const resourceVariance = {
 export const auto = <A, E, R, R2, Out>(
   acquire: Effect.Effect<A, E, R>,
   policy: Schedule.Schedule<R2, unknown, Out>
-): Effect.Effect<Resource.Resource<E, A>, never, R | R2 | Scope.Scope> =>
+): Effect.Effect<Resource.Resource<A, E>, never, R | R2 | Scope.Scope> =>
   core.tap(manual(acquire), (manual) =>
     fiberRuntime.acquireRelease(
       pipe(
@@ -42,7 +42,7 @@ export const auto = <A, E, R, R2, Out>(
 /** @internal */
 export const manual = <A, E, R>(
   acquire: Effect.Effect<A, E, R>
-): Effect.Effect<Resource.Resource<E, A>, never, R | Scope.Scope> =>
+): Effect.Effect<Resource.Resource<A, E>, never, R | Scope.Scope> =>
   core.flatMap(core.context<R>(), (env) =>
     pipe(
       scopedRef.fromAcquire(core.exit(acquire)),
@@ -54,11 +54,11 @@ export const manual = <A, E, R>(
     ))
 
 /** @internal */
-export const get = <E, A>(self: Resource.Resource<E, A>): Effect.Effect<A, E> =>
+export const get = <A, E>(self: Resource.Resource<A, E>): Effect.Effect<A, E> =>
   core.flatMap(scopedRef.get(self.scopedRef), identity)
 
 /** @internal */
-export const refresh = <E, A>(self: Resource.Resource<E, A>): Effect.Effect<void, E> =>
+export const refresh = <A, E>(self: Resource.Resource<A, E>): Effect.Effect<void, E> =>
   scopedRef.set(
     self.scopedRef,
     core.map(self.acquire, core.exitSucceed)
