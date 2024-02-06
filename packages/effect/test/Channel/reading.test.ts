@@ -14,7 +14,7 @@ import { assert, describe } from "vitest"
 
 export const mapper = <A, B>(
   f: (a: A) => B
-): Channel.Channel<never, unknown, A, unknown, never, B, void> => {
+): Channel.Channel<B, A, never, unknown, void, unknown> => {
   return Channel.readWith({
     onInput: (a: A) =>
       Channel.flatMap(
@@ -28,7 +28,7 @@ export const mapper = <A, B>(
 
 export const refWriter = <A>(
   ref: Ref.Ref<ReadonlyArray<A>>
-): Channel.Channel<never, unknown, A, unknown, never, never, void> => {
+): Channel.Channel<never, A, never, unknown, void, unknown> => {
   return Channel.readWith({
     onInput: (a: A) =>
       Channel.flatMap(
@@ -42,7 +42,7 @@ export const refWriter = <A>(
 
 export const refReader = <A>(
   ref: Ref.Ref<Array<A>>
-): Channel.Channel<never, unknown, unknown, unknown, never, A, void> => {
+): Channel.Channel<A, unknown, never, unknown, void, unknown> => {
   return pipe(
     Channel.fromEffect(
       Ref.modify(ref, (array) => {
@@ -104,7 +104,7 @@ describe("Channel", () => {
       const innerChannel = pipe(
         Channel.fromEffect(Ref.make<ReadonlyArray<number>>([])),
         Channel.flatMap((ref) => {
-          const inner = (): Channel.Channel<never, unknown, number, unknown, never, number, void> =>
+          const inner = (): Channel.Channel<number, number, never, unknown, void, unknown> =>
             Channel.readWith({
               onInput: (input: number) =>
                 pipe(
@@ -137,18 +137,16 @@ describe("Channel", () => {
   it.effect("read pipelining 2", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<ReadonlyArray<number>>([]))
-      const intProducer: Channel.Channel<
-        never,
-        unknown,
-        unknown,
-        unknown,
-        never,
-        number,
-        void
-      > = Channel.writeAll(1, 2, 3, 4, 5)
+      const intProducer: Channel.Channel<number, unknown, never, unknown, void, unknown> = Channel.writeAll(
+        1,
+        2,
+        3,
+        4,
+        5
+      )
       const readIntsN = (
         n: number
-      ): Channel.Channel<never, unknown, number, unknown, never, number, string> =>
+      ): Channel.Channel<number, number, never, unknown, string, unknown> =>
         n > 0
           ? Channel.readWith({
             onInput: (i: number) => pipe(Channel.write(i), Channel.flatMap(() => readIntsN(n - 1))),
@@ -160,7 +158,7 @@ describe("Channel", () => {
       const sum = (
         label: string,
         n: number
-      ): Channel.Channel<never, unknown, number, unknown, unknown, never, void> =>
+      ): Channel.Channel<never, number, unknown, unknown, void, unknown> =>
         Channel.readWith({
           onInput: (input: number) => sum(label, n + input),
           onFailure: () => Channel.fromEffect(Ref.update(ref, (array) => [...array, n])),

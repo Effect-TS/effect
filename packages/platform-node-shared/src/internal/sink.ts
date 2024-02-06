@@ -20,7 +20,7 @@ export const fromWritableChannel = <IE, OE, A>(
   writable: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => OE,
   options?: FromWritableOptions
-): Channel.Channel<never, IE, Chunk.Chunk<A>, unknown, IE | OE, Chunk.Chunk<never>, void> =>
+): Channel.Channel<Chunk.Chunk<never>, Chunk.Chunk<A>, IE | OE, IE, void, unknown> =>
   Channel.flatMap(
     Effect.zip(
       Effect.sync(() => writable()),

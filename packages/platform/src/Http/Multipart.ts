@@ -220,7 +220,7 @@ export const schemaPersisted: <R, I extends Persisted, A>(
 export const makeChannel: <IE>(
   headers: Record<string, string>,
   bufferSize?: number
-) => Channel.Channel<never, IE, Chunk.Chunk<Uint8Array>, unknown, MultipartError | IE, Chunk.Chunk<Part>, unknown> =
+) => Channel.Channel<Chunk.Chunk<Part>, Chunk.Chunk<Uint8Array>, MultipartError | IE, IE, unknown, unknown> =
   internal.makeChannel
 
 /**

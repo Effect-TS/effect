@@ -112,7 +112,7 @@ export const fromDuplex = <IE, E, I = Uint8Array | string, O = Uint8Array>(
   evaluate: LazyArg<Duplex>,
   onError: (error: unknown) => E,
   options: FromReadableOptions & FromWritableOptions = {}
-): Channel.Channel<never, IE, Chunk.Chunk<I>, unknown, IE | E, Chunk.Chunk<O>, void> =>
+): Channel.Channel<Chunk.Chunk<O>, Chunk.Chunk<I>, IE | E, IE, void, unknown> =>
   Channel.acquireUseRelease(
     Effect.tap(
       Effect.zip(
@@ -194,7 +194,7 @@ export const fromReadableChannel = <E, A = Uint8Array>(
   evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   chunkSize: number | undefined
-): Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> =>
+): Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, void, unknown> =>
   Channel.acquireUseRelease(
     Effect.tap(
       Effect.zip(
@@ -297,7 +297,7 @@ const readableTake = <E, A>(
   chunkSize: number | undefined
 ) => {
   const read = readChunkChannel<A>(readable, chunkSize)
-  const loop: Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> = Channel.flatMap(
+  const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, void, unknown> = Channel.flatMap(
     Queue.take(queue),
     Either.match({
       onLeft: Exit.match({

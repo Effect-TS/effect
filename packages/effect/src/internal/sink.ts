@@ -45,7 +45,7 @@ const sinkVariance = {
 export class SinkImpl<out R, out E, in In, out L, out Z> implements Sink.Sink<R, E, In, L, Z> {
   readonly [SinkTypeId] = sinkVariance
   constructor(
-    readonly channel: Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>
+    readonly channel: Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R>
   ) {
   }
   pipe() {
@@ -77,7 +77,7 @@ export const collectAll = <In>(): Sink.Sink<never, never, In, never, Chunk.Chunk
 /** @internal */
 const collectAllLoop = <In>(
   acc: Chunk.Chunk<In>
-): Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, never, Chunk.Chunk<In>> =>
+): Channel.Channel<never, Chunk.Chunk<In>, never, never, Chunk.Chunk<In>, unknown> =>
   core.readWithCause({
     onInput: (chunk: Chunk.Chunk<In>) => collectAllLoop(pipe(acc, Chunk.appendAll(chunk))),
     onFailure: core.failCause,
@@ -92,7 +92,7 @@ export const collectAllN = <In>(n: number): Sink.Sink<never, never, In, In, Chun
 const collectAllNLoop = <In>(
   n: number,
   acc: Chunk.Chunk<In>
-): Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, Chunk.Chunk<In>> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, Chunk.Chunk<In>, unknown> =>
   core.readWithCause({
     onInput: (chunk: Chunk.Chunk<In>) => {
       const [collected, leftovers] = Chunk.splitAt(chunk, n)
@@ -209,7 +209,7 @@ export const collectAllWhile: {
 const collectAllWhileReader = <In>(
   predicate: Predicate<In>,
   done: Chunk.Chunk<In>
-): Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, Chunk.Chunk<In>> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, Chunk.Chunk<In>, unknown> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) => {
       const [collected, leftovers] = pipe(Chunk.toReadonlyArray(input), ReadonlyArray.span(predicate))
@@ -237,7 +237,7 @@ export const collectAllWhileEffect = <In, R, E>(
 const collectAllWhileEffectReader = <In, R, E>(
   predicate: (input: In) => Effect.Effect<boolean, E, R>,
   done: Chunk.Chunk<In>
-): Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<In>, Chunk.Chunk<In>> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, never, Chunk.Chunk<In>, unknown, R> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(
@@ -288,8 +288,8 @@ export const collectAllWhileWith = dual<
     const newChannel = pipe(
       core.fromEffect(refs),
       core.flatMap(([leftoversRef, upstreamDoneRef]) => {
-        const upstreamMarker: Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, unknown> =
-          core.readWith({
+        const upstreamMarker: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, unknown, unknown> = core
+          .readWith({
             onInput: (input) => pipe(core.write(input), core.flatMap(() => upstreamMarker)),
             onFailure: core.fail,
             onDone: (done) => pipe(core.fromEffect(Ref.set(upstreamDoneRef, true)), channel.as(done))
@@ -315,7 +315,7 @@ const collectAllWhileWithLoop = <R, E, In, L extends In, Z, S>(
   currentResult: S,
   p: Predicate<Z>,
   f: (s: S, z: Z) => S
-): Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, S> => {
+): Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, S, unknown, R> => {
   return pipe(
     toChannel(self),
     channel.doneCollect,
@@ -400,7 +400,7 @@ export const mapInputChunks = dual<
     self: Sink.Sink<R, E, In, L, Z>,
     f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
   ): Sink.Sink<R, E, In0, L, Z> => {
-    const loop: Channel.Channel<R, never, Chunk.Chunk<In0>, unknown, never, Chunk.Chunk<In>, unknown> = core.readWith({
+    const loop: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In0>, never, never, unknown, unknown, R> = core.readWith({
       onInput: (chunk) => pipe(core.write(f(chunk)), core.flatMap(() => loop)),
       onFailure: core.fail,
       onDone: core.succeed
@@ -424,7 +424,7 @@ export const mapInputChunksEffect = dual<
     self: Sink.Sink<R, E, In, L, Z>,
     f: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
   ): Sink.Sink<R | R2, E | E2, In0, L, Z> => {
-    const loop: Channel.Channel<R | R2, never, Chunk.Chunk<In0>, unknown, E2, Chunk.Chunk<In>, unknown> = core
+    const loop: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In0>, E2, never, unknown, unknown, R | R2> = core
       .readWith({
         onInput: (chunk) => pipe(core.fromEffect(f(chunk)), core.flatMap(core.write), core.flatMap(() => loop)),
         onFailure: core.fail,
@@ -560,7 +560,7 @@ export const dimapChunksEffect = dual<
 
 /** @internal */
 export const drain: Sink.Sink<never, never, unknown, never, void> = new SinkImpl(
-  channel.drain(channel.identityChannel<never, unknown, unknown>())
+  channel.drain(channel.identityChannel())
 )
 
 /** @internal */
@@ -570,7 +570,7 @@ export const drop = <In>(n: number): Sink.Sink<never, never, In, In, unknown> =>
 /** @internal */
 const dropLoop = <In>(
   n: number
-): Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, unknown> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, unknown, unknown> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) => {
       const dropped = pipe(input, Chunk.drop(n))
@@ -581,7 +581,7 @@ const dropLoop = <In>(
       }
       return pipe(
         core.write(dropped),
-        channel.zipRight(channel.identityChannel<never, Chunk.Chunk<In>, unknown>())
+        channel.zipRight(channel.identityChannel<Chunk.Chunk<In>, never, unknown>())
       )
     },
     onFailure: core.fail,
@@ -602,7 +602,7 @@ export const dropUntilEffect = <In, R, E>(
 /** @internal */
 const dropUntilEffectReader = <In, R, E>(
   predicate: (input: In) => Effect.Effect<boolean, E, R>
-): Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<In>, unknown> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, E, unknown, unknown, R> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(
@@ -614,7 +614,7 @@ const dropUntilEffectReader = <In, R, E>(
             dropUntilEffectReader(predicate) :
             pipe(
               core.write(Chunk.unsafeFromArray(leftover)),
-              channel.zipRight(channel.identityChannel<E, Chunk.Chunk<In>, unknown>())
+              channel.zipRight(channel.identityChannel<Chunk.Chunk<In>, E, unknown>())
             )
         }),
         channel.unwrap
@@ -630,14 +630,14 @@ export const dropWhile = <In>(predicate: Predicate<In>): Sink.Sink<never, never,
 /** @internal */
 const dropWhileReader = <In>(
   predicate: Predicate<In>
-): Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, unknown> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, unknown, unknown> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) => {
       const out = pipe(input, Chunk.dropWhile(predicate))
       if (Chunk.isEmpty(out)) {
         return dropWhileReader(predicate)
       }
-      return pipe(core.write(out), channel.zipRight(channel.identityChannel<never, Chunk.Chunk<In>, unknown>()))
+      return pipe(core.write(out), channel.zipRight(channel.identityChannel<Chunk.Chunk<In>, never, unknown>()))
     },
     onFailure: core.fail,
     onDone: core.succeedNow
@@ -651,7 +651,7 @@ export const dropWhileEffect = <In, R, E>(
 /** @internal */
 const dropWhileEffectReader = <In, R, E>(
   predicate: (input: In) => Effect.Effect<boolean, E, R>
-): Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<In>, unknown> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, E, unknown, unknown, R> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(
@@ -663,7 +663,7 @@ const dropWhileEffectReader = <In, R, E>(
             dropWhileEffectReader(predicate) :
             pipe(
               core.write(Chunk.unsafeFromArray(leftover)),
-              channel.zipRight(channel.identityChannel<E, Chunk.Chunk<In>, unknown>())
+              channel.zipRight(channel.identityChannel<Chunk.Chunk<In>, E, unknown>())
             )
         }),
         channel.unwrap
@@ -797,13 +797,13 @@ export const findEffect = dual<
         Effect.zip(Ref.make(false))
       )),
       core.flatMap(([leftoversRef, upstreamDoneRef]) => {
-        const upstreamMarker: Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, unknown> =
-          core.readWith({
+        const upstreamMarker: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, unknown, unknown> = core
+          .readWith({
             onInput: (input) => pipe(core.write(input), core.flatMap(() => upstreamMarker)),
             onFailure: core.fail,
             onDone: (done) => pipe(core.fromEffect(Ref.set(upstreamDoneRef, true)), channel.as(done))
           })
-        const loop: Channel.Channel<R | R2, never, Chunk.Chunk<In>, unknown, E | E2, Chunk.Chunk<L>, Option.Option<Z>> =
+        const loop: Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E | E2, never, Option.Option<Z>, unknown, R | R2> =
           channel.foldChannel(core.collectElements(toChannel(self)), {
             onFailure: core.fail,
             onSuccess: ([leftovers, doneValue]) =>
@@ -849,7 +849,7 @@ const foldReader = <S, In>(
   s: S,
   contFn: Predicate<S>,
   f: (z: S, input: In) => S
-): Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, S> => {
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, S, unknown> => {
   if (!contFn(s)) {
     return core.succeedNow(s)
   }
@@ -910,13 +910,13 @@ export const foldSink = dual<
     }
   ): Sink.Sink<R | R1 | R2, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2> => {
     const newChannel: Channel.Channel<
-      R | R1 | R2,
-      never,
-      Chunk.Chunk<In1 & In2>,
-      unknown,
-      E1 | E2,
       Chunk.Chunk<L1 | L2>,
-      Z1 | Z2
+      Chunk.Chunk<In1 & In2>,
+      E1 | E2,
+      never,
+      Z1 | Z2,
+      unknown,
+      R | R1 | R2
     > = pipe(
       toChannel(self),
       core.collectElements,
@@ -937,7 +937,7 @@ export const foldSink = dual<
               // L <: In1 and therefore Chunk[L] can be safely cast to Chunk[In1].
               core.flatMap((chunk) => channel.writeChunk(chunk as Chunk.Chunk<Chunk.Chunk<In1 & In2>>))
             )
-            const passthrough = channel.identityChannel<never, Chunk.Chunk<In1 & In2>, unknown>()
+            const passthrough = channel.identityChannel<Chunk.Chunk<In1 & In2>, never, unknown>()
             const continuationSink = pipe(
               refReader,
               channel.zipRight(passthrough),
@@ -972,7 +972,7 @@ const foldChunksReader = <S, In>(
   s: S,
   contFn: Predicate<S>,
   f: (s: S, chunk: Chunk.Chunk<In>) => S
-): Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, never, S> => {
+): Channel.Channel<never, Chunk.Chunk<In>, never, never, S, unknown> => {
   if (!contFn(s)) {
     return core.succeedNow(s)
   }
@@ -995,7 +995,7 @@ const foldChunksEffectReader = <S, R, E, In>(
   s: S,
   contFn: Predicate<S>,
   f: (s: S, chunk: Chunk.Chunk<In>) => Effect.Effect<S, E, R>
-): Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, never, S> => {
+): Channel.Channel<never, Chunk.Chunk<In>, E, E, S, unknown, R> => {
   if (!contFn(s)) {
     return core.succeedNow(s)
   }
@@ -1022,7 +1022,7 @@ const foldEffectReader = <S, In, R, E>(
   s: S,
   contFn: Predicate<S>,
   f: (s: S, input: In) => Effect.Effect<S, E, R>
-): Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<In>, S> => {
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, E, S, unknown, R> => {
   if (!contFn(s)) {
     return core.succeedNow(s)
   }
@@ -1171,7 +1171,7 @@ const foldWeightedDecomposeLoop = <S, In>(
   costFn: (s: S, input: In) => number,
   decompose: (input: In) => Chunk.Chunk<In>,
   f: (s: S, input: In) => S
-): Channel.Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, S> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, S, unknown> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) => {
       const [nextS, nextCost, nextDirty, leftovers] = foldWeightedDecomposeFold(
@@ -1282,7 +1282,7 @@ const foldWeightedDecomposeEffectLoop = <S, In, R, E, R2, E2, R3, E3>(
   f: (s: S, input: In) => Effect.Effect<S, E3, R3>,
   cost: number,
   dirty: boolean
-): Channel.Channel<R | R2 | R3, E | E2 | E3, Chunk.Chunk<In>, unknown, E | E2 | E3, Chunk.Chunk<In>, S> =>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E | E2 | E3, E | E2 | E3, S, unknown, R | R2 | R3> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(
@@ -1375,7 +1375,7 @@ export const flatMap = dual<
 
 /** @internal */
 export const forEach = <In, R, E, _>(f: (input: In) => Effect.Effect<_, E, R>): Sink.Sink<R, E, In, never, void> => {
-  const process: Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, never, void> = core.readWithCause({
+  const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(core.fromEffect(Effect.forEach(input, (v) => f(v), { discard: true })), core.flatMap(() => process)),
     onFailure: core.failCause,
@@ -1388,7 +1388,7 @@ export const forEach = <In, R, E, _>(f: (input: In) => Effect.Effect<_, E, R>): 
 export const forEachChunk = <In, R, E, _>(
   f: (input: Chunk.Chunk<In>) => Effect.Effect<_, E, R>
 ): Sink.Sink<R, E, In, never, void> => {
-  const process: Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, never, void> = core.readWithCause({
+  const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) => pipe(core.fromEffect(f(input)), core.flatMap(() => process)),
     onFailure: core.failCause,
     onDone: () => core.unit
@@ -1400,7 +1400,7 @@ export const forEachChunk = <In, R, E, _>(
 export const forEachWhile = <In, R, E>(
   f: (input: In) => Effect.Effect<boolean, E, R>
 ): Sink.Sink<R, E, In, In, void> => {
-  const process: Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<In>, void> = core.readWithCause({
+  const process: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) => forEachWhileReader(f, input, 0, input.length, process),
     onFailure: core.failCause,
     onDone: () => core.unit
@@ -1414,8 +1414,8 @@ const forEachWhileReader = <In, R, E>(
   input: Chunk.Chunk<In>,
   index: number,
   length: number,
-  cont: Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<In>, void>
-): Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<In>, void> => {
+  cont: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, E, void, unknown, R>
+): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, E, void, unknown, R> => {
   if (index === length) {
     return cont
   }
@@ -1434,7 +1434,7 @@ const forEachWhileReader = <In, R, E>(
 export const forEachChunkWhile = <In, R, E>(
   f: (input: Chunk.Chunk<In>) => Effect.Effect<boolean, E, R>
 ): Sink.Sink<R, E, In, In, void> => {
-  const reader: Channel.Channel<R, E, Chunk.Chunk<In>, unknown, E, never, void> = core.readWith({
+  const reader: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(
         core.fromEffect(f(input)),
@@ -1448,7 +1448,7 @@ export const forEachChunkWhile = <In, R, E>(
 
 /** @internal */
 export const fromChannel = <R, E, In, L, Z>(
-  channel: Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>
+  channel: Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R>
 ): Sink.Sink<R, E, In, L, Z> => new SinkImpl(channel)
 
 /** @internal */
@@ -1477,7 +1477,7 @@ const fromPushPull = <R, E, In, L, Z>(
   push: (
     option: Option.Option<Chunk.Chunk<In>>
   ) => Effect.Effect<void, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], R>
-): Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z> =>
+): Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
       channel.foldChannel(core.fromEffect(push(Option.some(input))), {
@@ -1721,13 +1721,13 @@ export const raceWith = dual<
         })
       )
       const racedChannel: Channel.Channel<
-        R | R2,
-        never,
-        Chunk.Chunk<In & In2>,
-        unknown,
-        E | E2,
         Chunk.Chunk<L | L2>,
-        Z3 | Z4
+        Chunk.Chunk<In & In2>,
+        E | E2,
+        never,
+        Z3 | Z4,
+        unknown,
+        R | R2
       > = channel.mergeWith(reader, {
         other: writer,
         onSelfDone: (_) => mergeDecision.Await((exit) => Effect.suspend(() => exit)),
@@ -1850,7 +1850,7 @@ const splitWhereSplitter = <E, A>(
   written: boolean,
   leftovers: Ref.Ref<Chunk.Chunk<A>>,
   f: Predicate<A>
-): Channel.Channel<never, never, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<A>, unknown> =>
+): Channel.Channel<Chunk.Chunk<A>, Chunk.Chunk<A>, E, never, unknown, unknown> =>
   core.readWithCause({
     onInput: (input) => {
       if (Chunk.isEmpty(input)) {
@@ -1967,7 +1967,7 @@ export const take = <In>(n: number): Sink.Sink<never, never, In, In, Chunk.Chunk
 /** @internal */
 export const toChannel = <R, E, In, L, Z>(
   self: Sink.Sink<R, E, In, L, Z>
-): Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z> =>
+): Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R> =>
   Effect.isEffect(self) ?
     toChannel(fromEffect(self as Effect.Effect<Z, E, R>)) :
     (self as SinkImpl<R, E, In, L, Z>).channel
@@ -2128,8 +2128,8 @@ export const zipWith = dual<
 // Circular with Channel
 
 /** @internal */
-export const channelToSink = <Env, InErr, InElem, OutErr, OutElem, OutDone>(
-  self: Channel.Channel<Env, InErr, Chunk.Chunk<InElem>, unknown, OutErr, Chunk.Chunk<OutElem>, OutDone>
+export const channelToSink = <OutElem, InElem, OutErr, InErr, OutDone, Env>(
+  self: Channel.Channel<Chunk.Chunk<OutElem>, Chunk.Chunk<InElem>, OutErr, InErr, OutDone, unknown, Env>
 ): Sink.Sink<Env, OutErr, InElem, OutElem, OutDone> => new SinkImpl(self)
 
 // Constants

@@ -419,7 +419,7 @@ export const groupByKey = dual<
     const loop = (
       map: Map<K, Queue.Queue<Take.Take<A, E>>>,
       outerQueue: Queue.Queue<Take.Take<readonly [K, Queue.Queue<Take.Take<A, E>>], E>>
-    ): Channel.Channel<R, E, Chunk.Chunk<A>, unknown, E, never, unknown> =>
+    ): Channel.Channel<never, Chunk.Chunk<A>, E, E, unknown, unknown, R> =>
       core.readWithCause({
         onInput: (input: Chunk.Chunk<A>) =>
           core.flatMap(

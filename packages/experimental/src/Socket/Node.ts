@@ -139,15 +139,7 @@ export const fromNetSocket = (
  */
 export const makeNetChannel = <IE = never>(
   options: Net.NetConnectOpts
-): Channel.Channel<
-  never,
-  IE,
-  Chunk.Chunk<Uint8Array>,
-  unknown,
-  Socket.SocketError | IE,
-  Chunk.Chunk<Uint8Array>,
-  void
-> =>
+): Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, Socket.SocketError | IE, IE, void, unknown> =>
   Channel.unwrapScoped(
     Effect.map(makeNet(options), Socket.toChannelWith<IE>())
   )
