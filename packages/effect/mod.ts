@@ -8,11 +8,12 @@ const enabled = {
   swapDeferredParams: false,
   swapTDeferredParams: false,
   swapTakeParams: false,
+  swapFiberParams: true,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
   cleanupExit: false,
-  cleanupTake: true
+  cleanupTake: false
 }
 
 const cleanup = (name: string) => (ast: cs.ASTPath<cs.TSTypeReference>) => {
@@ -91,6 +92,7 @@ const swapParamsEA = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>)
 const swapDeferredParams = swapParamsEA("Deferred")
 const swapTDeferredParams = swapParamsEA("TDeferred")
 const swapTakeParams = swapParamsEA("Take")
+const swapFiberParams = swapParamsEA("Fiber")
 
 const swapSTMParams = swapParamsREA("STM")
 const swapSTMGenParams = swapParamsREA("STMGen")
@@ -138,6 +140,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     }
     if (enabled.swapTakeParams) {
       swapTakeParams(ast)
+    }
+    if (enabled.swapFiberParams) {
+      swapFiberParams(ast)
     }
     if (enabled.cleanupEffect) {
       cleanupEffect(ast)

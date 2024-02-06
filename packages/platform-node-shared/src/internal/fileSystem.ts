@@ -402,7 +402,7 @@ const readDirectory = (() => {
 // == readFile
 
 const readFile = (path: string) =>
-  Effect.async<Uint8Array, Error.PlatformError, never>((resume, signal) => {
+  Effect.async<Uint8Array, Error.PlatformError>((resume, signal) => {
     try {
       NFS.readFile(path, { signal }, (err, data) => {
         if (err) {
@@ -527,7 +527,7 @@ const utimes = (() => {
 // == writeFile
 
 const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFileOptions) =>
-  Effect.async<void, Error.PlatformError, never>((resume, signal) => {
+  Effect.async<void, Error.PlatformError>((resume, signal) => {
     try {
       NFS.writeFile(path, data, {
         signal,

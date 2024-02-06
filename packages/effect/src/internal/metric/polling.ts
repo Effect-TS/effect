@@ -68,11 +68,11 @@ export const launch = dual<
     schedule: Schedule.Schedule<R2, unknown, A2>
   ) => <Type, In, R, E, Out>(
     self: MetricPolling.MetricPolling<Type, In, R, E, Out>
-  ) => Effect.Effect<Fiber.Fiber<E, A2>, never, R | R2 | Scope.Scope>,
+  ) => Effect.Effect<Fiber.Fiber<A2, E>, never, R | R2 | Scope.Scope>,
   <Type, In, R, E, Out, R2, A2>(
     self: MetricPolling.MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
-  ) => Effect.Effect<Fiber.Fiber<E, A2>, never, R | R2 | Scope.Scope>
+  ) => Effect.Effect<Fiber.Fiber<A2, E>, never, R | R2 | Scope.Scope>
 >(2, (self, schedule) =>
   pipe(
     pollAndUpdate(self),

@@ -46,7 +46,7 @@ export const make = <I, R, E, O>(
       platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>(shutdown),
       Scope.extend(scope)
     )
-    const fiberMap = new Map<number, Fiber.Fiber<never, void>>()
+    const fiberMap = new Map<number, Fiber.Fiber<void>>()
 
     yield* _(
       Queue.take(backing.queue),
