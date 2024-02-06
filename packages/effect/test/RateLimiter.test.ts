@@ -99,8 +99,8 @@ describe("RateLimiterSpec", () => {
     return Effect.scoped(
       Effect.gen(function*(_) {
         const rl = yield* _(RateLimiter.make(10, "1 seconds"))
-        const latch = yield* _(Deferred.make<never, void>())
-        const interrupted = yield* _(Deferred.make<never, void>())
+        const latch = yield* _(Deferred.make<void>())
+        const interrupted = yield* _(Deferred.make<void>())
         const fib = yield* _(pipe(
           Deferred.succeed(latch, void 0),
           Effect.flatMap(() => Effect.never),
@@ -138,7 +138,7 @@ describe("RateLimiterSpec", () => {
     return Effect.scoped(
       Effect.gen(function*(_) {
         const rl = yield* _(RateLimiter.make(1, "1 seconds"))
-        const latch = yield* _(Deferred.make<never, void>())
+        const latch = yield* _(Deferred.make<void>())
         const effectInterrupted = yield* _(Ref.make(0))
 
         const fib = yield* _(pipe(
@@ -191,9 +191,9 @@ describe("RateLimiterSpec", () => {
     return Effect.scoped(
       Effect.gen(function*(_) {
         const rl = yield* _(RateLimiter.make(rate, "1 seconds"))
-        const latch = yield* _(Deferred.make<never, void>())
+        const latch = yield* _(Deferred.make<void>())
         const latched = yield* _(Ref.make(0))
-        const continue_ = yield* _(Deferred.make<never, void>())
+        const continue_ = yield* _(Deferred.make<void>())
 
         yield* _(
           Effect.whenEffect(pipe(

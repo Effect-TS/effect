@@ -1,5 +1,5 @@
+import type { DurationInput } from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import type { Duration } from "./index.js"
 import * as internal from "./internal/rateLimiter.js"
 import type { Scope } from "./Scope.js"
 
@@ -11,8 +11,8 @@ import type { Scope } from "./Scope.js"
  * Calls are queued up in an unbounded queue until capacity becomes available.
  */
 export interface RateLimiter {
-  <R, E, A>(task: Effect<R, E, A>): Effect<R, E, A>
+  <R, E, A>(task: Effect<A, E, R>): Effect<A, E, R>
 }
 
-export const make = (max: number, interval: Duration.DurationInput): Effect<Scope, never, RateLimiter> =>
-  internal.make(max, interval)
+export const make = (limit: number, window: DurationInput): Effect<RateLimiter, never, Scope> =>
+  internal.make(limit, window)

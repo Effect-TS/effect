@@ -545,6 +545,15 @@ export * as Queue from "./Queue.js"
 export * as Random from "./Random.js"
 
 /**
+ * Limits the number of calls to a resource to a maximum amount in some interval using the token bucket algorithm.
+ *
+ * Note that only the moment of starting the effect is rate limited: the number of concurrent executions is not bounded.
+ *
+ * Calls are queued up in an unbounded queue until capacity becomes available.
+ */
+export * as RateLimiter from "./RateLimiter.js"
+
+/**
  * This module provides utility functions for working with arrays in TypeScript.
  *
  * @since 2.0.0
@@ -899,12 +908,3 @@ export * as UpstreamPullStrategy from "./UpstreamPullStrategy.js"
  * @since 2.0.0
  */
 export * as Utils from "./Utils.js"
-
-/**
- * Limits the number of calls to a resource to a maximum amount in some interval using the token bucket algorithm.
- *
- * Note that only the moment of starting the effect is rate limited: the number of concurrent executions is not bounded.
- *
- * @since 2.0.0
- */
-export * as RateLimiter from "./RateLimiter.js"

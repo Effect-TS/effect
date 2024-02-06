@@ -14,9 +14,9 @@ import * as Stream from "../Stream.js"
 import { nextPow2 } from "./nextPow2.js"
 
 /** @internal */
-export const make = (max: number, interval: DurationInput) => {
+export const make = (limit: number, window: DurationInput) => {
   return Effect.gen(function*($) {
-    const q = yield* $(Queue.bounded<[Ref.Ref<boolean>, Effect.Effect<never, never, void>]>(nextPow2(max)))
+    const q = yield* $(Queue.bounded<[Ref.Ref<boolean>, Effect.Effect<void>]>(nextPow2(limit)))
 
     yield* $(
       pipe(
@@ -29,9 +29,9 @@ export const make = (max: number, interval: DurationInput) => {
         }),
         Stream.throttle({
           strategy: "shape",
-          duration: interval,
+          duration: window,
           cost: Chunk.size,
-          units: max
+          units: limit
         }),
         Stream.mapEffect(([_interrupted, eff]) => eff, { concurrency: "unbounded", unordered: true }),
         Stream.runDrain,
@@ -41,8 +41,8 @@ export const make = (max: number, interval: DurationInput) => {
 
     const apply = <R, E, A>(task: Effect.Effect<R, E, A>) =>
       Effect.gen(function*($) {
-        const start = yield* $(Deferred.make<never, void>())
-        const done = yield* $(Deferred.make<never, void>())
+        const start = yield* $(Deferred.make<void>())
+        const done = yield* $(Deferred.make<void>())
         const interruptedRef = yield* $(Ref.make(false))
 
         const action = pipe(
