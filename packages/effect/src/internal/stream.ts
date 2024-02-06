@@ -450,7 +450,7 @@ export const aggregateWithinEither = dual<
           )
         )
       })
-    );
+    )
   }
 )
 
