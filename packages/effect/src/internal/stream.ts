@@ -477,7 +477,7 @@ export const asyncEffect = <A, E = never, R = never>(
 ): Stream.Stream<A, E, R> =>
   pipe(
     Effect.acquireRelease(
-      Queue.bounded<Take.Take<E, A>>(outputBuffer),
+      Queue.bounded<Take.Take<A, E>>(outputBuffer),
       (queue) => Queue.shutdown(queue)
     ),
     Effect.flatMap((output) =>
@@ -534,7 +534,7 @@ export const asyncInterrupt = <A, E = never, R = never>(
 ): Stream.Stream<A, E, R> =>
   pipe(
     Effect.acquireRelease(
-      Queue.bounded<Take.Take<E, A>>(outputBuffer),
+      Queue.bounded<Take.Take<A, E>>(outputBuffer),
       (queue) => Queue.shutdown(queue)
     ),
     Effect.flatMap((output) =>
@@ -610,7 +610,7 @@ export const asyncScoped = <A, E = never, R = never>(
 ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
   pipe(
     Effect.acquireRelease(
-      Queue.bounded<Take.Take<E, A>>(outputBuffer),
+      Queue.bounded<Take.Take<A, E>>(outputBuffer),
       (queue) => Queue.shutdown(queue)
     ),
     Effect.flatMap((output) =>
@@ -766,21 +766,21 @@ export const broadcastedQueues = dual<
     maximumLag: number
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>, never, Scope.Scope | R>,
+  ) => Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, Scope.Scope | R>,
   <A, E, R, N extends number>(
     self: Stream.Stream<A, E, R>,
     n: N,
     maximumLag: number
-  ) => Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>, never, Scope.Scope | R>
+  ) => Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, Scope.Scope | R>
 >(3, <A, E, R, N extends number>(
   self: Stream.Stream<A, E, R>,
   n: N,
   maximumLag: number
-): Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>, never, Scope.Scope | R> =>
-  Effect.flatMap(PubSub.bounded<Take.Take<E, A>>(maximumLag), (pubsub) =>
+): Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, Scope.Scope | R> =>
+  Effect.flatMap(PubSub.bounded<Take.Take<A, E>>(maximumLag), (pubsub) =>
     pipe(
       Effect.all(Array.from({ length: n }, () => PubSub.subscribe(pubsub))) as Effect.Effect<
-        Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>,
+        Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>,
         never,
         R
       >,
@@ -793,15 +793,15 @@ export const broadcastedQueuesDynamic = dual<
     maximumLag: number
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, Scope.Scope>, never, Scope.Scope | R>,
+  ) => Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope>, never, Scope.Scope | R>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     maximumLag: number
-  ) => Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, Scope.Scope>, never, Scope.Scope | R>
+  ) => Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope>, never, Scope.Scope | R>
 >(2, <A, E, R>(
   self: Stream.Stream<A, E, R>,
   maximumLag: number
-): Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, Scope.Scope>, never, Scope.Scope | R> =>
+): Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope>, never, Scope.Scope | R> =>
   Effect.map(toPubSub(self, maximumLag), PubSub.subscribe))
 
 /** @internal */
@@ -902,7 +902,7 @@ const bufferChunksDropping = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.dropping<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>(capacity),
+    Queue.dropping<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(self)))
@@ -913,7 +913,7 @@ const bufferChunksSliding = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.sliding<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>(capacity),
+    Queue.sliding<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(self)))
@@ -924,7 +924,7 @@ const bufferDropping = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.dropping<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>(capacity),
+    Queue.dropping<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(rechunk(1)(self))))
@@ -935,7 +935,7 @@ const bufferSliding = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.sliding<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>(capacity),
+    Queue.sliding<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(pipe(self, rechunk(1)))))
@@ -961,14 +961,14 @@ const bufferUnbounded = <A, E, R>(self: Stream.Stream<A, E, R>): Stream.Stream<A
 }
 
 const bufferSignal = <A, E, R>(
-  scoped: Effect.Effect<Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>, never, Scope.Scope>,
+  scoped: Effect.Effect<Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>, never, Scope.Scope>,
   bufferChannel: Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, void>
 ): Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> => {
   const producer = (
-    queue: Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>,
+    queue: Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>,
     ref: Ref.Ref<Deferred.Deferred<void, never>>
   ): Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, never, unknown> => {
-    const terminate = (take: Take.Take<E, A>): Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, never, unknown> =>
+    const terminate = (take: Take.Take<A, E>): Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, never, unknown> =>
       pipe(
         Ref.get(ref),
         Effect.tap(Deferred.await),
@@ -1003,7 +1003,7 @@ const bufferSignal = <A, E, R>(
     })
   }
   const consumer = (
-    queue: Queue.Queue<readonly [Take.Take<E, A>, Deferred.Deferred<void, never>]>
+    queue: Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>
   ): Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> => {
     const process: Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> = pipe(
       core.fromEffect(Queue.take(queue)),
@@ -1460,7 +1460,7 @@ export const combineChunks = dual<
   ) => Effect.Effect<Exit.Exit<readonly [Chunk.Chunk<A3>, S], Option.Option<E2 | E>>, never, R5>
 ): Stream.Stream<A3, E2 | E, R2 | R3 | R4 | R5 | R> => {
   const producer = <Err, Elem>(
-    handoff: Handoff.Handoff<Take.Take<Err, Elem>>,
+    handoff: Handoff.Handoff<Take.Take<Elem, Err>>,
     latch: Handoff.Handoff<void>
   ): Channel.Channel<R, Err, Chunk.Chunk<Elem>, unknown, never, never, unknown> =>
     channel.zipRight(
@@ -1470,26 +1470,26 @@ export const combineChunks = dual<
           core.flatMap(
             core.fromEffect(pipe(
               handoff,
-              Handoff.offer<Take.Take<Err, Elem>>(_take.chunk(input))
+              Handoff.offer<Take.Take<Elem, Err>>(_take.chunk(input))
             )),
             () => producer(handoff, latch)
           ),
         onFailure: (cause) =>
           core.fromEffect(
-            Handoff.offer<Take.Take<Err, Elem>>(
+            Handoff.offer<Take.Take<Elem, Err>>(
               handoff,
               _take.failCause(cause)
             )
           ),
         onDone: (): Channel.Channel<R, Err, Chunk.Chunk<Elem>, unknown, never, never, unknown> =>
-          core.fromEffect(Handoff.offer<Take.Take<Err, Elem>>(handoff, _take.end))
+          core.fromEffect(Handoff.offer<Take.Take<Elem, Err>>(handoff, _take.end))
       })
     )
   return new StreamImpl(
     pipe(
       Effect.all([
-        Handoff.make<Take.Take<E, A>>(),
-        Handoff.make<Take.Take<E2, A2>>(),
+        Handoff.make<Take.Take<A, E>>(),
+        Handoff.make<Take.Take<A2, E2>>(),
         Handoff.make<void>(),
         Handoff.make<void>()
       ]),
@@ -1534,7 +1534,7 @@ export const combineChunks = dual<
       }),
       channel.unwrapScoped
     )
-  )
+  );
 })
 
 /** @internal */
@@ -2818,7 +2818,7 @@ export const flattenIterables = <A, E, R>(self: Stream.Stream<Iterable<A>, E, R>
   pipe(self, map(Chunk.fromIterable), flattenChunks)
 
 /** @internal */
-export const flattenTake = <R, E, E2, A>(self: Stream.Stream<Take.Take<E2, A>, E, R>): Stream.Stream<A, E | E2, R> =>
+export const flattenTake = <R, E, E2, A>(self: Stream.Stream<Take.Take<A, E2>, E, R>): Stream.Stream<A, E | E2, R> =>
   flattenChunks(flattenExitOption(pipe(self, map((take) => take.exit))))
 
 /** @internal */
@@ -3384,33 +3384,33 @@ export const interleaveWith = dual<
     decider: Stream.Stream<boolean, E3, R3>
   ): Stream.Stream<A2 | A, E2 | E3 | E, R2 | R3 | R> => {
     const producer = (
-      handoff: Handoff.Handoff<Take.Take<E | E2 | E3, A | A2>>
+      handoff: Handoff.Handoff<Take.Take<A | A2, E | E2 | E3>>
     ): Channel.Channel<R | R2 | R3, E | E2 | E3, A | A2, unknown, never, never, void> =>
       core.readWithCause({
         onInput: (value: A | A2) =>
           core.flatMap(
             core.fromEffect(
-              Handoff.offer<Take.Take<E | E2 | E3, A | A2>>(handoff, _take.of(value))
+              Handoff.offer<Take.Take<A | A2, E | E2 | E3>>(handoff, _take.of(value))
             ),
             () => producer(handoff)
           ),
         onFailure: (cause) =>
           core.fromEffect(
-            Handoff.offer<Take.Take<E | E2 | E3, A | A2>>(
+            Handoff.offer<Take.Take<A | A2, E | E2 | E3>>(
               handoff,
               _take.failCause(cause)
             )
           ),
         onDone: () =>
           core.fromEffect(
-            Handoff.offer<Take.Take<E | E2 | E3, A | A2>>(handoff, _take.end)
+            Handoff.offer<Take.Take<A | A2, E | E2 | E3>>(handoff, _take.end)
           )
       })
     return new StreamImpl(
       channel.unwrapScoped(
         pipe(
-          Handoff.make<Take.Take<E | E2 | E3, A | A2>>(),
-          Effect.zip(Handoff.make<Take.Take<E | E2 | E3, A | A2>>()),
+          Handoff.make<Take.Take<A | A2, E | E2 | E3>>(),
+          Effect.zip(Handoff.make<Take.Take<A | A2, E | E2 | E3>>()),
           Effect.tap(([left]) =>
             pipe(
               toChannel(self),
@@ -3469,7 +3469,7 @@ export const interleaveWith = dual<
           })
         )
       )
-    )
+    );
   }
 )
 
@@ -5383,35 +5383,35 @@ export const runHead = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Op
 
 /** @internal */
 export const runIntoPubSub = dual<
-  <E, A>(pubsub: PubSub.PubSub<Take.Take<E, A>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
-  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<E, A>>) => Effect.Effect<void, never, R>
+  <E, A>(pubsub: PubSub.PubSub<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
+  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>) => Effect.Effect<void, never, R>
 >(
   2,
-  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<void, never, R> =>
+  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>): Effect.Effect<void, never, R> =>
     pipe(self, runIntoQueue(pubsub))
 )
 
 /** @internal */
 export const runIntoPubSubScoped = dual<
   <E, A>(
-    pubsub: PubSub.PubSub<Take.Take<E, A>>
+    pubsub: PubSub.PubSub<Take.Take<A, E>>
   ) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    pubsub: PubSub.PubSub<Take.Take<E, A>>
+    pubsub: PubSub.PubSub<Take.Take<A, E>>
   ) => Effect.Effect<void, never, Scope.Scope | R>
 >(2, <A, E, R>(
   self: Stream.Stream<A, E, R>,
-  pubsub: PubSub.PubSub<Take.Take<E, A>>
+  pubsub: PubSub.PubSub<Take.Take<A, E>>
 ): Effect.Effect<void, never, Scope.Scope | R> => pipe(self, runIntoQueueScoped(pubsub)))
 
 /** @internal */
 export const runIntoQueue = dual<
-  <E, A>(queue: Queue.Enqueue<Take.Take<E, A>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
-  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<E, A>>) => Effect.Effect<void, never, R>
+  <E, A>(queue: Queue.Enqueue<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
+  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>) => Effect.Effect<void, never, R>
 >(
   2,
-  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect.Effect<void, never, R> =>
+  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>): Effect.Effect<void, never, R> =>
     pipe(self, runIntoQueueScoped(queue), Effect.scoped)
 )
 
@@ -5449,17 +5449,17 @@ export const runIntoQueueElementsScoped = dual<
 /** @internal */
 export const runIntoQueueScoped = dual<
   <E, A>(
-    queue: Queue.Enqueue<Take.Take<E, A>>
+    queue: Queue.Enqueue<Take.Take<A, E>>
   ) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    queue: Queue.Enqueue<Take.Take<E, A>>
+    queue: Queue.Enqueue<Take.Take<A, E>>
   ) => Effect.Effect<void, never, Scope.Scope | R>
 >(2, <A, E, R>(
   self: Stream.Stream<A, E, R>,
-  queue: Queue.Enqueue<Take.Take<E, A>>
+  queue: Queue.Enqueue<Take.Take<A, E>>
 ): Effect.Effect<void, never, Scope.Scope | R> => {
-  const writer: Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, Take.Take<E, A>, unknown> = core
+  const writer: Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, Take.Take<A, E>, unknown> = core
     .readWithCause({
       onInput: (input: Chunk.Chunk<A>) => core.flatMap(core.write(_take.chunk(input)), () => writer),
       onFailure: (cause) => core.write(_take.failCause(cause)),
@@ -6233,7 +6233,7 @@ export const tapSink = dual<
     sink: Sink.Sink<R2, E2, A, unknown, unknown>
   ): Stream.Stream<A, E | E2, R | R2> =>
     pipe(
-      fromEffect(Effect.all([Queue.bounded<Take.Take<E | E2, A>>(1), Deferred.make<void>()])),
+      fromEffect(Effect.all([Queue.bounded<Take.Take<A, E | E2>>(1), Deferred.make<void>()])),
       flatMap(([queue, deferred]) => {
         const right = flattenTake(fromQueue(queue, { maxChunkSize: 1 }))
         const loop: Channel.Channel<R2, E, Chunk.Chunk<A>, unknown, E | E2, Chunk.Chunk<A>, unknown> = core
@@ -6563,18 +6563,18 @@ export const timeoutTo = dual<
 export const toPubSub = dual<
   (
     capacity: number
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<PubSub.PubSub<Take.Take<E, A>>, never, Scope.Scope | R>,
+  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<PubSub.PubSub<Take.Take<A, E>>, never, Scope.Scope | R>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     capacity: number
-  ) => Effect.Effect<PubSub.PubSub<Take.Take<E, A>>, never, Scope.Scope | R>
+  ) => Effect.Effect<PubSub.PubSub<Take.Take<A, E>>, never, Scope.Scope | R>
 >(2, <A, E, R>(
   self: Stream.Stream<A, E, R>,
   capacity: number
-): Effect.Effect<PubSub.PubSub<Take.Take<E, A>>, never, Scope.Scope | R> =>
+): Effect.Effect<PubSub.PubSub<Take.Take<A, E>>, never, Scope.Scope | R> =>
   pipe(
     Effect.acquireRelease(
-      PubSub.bounded<Take.Take<E, A>>(capacity),
+      PubSub.bounded<Take.Take<A, E>>(capacity),
       (pubsub) => PubSub.shutdown(pubsub)
     ),
     Effect.tap((pubsub) => pipe(self, runIntoPubSubScoped(pubsub), Effect.forkScoped))
@@ -6605,7 +6605,7 @@ export const toQueue = dual<
     }
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, R | Scope.Scope>,
+  ) => Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, R | Scope.Scope>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     options?: {
@@ -6614,7 +6614,7 @@ export const toQueue = dual<
     } | {
       readonly strategy: "unbounded"
     }
-  ) => Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, R | Scope.Scope>
+  ) => Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, R | Scope.Scope>
 >((args) => isStream(args[0]), <A, E, R>(
   self: Stream.Stream<A, E, R>,
   options?: {
@@ -6627,12 +6627,12 @@ export const toQueue = dual<
   Effect.tap(
     Effect.acquireRelease(
       options?.strategy === "unbounded" ?
-        Queue.unbounded<Take.Take<E, A>>() :
+        Queue.unbounded<Take.Take<A, E>>() :
         options?.strategy === "dropping" ?
-        Queue.dropping<Take.Take<E, A>>(options.capacity ?? 2) :
+        Queue.dropping<Take.Take<A, E>>(options.capacity ?? 2) :
         options?.strategy === "sliding" ?
-        Queue.sliding<Take.Take<E, A>>(options.capacity ?? 2) :
-        Queue.bounded<Take.Take<E, A>>(options?.capacity ?? 2),
+        Queue.sliding<Take.Take<A, E>>(options.capacity ?? 2) :
+        Queue.bounded<Take.Take<A, E>>(options?.capacity ?? 2),
       (queue) => Queue.shutdown(queue)
     ),
     (queue) => Effect.forkScoped(runIntoQueueScoped(self, queue))
