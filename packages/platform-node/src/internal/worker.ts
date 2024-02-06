@@ -13,7 +13,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const worker = worker_ as WorkerThreads.Worker
       yield* _(Effect.addFinalizer(() =>
         pipe(
-          Effect.async<void, never, never>((resume) => {
+          Effect.async<void>((resume) => {
             worker.once("exit", () => {
               resume(Effect.unit)
             })
@@ -26,7 +26,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
       yield* _(Effect.addFinalizer(() => Queue.shutdown(queue)))
       const fiber = yield* _(
-        Effect.async<never, WorkerError, never>((resume) => {
+        Effect.async<never, WorkerError>((resume) => {
           worker.on("message", (message: Worker.BackingWorker.Message<O>) => {
             queue.unsafeOffer(message)
           })

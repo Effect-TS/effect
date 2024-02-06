@@ -2316,13 +2316,13 @@ export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.
   }
   const self = Chunk.headNonEmpty(list)
   const effects = Chunk.tailNonEmpty(list)
-  const inheritAll = (res: readonly [A, Fiber.Fiber<E, A>]) =>
+  const inheritAll = (res: readonly [A, Fiber.Fiber<A, E>]) =>
     pipe(
       internalFiber.inheritAll(res[1]),
       core.as(res[0])
     )
   return pipe(
-    core.deferredMake<readonly [A, Fiber.Fiber<E, A>], E>(),
+    core.deferredMake<readonly [A, Fiber.Fiber<A, E>], E>(),
     core.flatMap((done) =>
       pipe(
         Ref.make(effects.length),
@@ -2378,9 +2378,9 @@ export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.
 }
 
 const raceAllArbiter = <E, E1, A, A1>(
-  fibers: Iterable<Fiber.Fiber<E | E1, A | A1>>,
-  winner: Fiber.Fiber<E | E1, A | A1>,
-  deferred: Deferred.Deferred<readonly [A | A1, Fiber.Fiber<E | E1, A | A1>], E | E1>,
+  fibers: Iterable<Fiber.Fiber<A | A1, E | E1>>,
+  winner: Fiber.Fiber<A | A1, E | E1>,
+  deferred: Deferred.Deferred<readonly [A | A1, Fiber.Fiber<A | A1, E | E1>], E | E1>,
   fails: Ref.Ref<number>
 ) =>
 (exit: Exit.Exit<A | A1, E | E1>): Effect.Effect<void> =>
@@ -3061,7 +3061,7 @@ export const fiberAwaitAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect.E
   core.asUnit(internalFiber._await(fiberAll(fibers)))
 
 /** @internal */
-export const fiberAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Fiber.Fiber<E, Array<A>> => ({
+export const fiberAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Fiber.Fiber<Array<A>, E> => ({
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
   id: () => RA.fromIterable(fibers).reduce((id, fiber) => FiberId.combine(id, fiber.id()), FiberId.none),
   await: core.exit(forEachParUnbounded(fibers, (fiber) => core.flatten(fiber.await), false)),
@@ -3102,15 +3102,15 @@ export const fiberAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Fiber.Fiber
 })
 
 /* @internal */
-export const fiberInterruptFork = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<void> =>
+export const fiberInterruptFork = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<void> =>
   core.asUnit(forkDaemon(core.interruptFiber(self)))
 
 /* @internal */
-export const fiberJoinAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Effect.Effect<void, E> =>
+export const fiberJoinAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Effect.Effect<void, E> =>
   core.asUnit(internalFiber.join(fiberAll(fibers)))
 
 /* @internal */
-export const fiberScoped = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<Fiber.Fiber<E, A>, never, Scope.Scope> =>
+export const fiberScoped = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<Fiber.Fiber<A, E>, never, Scope.Scope> =>
   acquireRelease(core.succeed(self), core.interruptFiber)
 
 //
@@ -3122,16 +3122,16 @@ export const raceWith = dual<
   <A1, E1, R1, E, A, A2, E2, R2, A3, E3, R3>(
     other: Effect.Effect<A1, E1, R1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<A, E>, fiber: Fiber.Fiber<E1, A1>) => Effect.Effect<A2, E2, R2>
-      readonly onOtherDone: (exit: Exit.Exit<A1, E1>, fiber: Fiber.Fiber<E, A>) => Effect.Effect<A3, E3, R3>
+      readonly onSelfDone: (exit: Exit.Exit<A, E>, fiber: Fiber.Fiber<A1, E1>) => Effect.Effect<A2, E2, R2>
+      readonly onOtherDone: (exit: Exit.Exit<A1, E1>, fiber: Fiber.Fiber<A, E>) => Effect.Effect<A3, E3, R3>
     }
   ) => <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2 | A3, E2 | E3, R | R1 | R2 | R3>,
   <A, E, R, A1, E1, R1, A2, E2, R2, A3, E3, R3>(
     self: Effect.Effect<A, E, R>,
     other: Effect.Effect<A1, E1, R1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<A, E>, fiber: Fiber.Fiber<E1, A1>) => Effect.Effect<A2, E2, R2>
-      readonly onOtherDone: (exit: Exit.Exit<A1, E1>, fiber: Fiber.Fiber<E, A>) => Effect.Effect<A3, E3, R3>
+      readonly onSelfDone: (exit: Exit.Exit<A, E>, fiber: Fiber.Fiber<A1, E1>) => Effect.Effect<A2, E2, R2>
+      readonly onOtherDone: (exit: Exit.Exit<A1, E1>, fiber: Fiber.Fiber<A, E>) => Effect.Effect<A3, E3, R3>
     }
   ) => Effect.Effect<A2 | A3, E2 | E3, R | R1 | R2 | R3>
 >(3, (self, other, options) =>

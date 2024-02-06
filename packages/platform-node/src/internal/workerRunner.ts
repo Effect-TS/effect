@@ -19,7 +19,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const port = WorkerThreads.parentPort
       const queue = yield* _(Queue.unbounded<I>())
       yield* _(
-        Effect.async<never, WorkerError, never>((resume) => {
+        Effect.async<never, WorkerError>((resume) => {
           port.on("message", (message: Runner.BackingRunner.Message<I>) => {
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])

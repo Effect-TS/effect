@@ -44,7 +44,7 @@ export const make = (
 
     // Handle the `"keypress"` event emitted by `stdin` (forced by readline)
     const handleKeypressEvent = (input: typeof globalThis.process.stdin) =>
-      Effect.async<Terminal.UserInput, Terminal.QuitException, never>((resume) => {
+      Effect.async<Terminal.UserInput, Terminal.QuitException>((resume) => {
         const handleKeypress = (input: string | undefined, key: readline.Key) => {
           const userInput: Terminal.UserInput = {
             input: Option.fromNullable(input),

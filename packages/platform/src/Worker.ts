@@ -24,7 +24,7 @@ import type { WorkerError } from "./WorkerError.js"
  * @category models
  */
 export interface BackingWorker<I, O> {
-  readonly fiber: Fiber.Fiber<WorkerError, never>
+  readonly fiber: Fiber.Fiber<never, WorkerError>
   readonly send: (message: I, transfers?: ReadonlyArray<unknown>) => Effect.Effect<void, WorkerError>
   readonly queue: Queue.Dequeue<BackingWorker.Message<O>>
 }
