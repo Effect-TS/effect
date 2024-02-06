@@ -30,7 +30,7 @@ export type GroupByTypeId = typeof GroupByTypeId
  * @category models
  */
 export interface GroupBy<out R, out E, out K, out V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
-  readonly grouped: Stream.Stream<readonly [K, Queue.Dequeue<Take.Take<E, V>>], E, R>
+  readonly grouped: Stream.Stream<readonly [K, Queue.Dequeue<Take.Take<V, E>>], E, R>
 }
 
 /**
@@ -99,5 +99,5 @@ export const first: {
  * @category constructors
  */
 export const make: <R, E, K, V>(
-  grouped: Stream.Stream<readonly [K, Queue.Dequeue<Take.Take<E, V>>], E, R>
+  grouped: Stream.Stream<readonly [K, Queue.Dequeue<Take.Take<V, E>>], E, R>
 ) => GroupBy<R, E, K, V> = internal.make

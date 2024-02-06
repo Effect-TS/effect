@@ -23,14 +23,14 @@ export const TakeTypeId: unique symbol = internal.TakeTypeId
 export type TakeTypeId = typeof TakeTypeId
 
 /**
- * A `Take<E, A>` represents a single `take` from a queue modeling a stream of
+ * A `Take<A, E>` represents a single `take` from a queue modeling a stream of
  * values. A `Take` may be a failure cause `Cause<E>`, a chunk value `Chunk<A>`,
  * or an end-of-stream marker.
  *
  * @since 2.0.0
  * @category models
  */
-export interface Take<out E, out A> extends Take.Variance<E, A>, Pipeable {
+export interface Take<out A, out E = never> extends Take.Variance<A, E>, Pipeable {
   /** @internal */
   readonly exit: Exit.Exit<Chunk.Chunk<A>, Option.Option<E>>
 }
@@ -43,10 +43,10 @@ export declare namespace Take {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<out E, out A> {
+  export interface Variance<out A, out E> {
     readonly [TakeTypeId]: {
-      readonly _E: Types.Covariant<E>
       readonly _A: Types.Covariant<A>
+      readonly _E: Types.Covariant<E>
     }
   }
 }
@@ -57,7 +57,7 @@ export declare namespace Take {
  * @since 2.0.0
  * @category constructors
  */
-export const chunk: <A>(chunk: Chunk.Chunk<A>) => Take<never, A> = internal.chunk
+export const chunk: <A>(chunk: Chunk.Chunk<A>) => Take<A> = internal.chunk
 
 /**
  * Creates a failing `Take` with the specified defect.
@@ -65,7 +65,7 @@ export const chunk: <A>(chunk: Chunk.Chunk<A>) => Take<never, A> = internal.chun
  * @since 2.0.0
  * @category constructors
  */
-export const die: (defect: unknown) => Take<never, never> = internal.die
+export const die: (defect: unknown) => Take<never> = internal.die
 
 /**
  * Creates a failing `Take` with the specified error message.
@@ -73,15 +73,15 @@ export const die: (defect: unknown) => Take<never, never> = internal.die
  * @since 2.0.0
  * @category constructors
  */
-export const dieMessage: (message: string) => Take<never, never> = internal.dieMessage
+export const dieMessage: (message: string) => Take<never> = internal.dieMessage
 
 /**
- * Transforms a `Take<E, A>` to an `Effect<never, E, A>`.
+ * Transforms a `Take<A, E>` to an `Effect<A, E>`.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const done: <E, A>(self: Take<E, A>) => Effect.Effect<Chunk.Chunk<A>, Option.Option<E>> = internal.done
+export const done: <A, E>(self: Take<A, E>) => Effect.Effect<Chunk.Chunk<A>, Option.Option<E>> = internal.done
 
 /**
  * Represents the end-of-stream marker.
@@ -89,7 +89,7 @@ export const done: <E, A>(self: Take<E, A>) => Effect.Effect<Chunk.Chunk<A>, Opt
  * @since 2.0.0
  * @category constructors
  */
-export const end: Take<never, never> = internal.end
+export const end: Take<never> = internal.end
 
 /**
  * Creates a failing `Take` with the specified error.
@@ -97,7 +97,7 @@ export const end: Take<never, never> = internal.end
  * @since 2.0.0
  * @category constructors
  */
-export const fail: <E>(error: E) => Take<E, never> = internal.fail
+export const fail: <E>(error: E) => Take<never, E> = internal.fail
 
 /**
  * Creates a failing `Take` with the specified cause.
@@ -105,17 +105,17 @@ export const fail: <E>(error: E) => Take<E, never> = internal.fail
  * @since 2.0.0
  * @category constructors
  */
-export const failCause: <E>(cause: Cause.Cause<E>) => Take<E, never> = internal.failCause
+export const failCause: <E>(cause: Cause.Cause<E>) => Take<never, E> = internal.failCause
 
 /**
  * Creates an effect from `Effect<A, E, R>` that does not fail, but succeeds with
- * the `Take<E, A>`. Error from stream when pulling is converted to
+ * the `Take<A, E>`. Error from stream when pulling is converted to
  * `Take.failCause`. Creates a single value chunk.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffect: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<Take<E, A>, never, R> =
+export const fromEffect: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<Take<A, E>, never, R> =
   internal.fromEffect
 
 /**
@@ -124,11 +124,11 @@ export const fromEffect: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Eff
  * @since 2.0.0
  * @category constructors
  */
-export const fromExit: <A, E>(exit: Exit.Exit<A, E>) => Take<E, A> = internal.fromExit
+export const fromExit: <A, E>(exit: Exit.Exit<A, E>) => Take<A, E> = internal.fromExit
 
 /**
  * Creates effect from `Effect<Chunk<A>, Option<E>, R>` that does not fail, but
- * succeeds with the `Take<E, A>`. Errors from stream when pulling are converted
+ * succeeds with the `Take<A, E>`. Errors from stream when pulling are converted
  * to `Take.failCause`, and the end-of-stream is converted to `Take.end`.
  *
  * @since 2.0.0
@@ -136,7 +136,7 @@ export const fromExit: <A, E>(exit: Exit.Exit<A, E>) => Take<E, A> = internal.fr
  */
 export const fromPull: <A, E, R>(
   pull: Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, R>
-) => Effect.Effect<Take<E, A>, never, R> = internal.fromPull
+) => Effect.Effect<Take<A, E>, never, R> = internal.fromPull
 
 /**
  * Checks if this `take` is done (`Take.end`).
@@ -144,7 +144,7 @@ export const fromPull: <A, E, R>(
  * @since 2.0.0
  * @category getters
  */
-export const isDone: <E, A>(self: Take<E, A>) => boolean = internal.isDone
+export const isDone: <A, E>(self: Take<A, E>) => boolean = internal.isDone
 
 /**
  * Checks if this `take` is a failure.
@@ -152,7 +152,7 @@ export const isDone: <E, A>(self: Take<E, A>) => boolean = internal.isDone
  * @since 2.0.0
  * @category getters
  */
-export const isFailure: <E, A>(self: Take<E, A>) => boolean = internal.isFailure
+export const isFailure: <A, E>(self: Take<A, E>) => boolean = internal.isFailure
 
 /**
  * Checks if this `take` is a success.
@@ -160,7 +160,7 @@ export const isFailure: <E, A>(self: Take<E, A>) => boolean = internal.isFailure
  * @since 2.0.0
  * @category getters
  */
-export const isSuccess: <E, A>(self: Take<E, A>) => boolean = internal.isSuccess
+export const isSuccess: <A, E>(self: Take<A, E>) => boolean = internal.isSuccess
 
 /**
  * Constructs a `Take`.
@@ -168,17 +168,17 @@ export const isSuccess: <E, A>(self: Take<E, A>) => boolean = internal.isSuccess
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>(exit: Exit.Exit<Chunk.Chunk<A>, Option.Option<E>>) => Take<E, A> = internal.make
+export const make: <A, E>(exit: Exit.Exit<Chunk.Chunk<A>, Option.Option<E>>) => Take<A, E> = internal.make
 
 /**
- * Transforms `Take<E, A>` to `Take<E, B>` by applying function `f`.
+ * Transforms `Take<A, E>` to `Take<B, A>` by applying function `f`.
  *
  * @since 2.0.0
  * @category mapping
  */
 export const map: {
-  <A, B>(f: (a: A) => B): <E>(self: Take<E, A>) => Take<E, B>
-  <E, A, B>(self: Take<E, A>, f: (a: A) => B): Take<E, B>
+  <A, B>(f: (a: A) => B): <E>(self: Take<A, E>) => Take<B, E>
+  <A, E, B>(self: Take<A, E>, f: (a: A) => B): Take<B, E>
 } = internal.map
 
 /**
@@ -195,9 +195,9 @@ export const match: {
       readonly onFailure: (cause: Cause.Cause<E>) => Z2
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Z3
     }
-  ): (self: Take<E, A>) => Z | Z2 | Z3
-  <Z, E, Z2, A, Z3>(
-    self: Take<E, A>,
+  ): (self: Take<A, E>) => Z | Z2 | Z3
+  <A, E, Z, Z2, Z3>(
+    self: Take<A, E>,
     options: {
       readonly onEnd: () => Z
       readonly onFailure: (cause: Cause.Cause<E>) => Z2
@@ -216,21 +216,21 @@ export const match: {
  * @category destructors
  */
 export const matchEffect: {
-  <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
+  <Z, E2, R, E, Z2, R2, A, Z3, E3, R3>(
     options: {
       readonly onEnd: Effect.Effect<Z, E2, R>
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<Z2, E2, R2>
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<Z3, E3, R3>
     }
-  ): (self: Take<E, A>) => Effect.Effect<Z | Z2 | Z3, E2 | E | E3, R | R2 | R3>
-  <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
-    self: Take<E, A>,
+  ): (self: Take<A, E>) => Effect.Effect<Z | Z2 | Z3, E2 | E | E3, R | R2 | R3>
+  <A, E, Z, E2, R, Z2, R2, Z3, E3, R3>(
+    self: Take<A, E>,
     options: {
       readonly onEnd: Effect.Effect<Z, E2, R>
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<Z2, E2, R2>
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<Z3, E3, R3>
     }
-  ): Effect.Effect<Z | Z2 | Z3, E2 | E | E3, R | R2 | R3>
+  ): Effect.Effect<Z | Z2 | Z3, E | E2 | E3, R | R2 | R3>
 } = internal.matchEffect
 
 /**
@@ -239,7 +239,7 @@ export const matchEffect: {
  * @since 2.0.0
  * @category constructors
  */
-export const of: <A>(value: A) => Take<never, A> = internal.of
+export const of: <A>(value: A) => Take<A> = internal.of
 
 /**
  * Returns an effect that effectfully "peeks" at the success of this take.
@@ -248,11 +248,11 @@ export const of: <A>(value: A) => Take<never, A> = internal.of
  * @category sequencing
  */
 export const tap: {
-  <A, R, E2, _>(
+  <A, _, E2, R>(
     f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
-  ): <E>(self: Take<E, A>) => Effect.Effect<void, E2 | E, R>
-  <E, A, R, E2, _>(
-    self: Take<E, A>,
+  ): <E>(self: Take<A, E>) => Effect.Effect<void, E2 | E, R>
+  <A, E, _, E2, R>(
+    self: Take<A, E>,
     f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
   ): Effect.Effect<void, E | E2, R>
 } = internal.tap
