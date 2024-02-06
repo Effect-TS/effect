@@ -282,8 +282,8 @@ export const aggregateWithinEither = dual<
         const timeout = (lastB: Option.Option<B>): Effect.Effect<C, Option.Option<never>, R2 | R3> =>
           scheduleDriver.next(lastB)
         const scheduledAggregator = (
-          sinkFiber: Fiber.RuntimeFiber<E | E2, readonly [Chunk.Chunk<Chunk.Chunk<A | A2>>, B]>,
-          scheduleFiber: Fiber.RuntimeFiber<Option.Option<never>, C>,
+          sinkFiber: Fiber.RuntimeFiber<readonly [Chunk.Chunk<Chunk.Chunk<A | A2>>, B], E | E2>,
+          scheduleFiber: Fiber.RuntimeFiber<C, Option.Option<never>>,
           scope: Scope.Scope
         ): Channel.Channel<R2 | R3, unknown, unknown, unknown, E | E2, Chunk.Chunk<Either.Either<C, B>>, unknown> => {
           const forkSink = pipe(
