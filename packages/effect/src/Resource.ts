@@ -28,7 +28,7 @@ export type ResourceTypeId = typeof ResourceTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Resource<in out E, in out A> extends Resource.Variance<E, A> {
+export interface Resource<in out A, in out E = never> extends Resource.Variance<A, E> {
   /** @internal */
   readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<A, E>>
   /** @internal */
@@ -43,10 +43,10 @@ export declare namespace Resource {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<in out E, in out A> {
+  export interface Variance<in out A, in out E> {
     readonly [ResourceTypeId]: {
-      _E: Types.Invariant<E>
       _A: Types.Invariant<A>
+      _E: Types.Invariant<E>
     }
   }
 }
@@ -64,7 +64,7 @@ export declare namespace Resource {
 export const auto: <A, E, R, R2, Out>(
   acquire: Effect.Effect<A, E, R>,
   policy: Schedule.Schedule<R2, unknown, Out>
-) => Effect.Effect<Resource<E, A>, never, Scope.Scope | R | R2> = internal.auto
+) => Effect.Effect<Resource<A, E>, never, Scope.Scope | R | R2> = internal.auto
 
 /**
  * Retrieves the current value stored in the cache.
@@ -72,7 +72,7 @@ export const auto: <A, E, R, R2, Out>(
  * @since 2.0.0
  * @category getters
  */
-export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<A, E> = internal.get
+export const get: <A, E>(self: Resource<A, E>) => Effect.Effect<A, E> = internal.get
 
 /**
  * Creates a new `Resource` value that must be manually refreshed by calling
@@ -86,7 +86,7 @@ export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<A, E> = internal
  */
 export const manual: <A, E, R>(
   acquire: Effect.Effect<A, E, R>
-) => Effect.Effect<Resource<E, A>, never, Scope.Scope | R> = internal.manual
+) => Effect.Effect<Resource<A, E>, never, Scope.Scope | R> = internal.manual
 
 /**
  * Refreshes the cache. This method will not return until either the refresh
@@ -95,4 +95,4 @@ export const manual: <A, E, R>(
  * @since 2.0.0
  * @category utils
  */
-export const refresh: <E, A>(self: Resource<E, A>) => Effect.Effect<void, E> = internal.refresh
+export const refresh: <A, E>(self: Resource<A, E>) => Effect.Effect<void, E> = internal.refresh
