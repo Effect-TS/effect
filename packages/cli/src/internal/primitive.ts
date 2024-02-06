@@ -63,7 +63,7 @@ export interface Bool extends
 /** @internal */
 export interface Choice extends
   Op<"Choice", {
-    readonly alternatives: ReadonlyArray.NonEmptyReadonlyArray<[string, unknown]>
+    readonly alternatives: ReadonlyArray<[string, unknown]>
   }>
 {}
 
@@ -151,7 +151,7 @@ export const boolean = (defaultValue: Option.Option<boolean>): Primitive.Primiti
 
 /** @internal */
 export const choice = <A>(
-  alternatives: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>
+  alternatives: ReadonlyArray<[string, A]>
 ): Primitive.Primitive<A> => {
   const op = Object.create(proto)
   op._tag = "Choice"
@@ -634,7 +634,7 @@ export const getBashCompletions = (self: Instruction): string => {
 }
 
 /** @internal */
-export const getFishCompletions = (self: Instruction): ReadonlyArray<string> => {
+export const getFishCompletions = (self: Instruction): Array<string> => {
   switch (self._tag) {
     case "Bool": {
       return ReadonlyArray.empty()

@@ -106,8 +106,8 @@ export const empty: Usage = InternalUsage.empty
  * @category constructors
  */
 export const enumerate: {
-  (config: CliConfig): (self: Usage) => ReadonlyArray<Span>
-  (self: Usage, config: CliConfig): ReadonlyArray<Span>
+  (config: CliConfig): (self: Usage) => Array<Span>
+  (self: Usage, config: CliConfig): Array<Span>
 } = InternalUsage.enumerate
 
 /**

@@ -9,7 +9,7 @@ import type { Config } from "effect/Config"
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
-import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { NonEmptyArray } from "effect/ReadonlyArray"
 import type { Secret } from "effect/Secret"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
@@ -143,10 +143,10 @@ export const all: <const Arg extends Iterable<Args<any>> | Record<string, Args<a
  * @category combinators
  */
 export const atLeast: {
-  (times: 0): <A>(self: Args<A>) => Args<ReadonlyArray<A>>
-  (times: number): <A>(self: Args<A>) => Args<NonEmptyReadonlyArray<A>>
-  <A>(self: Args<A>, times: 0): Args<ReadonlyArray<A>>
-  <A>(self: Args<A>, times: number): Args<NonEmptyReadonlyArray<A>>
+  (times: 0): <A>(self: Args<A>) => Args<Array<A>>
+  (times: number): <A>(self: Args<A>) => Args<NonEmptyArray<A>>
+  <A>(self: Args<A>, times: 0): Args<Array<A>>
+  <A>(self: Args<A>, times: number): Args<NonEmptyArray<A>>
 } = InternalArgs.atLeast
 
 /**
@@ -154,8 +154,8 @@ export const atLeast: {
  * @category combinators
  */
 export const atMost: {
-  (times: number): <A>(self: Args<A>) => Args<ReadonlyArray<A>>
-  <A>(self: Args<A>, times: number): Args<ReadonlyArray<A>>
+  (times: number): <A>(self: Args<A>) => Args<Array<A>>
+  <A>(self: Args<A>, times: number): Args<Array<A>>
 } = InternalArgs.atMost
 
 /**
@@ -163,10 +163,10 @@ export const atMost: {
  * @category combinators
  */
 export const between: {
-  (min: 0, max: number): <A>(self: Args<A>) => Args<ReadonlyArray<A>>
-  (min: number, max: number): <A>(self: Args<A>) => Args<NonEmptyReadonlyArray<A>>
-  <A>(self: Args<A>, min: 0, max: number): Args<ReadonlyArray<A>>
-  <A>(self: Args<A>, min: number, max: number): Args<NonEmptyReadonlyArray<A>>
+  (min: 0, max: number): <A>(self: Args<A>) => Args<Array<A>>
+  (min: number, max: number): <A>(self: Args<A>) => Args<NonEmptyArray<A>>
+  <A>(self: Args<A>, min: 0, max: number): Args<Array<A>>
+  <A>(self: Args<A>, min: number, max: number): Args<NonEmptyArray<A>>
 } = InternalArgs.between
 
 /**
@@ -188,7 +188,7 @@ export const boolean: (options?: Args.BaseArgsConfig) => Args<boolean> = Interna
  * @category constructors
  */
 export const choice: <A>(
-  choices: NonEmptyReadonlyArray<[string, A]>,
+  choices: ReadonlyArray<[string, A]>,
   config?: Args.BaseArgsConfig
 ) => Args<A> = InternalArgs.choice
 
@@ -374,7 +374,7 @@ export const path: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs
  * @since 1.0.0
  * @category combinators
  */
-export const repeated: <A>(self: Args<A>) => Args<ReadonlyArray<A>> = InternalArgs.repeated
+export const repeated: <A>(self: Args<A>) => Args<Array<A>> = InternalArgs.repeated
 
 /**
  * Creates a text argument.
@@ -404,20 +404,12 @@ export const validate: {
   (
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): <A>(self: Args<A>) => Effect<
-    FileSystem | Path | Terminal,
-    ValidationError,
-    [ReadonlyArray<string>, A]
-  >
+  ): <A>(self: Args<A>) => Effect<FileSystem | Path | Terminal, ValidationError, [Array<string>, A]>
   <A>(
     self: Args<A>,
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<
-    FileSystem | Path | Terminal,
-    ValidationError,
-    [ReadonlyArray<string>, A]
-  >
+  ): Effect<FileSystem | Path | Terminal, ValidationError, [Array<string>, A]>
 } = InternalArgs.validate
 
 /**
@@ -463,19 +455,9 @@ export const withSchema: {
 export const wizard: {
   (
     config: CliConfig
-  ): <A>(
-    self: Args<A>
-  ) => Effect<
-    FileSystem | Path | Terminal,
-    ValidationError | QuitException,
-    ReadonlyArray<string>
-  >
+  ): <A>(self: Args<A>) => Effect<FileSystem | Path | Terminal, ValidationError | QuitException, Array<string>>
   <A>(
     self: Args<A>,
     config: CliConfig
-  ): Effect<
-    FileSystem | Path | Terminal,
-    ValidationError | QuitException,
-    ReadonlyArray<string>
-  >
+  ): Effect<FileSystem | Path | Terminal, ValidationError | QuitException, Array<string>>
 } = InternalArgs.wizard

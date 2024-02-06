@@ -90,8 +90,8 @@ export const getHelp = (self: Usage.Usage): HelpDoc.HelpDoc => {
 
 /** @internal */
 export const enumerate = dual<
-  (config: CliConfig.CliConfig) => (self: Usage.Usage) => ReadonlyArray<Span.Span>,
-  (self: Usage.Usage, config: CliConfig.CliConfig) => ReadonlyArray<Span.Span>
+  (config: CliConfig.CliConfig) => (self: Usage.Usage) => Array<Span.Span>,
+  (self: Usage.Usage, config: CliConfig.CliConfig) => Array<Span.Span>
 >(2, (self, config) => render(simplify(self, config), config))
 
 // =============================================================================
@@ -150,7 +150,7 @@ const simplify = (self: Usage.Usage, config: CliConfig.CliConfig): Usage.Usage =
   }
 }
 
-const render = (self: Usage.Usage, config: CliConfig.CliConfig): ReadonlyArray<Span.Span> => {
+const render = (self: Usage.Usage, config: CliConfig.CliConfig): Array<Span.Span> => {
   switch (self._tag) {
     case "Empty": {
       return ReadonlyArray.of(InternalSpan.text(""))

@@ -114,7 +114,7 @@ export const getHelp: <A>(self: Command<A>, config: CliConfig) => HelpDoc = Inte
 export const getBashCompletions: <A>(
   self: Command<A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getBashCompletions
+) => Effect<never, never, Array<string>> = Internal.getBashCompletions
 
 /**
  * @since 1.0.0
@@ -123,7 +123,7 @@ export const getBashCompletions: <A>(
 export const getFishCompletions: <A>(
   self: Command<A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getFishCompletions
+) => Effect<never, never, Array<string>> = Internal.getFishCompletions
 
 /**
  * @since 1.0.0
@@ -132,7 +132,7 @@ export const getFishCompletions: <A>(
 export const getZshCompletions: <A>(
   self: Command<A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getZshCompletions
+) => Effect<never, never, Array<string>> = Internal.getZshCompletions
 
 /**
  * @since 1.0.0
@@ -264,7 +264,7 @@ export const wizard: {
   ) => Effect<
     FileSystem | Path | Terminal,
     ValidationError | QuitException,
-    ReadonlyArray<string>
+    Array<string>
   >
   <A>(
     self: Command<A>,
@@ -273,6 +273,6 @@ export const wizard: {
   ): Effect<
     FileSystem | Path | Terminal,
     ValidationError | QuitException,
-    ReadonlyArray<string>
+    Array<string>
   >
 } = Internal.wizard

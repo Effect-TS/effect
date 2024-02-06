@@ -257,22 +257,19 @@ export const getNames = <Name extends string, R, E, A>(
 export const getBashCompletions = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>,
   programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
-  InternalDescriptor.getBashCompletions(self.descriptor, programName)
+): Effect.Effect<never, never, Array<string>> => InternalDescriptor.getBashCompletions(self.descriptor, programName)
 
 /** @internal */
 export const getFishCompletions = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>,
   programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
-  InternalDescriptor.getFishCompletions(self.descriptor, programName)
+): Effect.Effect<never, never, Array<string>> => InternalDescriptor.getFishCompletions(self.descriptor, programName)
 
 /** @internal */
 export const getZshCompletions = <Name extends string, R, E, A>(
   self: Command.Command<Name, R, E, A>,
   programName: string
-): Effect.Effect<never, never, ReadonlyArray<string>> =>
-  InternalDescriptor.getZshCompletions(self.descriptor, programName)
+): Effect.Effect<never, never, Array<string>> => InternalDescriptor.getZshCompletions(self.descriptor, programName)
 
 /** @internal */
 export const getSubcommands = <Name extends string, R, E, A>(
@@ -520,7 +517,7 @@ export const wizard = dual<
   ) => Effect.Effect<
     FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >,
   <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>,
@@ -529,7 +526,7 @@ export const wizard = dual<
   ) => Effect.Effect<
     FileSystem.FileSystem | Path.Path | Terminal.Terminal,
     Terminal.QuitException | ValidationError.ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >
 >(3, (self, prefix, config) => InternalDescriptor.wizard(self.descriptor, prefix, config))
 

@@ -7,7 +7,6 @@ import type { YieldableError } from "effect/Cause"
 import type { ConfigProvider } from "effect/ConfigProvider"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
-import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as Internal from "./internal/configFile.js"
 
 /**
@@ -53,7 +52,7 @@ export const makeProvider: (
   options?:
     | {
       readonly formats?: ReadonlyArray<Kind>
-      readonly searchPaths?: NonEmptyReadonlyArray<string>
+      readonly searchPaths?: ReadonlyArray<string>
     }
     | undefined
 ) => Effect<Path | FileSystem, ConfigFileError, ConfigProvider> = Internal.makeProvider
@@ -67,7 +66,7 @@ export const layer: (
   options?:
     | {
       readonly formats?: ReadonlyArray<Kind>
-      readonly searchPaths?: NonEmptyReadonlyArray<string>
+      readonly searchPaths?: ReadonlyArray<string>
     }
     | undefined
 ) => Layer<Path | FileSystem, ConfigFileError, never> = Internal.layer

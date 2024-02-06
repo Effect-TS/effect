@@ -11,7 +11,7 @@ import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
-import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { NonEmptyArray } from "effect/ReadonlyArray"
 import type { Secret } from "effect/Secret"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
@@ -58,8 +58,8 @@ export declare namespace Options {
    */
   export interface BooleanOptionsConfig {
     readonly ifPresent?: boolean
-    readonly negationNames?: NonEmptyReadonlyArray<string>
-    readonly aliases?: NonEmptyReadonlyArray<string>
+    readonly negationNames?: ReadonlyArray<string>
+    readonly aliases?: ReadonlyArray<string>
   }
 
   /**
@@ -162,7 +162,7 @@ export const boolean: (name: string, options?: Options.BooleanOptionsConfig) => 
  * @since 1.0.0
  * @category constructors
  */
-export const choice: <A extends string, C extends NonEmptyReadonlyArray<A>>(
+export const choice: <A extends string, C extends ReadonlyArray<A>>(
   name: string,
   choices: C
 ) => Options<C[number]> = InternalOptions.choice
@@ -197,7 +197,7 @@ export const choice: <A extends string, C extends NonEmptyReadonlyArray<A>>(
  * @since 1.0.0
  * @category constructors
  */
-export const choiceWithValue: <C extends NonEmptyReadonlyArray<[string, any]>>(
+export const choiceWithValue: <C extends ReadonlyArray<[string, any]>>(
   name: string,
   choices: C
 ) => Options<C[number][1]> = InternalOptions.choiceWithValue
@@ -328,8 +328,8 @@ export const text: (name: string) => Options<string> = InternalOptions.text
  * @category combinators
  */
 export const atMost: {
-  (times: number): <A>(self: Options<A>) => Options<ReadonlyArray<A>>
-  <A>(self: Options<A>, times: number): Options<ReadonlyArray<A>>
+  (times: number): <A>(self: Options<A>) => Options<Array<A>>
+  <A>(self: Options<A>, times: number): Options<Array<A>>
 } = InternalOptions.atMost
 
 /**
@@ -337,10 +337,10 @@ export const atMost: {
  * @category combinators
  */
 export const atLeast: {
-  (times: 0): <A>(self: Options<A>) => Options<ReadonlyArray<A>>
-  (times: number): <A>(self: Options<A>) => Options<NonEmptyReadonlyArray<A>>
-  <A>(self: Options<A>, times: 0): Options<ReadonlyArray<A>>
-  <A>(self: Options<A>, times: number): Options<readonly [A, ...Array<A>]>
+  (times: 0): <A>(self: Options<A>) => Options<Array<A>>
+  (times: number): <A>(self: Options<A>) => Options<NonEmptyArray<A>>
+  <A>(self: Options<A>, times: 0): Options<Array<A>>
+  <A>(self: Options<A>, times: number): Options<NonEmptyArray<A>>
 } = InternalOptions.atLeast
 
 /**
@@ -348,10 +348,10 @@ export const atLeast: {
  * @category combinators
  */
 export const between: {
-  (min: 0, max: number): <A>(self: Options<A>) => Options<ReadonlyArray<A>>
-  (min: number, max: number): <A>(self: Options<A>) => Options<NonEmptyReadonlyArray<A>>
-  <A>(self: Options<A>, min: 0, max: number): Options<ReadonlyArray<A>>
-  <A>(self: Options<A>, min: number, max: number): Options<NonEmptyReadonlyArray<A>>
+  (min: 0, max: number): <A>(self: Options<A>) => Options<Array<A>>
+  (min: number, max: number): <A>(self: Options<A>) => Options<NonEmptyArray<A>>
+  <A>(self: Options<A>, min: 0, max: number): Options<Array<A>>
+  <A>(self: Options<A>, min: number, max: number): Options<NonEmptyArray<A>>
 } = InternalOptions.between
 
 /**
@@ -449,7 +449,7 @@ export const parse: {
  * @since 1.0.0
  * @category combinators
  */
-export const repeated: <A>(self: Options<A>) => Options<ReadonlyArray<A>> = InternalOptions.repeated
+export const repeated: <A>(self: Options<A>) => Options<Array<A>> = InternalOptions.repeated
 
 /**
  * Processes the provided command-line arguments, searching for the specified
@@ -474,7 +474,7 @@ export const processCommandLine: {
   ) => Effect<
     FileSystem | Path | Terminal,
     ValidationError,
-    [Option<ValidationError>, ReadonlyArray<string>, A]
+    [Option<ValidationError>, Array<string>, A]
   >
   <A>(
     self: Options<A>,
@@ -483,7 +483,7 @@ export const processCommandLine: {
   ): Effect<
     FileSystem | Path | Terminal,
     ValidationError,
-    [Option<ValidationError>, ReadonlyArray<string>, A]
+    [Option<ValidationError>, Array<string>, A]
   >
 } = InternalOptions.processCommandLine
 
@@ -553,7 +553,7 @@ export const wizard: {
   ) => Effect<
     FileSystem | Path | Terminal,
     QuitException | ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >
   <A>(
     self: Options<A>,
@@ -561,6 +561,6 @@ export const wizard: {
   ): Effect<
     FileSystem | Path | Terminal,
     QuitException | ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >
 } = InternalOptions.wizard

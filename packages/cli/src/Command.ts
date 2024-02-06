@@ -170,7 +170,7 @@ export const getNames: <Name extends string, R, E, A>(
 export const getBashCompletions: <Name extends string, R, E, A>(
   self: Command<Name, R, E, A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getBashCompletions
+) => Effect<never, never, Array<string>> = Internal.getBashCompletions
 
 /**
  * @since 1.0.0
@@ -179,7 +179,7 @@ export const getBashCompletions: <Name extends string, R, E, A>(
 export const getFishCompletions: <Name extends string, R, E, A>(
   self: Command<Name, R, E, A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getFishCompletions
+) => Effect<never, never, Array<string>> = Internal.getFishCompletions
 
 /**
  * @since 1.0.0
@@ -188,7 +188,7 @@ export const getFishCompletions: <Name extends string, R, E, A>(
 export const getZshCompletions: <Name extends string, R, E, A>(
   self: Command<Name, R, E, A>,
   programName: string
-) => Effect<never, never, ReadonlyArray<string>> = Internal.getZshCompletions
+) => Effect<never, never, Array<string>> = Internal.getZshCompletions
 
 /**
  * @since 1.0.0
@@ -413,7 +413,7 @@ export const wizard: {
   ) => Effect<
     FileSystem | Path | Terminal,
     QuitException | ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
@@ -422,7 +422,7 @@ export const wizard: {
   ): Effect<
     FileSystem | Path | Terminal,
     QuitException | ValidationError,
-    ReadonlyArray<string>
+    Array<string>
   >
 } = Internal.wizard
 
