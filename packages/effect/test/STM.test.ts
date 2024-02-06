@@ -993,8 +993,8 @@ describe("STM", () => {
   it.effect("tapBoth - applies the function to success values preserving the original result", () =>
     Effect.gen(function*($) {
       const transaction = STM.gen(function*($) {
-        const tapSuccess = yield* $(TDeferred.make<never, number>())
-        const tapError = yield* $(TDeferred.make<never, string>())
+        const tapSuccess = yield* $(TDeferred.make<number>())
+        const tapError = yield* $(TDeferred.make<string>())
         const result = yield* $(pipe(
           STM.succeed(42),
           STM.tapBoth({
@@ -1012,8 +1012,8 @@ describe("STM", () => {
   it.effect("tapBoth - applies the function to error values preserving the original error", () =>
     Effect.gen(function*($) {
       const transaction = STM.gen(function*($) {
-        const tapSuccess = yield* $(TDeferred.make<never, number>())
-        const tapError = yield* $(TDeferred.make<never, string>())
+        const tapSuccess = yield* $(TDeferred.make<number>())
+        const tapError = yield* $(TDeferred.make<string>())
         const result = yield* $(pipe(
           STM.fail("error"),
           STM.tapBoth({
@@ -1032,7 +1032,7 @@ describe("STM", () => {
   it.effect("tapError - should apply the function to the error result preserving the original error", () =>
     Effect.gen(function*($) {
       const transaction = STM.gen(function*($) {
-        const errorRef = yield* $(TDeferred.make<never, string>())
+        const errorRef = yield* $(TDeferred.make<string>())
         const result = yield* $(pipe(
           STM.fail("error"),
           STM.zipRight(STM.succeed(0)),
