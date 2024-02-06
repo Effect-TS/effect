@@ -205,7 +205,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const left = yield* $(Queue.unbounded<Chunk.Chunk<number>>())
       const right = yield* $(Queue.unbounded<Chunk.Chunk<number>>())
-      const output = yield* $(Queue.bounded<Take.Take<never, readonly [number, number]>>(1))
+      const output = yield* $(Queue.bounded<Take.Take<readonly [number, number]>>(1))
       yield* $(
         Stream.fromChunkQueue(left),
         Stream.zipLatest(Stream.fromChunkQueue(right)),
