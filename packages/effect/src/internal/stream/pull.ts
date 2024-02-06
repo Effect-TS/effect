@@ -30,5 +30,5 @@ export const failCause = <E>(cause: Cause.Cause<E>): Effect.Effect<never, Option
 
 /** @internal */
 export const fromDequeue = <E, A>(
-  dequeue: Queue.Dequeue<Take.Take<E, A>>
+  dequeue: Queue.Dequeue<Take.Take<A, E>>
 ): Effect.Effect<Chunk.Chunk<A>, Option.Option<E>> => Effect.flatMap(Queue.take(dequeue), take.done)
