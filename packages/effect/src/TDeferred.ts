@@ -24,12 +24,12 @@ export type TDeferredTypeId = typeof TDeferredTypeId
  * @since 2.0.0
  * @category models
  */
-export interface TDeferred<in out E, in out A> extends TDeferred.Variance<E, A> {}
+export interface TDeferred<in out A, in out E = never> extends TDeferred.Variance<A, E> {}
 /**
  * @internal
  * @since 2.0.0
  */
-export interface TDeferred<in out E, in out A> {
+export interface TDeferred<in out A, in out E> {
   /** @internal */
   readonly ref: TRef.TRef<Option.Option<Either.Either<E, A>>>
 }
@@ -42,15 +42,16 @@ export declare namespace TDeferred {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<in out E, in out A> {
+  export interface Variance<in out A, in out E> {
     readonly [TDeferredTypeId]: {
-      readonly _E: Types.Invariant<E>
       readonly _A: Types.Invariant<A>
+      readonly _E: Types.Invariant<E>
     }
   }
 }
 
-const _await: <E, A>(self: TDeferred<E, A>) => STM.STM<A, E> = internal._await
+const _await: <A, E>(self: TDeferred<A, E>) => STM.STM<A, E> = internal._await
+
 export {
   /**
    * @since 2.0.0
@@ -64,8 +65,8 @@ export {
  * @category mutations
  */
 export const done: {
-  <E, A>(either: Either.Either<E, A>): (self: TDeferred<E, A>) => STM.STM<boolean>
-  <E, A>(self: TDeferred<E, A>, either: Either.Either<E, A>): STM.STM<boolean>
+  <E, A>(either: Either.Either<E, A>): (self: TDeferred<A, E>) => STM.STM<boolean>
+  <A, E>(self: TDeferred<A, E>, either: Either.Either<E, A>): STM.STM<boolean>
 } = internal.done
 
 /**
@@ -73,27 +74,27 @@ export const done: {
  * @category mutations
  */
 export const fail: {
-  <E>(error: E): <A>(self: TDeferred<E, A>) => STM.STM<boolean>
-  <E, A>(self: TDeferred<E, A>, error: E): STM.STM<boolean>
+  <E>(error: E): <A>(self: TDeferred<A, E>) => STM.STM<boolean>
+  <A, E>(self: TDeferred<A, E>, error: E): STM.STM<boolean>
 } = internal.fail
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>() => STM.STM<TDeferred<E, A>> = internal.make
+export const make: <A, E = never>() => STM.STM<TDeferred<A, E>> = internal.make
 
 /**
  * @since 2.0.0
  * @category getters
  */
-export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<Option.Option<Either.Either<E, A>>> = internal.poll
+export const poll: <A, E>(self: TDeferred<A, E>) => STM.STM<Option.Option<Either.Either<E, A>>> = internal.poll
 
 /**
  * @since 2.0.0
  * @category mutations
  */
 export const succeed: {
-  <A>(value: A): <E>(self: TDeferred<E, A>) => STM.STM<boolean>
-  <E, A>(self: TDeferred<E, A>, value: A): STM.STM<boolean>
+  <A>(value: A): <E>(self: TDeferred<A, E>) => STM.STM<boolean>
+  <A, E>(self: TDeferred<A, E>, value: A): STM.STM<boolean>
 } = internal.succeed

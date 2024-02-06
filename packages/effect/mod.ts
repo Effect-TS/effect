@@ -5,7 +5,8 @@ const enabled = {
   swapLayerParams: false,
   swapSTMParams: false,
   swapSTMGenParams: false,
-  swapDeferredParams: true,
+  swapDeferredParams: false,
+  swapTDeferredParams: false,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
@@ -83,6 +84,19 @@ const swapDeferredParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
   }
 }
 
+const swapTDeferredParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
+  const is = filter(ast, "TDeferred")
+  if (
+    is(ast.value.typeName) &&
+    ast.value.typeParameters &&
+    ast.value.typeParameters.params.length === 2
+  ) {
+    const params = ast.value.typeParameters.params
+    const newParams = [params[1], params[0]]
+    ast.value.typeParameters.params = newParams
+  }
+}
+
 const swapSTMParams = swapParamsREA("STM")
 const swapSTMGenParams = swapParamsREA("STMGen")
 const swapLayerParams = swapParamsREA("Layer")
@@ -123,6 +137,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     }
     if (enabled.swapDeferredParams) {
       swapDeferredParams(ast)
+    }
+    if (enabled.swapTDeferredParams) {
+      swapTDeferredParams(ast)
     }
     if (enabled.cleanupEffect) {
       cleanupEffect(ast)
