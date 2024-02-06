@@ -49,7 +49,7 @@ export const tagged = <R extends Request.Request<any, any> & { _tag: string }>(
 export const Class: new<Error, Success, A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
-) => Request.Request<Error, Success> & Readonly<A> = (function() {
+) => Request.Request<Success, Error> & Readonly<A> = (function() {
   function Class(this: any, args: any) {
     if (args) {
       Object.assign(this, args)
@@ -65,7 +65,7 @@ export const TaggedClass = <Tag extends string>(
 ): new<Error, Success, A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
     : { readonly [P in keyof A as P extends "_tag" | keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
-) => Request.Request<Error, Success> & Readonly<A> & { readonly _tag: Tag } => {
+) => Request.Request<Success, Error> & Readonly<A> & { readonly _tag: Tag } => {
   return class TaggedClass extends Class<any, any, any> {
     readonly _tag = tag
   } as any

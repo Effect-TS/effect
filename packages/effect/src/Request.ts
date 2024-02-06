@@ -29,13 +29,13 @@ export const RequestTypeId: unique symbol = internal.RequestTypeId
 export type RequestTypeId = typeof RequestTypeId
 
 /**
- * A `Request<E, A>` is a request from a data source for a value of type `A`
+ * A `Request<A, E>` is a request from a data source for a value of type `A`
  * that may fail with an `E`.
  *
  * @since 2.0.0
  * @category models
  */
-export interface Request<out E, out A> extends Request.Variance<E, A> {}
+export interface Request<out A, out E = never> extends Request.Variance<A, E> {}
 
 /**
  * @since 2.0.0
@@ -45,10 +45,10 @@ export declare namespace Request {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<out E, out A> {
+  export interface Variance<out A, out E> {
     readonly [RequestTypeId]: {
-      readonly _E: Types.Covariant<E>
       readonly _A: Types.Covariant<A>
+      readonly _E: Types.Covariant<E>
     }
   }
 
@@ -66,7 +66,7 @@ export declare namespace Request {
    * @since 2.0.0
    * @category type-level
    */
-  export type Error<T extends Request<any, any>> = [T] extends [Request<infer _E, infer _A>] ? _E : never
+  export type Error<T extends Request<any, any>> = [T] extends [Request<infer _A, infer _E>] ? _E : never
 
   /**
    * A utility type to extract the value type from a `Request`.
@@ -74,7 +74,7 @@ export declare namespace Request {
    * @since 2.0.0
    * @category type-level
    */
-  export type Success<T extends Request<any, any>> = [T] extends [Request<infer _E, infer _A>] ? _A : never
+  export type Success<T extends Request<any, any>> = [T] extends [Request<infer _A, infer _E>] ? _A : never
 
   /**
    * A utility type to extract the result type from a `Request`.
@@ -82,7 +82,7 @@ export declare namespace Request {
    * @since 2.0.0
    * @category type-level
    */
-  export type Result<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit.Exit<A, E> : never
+  export type Result<T extends Request<any, any>> = T extends Request<infer A, infer E> ? Exit.Exit<A, E> : never
 
   /**
    * A utility type to extract the optional result type from a `Request`.
@@ -90,7 +90,7 @@ export declare namespace Request {
    * @since 2.0.0
    * @category type-level
    */
-  export type OptionalResult<T extends Request<any, any>> = T extends Request<infer E, infer A>
+  export type OptionalResult<T extends Request<any, any>> = T extends Request<infer A, infer E>
     ? Exit.Exit<Option.Option<A>, E>
     : never
 }
@@ -140,7 +140,7 @@ export const tagged: <R extends Request<any, any> & { _tag: string }>(
 export const Class: new<Error, Success, A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Request<unknown, unknown>>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Request<unknown, unknown> ? never : P]: A[P] }
-) => Request<Error, Success> & Readonly<A> = internal.Class as any
+) => Request<Success, Error> & Readonly<A> = internal.Class as any
 
 /**
  * Provides a Tagged constructor for a Request Class.
@@ -163,7 +163,7 @@ export const TaggedClass: <Tag extends string>(
 ) => new<Error, Success, A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Request<unknown, unknown>>, {}> extends true ? void
     : { readonly [P in keyof A as P extends "_tag" | keyof Request<unknown, unknown> ? never : P]: A[P] }
-) => Request<Error, Success> & Readonly<A> & { readonly _tag: Tag } = internal.TaggedClass as any
+) => Request<Success, Error> & Readonly<A> & { readonly _tag: Tag } = internal.TaggedClass as any
 
 /**
  * Complete a `Request` with the specified result.
@@ -303,8 +303,8 @@ export type EntryTypeId = typeof EntryTypeId
 export interface Entry<out R> extends Entry.Variance<R> {
   readonly request: R
   readonly result: Deferred<
-    [R] extends [Request<infer _E, infer _A>] ? _A : never,
-    [R] extends [Request<infer _E, infer _A>] ? _E : never
+    [R] extends [Request<infer _A, infer _E>] ? _A : never,
+    [R] extends [Request<infer _A, infer _E>] ? _E : never
   >
   readonly listeners: Listeners
   readonly ownerId: FiberId

@@ -21,7 +21,7 @@ export const KeyedPoolTypeId: unique symbol = internal.KeyedPoolTypeId
 export type KeyedPoolTypeId = typeof KeyedPoolTypeId
 
 /**
- * A `KeyedPool<K, E, A>` is a pool of `Pool`s of items of type `A`. Each pool
+ * A `KeyedPool<K, A, E>` is a pool of `Pool`s of items of type `A`. Each pool
  * in the `KeyedPool` is associated with a key of type `K`.
  *
  * @since 2.0.0

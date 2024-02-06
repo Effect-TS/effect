@@ -181,7 +181,7 @@ export const eitherWith = dual<
   ))
 
 /** @internal */
-export const fromFunction = <A extends Request.Request<never, any>>(
+export const fromFunction = <A extends Request.Request<any>>(
   f: (request: A) => Request.Request.Success<A>
 ): RequestResolver.RequestResolver<A> =>
   makeBatched((requests: Array<A>) =>
@@ -192,7 +192,7 @@ export const fromFunction = <A extends Request.Request<never, any>>(
   ).identified("FromFunction", f)
 
 /** @internal */
-export const fromFunctionBatched = <A extends Request.Request<never, any>>(
+export const fromFunctionBatched = <A extends Request.Request<any>>(
   f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
 ): RequestResolver.RequestResolver<A> =>
   makeBatched((as: Array<A>) =>
@@ -224,7 +224,7 @@ export const fromEffectTagged = <
 <
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req] ?
-      Req extends Request.Request<infer ReqE, infer ReqA> ?
+      Req extends Request.Request<infer ReqA, infer ReqE> ?
         (requests: Array<Req>) => Effect.Effect<Iterable<ReqA>, ReqE, any>
       : never
       : never
