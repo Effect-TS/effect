@@ -975,7 +975,7 @@ export const interruptibleMask = <A, E, R>(
 
 /* @internal */
 export const intoDeferred: {
-  <E, A>(deferred: Deferred.Deferred<A, E>): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<boolean, never, R>
+  <A, E>(deferred: Deferred.Deferred<A, E>): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<boolean, never, R>
   <A, E, R>(self: Effect.Effect<A, E, R>, deferred: Deferred.Deferred<A, E>): Effect.Effect<boolean, never, R>
 } = dual(
   2,
@@ -3021,7 +3021,7 @@ export const contextWithEffect = <R0, A, E, R>(
 
 /* @internal */
 export const provideContext = dual<
-  <R>(context: Context.Context<R>) => <E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E>,
+  <R>(context: Context.Context<R>) => <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E>,
   <A, E, R>(self: Effect.Effect<A, E, R>, context: Context.Context<R>) => Effect.Effect<A, E>
 >(2, <A, E, R>(self: Effect.Effect<A, E, R>, context: Context.Context<R>) =>
   fiberRefLocally(
@@ -3058,7 +3058,7 @@ export const mapInputContext = dual<
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const currentSpanFromFiber = <E, A>(fiber: Fiber.RuntimeFiber<A, E>): Option.Option<Tracer.Span> => {
+export const currentSpanFromFiber = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Option.Option<Tracer.Span> => {
   const span = fiber.getFiberRef(currentContext).unsafeMap.get(internalTracer.spanTag.key) as
     | Tracer.ParentSpan
     | undefined

@@ -71,7 +71,7 @@ export interface RunForkOptions {
  */
 export const runFork: <R>(
   runtime: Runtime<R>
-) => <E, A>(self: Effect.Effect<A, E, R>, options?: RunForkOptions) => Fiber.RuntimeFiber<A, E> = internal.unsafeFork
+) => <A, E>(self: Effect.Effect<A, E, R>, options?: RunForkOptions) => Fiber.RuntimeFiber<A, E> = internal.unsafeFork
 
 /**
  * Executes the effect synchronously returning the exit.
@@ -82,7 +82,7 @@ export const runFork: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E> =
+export const runSyncExit: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E> =
   internal.unsafeRunSyncExit
 
 /**
@@ -94,7 +94,7 @@ export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effe
  * @since 2.0.0
  * @category execution
  */
-export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>) => A = internal.unsafeRunSync
+export const runSync: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>) => A = internal.unsafeRunSync
 
 /**
  * @since 2.0.0
@@ -133,7 +133,7 @@ export const runCallback: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>) => Promise<A> =
+export const runPromise: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>) => Promise<A> =
   internal.unsafeRunPromise
 
 /**
@@ -148,7 +148,7 @@ export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effec
  */
 export const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <E, A>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<A, E>> = internal.unsafeRunPromiseExit
+) => <A, E>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<A, E>> = internal.unsafeRunPromiseExit
 
 /**
  * @since 2.0.0

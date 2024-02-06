@@ -309,7 +309,7 @@ export const commitEither = <A, E, R>(self: STM.STM<A, E, R>): Effect.Effect<A, 
   Effect.flatten(core.commit(either(self)))
 
 /** @internal */
-export const cond = <E, A>(
+export const cond = <A, E>(
   predicate: LazyArg<boolean>,
   error: LazyArg<E>,
   result: LazyArg<A>
@@ -971,8 +971,8 @@ export const orElseSucceed = dual<
 
 /** @internal */
 export const provideContext = dual<
-  <R>(env: Context.Context<R>) => <E, A>(self: STM.STM<A, E, R>) => STM.STM<A, E>,
-  <E, A, R>(self: STM.STM<A, E, R>, env: Context.Context<R>) => STM.STM<A, E>
+  <R>(env: Context.Context<R>) => <A, E>(self: STM.STM<A, E, R>) => STM.STM<A, E>,
+  <A, E, R>(self: STM.STM<A, E, R>, env: Context.Context<R>) => STM.STM<A, E>
 >(2, (self, env) => core.mapInputContext(self, (_: Context.Context<never>) => env))
 
 /** @internal */

@@ -2826,7 +2826,7 @@ export const forever = <A, E, R>(self: Stream.Stream<A, E, R>): Stream.Stream<A,
   new StreamImpl(channel.repeated(toChannel(self)))
 
 /** @internal */
-export const fromAsyncIterable = <E, A>(
+export const fromAsyncIterable = <A, E>(
   iterable: AsyncIterable<A>,
   onError: (e: unknown) => E
 ) =>
@@ -4569,11 +4569,11 @@ export const prepend = dual<
 
 /** @internal */
 export const provideContext = dual<
-  <R>(context: Context.Context<R>) => <E, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E>,
-  <E, A, R>(self: Stream.Stream<A, E, R>, context: Context.Context<R>) => Stream.Stream<A, E>
+  <R>(context: Context.Context<R>) => <A, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E>,
+  <A, E, R>(self: Stream.Stream<A, E, R>, context: Context.Context<R>) => Stream.Stream<A, E>
 >(
   2,
-  <E, A, R>(self: Stream.Stream<A, E, R>, context: Context.Context<R>): Stream.Stream<A, E> =>
+  <A, E, R>(self: Stream.Stream<A, E, R>, context: Context.Context<R>): Stream.Stream<A, E> =>
     new StreamImpl(pipe(toChannel(self), core.provideContext(context)))
 )
 
@@ -4581,14 +4581,14 @@ export const provideContext = dual<
 export const provideLayer = dual<
   <RIn, E2, ROut>(
     layer: Layer.Layer<ROut, E2, RIn>
-  ) => <E, A>(self: Stream.Stream<A, E, ROut>) => Stream.Stream<A, E2 | E, RIn>,
-  <E, A, RIn, E2, ROut>(
+  ) => <A, E>(self: Stream.Stream<A, E, ROut>) => Stream.Stream<A, E2 | E, RIn>,
+  <A, E, RIn, E2, ROut>(
     self: Stream.Stream<A, E, ROut>,
     layer: Layer.Layer<ROut, E2, RIn>
   ) => Stream.Stream<A, E2 | E, RIn>
 >(
   2,
-  <E, A, RIn, E2, ROut>(
+  <A, E, RIn, E2, ROut>(
     self: Stream.Stream<A, E, ROut>,
     layer: Layer.Layer<ROut, E2, RIn>
   ): Stream.Stream<A, E2 | E, RIn> =>
@@ -4670,14 +4670,14 @@ export const provideServiceStream = dual<
 export const mapInputContext = dual<
   <R0, R>(
     f: (env: Context.Context<R0>) => Context.Context<R>
-  ) => <E, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R0>,
-  <E, A, R0, R>(
+  ) => <A, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R0>,
+  <A, E, R0, R>(
     self: Stream.Stream<A, E, R>,
     f: (env: Context.Context<R0>) => Context.Context<R>
   ) => Stream.Stream<A, E, R0>
 >(
   2,
-  <E, A, R0, R>(
+  <A, E, R0, R>(
     self: Stream.Stream<A, E, R>,
     f: (env: Context.Context<R0>) => Context.Context<R>
   ): Stream.Stream<A, E, R0> => contextWithStream((env) => pipe(self, provideContext(f(env))))
@@ -5383,7 +5383,7 @@ export const runHead = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Op
 
 /** @internal */
 export const runIntoPubSub = dual<
-  <E, A>(pubsub: PubSub.PubSub<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
+  <A, E>(pubsub: PubSub.PubSub<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
   <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>) => Effect.Effect<void, never, R>
 >(
   2,
@@ -5393,7 +5393,7 @@ export const runIntoPubSub = dual<
 
 /** @internal */
 export const runIntoPubSubScoped = dual<
-  <E, A>(
+  <A, E>(
     pubsub: PubSub.PubSub<Take.Take<A, E>>
   ) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>,
   <A, E, R>(
@@ -5407,7 +5407,7 @@ export const runIntoPubSubScoped = dual<
 
 /** @internal */
 export const runIntoQueue = dual<
-  <E, A>(queue: Queue.Enqueue<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
+  <A, E>(queue: Queue.Enqueue<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
   <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>) => Effect.Effect<void, never, R>
 >(
   2,
@@ -5417,7 +5417,7 @@ export const runIntoQueue = dual<
 
 /** @internal */
 export const runIntoQueueElementsScoped = dual<
-  <E, A>(
+  <A, E>(
     queue: Queue.Enqueue<Exit.Exit<A, Option.Option<E>>>
   ) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>,
   <A, E, R>(
@@ -5448,7 +5448,7 @@ export const runIntoQueueElementsScoped = dual<
 
 /** @internal */
 export const runIntoQueueScoped = dual<
-  <E, A>(
+  <A, E>(
     queue: Queue.Enqueue<Take.Take<A, E>>
   ) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>,
   <A, E, R>(
