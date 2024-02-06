@@ -142,7 +142,7 @@ const sendBody = (
   })
 
 const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
-  Effect.async<Http.IncomingMessage, Error.RequestError, never>((resume) => {
+  Effect.async<Http.IncomingMessage, Error.RequestError>((resume) => {
     function onError(error: Error) {
       resume(Effect.fail(Error.RequestError({
         request,
@@ -167,7 +167,7 @@ const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest
   })
 
 const waitForFinish = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
-  Effect.async<void, Error.RequestError, never>((resume) => {
+  Effect.async<void, Error.RequestError>((resume) => {
     function onError(error: Error) {
       resume(Effect.fail(Error.RequestError({
         request,

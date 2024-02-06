@@ -135,7 +135,7 @@ describe("Effect", () => {
     }))
   it.live("supervise fibers", () =>
     Effect.gen(function*($) {
-      const makeChild = (n: number): Effect.Effect<Fiber.Fiber<never, void>> => {
+      const makeChild = (n: number): Effect.Effect<Fiber.Fiber<void>> => {
         return pipe(Effect.sleep(Duration.millis(20 * n)), Effect.zipRight(Effect.never), Effect.fork)
       }
       const ref = yield* $(Ref.make(0))
