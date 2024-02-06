@@ -29,6 +29,6 @@ export const failCause = <E>(cause: Cause.Cause<E>): Effect.Effect<never, Option
   Effect.mapError(Effect.failCause(cause), Option.some)
 
 /** @internal */
-export const fromDequeue = <E, A>(
+export const fromDequeue = <A, E>(
   dequeue: Queue.Dequeue<Take.Take<A, E>>
 ): Effect.Effect<Chunk.Chunk<A>, Option.Option<E>> => Effect.flatMap(Queue.take(dequeue), take.done)

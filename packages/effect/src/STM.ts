@@ -446,7 +446,7 @@ export const commitEither: <A, E, R>(self: STM<A, E, R>) => Effect.Effect<A, E, 
  * @since 2.0.0
  * @category constructors
  */
-export const cond: <E, A>(predicate: LazyArg<boolean>, error: LazyArg<E>, result: LazyArg<A>) => STM<A, E> = stm.cond
+export const cond: <A, E>(predicate: LazyArg<boolean>, error: LazyArg<E>, result: LazyArg<A>) => STM<A, E> = stm.cond
 
 /**
  * Retrieves the environment inside an stm.
@@ -482,8 +482,8 @@ export const contextWithSTM: <R0, R, E, A>(
  * @category context
  */
 export const mapInputContext: {
-  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <E, A>(self: STM<A, E, R>) => STM<A, E, R0>
-  <E, A, R0, R>(self: STM<A, E, R>, f: (context: Context.Context<R0>) => Context.Context<R>): STM<A, E, R0>
+  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <A, E>(self: STM<A, E, R>) => STM<A, E, R0>
+  <A, E, R0, R>(self: STM<A, E, R>, f: (context: Context.Context<R0>) => Context.Context<R>): STM<A, E, R0>
 } = core.mapInputContext
 
 /**
@@ -1481,8 +1481,8 @@ export const partition: {
  * @category context
  */
 export const provideContext: {
-  <R>(env: Context.Context<R>): <E, A>(self: STM<A, E, R>) => STM<A, E>
-  <E, A, R>(self: STM<A, E, R>, env: Context.Context<R>): STM<A, E>
+  <R>(env: Context.Context<R>): <A, E>(self: STM<A, E, R>) => STM<A, E>
+  <A, E, R>(self: STM<A, E, R>, env: Context.Context<R>): STM<A, E>
 } = stm.provideContext
 
 /**
