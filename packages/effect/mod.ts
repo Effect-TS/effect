@@ -10,7 +10,8 @@ const enabled = {
   swapTakeParams: false,
   swapFiberParams: false,
   swapRuntimeFiberParams: false,
-  swapFiberSetParams: true,
+  swapFiberSetParams: false,
+  swapRequestParams: true,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
@@ -97,6 +98,7 @@ const swapTakeParams = swapParamsEA("Take")
 const swapFiberParams = swapParamsEA("Fiber")
 const swapRuntimeFiberParams = swapParamsEA("FiberRuntime")
 const swapFiberSetParams = swapParamsEA("FiberSet")
+const swapRequestParams = swapParamsEA("Request")
 
 const swapSTMParams = swapParamsREA("STM")
 const swapSTMGenParams = swapParamsREA("STMGen")
@@ -153,6 +155,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     }
     if (enabled.swapFiberSetParams) {
       swapFiberSetParams(ast)
+    }
+    if (enabled.swapRequestParams) {
+      swapRequestParams(ast)
     }
     if (enabled.cleanupEffect) {
       cleanupEffect(ast)

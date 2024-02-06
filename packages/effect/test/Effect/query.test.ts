@@ -36,7 +36,7 @@ export const userNames: ReadonlyMap<number, string> = new Map(
 
 export type UserRequest = GetAllIds | GetNameById
 
-export interface GetAllIds extends Request.Request<never, ReadonlyArray<number>> {
+export interface GetAllIds extends Request.Request<ReadonlyArray<number>> {
   readonly _tag: "GetAllIds"
 }
 
