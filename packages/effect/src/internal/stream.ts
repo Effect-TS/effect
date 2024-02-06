@@ -1534,7 +1534,7 @@ export const combineChunks = dual<
       }),
       channel.unwrapScoped
     )
-  );
+  )
 })
 
 /** @internal */
@@ -3469,7 +3469,7 @@ export const interleaveWith = dual<
           })
         )
       )
-    );
+    )
   }
 )
 
