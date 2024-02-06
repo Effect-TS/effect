@@ -39,7 +39,7 @@ export const make = (
     const server = yield* _(Effect.acquireRelease(
       Effect.sync(evaluate),
       (server) =>
-        Effect.async<void, never, never>((resume) => {
+        Effect.async<void>((resume) => {
           server.close((error) => {
             if (error) {
               resume(Effect.die(error))
@@ -50,7 +50,7 @@ export const make = (
         })
     ))
 
-    yield* _(Effect.async<void, Error.ServeError, never>((resume) => {
+    yield* _(Effect.async<void, Error.ServeError>((resume) => {
       server.on("error", (error) => {
         resume(Effect.fail(Error.ServeError({ error })))
       })
@@ -323,7 +323,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
         return Effect.unit
       }
       case "FormData": {
-        return Effect.async<void, Error.ResponseError, never>((resume) => {
+        return Effect.async<void, Error.ResponseError>((resume) => {
           const r = new Response(body.formData)
           const headers = {
             ...response.headers,

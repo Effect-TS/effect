@@ -61,7 +61,7 @@ export const make = (
         return pipe(
           Effect.runtime<never>(),
           Effect.flatMap((runtime) =>
-            Effect.async<never, never, never>((_) => {
+            Effect.async<never>((_) => {
               const runFork = Runtime.runFork(runtime)
               function handler(request: Request, _server: BunServer) {
                 return new Promise<Response>((resolve, reject) => {
