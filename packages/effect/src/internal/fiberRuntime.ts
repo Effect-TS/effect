@@ -254,7 +254,7 @@ export interface Snapshot {
 }
 
 /** @internal */
-export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A> {
+export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFiber<A, E> {
   readonly [internalFiber.FiberTypeId] = internalFiber.fiberVariance
   readonly [internalFiber.RuntimeFiberTypeId] = runtimeFiberVariance
 
@@ -1931,7 +1931,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
         let counter = 0
         let interrupted = false
         const fibersCount = n ? Math.min(todos.length, n) : todos.length
-        const fibers = new Set<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
+        const fibers = new Set<FiberRuntime<Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
         const results = new Array()
         const interruptAll = () =>
           fibers.forEach((fiber) => {
@@ -1939,8 +1939,8 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
               fiber.unsafeInterruptAsFork(parent.id())
             }, 0)
           })
-        const startOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
-        const joinOrder = new Array<FiberRuntime<never, Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
+        const startOrder = new Array<FiberRuntime<Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
+        const joinOrder = new Array<FiberRuntime<Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
         const residual = new Array<core.Blocked>()
         const collectExits = () => {
           const exits: Array<Exit.Exit<any, E>> = results
@@ -2095,22 +2095,22 @@ export const forEachParN = <A, B, E, R>(
   })
 
 /* @internal */
-export const fork = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R> =>
+export const fork = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R> =>
   core.withFiberRuntime((state, status) => core.succeed(unsafeFork(self, state, status.runtimeFlags)))
 
 /* @internal */
-export const forkDaemon = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R> =>
+export const forkDaemon = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R> =>
   forkWithScopeOverride(self, fiberScope.globalScope)
 
 /* @internal */
 export const forkWithErrorHandler = dual<
   <E, X>(
     handler: (e: E) => Effect.Effect<X>
-  ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R>,
+  ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R>,
   <A, E, R, X>(
     self: Effect.Effect<A, E, R>,
     handler: (e: E) => Effect.Effect<X>
-  ) => Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R>
+  ) => Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R>
 >(2, (self, handler) =>
   fork(core.onError(self, (cause) => {
     const either = internalCause.failureOrCause(cause)
@@ -2125,10 +2125,10 @@ export const forkWithErrorHandler = dual<
 /** @internal */
 export const unsafeFork = <A, E, R, E2, B>(
   effect: Effect.Effect<A, E, R>,
-  parentFiber: FiberRuntime<E2, B>,
+  parentFiber: FiberRuntime<B, E2>,
   parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
-): FiberRuntime<E, A> => {
+): FiberRuntime<A, E> => {
   const childFiber = unsafeMakeChildFiber(effect, parentFiber, parentRuntimeFlags, overrideScope)
   childFiber.resume(effect)
   return childFiber
@@ -2137,10 +2137,10 @@ export const unsafeFork = <A, E, R, E2, B>(
 /** @internal */
 export const unsafeForkUnstarted = <A, E, R, E2, B>(
   effect: Effect.Effect<A, E, R>,
-  parentFiber: FiberRuntime<E2, B>,
+  parentFiber: FiberRuntime<B, E2>,
   parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
-): FiberRuntime<E, A> => {
+): FiberRuntime<A, E> => {
   const childFiber = unsafeMakeChildFiber(effect, parentFiber, parentRuntimeFlags, overrideScope)
   return childFiber
 }
@@ -2148,14 +2148,14 @@ export const unsafeForkUnstarted = <A, E, R, E2, B>(
 /** @internal */
 export const unsafeMakeChildFiber = <A, E, R, E2, B>(
   effect: Effect.Effect<A, E, R>,
-  parentFiber: FiberRuntime<E2, B>,
+  parentFiber: FiberRuntime<B, E2>,
   parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
-): FiberRuntime<E, A> => {
+): FiberRuntime<A, E> => {
   const childId = FiberId.unsafeMake()
   const parentFiberRefs = parentFiber.getFiberRefs()
   const childFiberRefs = fiberRefs.forkAs(parentFiberRefs, childId)
-  const childFiber = new FiberRuntime<E, A>(childId, childFiberRefs, parentRuntimeFlags)
+  const childFiber = new FiberRuntime<A, E>(childId, childFiberRefs, parentRuntimeFlags)
   const childContext = fiberRefs.getOrDefault(
     childFiberRefs,
     core.currentContext as unknown as FiberRef.FiberRef<Context.Context<R>>
@@ -2185,7 +2185,7 @@ export const unsafeMakeChildFiber = <A, E, R, E2, B>(
 const forkWithScopeOverride = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   scopeOverride: fiberScope.FiberScope
-): Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R> =>
+): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R> =>
   core.withFiberRuntime((parentFiber, parentStatus) =>
     core.succeed(unsafeFork(self, parentFiber, parentStatus.runtimeFlags, scopeOverride))
   )
@@ -2335,7 +2335,7 @@ export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.
                   effects,
                   core.forEachSequential((effect) => fork(core.interruptible(effect))),
                   core.map((fibers) => Chunk.unsafeFromArray(fibers)),
-                  core.map((tail) => pipe(tail, Chunk.prepend(head)) as Chunk.Chunk<Fiber.RuntimeFiber<E, A>>),
+                  core.map((tail) => pipe(tail, Chunk.prepend(head)) as Chunk.Chunk<Fiber.RuntimeFiber<A, E>>),
                   core.tap((fibers) =>
                     pipe(
                       fibers,
@@ -3232,12 +3232,12 @@ export const raceFibersWith = dual<
     other: Effect.Effect<A1, E1, R1>,
     options: {
       readonly onSelfWin: (
-        winner: Fiber.RuntimeFiber<E, A>,
-        loser: Fiber.RuntimeFiber<E1, A1>
+        winner: Fiber.RuntimeFiber<A, E>,
+        loser: Fiber.RuntimeFiber<A1, E1>
       ) => Effect.Effect<A2, E2, R2>
       readonly onOtherWin: (
-        winner: Fiber.RuntimeFiber<E1, A1>,
-        loser: Fiber.RuntimeFiber<E, A>
+        winner: Fiber.RuntimeFiber<A1, E1>,
+        loser: Fiber.RuntimeFiber<A, E>
       ) => Effect.Effect<A3, E3, R3>
       readonly selfScope?: fiberScope.FiberScope | undefined
       readonly otherScope?: fiberScope.FiberScope | undefined
@@ -3248,12 +3248,12 @@ export const raceFibersWith = dual<
     other: Effect.Effect<A1, E1, R1>,
     options: {
       readonly onSelfWin: (
-        winner: Fiber.RuntimeFiber<E, A>,
-        loser: Fiber.RuntimeFiber<E1, A1>
+        winner: Fiber.RuntimeFiber<A, E>,
+        loser: Fiber.RuntimeFiber<A1, E1>
       ) => Effect.Effect<A2, E2, R2>
       readonly onOtherWin: (
-        winner: Fiber.RuntimeFiber<E1, A1>,
-        loser: Fiber.RuntimeFiber<E, A>
+        winner: Fiber.RuntimeFiber<A1, E1>,
+        loser: Fiber.RuntimeFiber<A, E>
       ) => Effect.Effect<A3, E3, R3>
       readonly selfScope?: fiberScope.FiberScope | undefined
       readonly otherScope?: fiberScope.FiberScope | undefined
@@ -3264,12 +3264,12 @@ export const raceFibersWith = dual<
   other: Effect.Effect<A1, E1, R1>,
   options: {
     readonly onSelfWin: (
-      winner: Fiber.RuntimeFiber<E, A>,
-      loser: Fiber.RuntimeFiber<E1, A1>
+      winner: Fiber.RuntimeFiber<A, E>,
+      loser: Fiber.RuntimeFiber<A1, E1>
     ) => Effect.Effect<A2, E2, R2>
     readonly onOtherWin: (
-      winner: Fiber.RuntimeFiber<E1, A1>,
-      loser: Fiber.RuntimeFiber<E, A>
+      winner: Fiber.RuntimeFiber<A1, E1>,
+      loser: Fiber.RuntimeFiber<A, E>
     ) => Effect.Effect<A3, E3, R3>
     readonly selfScope?: fiberScope.FiberScope | undefined
     readonly otherScope?: fiberScope.FiberScope | undefined
@@ -3278,13 +3278,13 @@ export const raceFibersWith = dual<
   core.withFiberRuntime((parentFiber, parentStatus) => {
     const parentRuntimeFlags = parentStatus.runtimeFlags
     const raceIndicator = MRef.make(true)
-    const leftFiber: FiberRuntime<E, A> = unsafeMakeChildFiber(
+    const leftFiber: FiberRuntime<A, E> = unsafeMakeChildFiber(
       self,
       parentFiber,
       parentRuntimeFlags,
       options.selfScope
     )
-    const rightFiber: FiberRuntime<E1, A1> = unsafeMakeChildFiber(
+    const rightFiber: FiberRuntime<A1, E1> = unsafeMakeChildFiber(
       other,
       parentFiber,
       parentRuntimeFlags,
