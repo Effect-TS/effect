@@ -31,7 +31,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @categories models
  */
-export interface FiberMap<K, E = unknown, A = unknown>
+export interface FiberMap<K, A = unknown, E = unknown>
   extends Pipeable, Inspectable.Inspectable, Iterable<[K, Fiber.RuntimeFiber<A, E>]>
 {
   readonly [TypeId]: TypeId
@@ -66,7 +66,7 @@ const Proto = {
   }
 }
 
-const unsafeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
+const unsafeMake = <K, A = unknown, E = unknown>(): FiberMap<K, A, E> => {
   const self = Object.create(Proto)
   self.backing = MutableHashMap.empty()
   return self
@@ -97,8 +97,8 @@ const unsafeMake = <K, E = unknown, A = unknown>(): FiberMap<K, E, A> => {
  * @since 2.0.0
  * @categories constructors
  */
-export const make = <K, E = unknown, A = unknown>(): Effect.Effect<FiberMap<K, E, A>, never, Scope.Scope> =>
-  Effect.acquireRelease(Effect.sync(() => unsafeMake<K, E, A>()), clear)
+export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A, E>, never, Scope.Scope> =>
+  Effect.acquireRelease(Effect.sync(() => unsafeMake<K, A, E>()), clear)
 
 /**
  * Create an Effect run function that is backed by a FiberMap.
@@ -116,7 +116,7 @@ export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
   Scope.Scope | R
 > =>
   Effect.flatMap(
-    make<K, E, A>(),
+    make<K, A, E>(),
     (self) => runtime(self)<R>()
   )
 
@@ -128,25 +128,25 @@ export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
  * @categories combinators
  */
 export const unsafeSet: {
-  <K, E, A, XE extends E, XA extends A>(
+  <K, A, E, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>,
     interruptAs?: FiberId.FiberId
-  ): (self: FiberMap<K, E, A>) => void
-  <K, E, A, XE extends E, XA extends A>(
-    self: FiberMap<K, E, A>,
+  ): (self: FiberMap<K, A, E>) => void
+  <K, A, E, XE extends E, XA extends A>(
+    self: FiberMap<K, A, E>,
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>,
     interruptAs?: FiberId.FiberId
   ): void
 } = dual<
-  <K, E, A, XE extends E, XA extends A>(
+  <K, A, E, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>,
     interruptAs?: FiberId.FiberId
-  ) => (self: FiberMap<K, E, A>) => void,
-  <K, E, A, XE extends E, XA extends A>(
-    self: FiberMap<K, E, A>,
+  ) => (self: FiberMap<K, A, E>) => void,
+  <K, A, E, XE extends E, XA extends A>(
+    self: FiberMap<K, A, E>,
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>,
     interruptAs?: FiberId.FiberId
@@ -176,22 +176,22 @@ export const unsafeSet: {
  * @categories combinators
  */
 export const set: {
-  <K, E, A, XE extends E, XA extends A>(
+  <K, A, E, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>
-  ): (self: FiberMap<K, E, A>) => Effect.Effect<void>
-  <K, E, A, XE extends E, XA extends A>(
-    self: FiberMap<K, E, A>,
+  ): (self: FiberMap<K, A, E>) => Effect.Effect<void>
+  <K, A, E, XE extends E, XA extends A>(
+    self: FiberMap<K, A, E>,
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>
   ): Effect.Effect<void>
 } = dual<
-  <K, E, A, XE extends E, XA extends A>(
+  <K, A, E, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>
-  ) => (self: FiberMap<K, E, A>) => Effect.Effect<void>,
-  <K, E, A, XE extends E, XA extends A>(
-    self: FiberMap<K, E, A>,
+  ) => (self: FiberMap<K, A, E>) => Effect.Effect<void>,
+  <K, A, E, XE extends E, XA extends A>(
+    self: FiberMap<K, A, E>,
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>
   ) => Effect.Effect<void>
@@ -207,14 +207,14 @@ export const set: {
  * @categories combinators
  */
 export const unsafeGet: {
-  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Option.Option<Fiber.RuntimeFiber<A, E>>
-  <K, E, A>(self: FiberMap<K, E, A>, key: K): Option.Option<Fiber.RuntimeFiber<A, E>>
+  <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Option.Option<Fiber.RuntimeFiber<A, E>>
+  <K, A, E>(self: FiberMap<K, A, E>, key: K): Option.Option<Fiber.RuntimeFiber<A, E>>
 } = dual<
   <K>(
     key: K
-  ) => <E, A>(self: FiberMap<K, E, A>) => Option.Option<Fiber.RuntimeFiber<A, E>>,
-  <K, E, A>(
-    self: FiberMap<K, E, A>,
+  ) => <A, E>(self: FiberMap<K, A, E>) => Option.Option<Fiber.RuntimeFiber<A, E>>,
+  <K, A, E>(
+    self: FiberMap<K, A, E>,
     key: K
   ) => Option.Option<Fiber.RuntimeFiber<A, E>>
 >(2, (self, key) => MutableHashMap.get(self.backing, key))
@@ -226,14 +226,14 @@ export const unsafeGet: {
  * @categories combinators
  */
 export const get: {
-  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
-  <K, E, A>(self: FiberMap<K, E, A>, key: K): Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
+  <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
+  <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
 } = dual<
   <K>(
     key: K
-  ) => <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>,
-  <K, E, A>(
-    self: FiberMap<K, E, A>,
+  ) => <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>,
+  <K, A, E>(
+    self: FiberMap<K, A, E>,
     key: K
   ) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
 >(2, (self, key) => Effect.suspend(() => MutableHashMap.get(self.backing, key)))
@@ -245,14 +245,14 @@ export const get: {
  * @categories combinators
  */
 export const remove: {
-  <K>(key: K): <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<void>
-  <K, E, A>(self: FiberMap<K, E, A>, key: K): Effect.Effect<void>
+  <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<void>
+  <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<void>
 } = dual<
   <K>(
     key: K
-  ) => <E, A>(self: FiberMap<K, E, A>) => Effect.Effect<void>,
-  <K, E, A>(
-    self: FiberMap<K, E, A>,
+  ) => <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<void>,
+  <K, A, E>(
+    self: FiberMap<K, A, E>,
     key: K
   ) => Effect.Effect<void>
 >(2, (self, key) =>
@@ -269,7 +269,7 @@ export const remove: {
  * @since 2.0.0
  * @categories combinators
  */
-export const clear = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<void> =>
+export const clear = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void> =>
   Effect.zipRight(
     Effect.forEach(self.backing, ([_, fiber]) => Fiber.interrupt(fiber)),
     Effect.sync(() => {
@@ -285,14 +285,14 @@ export const clear = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<void> =>
  * @categories combinators
  */
 export const run: {
-  <K, E, A>(
-    self: FiberMap<K, E, A>,
+  <K, A, E>(
+    self: FiberMap<K, A, E>,
     key: K
   ): <R, XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>
   ) => Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
-  <K, E, A, R, XE extends E, XA extends A>(
-    self: FiberMap<K, E, A>,
+  <K, A, E, R, XE extends E, XA extends A>(
+    self: FiberMap<K, A, E>,
     key: K,
     effect: Effect.Effect<XA, XE, R>
   ): Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
@@ -342,9 +342,9 @@ export const run: {
  * @since 2.0.0
  * @categories combinators
  */
-export const runtime: <K, E, A>(
-  self: FiberMap<K, E, A>
-) => <R>() => Effect.Effect<
+export const runtime: <K, A, E>(
+  self: FiberMap<K, A, E>
+) => <R = never>() => Effect.Effect<
   <XE extends E, XA extends A>(
     key: K,
     effect: Effect.Effect<XA, XE, R>,
@@ -352,7 +352,7 @@ export const runtime: <K, E, A>(
   ) => Fiber.RuntimeFiber<XA, XE>,
   never,
   R
-> = <K, E, A>(self: FiberMap<K, E, A>) => <R>() =>
+> = <K, A, E>(self: FiberMap<K, A, E>) => <R>() =>
   Effect.map(
     Effect.runtime<R>(),
     (runtime) => {
