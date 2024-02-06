@@ -202,13 +202,13 @@ const invalidateCache = <E, A>(
 /** @internal */
 export const ensuringChild = dual<
   <X, R2>(
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect.Effect<X, never, R2>
+    f: (fiber: Fiber.Fiber<ReadonlyArray<unknown>, any>) => Effect.Effect<X, never, R2>
   ) => <A, E, R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R | R2>,
   <A, E, R, X, R2>(
     self: Effect.Effect<A, E, R>,
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect.Effect<X, never, R2>
+    f: (fiber: Fiber.Fiber<ReadonlyArray<unknown>, any>) => Effect.Effect<X, never, R2>
   ) => Effect.Effect<A, E, R | R2>
 >(2, (self, f) => ensuringChildren(self, (children) => f(fiberRuntime.fiberAll(children))))
 
@@ -234,7 +234,7 @@ export const forkAll: {
     options?: {
       readonly discard?: false | undefined
     }
-  ): <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<Fiber.Fiber<E, Array<A>>, never, R>
+  ): <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<Fiber.Fiber<Array<A>, E>, never, R>
   (options: {
     readonly discard: true
   }): <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<void, never, R>
@@ -243,7 +243,7 @@ export const forkAll: {
     options?: {
       readonly discard?: false | undefined
     }
-  ): Effect.Effect<Fiber.Fiber<E, Array<A>>, never, R>
+  ): Effect.Effect<Fiber.Fiber<Array<A>, E>, never, R>
   <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>, options: {
     readonly discard: true
   }): Effect.Effect<void, never, R>
@@ -287,10 +287,10 @@ export const forkScoped = <A, E, R>(
   fiberRuntime.scopeWith((scope) => forkIn(self, scope))
 
 /** @internal */
-export const fromFiber = <E, A>(fiber: Fiber.Fiber<E, A>): Effect.Effect<A, E> => internalFiber.join(fiber)
+export const fromFiber = <E, A>(fiber: Fiber.Fiber<A, E>): Effect.Effect<A, E> => internalFiber.join(fiber)
 
 /** @internal */
-export const fromFiberEffect = <A, E, R>(fiber: Effect.Effect<Fiber.Fiber<E, A>, E, R>): Effect.Effect<A, E, R> =>
+export const fromFiberEffect = <A, E, R>(fiber: Effect.Effect<Fiber.Fiber<A, E>, E, R>): Effect.Effect<A, E, R> =>
   core.suspend(() => core.flatMap(fiber, internalFiber.join))
 
 const memoKeySymbol = Symbol.for("effect/Effect/memoizeFunction.key")
@@ -596,33 +596,33 @@ export const updateSomeAndGetEffectSynchronized = dual<
 
 /** @internal */
 export const zipFiber = dual<
-  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, [A, A2]>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, [A, A2]>
+  <A2, E2>(that: Fiber.Fiber<A2, E2>) => <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<[A, A2], E | E2>,
+  <A, E, A2, E2>(self: Fiber.Fiber<A, E>, that: Fiber.Fiber<A2, E2>) => Fiber.Fiber<[A, A2], E | E2>
 >(2, (self, that) => zipWithFiber(self, that, (a, b) => [a, b]))
 
 /** @internal */
 export const zipLeftFiber = dual<
-  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, A>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, A>
+  <A2, E2>(that: Fiber.Fiber<A2, E2>) => <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<A, E | E2>,
+  <A, E, A2, E2>(self: Fiber.Fiber<A, E>, that: Fiber.Fiber<A2, E2>) => Fiber.Fiber<A, E | E2>
 >(2, (self, that) => zipWithFiber(self, that, (a, _) => a))
 
 /** @internal */
 export const zipRightFiber = dual<
-  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, A2>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, A2>
+  <A2, E2>(that: Fiber.Fiber<A2, E2>) => <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<A2, E | E2>,
+  <A, E, A2, E2>(self: Fiber.Fiber<A, E>, that: Fiber.Fiber<A2, E2>) => Fiber.Fiber<A2, E | E2>
 >(2, (self, that) => zipWithFiber(self, that, (_, b) => b))
 
 /** @internal */
 export const zipWithFiber = dual<
-  <E2, A, B, C>(
-    that: Fiber.Fiber<E2, B>,
+  <B, E2, A, C>(
+    that: Fiber.Fiber<B, E2>,
     f: (a: A, b: B) => C
-  ) => <E>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, C>,
-  <E, A, E2, B, C>(
-    self: Fiber.Fiber<E, A>,
-    that: Fiber.Fiber<E2, B>,
+  ) => <E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<C, E | E2>,
+  <A, E, B, E2, C>(
+    self: Fiber.Fiber<A, E>,
+    that: Fiber.Fiber<B, E2>,
     f: (a: A, b: B) => C
-  ) => Fiber.Fiber<E | E2, C>
+  ) => Fiber.Fiber<C, E | E2>
 >(3, (self, that, f) => ({
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
   id: () => pipe(self.id(), FiberId.getOrElse(that.id())),

@@ -46,7 +46,7 @@ const runCommand =
         const spawn = Effect.flatMap(
           Deferred.make<ExitCode>(),
           (exitCode) =>
-            Effect.async<readonly [ChildProcess.ChildProcess, ExitCodeDeferred], Error.PlatformError, never>(
+            Effect.async<readonly [ChildProcess.ChildProcess, ExitCodeDeferred], Error.PlatformError>(
               (resume) => {
                 const handle = ChildProcess.spawn(command.command, command.args, {
                   stdio: [

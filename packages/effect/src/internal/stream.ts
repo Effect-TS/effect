@@ -3276,7 +3276,7 @@ export const haltWhen = dual<
     effect: Effect.Effect<_, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2> => {
     const writer = (
-      fiber: Fiber.Fiber<E2, _>
+      fiber: Fiber.Fiber<_, E2>
     ): Channel.Channel<R2, E | E2, Chunk.Chunk<A>, unknown, E | E2, Chunk.Chunk<A>, void> =>
       pipe(
         Fiber.poll(fiber),

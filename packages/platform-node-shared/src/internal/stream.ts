@@ -225,7 +225,7 @@ export const writeInput = <IE, A>(
 ): AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<A>, unknown> => {
   const write = writeEffect(writable, encoding)
   const close = endOnDone
-    ? Effect.async<void, never, never>((resume) => {
+    ? Effect.async<void>((resume) => {
       if ("closed" in writable && writable.closed) {
         resume(Effect.unit)
       } else {
@@ -250,7 +250,7 @@ export const writeEffect = <A>(
 (chunk: Chunk.Chunk<A>) =>
   chunk.length === 0 ?
     Effect.unit :
-    Effect.async<void, never, never>((resume) => {
+    Effect.async<void>((resume) => {
       const iterator = chunk[Symbol.iterator]()
       let next = iterator.next()
       function loop() {
