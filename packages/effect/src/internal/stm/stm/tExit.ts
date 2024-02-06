@@ -16,28 +16,28 @@ export const TExitTypeId = Symbol.for(TExitSymbolKey)
 export type TExitTypeId = typeof TExitTypeId
 
 /** @internal */
-export type TExit<E, A> = Fail<E> | Die | Interrupt | Succeed<A> | Retry
+export type TExit<A, E = never> = Fail<E> | Die | Interrupt | Succeed<A> | Retry
 
 /** @internal */
 export declare namespace TExit {
   /** @internal */
-  export interface Variance<out E, out A> {
+  export interface Variance<out A, out E> {
     readonly [TExitTypeId]: {
-      readonly _E: Types.Covariant<E>
       readonly _A: Types.Covariant<A>
+      readonly _E: Types.Covariant<E>
     }
   }
 }
 
 const variance = {
   /* c8 ignore next */
-  _E: (_: never) => _,
+  _A: (_: never) => _,
   /* c8 ignore next */
-  _A: (_: never) => _
+  _E: (_: never) => _
 }
 
 /** @internal */
-export interface Fail<out E> extends TExit.Variance<E, never>, Equal.Equal {
+export interface Fail<out E> extends TExit.Variance<never, E>, Equal.Equal {
   readonly _tag: OpCodes.OP_FAIL
   readonly error: E
 }
@@ -55,7 +55,7 @@ export interface Interrupt extends TExit.Variance<never, never>, Equal.Equal {
 }
 
 /** @internal */
-export interface Succeed<out A> extends TExit.Variance<never, A>, Equal.Equal {
+export interface Succeed<out A> extends TExit.Variance<A, never>, Equal.Equal {
   readonly _tag: OpCodes.OP_SUCCEED
   readonly value: A
 }
@@ -69,32 +69,32 @@ export interface Retry extends TExit.Variance<never, never>, Equal.Equal {
 export const isExit = (u: unknown): u is TExit<unknown, unknown> => hasProperty(u, TExitTypeId)
 
 /** @internal */
-export const isFail = <E, A>(self: TExit<E, A>): self is Fail<E> => {
+export const isFail = <A, E>(self: TExit<A, E>): self is Fail<E> => {
   return self._tag === OpCodes.OP_FAIL
 }
 
 /** @internal */
-export const isDie = <E, A>(self: TExit<E, A>): self is Die => {
+export const isDie = <A, E>(self: TExit<A, E>): self is Die => {
   return self._tag === OpCodes.OP_DIE
 }
 
 /** @internal */
-export const isInterrupt = <E, A>(self: TExit<E, A>): self is Interrupt => {
+export const isInterrupt = <A, E>(self: TExit<A, E>): self is Interrupt => {
   return self._tag === OpCodes.OP_INTERRUPT
 }
 
 /** @internal */
-export const isSuccess = <E, A>(self: TExit<E, A>): self is Succeed<A> => {
+export const isSuccess = <A, E>(self: TExit<A, E>): self is Succeed<A> => {
   return self._tag === OpCodes.OP_SUCCEED
 }
 
 /** @internal */
-export const isRetry = <E, A>(self: TExit<E, A>): self is Retry => {
+export const isRetry = <A, E>(self: TExit<A, E>): self is Retry => {
   return self._tag === OpCodes.OP_RETRY
 }
 
 /** @internal */
-export const fail = <E>(error: E): TExit<E, never> => ({
+export const fail = <E>(error: E): TExit<never, E> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_FAIL,
   error,
@@ -111,7 +111,7 @@ export const fail = <E>(error: E): TExit<E, never> => ({
 })
 
 /** @internal */
-export const die = (defect: unknown): TExit<never, never> => ({
+export const die = (defect: unknown): TExit<never> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_DIE,
   defect,
@@ -128,7 +128,7 @@ export const die = (defect: unknown): TExit<never, never> => ({
 })
 
 /** @internal */
-export const interrupt = (fiberId: FiberId.FiberId): TExit<never, never> => ({
+export const interrupt = (fiberId: FiberId.FiberId): TExit<never> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_INTERRUPT,
   fiberId,
@@ -145,7 +145,7 @@ export const interrupt = (fiberId: FiberId.FiberId): TExit<never, never> => ({
 })
 
 /** @internal */
-export const succeed = <A>(value: A): TExit<never, A> => ({
+export const succeed = <A>(value: A): TExit<A> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_SUCCEED,
   value,
@@ -162,7 +162,7 @@ export const succeed = <A>(value: A): TExit<never, A> => ({
 })
 
 /** @internal */
-export const retry: TExit<never, never> = {
+export const retry: TExit<never> = {
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_RETRY,
   [Hash.symbol](): number {
@@ -178,4 +178,4 @@ export const retry: TExit<never, never> = {
 }
 
 /** @internal */
-export const unit = (): TExit<never, void> => succeed(undefined)
+export const unit = (): TExit<void> => succeed(undefined)
