@@ -599,10 +599,10 @@ export const catchAll = dual<
 export const mapInputContext = dual<
   <R0, R>(
     f: (context: Context.Context<R0>) => Context.Context<R>
-  ) => <E, A>(
+  ) => <A, E>(
     self: STM.STM<A, E, R>
   ) => STM.STM<A, E, R0>,
-  <E, A, R0, R>(
+  <A, E, R0, R>(
     self: STM.STM<A, E, R>,
     f: (context: Context.Context<R0>) => Context.Context<R>
   ) => STM.STM<A, E, R0>

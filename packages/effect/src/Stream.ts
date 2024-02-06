@@ -1414,7 +1414,7 @@ export const forever: <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, R> = inte
  * @since 2.0.0
  * @category constructors
  */
-export const fromAsyncIterable: <E, A>(iterable: AsyncIterable<A>, onError: (e: unknown) => E) => Stream<A, E> =
+export const fromAsyncIterable: <A, E>(iterable: AsyncIterable<A>, onError: (e: unknown) => E) => Stream<A, E> =
   internal.fromAsyncIterable
 
 /**
@@ -2566,8 +2566,8 @@ export const prepend: {
  * @category context
  */
 export const provideContext: {
-  <R>(context: Context.Context<R>): <E, A>(self: Stream<A, E, R>) => Stream<A, E>
-  <E, A, R>(self: Stream<A, E, R>, context: Context.Context<R>): Stream<A, E>
+  <R>(context: Context.Context<R>): <A, E>(self: Stream<A, E, R>) => Stream<A, E>
+  <A, E, R>(self: Stream<A, E, R>, context: Context.Context<R>): Stream<A, E>
 } = internal.provideContext
 
 /**
@@ -2577,8 +2577,8 @@ export const provideContext: {
  * @category context
  */
 export const provideLayer: {
-  <RIn, E2, ROut>(layer: Layer.Layer<ROut, E2, RIn>): <E, A>(self: Stream<A, E, ROut>) => Stream<A, E2 | E, RIn>
-  <E, A, RIn, E2, ROut>(self: Stream<A, E, ROut>, layer: Layer.Layer<ROut, E2, RIn>): Stream<A, E | E2, RIn>
+  <RIn, E2, ROut>(layer: Layer.Layer<ROut, E2, RIn>): <A, E>(self: Stream<A, E, ROut>) => Stream<A, E2 | E, RIn>
+  <A, E, RIn, E2, ROut>(self: Stream<A, E, ROut>, layer: Layer.Layer<ROut, E2, RIn>): Stream<A, E | E2, RIn>
 } = internal.provideLayer
 
 /**
@@ -2646,8 +2646,8 @@ export const provideServiceStream: {
  * @category context
  */
 export const mapInputContext: {
-  <R0, R>(f: (env: Context.Context<R0>) => Context.Context<R>): <E, A>(self: Stream<A, E, R>) => Stream<A, E, R0>
-  <E, A, R0, R>(self: Stream<A, E, R>, f: (env: Context.Context<R0>) => Context.Context<R>): Stream<A, E, R0>
+  <R0, R>(f: (env: Context.Context<R0>) => Context.Context<R>): <A, E>(self: Stream<A, E, R>) => Stream<A, E, R0>
+  <A, E, R0, R>(self: Stream<A, E, R>, f: (env: Context.Context<R0>) => Context.Context<R>): Stream<A, E, R0>
 } = internal.mapInputContext
 
 /**
@@ -3180,7 +3180,7 @@ export const runHead: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Option.O
  * @category destructors
  */
 export const runIntoPubSub: {
-  <E, A>(pubsub: PubSub.PubSub<Take.Take<A, E>>): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, R>
+  <A, E>(pubsub: PubSub.PubSub<Take.Take<A, E>>): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, R>
   <A, E, R>(self: Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>): Effect.Effect<void, never, R>
 } = internal.runIntoPubSub
 
@@ -3192,7 +3192,7 @@ export const runIntoPubSub: {
  * @category destructors
  */
 export const runIntoPubSubScoped: {
-  <E, A>(
+  <A, E>(
     pubsub: PubSub.PubSub<Take.Take<A, E>>
   ): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>
   <A, E, R>(self: Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>): Effect.Effect<void, never, Scope.Scope | R>
@@ -3206,7 +3206,7 @@ export const runIntoPubSubScoped: {
  * @category destructors
  */
 export const runIntoQueue: {
-  <E, A>(queue: Queue.Enqueue<Take.Take<A, E>>): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, R>
+  <A, E>(queue: Queue.Enqueue<Take.Take<A, E>>): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, R>
   <A, E, R>(self: Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>): Effect.Effect<void, never, R>
 } = internal.runIntoQueue
 
@@ -3218,7 +3218,7 @@ export const runIntoQueue: {
  * @category destructors
  */
 export const runIntoQueueElementsScoped: {
-  <E, A>(
+  <A, E>(
     queue: Queue.Enqueue<Exit.Exit<A, Option.Option<E>>>
   ): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>
   <A, E, R>(
@@ -3235,7 +3235,7 @@ export const runIntoQueueElementsScoped: {
  * @category destructors
  */
 export const runIntoQueueScoped: {
-  <E, A>(
+  <A, E>(
     queue: Queue.Enqueue<Take.Take<A, E>>
   ): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>
   <A, E, R>(self: Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>): Effect.Effect<void, never, Scope.Scope | R>
