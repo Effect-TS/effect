@@ -2547,11 +2547,11 @@ export const diffFiberRefs: <A, E, R>(
  */
 export const ensuringChild: {
   <X, R2>(
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<X, never, R2>
+    f: (fiber: Fiber.Fiber<ReadonlyArray<unknown>, any>) => Effect<X, never, R2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R2 | R>
   <A, E, R, X, R2>(
     self: Effect<A, E, R>,
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<X, never, R2>
+    f: (fiber: Fiber.Fiber<ReadonlyArray<unknown>, any>) => Effect<X, never, R2>
   ): Effect<A, E, R | R2>
 } = circular.ensuringChild
 
@@ -2634,7 +2634,7 @@ export const forkAll: {
     options?: {
       readonly discard?: false | undefined
     }
-  ): <A, E, R>(effects: Iterable<Effect<A, E, R>>) => Effect<Fiber.Fiber<E, Array<A>>, never, R>
+  ): <A, E, R>(effects: Iterable<Effect<A, E, R>>) => Effect<Fiber.Fiber<Array<A>, E>, never, R>
   (options: {
     readonly discard: true
   }): <A, E, R>(effects: Iterable<Effect<A, E, R>>) => Effect<void, never, R>
@@ -2643,7 +2643,7 @@ export const forkAll: {
     options?: {
       readonly discard?: false | undefined
     }
-  ): Effect<Fiber.Fiber<E, Array<A>>, never, R>
+  ): Effect<Fiber.Fiber<Array<A>, E>, never, R>
   <A, E, R>(effects: Iterable<Effect<A, E, R>>, options: {
     readonly discard: true
   }): Effect<void, never, R>
@@ -2693,7 +2693,7 @@ export const forkWithErrorHandler: {
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fromFiber: <E, A>(fiber: Fiber.Fiber<E, A>) => Effect<A, E> = circular.fromFiber
+export const fromFiber: <E, A>(fiber: Fiber.Fiber<A, E>) => Effect<A, E> = circular.fromFiber
 
 /**
  * Creates an `Effect` value that represents the exit value of the specified
@@ -2702,7 +2702,7 @@ export const fromFiber: <E, A>(fiber: Fiber.Fiber<E, A>) => Effect<A, E> = circu
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fromFiberEffect: <A, E, R>(fiber: Effect<Fiber.Fiber<E, A>, E, R>) => Effect<A, E, R> =
+export const fromFiberEffect: <A, E, R>(fiber: Effect<Fiber.Fiber<A, E>, E, R>) => Effect<A, E, R> =
   circular.fromFiberEffect
 
 /**
@@ -3695,16 +3695,16 @@ export const raceWith: {
   <A1, E1, R1, E, A, A2, E2, R2, A3, E3, R3>(
     other: Effect<A1, E1, R1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<A, E>, fiber: Fiber.Fiber<E1, A1>) => Effect<A2, E2, R2>
-      readonly onOtherDone: (exit: Exit.Exit<A1, E1>, fiber: Fiber.Fiber<E, A>) => Effect<A3, E3, R3>
+      readonly onSelfDone: (exit: Exit.Exit<A, E>, fiber: Fiber.Fiber<A1, E1>) => Effect<A2, E2, R2>
+      readonly onOtherDone: (exit: Exit.Exit<A1, E1>, fiber: Fiber.Fiber<A, E>) => Effect<A3, E3, R3>
     }
   ): <R>(self: Effect<A, E, R>) => Effect<A2 | A3, E2 | E3, R1 | R2 | R3 | R>
   <A, E, R, A1, E1, R1, A2, E2, R2, A3, E3, R3>(
     self: Effect<A, E, R>,
     other: Effect<A1, E1, R1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<A, E>, fiber: Fiber.Fiber<E1, A1>) => Effect<A2, E2, R2>
-      readonly onOtherDone: (exit: Exit.Exit<A1, E1>, fiber: Fiber.Fiber<E, A>) => Effect<A3, E3, R3>
+      readonly onSelfDone: (exit: Exit.Exit<A, E>, fiber: Fiber.Fiber<A1, E1>) => Effect<A2, E2, R2>
+      readonly onOtherDone: (exit: Exit.Exit<A1, E1>, fiber: Fiber.Fiber<A, E>) => Effect<A3, E3, R3>
     }
   ): Effect<A2 | A3, E2 | E3, R | R1 | R2 | R3>
 } = fiberRuntime.raceWith

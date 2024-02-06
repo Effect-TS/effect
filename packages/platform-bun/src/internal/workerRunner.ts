@@ -20,7 +20,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const port = self
       const queue = yield* _(Queue.unbounded<I>())
       yield* _(
-        Effect.async<never, WorkerError, never>((resume) => {
+        Effect.async<never, WorkerError>((resume) => {
           function onMessage(event: MessageEvent) {
             const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
             if (message[0] === 0) {

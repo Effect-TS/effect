@@ -30,13 +30,13 @@ export interface NotStarted {
 /** @internal */
 export interface Previous<out A> {
   readonly _tag: OP_PREVIOUS
-  readonly fiber: Fiber.Fiber<never, Chunk.Chunk<A>>
+  readonly fiber: Fiber.Fiber<Chunk.Chunk<A>>
 }
 
 /** @internal */
 export interface Current<out E, out A> {
   readonly _tag: OP_CURRENT
-  readonly fiber: Fiber.Fiber<E, HandoffSignal.HandoffSignal<E, A>>
+  readonly fiber: Fiber.Fiber<HandoffSignal.HandoffSignal<E, A>, E>
 }
 
 /** @internal */
@@ -45,13 +45,13 @@ export const notStarted: DebounceState<never, never> = {
 }
 
 /** @internal */
-export const previous = <A>(fiber: Fiber.Fiber<never, Chunk.Chunk<A>>): DebounceState<never, A> => ({
+export const previous = <A>(fiber: Fiber.Fiber<Chunk.Chunk<A>>): DebounceState<never, A> => ({
   _tag: OP_PREVIOUS,
   fiber
 })
 
 /** @internal */
-export const current = <E, A>(fiber: Fiber.Fiber<E, HandoffSignal.HandoffSignal<E, A>>): DebounceState<E, A> => ({
+export const current = <E, A>(fiber: Fiber.Fiber<HandoffSignal.HandoffSignal<E, A>, E>): DebounceState<E, A> => ({
   _tag: OP_CURRENT,
   fiber
 })
