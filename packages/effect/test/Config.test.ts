@@ -471,6 +471,11 @@ describe("Config", () => {
       assert.strictEqual(`${secret}`, "Secret(<redacted>)")
     })
 
+    it("toJSON", () => {
+      const secret = Secret.fromString("secret")
+      assert.strictEqual(JSON.stringify(secret), "\"<redacted>\"")
+    })
+
     it("wipe", () => {
       const secret = Secret.fromString("secret")
       Secret.unsafeWipe(secret)
