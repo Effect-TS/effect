@@ -1,20 +1,24 @@
-// Direct port of https://github.com/svroonland/rezilience/blob/master/rezilience/shared/src/main/scala/nl/vroste/rezilience/RateLimiter.scala
-import type { Duration } from "effect"
-import { Chunk, Deferred, Effect, pipe, Queue, Ref, Stream } from "effect"
+/**
+ * This is a direct port of `RateLimiter` from Rezilience
+ * https://github.com/svroonland/rezilience/blob/master/rezilience/shared/src/main/scala/nl/vroste/rezilience/RateLimiter.scala
+ */
 
-// Find the next power of 2 greater than or equal to n.
+import * as Chunk from "../Chunk.js"
+import * as Deferred from "../Deferred.js"
+import type { DurationInput } from "../Duration.js"
+import * as Effect from "../Effect.js"
+import { pipe } from "../Function.js"
+import * as Queue from "../Queue.js"
+import * as Ref from "../Ref.js"
+import * as Stream from "../Stream.js"
+import { nextPow2 } from "./nextPow2.js"
+
 /** @internal */
-const nextPow2 = (n: number): number => {
-  const nextPow = Math.ceil(Math.log(n) / Math.log(2))
-  return Math.max(Math.pow(2, nextPow), 2)
-}
+export const make = (max: number, interval: DurationInput) => {
+  return Effect.gen(function*($) {
+    const q = yield* $(Queue.bounded<[Ref.Ref<boolean>, Effect.Effect<never, never, void>]>(nextPow2(max)))
 
-/** @internal */
-export const make = (max: number, interval: Duration.DurationInput) => {
-  return Effect.gen(function*(_outer) {
-    const q = yield* _outer(Queue.bounded<[Ref.Ref<boolean>, Effect.Effect<never, never, void>]>(nextPow2(max)))
-
-    yield* _outer(
+    yield* $(
       pipe(
         Stream.fromQueue(q, { maxChunkSize: 1 }),
         Stream.filterEffect(([interrupted]) => {
@@ -26,7 +30,7 @@ export const make = (max: number, interval: Duration.DurationInput) => {
         Stream.throttle({
           strategy: "shape",
           duration: interval,
-          cost: (x) => Chunk.size(x),
+          cost: Chunk.size,
           units: max
         }),
         Stream.mapEffect(([_interrupted, eff]) => eff, { concurrency: "unbounded", unordered: true }),
@@ -36,10 +40,10 @@ export const make = (max: number, interval: Duration.DurationInput) => {
     )
 
     const apply = <R, E, A>(task: Effect.Effect<R, E, A>) =>
-      Effect.gen(function*(_inner) {
-        const start = yield* _inner(Deferred.make<never, void>())
-        const done = yield* _inner(Deferred.make<never, void>())
-        const interruptedRef = yield* _inner(Ref.make(false))
+      Effect.gen(function*($) {
+        const start = yield* $(Deferred.make<never, void>())
+        const done = yield* $(Deferred.make<never, void>())
+        const interruptedRef = yield* $(Ref.make(false))
 
         const action = pipe(
           Deferred.succeed(start, void 0),
@@ -56,7 +60,7 @@ export const make = (max: number, interval: Duration.DurationInput) => {
           Effect.onInterrupt(() => onInterruptOrCompletion)
         )
 
-        const result = yield* _inner(
+        const result = yield* $(
           Effect.scoped(
             pipe(
               Effect.acquireReleaseInterruptible(run, () => onInterruptOrCompletion),
