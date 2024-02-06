@@ -38,27 +38,27 @@ interface ChildExtra {
   readonly extra: string
 }
 
-export interface GetAllParents extends Request.Request<never, ReadonlyArray<Parent>> {
+export interface GetAllParents extends Request.Request<ReadonlyArray<Parent>> {
   readonly _tag: "GetAllParents"
 }
 
 export const GetAllParents = Request.tagged<GetAllParents>("GetAllParents")
 
-export interface GetParentChildren extends Request.Request<never, ReadonlyArray<Child>> {
+export interface GetParentChildren extends Request.Request<ReadonlyArray<Child>> {
   readonly _tag: "GetParentChildren"
   readonly id: number
 }
 
 export const GetParentChildren = Request.tagged<GetParentChildren>("GetParentChildren")
 
-export interface GetChildInfo extends Request.Request<never, ChildInfo> {
+export interface GetChildInfo extends Request.Request<ChildInfo> {
   readonly _tag: "GetChildInfo"
   readonly id: number
 }
 
 export const GetChildInfo = Request.tagged<GetChildInfo>("GetChildInfo")
 
-export interface GetChildExtra extends Request.Request<never, ChildExtra> {
+export interface GetChildExtra extends Request.Request<ChildExtra> {
   readonly _tag: "GetChildExtra"
   readonly id: number
 }
