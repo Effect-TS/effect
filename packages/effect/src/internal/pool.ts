@@ -133,7 +133,7 @@ class TimeToLiveStrategy implements Strategy<readonly [Clock.Clock, Ref.Ref<numb
   }
 }
 
-class PoolImpl<in out E, in out A> implements Pool.Pool<E, A> {
+class PoolImpl<in out A, in out E> implements Pool.Pool<A, E> {
   readonly [PoolTypeId] = poolVariance
   constructor(
     readonly creator: Effect.Effect<A, E, Scope.Scope>,
@@ -161,14 +161,14 @@ class PoolImpl<in out E, in out A> implements Pool.Pool<E, A> {
 
   [Equal.symbol](that: unknown): boolean {
     return isPool(that) &&
-      Equal.equals(this.creator, (that as PoolImpl<E, A>).creator) &&
-      this.min === (that as PoolImpl<E, A>).min &&
-      this.max === (that as PoolImpl<E, A>).max &&
-      Equal.equals(this.isShuttingDown, (that as PoolImpl<E, A>).isShuttingDown) &&
-      Equal.equals(this.state, (that as PoolImpl<E, A>).state) &&
-      Equal.equals(this.items, (that as PoolImpl<E, A>).items) &&
-      Equal.equals(this.invalidated, (that as PoolImpl<E, A>).invalidated) &&
-      Equal.equals(this.track, (that as PoolImpl<E, A>).track)
+      Equal.equals(this.creator, (that as PoolImpl<A, E>).creator) &&
+      this.min === (that as PoolImpl<A, E>).min &&
+      this.max === (that as PoolImpl<A, E>).max &&
+      Equal.equals(this.isShuttingDown, (that as PoolImpl<A, E>).isShuttingDown) &&
+      Equal.equals(this.state, (that as PoolImpl<A, E>).state) &&
+      Equal.equals(this.items, (that as PoolImpl<A, E>).items) &&
+      Equal.equals(this.invalidated, (that as PoolImpl<A, E>).invalidated) &&
+      Equal.equals(this.track, (that as PoolImpl<A, E>).track)
   }
 
   pipe() {
@@ -257,8 +257,8 @@ class PoolImpl<in out E, in out A> implements Pool.Pool<E, A> {
   }
 }
 
-const allocate = <E, A>(
-  self: PoolImpl<E, A>,
+const allocate = <A, E>(
+  self: PoolImpl<A, E>,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<unknown> =>
   core.flatMap(fiberRuntime.scopeMake(), (scope) =>
@@ -280,18 +280,18 @@ const allocate = <E, A>(
         )
     ))
 
-const allocateUinterruptible = <E, A>(
-  self: PoolImpl<E, A>
+const allocateUinterruptible = <A, E>(
+  self: PoolImpl<A, E>
 ): Effect.Effect<unknown> => core.uninterruptibleMask((restore) => allocate(self, restore))
 
 /**
  * Returns the number of items in the pool in excess of the minimum size.
  */
-const excess = <E, A>(self: PoolImpl<E, A>): Effect.Effect<number> =>
+const excess = <A, E>(self: PoolImpl<A, E>): Effect.Effect<number> =>
   core.map(ref.get(self.state), (state) => state.size - Math.min(self.min, state.free))
 
-const finalizeInvalid = <E, A>(
-  self: PoolImpl<E, A>,
+const finalizeInvalid = <A, E>(
+  self: PoolImpl<A, E>,
   attempted: Attempted<E, A>
 ): Effect.Effect<unknown> =>
   pipe(
@@ -311,7 +311,7 @@ const finalizeInvalid = <E, A>(
  * Gets items from the pool and shuts them down as long as there are items
  * free, signalling shutdown of the pool if the pool is empty.
  */
-const getAndShutdown = <E, A>(self: PoolImpl<E, A>): Effect.Effect<void> =>
+const getAndShutdown = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
   core.flatten(ref.modify(self.state, (state) => {
     if (state.free > 0) {
       return [
@@ -337,7 +337,7 @@ const getAndShutdown = <E, A>(self: PoolImpl<E, A>): Effect.Effect<void> =>
 /**
  * Begins pre-allocating pool entries based on minimum pool size.
  */
-const initialize = <E, A>(self: PoolImpl<E, A>): Effect.Effect<void> =>
+const initialize = <E, A>(self: PoolImpl<A, E>): Effect.Effect<void> =>
   fiberRuntime.replicateEffect(
     core.uninterruptibleMask((restore) =>
       core.flatten(ref.modify(self.state, (state) => {
@@ -357,7 +357,7 @@ const initialize = <E, A>(self: PoolImpl<E, A>): Effect.Effect<void> =>
 /**
  * Shrinks the pool down, but never to less than the minimum size.
  */
-const shrink = <E, A>(self: PoolImpl<E, A>): Effect.Effect<void> =>
+const shrink = <E, A>(self: PoolImpl<A, E>): Effect.Effect<void> =>
   core.uninterruptible(
     core.flatten(ref.modify(self.state, (state) => {
       if (state.size > self.min && state.free > 0) {
@@ -379,7 +379,7 @@ const shrink = <E, A>(self: PoolImpl<E, A>): Effect.Effect<void> =>
     }))
   )
 
-const shutdown = <E, A>(self: PoolImpl<E, A>): Effect.Effect<void> =>
+const shutdown = <E, A>(self: PoolImpl<A, E>): Effect.Effect<void> =>
   core.flatten(ref.modify(self.isShuttingDown, (down) =>
     down
       ? [queue.awaitShutdown(self.items), true] as const
@@ -410,7 +410,7 @@ const makeWith = <A, E, R, S, R2>(
     readonly max: number
     readonly strategy: Strategy<S, R2, E, A>
   }
-): Effect.Effect<Pool.Pool<E, A>, never, R | R2 | Scope.Scope> =>
+): Effect.Effect<Pool.Pool<A, E>, never, R | R2 | Scope.Scope> =>
   core.uninterruptibleMask((restore) =>
     pipe(
       fiberRuntime.all([
@@ -422,7 +422,7 @@ const makeWith = <A, E, R, S, R2>(
         options.strategy.initial()
       ]),
       core.flatMap(([context, down, state, items, inv, initial]) => {
-        const pool = new PoolImpl<E, A>(
+        const pool = new PoolImpl<A, E>(
           core.mapInputContext(options.acquire, (old) => Context.merge(old)(context)),
           options.min,
           options.max,
@@ -447,7 +447,7 @@ const makeWith = <A, E, R, S, R2>(
                 )
             )
           ),
-          core.as<Pool.Pool<E, A>>(pool)
+          core.as<Pool.Pool<A, E>>(pool)
         )
       })
     )
@@ -462,7 +462,7 @@ export const make = <A, E, R>(
     readonly acquire: Effect.Effect<A, E, R>
     readonly size: number
   }
-): Effect.Effect<Pool.Pool<E, A>, never, R | Scope.Scope> =>
+): Effect.Effect<Pool.Pool<A, E>, never, R | Scope.Scope> =>
   makeWith({
     acquire: options.acquire,
     min: options.size,
@@ -478,7 +478,7 @@ export const makeWithTTL = <A, E, R>(
     readonly max: number
     readonly timeToLive: Duration.DurationInput
   }
-): Effect.Effect<Pool.Pool<E, A>, never, R | Scope.Scope> =>
+): Effect.Effect<Pool.Pool<A, E>, never, R | Scope.Scope> =>
   makeWith({
     acquire: options.acquire,
     min: options.min,
@@ -487,10 +487,10 @@ export const makeWithTTL = <A, E, R>(
   })
 
 /** @internal */
-export const get = <E, A>(self: Pool.Pool<E, A>): Effect.Effect<A, E, Scope.Scope> => self.get
+export const get = <A, E>(self: Pool.Pool<A, E>): Effect.Effect<A, E, Scope.Scope> => self.get
 
 /** @internal */
 export const invalidate = dual<
-  <A>(value: A) => <E>(self: Pool.Pool<E, A>) => Effect.Effect<void, never, Scope.Scope>,
-  <E, A>(self: Pool.Pool<E, A>, value: A) => Effect.Effect<void, never, Scope.Scope>
+  <A>(value: A) => <E>(self: Pool.Pool<A, E>) => Effect.Effect<void, never, Scope.Scope>,
+  <A, E>(self: Pool.Pool<A, E>, value: A) => Effect.Effect<void, never, Scope.Scope>
 >(2, (self, value) => self.invalidate(value))
