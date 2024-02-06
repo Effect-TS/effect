@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.32.0
+
+### Minor Changes
+
+- [#2047](https://github.com/Effect-TS/effect/pull/2047) [`eb1f787`](https://github.com/Effect-TS/effect/commit/eb1f7878c9e5f52f17fa4ed8a13151ab70df6b12) Thanks [@tim-smart](https://github.com/tim-smart)! - make array types in cli more permissive
+
+  This change removes NonEmpty\* arrays as input parameters, and removes use of ReadonlyArray as a return type (prefering Array instead).
+
+  This allows more interop with the existing js ecosystem.
+
 ## 0.31.9
 
 ### Patch Changes
