@@ -399,12 +399,12 @@ export const broadcastedQueues: {
     maximumLag: number
   ): <A, E, R>(
     self: Stream<A, E, R>
-  ) => Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>, never, R | Scope.Scope>
+  ) => Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, R | Scope.Scope>
   <A, E, R, N extends number>(
     self: Stream<A, E, R>,
     n: N,
     maximumLag: number
-  ): Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>, never, Scope.Scope | R>
+  ): Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, Scope.Scope | R>
 } = internal.broadcastedQueues
 
 /**
@@ -422,11 +422,11 @@ export const broadcastedQueuesDynamic: {
     maximumLag: number
   ): <A, E, R>(
     self: Stream<A, E, R>
-  ) => Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, Scope.Scope>, never, R | Scope.Scope>
+  ) => Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope>, never, R | Scope.Scope>
   <A, E, R>(
     self: Stream<A, E, R>,
     maximumLag: number
-  ): Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, Scope.Scope>, never, Scope.Scope | R>
+  ): Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope>, never, Scope.Scope | R>
 } = internal.broadcastedQueuesDynamic
 
 /**
@@ -1397,7 +1397,7 @@ export const flattenIterables: <A, E, R>(self: Stream<Iterable<A>, E, R>) => Str
  * @since 2.0.0
  * @category sequencing
  */
-export const flattenTake: <R, E, E2, A>(self: Stream<Take.Take<E2, A>, E, R>) => Stream<A, E | E2, R> =
+export const flattenTake: <R, E, E2, A>(self: Stream<Take.Take<A, E2>, E, R>) => Stream<A, E | E2, R> =
   internal.flattenTake
 
 /**
@@ -3180,8 +3180,8 @@ export const runHead: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Option.O
  * @category destructors
  */
 export const runIntoPubSub: {
-  <E, A>(pubsub: PubSub.PubSub<Take.Take<E, A>>): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, R>
-  <A, E, R>(self: Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<void, never, R>
+  <E, A>(pubsub: PubSub.PubSub<Take.Take<A, E>>): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, R>
+  <A, E, R>(self: Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>): Effect.Effect<void, never, R>
 } = internal.runIntoPubSub
 
 /**
@@ -3193,9 +3193,9 @@ export const runIntoPubSub: {
  */
 export const runIntoPubSubScoped: {
   <E, A>(
-    pubsub: PubSub.PubSub<Take.Take<E, A>>
+    pubsub: PubSub.PubSub<Take.Take<A, E>>
   ): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>
-  <A, E, R>(self: Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<void, never, Scope.Scope | R>
+  <A, E, R>(self: Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>): Effect.Effect<void, never, Scope.Scope | R>
 } = internal.runIntoPubSubScoped
 
 /**
@@ -3206,8 +3206,8 @@ export const runIntoPubSubScoped: {
  * @category destructors
  */
 export const runIntoQueue: {
-  <E, A>(queue: Queue.Enqueue<Take.Take<E, A>>): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, R>
-  <A, E, R>(self: Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect.Effect<void, never, R>
+  <E, A>(queue: Queue.Enqueue<Take.Take<A, E>>): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, R>
+  <A, E, R>(self: Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>): Effect.Effect<void, never, R>
 } = internal.runIntoQueue
 
 /**
@@ -3236,9 +3236,9 @@ export const runIntoQueueElementsScoped: {
  */
 export const runIntoQueueScoped: {
   <E, A>(
-    queue: Queue.Enqueue<Take.Take<E, A>>
+    queue: Queue.Enqueue<Take.Take<A, E>>
   ): <R>(self: Stream<A, E, R>) => Effect.Effect<void, never, Scope.Scope | R>
-  <A, E, R>(self: Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect.Effect<void, never, Scope.Scope | R>
+  <A, E, R>(self: Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>): Effect.Effect<void, never, Scope.Scope | R>
 } = internal.runIntoQueueScoped
 
 /**
@@ -3799,11 +3799,11 @@ export const timeoutTo: {
 export const toPubSub: {
   (
     capacity: number
-  ): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<PubSub.PubSub<Take.Take<E, A>>, never, Scope.Scope | R>
+  ): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<PubSub.PubSub<Take.Take<A, E>>, never, Scope.Scope | R>
   <A, E, R>(
     self: Stream<A, E, R>,
     capacity: number
-  ): Effect.Effect<PubSub.PubSub<Take.Take<E, A>>, never, Scope.Scope | R>
+  ): Effect.Effect<PubSub.PubSub<Take.Take<A, E>>, never, Scope.Scope | R>
 } = internal.toPubSub
 
 /**
@@ -3834,14 +3834,14 @@ export const toQueue: {
       | { readonly strategy?: "dropping" | "sliding" | "suspend" | undefined; readonly capacity?: number | undefined }
       | { readonly strategy: "unbounded" }
       | undefined
-  ): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, Scope.Scope | R>
+  ): <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope | R>
   <A, E, R>(
     self: Stream<A, E, R>,
     options?:
       | { readonly strategy?: "dropping" | "sliding" | "suspend" | undefined; readonly capacity?: number | undefined }
       | { readonly strategy: "unbounded" }
       | undefined
-  ): Effect.Effect<Queue.Dequeue<Take.Take<E, A>>, never, Scope.Scope | R>
+  ): Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope | R>
 } = internal.toQueue
 
 /**
