@@ -22,26 +22,10 @@ import * as Continuation from "./continuation.js"
 import * as Subexecutor from "./subexecutor.js"
 import * as upstreamPullRequest from "./upstreamPullRequest.js"
 
-export type ErasedChannel<R> = Channel.Channel<
-  R,
-  unknown,
-  unknown,
-  unknown,
-  unknown,
-  unknown,
-  unknown
->
+export type ErasedChannel<R> = Channel.Channel<unknown, unknown, unknown, unknown, unknown, unknown, R>
 
 /** @internal */
-export type ErasedExecutor<R> = ChannelExecutor<
-  R,
-  unknown,
-  unknown,
-  unknown,
-  unknown,
-  unknown,
-  unknown
->
+export type ErasedExecutor<R> = ChannelExecutor<unknown, unknown, unknown, unknown, unknown, unknown, R>
 
 /** @internal */
 export type ErasedContinuation<R> = Continuation.Continuation<
@@ -60,7 +44,15 @@ export type ErasedContinuation<R> = Continuation.Continuation<
 export type ErasedFinalizer<R> = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown, never, R>
 
 /** @internal */
-export class ChannelExecutor<in out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone> {
+export class ChannelExecutor<
+  out OutElem,
+  in InElem = unknown,
+  out OutErr = never,
+  in InErr = unknown,
+  out OutDone = void,
+  in InDone = unknown,
+  in out Env = never
+> {
   private _activeSubexecutor: Subexecutor.Subexecutor<Env> | undefined = undefined
 
   private _cancelled: Exit.Exit<OutErr, OutDone> | undefined = undefined
@@ -86,7 +78,7 @@ export class ChannelExecutor<in out Env, in InErr, in InElem, in InDone, out Out
   private _providedEnv: Context.Context<unknown> | undefined
 
   constructor(
-    initialChannel: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+    initialChannel: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
     providedEnv: Context.Context<unknown> | undefined,
     executeCloseLastSubstream: (effect: Effect.Effect<unknown, never, Env>) => Effect.Effect<unknown, never, Env>
   ) {
@@ -184,13 +176,13 @@ export class ChannelExecutor<in out Env, in InErr, in InElem, in InDone, out Out
                 case ChannelOpCodes.OP_CONCAT_ALL: {
                   const executor: ErasedExecutor<Env> = new ChannelExecutor(
                     this._currentChannel.value() as Channel.Channel<
-                      Env,
-                      unknown,
-                      unknown,
+                      never,
                       unknown,
                       never,
+                      unknown,
                       never,
-                      never
+                      unknown,
+                      Env
                     >,
                     this._providedEnv,
                     (effect) =>
@@ -278,7 +270,7 @@ export class ChannelExecutor<in out Env, in InErr, in InElem, in InDone, out Out
                   const previousInput = this._input
 
                   const leftExec: ErasedExecutor<Env> = new ChannelExecutor(
-                    this._currentChannel.left() as Channel.Channel<Env, unknown, unknown, unknown, never, never, never>,
+                    this._currentChannel.left() as Channel.Channel<never, unknown, never, unknown, never, unknown, Env>,
                     this._providedEnv,
                     (effect) => this._executeCloseLastSubstream(effect)
                   )
@@ -1102,12 +1094,12 @@ export const readUpstream = <R, E, E2, A>(
 
 /** @internal */
 export const run = <Env, InErr, InDone, OutErr, OutDone>(
-  self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
+  self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
 ): Effect.Effect<OutDone, OutErr, Env> => pipe(runScoped(self), Effect.scoped)
 
 /** @internal */
 export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
-  self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
+  self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
 ): Effect.Effect<OutDone, OutErr, Env | Scope.Scope> => {
   const run = (
     channelDeferred: Deferred.Deferred<OutDone, OutErr>,
@@ -1163,7 +1155,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
 /** @internal */
 const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
   channelState: ChannelState.ChannelState<Env, OutErr>,
-  exec: ChannelExecutor<Env, InErr, unknown, InDone, OutErr, never, OutDone>
+  exec: ChannelExecutor<never, unknown, OutErr, InErr, OutDone, InDone, Env>
 ): Effect.Effect<OutDone, OutErr, Env> => {
   const op = channelState as ChannelState.Primitive
   switch (op._tag) {

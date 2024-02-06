@@ -97,7 +97,7 @@ const stream = (file: File, {
 
   function loop(
     totalBytesRead: bigint
-  ): Channel.Channel<never, unknown, unknown, unknown, Error.PlatformError, Chunk.Chunk<Uint8Array>, void> {
+  ): Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, Error.PlatformError, unknown, void, unknown> {
     if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
       return Channel.unit
     }

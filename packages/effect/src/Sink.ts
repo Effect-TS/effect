@@ -981,7 +981,7 @@ export const flatMap: {
  * @category constructors
  */
 export const fromChannel: <R, E, In, L, Z>(
-  channel: Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>
+  channel: Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R>
 ) => Sink<R, E, In, L, Z> = internal.fromChannel
 
 /**
@@ -992,7 +992,7 @@ export const fromChannel: <R, E, In, L, Z>(
  */
 export const toChannel: <R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
-) => Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z> = internal.toChannel
+) => Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R> = internal.toChannel
 
 /**
  * Creates a single-value sink produced from an effect.
