@@ -108,7 +108,7 @@ export const running: STMState<never, never> = {
 }
 
 /** @internal */
-export const fromTExit = <E, A>(tExit: TExit.TExit<E, A>): STMState<E, A> => {
+export const fromTExit = <E, A>(tExit: TExit.TExit<A, E>): STMState<E, A> => {
   switch (tExit._tag) {
     case TExitOpCodes.OP_FAIL: {
       return done(Exit.fail(tExit.error))
