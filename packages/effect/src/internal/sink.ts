@@ -560,7 +560,7 @@ export const dimapChunksEffect = dual<
 
 /** @internal */
 export const drain: Sink.Sink<never, never, unknown, never, void> = new SinkImpl(
-  channel.drain(channel.identityChannel<never, unknown, unknown>())
+  channel.drain(channel.identityChannel())
 )
 
 /** @internal */
@@ -581,7 +581,7 @@ const dropLoop = <In>(
       }
       return pipe(
         core.write(dropped),
-        channel.zipRight(channel.identityChannel<never, Chunk.Chunk<In>, unknown>())
+        channel.zipRight(channel.identityChannel<Chunk.Chunk<In>, never, unknown>())
       )
     },
     onFailure: core.fail,
@@ -614,7 +614,7 @@ const dropUntilEffectReader = <In, R, E>(
             dropUntilEffectReader(predicate) :
             pipe(
               core.write(Chunk.unsafeFromArray(leftover)),
-              channel.zipRight(channel.identityChannel<E, Chunk.Chunk<In>, unknown>())
+              channel.zipRight(channel.identityChannel<Chunk.Chunk<In>, E, unknown>())
             )
         }),
         channel.unwrap
@@ -637,7 +637,7 @@ const dropWhileReader = <In>(
       if (Chunk.isEmpty(out)) {
         return dropWhileReader(predicate)
       }
-      return pipe(core.write(out), channel.zipRight(channel.identityChannel<never, Chunk.Chunk<In>, unknown>()))
+      return pipe(core.write(out), channel.zipRight(channel.identityChannel<Chunk.Chunk<In>, never, unknown>()))
     },
     onFailure: core.fail,
     onDone: core.succeedNow
@@ -663,7 +663,7 @@ const dropWhileEffectReader = <In, R, E>(
             dropWhileEffectReader(predicate) :
             pipe(
               core.write(Chunk.unsafeFromArray(leftover)),
-              channel.zipRight(channel.identityChannel<E, Chunk.Chunk<In>, unknown>())
+              channel.zipRight(channel.identityChannel<Chunk.Chunk<In>, E, unknown>())
             )
         }),
         channel.unwrap
@@ -937,7 +937,7 @@ export const foldSink = dual<
               // L <: In1 and therefore Chunk[L] can be safely cast to Chunk[In1].
               core.flatMap((chunk) => channel.writeChunk(chunk as Chunk.Chunk<Chunk.Chunk<In1 & In2>>))
             )
-            const passthrough = channel.identityChannel<never, Chunk.Chunk<In1 & In2>, unknown>()
+            const passthrough = channel.identityChannel<Chunk.Chunk<In1 & In2>, never, unknown>()
             const continuationSink = pipe(
               refReader,
               channel.zipRight(passthrough),
@@ -2128,7 +2128,7 @@ export const zipWith = dual<
 // Circular with Channel
 
 /** @internal */
-export const channelToSink = <Env, InErr, InElem, OutErr, OutElem, OutDone>(
+export const channelToSink = <OutElem, InElem, OutErr, InErr, OutDone, Env>(
   self: Channel.Channel<Chunk.Chunk<OutElem>, Chunk.Chunk<InElem>, OutErr, InErr, OutDone, unknown, Env>
 ): Sink.Sink<Env, OutErr, InElem, OutElem, OutDone> => new SinkImpl(self)
 

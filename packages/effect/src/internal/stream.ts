@@ -2128,7 +2128,7 @@ export const drop = dual<
         }
         return pipe(
           core.write(dropped),
-          channel.zipRight(channel.identityChannel<never, Chunk.Chunk<A>, unknown>())
+          channel.zipRight(channel.identityChannel<Chunk.Chunk<A>, never, unknown>())
         )
       },
       onFailure: core.fail,
@@ -2203,7 +2203,7 @@ export const dropUntilEffect = dual<
             }
             return pipe(
               core.write(leftover),
-              channel.zipRight(channel.identityChannel<E | E2, Chunk.Chunk<A>, unknown>())
+              channel.zipRight(channel.identityChannel<Chunk.Chunk<A>, E | E2, unknown>())
             )
           }),
           channel.unwrap
@@ -2228,7 +2228,7 @@ export const dropWhile = dual<
       }
       return channel.zipRight(
         core.write(output),
-        channel.identityChannel<never, Chunk.Chunk<A>, unknown>()
+        channel.identityChannel<Chunk.Chunk<A>, never, unknown>()
       )
     },
     onFailure: core.fail,
@@ -2264,7 +2264,7 @@ export const dropWhileEffect = dual<
             }
             return channel.zipRight(
               core.write(leftover),
-              channel.identityChannel<E | E2, Chunk.Chunk<A>, unknown>()
+              channel.identityChannel<Chunk.Chunk<A>, E | E2, unknown>()
             )
           }),
           channel.unwrap
@@ -4182,7 +4182,7 @@ export const orElseIfEmptyStream = dual<
           }
           return pipe(
             core.write(input),
-            channel.zipRight(channel.identityChannel<E, Chunk.Chunk<A>, unknown>())
+            channel.zipRight(channel.identityChannel<Chunk.Chunk<A>, E, unknown>())
           )
         },
         onFailure: core.fail,
@@ -8135,7 +8135,7 @@ export const let_ = dual<
 // Circular with Channel
 
 /** @internal */
-export const channelToStream = <Env, OutErr, OutElem, OutDone>(
+export const channelToStream = <OutElem, OutErr, OutDone, Env>(
   self: Channel.Channel<Chunk.Chunk<OutElem>, unknown, OutErr, unknown, OutDone, unknown, Env>
 ): Stream.Stream<OutElem, OutErr, Env> => {
   return new StreamImpl(self)
