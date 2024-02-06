@@ -375,7 +375,7 @@ export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unkno
 
 /* @internal */
 export const withFiberRuntime = <A, E, R>(
-  withRuntime: (fiber: FiberRuntime.FiberRuntime<E, A>, status: FiberStatus.Running) => Effect.Effect<A, E, R>
+  withRuntime: (fiber: FiberRuntime.FiberRuntime<A, E>, status: FiberStatus.Running) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => {
   internalize(withRuntime)
   const effect = new EffectPrimitive(OpCodes.OP_WITH_RUNTIME) as any
@@ -3058,7 +3058,7 @@ export const mapInputContext = dual<
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const currentSpanFromFiber = <E, A>(fiber: Fiber.RuntimeFiber<E, A>): Option.Option<Tracer.Span> => {
+export const currentSpanFromFiber = <E, A>(fiber: Fiber.RuntimeFiber<A, E>): Option.Option<Tracer.Span> => {
   const span = fiber.getFiberRef(currentContext).unsafeMap.get(internalTracer.spanTag.key) as
     | Tracer.ParentSpan
     | undefined

@@ -48,28 +48,28 @@ export interface Supervisor<out T> extends Supervisor.Variance<T> {
     context: Context.Context<R>,
     effect: Effect.Effect<A, E, R>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
-    fiber: Fiber.RuntimeFiber<E, A>
+    fiber: Fiber.RuntimeFiber<A, E>
   ): void
 
   /**
    * Supervises the end of a `Fiber`.
    */
-  onEnd<A, E>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<E, A>): void
+  onEnd<A, E>(value: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>): void
 
   /**
    * Supervises the execution of an `Effect` by a `Fiber`.
    */
-  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>): void
+  onEffect<E, A>(fiber: Fiber.RuntimeFiber<A, E>, effect: Effect.Effect<any, any, any>): void
 
   /**
    * Supervises the suspension of a computation running within a `Fiber`.
    */
-  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void
+  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<A, E>): void
 
   /**
    * Supervises the resumption of a computation running within a `Fiber`.
    */
-  onResume<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void
+  onResume<E, A>(fiber: Fiber.RuntimeFiber<A, E>): void
 
   /**
    * Maps this supervisor to another one, which has the same effect, but whose
@@ -165,7 +165,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
     _context: Context.Context<R>,
     _effect: Effect.Effect<A, E, R>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
-    _fiber: Fiber.RuntimeFiber<E, A>
+    _fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     //
   }
@@ -175,7 +175,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    */
   onEnd<A, E>(
     _value: Exit.Exit<A, E>,
-    _fiber: Fiber.RuntimeFiber<E, A>
+    _fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     //
   }
@@ -184,7 +184,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    * @since 2.0.0
    */
   onEffect<E, A>(
-    _fiber: Fiber.RuntimeFiber<E, A>,
+    _fiber: Fiber.RuntimeFiber<A, E>,
     _effect: Effect.Effect<any, any, any>
   ): void {
     //
@@ -194,7 +194,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    * @since 2.0.0
    */
   onSuspend<E, A>(
-    _fiber: Fiber.RuntimeFiber<E, A>
+    _fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     //
   }
@@ -203,7 +203,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    * @since 2.0.0
    */
   onResume<E, A>(
-    _fiber: Fiber.RuntimeFiber<E, A>
+    _fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     //
   }
@@ -227,7 +227,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<E, A>): X {
+  onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<A, E>): X {
     return execution()
   }
 

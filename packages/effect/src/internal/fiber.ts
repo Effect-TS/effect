@@ -64,7 +64,7 @@ export const Order: order.Order<Fiber.RuntimeFiber<unknown, unknown>> = pipe(
 export const isFiber = (u: unknown): u is Fiber.Fiber<unknown, unknown> => hasProperty(u, FiberTypeId)
 
 /** @internal */
-export const isRuntimeFiber = <A, E>(self: Fiber.Fiber<A, E>): self is Fiber.RuntimeFiber<E, A> =>
+export const isRuntimeFiber = <A, E>(self: Fiber.Fiber<A, E>): self is Fiber.RuntimeFiber<A, E> =>
   RuntimeFiberTypeId in self
 
 /** @internal */
@@ -87,7 +87,7 @@ export const done = <A, E>(exit: Exit.Exit<A, E>): Fiber.Fiber<A, E> => ({
 })
 
 /** @internal */
-export const dump = <A, E>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<Fiber.Fiber.Dump> =>
+export const dump = <A, E>(self: Fiber.RuntimeFiber<A, E>): Effect.Effect<Fiber.Fiber.Dump> =>
   core.map(self.status, (status) => ({ id: self.id(), status }))
 
 /** @internal */
@@ -194,14 +194,14 @@ export const match = dual<
   <A, E, Z>(
     options: {
       readonly onFiber: (fiber: Fiber.Fiber<A, E>) => Z
-      readonly onRuntimeFiber: (fiber: Fiber.RuntimeFiber<E, A>) => Z
+      readonly onRuntimeFiber: (fiber: Fiber.RuntimeFiber<A, E>) => Z
     }
   ) => (self: Fiber.Fiber<A, E>) => Z,
   <A, E, Z>(
     self: Fiber.Fiber<A, E>,
     options: {
       readonly onFiber: (fiber: Fiber.Fiber<A, E>) => Z
-      readonly onRuntimeFiber: (fiber: Fiber.RuntimeFiber<E, A>) => Z
+      readonly onRuntimeFiber: (fiber: Fiber.RuntimeFiber<A, E>) => Z
     }
   ) => Z
 >(2, (self, { onFiber, onRuntimeFiber }) => {
@@ -300,7 +300,7 @@ const renderStatus = (status: FiberStatus.FiberStatus): string => {
 }
 
 /** @internal */
-export const pretty = <A, E>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<string> =>
+export const pretty = <A, E>(self: Fiber.RuntimeFiber<A, E>): Effect.Effect<string> =>
   core.flatMap(Clock.currentTimeMillis, (now) =>
     core.map(dump(self), (dump) => {
       const time = now - dump.id.startTimeMillis
@@ -329,7 +329,7 @@ export const unsafeRoots = (): Array<Fiber.RuntimeFiber<any, any>> => Array.from
 export const roots: Effect.Effect<Array<Fiber.RuntimeFiber<any, any>>> = core.sync(unsafeRoots)
 
 /** @internal */
-export const status = <A, E>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<FiberStatus.FiberStatus> => self.status
+export const status = <A, E>(self: Fiber.RuntimeFiber<A, E>): Effect.Effect<FiberStatus.FiberStatus> => self.status
 
 /** @internal */
 export const succeed = <A>(value: A): Fiber.Fiber<A> => done(Exit.succeed(value))
