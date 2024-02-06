@@ -786,7 +786,7 @@ describe("Stream", () => {
   it.effect("flattenTake - works with empty streams", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.fromIterable<Take.Take<never, never>>([]),
+        Stream.fromIterable<Take.Take<never>>([]),
         Stream.flattenTake,
         Stream.runCollect
       )
