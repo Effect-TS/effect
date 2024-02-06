@@ -28,7 +28,7 @@ import * as _supervisor from "./supervisor.js"
 
 /** @internal */
 export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
-<E, A>(
+<A, E>(
   self: Effect.Effect<A, E, R>,
   options?: Runtime.RunForkOptions
 ): Fiber.RuntimeFiber<A, E> => {
@@ -122,7 +122,7 @@ export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 }
 
 /** @internal */
-export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>): A => {
+export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): A => {
   const result = unsafeRunSyncExit(runtime)(effect)
   if (result._tag === "Failure") {
     throw fiberFailure(result.i0)
@@ -131,7 +131,7 @@ export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: 
   }
 }
 
-const asyncFiberException = <E, A>(fiber: Fiber.RuntimeFiber<A, E>): Runtime.AsyncFiberException<E, A> => {
+const asyncFiberException = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Runtime.AsyncFiberException<E, A> => {
   const limit = Error.stackTraceLimit
   Error.stackTraceLimit = 0
   const error = (new Error()) as any
@@ -240,7 +240,7 @@ const fastPath = <A, E, R>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> | un
 
 /** @internal */
 export const unsafeRunSyncExit =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
+  <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
     const op = fastPath(effect)
     if (op) {
       return op
@@ -257,7 +257,7 @@ export const unsafeRunSyncExit =
 
 /** @internal */
 export const unsafeRunPromise =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>): Promise<A> =>
+  <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): Promise<A> =>
     unsafeRunPromiseExit(runtime)(effect).then((result) => {
       switch (result._tag) {
         case OpCodes.OP_SUCCESS: {
@@ -271,7 +271,7 @@ export const unsafeRunPromise =
 
 /** @internal */
 export const unsafeRunPromiseExit =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<A, E>> =>
+  <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<A, E>> =>
     new Promise((resolve) => {
       const op = fastPath(effect)
       if (op) {

@@ -59,17 +59,17 @@ export interface Supervisor<out T> extends Supervisor.Variance<T> {
   /**
    * Supervises the execution of an `Effect` by a `Fiber`.
    */
-  onEffect<E, A>(fiber: Fiber.RuntimeFiber<A, E>, effect: Effect.Effect<any, any, any>): void
+  onEffect<A, E>(fiber: Fiber.RuntimeFiber<A, E>, effect: Effect.Effect<any, any, any>): void
 
   /**
    * Supervises the suspension of a computation running within a `Fiber`.
    */
-  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<A, E>): void
+  onSuspend<A, E>(fiber: Fiber.RuntimeFiber<A, E>): void
 
   /**
    * Supervises the resumption of a computation running within a `Fiber`.
    */
-  onResume<E, A>(fiber: Fiber.RuntimeFiber<A, E>): void
+  onResume<A, E>(fiber: Fiber.RuntimeFiber<A, E>): void
 
   /**
    * Maps this supervisor to another one, which has the same effect, but whose
@@ -183,7 +183,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  onEffect<E, A>(
+  onEffect<A, E>(
     _fiber: Fiber.RuntimeFiber<A, E>,
     _effect: Effect.Effect<any, any, any>
   ): void {
@@ -193,7 +193,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  onSuspend<E, A>(
+  onSuspend<A, E>(
     _fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     //
@@ -202,7 +202,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  onResume<E, A>(
+  onResume<A, E>(
     _fiber: Fiber.RuntimeFiber<A, E>
   ): void {
     //

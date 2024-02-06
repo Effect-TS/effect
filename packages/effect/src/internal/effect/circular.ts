@@ -195,7 +195,7 @@ const getCachedValue = <A, E, R>(
   )
 
 /** @internal */
-const invalidateCache = <E, A>(
+const invalidateCache = <A, E>(
   cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<A, E>]>>
 ): Effect.Effect<void> => internalRef.set(cache, Option.none())
 
@@ -287,7 +287,7 @@ export const forkScoped = <A, E, R>(
   fiberRuntime.scopeWith((scope) => forkIn(self, scope))
 
 /** @internal */
-export const fromFiber = <E, A>(fiber: Fiber.Fiber<A, E>): Effect.Effect<A, E> => internalFiber.join(fiber)
+export const fromFiber = <A, E>(fiber: Fiber.Fiber<A, E>): Effect.Effect<A, E> => internalFiber.join(fiber)
 
 /** @internal */
 export const fromFiberEffect = <A, E, R>(fiber: Effect.Effect<Fiber.Fiber<A, E>, E, R>): Effect.Effect<A, E, R> =>
