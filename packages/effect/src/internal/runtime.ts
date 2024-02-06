@@ -31,7 +31,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 <E, A>(
   self: Effect.Effect<A, E, R>,
   options?: Runtime.RunForkOptions
-): Fiber.RuntimeFiber<E, A> => {
+): Fiber.RuntimeFiber<A, E> => {
   const fiberId = FiberId.unsafeMake()
   const fiberRefUpdates: ReadonlyArray.NonEmptyArray<
     readonly [FiberRef.FiberRef<any>, ReadonlyArray.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
@@ -50,7 +50,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
     fiberRefs = options.updateRefs(fiberRefs, fiberId)
   }
 
-  const fiberRuntime: FiberRuntime.FiberRuntime<E, A> = new FiberRuntime.FiberRuntime<E, A>(
+  const fiberRuntime: FiberRuntime.FiberRuntime<A, E> = new FiberRuntime.FiberRuntime<A, E>(
     fiberId,
     fiberRefs,
     runtime.runtimeFlags
@@ -131,7 +131,7 @@ export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: 
   }
 }
 
-const asyncFiberException = <E, A>(fiber: Fiber.RuntimeFiber<E, A>): Runtime.AsyncFiberException<E, A> => {
+const asyncFiberException = <E, A>(fiber: Fiber.RuntimeFiber<A, E>): Runtime.AsyncFiberException<E, A> => {
   const limit = Error.stackTraceLimit
   Error.stackTraceLimit = 0
   const error = (new Error()) as any

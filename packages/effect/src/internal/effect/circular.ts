@@ -260,8 +260,8 @@ export const forkAll: {
 
 /** @internal */
 export const forkIn = dual<
-  (scope: Scope.Scope) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, scope: Scope.Scope) => Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R>
+  (scope: Scope.Scope) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R>,
+  <A, E, R>(self: Effect.Effect<A, E, R>, scope: Scope.Scope) => Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R>
 >(
   2,
   (self, scope) =>
@@ -287,7 +287,7 @@ export const forkIn = dual<
 /** @internal */
 export const forkScoped = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<Fiber.RuntimeFiber<E, A>, never, R | Scope.Scope> =>
+): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R | Scope.Scope> =>
   fiberRuntime.scopeWith((scope) => forkIn(self, scope))
 
 /** @internal */
@@ -378,11 +378,11 @@ export const scheduleForked = dual<
     schedule: Schedule.Schedule<R2, unknown, Out>
   ) => <A, E, R>(
     self: Effect.Effect<A, E, R>
-  ) => Effect.Effect<Fiber.RuntimeFiber<E, Out>, never, R | R2 | Scope.Scope>,
+  ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope.Scope>,
   <A, E, R, R2, Out>(
     self: Effect.Effect<A, E, R>,
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ) => Effect.Effect<Fiber.RuntimeFiber<E, Out>, never, R | R2 | Scope.Scope>
+  ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope.Scope>
 >(2, (self, schedule) => pipe(self, _schedule.schedule_Effect(schedule), forkScoped))
 
 /** @internal */

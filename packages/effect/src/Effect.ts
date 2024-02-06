@@ -2609,7 +2609,7 @@ export const fiberIdWith: <A, E, R>(f: (descriptor: FiberId.Runtime) => Effect<A
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<E, A>, never, R> = fiberRuntime.fork
+export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R> = fiberRuntime.fork
 
 /**
  * Forks the effect into a new fiber attached to the global scope. Because the
@@ -2619,7 +2619,7 @@ export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const forkDaemon: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<E, A>, never, R> =
+export const forkDaemon: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R> =
   fiberRuntime.forkDaemon
 
 /**
@@ -2657,8 +2657,8 @@ export const forkAll: {
  * @category supervision & fibers
  */
 export const forkIn: {
-  (scope: Scope.Scope): <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<E, A>, never, R>
-  <A, E, R>(self: Effect<A, E, R>, scope: Scope.Scope): Effect<Fiber.RuntimeFiber<E, A>, never, R>
+  (scope: Scope.Scope): <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R>
+  <A, E, R>(self: Effect<A, E, R>, scope: Scope.Scope): Effect<Fiber.RuntimeFiber<A, E>, never, R>
 } = circular.forkIn
 
 /**
@@ -2667,7 +2667,7 @@ export const forkIn: {
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const forkScoped: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<E, A>, never, Scope.Scope | R> =
+export const forkScoped: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, Scope.Scope | R> =
   circular.forkScoped
 
 /**
@@ -2679,11 +2679,11 @@ export const forkScoped: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.Runtim
 export const forkWithErrorHandler: {
   <E, X>(
     handler: (e: E) => Effect<X>
-  ): <R, A>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<E, A>, never, R>
+  ): <R, A>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R>
   <R, E, A, X>(
     self: Effect<A, E, R>,
     handler: (e: E) => Effect<X>
-  ): Effect<Fiber.RuntimeFiber<E, A>, never, R>
+  ): Effect<Fiber.RuntimeFiber<A, E>, never, R>
 } = fiberRuntime.forkWithErrorHandler
 
 /**
@@ -4087,11 +4087,11 @@ export const schedule: {
 export const scheduleForked: {
   <R2, Out>(
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Scope.Scope | R2 | R, never, Fiber.RuntimeFiber<E, Out>>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Scope.Scope | R2 | R, never, Fiber.RuntimeFiber<Out, E>>
   <R, E, A, R2, Out>(
     self: Effect<A, E, R>,
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ): Effect<Scope.Scope | R | R2, never, Fiber.RuntimeFiber<E, Out>>
+  ): Effect<Scope.Scope | R | R2, never, Fiber.RuntimeFiber<Out, E>>
 } = circular.scheduleForked
 
 /**
@@ -4706,7 +4706,7 @@ export const makeSemaphore: (permits: number) => Effect<Semaphore> = circular.ma
 export const runFork: <E, A>(
   effect: Effect<A, E>,
   options?: Runtime.RunForkOptions
-) => Fiber.RuntimeFiber<E, A> = _runtime.unsafeForkEffect
+) => Fiber.RuntimeFiber<A, E> = _runtime.unsafeForkEffect
 
 /**
  * @since 2.0.0

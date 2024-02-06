@@ -26,9 +26,9 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @categories models
  */
-export interface FiberSet<E, A> extends Pipeable, Inspectable.Inspectable, Iterable<Fiber.RuntimeFiber<E, A>> {
+export interface FiberSet<E, A> extends Pipeable, Inspectable.Inspectable, Iterable<Fiber.RuntimeFiber<A, E>> {
   readonly [TypeId]: TypeId
-  readonly backing: Set<Fiber.RuntimeFiber<E, A>>
+  readonly backing: Set<Fiber.RuntimeFiber<A, E>>
 }
 
 /**
@@ -103,7 +103,7 @@ export const makeRuntime = <A, E, R>(): Effect.Effect<
   <XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>,
     options?: Runtime.RunForkOptions | undefined
-  ) => Fiber.RuntimeFiber<XE, XA>,
+  ) => Fiber.RuntimeFiber<XA, XE>,
   never,
   Scope.Scope | R
 > =>
@@ -119,15 +119,15 @@ export const makeRuntime = <A, E, R>(): Effect.Effect<
  * @categories combinators
  */
 export const unsafeAdd: {
-  <E, A, XE extends E, XA extends A>(fiber: Fiber.RuntimeFiber<XE, XA>): (self: FiberSet<E, A>) => void
-  <E, A, XE extends E, XA extends A>(self: FiberSet<E, A>, fiber: Fiber.RuntimeFiber<XE, XA>): void
+  <E, A, XE extends E, XA extends A>(fiber: Fiber.RuntimeFiber<XA, XE>): (self: FiberSet<E, A>) => void
+  <E, A, XE extends E, XA extends A>(self: FiberSet<E, A>, fiber: Fiber.RuntimeFiber<XA, XE>): void
 } = dual<
   <E, A, XE extends E, XA extends A>(
-    fiber: Fiber.RuntimeFiber<XE, XA>
+    fiber: Fiber.RuntimeFiber<XA, XE>
   ) => (self: FiberSet<E, A>) => void,
   <E, A, XE extends E, XA extends A>(
     self: FiberSet<E, A>,
-    fiber: Fiber.RuntimeFiber<XE, XA>
+    fiber: Fiber.RuntimeFiber<XA, XE>
   ) => void
 >(2, (self, fiber) => {
   if (self.backing.has(fiber)) {
@@ -147,19 +147,19 @@ export const unsafeAdd: {
  */
 export const add: {
   <E, A, XE extends E, XA extends A>(
-    fiber: Fiber.RuntimeFiber<XE, XA>
+    fiber: Fiber.RuntimeFiber<XA, XE>
   ): (self: FiberSet<E, A>) => Effect.Effect<void>
   <E, A, XE extends E, XA extends A>(
     self: FiberSet<E, A>,
-    fiber: Fiber.RuntimeFiber<XE, XA>
+    fiber: Fiber.RuntimeFiber<XA, XE>
   ): Effect.Effect<void>
 } = dual<
   <E, A, XE extends E, XA extends A>(
-    fiber: Fiber.RuntimeFiber<XE, XA>
+    fiber: Fiber.RuntimeFiber<XA, XE>
   ) => (self: FiberSet<E, A>) => Effect.Effect<void>,
   <E, A, XE extends E, XA extends A>(
     self: FiberSet<E, A>,
-    fiber: Fiber.RuntimeFiber<XE, XA>
+    fiber: Fiber.RuntimeFiber<XA, XE>
   ) => Effect.Effect<void>
 >(2, (self, fiber) => Effect.sync(() => unsafeAdd(self, fiber)))
 
@@ -185,11 +185,11 @@ export const clear = <E, A>(self: FiberSet<E, A>): Effect.Effect<void> =>
 export const run: {
   <E, A>(self: FiberSet<E, A>): <R, XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>
-  ) => Effect.Effect<Fiber.RuntimeFiber<XE, XA>, never, R>
+  ) => Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
   <E, A, R, XE extends E, XA extends A>(
     self: FiberSet<E, A>,
     effect: Effect.Effect<XA, XE, R>
-  ): Effect.Effect<Fiber.RuntimeFiber<XE, XA>, never, R>
+  ): Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
 } = function() {
   const self = arguments[0] as FiberSet<any, any>
   if (arguments.length === 1) {
@@ -238,7 +238,7 @@ export const runtime: <E, A>(
   <XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>,
     options?: Runtime.RunForkOptions | undefined
-  ) => Fiber.RuntimeFiber<XE, XA>,
+  ) => Fiber.RuntimeFiber<XA, XE>,
   never,
   R
 > = <E, A>(self: FiberSet<E, A>) => <R>() =>
