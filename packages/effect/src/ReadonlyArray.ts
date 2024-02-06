@@ -1545,7 +1545,10 @@ export const flatMap: {
     }
     const out: Array<B> = []
     for (let i = 0; i < self.length; i++) {
-      out.push(...f(self[i], i))
+      const inner = f(self[i], i)
+      for (let j = 0; j < inner.length; j++) {
+        out.push(inner[j])
+      }
     }
     return out
   }

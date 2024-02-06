@@ -38,6 +38,10 @@ module.exports = {
     "prefer-destructuring": "off",
     "sort-imports": "off",
     "no-unused-vars": "off",
+    "no-restricted-syntax": ["error", {
+        "selector": "CallExpression[callee.property.name='push'] > SpreadElement.arguments",
+        "message": "Do use spread arguments in Array.push"
+    }],
     "prefer-rest-params": "off",
     "prefer-spread": "off",
     "import/first": "error",

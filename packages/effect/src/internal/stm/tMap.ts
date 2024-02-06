@@ -661,7 +661,9 @@ const toReadonlyArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Rea
     let index = 0
     while (index < capacity) {
       const bucket = buckets.chunk[index]
-      builder.push(...tRef.unsafeGet(bucket, journal))
+      for (const entry of tRef.unsafeGet(bucket, journal)) {
+        builder.push(entry)
+      }
       index = index + 1
     }
     return builder
