@@ -47,7 +47,7 @@ export const fromReadableChannel: <E, A = Uint8Array>(
   evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   chunkSize: number | undefined
-) => Channel<never, unknown, unknown, unknown, E, Chunk<A>, void> = internal.fromReadableChannel
+) => Channel<Chunk<A>, unknown, E, unknown, void, unknown> = internal.fromReadableChannel
 
 /**
  * @category constructors
@@ -57,7 +57,7 @@ export const fromDuplex: <IE, E, I = Uint8Array, O = Uint8Array>(
   evaluate: LazyArg<Duplex>,
   onError: (error: unknown) => E,
   options?: FromReadableOptions & FromWritableOptions
-) => Channel<never, IE, Chunk<I>, unknown, IE | E, Chunk<O>, void> = internal.fromDuplex
+) => Channel<Chunk<O>, Chunk<I>, IE | E, IE, void, unknown> = internal.fromDuplex
 
 /**
  * @category combinators

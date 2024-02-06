@@ -27,4 +27,4 @@ export const fromWritableChannel: <IE, OE, A>(
   writable: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => OE,
   options?: FromWritableOptions
-) => Channel<never, IE, Chunk<A>, unknown, IE | OE, Chunk<never>, void> = internal.fromWritableChannel
+) => Channel<Chunk<never>, Chunk<A>, IE | OE, IE, void, unknown> = internal.fromWritableChannel
