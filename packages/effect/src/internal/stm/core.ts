@@ -468,7 +468,7 @@ export class STMDriver<in out R, out E, out A> {
     return current
   }
 
-  run(): TExit.TExit<E, A> {
+  run(): TExit.TExit<A, E> {
     let curr = this.self as Primitive | Context.Tag<any, any> | Either.Either<any, any> | Option.Option<any> | undefined
     let exit: TExit.TExit<unknown, unknown> | undefined = undefined
     while (exit === undefined && curr !== undefined) {
@@ -573,7 +573,7 @@ export class STMDriver<in out R, out E, out A> {
         curr = die(e) as Primitive
       }
     }
-    return exit as TExit.TExit<E, A>
+    return exit as TExit.TExit<A, E>
   }
 }
 
