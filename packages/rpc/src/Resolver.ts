@@ -18,7 +18,7 @@ export interface RpcResolver<R> extends Resolver.RequestResolver<RpcRequest, R> 
  * @category models
  * @since 1.0.0
  */
-export interface RpcRequest extends Request.Request<RpcError, unknown> {
+export interface RpcRequest extends Request.Request<unknown, RpcError> {
   readonly payload: RpcRequest.Payload
   readonly hash: number
   readonly schema: RpcSchema.Any
