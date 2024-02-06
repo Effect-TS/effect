@@ -127,7 +127,7 @@ export declare namespace Worker {
  * @category models
  */
 export interface WorkerPool<I, E, O> {
-  readonly backing: Pool.Pool<WorkerError, Worker<I, E, O>>
+  readonly backing: Pool.Pool<Worker<I, E, O>, WorkerError>
   readonly broadcast: (message: I) => Effect.Effect<void, E | WorkerError>
   readonly execute: (message: I) => Stream.Stream<O, E | WorkerError>
   readonly executeEffect: (message: I) => Effect.Effect<O, E | WorkerError>
@@ -276,7 +276,7 @@ export declare namespace SerializedWorker {
  * @category models
  */
 export interface SerializedWorkerPool<I extends Schema.TaggedRequest.Any> {
-  readonly backing: Pool.Pool<WorkerError, SerializedWorker<I>>
+  readonly backing: Pool.Pool<SerializedWorker<I>, WorkerError>
   readonly broadcast: <Req extends I>(
     message: Req
   ) => Req extends Serializable.WithResult<infer R, infer _IE, infer E, infer _IA, infer _A>
