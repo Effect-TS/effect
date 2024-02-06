@@ -2693,7 +2693,7 @@ export const forkWithErrorHandler: {
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fromFiber: <E, A>(fiber: Fiber.Fiber<A, E>) => Effect<A, E> = circular.fromFiber
+export const fromFiber: <A, E>(fiber: Fiber.Fiber<A, E>) => Effect<A, E> = circular.fromFiber
 
 /**
  * Creates an `Effect` value that represents the exit value of the specified
@@ -3319,7 +3319,7 @@ export const exit: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E>, n
  * @category conversions
  */
 export const intoDeferred: {
-  <E, A>(deferred: Deferred.Deferred<A, E>): <R>(self: Effect<A, E, R>) => Effect<boolean, never, R>
+  <A, E>(deferred: Deferred.Deferred<A, E>): <R>(self: Effect<A, E, R>) => Effect<boolean, never, R>
   <A, E, R>(self: Effect<A, E, R>, deferred: Deferred.Deferred<A, E>): Effect<boolean, never, R>
 } = core.intoDeferred
 
@@ -4702,7 +4702,7 @@ export const makeSemaphore: (permits: number) => Effect<Semaphore> = circular.ma
  * @since 2.0.0
  * @category execution
  */
-export const runFork: <E, A>(
+export const runFork: <A, E>(
   effect: Effect<A, E>,
   options?: Runtime.RunForkOptions
 ) => Fiber.RuntimeFiber<A, E> = _runtime.unsafeForkEffect
@@ -4711,7 +4711,7 @@ export const runFork: <E, A>(
  * @since 2.0.0
  * @category execution
  */
-export const runCallback: <E, A>(
+export const runCallback: <A, E>(
   effect: Effect<A, E>,
   options?: Runtime.RunCallbackOptions<E, A> | undefined
 ) => Runtime.Cancel<E, A> = _runtime.unsafeRunEffect
@@ -4723,7 +4723,7 @@ export const runCallback: <E, A>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromise: <E, A>(effect: Effect<A, E>) => Promise<A> = _runtime.unsafeRunPromiseEffect
+export const runPromise: <A, E>(effect: Effect<A, E>) => Promise<A> = _runtime.unsafeRunPromiseEffect
 
 /**
  * Runs an `Effect` workflow, returning a `Promise` which resolves with the
@@ -4732,20 +4732,20 @@ export const runPromise: <E, A>(effect: Effect<A, E>) => Promise<A> = _runtime.u
  * @since 2.0.0
  * @category execution
  */
-export const runPromiseExit: <E, A>(effect: Effect<A, E>) => Promise<Exit.Exit<A, E>> =
+export const runPromiseExit: <A, E>(effect: Effect<A, E>) => Promise<Exit.Exit<A, E>> =
   _runtime.unsafeRunPromiseExitEffect
 
 /**
  * @since 2.0.0
  * @category execution
  */
-export const runSync: <E, A>(effect: Effect<A, E>) => A = _runtime.unsafeRunSyncEffect
+export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSyncEffect
 
 /**
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <E, A>(effect: Effect<A, E>) => Exit.Exit<A, E> = _runtime.unsafeRunSyncExitEffect
+export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = _runtime.unsafeRunSyncExitEffect
 
 // -------------------------------------------------------------------------------------
 // zipping

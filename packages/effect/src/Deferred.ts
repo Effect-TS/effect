@@ -37,9 +37,9 @@ export type DeferredTypeId = typeof DeferredTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Deferred<in out A, in out E = never> extends Deferred.Variance<E, A>, Pipeable {
+export interface Deferred<in out A, in out E = never> extends Deferred.Variance<A, E>, Pipeable {
   /** @internal */
-  readonly state: MutableRef.MutableRef<internal.State<E, A>>
+  readonly state: MutableRef.MutableRef<internal.State<A, E>>
   /** @internal */
   readonly blockingOn: FiberId.FiberId
 }
@@ -52,10 +52,10 @@ export declare namespace Deferred {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<in out E, in out A> {
+  export interface Variance<in out A, in out E> {
     readonly [DeferredTypeId]: {
-      readonly _E: Types.Invariant<E>
       readonly _A: Types.Invariant<A>
+      readonly _E: Types.Invariant<E>
     }
   }
 }

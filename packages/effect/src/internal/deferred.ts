@@ -19,28 +19,28 @@ export const deferredVariance = {
 }
 
 /** @internal */
-export type State</* in out */ E, /* in out */ A> = Pending<E, A> | Done<E, A>
+export type State</* in out */ A, /* in out */ E> = Pending<A, E> | Done<A, E>
 
 /** @internal */
-export interface Pending<in E, in A> {
+export interface Pending<in A, in E> {
   readonly _tag: "Pending"
   readonly joiners: Array<(effect: Effect.Effect<A, E>) => void>
 }
 
 /** @internal */
-export interface Done<out E, out A> {
+export interface Done<out A, out E> {
   readonly _tag: "Done"
   readonly effect: Effect.Effect<A, E>
 }
 
 /** @internal */
-export const pending = <E, A>(
+export const pending = <A, E>(
   joiners: Array<(effect: Effect.Effect<A, E>) => void>
-): State<E, A> => {
+): State<A, E> => {
   return { _tag: OpCodes.OP_STATE_PENDING, joiners }
 }
 
 /** @internal */
-export const done = <E, A>(effect: Effect.Effect<A, E>): State<E, A> => {
+export const done = <A, E>(effect: Effect.Effect<A, E>): State<A, E> => {
   return { _tag: OpCodes.OP_STATE_DONE, effect }
 }

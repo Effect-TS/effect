@@ -311,7 +311,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
    * background. This can be called to "kick off" execution of a fiber after
    * it has been created.
    */
-  resume<E, A>(effect: Effect.Effect<any, E, A>): void {
+  resume<A, E>(effect: Effect.Effect<A, E, any>): void {
     this.tell(FiberMessage.resume(effect))
   }
 
