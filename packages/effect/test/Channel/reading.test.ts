@@ -137,7 +137,13 @@ describe("Channel", () => {
   it.effect("read pipelining 2", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<ReadonlyArray<number>>([]))
-      const intProducer: Channel.Channel<number, unknown, never, unknown, void, unknown> = Channel.writeAll(1, 2, 3, 4, 5)
+      const intProducer: Channel.Channel<number, unknown, never, unknown, void, unknown> = Channel.writeAll(
+        1,
+        2,
+        3,
+        4,
+        5
+      )
       const readIntsN = (
         n: number
       ): Channel.Channel<number, number, never, unknown, string, unknown> =>

@@ -104,13 +104,14 @@ export const toChannel = <IE>(
         Effect.fork
       )
 
-      const loop: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, SocketError | IE, unknown, void, unknown> = Channel.flatMap(
-        Queue.take(exitQueue),
-        Exit.match({
-          onFailure: (cause) => Cause.isEmptyType(cause) ? Channel.unit : Channel.failCause(cause),
-          onSuccess: (chunk) => Channel.zipRight(Channel.write(chunk), loop)
-        })
-      )
+      const loop: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, SocketError | IE, unknown, void, unknown> = Channel
+        .flatMap(
+          Queue.take(exitQueue),
+          Exit.match({
+            onFailure: (cause) => Cause.isEmptyType(cause) ? Channel.unit : Channel.failCause(cause),
+            onSuccess: (chunk) => Channel.zipRight(Channel.write(chunk), loop)
+          })
+        )
 
       return Channel.embedInput(loop, input)
     })
@@ -130,7 +131,15 @@ export const toChannelWith = <IE = never>() =>
  * @since 1.0.0
  * @category constructors
  */
-export const makeChannel = <IE = never>(): Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, SocketError | IE, IE, void, unknown, Socket> => Channel.unwrap(Effect.map(Socket, toChannelWith<IE>()))
+export const makeChannel = <IE = never>(): Channel.Channel<
+  Chunk.Chunk<Uint8Array>,
+  Chunk.Chunk<Uint8Array>,
+  SocketError | IE,
+  IE,
+  void,
+  unknown,
+  Socket
+> => Channel.unwrap(Effect.map(Socket, toChannelWith<IE>()))
 
 /**
  * @since 1.0.0

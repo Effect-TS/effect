@@ -220,8 +220,8 @@ export const makeManager = Effect.gen(function*(_) {
               executeRelease
             ),
             ([, queue]) => {
-              const loop: Channel.Channel<Chunk.Chunk<O>, unknown, E | WorkerError, unknown, void, unknown> =
-                Channel.flatMap(
+              const loop: Channel.Channel<Chunk.Chunk<O>, unknown, E | WorkerError, unknown, void, unknown> = Channel
+                .flatMap(
                   Queue.take(queue),
                   Exit.match({
                     onFailure: (cause) => Cause.isEmpty(cause) ? Channel.unit : Channel.failCause(cause),
@@ -282,9 +282,9 @@ export const makeManager = Effect.gen(function*(_) {
         }
 
         return { id, execute, executeEffect }
-      }).pipe(Effect.parallelFinalizers);
+      }).pipe(Effect.parallelFinalizers)
     }
-  });
+  })
 })
 
 /** @internal */

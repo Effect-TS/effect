@@ -172,7 +172,14 @@ export const makeConfig = (
 export const makeChannel = <IE>(
   headers: Record<string, string>,
   bufferSize = 16
-): Channel.Channel<Chunk.Chunk<Multipart.Part>, Chunk.Chunk<Uint8Array>, Multipart.MultipartError | IE, IE, unknown, unknown> =>
+): Channel.Channel<
+  Chunk.Chunk<Multipart.Part>,
+  Chunk.Chunk<Uint8Array>,
+  Multipart.MultipartError | IE,
+  IE,
+  unknown,
+  unknown
+> =>
   Channel.acquireUseRelease(
     Effect.all([
       makeConfig(headers),
@@ -185,7 +192,14 @@ export const makeChannel = <IE>(
 const makeFromQueue = <IE>(
   config: MP.BaseConfig,
   queue: Queue.Queue<Chunk.Chunk<Uint8Array> | null>
-): Channel.Channel<Chunk.Chunk<Multipart.Part>, Chunk.Chunk<Uint8Array>, IE | Multipart.MultipartError, IE, unknown, unknown> =>
+): Channel.Channel<
+  Chunk.Chunk<Multipart.Part>,
+  Chunk.Chunk<Uint8Array>,
+  IE | Multipart.MultipartError,
+  IE,
+  unknown,
+  unknown
+> =>
   Channel.suspend(() => {
     let error = Option.none<Cause.Cause<IE | Multipart.MultipartError>>()
     let partsBuffer: Array<Multipart.Part> = []
@@ -268,7 +282,14 @@ const makeFromQueue = <IE>(
       })
     )
 
-    const partsChannel: Channel.Channel<Chunk.Chunk<Multipart.Part>, unknown, IE | Multipart.MultipartError, unknown, void, unknown> = Channel.suspend(() => {
+    const partsChannel: Channel.Channel<
+      Chunk.Chunk<Multipart.Part>,
+      unknown,
+      IE | Multipart.MultipartError,
+      unknown,
+      void,
+      unknown
+    > = Channel.suspend(() => {
       if (error._tag === "Some") {
         return Channel.failCause(error.value)
       } else if (partsFinished) {
