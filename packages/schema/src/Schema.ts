@@ -3902,10 +3902,10 @@ const eitherParse = <RE, E, RA, A>(
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromSelf = <E, IE, RE, A, IA, RA>(
-  left: Schema<E, IE, RE>,
-  right: Schema<A, IA, RA>
-): Schema<Either.Either<E, A>, Either.Either<IE, IA>, RE | RA> => {
+export const eitherFromSelf = <E, IE, RE, A, IA, RA>({ left, right }: {
+  readonly left: Schema<E, IE, RE>
+  readonly right: Schema<A, IA, RA>
+}): Schema<Either.Either<E, A>, Either.Either<IE, IA>, RE | RA> => {
   return declare(
     [left, right],
     (left, right) => eitherParse(ParseResult.decodeUnknown(left), ParseResult.decodeUnknown(right)),
@@ -3926,13 +3926,13 @@ const makeRightFrom = <A>(right: A) => ({ _tag: "Right", right }) as const
  * @category Either transformations
  * @since 1.0.0
  */
-export const either = <E, IE, R1, A, IA, R2>(
-  left: Schema<E, IE, R1>,
-  right: Schema<A, IA, R2>
-): Schema<Either.Either<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
+export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
+  readonly left: Schema<E, IE, R1>
+  readonly right: Schema<A, IA, R2>
+}): Schema<Either.Either<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
   transform(
     eitherFrom(left, right),
-    eitherFromSelf(to(left), to(right)),
+    eitherFromSelf({ left: to(left), right: to(right) }),
     eitherDecode,
     Either.match({ onLeft: makeLeftFrom, onRight: makeRightFrom })
   )
@@ -3947,17 +3947,17 @@ export const either = <E, IE, R1, A, IA, R2>(
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>(
-  left: Schema<EA, EI, R1>,
-  right: Schema<AA, AI, R2>
-): Schema<Either.Either<EA, AA>, EI | AI, R1 | R2> => {
+export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>({ left, right }: {
+  readonly left: Schema<EA, EI, R1>
+  readonly right: Schema<AA, AI, R2>
+}): Schema<Either.Either<EA, AA>, EI | AI, R1 | R2> => {
   const toleft = to(left)
   const toright = to(right)
   const fromLeft = transform(left, leftFrom(toleft), makeLeftFrom, (l) => l.left)
   const fromRight = transform(right, rightFrom(toright), makeRightFrom, (r) => r.right)
   return transform(
     union(fromRight, fromLeft),
-    eitherFromSelf(toleft, toright),
+    eitherFromSelf({ left: toleft, right: toright }),
     (from) => from._tag === "Left" ? Either.left(from.left) : Either.right(from.right),
     Either.match({ onLeft: makeLeftFrom, onRight: makeRightFrom })
   )

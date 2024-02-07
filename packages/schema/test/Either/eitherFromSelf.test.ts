@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Either/eitherFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.eitherFromSelf(S.string, S.number))
+    Util.roundtrip(S.eitherFromSelf({ left: S.string, right: S.number }))
   })
 
   it("is", () => {
-    const schema = S.eitherFromSelf(S.string, S.number)
+    const schema = S.eitherFromSelf({ left: S.string, right: S.number })
     const is = P.is(schema)
     expect(is(E.left("a"))).toEqual(true)
     expect(is(E.right(1))).toEqual(true)
@@ -24,13 +24,13 @@ describe("Either/eitherFromSelf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.eitherFromSelf(S.string, S.NumberFromString)
+    const schema = S.eitherFromSelf({ left: S.string, right: S.NumberFromString })
     await Util.expectDecodeUnknownSuccess(schema, E.left("a"), E.left("a"))
     await Util.expectDecodeUnknownSuccess(schema, E.right("1"), E.right(1))
   })
 
   it("pretty", () => {
-    const schema = S.eitherFromSelf(S.string, S.number)
+    const schema = S.eitherFromSelf({ left: S.string, right: S.number })
     const pretty = Pretty.make(schema)
     expect(pretty(E.left("a"))).toEqual(`left("a")`)
     expect(pretty(E.right(1))).toEqual("right(1)")
