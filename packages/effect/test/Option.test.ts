@@ -139,6 +139,11 @@ describe("Option", () => {
     expect(pipe(_.none(), _.orElseEither(() => _.none()))).toEqual(_.none())
   })
 
+  it("orElseSome", () => {
+    expect(pipe(_.some(1), _.orElseSome(() => 2))).toEqual(_.some(1))
+    expect(pipe(_.none(), _.orElseSome(() => 2))).toEqual(_.some(2))
+  })
+
   it("getOrThrow", () => {
     expect(pipe(_.some(1), _.getOrThrow)).toEqual(1)
     expect(() => pipe(_.none(), _.getOrThrow)).toThrowError(
