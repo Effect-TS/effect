@@ -116,16 +116,16 @@ export const acquireRelease = <A, E, R, R2, _>(
 
 /** @internal */
 export const aggregate = dual<
-  <R2, E2, A, A2, B>(
+  <B, A, A2, E2, R2>(
     sink: Sink.Sink<B, A | A2, A2, E2, R2>
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<B, E2 | E, R2 | R>,
-  <R, E, R2, E2, A, A2, B>(
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<B, E2 | E, R2 | R>,
+  <A, E, R, B, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>
   ) => Stream.Stream<B, E2 | E, R2 | R>
 >(
   2,
-  <R, E, R2, E2, A, A2, B>(
+  <A, E, R, B, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>
   ): Stream.Stream<B, E2 | E, R2 | R> => aggregateWithin(self, sink, Schedule.forever)
@@ -133,18 +133,18 @@ export const aggregate = dual<
 
 /** @internal */
 export const aggregateWithin = dual<
-  <R2, E2, A, A2, R3, B, C>(
+  <B, A, A2, E2, R2, R3, C>(
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
   ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<B, E2 | E, R2 | R3 | R>,
-  <A, E, R, R2, E2, A2, B, R3, C>(
+  <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
   ) => Stream.Stream<B, E2 | E, R2 | R3 | R>
 >(
   3,
-  <A, E, R, R2, E2, A2, B, R3, C>(
+  <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
@@ -161,18 +161,18 @@ export const aggregateWithin = dual<
 
 /** @internal */
 export const aggregateWithinEither = dual<
-  <R2, E2, A, A2, B, R3, C>(
+  <B, A, A2, E2, R2, R3, C>(
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R>,
-  <R, E, R2, E2, A, A2, B, R3, C>(
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R>,
+  <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
   ) => Stream.Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R>
 >(
   3,
-  <R, E, R2, E2, A, A2, B, R3, C>(
+  <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
@@ -4250,19 +4250,19 @@ export const paginateEffect = <S, R, E, A>(
 
 /** @internal */
 export const peel = dual<
-  <R2, E2, A, Z>(
-    sink: Sink.Sink<Z, A, A, E2, R2>
-  ) => <R, E>(
+  <A2, A, E2, R2>(
+    sink: Sink.Sink<A2, A, A, E2, R2>
+  ) => <E, R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<[Z, Stream.Stream<A, E>], E2 | E, Scope.Scope | R2 | R>,
-  <R, E, R2, E2, A, Z>(
+  ) => Effect.Effect<[A2, Stream.Stream<A, E>], E2 | E, Scope.Scope | R2 | R>,
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    sink: Sink.Sink<Z, A, A, E2, R2>
-  ) => Effect.Effect<[Z, Stream.Stream<A, E>], E2 | E, Scope.Scope | R2 | R>
->(2, <R, E, R2, E2, A, Z>(
+    sink: Sink.Sink<A2, A, A, E2, R2>
+  ) => Effect.Effect<[A2, Stream.Stream<A, E>], E2 | E, Scope.Scope | R2 | R>
+>(2, <A, E, R, A2, E2, R2>(
   self: Stream.Stream<A, E, R>,
-  sink: Sink.Sink<Z, A, A, E2, R2>
-): Effect.Effect<[Z, Stream.Stream<A, E>], E2 | E, Scope.Scope | R2 | R> => {
+  sink: Sink.Sink<A2, A, A, E2, R2>
+): Effect.Effect<[A2, Stream.Stream<A, E>], E2 | E, Scope.Scope | R2 | R> => {
   type Signal = Emit | Halt | End
   const OP_EMIT = "Emit" as const
   type OP_EMIT = typeof OP_EMIT
@@ -4282,7 +4282,7 @@ export const peel = dual<
     readonly _tag: OP_END
   }
   return pipe(
-    Deferred.make<Z, E | E2>(),
+    Deferred.make<A2, E | E2>(),
     Effect.flatMap((deferred) =>
       pipe(
         Handoff.make<Signal>(),
@@ -4353,7 +4353,7 @@ export const peel = dual<
             run(consumer),
             Effect.forkScoped,
             Effect.zipRight(Deferred.await(deferred)),
-            Effect.map((z) => [z, new StreamImpl(producer)] as [Z, StreamImpl<A, E>])
+            Effect.map((z) => [z, new StreamImpl(producer)] as [A2, StreamImpl<A, E>])
           )
         })
       )
@@ -4495,18 +4495,18 @@ export const partitionEither = dual<
 
 /** @internal */
 export const pipeThrough = dual<
-  <R2, E2, A, L, Z>(
-    sink: Sink.Sink<Z, A, L, E2, R2>
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<L, E2 | E, R2 | R>,
-  <R, E, R2, E2, A, L, Z>(
+  <A2, A, L, E2, R2>(
+    sink: Sink.Sink<A2, A, L, E2, R2>
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<L, E2 | E, R2 | R>,
+  <A, E, R, A2, L, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    sink: Sink.Sink<Z, A, L, E2, R2>
+    sink: Sink.Sink<A2, A, L, E2, R2>
   ) => Stream.Stream<L, E2 | E, R2 | R>
 >(
   2,
-  <R, E, R2, E2, A, L, Z>(
+  <A, E, R, A2, L, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    sink: Sink.Sink<Z, A, L, E2, R2>
+    sink: Sink.Sink<A2, A, L, E2, R2>
   ): Stream.Stream<L, E2 | E, R2 | R> =>
     new StreamImpl(pipe(toChannel(self), channel.pipeToOrFail(_sink.toChannel(sink))))
 )
@@ -5128,17 +5128,17 @@ export const retry = dual<
 
 /** @internal */
 export const run = dual<
-  <R2, E2, A, Z>(
-    sink: Sink.Sink<Z, A, unknown, E2, R2>
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => Effect.Effect<Z, E2 | E, R2 | R>,
-  <R, E, R2, E2, A, Z>(
+  <A2, A, E2, R2>(
+    sink: Sink.Sink<A2, A, unknown, E2, R2>
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<A2, E2 | E, R2 | R>,
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    sink: Sink.Sink<Z, A, unknown, E2, R2>
-  ) => Effect.Effect<Z, E2 | E, R2 | R>
->(2, <R, E, R2, E2, A, Z>(
+    sink: Sink.Sink<A2, A, unknown, E2, R2>
+  ) => Effect.Effect<A2, E2 | E, R2 | R>
+>(2, <A, E, R, A2, E2, R2>(
   self: Stream.Stream<A, E, R>,
-  sink: Sink.Sink<Z, A, unknown, E2, R2>
-): Effect.Effect<Z, E2 | E, R2 | R> =>
+  sink: Sink.Sink<A2, A, unknown, E2, R2>
+): Effect.Effect<A2, E2 | E, R2 | R> =>
   pipe(toChannel(self), channel.pipeToOrFail(_sink.toChannel(sink)), channel.runDrain))
 
 /** @internal */
@@ -5469,14 +5469,14 @@ export const runLast = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Op
 
 /** @internal */
 export const runScoped = dual<
-  <R2, E2, A, A2>(
+  <A2, A, E2, R2>(
     sink: Sink.Sink<A2, A, unknown, E2, R2>
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => Effect.Effect<A2, E | E2, R | R2 | Scope.Scope>,
-  <R, E, R2, E2, A, A2>(
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<A2, E | E2, R | R2 | Scope.Scope>,
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<A2, A, unknown, E2, R2>
   ) => Effect.Effect<A2, E | E2, R | R2 | Scope.Scope>
->(2, <R, E, R2, E2, A, A2>(
+>(2, <A, E, R, A2, E2, R2>(
   self: Stream.Stream<A, E, R>,
   sink: Sink.Sink<A2, A, unknown, E2, R2>
 ): Effect.Effect<A2, E | E2, R | R2 | Scope.Scope> =>
@@ -6208,16 +6208,16 @@ export const tapErrorCause: {
 
 /** @internal */
 export const tapSink = dual<
-  <R2, E2, A>(
+  <A, E2, R2>(
     sink: Sink.Sink<unknown, A, unknown, E2, R2>
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>,
-  <R, E, R2, E2, A>(
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>,
+  <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<unknown, A, unknown, E2, R2>
   ) => Stream.Stream<A, E2 | E, R2 | R>
 >(
   2,
-  <R, E, R2, E2, A>(
+  <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<unknown, A, unknown, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2> =>
@@ -6697,19 +6697,19 @@ export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
 
 /** @internal */
 export const transduce = dual<
-  <R2, E2, A, Z>(
-    sink: Sink.Sink<Z, A, A, E2, R2>
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<Z, E2 | E, R2 | R>,
-  <R, E, R2, E2, A, Z>(
+  <A2, A, E2, R2>(
+    sink: Sink.Sink<A2, A, A, E2, R2>
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>,
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    sink: Sink.Sink<Z, A, A, E2, R2>
-  ) => Stream.Stream<Z, E2 | E, R2 | R>
+    sink: Sink.Sink<A2, A, A, E2, R2>
+  ) => Stream.Stream<A2, E2 | E, R2 | R>
 >(
   2,
-  <R, E, R2, E2, A, Z>(
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    sink: Sink.Sink<Z, A, A, E2, R2>
-  ): Stream.Stream<Z, E2 | E, R2 | R> => {
+    sink: Sink.Sink<A2, A, A, E2, R2>
+  ): Stream.Stream<A2, E2 | E, R2 | R> => {
     const newChannel = core.suspend(() => {
       const leftovers = { ref: Chunk.empty<Chunk.Chunk<A>>() }
       const upstreamDone = { ref: false }
@@ -6745,7 +6745,7 @@ export const transduce = dual<
               core.succeedNow(done)
             )
         })
-      const transducer: Channel.Channel<Chunk.Chunk<Z>, Chunk.Chunk<A>, E | E2, never, void, unknown, R | R2> = pipe(
+      const transducer: Channel.Channel<Chunk.Chunk<A2>, Chunk.Chunk<A>, E | E2, never, void, unknown, R | R2> = pipe(
         sink,
         _sink.toChannel,
         core.collectElements,
