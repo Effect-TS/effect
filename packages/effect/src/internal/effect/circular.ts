@@ -35,7 +35,7 @@ import * as supervisor from "../supervisor.js"
 
 /** @internal */
 class Semaphore {
-  public waiters = new Array<() => void>()
+  public waiters = new Set<() => boolean>()
   public taken = 0
 
   constructor(readonly permits: number) {}
@@ -48,35 +48,39 @@ class Semaphore {
     core.asyncEither<never, never, number>((resume) => {
       if (this.free < n) {
         const observer = () => {
-          if (this.free >= n) {
-            const observerIndex = this.waiters.findIndex((cb) => cb === observer)
-            if (observerIndex !== -1) {
-              this.waiters.splice(observerIndex, 1)
-            }
-            this.taken += n
-            resume(core.succeed(n))
+          if (this.free < n) {
+            return false
           }
+          this.waiters.delete(observer)
+          this.taken += n
+          resume(core.succeed(n))
+          return true
         }
-        this.waiters.push(observer)
+        this.waiters.add(observer)
         return Either.left(core.sync(() => {
-          const observerIndex = this.waiters.findIndex((cb) => cb === observer)
-          if (observerIndex !== -1) {
-            this.waiters.splice(observerIndex, 1)
-          }
+          this.waiters.delete(observer)
         }))
       }
       this.taken += n
       return Either.right(core.succeed(n))
     })
 
-  readonly release = (n: number): Effect.Effect<never, never, void> =>
+  readonly updateTaken = (f: (n: number) => number): Effect.Effect<never, never, void> =>
     core.withFiberRuntime<never, never, void>((fiber) => {
-      this.taken -= n
+      this.taken = f(this.taken)
       fiber.getFiberRef(currentScheduler).scheduleTask(() => {
-        this.waiters.forEach((wake) => wake())
+        const iter = this.waiters.values()
+        let item = iter.next()
+        while (item.done === false && item.value() === true) {
+          item = iter.next()
+        }
       }, fiber.getFiberRef(core.currentSchedulingPriority))
       return core.unit
     })
+
+  readonly release = (n: number): Effect.Effect<never, never, void> => this.updateTaken((taken) => taken - n)
+
+  readonly releaseAll: Effect.Effect<never, never, void> = this.updateTaken((_) => 0)
 
   readonly withPermits = (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) =>
     core.uninterruptibleMask((restore) =>

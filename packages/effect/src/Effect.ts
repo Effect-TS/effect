@@ -4689,6 +4689,7 @@ export interface Semaphore {
   withPermits(permits: number): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   take(permits: number): Effect<never, never, number>
   release(permits: number): Effect<never, never, void>
+  releaseAll: Effect<never, never, void>
 }
 
 /**
