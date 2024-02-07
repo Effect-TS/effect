@@ -1680,7 +1680,7 @@ export const debounce = dual<
                   )
               })
             const consumer = (
-              state: DebounceState.DebounceState<E, A>
+              state: DebounceState.DebounceState<A, E>
             ): Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, unknown, unknown> => {
               switch (state._tag) {
                 case DebounceState.OP_NOT_STARTED: {
@@ -4725,13 +4725,13 @@ export const rechunk = dual<
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, n: number): Stream.Stream<A, E, R> =>
   suspend(() => {
     const target = Math.max(n, 1)
-    const process = rechunkProcess<E, A>(new StreamRechunker(target), target)
+    const process = rechunkProcess(new StreamRechunker(target), target)
     return new StreamImpl(pipe(toChannel(self), core.pipeTo(process)))
   }))
 
 /** @internal */
-const rechunkProcess = <E, A>(
-  rechunker: StreamRechunker<E, A>,
+const rechunkProcess = <A, E>(
+  rechunker: StreamRechunker<A, E>,
   target: number
 ): Channel.Channel<Chunk.Chunk<A>, Chunk.Chunk<A>, E, E, unknown, unknown> =>
   core.readWithCause({
@@ -4767,8 +4767,7 @@ const rechunkProcess = <E, A>(
     onDone: () => rechunker.emitIfNotEmpty()
   })
 
-/** @internal */
-class StreamRechunker<in out E, out A> {
+class StreamRechunker<out A, in out E> {
   private builder: Array<A> = []
   private pos = 0
 
@@ -6656,7 +6655,7 @@ export const toQueueOfElements = dual<
   ))
 
 /** @internal */
-export const toReadableStream = <E, A>(source: Stream.Stream<A, E>) => {
+export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
   let pull: Effect.Effect<void>
   let scope: Scope.CloseableScope
   return new ReadableStream<A>({
