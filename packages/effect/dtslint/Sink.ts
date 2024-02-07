@@ -9,11 +9,11 @@ declare const predicate: Predicate<number | string>
 // collectAllWhile
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Sink<never, never, string | number, string | number, Chunk<string | number>>
+// $ExpectType Sink<Chunk<string | number>, string | number, string | number, never, never>
 Sink.collectAllWhile(predicate)
 
-// $ExpectType Sink<never, never, unknown, unknown, Chunk<number>>
+// $ExpectType Sink<Chunk<number>, unknown, unknown, never, never>
 Sink.collectAllWhile(isNumber)
 
-// $ExpectType Sink<never, never, unknown, unknown, Chunk<string>>
+// $ExpectType Sink<Chunk<string>, unknown, unknown, never, never>
 Sink.collectAllWhile(isString)
