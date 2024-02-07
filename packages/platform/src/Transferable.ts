@@ -36,8 +36,10 @@ export class Collector extends Context.Tag("@effect/platform/Transferable/Collec
  */
 export const unsafeMakeCollector = (): CollectorService => {
   const tranferables: Array<globalThis.Transferable> = []
-  const unsafeAddAll = (transferables: Iterable<globalThis.Transferable>): void => {
-    tranferables.push(...transferables)
+  const unsafeAddAll = (transfers: Iterable<globalThis.Transferable>): void => {
+    for (const transfer of transfers) {
+      tranferables.push(transfer)
+    }
   }
   const unsafeRead = (): ReadonlyArray<globalThis.Transferable> => tranferables
   const unsafeClear = (): void => {
