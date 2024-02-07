@@ -4555,7 +4555,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
+export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Schema<Self, I, R> {
   new(
     ...args: [R] extends [never] ? [
         props: Equals<C, {}> extends true ? void | {} : C,
@@ -4565,7 +4565,7 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
         props: Equals<C, {}> extends true ? void | {} : C,
         disableValidation: true
       ]
-  ): A & Omit<Inherited, keyof A>
+  ): A & Omit<Inherited, keyof A> & Proto
 
   readonly struct: Schema<A, I, R>
 
@@ -4578,7 +4578,8 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
       R | Schema.Context<FieldsB[keyof FieldsB]>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Extended,
-      Self
+      Self,
+      Proto
     >
 
   readonly transformOrFail: <Transformed>() => <
@@ -4604,7 +4605,8 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
       R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
-      Self
+      Self,
+      Proto
     >
 
   readonly transformOrFailFrom: <Transformed>() => <
@@ -4630,7 +4632,8 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
       R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
-      Self
+      Self,
+      Proto
     >
 }
 
@@ -4647,8 +4650,7 @@ export const Class = <Self>() =>
     Simplify<FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
-    Self,
-    {}
+    Self
   > => makeClass(struct(fields), fields, Data.Class)
 
 /**
@@ -4665,8 +4667,7 @@ export const TaggedClass = <Self>() =>
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
-    Self,
-    {}
+    Self
   > =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
@@ -4688,7 +4689,8 @@ export const TaggedError = <Self>() =>
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
-    Effect.Effect<never, Self, never> & globalThis.Error
+    {},
+    Cause.YieldableError
   > =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
