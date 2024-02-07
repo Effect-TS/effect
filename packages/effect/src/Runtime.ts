@@ -224,3 +224,30 @@ export const isFiberFailure: (u: unknown) => u is FiberFailure = internal.isFibe
  * @category constructors
  */
 export const makeFiberFailure: <E>(cause: Cause<E>) => FiberFailure = internal.fiberFailure
+
+/**
+ * @since 2.0.0
+ * @category runtime flags
+ */
+export const updateRuntimeFlags: {
+  (f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): <R>(self: Runtime<R>) => Runtime<R>
+  <R>(self: Runtime<R>, f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): Runtime<R>
+} = internal.updateRuntimeFlags
+
+/**
+ * @since 2.0.0
+ * @category runtime flags
+ */
+export const enableRuntimeFlag: {
+  (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
+  <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
+} = internal.enableRuntimeFlag
+
+/**
+ * @since 2.0.0
+ * @category runtime flags
+ */
+export const disableRuntimeFlag: {
+  (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
+  <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
+} = internal.disableRuntimeFlag
