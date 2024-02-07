@@ -348,6 +348,42 @@ export const orElse: {
 )
 
 /**
+ * Returns the provided default value as `Some` if `self` is `None`, otherwise returns `self`.
+ *
+ * @param self - The first `Option` to be checked.
+ * @param onNone - Function that returns the default value to return if the `Option` is `None`.
+ *
+ * @example
+ * import * as O from "effect/Option"
+ * import { pipe } from "effect/Function"
+ *
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     O.none(),
+ *     O.orElseSome(() => 'b')
+ *   ),
+ *   O.some('b')
+ * )
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     O.some('a'),
+ *     O.orElseSome(() => 'b')
+ *   ),
+ *   O.some('a')
+ * )
+ *
+ * @category error handling
+ * @since 2.0.0
+ */
+export const orElseSome: {
+  <B>(onNone: LazyArg<B>): <A>(self: Option<A>) => Option<B | A>
+  <A, B>(self: Option<A>, onNone: LazyArg<B>): Option<A | B>
+} = dual(
+  2,
+  <A, B>(self: Option<A>, onNone: LazyArg<B>): Option<A | B> => isNone(self) ? some(onNone()) : self
+)
+
+/**
  * Similar to `orElse`, but instead of returning a simple union, it returns an `Either` object,
  * which contains information about which of the two `Option`s has been chosen.
  *
