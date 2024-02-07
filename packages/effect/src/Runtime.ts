@@ -251,3 +251,32 @@ export const disableRuntimeFlag: {
   (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
   <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
 } = internal.disableRuntimeFlag
+
+/**
+ * @since 2.0.0
+ * @category context
+ */
+export const updateContext: {
+  <R, R2>(f: (context: Context.Context<R>) => Context.Context<R2>): (self: Runtime<R>) => Runtime<R2>
+  <R, R2>(self: Runtime<R>, f: (context: Context.Context<R>) => Context.Context<R2>): Runtime<R2>
+} = internal.updateContext
+
+/**
+ * @since 2.0.0
+ * @category context
+ * @example
+ * import { Context, Runtime } from "effect"
+ *
+ * interface Name {
+ *   readonly _: unique symbol
+ * }
+ * const Name = Context.Tag<Name, string>("Name")
+ *
+ * const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
+ *   Runtime.provideService(Name, "John")
+ * )
+ */
+export const provideService: {
+  <I, S>(tag: Context.Tag<I, S>, service: S): <R>(self: Runtime<R>) => Runtime<I | R>
+  <R, I, S>(self: Runtime<R>, tag: Context.Tag<I, S>, service: S): Runtime<R | I>
+} = internal.provideService

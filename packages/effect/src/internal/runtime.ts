@@ -366,6 +366,30 @@ export const enableRuntimeFlag: {
 )
 
 /** @internal */
+export const updateContext: {
+  <R, R2>(f: (context: Context.Context<R>) => Context.Context<R2>): (self: Runtime.Runtime<R>) => Runtime.Runtime<R2>
+  <R, R2>(self: Runtime.Runtime<R>, f: (context: Context.Context<R>) => Context.Context<R2>): Runtime.Runtime<R2>
+} = dual(
+  2,
+  <R, R2>(self: Runtime.Runtime<R>, f: (context: Context.Context<R>) => Context.Context<R2>) =>
+    make({
+      context: f(self.context),
+      runtimeFlags: self.runtimeFlags,
+      fiberRefs: self.fiberRefs
+    })
+)
+
+/** @internal */
+export const provideService: {
+  <I, S>(tag: Context.Tag<I, S>, service: S): <R>(self: Runtime.Runtime<R>) => Runtime.Runtime<R | I>
+  <R, I, S>(self: Runtime.Runtime<R>, tag: Context.Tag<I, S>, service: S): Runtime.Runtime<R | I>
+} = dual(
+  3,
+  <R, I, S>(self: Runtime.Runtime<R>, tag: Context.Tag<I, S>, service: S) =>
+    updateContext(self, Context.add(tag, service))
+)
+
+/** @internal */
 export const unsafeRunEffect = unsafeRunCallback(defaultRuntime)
 
 /** @internal */
