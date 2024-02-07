@@ -106,7 +106,9 @@ export const make = <I, R, E, O>(
               return Effect.flatMap(
                 Effect.forEach(data, (data) => {
                   if (options?.transfers) {
-                    transfers.push(...options.transfers(data))
+                    for (const option of options.transfers(data)) {
+                      transfers.push(option)
+                    }
                   }
                   return Effect.orDie(options.encodeOutput!(req[2], data))
                 }),
