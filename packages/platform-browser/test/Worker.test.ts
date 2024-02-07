@@ -1,4 +1,4 @@
-import * as BrowerWorker from "@effect/platform-browser/BrowserWorker"
+import * as BrowserWorker from "@effect/platform-browser/BrowserWorker"
 import * as EffectWorker from "@effect/platform/Worker"
 import "@vitest/web-worker"
 import { Chunk, Effect, Option, Stream } from "effect"
@@ -19,7 +19,7 @@ describe.sequential("Worker", () => {
       assert.strictEqual(items.length, 100)
     }).pipe(
       Effect.scoped,
-      Effect.provide(BrowerWorker.layerManager),
+      Effect.provide(BrowserWorker.layerManager),
       Effect.runPromise
     ))
 
@@ -36,7 +36,7 @@ describe.sequential("Worker", () => {
       ])
     }).pipe(
       Effect.scoped,
-      Effect.provide(BrowerWorker.layerManager),
+      Effect.provide(BrowserWorker.layerManager),
       Effect.runPromise
     ))
 
@@ -57,7 +57,7 @@ describe.sequential("Worker", () => {
       ])
     }).pipe(
       Effect.scoped,
-      Effect.provide(BrowerWorker.layerManager),
+      Effect.provide(BrowserWorker.layerManager),
       Effect.runPromise
     ))
 
@@ -79,7 +79,7 @@ describe.sequential("Worker", () => {
     }).pipe(
       Effect.withSpan("test"),
       Effect.scoped,
-      Effect.provide(BrowerWorker.layerManager),
+      Effect.provide(BrowserWorker.layerManager),
       Effect.runPromise
     ))
 
@@ -93,7 +93,7 @@ describe.sequential("Worker", () => {
       assert.strictEqual(items.length, 100)
     }).pipe(
       Effect.scoped,
-      Effect.provide(BrowerWorker.layerManager),
+      Effect.provide(BrowserWorker.layerManager),
       Effect.runPromise
     ))
 
