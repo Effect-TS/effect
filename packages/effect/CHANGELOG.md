@@ -1,5 +1,43 @@
 # effect
 
+## 2.2.4
+
+### Patch Changes
+
+- [#2067](https://github.com/Effect-TS/effect/pull/2067) [`d0b911c`](https://github.com/Effect-TS/effect/commit/d0b911c75f284c7aa87f25aa96926e6bde7690d0) Thanks [@tim-smart](https://github.com/tim-smart)! - add releaseAll api to Semaphore
+
+  You can use `semphore.releaseAll` to atomically release all the permits of a
+  Semaphore.
+
+- [#2071](https://github.com/Effect-TS/effect/pull/2071) [`330e1a4`](https://github.com/Effect-TS/effect/commit/330e1a4e2c1fc0af6c80c80c81dd38c3e50fab78) Thanks [@tim-smart](https://github.com/tim-smart)! - add Option.orElseSome
+
+  Allows you to specify a default value for an Option, similar to
+  Option.getOrElse, except the return value is still an Option.
+
+  ```ts
+  import * as O from "effect/Option";
+  import { pipe } from "effect/Function";
+
+  assert.deepStrictEqual(
+    pipe(
+      O.none(),
+      O.orElseSome(() => "b"),
+    ),
+    O.some("b"),
+  );
+  assert.deepStrictEqual(
+    pipe(
+      O.some("a"),
+      O.orElseSome(() => "b"),
+    ),
+    O.some("a"),
+  );
+  ```
+
+- [#2057](https://github.com/Effect-TS/effect/pull/2057) [`6928a2b`](https://github.com/Effect-TS/effect/commit/6928a2b0bae86a4bdfbece0aa32924207c2d5a70) Thanks [@joepjoosten](https://github.com/joepjoosten)! - Fix for possible stack overflow errors when using Array.push with spread operator arguments
+
+- [#2033](https://github.com/Effect-TS/effect/pull/2033) [`296bc1c`](https://github.com/Effect-TS/effect/commit/296bc1c9d24986d299d2669115d584cb27b73c60) Thanks [@rehos](https://github.com/rehos)! - Add toJSON for Secret
+
 ## 2.2.3
 
 ### Patch Changes
