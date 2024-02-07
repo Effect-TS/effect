@@ -17,7 +17,7 @@ export const STMStateTypeId = Symbol.for(STMStateSymbolKey)
 export type STMStateTypeId = typeof STMStateTypeId
 
 /** @internal */
-export type STMState<A, E> = Done<A, E> | Interrupted | Running
+export type STMState<A, E = never> = Done<A, E> | Interrupted | Running
 
 /** @internal */
 export interface Done<out A, out E = never> extends Equal.Equal {
@@ -76,7 +76,7 @@ export const done = <A, E>(exit: Exit.Exit<A, E>): STMState<A, E> => {
 }
 
 /** @internal */
-export const interrupted: STMState<never, never> = {
+export const interrupted: STMState<never> = {
   [STMStateTypeId]: STMStateTypeId,
   _tag: OpCodes.OP_INTERRUPTED,
   [Hash.symbol](): number {
@@ -92,7 +92,7 @@ export const interrupted: STMState<never, never> = {
 }
 
 /** @internal */
-export const running: STMState<never, never> = {
+export const running: STMState<never> = {
   [STMStateTypeId]: STMStateTypeId,
   _tag: OpCodes.OP_RUNNING,
   [Hash.symbol](): number {

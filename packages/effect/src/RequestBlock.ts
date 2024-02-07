@@ -30,7 +30,7 @@ export declare namespace RequestBlock {
     emptyCase(): Z
     parCase(left: Z, right: Z): Z
     singleCase(
-      dataSource: RequestResolver.RequestResolver<unknown, never>,
+      dataSource: RequestResolver.RequestResolver<unknown>,
       blockedRequest: Request.Entry<unknown>
     ): Z
     seqCase(left: Z, right: Z): Z
@@ -71,7 +71,7 @@ export interface Seq {
  */
 export interface Single {
   readonly _tag: "Single"
-  readonly dataSource: RequestResolver.RequestResolver<unknown, never>
+  readonly dataSource: RequestResolver.RequestResolver<unknown>
   readonly blockedRequest: Request.Entry<unknown>
 }
 
@@ -80,7 +80,7 @@ export interface Single {
  * @category constructors
  */
 export const single: <A>(
-  dataSource: RequestResolver.RequestResolver<A, never>,
+  dataSource: RequestResolver.RequestResolver<A>,
   blockedRequest: Request.Entry<A>
 ) => RequestBlock = _RequestBlock.single
 

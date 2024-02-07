@@ -3,7 +3,7 @@ import * as OpCodes from "../opCodes/tryCommit.js"
 import type * as Journal from "./journal.js"
 
 /** @internal */
-export type TryCommit<A, E> = Done<A, E> | Suspend
+export type TryCommit<A, E = never> = Done<A, E> | Suspend
 
 /** @internal */
 export interface Done<out A, out E> {
@@ -26,7 +26,7 @@ export const done = <A, E>(exit: Exit.Exit<A, E>): TryCommit<A, E> => {
 }
 
 /** @internal */
-export const suspend = (journal: Journal.Journal): TryCommit<never, never> => {
+export const suspend = (journal: Journal.Journal): TryCommit<never> => {
   return {
     _tag: OpCodes.OP_SUSPEND,
     journal

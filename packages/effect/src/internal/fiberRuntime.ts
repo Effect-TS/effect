@@ -1154,7 +1154,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
       const patchFlags = _runtimeFlags.diff(snap.flags, flags)
       return core.exitSucceed(core.blocked(
         op.i0,
-        core.withFiberRuntime((newFiber) => {
+        core.withFiberRuntime<unknown, unknown>((newFiber) => {
           while (frames.length > 0) {
             newFiber.pushStack(frames.pop()!)
           }
@@ -3341,7 +3341,7 @@ export const invokeWithInterrupt: <A, E, R>(
       core.flatMap(
         forkDaemon(core.interruptible(self)),
         (processing) =>
-          core.async<void, E, never>((cb) => {
+          core.async<void, E>((cb) => {
             const counts = entries.map((_) => _.listeners.count)
             const checkDone = () => {
               if (counts.every((count) => count === 0)) {
