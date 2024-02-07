@@ -1,18 +1,20 @@
-import type { Worker } from "@effect/platform"
+import { Worker } from "@effect/platform"
 import { NodeRuntime, NodeWorker } from "@effect/platform-node"
-import { Console, Context, Effect, Stream } from "effect"
+import { Console, Context, Effect, Layer, Stream } from "effect"
 import * as WT from "node:worker_threads"
 
 interface MyWorkerPool {
   readonly _: unique symbol
 }
 const Pool = Context.GenericTag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
-const PoolLive = NodeWorker.makePoolLayer(Pool, {
+const PoolLive = Worker.makePoolLayer(Pool, {
   spawn: () => new WT.Worker("./examples/worker/range.ts"),
   minSize: 0,
   maxSize: 3,
   timeToLive: 30000
-})
+}).pipe(
+  Layer.provide(NodeWorker.layerManager)
+)
 
 Effect.gen(function*(_) {
   const pool = yield* _(Pool)

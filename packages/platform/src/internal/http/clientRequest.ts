@@ -398,16 +398,16 @@ export const streamBody = dual<
   (
     body: Stream.Stream<Uint8Array, unknown>,
     options?: {
-      readonly contentType?: string
-      readonly contentLength?: number
+      readonly contentType?: string | undefined
+      readonly contentLength?: number | undefined
     }
   ) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (
     self: ClientRequest.ClientRequest,
     body: Stream.Stream<Uint8Array, unknown>,
     options?: {
-      readonly contentType?: string
-      readonly contentLength?: number
+      readonly contentType?: string | undefined
+      readonly contentLength?: number | undefined
     }
   ) => ClientRequest.ClientRequest
 >(

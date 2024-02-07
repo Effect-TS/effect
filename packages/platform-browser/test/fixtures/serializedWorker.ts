@@ -1,4 +1,5 @@
-import * as Runner from "@effect/platform-browser/WorkerRunner"
+import * as BrowserRunner from "@effect/platform-browser/BrowserWorkerRunner"
+import * as Runner from "@effect/platform/WorkerRunner"
 import { Context, Effect, Layer, Option, Stream } from "effect"
 import { Person, User, WorkerMessage } from "./schema.js"
 
@@ -30,7 +31,7 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
     }).pipe(Effect.withSpan("GetSpan"))
 })
   .pipe(
-    Layer.provide(Runner.layerPlatform)
+    Layer.provide(BrowserRunner.layer)
   )
 
 Effect.runFork(Layer.launch(WorkerLive))

@@ -84,7 +84,9 @@ const SpanSchema = Schema.struct({
  * @since 1.0.0
  * @category schema
  */
-export const schemaExternalSpan = flow(
+export const schemaExternalSpan: <E>(
+  self: IncomingMessage<E>
+) => Effect.Effect<Tracer.ExternalSpan, ParseResult.ParseError> = flow(
   schemaHeaders(Schema.union(
     Schema.transformOrFail(
       Schema.struct({
@@ -94,16 +96,18 @@ export const schemaExternalSpan = flow(
       (input, _, ast) => {
         const parts = input.b3.split("-")
         if (parts.length >= 2) {
-          return ParseResult.succeed({
-            traceId: parts[0],
-            spanId: parts[1],
-            sampled: parts[2] ? parts[2] === "1" : true,
-            parentSpanId: parts[3]
-          })
+          return ParseResult.succeed(
+            {
+              traceId: parts[0],
+              spanId: parts[1],
+              sampled: parts[2] ? parts[2] === "1" : true,
+              parentSpanId: parts[3]
+            } as const
+          )
         }
         return ParseResult.fail(ParseResult.type(ast, input))
       },
-      (_) => ParseResult.succeed({ b3: "" })
+      (_) => ParseResult.succeed({ b3: "" } as const)
     ),
     Schema.transform(
       Schema.struct({
@@ -118,13 +122,13 @@ export const schemaExternalSpan = flow(
         spanId: _["x-b3-spanid"],
         parentSpanId: _["x-b3-parentspanid"],
         sampled: _["x-b3-sampled"] === "1"
-      }),
+      } as const),
       (_) => ({
         "x-b3-traceid": _.traceId,
         "x-b3-spanid": _.spanId,
         "x-b3-parentspanid": _.parentSpanId,
         "x-b3-sampled": _.sampled ? "1" : "0"
-      })
+      } as const)
     )
   )),
   Effect.map((_): ExternalSpan =>

@@ -267,10 +267,7 @@ export const updateContext: {
  * @example
  * import { Context, Runtime } from "effect"
  *
- * interface Name {
- *   readonly _: unique symbol
- * }
- * const Name = Context.Tag<Name, string>("Name")
+ * class Name extends Context.Tag("Name")<Name, string>() {}
  *
  * const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
  *   Runtime.provideService(Name, "John")

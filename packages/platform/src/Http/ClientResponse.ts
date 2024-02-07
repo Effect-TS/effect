@@ -77,7 +77,10 @@ export const schemaJson: <
  */
 export const schemaNoBody: <
   R,
-  I extends { readonly status?: number | undefined; readonly headers?: Readonly<Record<string, string>> | undefined },
+  I extends {
+    readonly status?: number | undefined
+    readonly headers?: Readonly<Record<string, string>> | undefined
+  },
   A
 >(schema: Schema.Schema<A, I, R>) => (self: ClientResponse) => Effect.Effect<A, ParseResult.ParseError, R> =
   internal.schemaNoBody
