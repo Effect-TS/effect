@@ -53,7 +53,7 @@ class KeyedPoolImpl<in K, in out A, out E = never> implements KeyedPool.KeyedPoo
   }
 }
 
-type MapValue<E, A> = Complete<A, E> | Pending<A, E>
+type MapValue<A, E> = Complete<A, E> | Pending<A, E>
 
 class Complete<in out A, out E> implements Equal.Equal {
   readonly _tag = "Complete"
@@ -101,22 +101,22 @@ const makeImpl = <K, A, E, R>(
     fiberRuntime.all([
       core.context<R>(),
       core.fiberId,
-      core.sync(() => MutableRef.make(HashMap.empty<K, MapValue<E, A>>())),
+      core.sync(() => MutableRef.make(HashMap.empty<K, MapValue<A, E>>())),
       fiberRuntime.scopeMake()
     ]),
     core.map(([context, fiberId, map, scope]) => {
       const getOrCreatePool = (key: K): Effect.Effect<Pool.Pool<A, E>> =>
         core.suspend(() => {
-          let value: MapValue<E, A> | undefined = Option.getOrUndefined(HashMap.get(MutableRef.get(map), key))
+          let value: MapValue<A, E> | undefined = Option.getOrUndefined(HashMap.get(MutableRef.get(map), key))
           if (value === undefined) {
             return core.uninterruptibleMask((restore) => {
               const deferred = core.deferredUnsafeMake<Pool.Pool<A, E>>(fiberId)
               value = new Pending(deferred)
-              let previous: MapValue<E, A> | undefined = undefined
+              let previous: MapValue<A, E> | undefined = undefined
               if (HashMap.has(MutableRef.get(map), key)) {
                 previous = Option.getOrUndefined(HashMap.get(MutableRef.get(map), key))
               } else {
-                MutableRef.update(map, HashMap.set(key, value as MapValue<E, A>))
+                MutableRef.update(map, HashMap.set(key, value as MapValue<A, E>))
               }
               if (previous === undefined) {
                 return pipe(
@@ -143,7 +143,7 @@ const makeImpl = <K, A, E, R>(
                       )
                     },
                     onSuccess: (pool) => {
-                      MutableRef.update(map, HashMap.set(key, new Complete(pool) as MapValue<E, A>))
+                      MutableRef.update(map, HashMap.set(key, new Complete(pool) as MapValue<A, E>))
                       return core.as(
                         core.deferredSucceed(deferred, pool),
                         pool

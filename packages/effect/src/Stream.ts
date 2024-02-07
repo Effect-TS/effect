@@ -3873,7 +3873,7 @@ export const toQueueOfElements: {
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStream: <E, A>(source: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
+export const toReadableStream: <A, E>(source: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
 
 /**
  * Applies the transducer to the stream and emits its outputs.
