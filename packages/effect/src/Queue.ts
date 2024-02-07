@@ -67,9 +67,9 @@ export interface Queue<in out A> extends Enqueue<A>, Dequeue<A>, Pipeable {
   /** @internal */
   readonly queue: BackingQueue<A>
   /** @internal */
-  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
+  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>
   /** @internal */
-  readonly shutdownHook: Deferred.Deferred<void, never>
+  readonly shutdownHook: Deferred.Deferred<void>
   /** @internal */
   readonly shutdownFlag: MutableRef.MutableRef<boolean>
   /** @internal */
@@ -225,7 +225,7 @@ export interface Strategy<in out A> extends Queue.StrategyVariance<A> {
   handleSurplus(
     iterable: Iterable<A>,
     queue: BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>,
+    takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
     isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean>
 
@@ -234,7 +234,7 @@ export interface Strategy<in out A> extends Queue.StrategyVariance<A> {
    * takers that can be completed
    */
   onCompleteTakersWithEmptyQueue(
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
+    takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>
   ): void
 
   /**
@@ -243,7 +243,7 @@ export interface Strategy<in out A> extends Queue.StrategyVariance<A> {
    */
   unsafeOnQueueEmptySpace(
     queue: BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
+    takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>
   ): void
 }
 

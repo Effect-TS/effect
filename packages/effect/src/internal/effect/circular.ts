@@ -45,7 +45,7 @@ class Semaphore {
   }
 
   readonly take = (n: number): Effect.Effect<number> =>
-    core.asyncEither<number, never, never>((resume) => {
+    core.asyncEither<number>((resume) => {
       if (this.free < n) {
         const observer = () => {
           if (this.free >= n) {
