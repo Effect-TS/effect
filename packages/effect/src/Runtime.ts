@@ -19,7 +19,7 @@ import type { Scope } from "./Scope.js"
  * @since 2.0.0
  * @category models
  */
-export interface AsyncFiberException<out E, out A> {
+export interface AsyncFiberException<out A, out E = never> {
   readonly _tag: "AsyncFiberException"
   readonly fiber: Fiber.RuntimeFiber<A, E>
 }
