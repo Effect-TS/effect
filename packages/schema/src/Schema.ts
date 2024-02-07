@@ -4555,7 +4555,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<A, I, R, C, Self, Inherited, Proto> extends Schema<Self, I, R> {
+export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Schema<Self, I, R> {
   new(
     ...args: [R] extends [never] ? [
         props: Equals<C, {}> extends true ? void | {} : C,
@@ -4650,9 +4650,7 @@ export const Class = <Self>() =>
     Simplify<FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
-    Self,
-    {},
-    {}
+    Self
   > => makeClass(struct(fields), fields, Data.Class)
 
 /**
@@ -4669,9 +4667,7 @@ export const TaggedClass = <Self>() =>
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
-    Self,
-    {},
-    {}
+    Self
   > =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
@@ -4693,7 +4689,7 @@ export const TaggedError = <Self>() =>
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
-    { readonly _tag: Tag },
+    {},
     Cause.YieldableError
   > =>
 {
@@ -4757,8 +4753,7 @@ export const TaggedRequest = <Self>() =>
       EA,
       AI,
       AA
-    >,
-    unknown
+    >
   > =>
 {
   class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
