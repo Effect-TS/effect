@@ -4934,7 +4934,7 @@ export const step: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E> | 
 export const request: {
   <
     A extends Request.Request<any, any>,
-    Ds extends RequestResolver<A, never> | Effect<RequestResolver<A, never>, any, any>
+    Ds extends RequestResolver<A> | Effect<RequestResolver<A>, any, any>
   >(
     request: A,
     dataSource: Ds

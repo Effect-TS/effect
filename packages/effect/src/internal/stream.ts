@@ -901,7 +901,7 @@ const bufferChunksDropping = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.dropping<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>(capacity),
+    Queue.dropping<readonly [Take.Take<A, E>, Deferred.Deferred<void>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(self)))
@@ -912,7 +912,7 @@ const bufferChunksSliding = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.sliding<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>(capacity),
+    Queue.sliding<readonly [Take.Take<A, E>, Deferred.Deferred<void>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(self)))
@@ -923,7 +923,7 @@ const bufferDropping = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.dropping<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>(capacity),
+    Queue.dropping<readonly [Take.Take<A, E>, Deferred.Deferred<void>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(rechunk(1)(self))))
@@ -934,7 +934,7 @@ const bufferSliding = dual<
   <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number) => Stream.Stream<A, E, R>
 >(2, <A, E, R>(self: Stream.Stream<A, E, R>, capacity: number): Stream.Stream<A, E, R> => {
   const queue = Effect.acquireRelease(
-    Queue.sliding<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>(capacity),
+    Queue.sliding<readonly [Take.Take<A, E>, Deferred.Deferred<void>]>(capacity),
     (queue) => Queue.shutdown(queue)
   )
   return new StreamImpl(bufferSignal(queue, toChannel(pipe(self, rechunk(1)))))
@@ -960,12 +960,12 @@ const bufferUnbounded = <A, E, R>(self: Stream.Stream<A, E, R>): Stream.Stream<A
 }
 
 const bufferSignal = <A, E, R>(
-  scoped: Effect.Effect<Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>, never, Scope.Scope>,
+  scoped: Effect.Effect<Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void>]>, never, Scope.Scope>,
   bufferChannel: Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, void, unknown, R>
 ): Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, void, unknown, R> => {
   const producer = (
-    queue: Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>,
-    ref: Ref.Ref<Deferred.Deferred<void, never>>
+    queue: Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void>]>,
+    ref: Ref.Ref<Deferred.Deferred<void>>
   ): Channel.Channel<never, Chunk.Chunk<A>, never, E, unknown, unknown, R> => {
     const terminate = (take: Take.Take<A, E>): Channel.Channel<never, Chunk.Chunk<A>, never, E, unknown, unknown, R> =>
       pipe(
@@ -1002,7 +1002,7 @@ const bufferSignal = <A, E, R>(
     })
   }
   const consumer = (
-    queue: Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void, never>]>
+    queue: Queue.Queue<readonly [Take.Take<A, E>, Deferred.Deferred<void>]>
   ): Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, void, unknown, R> => {
     const process: Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, void, unknown> = pipe(
       core.fromEffect(Queue.take(queue)),

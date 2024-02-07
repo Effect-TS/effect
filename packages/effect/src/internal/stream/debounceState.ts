@@ -40,7 +40,7 @@ export interface Current<out A, out E = never> {
 }
 
 /** @internal */
-export const notStarted: DebounceState<never, never> = {
+export const notStarted: DebounceState<never> = {
   _tag: OP_NOT_STARTED
 }
 

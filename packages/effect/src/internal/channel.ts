@@ -1149,7 +1149,7 @@ export const mergeAllWith = (
       )
       const cancelers = yield* $(
         Effect.acquireRelease(
-          Queue.unbounded<Deferred.Deferred<void, never>>(),
+          Queue.unbounded<Deferred.Deferred<void>>(),
           (queue) => Queue.shutdown(queue)
         )
       )

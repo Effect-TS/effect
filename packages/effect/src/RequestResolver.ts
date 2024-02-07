@@ -221,7 +221,7 @@ export const eitherWith: {
  */
 export const fromFunction: <A extends Request.Request<any>>(
   f: (request: A) => Request.Request.Success<A>
-) => RequestResolver<A, never> = internal.fromFunction
+) => RequestResolver<A> = internal.fromFunction
 
 /**
  * Constructs a data source from a pure function that takes a list of requests
@@ -233,7 +233,7 @@ export const fromFunction: <A extends Request.Request<any>>(
  */
 export const fromFunctionBatched: <A extends Request.Request<any>>(
   f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
-) => RequestResolver<A, never> = internal.fromFunctionBatched
+) => RequestResolver<A> = internal.fromFunctionBatched
 
 /**
  * Constructs a data source from an effectual function.
@@ -273,7 +273,7 @@ export const fromEffectTagged: <A extends Request.Request<any, any> & { readonly
  * @since 2.0.0
  * @category constructors
  */
-export const never: RequestResolver<never, never> = internal.never
+export const never: RequestResolver<never> = internal.never
 
 /**
  * Provides this data source with its required context.
@@ -284,11 +284,11 @@ export const never: RequestResolver<never, never> = internal.never
 export const provideContext: {
   <R>(
     context: Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, never>
+  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A>
   <R, A extends Request.Request<any, any>>(
     self: RequestResolver<A, R>,
     context: Context.Context<R>
-  ): RequestResolver<A, never>
+  ): RequestResolver<A>
 } = internal.provideContext
 
 /**
