@@ -93,7 +93,7 @@ const runCommand =
             )
           ),
           Effect.map(([handle, exitCodeDeferred]): CommandExecutor.Process => {
-            let stdin: Sink.Sink<never, Error.PlatformError, unknown, never, void> = Sink.drain
+            let stdin: Sink.Sink<void, unknown, never, Error.PlatformError> = Sink.drain
 
             if (handle.stdin !== null) {
               stdin = fromWritable(

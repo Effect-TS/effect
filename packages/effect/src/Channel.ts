@@ -2020,7 +2020,7 @@ export const toQueue: <Done, Err, Elem>(
  */
 export const toSink: <OutElem, InElem, OutErr, InErr, OutDone, Env>(
   self: Channel<Chunk.Chunk<OutElem>, Chunk.Chunk<InElem>, OutErr, InErr, OutDone, unknown, Env>
-) => Sink.Sink<Env, OutErr, InElem, OutElem, OutDone> = sink.channelToSink
+) => Sink.Sink<OutDone, InElem, OutElem, OutErr, Env> = sink.channelToSink
 
 /**
  * Converts this channel to a `Stream`.

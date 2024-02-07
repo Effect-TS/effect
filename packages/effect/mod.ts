@@ -15,6 +15,7 @@ const enabled = {
   swapResourceParams: false,
   swapTExitParams: false,
   swapChannelParams: false,
+  swapSinkParams: true,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
@@ -106,10 +107,9 @@ const swapResourceParams = swapParamsEA("Resource")
 const swapTExitParams = swapParamsEA("TExit")
 
 // from: Channel<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone>
-//           <in out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone>
-// to:   Channel<OutElem, InElem = unknown, OutErr = never, InErr = unknown, OutDone = void, InDone = unknown, Env = never>
+// to: Channel<OutElem, InElem = unknown, OutErr = never, InErr = unknown, OutDone = void, InDone = unknown, Env = never>
 const swapChannelParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
-  const is = filter(ast, "VarianceStruct")
+  const is = filter(ast, "Channel")
   if (
     is(ast.value.typeName) &&
     ast.value.typeParameters &&
@@ -117,6 +117,24 @@ const swapChannelParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
   ) {
     const params = ast.value.typeParameters.params
     const newParams = [params[5], params[2], params[4], params[1], params[6], params[3], params[0]]
+    popNever(newParams)
+    ast.value.typeParameters.params = newParams
+  }
+}
+
+// from: Sink<out R, out E, in In, out L, out Z>
+// to: Sink<out Z, in In = unknown, out L = never, out E = never, out R = never>
+const swapSinkParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
+  const is = filter(ast, "Sink")
+  if (
+    is(ast.value.typeName) &&
+    ast.value.typeParameters &&
+    ast.value.typeParameters.params.length === 5
+  ) {
+    const params = ast.value.typeParameters.params
+    const newParams = [params[4], params[2], params[3], params[1], params[0]]
+    popNever(newParams)
+    popNever(newParams)
     popNever(newParams)
     ast.value.typeParameters.params = newParams
   }
@@ -189,6 +207,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     }
     if (enabled.swapChannelParams) {
       swapChannelParams(ast)
+    }
+    if (enabled.swapSinkParams) {
+      swapSinkParams(ast)
     }
     if (enabled.cleanupEffect) {
       cleanupEffect(ast)

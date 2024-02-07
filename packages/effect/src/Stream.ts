@@ -191,8 +191,8 @@ export const acquireRelease: <A, E, R, R2, _>(
  * @category utils
  */
 export const aggregate: {
-  <R2, E2, A, A2, B>(sink: Sink.Sink<R2, E2, A | A2, A2, B>): <R, E>(self: Stream<A, E, R>) => Stream<B, E2 | E, R2 | R>
-  <R, E, R2, E2, A, A2, B>(self: Stream<A, E, R>, sink: Sink.Sink<R2, E2, A | A2, A2, B>): Stream<B, E | E2, R | R2>
+  <B, A, A2, E2, R2>(sink: Sink.Sink<B, A | A2, A2, E2, R2>): <E, R>(self: Stream<A, E, R>) => Stream<B, E2 | E, R2 | R>
+  <A, E, R, B, A2, E2, R2>(self: Stream<A, E, R>, sink: Sink.Sink<B, A | A2, A2, E2, R2>): Stream<B, E | E2, R | R2>
 } = internal.aggregate
 
 /**
@@ -204,13 +204,13 @@ export const aggregate: {
  * @category utils
  */
 export const aggregateWithin: {
-  <R2, E2, A, A2, R3, B, C>(
-    sink: Sink.Sink<R2, E2, A | A2, A2, B>,
+  <B, A, A2, E2, R2, R3, C>(
+    sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
   ): <E, R>(self: Stream<A, E, R>) => Stream<B, E2 | E, R2 | R3 | R>
-  <A, E, R, R2, E2, A2, B, R3, C>(
+  <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream<A, E, R>,
-    sink: Sink.Sink<R2, E2, A | A2, A2, B>,
+    sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
   ): Stream<B, E | E2, R | R2 | R3>
 } = internal.aggregateWithin
@@ -233,13 +233,13 @@ export const aggregateWithin: {
  * @category utils
  */
 export const aggregateWithinEither: {
-  <R2, E2, A, A2, B, R3, C>(
-    sink: Sink.Sink<R2, E2, A | A2, A2, B>,
+  <B, A, A2, E2, R2, R3, C>(
+    sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ): <R, E>(self: Stream<A, E, R>) => Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R>
-  <R, E, R2, E2, A, A2, B, R3, C>(
+  ): <E, R>(self: Stream<A, E, R>) => Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R>
+  <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream<A, E, R>,
-    sink: Sink.Sink<R2, E2, A | A2, A2, B>,
+    sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
   ): Stream<Either.Either<C, B>, E | E2, R | R2 | R3>
 } = internal.aggregateWithinEither
@@ -2492,13 +2492,13 @@ export const partitionEither: {
  * @category utils
  */
 export const peel: {
-  <R2, E2, A, Z>(
-    sink: Sink.Sink<R2, E2, A, A, Z>
-  ): <R, E>(self: Stream<A, E, R>) => Effect.Effect<[Z, Stream<A, E>], E2 | E, Scope.Scope | R2 | R>
-  <R, E, R2, E2, A, Z>(
+  <A2, A, E2, R2>(
+    sink: Sink.Sink<A2, A, A, E2, R2>
+  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<[A2, Stream<A, E, never>], E2 | E, Scope.Scope | R2 | R>
+  <A, E, R, A2, E2, R2>(
     self: Stream<A, E, R>,
-    sink: Sink.Sink<R2, E2, A, A, Z>
-  ): Effect.Effect<[Z, Stream<A, E>], E | E2, Scope.Scope | R | R2>
+    sink: Sink.Sink<A2, A, A, E2, R2>
+  ): Effect.Effect<[A2, Stream<A, E, never>], E | E2, Scope.Scope | R | R2>
 } = internal.peel
 
 /**
@@ -2510,8 +2510,8 @@ export const peel: {
  * @category utils
  */
 export const pipeThrough: {
-  <R2, E2, A, L, Z>(sink: Sink.Sink<R2, E2, A, L, Z>): <R, E>(self: Stream<A, E, R>) => Stream<L, E2 | E, R2 | R>
-  <R, E, R2, E2, A, L, Z>(self: Stream<A, E, R>, sink: Sink.Sink<R2, E2, A, L, Z>): Stream<L, E | E2, R | R2>
+  <A2, A, L, E2, R2>(sink: Sink.Sink<A2, A, L, E2, R2>): <E, R>(self: Stream<A, E, R>) => Stream<L, E2 | E, R2 | R>
+  <A, E, R, A2, L, E2, R2>(self: Stream<A, E, R>, sink: Sink.Sink<A2, A, L, E2, R2>): Stream<L, E | E2, R | R2>
 } = internal.pipeThrough
 
 /**
@@ -2893,10 +2893,13 @@ export const retry: {
  * @category destructors
  */
 export const run: {
-  <R2, E2, A, Z>(
-    sink: Sink.Sink<R2, E2, A, unknown, Z>
-  ): <R, E>(self: Stream<A, E, R>) => Effect.Effect<Z, E2 | E, R2 | R>
-  <R, E, R2, E2, A, Z>(self: Stream<A, E, R>, sink: Sink.Sink<R2, E2, A, unknown, Z>): Effect.Effect<Z, E | E2, R | R2>
+  <A2, A, E2, R2>(
+    sink: Sink.Sink<A2, A, unknown, E2, R2>
+  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<A2, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2>(
+    self: Stream<A, E, R>,
+    sink: Sink.Sink<A2, A, unknown, E2, R2>
+  ): Effect.Effect<A2, E | E2, R | R2>
 } = internal.run
 
 /**
@@ -3255,12 +3258,12 @@ export const runLast: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Option.O
  * @category destructors
  */
 export const runScoped: {
-  <R2, E2, A, A2>(
-    sink: Sink.Sink<R2, E2, A, unknown, A2>
-  ): <R, E>(self: Stream<A, E, R>) => Effect.Effect<A2, E2 | E, Scope.Scope | R2 | R>
-  <R, E, R2, E2, A, A2>(
+  <A2, A, E2, R2>(
+    sink: Sink.Sink<A2, A, unknown, E2, R2>
+  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<A2, E2 | E, Scope.Scope | R2 | R>
+  <A, E, R, A2, E2, R2>(
     self: Stream<A, E, R>,
-    sink: Sink.Sink<R2, E2, A, unknown, A2>
+    sink: Sink.Sink<A2, A, unknown, E2, R2>
   ): Effect.Effect<A2, E | E2, Scope.Scope | R | R2>
 } = internal.runScoped
 
@@ -3640,8 +3643,8 @@ export const tapErrorCause: {
  * @category sequencing
  */
 export const tapSink: {
-  <R2, E2, A>(sink: Sink.Sink<R2, E2, A, unknown, unknown>): <R, E>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
-  <R, E, R2, E2, A>(self: Stream<A, E, R>, sink: Sink.Sink<R2, E2, A, unknown, unknown>): Stream<A, E | E2, R | R2>
+  <A, E2, R2>(sink: Sink.Sink<unknown, A, unknown, E2, R2>): <E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
+  <A, E, R, E2, R2>(self: Stream<A, E, R>, sink: Sink.Sink<unknown, A, unknown, E2, R2>): Stream<A, E | E2, R | R2>
 } = internal.tapSink
 
 /**
@@ -3882,8 +3885,8 @@ export const toReadableStream: <A, E>(source: Stream<A, E>) => ReadableStream<A>
  * @category utils
  */
 export const transduce: {
-  <R2, E2, A, Z>(sink: Sink.Sink<R2, E2, A, A, Z>): <R, E>(self: Stream<A, E, R>) => Stream<Z, E2 | E, R2 | R>
-  <R, E, R2, E2, A, Z>(self: Stream<A, E, R>, sink: Sink.Sink<R2, E2, A, A, Z>): Stream<Z, E | E2, R | R2>
+  <A2, A, E2, R2>(sink: Sink.Sink<A2, A, A, E2, R2>): <E, R>(self: Stream<A, E, R>) => Stream<A2, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, sink: Sink.Sink<A2, A, A, E2, R2>): Stream<A2, E | E2, R | R2>
 } = internal.transduce
 
 /**

@@ -183,7 +183,7 @@ export interface FileSystem {
   readonly sink: (
     path: string,
     options?: SinkOptions
-  ) => Sink<never, PlatformError, Uint8Array, never, void>
+  ) => Sink<void, Uint8Array, never, PlatformError>
   /**
    * Get information about a file at `path`.
    */

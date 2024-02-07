@@ -11,7 +11,7 @@ import * as Stream from "effect/Stream"
 
 import { assert, describe } from "vitest"
 
-const findSink = <A>(a: A): Sink.Sink<never, void, A, A, A> =>
+const findSink = <A>(a: A): Sink.Sink<A, A, A, void> =>
   pipe(
     Sink.fold<Option.Option<A>, A>(
       Option.none(),
@@ -26,8 +26,8 @@ const findSink = <A>(a: A): Sink.Sink<never, void, A, A, A> =>
 
 const zipParLaw = <A, B, C, E>(
   stream: Stream.Stream<A>,
-  sink1: Sink.Sink<never, E, A, A, B>,
-  sink2: Sink.Sink<never, E, A, A, C>
+  sink1: Sink.Sink<B, A, A, E>,
+  sink2: Sink.Sink<C, A, A, E>
 ): Effect.Effect<boolean> =>
   pipe(
     Effect.all({
