@@ -30,22 +30,24 @@ export const SinkTypeId: Sink.SinkTypeId = Symbol.for("effect/Sink") as Sink.Sin
 
 const sinkVariance = {
   /* c8 ignore next */
-  _R: (_: never) => _,
-  /* c8 ignore next */
-  _E: (_: never) => _,
+  _A: (_: never) => _,
   /* c8 ignore next */
   _In: (_: unknown) => _,
   /* c8 ignore next */
   _L: (_: never) => _,
   /* c8 ignore next */
-  _Z: (_: never) => _
+  _E: (_: never) => _,
+  /* c8 ignore next */
+  _R: (_: never) => _
 }
 
 /** @internal */
-export class SinkImpl<out R, out E, in In, out L, out Z> implements Sink.Sink<R, E, In, L, Z> {
+export class SinkImpl<out A, in In = unknown, out L = never, out E = never, out R = never>
+  implements Sink.Sink<A, In, L, E, R>
+{
   readonly [SinkTypeId] = sinkVariance
   constructor(
-    readonly channel: Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R>
+    readonly channel: Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, A, unknown, R>
   ) {
   }
   pipe() {
@@ -58,21 +60,20 @@ export const isSink = (u: unknown): u is Sink.Sink<unknown, unknown, unknown, un
   hasProperty(u, SinkTypeId)
 
 /** @internal */
-export const suspend = <R, E, In, L, Z>(evaluate: LazyArg<Sink.Sink<R, E, In, L, Z>>): Sink.Sink<R, E, In, L, Z> =>
+export const suspend = <R, E, In, L, Z>(evaluate: LazyArg<Sink.Sink<Z, In, L, E, R>>): Sink.Sink<Z, In, L, E, R> =>
   new SinkImpl(core.suspend(() => toChannel(evaluate())))
 
 /** @internal */
 export const as = dual<
-  <Z2>(z: Z2) => <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In, L, Z2>,
-  <R, E, In, L, Z, Z2>(self: Sink.Sink<R, E, In, L, Z>, z: Z2) => Sink.Sink<R, E, In, L, Z2>
+  <Z2>(z: Z2) => <R, E, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2, In, L, E, R>,
+  <R, E, In, L, Z, Z2>(self: Sink.Sink<Z, In, L, E, R>, z: Z2) => Sink.Sink<Z2, In, L, E, R>
 >(
   2,
-  <R, E, In, L, Z, Z2>(self: Sink.Sink<R, E, In, L, Z>, z: Z2): Sink.Sink<R, E, In, L, Z2> => pipe(self, map(() => z))
+  <R, E, In, L, Z, Z2>(self: Sink.Sink<Z, In, L, E, R>, z: Z2): Sink.Sink<Z2, In, L, E, R> => pipe(self, map(() => z))
 )
 
 /** @internal */
-export const collectAll = <In>(): Sink.Sink<never, never, In, never, Chunk.Chunk<In>> =>
-  new SinkImpl(collectAllLoop(Chunk.empty()))
+export const collectAll = <In>(): Sink.Sink<Chunk.Chunk<In>, In> => new SinkImpl(collectAllLoop(Chunk.empty()))
 
 /** @internal */
 const collectAllLoop = <In>(
@@ -85,7 +86,7 @@ const collectAllLoop = <In>(
   })
 
 /** @internal */
-export const collectAllN = <In>(n: number): Sink.Sink<never, never, In, In, Chunk.Chunk<In>> =>
+export const collectAllN = <In>(n: number): Sink.Sink<Chunk.Chunk<In>, In, In> =>
   suspend(() => fromChannel(collectAllNLoop(n, Chunk.empty())))
 
 /** @internal */
@@ -110,8 +111,8 @@ const collectAllNLoop = <In>(
 
 /** @internal */
 export const collectAllFrom = <R, E, In, L extends In, Z>(
-  self: Sink.Sink<R, E, In, L, Z>
-): Sink.Sink<R, E, In, L, Chunk.Chunk<Z>> =>
+  self: Sink.Sink<Z, In, L, E, R>
+): Sink.Sink<Chunk.Chunk<Z>, In, L, E, R> =>
   collectAllWhileWith(self, {
     initial: Chunk.empty<Z>(),
     while: constTrue,
@@ -122,7 +123,7 @@ export const collectAllFrom = <R, E, In, L extends In, Z>(
 export const collectAllToMap = <In, K>(
   key: (input: In) => K,
   merge: (x: In, y: In) => In
-): Sink.Sink<never, never, In, never, HashMap.HashMap<K, In>> => {
+): Sink.Sink<HashMap.HashMap<K, In>, In> => {
   return pipe(
     foldLeftChunks(HashMap.empty<K, In>(), (map, chunk) =>
       pipe(
@@ -143,7 +144,7 @@ export const collectAllToMapN = <In, K>(
   n: number,
   key: (input: In) => K,
   merge: (x: In, y: In) => In
-): Sink.Sink<never, never, In, In, HashMap.HashMap<K, In>> => {
+): Sink.Sink<HashMap.HashMap<K, In>, In, In> => {
   return foldWeighted<HashMap.HashMap<K, In>, In>({
     initial: HashMap.empty(),
     maxCost: n,
@@ -159,14 +160,14 @@ export const collectAllToMapN = <In, K>(
 }
 
 /** @internal */
-export const collectAllToSet = <In>(): Sink.Sink<never, never, In, never, HashSet.HashSet<In>> =>
+export const collectAllToSet = <In>(): Sink.Sink<HashSet.HashSet<In>, In> =>
   foldLeftChunks<HashSet.HashSet<In>, In>(
     HashSet.empty(),
     (acc, chunk) => pipe(chunk, Chunk.reduce(acc, (acc, input) => pipe(acc, HashSet.add(input))))
   )
 
 /** @internal */
-export const collectAllToSetN = <In>(n: number): Sink.Sink<never, never, In, In, HashSet.HashSet<In>> =>
+export const collectAllToSetN = <In>(n: number): Sink.Sink<HashSet.HashSet<In>, In, In> =>
   foldWeighted<HashSet.HashSet<In>, In>({
     initial: HashSet.empty(),
     maxCost: n,
@@ -175,7 +176,7 @@ export const collectAllToSetN = <In>(n: number): Sink.Sink<never, never, In, In,
   })
 
 /** @internal */
-export const collectAllUntil = <In>(p: Predicate<In>): Sink.Sink<never, never, In, In, Chunk.Chunk<In>> => {
+export const collectAllUntil = <In>(p: Predicate<In>): Sink.Sink<Chunk.Chunk<In>, In, In> => {
   return pipe(
     fold<[Chunk.Chunk<In>, boolean], In>(
       [Chunk.empty(), true],
@@ -200,9 +201,9 @@ export const collectAllUntilEffect = <In, R, E>(p: (input: In) => Effect.Effect<
 
 /** @internal */
 export const collectAllWhile: {
-  <In, Out extends In>(refinement: Refinement<In, Out>): Sink.Sink<never, never, In, In, Chunk.Chunk<Out>>
-  <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, Chunk.Chunk<In>>
-} = <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, Chunk.Chunk<In>> =>
+  <In, Out extends In>(refinement: Refinement<In, Out>): Sink.Sink<Chunk.Chunk<Out>, In, In>
+  <In>(predicate: Predicate<In>): Sink.Sink<Chunk.Chunk<In>, In, In>
+} = <In>(predicate: Predicate<In>): Sink.Sink<Chunk.Chunk<In>, In, In> =>
   fromChannel(collectAllWhileReader(predicate, Chunk.empty()))
 
 /** @internal */
@@ -231,7 +232,7 @@ const collectAllWhileReader = <In>(
 /** @internal */
 export const collectAllWhileEffect = <In, R, E>(
   predicate: (input: In) => Effect.Effect<boolean, E, R>
-): Sink.Sink<R, E, In, In, Chunk.Chunk<In>> => fromChannel(collectAllWhileEffectReader(predicate, Chunk.empty()))
+): Sink.Sink<Chunk.Chunk<In>, In, In, E, R> => fromChannel(collectAllWhileEffectReader(predicate, Chunk.empty()))
 
 /** @internal */
 const collectAllWhileEffectReader = <In, R, E>(
@@ -262,25 +263,25 @@ export const collectAllWhileWith = dual<
       readonly while: Predicate<Z>
       readonly body: (s: S, z: Z) => S
     }
-  ) => <R, E, In, L extends In>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In, L, S>,
+  ) => <R, E, In, L extends In>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<S, In, L, E, R>,
   <R, E, In, L extends In, Z, S>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly initial: S
       readonly while: Predicate<Z>
       readonly body: (s: S, z: Z) => S
     }
-  ) => Sink.Sink<R, E, In, L, S>
+  ) => Sink.Sink<S, In, L, E, R>
 >(
   2,
   <R, E, In, L extends In, Z, S>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly initial: S
       readonly while: Predicate<Z>
       readonly body: (s: S, z: Z) => S
     }
-  ): Sink.Sink<R, E, In, L, S> => {
+  ): Sink.Sink<S, In, L, E, R> => {
     const refs = pipe(
       Ref.make(Chunk.empty<In>()),
       Effect.zip(Ref.make(false))
@@ -309,7 +310,7 @@ export const collectAllWhileWith = dual<
 
 /** @internal */
 const collectAllWhileWithLoop = <R, E, In, L extends In, Z, S>(
-  self: Sink.Sink<R, E, In, L, Z>,
+  self: Sink.Sink<Z, In, L, E, R>,
   leftoversRef: Ref.Ref<Chunk.Chunk<In>>,
   upstreamDoneRef: Ref.Ref<boolean>,
   currentResult: S,
@@ -346,17 +347,17 @@ const collectAllWhileWithLoop = <R, E, In, L extends In, Z, S>(
 
 /** @internal */
 export const collectLeftover = <R, E, In, L, Z>(
-  self: Sink.Sink<R, E, In, L, Z>
-): Sink.Sink<R, E, In, never, [Z, Chunk.Chunk<L>]> =>
+  self: Sink.Sink<Z, In, L, E, R>
+): Sink.Sink<[Z, Chunk.Chunk<L>], In, never, E, R> =>
   new SinkImpl(pipe(core.collectElements(toChannel(self)), channel.map(([chunks, z]) => [z, Chunk.flatten(chunks)])))
 
 /** @internal */
 export const mapInput = dual<
-  <In0, In>(f: (input: In0) => In) => <R, E, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In0, L, Z>,
-  <R, E, L, Z, In0, In>(self: Sink.Sink<R, E, In, L, Z>, f: (input: In0) => In) => Sink.Sink<R, E, In0, L, Z>
+  <In0, In>(f: (input: In0) => In) => <R, E, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In0, L, E, R>,
+  <R, E, L, Z, In0, In>(self: Sink.Sink<Z, In, L, E, R>, f: (input: In0) => In) => Sink.Sink<Z, In0, L, E, R>
 >(
   2,
-  <R, E, L, Z, In0, In>(self: Sink.Sink<R, E, In, L, Z>, f: (input: In0) => In): Sink.Sink<R, E, In0, L, Z> =>
+  <R, E, L, Z, In0, In>(self: Sink.Sink<Z, In, L, E, R>, f: (input: In0) => In): Sink.Sink<Z, In0, L, E, R> =>
     pipe(self, mapInputChunks(Chunk.map(f)))
 )
 
@@ -364,17 +365,17 @@ export const mapInput = dual<
 export const mapInputEffect = dual<
   <In0, R2, E2, In>(
     f: (input: In0) => Effect.Effect<In, E2, R2>
-  ) => <R, E, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In0, L, Z>,
+  ) => <R, E, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In0, L, E2 | E, R2 | R>,
   <R, E, L, Z, In0, R2, E2, In>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (input: In0) => Effect.Effect<In, E2, R2>
-  ) => Sink.Sink<R2 | R, E2 | E, In0, L, Z>
+  ) => Sink.Sink<Z, In0, L, E2 | E, R2 | R>
 >(
   2,
   <R, E, L, Z, In0, R2, E2, In>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (input: In0) => Effect.Effect<In, E2, R2>
-  ): Sink.Sink<R | R2, E | E2, In0, L, Z> =>
+  ): Sink.Sink<Z, In0, L, E | E2, R | R2> =>
     mapInputChunksEffect(
       self,
       (chunk) =>
@@ -389,17 +390,17 @@ export const mapInputEffect = dual<
 export const mapInputChunks = dual<
   <In0, In>(
     f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
-  ) => <R, E, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In0, L, Z>,
+  ) => <R, E, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In0, L, E, R>,
   <R, E, L, Z, In0, In>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
-  ) => Sink.Sink<R, E, In0, L, Z>
+  ) => Sink.Sink<Z, In0, L, E, R>
 >(
   2,
   <R, E, L, Z, In0, In>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
-  ): Sink.Sink<R, E, In0, L, Z> => {
+  ): Sink.Sink<Z, In0, L, E, R> => {
     const loop: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In0>, never, never, unknown, unknown, R> = core.readWith({
       onInput: (chunk) => pipe(core.write(f(chunk)), core.flatMap(() => loop)),
       onFailure: core.fail,
@@ -413,17 +414,17 @@ export const mapInputChunks = dual<
 export const mapInputChunksEffect = dual<
   <In0, R2, E2, In>(
     f: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
-  ) => <R, E, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In0, L, Z>,
+  ) => <R, E, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In0, L, E2 | E, R2 | R>,
   <R, E, L, Z, In0, R2, E2, In>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
-  ) => Sink.Sink<R2 | R, E2 | E, In0, L, Z>
+  ) => Sink.Sink<Z, In0, L, E2 | E, R2 | R>
 >(
   2,
   <R, E, L, Z, In0, R2, E2, In>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
-  ): Sink.Sink<R | R2, E | E2, In0, L, Z> => {
+  ): Sink.Sink<Z, In0, L, E | E2, R | R2> => {
     const loop: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In0>, E2, never, unknown, unknown, R | R2> = core
       .readWith({
         onInput: (chunk) => pipe(core.fromEffect(f(chunk)), core.flatMap(core.write), core.flatMap(() => loop)),
@@ -435,14 +436,14 @@ export const mapInputChunksEffect = dual<
 )
 
 /** @internal */
-export const die = (defect: unknown): Sink.Sink<never, never, unknown, never, never> => failCause(Cause.die(defect))
+export const die = (defect: unknown): Sink.Sink<never, unknown> => failCause(Cause.die(defect))
 
 /** @internal */
-export const dieMessage = (message: string): Sink.Sink<never, never, unknown, never, never> =>
+export const dieMessage = (message: string): Sink.Sink<never, unknown> =>
   failCause(Cause.die(new Cause.RuntimeException(message)))
 
 /** @internal */
-export const dieSync = (evaluate: LazyArg<unknown>): Sink.Sink<never, never, unknown, never, never> =>
+export const dieSync = (evaluate: LazyArg<unknown>): Sink.Sink<never, unknown> =>
   failCauseSync(() => Cause.die(evaluate()))
 
 /** @internal */
@@ -452,23 +453,23 @@ export const dimap = dual<
       readonly onInput: (input: In0) => In
       readonly onDone: (z: Z) => Z2
     }
-  ) => <R, E, L>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In0, L, Z2>,
+  ) => <R, E, L>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2, In0, L, E, R>,
   <R, E, L, In0, In, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly onInput: (input: In0) => In
       readonly onDone: (z: Z) => Z2
     }
-  ) => Sink.Sink<R, E, In0, L, Z2>
+  ) => Sink.Sink<Z2, In0, L, E, R>
 >(
   2,
   <R, E, L, In0, In, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly onInput: (input: In0) => In
       readonly onDone: (z: Z) => Z2
     }
-  ): Sink.Sink<R, E, In0, L, Z2> => map(mapInput(self, options.onInput), options.onDone)
+  ): Sink.Sink<Z2, In0, L, E, R> => map(mapInput(self, options.onInput), options.onDone)
 )
 
 /** @internal */
@@ -478,23 +479,23 @@ export const dimapEffect = dual<
       readonly onInput: (input: In0) => Effect.Effect<In, E2, R2>
       readonly onDone: (z: Z) => Effect.Effect<Z2, E3, R3>
     }
-  ) => <R, E, L>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R3 | R, E2 | E3 | E, In0, L, Z2>,
+  ) => <R, E, L>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2, In0, L, E2 | E3 | E, R2 | R3 | R>,
   <R, E, L, In0, R2, E2, In, Z, R3, E3, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly onInput: (input: In0) => Effect.Effect<In, E2, R2>
       readonly onDone: (z: Z) => Effect.Effect<Z2, E3, R3>
     }
-  ) => Sink.Sink<R2 | R3 | R, E2 | E3 | E, In0, L, Z2>
+  ) => Sink.Sink<Z2, In0, L, E2 | E3 | E, R2 | R3 | R>
 >(
   2,
   <R, E, L, In0, R2, E2, In, Z, R3, E3, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly onInput: (input: In0) => Effect.Effect<In, E2, R2>
       readonly onDone: (z: Z) => Effect.Effect<Z2, E3, R3>
     }
-  ): Sink.Sink<R | R2 | R3, E | E2 | E3, In0, L, Z2> =>
+  ): Sink.Sink<Z2, In0, L, E | E2 | E3, R | R2 | R3> =>
     mapEffect(
       mapInputEffect(self, options.onInput),
       options.onDone
@@ -508,23 +509,23 @@ export const dimapChunks = dual<
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
       readonly onDone: (z: Z) => Z2
     }
-  ) => <R, E, L>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In0, L, Z2>,
+  ) => <R, E, L>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2, In0, L, E, R>,
   <R, E, L, In0, In, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
       readonly onDone: (z: Z) => Z2
     }
-  ) => Sink.Sink<R, E, In0, L, Z2>
+  ) => Sink.Sink<Z2, In0, L, E, R>
 >(
   2,
   <R, E, L, In0, In, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
       readonly onDone: (z: Z) => Z2
     }
-  ): Sink.Sink<R, E, In0, L, Z2> =>
+  ): Sink.Sink<Z2, In0, L, E, R> =>
     map(
       mapInputChunks(self, options.onInput),
       options.onDone
@@ -538,34 +539,33 @@ export const dimapChunksEffect = dual<
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
       readonly onDone: (z: Z) => Effect.Effect<Z2, E3, R3>
     }
-  ) => <R, E, L>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R3 | R, E2 | E3 | E, In0, L, Z2>,
+  ) => <R, E, L>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2, In0, L, E2 | E3 | E, R2 | R3 | R>,
   <R, E, L, In0, R2, E2, In, Z, R3, E3, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
       readonly onDone: (z: Z) => Effect.Effect<Z2, E3, R3>
     }
-  ) => Sink.Sink<R2 | R3 | R, E2 | E3 | E, In0, L, Z2>
+  ) => Sink.Sink<Z2, In0, L, E2 | E3 | E, R2 | R3 | R>
 >(
   2,
   <R, E, L, In0, R2, E2, In, Z, R3, E3, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
       readonly onDone: (z: Z) => Effect.Effect<Z2, E3, R3>
     }
-  ): Sink.Sink<R | R2 | R3, E | E2 | E3, In0, L, Z2> =>
+  ): Sink.Sink<Z2, In0, L, E | E2 | E3, R | R2 | R3> =>
     mapEffect(mapInputChunksEffect(self, options.onInput), options.onDone)
 )
 
 /** @internal */
-export const drain: Sink.Sink<never, never, unknown, never, void> = new SinkImpl(
+export const drain: Sink.Sink<void, unknown> = new SinkImpl(
   channel.drain(channel.identityChannel())
 )
 
 /** @internal */
-export const drop = <In>(n: number): Sink.Sink<never, never, In, In, unknown> =>
-  suspend(() => new SinkImpl(dropLoop(n)))
+export const drop = <In>(n: number): Sink.Sink<unknown, In, In> => suspend(() => new SinkImpl(dropLoop(n)))
 
 /** @internal */
 const dropLoop = <In>(
@@ -589,7 +589,7 @@ const dropLoop = <In>(
   })
 
 /** @internal */
-export const dropUntil = <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, unknown> =>
+export const dropUntil = <In>(predicate: Predicate<In>): Sink.Sink<unknown, In, In> =>
   new SinkImpl(
     pipe(toChannel(dropWhile((input: In) => !predicate(input))), channel.pipeToOrFail(toChannel(drop<In>(1))))
   )
@@ -597,7 +597,7 @@ export const dropUntil = <In>(predicate: Predicate<In>): Sink.Sink<never, never,
 /** @internal */
 export const dropUntilEffect = <In, R, E>(
   predicate: (input: In) => Effect.Effect<boolean, E, R>
-): Sink.Sink<R, E, In, In, unknown> => suspend(() => new SinkImpl(dropUntilEffectReader(predicate)))
+): Sink.Sink<unknown, In, In, E, R> => suspend(() => new SinkImpl(dropUntilEffectReader(predicate)))
 
 /** @internal */
 const dropUntilEffectReader = <In, R, E>(
@@ -624,7 +624,7 @@ const dropUntilEffectReader = <In, R, E>(
   })
 
 /** @internal */
-export const dropWhile = <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, unknown> =>
+export const dropWhile = <In>(predicate: Predicate<In>): Sink.Sink<unknown, In, In> =>
   new SinkImpl(dropWhileReader(predicate))
 
 /** @internal */
@@ -646,7 +646,7 @@ const dropWhileReader = <In>(
 /** @internal */
 export const dropWhileEffect = <In, R, E>(
   predicate: (input: In) => Effect.Effect<boolean, E, R>
-): Sink.Sink<R, E, In, In, unknown> => suspend(() => new SinkImpl(dropWhileEffectReader(predicate)))
+): Sink.Sink<unknown, In, In, E, R> => suspend(() => new SinkImpl(dropWhileEffectReader(predicate)))
 
 /** @internal */
 const dropWhileEffectReader = <In, R, E>(
@@ -676,82 +676,82 @@ const dropWhileEffectReader = <In, R, E>(
 export const ensuring = dual<
   <R2, _>(
     finalizer: Effect.Effect<_, never, R2>
-  ) => <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E, In, L, Z>,
+  ) => <R, E, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In, L, E, R2 | R>,
   <R, E, In, L, Z, R2, _>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     finalizer: Effect.Effect<_, never, R2>
-  ) => Sink.Sink<R2 | R, E, In, L, Z>
+  ) => Sink.Sink<Z, In, L, E, R2 | R>
 >(
   2,
   <R, E, In, L, Z, R2, _>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     finalizer: Effect.Effect<_, never, R2>
-  ): Sink.Sink<R | R2, E, In, L, Z> => new SinkImpl(pipe(self, toChannel, channel.ensuring(finalizer)))
+  ): Sink.Sink<Z, In, L, E, R | R2> => new SinkImpl(pipe(self, toChannel, channel.ensuring(finalizer)))
 )
 
 /** @internal */
 export const ensuringWith = dual<
   <E, Z, R2, _>(
     finalizer: (exit: Exit.Exit<Z, E>) => Effect.Effect<_, never, R2>
-  ) => <R, In, L>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E, In, L, Z>,
+  ) => <R, In, L>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In, L, E, R2 | R>,
   <R, In, L, E, Z, R2, _>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     finalizer: (exit: Exit.Exit<Z, E>) => Effect.Effect<_, never, R2>
-  ) => Sink.Sink<R2 | R, E, In, L, Z>
+  ) => Sink.Sink<Z, In, L, E, R2 | R>
 >(
   2,
   <R, In, L, E, Z, R2, _>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     finalizer: (exit: Exit.Exit<Z, E>) => Effect.Effect<_, never, R2>
-  ): Sink.Sink<R | R2, E, In, L, Z> => new SinkImpl(pipe(self, toChannel, core.ensuringWith(finalizer)))
+  ): Sink.Sink<Z, In, L, E, R | R2> => new SinkImpl(pipe(self, toChannel, core.ensuringWith(finalizer)))
 )
 
 /** @internal */
-export const context = <R>(): Sink.Sink<R, never, unknown, never, Context.Context<R>> => fromEffect(Effect.context<R>())
+export const context = <R>(): Sink.Sink<Context.Context<R>, unknown, never, never, R> => fromEffect(Effect.context<R>())
 
 /** @internal */
 export const contextWith = <R, Z>(
   f: (context: Context.Context<R>) => Z
-): Sink.Sink<R, never, unknown, never, Z> => pipe(context<R>(), map(f))
+): Sink.Sink<Z, unknown, never, never, R> => pipe(context<R>(), map(f))
 
 /** @internal */
 export const contextWithEffect = <R0, R, E, Z>(
   f: (context: Context.Context<R0>) => Effect.Effect<Z, E, R>
-): Sink.Sink<R0 | R, E, unknown, never, Z> => pipe(context<R0>(), mapEffect(f))
+): Sink.Sink<Z, unknown, never, E, R0 | R> => pipe(context<R0>(), mapEffect(f))
 
 /** @internal */
 export const contextWithSink = <R0, R, E, In, L, Z>(
-  f: (context: Context.Context<R0>) => Sink.Sink<R, E, In, L, Z>
-): Sink.Sink<R0 | R, E, In, L, Z> =>
+  f: (context: Context.Context<R0>) => Sink.Sink<Z, In, L, E, R>
+): Sink.Sink<Z, In, L, E, R0 | R> =>
   new SinkImpl(channel.unwrap(pipe(Effect.contextWith((context) => toChannel(f(context))))))
 
 /** @internal */
-export const every = <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, boolean> =>
+export const every = <In>(predicate: Predicate<In>): Sink.Sink<boolean, In, In> =>
   fold(true, identity, (acc, input) => acc && predicate(input))
 
 /** @internal */
-export const fail = <E>(e: E): Sink.Sink<never, E, unknown, never, never> => new SinkImpl(core.fail(e))
+export const fail = <E>(e: E): Sink.Sink<never, unknown, never, E> => new SinkImpl(core.fail(e))
 
 /** @internal */
-export const failSync = <E>(evaluate: LazyArg<E>): Sink.Sink<never, E, unknown, never, never> =>
+export const failSync = <E>(evaluate: LazyArg<E>): Sink.Sink<never, unknown, never, E> =>
   new SinkImpl(core.failSync(evaluate))
 
 /** @internal */
-export const failCause = <E>(cause: Cause.Cause<E>): Sink.Sink<never, E, unknown, never, never> =>
+export const failCause = <E>(cause: Cause.Cause<E>): Sink.Sink<never, unknown, never, E> =>
   new SinkImpl(core.failCause(cause))
 
 /** @internal */
-export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Sink.Sink<never, E, unknown, never, never> =>
+export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Sink.Sink<never, unknown, never, E> =>
   new SinkImpl(core.failCauseSync(evaluate))
 
 /** @internal */
 export const filterInput: {
   <In, In1 extends In, In2 extends In1>(
     f: Refinement<In1, In2>
-  ): <R, E, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In2, L, Z>
-  <In, In1 extends In>(f: Predicate<In1>): <R, E, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In1, L, Z>
+  ): <R, E, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In2, L, E, R>
+  <In, In1 extends In>(f: Predicate<In1>): <R, E, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In1, L, E, R>
 } = <In, In1 extends In>(f: Predicate<In1>) => {
-  return <R, E, L, Z>(self: Sink.Sink<R, E, In, L, Z>): Sink.Sink<R, E, In1, L, Z> =>
+  return <R, E, L, Z>(self: Sink.Sink<Z, In, L, E, R>): Sink.Sink<Z, In1, L, E, R> =>
     pipe(self, mapInputChunks(Chunk.filter(f)))
 }
 
@@ -759,17 +759,17 @@ export const filterInput: {
 export const filterInputEffect = dual<
   <R2, E2, In, In1 extends In>(
     f: (input: In1) => Effect.Effect<boolean, E2, R2>
-  ) => <R, E, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In1, L, Z>,
+  ) => <R, E, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In1, L, E2 | E, R2 | R>,
   <R, E, L, Z, R2, E2, In, In1 extends In>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (input: In1) => Effect.Effect<boolean, E2, R2>
-  ) => Sink.Sink<R2 | R, E2 | E, In1, L, Z>
+  ) => Sink.Sink<Z, In1, L, E2 | E, R2 | R>
 >(
   2,
   <R, E, L, Z, R2, E2, In, In1 extends In>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (input: In1) => Effect.Effect<boolean, E2, R2>
-  ): Sink.Sink<R | R2, E | E2, In1, L, Z> =>
+  ): Sink.Sink<Z, In1, L, E | E2, R | R2> =>
     mapInputChunksEffect(
       self,
       (chunk) => Effect.map(Effect.filter(chunk, f), Chunk.unsafeFromArray)
@@ -780,17 +780,17 @@ export const filterInputEffect = dual<
 export const findEffect = dual<
   <Z, R2, E2>(
     f: (z: Z) => Effect.Effect<boolean, E2, R2>
-  ) => <R, E, In, L extends In>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In, L, Option.Option<Z>>,
+  ) => <R, E, In, L extends In>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Option.Option<Z>, In, L, E2 | E, R2 | R>,
   <R, E, In, L extends In, Z, R2, E2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (z: Z) => Effect.Effect<boolean, E2, R2>
-  ) => Sink.Sink<R2 | R, E2 | E, In, L, Option.Option<Z>>
+  ) => Sink.Sink<Option.Option<Z>, In, L, E2 | E, R2 | R>
 >(
   2,
   <R, E, In, L extends In, Z, R2, E2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (z: Z) => Effect.Effect<boolean, E2, R2>
-  ): Sink.Sink<R | R2, E | E2, In, L, Option.Option<Z>> => {
+  ): Sink.Sink<Option.Option<Z>, In, L, E | E2, R | R2> => {
     const newChannel = pipe(
       core.fromEffect(pipe(
         Ref.make(Chunk.empty<In>()),
@@ -842,7 +842,7 @@ export const fold = <S, In>(
   s: S,
   contFn: Predicate<S>,
   f: (z: S, input: In) => S
-): Sink.Sink<never, never, In, In, S> => suspend(() => new SinkImpl(foldReader(s, contFn, f)))
+): Sink.Sink<S, In, In> => suspend(() => new SinkImpl(foldReader(s, contFn, f)))
 
 /** @internal */
 const foldReader = <S, In>(
@@ -889,26 +889,26 @@ const foldChunkSplit = <S, In>(
 export const foldSink = dual<
   <R1, R2, E, E1, E2, In, In1 extends In, In2 extends In, L, L1, L2, Z, Z1, Z2>(
     options: {
-      readonly onFailure: (err: E) => Sink.Sink<R1, E1, In1, L1, Z1>
-      readonly onSuccess: (z: Z) => Sink.Sink<R2, E2, In2, L2, Z2>
+      readonly onFailure: (err: E) => Sink.Sink<Z1, In1, L1, E1, R1>
+      readonly onSuccess: (z: Z) => Sink.Sink<Z2, In2, L2, E2, R2>
     }
-  ) => <R>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R1 | R2 | R, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2>,
+  ) => <R>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z1 | Z2, In1 & In2, L1 | L2, E1 | E2, R1 | R2 | R>,
   <R, R1, R2, E, E1, E2, In, In1 extends In, In2 extends In, L, L1, L2, Z, Z1, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
-      readonly onFailure: (err: E) => Sink.Sink<R1, E1, In1, L1, Z1>
-      readonly onSuccess: (z: Z) => Sink.Sink<R2, E2, In2, L2, Z2>
+      readonly onFailure: (err: E) => Sink.Sink<Z1, In1, L1, E1, R1>
+      readonly onSuccess: (z: Z) => Sink.Sink<Z2, In2, L2, E2, R2>
     }
-  ) => Sink.Sink<R1 | R2 | R, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2>
+  ) => Sink.Sink<Z1 | Z2, In1 & In2, L1 | L2, E1 | E2, R1 | R2 | R>
 >(
   2,
   <R, R1, R2, E, E1, E2, In, In1 extends In, In2 extends In, L, L1, L2, Z, Z1, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
-      readonly onFailure: (err: E) => Sink.Sink<R1, E1, In1, L1, Z1>
-      readonly onSuccess: (z: Z) => Sink.Sink<R2, E2, In2, L2, Z2>
+      readonly onFailure: (err: E) => Sink.Sink<Z1, In1, L1, E1, R1>
+      readonly onSuccess: (z: Z) => Sink.Sink<Z2, In2, L2, E2, R2>
     }
-  ): Sink.Sink<R | R1 | R2, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2> => {
+  ): Sink.Sink<Z1 | Z2, In1 & In2, L1 | L2, E1 | E2, R | R1 | R2> => {
     const newChannel: Channel.Channel<
       Chunk.Chunk<L1 | L2>,
       Chunk.Chunk<In1 & In2>,
@@ -965,7 +965,7 @@ export const foldChunks = <S, In>(
   s: S,
   contFn: Predicate<S>,
   f: (s: S, chunk: Chunk.Chunk<In>) => S
-): Sink.Sink<never, never, In, never, S> => suspend(() => new SinkImpl(foldChunksReader(s, contFn, f)))
+): Sink.Sink<S, In> => suspend(() => new SinkImpl(foldChunksReader(s, contFn, f)))
 
 /** @internal */
 const foldChunksReader = <S, In>(
@@ -988,7 +988,7 @@ export const foldChunksEffect = <S, R, E, In>(
   s: S,
   contFn: Predicate<S>,
   f: (s: S, chunk: Chunk.Chunk<In>) => Effect.Effect<S, E, R>
-): Sink.Sink<R, E, In, In, S> => suspend(() => new SinkImpl(foldChunksEffectReader(s, contFn, f)))
+): Sink.Sink<S, In, In, E, R> => suspend(() => new SinkImpl(foldChunksEffectReader(s, contFn, f)))
 
 /** @internal */
 const foldChunksEffectReader = <S, R, E, In>(
@@ -1015,7 +1015,7 @@ export const foldEffect = <S, R, E, In>(
   s: S,
   contFn: Predicate<S>,
   f: (s: S, input: In) => Effect.Effect<S, E, R>
-): Sink.Sink<R, E, In, In, S> => suspend(() => new SinkImpl(foldEffectReader(s, contFn, f)))
+): Sink.Sink<S, In, In, E, R> => suspend(() => new SinkImpl(foldEffectReader(s, contFn, f)))
 
 /** @internal */
 const foldEffectReader = <S, In, R, E>(
@@ -1077,29 +1077,29 @@ const foldChunkSplitEffectInternal = <S, R, E, In>(
 }
 
 /** @internal */
-export const foldLeft = <S, In>(s: S, f: (s: S, input: In) => S): Sink.Sink<never, never, In, never, S> =>
+export const foldLeft = <S, In>(s: S, f: (s: S, input: In) => S): Sink.Sink<S, In> =>
   ignoreLeftover(fold(s, constTrue, f))
 
 /** @internal */
 export const foldLeftChunks = <S, In>(
   s: S,
   f: (s: S, chunk: Chunk.Chunk<In>) => S
-): Sink.Sink<never, never, In, never, S> => foldChunks(s, constTrue, f)
+): Sink.Sink<S, In> => foldChunks(s, constTrue, f)
 
 /** @internal */
 export const foldLeftChunksEffect = <S, R, E, In>(
   s: S,
   f: (s: S, chunk: Chunk.Chunk<In>) => Effect.Effect<S, E, R>
-): Sink.Sink<R, E, In, never, S> => ignoreLeftover(foldChunksEffect(s, constTrue, f))
+): Sink.Sink<S, In, never, E, R> => ignoreLeftover(foldChunksEffect(s, constTrue, f))
 
 /** @internal */
 export const foldLeftEffect = <S, R, E, In>(
   s: S,
   f: (s: S, input: In) => Effect.Effect<S, E, R>
-): Sink.Sink<R, E, In, In, S> => foldEffect(s, constTrue, f)
+): Sink.Sink<S, In, In, E, R> => foldEffect(s, constTrue, f)
 
 /** @internal */
-export const foldUntil = <S, In>(s: S, max: number, f: (z: S, input: In) => S): Sink.Sink<never, never, In, In, S> =>
+export const foldUntil = <S, In>(s: S, max: number, f: (z: S, input: In) => S): Sink.Sink<S, In, In> =>
   pipe(
     fold<[S, number], In>(
       [s, 0],
@@ -1114,7 +1114,7 @@ export const foldUntilEffect = <S, R, E, In>(
   s: S,
   max: number,
   f: (s: S, input: In) => Effect.Effect<S, E, R>
-): Sink.Sink<R, E, In, In, S> =>
+): Sink.Sink<S, In, In, E, R> =>
   pipe(
     foldEffect(
       [s, 0 as number] as const,
@@ -1132,7 +1132,7 @@ export const foldWeighted = <S, In>(
     readonly cost: (s: S, input: In) => number
     readonly body: (s: S, input: In) => S
   }
-): Sink.Sink<never, never, In, In, S> =>
+): Sink.Sink<S, In, In> =>
   foldWeightedDecompose({
     ...options,
     decompose: Chunk.of
@@ -1147,7 +1147,7 @@ export const foldWeightedDecompose = <S, In>(
     readonly decompose: (input: In) => Chunk.Chunk<In>
     readonly body: (s: S, input: In) => S
   }
-): Sink.Sink<never, never, In, In, S> =>
+): Sink.Sink<S, In, In> =>
   suspend(() =>
     new SinkImpl(
       foldWeightedDecomposeLoop(
@@ -1244,7 +1244,7 @@ export const foldWeightedDecomposeEffect = <S, In, R, E, R2, E2, R3, E3>(
     readonly decompose: (input: In) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
     readonly body: (s: S, input: In) => Effect.Effect<S, E3, R3>
   }
-): Sink.Sink<R | R2 | R3, E | E2 | E3, In, In, S> =>
+): Sink.Sink<S, In, In, E | E2 | E3, R | R2 | R3> =>
   suspend(() =>
     new SinkImpl(
       foldWeightedDecomposeEffectLoop(
@@ -1267,7 +1267,7 @@ export const foldWeightedEffect = <S, In, R, E, R2, E2>(
     readonly cost: (s: S, input: In) => Effect.Effect<number, E, R>
     readonly body: (s: S, input: In) => Effect.Effect<S, E2, R2>
   }
-): Sink.Sink<R | R2, E | E2, In, In, S> =>
+): Sink.Sink<S, In, In, E | E2, R | R2> =>
   foldWeightedDecomposeEffect({
     ...options,
     decompose: (input) => Effect.succeed(Chunk.of(input))
@@ -1359,22 +1359,22 @@ const foldWeightedDecomposeEffectFold = <S, In, R, E, R2, E2, R3, E3>(
 /** @internal */
 export const flatMap = dual<
   <R1, E1, In, In1 extends In, L, L1, Z, Z1>(
-    f: (z: Z) => Sink.Sink<R1, E1, In1, L1, Z1>
-  ) => <R, E>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R1 | R, E1 | E, In & In1, L | L1, Z1>,
+    f: (z: Z) => Sink.Sink<Z1, In1, L1, E1, R1>
+  ) => <R, E>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z1, In & In1, L | L1, E1 | E, R1 | R>,
   <R, E, R1, E1, In, In1 extends In, L, L1, Z, Z1>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    f: (z: Z) => Sink.Sink<R1, E1, In1, L1, Z1>
-  ) => Sink.Sink<R1 | R, E1 | E, In & In1, L | L1, Z1>
+    self: Sink.Sink<Z, In, L, E, R>,
+    f: (z: Z) => Sink.Sink<Z1, In1, L1, E1, R1>
+  ) => Sink.Sink<Z1, In & In1, L | L1, E1 | E, R1 | R>
 >(
   2,
   <R, E, R1, E1, In, In1 extends In, L, L1, Z, Z1>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    f: (z: Z) => Sink.Sink<R1, E1, In1, L1, Z1>
-  ): Sink.Sink<R | R1, E | E1, In & In1, L | L1, Z1> => foldSink(self, { onFailure: fail, onSuccess: f })
+    self: Sink.Sink<Z, In, L, E, R>,
+    f: (z: Z) => Sink.Sink<Z1, In1, L1, E1, R1>
+  ): Sink.Sink<Z1, In & In1, L | L1, E | E1, R | R1> => foldSink(self, { onFailure: fail, onSuccess: f })
 )
 
 /** @internal */
-export const forEach = <In, R, E, _>(f: (input: In) => Effect.Effect<_, E, R>): Sink.Sink<R, E, In, never, void> => {
+export const forEach = <In, R, E, _>(f: (input: In) => Effect.Effect<_, E, R>): Sink.Sink<void, In, never, E, R> => {
   const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(core.fromEffect(Effect.forEach(input, (v) => f(v), { discard: true })), core.flatMap(() => process)),
@@ -1387,7 +1387,7 @@ export const forEach = <In, R, E, _>(f: (input: In) => Effect.Effect<_, E, R>): 
 /** @internal */
 export const forEachChunk = <In, R, E, _>(
   f: (input: Chunk.Chunk<In>) => Effect.Effect<_, E, R>
-): Sink.Sink<R, E, In, never, void> => {
+): Sink.Sink<void, In, never, E, R> => {
   const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) => pipe(core.fromEffect(f(input)), core.flatMap(() => process)),
     onFailure: core.failCause,
@@ -1399,7 +1399,7 @@ export const forEachChunk = <In, R, E, _>(
 /** @internal */
 export const forEachWhile = <In, R, E>(
   f: (input: In) => Effect.Effect<boolean, E, R>
-): Sink.Sink<R, E, In, In, void> => {
+): Sink.Sink<void, In, In, E, R> => {
   const process: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) => forEachWhileReader(f, input, 0, input.length, process),
     onFailure: core.failCause,
@@ -1433,7 +1433,7 @@ const forEachWhileReader = <In, R, E>(
 /** @internal */
 export const forEachChunkWhile = <In, R, E>(
   f: (input: Chunk.Chunk<In>) => Effect.Effect<boolean, E, R>
-): Sink.Sink<R, E, In, In, void> => {
+): Sink.Sink<void, In, In, E, R> => {
   const reader: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(
@@ -1449,10 +1449,10 @@ export const forEachChunkWhile = <In, R, E>(
 /** @internal */
 export const fromChannel = <R, E, In, L, Z>(
   channel: Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R>
-): Sink.Sink<R, E, In, L, Z> => new SinkImpl(channel)
+): Sink.Sink<Z, In, L, E, R> => new SinkImpl(channel)
 
 /** @internal */
-export const fromEffect = <R, E, Z>(effect: Effect.Effect<Z, E, R>): Sink.Sink<R, E, unknown, never, Z> =>
+export const fromEffect = <R, E, Z>(effect: Effect.Effect<Z, E, R>): Sink.Sink<Z, unknown, never, E, R> =>
   new SinkImpl(core.fromEffect(effect))
 
 /** @internal */
@@ -1461,7 +1461,7 @@ export const fromPubSub = <In>(
   options?: {
     readonly shutdown?: boolean | undefined
   }
-): Sink.Sink<never, never, In, never, void> => fromQueue(pubsub, options)
+): Sink.Sink<void, In> => fromQueue(pubsub, options)
 
 /** @internal */
 export const fromPush = <R, E, In, L, Z>(
@@ -1470,7 +1470,7 @@ export const fromPush = <R, E, In, L, Z>(
     never,
     R
   >
-): Sink.Sink<Exclude<R, Scope.Scope>, E, In, L, Z> =>
+): Sink.Sink<Z, In, L, E, Exclude<R, Scope.Scope>> =>
   new SinkImpl(channel.unwrapScoped(pipe(push, Effect.map(fromPushPull))))
 
 const fromPushPull = <R, E, In, L, Z>(
@@ -1511,7 +1511,7 @@ export const fromQueue = <In>(
   options?: {
     readonly shutdown?: boolean | undefined
   }
-): Sink.Sink<never, never, In, never, void> =>
+): Sink.Sink<void, In> =>
   options?.shutdown ?
     unwrapScoped(
       Effect.map(
@@ -1522,7 +1522,7 @@ export const fromQueue = <In>(
     forEachChunk((input: Chunk.Chunk<In>) => pipe(Queue.offerAll(queue, input)))
 
 /** @internal */
-export const head = <In>(): Sink.Sink<never, never, In, In, Option.Option<In>> =>
+export const head = <In>(): Sink.Sink<Option.Option<In>, In, In> =>
   fold(
     Option.none() as Option.Option<In>,
     Option.isNone,
@@ -1534,22 +1534,22 @@ export const head = <In>(): Sink.Sink<never, never, In, In, Option.Option<In>> =
   )
 
 /** @internal */
-export const ignoreLeftover = <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>): Sink.Sink<R, E, In, never, Z> =>
+export const ignoreLeftover = <R, E, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>): Sink.Sink<Z, In, never, E, R> =>
   new SinkImpl(channel.drain(toChannel(self)))
 
 /** @internal */
-export const last = <In>(): Sink.Sink<never, never, In, In, Option.Option<In>> =>
+export const last = <In>(): Sink.Sink<Option.Option<In>, In, In> =>
   foldLeftChunks(Option.none<In>(), (s, input) => Option.orElse(Chunk.last(input), () => s))
 
 /** @internal */
-export const leftover = <L>(chunk: Chunk.Chunk<L>): Sink.Sink<never, never, unknown, L, void> =>
+export const leftover = <L>(chunk: Chunk.Chunk<L>): Sink.Sink<void, unknown, L> =>
   new SinkImpl(core.suspend(() => core.write(chunk)))
 
 /** @internal */
 export const map = dual<
-  <Z, Z2>(f: (z: Z) => Z2) => <R, E, In, L>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In, L, Z2>,
-  <R, E, In, L, Z, Z2>(self: Sink.Sink<R, E, In, L, Z>, f: (z: Z) => Z2) => Sink.Sink<R, E, In, L, Z2>
->(2, <R, E, In, L, Z, Z2>(self: Sink.Sink<R, E, In, L, Z>, f: (z: Z) => Z2): Sink.Sink<R, E, In, L, Z2> => {
+  <Z, Z2>(f: (z: Z) => Z2) => <R, E, In, L>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2, In, L, E, R>,
+  <R, E, In, L, Z, Z2>(self: Sink.Sink<Z, In, L, E, R>, f: (z: Z) => Z2) => Sink.Sink<Z2, In, L, E, R>
+>(2, <R, E, In, L, Z, Z2>(self: Sink.Sink<Z, In, L, E, R>, f: (z: Z) => Z2): Sink.Sink<Z2, In, L, E, R> => {
   return new SinkImpl(pipe(toChannel(self), channel.map(f)))
 })
 
@@ -1557,115 +1557,115 @@ export const map = dual<
 export const mapEffect = dual<
   <Z, R2, E2, Z2>(
     f: (z: Z) => Effect.Effect<Z2, E2, R2>
-  ) => <R, E, In, L>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In, L, Z2>,
+  ) => <R, E, In, L>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2, In, L, E2 | E, R2 | R>,
   <R, E, In, L, Z, R2, E2, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (z: Z) => Effect.Effect<Z2, E2, R2>
-  ) => Sink.Sink<R2 | R, E2 | E, In, L, Z2>
+  ) => Sink.Sink<Z2, In, L, E2 | E, R2 | R>
 >(
   2,
   <R, E, In, L, Z, R2, E2, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     f: (z: Z) => Effect.Effect<Z2, E2, R2>
-  ): Sink.Sink<R | R2, E | E2, In, L, Z2> => new SinkImpl(pipe(toChannel(self), channel.mapEffect(f)))
+  ): Sink.Sink<Z2, In, L, E | E2, R | R2> => new SinkImpl(pipe(toChannel(self), channel.mapEffect(f)))
 )
 
 /** @internal */
 export const mapError = dual<
-  <E, E2>(f: (error: E) => E2) => <R, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E2, In, L, Z>,
-  <R, In, L, Z, E, E2>(self: Sink.Sink<R, E, In, L, Z>, f: (error: E) => E2) => Sink.Sink<R, E2, In, L, Z>
+  <E, E2>(f: (error: E) => E2) => <R, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In, L, E2, R>,
+  <R, In, L, Z, E, E2>(self: Sink.Sink<Z, In, L, E, R>, f: (error: E) => E2) => Sink.Sink<Z, In, L, E2, R>
 >(
   2,
-  <R, In, L, Z, E, E2>(self: Sink.Sink<R, E, In, L, Z>, f: (error: E) => E2): Sink.Sink<R, E2, In, L, Z> =>
+  <R, In, L, Z, E, E2>(self: Sink.Sink<Z, In, L, E, R>, f: (error: E) => E2): Sink.Sink<Z, In, L, E2, R> =>
     new SinkImpl(pipe(toChannel(self), channel.mapError(f)))
 )
 
 /** @internal */
 export const mapLeftover = dual<
-  <L, L2>(f: (leftover: L) => L2) => <R, E, In, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In, L2, Z>,
-  <R, E, In, Z, L, L2>(self: Sink.Sink<R, E, In, L, Z>, f: (leftover: L) => L2) => Sink.Sink<R, E, In, L2, Z>
+  <L, L2>(f: (leftover: L) => L2) => <R, E, In, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In, L2, E, R>,
+  <R, E, In, Z, L, L2>(self: Sink.Sink<Z, In, L, E, R>, f: (leftover: L) => L2) => Sink.Sink<Z, In, L2, E, R>
 >(
   2,
-  <R, E, In, Z, L, L2>(self: Sink.Sink<R, E, In, L, Z>, f: (leftover: L) => L2): Sink.Sink<R, E, In, L2, Z> =>
+  <R, E, In, Z, L, L2>(self: Sink.Sink<Z, In, L, E, R>, f: (leftover: L) => L2): Sink.Sink<Z, In, L2, E, R> =>
     new SinkImpl(pipe(toChannel(self), channel.mapOut(Chunk.map(f))))
 )
 
 /** @internal */
-export const never: Sink.Sink<never, never, unknown, never, never> = fromEffect(Effect.never)
+export const never: Sink.Sink<never, unknown> = fromEffect(Effect.never)
 
 /** @internal */
 export const orElse = dual<
   <R2, E2, In2, L2, Z2>(
-    that: LazyArg<Sink.Sink<R2, E2, In2, L2, Z2>>
-  ) => <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In & In2, L2 | L, Z2 | Z>,
+    that: LazyArg<Sink.Sink<Z2, In2, L2, E2, R2>>
+  ) => <R, E, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2 | Z, In & In2, L2 | L, E2 | E, R2 | R>,
   <R, E, In, L, Z, R2, E2, In2, L2, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: LazyArg<Sink.Sink<R2, E2, In2, L2, Z2>>
-  ) => Sink.Sink<R2 | R, E2 | E, In & In2, L2 | L, Z2 | Z>
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: LazyArg<Sink.Sink<Z2, In2, L2, E2, R2>>
+  ) => Sink.Sink<Z2 | Z, In & In2, L2 | L, E2 | E, R2 | R>
 >(
   2,
   <R, E, In, L, Z, R2, E2, In2, L2, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: LazyArg<Sink.Sink<R2, E2, In2, L2, Z2>>
-  ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, Z | Z2> =>
-    new SinkImpl<R | R2, E | E2, In & In2, L | L2, Z | Z2>(
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: LazyArg<Sink.Sink<Z2, In2, L2, E2, R2>>
+  ): Sink.Sink<Z | Z2, In & In2, L | L2, E | E2, R | R2> =>
+    new SinkImpl<Z | Z2, In & In2, L | L2, E | E2, R | R2>(
       pipe(toChannel(self), channel.orElse(() => toChannel(that())))
     )
 )
 
 /** @internal */
 export const provideContext = dual<
-  <R>(context: Context.Context<R>) => <E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<never, E, In, L, Z>,
-  <E, In, L, Z, R>(self: Sink.Sink<R, E, In, L, Z>, context: Context.Context<R>) => Sink.Sink<never, E, In, L, Z>
+  <R>(context: Context.Context<R>) => <E, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In, L, E>,
+  <E, In, L, Z, R>(self: Sink.Sink<Z, In, L, E, R>, context: Context.Context<R>) => Sink.Sink<Z, In, L, E>
 >(
   2,
-  <E, In, L, Z, R>(self: Sink.Sink<R, E, In, L, Z>, context: Context.Context<R>): Sink.Sink<never, E, In, L, Z> =>
+  <E, In, L, Z, R>(self: Sink.Sink<Z, In, L, E, R>, context: Context.Context<R>): Sink.Sink<Z, In, L, E> =>
     new SinkImpl(pipe(toChannel(self), core.provideContext(context)))
 )
 
 /** @internal */
 export const race = dual<
   <R1, E1, In1, L1, Z1>(
-    that: Sink.Sink<R1, E1, In1, L1, Z1>
-  ) => <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R1 | R, E1 | E, In & In1, L1 | L, Z1 | Z>,
+    that: Sink.Sink<Z1, In1, L1, E1, R1>
+  ) => <R, E, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z1 | Z, In & In1, L1 | L, E1 | E, R1 | R>,
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R1, E1, In1, L1, Z1>
-  ) => Sink.Sink<R1 | R, E1 | E, In & In1, L1 | L, Z1 | Z>
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z1, In1, L1, E1, R1>
+  ) => Sink.Sink<Z1 | Z, In & In1, L1 | L, E1 | E, R1 | R>
 >(
   2,
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R1, E1, In1, L1, Z1>
-  ): Sink.Sink<R | R1, E | E1, In & In1, L | L1, Z | Z1> => pipe(self, raceBoth(that), map(Either.merge))
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z1, In1, L1, E1, R1>
+  ): Sink.Sink<Z | Z1, In & In1, L | L1, E | E1, R | R1> => pipe(self, raceBoth(that), map(Either.merge))
 )
 
 /** @internal */
 export const raceBoth = dual<
   <R1, E1, In1, L1, Z1>(
-    that: Sink.Sink<R1, E1, In1, L1, Z1>,
+    that: Sink.Sink<Z1, In1, L1, E1, R1>,
     options?: {
       readonly capacity?: number | undefined
     }
   ) => <R, E, In, L, Z>(
-    self: Sink.Sink<R, E, In, L, Z>
-  ) => Sink.Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>,
+    self: Sink.Sink<Z, In, L, E, R>
+  ) => Sink.Sink<Either.Either<Z, Z1>, In & In1, L1 | L, E1 | E, R1 | R>,
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R1, E1, In1, L1, Z1>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z1, In1, L1, E1, R1>,
     options?: {
       readonly capacity?: number | undefined
     }
-  ) => Sink.Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>
+  ) => Sink.Sink<Either.Either<Z, Z1>, In & In1, L1 | L, E1 | E, R1 | R>
 >(
   (args) => isSink(args[1]),
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R1, E1, In1, L1, Z1>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z1, In1, L1, E1, R1>,
     options?: {
       readonly capacity?: number | undefined
     }
-  ): Sink.Sink<R | R1, E | E1, In & In1, L | L1, Either.Either<Z, Z1>> =>
+  ): Sink.Sink<Either.Either<Z, Z1>, In & In1, L | L1, E | E1, R | R1> =>
     raceWith(self, {
       other: that,
       onSelfDone: (selfDone) => mergeDecision.Done(Effect.map(selfDone, Either.left)),
@@ -1678,32 +1678,32 @@ export const raceBoth = dual<
 export const raceWith = dual<
   <R2, E2, In2, L2, Z2, E, Z, Z3, Z4>(
     options: {
-      readonly other: Sink.Sink<R2, E2, In2, L2, Z2>
+      readonly other: Sink.Sink<Z2, In2, L2, E2, R2>
       readonly onSelfDone: (exit: Exit.Exit<Z, E>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
       readonly onOtherDone: (exit: Exit.Exit<Z2, E2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number | undefined
     }
-  ) => <R, In, L>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In & In2, L2 | L, Z3 | Z4>,
+  ) => <R, In, L>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z3 | Z4, In & In2, L2 | L, E2 | E, R2 | R>,
   <R, In, L, R2, E2, In2, L2, Z2, E, Z, Z3, Z4>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
-      readonly other: Sink.Sink<R2, E2, In2, L2, Z2>
+      readonly other: Sink.Sink<Z2, In2, L2, E2, R2>
       readonly onSelfDone: (exit: Exit.Exit<Z, E>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
       readonly onOtherDone: (exit: Exit.Exit<Z2, E2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number | undefined
     }
-  ) => Sink.Sink<R2 | R, E2 | E, In & In2, L2 | L, Z3 | Z4>
+  ) => Sink.Sink<Z3 | Z4, In & In2, L2 | L, E2 | E, R2 | R>
 >(
   2,
   <R, In, L, R2, E2, In2, L2, Z2, E, Z, Z3, Z4>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     options: {
-      readonly other: Sink.Sink<R2, E2, In2, L2, Z2>
+      readonly other: Sink.Sink<Z2, In2, L2, E2, R2>
       readonly onSelfDone: (exit: Exit.Exit<Z, E>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
       readonly onOtherDone: (exit: Exit.Exit<Z2, E2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number | undefined
     }
-  ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, Z3 | Z4> => {
+  ): Sink.Sink<Z3 | Z4, In & In2, L | L2, E | E2, R | R2> => {
     const scoped = Effect.gen(function*($) {
       const pubsub = yield* $(
         PubSub.bounded<Either.Either<Exit.Exit<unknown>, Chunk.Chunk<In & In2>>>(options?.capacity ?? 16)
@@ -1743,17 +1743,17 @@ export const raceWith = dual<
 export const refineOrDie = dual<
   <E, E2>(
     pf: (error: E) => Option.Option<E2>
-  ) => <R, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E2, In, L, Z>,
+  ) => <R, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In, L, E2, R>,
   <R, In, L, Z, E, E2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     pf: (error: E) => Option.Option<E2>
-  ) => Sink.Sink<R, E2, In, L, Z>
+  ) => Sink.Sink<Z, In, L, E2, R>
 >(
   2,
   <R, In, L, Z, E, E2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     pf: (error: E) => Option.Option<E2>
-  ): Sink.Sink<R, E2, In, L, Z> => pipe(self, refineOrDieWith(pf, identity))
+  ): Sink.Sink<Z, In, L, E2, R> => pipe(self, refineOrDieWith(pf, identity))
 )
 
 /** @internal */
@@ -1761,19 +1761,19 @@ export const refineOrDieWith = dual<
   <E, E2>(
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
-  ) => <R, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E2, In, L, Z>,
+  ) => <R, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In, L, E2, R>,
   <R, In, L, Z, E, E2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
-  ) => Sink.Sink<R, E2, In, L, Z>
+  ) => Sink.Sink<Z, In, L, E2, R>
 >(
   3,
   <R, In, L, Z, E, E2>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
-  ): Sink.Sink<R, E2, In, L, Z> => {
+  ): Sink.Sink<Z, In, L, E2, R> => {
     const newChannel = pipe(
       self,
       toChannel,
@@ -1791,36 +1791,36 @@ export const refineOrDieWith = dual<
 /** @internal */
 export const service = <T extends Context.Tag<any, any>>(
   tag: T
-): Sink.Sink<Context.Tag.Identifier<T>, never, unknown, never, Context.Tag.Service<T>> => serviceWith(tag, identity)
+): Sink.Sink<Context.Tag.Service<T>, unknown, never, never, Context.Tag.Identifier<T>> => serviceWith(tag, identity)
 
 /** @internal */
 export const serviceWith = <T extends Context.Tag<any, any>, Z>(
   tag: T,
   f: (service: Context.Tag.Service<T>) => Z
-): Sink.Sink<Context.Tag.Identifier<T>, never, unknown, never, Z> => fromEffect(Effect.map(tag, f))
+): Sink.Sink<Z, unknown, never, never, Context.Tag.Identifier<T>> => fromEffect(Effect.map(tag, f))
 
 /** @internal */
 export const serviceWithEffect = <T extends Context.Tag<any, any>, R, E, Z>(
   tag: T,
   f: (service: Context.Tag.Service<T>) => Effect.Effect<Z, E, R>
-): Sink.Sink<R | Context.Tag.Identifier<T>, E, unknown, never, Z> => fromEffect(Effect.flatMap(tag, f))
+): Sink.Sink<Z, unknown, never, E, R | Context.Tag.Identifier<T>> => fromEffect(Effect.flatMap(tag, f))
 
 /** @internal */
 export const serviceWithSink = <T extends Context.Tag<any, any>, R, E, In, L, Z>(
   tag: T,
-  f: (service: Context.Tag.Service<T>) => Sink.Sink<R, E, In, L, Z>
-): Sink.Sink<R | Context.Tag.Identifier<T>, E, In, L, Z> =>
+  f: (service: Context.Tag.Service<T>) => Sink.Sink<Z, In, L, E, R>
+): Sink.Sink<Z, In, L, E, R | Context.Tag.Identifier<T>> =>
   new SinkImpl(pipe(Effect.map(tag, (service) => toChannel(f(service))), channel.unwrap))
 
 /** @internal */
-export const some = <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, boolean> =>
+export const some = <In>(predicate: Predicate<In>): Sink.Sink<boolean, In, In> =>
   fold(false, (bool) => !bool, (acc, input) => acc || predicate(input))
 
 /** @internal */
 export const splitWhere = dual<
-  <In>(f: Predicate<In>) => <R, E, L extends In, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E, In, In, Z>,
-  <R, E, L extends In, Z, In>(self: Sink.Sink<R, E, In, L, Z>, f: Predicate<In>) => Sink.Sink<R, E, In, In, Z>
->(2, <R, E, L extends In, Z, In>(self: Sink.Sink<R, E, In, L, Z>, f: Predicate<In>): Sink.Sink<R, E, In, In, Z> => {
+  <In>(f: Predicate<In>) => <R, E, L extends In, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In, In, E, R>,
+  <R, E, L extends In, Z, In>(self: Sink.Sink<Z, In, L, E, R>, f: Predicate<In>) => Sink.Sink<Z, In, In, E, R>
+>(2, <R, E, L extends In, Z, In>(self: Sink.Sink<Z, In, L, E, R>, f: Predicate<In>): Sink.Sink<Z, In, In, E, R> => {
   const newChannel = pipe(
     core.fromEffect(Ref.make(Chunk.empty<In>())),
     core.flatMap((ref) =>
@@ -1901,10 +1901,10 @@ const indexWhere = <A>(self: Chunk.Chunk<A>, predicate: Predicate<A>, from = 0):
 }
 
 /** @internal */
-export const succeed = <Z>(z: Z): Sink.Sink<never, never, unknown, never, Z> => new SinkImpl(core.succeed(z))
+export const succeed = <Z>(z: Z): Sink.Sink<Z, unknown> => new SinkImpl(core.succeed(z))
 
 /** @internal */
-export const sum: Sink.Sink<never, never, number, never, number> = foldLeftChunks(
+export const sum: Sink.Sink<number, number> = foldLeftChunks(
   0,
   (acc, chunk) => acc + Chunk.reduce(chunk, 0, (s, a) => s + a)
 )
@@ -1914,19 +1914,19 @@ export const summarized = dual<
   <R2, E2, Z2, Z3>(
     summary: Effect.Effect<Z2, E2, R2>,
     f: (start: Z2, end: Z2) => Z3
-  ) => <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In, L, [Z, Z3]>,
+  ) => <R, E, In, L, Z>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<[Z, Z3], In, L, E2 | E, R2 | R>,
   <R, E, In, L, Z, R2, E2, Z2, Z3>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     summary: Effect.Effect<Z2, E2, R2>,
     f: (start: Z2, end: Z2) => Z3
-  ) => Sink.Sink<R2 | R, E2 | E, In, L, [Z, Z3]>
+  ) => Sink.Sink<[Z, Z3], In, L, E2 | E, R2 | R>
 >(
   3,
   <R, E, In, L, Z, R2, E2, Z2, Z3>(
-    self: Sink.Sink<R, E, In, L, Z>,
+    self: Sink.Sink<Z, In, L, E, R>,
     summary: Effect.Effect<Z2, E2, R2>,
     f: (start: Z2, end: Z2) => Z3
-  ): Sink.Sink<R | R2, E | E2, In, L, [Z, Z3]> => {
+  ): Sink.Sink<[Z, Z3], In, L, E | E2, R | R2> => {
     const newChannel = pipe(
       core.fromEffect(summary),
       core.flatMap((start) =>
@@ -1947,11 +1947,10 @@ export const summarized = dual<
 )
 
 /** @internal */
-export const sync = <Z>(evaluate: LazyArg<Z>): Sink.Sink<never, never, unknown, never, Z> =>
-  new SinkImpl(core.sync(evaluate))
+export const sync = <Z>(evaluate: LazyArg<Z>): Sink.Sink<Z, unknown> => new SinkImpl(core.sync(evaluate))
 
 /** @internal */
-export const take = <In>(n: number): Sink.Sink<never, never, In, In, Chunk.Chunk<In>> =>
+export const take = <In>(n: number): Sink.Sink<Chunk.Chunk<In>, In, In> =>
   pipe(
     foldChunks<Chunk.Chunk<In>, In>(
       Chunk.empty(),
@@ -1965,139 +1964,139 @@ export const take = <In>(n: number): Sink.Sink<never, never, In, In, Chunk.Chunk
   )
 
 /** @internal */
-export const toChannel = <R, E, In, L, Z>(
-  self: Sink.Sink<R, E, In, L, Z>
-): Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R> =>
+export const toChannel = <R, E, In, L, A>(
+  self: Sink.Sink<A, In, L, E, R>
+): Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, A, unknown, R> =>
   Effect.isEffect(self) ?
-    toChannel(fromEffect(self as Effect.Effect<Z, E, R>)) :
-    (self as SinkImpl<R, E, In, L, Z>).channel
+    toChannel(fromEffect(self as Effect.Effect<A, E, R>)) :
+    (self as SinkImpl<A, In, L, E, R>).channel
 
 /** @internal */
 export const unwrap = <R, E, R2, E2, In, L, Z>(
-  effect: Effect.Effect<Sink.Sink<R2, E2, In, L, Z>, E, R>
-): Sink.Sink<R | R2, E | E2, In, L, Z> =>
+  effect: Effect.Effect<Sink.Sink<Z, In, L, E2, R2>, E, R>
+): Sink.Sink<Z, In, L, E | E2, R | R2> =>
   new SinkImpl(
     channel.unwrap(pipe(effect, Effect.map((sink) => toChannel(sink))))
   )
 
 /** @internal */
 export const unwrapScoped = <R, E, In, L, Z>(
-  effect: Effect.Effect<Sink.Sink<R, E, In, L, Z>, E, R>
-): Sink.Sink<Exclude<R, Scope.Scope>, E, In, L, Z> => {
+  effect: Effect.Effect<Sink.Sink<Z, In, L, E, R>, E, R>
+): Sink.Sink<Z, In, L, E, Exclude<R, Scope.Scope>> => {
   return new SinkImpl(channel.unwrapScoped(pipe(effect, Effect.map((sink) => toChannel(sink)))))
 }
 
 /** @internal */
 export const withDuration = <R, E, In, L, Z>(
-  self: Sink.Sink<R, E, In, L, Z>
-): Sink.Sink<R, E, In, L, [Z, Duration.Duration]> =>
+  self: Sink.Sink<Z, In, L, E, R>
+): Sink.Sink<[Z, Duration.Duration], In, L, E, R> =>
   pipe(self, summarized(Clock.currentTimeMillis, (start, end) => Duration.millis(end - start)))
 
 /** @internal */
 export const zip = dual<
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ) => <R, E>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, [Z, Z2]>,
+  ) => <R, E>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<[Z, Z2], In & In2, L | L2, E2 | E, R2 | R>,
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, [Z, Z2]>
+  ) => Sink.Sink<[Z, Z2], In & In2, L | L2, E2 | E, R2 | R>
 >(
   (args) => isSink(args[1]),
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, [Z, Z2]> => zipWith(self, that, (z, z2) => [z, z2], options)
+  ): Sink.Sink<[Z, Z2], In & In2, L | L2, E | E2, R | R2> => zipWith(self, that, (z, z2) => [z, z2], options)
 )
 
 /** @internal */
 export const zipLeft = dual<
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ) => <R, E>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, Z>,
+  ) => <R, E>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z, In & In2, L | L2, E2 | E, R2 | R>,
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, Z>
+  ) => Sink.Sink<Z, In & In2, L | L2, E2 | E, R2 | R>
 >(
   (args) => isSink(args[1]),
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, Z> => zipWith(self, that, (z, _) => z, options)
+  ): Sink.Sink<Z, In & In2, L | L2, E | E2, R | R2> => zipWith(self, that, (z, _) => z, options)
 )
 
 /** @internal */
 export const zipRight = dual<
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ) => <R, E>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, Z2>,
+  ) => <R, E>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z2, In & In2, L | L2, E2 | E, R2 | R>,
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, Z2>
+  ) => Sink.Sink<Z2, In & In2, L | L2, E2 | E, R2 | R>
 >(
   (args) => isSink(args[1]),
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, Z2> => zipWith(self, that, (_, z2) => z2, options)
+  ): Sink.Sink<Z2, In & In2, L | L2, E | E2, R | R2> => zipWith(self, that, (_, z2) => z2, options)
 )
 
 /** @internal */
 export const zipWith = dual<
   <R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     f: (z: Z, z1: Z2) => Z3,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ) => <R, E>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, Z3>,
+  ) => <R, E>(self: Sink.Sink<Z, In, L, E, R>) => Sink.Sink<Z3, In & In2, L | L2, E2 | E, R2 | R>,
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     f: (z: Z, z1: Z2) => Z3,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, Z3>
+  ) => Sink.Sink<Z3, In & In2, L | L2, E2 | E, R2 | R>
 >(
   (args) => isSink(args[1]),
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
-    self: Sink.Sink<R, E, In, L, Z>,
-    that: Sink.Sink<R2, E2, In2, L2, Z2>,
+    self: Sink.Sink<Z, In, L, E, R>,
+    that: Sink.Sink<Z2, In2, L2, E2, R2>,
     f: (z: Z, z1: Z2) => Z3,
     options?: {
       readonly concurrent?: boolean | undefined
     }
-  ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, Z3> =>
+  ): Sink.Sink<Z3, In & In2, L | L2, E | E2, R | R2> =>
     options?.concurrent ?
       raceWith(self, {
         other: that,
@@ -2130,18 +2129,18 @@ export const zipWith = dual<
 /** @internal */
 export const channelToSink = <OutElem, InElem, OutErr, InErr, OutDone, Env>(
   self: Channel.Channel<Chunk.Chunk<OutElem>, Chunk.Chunk<InElem>, OutErr, InErr, OutDone, unknown, Env>
-): Sink.Sink<Env, OutErr, InElem, OutElem, OutDone> => new SinkImpl(self)
+): Sink.Sink<OutDone, InElem, OutElem, OutErr, Env> => new SinkImpl(self)
 
 // Constants
 
 /** @internal */
-export const count: Sink.Sink<never, never, unknown, never, number> = foldLeftChunks(
+export const count: Sink.Sink<number, unknown> = foldLeftChunks(
   0,
   (acc, chunk) => acc + chunk.length
 )
 
 /** @internal */
-export const mkString: Sink.Sink<never, never, unknown, never, string> = suspend(() => {
+export const mkString: Sink.Sink<string, unknown> = suspend(() => {
   const strings: Array<string> = []
   return pipe(
     foldLeftChunks<void, unknown>(void 0, (_, elems) =>
@@ -2153,7 +2152,7 @@ export const mkString: Sink.Sink<never, never, unknown, never, string> = suspend
 })
 
 /** @internal */
-export const timed: Sink.Sink<never, never, unknown, never, Duration.Duration> = pipe(
+export const timed: Sink.Sink<Duration.Duration, unknown> = pipe(
   withDuration(drain),
   map((tuple) => tuple[1])
 )
