@@ -101,7 +101,7 @@ export declare namespace Worker {
    * @category models
    */
   export type Request<I = unknown> =
-    | readonly [id: number, data: 0, I, trace?: Span]
+    | readonly [id: number, data: 0, I, trace: Span | undefined]
     | readonly [id: number, interrupt: 1]
 
   /**
@@ -210,20 +210,18 @@ export const layerManager: Layer.Layer<WorkerManager, never, PlatformWorker> = i
  * @since 1.0.0
  * @category constructors
  */
-export const makePool: <W>() => <I, E, O>(
-  options: WorkerPool.Options<I, W>
+export const makePool: <I, E, O>(
+  options: WorkerPool.Options<I>
 ) => Effect.Effect<WorkerPool<I, E, O>, never, WorkerManager | Scope.Scope> = internal.makePool
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makePoolLayer: <W>(
-  managerLayer: Layer.Layer<WorkerManager>
-) => <Tag, I, E, O>(
+export const makePoolLayer: <Tag, I, E, O>(
   tag: Context.Tag<Tag, WorkerPool<I, E, O>>,
-  options: WorkerPool.Options<I, W>
-) => Layer.Layer<Tag> = internal.makePoolLayer
+  options: WorkerPool.Options<I, unknown>
+) => Layer.Layer<Tag, never, WorkerManager> = internal.makePoolLayer
 
 /**
  * @since 1.0.0
@@ -328,17 +326,15 @@ export const makeSerialized: <I extends Schema.TaggedRequest.Any, W = unknown>(
  * @since 1.0.0
  * @category constructors
  */
-export const makePoolSerialized: <W>() => <I extends Schema.TaggedRequest.Any>(
-  options: SerializedWorkerPool.Options<I, W>
+export const makePoolSerialized: <I extends Schema.TaggedRequest.Any>(
+  options: SerializedWorkerPool.Options<I>
 ) => Effect.Effect<SerializedWorkerPool<I>, never, WorkerManager | Scope.Scope> = internal.makePoolSerialized
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const makePoolSerializedLayer: <W>(
-  managerLayer: Layer.Layer<WorkerManager>
-) => <Tag, I extends Schema.TaggedRequest.Any>(
+export const makePoolSerializedLayer: <Tag, I extends Schema.TaggedRequest.Any>(
   tag: Context.Tag<Tag, SerializedWorkerPool<I>>,
-  options: SerializedWorkerPool.Options<I, W>
-) => Layer.Layer<Tag> = internal.makePoolSerializedLayer
+  options: SerializedWorkerPool.Options<I, unknown>
+) => Layer.Layer<Tag, never, WorkerManager> = internal.makePoolSerializedLayer

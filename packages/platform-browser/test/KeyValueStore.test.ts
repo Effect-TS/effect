@@ -1,4 +1,4 @@
-import * as Kv from "@effect/platform-browser/KeyValueStore"
+import * as Kv from "@effect/platform-browser/BrowserKeyValueStore"
 // @ts-ignore
 import { testLayer } from "@effect/platform/test/KeyValueStore.test"
 import { describe } from "vitest"

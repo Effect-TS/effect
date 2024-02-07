@@ -40,8 +40,8 @@ class RawImpl implements Body.Raw {
   readonly _tag = "Raw"
   constructor(
     readonly body: unknown,
-    readonly contentType?: string,
-    readonly contentLength?: number
+    readonly contentType?: string | undefined,
+    readonly contentLength?: number | undefined
   ) {
     this[TypeId] = TypeId
   }
@@ -154,7 +154,7 @@ class StreamImpl implements Body.Stream {
   constructor(
     readonly stream: Stream_.Stream<Uint8Array, unknown>,
     readonly contentType: string,
-    readonly contentLength?: number
+    readonly contentLength?: number | undefined
   ) {
     this[TypeId] = TypeId
   }
@@ -163,6 +163,6 @@ class StreamImpl implements Body.Stream {
 /** @internal */
 export const stream = (
   body: Stream_.Stream<Uint8Array, unknown>,
-  contentType?: string,
-  contentLength?: number
+  contentType?: string | undefined,
+  contentLength?: number | undefined
 ): Body.Stream => new StreamImpl(body, contentType ?? "application/octet-stream", contentLength)

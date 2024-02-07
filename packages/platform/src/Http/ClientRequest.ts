@@ -43,13 +43,13 @@ export interface ClientRequest extends Pipeable {
  * @category models
  */
 export interface Options {
-  readonly method?: Method
-  readonly url?: string
-  readonly urlParams?: UrlParams.Input
-  readonly headers?: Headers.Input
-  readonly body?: Body.Body
-  readonly accept?: string
-  readonly acceptJson?: boolean
+  readonly method?: Method | undefined
+  readonly url?: string | undefined
+  readonly urlParams?: UrlParams.Input | undefined
+  readonly headers?: Headers.Input | undefined
+  readonly body?: Body.Body | undefined
+  readonly accept?: string | undefined
+  readonly acceptJson?: boolean | undefined
 }
 
 /**

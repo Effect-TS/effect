@@ -18,7 +18,7 @@ export const makePool = (
   Effect.suspend(() => {
     let setup: any
     return Effect.map(
-      Worker.makePool<unknown>()<Resolver.RpcRequest, RpcTransportError, Resolver.RpcResponse>({
+      Worker.makePool<Resolver.RpcRequest, RpcTransportError, Resolver.RpcResponse>({
         ...options,
         onCreate(worker) {
           if (setup) {

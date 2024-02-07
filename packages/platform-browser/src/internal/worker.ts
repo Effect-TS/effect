@@ -56,17 +56,3 @@ export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerIm
 
 /** @internal */
 export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
-
-/** @internal */
-export const makePool = Worker.makePool<globalThis.Worker | globalThis.SharedWorker>()
-
-/** @internal */
-export const makePoolLayer = Worker.makePoolLayer<globalThis.Worker | globalThis.SharedWorker>(layerManager)
-
-/** @internal */
-export const makePoolSerialized = Worker.makePoolSerialized<globalThis.Worker | globalThis.SharedWorker>()
-
-/** @internal */
-export const makePoolSerializedLayer = Worker.makePoolSerializedLayer<globalThis.Worker | globalThis.SharedWorker>(
-  layerManager
-)

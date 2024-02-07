@@ -1,14 +1,9 @@
 /**
  * @since 1.0.0
- *
- * Also includes exports from [`@effect/platform/KeyValueStore`](https://effect-ts.github.io/effect/platform/KeyValueStore.ts.html).
  */
+import type * as KeyValueStore from "@effect/platform/KeyValueStore"
+import type * as Layer from "effect/Layer"
 import * as internal from "./internal/keyValueStore.js"
-
-/**
- * @since 1.0.0
- */
-export * from "@effect/platform/KeyValueStore"
 
 /**
  * Creates a KeyValueStore layer that uses the browser's localStorage api. Values are stored between sessions.
@@ -16,7 +11,7 @@ export * from "@effect/platform/KeyValueStore"
  * @since 1.0.0
  * @category models
  */
-export const layerLocalStorage = internal.layerLocalStorage
+export const layerLocalStorage: Layer.Layer<KeyValueStore.KeyValueStore, never, never> = internal.layerLocalStorage
 
 /**
  * Creates a KeyValueStore layer that uses the browser's sessionStorage api. Values are stored only for the current session.
@@ -24,4 +19,4 @@ export const layerLocalStorage = internal.layerLocalStorage
  * @since 1.0.0
  * @category models
  */
-export const layerSessionStorage = internal.layerSessionStorage
+export const layerSessionStorage: Layer.Layer<KeyValueStore.KeyValueStore, never, never> = internal.layerSessionStorage
