@@ -3942,7 +3942,7 @@ export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
  * import * as Schema from "@effect/schema/Schema"
  *
  * // Schema<string | number, Either<string, number>>
- * Schema.eitherFromUnion(Schema.string, Schema.number)
+ * Schema.eitherFromUnion({ left: Schema.string, right: Schema.number })
  *
  * @category Either transformations
  * @since 1.0.0
