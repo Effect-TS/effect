@@ -19,7 +19,7 @@ import type { Scope } from "./Scope.js"
  * @since 2.0.0
  * @category models
  */
-export interface AsyncFiberException<out E, out A> {
+export interface AsyncFiberException<out A, out E = never> {
   readonly _tag: "AsyncFiberException"
   readonly fiber: Fiber.RuntimeFiber<A, E>
 }
@@ -28,8 +28,8 @@ export interface AsyncFiberException<out E, out A> {
  * @since 2.0.0
  * @category models
  */
-export interface Cancel<out E, out A> {
-  (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<E, A> | undefined): void
+export interface Cancel<out A, out E = never> {
+  (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined): void
 }
 
 /**
@@ -100,7 +100,7 @@ export const runSync: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A
  * @since 2.0.0
  * @category models
  */
-export interface RunCallbackOptions<E, A> extends RunForkOptions {
+export interface RunCallbackOptions<in A, in E = never> extends RunForkOptions {
   readonly onExit?: ((exit: Exit.Exit<A, E>) => void) | undefined
 }
 
@@ -116,10 +116,10 @@ export interface RunCallbackOptions<E, A> extends RunForkOptions {
  */
 export const runCallback: <R>(
   runtime: Runtime<R>
-) => <E, A>(
+) => <A, E>(
   effect: Effect.Effect<A, E, R>,
-  options?: RunCallbackOptions<E, A> | undefined
-) => (fiberId?: FiberId.FiberId | undefined, options?: RunCallbackOptions<E, A> | undefined) => void =
+  options?: RunCallbackOptions<A, E> | undefined
+) => (fiberId?: FiberId.FiberId | undefined, options?: RunCallbackOptions<A, E> | undefined) => void =
   internal.unsafeRunCallback
 
 /**

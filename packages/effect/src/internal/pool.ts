@@ -39,7 +39,7 @@ interface PoolState {
   readonly free: number
 }
 
-interface Attempted<E, A> {
+interface Attempted<A, E> {
   readonly result: Exit.Exit<A, E>
   readonly finalizer: Effect.Effect<unknown>
 }
@@ -141,7 +141,7 @@ class PoolImpl<in out A, in out E> implements Pool.Pool<A, E> {
     readonly max: number,
     readonly isShuttingDown: Ref.Ref<boolean>,
     readonly state: Ref.Ref<PoolState>,
-    readonly items: Queue.Queue<Attempted<E, A>>,
+    readonly items: Queue.Queue<Attempted<A, E>>,
     readonly invalidated: Ref.Ref<HashSet.HashSet<A>>,
     readonly track: (exit: Exit.Exit<A, E>) => Effect.Effect<unknown>
   ) {}
@@ -178,7 +178,7 @@ class PoolImpl<in out A, in out E> implements Pool.Pool<A, E> {
   get get(): Effect.Effect<A, E, Scope.Scope> {
     const acquire = (
       restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
-    ): Effect.Effect<Attempted<E, A>> =>
+    ): Effect.Effect<Attempted<A, E>> =>
       core.flatMap(ref.get(this.isShuttingDown), (down) =>
         down
           ? core.interrupt
@@ -214,7 +214,7 @@ class PoolImpl<in out A, in out E> implements Pool.Pool<A, E> {
             return [core.interrupt, state] as const
           })))
 
-    const release = (attempted: Attempted<E, A>): Effect.Effect<unknown> =>
+    const release = (attempted: Attempted<A, E>): Effect.Effect<unknown> =>
       core.exitMatch(attempted.result, {
         onFailure: () =>
           core.flatten(ref.modify(this.state, (state) => {
@@ -266,7 +266,7 @@ const allocate = <A, E>(
       core.exit(restore(fiberRuntime.scopeExtend(self.creator, scope))),
       (exit) =>
         core.flatMap(
-          core.succeed<Attempted<E, A>>({
+          core.succeed<Attempted<A, E>>({
             result: exit as Exit.Exit<A, E>,
             finalizer: core.scopeClose(scope, core.exitSucceed(void 0))
           }),
@@ -292,7 +292,7 @@ const excess = <A, E>(self: PoolImpl<A, E>): Effect.Effect<number> =>
 
 const finalizeInvalid = <A, E>(
   self: PoolImpl<A, E>,
-  attempted: Attempted<E, A>
+  attempted: Attempted<A, E>
 ): Effect.Effect<unknown> =>
   pipe(
     forEach(attempted, (a) => ref.update(self.invalidated, HashSet.remove(a))),
@@ -337,7 +337,7 @@ const getAndShutdown = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
 /**
  * Begins pre-allocating pool entries based on minimum pool size.
  */
-const initialize = <E, A>(self: PoolImpl<A, E>): Effect.Effect<void> =>
+const initialize = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
   fiberRuntime.replicateEffect(
     core.uninterruptibleMask((restore) =>
       core.flatten(ref.modify(self.state, (state) => {
@@ -357,7 +357,7 @@ const initialize = <E, A>(self: PoolImpl<A, E>): Effect.Effect<void> =>
 /**
  * Shrinks the pool down, but never to less than the minimum size.
  */
-const shrink = <E, A>(self: PoolImpl<A, E>): Effect.Effect<void> =>
+const shrink = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
   core.uninterruptible(
     core.flatten(ref.modify(self.state, (state) => {
       if (state.size > self.min && state.free > 0) {
@@ -379,16 +379,16 @@ const shrink = <E, A>(self: PoolImpl<A, E>): Effect.Effect<void> =>
     }))
   )
 
-const shutdown = <E, A>(self: PoolImpl<A, E>): Effect.Effect<void> =>
+const shutdown = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
   core.flatten(ref.modify(self.isShuttingDown, (down) =>
     down
       ? [queue.awaitShutdown(self.items), true] as const
       : [core.zipRight(getAndShutdown(self), queue.awaitShutdown(self.items)), true]))
 
-const isFailure = <E, A>(self: Attempted<E, A>): boolean => core.exitIsFailure(self.result)
+const isFailure = <A, E>(self: Attempted<A, E>): boolean => core.exitIsFailure(self.result)
 
 const forEach = <E, A, E2, R>(
-  self: Attempted<E, A>,
+  self: Attempted<A, E>,
   f: (a: A) => Effect.Effect<unknown, E2, R>
 ): Effect.Effect<unknown, E2, R> =>
   core.exitMatch(self.result, {
@@ -396,7 +396,7 @@ const forEach = <E, A, E2, R>(
     onSuccess: f
   })
 
-const toEffect = <E, A>(self: Attempted<E, A>): Effect.Effect<A, E> => self.result
+const toEffect = <A, E>(self: Attempted<A, E>): Effect.Effect<A, E> => self.result
 
 /**
  * A more powerful variant of `make` that allows specifying a `Strategy` that
@@ -417,7 +417,7 @@ const makeWith = <A, E, R, S, R2>(
         core.context<R>(),
         ref.make(false),
         ref.make<PoolState>({ size: 0, free: 0 }),
-        queue.bounded<Attempted<E, A>>(options.max),
+        queue.bounded<Attempted<A, E>>(options.max),
         ref.make(HashSet.empty<A>()),
         options.strategy.initial()
       ]),
