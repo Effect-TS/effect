@@ -204,7 +204,7 @@ export const unsafeAtomically = <A, E, R>(
       }
       case TryCommitOpCodes.OP_SUSPEND: {
         const txnId = TxnId.make()
-        const state: { value: STMState.STMState<E, A> } = { value: STMState.running }
+        const state: { value: STMState.STMState<A, E> } = { value: STMState.running }
         const effect = Effect.async(
           (k: (effect: Effect.Effect<A, E, R>) => unknown): void =>
             tryCommitAsync(fiberId, self, txnId, state, env, scheduler, priority, k)
@@ -235,11 +235,11 @@ export const unsafeAtomically = <A, E, R>(
 const tryCommit = <A, E, R>(
   fiberId: FiberId.FiberId,
   stm: STM.STM<A, E, R>,
-  state: { value: STMState.STMState<E, A> },
+  state: { value: STMState.STMState<A, E> },
   env: Context.Context<R>,
   scheduler: Scheduler.Scheduler,
   priority: number
-): TryCommit.TryCommit<E, A> => {
+): TryCommit.TryCommit<A, E> => {
   const journal: Journal.Journal = new Map()
   const tExit = new STMDriver(stm, journal, fiberId, env).run()
   const analysis = Journal.analyzeJournal(journal)
@@ -300,7 +300,7 @@ const tryCommitSync = <A, E, R>(
   env: Context.Context<R>,
   scheduler: Scheduler.Scheduler,
   priority: number
-): TryCommit.TryCommit<E, A> => {
+): TryCommit.TryCommit<A, E> => {
   const journal: Journal.Journal = new Map()
   const tExit = new STMDriver(stm, journal, fiberId, env).run()
   const analysis = Journal.analyzeJournal(journal)
@@ -355,7 +355,7 @@ const tryCommitAsync = <A, E, R>(
   fiberId: FiberId.FiberId,
   self: STM.STM<A, E, R>,
   txnId: TxnId.TxnId,
-  state: { value: STMState.STMState<E, A> },
+  state: { value: STMState.STMState<A, E> },
   context: Context.Context<R>,
   scheduler: Scheduler.Scheduler,
   priority: number,
@@ -386,7 +386,7 @@ const completeTodos = <A, E>(
   journal: Journal.Journal,
   scheduler: Scheduler.Scheduler,
   priority: number
-): TryCommit.TryCommit<E, A> => {
+): TryCommit.TryCommit<A, E> => {
   const todos = Journal.collectTodos(journal)
   if (todos.size > 0) {
     scheduler.scheduleTask(() => Journal.execTodos(todos), priority)

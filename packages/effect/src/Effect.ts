@@ -4714,8 +4714,8 @@ export const runFork: <A, E>(
  */
 export const runCallback: <A, E>(
   effect: Effect<A, E>,
-  options?: Runtime.RunCallbackOptions<E, A> | undefined
-) => Runtime.Cancel<E, A> = _runtime.unsafeRunEffect
+  options?: Runtime.RunCallbackOptions<A, E> | undefined
+) => Runtime.Cancel<A, E> = _runtime.unsafeRunEffect
 
 /**
  * Runs an `Effect` workflow, returning a `Promise` which resolves with the
