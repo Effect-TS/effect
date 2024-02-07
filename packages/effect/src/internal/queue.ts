@@ -71,9 +71,9 @@ class QueueImpl<in out A> implements Queue.Queue<A> {
     /** @internal */
     readonly queue: Queue.BackingQueue<A>,
     /** @internal */
-    readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>,
+    readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
     /** @internal */
-    readonly shutdownHook: Deferred.Deferred<void, never>,
+    readonly shutdownHook: Deferred.Deferred<void>,
     /** @internal */
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     /** @internal */
@@ -375,8 +375,8 @@ export const unbounded = <A>(): Effect.Effect<Queue.Queue<A>> =>
 /** @internal */
 const unsafeMake = <A>(
   queue: Queue.BackingQueue<A>,
-  takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>,
-  shutdownHook: Deferred.Deferred<void, never>,
+  takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
+  shutdownHook: Deferred.Deferred<void>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
   strategy: Queue.Strategy<A>
 ): Queue.Queue<A> => {
@@ -518,13 +518,13 @@ export const slidingStrategy = <A>(): Queue.Strategy<A> => new SlidingStrategy()
 class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
   readonly [QueueStrategyTypeId] = queueStrategyVariance
 
-  readonly putters = MutableQueue.unbounded<readonly [A, Deferred.Deferred<boolean, never>, boolean]>()
+  readonly putters = MutableQueue.unbounded<readonly [A, Deferred.Deferred<boolean>, boolean]>()
 
   surplusSize(): number {
     return MutableQueue.length(this.putters)
   }
 
-  onCompleteTakersWithEmptyQueue(takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>): void {
+  onCompleteTakersWithEmptyQueue(takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>): void {
     while (!MutableQueue.isEmpty(this.putters) && !MutableQueue.isEmpty(takers)) {
       const taker = MutableQueue.poll(takers, void 0)!
       const putter = MutableQueue.poll(this.putters, void 0)!
@@ -563,7 +563,7 @@ class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
   handleSurplus(
     iterable: Iterable<A>,
     queue: Queue.BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>,
+    takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
     isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean> {
     return core.withFiberRuntime((state) => {
@@ -582,7 +582,7 @@ class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
 
   unsafeOnQueueEmptySpace(
     queue: Queue.BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
+    takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>
   ): void {
     let keepPolling = true
     while (keepPolling && (queue.capacity() === Number.POSITIVE_INFINITY || queue.length() < queue.capacity())) {
@@ -601,7 +601,7 @@ class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
     }
   }
 
-  unsafeOffer(iterable: Iterable<A>, deferred: Deferred.Deferred<boolean, never>): void {
+  unsafeOffer(iterable: Iterable<A>, deferred: Deferred.Deferred<boolean>): void {
     const stuff = Array.from(iterable)
     for (let i = 0; i < stuff.length; i++) {
       const value = stuff[i]
@@ -613,7 +613,7 @@ class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
     }
   }
 
-  unsafeRemove(deferred: Deferred.Deferred<boolean, never>): void {
+  unsafeRemove(deferred: Deferred.Deferred<boolean>): void {
     unsafeOfferAll(
       this.putters,
       pipe(unsafePollAll(this.putters), Chunk.filter(([, _]) => _ !== deferred))
@@ -639,7 +639,7 @@ class DroppingStrategy<in out A> implements Queue.Strategy<A> {
   handleSurplus(
     _iterable: Iterable<A>,
     _queue: Queue.BackingQueue<A>,
-    _takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>,
+    _takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
     _isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean> {
     return core.succeed(false)
@@ -647,7 +647,7 @@ class DroppingStrategy<in out A> implements Queue.Strategy<A> {
 
   unsafeOnQueueEmptySpace(
     _queue: Queue.BackingQueue<A>,
-    _takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
+    _takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>
   ): void {
     //
   }
@@ -671,7 +671,7 @@ class SlidingStrategy<in out A> implements Queue.Strategy<A> {
   handleSurplus(
     iterable: Iterable<A>,
     queue: Queue.BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>,
+    takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
     _isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean> {
     return core.sync(() => {
@@ -683,7 +683,7 @@ class SlidingStrategy<in out A> implements Queue.Strategy<A> {
 
   unsafeOnQueueEmptySpace(
     _queue: Queue.BackingQueue<A>,
-    _takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
+    _takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>
   ): void {
     //
   }
@@ -704,7 +704,7 @@ class SlidingStrategy<in out A> implements Queue.Strategy<A> {
 }
 
 /** @internal */
-const unsafeCompleteDeferred = <A>(deferred: Deferred.Deferred<A, never>, a: A): void => {
+const unsafeCompleteDeferred = <A>(deferred: Deferred.Deferred<A>, a: A): void => {
   return core.deferredUnsafeDone(deferred, core.succeed(a))
 }
 
@@ -735,7 +735,7 @@ export const unsafeRemove = <A>(queue: MutableQueue.MutableQueue<A>, a: A): void
 export const unsafeCompleteTakers = <A>(
   strategy: Queue.Strategy<A>,
   queue: Queue.BackingQueue<A>,
-  takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
+  takers: MutableQueue.MutableQueue<Deferred.Deferred<A>>
 ): void => {
   // Check both a taker and an item are in the queue, starting with the taker
   let keepPolling = true

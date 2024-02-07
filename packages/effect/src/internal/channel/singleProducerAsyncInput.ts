@@ -41,7 +41,7 @@ type OP_STATE_DONE = typeof OP_STATE_DONE
 /** @internal */
 interface Empty {
   readonly _tag: OP_STATE_EMPTY
-  readonly notifyProducer: Deferred.Deferred<void, never>
+  readonly notifyProducer: Deferred.Deferred<void>
 }
 
 /** @internal */
@@ -63,7 +63,7 @@ interface Done<_Done> {
 }
 
 /** @internal */
-const stateEmpty = (notifyProducer: Deferred.Deferred<void, never>): State<never, never, never> => ({
+const stateEmpty = (notifyProducer: Deferred.Deferred<void>): State<never, never, never> => ({
   _tag: OP_STATE_EMPTY,
   notifyProducer
 })

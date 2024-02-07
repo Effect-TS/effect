@@ -3,7 +3,7 @@ import type * as Chunk from "../../Chunk.js"
 import type * as SinkEndReason from "./sinkEndReason.js"
 
 /** @internal */
-export type HandoffSignal<E, A> = Emit<A> | Halt<E> | End
+export type HandoffSignal<A, E = never> = Emit<A> | Halt<E> | End
 
 /** @internal */
 export const OP_EMIT = "Emit" as const
@@ -41,19 +41,19 @@ export interface End {
 }
 
 /** @internal */
-export const emit = <A>(elements: Chunk.Chunk<A>): HandoffSignal<never, A> => ({
+export const emit = <A>(elements: Chunk.Chunk<A>): HandoffSignal<A> => ({
   _tag: OP_EMIT,
   elements
 })
 
 /** @internal */
-export const halt = <E>(cause: Cause.Cause<E>): HandoffSignal<E, never> => ({
+export const halt = <E>(cause: Cause.Cause<E>): HandoffSignal<never, E> => ({
   _tag: OP_HALT,
   cause
 })
 
 /** @internal */
-export const end = (reason: SinkEndReason.SinkEndReason): HandoffSignal<never, never> => ({
+export const end = (reason: SinkEndReason.SinkEndReason): HandoffSignal<never> => ({
   _tag: OP_END,
   reason
 })
