@@ -10,7 +10,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
 
-const findSink = <A>(a: A): Sink.Sink<never, void, A, A, A> =>
+const findSink = <A>(a: A): Sink.Sink<A, A, A, void> =>
   pipe(
     Sink.fold<Option.Option<A>, A>(
       Option.none(),
@@ -25,8 +25,8 @@ const findSink = <A>(a: A): Sink.Sink<never, void, A, A, A> =>
 
 const sinkRaceLaw = <E, A, L>(
   stream: Stream.Stream<A>,
-  sink1: Sink.Sink<never, E, A, L, A>,
-  sink2: Sink.Sink<never, E, A, L, A>
+  sink1: Sink.Sink<A, A, L, E>,
+  sink2: Sink.Sink<A, A, L, E>
 ): Effect.Effect<boolean> =>
   pipe(
     Effect.all({
