@@ -1,5 +1,39 @@
 # effect
 
+## 2.2.5
+
+### Patch Changes
+
+- [#2075](https://github.com/Effect-TS/effect/pull/2075) [`3ddfdbf`](https://github.com/Effect-TS/effect/commit/3ddfdbf914edea536aef207cec6695f33496258c) Thanks [@tim-smart](https://github.com/tim-smart)! - add apis for manipulating context to the Runtime module
+
+  These include:
+
+  - `Runtime.updateContext` for modifying the `Context` directly
+  - `Runtime.provideService` for adding services to an existing Runtime
+
+  Example:
+
+  ```ts
+  import { Context, Runtime } from "effect";
+
+  interface Name {
+    readonly _: unique symbol;
+  }
+  const Name = Context.Tag<Name, string>("Name");
+
+  const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
+    Runtime.provideService(Name, "John"),
+  );
+  ```
+
+- [#2075](https://github.com/Effect-TS/effect/pull/2075) [`3ddfdbf`](https://github.com/Effect-TS/effect/commit/3ddfdbf914edea536aef207cec6695f33496258c) Thanks [@tim-smart](https://github.com/tim-smart)! - add apis for patching runtime flags to the Runtime module
+
+  The apis include:
+
+  - `Runtime.updateRuntimeFlags` for updating all the flags at once
+  - `Runtime.enableRuntimeFlag` for enabling a single runtime flag
+  - `Runtime.disableRuntimeFlag` for disabling a single runtime flag
+
 ## 2.2.4
 
 ### Patch Changes

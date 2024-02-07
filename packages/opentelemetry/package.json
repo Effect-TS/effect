@@ -1,6 +1,6 @@
 {
   "name": "@effect/opentelemetry",
-  "version": "0.30.13",
+  "version": "0.30.14",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",
