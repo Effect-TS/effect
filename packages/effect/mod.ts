@@ -15,7 +15,7 @@ const enabled = {
   swapResourceParams: false,
   swapTExitParams: false,
   swapChannelParams: false,
-  swapSinkParams: false,
+  swapSinkParams: true,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,

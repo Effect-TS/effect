@@ -17,7 +17,7 @@ export const fromWritable: <E, A = string | Uint8Array>(
   evaluate: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => E,
   options?: FromWritableOptions
-) => Sink<never, E, A, never, void> = internal.fromWritable
+) => Sink<void, A, never, E> = internal.fromWritable
 
 /**
  * @category constructor

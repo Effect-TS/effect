@@ -74,7 +74,7 @@ export type CommandInput = Stream<Uint8Array, PlatformError>
  * @since 1.0.0
  * @category models
  */
-export type CommandOutput = "inherit" | "pipe" | Sink<never, never, Uint8Array, never, Uint8Array>
+export type CommandOutput = "inherit" | "pipe" | Sink<Uint8Array, Uint8Array>
 
 /**
  * @since 1.0.0

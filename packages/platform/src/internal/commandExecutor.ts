@@ -55,7 +55,7 @@ export const makeExecutor = (start: _CommandExecutor.CommandExecutor["start"]): 
   }
 }
 
-const collectUint8Array: Sink.Sink<never, never, Uint8Array, never, Uint8Array> = Sink.foldLeftChunks(
+const collectUint8Array: Sink.Sink<Uint8Array, Uint8Array> = Sink.foldLeftChunks(
   new Uint8Array(),
   (bytes, chunk: Chunk.Chunk<Uint8Array>) =>
     Chunk.reduce(chunk, bytes, (acc, curr) => {
