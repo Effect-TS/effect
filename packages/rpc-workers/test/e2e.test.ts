@@ -1,4 +1,4 @@
-import * as Worker from "@effect/platform-browser/Worker"
+import * as BrowserWorker from "@effect/platform-browser/BrowserWorker"
 import * as Client from "@effect/rpc-workers/Client"
 import * as Resolver from "@effect/rpc-workers/Resolver"
 import "@vitest/web-worker"
@@ -17,21 +17,21 @@ const PoolLive = Resolver.makePoolLayer({
   spawn: () => new globalThis.Worker(new URL("./e2e/worker", import.meta.url)),
   size: 1
 }).pipe(
-  Layer.provide(Worker.layerManager)
+  Layer.provide(BrowserWorker.layerManager)
 )
 
 const SetupPoolLive = Resolver.makePoolLayer({
   spawn: () => new globalThis.Worker(new URL("./e2e/worker-setup", import.meta.url)),
   size: 1
 }).pipe(
-  Layer.provide(Worker.layerManager)
+  Layer.provide(BrowserWorker.layerManager)
 )
 
 const SharedPoolLive = Resolver.makePoolLayer({
   spawn: () => new globalThis.SharedWorker(new URL("./e2e/worker", import.meta.url)),
   size: 1
 }).pipe(
-  Layer.provide(Worker.layerManager)
+  Layer.provide(BrowserWorker.layerManager)
 )
 
 const client = Client.make(schema)

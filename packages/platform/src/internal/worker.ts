@@ -291,9 +291,8 @@ export const makeManager = Effect.gen(function*(_) {
 export const layerManager = Layer.effect(WorkerManager, makeManager)
 
 /** @internal */
-export const makePool = <W>() =>
-<I, E, O>(
-  options: Worker.WorkerPool.Options<I, W>
+export const makePool = <I, E, O>(
+  options: Worker.WorkerPool.Options<I>
 ) =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
@@ -342,11 +341,10 @@ export const makePool = <W>() =>
   })
 
 /** @internal */
-export const makePoolLayer = <W>(managerLayer: Layer.Layer<Worker.WorkerManager>) =>
-<Tag, I, E, O>(
+export const makePoolLayer = <Tag, I, E, O>(
   tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
-  options: Worker.WorkerPool.Options<I, W>
-) => Layer.scoped(tag, makePool<W>()(options)).pipe(Layer.provide(managerLayer))
+  options: Worker.WorkerPool.Options<I>
+) => Layer.scoped(tag, makePool(options))
 
 /** @internal */
 export const makeSerialized = <
@@ -390,15 +388,14 @@ export const makeSerialized = <
   })
 
 /** @internal */
-export const makePoolSerialized = <W>() =>
-<I extends Schema.TaggedRequest.Any>(
-  options: Worker.SerializedWorkerPool.Options<I, W>
+export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
+  options: Worker.SerializedWorkerPool.Options<I>
 ) =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
     const workers = new Set<Worker.SerializedWorker<I>>()
     const acquire = pipe(
-      makeSerialized<I, W>(options),
+      makeSerialized<I>(options),
       Effect.tap((worker) => Effect.sync(() => workers.add(worker))),
       Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
       options.onCreate ? Effect.tap(options.onCreate) : identity,
@@ -442,9 +439,7 @@ export const makePoolSerialized = <W>() =>
   })
 
 /** @internal */
-export const makePoolSerializedLayer =
-  <W>(managerLayer: Layer.Layer<Worker.WorkerManager>) =>
-  <Tag, I extends Schema.TaggedRequest.Any>(
-    tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
-    options: Worker.SerializedWorkerPool.Options<I, W>
-  ) => Layer.scoped(tag, makePoolSerialized<W>()(options)).pipe(Layer.provide(managerLayer))
+export const makePoolSerializedLayer = <Tag, I extends Schema.TaggedRequest.Any>(
+  tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
+  options: Worker.SerializedWorkerPool.Options<I>
+) => Layer.scoped(tag, makePoolSerialized(options))

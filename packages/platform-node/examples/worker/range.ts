@@ -6,6 +6,6 @@ const WorkerLive = Effect.gen(function*(_) {
   yield* _(WorkerRunner.make((n: number) => Stream.range(0, n)))
   yield* _(Effect.log("worker started"))
   yield* _(Effect.addFinalizer(() => Effect.log("worker closed")))
-}).pipe(Layer.scopedDiscard, Layer.provide(NodeWorkerRunner.layerPlatform))
+}).pipe(Layer.scopedDiscard, Layer.provide(NodeWorkerRunner.layer))
 
 NodeRuntime.runMain(Layer.launch(WorkerLive))

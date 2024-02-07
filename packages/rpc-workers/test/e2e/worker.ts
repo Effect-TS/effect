@@ -1,5 +1,5 @@
-import { runMain } from "@effect/platform-browser/Runtime"
-import * as Runner from "@effect/platform-browser/WorkerRunner"
+import { runMain } from "@effect/platform-browser/BrowserRuntime"
+import * as BrowserRunner from "@effect/platform-browser/BrowserWorkerRunner"
 import * as Router from "@effect/rpc-workers/Router"
 import * as Server from "@effect/rpc-workers/Server"
 import * as Duration from "effect/Duration"
@@ -16,7 +16,7 @@ const router = Router.make(schema, {
 
 Server.make(router).pipe(
   Layer.scopedDiscard,
-  Layer.provide(Runner.layerPlatform),
+  Layer.provide(BrowserRunner.layer),
   Layer.launch,
   runMain
 )

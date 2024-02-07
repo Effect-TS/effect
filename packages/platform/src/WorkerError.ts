@@ -24,7 +24,7 @@ export interface WorkerError {
   readonly _tag: "WorkerError"
   readonly reason: "spawn" | "decode" | "send" | "unknown" | "encode"
   readonly error: unknown
-  readonly stack?: string
+  readonly stack?: string | undefined
 }
 
 /**
@@ -34,5 +34,5 @@ export interface WorkerError {
 export const WorkerError: (
   reason: "spawn" | "decode" | "send" | "unknown" | "encode",
   error: unknown,
-  stack?: string
+  stack?: string | undefined
 ) => WorkerError = internal.WorkerError
