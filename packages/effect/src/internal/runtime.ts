@@ -97,10 +97,10 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 
 /** @internal */
 export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
-<E, A>(
+<A, E>(
   effect: Effect.Effect<A, E, R>,
-  options: Runtime.RunCallbackOptions<E, A> = {}
-): (fiberId?: FiberId.FiberId, options?: Runtime.RunCallbackOptions<E, A> | undefined) => void => {
+  options: Runtime.RunCallbackOptions<A, E> = {}
+): (fiberId?: FiberId.FiberId, options?: Runtime.RunCallbackOptions<A, E> | undefined) => void => {
   const fiberRuntime = unsafeFork(runtime)(effect, options)
 
   if (options.onExit) {
