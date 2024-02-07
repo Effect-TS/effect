@@ -35,7 +35,7 @@ import * as supervisor from "../supervisor.js"
 
 /** @internal */
 class Semaphore {
-  public waiters = new Array<() => boolean>()
+  public waiters = new Set<() => boolean>()
   public taken = 0
 
   constructor(readonly permits: number) {}
@@ -51,20 +51,14 @@ class Semaphore {
           if (this.free < n) {
             return false
           }
-          const observerIndex = this.waiters.findIndex((cb) => cb === observer)
-          if (observerIndex !== -1) {
-            this.waiters.splice(observerIndex, 1)
-          }
+          this.waiters.delete(observer)
           this.taken += n
           resume(core.succeed(n))
           return true
         }
-        this.waiters.push(observer)
+        this.waiters.add(observer)
         return Either.left(core.sync(() => {
-          const observerIndex = this.waiters.findIndex((cb) => cb === observer)
-          if (observerIndex !== -1) {
-            this.waiters.splice(observerIndex, 1)
-          }
+          this.waiters.delete(observer)
         }))
       }
       this.taken += n
@@ -75,10 +69,10 @@ class Semaphore {
     core.withFiberRuntime<never, never, void>((fiber) => {
       this.taken = f(this.taken)
       fiber.getFiberRef(currentScheduler).scheduleTask(() => {
-        while (this.waiters.length > 0) {
-          if (this.waiters[0]() === false) {
-            break
-          }
+        const iter = this.waiters.values()
+        let item = iter.next()
+        while (item.done === false && item.value() === true) {
+          item = iter.next()
         }
       }, fiber.getFiberRef(core.currentSchedulingPriority))
       return core.unit
