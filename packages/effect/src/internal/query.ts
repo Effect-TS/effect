@@ -42,8 +42,8 @@ export const currentCacheEnabled = globalValue(
 export const fromRequest = <
   A extends Request.Request<any, any>,
   Ds extends
-    | RequestResolver.RequestResolver<A, never>
-    | Effect.Effect<RequestResolver.RequestResolver<A, never>, any, any>
+    | RequestResolver.RequestResolver<A>
+    | Effect.Effect<RequestResolver.RequestResolver<A>, any, any>
 >(
   request: A,
   dataSource: Ds
@@ -54,7 +54,7 @@ export const fromRequest = <
 > =>
   core.flatMap(
     (core.isEffect(dataSource) ? dataSource : core.succeed(dataSource)) as Effect.Effect<
-      RequestResolver.RequestResolver<A, never>
+      RequestResolver.RequestResolver<A>
     >,
     (ds) =>
       core.fiberIdWith((id) => {
@@ -90,7 +90,7 @@ export const fromRequest = <
                     orNew.right.listeners.increment()
                     return core.blocked(
                       BlockedRequests.single(
-                        ds as RequestResolver.RequestResolver<A, never>,
+                        ds as RequestResolver.RequestResolver<A>,
                         BlockedRequests.makeEntry({
                           request: proxy,
                           result: orNew.right.handle,
@@ -120,7 +120,7 @@ export const fromRequest = <
             (ref) =>
               core.blocked(
                 BlockedRequests.single(
-                  ds as RequestResolver.RequestResolver<A, never>,
+                  ds as RequestResolver.RequestResolver<A>,
                   BlockedRequests.makeEntry({
                     request: proxy,
                     result: ref,

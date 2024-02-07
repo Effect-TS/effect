@@ -374,7 +374,7 @@ export interface Yield extends Op<OpCodes.OP_YIELD> {}
 export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> => hasProperty(u, EffectTypeId)
 
 /* @internal */
-export const withFiberRuntime = <A, E, R>(
+export const withFiberRuntime = <A, E = never, R = never>(
   withRuntime: (fiber: FiberRuntime.FiberRuntime<A, E>, status: FiberStatus.Running) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => {
   internalize(withRuntime)
@@ -746,7 +746,7 @@ export const andThen: {
     if (isEffect(b)) {
       return b
     } else if (isPromise(b)) {
-      return async<any, Cause.UnknownException, never>((resume) => {
+      return async<any, Cause.UnknownException>((resume) => {
         b.then((a) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
       })
     }
@@ -1221,7 +1221,7 @@ export const tap = dual<
     if (isEffect(b)) {
       return as(b, a)
     } else if (isPromise(b)) {
-      return async<any, Cause.UnknownException, never>((resume) => {
+      return async<any, Cause.UnknownException>((resume) => {
         b.then((_) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
       })
     }
@@ -1462,7 +1462,7 @@ export const zipWith: {
 ): Effect.Effect<B, E | E2, R | R2> => flatMap(self, (a) => map(that, (b) => f(a, b))))
 
 /* @internal */
-export const never: Effect.Effect<never> = asyncEither<never, never, never>(() => {
+export const never: Effect.Effect<never> = asyncEither<never>(() => {
   const interval = setInterval(() => {
     //
   }, 2 ** 31 - 1)
