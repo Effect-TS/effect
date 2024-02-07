@@ -178,7 +178,7 @@ export const aggregateWithinEither = dual<
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
   ): Stream.Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R> => {
     const layer = Effect.all([
-      Handoff.make<HandoffSignal.HandoffSignal<E | E2, A>>(),
+      Handoff.make<HandoffSignal.HandoffSignal<A, E | E2>>(),
       Ref.make<SinkEndReason.SinkEndReason>(SinkEndReason.ScheduleEnd),
       Ref.make(Chunk.empty<A | A2>()),
       Schedule.driver(schedule),
@@ -194,21 +194,21 @@ export const aggregateWithinEither = dual<
               core.flatMap(
                 core.fromEffect(pipe(
                   handoff,
-                  Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(HandoffSignal.emit(input)),
+                  Handoff.offer<HandoffSignal.HandoffSignal<A, E | E2>>(HandoffSignal.emit(input)),
                   Effect.when(() => Chunk.isNonEmpty(input))
                 )),
                 () => handoffProducer
               ),
             onFailure: (cause) =>
               core.fromEffect(
-                Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
+                Handoff.offer<HandoffSignal.HandoffSignal<A, E | E2>>(
                   handoff,
                   HandoffSignal.halt(cause)
                 )
               ),
             onDone: () =>
               core.fromEffect(
-                Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
+                Handoff.offer<HandoffSignal.HandoffSignal<A, E | E2>>(
                   handoff,
                   HandoffSignal.end(SinkEndReason.UpstreamEnd)
                 )
@@ -370,7 +370,7 @@ export const aggregateWithinEither = dual<
                         onLeft: () =>
                           pipe(
                             handoff,
-                            Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
+                            Handoff.offer<HandoffSignal.HandoffSignal<A, E | E2>>(
                               HandoffSignal.end(SinkEndReason.ScheduleEnd)
                             ),
                             Effect.forkDaemon,
@@ -384,7 +384,7 @@ export const aggregateWithinEither = dual<
                         onRight: (cause) =>
                           pipe(
                             handoff,
-                            Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
+                            Handoff.offer<HandoffSignal.HandoffSignal<A, E | E2>>(
                               HandoffSignal.halt(cause)
                             ),
                             Effect.forkDaemon,
@@ -400,7 +400,7 @@ export const aggregateWithinEither = dual<
                   onSuccess: (c) =>
                     pipe(
                       handoff,
-                      Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
+                      Handoff.offer<HandoffSignal.HandoffSignal<A, E | E2>>(
                         HandoffSignal.end(SinkEndReason.ScheduleEnd)
                       ),
                       Effect.forkDaemon,
@@ -1639,7 +1639,7 @@ export const debounce = dual<
     Effect.flatMap((input) =>
       Effect.transplant((grafter) =>
         pipe(
-          Handoff.make<HandoffSignal.HandoffSignal<E, A>>(),
+          Handoff.make<HandoffSignal.HandoffSignal<A, E>>(),
           Effect.map((handoff) => {
             const enqueue = (last: Chunk.Chunk<A>): Effect.Effect<
               Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, unknown, unknown>
@@ -1659,7 +1659,7 @@ export const debounce = dual<
                     onSome: (last) =>
                       core.flatMap(
                         core.fromEffect(
-                          Handoff.offer<HandoffSignal.HandoffSignal<E, A>>(
+                          Handoff.offer<HandoffSignal.HandoffSignal<A, E>>(
                             handoff,
                             HandoffSignal.emit(Chunk.of(last))
                           )
@@ -1669,11 +1669,11 @@ export const debounce = dual<
                   }),
                 onFailure: (cause) =>
                   core.fromEffect(
-                    Handoff.offer<HandoffSignal.HandoffSignal<E, A>>(handoff, HandoffSignal.halt(cause))
+                    Handoff.offer<HandoffSignal.HandoffSignal<A, E>>(handoff, HandoffSignal.halt(cause))
                   ),
                 onDone: () =>
                   core.fromEffect(
-                    Handoff.offer<HandoffSignal.HandoffSignal<E, A>>(
+                    Handoff.offer<HandoffSignal.HandoffSignal<A, E>>(
                       handoff,
                       HandoffSignal.end(SinkEndReason.UpstreamEnd)
                     )
