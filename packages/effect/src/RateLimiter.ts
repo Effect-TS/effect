@@ -11,7 +11,7 @@ import type { Scope } from "./Scope.js"
  * Calls are queued up in an unbounded queue until capacity becomes available.
  */
 export interface RateLimiter {
-  <R, E, A>(task: Effect<A, E, R>): Effect<A, E, R>
+  <A, E, R>(task: Effect<A, E, R>): Effect<A, E, R>
 }
 
 export const make = (limit: number, window: DurationInput): Effect<RateLimiter, never, Scope> =>

@@ -39,7 +39,7 @@ export const make = (limit: number, window: DurationInput) => {
       )
     )
 
-    const apply = <R, E, A>(task: Effect.Effect<R, E, A>) =>
+    const apply = <A, E, R>(task: Effect.Effect<A, E, R>) =>
       Effect.gen(function*($) {
         const start = yield* $(Deferred.make<void>())
         const done = yield* $(Deferred.make<void>())
