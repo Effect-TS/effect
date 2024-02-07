@@ -130,7 +130,7 @@ export const make = <I, R, E, O>(
                 }),
                 Effect.provideService(Transferable.Collector, collector),
                 Effect.flatMap((payload) => {
-                  transfers.push(...collector.unsafeRead())
+                  collector.unsafeRead().forEach((transfer) => transfers.push(transfer))
                   return backing.send([id, 0, payload], transfers)
                 })
               )
