@@ -35,15 +35,15 @@ export const effectVariance = {
 
 const sinkVariance = {
   /* c8 ignore next */
-  _R: (_: never) => _,
-  /* c8 ignore next */
-  _E: (_: never) => _,
+  _A: (_: never) => _,
   /* c8 ignore next */
   _In: (_: unknown) => _,
   /* c8 ignore next */
   _L: (_: never) => _,
   /* c8 ignore next */
-  _Z: (_: never) => _
+  _E: (_: never) => _,
+  /* c8 ignore next */
+  _R: (_: never) => _
 }
 
 const channelVariance = {

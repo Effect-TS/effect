@@ -13,7 +13,7 @@ export const fromWritable = <E, A = Uint8Array | string>(
   evaluate: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => E,
   options?: FromWritableOptions
-): Sink.Sink<never, E, A, never, void> => Sink.fromChannel(fromWritableChannel(evaluate, onError, options))
+): Sink.Sink<void, A, never, E> => Sink.fromChannel(fromWritableChannel(evaluate, onError, options))
 
 /** @internal */
 export const fromWritableChannel = <IE, OE, A>(

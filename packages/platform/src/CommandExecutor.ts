@@ -98,7 +98,7 @@ export interface Process {
   /**
    * The standard input sink of the process.
    */
-  readonly stdin: Sink<never, PlatformError, Uint8Array, never, void>
+  readonly stdin: Sink<void, Uint8Array, never, PlatformError>
   /**
    * The standard output stream of the process.
    */
