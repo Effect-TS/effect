@@ -235,7 +235,7 @@ describe("Sink", () => {
               Sink.collectAll<number>(),
               Sink.map((chunk) => [Array.from(chunk), err] as const)
             ),
-          onSuccess: (_) => absurd<Sink.Sink<never, string, number, never, readonly [Array<number>, string]>>(_)
+          onSuccess: (_) => absurd<Sink.Sink<readonly [Array<number>, string], number, never, string>>(_)
         })
       )
       const result = yield* $(

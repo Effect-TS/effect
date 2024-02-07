@@ -10,7 +10,7 @@ import * as Stream from "effect/Stream"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 
-const runSink = <R, E, A>(sink: Sink.Sink<R, E, unknown, unknown, A>) => Stream.run(Effect.unit, sink)
+const runSink = <A, E, R>(sink: Sink.Sink<A, unknown, unknown, E, R>) => Stream.run(Effect.unit, sink)
 
 describe("Channel.Foreign", () => {
   it.effect("Tag", () =>
