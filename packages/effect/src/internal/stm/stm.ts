@@ -38,7 +38,7 @@ export const acquireUseRelease = dual<
   release: (resource: A) => STM.STM<A3, E3, R3>
 ): Effect.Effect<A2, E | E2 | E3, R | R2 | R3> =>
   Effect.uninterruptibleMask((restore) => {
-    let state: STMState.STMState<E, A> = STMState.running
+    let state: STMState.STMState<A, E> = STMState.running
     return pipe(
       restore(
         core.unsafeAtomically(

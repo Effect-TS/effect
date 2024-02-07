@@ -3,7 +3,7 @@ import type * as Fiber from "../../Fiber.js"
 import type * as HandoffSignal from "./handoffSignal.js"
 
 /** @internal */
-export type DebounceState<E, A> = NotStarted | Previous<A> | Current<E, A>
+export type DebounceState<A, E = never> = NotStarted | Previous<A> | Current<A, E>
 
 /** @internal */
 export const OP_NOT_STARTED = "NotStarted" as const
@@ -34,7 +34,7 @@ export interface Previous<out A> {
 }
 
 /** @internal */
-export interface Current<out E, out A> {
+export interface Current<out A, out E = never> {
   readonly _tag: OP_CURRENT
   readonly fiber: Fiber.Fiber<HandoffSignal.HandoffSignal<E, A>, E>
 }
@@ -45,13 +45,13 @@ export const notStarted: DebounceState<never, never> = {
 }
 
 /** @internal */
-export const previous = <A>(fiber: Fiber.Fiber<Chunk.Chunk<A>>): DebounceState<never, A> => ({
+export const previous = <A>(fiber: Fiber.Fiber<Chunk.Chunk<A>>): DebounceState<A> => ({
   _tag: OP_PREVIOUS,
   fiber
 })
 
 /** @internal */
-export const current = <E, A>(fiber: Fiber.Fiber<HandoffSignal.HandoffSignal<E, A>, E>): DebounceState<E, A> => ({
+export const current = <E, A>(fiber: Fiber.Fiber<HandoffSignal.HandoffSignal<E, A>, E>): DebounceState<A, E> => ({
   _tag: OP_CURRENT,
   fiber
 })

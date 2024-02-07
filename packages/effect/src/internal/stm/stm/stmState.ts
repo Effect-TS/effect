@@ -17,10 +17,10 @@ export const STMStateTypeId = Symbol.for(STMStateSymbolKey)
 export type STMStateTypeId = typeof STMStateTypeId
 
 /** @internal */
-export type STMState<E, A> = Done<E, A> | Interrupted | Running
+export type STMState<A, E> = Done<A, E> | Interrupted | Running
 
 /** @internal */
-export interface Done<out E, out A> extends Equal.Equal {
+export interface Done<out A, out E = never> extends Equal.Equal {
   readonly [STMStateTypeId]: STMStateTypeId
   readonly _tag: OpCodes.OP_DONE
   readonly exit: Exit.Exit<A, E>
@@ -42,22 +42,22 @@ export interface Running extends Equal.Equal {
 export const isSTMState = (u: unknown): u is STMState<unknown, unknown> => hasProperty(u, STMStateTypeId)
 
 /** @internal */
-export const isRunning = <E, A>(self: STMState<E, A>): self is Running => {
+export const isRunning = <A, E>(self: STMState<A, E>): self is Running => {
   return self._tag === OpCodes.OP_RUNNING
 }
 
 /** @internal */
-export const isDone = <E, A>(self: STMState<E, A>): self is Done<E, A> => {
+export const isDone = <A, E>(self: STMState<A, E>): self is Done<A, E> => {
   return self._tag === OpCodes.OP_DONE
 }
 
 /** @internal */
-export const isInterrupted = <E, A>(self: STMState<E, A>): self is Interrupted => {
+export const isInterrupted = <A, E>(self: STMState<A, E>): self is Interrupted => {
   return self._tag === OpCodes.OP_INTERRUPTED
 }
 
 /** @internal */
-export const done = <A, E>(exit: Exit.Exit<A, E>): STMState<E, A> => {
+export const done = <A, E>(exit: Exit.Exit<A, E>): STMState<A, E> => {
   return {
     [STMStateTypeId]: STMStateTypeId,
     _tag: OpCodes.OP_DONE,
@@ -108,7 +108,7 @@ export const running: STMState<never, never> = {
 }
 
 /** @internal */
-export const fromTExit = <E, A>(tExit: TExit.TExit<A, E>): STMState<E, A> => {
+export const fromTExit = <A, E>(tExit: TExit.TExit<A, E>): STMState<A, E> => {
   switch (tExit._tag) {
     case TExitOpCodes.OP_FAIL: {
       return done(Exit.fail(tExit.error))

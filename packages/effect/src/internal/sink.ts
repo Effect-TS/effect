@@ -1825,7 +1825,7 @@ export const splitWhere = dual<
     core.fromEffect(Ref.make(Chunk.empty<In>())),
     core.flatMap((ref) =>
       pipe(
-        splitWhereSplitter<E, In>(false, ref, f),
+        splitWhereSplitter<In, E>(false, ref, f),
         channel.pipeToOrFail(toChannel(self)),
         core.collectElements,
         core.flatMap(([leftovers, z]) =>
@@ -1846,7 +1846,7 @@ export const splitWhere = dual<
 })
 
 /** @internal */
-const splitWhereSplitter = <E, A>(
+const splitWhereSplitter = <A, E>(
   written: boolean,
   leftovers: Ref.Ref<Chunk.Chunk<A>>,
   f: Predicate<A>
@@ -1854,14 +1854,14 @@ const splitWhereSplitter = <E, A>(
   core.readWithCause({
     onInput: (input) => {
       if (Chunk.isEmpty(input)) {
-        return splitWhereSplitter<E, A>(written, leftovers, f)
+        return splitWhereSplitter(written, leftovers, f)
       }
       if (written) {
         const index = indexWhere(input, f)
         if (index === -1) {
           return channel.zipRight(
             core.write(input),
-            splitWhereSplitter<E, A>(true, leftovers, f)
+            splitWhereSplitter<A, E>(true, leftovers, f)
           )
         }
         const [left, right] = Chunk.splitAt(input, index)
@@ -1874,7 +1874,7 @@ const splitWhereSplitter = <E, A>(
       if (index === -1) {
         return channel.zipRight(
           core.write(input),
-          splitWhereSplitter<E, A>(true, leftovers, f)
+          splitWhereSplitter<A, E>(true, leftovers, f)
         )
       }
       const [left, right] = pipe(input, Chunk.splitAt(Math.max(index, 1)))
