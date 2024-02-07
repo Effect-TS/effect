@@ -18,7 +18,7 @@ describe("Either > eitherFromUnion", () => {
   })
 
   it("decoding error (From side transformation failure)", async () => {
-    const schema = S.eitherFromUnion({ left: S.string, right: S.number })
+    const schema = S.eitherFromUnion({ left: S.number, right: S.string })
     await Util.expectDecodeUnknownFailure(
       schema,
       undefined,
