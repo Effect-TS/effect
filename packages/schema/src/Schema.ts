@@ -5277,19 +5277,19 @@ const exitParse = <RE, E, RA, A>(
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>(
-  error: Schema<E, IE, RE>,
-  value: Schema<A, IA, RA>,
-  defect: Schema<unknown, unknown, RD> = unknown
-): Schema<Exit.Exit<A, E>, Exit.Exit<IA, IE>, RE | RA | RD> =>
+export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>({ defect = unknown, failure, success }: {
+  readonly failure: Schema<E, IE, RE>
+  readonly success: Schema<A, IA, RA>
+  readonly defect?: Schema<unknown, unknown, RD> | undefined
+}): Schema<Exit.Exit<A, E>, Exit.Exit<IA, IE>, RE | RA | RD> =>
   declare(
-    [error, value, defect],
-    (error, value, defect) =>
-      exitParse(ParseResult.decodeUnknown(causeFromSelf(error, defect)), ParseResult.decodeUnknown(value)),
-    (error, value, defect) =>
-      exitParse(ParseResult.encodeUnknown(causeFromSelf(error, defect)), ParseResult.encodeUnknown(value)),
+    [failure, success, defect],
+    (failure, success, defect) =>
+      exitParse(ParseResult.decodeUnknown(causeFromSelf(failure, defect)), ParseResult.decodeUnknown(success)),
+    (failure, success, defect) =>
+      exitParse(ParseResult.encodeUnknown(causeFromSelf(failure, defect)), ParseResult.encodeUnknown(success)),
     {
-      description: `Exit<${format(error)}, ${format(value)}>`,
+      description: `Exit<${format(failure)}, ${format(success)}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary,
       equivalence: () => Equal.equals
@@ -5300,14 +5300,14 @@ export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>(
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exit = <E, IE, R1, A, IA, R2, R3 = never>(
-  error: Schema<E, IE, R1>,
-  value: Schema<A, IA, R2>,
-  defect: Schema<unknown, unknown, R3> = causeDefectPretty
-): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
+export const exit = <E, IE, R1, A, IA, R2, R3 = never>({ defect = causeDefectPretty, failure, success }: {
+  readonly failure: Schema<E, IE, R1>
+  readonly success: Schema<A, IA, R2>
+  readonly defect?: Schema<unknown, unknown, R3> | undefined
+}): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
   transform(
-    exitFrom(error, value, defect),
-    exitFromSelf(to(error), to(value), to(defect)),
+    exitFrom(failure, success, defect),
+    exitFromSelf({ failure: to(failure), success: to(success), defect: to(defect) }),
     exitDecode,
     (exit) =>
       exit._tag === "Failure"
