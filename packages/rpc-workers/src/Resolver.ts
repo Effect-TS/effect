@@ -46,7 +46,7 @@ export const RpcWorkerPool: Tag<RpcWorkerPool, RpcWorkerPool> = internal.RpcWork
  */
 export const makePool: (
   options: RpcWorkerPool.Options
-) => Effect.Effect<RpcWorkerPool, never, Scope | Worker.WorkerManager> = internal.makePool
+) => Effect.Effect<RpcWorkerPool, never, Scope | Worker.WorkerManager | Worker.Spawner> = internal.makePool
 
 /**
  * @category constructors
@@ -54,7 +54,7 @@ export const makePool: (
  */
 export const makePoolLayer: (
   options: RpcWorkerPool.Options
-) => Layer.Layer<RpcWorkerPool, never, Worker.WorkerManager> = internal.makePoolLayer
+) => Layer.Layer<RpcWorkerPool, never, Worker.WorkerManager | Worker.Spawner> = internal.makePoolLayer
 
 /**
  * @category constructors

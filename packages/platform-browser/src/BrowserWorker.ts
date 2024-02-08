@@ -15,3 +15,11 @@ export const layerManager: Layer.Layer<Worker.WorkerManager> = internal.layerMan
  * @category layers
  */
 export const layerWorker: Layer.Layer<Worker.PlatformWorker> = internal.layerWorker
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layer: (
+  spawn: Worker.SpawnerFn<Worker | SharedWorker>
+) => Layer.Layer<Worker.WorkerManager | Worker.Spawner, never, never> = internal.layer
