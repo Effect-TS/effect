@@ -3902,10 +3902,10 @@ const eitherParse = <RE, E, RA, A>(
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromSelf = <E, IE, RE, A, IA, RA>(
-  left: Schema<E, IE, RE>,
-  right: Schema<A, IA, RA>
-): Schema<Either.Either<E, A>, Either.Either<IE, IA>, RE | RA> => {
+export const eitherFromSelf = <E, IE, RE, A, IA, RA>({ left, right }: {
+  readonly left: Schema<E, IE, RE>
+  readonly right: Schema<A, IA, RA>
+}): Schema<Either.Either<E, A>, Either.Either<IE, IA>, RE | RA> => {
   return declare(
     [left, right],
     (left, right) => eitherParse(ParseResult.decodeUnknown(left), ParseResult.decodeUnknown(right)),
@@ -3926,10 +3926,10 @@ const makeRightFrom = <A>(right: A) => ({ _tag: "Right", right }) as const
  * @category Either transformations
  * @since 1.0.0
  */
-export const either = <E, IE, R1, A, IA, R2>(
-  left: Schema<E, IE, R1>,
-  right: Schema<A, IA, R2>
-): Schema<Either.Either<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
+export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
+  readonly left: Schema<E, IE, R1>
+  readonly right: Schema<A, IA, R2>
+}): Schema<Either.Either<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
   transform(
     eitherFrom(left, right),
     eitherFromSelf({ left: to(left), right: to(right) }),
@@ -3947,10 +3947,10 @@ export const either = <E, IE, R1, A, IA, R2>(
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>(
-  left: Schema<EA, EI, R1>,
-  right: Schema<AA, AI, R2>
-): Schema<Either.Either<EA, AA>, EI | AI, R1 | R2> => {
+export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>({ left, right }: {
+  readonly left: Schema<EA, EI, R1>
+  readonly right: Schema<AA, AI, R2>
+}): Schema<Either.Either<EA, AA>, EI | AI, R1 | R2> => {
   const toleft = to(left)
   const toright = to(right)
   const fromLeft = transform(left, leftFrom(toleft), makeLeftFrom, (l) => l.left)
@@ -5279,11 +5279,11 @@ const exitParse = <RE, E, RA, A>(
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>(
-  error: Schema<E, IE, RE>,
-  value: Schema<A, IA, RA>,
-  defect: Schema<unknown, unknown, RD> = unknown
-): Schema<Exit.Exit<A, E>, Exit.Exit<IA, IE>, RE | RA | RD> =>
+export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>({ defect = unknown, failure, success }: {
+  readonly failure: Schema<E, IE, RE>
+  readonly success: Schema<A, IA, RA>
+  readonly defect?: Schema<unknown, unknown, RD> | undefined
+}): Schema<Exit.Exit<A, E>, Exit.Exit<IA, IE>, RE | RA | RD> =>
   declare(
     [failure, success, defect],
     (failure, success, defect) =>
@@ -5302,11 +5302,11 @@ export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>(
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exit = <E, IE, R1, A, IA, R2, R3 = never>(
-  error: Schema<E, IE, R1>,
-  value: Schema<A, IA, R2>,
-  defect: Schema<unknown, unknown, R3> = causeDefectPretty
-): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
+export const exit = <E, IE, R1, A, IA, R2, R3 = never>({ defect = causeDefectPretty, failure, success }: {
+  readonly failure: Schema<E, IE, R1>
+  readonly success: Schema<A, IA, R2>
+  readonly defect?: Schema<unknown, unknown, R3> | undefined
+}): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
   transform(
     exitFrom(failure, success, defect),
     exitFromSelf({ failure: to(failure), success: to(success), defect: to(defect) }),
