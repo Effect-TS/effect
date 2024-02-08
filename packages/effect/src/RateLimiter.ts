@@ -9,10 +9,17 @@ import type { Scope } from "./Scope.js"
  * Note that only the moment of starting the effect is rate limited: the number of concurrent executions is not bounded.
  *
  * Calls are queued up in an unbounded queue until capacity becomes available.
+ *
+ * @since 2.0.0
+ * @category models
  */
 export interface RateLimiter {
   <A, E, R>(task: Effect<A, E, R>): Effect<A, E, R>
 }
 
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const make = (limit: number, window: DurationInput): Effect<RateLimiter, never, Scope> =>
   internal.make(limit, window)
