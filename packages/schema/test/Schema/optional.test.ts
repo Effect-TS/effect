@@ -1,9 +1,22 @@
+import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as O from "effect/Option"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("optional APIs", () => {
+  it("annotations", async () => {
+    const schema = S.struct({
+      a: S.optional(S.NumberFromString, {
+        exact: true,
+        annotations: { description: "my description" }
+      })
+    })
+    expect((schema.ast as any).propertySignatures[0].annotations).toStrictEqual({
+      [AST.DescriptionAnnotationId]: "my description"
+    })
+  })
+
   describe("optional > { exact: true }", () => {
     it("decoding / encoding", async () => {
       const schema = S.struct({
