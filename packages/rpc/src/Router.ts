@@ -132,7 +132,10 @@ const channelFromQueue = <A>(queue: Queue.Queue<A | typeof EOF>) => {
   return loop
 }
 
-const emptyExit = Schema.encodeSync(Schema.exit(Schema.never, Schema.never))(Exit.failCause(Cause.empty))
+const emptyExit = Schema.encodeSync(Schema.exit({
+  failure: Schema.never,
+  success: Schema.never
+}))(Exit.failCause(Cause.empty))
 
 /**
  * @since 1.0.0
