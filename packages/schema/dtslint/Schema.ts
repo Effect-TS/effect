@@ -953,17 +953,17 @@ S.headOr(S.array(S.number))
 declare const defect: S.Schema<unknown, unknown, "defect">
 
 // $ExpectType Schema<Cause<string>, CauseFrom<string>, never>
-S.cause(S.string)
+S.cause({ error: S.string })
 
 // $ExpectType Schema<Cause<string>, CauseFrom<string>, "defect">
-S.cause(S.string, defect)
+S.cause({ error: S.string, defect })
 
 // ---------------------------------------------
 // causeFromSelf
 // ---------------------------------------------
 
 // $ExpectType Schema<Cause<string>, Cause<string>, never>
-S.causeFromSelf(S.string)
+S.causeFromSelf({ error: S.string })
 
 // $ExpectType Schema<Cause<string>, Cause<string>, "defect">
-S.causeFromSelf(S.string, defect)
+S.causeFromSelf({ error: S.string, defect })

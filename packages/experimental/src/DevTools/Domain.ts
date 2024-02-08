@@ -62,7 +62,7 @@ export const Span: Schema.Schema<Span, SpanFrom> = Schema.struct({
   traceId: Schema.string,
   name: Schema.string,
   sampled: Schema.boolean,
-  attributes: Schema.readonlyMap(Schema.string, Schema.unknown),
+  attributes: Schema.readonlyMap({ key: Schema.string, value: Schema.unknown }),
   status: SpanStatus,
   parent: Schema.option(Schema.suspend(() => ParentSpan))
 })
