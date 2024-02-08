@@ -14,11 +14,11 @@ export const RpcWorkerPool = GenericTag<WWResolver.RpcWorkerPool>("@effect/rpc-w
 /** @internal */
 export const makePool = (
   options: WWResolver.RpcWorkerPool.Options
-): Effect.Effect<WWResolver.RpcWorkerPool, never, Scope | Worker.WorkerManager> =>
+): Effect.Effect<WWResolver.RpcWorkerPool, never, Scope | Worker.WorkerManager | Worker.Spawner> =>
   Effect.suspend(() => {
     let setup: any
     return Effect.map(
-      Worker.makePool<unknown>()<Resolver.RpcRequest, RpcTransportError, Resolver.RpcResponse>({
+      Worker.makePool<Resolver.RpcRequest, RpcTransportError, Resolver.RpcResponse>({
         ...options,
         onCreate(worker) {
           if (setup) {

@@ -1,4 +1,4 @@
-import * as Transferable from "@effect/platform-browser/Transferable"
+import * as Transferable from "@effect/platform/Transferable"
 import * as Schema from "@effect/schema/Schema"
 
 export class User extends Schema.Class<User>()({

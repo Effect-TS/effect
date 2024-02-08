@@ -224,3 +224,56 @@ export const isFiberFailure: (u: unknown) => u is FiberFailure = internal.isFibe
  * @category constructors
  */
 export const makeFiberFailure: <E>(cause: Cause<E>) => FiberFailure = internal.fiberFailure
+
+/**
+ * @since 2.0.0
+ * @category runtime flags
+ */
+export const updateRuntimeFlags: {
+  (f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): <R>(self: Runtime<R>) => Runtime<R>
+  <R>(self: Runtime<R>, f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): Runtime<R>
+} = internal.updateRuntimeFlags
+
+/**
+ * @since 2.0.0
+ * @category runtime flags
+ */
+export const enableRuntimeFlag: {
+  (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
+  <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
+} = internal.enableRuntimeFlag
+
+/**
+ * @since 2.0.0
+ * @category runtime flags
+ */
+export const disableRuntimeFlag: {
+  (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
+  <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
+} = internal.disableRuntimeFlag
+
+/**
+ * @since 2.0.0
+ * @category context
+ */
+export const updateContext: {
+  <R, R2>(f: (context: Context.Context<R>) => Context.Context<R2>): (self: Runtime<R>) => Runtime<R2>
+  <R, R2>(self: Runtime<R>, f: (context: Context.Context<R>) => Context.Context<R2>): Runtime<R2>
+} = internal.updateContext
+
+/**
+ * @since 2.0.0
+ * @category context
+ * @example
+ * import { Context, Runtime } from "effect"
+ *
+ * class Name extends Context.Tag("Name")<Name, string>() {}
+ *
+ * const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
+ *   Runtime.provideService(Name, "John")
+ * )
+ */
+export const provideService: {
+  <I, S>(tag: Context.Tag<I, S>, service: S): <R>(self: Runtime<R>) => Runtime<I | R>
+  <R, I, S>(self: Runtime<R>, tag: Context.Tag<I, S>, service: S): Runtime<R | I>
+} = internal.provideService

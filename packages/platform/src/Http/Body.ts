@@ -39,8 +39,8 @@ export declare namespace Body {
   export interface Proto {
     readonly [TypeId]: TypeId
     readonly _tag: string
-    readonly contentType?: string
-    readonly contentLength?: number
+    readonly contentType?: string | undefined
+    readonly contentLength?: number | undefined
   }
 
   /**
@@ -196,7 +196,7 @@ export interface Stream extends Body.Proto {
   readonly _tag: "Stream"
   readonly stream: Stream_.Stream<globalThis.Uint8Array, unknown>
   readonly contentType: string
-  readonly contentLength?: number
+  readonly contentLength?: number | undefined
 }
 
 /**

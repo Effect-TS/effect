@@ -3902,10 +3902,10 @@ const eitherParse = <RE, E, RA, A>(
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromSelf = <E, IE, RE, A, IA, RA>({ left, right }: {
-  readonly left: Schema<E, IE, RE>
-  readonly right: Schema<A, IA, RA>
-}): Schema<Either.Either<E, A>, Either.Either<IE, IA>, RE | RA> => {
+export const eitherFromSelf = <E, IE, RE, A, IA, RA>(
+  left: Schema<E, IE, RE>,
+  right: Schema<A, IA, RA>
+): Schema<Either.Either<E, A>, Either.Either<IE, IA>, RE | RA> => {
   return declare(
     [left, right],
     (left, right) => eitherParse(ParseResult.decodeUnknown(left), ParseResult.decodeUnknown(right)),
@@ -3926,10 +3926,10 @@ const makeRightFrom = <A>(right: A) => ({ _tag: "Right", right }) as const
  * @category Either transformations
  * @since 1.0.0
  */
-export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
-  readonly left: Schema<E, IE, R1>
-  readonly right: Schema<A, IA, R2>
-}): Schema<Either.Either<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
+export const either = <E, IE, R1, A, IA, R2>(
+  left: Schema<E, IE, R1>,
+  right: Schema<A, IA, R2>
+): Schema<Either.Either<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
   transform(
     eitherFrom(left, right),
     eitherFromSelf({ left: to(left), right: to(right) }),
@@ -3947,10 +3947,10 @@ export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>({ left, right }: {
-  readonly left: Schema<EA, EI, R1>
-  readonly right: Schema<AA, AI, R2>
-}): Schema<Either.Either<EA, AA>, EI | AI, R1 | R2> => {
+export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>(
+  left: Schema<EA, EI, R1>,
+  right: Schema<AA, AI, R2>
+): Schema<Either.Either<EA, AA>, EI | AI, R1 | R2> => {
   const toleft = to(left)
   const toright = to(right)
   const fromLeft = transform(left, leftFrom(toleft), makeLeftFrom, (l) => l.left)
@@ -4555,7 +4555,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
+export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Schema<Self, I, R> {
   new(
     ...args: [R] extends [never] ? [
         props: Equals<C, {}> extends true ? void | {} : C,
@@ -4565,7 +4565,7 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
         props: Equals<C, {}> extends true ? void | {} : C,
         disableValidation: true
       ]
-  ): A & Omit<Inherited, keyof A>
+  ): A & Omit<Inherited, keyof A> & Proto
 
   readonly struct: Schema<A, I, R>
 
@@ -4578,7 +4578,8 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
       R | Schema.Context<FieldsB[keyof FieldsB]>,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Extended,
-      Self
+      Self,
+      Proto
     >
 
   readonly transformOrFail: <Transformed>() => <
@@ -4604,7 +4605,8 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
       R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
-      Self
+      Self,
+      Proto
     >
 
   readonly transformOrFailFrom: <Transformed>() => <
@@ -4630,7 +4632,8 @@ export interface Class<A, I, R, C, Self, Inherited> extends Schema<Self, I, R> {
       R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
       Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
-      Self
+      Self,
+      Proto
     >
 }
 
@@ -4647,8 +4650,7 @@ export const Class = <Self>() =>
     Simplify<FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
-    Self,
-    {}
+    Self
   > => makeClass(struct(fields), fields, Data.Class)
 
 /**
@@ -4665,8 +4667,7 @@ export const TaggedClass = <Self>() =>
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
-    Self,
-    {}
+    Self
   > =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
@@ -4688,7 +4689,8 @@ export const TaggedError = <Self>() =>
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self,
-    Effect.Effect<never, Self, never> & globalThis.Error
+    {},
+    Cause.YieldableError
   > =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
@@ -5277,11 +5279,11 @@ const exitParse = <RE, E, RA, A>(
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>({ defect = unknown, failure, success }: {
-  readonly failure: Schema<E, IE, RE>
-  readonly success: Schema<A, IA, RA>
-  readonly defect?: Schema<unknown, unknown, RD> | undefined
-}): Schema<Exit.Exit<A, E>, Exit.Exit<IA, IE>, RE | RA | RD> =>
+export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>(
+  error: Schema<E, IE, RE>,
+  value: Schema<A, IA, RA>,
+  defect: Schema<unknown, unknown, RD> = unknown
+): Schema<Exit.Exit<A, E>, Exit.Exit<IA, IE>, RE | RA | RD> =>
   declare(
     [failure, success, defect],
     (failure, success, defect) =>
@@ -5300,11 +5302,11 @@ export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>({ defect = unknow
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exit = <E, IE, R1, A, IA, R2, R3 = never>({ defect = causeDefectPretty, failure, success }: {
-  readonly failure: Schema<E, IE, R1>
-  readonly success: Schema<A, IA, R2>
-  readonly defect?: Schema<unknown, unknown, R3> | undefined
-}): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
+export const exit = <E, IE, R1, A, IA, R2, R3 = never>(
+  error: Schema<E, IE, R1>,
+  value: Schema<A, IA, R2>,
+  defect: Schema<unknown, unknown, R3> = causeDefectPretty
+): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
   transform(
     exitFrom(failure, success, defect),
     exitFromSelf({ failure: to(failure), success: to(success), defect: to(defect) }),

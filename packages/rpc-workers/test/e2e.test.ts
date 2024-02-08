@@ -1,4 +1,4 @@
-import * as Worker from "@effect/platform-browser/Worker"
+import * as BrowserWorker from "@effect/platform-browser/BrowserWorker"
 import * as Client from "@effect/rpc-workers/Client"
 import * as Resolver from "@effect/rpc-workers/Resolver"
 import "@vitest/web-worker"
@@ -13,25 +13,20 @@ import { describe, expect, it } from "vitest"
 import { schema, schemaWithSetup } from "./e2e/schema.js"
 
 // TODO: test more than one worker
-const PoolLive = Resolver.makePoolLayer({
-  spawn: () => new globalThis.Worker(new URL("./e2e/worker", import.meta.url)),
-  size: 1
-}).pipe(
-  Layer.provide(Worker.layerManager)
+const PoolLive = Resolver.makePoolLayer({ size: 1 }).pipe(
+  Layer.provide(BrowserWorker.layer(() => new globalThis.Worker(new URL("./e2e/worker", import.meta.url))))
 )
 
 const SetupPoolLive = Resolver.makePoolLayer({
-  spawn: () => new globalThis.Worker(new URL("./e2e/worker-setup", import.meta.url)),
   size: 1
 }).pipe(
-  Layer.provide(Worker.layerManager)
+  Layer.provide(BrowserWorker.layer(() => new globalThis.Worker(new URL("./e2e/worker-setup", import.meta.url))))
 )
 
 const SharedPoolLive = Resolver.makePoolLayer({
-  spawn: () => new globalThis.SharedWorker(new URL("./e2e/worker", import.meta.url)),
   size: 1
 }).pipe(
-  Layer.provide(Worker.layerManager)
+  Layer.provide(BrowserWorker.layer(() => new globalThis.SharedWorker(new URL("./e2e/worker", import.meta.url))))
 )
 
 const client = Client.make(schema)

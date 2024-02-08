@@ -82,13 +82,28 @@ export interface Worker<I, E, O> {
  * @since 1.0.0
  * @category models
  */
+export interface Spawner {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface SpawnerFn<W = unknown> {
+  (id: number): W
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export declare namespace Worker {
   /**
    * @since 1.0.0
    * @category models
    */
-  export interface Options<I, W = unknown> {
-    readonly spawn: (id: number) => W
+  export interface Options<I> {
     readonly encode?: (message: I) => Effect.Effect<unknown, WorkerError>
     readonly transfers?: (message: I) => ReadonlyArray<unknown>
     readonly permits?: number
@@ -101,7 +116,7 @@ export declare namespace Worker {
    * @category models
    */
   export type Request<I = unknown> =
-    | readonly [id: number, data: 0, I, trace?: Span]
+    | readonly [id: number, data: 0, I, trace: Span | undefined]
     | readonly [id: number, interrupt: 1]
 
   /**
@@ -142,8 +157,8 @@ export declare namespace WorkerPool {
    * @since 1.0.0
    * @category models
    */
-  export type Options<I, W = unknown> =
-    & Worker.Options<I, W>
+  export type Options<I> =
+    & Worker.Options<I>
     & ({
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
       readonly size: number
@@ -185,7 +200,7 @@ export interface WorkerManager {
   readonly [WorkerManagerTypeId]: WorkerManagerTypeId
   readonly spawn: <I, E, O>(
     options: Worker.Options<I>
-  ) => Effect.Effect<Worker<I, E, O>, WorkerError, Scope.Scope>
+  ) => Effect.Effect<Worker<I, E, O>, WorkerError, Scope.Scope | Spawner>
 }
 
 /**
@@ -210,20 +225,18 @@ export const layerManager: Layer.Layer<WorkerManager, never, PlatformWorker> = i
  * @since 1.0.0
  * @category constructors
  */
-export const makePool: <W>() => <I, E, O>(
-  options: WorkerPool.Options<I, W>
-) => Effect.Effect<WorkerPool<I, E, O>, never, WorkerManager | Scope.Scope> = internal.makePool
+export const makePool: <I, E, O>(
+  options: WorkerPool.Options<I>
+) => Effect.Effect<WorkerPool<I, E, O>, never, WorkerManager | Spawner | Scope.Scope> = internal.makePool
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makePoolLayer: <W>(
-  managerLayer: Layer.Layer<WorkerManager>
-) => <Tag, I, E, O>(
+export const makePoolLayer: <Tag, I, E, O>(
   tag: Context.Tag<Tag, WorkerPool<I, E, O>>,
-  options: WorkerPool.Options<I, W>
-) => Layer.Layer<Tag> = internal.makePoolLayer
+  options: WorkerPool.Options<I>
+) => Layer.Layer<Tag, never, WorkerManager | Spawner> = internal.makePoolLayer
 
 /**
  * @since 1.0.0
@@ -252,11 +265,10 @@ export declare namespace SerializedWorker {
    * @since 1.0.0
    * @category models
    */
-  export type Options<I, W = unknown> = Extract<I, { readonly _tag: "InitialMessage" }> extends never ?
-    BaseOptions<I, W> & {
+  export type Options<I> = Extract<I, { readonly _tag: "InitialMessage" }> extends never ? BaseOptions<I> & {
       readonly initialMessage?: LazyArg<I>
     }
-    : BaseOptions<I, W> & {
+    : BaseOptions<I> & {
       readonly initialMessage: LazyArg<Extract<I, { readonly _tag: "InitialMessage" }>>
     }
 
@@ -264,8 +276,7 @@ export declare namespace SerializedWorker {
    * @since 1.0.0
    * @category models
    */
-  export interface BaseOptions<I, W = unknown> {
-    readonly spawn: (id: number) => W
+  export interface BaseOptions<I> {
     readonly permits?: number
     readonly queue?: WorkerQueue<I>
   }
@@ -303,8 +314,8 @@ export declare namespace SerializedWorkerPool {
    * @since 1.0.0
    * @category models
    */
-  export type Options<I, W = unknown> =
-    & SerializedWorker.Options<I, W>
+  export type Options<I> =
+    & SerializedWorker.Options<I>
     & ({
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
       readonly size: number
@@ -320,25 +331,30 @@ export declare namespace SerializedWorkerPool {
  * @since 1.0.0
  * @category constructors
  */
-export const makeSerialized: <I extends Schema.TaggedRequest.Any, W = unknown>(
-  options: SerializedWorker.Options<I, W>
-) => Effect.Effect<SerializedWorker<I>, WorkerError, WorkerManager | Scope.Scope> = internal.makeSerialized
+export const makeSerialized: <I extends Schema.TaggedRequest.Any>(
+  options: SerializedWorker.Options<I>
+) => Effect.Effect<SerializedWorker<I>, WorkerError, WorkerManager | Spawner | Scope.Scope> = internal.makeSerialized
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makePoolSerialized: <W>() => <I extends Schema.TaggedRequest.Any>(
-  options: SerializedWorkerPool.Options<I, W>
-) => Effect.Effect<SerializedWorkerPool<I>, never, WorkerManager | Scope.Scope> = internal.makePoolSerialized
+export const makePoolSerialized: <I extends Schema.TaggedRequest.Any>(
+  options: SerializedWorkerPool.Options<I>
+) => Effect.Effect<SerializedWorkerPool<I>, never, WorkerManager | Spawner | Scope.Scope> = internal.makePoolSerialized
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const makePoolSerializedLayer: <W>(
-  managerLayer: Layer.Layer<WorkerManager>
-) => <Tag, I extends Schema.TaggedRequest.Any>(
+export const makePoolSerializedLayer: <Tag, I extends Schema.TaggedRequest.Any>(
   tag: Context.Tag<Tag, SerializedWorkerPool<I>>,
-  options: SerializedWorkerPool.Options<I, W>
-) => Layer.Layer<Tag> = internal.makePoolSerializedLayer
+  options: SerializedWorkerPool.Options<I>
+) => Layer.Layer<Tag, never, WorkerManager | Spawner> = internal.makePoolSerializedLayer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerSpawner: <W = unknown>(spawner: SpawnerFn<W>) => Layer.Layer<Spawner, never, never> =
+  internal.layerSpawner

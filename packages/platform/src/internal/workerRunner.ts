@@ -122,13 +122,15 @@ export const make = <I, R, E, O>(
               return pipe(
                 Effect.forEach(data, (data) => {
                   if (options?.transfers) {
-                    transfers.push(...options.transfers(data))
+                    for (const option of options.transfers(data)) {
+                      transfers.push(option)
+                    }
                   }
                   return Effect.orDie(options.encodeOutput!(req[2], data))
                 }),
                 Effect.provideService(Transferable.Collector, collector),
                 Effect.flatMap((payload) => {
-                  transfers.push(...collector.unsafeRead())
+                  collector.unsafeRead().forEach((transfer) => transfers.push(transfer))
                   return backing.send([id, 0, payload], transfers)
                 })
               )

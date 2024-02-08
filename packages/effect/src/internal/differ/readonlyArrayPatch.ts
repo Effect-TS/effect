@@ -188,7 +188,9 @@ export const patch = Dual.dual<
         break
       }
       case "Append": {
-        readonlyArray.push(...head.values)
+        for (const value of head.values) {
+          readonlyArray.push(value)
+        }
         patches = tail
         break
       }

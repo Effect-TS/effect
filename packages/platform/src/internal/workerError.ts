@@ -10,7 +10,7 @@ export const WorkerErrorTypeId: WorkerError_.WorkerErrorTypeId = Symbol.for(
 export const WorkerError = (
   reason: WorkerError_.WorkerError["reason"],
   error: unknown,
-  stack?: string
+  stack?: string | undefined
 ): WorkerError_.WorkerError =>
   Data.struct({
     [WorkerErrorTypeId]: WorkerErrorTypeId,

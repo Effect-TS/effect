@@ -268,7 +268,7 @@ export const toWeb = (response: ServerResponse.ServerResponse, withoutBody = fal
   if (withoutBody) {
     return new Response(undefined, {
       status: response.status,
-      statusText: response.statusText,
+      statusText: response.statusText as string,
       headers: response.headers
     })
   }
@@ -277,7 +277,7 @@ export const toWeb = (response: ServerResponse.ServerResponse, withoutBody = fal
     case "Empty": {
       return new Response(undefined, {
         status: response.status,
-        statusText: response.statusText,
+        statusText: response.statusText as string,
         headers: response.headers
       })
     }

@@ -34,4 +34,12 @@ describe("Effect", () => {
       yield* $(TestClock.adjust(D.seconds(3)))
       assert.equal(messages.length, 8)
     }))
+
+  it.effect("releaseAll", () =>
+    Effect.gen(function*(_) {
+      const sem = yield* _(Effect.makeSemaphore(4))
+      yield* _(sem.take(4))
+      yield* _(sem.releaseAll)
+      yield* _(sem.take(1))
+    }))
 })

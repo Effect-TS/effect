@@ -1296,7 +1296,9 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
         out.push(undefinedKeyword)
       }
       if (Option.isSome(ast.rest)) {
-        out.push(...ast.rest.value)
+        for (const e of ast.rest.value) {
+          out.push(e)
+        }
       }
       return createUnion(out)
     }

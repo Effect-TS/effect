@@ -188,7 +188,9 @@ export const takeAll = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<Arra
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {
-      builder.push(...entry[1])
+      for (const value of entry[1]) {
+        builder.push(value)
+      }
     }
     return [builder, SortedMap.empty(SortedMap.getOrder(map))]
   })
@@ -227,7 +229,9 @@ export const takeUpTo = dual<
     while ((next = iterator.next()) && !next.done && index < n) {
       const [key, value] = next.value
       const [left, right] = pipe(value, ReadonlyArray.splitAt(n - index))
-      builder.push(...left)
+      for (const value of left) {
+        builder.push(value)
+      }
       if (right.length > 0) {
         updated = SortedMap.set(updated, key, right as [A, ...Array<A>])
       } else {
@@ -243,7 +247,9 @@ export const toChunk = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<Chun
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {
-      builder.push(...entry[1])
+      for (const value of entry[1]) {
+        builder.push(value)
+      }
     }
     return [Chunk.unsafeFromArray(builder), map]
   })
@@ -253,7 +259,9 @@ export const toArray = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<Arra
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {
-      builder.push(...entry[1])
+      for (const value of entry[1]) {
+        builder.push(value)
+      }
     }
     return [builder, map]
   })

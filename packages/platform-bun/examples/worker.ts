@@ -1,18 +1,19 @@
-import type { Worker } from "@effect/platform"
+import { Worker } from "@effect/platform"
 import { BunRuntime, BunWorker } from "@effect/platform-bun"
-import { Console, Context, Effect, Stream } from "effect"
+import { Console, Context, Effect, Layer, Stream } from "effect"
 import * as OS from "node:os"
 
 interface MyWorkerPool {
   readonly _: unique symbol
 }
 const Pool = Context.GenericTag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
-const PoolLive = BunWorker.makePoolLayer(Pool, {
-  spawn: () => new globalThis.Worker("./examples/worker/range.ts"),
+const PoolLive = Worker.makePoolLayer(Pool, {
   minSize: 0,
   maxSize: OS.availableParallelism(),
   timeToLive: 10000
-})
+}).pipe(
+  Layer.provide(BunWorker.layer(() => new globalThis.Worker("./examples/worker/range.ts")))
+)
 
 Effect.gen(function*(_) {
   const pool = yield* _(Pool)

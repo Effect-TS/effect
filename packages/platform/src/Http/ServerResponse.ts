@@ -31,7 +31,7 @@ export type TypeId = typeof TypeId
 export interface ServerResponse extends Effect.Effect<ServerResponse> {
   readonly [TypeId]: TypeId
   readonly status: number
-  readonly statusText?: string
+  readonly statusText?: string | undefined
   readonly headers: Headers.Headers
   readonly body: Body.Body
 }

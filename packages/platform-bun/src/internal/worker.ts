@@ -63,15 +63,8 @@ export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerIm
 export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
 
 /** @internal */
-export const makePool = Worker.makePool<globalThis.Worker>()
-
-/** @internal */
-export const makePoolLayer = Worker.makePoolLayer<globalThis.Worker>(layerManager)
-
-/** @internal */
-export const makePoolSerialized = Worker.makePoolSerialized<globalThis.Worker>()
-
-/** @internal */
-export const makePoolSerializedLayer = Worker.makePoolSerializedLayer<globalThis.Worker>(
-  layerManager
-)
+export const layer = (spawn: (id: number) => globalThis.Worker) =>
+  Layer.merge(
+    layerManager,
+    Worker.layerSpawner(spawn)
+  )

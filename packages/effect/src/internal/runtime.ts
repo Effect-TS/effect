@@ -7,7 +7,7 @@ import * as Fiber from "../Fiber.js"
 import * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
 import * as FiberRefs from "../FiberRefs.js"
-import { pipe } from "../Function.js"
+import { dual, pipe } from "../Function.js"
 import { format, NodeInspectSymbol } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -329,6 +329,64 @@ export const defaultRuntime = make({
   runtimeFlags: defaultRuntimeFlags,
   fiberRefs: FiberRefs.empty()
 })
+
+/** @internal */
+export const updateRuntimeFlags: {
+  (
+    f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags
+  ): <R>(self: Runtime.Runtime<R>) => Runtime.Runtime<R>
+  <R>(self: Runtime.Runtime<R>, f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): Runtime.Runtime<R>
+} = dual(
+  2,
+  <R>(self: Runtime.Runtime<R>, f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags) =>
+    make({
+      context: self.context,
+      runtimeFlags: f(self.runtimeFlags),
+      fiberRefs: self.fiberRefs
+    })
+)
+
+/** @internal */
+export const disableRuntimeFlag: {
+  (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime.Runtime<R>) => Runtime.Runtime<R>
+  <R>(self: Runtime.Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime.Runtime<R>
+} = dual(
+  2,
+  <R>(self: Runtime.Runtime<R>, flag: RuntimeFlags.RuntimeFlag) => updateRuntimeFlags(self, runtimeFlags.disable(flag))
+)
+
+/** @internal */
+export const enableRuntimeFlag: {
+  (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime.Runtime<R>) => Runtime.Runtime<R>
+  <R>(self: Runtime.Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime.Runtime<R>
+} = dual(
+  2,
+  <R>(self: Runtime.Runtime<R>, flag: RuntimeFlags.RuntimeFlag) => updateRuntimeFlags(self, runtimeFlags.enable(flag))
+)
+
+/** @internal */
+export const updateContext: {
+  <R, R2>(f: (context: Context.Context<R>) => Context.Context<R2>): (self: Runtime.Runtime<R>) => Runtime.Runtime<R2>
+  <R, R2>(self: Runtime.Runtime<R>, f: (context: Context.Context<R>) => Context.Context<R2>): Runtime.Runtime<R2>
+} = dual(
+  2,
+  <R, R2>(self: Runtime.Runtime<R>, f: (context: Context.Context<R>) => Context.Context<R2>) =>
+    make({
+      context: f(self.context),
+      runtimeFlags: self.runtimeFlags,
+      fiberRefs: self.fiberRefs
+    })
+)
+
+/** @internal */
+export const provideService: {
+  <I, S>(tag: Context.Tag<I, S>, service: S): <R>(self: Runtime.Runtime<R>) => Runtime.Runtime<R | I>
+  <R, I, S>(self: Runtime.Runtime<R>, tag: Context.Tag<I, S>, service: S): Runtime.Runtime<R | I>
+} = dual(
+  3,
+  <R, I, S>(self: Runtime.Runtime<R>, tag: Context.Tag<I, S>, service: S) =>
+    updateContext(self, Context.add(tag, service))
+)
 
 /** @internal */
 export const unsafeRunEffect = unsafeRunCallback(defaultRuntime)
