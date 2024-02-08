@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { DurationInput } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/rateLimiter.js"
