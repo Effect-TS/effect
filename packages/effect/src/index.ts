@@ -550,6 +550,8 @@ export * as Random from "./Random.js"
  * Note that only the moment of starting the effect is rate limited: the number of concurrent executions is not bounded.
  *
  * Calls are queued up in an unbounded queue until capacity becomes available.
+ *
+ * @since 2.0.0
  */
 export * as RateLimiter from "./RateLimiter.js"
 
