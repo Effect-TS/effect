@@ -224,7 +224,7 @@ export const stream = <Req extends StreamRequest.Any, I, SR, R>(
  * @since 1.0.0
  * @category models
  */
-export interface Request<A extends (Schema.TaggedRequest.Any)> extends
+export interface Request<A extends Schema.TaggedRequest.Any> extends
   EffectRequest.Request<
     EffectRequest.Request.Success<A>,
     EffectRequest.Request.Error<A>
