@@ -56,3 +56,10 @@ export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerIm
 
 /** @internal */
 export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
+
+/** @internal */
+export const layer = (spawn: (id: number) => globalThis.Worker | globalThis.SharedWorker) =>
+  Layer.merge(
+    layerManager,
+    Worker.layerSpawner(spawn)
+  )
