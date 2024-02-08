@@ -5418,10 +5418,10 @@ const hashMapParse = <R, K, V>(
  * @category HashMap transformations
  * @since 1.0.0
  */
-export const hashMapFromSelf = <K, IK, RK, V, IV, RV>(
-  key: Schema<K, IK, RK>,
-  value: Schema<V, IV, RV>
-): Schema<HashMap.HashMap<K, V>, HashMap.HashMap<IK, IV>, RK | RV> => {
+export const hashMapFromSelf = <K, IK, RK, V, IV, RV>({ key, value }: {
+  readonly key: Schema<K, IK, RK>
+  readonly value: Schema<V, IV, RV>
+}): Schema<HashMap.HashMap<K, V>, HashMap.HashMap<IK, IV>, RK | RV> => {
   return declare(
     [key, value],
     (key, value) => hashMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
@@ -5439,13 +5439,13 @@ export const hashMapFromSelf = <K, IK, RK, V, IV, RV>(
  * @category HashMap transformations
  * @since 1.0.0
  */
-export const hashMap = <K, IK, R1, V, IV, R2>(
-  key: Schema<K, IK, R1>,
-  value: Schema<V, IV, R2>
-): Schema<HashMap.HashMap<K, V>, ReadonlyArray<readonly [IK, IV]>, R1 | R2> =>
+export const hashMap = <K, IK, RK, V, IV, RV>({ key, value }: {
+  readonly key: Schema<K, IK, RK>
+  readonly value: Schema<V, IV, RV>
+}): Schema<HashMap.HashMap<K, V>, ReadonlyArray<readonly [IK, IV]>, RK | RV> =>
   transform(
     array(tuple(key, value)),
-    hashMapFromSelf(to(key), to(value)),
+    hashMapFromSelf({ key: to(key), value: to(value) }),
     (as) => HashMap.fromIterable(as),
     (map) => Array.from(map)
   )
