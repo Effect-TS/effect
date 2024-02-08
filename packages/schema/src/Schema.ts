@@ -879,7 +879,7 @@ export const optionalToRequired = <A, I, R, B>(
   to: Schema<B>,
   decode: (o: Option.Option<A>) => B, // `none` here means: the value is missing in the input
   encode: (b: B) => Option.Option<A>, // `none` here means: the value will be missing in the output
-  options?: DocAnnotations
+  annotations?: DocAnnotations
 ): PropertySignature<I, true, B, false, R> =>
   new PropertySignatureImpl({
     _tag: "OptionalToRequired",
@@ -887,7 +887,7 @@ export const optionalToRequired = <A, I, R, B>(
     to: to.ast,
     decode: (o) => Option.some(decode(o)),
     encode: Option.flatMap(encode),
-    annotations: toAnnotations(options)
+    annotations: toAnnotations(annotations)
   })
 
 /**
@@ -896,41 +896,81 @@ export const optionalToRequired = <A, I, R, B>(
 export const optional: {
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly exact: true; readonly default: () => A; readonly nullable: true }
+    options: {
+      readonly exact: true
+      readonly default: () => A
+      readonly nullable: true
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I | null, true, A, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly exact: true; readonly default: () => A }
+    options: {
+      readonly exact: true
+      readonly default: () => A
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I, true, A, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly exact: true; readonly nullable: true; readonly as: "Option" }
+    options: {
+      readonly exact: true
+      readonly nullable: true
+      readonly as: "Option"
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I | null, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly exact: true; readonly as: "Option" }
+    options: {
+      readonly exact: true
+      readonly as: "Option"
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly exact: true }
+    options: {
+      readonly exact: true
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I, true, A, true, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly default: () => A; readonly nullable: true }
+    options: {
+      readonly default: () => A
+      readonly nullable: true
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I | null | undefined, true, A, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly nullable: true; readonly as: "Option" }
+    options: {
+      readonly nullable: true
+      readonly as: "Option"
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I | undefined | null, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly as: "Option" }
+    options: {
+      readonly as: "Option"
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I | undefined, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: { readonly default: () => A }
+    options: {
+      readonly default: () => A
+      readonly annotations?: DocAnnotations | undefined
+    }
   ): PropertySignature<I | undefined, true, A, false, R>
-  <A, I, R>(schema: Schema<A, I, R>): PropertySignature<I | undefined, true, A | undefined, true, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
+    options?: {
+      readonly annotations?: DocAnnotations | undefined
+    }
+  ): PropertySignature<I | undefined, true, A | undefined, true, R>
 } = <A, I, R>(
   schema: Schema<A, I, R>,
   options?: {
@@ -938,12 +978,14 @@ export const optional: {
     readonly default?: () => A
     readonly nullable?: true
     readonly as?: "Option"
+    readonly annotations?: DocAnnotations | undefined
   }
 ): PropertySignature<any, any, any, any, R> => {
   const isExact = options?.exact
   const value = options?.default
   const isNullable = options?.nullable
   const asOption = options?.as == "Option"
+  const annotations = options?.annotations
 
   if (isExact) {
     if (value) {
@@ -952,14 +994,16 @@ export const optional: {
           nullable(schema),
           to(schema),
           Option.match({ onNone: value, onSome: (a) => a === null ? value() : a }),
-          Option.some
+          Option.some,
+          annotations
         )
       } else {
         return optionalToRequired(
           schema,
           to(schema),
           Option.match({ onNone: value, onSome: identity }),
-          Option.some
+          Option.some,
+          annotations
         )
       }
     } else {
@@ -969,21 +1013,24 @@ export const optional: {
             nullable(schema),
             optionFromSelf(to(schema)),
             Option.filter(Predicate.isNotNull),
-            identity
+            identity,
+            annotations
           )
         } else {
           return optionalToRequired(
             schema,
             optionFromSelf(to(schema)),
             identity,
-            identity
+            identity,
+            annotations
           )
         }
       }
       return new PropertySignatureImpl({
         _tag: "Declaration",
         from: schema.ast,
-        isOptional: true
+        isOptional: true,
+        annotations: toAnnotations(annotations)
       })
     }
   } else {
@@ -993,14 +1040,16 @@ export const optional: {
           nullish(schema),
           to(schema),
           Option.match({ onNone: value, onSome: (a) => (a == null ? value() : a) }),
-          Option.some
+          Option.some,
+          annotations
         )
       } else {
         return optionalToRequired(
           orUndefined(schema),
           to(schema),
           Option.match({ onNone: value, onSome: (a) => (a === undefined ? value() : a) }),
-          Option.some
+          Option.some,
+          annotations
         )
       }
     } else {
@@ -1010,21 +1059,24 @@ export const optional: {
             nullish(schema),
             optionFromSelf(to(schema)),
             Option.filter((a: A | null | undefined): a is A => a != null),
-            identity
+            identity,
+            annotations
           )
         } else {
           return optionalToRequired(
             orUndefined(schema),
             optionFromSelf(to(schema)),
             Option.filter(Predicate.isNotUndefined),
-            identity
+            identity,
+            annotations
           )
         }
       }
       return new PropertySignatureImpl({
         _tag: "Declaration",
         from: orUndefined(schema).ast,
-        isOptional: true
+        isOptional: true,
+        annotations: toAnnotations(annotations)
       })
     }
   }
