@@ -54,6 +54,11 @@ export const WorkerManager = Context.GenericTag<Worker.WorkerManager>(
 )
 
 /** @internal */
+export const Spawner = Context.GenericTag<Worker.Spawner, Worker.SpawnerFn>(
+  "@effect/platform/Worker/Spawner"
+)
+
+/** @internal */
 export const makeManager = Effect.gen(function*(_) {
   const platform = yield* _(PlatformWorker)
   let idCounter = 0
@@ -64,10 +69,10 @@ export const makeManager = Effect.gen(function*(_) {
       initialMessage,
       permits = 1,
       queue,
-      spawn,
       transfers = (_) => []
     }: Worker.Worker.Options<I>) {
       return Effect.gen(function*(_) {
+        const spawn = yield* _(Spawner)
         const id = idCounter++
         let requestIdCounter = 0
         const semaphore = yield* _(Effect.makeSemaphore(permits))
@@ -348,11 +353,10 @@ export const makePoolLayer = <Tag, I, E, O>(
 
 /** @internal */
 export const makeSerialized = <
-  I extends Schema.TaggedRequest.Any,
-  W = unknown
+  I extends Schema.TaggedRequest.Any
 >(
-  options: Worker.SerializedWorker.Options<I, W>
-): Effect.Effect<Worker.SerializedWorker<I>, WorkerError, Worker.WorkerManager | Scope.Scope> =>
+  options: Worker.SerializedWorker.Options<I>
+): Effect.Effect<Worker.SerializedWorker<I>, WorkerError, Worker.WorkerManager | Worker.Spawner | Scope.Scope> =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
     const backing = yield* _(
@@ -443,3 +447,10 @@ export const makePoolSerializedLayer = <Tag, I extends Schema.TaggedRequest.Any>
   tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
   options: Worker.SerializedWorkerPool.Options<I>
 ) => Layer.scoped(tag, makePoolSerialized(options))
+
+/** @internal */
+export const layerSpawner = <W = unknown>(spawner: Worker.SpawnerFn<W>) =>
+  Layer.succeed(
+    Spawner,
+    spawner
+  )

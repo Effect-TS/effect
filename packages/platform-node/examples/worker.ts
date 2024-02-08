@@ -8,12 +8,11 @@ interface MyWorkerPool {
 }
 const Pool = Context.GenericTag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
 const PoolLive = Worker.makePoolLayer(Pool, {
-  spawn: () => new WT.Worker("./examples/worker/range.ts"),
   minSize: 0,
   maxSize: 3,
   timeToLive: 30000
 }).pipe(
-  Layer.provide(NodeWorker.layerManager)
+  Layer.provide(NodeWorker.layer(() => new WT.Worker("./examples/worker/range.ts")))
 )
 
 Effect.gen(function*(_) {
