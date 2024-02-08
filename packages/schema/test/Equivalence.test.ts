@@ -196,7 +196,7 @@ describe("Equivalence", () => {
     })
 
     it("ReadonlyMap", () => {
-      const schema = S.readonlyMapFromSelf(string, number)
+      const schema = S.readonlyMapFromSelf({ key: string, value: number })
       const equivalence = E.make(schema)
 
       expect(equivalence(new Map(), new Map())).toBe(true)
