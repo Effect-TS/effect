@@ -5111,10 +5111,10 @@ const causeParse = <R, A>(
  * @category Cause transformations
  * @since 1.0.0
  */
-export const causeFromSelf = <A, I, R1, R2 = never>(
-  error: Schema<A, I, R1>,
-  defect: Schema<unknown, unknown, R2> = unknown
-): Schema<Cause.Cause<A>, Cause.Cause<I>, R1 | R2> => {
+export const causeFromSelf = <A, I, R1, R2 = never>({ defect = unknown, error }: {
+  readonly error: Schema<A, I, R1>
+  readonly defect?: Schema<unknown, unknown, R2> | undefined
+}): Schema<Cause.Cause<A>, Cause.Cause<I>, R1 | R2> => {
   return declare(
     [error, defect],
     (error, defect) => causeParse(ParseResult.decodeUnknown(causeFrom(error, defect))),
@@ -5186,13 +5186,13 @@ const causeDefectPretty: Schema<unknown> = transform(
  * @category Cause transformations
  * @since 1.0.0
  */
-export const cause = <E, EI, R1, R2 = never>(
-  error: Schema<E, EI, R1>,
-  defect: Schema<unknown, unknown, R2> = causeDefectPretty
-): Schema<Cause.Cause<E>, CauseFrom<EI>, R1 | R2> =>
+export const cause = <E, EI, R1, R2 = never>({ defect = causeDefectPretty, error }: {
+  readonly error: Schema<E, EI, R1>
+  readonly defect?: Schema<unknown, unknown, R2> | undefined
+}): Schema<Cause.Cause<E>, CauseFrom<EI>, R1 | R2> =>
   transform(
     causeFrom(error, defect),
-    causeFromSelf(to(error), to(defect)),
+    causeFromSelf({ error: to(error), defect: to(defect) }),
     causeDecode,
     causeEncode
   )
@@ -5287,9 +5287,15 @@ export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>({ defect = unknow
   declare(
     [failure, success, defect],
     (failure, success, defect) =>
-      exitParse(ParseResult.decodeUnknown(causeFromSelf(failure, defect)), ParseResult.decodeUnknown(success)),
+      exitParse(
+        ParseResult.decodeUnknown(causeFromSelf({ error: failure, defect })),
+        ParseResult.decodeUnknown(success)
+      ),
     (failure, success, defect) =>
-      exitParse(ParseResult.encodeUnknown(causeFromSelf(failure, defect)), ParseResult.encodeUnknown(success)),
+      exitParse(
+        ParseResult.encodeUnknown(causeFromSelf({ error: failure, defect })),
+        ParseResult.encodeUnknown(success)
+      ),
     {
       description: `Exit<${format(failure)}, ${format(success)}>`,
       pretty: exitPretty,
