@@ -4004,10 +4004,10 @@ const readonlyMapParse = <R, K, V>(
  * @category ReadonlyMap transformations
  * @since 1.0.0
  */
-export const readonlyMapFromSelf = <K, IK, RK, V, IV, RV>(
-  key: Schema<K, IK, RK>,
-  value: Schema<V, IV, RV>
-): Schema<ReadonlyMap<K, V>, ReadonlyMap<IK, IV>, RK | RV> => {
+export const readonlyMapFromSelf = <K, IK, RK, V, IV, RV>({ key, value }: {
+  readonly key: Schema<K, IK, RK>
+  readonly value: Schema<V, IV, RV>
+}): Schema<ReadonlyMap<K, V>, ReadonlyMap<IK, IV>, RK | RV> => {
   return declare(
     [key, value],
     (key, value) => readonlyMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
@@ -4025,13 +4025,13 @@ export const readonlyMapFromSelf = <K, IK, RK, V, IV, RV>(
  * @category ReadonlyMap transformations
  * @since 1.0.0
  */
-export const readonlyMap = <K, IK, R1, V, IV, R2>(
-  key: Schema<K, IK, R1>,
-  value: Schema<V, IV, R2>
-): Schema<ReadonlyMap<K, V>, ReadonlyArray<readonly [IK, IV]>, R1 | R2> =>
+export const readonlyMap = <K, IK, RK, V, IV, RV>({ key, value }: {
+  readonly key: Schema<K, IK, RK>
+  readonly value: Schema<V, IV, RV>
+}): Schema<ReadonlyMap<K, V>, ReadonlyArray<readonly [IK, IV]>, RK | RV> =>
   transform(
     array(tuple(key, value)),
-    readonlyMapFromSelf(to(key), to(value)),
+    readonlyMapFromSelf({ key: to(key), value: to(value) }),
     (as) => new Map(as),
     (map) => Array.from(map.entries())
   )

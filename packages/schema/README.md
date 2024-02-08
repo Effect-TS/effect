@@ -3074,7 +3074,7 @@ In the following section, we demonstrate how to use the `readonlyMap` combinator
 import * as S from "@effect/schema/Schema";
 
 // Schema<ReadonlyMap<number, string>, readonly (readonly [number, string])[]>
-const schema = S.readonlyMap(S.number, S.string); // define the schema for ReadonlyMap with number keys and string values
+const schema = S.readonlyMap({ key: S.number, value: S.string }); // define the schema for ReadonlyMap with number keys and string values
 const parse = S.decodeUnknownSync(schema);
 
 console.log(
