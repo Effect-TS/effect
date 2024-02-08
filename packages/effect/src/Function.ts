@@ -203,6 +203,24 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
 export const identity = <A>(a: A): A => a
 
 /**
+ * A function that ensures that the type of an expression matches some type,
+ * without changing the resulting type of that expression.
+ *
+ * @example
+ * import { satisfies } from "effect/Function"
+ *
+ * const test1 = satisfies<number>()(5 as const)
+ *     //^? const test: 5
+ * const test2 = satisfies<string>()(5)
+ *     //^? Argument of type 'number' is not assignable to parameter of type 'string'
+ *
+ * assert.deepStrictEqual(satisfies<number>()(5), 5)
+ *
+ * @since 2.0.0
+ */
+export const satisfies = <A>() => <B extends A>(b: B) => b
+
+/**
  * Casts the result to the specified type.
  *
  * @param a - The value to be casted to the target type.
