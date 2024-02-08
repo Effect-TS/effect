@@ -121,11 +121,13 @@ const EOF = Symbol.for("@effect/rpc/Rpc/Router/EOF")
 
 const channelFromQueue = <A>(queue: Queue.Queue<A | typeof EOF>) => {
   const loop: Channel.Channel<Chunk.Chunk<A>> = Channel.flatMap(
-    Queue.take(queue),
-    (elem) =>
-      elem === EOF
-        ? Channel.unit
-        : Channel.zipRight(Channel.write(Chunk.of(elem)), loop)
+    Queue.takeBetween(queue, 1, Number.MAX_SAFE_INTEGER),
+    (chunk) => {
+      if (Chunk.unsafeLast(chunk) === EOF) {
+        return Channel.write(Chunk.dropRight(chunk as Chunk.Chunk<A>, 1))
+      }
+      return Channel.zipRight(Channel.write(chunk as Chunk.Chunk<A>), loop)
+    }
   )
   return loop
 }
@@ -156,7 +158,7 @@ export const toHandler = <R extends Router<any, any>>(router: R) => {
   return (u: unknown): Stream.Stream<Router.Response, ParseError, Router.Context<R>> =>
     pipe(
       decode(u),
-      Effect.zip(Queue.bounded<Router.Response | typeof EOF>(16)),
+      Effect.zip(Queue.unbounded<Router.Response | typeof EOF>()),
       Effect.tap(([requests, queue]) =>
         pipe(
           Effect.forEach(requests, (req, index) => {
