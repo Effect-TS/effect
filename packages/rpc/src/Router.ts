@@ -141,7 +141,10 @@ const emptyExit = Schema.encodeSync(Schema.exit({
  * @since 1.0.0
  * @category combinators
  */
-export const toHandler = <R extends Router<any, any>>(router: R) => {
+export const toHandler = <R extends Router<any, any>>(router: R, options?: {
+  readonly spanPrefix?: string
+}) => {
+  const spanPrefix = options?.spanPrefix ?? "Rpc.router "
   const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
     .union(
       ...[...router.rpcs].map((rpc) =>
@@ -181,7 +184,7 @@ export const toHandler = <R extends Router<any, any>>(router: R) => {
                     )
                 }),
                 Effect.locally(Rpc.currentHeaders, req.headers),
-                Effect.withSpan(`Rpc.router ${request._tag}`, {
+                Effect.withSpan(`${spanPrefix}${request._tag}`, {
                   parent: {
                     _tag: "ExternalSpan",
                     traceId: req.traceId,
@@ -212,7 +215,7 @@ export const toHandler = <R extends Router<any, any>>(router: R) => {
                   )
               }),
               Effect.locally(Rpc.currentHeaders, req.headers),
-              Effect.withSpan(`Rpc.router ${request._tag}`, {
+              Effect.withSpan(`${spanPrefix}${request._tag}`, {
                 parent: {
                   _tag: "ExternalSpan",
                   traceId: req.traceId,

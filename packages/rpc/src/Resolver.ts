@@ -107,6 +107,9 @@ export const make = <HR, E>(
  * @category combinators
  */
 export const toClient = <RReq extends Schema.TaggedRequest.Any>(
-  resolver: RequestResolver.RequestResolver<Rpc.Request<RReq>, never>
+  resolver: RequestResolver.RequestResolver<Rpc.Request<RReq>, never>,
+  options?: {
+    readonly spanPrefix?: string
+  }
 ): <Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req> =>
-(request) => Rpc.call(request, resolver)
+(request) => Rpc.call(request, resolver, options)

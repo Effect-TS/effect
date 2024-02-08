@@ -298,10 +298,13 @@ export const annotateHeaders: {
  * @category requests
  */
 export const request = <A extends Schema.TaggedRequest.Any>(
-  request: A
+  request: A,
+  options?: {
+    readonly spanPrefix?: string
+  }
 ): Effect.Effect<Request<A>, never, Scope> =>
   pipe(
-    Effect.makeSpanScoped(`Rpc.request ${request._tag}`),
+    Effect.makeSpanScoped(`${options?.spanPrefix ?? "Rpc.request "}${request._tag}`),
     Effect.zip(FiberRef.get(currentHeaders)),
     Effect.map(([span, headers]) => ({
       request,
@@ -325,11 +328,14 @@ export const request = <A extends Schema.TaggedRequest.Any>(
  */
 export const call = <A extends Schema.TaggedRequest.Any>(
   req: A,
-  resolver: RequestResolver.RequestResolver<Request<A>>
+  resolver: RequestResolver.RequestResolver<Request<A>>,
+  options?: {
+    readonly spanPrefix?: string
+  }
 ): Rpc.Result<A> => {
   const isStream = Internal.StreamRequestTypeId in req
   const res = pipe(
-    request(req),
+    request(req, options),
     Effect.flatMap((_) => Effect.request(_, resolver))
   )
   return isStream ? Stream.unwrapScoped(res as any) : Effect.scoped(res) as any
