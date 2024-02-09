@@ -47,16 +47,6 @@ describe("Stream", () => {
       assert.isTrue(result)
     }))
 
-  it.effect("async - synchronous return", () =>
-    Effect.gen(function*($) {
-      const chunk = Chunk.range(1, 5)
-      const result = yield* $(
-        Stream.async<number>(() => Stream.fromChunk(chunk)),
-        Stream.runCollect
-      )
-      assert.deepStrictEqual(Array.from(result), Array.from(chunk))
-    }))
-
   it.effect("async - signals the end of the stream", () =>
     Effect.gen(function*($) {
       const result = yield* $(

@@ -256,7 +256,7 @@ export const as: {
 } = internal.as
 
 const _async: <A, E = never, R = never>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<void, never, R> | Stream<A, E, R> | void,
+  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<void, never, R> | void,
   outputBuffer?: number
 ) => Stream<A, E, R> = internal._async
 
@@ -266,11 +266,8 @@ export {
    * times. The optionality of the error type `E` in `Emit` can be used to
    * signal the end of the stream by setting it to `None`.
    *
-   * The registration function can optionally return an `Effect` or a `Stream`.
-   *   - If an `Effect` is returned, it will be executed if the `Fiber`
-   *     executing this Effect is interrupted
-   *   - If a `Stream` is returned then the `Stream` will be returned by the
-   *     `async` method synchronously
+   * The registration function can optionally return an `Effect`, which will be
+   * executed if the `Fiber` executing this Effect is interrupted.
    *
    * @since 2.0.0
    * @category constructors

@@ -463,7 +463,7 @@ export const as = dual<
 export const _async = <A, E = never, R = never>(
   register: (
     emit: Emit.Emit<R, E, A, void>
-  ) => Effect.Effect<void, never, R> | Stream.Stream<A, E, R> | void,
+  ) => Effect.Effect<void, never, R> | void,
   outputBuffer = 16
 ): Stream.Stream<A, E, R> =>
   Effect.acquireRelease(
@@ -492,11 +492,6 @@ export const _async = <A, E = never, R = never>(
           })
         ),
         Effect.map((value) => {
-          // Since Effect is a value one-value Stream, we also need to perform
-          // the check using `hasProperty`
-          if (hasProperty(value, StreamTypeId)) {
-            return unwrap(Queue.shutdown(output).pipe(Effect.as(value as Stream.Stream<A, E, R>)))
-          }
           const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E, unknown, void, unknown> = Queue.take(output).pipe(
             Effect.flatMap((take) => InternalTake.done(take)),
             Effect.match({
@@ -511,7 +506,7 @@ export const _async = <A, E = never, R = never>(
             }),
             channel.unwrap
           )
-          return fromChannel(loop).pipe(ensuring(value as void | Effect.Effect<void, never, R> ?? Effect.unit))
+          return fromChannel(loop).pipe(ensuring(value ?? Effect.unit))
         })
       )
     ),
