@@ -22,7 +22,7 @@ import * as Rpc from "./Rpc.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/rpc/Rpc/Router")
+export const TypeId = Symbol.for("@effect/rpc/Router")
 
 /**
  * @since 1.0.0
@@ -117,7 +117,7 @@ export const make = <Rpcs extends ReadonlyArray<Rpc.Rpc<any, any> | Router<any, 
   })
 }
 
-const EOF = Symbol.for("@effect/rpc/Rpc/Router/EOF")
+const EOF = Symbol.for("@effect/rpc/Router/EOF")
 
 const channelFromQueue = <A>(queue: Queue.Queue<A | typeof EOF>) => {
   const loop: Channel.Channel<Chunk.Chunk<A>> = Channel.flatMap(

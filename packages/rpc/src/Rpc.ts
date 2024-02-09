@@ -281,7 +281,7 @@ export const RequestSchema = <A, I, R>(
  * @category headers
  */
 export const currentHeaders: FiberRef.FiberRef<Headers.Headers> = globalValue(
-  "@effect/rpc/Rpc/Headers",
+  "@effect/rpc/Rpc/currentHeaders",
   () => FiberRef.unsafeMake(Headers.empty)
 )
 
