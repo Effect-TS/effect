@@ -2,7 +2,6 @@
   "extends": "./tsconfig.src.json",
   "references": [
     { "path": "../effect" },
-    { "path": "../experimental" },
     { "path": "../schema" },
     { "path": "../rpc" },
     { "path": "../platform" }
