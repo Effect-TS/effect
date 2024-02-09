@@ -10,31 +10,31 @@ const symB = Symbol.for("b")
 
 describe("ReadonlyRecord", () => {
   it("get", () => {
-    expect(pipe(RR.empty(), RR.get("a"))).toEqual(Option.none())
+    expect(pipe(RR.empty<string>(), RR.get("a"))).toEqual(Option.none())
     expect(pipe({ a: 1 }, RR.get("a"))).toEqual(Option.some(1))
 
-    expect(pipe(RR.empty(), RR.get(symA))).toEqual(Option.none())
+    expect(pipe(RR.empty<symbol>(), RR.get(symA))).toEqual(Option.none())
     expect(pipe({ [symA]: 1 }, RR.get(symA))).toEqual(Option.some(1))
   })
 
   it("replaceOption", () => {
-    expect(pipe(RR.empty<string, number>(), RR.replaceOption("a", 2))).toEqual(Option.none())
+    expect(pipe(RR.empty<string>(), RR.replaceOption("a", 2))).toEqual(Option.none())
     expect(pipe({ a: 1 }, RR.replaceOption("a", 2))).toEqual(Option.some({ a: 2 }))
     expect(pipe({ a: 1 }, RR.replaceOption("a", true))).toEqual(Option.some({ a: true }))
 
-    expect(pipe(RR.empty<symbol, number>(), RR.replaceOption(symA, 2))).toEqual(Option.none())
+    expect(pipe(RR.empty<symbol>(), RR.replaceOption(symA, 2))).toEqual(Option.none())
     expect(pipe({ [symA]: 1 }, RR.replaceOption(symA, 2))).toEqual(Option.some({ [symA]: 2 }))
     expect(pipe({ [symA]: 1 }, RR.replaceOption(symA, true))).toEqual(Option.some({ [symA]: true }))
   })
 
   it("modify", () => {
-    expect(pipe(RR.empty<string, number>(), RR.modify("a", (n: number) => n + 1))).toEqual({})
+    expect(pipe(RR.empty<string>(), RR.modify("a", (n: number) => n + 1))).toEqual({})
     expect(pipe({ a: 1 }, RR.modify("a", (n: number) => n + 1))).toEqual({ a: 2 })
     expect(pipe({ a: 1 }, RR.modify("a", (n: number) => String(n)))).toEqual(
       { a: "1" }
     )
 
-    expect(pipe(RR.empty<symbol, number>(), RR.modify(symA, (n: number) => n + 1))).toEqual({})
+    expect(pipe(RR.empty<symbol>(), RR.modify(symA, (n: number) => n + 1))).toEqual({})
     expect(pipe({ [symA]: 1 }, RR.modify(symA, (n: number) => n + 1))).toEqual({ [symA]: 2 })
     expect(pipe({ [symA]: 1 }, RR.modify(symA, (n: number) => String(n)))).toEqual(
       { [symA]: "1" }
@@ -42,13 +42,13 @@ describe("ReadonlyRecord", () => {
   })
 
   it("modifyOption", () => {
-    expect(pipe(RR.empty<string, number>(), RR.modifyOption("a", (n) => n + 1))).toEqual(Option.none())
+    expect(pipe(RR.empty<string>(), RR.modifyOption("a", (n) => n + 1))).toEqual(Option.none())
     expect(pipe({ a: 1 }, RR.modifyOption("a", (n: number) => n + 1))).toEqual(Option.some({ a: 2 }))
     expect(pipe({ a: 1 }, RR.modifyOption("a", (n: number) => String(n)))).toEqual(
       Option.some({ a: "1" })
     )
 
-    expect(pipe(RR.empty<symbol, number>(), RR.modifyOption(symA, (n) => n + 1))).toEqual(Option.none())
+    expect(pipe(RR.empty<symbol>(), RR.modifyOption(symA, (n) => n + 1))).toEqual(Option.none())
     expect(pipe({ [symA]: 1 }, RR.modifyOption(symA, (n: number) => n + 1))).toEqual(Option.some({ [symA]: 2 }))
     expect(pipe({ [symA]: 1 }, RR.modifyOption(symA, (n: number) => String(n)))).toEqual(
       Option.some({ [symA]: "1" })
@@ -56,11 +56,11 @@ describe("ReadonlyRecord", () => {
   })
 
   it("replaceOption", () => {
-    expect(pipe(RR.empty(), RR.replaceOption("a", 2))).toEqual(Option.none())
+    expect(pipe(RR.empty<string>(), RR.replaceOption("a", 2))).toEqual(Option.none())
     expect(pipe({ a: 1 }, RR.replaceOption("a", 2))).toEqual(Option.some({ a: 2 }))
     expect(pipe({ a: 1 }, RR.replaceOption("a", true))).toEqual(Option.some({ a: true }))
 
-    expect(pipe(RR.empty(), RR.replaceOption(symA, 2))).toEqual(Option.none())
+    expect(pipe(RR.empty<symbol>(), RR.replaceOption(symA, 2))).toEqual(Option.none())
     expect(pipe({ [symA]: 1 }, RR.replaceOption(symA, 2))).toEqual(Option.some({ [symA]: 2 }))
     expect(pipe({ [symA]: 1 }, RR.replaceOption(symA, true))).toEqual(Option.some({ [symA]: true }))
   })
@@ -232,7 +232,7 @@ describe("ReadonlyRecord", () => {
 
   it("isSubrecord", () => {
     expect(RR.isSubrecord(RR.empty(), {})).toBe(true)
-    expect(RR.isSubrecord(RR.empty(), { a: 1 })).toBe(true)
+    expect(RR.isSubrecord(RR.empty<string>(), { a: 1 })).toBe(true)
     expect(RR.isSubrecord({ a: 1 }, { a: 1 })).toBe(true)
     expect(RR.isSubrecord({ a: 1 } as Record<string, number>, { a: 1, b: 2 })).toBe(true)
     expect(RR.isSubrecord({ b: 2, a: 1 }, { a: 1, b: 2 })).toBe(true)

@@ -56,7 +56,10 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
  * @category constructors
  * @since 2.0.0
  */
-export const empty = (): Record<never, never> => ({})
+export const empty = <K extends string | symbol = never, V = never>(): Record<
+  ReadonlyRecord.NonLiteralKey<K>,
+  V
+> => ({})
 
 /**
  * Determine if a record is empty.
