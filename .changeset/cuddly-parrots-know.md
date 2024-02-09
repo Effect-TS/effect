@@ -10,7 +10,7 @@ This PR removes `Effect.asyncOption` and `Effect.asyncEither` as their behavior 
 
 ```
 
-Additionally, this PR removes `Stream.asyncOption`, `Stream.asyncEither`, and `Stream.asyncInterrupt` as their behavior can be entirely implemented with the new signature of `Stream.async`, which can optionally return a cleanup `Effect` or synchronously return a `Stream`.
+Additionally, this PR removes `Stream.asyncOption`, `Stream.asyncEither`, and `Stream.asyncInterrupt` as their behavior can be entirely implemented with the new signature of `Stream.async`, which can optionally return a cleanup `Effect` from the registration callback.
 
 ```ts
 declare const async: <A, E = never, R = never>(
