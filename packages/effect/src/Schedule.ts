@@ -160,11 +160,11 @@ export const addDelay: {
  */
 export const addDelayEffect: {
   <Out, Env2>(
-    f: (out: Out) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out) => Effect.Effect<Duration.DurationInput, never, Env2>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out) => Effect.Effect<Duration.DurationInput, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.addDelayEffect
 
@@ -268,11 +268,11 @@ export const check: {
  */
 export const checkEffect: {
   <In, Out, Env2>(
-    test: (input: In, output: Out) => Effect.Effect<Env2, never, boolean>
+    test: (input: In, output: Out) => Effect.Effect<boolean, never, Env2>
   ): <Env>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    test: (input: In, output: Out) => Effect.Effect<Env2, never, boolean>
+    test: (input: In, output: Out) => Effect.Effect<boolean, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.checkEffect
 
@@ -390,11 +390,11 @@ export const mapInputContext: {
  */
 export const mapInputEffect: {
   <In, Env2, In2>(
-    f: (in2: In2) => Effect.Effect<Env2, never, In>
+    f: (in2: In2) => Effect.Effect<In, never, Env2>
   ): <Env, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In2, Out>
   <Env, In, Out, Env2, In2>(
     self: Schedule<Env, In, Out>,
-    f: (in2: In2) => Effect.Effect<Env2, never, In>
+    f: (in2: In2) => Effect.Effect<In, never, Env2>
   ): Schedule<Env | Env2, In2, Out>
 } = internal.mapInputEffect
 
@@ -469,11 +469,11 @@ export const delayed: {
  */
 export const delayedEffect: {
   <Env2>(
-    f: (duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, Env2>
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.delayedEffect
 
@@ -528,15 +528,15 @@ export const mapBoth: {
 export const mapBothEffect: {
   <In2, Env2, In, Out, Env3, Out2>(
     options: {
-      readonly onInput: (input: In2) => Effect.Effect<Env2, never, In>
-      readonly onOutput: (out: Out) => Effect.Effect<Env3, never, Out2>
+      readonly onInput: (input: In2) => Effect.Effect<In, never, Env2>
+      readonly onOutput: (out: Out) => Effect.Effect<Out2, never, Env3>
     }
   ): <Env>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env3 | Env, In2, Out2>
   <Env, In, Out, In2, Env2, Env3, Out2>(
     self: Schedule<Env, In, Out>,
     options: {
-      readonly onInput: (input: In2) => Effect.Effect<Env2, never, In>
-      readonly onOutput: (out: Out) => Effect.Effect<Env3, never, Out2>
+      readonly onInput: (input: In2) => Effect.Effect<In, never, Env2>
+      readonly onOutput: (out: Out) => Effect.Effect<Out2, never, Env3>
     }
   ): Schedule<Env | Env2 | Env3, In2, Out2>
 } = internal.mapBothEffect
@@ -822,11 +822,11 @@ export const map: {
  */
 export const mapEffect: {
   <Out, Env2, Out2>(
-    f: (out: Out) => Effect.Effect<Env2, never, Out2>
+    f: (out: Out) => Effect.Effect<Out2, never, Env2>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out2>
   <Env, In, Out, Env2, Out2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, Out2>
+    f: (out: Out) => Effect.Effect<Out2, never, Env2>
   ): Schedule<Env | Env2, In, Out2>
 } = internal.mapEffect
 
@@ -1026,12 +1026,12 @@ export const reduce: {
 export const reduceEffect: {
   <Out, Env1, Z>(
     zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Env1, never, Z>
+    f: (z: Z, out: Out) => Effect.Effect<Z, never, Env1>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env1 | Env, In, Z>
   <Env, In, Out, Env1, Z>(
     self: Schedule<Env, In, Out>,
     zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Env1, never, Z>
+    f: (z: Z, out: Out) => Effect.Effect<Z, never, Env1>
   ): Schedule<Env | Env1, In, Z>
 } = internal.reduceEffect
 
@@ -1151,11 +1151,11 @@ export const sync: <A>(evaluate: LazyArg<A>) => Schedule<never, unknown, A> = in
  */
 export const tapInput: {
   <Env2, In2, X>(
-    f: (input: In2) => Effect.Effect<Env2, never, X>
+    f: (input: In2) => Effect.Effect<X, never, Env2>
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, Out>
   <Env, In, Out, Env2, In2, X>(
     self: Schedule<Env, In, Out>,
-    f: (input: In2) => Effect.Effect<Env2, never, X>
+    f: (input: In2) => Effect.Effect<X, never, Env2>
   ): Schedule<Env | Env2, In & In2, Out>
 } = internal.tapInput
 
@@ -1168,11 +1168,11 @@ export const tapInput: {
  */
 export const tapOutput: {
   <Out, XO extends Out, Env2, X>(
-    f: (out: XO) => Effect.Effect<Env2, never, X>
+    f: (out: XO) => Effect.Effect<X, never, Env2>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, XO extends Out, Env2, X>(
     self: Schedule<Env, In, Out>,
-    f: (out: XO) => Effect.Effect<Env2, never, X>
+    f: (out: XO) => Effect.Effect<X, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.tapOutput
 
@@ -1243,11 +1243,11 @@ export const untilInput: {
  */
 export const untilInputEffect: {
   <In, Env2>(
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect.Effect<boolean, never, Env2>
   ): <Env, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect.Effect<boolean, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.untilInputEffect
 
@@ -1272,11 +1272,11 @@ export const untilOutput: {
  */
 export const untilOutputEffect: {
   <Out, Env2>(
-    f: (out: Out) => Effect.Effect<Env2, never, boolean>
+    f: (out: Out) => Effect.Effect<boolean, never, Env2>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, boolean>
+    f: (out: Out) => Effect.Effect<boolean, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.untilOutputEffect
 
@@ -1312,11 +1312,11 @@ export const whileInput: {
  */
 export const whileInputEffect: {
   <In, Env2>(
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect.Effect<boolean, never, Env2>
   ): <Env, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect.Effect<boolean, never, Env2>
   ): Schedule<Env | Env2, In, Out>
 } = internal.whileInputEffect
 
@@ -1341,11 +1341,11 @@ export const whileOutput: {
  */
 export const whileOutputEffect: {
   <Out, Env1>(
-    f: (out: Out) => Effect.Effect<Env1, never, boolean>
+    f: (out: Out) => Effect.Effect<boolean, never, Env1>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env1 | Env, In, Out>
   <Env, In, Out, Env1>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env1, never, boolean>
+    f: (out: Out) => Effect.Effect<boolean, never, Env1>
   ): Schedule<Env | Env1, In, Out>
 } = internal.whileOutputEffect
 
