@@ -309,7 +309,7 @@ export const annotateHeaders: {
  * @since 1.0.0
  * @category headers
  */
-export const schemaHeaders = <R, I extends ReadonlyRecord.ReadonlyRecord<string | undefined>, A>(
+export const schemaHeaders = <R, I extends ReadonlyRecord.ReadonlyRecord<string, string | undefined>, A>(
   schema: Schema.Schema<R, I, A>
 ): Effect.Effect<R, ParseResult.ParseError, A> => {
   const decode = Schema.decodeUnknown(schema)
