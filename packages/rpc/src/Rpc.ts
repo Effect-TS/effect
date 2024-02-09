@@ -43,13 +43,13 @@ export const isRpc = (u: unknown): u is Rpc<any, any> => Predicate.hasProperty(u
  * @since 1.0.0
  * @category models
  */
-export type Rpc<R, Req extends Schema.TaggedRequest.Any> = RpcEffect<R, Req> | RpcStream<R, Req>
+export type Rpc<Req extends Schema.TaggedRequest.Any, R> = RpcEffect<Req, R> | RpcStream<Req, R>
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface RpcEffect<R, Req extends Schema.TaggedRequest.Any> extends Rpc.Proto<Req> {
+export interface RpcEffect<Req extends Schema.TaggedRequest.Any, R> extends Rpc.Proto<Req> {
   readonly _tag: "Effect"
   readonly handler: (
     request: Req
@@ -64,7 +64,7 @@ export interface RpcEffect<R, Req extends Schema.TaggedRequest.Any> extends Rpc.
  * @since 1.0.0
  * @category models
  */
-export interface RpcStream<R, Req extends Schema.TaggedRequest.Any> extends Rpc.Proto<Req> {
+export interface RpcStream<Req extends Schema.TaggedRequest.Any, R> extends Rpc.Proto<Req> {
   readonly _tag: "Stream"
   readonly handler: (
     request: Req
@@ -94,7 +94,7 @@ export declare namespace Rpc {
    * @since 1.0.0
    * @category models
    */
-  export type Context<A extends Rpc<any, any>> = A extends Rpc<infer R, infer Req>
+  export type Context<A extends Rpc<any, any>> = A extends Rpc<infer Req, infer R>
     ? R | Serializable.SerializableWithResult.Context<Req>
     : never
 
@@ -130,7 +130,7 @@ export declare namespace Rpc {
 export const effect = <Req extends Schema.TaggedRequest.Any, SR, I, R>(
   schema: Schema.Schema<Req, I, SR>,
   handler: (request: Req) => Effect.Effect<EffectRequest.Request.Success<Req>, EffectRequest.Request.Error<Req>, R>
-): Rpc<R, Req> => ({
+): Rpc<Req, R> => ({
   [TypeId]: TypeId,
   _tag: "Effect",
   schema: schema as any,
@@ -222,7 +222,7 @@ export const stream = <Req extends StreamRequest.Any, I, SR, R>(
     Req extends Serializable.WithResult<infer _R, infer _IE, infer E, infer _IA, infer _A> ? E : never,
     R
   >
-): Rpc<R, Req> => ({
+): Rpc<Req, R> => ({
   [TypeId]: TypeId,
   _tag: "Stream",
   schema: schema as any,

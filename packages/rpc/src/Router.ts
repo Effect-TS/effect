@@ -40,9 +40,9 @@ export const isRouter = (u: unknown): u is Router<any, any> => Predicate.hasProp
  * @since 1.0.0
  * @category models
  */
-export interface Router<R, Reqs extends Schema.TaggedRequest.Any> extends Pipeable {
+export interface Router<Reqs extends Schema.TaggedRequest.Any, R> extends Pipeable {
   readonly [TypeId]: TypeId
-  readonly rpcs: ReadonlySet<Rpc.Rpc<R, Reqs>>
+  readonly rpcs: ReadonlySet<Rpc.Rpc<Reqs, R>>
 }
 
 /**
@@ -54,7 +54,7 @@ export declare namespace Router {
    * @since 1.0.0
    * @category models
    */
-  export type Context<A extends Router<any, any>> = A extends Router<infer R, infer Req>
+  export type Context<A extends Router<any, any>> = A extends Router<infer Req, infer R>
     ? R | Serializable.SerializableWithResult.Context<Req>
     : never
 
@@ -62,7 +62,7 @@ export declare namespace Router {
    * @since 1.0.0
    * @category models
    */
-  export type ContextRaw<A extends Router<any, any>> = A extends Router<infer R, infer Req>
+  export type ContextRaw<A extends Router<any, any>> = A extends Router<infer Req, infer R>
     ? R | Serializable.Serializable.Context<Req>
     : never
 
@@ -70,7 +70,7 @@ export declare namespace Router {
    * @since 1.0.0
    * @category models
    */
-  export type Request<A extends Router<any, any>> = A extends Router<infer _R, infer Req> ? Req
+  export type Request<A extends Router<any, any>> = A extends Router<infer Req, infer _R> ? Req
     : never
 
   /**
@@ -87,16 +87,16 @@ export declare namespace Router {
 export const make = <Rpcs extends ReadonlyArray<Rpc.Rpc<any, any> | Router<any, any>>>(
   ...rpcs: Rpcs
 ): Router<
-  | Rpc.Rpc.Context<
-    Extract<Rpcs[number], { readonly [Rpc.TypeId]: Rpc.TypeId }>
-  >
-  | Router.Context<
-    Extract<Rpcs[number], { readonly [TypeId]: TypeId }>
-  >,
   | Rpc.Rpc.Request<
     Extract<Rpcs[number], { readonly [Rpc.TypeId]: Rpc.TypeId }>
   >
   | Router.Request<
+    Extract<Rpcs[number], { readonly [TypeId]: TypeId }>
+  >,
+  | Rpc.Rpc.Context<
+    Extract<Rpcs[number], { readonly [Rpc.TypeId]: Rpc.TypeId }>
+  >
+  | Router.Context<
     Extract<Rpcs[number], { readonly [TypeId]: TypeId }>
   >
 > => {
