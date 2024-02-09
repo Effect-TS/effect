@@ -12,6 +12,7 @@ import type * as Scope from "../Scope.js"
 import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
 import * as fiberRuntime from "./fiberRuntime.js"
+import { nextPow2 } from "./nextPow2.js"
 import * as queue from "./queue.js"
 
 const AbsentValue = Symbol.for("effect/PubSub/AbsentValue")
@@ -1169,12 +1170,6 @@ export const unsafeMakePubSub = <A>(
   strategy: PubSubStrategy<A>
 ): PubSub.PubSub<A> => {
   return new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
-}
-
-/** @internal */
-const nextPow2 = (n: number): number => {
-  const nextPow = Math.ceil(Math.log(n) / Math.log(2.0))
-  return Math.max(Math.pow(2, nextPow), 2)
 }
 
 /** @internal */
