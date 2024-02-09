@@ -448,3 +448,22 @@ export const remainder: {
   const divisorInt = parseInt(divisor.toFixed(decCount).replace(".", ""))
   return (selfInt % divisorInt) / Math.pow(10, decCount)
 })
+
+/**
+ * Returns the next power of 2 from the given number.
+ *
+ * @param self - The number to find the next power of 2 from.
+ *
+ * @example
+ * import { nextPow2 } from "effect/Number"
+ *
+ * assert.deepStrictEqual(nextPow2(5), 8)
+ * assert.deepStrictEqual(nextPow2(17), 32)
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const nextPow2 = (n: number): number => {
+  const nextPow = Math.ceil(Math.log(n) / Math.log(2))
+  return Math.max(Math.pow(2, nextPow), 2)
+}

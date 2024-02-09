@@ -30,5 +30,8 @@ export interface RateLimiter {
  * @since 2.0.0
  * @category constructors
  */
-export const make = (limit: number, window: DurationInput): Effect<RateLimiter, never, Scope> =>
-  internal.make(limit, window)
+export const make: (limit: number, window: DurationInput) => Effect<
+  RateLimiter,
+  never,
+  Scope
+> = internal.make
