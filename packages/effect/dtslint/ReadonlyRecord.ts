@@ -498,3 +498,12 @@ if (ReadonlyRecord.has(numbers, "a")) {
 
 // @ts-expect-error
 ReadonlyRecord.has(structNumbers, "c")
+
+// -------------------------------------------------------------------------------------
+// empty
+// -------------------------------------------------------------------------------------
+
+export const empty1: Record<string, number> = ReadonlyRecord.empty()
+export const empty2: Record<symbol, number> = ReadonlyRecord.empty()
+// @ts-expect-error
+export const empty3: Record<"a", number> = ReadonlyRecord.empty()

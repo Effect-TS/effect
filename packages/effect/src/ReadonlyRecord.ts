@@ -56,7 +56,7 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
  * @category constructors
  * @since 2.0.0
  */
-export const empty = <K extends string | symbol, A>(): Record<K, A> => ({} as any)
+export const empty = (): Record<never, never> => ({})
 
 /**
  * Determine if a record is empty.
@@ -522,7 +522,7 @@ export const map: {
 } = dual(
   2,
   <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, f: (a: A, key: NoInfer<K>) => B): Record<K, B> => {
-    const out: Record<K, B> = empty()
+    const out = <Record<K, B>> {}
     for (const key of keys(self)) {
       out[key] = f(self[key], key)
     }
@@ -555,7 +555,7 @@ export const mapKeys: {
     self: ReadonlyRecord<K, A>,
     f: (key: K, a: A) => K2
   ): Record<K2, A> => {
-    const out: Record<K2, A> = empty()
+    const out = <Record<K2, A>> {}
     for (const key of keys(self)) {
       const a = self[key]
       out[f(key, a)] = a
@@ -589,7 +589,7 @@ export const mapEntries: {
     self: ReadonlyRecord<K, A>,
     f: (a: A, key: K) => [K2, B]
   ): Record<K2, B> => {
-    const out: Record<K2, B> = empty()
+    const out = <Record<K2, B>> {}
     for (const key of keys(self)) {
       const [k, b] = f(self[key], key)
       out[k] = b
@@ -1217,7 +1217,7 @@ export const difference: {
   if (isEmptyRecord(that)) {
     return { ...self } as any
   }
-  const out: Record<K0 | K1, A | B> = empty()
+  const out = <Record<K0 | K1, A | B>> {}
   for (const key of keys(self)) {
     if (!has(that, key as any)) {
       out[key] = self[key]
