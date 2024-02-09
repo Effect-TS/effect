@@ -452,7 +452,7 @@ export const remainder: {
 /**
  * Returns the next power of 2 from the given number.
  *
- * @param self - The dividend.
+ * @param self - The number to find the next power of 2 from.
  *
  * @example
  * import { nextPow2 } from "effect/Number"
