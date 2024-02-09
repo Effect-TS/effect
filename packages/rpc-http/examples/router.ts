@@ -14,6 +14,7 @@ const router = Router.make(
 
 export type UserRouter = typeof router
 
+// Create the http server
 const HttpLive = Http.router.empty.pipe(
   Http.router.post("/rpc", HttpRouter.toHttpApp(router)),
   Http.server.serve(Http.middleware.logger),
@@ -25,7 +26,6 @@ const HttpLive = Http.router.empty.pipe(
   )
 )
 
-// Create the HTTP, which can be served with the platform HTTP server.
 Layer.launch(HttpLive).pipe(
   NodeRuntime.runMain
 )
