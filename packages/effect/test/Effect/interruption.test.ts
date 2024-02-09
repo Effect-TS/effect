@@ -546,11 +546,11 @@ describe("Effect", () => {
   it.effect("async cancelation", () =>
     Effect.gen(function*($) {
       const ref = MutableRef.make(0)
-      const effect = Effect.asyncEither(() => {
+      const effect = Effect.async(() => {
         pipe(ref, MutableRef.set(MutableRef.get(ref) + 1))
-        return Either.left(Effect.sync(() => {
+        return Effect.sync(() => {
           pipe(ref, MutableRef.set(MutableRef.get(ref) - 1))
-        }))
+        })
       })
       yield* $(Effect.unit, Effect.race(effect))
       const result = MutableRef.get(ref)

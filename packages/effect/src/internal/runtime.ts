@@ -22,6 +22,7 @@ import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
 import * as FiberRuntime from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
+import { internalize } from "./internalize.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as _supervisor from "./supervisor.js"
@@ -409,22 +410,34 @@ export const unsafeRunSyncExitEffect = unsafeRunSyncExit(defaultRuntime)
 // circular with Effect
 
 /** @internal */
-export const asyncEffect = <A, E, R, X, E2, R2>(
-  register: (callback: (_: Effect.Effect<A, E, R>) => void) => Effect.Effect<X, E2, R2>
-): Effect.Effect<A, E | E2, R | R2> =>
-  core.flatMap(
-    core.deferredMake<A, E | E2>(),
-    (deferred) =>
-      core.flatMap(runtime<R | R2>(), (runtime) =>
-        core.uninterruptibleMask((restore) =>
-          core.zipRight(
-            FiberRuntime.fork(restore(
-              core.catchAllCause(
-                register((cb) => unsafeRunCallback(runtime)(core.intoDeferred(cb, deferred))),
-                (cause) => core.deferredFailCause(deferred, cause)
-              )
-            )),
-            restore(core.deferredAwait(deferred))
-          )
-        ))
-  )
+export const asyncEffect = <A, E, R, R3, E2, R2>(
+  register: (
+    callback: (_: Effect.Effect<A, E, R>) => void
+  ) => Effect.Effect<Effect.Effect<void, never, R3> | void, E2, R2>
+): Effect.Effect<A, E | E2, R | R2 | R3> =>
+  core.suspend(() => {
+    internalize(register)
+    let cleanup: Effect.Effect<void, never, R3> | void = undefined
+    return core.flatMap(
+      core.deferredMake<A, E | E2>(),
+      (deferred) =>
+        core.flatMap(runtime<R | R2 | R3>(), (runtime) =>
+          core.uninterruptibleMask((restore) =>
+            core.zipRight(
+              FiberRuntime.fork(restore(
+                core.matchCauseEffect(
+                  register((cb) => unsafeRunCallback(runtime)(core.intoDeferred(cb, deferred))),
+                  {
+                    onFailure: (cause) => core.deferredFailCause(deferred, cause),
+                    onSuccess: (cleanup_) => {
+                      cleanup = cleanup_
+                      return core.unit
+                    }
+                  }
+                )
+              )),
+              restore(core.onInterrupt(core.deferredAwait(deferred), () => cleanup ?? core.unit))
+            )
+          ))
+    )
+  })

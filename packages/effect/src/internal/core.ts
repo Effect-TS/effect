@@ -481,22 +481,6 @@ export const async = <A, E = never, R = never>(
   })
 
 /* @internal */
-export const asyncEither = <A, E = never, R = never>(
-  register: (
-    resume: (effect: Effect.Effect<A, E, R>) => void
-  ) => Either.Either<Effect.Effect<void, never, R>, Effect.Effect<A, E, R>>,
-  blockingOn: FiberId.FiberId = FiberId.none
-): Effect.Effect<A, E, R> =>
-  async<A, E, R>((resume) => {
-    const result = register(resume)
-    if (Either.isRight(result)) {
-      resume(result.right)
-    } else {
-      return result.left
-    }
-  }, blockingOn)
-
-/* @internal */
 export const catchAllCause = dual<
   <E, A2, E2, R2>(
     f: (cause: Cause.Cause<E>) => Effect.Effect<A2, E2, R2>
@@ -1462,11 +1446,11 @@ export const zipWith: {
 ): Effect.Effect<B, E | E2, R | R2> => flatMap(self, (a) => map(that, (b) => f(a, b))))
 
 /* @internal */
-export const never: Effect.Effect<never> = asyncEither<never>(() => {
+export const never: Effect.Effect<never> = async<never>(() => {
   const interval = setInterval(() => {
     //
   }, 2 ** 31 - 1)
-  return Either.left(sync(() => clearInterval(interval)))
+  return sync(() => clearInterval(interval))
 })
 
 // -----------------------------------------------------------------------------
@@ -2844,18 +2828,18 @@ export const deferredMakeAs = <A, E = never>(fiberId: FiberId.FiberId): Effect.E
 
 /* @internal */
 export const deferredAwait = <A, E>(self: Deferred.Deferred<A, E>): Effect.Effect<A, E> =>
-  asyncEither<A, E>((k) => {
+  async<A, E>((resume) => {
     const state = MutableRef.get(self.state)
     switch (state._tag) {
       case DeferredOpCodes.OP_STATE_DONE: {
-        return Either.right(state.effect)
+        return resume(state.effect)
       }
       case DeferredOpCodes.OP_STATE_PENDING: {
         pipe(
           self.state,
-          MutableRef.set(deferred.pending([k, ...state.joiners]))
+          MutableRef.set(deferred.pending([resume, ...state.joiners]))
         )
-        return Either.left(deferredInterruptJoiner(self, k))
+        return deferredInterruptJoiner(self, resume)
       }
     }
   }, self.blockingOn)
