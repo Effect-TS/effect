@@ -269,3 +269,22 @@ export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
     ) as any
   }
 }
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toHandlerUndecoded = <R extends Router<any, any>>(router: R) => {
+  const handler = toHandlerRaw(router)
+  const getEncode = withRequestTag((req) => Schema.encode(Serializable.successSchema(req)))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.chunkFromSelf(Serializable.successSchema(req))))
+  return <Req extends Router.Request<R>>(request: Req): Rpc.Rpc.ResultUndecoded<Req, Router.Context<R>> => {
+    const result = handler(request)
+    if (Effect.isEffect(result)) {
+      const encode = getEncode(request)
+      return Effect.flatMap(result, encode) as any
+    }
+    const encode = getEncodeChunk(request)
+    return Stream.mapChunksEffect(result, encode) as any
+  }
+}

@@ -97,6 +97,7 @@ const router = Router.make(
 )
 
 const handler = Router.toHandler(router)
+const handlerUndecoded = Router.toHandlerUndecoded(router)
 const handlerArray = (u: ReadonlyArray<unknown>) =>
   handler(u.map((request, i) => ({
     request,
@@ -185,6 +186,17 @@ describe("Router", () => {
       [0, [{ _tag: "Failure", cause: { _tag: "Empty" } }]]
     ])
   })
+
+  test("handlerUndecoded", () =>
+    Effect.gen(function*(_) {
+      const result = yield* _(
+        handlerUndecoded(new CreatePost({ body: "hello" }))
+      )
+      assert.deepStrictEqual(result, {
+        id: 1,
+        body: "hello"
+      })
+    }).pipe(Effect.runPromise))
 })
 
 describe("Resolver", () => {

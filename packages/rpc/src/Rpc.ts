@@ -111,6 +111,16 @@ export declare namespace Rpc {
   export type Result<A extends Schema.TaggedRequest.Any, R = never> = EffectRequest.Request.Success<A> extends
     Stream.Stream<infer A, infer E, infer _R> ? Stream.Stream<A, E, R>
     : Effect.Effect<EffectRequest.Request.Success<A>, EffectRequest.Request.Error<A>, R>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ResultUndecoded<A extends Schema.TaggedRequest.Any, R = never> = A extends
+    Serializable.WithResult<infer _R, infer _IE, infer _E, infer IA, infer _A>
+    ? EffectRequest.Request.Success<A> extends Stream.Stream<infer _A, infer E, infer _R> ? Stream.Stream<IA, E, R>
+    : Effect.Effect<IA, EffectRequest.Request.Error<A>, R>
+    : never
 }
 
 /**
