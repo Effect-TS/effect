@@ -392,6 +392,9 @@ importers:
 
   packages/rpc:
     devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
       '@effect/schema':
         specifier: workspace:^
         version: link:../schema/dist

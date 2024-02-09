@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Headers from "@effect/platform/Http/Headers"
 import * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
@@ -11,7 +12,6 @@ import { globalValue } from "effect/GlobalValue"
 import * as Hash from "effect/Hash"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import type * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as EffectRequest from "effect/Request"
 import type * as RequestResolver from "effect/RequestResolver"
 import type { Scope } from "effect/Scope"
@@ -234,7 +234,7 @@ export interface Request<A extends Schema.TaggedRequest.Any> extends
   readonly traceId: string
   readonly spanId: string
   readonly sampled: boolean
-  readonly headers: Record<string, string>
+  readonly headers: Headers.Headers
 }
 
 /**
@@ -268,17 +268,9 @@ export const RequestSchema = <A, I, R>(
  * @since 1.0.0
  * @category headers
  */
-export interface Headers {
-  readonly _: unique symbol
-}
-
-/**
- * @since 1.0.0
- * @category headers
- */
-export const currentHeaders: FiberRef.FiberRef<ReadonlyRecord.ReadonlyRecord<string>> = globalValue(
+export const currentHeaders: FiberRef.FiberRef<Headers.Headers> = globalValue(
   "@effect/rpc/Rpc/Headers",
-  () => FiberRef.unsafeMake<ReadonlyRecord.ReadonlyRecord<string>>({})
+  () => FiberRef.unsafeMake(Headers.empty)
 )
 
 /**
@@ -286,12 +278,9 @@ export const currentHeaders: FiberRef.FiberRef<ReadonlyRecord.ReadonlyRecord<str
  * @category headers
  */
 export const annotateHeaders: {
-  (headers: ReadonlyRecord.ReadonlyRecord<string>): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, headers: ReadonlyRecord.ReadonlyRecord<string>): Effect.Effect<A, E, R>
-} = dual<
-  (headers: ReadonlyRecord.ReadonlyRecord<string>) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, headers: ReadonlyRecord.ReadonlyRecord<string>) => Effect.Effect<A, E, R>
->(2, (self, headers) => Effect.locallyWith(self, currentHeaders, (prev) => ({ ...prev, ...headers })))
+  (headers: Headers.Headers): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, headers: Headers.Headers): Effect.Effect<A, E, R>
+} = dual(2, (self, headers) => Effect.locallyWith(self, currentHeaders, (prev) => ({ ...prev, ...headers })))
 
 /**
  * @since 1.0.0

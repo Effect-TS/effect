@@ -183,7 +183,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
                       (response) => Queue.offer(queue, [index, response])
                     )
                 }),
-                Effect.locally(Rpc.currentHeaders, req.headers),
+                Effect.locally(Rpc.currentHeaders, req.headers as any),
                 Effect.withSpan(`${spanPrefix}${request._tag}`, {
                   parent: {
                     _tag: "ExternalSpan",
@@ -214,7 +214,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
                     (response) => Queue.offer(queue, [index, response])
                   )
               }),
-              Effect.locally(Rpc.currentHeaders, req.headers),
+              Effect.locally(Rpc.currentHeaders, req.headers as any),
               Effect.withSpan(`${spanPrefix}${request._tag}`, {
                 parent: {
                   _tag: "ExternalSpan",
