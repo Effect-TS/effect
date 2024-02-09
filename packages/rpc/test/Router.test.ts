@@ -66,6 +66,13 @@ class Counts extends Rpc.StreamRequest<Counts>()(
   {}
 ) {}
 
+class FailStream extends Rpc.StreamRequest<FailStream>()(
+  "FailStream",
+  SomeError,
+  S.number,
+  {}
+) {}
+
 const router = Router.make(
   posts,
   Rpc.effect(Greet, ({ name }) => Effect.succeed(`Hello, ${name}!`)),
@@ -93,7 +100,11 @@ const router = Router.make(
   Rpc.effect(EchoHeaders, () =>
     Rpc.schemaHeaders(S.struct({
       foo: Schema.string
-    })).pipe(Effect.orDie))
+    })).pipe(Effect.orDie)),
+  Rpc.stream(FailStream, () =>
+    Stream.range(0, 10).pipe(
+      Stream.mapEffect((i) => i === 3 ? Effect.fail(new SomeError({ message: "fail" })) : Effect.succeed(i))
+    ))
 )
 
 const handler = Router.toHandler(router)
@@ -232,5 +243,22 @@ describe("Resolver", () => {
         4,
         5
       ])
+    }).pipe(Effect.runPromise))
+
+  test("stream fail", () =>
+    Effect.gen(function*(_) {
+      let n = 0
+      const result = yield* _(
+        Rpc.call(new FailStream(), resolver),
+        Stream.tap((i) =>
+          Effect.sync(() => {
+            n = i
+          })
+        ),
+        Stream.runCollect,
+        Effect.flip
+      )
+      assert.strictEqual(n, 2)
+      assert.deepStrictEqual(result, new SomeError({ message: "fail" }))
     }).pipe(Effect.runPromise))
 })
