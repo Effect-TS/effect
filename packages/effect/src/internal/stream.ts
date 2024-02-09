@@ -488,13 +488,12 @@ export const _async = <A, E = never, R = never>(
                 }
               })
             ))
-            console.log({ canceler })
             return canceler
           })
         ),
         Effect.map((value) => {
-          // TODO: Since Effect is a value one-value Stream, we also need to
-          // perform an additional check for the channel property
+          // Since Effect is a value one-value Stream, we also need to perform
+          // the check using `hasProperty`
           if (hasProperty(value, StreamTypeId)) {
             return unwrap(Queue.shutdown(output).pipe(Effect.as(value as Stream.Stream<A, E, R>)))
           }
