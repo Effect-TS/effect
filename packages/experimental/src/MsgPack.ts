@@ -38,7 +38,7 @@ export const pack = <IE = never>(): Channel.Channel<
       const pack = (value: Chunk.Chunk<unknown>) =>
         Channel.flatMap(
           Effect.try({
-            try: () => Chunk.map(value, (_) => packr.pack(_) as Uint8Array),
+            try: () => Chunk.of(packr.pack(Chunk.toArray(value))),
             catch: (error) => new MsgPackError({ reason: "Pack", error })
           }),
           Channel.write
@@ -113,7 +113,7 @@ export const unpack = <IE = never>(): Channel.Channel<
                   incomplete = undefined
                 }
                 try {
-                  return Chunk.unsafeFromArray(packr.unpackMultiple(buf))
+                  return Chunk.unsafeFromArray(packr.unpackMultiple(buf).flat())
                 } catch (error_) {
                   const error: any = error_
                   if (error.incomplete) {

@@ -31,9 +31,6 @@ const config: UserConfig = {
       ...alias("printer-ansi"),
       ...alias("rpc"),
       ...alias("rpc-http"),
-      ...alias("rpc-http-node"),
-      ...alias("rpc-nextjs"),
-      ...alias("rpc-workers"),
       ...alias("schema"),
       ...alias("typeclass")
     }
