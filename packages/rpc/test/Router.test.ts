@@ -1,6 +1,7 @@
 import * as Resolver from "@effect/rpc/Resolver"
 import * as Router from "@effect/rpc/Router"
 import * as Rpc from "@effect/rpc/Rpc"
+import { Schema } from "@effect/schema"
 import * as S from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -56,6 +57,8 @@ class Refined extends S.TaggedRequest<Refined>()("Refined", S.never, S.number, {
 
 class SpanName extends S.TaggedRequest<SpanName>()("SpanName", S.never, S.string, {}) {}
 
+class EchoHeaders extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.never, S.record(S.string, S.string), {}) {}
+
 class Counts extends Rpc.StreamRequest<Counts>()(
   "Counts",
   S.never,
@@ -86,7 +89,11 @@ const router = Router.make(
   Rpc.stream(Counts, () =>
     Stream.make(1, 2, 3, 4, 5).pipe(
       Stream.tap((_) => Effect.sleep(10))
-    ))
+    )),
+  Rpc.effect(EchoHeaders, () =>
+    Rpc.schemaHeaders(S.struct({
+      foo: Schema.string
+    })).pipe(Effect.orDie))
 )
 
 const handler = Router.toHandler(router)
@@ -188,6 +195,15 @@ describe("Resolver", () => {
 
       const clientName = yield* _(client(new SpanName()))
       assert.strictEqual(clientName, "Rpc.router SpanName")
+    }).pipe(Effect.runPromise))
+
+  test("headers", () =>
+    Effect.gen(function*(_) {
+      const headers = yield* _(
+        Rpc.call(new EchoHeaders(), resolver),
+        Rpc.annotateHeaders({ FOO: "bar" })
+      )
+      assert.deepStrictEqual(headers, { foo: "bar" })
     }).pipe(Effect.runPromise))
 
   test("stream", () =>

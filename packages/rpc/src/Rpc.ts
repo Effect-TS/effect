@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Headers from "@effect/platform/Http/Headers"
+import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
@@ -12,6 +13,7 @@ import { globalValue } from "effect/GlobalValue"
 import * as Hash from "effect/Hash"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as EffectRequest from "effect/Request"
 import type * as RequestResolver from "effect/RequestResolver"
 import type { Scope } from "effect/Scope"
@@ -278,9 +280,23 @@ export const currentHeaders: FiberRef.FiberRef<Headers.Headers> = globalValue(
  * @category headers
  */
 export const annotateHeaders: {
-  (headers: Headers.Headers): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, headers: Headers.Headers): Effect.Effect<A, E, R>
-} = dual(2, (self, headers) => Effect.locallyWith(self, currentHeaders, (prev) => ({ ...prev, ...headers })))
+  (headers: Headers.Input): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, headers: Headers.Input): Effect.Effect<A, E, R>
+} = dual(2, (self, headers) => {
+  const resolved = Headers.fromInput(headers)
+  return Effect.locallyWith(self, currentHeaders, (prev) => ({ ...prev, ...resolved }))
+})
+
+/**
+ * @since 1.0.0
+ * @category headers
+ */
+export const schemaHeaders = <R, I extends ReadonlyRecord.ReadonlyRecord<string>, A>(
+  schema: Schema.Schema<R, I, A>
+): Effect.Effect<R, ParseResult.ParseError, A> => {
+  const decode = Schema.decodeUnknown(schema)
+  return Effect.flatMap(FiberRef.get(currentHeaders), decode)
+}
 
 /**
  * @since 1.0.0
