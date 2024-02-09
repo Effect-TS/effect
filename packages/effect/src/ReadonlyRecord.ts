@@ -264,7 +264,7 @@ export const size = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): 
  * import { empty, has } from "effect/ReadonlyRecord"
  *
  * assert.deepStrictEqual(has({ a: 1, b: 2 }, "a"), true);
- * assert.deepStrictEqual(has(empty(), "c"), false);
+ * assert.deepStrictEqual(has(empty<string>(), "c"), false);
  *
  * @since 2.0.0
  */
