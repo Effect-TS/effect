@@ -5,7 +5,6 @@
 "@effect/platform-node": minor
 "@effect/experimental": minor
 "@effect/platform-bun": minor
-"@effect/rpc-workers": minor
 "@effect/platform": minor
 "@effect/rpc-http": minor
 "effect": minor
