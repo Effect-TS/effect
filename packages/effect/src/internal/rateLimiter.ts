@@ -13,7 +13,26 @@ import * as Stream from "../Stream.js"
 import * as SynchronizedRef from "../SynchronizedRef.js"
 
 /** @internal */
-export const tokenBucket: (
+export const make = ({
+  algorithm = "token-bucket",
+  interval,
+  limit
+}: RateLimiter.RateLimiter.Options): Effect.Effect<
+  RateLimiter.RateLimiter,
+  never,
+  Scope.Scope
+> => {
+  switch (algorithm) {
+    case "fixed-window": {
+      return fixedWindow(limit, interval)
+    }
+    case "token-bucket": {
+      return tokenBucket(limit, interval)
+    }
+  }
+}
+
+const tokenBucket: (
   tokens: number,
   interval: DurationInput
 ) => Effect.Effect<
@@ -66,7 +85,7 @@ export const tokenBucket: (
   })
 }
 
-export const fixedWindow = (limit: number, window: DurationInput): Effect.Effect<
+const fixedWindow = (limit: number, window: DurationInput): Effect.Effect<
   RateLimiter.RateLimiter,
   never,
   Scope.Scope

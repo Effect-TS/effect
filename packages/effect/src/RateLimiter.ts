@@ -22,14 +22,47 @@ export interface RateLimiter {
 }
 
 /**
- * Constructs a new `RateLimiter` which will utilize the token-bucket algorithm
- * to limit requests. The specified number of `tokens` is immediately available
- * after constructing the `RateLimiter`.
- *
- * **NOTE**: The maximum number of requests (specified by `tokens`) will be
- * spread out over the provided `interval`. For example, creating a `RateLimiter`
- * with `10` `tokens` and an `interval` of `1 seconds` will mean that `1` request
- * can be made every `100 millis` if no tokens are available.
+ * @since 2.0.0
+ */
+export declare namespace RateLimiter {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Options {
+    /**
+     * The maximum number of requests that should be allowed.
+     */
+    readonly limit: number
+    /**
+     * The interval to utilize for rate-limiting requests. The semantics of the
+     * specified `interval` vary depending on the chosen `algorithm`:
+     *
+     * `token-bucket`: The maximum number of requests will be spread out over
+     * the provided interval if no tokens are available.
+     *
+     * For example, for a `RateLimiter` using the `token-bucket` algorithm with
+     * a `limit` of `10` and an `interval` of `1 seconds`, `1` request can be
+     * made every `100 millis`.
+     *
+     * `fixed-window`: The maximum number of requests will be reset during each
+     * interval. For example, for a `RateLimiter` using the `fixed-window`
+     * algorithm with a `limit` of `10` and an `interval` of `1 seconds`, a
+     * maximum of `10` requests can be made each second.
+     */
+    readonly interval: DurationInput
+    /**
+     * The algorithm to utilize for rate-limiting requests.
+     *
+     * Defaults to `token-bucket`.
+     */
+    readonly algorithm?: "fixed-window" | "token-bucket"
+  }
+}
+
+/**
+ * Constructs a new `RateLimiter` which will utilize the specified algorithm
+ * to limit requests (defaults to `token-bucket`).
  *
  * Notes
  * - Only the moment of starting the effect is rate limited. The number of concurrent executions is not bounded.
@@ -42,8 +75,8 @@ export interface RateLimiter {
  *
  * const program = Effect.scoped(
  *   Effect.gen(function* ($) {
- *     const perMinuteRL = yield* $(RateLimiter.make(30, "1 minutes"))
- *     const perSecondRL = yield* $(RateLimiter.make(2, "1 seconds"))
+ *     const perMinuteRL = yield* $(RateLimiter.make({ limit: 30, interval: "1 minutes" }))
+ *     const perSecondRL = yield* $(RateLimiter.make({ limit: 2, interval: "1 seconds" }))
  *
  *     // This rate limiter respects both the 30 calls per minute
  *     // and the 2 calls per second constraints.
@@ -60,29 +93,7 @@ export interface RateLimiter {
  * @since 2.0.0
  * @category constructors
  */
-export const tokenBucket: (tokens: number, interval: DurationInput) => Effect<
-  RateLimiter,
-  never,
-  Scope
-> = internal.tokenBucket
-
-/**
- * Constructs a new `RateLimiter` which will utilize the fixed-window algorithm
- * to limit requests. The specified request `limit` is immediately available
- * after constructing the `RateLimiter`.
- *
- * **NOTE**: The maximum number of requests (specified by `limit`) will be
- * allowed in each `window`. After the `window` has elapsed, the `limit` is
- * reset.
- *
- * @param limit The maximum number of requests to allow.
- * @param window The window of time to wait before resetting the limit.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const fixedWindow: (limit: number, window: DurationInput) => Effect<RateLimiter, never, Scope> =
-  internal.fixedWindow
+export const make: (options: RateLimiter.Options) => Effect<RateLimiter, never, Scope> = internal.make
 
 /**
  * Alters the per-effect cost of the rate-limiter.
