@@ -14,7 +14,7 @@ Additionally, this PR removes `Stream.asyncOption`, `Stream.asyncEither`, and `S
 
 ```ts
 declare const async: <A, E = never, R = never>(
-  register: (emit: Emit<R, E, A, void>) => Effect<void, never, R> | Stream<A, E, R> | void,
+  register: (emit: Emit<R, E, A, void>) => Effect<void, never, R> | void,
   outputBuffer?: number
 ) => Stream<A, E, R>
 ```
