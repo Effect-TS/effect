@@ -177,25 +177,17 @@ export const annotateHeadersEffect: {
  * @since 1.0.0
  * @category combinators
  */
-export const toClient: {
-  <RReq extends Schema.TaggedRequest.Any>(
-    resolver: RequestResolver.RequestResolver<Rpc.Request<RReq>, never>,
-    options?: {
-      readonly spanPrefix?: string
-    }
-  ): <Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req, never>
-  <RReq extends Schema.TaggedRequest.Any, R>(
-    resolver: Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<RReq>, never>, never, R>,
-    options?: {
-      readonly spanPrefix?: string
-    }
-  ): <Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req, R>
-} = <RReq extends Schema.TaggedRequest.Any>(
-  resolver:
-    | RequestResolver.RequestResolver<Rpc.Request<RReq>, never>
-    | Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<RReq>, never>, never, any>,
+export const toClient = <
+  R extends
+    | RequestResolver.RequestResolver<Rpc.Request<any>, never>
+    | Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<any>, never>, never, any>
+>(
+  resolver: R,
   options?: {
     readonly spanPrefix?: string
   }
-) =>
-(request: RReq) => Rpc.call(request, resolver, options) as any
+): R extends Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<infer RReq>>, infer _E, infer R> ?
+  (<Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req, R>)
+  : R extends RequestResolver.RequestResolver<Rpc.Request<infer RReq>, never> ?
+    (<Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req>)
+  : never => ((request: Schema.TaggedRequest.Any) => Rpc.call(request, resolver, options)) as any
