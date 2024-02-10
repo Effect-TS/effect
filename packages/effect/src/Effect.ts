@@ -4536,7 +4536,7 @@ export const randomWith: <A, E, R>(f: (random: Random.Random) => Effect<A, E, R>
  * @since 2.0.0
  * @category runtime
  */
-export const runtime: <R>() => Effect<Runtime.Runtime<R>, never, R> = _runtime.runtime
+export const runtime: <R = never>() => Effect<Runtime.Runtime<R>, never, R> = _runtime.runtime
 
 /**
  * Retrieves an effect that succeeds with the current runtime flags, which
