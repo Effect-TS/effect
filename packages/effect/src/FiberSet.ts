@@ -101,7 +101,7 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberSet<A, E>, 
  * @since 2.0.0
  * @categories constructors
  */
-export const makeRuntime = <R, A = unknown, E = unknown>(): Effect.Effect<
+export const makeRuntime = <R = never, A = unknown, E = unknown>(): Effect.Effect<
   <XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>,
     options?: Runtime.RunForkOptions | undefined
