@@ -226,17 +226,21 @@ describe("RateLimiterSpec", () => {
       // prevent further requests from being executed, and then after 100 ms
       // allow execution of another request.
       const limit = yield* _(RateLimiter.make(10, "1 seconds"))
-      const counter = yield* _(Ref.make(0))
-      const request = Ref.update(counter, (n) => n + 1)
+      const deferred = yield* _(Deferred.make<void>())
 
-      yield* _(Effect.forEach(ReadonlyArray.range(1, 10), () => limit(request)))
-      const result1 = yield* _(Ref.get(counter))
+      // Use up all of the available tokens
+      yield* _(Effect.forEach(ReadonlyArray.range(1, 10), () => limit(Effect.unit)))
 
+      // Make an additional request when there are no tokens available
+      yield* _(
+        limit(Effect.unit),
+        Effect.zipRight(Deferred.succeed(deferred, void 0)),
+        Effect.fork
+      )
+      assert.isFalse(yield* _(Deferred.isDone(deferred)))
+
+      // Ensure that the request is successful once a token is replenished
       yield* _(TestClock.adjust("100 millis"))
-      yield* _(limit(request))
-      const result2 = yield* _(Ref.get(counter))
-
-      assert.strictEqual(result1, 10)
-      assert.strictEqual(result2, 11)
+      assert.isTrue(yield* _(Deferred.isDone(deferred)))
     })))
 })
