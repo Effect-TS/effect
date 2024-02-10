@@ -1,5 +1,33 @@
 # @effect/rpc
 
+## 0.27.2
+
+### Patch Changes
+
+- [#2092](https://github.com/Effect-TS/effect/pull/2092) [`b974658`](https://github.com/Effect-TS/effect/commit/b974658d416fcc6e57c6cd158d63f7c02126814b) Thanks [@tim-smart](https://github.com/tim-smart)! - add Resolver.annotateHeaders and .annotateHeadersEffect
+
+  This allows you to add headers to every rpc request for the given resolver
+
+- [#2092](https://github.com/Effect-TS/effect/pull/2092) [`b974658`](https://github.com/Effect-TS/effect/commit/b974658d416fcc6e57c6cd158d63f7c02126814b) Thanks [@tim-smart](https://github.com/tim-smart)! - add rpc Router.provideService and .provideServiceEffect
+
+  with these apis you can provide context to a Rpc or Router to eliminate
+  requirements.
+
+  ```ts
+  import { Rpc, Router } from "@effect/rpc"
+
+  Router.make(
+    Rpc.effect(MyRequest, () => ...)
+  ).pipe(
+    Router.provideServiceEffect(Session, makeSessionEffect)
+  )
+  ```
+
+- [#2092](https://github.com/Effect-TS/effect/pull/2092) [`b974658`](https://github.com/Effect-TS/effect/commit/b974658d416fcc6e57c6cd158d63f7c02126814b) Thanks [@tim-smart](https://github.com/tim-smart)! - support Effect contructed resolvers in Rpc.call and Resolver.toClient
+
+- Updated dependencies [[`29739dd`](https://github.com/Effect-TS/effect/commit/29739dde8e6232824d49c4c7f8856de245249c5c)]:
+  - @effect/platform@0.44.2
+
 ## 0.27.1
 
 ### Patch Changes
