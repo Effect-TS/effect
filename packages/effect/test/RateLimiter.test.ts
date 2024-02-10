@@ -1,4 +1,4 @@
-import { Clock, Deferred, Effect, Either, Fiber, pipe, Ref, TestClock } from "effect"
+import { Clock, Deferred, Effect, Either, Fiber, pipe, ReadonlyArray, Ref, TestClock } from "effect"
 import * as it from "effect-test/utils/extend"
 import { none } from "effect/Option"
 import * as RateLimiter from "effect/RateLimiter"
@@ -196,16 +196,15 @@ describe("RateLimiterSpec", () => {
         const continue_ = yield* _(Deferred.make<void>())
 
         yield* _(
-          Effect.whenEffect(pipe(
-            latched,
+          Deferred.succeed(latch, void 0),
+          Effect.whenEffect(latched.pipe(
             Ref.updateAndGet((x) => x + 1),
             Effect.map((x) => x === rate)
-          ))(Deferred.succeed(latch, void 0)).pipe(
-            Effect.flatMap(() => Deferred.await(continue_)),
-            rl,
-            Effect.fork,
-            Effect.replicateEffect(rate)
-          )
+          )),
+          Effect.flatMap(() => Deferred.await(continue_)),
+          rl,
+          Effect.fork,
+          Effect.replicateEffect(rate)
         )
 
         yield* _(Deferred.await(latch))
@@ -220,4 +219,24 @@ describe("RateLimiterSpec", () => {
       })
     )
   }, { timeout: 10000 })
+
+  it.effect("uses the token-bucket algorithm for token replenishment", () =>
+    Effect.scoped(Effect.gen(function*(_) {
+      // The limiter below should allow be to execute 10 requests immediately,
+      // prevent further requests from being executed, and then after 100 ms
+      // allow execution of another request.
+      const limit = yield* _(RateLimiter.make(10, "1 seconds"))
+      const counter = yield* _(Ref.make(0))
+      const request = Ref.update(counter, (n) => n + 1)
+
+      yield* _(Effect.forEach(ReadonlyArray.range(1, 10), () => limit(request)))
+      const result1 = yield* _(Ref.get(counter))
+
+      yield* _(TestClock.adjust("100 millis"))
+      yield* _(limit(request))
+      const result2 = yield* _(Ref.get(counter))
+
+      assert.strictEqual(result1, 10)
+      assert.strictEqual(result2, 11)
+    })))
 })
