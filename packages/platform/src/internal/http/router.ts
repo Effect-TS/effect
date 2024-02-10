@@ -178,9 +178,12 @@ class RouteContextImpl implements Router.RouteContext {
 export const empty: Router.Router<never, never> = new RouterImpl(Chunk.empty(), Chunk.empty())
 
 /** @internal */
-export const fromIterable = <R, E>(
-  routes: Iterable<Router.Route<R, E>>
-): Router.Router<R, E> => new RouterImpl(Chunk.fromIterable(routes), Chunk.empty())
+export const fromIterable = <R extends Router.Route<any, any>>(
+  routes: Iterable<R>
+): Router.Router<
+  R extends Router.Route<infer Env, infer _> ? Env : never,
+  R extends Router.Route<infer _, infer E> ? E : never
+> => new RouterImpl(Chunk.fromIterable(routes), Chunk.empty()) as any
 
 /** @internal */
 export const makeRoute = <R, E>(

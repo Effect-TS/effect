@@ -175,9 +175,10 @@ export const empty: Router<never, never> = internal.empty
  * @since 1.0.0
  * @category constructors
  */
-export const fromIterable: <R, E>(
-  routes: Iterable<Route<R, E>>
-) => Router<R, E> = internal.fromIterable
+export const fromIterable: <R extends Route<any, any>>(
+  routes: Iterable<R>
+) => Router<R extends Route<infer Env, infer _> ? Env : never, R extends Route<infer _, infer E> ? E : never> =
+  internal.fromIterable
 
 /**
  * @since 1.0.0
