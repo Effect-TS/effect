@@ -31,13 +31,14 @@ export interface RateLimiter {
 }
 
 /**
- * Constructs a new `RateLimiter`. The specified number of `tokens` is
- * immediately available after constructing the `RateLimiter`.
+ * Constructs a new `RateLimiter` which will utilize the token-bucket algorithm
+ * to limit requests. The specified number of `tokens` is immediately available
+ * after constructing the `RateLimiter`.
  *
- * **NOTE**: The maximum number of requests will be spread out over the
- * specified `interval`. For example, creating a `RateLimiter` with `10`
- * `tokens` and an `interval` of `1 seconds` will mean that `1` request can be
- * made every `100 millis` after all tokens have been utilized.
+ * **NOTE**: The maximum number of requests (specified by `tokens`) will be
+ * spread out over the provided `interval`. For example, creating a `RateLimiter`
+ * with `10` `tokens` and an `interval` of `1 seconds` will mean that `1` request
+ * can be made every `100 millis` if no tokens are available.
  *
  * @param tokens The number of tokens.
  * @param interval The interval over which tokens will be replenished.
@@ -45,8 +46,26 @@ export interface RateLimiter {
  * @since 2.0.0
  * @category constructors
  */
-export const make: (tokens: number, interval: DurationInput) => Effect<
+export const tokenBucket: (tokens: number, interval: DurationInput) => Effect<
   RateLimiter,
   never,
   Scope
-> = internal.make
+> = internal.tokenBucket
+
+/**
+ * Constructs a new `RateLimiter` which will utilize the fixed-window algorithm
+ * to limit requests. The specified request `limit` is immediately available
+ * after constructing the `RateLimiter`.
+ *
+ * **NOTE**: The maximum number of requests (specified by `limit`) will be
+ * allowed in each `window`. After the `window` has elapsed, the `limit` is
+ * reset.
+ *
+ * @param limit The maximum number of requests to allow.
+ * @param window The window of time to wait before resetting the limit.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const fixedWindow: (limit: number, window: DurationInput) => Effect<RateLimiter, never, Scope> =
+  internal.fixedWindow
