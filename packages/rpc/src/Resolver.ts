@@ -1,13 +1,14 @@
 /**
  * @since 1.0.0
  */
+import * as Headers from "@effect/platform/Http/Headers"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import { pipe } from "effect/Function"
+import { dual, pipe } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
@@ -106,10 +107,95 @@ export const make = <HR, E>(
  * @since 1.0.0
  * @category combinators
  */
-export const toClient = <RReq extends Schema.TaggedRequest.Any>(
-  resolver: RequestResolver.RequestResolver<Rpc.Request<RReq>, never>,
+export const annotateHeaders: {
+  (
+    headers: Headers.Input
+  ): <Req extends Schema.TaggedRequest.Any, R>(
+    self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
+  ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R>
+  <Req extends Schema.TaggedRequest.Any, R>(
+    self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
+    headers: Headers.Input
+  ): RequestResolver.RequestResolver<Rpc.Request<Req>, R>
+} = dual(2, <Req extends Schema.TaggedRequest.Any, R>(
+  self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
+  headers: Headers.Input
+): RequestResolver.RequestResolver<Rpc.Request<Req>, R> => {
+  const resolved = Headers.fromInput(headers)
+  return RequestResolver.makeWithEntry((requests) => {
+    requests.forEach((entries) =>
+      entries.forEach((entry) => {
+        ;(entry.request as any).headers = Headers.merge(entry.request.headers, resolved)
+      })
+    )
+    return self.runAll(requests)
+  })
+})
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const annotateHeadersEffect: {
+  <E, R2>(
+    headers: Effect.Effect<Headers.Input, E, R2>
+  ): <Req extends Schema.TaggedRequest.Any, R>(
+    self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
+  ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2>
+  <Req extends Schema.TaggedRequest.Any, R, E, R2>(
+    self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
+    headers: Effect.Effect<Headers.Input, E, R2>
+  ): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2>
+} = dual(2, <Req extends Schema.TaggedRequest.Any, R, E, R2>(
+  self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
+  headers: Effect.Effect<Headers.Input, E, R2>
+): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2> =>
+  RequestResolver.makeWithEntry((requests) =>
+    headers.pipe(
+      Effect.map(Headers.fromInput),
+      Effect.orDie,
+      Effect.matchCauseEffect({
+        onFailure: (cause) =>
+          Effect.forEach(
+            requests.flat(),
+            (entry) => Request.failCause(entry.request, cause),
+            { discard: true }
+          ),
+        onSuccess: (resolved) => {
+          requests.forEach((entries) =>
+            entries.forEach((entry) => {
+              ;(entry.request as any).headers = Headers.merge(entry.request.headers, resolved)
+            })
+          )
+          return self.runAll(requests)
+        }
+      })
+    )
+  ))
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toClient: {
+  <RReq extends Schema.TaggedRequest.Any>(
+    resolver: RequestResolver.RequestResolver<Rpc.Request<RReq>, never>,
+    options?: {
+      readonly spanPrefix?: string
+    }
+  ): <Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req, never>
+  <RReq extends Schema.TaggedRequest.Any, R>(
+    resolver: Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<RReq>, never>, never, R>,
+    options?: {
+      readonly spanPrefix?: string
+    }
+  ): <Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req, R>
+} = <RReq extends Schema.TaggedRequest.Any>(
+  resolver:
+    | RequestResolver.RequestResolver<Rpc.Request<RReq>, never>
+    | Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<RReq>, never>, never, any>,
   options?: {
     readonly spanPrefix?: string
   }
-): <Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req> =>
-(request) => Rpc.call(request, resolver, options)
+) =>
+(request: RReq) => Rpc.call(request, resolver, options) as any

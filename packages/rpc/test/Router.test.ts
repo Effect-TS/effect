@@ -59,7 +59,9 @@ class SpanName extends S.TaggedRequest<SpanName>()("SpanName", S.never, S.string
 
 class GetName extends S.TaggedRequest<GetName>()("GetName", S.never, S.string, {}) {}
 
-class EchoHeaders extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.never, S.record(S.string, S.string), {}) {}
+class EchoHeaders
+  extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.never, S.record(S.string, S.union(S.string, S.undefined)), {})
+{}
 
 class Counts extends Rpc.StreamRequest<Counts>()(
   "Counts",
@@ -102,7 +104,8 @@ const router = Router.make(
     )),
   Rpc.effect(EchoHeaders, () =>
     Rpc.schemaHeaders(S.struct({
-      foo: Schema.string
+      foo: Schema.string,
+      baz: Schema.optional(Schema.string)
     })).pipe(Effect.orDie)),
   Rpc.stream(FailStream, () =>
     Stream.range(0, 10).pipe(
@@ -130,6 +133,12 @@ const handlerArray = (u: ReadonlyArray<unknown>) =>
     ))
   )
 const resolver = Resolver.make(handler)<typeof router>()
+const resolverWithHeaders = Resolver.annotateHeadersEffect(
+  resolver,
+  Effect.succeed({
+    BAZ: "qux"
+  })
+)
 const client = Resolver.toClient(resolver)
 
 describe("Router", () => {
@@ -236,6 +245,15 @@ describe("Resolver", () => {
       )
       assert.deepStrictEqual(headers, { foo: "bar" })
     }).pipe(Effect.runPromise))
+
+  test("annotateHeadersEffect", () =>
+    Effect.gen(function*(_) {
+      const headers = yield* _(
+        Rpc.call(new EchoHeaders(), resolverWithHeaders),
+        Rpc.annotateHeaders({ FOO: "bar" })
+      )
+      assert.deepStrictEqual(headers, { foo: "bar", baz: "qux" })
+    }).pipe(Effect.tapErrorCause(Effect.logError), Effect.runPromise))
 
   test("stream", () =>
     Effect.gen(function*(_) {
