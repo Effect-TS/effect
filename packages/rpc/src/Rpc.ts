@@ -5,16 +5,15 @@ import * as Headers from "@effect/platform/Http/Headers"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
+import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
 import * as FiberRef from "effect/FiberRef"
 import { dual, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import * as Hash from "effect/Hash"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as ReadonlyRecord from "effect/ReadonlyRecord"
-import * as EffectRequest from "effect/Request"
+import type * as EffectRequest from "effect/Request"
 import type * as RequestResolver from "effect/RequestResolver"
 import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -301,7 +300,7 @@ export const annotateHeaders: {
  * @since 1.0.0
  * @category headers
  */
-export const schemaHeaders = <R, I extends ReadonlyRecord.ReadonlyRecord<string>, A>(
+export const schemaHeaders = <R, I extends ReadonlyRecord.ReadonlyRecord<string | undefined>, A>(
   schema: Schema.Schema<R, I, A>
 ): Effect.Effect<R, ParseResult.ParseError, A> => {
   const decode = Schema.decodeUnknown(schema)
@@ -321,33 +320,33 @@ export const request = <A extends Schema.TaggedRequest.Any>(
   pipe(
     Effect.makeSpanScoped(`${options?.spanPrefix ?? "Rpc.request "}${request._tag}`),
     Effect.zip(FiberRef.get(currentHeaders)),
-    Effect.map(([span, headers]) => ({
-      request,
-      traceId: span.traceId,
-      spanId: span.spanId,
-      sampled: span.sampled,
-      headers,
-      [EffectRequest.RequestTypeId]: undefined as any,
-      [Equal.symbol](that: Request<A>) {
-        return Equal.equals(request, that.request)
-      },
-      [Hash.symbol]() {
-        return Hash.hash(request)
-      }
-    }))
+    Effect.map(([span, headers]) =>
+      Internal.makeRequest({
+        request,
+        traceId: span.traceId,
+        spanId: span.spanId,
+        sampled: span.sampled,
+        headers
+      })
+    )
   )
 
 /**
  * @since 1.0.0
  * @category requests
  */
-export const call = <A extends Schema.TaggedRequest.Any>(
+export const call = <
+  A extends Schema.TaggedRequest.Any,
+  R extends
+    | RequestResolver.RequestResolver<Request<A>>
+    | Effect.Effect<RequestResolver.RequestResolver<Request<A>>, never, any>
+>(
   req: A,
-  resolver: RequestResolver.RequestResolver<Request<A>>,
+  resolver: R,
   options?: {
     readonly spanPrefix?: string
   }
-): Rpc.Result<A> => {
+): R extends Effect.Effect<infer _A, infer _E, infer R> ? Rpc.Result<A, R> : Rpc.Result<A> => {
   const isStream = Internal.StreamRequestTypeId in req
   const res = pipe(
     request(req, options),
@@ -355,3 +354,55 @@ export const call = <A extends Schema.TaggedRequest.Any>(
   )
   return isStream ? Stream.unwrapScoped(res as any) : Effect.scoped(res) as any
 }
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const provideServiceEffect: {
+  <I, S, E, R2>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<S, E, R2>
+  ): <Req extends Schema.TaggedRequest.Any, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I> | R2>
+  <Req extends Schema.TaggedRequest.Any, R, I, S, E, R2>(
+    self: Rpc<Req, R>,
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<S, E, R2>
+  ): Rpc<Req, Exclude<R, I> | R2>
+} = dual(3, <Req extends Schema.TaggedRequest.Any, R, I, S, E, R2>(
+  self: Rpc<Req, R>,
+  tag: Context.Tag<I, S>,
+  make: Effect.Effect<S, E, R2>
+): Rpc<Req, Exclude<R, I> | R2> =>
+  self._tag === "Effect"
+    ? effect(self.schema, (req) => Effect.provideServiceEffect(self.handler(req), tag, Effect.orDie(make))) as any
+    : stream(
+      self.schema as any,
+      (req) => Stream.provideServiceEffect(self.handler(req as any), tag, Effect.orDie(make))
+    ))
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const provideService: {
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    service: S
+  ): <Req extends Schema.TaggedRequest.Any, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I>>
+  <Req extends Schema.TaggedRequest.Any, R, I, S>(
+    self: Rpc<Req, R>,
+    tag: Context.Tag<I, S>,
+    service: S
+  ): Rpc<Req, Exclude<R, I>>
+} = dual(3, <Req extends Schema.TaggedRequest.Any, R, I, S>(
+  self: Rpc<Req, R>,
+  tag: Context.Tag<I, S>,
+  service: S
+): Rpc<Req, Exclude<R, I>> =>
+  self._tag === "Effect"
+    ? effect(self.schema, (req) => Effect.provideService(self.handler(req), tag, service)) as any
+    : stream(
+      self.schema as any,
+      (req) => Stream.provideService(self.handler(req as any), tag, service)
+    ))
