@@ -19,11 +19,7 @@ const HttpLive = Http.router.empty.pipe(
   Http.router.post("/rpc", HttpRouter.toHttpApp(router)),
   Http.server.serve(Http.middleware.logger),
   Http.server.withLogAddress,
-  Layer.provide(
-    NodeHttpServer.server.layer(createServer, {
-      port: 3000
-    })
-  )
+  Layer.provide(NodeHttpServer.server.layer(createServer, { port: 3000 }))
 )
 
 Layer.launch(HttpLive).pipe(

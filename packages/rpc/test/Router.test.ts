@@ -57,6 +57,8 @@ class Refined extends S.TaggedRequest<Refined>()("Refined", S.never, S.number, {
 
 class SpanName extends S.TaggedRequest<SpanName>()("SpanName", S.never, S.string, {}) {}
 
+class GetName extends S.TaggedRequest<GetName>()("GetName", S.never, S.string, {}) {}
+
 class EchoHeaders extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.never, S.record(S.string, S.string), {}) {}
 
 class Counts extends Rpc.StreamRequest<Counts>()(
@@ -93,6 +95,7 @@ const router = Router.make(
       Effect.map((span) => span.name),
       Effect.orDie
     )),
+  Rpc.effect(GetName, () => Name),
   Rpc.stream(Counts, () =>
     Stream.make(1, 2, 3, 4, 5).pipe(
       Stream.tap((_) => Effect.sleep(10))
@@ -105,6 +108,8 @@ const router = Router.make(
     Stream.range(0, 10).pipe(
       Stream.mapEffect((i) => i === 3 ? Effect.fail(new SomeError({ message: "fail" })) : Effect.succeed(i))
     ))
+).pipe(
+  Router.provideService(Name, "John")
 )
 
 const handler = Router.toHandler(router)
@@ -139,10 +144,10 @@ describe("Router", () => {
         { _tag: "EncodeDate", date: date.toISOString() },
         { _tag: "Refined", number: 11 },
         { _tag: "CreatePost", body: "hello" },
-        { _tag: "SpanName" }
+        { _tag: "SpanName" },
+        { _tag: "GetName" }
       ])
     )
-    expect(result.length).toEqual(8)
 
     assert.deepStrictEqual(result, [{
       _tag: "Success",
@@ -171,6 +176,9 @@ describe("Router", () => {
     }, {
       _tag: "Success",
       value: "Rpc.router SpanName"
+    }, {
+      _tag: "Success",
+      value: "John"
     }])
   })
 

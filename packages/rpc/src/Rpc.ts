@@ -5,6 +5,7 @@ import * as Headers from "@effect/platform/Http/Headers"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
+import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as FiberRef from "effect/FiberRef"
@@ -355,3 +356,55 @@ export const call = <A extends Schema.TaggedRequest.Any>(
   )
   return isStream ? Stream.unwrapScoped(res as any) : Effect.scoped(res) as any
 }
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const provideServiceEffect: {
+  <I, S, E, R2>(
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<S, E, R2>
+  ): <Req extends Schema.TaggedRequest.Any, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I> | R2>
+  <Req extends Schema.TaggedRequest.Any, R, I, S, E, R2>(
+    self: Rpc<Req, R>,
+    tag: Context.Tag<I, S>,
+    effect: Effect.Effect<S, E, R2>
+  ): Rpc<Req, Exclude<R, I> | R2>
+} = dual(3, <Req extends Schema.TaggedRequest.Any, R, I, S, E, R2>(
+  self: Rpc<Req, R>,
+  tag: Context.Tag<I, S>,
+  make: Effect.Effect<S, E, R2>
+): Rpc<Req, Exclude<R, I> | R2> =>
+  self._tag === "Effect"
+    ? effect(self.schema, (req) => Effect.provideServiceEffect(self.handler(req), tag, Effect.orDie(make))) as any
+    : stream(
+      self.schema as any,
+      (req) => Stream.provideServiceEffect(self.handler(req as any), tag, Effect.orDie(make))
+    ))
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const provideService: {
+  <I, S>(
+    tag: Context.Tag<I, S>,
+    service: S
+  ): <Req extends Schema.TaggedRequest.Any, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I>>
+  <Req extends Schema.TaggedRequest.Any, R, I, S>(
+    self: Rpc<Req, R>,
+    tag: Context.Tag<I, S>,
+    service: S
+  ): Rpc<Req, Exclude<R, I>>
+} = dual(3, <Req extends Schema.TaggedRequest.Any, R, I, S>(
+  self: Rpc<Req, R>,
+  tag: Context.Tag<I, S>,
+  service: S
+): Rpc<Req, Exclude<R, I>> =>
+  self._tag === "Effect"
+    ? effect(self.schema, (req) => Effect.provideService(self.handler(req), tag, service)) as any
+    : stream(
+      self.schema as any,
+      (req) => Stream.provideService(self.handler(req as any), tag, service)
+    ))
