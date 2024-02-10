@@ -26,7 +26,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @categories models
  */
-export interface FiberSet<out A, out E = never>
+export interface FiberSet<out A = unknown, out E = unknown>
   extends Pipeable, Inspectable.Inspectable, Iterable<Fiber.RuntimeFiber<A, E>>
 {
   readonly [TypeId]: TypeId
@@ -92,7 +92,7 @@ const unsafeMake = <A, E>(): FiberSet<A, E> => {
  * @since 2.0.0
  * @categories constructors
  */
-export const make = <A, E = never>(): Effect.Effect<FiberSet<A, E>, never, Scope.Scope> =>
+export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberSet<A, E>, never, Scope.Scope> =>
   Effect.acquireRelease(Effect.sync(() => unsafeMake<A, E>()), clear)
 
 /**
@@ -101,7 +101,7 @@ export const make = <A, E = never>(): Effect.Effect<FiberSet<A, E>, never, Scope
  * @since 2.0.0
  * @categories constructors
  */
-export const makeRuntime = <A, E = never, R = never>(): Effect.Effect<
+export const makeRuntime = <R, A = unknown, E = unknown>(): Effect.Effect<
   <XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>,
     options?: Runtime.RunForkOptions | undefined
@@ -234,7 +234,7 @@ export const run: {
  * @since 2.0.0
  * @categories combinators
  */
-export const runtime: <A, E = never>(
+export const runtime: <A, E>(
   self: FiberSet<A, E>
 ) => <R = never>() => Effect.Effect<
   <XE extends E, XA extends A>(
