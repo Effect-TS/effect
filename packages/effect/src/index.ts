@@ -545,8 +545,7 @@ export * as Queue from "./Queue.js"
 export * as Random from "./Random.js"
 
 /**
- * Limits the number of calls to a resource to a maximum amount in some interval
- * using the token bucket algorithm.
+ * Limits the number of calls to a resource to a maximum amount in some interval.
  *
  * @since 2.0.0
  */
