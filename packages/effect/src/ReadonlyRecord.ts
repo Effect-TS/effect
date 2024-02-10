@@ -415,7 +415,7 @@ export const modifyOption: {
  *   replaceOption({ a: 1, b: 2, c: 3 }, 'a', 10),
  *   some({ a: 10, b: 2, c: 3 })
  * )
- * assert.deepStrictEqual(replaceOption(empty(), 'a', 10), none())
+ * assert.deepStrictEqual(replaceOption(empty<string>(), 'a', 10), none())
  *
  * @since 2.0.0
  */
