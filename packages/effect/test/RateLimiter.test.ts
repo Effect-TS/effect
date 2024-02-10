@@ -1,4 +1,4 @@
-import { Clock, Deferred, Effect, Either, Fiber, pipe, Ref, TestClock } from "effect"
+import { Clock, Deferred, Effect, Either, Fiber, pipe, ReadonlyArray, Ref, TestClock } from "effect"
 import * as it from "effect-test/utils/extend"
 import { compose } from "effect/Function"
 import { none } from "effect/Option"
@@ -204,7 +204,6 @@ describe("RateLimiterSpec", () => {
     return Effect.gen(function*(_) {
       const rl = yield* _(RateLimiter.make(100, "1 seconds"))
 
-      const now = yield* _(Clock.currentTimeMillis)
       const fib = yield* _(
         Effect.forEach(Array.from(Array(20)), () => rl(Clock.currentTimeMillis).pipe(RateLimiter.withCost(10))).pipe(
           Effect.fork
@@ -212,11 +211,30 @@ describe("RateLimiterSpec", () => {
       )
 
       yield* _(TestClock.adjust("1 seconds"))
-      const nowAfter1Second = yield* _(Clock.currentTimeMillis)
 
       const times = yield* _(Fiber.join(fib))
-      assert(times.slice(0, 10).every((t) => t === now))
-      assert(times.slice(10).every((t) => t === nowAfter1Second))
+      assert.deepStrictEqual(times, [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000
+      ])
     })
   })
 
@@ -297,4 +315,24 @@ describe("RateLimiterSpec", () => {
       assert.deepEqual(times, resultTimes)
     })
   }, 10_000)
+
+  it.scoped("uses the token-bucket algorithm for token replenishment", () =>
+    Effect.gen(function*(_) {
+      // The limiter below should allow be to execute 10 requests immediately,
+      // prevent further requests from being executed, and then after 100 ms
+      // allow execution of another request.
+      const limit = yield* _(RateLimiter.make(10, "1 seconds"))
+      const counter = yield* _(Ref.make(0))
+      const request = Ref.update(counter, (n) => n + 1)
+
+      yield* _(Effect.forEach(ReadonlyArray.range(1, 10), () => limit(request)))
+      const result1 = yield* _(Ref.get(counter))
+
+      yield* _(TestClock.adjust("100 millis"))
+      yield* _(limit(request))
+      const result2 = yield* _(Ref.get(counter))
+
+      assert.strictEqual(result1, 10)
+      assert.strictEqual(result2, 11)
+    }))
 })

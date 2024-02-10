@@ -1,6 +1,5 @@
 /**
- * Limits the number of calls to a resource to a maximum amount in some interval
- * using the token bucket algorithm.
+ * Limits the number of calls to a resource to a maximum amount in some interval.
  *
  * @since 2.0.0
  */
@@ -10,6 +9,11 @@ import * as internal from "./internal/rateLimiter.js"
 import type { Scope } from "./Scope.js"
 
 /**
+ * Limits the number of calls to a resource to a maximum amount in some interval.
+ *
+ * Note that only the moment of starting the effect is rate limited: the number
+ * of concurrent executions is not bounded.
+ *
  * @since 2.0.0
  * @category models
  */
@@ -52,7 +56,7 @@ export interface RateLimiter {
  * @since 2.0.0
  * @category constructors
  */
-export const make: (limit: number, window: DurationInput) => Effect<
+export const make: (tokens: number, interval: DurationInput) => Effect<
   RateLimiter,
   never,
   Scope
