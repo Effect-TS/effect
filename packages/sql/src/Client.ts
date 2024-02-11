@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { Schema } from "@effect/schema/Schema"
 import type { Context, Tag } from "effect/Context"
@@ -15,7 +15,7 @@ import type { Compiler, Constructor, Fragment, Primitive, Statement } from "./St
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Client extends Constructor {
   /**
@@ -243,12 +243,12 @@ export interface Client extends Constructor {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export namespace Client {
   /**
    * @category models
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export interface MakeOptions {
     readonly acquirer: Connection.Acquirer
@@ -264,7 +264,7 @@ export namespace Client {
 
 /**
  * @category constructor
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make: ({
   acquirer,
@@ -278,7 +278,7 @@ export const make: ({
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Request<T extends string, I, E, A> extends request.Request<A, SchemaError | E> {
   readonly _tag: T
@@ -287,14 +287,14 @@ export interface Request<T extends string, I, E, A> extends request.Request<A, S
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Resolver<T extends string, R, I, A, E> = [never] extends [R] ? ResolverWithExecute<T, I, A, E>
   : ResolverBase<T, R, I, A, E>
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface ResolverBase<T extends string, R, I, A, E> {
   readonly Request: request.Request.Constructor<Request<T, I, E, A>, "_tag">
@@ -309,14 +309,14 @@ export interface ResolverBase<T extends string, R, I, A, E> {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface ResolverWithExecute<T extends string, I, A, E> extends ResolverBase<T, never, I, A, E> {
   readonly execute: (_: I) => Effect<A, SchemaError | E>
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const defaultTransforms: (
   transformer: (str: string) => string,
@@ -328,7 +328,7 @@ export const defaultTransforms: (
 } = internal.defaultTransforms
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TransactionConnection: Tag<
   readonly [conn: Connection, counter: number],

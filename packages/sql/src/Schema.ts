@@ -1,12 +1,12 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Error from "./Error.js"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const decodeUnknown = <R, I, A>(
   schema: Schema.Schema<A, I, R>,
@@ -21,7 +21,7 @@ export const decodeUnknown = <R, I, A>(
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const encode = <R, I, A>(
   schema: Schema.Schema<A, I, R>,

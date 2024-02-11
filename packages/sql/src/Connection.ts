@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Context from "effect/Context"
 import type { Effect } from "effect/Effect"
@@ -10,7 +10,7 @@ import type { Primitive, Statement } from "./Statement.js"
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Connection {
   readonly execute: <A extends object = Row>(
@@ -36,24 +36,24 @@ export interface Connection {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export namespace Connection {
   /**
    * @category model
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export type Acquirer = Effect<Connection, SqlError, Scope>
 }
 
 /**
  * @category tag
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Connection = Context.GenericTag<Connection>("@services/Connection")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Row = { readonly [column: string]: Primitive }
