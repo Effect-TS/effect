@@ -268,4 +268,17 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
         yield* _(Fiber.join(fiber))
       })
     ), { timeout: 10000 })
+
+  it.scoped(`${algorithm} - limit of 1`, () =>
+    Effect.gen(function*(_) {
+      const limit = yield* _(RateLimiter.make({
+        limit: 1,
+        interval: "1 seconds",
+        algorithm
+      }))
+      yield* _(limit(Effect.unit))
+      const fiber = yield* _(Effect.fork(limit(Effect.unit)))
+      yield* _(TestClock.adjust("1 seconds"))
+      yield* _(Fiber.join(fiber))
+    }))
 }
