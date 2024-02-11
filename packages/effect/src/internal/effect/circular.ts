@@ -2,7 +2,6 @@ import type * as Cause from "../../Cause.js"
 import type * as Deferred from "../../Deferred.js"
 import * as Duration from "../../Duration.js"
 import type * as Effect from "../../Effect.js"
-import * as Either from "../../Either.js"
 import * as Equal from "../../Equal.js"
 import type { Equivalence } from "../../Equivalence.js"
 import * as Exit from "../../Exit.js"
@@ -45,7 +44,7 @@ class Semaphore {
   }
 
   readonly take = (n: number): Effect.Effect<number> =>
-    core.asyncEither<number>((resume) => {
+    core.async<number>((resume) => {
       if (this.free < n) {
         const observer = () => {
           if (this.free < n) {
@@ -56,12 +55,12 @@ class Semaphore {
           resume(core.succeed(n))
         }
         this.waiters.add(observer)
-        return Either.left(core.sync(() => {
+        return core.sync(() => {
           this.waiters.delete(observer)
-        }))
+        })
       }
       this.taken += n
-      return Either.right(core.succeed(n))
+      return resume(core.succeed(n))
     })
 
   readonly updateTaken = (f: (n: number) => number): Effect.Effect<number> =>

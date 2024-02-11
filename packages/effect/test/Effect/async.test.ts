@@ -22,8 +22,8 @@ describe("Effect", () => {
     }))
   it.effect("simple asyncEffect must return", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Effect.asyncEffect<unknown, unknown, never, void, never, never>((cb) => {
-        return Effect.succeed(cb(Effect.succeed(42)))
+      const result = yield* $(Effect.asyncEffect<number, never, never, never, never, never>((resume) => {
+        return Effect.succeed(resume(Effect.succeed(42)))
       }))
       assert.strictEqual(result, 42)
     }))
@@ -95,18 +95,18 @@ describe("Effect", () => {
       assert.deepStrictEqual(unexpected, Chunk.empty())
       assert.deepStrictEqual(result, Option.none()) // the timeout should happen
     }))
-  it.live("asyncMaybe should not resume fiber twice after synchronous result", () =>
+  it.live("async should not resume fiber twice after synchronous result", () =>
     Effect.gen(function*($) {
       const step = yield* $(Deferred.make<void>())
       const unexpectedPlace = yield* $(Ref.make(Chunk.empty<number>()))
       const runtime = yield* $(Effect.runtime<never>())
       const fiber = yield* $(
-        Effect.asyncOption<void, never, never>((cb) => {
+        Effect.async<void, never, never>((resume) => {
           Runtime.runCallback(runtime)(pipe(
             Deferred.await(step),
-            Effect.zipRight(Effect.sync(() => cb(Ref.update(unexpectedPlace, Chunk.prepend(1)))))
+            Effect.zipRight(Effect.sync(() => resume(Ref.update(unexpectedPlace, Chunk.prepend(1)))))
           ))
-          return Option.some(Effect.unit)
+          return Effect.unit
         }),
         Effect.flatMap(() =>
           Effect.async<void, never, never>(() => {
