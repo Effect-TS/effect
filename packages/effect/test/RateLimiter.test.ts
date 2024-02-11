@@ -17,10 +17,6 @@ import { assert, describe } from "vitest"
 describe("RateLimiter", () => {
   describe("fixed-window", () => {
     RateLimiterTestSuite("fixed-window")
-  })
-
-  describe("token-bucket", () => {
-    RateLimiterTestSuite("token-bucket")
 
     it.scoped("will use the provided cost", () =>
       Effect.gen(function*(_) {
@@ -45,8 +41,8 @@ describe("RateLimiter", () => {
         assert(times.slice(10).every((t) => t === nowAfter1Second))
       }))
 
-    it.scoped("will respect different costs per effect and interleave them.", () => {
-      return Effect.gen(function*(_) {
+    it.scoped("will respect different costs per effect and interleave them.", () =>
+      Effect.gen(function*(_) {
         const rl = yield* _(RateLimiter.make({
           limit: 10,
           interval: "1 seconds",
@@ -82,11 +78,10 @@ describe("RateLimiter", () => {
             ["rl2", after1Second]
           ]
         )
-      })
-    })
+      }))
 
-    it.scoped("will be composable with other `RateLimiters`", () => {
-      return Effect.gen(function*(_) {
+    it.scoped("will be composable with other `RateLimiters`", () =>
+      Effect.gen(function*(_) {
         // Max 30 calls per minute
         const rl1 = yield* _(RateLimiter.make({
           limit: 30,
@@ -132,8 +127,7 @@ describe("RateLimiter", () => {
         ]
 
         assert.deepEqual(times, resultTimes)
-      })
-    }, 10_000)
+      }), 10_000)
   })
 
   describe("token-bucket", () => {
