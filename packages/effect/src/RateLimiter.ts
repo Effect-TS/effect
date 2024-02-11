@@ -109,7 +109,7 @@ export const make: (options: RateLimiter.Options) => Effect<RateLimiter, never, 
  * const program = Effect.scoped(
  *   Effect.gen(function* ($) {
  *     // Create a rate limiter that has an hourly limit of 1000 credits
- *     const rateLimiter = yield* $(RateLimiter.make({ limit: 1000, "1 hours" }));
+ *     const rateLimiter = yield* $(RateLimiter.make({ limit: 1000, interval: "1 hours" }));
  *     // Query API costs 1 credit per call ( 1 is the default cost )
  *     const queryAPIRL = compose(rateLimiter, RateLimiter.withCost(1));
  *     // Mutation API costs 5 credits per call
