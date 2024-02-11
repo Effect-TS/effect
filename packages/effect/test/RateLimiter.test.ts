@@ -369,4 +369,19 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       yield* _(TestClock.adjust("1 seconds"))
       yield* _(Fiber.join(fiber))
     }), 10_000)
+
+  it.scoped(`${algorithm} - will not drop tokens if interrupted`, () =>
+    Effect.gen(function*(_) {
+      const limit = yield* _(RateLimiter.make({
+        limit: 10,
+        interval: "1 seconds",
+        algorithm
+      }))
+
+      yield* _(limit(Effect.unit))
+      const fiber = yield* _(limit(Effect.unit), RateLimiter.withCost(10), Effect.fork)
+      yield* _(Effect.yieldNow())
+      yield* _(Fiber.interrupt(fiber))
+      yield* _(limit(Effect.unit), RateLimiter.withCost(9))
+    }))
 }
