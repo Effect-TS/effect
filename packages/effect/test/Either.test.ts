@@ -260,8 +260,14 @@ describe("Either", () => {
   it("andThen", () => {
     expect(pipe(Either.right(1), Either.andThen(() => Either.right(2)))).toStrictEqual(Either.right(2))
     expect(pipe(Either.right(1), Either.andThen(Either.right(2)))).toStrictEqual(Either.right(2))
+    expect(pipe(Either.right(1), Either.andThen(2))).toStrictEqual(Either.right(2))
+    expect(pipe(Either.right(1), Either.andThen(() => 2))).toStrictEqual(Either.right(2))
+    expect(pipe(Either.right(1), Either.andThen((a) => a))).toStrictEqual(Either.right(1))
     expect(Either.andThen(Either.right(1), () => Either.right(2))).toStrictEqual(Either.right(2))
     expect(Either.andThen(Either.right(1), Either.right(2))).toStrictEqual(Either.right(2))
+    expect(Either.andThen(Either.right(1), () => 2)).toStrictEqual(Either.right(2))
+    expect(Either.andThen(Either.right(1), 2)).toStrictEqual(Either.right(2))
+    expect(Either.andThen(Either.right(1), (a) => a)).toStrictEqual(Either.right(1))
   })
 
   it("ap", () => {

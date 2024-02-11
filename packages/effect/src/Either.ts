@@ -568,12 +568,28 @@ export const flatMap: {
 export const andThen: {
   <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E1 | E2, B>
   <E2, B>(f: Either<E2, B>): <E1, A>(self: Either<E1, A>) => Either<E1 | E2, B>
+  <A, B>(f: (a: A) => B): <E1>(self: Either<E1, A>) => Either<E1, B>
+  <B>(b: B): <A, E1>(self: Either<E1, A>) => Either<E1, B>
   <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B>
   <E1, A, E2, B>(self: Either<E1, A>, f: Either<E2, B>): Either<E1 | E2, B>
+  <E1, A, B>(self: Either<E1, A>, f: (a: A) => B): Either<E1, B>
+  <E1, A, B>(self: Either<E1, A>, f: B): Either<E1, B>
 } = dual(
   2,
   <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B> | Either<E2, B>): Either<E1 | E2, B> =>
-    isFunction(f) ? flatMap(self, f) : flatMap(self, () => f)
+    flatMap(self, (a) => {
+      if (isFunction(f)) {
+        const b = f(a)
+        if (isEither(b)) {
+          return b
+        }
+        return right(b)
+      }
+      if (isEither(f)) {
+        return f
+      }
+      return right(f)
+    })
 )
 
 /**
