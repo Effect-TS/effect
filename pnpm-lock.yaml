@@ -476,6 +476,19 @@ importers:
         version: 3.22.4
     publishDirectory: dist
 
+  packages/sql:
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
   packages/typeclass:
     devDependencies:
       effect:
