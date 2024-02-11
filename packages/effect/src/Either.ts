@@ -578,11 +578,8 @@ export const andThen: {
   2,
   <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B> | Either<E2, B>): Either<E1 | E2, B> =>
     flatMap(self, (a) => {
-      if (isFunction(f)) {
-        const b = f(a)
-        return isEither(b) ? b : right(b)
-      }
-      return isEither(f) ? f : right(f)
+      const b = isFunction(f) ? f(a) : f
+      return isEither(b) ? b : right(b)
     })
 )
 

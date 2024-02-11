@@ -658,11 +658,8 @@ export const andThen: {
   2,
   <A, B>(self: Option<A>, f: (a: A) => Option<B> | Option<B>): Option<B> =>
     flatMap(self, (a) => {
-      if (isFunction(f)) {
-        const b = f(a)
-        return isOption(b) ? b : some(b)
-      }
-      return isOption(f) ? f : some(f)
+      const b = isFunction(f) ? f(a) : f
+      return isOption(b) ? b : some(b)
     })
 )
 
