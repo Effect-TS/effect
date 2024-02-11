@@ -15,7 +15,7 @@ import * as it from "effect-test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("RateLimiter", () => {
-  describe("fixed-window", () => {
+  describe.concurrent("fixed-window", () => {
     RateLimiterTestSuite("fixed-window")
 
     it.scoped("will use the provided cost", () =>
@@ -130,7 +130,7 @@ describe("RateLimiter", () => {
       }), 10_000)
   })
 
-  describe("token-bucket", () => {
+  describe.concurrent("token-bucket", () => {
     RateLimiterTestSuite("token-bucket")
 
     it.scoped("uses the token-bucket algorithm for token replenishment", () =>
