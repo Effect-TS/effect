@@ -545,11 +545,8 @@ export * as Queue from "./Queue.js"
 export * as Random from "./Random.js"
 
 /**
- * Limits the number of calls to a resource to a maximum amount in some interval using the token bucket algorithm.
- *
- * Note that only the moment of starting the effect is rate limited: the number of concurrent executions is not bounded.
- *
- * Calls are queued up in an unbounded queue until capacity becomes available.
+ * Limits the number of calls to a resource to a maximum amount in some interval
+ * using the token bucket algorithm.
  *
  * @since 2.0.0
  */

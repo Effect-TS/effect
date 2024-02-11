@@ -1,8 +1,16 @@
 import type { DurationInput } from "../Duration.js"
 import * as Effect from "../Effect.js"
+import * as FiberRef from "../FiberRef.js"
+import { globalValue } from "../GlobalValue.js"
 import type { RateLimiter } from "../RateLimiter.js"
 import type { Scope } from "../Scope.js"
 import * as SynchronizedRef from "../SynchronizedRef.js"
+
+/** @internal */
+const currentCost = globalValue(
+  Symbol.for("effect/RateLimiter/currentCost"),
+  () => FiberRef.unsafeMake(1)
+)
 
 /** @internal */
 export const make = (limit: number, window: DurationInput): Effect.Effect<
@@ -25,6 +33,12 @@ export const make = (limit: number, window: DurationInput): Effect.Effect<
           Effect.as(true)
         )
     )
-    const take = Effect.zipRight(semaphore.take(1), reset)
+
+    const cost = FiberRef.get(currentCost).pipe(Effect.flatMap(semaphore.take))
+    const take = Effect.zipRight(cost, reset)
+
     return (effect) => Effect.zipRight(take, effect)
   })
+
+/** @internal */
+export const withCost = (cost: number) => Effect.locally(currentCost, cost)
