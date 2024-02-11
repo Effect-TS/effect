@@ -1,14 +1,13 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import * as timeout from "effect/internal/timeout"
 import { describe, expect, it } from "vitest"
 
 describe("Effect", () => {
   it("tryPromise - success, no catch, no AbortSignal", async () => {
     const effect = Effect.tryPromise<number>(() =>
       new Promise((resolve) => {
-        timeout.set(() => {
+        setTimeout(() => {
           resolve(1)
         }, 100)
       })
@@ -20,7 +19,7 @@ describe("Effect", () => {
   it("tryPromise - failure, no catch, no AbortSignal", async () => {
     const effect = Effect.tryPromise<void>(() =>
       new Promise((_resolve, reject) => {
-        timeout.set(() => {
+        setTimeout(() => {
           reject("error")
         }, 100)
       })
@@ -33,7 +32,7 @@ describe("Effect", () => {
     const effect = Effect.tryPromise({
       try: () =>
         new Promise((_resolve, reject) => {
-          timeout.set(() => {
+          setTimeout(() => {
             reject("error")
           }, 100)
         }),
@@ -50,7 +49,7 @@ describe("Effect", () => {
         aborted = true
       })
       return new Promise((resolve) => {
-        timeout.set(() => {
+        setTimeout(() => {
           resolve()
         }, 100)
       })
@@ -73,7 +72,7 @@ describe("Effect", () => {
           aborted = true
         })
         return new Promise((resolve) => {
-          timeout.set(() => {
+          setTimeout(() => {
             resolve()
           }, 100)
         })

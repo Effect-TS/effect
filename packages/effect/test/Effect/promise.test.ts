@@ -1,5 +1,4 @@
 import * as Effect from "effect/Effect"
-import * as timeout from "effect/internal/timeout"
 import { describe, expect, it } from "vitest"
 
 describe("Effect", () => {
@@ -10,7 +9,7 @@ describe("Effect", () => {
         aborted = true
       })
       return new Promise((resolve) => {
-        timeout.set(() => {
+        setTimeout(() => {
           resolve()
         }, 100)
       })
