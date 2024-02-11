@@ -2771,7 +2771,12 @@ export const zipLeftOptions = dual<
   ) => Effect.Effect<A, E | E2, R | R2>
 >(
   (args) => core.isEffect(args[1]),
-  (self, that, options) => zipWithOptions(self, that, (a, _) => a, options)
+  (self, that, options) => {
+    if (options?.concurrent !== true && (options?.batching === undefined || options.batching === false)) {
+      return core.zipLeft(self, that)
+    }
+    return zipWithOptions(self, that, (a, _) => a, options)
+  }
 )
 
 /** @internal */
@@ -2794,11 +2799,16 @@ export const zipRightOptions: {
 } = dual((args) => core.isEffect(args[1]), <A, E, R, A2, E2, R2>(
   self: Effect.Effect<A, E, R>,
   that: Effect.Effect<A2, E2, R2>,
-  options: {
+  options?: {
     readonly concurrent?: boolean | undefined
     readonly batching?: boolean | "inherit" | undefined
   }
-): Effect.Effect<A2, E2 | E, R2 | R> => zipWithOptions(self, that, (_, b) => b, options))
+): Effect.Effect<A2, E2 | E, R2 | R> => {
+  if (options?.concurrent !== true && (options?.batching === undefined || options.batching === false)) {
+    return core.zipRight(self, that)
+  }
+  return zipWithOptions(self, that, (_, b) => b, options)
+})
 
 /** @internal */
 export const zipWithOptions: {
