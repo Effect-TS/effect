@@ -648,12 +648,28 @@ export const flatMap: {
 export const andThen: {
   <A, B>(f: (a: A) => Option<B>): (self: Option<A>) => Option<B>
   <B>(f: Option<B>): <A>(self: Option<A>) => Option<B>
+  <A, B>(f: (a: A) => B): (self: Option<A>) => Option<B>
+  <B>(f: B): <A>(self: Option<A>) => Option<B>
   <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B>
   <A, B>(self: Option<A>, f: Option<B>): Option<B>
+  <A, B>(self: Option<A>, f: (a: A) => B): Option<B>
+  <A, B>(self: Option<A>, f: B): Option<B>
 } = dual(
   2,
   <A, B>(self: Option<A>, f: (a: A) => Option<B> | Option<B>): Option<B> =>
-    isFunction(f) ? flatMap(self, f) : flatMap(self, () => f)
+    flatMap(self, (a) => {
+      if (isFunction(f)) {
+        const b = f(a)
+        if (isOption(b)) {
+          return b
+        }
+        return some(b)
+      }
+      if (isOption(f)) {
+        return f
+      }
+      return some(f)
+    })
 )
 
 /**
