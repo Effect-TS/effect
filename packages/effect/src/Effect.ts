@@ -976,17 +976,20 @@ export const validateFirst: {
 // -------------------------------------------------------------------------------------
 
 /**
- * Imports an asynchronous side-effect into a pure `Effect` value.
- * The callback function `Effect<A, E, R> => void` must be called at most once.
+ * Imports an asynchronous side-effect into a pure `Effect` value. The callback
+ * function `Effect<A, E, R> => void` **MUST** be called at most once.
  *
- * If an Effect is returned by the registration function, it will be executed
- * if the fiber executing the effect is interrupted.
+ * The registration function can optionally return an Effect, which will be
+ * executed if the `Fiber` executing this Effect is interrupted.
  *
  * The registration function can also receive an `AbortSignal` if required for
  * interruption.
  *
- * The `FiberId` of the fiber that may complete the async callback may be
- * provided to allow for better diagnostics.
+ * The `FiberId` of the fiber that may complete the async callback may also be
+ * specified. This is called the "blocking fiber" because it suspends the fiber
+ * executing the `async` Effect (i.e. semantically blocks the fiber from making
+ * progress). Specifying this fiber id in cases where it is known will improve
+ * diagnostics, but not affect the behavior of the returned effect.
  *
  * @since 2.0.0
  * @category constructors
@@ -1005,51 +1008,9 @@ export const async: <A, E = never, R = never>(
  * @since 2.0.0
  * @category constructors
  */
-export const asyncEffect: <A, E, R, X, E2, R2>(
-  register: (callback: (_: Effect<A, E, R>) => void) => Effect<X, E2, R2>
-) => Effect<A, E | E2, R | R2> = _runtime.asyncEffect
-
-/**
- * Imports an asynchronous effect into a pure `Effect` value, possibly returning
- * the value synchronously.
- *
- * If the register function returns a value synchronously, then the callback
- * function `Effect<A, E, R> => void` must not be called. Otherwise the callback
- * function must be called at most once.
- *
- * The `FiberId` of the fiber that may complete the async callback may be
- * provided to allow for better diagnostics.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const asyncOption: <A, E = never, R = never>(
-  register: (callback: (_: Effect<A, E, R>) => void) => Option.Option<Effect<A, E, R>>,
-  blockingOn?: FiberId.FiberId
-) => Effect<A, E, R> = effect.asyncOption
-
-/**
- * Imports an asynchronous side-effect into an effect. It has the option of
- * returning the value synchronously, which is useful in cases where it cannot
- * be determined if the effect is synchronous or asynchronous until the register
- * is actually executed. It also has the option of returning a canceler,
- * which will be used by the runtime to cancel the asynchronous effect if the fiber
- * executing the effect is interrupted.
- *
- * If the register function returns a value synchronously, then the callback
- * function `Effect<A, E, R> => void` must not be called. Otherwise the callback
- * function must be called at most once.
- *
- * The `FiberId` of the fiber that may complete the async callback may be
- * provided to allow for better diagnostics.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const asyncEither: <A, E = never, R = never>(
-  register: (callback: (effect: Effect<A, E, R>) => void) => Either.Either<Effect<void, never, R>, Effect<A, E, R>>,
-  blockingOn?: FiberId.FiberId
-) => Effect<A, E, R> = core.asyncEither
+export const asyncEffect: <A, E, R, R3, E2, R2>(
+  register: (callback: (_: Effect<A, E, R>) => void) => Effect<Effect<void, never, R3> | void, E2, R2>
+) => Effect<A, E | E2, R | R2 | R3> = _runtime.asyncEffect
 
 /**
  * @since 2.0.0
