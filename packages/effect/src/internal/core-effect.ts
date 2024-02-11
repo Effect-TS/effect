@@ -4,9 +4,8 @@ import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
-import * as Either from "../Either.js"
 import type * as Fiber from "../Fiber.js"
-import * as FiberId from "../FiberId.js"
+import type * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
 import * as FiberRefs from "../FiberRefs.js"
 import type * as FiberRefsPatch from "../FiberRefsPatch.js"
@@ -74,26 +73,6 @@ export const asSome = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Opt
 /* @internal */
 export const asSomeError = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, Option.Option<E>, R> =>
   core.mapError(self, Option.some)
-
-/* @internal */
-export const asyncOption = <A, E = never, R = never>(
-  register: (callback: (_: Effect.Effect<A, E, R>) => void) => Option.Option<Effect.Effect<A, E, R>>,
-  blockingOn: FiberId.FiberId = FiberId.none
-): Effect.Effect<A, E, R> =>
-  core.asyncEither(
-    (cb) => {
-      const option = register(cb)
-      switch (option._tag) {
-        case "None": {
-          return Either.left(core.unit)
-        }
-        case "Some": {
-          return Either.right(option.value)
-        }
-      }
-    },
-    blockingOn
-  )
 
 /* @internal */
 export const try_: {
