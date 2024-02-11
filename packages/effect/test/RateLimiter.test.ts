@@ -17,6 +17,10 @@ import { assert, describe } from "vitest"
 describe("RateLimiter", () => {
   describe("fixed-window", () => {
     RateLimiterTestSuite("fixed-window")
+  })
+
+  describe("token-bucket", () => {
+    RateLimiterTestSuite("token-bucket")
 
     it.scoped("will use the provided cost", () =>
       Effect.gen(function*(_) {
@@ -160,6 +164,8 @@ describe("RateLimiter", () => {
 
         // Ensure that the request is successful once a token is replenished
         yield* _(TestClock.adjust("100 millis"))
+        yield* _(Effect.yieldNow())
+
         assert.isTrue(yield* _(Deferred.isDone(deferred)))
       })))
   })
