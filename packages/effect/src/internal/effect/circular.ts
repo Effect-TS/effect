@@ -68,13 +68,15 @@ class Semaphore {
   readonly updateTaken = (f: (n: number) => number): Effect.Effect<number> =>
     core.withFiberRuntime((fiber) => {
       this.taken = f(this.taken)
-      fiber.getFiberRef(currentScheduler).scheduleTask(() => {
-        const iter = this.waiters.values()
-        let item = iter.next()
-        while (item.done === false && item.value() === true) {
-          item = iter.next()
-        }
-      }, fiber.getFiberRef(core.currentSchedulingPriority))
+      if (this.waiters.size > 0) {
+        fiber.getFiberRef(currentScheduler).scheduleTask(() => {
+          const iter = this.waiters.values()
+          let item = iter.next()
+          while (item.done === false && item.value() === true) {
+            item = iter.next()
+          }
+        }, fiber.getFiberRef(core.currentSchedulingPriority))
+      }
       return core.succeed(this.free)
     })
 
