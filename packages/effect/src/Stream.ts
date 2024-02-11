@@ -256,15 +256,18 @@ export const as: {
 } = internal.as
 
 const _async: <A, E = never, R = never>(
-  register: (emit: Emit.Emit<R, E, A, void>) => void,
+  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<void, never, R> | void,
   outputBuffer?: number
 ) => Stream<A, E, R> = internal._async
 
 export {
   /**
    * Creates a stream from an asynchronous callback that can be called multiple
-   * times. The optionality of the error type `E` can be used to signal the end
-   * of the stream, by setting it to `None`.
+   * times. The optionality of the error type `E` in `Emit` can be used to
+   * signal the end of the stream by setting it to `None`.
+   *
+   * The registration function can optionally return an `Effect`, which will be
+   * executed if the `Fiber` executing this Effect is interrupted.
    *
    * @since 2.0.0
    * @category constructors
@@ -285,34 +288,6 @@ export const asyncEffect: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R>,
   outputBuffer?: number
 ) => Stream<A, E, R> = internal.asyncEffect
-
-/**
- * Creates a stream from an asynchronous callback that can be called multiple
- * times. The registration of the callback returns either a canceler or
- * synchronously returns a stream. The optionality of the error type `E` can
- * be used to signal the end of the stream, by setting it to `None`.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const asyncInterrupt: <A, E = never, R = never>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Either.Either<Effect.Effect<unknown, never, R>, Stream<A, E, R>>,
-  outputBuffer?: number
-) => Stream<A, E, R> = internal.asyncInterrupt
-
-/**
- * Creates a stream from an asynchronous callback that can be called multiple
- * times. The registration of the callback can possibly return the stream
- * synchronously. The optionality of the error type `E` can be used to signal
- * the end of the stream, by setting it to `None`.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const asyncOption: <A, E = never, R = never>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Option.Option<Stream<A, E, R>>,
-  outputBuffer?: number
-) => Stream<A, E, R> = internal.asyncOption
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple

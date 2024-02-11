@@ -2,7 +2,6 @@ import type * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
-import * as Either from "../Either.js"
 import { constFalse } from "../Function.js"
 import * as core from "./core.js"
 
@@ -85,9 +84,9 @@ class ClockImpl implements Clock.Clock {
   }
 
   sleep(duration: Duration.Duration): Effect.Effect<void> {
-    return core.asyncEither<void>((cb) => {
-      const canceler = globalClockScheduler.unsafeSchedule(() => cb(core.unit), duration)
-      return Either.left(core.asUnit(core.sync(canceler)))
+    return core.async<void>((resume) => {
+      const canceler = globalClockScheduler.unsafeSchedule(() => resume(core.unit), duration)
+      return core.asUnit(core.sync(canceler))
     })
   }
 }
