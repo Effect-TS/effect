@@ -3,7 +3,6 @@ import * as Duration from "../Duration.js"
 import * as Effect from "../Effect.js"
 import type * as RateLimiter from "../RateLimiter.js"
 import type * as Scope from "../Scope.js"
-import * as SynchronizedRef from "../SynchronizedRef.js"
 
 /** @internal */
 export const make = ({
@@ -46,7 +45,7 @@ const tokenBucket = (limit: number, window: DurationInput): Effect.Effect<
       Effect.forkScoped,
       Effect.interruptible
     )
-    const take = Effect.zipRight(semaphore.take(1), latch.release(1))
+    const take = Effect.uninterruptibleMask((restore) => Effect.zipRight(restore(semaphore.take(1)), latch.release(1)))
     return (effect) => Effect.zipRight(take, effect)
   })
 
@@ -67,6 +66,6 @@ const fixedWindow = (limit: number, window: DurationInput): Effect.Effect<
       Effect.forkScoped,
       Effect.interruptible
     )
-    const take = Effect.zipRight(semaphore.take(1), latch.release(1))
+    const take = Effect.uninterruptibleMask((restore) => Effect.zipRight(restore(semaphore.take(1)), latch.release(1)))
     return (effect) => Effect.zipRight(take, effect)
   })
