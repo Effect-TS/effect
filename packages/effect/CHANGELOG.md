@@ -1,5 +1,59 @@
 # effect
 
+## 2.3.2
+
+### Patch Changes
+
+- [#2096](https://github.com/Effect-TS/effect/pull/2096) [`6654f5f`](https://github.com/Effect-TS/effect/commit/6654f5f0f6b9d97165ede5e04ca16776e2599328) Thanks [@tim-smart](https://github.com/tim-smart)! - default to `never` for Runtime returning functions
+
+  This includes:
+
+  - Effect.runtime
+  - FiberSet.makeRuntime
+
+  It prevents `unknown` from creeping into types, as well as `never` being a
+  useful default type for propogating Fiber Refs and other context.
+
+- [#2094](https://github.com/Effect-TS/effect/pull/2094) [`2eb11b4`](https://github.com/Effect-TS/effect/commit/2eb11b47752cedf233ef4c4395d9c4efc9b9e180) Thanks [@tim-smart](https://github.com/tim-smart)! - revert some type param adjustments in FiberSet
+
+  `makeRuntime` now has the R parameter first again.
+
+  Default to `unknown` for the A and E parameters instead of never.
+
+- [#2103](https://github.com/Effect-TS/effect/pull/2103) [`56c09bd`](https://github.com/Effect-TS/effect/commit/56c09bd369279a6a7785209d172739935818cba6) Thanks [@patroza](https://github.com/patroza)! - Expand Either and Option `andThen` to support the `map` case like Effects' `andThen`
+
+  For example:
+
+  ```ts
+  expect(pipe(Either.right(1), Either.andThen(2))).toStrictEqual(
+    Either.right(2),
+  );
+  expect(
+    pipe(
+      Either.right(1),
+      Either.andThen(() => 2),
+    ),
+  ).toStrictEqual(Either.right(2));
+
+  expect(pipe(Option.some(1), Option.andThen(2))).toStrictEqual(Option.some(2));
+  expect(
+    pipe(
+      Option.some(1),
+      Option.andThen(() => 2),
+    ),
+  ).toStrictEqual(Option.some(2));
+  ```
+
+- [#2098](https://github.com/Effect-TS/effect/pull/2098) [`71aa5b1`](https://github.com/Effect-TS/effect/commit/71aa5b1c180dcb8b53aefe232d12a97bd06b5447) Thanks [@ethanniser](https://github.com/ethanniser)! - removed `./internal/timeout` and replaced all usages with `setTimeout` directly
+
+  previously it was required to abstract away conditionally solving an bun had an issue with `setTimeout`, that caused incorrect behavior
+  that bug has since been fixed, and the `isBun` check is no longer needed
+  as such the timeout module is also no longer needed
+
+- [#2099](https://github.com/Effect-TS/effect/pull/2099) [`1700af8`](https://github.com/Effect-TS/effect/commit/1700af8af1131602887da721914c8562b6342393) Thanks [@tim-smart](https://github.com/tim-smart)! - optimize Effect.zip{Left,Right}
+
+  for the sequential case, avoid using Effect.all internally
+
 ## 2.3.1
 
 ### Patch Changes
