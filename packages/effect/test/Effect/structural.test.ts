@@ -144,13 +144,13 @@ describe("Effect", () => {
       Effect.gen(function*($) {
         const res = yield* $(Effect.all([Effect.succeed(0), Effect.succeed(1)], { mode: "either" }))
         assert.deepEqual(res, [Either.right(0), Either.right(1)])
-        satisfies<true>(assertType<[Either.Either<never, number>, Either.Either<never, number>]>()(res))
+        satisfies<true>(assertType<[Either.Either<number>, Either.Either<number>]>()(res))
       }))
     it.effect("failure should work with one array argument", () =>
       Effect.gen(function*($) {
         const res = yield* $(Effect.all([Effect.fail(0), Effect.succeed(1)], { mode: "either" }))
         assert.deepEqual(res, [Either.left(0), Either.right(1)])
-        satisfies<true>(assertType<[Either.Either<number, never>, Either.Either<never, number>]>()(res))
+        satisfies<true>(assertType<[Either.Either<never, number>, Either.Either<number>]>()(res))
       }))
     it.effect("should work with one record argument", () =>
       Effect.gen(function*($) {
@@ -160,8 +160,8 @@ describe("Effect", () => {
         assert.deepEqual(b, Either.right(1))
         satisfies<true>(
           assertType<{
-            readonly a: Either.Either<never, number>
-            readonly b: Either.Either<never, number>
+            readonly a: Either.Either<number>
+            readonly b: Either.Either<number>
           }>()(result)
         )
       }))
@@ -175,8 +175,8 @@ describe("Effect", () => {
         assert.deepEqual(b, Either.right(1))
         satisfies<true>(
           assertType<{
-            readonly a: Either.Either<number, never>
-            readonly b: Either.Either<never, number>
+            readonly a: Either.Either<never, number>
+            readonly b: Either.Either<number>
           }>()(result)
         )
       }))
@@ -184,7 +184,7 @@ describe("Effect", () => {
       Effect.gen(function*($) {
         const result = yield* $(Effect.all(new Set([Effect.succeed(0), Effect.succeed(1)]), { mode: "either" }))
         assert.deepEqual(result, [Either.right(0), Either.right(1)])
-        satisfies<true>(assertType<Array<Either.Either<never, number>>>()(result))
+        satisfies<true>(assertType<Array<Either.Either<number>>>()(result))
       }))
   })
   describe("allWith", () => {

@@ -87,7 +87,7 @@ const ValueMatcherProto: Omit<
 
 function makeValueMatcher<I, R, RA, A, Pr>(
   provided: Pr,
-  value: Either.Either<RA, Pr>
+  value: Either.Either<Pr, RA>
 ): ValueMatcher<I, R, RA, A, Pr> {
   const matcher = Object.create(ValueMatcherProto)
   matcher.provided = provided
@@ -514,8 +514,8 @@ export const orElseAbsurd = <I, R, RA, A, Pr>(
 /** @internal */
 export const either: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Either.Either<R, Unify<A>>
-  : Either.Either<R, Unify<A>> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
+) => [Pr] extends [never] ? (input: I) => Either.Either<Unify<A>, R>
+  : Either.Either<Unify<A>, R> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
     if (self._tag === "ValueMatcher") {
       return self.value
     }
@@ -523,7 +523,7 @@ export const either: <I, F, R, A, Pr>(
     const len = self.cases.length
     if (len === 1) {
       const _case = self.cases[0]
-      return (input: I): Either.Either<RA, A> => {
+      return (input: I): Either.Either<A, RA> => {
         if (_case._tag === "When" && _case.guard(input) === true) {
           return Either.right(_case.evaluate(input))
         } else if (_case._tag === "Not" && _case.guard(input) === false) {
@@ -532,7 +532,7 @@ export const either: <I, F, R, A, Pr>(
         return Either.left(input as any)
       }
     }
-    return (input: I): Either.Either<RA, A> => {
+    return (input: I): Either.Either<A, RA> => {
       for (let i = 0; i < len; i++) {
         const _case = self.cases[i]
         if (_case._tag === "When" && _case.guard(input) === true) {

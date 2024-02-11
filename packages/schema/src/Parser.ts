@@ -35,7 +35,7 @@ export const mergeParseOptions = (
 
 const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
-  return (u: unknown, overrideOptions?: AST.ParseOptions): Either.Either<ParseResult.ParseIssue, any> =>
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Either.Either<any, ParseResult.ParseIssue> =>
     parser(u, mergeParseOptions(options, overrideOptions)) as any
 }
 
@@ -82,7 +82,7 @@ export const decodeUnknownOption = <A, I>(
 export const decodeUnknownEither = <A, I>(
   schema: Schema.Schema<A, I, never>,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<A, ParseResult.ParseIssue> =>
   getEither(schema.ast, true, options)
 
 /**
@@ -132,7 +132,7 @@ export const encodeUnknownOption = <A, I>(
 export const encodeUnknownEither = <A, I>(
   schema: Schema.Schema<A, I, never>,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, I> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<I, ParseResult.ParseIssue> =>
   getEither(schema.ast, false, options)
 
 /**
@@ -182,7 +182,7 @@ export const decodeOption: <A, I>(
 export const decodeEither: <A, I>(
   schema: Schema.Schema<A, I, never>,
   options?: AST.ParseOptions
-) => (i: I, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> = decodeUnknownEither
+) => (i: I, overrideOptions?: AST.ParseOptions) => Either.Either<A, ParseResult.ParseIssue> = decodeUnknownEither
 
 /**
  * @category decoding
@@ -227,7 +227,7 @@ export const validateOption = <A, I, R>(
 export const validateEither = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<A, ParseResult.ParseIssue> =>
   getEither(AST.to(schema.ast), true, options)
 
 /**
@@ -269,7 +269,7 @@ export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseO
 export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.to(schema.ast), true)
   return (u: unknown, overrideOptions?: AST.ParseOptions): asserts u is A => {
-    const result: Either.Either<ParseResult.ParseIssue, any> = parser(u, {
+    const result: Either.Either<any, ParseResult.ParseIssue> = parser(u, {
       ...mergeParseOptions(options, overrideOptions),
       isExact: true
     }) as any
@@ -304,7 +304,7 @@ export const encodeOption: <A, I>(
 export const encodeEither: <A, I>(
   schema: Schema.Schema<A, I, never>,
   options?: AST.ParseOptions
-) => (a: A, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, I> = encodeUnknownEither
+) => (a: A, overrideOptions?: AST.ParseOptions) => Either.Either<I, ParseResult.ParseIssue> = encodeUnknownEither
 
 /**
  * @category encoding

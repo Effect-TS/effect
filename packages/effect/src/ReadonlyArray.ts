@@ -1615,11 +1615,11 @@ export const filterMapWhile: {
  * @since 2.0.0
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A, i: number) => Either<B, C>): (self: Iterable<A>) => [left: Array<B>, right: Array<C>]
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<B, C>): [left: Array<B>, right: Array<C>]
+  <A, B, C>(f: (a: A, i: number) => Either<C, B>): (self: Iterable<A>) => [left: Array<B>, right: Array<C>]
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<C, B>): [left: Array<B>, right: Array<C>]
 } = dual(
   2,
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<B, C>): [left: Array<B>, right: Array<C>] => {
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<C, B>): [left: Array<B>, right: Array<C>] => {
     const left: Array<B> = []
     const right: Array<C> = []
     const as = fromIterable(self)
@@ -1667,7 +1667,7 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(id
  * @category filtering
  * @since 2.0.0
  */
-export const getLefts = <E, A>(self: Iterable<Either<E, A>>): Array<E> => {
+export const getLefts = <E, A>(self: Iterable<Either<A, E>>): Array<E> => {
   const out: Array<E> = []
   for (const a of self) {
     if (E.isLeft(a)) {
@@ -1693,7 +1693,7 @@ export const getLefts = <E, A>(self: Iterable<Either<E, A>>): Array<E> => {
  * @category filtering
  * @since 2.0.0
  */
-export const getRights = <E, A>(self: Iterable<Either<E, A>>): Array<A> => {
+export const getRights = <E, A>(self: Iterable<Either<A, E>>): Array<A> => {
   const out: Array<A> = []
   for (const a of self) {
     if (E.isRight(a)) {
@@ -1766,7 +1766,7 @@ export const partition: {
  * @category filtering
  * @since 2.0.0
  */
-export const separate: <E, A>(self: Iterable<Either<E, A>>) => [Array<E>, Array<A>] = partitionMap(
+export const separate: <E, A>(self: Iterable<Either<A, E>>) => [Array<E>, Array<A>] = partitionMap(
   identity
 )
 
@@ -1847,7 +1847,7 @@ export const flatMapNullable: {
  * @since 2.0.0
  */
 export const liftEither = <A extends Array<unknown>, E, B>(
-  f: (...a: A) => Either<E, B>
+  f: (...a: A) => Either<B, E>
 ) =>
 (...a: A): Array<B> => {
   const e = f(...a)

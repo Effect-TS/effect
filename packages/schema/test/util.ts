@@ -224,7 +224,7 @@ export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).pipe(
 )
 
 export const expectFailure = async <A>(
-  effect: Either.Either<ParseResult.ParseError, A> | Effect.Effect<A, ParseResult.ParseError>,
+  effect: Either.Either<A, ParseResult.ParseError> | Effect.Effect<A, ParseResult.ParseError>,
   message: string
 ) => {
   if (Either.isEither(effect)) {
@@ -235,7 +235,7 @@ export const expectFailure = async <A>(
 }
 
 export const expectSuccess = async <E, A>(
-  effect: Either.Either<E, A> | Effect.Effect<A, E>,
+  effect: Either.Either<A, E> | Effect.Effect<A, E>,
   a: A
 ) => {
   if (Either.isEither(effect)) {
@@ -260,11 +260,11 @@ export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<A, E>, a: 
   )
 }
 
-export const expectEitherLeft = <A>(e: Either.Either<ParseResult.ParseError, A>, message: string) => {
+export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>, message: string) => {
   expect(Either.mapLeft(e, formatError)).toStrictEqual(Either.left(message))
 }
 
-export const expectEitherRight = <E, A>(e: Either.Either<E, A>, a: A) => {
+export const expectEitherRight = <E, A>(e: Either.Either<A, E>, a: A) => {
   expect(e).toStrictEqual(Either.right(a))
 }
 

@@ -320,8 +320,8 @@ describe("Match", () => {
   it("unify", () => {
     const match = pipe(
       M.type<{ readonly _tag: "A" } | { readonly _tag: "B" }>(),
-      M.tag("A", () => E.right("a") as E.Either<number, string>),
-      M.tag("B", () => E.right(123) as E.Either<string, number>),
+      M.tag("A", () => E.right("a") as E.Either<string, number>),
+      M.tag("B", () => E.right(123) as E.Either<number, string>),
       M.exhaustive
     )
 
@@ -749,7 +749,7 @@ describe("Match", () => {
     )
 
     assertType<
-      E.Either<{ a: number; b: string }, string>
+      E.Either<string, { a: number; b: string }>
     >()(match({ a, b })) satisfies true
   })
 

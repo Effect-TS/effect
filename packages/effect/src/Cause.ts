@@ -577,7 +577,7 @@ export const failureOption: <E>(self: Cause<E>) => Option.Option<E> = internal.f
  * @since 2.0.0
  * @category getters
  */
-export const failureOrCause: <E>(self: Cause<E>) => Either.Either<E, Cause<never>> = internal.failureOrCause
+export const failureOrCause: <E>(self: Cause<E>) => Either.Either<Cause<never>, E> = internal.failureOrCause
 
 /**
  * Converts the specified `Cause<Option<E>>` to an `Option<Cause<E>>` by

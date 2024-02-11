@@ -233,7 +233,7 @@ export const failureOption = <E>(self: Cause.Cause<E>): Option.Option<E> =>
       Option.none())
 
 /** @internal */
-export const failureOrCause = <E>(self: Cause.Cause<E>): Either.Either<E, Cause.Cause<never>> => {
+export const failureOrCause = <E>(self: Cause.Cause<E>): Either.Either<Cause.Cause<never>, E> => {
   const option = failureOption(self)
   switch (option._tag) {
     case "None": {
@@ -891,7 +891,7 @@ export const reduceWithContext = dual<
   <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) => Z
 >(3, <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) => {
   const input: Array<Cause.Cause<E>> = [self]
-  const output: Array<Either.Either<CauseCase, Z>> = []
+  const output: Array<Either.Either<Z, CauseCase>> = []
   while (input.length > 0) {
     const cause = input.pop()!
     switch (cause._tag) {

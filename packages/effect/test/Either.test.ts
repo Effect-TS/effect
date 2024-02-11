@@ -285,7 +285,7 @@ describe("Either", () => {
       Either.left("b")
     )
     expect(
-      (Either.left("a") as Either.Either<string, typeof add>).pipe(
+      (Either.left("a") as Either.Either<typeof add, string>).pipe(
         Either.ap(Either.right(1)),
         Either.ap(Either.right(2))
       )

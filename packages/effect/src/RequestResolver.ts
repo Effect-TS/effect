@@ -198,7 +198,7 @@ export const mapInputContext: {
 export const eitherWith: {
   <A extends Request.Request<any, any>, R2, B extends Request.Request<any, any>, C extends Request.Request<any, any>>(
     that: RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<C, R2 | R>
   <
     R,
@@ -209,7 +209,7 @@ export const eitherWith: {
   >(
     self: RequestResolver<A, R>,
     that: RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
   ): RequestResolver<C, R | R2>
 } = internal.eitherWith
 

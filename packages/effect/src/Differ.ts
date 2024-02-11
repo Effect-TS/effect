@@ -366,14 +366,14 @@ export const orElseEither: {
   <Value2, Patch2>(that: Differ<Value2, Patch2>): <Value, Patch>(
     self: Differ<Value, Patch>
   ) => Differ<
-    Either<Value, Value2>,
+    Either<Value2, Value>,
     Differ.Or.Patch<Value, Value2, Patch, Patch2>
   >
   <Value, Patch, Value2, Patch2>(
     self: Differ<Value, Patch>,
     that: Differ<Value2, Patch2>
   ): Differ<
-    Either<Value, Value2>,
+    Either<Value2, Value>,
     Differ.Or.Patch<Value, Value2, Patch, Patch2>
   >
 } = internal.orElseEither

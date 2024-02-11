@@ -144,7 +144,7 @@ describe("ReadonlyRecord", () => {
       [{ a: "e" }, { b: 1 }]
     )
     // should ignore non own properties
-    const o: RR.ReadonlyRecord<Either.Either<string, number>> = Object.create({ a: 1 })
+    const o: RR.ReadonlyRecord<Either.Either<number, string>> = Object.create({ a: 1 })
     assert.deepStrictEqual(pipe(o, RR.separate), [{}, {}])
   })
 

@@ -54,18 +54,18 @@ export const parseError = (issue: ParseIssue): ParseError => new ParseError({ er
  * @category constructors
  * @since 1.0.0
  */
-export const succeed: <A>(a: A) => Either.Either<ParseIssue, A> = Either.right
+export const succeed: <A>(a: A) => Either.Either<A, ParseIssue> = Either.right
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const fail: (issue: ParseIssue) => Either.Either<ParseIssue, never> = Either.left
+export const fail: (issue: ParseIssue) => Either.Either<never, ParseIssue> = Either.left
 
 const _try: <A>(options: {
   try: LazyArg<A>
   catch: (e: unknown) => ParseIssue
-}) => Either.Either<ParseIssue, A> = Either.try
+}) => Either.Either<A, ParseIssue> = Either.try
 
 export {
   /**
