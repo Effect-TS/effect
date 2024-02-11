@@ -548,9 +548,6 @@ export * as Random from "./Random.js"
  * Limits the number of calls to a resource to a maximum amount in some interval
  * using the token bucket algorithm.
  *
- * Note: Only the moment of starting the effect is rate limited.
- * The number of concurrent executions is not bounded.
- *
  * @since 2.0.0
  */
 export * as RateLimiter from "./RateLimiter.js"
