@@ -580,15 +580,9 @@ export const andThen: {
     flatMap(self, (a) => {
       if (isFunction(f)) {
         const b = f(a)
-        if (isEither(b)) {
-          return b
-        }
-        return right(b)
+        return isEither(b) ? b : right(b)
       }
-      if (isEither(f)) {
-        return f
-      }
-      return right(f)
+      return isEither(f) ? f : right(f)
     })
 )
 
