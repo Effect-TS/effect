@@ -8,7 +8,6 @@ import type { FiberRef } from "./FiberRef.js"
 import { dual } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as core from "./internal/core.js"
-import * as timeout from "./internal/timeout.js"
 
 /**
  * @since 2.0.0
@@ -107,7 +106,7 @@ export class MixedScheduler implements Scheduler {
    */
   private starve(depth = 0) {
     if (depth >= this.maxNextTickBeforeTimer) {
-      timeout.set(() => this.starveInternal(0), 0)
+      setTimeout(() => this.starveInternal(0), 0)
     } else {
       Promise.resolve(void 0).then(() => this.starveInternal(depth + 1))
     }
@@ -337,14 +336,14 @@ export const makeBatched = (
  * @category constructors
  */
 export const timer = (ms: number, shouldYield: Scheduler["shouldYield"] = defaultShouldYield) =>
-  make((task) => timeout.set(task, ms), shouldYield)
+  make((task) => setTimeout(task, ms), shouldYield)
 
 /**
  * @since 2.0.0
  * @category constructors
  */
 export const timerBatched = (ms: number, shouldYield: Scheduler["shouldYield"] = defaultShouldYield) =>
-  makeBatched((task) => timeout.set(task, ms), shouldYield)
+  makeBatched((task) => setTimeout(task, ms), shouldYield)
 
 /** @internal */
 export const currentScheduler: FiberRef<Scheduler> = globalValue(

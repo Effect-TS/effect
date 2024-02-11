@@ -6,7 +6,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
-import * as timeout from "effect/internal/timeout"
 import * as Layer from "effect/Layer"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
@@ -48,7 +47,7 @@ export class GetNameById extends Request.TaggedClass("GetNameById")<string, stri
 
 const delay = <A, E, R>(self: Effect.Effect<A, E, R>) =>
   Effect.zipRight(
-    Effect.promise(() => new Promise((r) => timeout.set(() => r(0), 0))),
+    Effect.promise(() => new Promise((r) => setTimeout(() => r(0), 0))),
     self
   )
 

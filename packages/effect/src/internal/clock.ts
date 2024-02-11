@@ -5,7 +5,6 @@ import type * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
 import { constFalse } from "../Function.js"
 import * as core from "./core.js"
-import * as timeout from "./timeout.js"
 
 /** @internal */
 const ClockSymbolKey = "effect/Clock"
@@ -29,12 +28,12 @@ export const globalClockScheduler: Clock.ClockScheduler = {
       return constFalse
     }
     let completed = false
-    const handle = timeout.set(() => {
+    const handle = setTimeout(() => {
       completed = true
       task()
     }, millis)
     return () => {
-      timeout.clear(handle)
+      clearTimeout(handle)
       return !completed
     }
   }

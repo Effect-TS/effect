@@ -1,6 +1,5 @@
 import * as it from "effect-test/utils/extend"
 import * as Effect from "effect/Effect"
-import * as timeout from "effect/internal/timeout"
 import * as Scheduler from "effect/Scheduler"
 import { assert, describe } from "vitest"
 
@@ -15,27 +14,27 @@ describe("Effect", () => {
           0,
           Scheduler.makeBatched((runBatch) => {
             ps000.push(0)
-            timeout.set(runBatch, 0)
+            setTimeout(runBatch, 0)
           })
         ],
         [
           100,
           Scheduler.makeBatched((runBatch) => {
             ps100.push(100)
-            timeout.set(runBatch, 0)
+            setTimeout(runBatch, 0)
           })
         ],
         [
           200,
           Scheduler.makeBatched((runBatch) => {
             ps200.push(200)
-            timeout.set(runBatch, 0)
+            setTimeout(runBatch, 0)
           })
         ],
         [
           300,
           Scheduler.makeBatched((runBatch) => {
-            timeout.set(runBatch, 0)
+            setTimeout(runBatch, 0)
           })
         ]
       )
