@@ -78,6 +78,12 @@ export declare namespace Router {
    * @category models
    */
   export type Response = [index: number, response: Schema.ExitFrom<any, any> | ReadonlyArray<Schema.ExitFrom<any, any>>]
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ResponseEffect = Schema.ExitFrom<any, any> | ReadonlyArray<Schema.ExitFrom<any, any>>
 }
 
 const fromSet = <Reqs extends Schema.TaggedRequest.Any, R>(
@@ -276,6 +282,75 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
       ),
       Effect.map(([_, queue]) => Stream.fromChannel(channelFromQueue(queue))),
       Stream.unwrap
+    )
+}
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?: {
+  readonly spanPrefix?: string
+}) => {
+  const spanPrefix = options?.spanPrefix ?? "Rpc.router "
+  const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
+    .union(
+      ...[...router.rpcs].map((rpc) =>
+        Schema.transform(
+          rpc.schema,
+          Schema.to(Schema.tuple(rpc.schema, Schema.any)),
+          (request) => [request, rpc] as const,
+          ([request]) => request
+        )
+      )
+    )
+  const schemaArray = Schema.array(Rpc.RequestSchema(schema))
+  const decode = Schema.decodeUnknown(schemaArray)
+  const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.chunk(Serializable.exitSchema(req))))
+
+  return (u: unknown): Effect.Effect<ReadonlyArray<Router.ResponseEffect>, ParseError, Router.Context<R>> =>
+    Effect.flatMap(
+      decode(u),
+      Effect.forEach((req): Effect.Effect<Router.ResponseEffect, ParseError, any> => {
+        const [request, rpc] = req.request
+        if (rpc._tag === "Effect") {
+          const encode = getEncode(request)
+          return pipe(
+            Effect.exit(rpc.handler(request)),
+            Effect.flatMap(encode),
+            Effect.orDie,
+            Effect.locally(Rpc.currentHeaders, req.headers as any),
+            Effect.withSpan(`${spanPrefix}${request._tag}`, {
+              parent: {
+                _tag: "ExternalSpan",
+                traceId: req.traceId,
+                spanId: req.spanId,
+                sampled: req.sampled,
+                context: Context.empty()
+              }
+            })
+          )
+        }
+        const encode = getEncodeChunk(request)
+        return pipe(
+          rpc.handler(request),
+          Stream.map(Exit.succeed),
+          Stream.catchAllCause((cause) => Stream.succeed(Exit.failCause(cause))),
+          Stream.runCollect,
+          Effect.flatMap(encode),
+          Effect.locally(Rpc.currentHeaders, req.headers as any),
+          Effect.withSpan(`${spanPrefix}${request._tag}`, {
+            parent: {
+              _tag: "ExternalSpan",
+              traceId: req.traceId,
+              spanId: req.spanId,
+              sampled: req.sampled,
+              context: Context.empty()
+            }
+          })
+        )
+      }, { concurrency: "unbounded" })
     )
 }
 

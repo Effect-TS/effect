@@ -116,6 +116,7 @@ const router = Router.make(
 )
 
 const handler = Router.toHandler(router)
+const handlerEffect = Router.toHandlerEffect(router)
 const handlerUndecoded = Router.toHandlerUndecoded(router)
 const handlerArray = (u: ReadonlyArray<unknown>) =>
   handler(u.map((request, i) => ({
@@ -132,7 +133,18 @@ const handlerArray = (u: ReadonlyArray<unknown>) =>
       ReadonlyArray.filter((_): _ is S.ExitFrom<any, any> => Array.isArray(_) === false)
     ))
   )
+const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
+  handlerEffect(u.map((request, i) => ({
+    request,
+    traceId: "traceId",
+    spanId: `spanId${i}`,
+    sampled: true,
+    headers: {}
+  }))).pipe(
+    Effect.map(ReadonlyArray.filter((_): _ is S.ExitFrom<any, any> => Array.isArray(_) === false))
+  )
 const resolver = Resolver.make(handler)<typeof router>()
+const resolverEffect = Resolver.makeEffect(handlerEffect)<typeof router>()
 const resolverWithHeaders = Resolver.annotateHeadersEffect(
   resolver,
   Effect.succeed({
@@ -146,6 +158,55 @@ describe("Router", () => {
     const date = new Date()
     const result = await Effect.runPromise(
       handlerArray([
+        { _tag: "Greet", name: "John" },
+        { _tag: "Fail", name: "" },
+        { _tag: "FailNoInput" },
+        { _tag: "EncodeInput", date: date.toISOString() },
+        { _tag: "EncodeDate", date: date.toISOString() },
+        { _tag: "Refined", number: 11 },
+        { _tag: "CreatePost", body: "hello" },
+        { _tag: "SpanName" },
+        { _tag: "GetName" }
+      ])
+    )
+
+    assert.deepStrictEqual(result, [{
+      _tag: "Success",
+      value: "Hello, John!"
+    }, {
+      _tag: "Failure",
+      cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } }
+    }, {
+      _tag: "Failure",
+      cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } }
+    }, {
+      _tag: "Success",
+      value: date.toISOString()
+    }, {
+      _tag: "Success",
+      value: date.toISOString()
+    }, {
+      _tag: "Success",
+      value: 11
+    }, {
+      _tag: "Success",
+      value: {
+        id: 1,
+        body: "hello"
+      }
+    }, {
+      _tag: "Success",
+      value: "Rpc.router SpanName"
+    }, {
+      _tag: "Success",
+      value: "John"
+    }])
+  })
+
+  it("handlerEffect", async () => {
+    const date = new Date()
+    const result = await Effect.runPromise(
+      handlerEffectArray([
         { _tag: "Greet", name: "John" },
         { _tag: "Fail", name: "" },
         { _tag: "FailNoInput" },
@@ -215,6 +276,25 @@ describe("Router", () => {
     ])
   })
 
+  it("handlerEffect/ stream", async () => {
+    const result = await Effect.runPromise(
+      handlerEffect([{
+        request: { _tag: "Counts" },
+        traceId: "traceId",
+        spanId: "spanId",
+        sampled: true,
+        headers: {}
+      }])
+    )
+    assert.deepStrictEqual(result, [[
+      { _tag: "Success", value: 1 },
+      { _tag: "Success", value: 2 },
+      { _tag: "Success", value: 3 },
+      { _tag: "Success", value: 4 },
+      { _tag: "Success", value: 5 }
+    ]])
+  })
+
   test("handlerUndecoded", () =>
     Effect.gen(function*(_) {
       const result = yield* _(
@@ -227,7 +307,13 @@ describe("Router", () => {
     }).pipe(Effect.runPromise))
 })
 
-describe("Resolver", () => {
+describe.each([{
+  name: "Resolver.make",
+  resolver
+}, {
+  name: "Resolver.makeEffect",
+  resolver: resolverEffect
+}])("$name", ({ resolver }) => {
   test("effect", () =>
     Effect.gen(function*(_) {
       const name = yield* _(Rpc.call(new SpanName(), resolver))

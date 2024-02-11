@@ -38,3 +38,21 @@ export const make = <R extends Router.Router<any, any>>(
       Stream.unwrap
     )
   )<R>()
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeEffect = <R extends Router.Router<any, any>>(
+  client: Client.Client.Default
+): RequestResolver.RequestResolver<
+  Rpc.Request<Router.Router.Request<R>>,
+  Serializable.SerializableWithResult.Context<Router.Router.Request<R>>
+> =>
+  Resolver.makeEffect((requests) =>
+    client(ClientRequest.post("", {
+      body: Body.unsafeJson(requests)
+    })).pipe(
+      Effect.flatMap((_) => _.json)
+    )
+  )<R>()
