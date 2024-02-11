@@ -203,8 +203,14 @@ describe("Option", () => {
   it("andThen", () => {
     expect(pipe(_.some(1), _.andThen(() => _.some(2)))).toStrictEqual(_.some(2))
     expect(pipe(_.some(1), _.andThen(_.some(2)))).toStrictEqual(_.some(2))
+    expect(pipe(_.some(1), _.andThen(2))).toStrictEqual(_.some(2))
+    expect(pipe(_.some(1), _.andThen(() => 2))).toStrictEqual(_.some(2))
+    expect(pipe(_.some(1), _.andThen((a) => a))).toStrictEqual(_.some(1))
     expect(_.andThen(_.some(1), () => _.some(2))).toStrictEqual(_.some(2))
     expect(_.andThen(_.some(1), _.some(2))).toStrictEqual(_.some(2))
+    expect(_.andThen(_.some(1), 2)).toStrictEqual(_.some(2))
+    expect(_.andThen(_.some(1), () => 2)).toStrictEqual(_.some(2))
+    expect(_.andThen(_.some(1), (a) => a)).toStrictEqual(_.some(1))
   })
 
   it("orElse", () => {
