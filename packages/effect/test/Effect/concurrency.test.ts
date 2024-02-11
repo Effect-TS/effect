@@ -49,7 +49,7 @@ describe("Effect", () => {
       const release = yield* $(Deferred.make<number>())
       const acquire = yield* $(Deferred.make<void>())
       const fiber = yield* $(
-        Effect.asyncEffect<unknown, unknown, never, unknown, unknown, never>((_) =>
+        Effect.asyncEffect<void, never, never, never, never, never>((_) =>
           // This will never complete because the callback is never invoked
           Effect.acquireUseRelease(
             Deferred.succeed(acquire, void 0),
