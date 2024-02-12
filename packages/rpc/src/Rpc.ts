@@ -12,6 +12,7 @@ import { dual, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type * as PrimaryKey from "effect/PrimaryKey"
 import type * as ReadonlyRecord from "effect/ReadonlyRecord"
 import type * as EffectRequest from "effect/Request"
 import type * as RequestResolver from "effect/RequestResolver"
@@ -239,6 +240,14 @@ export interface Request<A extends Schema.TaggedRequest.Any> extends
   EffectRequest.Request<
     EffectRequest.Request.Success<A>,
     EffectRequest.Request.Error<A>
+  >,
+  PrimaryKey.PrimaryKey,
+  Serializable.WithResult<
+    Serializable.WithResult.Context<A>,
+    Schema.Schema.From<A[typeof Serializable.symbolResult]["Failure"]>,
+    Schema.Schema.To<A[typeof Serializable.symbolResult]["Failure"]>,
+    Schema.Schema.From<A[typeof Serializable.symbolResult]["Success"]>,
+    Schema.Schema.To<A[typeof Serializable.symbolResult]["Success"]>
   >
 {
   readonly request: A

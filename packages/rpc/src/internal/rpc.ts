@@ -1,8 +1,9 @@
 import type * as Headers from "@effect/platform/Http/Headers"
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
+import * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
+import * as PrimaryKey from "effect/PrimaryKey"
 import * as Request from "effect/Request"
 import type * as Rpc from "../Rpc.js"
 
@@ -36,13 +37,24 @@ export const makeRequest = <A extends Schema.TaggedRequest.Any>(
     readonly sampled: boolean
     readonly headers: Headers.Headers
   }
-): Rpc.Request<A> => ({
-  ...options,
-  [Request.RequestTypeId]: undefined as any,
-  [Equal.symbol](that: Rpc.Request<A>) {
-    return Equal.equals(options.request, that.request)
-  },
-  [Hash.symbol]() {
-    return Hash.combine(Hash.hash(options.request))
-  }
-} as Rpc.Request<A>)
+): Rpc.Request<A> => {
+  const isStream = StreamRequestTypeId in options.request
+  const hash = Hash.hash(options.request)
+  return ({
+    ...options,
+    [Request.RequestTypeId]: undefined as any,
+    [PrimaryKey.symbol]: () => `${options.request._tag}:${hash}`,
+    [Serializable.symbolResult]: {
+      Success: isStream
+        ? Schema.never
+        : Serializable.successSchema(options.request as any),
+      Failure: isStream ? Schema.never : Serializable.failureSchema(options.request as any)
+    },
+    [Equal.symbol](that: Rpc.Request<A>) {
+      return Equal.equals(options.request, that.request)
+    },
+    [Hash.symbol]() {
+      return hash
+    }
+  } as Rpc.Request<A>)
+}
