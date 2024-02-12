@@ -1,5 +1,80 @@
 # effect
 
+## 2.3.3
+
+### Patch Changes
+
+- [#2090](https://github.com/Effect-TS/effect/pull/2090) [`efd41d8`](https://github.com/Effect-TS/effect/commit/efd41d8131c3d90867608969ef7c4eef490eb5e6) Thanks [@hsubra89](https://github.com/hsubra89)! - Update `RateLimiter` to support passing in a custom `cost` per effect. This is really useful for API(s) that have a "credit cost" per endpoint.
+
+  Usage Example :
+
+  ```ts
+  import { Effect, RateLimiter } from "effect";
+  import { compose } from "effect/Function";
+
+  const program = Effect.scoped(
+    Effect.gen(function* ($) {
+      // Create a rate limiter that has an hourly limit of 1000 credits
+      const rateLimiter = yield* $(RateLimiter.make(1000, "1 hours"));
+      // Query API costs 1 credit per call ( 1 is the default cost )
+      const queryAPIRL = compose(rateLimiter, RateLimiter.withCost(1));
+      // Mutation API costs 5 credits per call
+      const mutationAPIRL = compose(rateLimiter, RateLimiter.withCost(5));
+      // ...
+      // Use the pre-defined rate limiters
+      yield* $(queryAPIRL(Effect.log("Sample Query")));
+      yield* $(mutationAPIRL(Effect.log("Sample Mutation")));
+
+      // Or set a cost on-the-fly
+      yield* $(
+        rateLimiter(Effect.log("Another query with a different cost")).pipe(
+          RateLimiter.withCost(3),
+        ),
+      );
+    }),
+  );
+  ```
+
+- [#2097](https://github.com/Effect-TS/effect/pull/2097) [`0f83515`](https://github.com/Effect-TS/effect/commit/0f83515a9c01d13c7c15a3f026e02d22c3c6bb7f) Thanks [@IMax153](https://github.com/IMax153)! - Updates the `RateLimiter.make` constructor to take an object of `RateLimiter.Options`, which allows for specifying the rate-limiting algorithm to utilize:
+
+  You can choose from either the `token-bucket` or the `fixed-window` algorithms for rate-limiting.
+
+  ```ts
+  export declare namespace RateLimiter {
+    export interface Options {
+      /**
+       * The maximum number of requests that should be allowed.
+       */
+      readonly limit: number;
+      /**
+       * The interval to utilize for rate-limiting requests. The semantics of the
+       * specified `interval` vary depending on the chosen `algorithm`:
+       *
+       * `token-bucket`: The maximum number of requests will be spread out over
+       * the provided interval if no tokens are available.
+       *
+       * For example, for a `RateLimiter` using the `token-bucket` algorithm with
+       * a `limit` of `10` and an `interval` of `1 seconds`, `1` request can be
+       * made every `100 millis`.
+       *
+       * `fixed-window`: The maximum number of requests will be reset during each
+       * interval. For example, for a `RateLimiter` using the `fixed-window`
+       * algorithm with a `limit` of `10` and an `interval` of `1 seconds`, a
+       * maximum of `10` requests can be made each second.
+       */
+      readonly interval: DurationInput;
+      /**
+       * The algorithm to utilize for rate-limiting requests.
+       *
+       * Defaults to `token-bucket`.
+       */
+      readonly algorithm?: "fixed-window" | "token-bucket";
+    }
+  }
+  ```
+
+- [#2097](https://github.com/Effect-TS/effect/pull/2097) [`0f83515`](https://github.com/Effect-TS/effect/commit/0f83515a9c01d13c7c15a3f026e02d22c3c6bb7f) Thanks [@IMax153](https://github.com/IMax153)! - return the resulting available permits from Semaphore.release
+
 ## 2.3.2
 
 ### Patch Changes
