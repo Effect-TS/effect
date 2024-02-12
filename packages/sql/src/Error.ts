@@ -1,24 +1,24 @@
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 import type { ParseIssue } from "@effect/schema/ParseResult"
 import * as Data from "effect/Data"
 import * as Predicate from "effect/Predicate"
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  * @category symbols
  */
 export const SqlErrorTypeId: unique symbol = Symbol.for("@effect/sql/Error")
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  * @category symbols
  */
 export type SqlErrorTypeId = typeof SqlErrorTypeId
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  * @category errors
  */
 export class SqlError extends Data.TaggedError("SqlError")<{
@@ -47,7 +47,7 @@ export class SqlError extends Data.TaggedError("SqlError")<{
 }
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  * @category errors
  */
 export class ResultLengthMismatch extends Data.TaggedError("ResultLengthMismatch")<{
@@ -58,7 +58,7 @@ export class ResultLengthMismatch extends Data.TaggedError("ResultLengthMismatch
 }
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  * @category errors
  */
 export class SchemaError extends Data.TaggedError("SchemaError")<{

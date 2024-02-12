@@ -1,5 +1,5 @@
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 import type { Effect } from "effect/Effect"
 import type { Pipeable } from "effect/Pipeable"
@@ -10,19 +10,19 @@ import * as internal from "./internal/statement.js"
 
 /**
  * @category type id
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const FragmentId: unique symbol = internal.FragmentId
 
 /**
  * @category type id
- * @since 2.0.0
+ * @since 1.0.0
  */
 export type FragmentId = typeof FragmentId
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Fragment {
   readonly [FragmentId]: (_: never) => FragmentId
@@ -31,7 +31,7 @@ export interface Fragment {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlError>, Pipeable {
   readonly withoutTransform: Effect<ReadonlyArray<A>, SqlError>
@@ -45,13 +45,13 @@ export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlErro
 
 /**
  * @category guard
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const isFragment: (u: unknown) => u is Fragment = internal.isFragment
 
 /**
  * @category guard
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const isCustom: <A extends Custom<any, any, any, any>>(
   kind: A["kind"]
@@ -59,7 +59,7 @@ export const isCustom: <A extends Custom<any, any, any, any>>(
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export type Segment =
   | Literal
@@ -73,7 +73,7 @@ export type Segment =
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Literal {
   readonly _tag: "Literal"
@@ -83,7 +83,7 @@ export interface Literal {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Identifier {
   readonly _tag: "Identifier"
@@ -92,7 +92,7 @@ export interface Identifier {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Parameter {
   readonly _tag: "Parameter"
@@ -101,7 +101,7 @@ export interface Parameter {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface ArrayHelper {
   readonly _tag: "ArrayHelper"
@@ -110,7 +110,7 @@ export interface ArrayHelper {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface RecordInsertHelper {
   readonly _tag: "RecordInsertHelper"
@@ -119,7 +119,7 @@ export interface RecordInsertHelper {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface RecordUpdateHelper {
   readonly _tag: "RecordUpdateHelper"
@@ -129,7 +129,7 @@ export interface RecordUpdateHelper {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface RecordUpdateHelperSingle {
   readonly _tag: "RecordUpdateHelperSingle"
@@ -139,7 +139,7 @@ export interface RecordUpdateHelperSingle {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Custom<
   T extends string = string,
@@ -156,7 +156,7 @@ export interface Custom<
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const custom: <C extends Custom<any, any, any, any>>(
   kind: C["kind"]
@@ -164,7 +164,7 @@ export const custom: <C extends Custom<any, any, any, any>>(
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export type Primitive =
   | string
@@ -178,7 +178,7 @@ export type Primitive =
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export type PrimitiveKind =
   | "string"
@@ -192,7 +192,7 @@ export type PrimitiveKind =
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export type Helper =
   | ArrayHelper
@@ -204,13 +204,13 @@ export type Helper =
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export type Argument = Primitive | Helper | Fragment
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Constructor {
   <A extends object = Row>(
@@ -244,7 +244,7 @@ export interface Constructor {
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const make: (
   acquirer: Connection.Acquirer,
@@ -253,7 +253,7 @@ export const make: (
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const unsafe: (
   acquirer: Connection.Acquirer,
@@ -265,7 +265,7 @@ export const unsafe: (
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const unsafeFragment: (
   sql: string,
@@ -274,19 +274,19 @@ export const unsafeFragment: (
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const and: (clauses: ReadonlyArray<string | Fragment>) => Fragment = internal.and
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const or: (clauses: ReadonlyArray<string | Fragment>) => Fragment = internal.or
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const csv: {
   (values: ReadonlyArray<string | Fragment>): Fragment
@@ -295,7 +295,7 @@ export const csv: {
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const join: (
   literal: string,
@@ -305,7 +305,7 @@ export const join: (
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Compiler {
   readonly compile: (
@@ -315,7 +315,7 @@ export interface Compiler {
 
 /**
  * @category compiler
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
   parameterPlaceholder: (index: number) => string,
@@ -342,11 +342,11 @@ export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
 ) => Compiler = internal.makeCompiler
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const defaultEscape: (c: string) => (str: string) => string = internal.defaultEscape
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const primitiveKind: (value: Primitive) => PrimitiveKind = internal.primitiveKind

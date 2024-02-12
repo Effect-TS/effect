@@ -1,5 +1,5 @@
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -12,7 +12,7 @@ import type { SqlError } from "./Error.js"
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface MigratorOptions {
   readonly loader: Loader
@@ -22,7 +22,7 @@ export interface MigratorOptions {
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export type Loader = Effect.Effect<
   ReadonlyArray<ResolvedMigration>,
@@ -31,7 +31,7 @@ export type Loader = Effect.Effect<
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export type ResolvedMigration = readonly [
   id: number,
@@ -41,7 +41,7 @@ export type ResolvedMigration = readonly [
 
 /**
  * @category model
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface Migration {
   readonly id: number
@@ -51,7 +51,7 @@ export interface Migration {
 
 /**
  * @category errors
- * @since 2.0.0
+ * @since 1.0.0
  */
 export class MigrationError extends Data.TaggedError("MigrationError")<{
   readonly _tag: "MigrationError"
@@ -66,7 +66,7 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
 
 /**
  * @category constructor
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const make = <R extends Client>({
   dumpSchema,
@@ -275,7 +275,7 @@ export const make = <R extends Client>({
 const migrationOrder = Order.make<ResolvedMigration>(([a], [b]) => Order.number(a, b))
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const fromGlob = (
   migrations: Record<string, () => Promise<any>>
@@ -295,7 +295,7 @@ export const fromGlob = (
   )
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const fromBabelGlob = (migrations: Record<string, any>): Loader =>
   pipe(

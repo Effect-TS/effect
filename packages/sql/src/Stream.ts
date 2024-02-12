@@ -1,5 +1,5 @@
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -9,7 +9,7 @@ import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  */
 export const asyncPauseResume = <R, E, A>(
   register: (emit: {
