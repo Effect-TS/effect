@@ -26,6 +26,9 @@ export class SqlError extends Data.TaggedError("SqlError")<{
   readonly code?: string
   readonly error: unknown
 }> {
+  /**
+   * @since 1.0.0
+   */
   readonly [SqlErrorTypeId] = SqlErrorTypeId
   constructor(params: {
     readonly message: string
@@ -54,6 +57,9 @@ export class ResultLengthMismatch extends Data.TaggedError("ResultLengthMismatch
   readonly expected: number
   readonly actual: number
 }> {
+  /**
+   * @since 1.0.0
+   */
   readonly [SqlErrorTypeId] = SqlErrorTypeId
 }
 
@@ -65,5 +71,8 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
   readonly type: "request" | "result"
   readonly error: ParseIssue
 }> {
+  /**
+   * @since 1.0.0
+   */
   readonly [SqlErrorTypeId] = SqlErrorTypeId
 }
