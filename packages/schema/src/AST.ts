@@ -1866,6 +1866,49 @@ export const getParameterBase = (
   }
 }
 
+const equalsTemplateLiteralSpan = ReadonlyArray.getEquivalence<TemplateLiteralSpan>((self, that) =>
+  self.type._tag === that.type._tag && self.literal === that.literal
+)
+
+const equalsEnums = ReadonlyArray.getEquivalence<readonly [string, string | number]>((self, that) =>
+  that[0] === self[0] && that[1] === self[1]
+)
+
+const equals = (self: AST, that: AST) => {
+  switch (self._tag) {
+    case "Literal":
+      return isLiteral(that) && that.literal === self.literal
+    case "UniqueSymbol":
+      return isUniqueSymbol(that) && that.symbol === self.symbol
+    case "UndefinedKeyword":
+    case "VoidKeyword":
+    case "NeverKeyword":
+    case "UnknownKeyword":
+    case "AnyKeyword":
+    case "StringKeyword":
+    case "NumberKeyword":
+    case "BooleanKeyword":
+    case "BigIntKeyword":
+    case "SymbolKeyword":
+    case "ObjectKeyword":
+      return that._tag === self._tag
+    case "TemplateLiteral":
+      return isTemplateLiteral(that) && that.head === self.head && equalsTemplateLiteralSpan(that.spans, self.spans)
+    case "Enums":
+      return isEnums(that) && equalsEnums(that.enums, self.enums)
+    case "Refinement":
+    case "Tuple":
+    case "TypeLiteral":
+    case "Union":
+    case "Suspend":
+    case "Transform":
+    case "Declaration":
+      return self === that
+  }
+}
+
+const intersection = ReadonlyArray.intersectionWith(equals)
+
 const _keyof = (ast: AST): Array<AST> => {
   switch (ast._tag) {
     case "TypeLiteral":
@@ -1874,9 +1917,15 @@ const _keyof = (ast: AST): Array<AST> => {
       ).concat(ast.indexSignatures.map((is) => getParameterBase(is.parameter)))
     case "Suspend":
       return _keyof(ast.f())
-    default:
-      throw new Error(`keyof: unsupported schema (${format(ast)})`)
+    case "Union":
+      return ast.types.slice(1).reduce(
+        (out: Array<AST>, ast) => intersection(out, _keyof(ast)),
+        _keyof(ast.types[0])
+      )
+    case "Transform":
+      return _keyof(ast.to)
   }
+  throw new Error(`keyof: unsupported schema (${format(ast)})`)
 }
 
 /** @internal */
