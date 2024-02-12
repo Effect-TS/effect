@@ -154,6 +154,7 @@ describe("Schema > Class", () => {
   it("is", () => {
     const is = S.is(S.to(Person))
     expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
+    expect(is({ id: 1, name: "name" })).toEqual(false)
   })
 
   it("schema", async () => {
@@ -477,5 +478,9 @@ describe("Schema > Class", () => {
         ),
       Exit.fail("fail")
     )
+  })
+
+  it("encode works with struct", () => {
+    assert.doesNotThrow(() => S.encodeSync(Person)({ id: 1, name: "John" } as Person))
   })
 })
