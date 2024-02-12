@@ -1,5 +1,11 @@
 # effect
 
+## 2.3.4
+
+### Patch Changes
+
+- [#2107](https://github.com/Effect-TS/effect/pull/2107) [`17bda66`](https://github.com/Effect-TS/effect/commit/17bda66431c999a546920c10adb205e6c8bea7d1) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure large semaphore takes don't block smaller takes
+
 ## 2.3.3
 
 ### Patch Changes
