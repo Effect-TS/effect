@@ -17,7 +17,7 @@ describe("RequestResolver", () => {
       id: Schema.number
     }) {
       [PrimaryKey.symbol]() {
-        return String(this.id)
+        return `MyRequest:${this.id}`
       }
     }
 

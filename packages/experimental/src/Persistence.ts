@@ -131,8 +131,13 @@ export declare namespace ResultPersistence {
    * @category models
    */
   export interface Key<R, IE, E, IA, A> extends PrimaryKey.PrimaryKey, Serializable.WithResult<R, IE, E, IA, A> {
-    readonly _tag: string
   }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type KeyAny = Key<any, any, any, any, any> | Key<any, never, never, any, any>
 }
 
 /**
@@ -178,7 +183,7 @@ export const layerResult = Layer.effect(
             )
           const makeKey = <R, IE, E, IA, A>(
             key: ResultPersistence.Key<R, IE, E, IA, A>
-          ) => `${key._tag}:${key[PrimaryKey.symbol]()}`
+          ) => key[PrimaryKey.symbol]()
 
           return identity<ResultPersistenceStore>({
             get: (key) =>

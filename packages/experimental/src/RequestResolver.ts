@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
@@ -108,25 +107,47 @@ export const dataLoader = dual<
 
 /**
  * @since 1.0.0
+ * @category model
+ */
+export interface PersistedRequest<R, IE, E, IA, A>
+  extends Request.Request<A, E>, PrimaryKey.PrimaryKey, Serializable.WithResult<R, IE, E, IA, A>
+{}
+
+/**
+ * @since 1.0.0
+ * @category model
+ */
+export declare namespace PersistedRequest {
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export type Any = PersistedRequest<any, any, any, any, any> | PersistedRequest<any, never, never, any, any>
+}
+
+/**
+ * @since 1.0.0
  * @category combinators
  */
-export const persisted = dual<
-  (storeId: string) => <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
+export const persisted: {
+  (
+    storeId: string
+  ): <Req extends PersistedRequest.Any>(
     self: RequestResolver.RequestResolver<Req, never>
   ) => Effect.Effect<
     RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
     never,
     Persistence.ResultPersistence | Scope.Scope
-  >,
-  <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
+  >
+  <Req extends PersistedRequest.Any>(
     self: RequestResolver.RequestResolver<Req, never>,
     storeId: string
-  ) => Effect.Effect<
+  ): Effect.Effect<
     RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
     never,
     Persistence.ResultPersistence | Scope.Scope
   >
->(2, <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
+} = dual(2, <Req extends PersistedRequest.Any>(
   self: RequestResolver.RequestResolver<Req, never>,
   storeId: string
 ): Effect.Effect<
