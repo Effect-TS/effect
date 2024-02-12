@@ -35,7 +35,7 @@ import * as supervisor from "../supervisor.js"
 
 /** @internal */
 class Semaphore {
-  public waiters = new Set<() => boolean>()
+  public waiters = new Set<() => void>()
   public taken = 0
 
   constructor(readonly permits: number) {}
@@ -49,12 +49,11 @@ class Semaphore {
       if (this.free < n) {
         const observer = () => {
           if (this.free < n) {
-            return false
+            return
           }
           this.waiters.delete(observer)
           this.taken += n
           resume(core.succeed(n))
-          return true
         }
         this.waiters.add(observer)
         return Either.left(core.sync(() => {
@@ -72,7 +71,8 @@ class Semaphore {
         fiber.getFiberRef(currentScheduler).scheduleTask(() => {
           const iter = this.waiters.values()
           let item = iter.next()
-          while (item.done === false && item.value() === true) {
+          while (item.done === false && this.free > 0) {
+            item.value()
             item = iter.next()
           }
         }, fiber.getFiberRef(core.currentSchedulingPriority))
