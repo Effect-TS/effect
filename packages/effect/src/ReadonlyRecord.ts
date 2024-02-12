@@ -25,13 +25,15 @@ export type ReadonlyRecord<in out K extends string | symbol, out A> = {
  * @since 2.0.0
  */
 export declare namespace ReadonlyRecord {
+  type IsFiniteString<T extends string> = [T] extends [`${infer Head}${infer Rest}`]
+    ? string extends Head ? false : Rest extends "" ? true : IsFiniteString<Rest> :
+    false
+
   /**
    * @since 2.0.0
    */
-  export type NonLiteralKey<K extends string | symbol> = (
-    | (K extends string ? string : never)
-    | (K extends symbol ? symbol : never)
-  ) extends infer X ? X extends string | symbol ? X : never : never
+  export type NonLiteralKey<K extends string | symbol> = K extends string ? IsFiniteString<K> extends true ? string : K
+    : symbol
 
   /**
    * @since 2.0.0
@@ -59,7 +61,7 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
 export const empty = <K extends string | symbol = never, V = never>(): Record<
   ReadonlyRecord.NonLiteralKey<K>,
   V
-> => ({})
+> => ({} as any)
 
 /**
  * Determine if a record is empty.

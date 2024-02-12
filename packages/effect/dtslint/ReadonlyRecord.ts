@@ -506,4 +506,16 @@ ReadonlyRecord.has(structNumbers, "c")
 export const empty1: Record<string, number> = ReadonlyRecord.empty()
 export const empty2: Record<symbol, number> = ReadonlyRecord.empty()
 // @ts-expect-error
-export const empty3: Record<"a", number> = ReadonlyRecord.empty()
+export const empty3: Record<"a", number> = ReadonlyRecord.empty<never>()
+
+// $ExpectType Record<never, never>
+ReadonlyRecord.empty()
+
+// $ExpectType Record<string, never>
+ReadonlyRecord.empty<"a">()
+
+// $ExpectType Record<`a${string}bc`, never>
+ReadonlyRecord.empty<`a${string}bc`>()
+
+// $ExpectType Record<string | symbol, never>
+ReadonlyRecord.empty<string | symbol>()
