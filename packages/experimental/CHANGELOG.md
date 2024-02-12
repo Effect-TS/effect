@@ -1,5 +1,17 @@
 # @effect/experimental
 
+## 0.9.4
+
+### Patch Changes
+
+- [#2106](https://github.com/Effect-TS/effect/pull/2106) [`b7d9a55`](https://github.com/Effect-TS/effect/commit/b7d9a55ebb3db5c1d64a2c75c5b1f12ebe1faf39) Thanks [@tim-smart](https://github.com/tim-smart)! - don't require tags for Persistence keys
+
+- Updated dependencies [[`efd41d8`](https://github.com/Effect-TS/effect/commit/efd41d8131c3d90867608969ef7c4eef490eb5e6), [`0f83515`](https://github.com/Effect-TS/effect/commit/0f83515a9c01d13c7c15a3f026e02d22c3c6bb7f), [`0f83515`](https://github.com/Effect-TS/effect/commit/0f83515a9c01d13c7c15a3f026e02d22c3c6bb7f)]:
+  - effect@2.3.3
+  - @effect/platform@0.44.4
+  - @effect/platform-node@0.43.4
+  - @effect/schema@0.62.3
+
 ## 0.9.3
 
 ### Patch Changes
