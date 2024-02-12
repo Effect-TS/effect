@@ -65,22 +65,24 @@ class Semaphore {
       return Either.right(core.succeed(n))
     })
 
-  readonly updateTaken = (f: (n: number) => number): Effect.Effect<void> =>
+  readonly updateTaken = (f: (n: number) => number): Effect.Effect<number> =>
     core.withFiberRuntime((fiber) => {
       this.taken = f(this.taken)
-      fiber.getFiberRef(currentScheduler).scheduleTask(() => {
-        const iter = this.waiters.values()
-        let item = iter.next()
-        while (item.done === false && item.value() === true) {
-          item = iter.next()
-        }
-      }, fiber.getFiberRef(core.currentSchedulingPriority))
-      return core.unit
+      if (this.waiters.size > 0) {
+        fiber.getFiberRef(currentScheduler).scheduleTask(() => {
+          const iter = this.waiters.values()
+          let item = iter.next()
+          while (item.done === false && item.value() === true) {
+            item = iter.next()
+          }
+        }, fiber.getFiberRef(core.currentSchedulingPriority))
+      }
+      return core.succeed(this.free)
     })
 
-  readonly release = (n: number): Effect.Effect<void> => this.updateTaken((taken) => taken - n)
+  readonly release = (n: number): Effect.Effect<number> => this.updateTaken((taken) => taken - n)
 
-  readonly releaseAll: Effect.Effect<void> = this.updateTaken((_) => 0)
+  readonly releaseAll: Effect.Effect<number> = this.updateTaken((_) => 0)
 
   readonly withPermits = (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) =>
     core.uninterruptibleMask((restore) =>

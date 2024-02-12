@@ -4673,10 +4673,14 @@ export interface Permit {
  * @since 2.0.0
  */
 export interface Semaphore {
+  /** when the given amount of permits are available, run the effect and release the permits when finished */
   withPermits(permits: number): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  /** take the given amount of permits, suspending if they are not yet available */
   take(permits: number): Effect<number>
-  release(permits: number): Effect<void>
-  releaseAll: Effect<void>
+  /** release the given amount of permits, and return the resulting available permits */
+  release(permits: number): Effect<number>
+  /** release all the taken permits, and return the resulting available permits */
+  releaseAll: Effect<number>
 }
 
 /**
