@@ -41,6 +41,10 @@ describe("ReadonlyArray > headOr", () => {
             └─ Transformation process failure
                └─ Expected NumberFromString, actual "a"`
     )
+
+    const schema2 = S.array(S.NumberFromString).pipe(S.headOr(() => 0))
+    await Util.expectDecodeUnknownSuccess(schema2, ["1"], 1)
+    await Util.expectDecodeUnknownSuccess(schema2, [], 0)
   })
 
   it("decoding (struct)", async () => {

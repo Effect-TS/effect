@@ -3719,18 +3719,24 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<Opti
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const headOr = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>, fallback?: LazyArg<A>): Schema<A, I, R> =>
-  transformOrFail(
-    self,
-    getNumberIndexedAccess(to(self)),
-    (as, _, ast) =>
-      as.length > 0
-        ? ParseResult.succeed(as[0])
-        : fallback
-        ? ParseResult.succeed(fallback())
-        : ParseResult.fail(ParseResult.type(ast, as)),
-    (a) => ParseResult.succeed(ReadonlyArray.of(a))
-  )
+export const headOr: {
+  <A>(fallback?: LazyArg<A>): <I, R>(self: Schema<ReadonlyArray<A>, I, R>) => Schema<A, I, R>
+  <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>, fallback?: LazyArg<A>): Schema<A, I, R>
+} = dual(
+  (args) => isSchema(args[0]),
+  <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>, fallback?: LazyArg<A>): Schema<A, I, R> =>
+    transformOrFail(
+      self,
+      getNumberIndexedAccess(to(self)),
+      (as, _, ast) =>
+        as.length > 0
+          ? ParseResult.succeed(as[0])
+          : fallback
+          ? ParseResult.succeed(fallback())
+          : ParseResult.fail(ParseResult.type(ast, as)),
+      (a) => ParseResult.succeed(ReadonlyArray.of(a))
+    )
+)
 
 /**
  * @category type id
