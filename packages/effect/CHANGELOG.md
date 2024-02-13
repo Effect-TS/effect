@@ -1,5 +1,11 @@
 # effect
 
+## 2.3.5
+
+### Patch Changes
+
+- [#2114](https://github.com/Effect-TS/effect/pull/2114) [`b881365`](https://github.com/Effect-TS/effect/commit/b8813650355322ea2fc1fbaa4f846bd87a7a05f3) Thanks [@IMax153](https://github.com/IMax153)! - Fix the ordering of results returned from batched requests
+
 ## 2.3.4
 
 ### Patch Changes

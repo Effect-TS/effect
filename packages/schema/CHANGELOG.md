@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.62.6
+
+### Patch Changes
+
+- [#2121](https://github.com/Effect-TS/effect/pull/2121) [`aef2b8b`](https://github.com/Effect-TS/effect/commit/aef2b8bb636ada07224dc9cf491bebe622c1aeda) Thanks [@gcanti](https://github.com/gcanti)! - Use the `identity` function in the transformation defining a schema class
+
+- [#2124](https://github.com/Effect-TS/effect/pull/2124) [`7eecb1c`](https://github.com/Effect-TS/effect/commit/7eecb1c6cebe36550df3cca85a46867adbcaa2ca) Thanks [@gcanti](https://github.com/gcanti)! - ParseResult: add missing `decode` / `encode` exports
+
+- Updated dependencies [[`b881365`](https://github.com/Effect-TS/effect/commit/b8813650355322ea2fc1fbaa4f846bd87a7a05f3)]:
+  - effect@2.3.5
+
 ## 0.62.5
 
 ### Patch Changes
