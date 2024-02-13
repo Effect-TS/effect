@@ -101,8 +101,7 @@ describe("HttpServer", () => {
       formData.append("file", new Blob(["test"], { type: "text/plain" }), "test.txt")
       const result = yield* _(
         client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) })),
-        Effect.flatMap((_) => _.json),
-        Effect.scoped
+        HttpC.response.json
       )
       expect(result).toEqual({ ok: true })
     }).pipe(Effect.scoped, runPromise))
@@ -227,9 +226,9 @@ describe("HttpServer", () => {
         Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
-      const todo = yield* _(client(HttpC.request.get("/child/1")), Effect.flatMap((_) => _.text), Effect.scoped)
+      const todo = yield* _(client(HttpC.request.get("/child/1")), HttpC.response.text)
       expect(todo).toEqual("/1")
-      const root = yield* _(client(HttpC.request.get("/child")), Effect.flatMap((_) => _.text), Effect.scoped)
+      const root = yield* _(client(HttpC.request.get("/child")), HttpC.response.text)
       expect(root).toEqual("/")
     }).pipe(Effect.scoped, runPromise))
 
@@ -463,9 +462,8 @@ describe("HttpServer", () => {
       const requestSpan = yield* _(Effect.makeSpan("client request"))
       const body = yield* _(
         client(HttpC.request.get("/")),
-        Effect.flatMap((_) => _.json),
+        HttpC.response.json,
         Effect.withParentSpan(requestSpan),
-        Effect.scoped,
         Effect.repeatN(2)
       )
       expect((body as any).parent.value.spanId).toEqual(requestSpan.spanId)
@@ -504,8 +502,7 @@ describe("HttpServer", () => {
               HttpC.request.setHeader("host", "a.example.com")
             )
           ),
-          Effect.flatMap((_) => _.text),
-          Effect.scoped
+          HttpC.response.text
         )
       ).toEqual("A")
       expect(
@@ -515,8 +512,7 @@ describe("HttpServer", () => {
               HttpC.request.setHeader("host", "b.example.com")
             )
           ),
-          Effect.flatMap((_) => _.text),
-          Effect.scoped
+          HttpC.response.text
         )
       ).toEqual("B")
       expect(
@@ -526,8 +522,7 @@ describe("HttpServer", () => {
               HttpC.request.setHeader("host", "b.org")
             )
           ),
-          Effect.flatMap((_) => _.text),
-          Effect.scoped
+          HttpC.response.text
         )
       ).toEqual("B")
       expect(
@@ -537,8 +532,7 @@ describe("HttpServer", () => {
               HttpC.request.setHeader("host", "c.example.com")
             )
           ),
-          Effect.flatMap((_) => _.text),
-          Effect.scoped
+          HttpC.response.text
         )
       ).toEqual("C")
     }).pipe(Effect.scoped, runPromise))

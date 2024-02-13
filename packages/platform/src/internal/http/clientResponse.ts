@@ -170,3 +170,56 @@ export const schemaNoBody = <
       headers: self.headers
     })
 }
+
+/** @internal */
+export const arrayBuffer = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R>) =>
+  Effect.scoped(Effect.flatMap(effect, (_) => _.arrayBuffer))
+
+/** @internal */
+export const text = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R>) =>
+  Effect.scoped(Effect.flatMap(effect, (_) => _.text))
+
+/** @internal */
+export const json = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R>) =>
+  Effect.scoped(Effect.flatMap(effect, (_) => _.json))
+
+/** @internal */
+export const urlParamsBody = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R>) =>
+  Effect.scoped(Effect.flatMap(effect, (_) => _.urlParamsBody))
+
+/** @internal */
+export const formData = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R>) =>
+  Effect.scoped(Effect.flatMap(effect, (_) => _.formData))
+
+/** @internal */
+export const stream = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R>) =>
+  Stream.unwrapScoped(Effect.map(effect, (_) => _.stream))
+
+/** @internal */
+export const schemaJsonEffect = <
+  R,
+  I extends {
+    readonly status?: number | undefined
+    readonly headers?: Readonly<Record<string, string>> | undefined
+    readonly body?: unknown | undefined
+  },
+  A
+>(schema: Schema.Schema<A, I, R>) => {
+  const decode = schemaJson(schema)
+  return <E, R2>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R2>) =>
+    Effect.scoped(Effect.flatMap(effect, decode))
+}
+
+/** @internal */
+export const schemaNoBodyEffect = <
+  R,
+  I extends {
+    readonly status?: number | undefined
+    readonly headers?: Readonly<Record<string, string>> | undefined
+  },
+  A
+>(schema: Schema.Schema<A, I, R>) => {
+  const decode = schemaNoBody(schema)
+  return <E, R2>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R2>) =>
+    Effect.scoped(Effect.flatMap(effect, decode))
+}
