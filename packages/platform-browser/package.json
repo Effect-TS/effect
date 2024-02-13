@@ -46,7 +46,8 @@
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^",
-    "happy-dom": "^12.10.3"
+    "happy-dom": "^12.10.3",
+    "mock-xmlhttprequest": "^8.3.0"
   },
   "effect": {
     "generateExports": {
@@ -55,5 +56,8 @@
         "Http/*.ts"
       ]
     }
+  },
+  "dependencies": {
+    "multipasta": "^0.1.21"
   }
 }

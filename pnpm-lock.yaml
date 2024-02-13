@@ -279,6 +279,10 @@ importers:
     publishDirectory: dist
 
   packages/platform-browser:
+    dependencies:
+      multipasta:
+        specifier: ^0.1.21
+        version: 0.1.21
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -292,6 +296,9 @@ importers:
       happy-dom:
         specifier: ^12.10.3
         version: 12.10.3
+      mock-xmlhttprequest:
+        specifier: ^8.3.0
+        version: 8.3.0
     publishDirectory: dist
 
   packages/platform-bun:
@@ -5430,6 +5437,11 @@ packages:
   /mock-socket@9.3.1:
     resolution: {integrity: sha512-qxBgB7Qa2sEQgHFjj0dSigq7fX4k6Saisd5Nelwp2q8mlbAFh5dHV9JTTlF8viYJLSSWgMCZFUom8PJcMNBoJw==}
     engines: {node: '>= 8'}
+    dev: true
+
+  /mock-xmlhttprequest@8.3.0:
+    resolution: {integrity: sha512-yjNaP8HskE7GhO0D12kB35+OvCnNAh2fJnD1/mC5Y3WW8WcozJnC23w+8UoU+dmVR4x1KpAB8PPtybY9wI16Ew==}
+    engines: {node: '>=16.0.0'}
     dev: true
 
   /module-definition@3.4.0:
