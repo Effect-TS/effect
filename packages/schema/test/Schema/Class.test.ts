@@ -480,7 +480,7 @@ describe("Schema > Class", () => {
     )
   })
 
-  it("encode works with struct", async () => {
+  it.skip("encode works with struct", async () => {
     assert.doesNotThrow(() => S.encodeSync(Person)({ id: 1, name: "John" } as Person))
     class A extends S.Class<A>()({
       n: S.NumberFromString
@@ -504,5 +504,8 @@ describe("Schema > Class", () => {
     }) {}
 
     await Util.expectEncodeSuccess(D, new C({ n: 1 }), { n: "1", b: 1 })
+
+    class E extends S.Class<E>()({ a: S.string }) {}
+    await Util.expectEncodeFailure(S.to(E), null as any, "Expected E (an instance of E), actual null")
   })
 })

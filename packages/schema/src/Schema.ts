@@ -4923,12 +4923,7 @@ const makeClass = <A, I, R>(
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const declaration: Schema<any, any, never> = declare(
-        [],
-        () => (input, _, ast) =>
-          input instanceof this
-            ? ParseResult.succeed(input)
-            : ParseResult.fail(ParseResult.type(ast, input)),
-        () => (input) => ParseResult.succeed(input),
+        (input): input is any => input instanceof this,
         {
           identifier: this.name,
           title: this.name,
