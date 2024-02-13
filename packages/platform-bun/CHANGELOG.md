@@ -1,5 +1,45 @@
 # @effect/platform-bun
 
+## 0.32.0
+
+### Minor Changes
+
+- [#2119](https://github.com/Effect-TS/effect/pull/2119) [`2b62548`](https://github.com/Effect-TS/effect/commit/2b6254845882f399636d24223c483e5489e3cff4) Thanks [@tim-smart](https://github.com/tim-smart)! - add Scope to Http client
+
+  This change adds a scope to the default http client, ensuring connections are
+  cleaned up if you abort the request at any point.
+
+  Some response helpers have been added to reduce the noise.
+
+  ```ts
+  import * as Http from "@effect/platform/HttpClient";
+  import { Effect } from "effect";
+
+  // instead of
+  Http.request.get("/").pipe(
+    Http.client.fetchOk(),
+    Effect.flatMap((_) => _.json),
+    Effect.scoped,
+  );
+
+  // you can do
+  Http.request.get("/").pipe(Http.client.fetchOk(), Http.response.json);
+
+  // other helpers include
+  Http.response.text;
+  Http.response.stream;
+  Http.response.arrayBuffer;
+  Http.response.urlParamsBody;
+  Http.response.formData;
+  Http.response.schema * Effect;
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`2b62548`](https://github.com/Effect-TS/effect/commit/2b6254845882f399636d24223c483e5489e3cff4)]:
+  - @effect/platform@0.45.0
+  - @effect/platform-node-shared@0.1.8
+
 ## 0.31.7
 
 ### Patch Changes
