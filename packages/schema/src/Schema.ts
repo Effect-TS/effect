@@ -4922,13 +4922,21 @@ const makeClass = <A, I, R>(
       const toSchema = to(selfSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
-      const declaration: Schema<any, any, never> = declare((input): input is any => input instanceof this, {
-        identifier: this.name,
-        title: this.name,
-        description: `an instance of ${this.name}`,
-        pretty: () => (self: any) => `${self.constructor.name}(${pretty(self)})`,
-        arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props))
-      })
+      const declaration: Schema<any, any, never> = declare(
+        [],
+        () => (input, _, ast) =>
+          input instanceof this
+            ? ParseResult.succeed(input)
+            : ParseResult.fail(ParseResult.type(ast, input)),
+        () => (input) => ParseResult.succeed(input),
+        {
+          identifier: this.name,
+          title: this.name,
+          description: `an instance of ${this.name}`,
+          pretty: () => (self: any) => `${self.constructor.name}(${pretty(self)})`,
+          arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props))
+        }
+      )
       const transformation = transform(
         selfSchema,
         declaration,
