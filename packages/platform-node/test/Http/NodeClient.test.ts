@@ -20,7 +20,7 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
     Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
   )
   const todoClient = client.pipe(
-    Http.client.mapEffect(Http.response.schemaBodyJson(Todo))
+    Http.client.mapEffectScoped(Http.response.schemaBodyJson(Todo))
   )
   const createTodo = Http.client.schemaFunction(
     todoClient,
@@ -46,7 +46,8 @@ describe("HttpClient", () => {
       const response = yield* _(
         Http.request.get("https://www.google.com/"),
         client,
-        Effect.flatMap((_) => _.text)
+        Effect.flatMap((_) => _.text),
+        Effect.scoped
       )
       expect(response).toContain("Google")
     }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
@@ -58,7 +59,7 @@ describe("HttpClient", () => {
         Http.request.get("https://www.google.com/"),
         client,
         Effect.map((_) => _.stream),
-        Stream.unwrap,
+        Stream.unwrapScoped,
         Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))
       )
       expect(response).toContain("Google")
@@ -88,7 +89,8 @@ describe("HttpClient", () => {
       const response = yield* _(
         Http.request.head("https://jsonplaceholder.typicode.com/todos"),
         client,
-        Effect.flatMap(Http.response.schemaJson(Schema.struct({ status: Schema.literal(200) })))
+        Effect.flatMap(Http.response.schemaJson(Schema.struct({ status: Schema.literal(200) }))),
+        Effect.scoped
       )
       expect(response).toEqual({ status: 200 })
     }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
@@ -100,6 +102,7 @@ describe("HttpClient", () => {
         Http.request.get("https://www.google.com/"),
         client,
         Effect.flatMap((_) => _.text),
+        Effect.scoped,
         Effect.timeout(1),
         Effect.asSome,
         Effect.catchTag("TimeoutException", () => Effect.succeedNone)

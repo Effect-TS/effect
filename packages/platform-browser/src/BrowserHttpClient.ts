@@ -3,6 +3,7 @@
  */
 import type * as Client from "@effect/platform/Http/Client"
 import type * as FiberRef from "effect/FiberRef"
+import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
 import * as internal from "./internal/http/client.js"
 
@@ -22,4 +23,4 @@ export const layerXMLHttpRequest: Layer.Layer<Client.Client.Default, never, neve
  * @since 1.0.0
  * @category fiber refs
  */
-export const currentXMLHttpRequest: FiberRef.FiberRef<typeof XMLHttpRequest> = internal.currentXMLHttpRequest
+export const currentXMLHttpRequest: FiberRef.FiberRef<LazyArg<XMLHttpRequest>> = internal.currentXMLHttpRequest

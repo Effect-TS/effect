@@ -2,11 +2,12 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { dual } from "effect/Function"
+import { dual, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as Body from "../../Http/Body.js"
 import type * as Client from "../../Http/Client.js"
@@ -68,7 +69,7 @@ const addB3Headers = (req: ClientRequest.ClientRequest) =>
 export const makeDefault = (
   f: (
     request: ClientRequest.ClientRequest
-  ) => Effect.Effect<ClientResponse.ClientResponse, Error.HttpClientError>
+  ) => Effect.Effect<ClientResponse.ClientResponse, Error.HttpClientError, Scope.Scope>
 ): Client.Client.Default => make(Effect.flatMap(f), addB3Headers)
 
 /** @internal */
@@ -91,25 +92,31 @@ export const fetch = (options?: RequestInit): Client.Client.Default =>
           const fetch = fetch_._tag === "Some" ? fetch_.value : globalThis.fetch
           const headers = new Headers(request.headers)
           const send = (body: BodyInit | undefined) =>
-            Effect.map(
-              Effect.tryPromise({
-                try: (signal) =>
-                  fetch(url, {
-                    ...options,
-                    method: request.method,
-                    headers,
-                    body,
-                    duplex: request.body._tag === "Stream" ? "half" : undefined,
-                    signal
-                  } as any),
-                catch: (_) =>
-                  internalError.requestError({
-                    request,
-                    reason: "Transport",
-                    error: _
-                  })
-              }),
-              (_) => internalResponse.fromWeb(request, _)
+            pipe(
+              Effect.acquireRelease(
+                Effect.sync(() => new AbortController()),
+                (controller) => Effect.sync(() => controller.abort())
+              ),
+              Effect.flatMap((controller) =>
+                Effect.tryPromise({
+                  try: () =>
+                    fetch(url, {
+                      ...options,
+                      method: request.method,
+                      headers,
+                      body,
+                      duplex: request.body._tag === "Stream" ? "half" : undefined,
+                      signal: controller.signal
+                    } as any),
+                  catch: (_) =>
+                    internalError.requestError({
+                      request,
+                      reason: "Transport",
+                      error: _
+                    })
+                })
+              ),
+              Effect.map((_) => internalResponse.fromWeb(request, _))
             )
           if (Method.hasBody(request.method)) {
             return send(convertBody(request.body))
@@ -450,6 +457,22 @@ export const mapEffect = dual<
 >(2, (self, f) => transformResponse(self, Effect.flatMap(f)))
 
 /** @internal */
+export const scoped = <R, E, A>(
+  self: Client.Client<R, E, A>
+): Client.Client<Exclude<R, Scope.Scope>, E, A> => transformResponse(self, Effect.scoped)
+
+/** @internal */
+export const mapEffectScoped = dual<
+  <A, R2, E2, B>(
+    f: (a: A) => Effect.Effect<B, E2, R2>
+  ) => <R, E>(self: Client.Client<R, E, A>) => Client.Client<Exclude<R | R2, Scope.Scope>, E | E2, B>,
+  <R, E, A, R2, E2, B>(
+    self: Client.Client<R, E, A>,
+    f: (a: A) => Effect.Effect<B, E2, R2>
+  ) => Client.Client<Exclude<R | R2, Scope.Scope>, E | E2, B>
+>(2, (self, f) => scoped(mapEffect(self, f)))
+
+/** @internal */
 export const mapRequest = dual<
   (
     f: (a: ClientRequest.ClientRequest) => ClientRequest.ClientRequest
@@ -532,7 +555,7 @@ export const schemaFunction = dual<
     request: ClientRequest.ClientRequest
   ) => (
     a: SA
-  ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>,
+  ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, Exclude<SR | R, Scope.Scope>>,
   <R, E, A, SA, SI, SR>(
     self: Client.Client<R, E, A>,
     schema: Schema.Schema<SA, SI, SR>
@@ -540,27 +563,29 @@ export const schemaFunction = dual<
     request: ClientRequest.ClientRequest
   ) => (
     a: SA
-  ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>
+  ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, Exclude<SR | R, Scope.Scope>>
 >(2, (self, schema) => {
   const encode = Schema.encode(schema)
   return (request) => (a) =>
-    Effect.flatMap(
-      Effect.tryMap(encode(a), {
-        try: (body) => new TextEncoder().encode(JSON.stringify(body)),
-        catch: (error) =>
-          internalError.requestError({
-            request,
-            reason: "Encode",
-            error
-          })
-      }),
-      (body) =>
-        self(
-          internalRequest.setBody(
-            request,
-            internalBody.uint8Array(body, "application/json")
+    Effect.scoped(
+      Effect.flatMap(
+        Effect.tryMap(encode(a), {
+          try: (body) => new TextEncoder().encode(JSON.stringify(body)),
+          catch: (error) =>
+            internalError.requestError({
+              request,
+              reason: "Encode",
+              error
+            })
+        }),
+        (body) =>
+          self(
+            internalRequest.setBody(
+              request,
+              internalBody.uint8Array(body, "application/json")
+            )
           )
-        )
+      )
     )
 })
 

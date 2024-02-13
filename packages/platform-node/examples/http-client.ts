@@ -38,7 +38,8 @@ const makeTodoService = Effect.gen(function*(_) {
       todo
     ).pipe(
       Effect.flatMap(clientWithBaseUrl),
-      Effect.flatMap(decodeTodo)
+      Effect.flatMap(decodeTodo),
+      Effect.scoped
     )
 
   return TodoService.of({ create })

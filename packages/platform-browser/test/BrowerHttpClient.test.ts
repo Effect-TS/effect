@@ -17,7 +17,8 @@ describe("BrowserHttpClient", () => {
         HttpClient.request.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
         Effect.flatMap((_) => _.json),
-        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.MockXhr)
+        Effect.scoped,
+        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
       )
       assert.deepStrictEqual(body, { message: "Success!" })
     }).pipe(Effect.runPromise))
@@ -39,9 +40,9 @@ describe("BrowserHttpClient", () => {
             Stream.mkString
           )
         ),
-        Stream.unwrap,
+        Stream.unwrapScoped,
         Stream.runCollect,
-        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.MockXhr)
+        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
       )
       assert.deepStrictEqual(Chunk.unsafeHead(body), "{ \"message\": \"Success!\" }")
     }).pipe(Effect.runPromise))

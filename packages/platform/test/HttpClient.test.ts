@@ -23,7 +23,7 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
     Http.client.mapRequest(Http.request.prependUrl(new URL("https://jsonplaceholder.typicode.com")))
   )
   const todoClient = client.pipe(
-    Http.client.mapEffect(Http.response.schemaBodyJson(Todo))
+    Http.client.mapEffectScoped(Http.response.schemaBodyJson(Todo))
   )
   const createTodo = Http.client.schemaFunction(
     todoClient,
@@ -46,7 +46,8 @@ describe("HttpClient", () => {
       const response = yield* _(
         Http.request.get("https://www.google.com/"),
         Http.client.fetchOk(),
-        Effect.flatMap((_) => _.text)
+        Effect.flatMap((_) => _.text),
+        Effect.scoped
       )
       expect(response).toContain("Google")
     }).pipe(Effect.runPromise))
@@ -57,7 +58,7 @@ describe("HttpClient", () => {
         Http.request.get(new URL("https://www.google.com/")),
         Http.client.fetchOk(),
         Effect.map((_) => _.stream),
-        Stream.unwrap,
+        Stream.unwrapScoped,
         Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))
       )
       expect(response).toContain("Google")
@@ -84,7 +85,7 @@ describe("HttpClient", () => {
   it("jsonplaceholder schemaJson", () =>
     Effect.gen(function*(_) {
       const jp = yield* _(JsonPlaceholder)
-      const client = Http.client.mapEffect(jp.client, Http.response.schemaJson(OkTodo)).pipe(
+      const client = Http.client.mapEffectScoped(jp.client, Http.response.schemaJson(OkTodo)).pipe(
         Http.client.map((_) => _.body)
       )
       const response = yield* _(Http.request.get("/todos/1"), client)
@@ -99,7 +100,7 @@ describe("HttpClient", () => {
         Http.client.mapRequest(Http.request.prependUrl("https://"))
       )
       const todoClient = client.pipe(
-        Http.client.mapEffect(Http.response.schemaBodyJson(Todo))
+        Http.client.mapEffectScoped(Http.response.schemaBodyJson(Todo))
       )
       const response = yield* _(Http.request.get("/todos/1"), todoClient)
       expect(response.id).toBe(1)

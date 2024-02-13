@@ -9,6 +9,7 @@ import type * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
 import * as internal from "../internal/http/client.js"
 import type * as Error from "./ClientError.js"
 import type * as ClientRequest from "./ClientRequest.js"
@@ -67,7 +68,7 @@ export declare namespace Client {
    * @since 1.0.0
    * @category models
    */
-  export type Default = WithResponse<never, Error.HttpClientError>
+  export type Default = WithResponse<Scope.Scope, Error.HttpClientError>
 }
 
 /**
@@ -246,7 +247,7 @@ export const make: <R, E, A, R2, E2>(
 export const makeDefault: (
   f: (
     request: ClientRequest.ClientRequest
-  ) => Effect.Effect<ClientResponse.ClientResponse, Error.HttpClientError>
+  ) => Effect.Effect<ClientResponse.ClientResponse, Error.HttpClientError, Scope.Scope>
 ) => Client.Default = internal.makeDefault
 
 /**
@@ -294,6 +295,20 @@ export const mapEffect: {
   <A, R2, E2, B>(f: (a: A) => Effect.Effect<B, E2, R2>): <R, E>(self: Client<R, E, A>) => Client<R2 | R, E2 | E, B>
   <R, E, A, R2, E2, B>(self: Client<R, E, A>, f: (a: A) => Effect.Effect<B, E2, R2>): Client<R | R2, E | E2, B>
 } = internal.mapEffect
+
+/**
+ * @since 1.0.0
+ * @category mapping & sequencing
+ */
+export const mapEffectScoped: {
+  <A, R2, E2, B>(
+    f: (a: A) => Effect.Effect<B, E2, R2>
+  ): <R, E>(self: Client<R, E, A>) => Client<Exclude<R2, Scope.Scope> | Exclude<R, Scope.Scope>, E2 | E, B>
+  <R, E, A, R2, E2, B>(
+    self: Client<R, E, A>,
+    f: (a: A) => Effect.Effect<B, E2, R2>
+  ): Client<Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>, E | E2, B>
+} = internal.mapEffectScoped
 
 /**
  * @since 1.0.0
@@ -356,6 +371,12 @@ export const retry: {
 
 /**
  * @since 1.0.0
+ * @category resources & finalizers
+ */
+export const scoped: <R, E, A>(self: Client<R, E, A>) => Client<Exclude<R, Scope.Scope>, E, A> = internal.scoped
+
+/**
+ * @since 1.0.0
  * @category schema
  */
 export const schemaFunction: {
@@ -365,13 +386,25 @@ export const schemaFunction: {
     self: Client<R, E, A>
   ) => (
     request: ClientRequest.ClientRequest
-  ) => (a: SA) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>
+  ) => (
+    a: SA
+  ) => Effect.Effect<
+    A,
+    E | ParseResult.ParseError | Error.RequestError,
+    Exclude<SR, Scope.Scope> | Exclude<R, Scope.Scope>
+  >
   <R, E, A, SA, SI, SR>(
     self: Client<R, E, A>,
     schema: Schema.Schema<SA, SI, SR>
   ): (
     request: ClientRequest.ClientRequest
-  ) => (a: SA) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>
+  ) => (
+    a: SA
+  ) => Effect.Effect<
+    A,
+    ParseResult.ParseError | Error.RequestError | E,
+    Exclude<R, Scope.Scope> | Exclude<SR, Scope.Scope>
+  >
 } = internal.schemaFunction
 
 /**

@@ -8,6 +8,7 @@ import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as FiberRef from "effect/FiberRef"
+import type { LazyArg } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -17,7 +18,7 @@ import * as HeaderParser from "multipasta/HeadersParser"
 /** @internal */
 export const currentXMLHttpRequest = globalValue(
   "@effect/platform-browser/BrowserHttpClient/currentXMLHttpRequest",
-  () => FiberRef.unsafeMake(globalThis.XMLHttpRequest)
+  () => FiberRef.unsafeMake<LazyArg<XMLHttpRequest>>(() => new XMLHttpRequest())
 )
 
 /** @internal */
@@ -28,9 +29,18 @@ export const makeXMLHttpRequest = Client.makeDefault((request) =>
       reason: "InvalidUrl",
       error: _
     })).pipe(
-      Effect.zip(FiberRef.get(currentXMLHttpRequest)),
-      Effect.flatMap(([url, XHR]) => {
-        const xhr = new XHR()
+      Effect.zip(
+        Effect.flatMap(FiberRef.get(currentXMLHttpRequest), (makeXhr) =>
+          Effect.acquireRelease(
+            Effect.sync(() => makeXhr()),
+            (xhr) =>
+              Effect.sync(() => {
+                xhr.abort()
+                xhr.onreadystatechange = null
+              })
+          ))
+      ),
+      Effect.flatMap(([url, xhr]) => {
         xhr.open(request.method, url.toString(), true)
         xhr.responseType = "text"
         Object.entries(request.headers).forEach(([k, v]) => {
@@ -46,8 +56,7 @@ export const makeXMLHttpRequest = Client.makeDefault((request) =>
             xhr.onreadystatechange = onChange
             onChange()
           })),
-          Effect.as(new ClientResponseImpl(request, xhr)),
-          Effect.onInterrupt(() => Effect.sync(() => xhr.abort()))
+          Effect.as(new ClientResponseImpl(request, xhr))
         )
       })
     )
