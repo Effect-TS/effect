@@ -6,6 +6,7 @@ import { dual } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
+import * as Secret from "effect/Secret"
 
 /**
  * @since 1.0.0
@@ -141,3 +142,17 @@ export const remove: {
   (key: string) => (self: Headers) => Headers,
   (self: Headers, key: string) => Headers
 >(2, (self, key) => ReadonlyRecord.remove(self, key.toLowerCase()) as Headers)
+
+/**
+ * @since 1.0.0
+ */
+export const redact: {
+  (key: string | Array<string>): (self: Headers) => ReadonlyRecord.ReadonlyRecord<string | Secret.Secret>
+  (self: Headers, key: string | Array<string>): ReadonlyRecord.ReadonlyRecord<string | Secret.Secret>
+} = dual<
+  (key: string | Array<string>) => (self: Headers) => ReadonlyRecord.ReadonlyRecord<string | Secret.Secret>,
+  (self: Headers, key: string | Array<string>) => ReadonlyRecord.ReadonlyRecord<string | Secret.Secret>
+>(2, (self, key) =>
+  Array.isArray(key) ?
+    key.reduce((headers, key) => ReadonlyRecord.modify(headers, key.toLowerCase(), Secret.fromString), self) :
+    ReadonlyRecord.modify(self, key.toLowerCase(), Secret.fromString))
