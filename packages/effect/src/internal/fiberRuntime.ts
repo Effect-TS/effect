@@ -1912,6 +1912,14 @@ export const forEachParUnbounded = <A, B, E, R>(
     return core.zipRight(forEachConcurrentDiscard(as, fn, batching, false), core.succeed(array))
   })
 
+const copyArray = <A>(array: ReadonlyArray<A>) => {
+  const copy = new Array<A>(array.length)
+  for (let i = 0; i < array.length; i++) {
+    copy[i] = array[i]
+  }
+  return copy
+}
+
 /** @internal */
 export const forEachConcurrentDiscard = <A, _, E, R>(
   self: Iterable<A>,
@@ -1941,7 +1949,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
           })
         const startOrder = new Array<FiberRuntime<Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
         const joinOrder = new Array<FiberRuntime<Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
-        const residual = new Array<core.Blocked>()
+        const residual = new Array<{ index: number; res: core.Blocked }>()
         const collectExits = () => {
           const exits: Array<Exit.Exit<any, E>> = results
             .filter(({ exit }) => exit._tag === "Failure")
@@ -1978,7 +1986,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
           core.async<any, any, any>((resume) => {
             const pushResult = <_, E>(res: Exit.Exit<_, E> | Effect.Blocked<_, E>, index: number) => {
               if (res._op === "Blocked") {
-                residual.push(res as core.Blocked)
+                residual.push({ index, res: res as core.Blocked })
               } else {
                 results.push({ index, exit: res })
                 if (res._op === "Failure" && !interrupted) {
@@ -2038,7 +2046,10 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
                       () => core.exitUnit
                     )))
                   } else if (residual.length + results.length === target) {
-                    const requests = residual.map((blocked) => blocked.i0).reduce(_RequestBlock.par)
+                    const sorted = copyArray(residual)
+                    sorted.sort((a, b) => a.index < b.index ? -1 : a.index > b.index ? 1 : 0)
+                    const final = sorted.map((_) => _.res)
+                    const requests = final.map((blocked) => blocked.i0).reduce((x, y) => _RequestBlock.par(x, y))
                     resume(core.succeed(core.blocked(
                       requests,
                       forEachConcurrentDiscard(
@@ -2047,7 +2058,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
                             core.exitCollectAll(collectExits(), { parallel: true }),
                             () => core.exitUnit
                           ),
-                          ...residual.map((blocked) => blocked.i1)
+                          ...final.map((blocked) => blocked.i1)
                         ],
                         (i) => i,
                         batching,

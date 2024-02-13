@@ -56,13 +56,13 @@ const getPokemonById = (id: number) => Effect.request(new GetPokemonById({ id })
 describe("Request", () => {
   it.effect("should return results in the proper order", () =>
     Effect.gen(function*(_) {
+      const range = ReadonlyArray.range(1, 5)
+
       const pokemon = yield* _(
-        Effect.forEach(ReadonlyArray.range(1, 5), getPokemonById, {
+        Effect.forEach(range, getPokemonById, {
           batching: true
         })
       )
-
-      console.log(pokemon)
 
       expect(pokemon).toEqual([
         new Pokemon({ id: 1, name: "bulbasaur" }),
