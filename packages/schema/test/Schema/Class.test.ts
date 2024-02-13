@@ -480,7 +480,15 @@ describe("Schema > Class", () => {
     )
   })
 
-  it("encode works with struct", () => {
+  it("encode works with struct", async () => {
     assert.doesNotThrow(() => S.encodeSync(Person)({ id: 1, name: "John" } as Person))
+    class A extends S.Class<A>()({
+      n: S.NumberFromString
+    }) {}
+    class B extends S.Class<B>()({
+      a: A
+    }) {}
+    await Util.expectEncodeSuccess(S.union(B, S.NumberFromString), 1, "1")
+    await Util.expectEncodeSuccess(B, { a: { n: 1 } }, { a: { n: "1" } })
   })
 })
