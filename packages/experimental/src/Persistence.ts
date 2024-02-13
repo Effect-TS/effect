@@ -263,10 +263,12 @@ export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValue
               Option.match({
                 onNone: () => Effect.succeedNone,
                 onSome: (s) =>
-                  Effect.try({
-                    try: () => JSON.parse(s),
-                    catch: (error) => new PersistenceBackingError({ method, error })
-                  })
+                  Effect.asSome(
+                    Effect.try({
+                      try: () => JSON.parse(s),
+                      catch: (error) => new PersistenceBackingError({ method, error })
+                    })
+                  )
               })
             )
           return identity<BackingPersistenceStore>({
