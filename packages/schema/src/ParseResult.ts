@@ -419,6 +419,11 @@ export {
    * @category decoding
    * @since 1.0.0
    */
+  decode,
+  /**
+   * @category decoding
+   * @since 1.0.0
+   */
   decodeUnknown,
   /**
    * @category decoding
@@ -440,6 +445,11 @@ export {
    * @since 1.0.0
    */
   decodeUnknownSync,
+  /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encode,
   /**
    * @category encoding
    * @since 1.0.0

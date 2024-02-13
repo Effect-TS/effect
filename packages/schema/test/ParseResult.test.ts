@@ -191,4 +191,12 @@ describe("ParseIssue.actual", () => {
     expect(result.left.error.actual).toEqual(1)
     expect((result.left.error as ParseResult.Transform).error.actual).toEqual("1")
   })
+
+  it("decode", () => {
+    expect(Either.isEither(ParseResult.decode(S.string)("a")))
+  })
+
+  it("encode", () => {
+    expect(Either.isEither(ParseResult.encode(S.string)("a")))
+  })
 })
