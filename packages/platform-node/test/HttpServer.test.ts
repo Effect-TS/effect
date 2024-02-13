@@ -53,7 +53,7 @@ const makeClient = Effect.map(
 )
 const makeTodoClient = Effect.map(
   makeClient,
-  HttpC.client.mapEffect(
+  HttpC.client.mapEffectScoped(
     HttpC.response.schemaBodyJson(Todo)
   )
 )
@@ -92,7 +92,7 @@ describe("HttpServer", () => {
             expect(file.path.endsWith("/test.txt")).toEqual(true)
             expect(file.contentType).toEqual("text/plain")
             return yield* _(Http.response.json({ ok: "file" in formData }))
-          }).pipe(Effect.scoped)
+          })
         ),
         Http.server.serveEffect()
       )
@@ -101,7 +101,7 @@ describe("HttpServer", () => {
       formData.append("file", new Blob(["test"], { type: "text/plain" }), "test.txt")
       const result = yield* _(
         client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) })),
-        Effect.flatMap((_) => _.json)
+        HttpC.response.json
       )
       expect(result).toEqual({ ok: true })
     }).pipe(Effect.scoped, runPromise))
@@ -120,7 +120,7 @@ describe("HttpServer", () => {
             expect(files).toHaveProperty("file")
             expect(files).toHaveProperty("test")
             return Http.response.empty()
-          }).pipe(Effect.scoped)
+          })
         ),
         Effect.tapErrorCause(Effect.logError),
         Http.server.serveEffect()
@@ -130,7 +130,8 @@ describe("HttpServer", () => {
       formData.append("file", new Blob(["test"], { type: "text/plain" }), "test.txt")
       formData.append("test", "test")
       const response = yield* _(
-        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
+        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) })),
+        Effect.scoped
       )
       expect(response.status).toEqual(204)
     }).pipe(Effect.scoped, runPromise))
@@ -145,7 +146,7 @@ describe("HttpServer", () => {
             const request = yield* _(Http.request.ServerRequest)
             yield* _(request.multipart)
             return Http.response.empty()
-          }).pipe(Effect.scoped)
+          })
         ),
         Effect.catchTag("MultipartError", (error) =>
           error.reason === "FileTooLarge" ?
@@ -159,7 +160,8 @@ describe("HttpServer", () => {
       const data = new Uint8Array(1000)
       formData.append("file", new Blob([data], { type: "text/plain" }), "test.txt")
       const response = yield* _(
-        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
+        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) })),
+        Effect.scoped
       )
       expect(response.status).toEqual(413)
     }).pipe(Effect.scoped, runPromise))
@@ -174,7 +176,7 @@ describe("HttpServer", () => {
             const request = yield* _(Http.request.ServerRequest)
             yield* _(request.multipart)
             return Http.response.empty()
-          }).pipe(Effect.scoped)
+          })
         ),
         Effect.catchTag("MultipartError", (error) =>
           error.reason === "FieldTooLarge" ?
@@ -188,7 +190,8 @@ describe("HttpServer", () => {
       const data = new Uint8Array(1000).fill(1)
       formData.append("file", new TextDecoder().decode(data))
       const response = yield* _(
-        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
+        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) })),
+        Effect.scoped
       )
       expect(response.status).toEqual(413)
     }).pipe(Effect.scoped, runPromise))
@@ -205,9 +208,9 @@ describe("HttpServer", () => {
         Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
-      const todo = yield* _(client(HttpC.request.get("/child/1")), Effect.flatMap((_) => _.text))
+      const todo = yield* _(client(HttpC.request.get("/child/1")), Effect.flatMap((_) => _.text), Effect.scoped)
       expect(todo).toEqual("/1")
-      const root = yield* _(client(HttpC.request.get("/child")), Effect.flatMap((_) => _.text))
+      const root = yield* _(client(HttpC.request.get("/child")), Effect.flatMap((_) => _.text), Effect.scoped)
       expect(root).toEqual("/")
     }).pipe(Effect.scoped, runPromise))
 
@@ -223,9 +226,9 @@ describe("HttpServer", () => {
         Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
-      const todo = yield* _(client(HttpC.request.get("/child/1")), Effect.flatMap((_) => _.text))
+      const todo = yield* _(client(HttpC.request.get("/child/1")), HttpC.response.text)
       expect(todo).toEqual("/1")
-      const root = yield* _(client(HttpC.request.get("/child")), Effect.flatMap((_) => _.text))
+      const root = yield* _(client(HttpC.request.get("/child")), HttpC.response.text)
       expect(root).toEqual("/")
     }).pipe(Effect.scoped, runPromise))
 
@@ -253,7 +256,7 @@ describe("HttpServer", () => {
         Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
-      const res = yield* _(client(HttpC.request.get("/")))
+      const res = yield* _(client(HttpC.request.get("/")), Effect.scoped)
       expect(res.status).toEqual(200)
       expect(res.headers["content-type"]).toEqual("text/plain")
       expect(res.headers["content-length"]).toEqual("27")
@@ -285,7 +288,7 @@ describe("HttpServer", () => {
         Http.server.serveEffect()
       )
       const client = yield* _(makeClient)
-      const res = yield* _(client(HttpC.request.get("/")))
+      const res = yield* _(client(HttpC.request.get("/")), Effect.scoped)
       expect(res.status).toEqual(200)
       expect(res.headers["content-type"]).toEqual("text/plain")
       expect(res.headers["content-length"]).toEqual("4")
@@ -315,7 +318,8 @@ describe("HttpServer", () => {
       const todo = yield* _(
         HttpC.request.post("/todos"),
         HttpC.request.urlParamsBody({ id: "1", title: "test" }),
-        client
+        client,
+        Effect.scoped
       )
       expect(todo).toEqual({ id: 1, title: "test" })
     }).pipe(Effect.scoped, runPromise))
@@ -340,7 +344,8 @@ describe("HttpServer", () => {
       const client = yield* _(makeClient)
       const response = yield* _(
         HttpC.request.get("/todos"),
-        client
+        client,
+        Effect.scoped
       )
       expect(response.status).toEqual(400)
     }).pipe(Effect.scoped, runPromise))
@@ -359,7 +364,7 @@ describe("HttpServer", () => {
             )
             expect(result.test).toEqual("content")
             return Http.response.empty()
-          }).pipe(Effect.scoped)
+          })
         ),
         Effect.tapErrorCause(Effect.logError),
         Http.server.serveEffect()
@@ -368,7 +373,8 @@ describe("HttpServer", () => {
       const formData = new FormData()
       formData.append("json", JSON.stringify({ test: "content" }))
       const response = yield* _(
-        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
+        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) })),
+        Effect.scoped
       )
       expect(response.status).toEqual(204)
     }).pipe(Effect.scoped, runPromise))
@@ -387,7 +393,7 @@ describe("HttpServer", () => {
             )
             expect(result.test).toEqual("content")
             return Http.response.empty()
-          }).pipe(Effect.scoped)
+          })
         ),
         Effect.tapErrorCause(Effect.logError),
         Http.server.serveEffect()
@@ -400,7 +406,8 @@ describe("HttpServer", () => {
         "test.json"
       )
       const response = yield* _(
-        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) }))
+        client(HttpC.request.post("/upload", { body: HttpC.body.formData(formData) })),
+        Effect.scoped
       )
       expect(response.status).toEqual(204)
     }).pipe(Effect.scoped, runPromise))
@@ -419,7 +426,7 @@ describe("HttpServer", () => {
             )
             expect(result.test).toEqual("content")
             return Http.response.empty()
-          }).pipe(Effect.scoped)
+          })
         ),
         Effect.tapErrorCause(Effect.logError),
         Http.server.serveEffect()
@@ -432,7 +439,8 @@ describe("HttpServer", () => {
               json: JSON.stringify({ test: "content" })
             }))
           })
-        )
+        ),
+        Effect.scoped
       )
       expect(response.status).toEqual(204)
     }).pipe(Effect.scoped, runPromise))
@@ -454,9 +462,8 @@ describe("HttpServer", () => {
       const requestSpan = yield* _(Effect.makeSpan("client request"))
       const body = yield* _(
         client(HttpC.request.get("/")),
-        Effect.flatMap((_) => _.json),
+        HttpC.response.json,
         Effect.withParentSpan(requestSpan),
-        Effect.scoped,
         Effect.repeatN(2)
       )
       expect((body as any).parent.value.spanId).toEqual(requestSpan.spanId)
@@ -471,7 +478,7 @@ describe("HttpServer", () => {
         Http.server.serveEffect((app) => Effect.onExit(app, (exit) => Deferred.complete(latch, exit)))
       )
       const client = yield* _(makeClient)
-      const fiber = yield* _(client(HttpC.request.get("/")), Effect.fork)
+      const fiber = yield* _(client(HttpC.request.get("/")), Effect.scoped, Effect.fork)
       yield* _(Effect.sleep(100))
       yield* _(Fiber.interrupt(fiber))
       const cause = yield* _(Deferred.await(latch), Effect.sandbox, Effect.flip)
@@ -495,7 +502,7 @@ describe("HttpServer", () => {
               HttpC.request.setHeader("host", "a.example.com")
             )
           ),
-          Effect.flatMap((_) => _.text)
+          HttpC.response.text
         )
       ).toEqual("A")
       expect(
@@ -505,7 +512,7 @@ describe("HttpServer", () => {
               HttpC.request.setHeader("host", "b.example.com")
             )
           ),
-          Effect.flatMap((_) => _.text)
+          HttpC.response.text
         )
       ).toEqual("B")
       expect(
@@ -515,7 +522,7 @@ describe("HttpServer", () => {
               HttpC.request.setHeader("host", "b.org")
             )
           ),
-          Effect.flatMap((_) => _.text)
+          HttpC.response.text
         )
       ).toEqual("B")
       expect(
@@ -525,7 +532,7 @@ describe("HttpServer", () => {
               HttpC.request.setHeader("host", "c.example.com")
             )
           ),
-          Effect.flatMap((_) => _.text)
+          HttpC.response.text
         )
       ).toEqual("C")
     }).pipe(Effect.scoped, runPromise))

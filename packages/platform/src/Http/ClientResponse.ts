@@ -4,10 +4,13 @@
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import type * as Scope from "effect/Scope"
+import type * as Stream from "effect/Stream"
 import * as internal from "../internal/http/clientResponse.js"
 import type * as Error from "./ClientError.js"
 import type * as ClientRequest from "./ClientRequest.js"
 import type * as IncomingMessage from "./IncomingMessage.js"
+import type * as UrlParams from "./UrlParams.js"
 
 export {
   /**
@@ -19,12 +22,27 @@ export {
    * @since 1.0.0
    * @category schema
    */
+  schemaBodyJsonEffect,
+  /**
+   * @since 1.0.0
+   * @category schema
+   */
   schemaBodyUrlParams,
   /**
    * @since 1.0.0
    * @category schema
    */
-  schemaHeaders
+  schemaBodyUrlParamsEffect,
+  /**
+   * @since 1.0.0
+   * @category schema
+   */
+  schemaHeaders,
+  /**
+   * @since 1.0.0
+   * @category schema
+   */
+  schemaHeadersEffect
 } from "./IncomingMessage.js"
 
 /**
@@ -84,3 +102,88 @@ export const schemaNoBody: <
   A
 >(schema: Schema.Schema<A, I, R>) => (self: ClientResponse) => Effect.Effect<A, ParseResult.ParseError, R> =
   internal.schemaNoBody
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const arrayBuffer: <E, R>(
+  effect: Effect.Effect<ClientResponse, E, R>
+) => Effect.Effect<ArrayBuffer, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.arrayBuffer
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const formData: <E, R>(
+  effect: Effect.Effect<ClientResponse, E, R>
+) => Effect.Effect<FormData, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.formData
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const json: <E, R>(
+  effect: Effect.Effect<ClientResponse, E, R>
+) => Effect.Effect<unknown, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.json
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const stream: <E, R>(
+  effect: Effect.Effect<ClientResponse, E, R>
+) => Stream.Stream<Uint8Array, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.stream
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const text: <E, R>(
+  effect: Effect.Effect<ClientResponse, E, R>
+) => Effect.Effect<string, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.text
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const urlParamsBody: <E, R>(
+  effect: Effect.Effect<ClientResponse, E, R>
+) => Effect.Effect<UrlParams.UrlParams, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.urlParamsBody
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
+export const schemaJsonEffect: <
+  R,
+  I extends {
+    readonly status?: number | undefined
+    readonly headers?: Readonly<Record<string, string>> | undefined
+    readonly body?: unknown
+  },
+  A
+>(
+  schema: Schema.Schema<A, I, R>
+) => <E, R2>(
+  effect: Effect.Effect<ClientResponse, E, R2>
+) => Effect.Effect<
+  A,
+  Error.ResponseError | E | ParseResult.ParseError,
+  Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>
+> = internal.schemaJsonEffect
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
+export const schemaNoBodyEffect: <
+  R,
+  I extends { readonly status?: number | undefined; readonly headers?: Readonly<Record<string, string>> | undefined },
+  A
+>(
+  schema: Schema.Schema<A, I, R>
+) => <E, R2>(
+  effect: Effect.Effect<ClientResponse, E, R2>
+) => Effect.Effect<A, E | ParseResult.ParseError, Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>> =
+  internal.schemaNoBodyEffect

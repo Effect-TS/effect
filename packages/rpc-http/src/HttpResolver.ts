@@ -35,7 +35,7 @@ export const make = <R extends Router.Router<any, any>>(
           Stream.flattenChunks
         )
       ),
-      Stream.unwrap
+      Stream.unwrapScoped
     )
   )<R>()
 
@@ -53,6 +53,7 @@ export const makeEffect = <R extends Router.Router<any, any>>(
     client(ClientRequest.post("", {
       body: Body.unsafeJson(requests)
     })).pipe(
-      Effect.flatMap((_) => _.json)
+      Effect.flatMap((_) => _.json),
+      Effect.scoped
     )
   )<R>()

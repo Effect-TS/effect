@@ -53,6 +53,11 @@ export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<NodeCl
 /** @internal */
 export const agentLayer = makeAgentLayer()
 
+const makeAbortController = Effect.acquireRelease(
+  Effect.sync(() => new AbortController()),
+  (controller) => Effect.sync(() => controller.abort())
+)
+
 const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
   Client.makeDefault((request) =>
     Effect.flatMap(
@@ -63,8 +68,7 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
           error: _
         })),
       (url) =>
-        Effect.suspend(() => {
-          const controller = new AbortController()
+        Effect.flatMap(makeAbortController, (controller) => {
           const nodeRequest = url.protocol === "https:" ?
             Https.request(url, {
               agent: agent.https,
@@ -82,7 +86,6 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
             Effect.zipRight(sendBody(nodeRequest, request, request.body), waitForResponse(nodeRequest, request), {
               concurrent: true
             }),
-            Effect.onInterrupt(() => Effect.sync(() => controller.abort())),
             Effect.map((_) => new ClientResponseImpl(request, _))
           )
         })
