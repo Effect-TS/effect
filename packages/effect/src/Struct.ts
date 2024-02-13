@@ -7,7 +7,7 @@
 import * as Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as order from "./Order.js"
-import type { MatchRecord, Simplify } from "./Types.js"
+import type { MatchRecord, OptionalPropertyOf, RequiredPropertyOf, Simplify } from "./Types.js"
 
 /**
  * Create a new object by picking properties of an existing object.
@@ -20,15 +20,21 @@ import type { MatchRecord, Simplify } from "./Types.js"
  *
  * @since 2.0.0
  */
-export const pick = <Keys extends Array<PropertyKey>>(
-  ...keys: Keys
-) =>
-<S extends Record<Keys[number], any>>(
-  s: S
-): MatchRecord<S, { [K in Keys[number]]: S[K] | undefined }, { [K in Keys[number]]: S[K] }> => {
+export const pick = <Keys extends Array<PropertyKey>>(...keys: Keys) =>
+<S extends Partial<Record<Keys[number], any>>>(
+  s: Keys[number] extends keyof S ? S : never
+): MatchRecord<
+  S,
+  { [K in Keys[number]]: S[K] | undefined },
+  Simplify<
+    { [K in Keys[number] & OptionalPropertyOf<S>]?: S[K] } & { [K in Keys[number] & RequiredPropertyOf<S>]: S[K] }
+  >
+> => {
   const out: any = {}
   for (const k of keys) {
-    out[k] = (s as any)[k]
+    if (k in s) {
+      out[k] = (s as any)[k]
+    }
   }
   return out
 }

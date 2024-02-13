@@ -87,7 +87,7 @@ pipe(stringStruct, S.pick("d"))
 // @ts-expect-error
 S.pick("d")(stringStruct)
 
-// $ExpectType { [x: string]: unknown; }
+// @ts-expect-error
 S.pick("d" as string)(stringStruct)
 
 // $ExpectType { a: string; b: number; }
@@ -102,7 +102,7 @@ pipe(symbolStruct, S.pick(dsym))
 // @ts-expect-error
 S.pick(dsym)(symbolStruct)
 
-// $ExpectType { [x: symbol]: unknown; }
+// @ts-expect-error
 S.pick(dsym as symbol)(symbolStruct)
 
 // $ExpectType { [asym]: string; [bsym]: number; }
@@ -120,7 +120,7 @@ pipe(numberStruct, S.pick(4))
 // @ts-expect-error
 S.pick(4)(numberStruct)
 
-// $ExpectType { [x: number]: unknown; }
+// @ts-expect-error
 S.pick(4 as number)(numberStruct)
 
 // $ExpectType { 1: number | undefined; 2: number | undefined; }

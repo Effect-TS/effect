@@ -179,3 +179,25 @@ export type Contravariant<A> = (_: A) => void
  * @since 2.0.0
  */
 export type MatchRecord<S, onTrue, onFalse> = {} extends S ? onTrue : onFalse
+
+/**
+ * Extract optional property keys from a record
+ * @since 2.3.5
+ */
+export type OptionalPropertyOf<T extends object> = Exclude<
+  {
+    [K in keyof T]: T extends Record<K, T[K]> ? never : K
+  }[keyof T],
+  undefined
+>
+
+/**
+ * Extract required property keys from a record
+ * @since 2.3.5
+ */
+export type RequiredPropertyOf<T extends object> = Exclude<
+  {
+    [K in keyof T]: T extends Record<K, T[K]> ? K : never
+  }[keyof T],
+  undefined
+>
