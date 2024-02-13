@@ -208,7 +208,7 @@ Our final CLI application is as follows:
 
 ```ts
 import { Args, Command, Options } from "@effect/cli"
-import { NodeContext, Runtime } from "@effect/platform-node"
+import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { Console, Effect, Option, ReadonlyArray } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
@@ -258,13 +258,13 @@ const cli = Command.run(command, {
 
 Effect.suspend(() => cli(process.argv)).pipe(
   Effect.provide(NodeContext.layer),
-  Runtime.runMain
+  NodeRuntime.runMain
 )
 ```
 
 Some things to note in the above example:
   1. We've additionally imported the `Effect` module from `effect`
-  2. We've also imported the `Runtime` and `NodeContext` modules from `@effect/platform-node`
+  2. We've also imported the `NodeRuntime` and `NodeContext` modules from `@effect/platform-node`
   3. We've used `Command.withSubcommands` to add our `add` and `clone` commands as subcommands of `minigit`
   4. We've used `Command.run` to create a `CliApp` with a `name` and a `version`
   5. We've used `Effect.suspend` to lazily evaluate `process.argv`
