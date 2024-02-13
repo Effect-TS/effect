@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.9.7
+
+### Patch Changes
+
+- [#2115](https://github.com/Effect-TS/effect/pull/2115) [`ec78c95`](https://github.com/Effect-TS/effect/commit/ec78c9566bcbe55222a3ba676ed196d5528f1b7b) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Persistence KeyValueStore adapter
+
 ## 0.9.6
 
 ### Patch Changes
