@@ -47,13 +47,20 @@ export const makeXMLHttpRequest = Client.makeDefault((request) =>
           xhr.setRequestHeader(k, v)
         })
         return sendBody(xhr, request).pipe(
-          Effect.zipLeft(Effect.async<void>((resume) => {
+          Effect.zipLeft(Effect.async<void, Error.RequestError>((resume) => {
             const onChange = () => {
               if (xhr.readyState >= 2) {
                 resume(Effect.unit)
               }
             }
             xhr.onreadystatechange = onChange
+            xhr.onerror = (_event) => {
+              resume(Effect.fail(Error.RequestError({
+                request,
+                reason: "Transport",
+                error: xhr.statusText
+              })))
+            }
             onChange()
           })),
           Effect.as(new ClientResponseImpl(request, xhr))
@@ -62,38 +69,40 @@ export const makeXMLHttpRequest = Client.makeDefault((request) =>
     )
 )
 
-const sendBody = (xhr: XMLHttpRequest, request: ClientRequest.ClientRequest): Effect.Effect<void, Error.RequestError> =>
-  Effect.suspend(() => {
-    const body = request.body
-    switch (body._tag) {
-      case "Empty":
-        return Effect.sync(() => xhr.send())
-      case "Raw":
-        return Effect.sync(() => xhr.send(body.body as any))
-      case "Uint8Array":
-        return Effect.sync(() => xhr.send(body.body))
-      case "FormData":
-        return Effect.sync(() => xhr.send(body.formData))
-      case "Stream":
-        return Effect.matchEffect(
-          Stream.runFold(body.stream, new Uint8Array(0), (acc, chunk) => {
-            const next = new Uint8Array(acc.length + chunk.length)
-            next.set(acc, 0)
-            next.set(chunk, acc.length)
-            return next
-          }),
-          {
-            onFailure: (error) =>
-              Effect.fail(Error.RequestError({
-                request,
-                reason: "Encode",
-                error
-              })),
-            onSuccess: (body) => Effect.sync(() => xhr.send(body))
-          }
-        )
-    }
-  })
+const sendBody = (
+  xhr: XMLHttpRequest,
+  request: ClientRequest.ClientRequest
+): Effect.Effect<void, Error.RequestError> => {
+  const body = request.body
+  switch (body._tag) {
+    case "Empty":
+      return Effect.sync(() => xhr.send())
+    case "Raw":
+      return Effect.sync(() => xhr.send(body.body as any))
+    case "Uint8Array":
+      return Effect.sync(() => xhr.send(body.body))
+    case "FormData":
+      return Effect.sync(() => xhr.send(body.formData))
+    case "Stream":
+      return Effect.matchEffect(
+        Stream.runFold(body.stream, new Uint8Array(0), (acc, chunk) => {
+          const next = new Uint8Array(acc.length + chunk.length)
+          next.set(acc, 0)
+          next.set(chunk, acc.length)
+          return next
+        }),
+        {
+          onFailure: (error) =>
+            Effect.fail(Error.RequestError({
+              request,
+              reason: "Encode",
+              error
+            })),
+          onSuccess: (body) => Effect.sync(() => xhr.send(body))
+        }
+      )
+  }
+}
 
 const encoder = new TextEncoder()
 
@@ -134,17 +143,17 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
     }
     return this._textEffect = Effect.async<string, E>((resume) => {
       if (this.source.readyState === 4) {
-        resume(Effect.succeed(this.source.response))
+        resume(Effect.succeed(this.source.responseText))
         return
       }
 
       const onReadyStateChange = () => {
         if (this.source.readyState === 4) {
-          resume(Effect.succeed(this.source.response))
+          resume(Effect.succeed(this.source.responseText))
         }
       }
-      const onError = (event: any) => {
-        resume(Effect.fail(this.onError(event)))
+      const onError = () => {
+        resume(Effect.fail(this.onError(this.source.statusText)))
       }
       this.source.addEventListener("readystatechange", onReadyStateChange)
       this.source.addEventListener("error", onError)
@@ -175,20 +184,20 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
 
   get stream(): Stream.Stream<Uint8Array, E> {
     return Stream.asyncInterrupt<Uint8Array, E>((emit) => {
-      let bytes = 0
+      let offset = 0
       const onReadyStateChange = () => {
         if (this.source.readyState === 3) {
-          emit.single(encoder.encode(this.source.responseText.slice(bytes)))
-          bytes = this.source.responseText.length
+          emit.single(encoder.encode(this.source.responseText.slice(offset)))
+          offset = this.source.responseText.length
         } else if (this.source.readyState === 4) {
-          if (bytes < this.source.responseText.length) {
-            emit.single(encoder.encode(this.source.responseText.slice(bytes)))
+          if (offset < this.source.responseText.length) {
+            emit.single(encoder.encode(this.source.responseText.slice(offset)))
           }
           emit.end()
         }
       }
-      const onError = (event: any) => {
-        emit.fail(this.onError(event))
+      const onError = () => {
+        emit.fail(this.onError(this.source.statusText))
       }
       this.source.addEventListener("readystatechange", onReadyStateChange)
       this.source.addEventListener("error", onError)
