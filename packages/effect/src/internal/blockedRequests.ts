@@ -385,7 +385,7 @@ export const parallelCollectionCombine = (
       key,
       Option.match(HashMap.get(map, key), {
         onNone: () => value,
-        onSome: (a) => [...a, ...value]
+        onSome: (other) => [...value, ...other]
       })
     )))
 
