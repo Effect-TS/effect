@@ -490,5 +490,19 @@ describe("Schema > Class", () => {
     }) {}
     await Util.expectEncodeSuccess(S.union(B, S.NumberFromString), 1, "1")
     await Util.expectEncodeSuccess(B, { a: { n: 1 } }, { a: { n: "1" } })
+
+    class C extends S.Class<C>()({
+      n: S.NumberFromString
+    }) {
+      get b() {
+        return 1
+      }
+    }
+    class D extends S.Class<D>()({
+      n: S.NumberFromString,
+      b: S.number
+    }) {}
+
+    await Util.expectEncodeSuccess(D, new C({ n: 1 }), { n: "1", b: 1 })
   })
 })
