@@ -139,7 +139,9 @@ export const stream: <E, R>(
  * @since 1.0.0
  * @category accessors
  */
-export const text = internal.text
+export const text: <E, R>(
+  effect: Effect.Effect<ClientResponse, E, R>
+) => Effect.Effect<string, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.text
 
 /**
  * @since 1.0.0
