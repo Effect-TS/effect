@@ -340,8 +340,8 @@ export const validate = <A, I, R>(
  * @category validation
  * @since 1.0.0
  */
-export const validateEither = <A, I>(
-  schema: Schema<A, I, never>,
+export const validateEither = <A, I, R>(
+  schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => {
   const validateEither = Parser.validateEither(schema, options)
@@ -484,17 +484,16 @@ const getTemplateLiterals = (
 
 const declareConstructor = <
   const P extends ReadonlyArray<Schema<any, any, any>>,
-  R extends Schema.Context<P[number]>,
   I,
   A
 >(
   typeParameters: P,
   decodeUnknown: (
-    ...typeParameters: P
-  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<A, ParseResult.ParseIssue, R>,
+    ...typeParameters: { readonly [K in keyof P]: Schema<Schema.To<P[K]>, Schema.From<P[K]>, never> }
+  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<A, ParseResult.ParseIssue, never>,
   encodeUnknown: (
-    ...typeParameters: P
-  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<I, ParseResult.ParseIssue, R>,
+    ...typeParameters: { readonly [K in keyof P]: Schema<Schema.To<P[K]>, Schema.From<P[K]>, never> }
+  ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<I, ParseResult.ParseIssue, never>,
   annotations?: DeclareAnnotations<P, A>
 ): Schema<A, I, Schema.Context<P[number]>> =>
   make(AST.createDeclaration(
@@ -539,14 +538,22 @@ export const declare: {
     is: (input: unknown) => input is A,
     annotations?: DeclareAnnotations<readonly [], A>
   ): Schema<A>
-  <const P extends ReadonlyArray<Schema<any, any, any>>, R extends Schema.Context<P[number]>, I, A>(
+  <const P extends ReadonlyArray<Schema<any, any, any>>, I, A>(
     typeParameters: P,
     decodeUnknown: (
-      ...typeParameters: P
-    ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<A, ParseResult.ParseIssue, R>,
+      ...typeParameters: { readonly [K in keyof P]: Schema<Schema.To<P[K]>, Schema.From<P[K]>, never> }
+    ) => (
+      input: unknown,
+      options: ParseOptions,
+      ast: AST.Declaration
+    ) => Effect.Effect<A, ParseResult.ParseIssue, never>,
     encodeUnknown: (
-      ...typeParameters: P
-    ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<I, ParseResult.ParseIssue, R>,
+      ...typeParameters: { readonly [K in keyof P]: Schema<Schema.To<P[K]>, Schema.From<P[K]>, never> }
+    ) => (
+      input: unknown,
+      options: ParseOptions,
+      ast: AST.Declaration
+    ) => Effect.Effect<I, ParseResult.ParseIssue, never>,
     annotations?: DeclareAnnotations<{ readonly [K in keyof P]: Schema.To<P[K]> }, A>
   ): Schema<A, I, Schema.Context<P[number]>>
 } = function() {
@@ -4673,14 +4680,8 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  */
 export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Schema<Self, I, R> {
   new(
-    ...args: [R] extends [never] ? [
-        props: Equals<C, {}> extends true ? void | {} : C,
-        disableValidation?: boolean | undefined
-      ] :
-      [
-        props: Equals<C, {}> extends true ? void | {} : C,
-        disableValidation: true
-      ]
+    props: Equals<C, {}> extends true ? void | {} : C,
+    disableValidation?: boolean | undefined
   ): A & Omit<Inherited, keyof A> & Proto
 
   readonly struct: Schema<A, I, R>
@@ -4895,7 +4896,7 @@ const makeClass = <A, I, R>(
   Base: any,
   additionalProps?: any
 ): any => {
-  const validator = Parser.validateSync(selfSchema as any)
+  const validator = Parser.validateSync(selfSchema)
 
   return class extends Base {
     constructor(props?: any, disableValidation = false) {

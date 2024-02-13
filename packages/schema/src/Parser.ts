@@ -206,8 +206,8 @@ export const decode: <A, I, R>(
  * @category validation
  * @since 1.0.0
  */
-export const validateSync = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const validateSync = <A, I, R>(
+  schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
 ): (u: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(AST.to(schema.ast), true, options)
 
@@ -215,8 +215,8 @@ export const validateSync = <A, I>(
  * @category validation
  * @since 1.0.0
  */
-export const validateOption = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const validateOption = <A, I, R>(
+  schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
 ): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(AST.to(schema.ast), true, options)
 
@@ -224,8 +224,8 @@ export const validateOption = <A, I>(
  * @category validation
  * @since 1.0.0
  */
-export const validateEither = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const validateEither = <A, I, R>(
+  schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
 ): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<ParseResult.ParseIssue, A> =>
   getEither(AST.to(schema.ast), true, options)
@@ -256,7 +256,7 @@ export const validate = <A, I, R>(
  * @category validation
  * @since 1.0.0
  */
-export const is = <A, I>(schema: Schema.Schema<A, I, never>, options?: AST.ParseOptions) => {
+export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.to(schema.ast), true)
   return (u: unknown, overrideOptions?: AST.ParseOptions): u is A =>
     Either.isRight(parser(u, { ...mergeParseOptions(options, overrideOptions), isExact: true }) as any)
@@ -266,7 +266,7 @@ export const is = <A, I>(schema: Schema.Schema<A, I, never>, options?: AST.Parse
  * @category validation
  * @since 1.0.0
  */
-export const asserts = <A, I>(schema: Schema.Schema<A, I, never>, options?: AST.ParseOptions) => {
+export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.to(schema.ast), true)
   return (u: unknown, overrideOptions?: AST.ParseOptions): asserts u is A => {
     const result: Either.Either<ParseResult.ParseIssue, any> = parser(u, {
