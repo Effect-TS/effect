@@ -58,8 +58,8 @@ export const currentTimeNanos: Effect.Effect<bigint> = clockWith((clock) => cloc
 
 /** @internal */
 export const withClock = dual<
-  <A extends Clock.Clock>(value: A) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A extends Clock.Clock, E, R>(effect: Effect.Effect<A, E, R>, value: A) => Effect.Effect<A, E, R>
+  <X extends Clock.Clock>(value: X) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <X extends Clock.Clock, A, E, R>(effect: Effect.Effect<A, E, R>, value: X) => Effect.Effect<A, E, R>
 >(2, (effect, value) =>
   core.fiberRefLocallyWith(
     currentServices,
@@ -104,8 +104,8 @@ export const randomWith = <A, E, R>(f: (random: Random.Random) => Effect.Effect<
 
 /** @internal */
 export const withRandom = dual<
-  <A extends Random.Random>(value: A) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A extends Random.Random, E, R>(effect: Effect.Effect<A, E, R>, value: A) => Effect.Effect<A, E, R>
+  <X extends Random.Random>(value: X) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <X extends Random.Random, A, E, R>(effect: Effect.Effect<A, E, R>, value: X) => Effect.Effect<A, E, R>
 >(2, (effect, value) =>
   core.fiberRefLocallyWith(
     currentServices,

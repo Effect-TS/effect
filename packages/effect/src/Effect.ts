@@ -2817,8 +2817,8 @@ export const withClockScoped: <A extends Clock.Clock>(value: A) => Effect<void, 
  * @category clock
  */
 export const withClock: {
-  <A extends Clock.Clock>(value: A): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
-  <R, E, A extends Clock.Clock>(effect: Effect<A, E, R>, value: A): Effect<A, E, R>
+  <X extends Clock.Clock>(value: X): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <X extends Clock.Clock, A, E, R>(effect: Effect<A, E, R>, value: X): Effect<A, E, R>
 } = defaultServices.withClock
 
 // -------------------------------------------------------------------------------------
@@ -4532,8 +4532,8 @@ export const randomWith: <A, E, R>(f: (random: Random.Random) => Effect<A, E, R>
  * @category random
  */
 export const withRandom: {
-  <A extends Random.Random>(value: A): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
-  <A extends Random.Random, E, R>(effect: Effect<A, E, R>, value: A): Effect<A, E, R>
+  <X extends Random.Random>(value: X): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <X extends Random.Random, A, E, R>(effect: Effect<A, E, R>, value: X): Effect<A, E, R>
 } = defaultServices.withRandom
 
 /**
