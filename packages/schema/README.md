@@ -3186,6 +3186,9 @@ Error: ReadonlySet<NumberFromString>
 */
 ```
 
+> [!WARNING]
+> The decoding and encoding functions cannot use context (the `R` type parameter) and cannot use async effects.
+
 ## Adding Annotations
 
 When you define a new data type, some compilers like `Arbitrary` or `Pretty` may not know how to handle the newly defined data. For instance:
