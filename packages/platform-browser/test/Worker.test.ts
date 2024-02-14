@@ -68,7 +68,7 @@ describe.sequential("Worker", () => {
       const pool = yield* _(EffectWorker.makePoolSerialized({
         size: 1
       }))
-      const span = yield* _(pool.executeEffect(new GetSpan()))
+      const span = yield* _(pool.executeEffect(new GetSpan()), Effect.tapErrorCause(Effect.log))
       assert.deepStrictEqual(
         span.parent,
         Option.some({
