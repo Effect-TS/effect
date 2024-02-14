@@ -23,15 +23,15 @@ const filterMap = ReadonlyRecord.filterMap
 
 /** @internal */
 export const traverse = <F extends TypeLambda>(F: applicative.Applicative<F>): {
-  <K extends string | symbol, A, R, O, E, B>(
+  <K extends string, A, R, O, E, B>(
     f: (a: A, key: K) => Kind<F, R, O, E, B>
   ): (self: Record<K, A>) => Kind<F, R, O, E, Record<K, B>>
-  <K extends string | symbol, A, R, O, E, B>(
+  <K extends string, A, R, O, E, B>(
     self: Record<K, A>,
     f: (a: A, key: K) => Kind<F, R, O, E, B>
   ): Kind<F, R, O, E, Record<K, B>>
 } =>
-  dual(2, <K extends string | symbol, A, R, O, E, B>(
+  dual(2, <K extends string, A, R, O, E, B>(
     self: Record<string, A>,
     f: (a: A, key: string) => Kind<F, R, O, E, B>
   ): Kind<F, R, O, E, Record<K, B>> =>
@@ -47,7 +47,7 @@ const traversePartitionMap = <F extends TypeLambda>(
 ): {
   <A, R, O, E, B, C>(
     f: (a: A) => Kind<F, R, O, E, Either<C, B>>
-  ): <K extends string | symbol>(
+  ): <K extends string>(
     self: ReadonlyRecord.ReadonlyRecord<K, A>
   ) => Kind<
     F,
@@ -59,7 +59,7 @@ const traversePartitionMap = <F extends TypeLambda>(
       Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, C>
     ]
   >
-  <K extends string | symbol, A, R, O, E, B, C>(
+  <K extends string, A, R, O, E, B, C>(
     self: ReadonlyRecord.ReadonlyRecord<K, A>,
     f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): Kind<
@@ -73,7 +73,7 @@ const traversePartitionMap = <F extends TypeLambda>(
     ]
   >
 } =>
-  dual(2, <K extends string | symbol, A, R, O, E, B, C>(
+  dual(2, <K extends string, A, R, O, E, B, C>(
     self: ReadonlyRecord.ReadonlyRecord<K, A>,
     f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): Kind<
@@ -94,15 +94,15 @@ const traverseFilterMap = <F extends TypeLambda>(
 ): {
   <A, R, O, E, B>(
     f: (a: A) => Kind<F, R, O, E, Option<B>>
-  ): <K extends string | symbol>(
+  ): <K extends string>(
     self: ReadonlyRecord.ReadonlyRecord<K, A>
   ) => Kind<F, R, O, E, Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, B>>
-  <K extends string | symbol, A, R, O, E, B>(
+  <K extends string, A, R, O, E, B>(
     self: ReadonlyRecord.ReadonlyRecord<K, A>,
     f: (a: A) => Kind<F, R, O, E, Option<B>>
   ): Kind<F, R, O, E, Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, B>>
 } =>
-  dual(2, <K extends string | symbol, A, R, O, E, B>(
+  dual(2, <K extends string, A, R, O, E, B>(
     self: ReadonlyRecord.ReadonlyRecord<K, A>,
     f: (a: A) => Kind<F, R, O, E, Option<B>>
   ): Kind<F, R, O, E, Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, B>> => {
