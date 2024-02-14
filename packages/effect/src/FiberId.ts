@@ -23,7 +23,13 @@ export type FiberIdTypeId = typeof FiberIdTypeId
  * @since 2.0.0
  * @category models
  */
-export type FiberId = None | Runtime | Composite
+export type Single = None | Runtime
+
+/**
+ * @since 2.0.0
+ * @category models
+ */
+export type FiberId = Single | Composite
 
 /**
  * @since 2.0.0
@@ -32,6 +38,8 @@ export type FiberId = None | Runtime | Composite
 export interface None extends Equal.Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
   readonly _tag: "None"
+  readonly id: -1
+  readonly startTimeMillis: -1
 }
 
 /**
@@ -60,19 +68,19 @@ export interface Composite extends Equal.Equal, Inspectable {
  * @since 2.0.0
  * @category constructors
  */
-export const none: FiberId = internal.none
+export const none: None = internal.none
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const runtime: (id: number, startTimeMillis: number) => FiberId = internal.runtime
+export const runtime: (id: number, startTimeMillis: number) => Runtime = internal.runtime
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const composite: (left: FiberId, right: FiberId) => FiberId = internal.composite
+export const composite: (left: FiberId, right: FiberId) => Composite = internal.composite
 
 /**
  * Returns `true` if the specified unknown value is a `FiberId`, `false`
