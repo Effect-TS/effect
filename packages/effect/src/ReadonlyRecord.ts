@@ -32,7 +32,9 @@ export declare namespace ReadonlyRecord {
   /**
    * @since 2.0.0
    */
-  export type NonLiteralKey<K extends string> = IsFiniteString<K> extends true ? string : K
+  export type NonLiteralKey<K extends string> = K extends never ? never
+    : IsFiniteString<K> extends true ? string
+    : K
 
   /**
    * @since 2.0.0
