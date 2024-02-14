@@ -147,12 +147,9 @@ export const remove: {
  * @since 1.0.0
  */
 export const redact: {
-  (key: string | Array<string>): (self: Headers) => ReadonlyRecord.ReadonlyRecord<string | Secret.Secret>
-  (self: Headers, key: string | Array<string>): ReadonlyRecord.ReadonlyRecord<string | Secret.Secret>
+  (key: string): (self: Headers) => Record<string, string | Secret.Secret>
+  (self: Headers, key: string): Record<string, string | Secret.Secret>
 } = dual<
-  (key: string | Array<string>) => (self: Headers) => ReadonlyRecord.ReadonlyRecord<string | Secret.Secret>,
-  (self: Headers, key: string | Array<string>) => ReadonlyRecord.ReadonlyRecord<string | Secret.Secret>
->(2, (self, key) =>
-  Array.isArray(key) ?
-    key.reduce((headers, key) => ReadonlyRecord.modify(headers, key.toLowerCase(), Secret.fromString), self) :
-    ReadonlyRecord.modify(self, key.toLowerCase(), Secret.fromString))
+  (key: string) => (self: Headers) => Record<string, string | Secret.Secret>,
+  (self: Headers, key: string) => Record<string, string | Secret.Secret>
+>(2, (self, key) => ReadonlyRecord.modify(self, key.toLowerCase(), Secret.fromString))
