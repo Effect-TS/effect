@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.45.1
+
+### Patch Changes
+
+- [#2133](https://github.com/Effect-TS/effect/pull/2133) [`65895ab`](https://github.com/Effect-TS/effect/commit/65895ab982e0917ac92f0827e387e7cf61be1e69) Thanks [@tim-smart](https://github.com/tim-smart)! - use Schema.TaggedError for worker errors
+
 ## 0.45.0
 
 ### Minor Changes
