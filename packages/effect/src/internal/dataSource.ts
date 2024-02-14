@@ -7,6 +7,7 @@ import { dual, pipe } from "../Function.js"
 import * as RA from "../ReadonlyArray.js"
 import type * as Request from "../Request.js"
 import type * as RequestResolver from "../RequestResolver.js"
+import type { NoInfer } from "../Types.js"
 import * as core from "./core.js"
 import { invokeWithInterrupt, zipWithOptions } from "./fiberRuntime.js"
 import { complete } from "./request.js"
@@ -69,6 +70,32 @@ export const around = dual<
         after
       ),
     Chunk.make("Around", self, before, after)
+  ))
+
+/** @internal */
+export const aroundRequests = dual<
+  <A, R2, A2, R3, _>(
+    before: (requests: ReadonlyArray<NoInfer<A>>) => Effect.Effect<A2, never, R2>,
+    after: (requests: ReadonlyArray<NoInfer<A>>, _: A2) => Effect.Effect<_, never, R3>
+  ) => <R>(
+    self: RequestResolver.RequestResolver<A, R>
+  ) => RequestResolver.RequestResolver<A, R | R2 | R3>,
+  <R, A, R2, A2, R3, _>(
+    self: RequestResolver.RequestResolver<A, R>,
+    before: (requests: ReadonlyArray<NoInfer<A>>) => Effect.Effect<A2, never, R2>,
+    after: (requests: ReadonlyArray<NoInfer<A>>, _: A2) => Effect.Effect<_, never, R3>
+  ) => RequestResolver.RequestResolver<A, R | R2 | R3>
+>(3, (self, before, after) =>
+  new core.RequestResolverImpl(
+    (requests) => {
+      const flatRequests = requests.flatMap((chunk) => chunk.map((entry) => entry.request))
+      return core.acquireUseRelease(
+        before(flatRequests),
+        () => self.runAll(requests),
+        (a2) => after(flatRequests, a2)
+      )
+    },
+    Chunk.make("AroundRequests", self, before, after)
   ))
 
 /** @internal */
