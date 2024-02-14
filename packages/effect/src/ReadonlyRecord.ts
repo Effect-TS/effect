@@ -17,7 +17,7 @@ import type { NoInfer } from "./Types.js"
  * @category models
  * @since 2.0.0
  */
-export type ReadonlyRecord<in out K extends string | symbol, out A> = {
+export type ReadonlyRecord<in out K extends string, out A> = {
   readonly [P in K]: A
 }
 
@@ -32,15 +32,13 @@ export declare namespace ReadonlyRecord {
   /**
    * @since 2.0.0
    */
-  export type NonLiteralKey<K extends string | symbol> = K extends string ? IsFiniteString<K> extends true ? string : K
-    : symbol
+  export type NonLiteralKey<K extends string> = IsFiniteString<K> extends true ? string : K
 
   /**
    * @since 2.0.0
    */
-  export type IntersectKeys<K1 extends string | symbol, K2 extends string | symbol> = [string] extends [K1 | K2] ?
+  export type IntersectKeys<K1 extends string, K2 extends string> = [string] extends [K1 | K2] ?
     NonLiteralKey<K1> & NonLiteralKey<K2>
-    : [symbol] extends [K1 | K2] ? NonLiteralKey<K1> & NonLiteralKey<K2>
     : K1 & K2
 }
 
@@ -58,7 +56,7 @@ export interface ReadonlyRecordTypeLambda<K extends string = string> extends Typ
  * @category constructors
  * @since 2.0.0
  */
-export const empty = <K extends string | symbol = never, V = never>(): Record<
+export const empty = <K extends string = never, V = never>(): Record<
   ReadonlyRecord.NonLiteralKey<K>,
   V
 > => ({} as any)
@@ -77,7 +75,7 @@ export const empty = <K extends string | symbol = never, V = never>(): Record<
  * @category guards
  * @since 2.0.0
  */
-export const isEmptyRecord = <K extends string | symbol, A>(self: Record<K, A>): self is Record<K, never> => {
+export const isEmptyRecord = <K extends string, A>(self: Record<K, A>): self is Record<K, never> => {
   return keys(self).length === 0
 }
 
@@ -95,7 +93,7 @@ export const isEmptyRecord = <K extends string | symbol, A>(self: Record<K, A>):
  * @category guards
  * @since 2.0.0
  */
-export const isEmptyReadonlyRecord: <K extends string | symbol, A>(
+export const isEmptyReadonlyRecord: <K extends string, A>(
   self: ReadonlyRecord<K, A>
 ) => self is ReadonlyRecord<K, never> = isEmptyRecord
 
@@ -120,20 +118,20 @@ export const isEmptyReadonlyRecord: <K extends string | symbol, A>(
  * @since 2.0.0
  */
 export const fromIterableWith: {
-  <A, K extends string | symbol, B>(
+  <A, K extends string, B>(
     f: (a: A) => readonly [K, B]
   ): (self: Iterable<A>) => Record<ReadonlyRecord.NonLiteralKey<K>, B>
-  <A, K extends string | symbol, B>(
+  <A, K extends string, B>(
     self: Iterable<A>,
     f: (a: A) => readonly [K, B]
   ): Record<ReadonlyRecord.NonLiteralKey<K>, B>
 } = dual(
   2,
-  <A, K extends string | symbol, B>(
+  <A, K extends string, B>(
     self: Iterable<A>,
     f: (a: A) => readonly [K, B]
   ): Record<ReadonlyRecord.NonLiteralKey<K>, B> => {
-    const out: Record<string | symbol, B> = empty()
+    const out: Record<string, B> = empty()
     for (const a of self) {
       const [k, b] = f(a)
       out[k] = b
@@ -160,7 +158,7 @@ export const fromIterableWith: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromEntries: <Entry extends readonly [string | symbol, any]>(
+export const fromEntries: <Entry extends readonly [string, any]>(
   entries: Iterable<Entry>
 ) => Record<ReadonlyRecord.NonLiteralKey<Entry[0]>, Entry[1]> = Object.fromEntries
 
@@ -189,7 +187,7 @@ export const fromEntries: <Entry extends readonly [string | symbol, any]>(
  * @category constructors
  * @since 2.0.0
  */
-export const fromIterableBy = <A, K extends string | symbol>(
+export const fromIterableBy = <A, K extends string>(
   items: Iterable<A>,
   f: (a: A) => K
 ): Record<ReadonlyRecord.NonLiteralKey<K>, A> => fromIterableWith(items, (a) => [f(a), a])
@@ -210,11 +208,11 @@ export const fromIterableBy = <A, K extends string | symbol>(
  * @since 2.0.0
  */
 export const collect: {
-  <K extends string | symbol, A, B>(f: (key: K, a: A) => B): (self: ReadonlyRecord<K, A>) => Array<B>
-  <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, f: (key: K, a: A) => B): Array<B>
+  <K extends string, A, B>(f: (key: K, a: A) => B): (self: ReadonlyRecord<K, A>) => Array<B>
+  <K extends string, A, B>(self: ReadonlyRecord<K, A>, f: (key: K, a: A) => B): Array<B>
 } = dual(
   2,
-  <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, f: (key: K, a: A) => B): Array<B> => {
+  <K extends string, A, B>(self: ReadonlyRecord<K, A>, f: (key: K, a: A) => B): Array<B> => {
     const out: Array<B> = []
     for (const key of keys(self)) {
       out.push(f(key, self[key]))
@@ -237,7 +235,7 @@ export const collect: {
  * @category conversions
  * @since 2.0.0
  */
-export const toEntries: <K extends string | symbol, A>(self: ReadonlyRecord<K, A>) => Array<[K, A]> = collect((
+export const toEntries: <K extends string, A>(self: ReadonlyRecord<K, A>) => Array<[K, A]> = collect((
   key,
   value
 ) => [key, value])
@@ -254,7 +252,7 @@ export const toEntries: <K extends string | symbol, A>(self: ReadonlyRecord<K, A
  *
  * @since 2.0.0
  */
-export const size = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): number => keys(self).length
+export const size = <K extends string, A>(self: ReadonlyRecord<K, A>): number => keys(self).length
 
 /**
  * Check if a given `key` exists in a record.
@@ -271,16 +269,16 @@ export const size = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): 
  * @since 2.0.0
  */
 export const has: {
-  <K extends string | symbol>(
+  <K extends string>(
     key: NoInfer<K>
   ): <A>(self: ReadonlyRecord<K, A>) => boolean
-  <K extends string | symbol, A>(
+  <K extends string, A>(
     self: ReadonlyRecord<K, A>,
     key: NoInfer<K>
   ): boolean
 } = dual(
   2,
-  <K extends string | symbol, A>(
+  <K extends string, A>(
     self: ReadonlyRecord<K, A>,
     key: NoInfer<K>
   ): boolean => Object.prototype.hasOwnProperty.call(self, key)
@@ -304,11 +302,11 @@ export const has: {
  * @since 2.0.0
  */
 export const get: {
-  <K extends string | symbol>(key: NoInfer<K>): <A>(self: ReadonlyRecord<K, A>) => Option.Option<A>
-  <K extends string | symbol, A>(self: ReadonlyRecord<K, A>, key: NoInfer<K>): Option.Option<A>
+  <K extends string>(key: NoInfer<K>): <A>(self: ReadonlyRecord<K, A>) => Option.Option<A>
+  <K extends string, A>(self: ReadonlyRecord<K, A>, key: NoInfer<K>): Option.Option<A>
 } = dual(
   2,
-  <K extends string | symbol, A>(self: ReadonlyRecord<K, A>, key: NoInfer<K>): Option.Option<A> =>
+  <K extends string, A>(self: ReadonlyRecord<K, A>, key: NoInfer<K>): Option.Option<A> =>
     has(self, key) ? Option.some(self[key]) : Option.none()
 )
 
@@ -338,14 +336,14 @@ export const get: {
  * @since 2.0.0
  */
 export const modify: {
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     key: NoInfer<K>,
     f: (a: A) => B
   ): (self: ReadonlyRecord<K, A>) => Record<K, A | B>
-  <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, key: NoInfer<K>, f: (a: A) => B): Record<K, A | B>
+  <K extends string, A, B>(self: ReadonlyRecord<K, A>, key: NoInfer<K>, f: (a: A) => B): Record<K, A | B>
 } = dual(
   3,
-  <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, key: NoInfer<K>, f: (a: A) => B): Record<K, A | B> => {
+  <K extends string, A, B>(self: ReadonlyRecord<K, A>, key: NoInfer<K>, f: (a: A) => B): Record<K, A | B> => {
     if (!has(self, key)) {
       return { ...self }
     }
@@ -379,18 +377,18 @@ export const modify: {
  * @since 2.0.0
  */
 export const modifyOption: {
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     key: NoInfer<K>,
     f: (a: A) => B
   ): (self: ReadonlyRecord<K, A>) => Option.Option<Record<K, A | B>>
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     self: ReadonlyRecord<K, A>,
     key: NoInfer<K>,
     f: (a: A) => B
   ): Option.Option<Record<K, A | B>>
 } = dual(
   3,
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     self: ReadonlyRecord<K, A>,
     key: NoInfer<K>,
     f: (a: A) => B
@@ -422,18 +420,18 @@ export const modifyOption: {
  * @since 2.0.0
  */
 export const replaceOption: {
-  <K extends string | symbol, B>(
+  <K extends string, B>(
     key: NoInfer<K>,
     b: B
   ): <A>(self: ReadonlyRecord<K, A>) => Option.Option<Record<K, A | B>>
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     self: ReadonlyRecord<K, A>,
     key: NoInfer<K>,
     b: B
   ): Option.Option<Record<K, A | B>>
 } = dual(
   3,
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     self: ReadonlyRecord<K, A>,
     key: NoInfer<K>,
     b: B
@@ -455,11 +453,11 @@ export const replaceOption: {
  * @since 2.0.0
  */
 export const remove: {
-  <K extends string | symbol, X extends K>(key: X): <A>(self: ReadonlyRecord<K, A>) => Record<Exclude<K, X>, A>
-  <K extends string | symbol, A, X extends K>(self: ReadonlyRecord<K, A>, key: X): Record<Exclude<K, X>, A>
+  <K extends string, X extends K>(key: X): <A>(self: ReadonlyRecord<K, A>) => Record<Exclude<K, X>, A>
+  <K extends string, A, X extends K>(self: ReadonlyRecord<K, A>, key: X): Record<Exclude<K, X>, A>
 } = dual(
   2,
-  <K extends string | symbol, A, X extends K>(self: ReadonlyRecord<K, A>, key: X): Record<Exclude<K, X>, A> => {
+  <K extends string, A, X extends K>(self: ReadonlyRecord<K, A>, key: X): Record<Exclude<K, X>, A> => {
     if (!has(self, key)) {
       return { ...self }
     }
@@ -488,14 +486,14 @@ export const remove: {
  * @since 2.0.0
  */
 export const pop: {
-  <K extends string | symbol, X extends K>(
+  <K extends string, X extends K>(
     key: X
   ): <A>(self: ReadonlyRecord<K, A>) => Option.Option<[A, Record<Exclude<K, X>, A>]>
-  <K extends string | symbol, A, X extends K>(
+  <K extends string, A, X extends K>(
     self: ReadonlyRecord<K, A>,
     key: X
   ): Option.Option<[A, Record<Exclude<K, X>, A>]>
-} = dual(2, <K extends string | symbol, A, X extends K>(
+} = dual(2, <K extends string, A, X extends K>(
   self: ReadonlyRecord<K, A>,
   key: X
 ): Option.Option<[A, Record<Exclude<K, X>, A>]> =>
@@ -522,12 +520,12 @@ export const pop: {
  * @since 2.0.0
  */
 export const map: {
-  <K extends string | symbol, A, B>(f: (a: A, key: NoInfer<K>) => B): (self: ReadonlyRecord<K, A>) => Record<K, B>
-  <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, f: (a: A, key: NoInfer<K>) => B): Record<K, B>
+  <K extends string, A, B>(f: (a: A, key: NoInfer<K>) => B): (self: ReadonlyRecord<K, A>) => Record<K, B>
+  <K extends string, A, B>(self: ReadonlyRecord<K, A>, f: (a: A, key: NoInfer<K>) => B): Record<K, B>
 } = dual(
   2,
-  <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, f: (a: A, key: NoInfer<K>) => B): Record<K, B> => {
-    const out = <Record<K, B>> {}
+  <K extends string, A, B>(self: ReadonlyRecord<K, A>, f: (a: A, key: NoInfer<K>) => B): Record<K, B> => {
+    const out: Record<K, B> = { ...self } as any
     for (const key of keys(self)) {
       out[key] = f(self[key], key)
     }
@@ -547,20 +545,20 @@ export const map: {
  * @since 2.0.0
  */
 export const mapKeys: {
-  <K extends string | symbol, A, K2 extends string | symbol>(
+  <K extends string, A, K2 extends string>(
     f: (key: K, a: A) => K2
   ): (self: ReadonlyRecord<K, A>) => Record<K2, A>
-  <K extends string | symbol, A, K2 extends string | symbol>(
+  <K extends string, A, K2 extends string>(
     self: ReadonlyRecord<K, A>,
     f: (key: K, a: A) => K2
   ): Record<K2, A>
 } = dual(
   2,
-  <K extends string | symbol, A, K2 extends string | symbol>(
+  <K extends string, A, K2 extends string>(
     self: ReadonlyRecord<K, A>,
     f: (key: K, a: A) => K2
   ): Record<K2, A> => {
-    const out = <Record<K2, A>> {}
+    const out: Record<K2, A> = {} as any
     for (const key of keys(self)) {
       const a = self[key]
       out[f(key, a)] = a
@@ -581,16 +579,16 @@ export const mapKeys: {
  * @since 2.0.0
  */
 export const mapEntries: {
-  <K extends string | symbol, A, K2 extends string | symbol, B>(
+  <K extends string, A, K2 extends string, B>(
     f: (a: A, key: K) => readonly [K2, B]
   ): (self: ReadonlyRecord<K, A>) => Record<K2, B>
-  <K extends string | symbol, A, K2 extends string | symbol, B>(
+  <K extends string, A, K2 extends string, B>(
     self: ReadonlyRecord<K, A>,
     f: (a: A, key: K) => [K2, B]
   ): Record<K2, B>
 } = dual(
   2,
-  <K extends string | symbol, A, K2 extends string | symbol, B>(
+  <K extends string, A, K2 extends string, B>(
     self: ReadonlyRecord<K, A>,
     f: (a: A, key: K) => [K2, B]
   ): Record<K2, B> => {
@@ -621,20 +619,20 @@ export const mapEntries: {
  * @since 2.0.0
  */
 export const filterMap: {
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     f: (a: A, key: K) => Option.Option<B>
   ): (self: ReadonlyRecord<K, A>) => Record<ReadonlyRecord.NonLiteralKey<K>, B>
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     self: ReadonlyRecord<K, A>,
     f: (a: A, key: K) => Option.Option<B>
   ): Record<ReadonlyRecord.NonLiteralKey<K>, B>
 } = dual(
   2,
-  <K extends string | symbol, A, B>(
+  <K extends string, A, B>(
     self: ReadonlyRecord<K, A>,
     f: (a: A, key: K) => Option.Option<B>
   ): Record<ReadonlyRecord.NonLiteralKey<K>, B> => {
-    const out: Record<string | symbol, B> = empty()
+    const out: Record<string, B> = empty()
     for (const key of keys(self)) {
       const o = f(self[key], key)
       if (Option.isSome(o)) {
@@ -661,27 +659,27 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const filter: {
-  <K extends string | symbol, A, B extends A>(
+  <K extends string, A, B extends A>(
     refinement: (a: NoInfer<A>, key: K) => a is B
   ): (self: ReadonlyRecord<K, A>) => Record<ReadonlyRecord.NonLiteralKey<K>, B>
-  <K extends string | symbol, A>(
+  <K extends string, A>(
     predicate: (A: NoInfer<A>, key: K) => boolean
   ): (self: ReadonlyRecord<K, A>) => Record<ReadonlyRecord.NonLiteralKey<K>, A>
-  <K extends string | symbol, A, B extends A>(
+  <K extends string, A, B extends A>(
     self: ReadonlyRecord<K, A>,
     refinement: (a: A, key: K) => a is B
   ): Record<ReadonlyRecord.NonLiteralKey<K>, B>
-  <K extends string | symbol, A>(
+  <K extends string, A>(
     self: ReadonlyRecord<K, A>,
     predicate: (a: A, key: K) => boolean
   ): Record<ReadonlyRecord.NonLiteralKey<K>, A>
 } = dual(
   2,
-  <K extends string | symbol, A>(
+  <K extends string, A>(
     self: ReadonlyRecord<K, A>,
     predicate: (a: A, key: K) => boolean
   ): Record<ReadonlyRecord.NonLiteralKey<K>, A> => {
-    const out: Record<string | symbol, A> = empty()
+    const out: Record<string, A> = empty()
     for (const key of keys(self)) {
       if (predicate(self[key], key)) {
         out[key] = self[key]
@@ -708,7 +706,7 @@ export const filter: {
  * @category filtering
  * @since 2.0.0
  */
-export const getSomes: <K extends string | symbol, A>(
+export const getSomes: <K extends string, A>(
   self: ReadonlyRecord<K, Option.Option<A>>
 ) => Record<ReadonlyRecord.NonLiteralKey<K>, A> = filterMap(
   identity
@@ -729,10 +727,10 @@ export const getSomes: <K extends string | symbol, A>(
  * @category filtering
  * @since 2.0.0
  */
-export const getLefts = <K extends string | symbol, A, E>(
+export const getLefts = <K extends string, E, A>(
   self: ReadonlyRecord<K, Either<A, E>>
 ): Record<ReadonlyRecord.NonLiteralKey<K>, E> => {
-  const out: Record<string | symbol, E> = empty()
+  const out: Record<string, E> = empty()
   for (const key of keys(self)) {
     const value = self[key]
     if (E.isLeft(value)) {
@@ -758,10 +756,10 @@ export const getLefts = <K extends string | symbol, A, E>(
  * @category filtering
  * @since 2.0.0
  */
-export const getRights = <K extends string | symbol, E, A>(
+export const getRights = <K extends string, E, A>(
   self: ReadonlyRecord<K, Either<A, E>>
 ): Record<string, A> => {
-  const out: Record<string | symbol, A> = empty()
+  const out: Record<string, A> = empty()
   for (const key of keys(self)) {
     const value = self[key]
     if (E.isRight(value)) {
@@ -790,23 +788,23 @@ export const getRights = <K extends string | symbol, E, A>(
  * @since 2.0.0
  */
 export const partitionMap: {
-  <K extends string | symbol, A, B, C>(
+  <K extends string, A, B, C>(
     f: (a: A, key: K) => Either<C, B>
   ): (
     self: ReadonlyRecord<K, A>
   ) => [left: Record<ReadonlyRecord.NonLiteralKey<K>, B>, right: Record<ReadonlyRecord.NonLiteralKey<K>, C>]
-  <K extends string | symbol, A, B, C>(
+  <K extends string, A, B, C>(
     self: ReadonlyRecord<K, A>,
     f: (a: A, key: K) => Either<C, B>
   ): [left: Record<ReadonlyRecord.NonLiteralKey<K>, B>, right: Record<ReadonlyRecord.NonLiteralKey<K>, C>]
 } = dual(
   2,
-  <K extends string | symbol, A, B, C>(
+  <K extends string, A, B, C>(
     self: ReadonlyRecord<K, A>,
     f: (a: A, key: K) => Either<C, B>
   ): [left: Record<ReadonlyRecord.NonLiteralKey<K>, B>, right: Record<ReadonlyRecord.NonLiteralKey<K>, C>] => {
-    const left: Record<string | symbol, B> = empty()
-    const right: Record<string | symbol, C> = empty()
+    const left: Record<string, B> = empty()
+    const right: Record<string, C> = empty()
     for (const key of keys(self)) {
       const e = f(self[key], key)
       if (E.isLeft(e)) {
@@ -837,7 +835,7 @@ export const partitionMap: {
  * @category filtering
  * @since 2.0.0
  */
-export const separate: <K extends string | symbol, A, B>(
+export const separate: <K extends string, A, B>(
   self: ReadonlyRecord<K, Either<B, A>>
 ) => [Record<ReadonlyRecord.NonLiteralKey<K>, A>, Record<ReadonlyRecord.NonLiteralKey<K>, B>] = partitionMap(identity)
 
@@ -859,36 +857,36 @@ export const separate: <K extends string | symbol, A, B>(
  * @since 2.0.0
  */
 export const partition: {
-  <K extends string | symbol, A, B extends A>(refinement: (a: NoInfer<A>, key: K) => a is B): (
+  <K extends string, A, B extends A>(refinement: (a: NoInfer<A>, key: K) => a is B): (
     self: ReadonlyRecord<K, A>
   ) => [
     excluded: Record<ReadonlyRecord.NonLiteralKey<K>, Exclude<A, B>>,
     satisfying: Record<ReadonlyRecord.NonLiteralKey<K>, B>
   ]
-  <K extends string | symbol, A>(
+  <K extends string, A>(
     predicate: (a: NoInfer<A>, key: K) => boolean
   ): (
     self: ReadonlyRecord<K, A>
   ) => [excluded: Record<ReadonlyRecord.NonLiteralKey<K>, A>, satisfying: Record<ReadonlyRecord.NonLiteralKey<K>, A>]
-  <K extends string | symbol, A, B extends A>(
+  <K extends string, A, B extends A>(
     self: ReadonlyRecord<K, A>,
     refinement: (a: A, key: K) => a is B
   ): [
     excluded: Record<ReadonlyRecord.NonLiteralKey<K>, Exclude<A, B>>,
     satisfying: Record<ReadonlyRecord.NonLiteralKey<K>, B>
   ]
-  <K extends string | symbol, A>(
+  <K extends string, A>(
     self: ReadonlyRecord<K, A>,
     predicate: (a: A, key: K) => boolean
   ): [excluded: Record<ReadonlyRecord.NonLiteralKey<K>, A>, satisfying: Record<ReadonlyRecord.NonLiteralKey<K>, A>]
 } = dual(
   2,
-  <K extends string | symbol, A>(
+  <K extends string, A>(
     self: ReadonlyRecord<K, A>,
     predicate: (a: A, key: K) => boolean
   ): [excluded: Record<ReadonlyRecord.NonLiteralKey<K>, A>, satisfying: Record<ReadonlyRecord.NonLiteralKey<K>, A>] => {
-    const left: Record<string | symbol, A> = empty()
-    const right: Record<string | symbol, A> = empty()
+    const left: Record<string, A> = empty()
+    const right: Record<string, A> = empty()
     for (const key of keys(self)) {
       if (predicate(self[key], key)) {
         right[key] = self[key]
@@ -907,8 +905,7 @@ export const partition: {
  *
  * @since 2.0.0
  */
-export const keys = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): Array<K> =>
-  Reflect.ownKeys(self) as Array<K>
+export const keys = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<K> => Object.keys(self) as Array<K>
 
 /**
  * Retrieve the values of a given record as an array.
@@ -917,7 +914,7 @@ export const keys = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): 
  *
  * @since 2.0.0
  */
-export const values = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): Array<A> => collect(self, (_, a) => a)
+export const values = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<A> => collect(self, (_, a) => a)
 
 /**
  * Add a new key-value pair or update an existing key's value in a record.
@@ -935,18 +932,18 @@ export const values = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>)
  * @since 2.0.0
  */
 export const set: {
-  <K extends string | symbol, K1 extends K | ((string | symbol) & {}), B>(
+  <K extends string, K1 extends K | ((string) & {}), B>(
     key: K1,
     value: B
   ): <A>(self: ReadonlyRecord<K, A>) => Record<K | K1, A | B>
-  <K extends string | symbol, A, K1 extends K | ((string | symbol) & {}), B>(
+  <K extends string, A, K1 extends K | ((string) & {}), B>(
     self: ReadonlyRecord<K, A>,
     key: K1,
     value: B
   ): Record<K | K1, A | B>
 } = dual(
   3,
-  <K extends string | symbol, A, K1 extends K | ((string | symbol) & {}), B>(
+  <K extends string, A, K1 extends K | ((string) & {}), B>(
     self: ReadonlyRecord<K, A>,
     key: K1,
     value: B
@@ -973,11 +970,11 @@ export const set: {
  * @since 2.0.0
  */
 export const replace: {
-  <K extends string | symbol, B>(key: NoInfer<K>, value: B): <A>(self: ReadonlyRecord<K, A>) => Record<K, A | B>
-  <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, key: NoInfer<K>, value: B): Record<K, A | B>
+  <K extends string, B>(key: NoInfer<K>, value: B): <A>(self: ReadonlyRecord<K, A>) => Record<K, A | B>
+  <K extends string, A, B>(self: ReadonlyRecord<K, A>, key: NoInfer<K>, value: B): Record<K, A | B>
 } = dual(
   3,
-  <K extends string | symbol, A, B>(self: ReadonlyRecord<K, A>, key: NoInfer<K>, value: B): Record<K, A | B> => {
+  <K extends string, A, B>(self: ReadonlyRecord<K, A>, key: NoInfer<K>, value: B): Record<K, A | B> => {
     if (has(self, key)) {
       return { ...self, [key]: value }
     }
@@ -995,10 +992,10 @@ export const replace: {
  * @since 2.0.0
  */
 export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
-  <K extends string | symbol>(that: ReadonlyRecord<K, A>): (self: ReadonlyRecord<K, A>) => boolean
-  <K extends string | symbol>(self: ReadonlyRecord<K, A>, that: ReadonlyRecord<K, A>): boolean
+  <K extends string>(that: ReadonlyRecord<K, A>): (self: ReadonlyRecord<K, A>) => boolean
+  <K extends string>(self: ReadonlyRecord<K, A>, that: ReadonlyRecord<K, A>): boolean
 } =>
-  dual(2, <K extends string | symbol>(self: ReadonlyRecord<K, A>, that: ReadonlyRecord<K, A>): boolean => {
+  dual(2, <K extends string>(self: ReadonlyRecord<K, A>, that: ReadonlyRecord<K, A>): boolean => {
     for (const key of keys(self)) {
       if (!has(that, key) || !equivalence(self[key], that[key])) {
         return false
@@ -1017,8 +1014,8 @@ export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
  * @since 2.0.0
  */
 export const isSubrecord: {
-  <K extends string | symbol, A>(that: ReadonlyRecord<K, A>): (self: ReadonlyRecord<K, A>) => boolean
-  <K extends string | symbol, A>(self: ReadonlyRecord<K, A>, that: ReadonlyRecord<K, A>): boolean
+  <K extends string, A>(that: ReadonlyRecord<K, A>): (self: ReadonlyRecord<K, A>) => boolean
+  <K extends string, A>(self: ReadonlyRecord<K, A>, that: ReadonlyRecord<K, A>): boolean
 } = isSubrecordBy(Equal.equivalence())
 
 /**
@@ -1032,14 +1029,14 @@ export const isSubrecord: {
  * @since 2.0.0
  */
 export const reduce: {
-  <Z, V, K extends string | symbol>(
+  <Z, V, K extends string>(
     zero: Z,
     f: (accumulator: Z, value: V, key: K) => Z
   ): (self: ReadonlyRecord<K, V>) => Z
-  <K extends string | symbol, V, Z>(self: ReadonlyRecord<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z): Z
+  <K extends string, V, Z>(self: ReadonlyRecord<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z): Z
 } = dual(
   3,
-  <K extends string | symbol, V, Z>(
+  <K extends string, V, Z>(
     self: ReadonlyRecord<K, V>,
     zero: Z,
     f: (accumulator: Z, value: V, key: K) => Z
@@ -1061,18 +1058,18 @@ export const reduce: {
  * @since 2.0.0
  */
 export const every: {
-  <A, K extends string | symbol, B extends A>(
+  <A, K extends string, B extends A>(
     refinement: (value: A, key: K) => value is B
   ): (self: ReadonlyRecord<K, A>) => self is ReadonlyRecord<K, B>
-  <A, K extends string | symbol>(predicate: (value: A, key: K) => boolean): (self: ReadonlyRecord<K, A>) => boolean
-  <A, K extends string | symbol, B extends A>(
+  <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: ReadonlyRecord<K, A>) => boolean
+  <A, K extends string, B extends A>(
     self: ReadonlyRecord<K, A>,
     refinement: (value: A, key: K) => value is B
   ): self is ReadonlyRecord<K, B>
-  <K extends string | symbol, A>(self: ReadonlyRecord<K, A>, predicate: (value: A, key: K) => boolean): boolean
+  <K extends string, A>(self: ReadonlyRecord<K, A>, predicate: (value: A, key: K) => boolean): boolean
 } = dual(
   2,
-  <A, K extends string | symbol, B extends A>(
+  <A, K extends string, B extends A>(
     self: ReadonlyRecord<K, A>,
     refinement: (value: A, key: K) => value is B
   ): self is ReadonlyRecord<K, B> => {
@@ -1094,11 +1091,11 @@ export const every: {
  * @since 2.0.0
  */
 export const some: {
-  <A, K extends string | symbol>(predicate: (value: A, key: K) => boolean): (self: ReadonlyRecord<K, A>) => boolean
-  <K extends string | symbol, A>(self: ReadonlyRecord<K, A>, predicate: (value: A, key: K) => boolean): boolean
+  <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: ReadonlyRecord<K, A>) => boolean
+  <K extends string, A>(self: ReadonlyRecord<K, A>, predicate: (value: A, key: K) => boolean): boolean
 } = dual(
   2,
-  <K extends string | symbol, A>(self: ReadonlyRecord<K, A>, predicate: (value: A, key: K) => boolean): boolean => {
+  <K extends string, A>(self: ReadonlyRecord<K, A>, predicate: (value: A, key: K) => boolean): boolean => {
     for (const key of keys(self)) {
       if (predicate(self[key], key)) {
         return true
@@ -1118,18 +1115,18 @@ export const some: {
  * @since 2.0.0
  */
 export const union: {
-  <K1 extends string | symbol | symbol, A, B, C>(
+  <K1 extends string, A, B, C>(
     that: ReadonlyRecord<K1, B>,
     combine: (selfValue: A, thatValue: B) => C
-  ): <K0 extends string | symbol>(self: ReadonlyRecord<K0, A>) => Record<K0 | K1, A | B | C>
-  <K0 extends string | symbol, A, K1 extends string | symbol, B, C>(
+  ): <K0 extends string>(self: ReadonlyRecord<K0, A>) => Record<K0 | K1, A | B | C>
+  <K0 extends string, A, K1 extends string, B, C>(
     self: ReadonlyRecord<K0, A>,
     that: ReadonlyRecord<K1, B>,
     combine: (selfValue: A, thatValue: B) => C
   ): Record<K0 | K1, A | B | C>
 } = dual(
   3,
-  <K0 extends string | symbol, A, K1 extends string | symbol, B, C>(
+  <K0 extends string, A, K1 extends string, B, C>(
     self: ReadonlyRecord<K0, A>,
     that: ReadonlyRecord<K1, B>,
     combine: (selfValue: A, thatValue: B) => C
@@ -1140,7 +1137,7 @@ export const union: {
     if (isEmptyRecord(that)) {
       return { ...self } as any
     }
-    const out: Record<string | symbol, A | B | C> = empty()
+    const out: Record<string, A | B | C> = empty()
     for (const key of keys(self)) {
       if (has(that, key as any)) {
         out[key] = combine(self[key], that[key as unknown as K1])
@@ -1167,23 +1164,23 @@ export const union: {
  * @since 2.0.0
  */
 export const intersection: {
-  <K1 extends string | symbol, A, B, C>(
+  <K1 extends string, A, B, C>(
     that: ReadonlyRecord<K1, B>,
     combine: (selfValue: A, thatValue: B) => C
-  ): <K0 extends string | symbol>(self: ReadonlyRecord<K0, A>) => Record<ReadonlyRecord.IntersectKeys<K0, K1>, C>
-  <K0 extends string | symbol, A, K1 extends string | symbol, B, C>(
+  ): <K0 extends string>(self: ReadonlyRecord<K0, A>) => Record<ReadonlyRecord.IntersectKeys<K0, K1>, C>
+  <K0 extends string, A, K1 extends string, B, C>(
     self: ReadonlyRecord<K0, A>,
     that: ReadonlyRecord<K1, B>,
     combine: (selfValue: A, thatValue: B) => C
   ): Record<ReadonlyRecord.IntersectKeys<K0, K1>, C>
 } = dual(
   3,
-  <K0 extends string | symbol, A, K1 extends string | symbol, B, C>(
+  <K0 extends string, A, K1 extends string, B, C>(
     self: ReadonlyRecord<K0, A>,
     that: ReadonlyRecord<K1, B>,
     combine: (selfValue: A, thatValue: B) => C
   ): Record<ReadonlyRecord.IntersectKeys<K0, K1>, C> => {
-    const out: Record<string | symbol, C> = empty()
+    const out: Record<string, C> = empty()
     if (isEmptyRecord(self) || isEmptyRecord(that)) {
       return out
     }
@@ -1205,14 +1202,14 @@ export const intersection: {
  * @since 2.0.0
  */
 export const difference: {
-  <K1 extends string | symbol, B>(
+  <K1 extends string, B>(
     that: ReadonlyRecord<K1, B>
-  ): <K0 extends string | symbol, A>(self: ReadonlyRecord<K0, A>) => Record<K0 | K1, A | B>
-  <K0 extends string | symbol, A, K1 extends string | symbol, B>(
+  ): <K0 extends string, A>(self: ReadonlyRecord<K0, A>) => Record<K0 | K1, A | B>
+  <K0 extends string, A, K1 extends string, B>(
     self: ReadonlyRecord<K0, A>,
     that: ReadonlyRecord<K1, B>
   ): Record<K0 | K1, A | B>
-} = dual(2, <K0 extends string | symbol, A, K1 extends string | symbol, B>(
+} = dual(2, <K0 extends string, A, K1 extends string, B>(
   self: ReadonlyRecord<K0, A>,
   that: ReadonlyRecord<K1, B>
 ): Record<K0 | K1, A | B> => {
@@ -1244,7 +1241,7 @@ export const difference: {
  * @category instances
  * @since 2.0.0
  */
-export const getEquivalence = <K extends string | symbol, A>(
+export const getEquivalence = <K extends string, A>(
   equivalence: Equivalence<A>
 ): Equivalence<ReadonlyRecord<K, A>> => {
   const is = isSubrecordBy(equivalence)
@@ -1260,6 +1257,6 @@ export const getEquivalence = <K extends string | symbol, A>(
  * @category constructors
  * @since 2.0.0
  */
-export const singleton = <K extends string | symbol, A>(key: K, value: A): Record<K, A> => ({
+export const singleton = <K extends string, A>(key: K, value: A): Record<K, A> => ({
   [key]: value
 } as any)
