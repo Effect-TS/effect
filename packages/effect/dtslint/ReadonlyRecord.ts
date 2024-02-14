@@ -341,7 +341,7 @@ pipe(numbersOrStrings, ReadonlyRecord.partition(Predicate.isNumber))
 // keys
 // -------------------------------------------------------------------------------------
 
-// $ExpectType string[]
+// $ExpectType ("a" | "b")[]
 ReadonlyRecord.keys(structNumbers)
 
 // -------------------------------------------------------------------------------------
@@ -358,10 +358,24 @@ ReadonlyRecord.values(structNumbers)
 ReadonlyRecord.set(numbers, "a", true)
 
 // -------------------------------------------------------------------------------------
-// replace
+// set
 // -------------------------------------------------------------------------------------
+
 // $ExpectType Record<string, number | boolean>
-ReadonlyRecord.replace(numbers, "a", true)
+ReadonlyRecord.set(numbers, "a", true)
+
+// $ExpectType Record<"a" | "b" | "c", number | boolean>
+ReadonlyRecord.set(structNumbers, "c", true)
+
+// -------------------------------------------------------------------------------------
+// remove
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Record<string, number>
+ReadonlyRecord.remove(numbers, "a")
+
+// $ExpectType Record<"b", number>
+ReadonlyRecord.remove(structNumbers, "a")
 
 // -------------------------------------------------------------------------------------
 // reduce
@@ -374,7 +388,7 @@ ReadonlyRecord.reduce(structNumbers, "", (
   _value,
   // $ExpectType "a" | "b"
   key
-) => key)
+) => typeof key === "string" ? key : _acc)
 
 // -------------------------------------------------------------------------------------
 // some
@@ -432,9 +446,74 @@ ReadonlyRecord.every(structNumbers, (
 ) => false)
 
 if (ReadonlyRecord.every(numbersOrStrings, Predicate.isString)) {
-  numbersOrStrings // $ExpectType Readonly<Record<string, string>>
+  numbersOrStrings // $ExpectType ReadonlyRecord<string, string>
 }
 
-if (ReadonlyRecord.every(Predicate.isString)(numbersOrStrings)) {
-  numbersOrStrings // $ExpectType Readonly<Record<string, string>>
+if (ReadonlyRecord.every(numbersOrStrings, Predicate.isString)) {
+  numbersOrStrings // $ExpectType ReadonlyRecord<string, string>
 }
+
+// -------------------------------------------------------------------------------------
+// intersection
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Record<string, number>
+ReadonlyRecord.intersection(numbers, numbersOrStrings, (a, _) => a)
+
+// $ExpectType Record<string, string | number>
+ReadonlyRecord.intersection(numbers, numbersOrStrings, (_, b) => b)
+
+// $ExpectType Record<never, string>
+ReadonlyRecord.intersection(structNumbers, structStrings, (_, b) => b)
+
+// $ExpectType Record<never, number>
+ReadonlyRecord.intersection(structNumbers, structStrings, (a, _) => a)
+
+// $ExpectType Record<string, number>
+ReadonlyRecord.intersection(numbers, numbers, (a, _) => a)
+
+// $ExpectType Record<string, number>
+ReadonlyRecord.intersection(numbers, structStrings, (a, _) => a)
+
+// $ExpectType Record<never, number>
+ReadonlyRecord.intersection(structNumbers, {
+  c: 2
+}, (a, _) => a)
+
+// $ExpectType Record<"b", number>
+ReadonlyRecord.intersection(structNumbers, {
+  b: 2
+}, (a, _) => a)
+
+// -------------------------------------------------------------------------------------
+// has
+// -------------------------------------------------------------------------------------
+
+if (ReadonlyRecord.has(numbers, "a")) {
+  // $ExpectType Record<string, number>
+  numbers
+}
+
+// @ts-expect-error
+ReadonlyRecord.has(structNumbers, "c")
+
+// -------------------------------------------------------------------------------------
+// empty
+// -------------------------------------------------------------------------------------
+
+export const empty1: Record<string, number> = ReadonlyRecord.empty()
+export const empty2: Record<symbol, number> = ReadonlyRecord.empty()
+// @ts-expect-error
+export const empty3: Record<"a", number> = ReadonlyRecord.empty<never>()
+
+// $ExpectType Record<never, never>
+ReadonlyRecord.empty()
+
+// $ExpectType Record<string, never>
+ReadonlyRecord.empty<"a">()
+
+// $ExpectType Record<`a${string}bc`, never>
+ReadonlyRecord.empty<`a${string}bc`>()
+
+// $ExpectType Record<string, never>
+ReadonlyRecord.empty<string>()
