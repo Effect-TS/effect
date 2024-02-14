@@ -3,8 +3,6 @@
  */
 import * as Context from "../Context.js"
 import type * as Exit from "../Exit.js"
-import { globalValue } from "../GlobalValue.js"
-import * as MutableRef from "../MutableRef.js"
 import type * as Option from "../Option.js"
 import type * as Tracer from "../Tracer.js"
 
@@ -23,7 +21,17 @@ export const tracerTag = Context.GenericTag<Tracer.Tracer>("effect/Tracer")
 /** @internal */
 export const spanTag = Context.GenericTag<Tracer.ParentSpan>("effect/ParentSpan")
 
-const ids = globalValue("effect/Tracer/SpanId.ids", () => MutableRef.make(0))
+const randomString = (function() {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  const charactersLength = characters.length
+  return function(length: number) {
+    let result = ""
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength))
+    }
+    return result
+  }
+})()
 
 /** @internal */
 export class NativeSpan implements Tracer.Span {
@@ -48,7 +56,7 @@ export class NativeSpan implements Tracer.Span {
       startTime
     }
     this.attributes = new Map()
-    this.spanId = `span${MutableRef.incrementAndGet(ids)}`
+    this.spanId = `span${randomString(16)}`
   }
 
   end = (endTime: bigint, exit: Exit.Exit<unknown, unknown>): void => {
