@@ -8,3 +8,4 @@ build/
 docs/
 scratchpad/
 .direnv/
+.idea/
