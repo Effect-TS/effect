@@ -18,7 +18,6 @@ import * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
 import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
-import * as Hash from "effect/Hash"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as List from "effect/List"
@@ -4696,7 +4695,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
 
   readonly struct: Schema<A, I, R>
 
-  readonly extend: <Extended>() => <FieldsB extends StructFields>(
+  readonly extend: <Extended>(identifier: string) => <FieldsB extends StructFields>(
     fields: FieldsB
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
     : Class<
@@ -4709,7 +4708,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
       Proto
     >
 
-  readonly transformOrFail: <Transformed>() => <
+  readonly transformOrFail: <Transformed>(identifier: string) => <
     FieldsB extends StructFields,
     R2,
     R3
@@ -4736,7 +4735,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
       Proto
     >
 
-  readonly transformOrFailFrom: <Transformed>() => <
+  readonly transformOrFailFrom: <Transformed>(identifier: string) => <
     FieldsB extends StructFields,
     R2,
     R3
@@ -4768,7 +4767,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
  * @category classes
  * @since 1.0.0
  */
-export const Class = <Self>(identifier?: string) =>
+export const Class = <Self>(identifier: string) =>
 <Fields extends StructFields>(
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
@@ -4912,18 +4911,15 @@ export const TaggedRequest =
     )
   }
 
-const ClassTypeId = Symbol.for("@effect/schema/Class")
-
 const makeClass = <A, I, R>(
   kind: string,
-  identifier: string | undefined,
+  identifier: string,
   selfSchema: Schema<A, I, R>,
   selfFields: StructFields,
   Base: any,
   additionalProps?: any
 ): any => {
-  const makeSymbol = (constructor: Function) =>
-    Symbol.for(`@effect/schema/${kind}/${identifier ?? propertiesHash(constructor.prototype)}`)
+  const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const validate = Parser.validateSync(selfSchema)
 
   return class extends Base {
@@ -4947,17 +4943,15 @@ const makeClass = <A, I, R>(
       return pipeArguments(this, arguments)
     }
 
-    get [ClassTypeId]() {
-      return makeSymbol(this.constructor)
+    get [classSymbol]() {
+      return classSymbol
     }
 
     static get ast() {
-      const classSymbol = makeSymbol(this)
       const toSchema = to(selfSchema)
       const encode = Parser.encodeUnknown(toSchema)
       const guard = Parser.is(toSchema)
-      const fallbackInstanceOf = (u: unknown) =>
-        Predicate.hasProperty(u, ClassTypeId) && u[ClassTypeId] === classSymbol && guard(u)
+      const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const declaration: Schema<any, any, never> = declare(
@@ -4995,7 +4989,7 @@ const makeClass = <A, I, R>(
 
     static struct = selfSchema
 
-    static extend(identifier?: string) {
+    static extend(identifier: string) {
       return (fields: StructFields) => {
         const newFields: StructFields = { ...selfFields, ...fields }
         return makeClass(
@@ -5009,7 +5003,7 @@ const makeClass = <A, I, R>(
       }
     }
 
-    static transformOrFail() {
+    static transformOrFail(identifier: string) {
       return (fields: any, decode: any, encode: any) => {
         const newFields = { ...selfFields, ...fields }
         return makeClass(
@@ -5028,7 +5022,7 @@ const makeClass = <A, I, R>(
       }
     }
 
-    static transformOrFailFrom() {
+    static transformOrFailFrom(identifier: string) {
       return (fields: StructFields, decode: any, encode: any) => {
         const newFields: StructFields = { ...selfFields, ...fields }
         return makeClass(
@@ -5048,12 +5042,6 @@ const makeClass = <A, I, R>(
     }
   }
 }
-
-const propertiesHash = (object: object): number =>
-  Hash.array([
-    ...Object.getOwnPropertyNames(object),
-    ...Object.getOwnPropertySymbols(object)
-  ])
 
 /**
  * @category FiberId

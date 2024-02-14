@@ -11,7 +11,7 @@ import * as O from "effect/Option"
 import * as Request from "effect/Request"
 import { assert, describe, expect, it } from "vitest"
 
-class Person extends S.Class<Person>()({
+class Person extends S.Class<Person>("Person")({
   id: S.number,
   name: S.string.pipe(S.nonEmpty())
 }) {
@@ -50,7 +50,7 @@ const IdNumber = S.number.pipe(
   )
 )
 
-class PersonContext extends Person.extend<PersonContext>()({
+class PersonContext extends Person.extend<PersonContext>("PersonContext")({
   name: NameString
 }) {}
 
@@ -63,7 +63,7 @@ class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
   }
 }
 
-class TaggedPersonWithAge extends TaggedPerson.extend<TaggedPersonWithAge>()({
+class TaggedPersonWithAge extends TaggedPerson.extend<TaggedPersonWithAge>("TaggedPersonWithAge")({
   age: S.number
 }) {
   get isAdult() {
@@ -71,7 +71,7 @@ class TaggedPersonWithAge extends TaggedPerson.extend<TaggedPersonWithAge>()({
   }
 }
 
-class PersonWithAge extends Person.extend<PersonWithAge>()({
+class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
   age: S.number
 }) {
   get isAdult() {
@@ -79,11 +79,11 @@ class PersonWithAge extends Person.extend<PersonWithAge>()({
   }
 }
 
-class PersonWithNick extends PersonWithAge.extend<PersonWithNick>()({
+class PersonWithNick extends PersonWithAge.extend<PersonWithNick>("PersonWithNick")({
   nick: S.string
 }) {}
 
-class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
+class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("PersonWithTransform")(
   {
     id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
@@ -105,7 +105,7 @@ class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
       })
 ) {}
 
-class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>()(
+class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>("PersonWithTransformFrom")(
   {
     id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
@@ -353,7 +353,7 @@ describe("Schema > Class", () => {
     class A extends S.TaggedClass<A>()("A", {
       id: S.number
     }) {}
-    class B extends A.transformOrFail<B>()(
+    class B extends A.transformOrFail<B>("B")(
       { _tag: S.literal("B") },
       (input) => ParseResult.succeed({ ...input, _tag: "B" as const }),
       (input) => ParseResult.succeed({ ...input, _tag: "A" })
@@ -482,14 +482,14 @@ describe("Schema > Class", () => {
 
   describe("encode", () => {
     it("struct + a class without methods nor getters", async () => {
-      class A extends S.Class<A>()({
+      class A extends S.Class<A>("A")({
         n: S.NumberFromString
       }) {}
       await Util.expectEncodeSuccess(A, { n: 1 }, { n: "1" })
     })
 
     it("struct + a class with a getter", async () => {
-      class A extends S.Class<A>()({
+      class A extends S.Class<A>("A")({
         n: S.NumberFromString
       }) {
         get s() {
@@ -500,10 +500,10 @@ describe("Schema > Class", () => {
     })
 
     it("struct + nested classes", async () => {
-      class A extends S.Class<A>()({
+      class A extends S.Class<A>("A")({
         n: S.NumberFromString
       }) {}
-      class B extends S.Class<B>()({
+      class B extends S.Class<B>("B")({
         a: A
       }) {}
       await Util.expectEncodeSuccess(S.union(B, S.NumberFromString), 1, "1")
@@ -511,14 +511,14 @@ describe("Schema > Class", () => {
     })
 
     it("class + a class with a getter", async () => {
-      class A extends S.Class<A>()({
+      class A extends S.Class<A>("A")({
         n: S.NumberFromString
       }) {
         get s() {
           return "s"
         }
       }
-      class B extends S.Class<B>()({
+      class B extends S.Class<B>("B")({
         n: S.NumberFromString,
         s: S.string
       }) {}
@@ -528,7 +528,7 @@ describe("Schema > Class", () => {
 
     describe("encode(S.to(Class))", () => {
       it("should always return an instance", async () => {
-        class A extends S.Class<A>()({
+        class A extends S.Class<A>("A")({
           n: S.NumberFromString
         }) {}
         const schema = S.to(A)
@@ -537,7 +537,7 @@ describe("Schema > Class", () => {
       })
 
       it("should fail on bad values", async () => {
-        class A extends S.Class<A>()({
+        class A extends S.Class<A>("A")({
           n: S.NumberFromString
         }) {}
         const schema = S.to(A)
@@ -547,18 +547,13 @@ describe("Schema > Class", () => {
   })
 
   it(".is works with duplicate classes", async () => {
-    class A1 extends S.Class<A1>()({ n: S.number }) {}
-    class A2 extends S.Class<A2>()({ n: S.number }) {}
-    class A3 extends S.Class<A3>()({ n: S.number }) {
-      method() {}
-    }
-    class A4 extends S.Class<A4>("A")({ n: S.number }) {
-      method() {}
-    }
-    class A5 extends S.Class<A5>("A")({ n: S.number }) {}
+    class A1 extends S.Class<A1>("A")({ n: S.number }) {}
+    class A2 extends S.Class<A2>("A")({ n: S.number }) {}
+    class A3 extends S.Class<A3>("A3")({ n: S.number }) {}
+    class A4 extends A1.extend<A4>("A4")({ m: S.string }) {}
 
     assert.isTrue(S.is(A1)(new A2({ n: 1 })))
     assert.isFalse(S.is(A1)(new A3({ n: 1 })))
-    assert.isTrue(S.is(A4)(new A5({ n: 1 })))
+    assert.isTrue(S.is(A1)(new A4({ n: 1, m: "a" })))
   })
 })

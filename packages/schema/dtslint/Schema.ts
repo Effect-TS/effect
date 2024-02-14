@@ -845,7 +845,7 @@ S.transformLiterals([0, "a"], [1, "b"])
 // Class
 // ---------------------------------------------
 
-class MyClass extends S.Class<MyClass>()({
+class MyClass extends S.Class<MyClass>("MyClass")({
   a: S.string
 }) {}
 

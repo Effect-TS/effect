@@ -1442,7 +1442,7 @@ describe("JSONSchema", () => {
   })
 
   it("should support Classes", () => {
-    class A extends S.Class<A>()({ a: S.string }) {}
+    class A extends S.Class<A>("A")({ a: S.string }) {}
     const jsonSchema = JSONSchema.make(S.from(A))
     expect(jsonSchema).toEqual({
       "$schema": "http://json-schema.org/draft-07/schema#",
