@@ -40,7 +40,9 @@ const emptyHash = Hash.string(`${FiberIdSymbolKey}-${OP_NONE}`)
 /** @internal */
 class None implements FiberId.None {
   readonly [FiberIdTypeId]: FiberId.FiberIdTypeId = FiberIdTypeId
-  readonly _tag = OP_NONE;
+  readonly _tag = OP_NONE
+  readonly id = -1
+  readonly startTimeMillis = -1;
   [Hash.symbol](): number {
     return emptyHash
   }
@@ -141,15 +143,15 @@ class Composite implements FiberId.Composite {
 }
 
 /** @internal */
-export const none: FiberId.FiberId = new None()
+export const none: FiberId.None = new None()
 
 /** @internal */
-export const runtime = (id: number, startTimeMillis: number): FiberId.FiberId => {
+export const runtime = (id: number, startTimeMillis: number): FiberId.Runtime => {
   return new Runtime(id, startTimeMillis)
 }
 
 /** @internal */
-export const composite = (left: FiberId.FiberId, right: FiberId.FiberId): FiberId.FiberId => {
+export const composite = (left: FiberId.FiberId, right: FiberId.FiberId): FiberId.Composite => {
   return new Composite(left, right)
 }
 

@@ -3079,7 +3079,8 @@ export const fiberAwaitAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect.E
 /** @internal */
 export const fiberAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Fiber.Fiber<Array<A>, E> => ({
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
-  id: () => RA.fromIterable(fibers).reduce((id, fiber) => FiberId.combine(id, fiber.id()), FiberId.none),
+  id: () =>
+    RA.fromIterable(fibers).reduce((id, fiber) => FiberId.combine(id, fiber.id()), FiberId.none as FiberId.FiberId),
   await: core.exit(forEachParUnbounded(fibers, (fiber) => core.flatten(fiber.await), false)),
   children: core.map(forEachParUnbounded(fibers, (fiber) => fiber.children, false), RA.flatten),
   inheritAll: core.forEachSequentialDiscard(fibers, (fiber) => fiber.inheritAll),

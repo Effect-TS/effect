@@ -12,7 +12,7 @@ import * as core from "./core.js"
 
 /** @internal */
 export function unsafeMake(
-  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>
 ): FiberRefs.FiberRefs {
   return new FiberRefsImpl(fiberRefLocals)
 }
@@ -31,7 +31,7 @@ export class FiberRefsImpl implements FiberRefs.FiberRefs {
   constructor(
     readonly locals: Map<
       FiberRef.FiberRef<any>,
-      Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>
+      Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>
     >
   ) {
   }
@@ -43,8 +43,8 @@ export class FiberRefsImpl implements FiberRefs.FiberRefs {
 /** @internal */
 const findAncestor = (
   _ref: FiberRef.FiberRef<any>,
-  _parentStack: ReadonlyArray<readonly [FiberId.Runtime, unknown]>,
-  _childStack: ReadonlyArray<readonly [FiberId.Runtime, unknown]>,
+  _parentStack: ReadonlyArray<readonly [FiberId.Single, unknown]>,
+  _childStack: ReadonlyArray<readonly [FiberId.Single, unknown]>,
   _childModified = false
 ): readonly [unknown, boolean] => {
   const ref = _ref
@@ -83,8 +83,8 @@ const findAncestor = (
 
 /** @internal */
 export const joinAs = dual<
-  (fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
-  (self: FiberRefs.FiberRefs, fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
+  (fiberId: FiberId.Single, that: FiberRefs.FiberRefs) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
+  (self: FiberRefs.FiberRefs, fiberId: FiberId.Single, that: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
 >(3, (self, fiberId, that) => {
   const parentFiberRefs = new Map(self.locals)
   that.locals.forEach((childStack, fiberRef) => {
@@ -111,7 +111,7 @@ export const joinAs = dual<
         const oldValue = parentStack[0][1]
         const newValue = fiberRef.join(oldValue, fiberRef.patch(patch)(oldValue))
         if (!Equal.equals(oldValue, newValue)) {
-          let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, unknown]>
+          let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, unknown]>
           const parentFiberId = parentStack[0][0]
           if (parentFiberId[Equal.symbol](fiberId)) {
             newStack = [[parentFiberId, newValue] as const, ...parentStack.slice(1)]
@@ -128,18 +128,18 @@ export const joinAs = dual<
 
 /** @internal */
 export const forkAs = dual<
-  (childId: FiberId.Runtime) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
-  (self: FiberRefs.FiberRefs, childId: FiberId.Runtime) => FiberRefs.FiberRefs
+  (childId: FiberId.Single) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
+  (self: FiberRefs.FiberRefs, childId: FiberId.Single) => FiberRefs.FiberRefs
 >(2, (self, childId) => {
-  const map = new Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, unknown]>>()
+  const map = new Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, unknown]>>()
   unsafeForkAs(self, map, childId)
   return new FiberRefsImpl(map)
 })
 
 const unsafeForkAs = (
   self: FiberRefs.FiberRefs,
-  map: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>,
-  fiberId: FiberId.Runtime
+  map: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>,
+  fiberId: FiberId.Single
 ) => {
   self.locals.forEach((stack, fiberRef) => {
     const oldValue = stack[0][1]
@@ -193,7 +193,7 @@ export const getOrDefault = dual<
 export const updateAs = dual<
   <A>(
     options: {
-      readonly fiberId: FiberId.Runtime
+      readonly fiberId: FiberId.Single
       readonly fiberRef: FiberRef.FiberRef<A>
       readonly value: A
     }
@@ -201,13 +201,13 @@ export const updateAs = dual<
   <A>(
     self: FiberRefs.FiberRefs,
     options: {
-      readonly fiberId: FiberId.Runtime
+      readonly fiberId: FiberId.Single
       readonly fiberRef: FiberRef.FiberRef<A>
       readonly value: A
     }
   ) => FiberRefs.FiberRefs
 >(2, <A>(self: FiberRefs.FiberRefs, { fiberId, fiberRef, value }: {
-  readonly fiberId: FiberId.Runtime
+  readonly fiberId: FiberId.Single
   readonly fiberRef: FiberRef.FiberRef<A>
   readonly value: A
 }) => {
@@ -220,13 +220,13 @@ export const updateAs = dual<
 })
 
 const unsafeUpdateAs = (
-  locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>,
-  fiberId: FiberId.Runtime,
+  locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>,
+  fiberId: FiberId.Single,
   fiberRef: FiberRef.FiberRef<any>,
   value: any
 ) => {
-  const oldStack: ReadonlyArray<readonly [FiberId.Runtime, any]> = locals.get(fiberRef) ?? []
-  let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]> | undefined
+  const oldStack: ReadonlyArray<readonly [FiberId.Single, any]> = locals.get(fiberRef) ?? []
+  let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]> | undefined
 
   if (Arr.isNonEmptyReadonlyArray(oldStack)) {
     const [currentId, currentValue] = Arr.headNonEmpty(oldStack)
@@ -256,25 +256,25 @@ const unsafeUpdateAs = (
 export const updateManyAs = dual<
   (
     options: {
-      readonly forkAs?: FiberId.Runtime | undefined
+      readonly forkAs?: FiberId.Single | undefined
       readonly entries: Arr.NonEmptyReadonlyArray<
-        readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
+        readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>]
       >
     }
   ) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
   (
     self: FiberRefs.FiberRefs,
     options: {
-      readonly forkAs?: FiberId.Runtime | undefined
+      readonly forkAs?: FiberId.Single | undefined
       readonly entries: Arr.NonEmptyReadonlyArray<
-        readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
+        readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>]
       >
     }
   ) => FiberRefs.FiberRefs
 >(2, (self: FiberRefs.FiberRefs, { entries, forkAs }: {
-  readonly forkAs?: FiberId.Runtime | undefined
+  readonly forkAs?: FiberId.Single | undefined
   readonly entries: Arr.NonEmptyReadonlyArray<
-    readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
+    readonly [FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>]
   >
 }) => {
   if (self.locals.size === 0) {

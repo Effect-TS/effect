@@ -33,7 +33,7 @@ export type FiberRefsSym = typeof FiberRefsSym
  */
 export interface FiberRefs extends Pipeable {
   readonly [FiberRefsSym]: FiberRefsSym
-  readonly locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  readonly locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>
 }
 
 const delete_: {
@@ -68,8 +68,8 @@ export const fiberRefs: (self: FiberRefs) => HashSet.HashSet<FiberRef.FiberRef<a
  * @category utils
  */
 export const forkAs: {
-  (childId: FiberId.Runtime): (self: FiberRefs) => FiberRefs
-  (self: FiberRefs, childId: FiberId.Runtime): FiberRefs
+  (childId: FiberId.Single): (self: FiberRefs) => FiberRefs
+  (self: FiberRefs, childId: FiberId.Single): FiberRefs
 } = internal.forkAs
 
 /**
@@ -105,8 +105,8 @@ export const getOrDefault: {
  * @category utils
  */
 export const joinAs: {
-  (fiberId: FiberId.Runtime, that: FiberRefs): (self: FiberRefs) => FiberRefs
-  (self: FiberRefs, fiberId: FiberId.Runtime, that: FiberRefs): FiberRefs
+  (fiberId: FiberId.Single, that: FiberRefs): (self: FiberRefs) => FiberRefs
+  (self: FiberRefs, fiberId: FiberId.Single, that: FiberRefs): FiberRefs
 } = internal.joinAs
 
 /**
@@ -126,7 +126,7 @@ export const setAll: (self: FiberRefs) => Effect.Effect<void> = internal.setAll
 export const updateAs: {
   <A>(
     options: {
-      readonly fiberId: FiberId.Runtime
+      readonly fiberId: FiberId.Single
       readonly fiberRef: FiberRef.FiberRef<A>
       readonly value: A
     }
@@ -134,7 +134,7 @@ export const updateAs: {
   <A>(
     self: FiberRefs,
     options: {
-      readonly fiberId: FiberId.Runtime
+      readonly fiberId: FiberId.Single
       readonly fiberRef: FiberRef.FiberRef<A>
       readonly value: A
     }
@@ -150,16 +150,16 @@ export const updateAs: {
 export const updateManyAs: {
   (
     options: {
-      readonly forkAs?: FiberId.Runtime | undefined
+      readonly forkAs?: FiberId.Single | undefined
       readonly entries: readonly [
         readonly [
           FiberRef.FiberRef<any>,
-          readonly [readonly [FiberId.Runtime, any], ...Array<readonly [FiberId.Runtime, any]>]
+          readonly [readonly [FiberId.Single, any], ...Array<readonly [FiberId.Single, any]>]
         ],
         ...Array<
           readonly [
             FiberRef.FiberRef<any>,
-            readonly [readonly [FiberId.Runtime, any], ...Array<readonly [FiberId.Runtime, any]>]
+            readonly [readonly [FiberId.Single, any], ...Array<readonly [FiberId.Single, any]>]
           ]
         >
       ]
@@ -168,16 +168,16 @@ export const updateManyAs: {
   (
     self: FiberRefs,
     options: {
-      readonly forkAs?: FiberId.Runtime | undefined
+      readonly forkAs?: FiberId.Single | undefined
       readonly entries: readonly [
         readonly [
           FiberRef.FiberRef<any>,
-          readonly [readonly [FiberId.Runtime, any], ...Array<readonly [FiberId.Runtime, any]>]
+          readonly [readonly [FiberId.Single, any], ...Array<readonly [FiberId.Single, any]>]
         ],
         ...Array<
           readonly [
             FiberRef.FiberRef<any>,
-            readonly [readonly [FiberId.Runtime, any], ...Array<readonly [FiberId.Runtime, any]>]
+            readonly [readonly [FiberId.Single, any], ...Array<readonly [FiberId.Single, any]>]
           ]
         >
       ]
@@ -192,7 +192,7 @@ export const updateManyAs: {
  * @category unsafe
  */
 export const unsafeMake: (
-  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>
 ) => FiberRefs = internal.unsafeMake
 
 /**
