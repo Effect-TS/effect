@@ -9,6 +9,11 @@ const symA = Symbol.for("a")
 const symB = Symbol.for("b")
 
 describe("ReadonlyRecord", () => {
+  it("opss...", () => {
+    const mixed: Record<string, number> = { a: 1, b: 2, [symA]: 3 }
+    expect(pipe(mixed, RR.map((_n, k) => k.trim()))).toEqual({ a: "a", b: "b" })
+  })
+
   it("get", () => {
     expect(pipe(RR.empty<string>(), RR.get("a"))).toEqual(Option.none())
     expect(pipe({ a: 1 }, RR.get("a"))).toEqual(Option.some(1))
