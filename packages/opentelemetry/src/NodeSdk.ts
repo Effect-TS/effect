@@ -50,7 +50,7 @@ export const layerTracerProvider = (
             provider.addSpanProcessor(processor)
             return provider
           }),
-          (provider) => Effect.promise(() => provider.shutdown())
+          (provider) => Effect.ignoreLogged(Effect.promise(() => provider.shutdown()))
         )
     )
   )

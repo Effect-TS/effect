@@ -252,7 +252,7 @@ export const registerProducer = (self: MetricProducer, metricReader: LazyArg<Met
       reader.setMetricProducer(self)
       return reader
     }),
-    (reader) => Effect.promise(() => reader.shutdown())
+    (reader) => Effect.ignoreLogged(Effect.promise(() => reader.shutdown()))
   )
 
 /** @internal */
