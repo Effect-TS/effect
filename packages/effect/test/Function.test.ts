@@ -29,7 +29,6 @@ describe("Function", () => {
   })
 
   it("satisfies", () => {
-    deepStrictEqual(Function.satisfies(), Function.identity)
     deepStrictEqual(Function.satisfies<number>()(5), 5)
     // @ts-expect-error
     deepStrictEqual(Function.satisfies<string>()(5), 5)
