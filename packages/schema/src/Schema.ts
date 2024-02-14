@@ -18,6 +18,7 @@ import * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
 import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
+import * as Hash from "effect/Hash"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as List from "effect/List"
@@ -4921,7 +4922,8 @@ const makeClass = <A, I, R>(
   Base: any,
   additionalProps?: any
 ): any => {
-  const makeSymbol = (constructor: Function) => Symbol.for(`@effect/schema/${kind}/${identifier ?? constructor.name}`)
+  const makeSymbol = (constructor: Function) =>
+    Symbol.for(`@effect/schema/${kind}/${identifier ?? propertiesHash(constructor.prototype)}`)
   const validate = Parser.validateSync(selfSchema)
 
   return class extends Base {
@@ -5046,6 +5048,12 @@ const makeClass = <A, I, R>(
     }
   }
 }
+
+const propertiesHash = (object: object): number =>
+  Hash.array([
+    ...Object.getOwnPropertyNames(object),
+    ...Object.getOwnPropertySymbols(object)
+  ])
 
 /**
  * @category FiberId

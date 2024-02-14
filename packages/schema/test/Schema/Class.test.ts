@@ -547,9 +547,18 @@ describe("Schema > Class", () => {
   })
 
   it(".is works with duplicate classes", async () => {
-    class A1 extends S.Class<A1>("A")({ n: S.number }) {}
-    class A2 extends S.Class<A2>("A")({ n: S.number }) {}
+    class A1 extends S.Class<A1>()({ n: S.number }) {}
+    class A2 extends S.Class<A2>()({ n: S.number }) {}
+    class A3 extends S.Class<A3>()({ n: S.number }) {
+      method() {}
+    }
+    class A4 extends S.Class<A4>("A")({ n: S.number }) {
+      method() {}
+    }
+    class A5 extends S.Class<A5>("A")({ n: S.number }) {}
 
     assert.isTrue(S.is(A1)(new A2({ n: 1 })))
+    assert.isFalse(S.is(A1)(new A3({ n: 1 })))
+    assert.isTrue(S.is(A4)(new A5({ n: 1 })))
   })
 })
