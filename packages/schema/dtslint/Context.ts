@@ -190,14 +190,14 @@ aContext.pipe(Schema.brand("a"))
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, "a" | "b">
-Schema.partial(Schema.struct({ a: aContext, b: bContext }))
+Schema.partial(Schema.struct({ a: aContext, b: bContext }), { exact: true })
 
 // ---------------------------------------------
 // required
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "a" | "b">
-Schema.required(Schema.partial(Schema.struct({ a: aContext, b: bContext })))
+Schema.required(Schema.partial(Schema.struct({ a: aContext, b: bContext }), { exact: true }))
 
 // ---------------------------------------------
 // mutable

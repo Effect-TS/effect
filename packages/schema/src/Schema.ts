@@ -720,7 +720,7 @@ export const nullable = <A, I, R>(self: Schema<A, I, R>): Schema<A | null, I | n
  */
 export const orUndefined = <A, I, R>(
   self: Schema<A, I, R>
-): Schema<A | undefined, I | undefined, R> => union(_undefined, self)
+): Schema<A | undefined, I | undefined, R> => make(AST.orUndefined(self.ast))
 
 /**
  * @category combinators
@@ -1315,10 +1315,10 @@ export const pluck: {
   ): Schema<A[K], I, R> => {
     if (options && options.transformation == false) {
       const ps = AST.getPropertyKeyIndexedAccess(schema.ast, key)
-      return make(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
+      return make(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
     } else {
       const ps = AST.getPropertyKeyIndexedAccess(to(schema).ast, key)
-      const value = make<A[K], A[K], R>(ps.isOptional ? AST.createUnion([AST.undefinedKeyword, ps.type]) : ps.type)
+      const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
       return transform(
         schema,
         value,
@@ -1400,9 +1400,18 @@ export const brand =
  * @category combinators
  * @since 1.0.0
  */
-export const partial = <A, I, R>(
-  self: Schema<A, I, R>
-): Schema<Simplify<Partial<A>>, Simplify<Partial<I>>, R> => make(AST.partial(self.ast))
+export const partial: {
+  <A, I, R>(
+    self: Schema<A, I, R>,
+    options: { readonly exact: true }
+  ): Schema<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
+  <A, I, R>(
+    self: Schema<A, I, R>
+  ): Schema<{ [K in keyof A]?: A[K] | undefined }, Simplify<{ [K in keyof I]?: I[K] | undefined }>, R>
+} = <A, I, R>(
+  self: Schema<A, I, R>,
+  options?: { readonly exact: true }
+): Schema<Partial<A>, Partial<I>, R> => make(AST.partial(self.ast, options))
 
 /**
  * @category combinators
@@ -1410,7 +1419,7 @@ export const partial = <A, I, R>(
  */
 export const required = <A, I, R>(
   self: Schema<A, I, R>
-): Schema<Simplify<Required<A>>, Simplify<Required<I>>, R> => make(AST.required(self.ast))
+): Schema<{ [K in keyof A]-?: A[K] }, { [K in keyof I]-?: I[K] }, R> => make(AST.required(self.ast))
 
 /**
  * Creates a new schema with shallow mutability applied to its properties.
