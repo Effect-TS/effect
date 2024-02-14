@@ -40,6 +40,9 @@ export type TestAnnotationsTypeId = typeof TestAnnotationsTypeId
 export interface TestAnnotations {
   readonly [TestAnnotationsTypeId]: TestAnnotationsTypeId
 
+  /**
+   * A ref containing the bacnking map for all annotations
+   */
   readonly ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>
 
   /**
