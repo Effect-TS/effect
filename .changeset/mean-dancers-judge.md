@@ -5,7 +5,7 @@
 Add functional analogue of `satisfies` operator.
 This is a convenient operator to use in the `pipe` chain to localize type errors closer to their source.
 
-```typescript
+```ts
 import { satisfies } from "effect/Function"
 
 const test1 = satisfies<number>()(5 as const)
