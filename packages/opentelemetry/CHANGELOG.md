@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.31.6
+
+### Patch Changes
+
+- [#2131](https://github.com/Effect-TS/effect/pull/2131) [`9ee4de0`](https://github.com/Effect-TS/effect/commit/9ee4de01bb7edeefaa20cdd470e85f3c539d858f) Thanks [@tim-smart](https://github.com/tim-smart)! - ignore errors when attempting to shutdown otel
+
 ## 0.31.5
 
 ### Patch Changes
