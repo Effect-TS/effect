@@ -1040,12 +1040,17 @@ export const prettyErrorMessage = (u: unknown): string => {
     return `Error: ${u}`
   }
   // 2)
-  if (
-    hasProperty(u, "toString") &&
-    isFunction(u["toString"]) &&
-    u["toString"] !== Object.prototype.toString
-  ) {
-    return u["toString"]()
+  try {
+    if (
+      hasProperty(u, "toString") &&
+      isFunction(u["toString"]) &&
+      u["toString"] !== Object.prototype.toString &&
+      u["toString"] !== Array.prototype.toString
+    ) {
+      return u["toString"]()
+    }
+  } catch {
+    // something's off, rollback to json
   }
   // 3)
   return `Error: ${JSON.stringify(u)}`

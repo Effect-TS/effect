@@ -354,4 +354,10 @@ describe("Cause", () => {
       }
     })
   })
+
+  describe("Pretty", () => {
+    it("doesn't blow up on array errors", () => {
+      assert.strictEqual(Cause.pretty(Cause.fail([{ toString: "" }])), `Error: [{"toString":""}]`)
+    })
+  })
 })

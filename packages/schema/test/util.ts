@@ -79,7 +79,7 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
 export const effectify = <A, I>(schema: S.Schema<A, I, never>): S.Schema<A, I, never> =>
   S.make(effectifyAST(schema.ast))
 
-export const roundtrip = <A, I>(schema: S.Schema<A, I, never>) => {
+export const roundtrip = <A, I>(schema: S.Schema<A, I, never>, params?: Parameters<typeof fc.assert>[1]) => {
   if (!doRoundtrip) {
     return
   }
@@ -87,18 +87,21 @@ export const roundtrip = <A, I>(schema: S.Schema<A, I, never>) => {
   const is = S.is(schema)
   const encode = S.encode(schema)
   const decode = S.decode(schema)
-  fc.assert(fc.property(arb(fc), (a) => {
-    const roundtrip = encode(a).pipe(
-      Effect.mapError(() => "encoding" as const),
-      Effect.flatMap((i) => decode(i).pipe(Effect.mapError(() => "decoding" as const))),
-      Effect.either,
-      Effect.runSync
-    )
-    if (Either.isLeft(roundtrip)) {
-      return roundtrip.left === "encoding"
-    }
-    return is(roundtrip.right)
-  }))
+  fc.assert(
+    fc.property(arb(fc), (a) => {
+      const roundtrip = encode(a).pipe(
+        Effect.mapError(() => "encoding" as const),
+        Effect.flatMap((i) => decode(i).pipe(Effect.mapError(() => "decoding" as const))),
+        Effect.either,
+        Effect.runSync
+      )
+      if (Either.isLeft(roundtrip)) {
+        return roundtrip.left === "encoding"
+      }
+      return is(roundtrip.right)
+    }),
+    params
+  )
   if (doEffectify) {
     const effectSchema = effectify(schema)
     const encode = S.encode(effectSchema)
