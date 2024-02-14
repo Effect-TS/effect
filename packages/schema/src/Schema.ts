@@ -4896,7 +4896,7 @@ const makeClass = <A, I, R>(
   Base: any,
   additionalProps?: any
 ): any => {
-  const validator = Parser.validateSync(selfSchema)
+  const validate = Parser.validateSync(selfSchema)
 
   return class extends Base {
     constructor(props?: any, disableValidation = false) {
@@ -4904,7 +4904,7 @@ const makeClass = <A, I, R>(
         props = { ...additionalProps, ...props }
       }
       if (disableValidation !== true) {
-        props = validator(props)
+        props = validate(props)
       }
       super(props, true)
     }
@@ -4921,10 +4921,23 @@ const makeClass = <A, I, R>(
 
     static get ast() {
       const toSchema = to(selfSchema)
+      const encode = Parser.encodeUnknown(toSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const declaration: Schema<any, any, never> = declare(
-        (input): input is any => input instanceof this,
+        [],
+        () => (input, _, ast) =>
+          input instanceof this ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input)),
+        () => (input, _, ast) =>
+          input instanceof this
+            ? ParseResult.succeed(input)
+            : ParseResult.mapError(
+              ParseResult.map(
+                encode(input),
+                (props) => new this(props, true)
+              ),
+              () => ParseResult.type(ast, input)
+            ),
         {
           identifier: this.name,
           title: this.name,

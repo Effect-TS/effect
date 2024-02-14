@@ -480,32 +480,69 @@ describe("Schema > Class", () => {
     )
   })
 
-  it.skip("encode works with struct", async () => {
-    assert.doesNotThrow(() => S.encodeSync(Person)({ id: 1, name: "John" } as Person))
-    class A extends S.Class<A>()({
-      n: S.NumberFromString
-    }) {}
-    class B extends S.Class<B>()({
-      a: A
-    }) {}
-    await Util.expectEncodeSuccess(S.union(B, S.NumberFromString), 1, "1")
-    await Util.expectEncodeSuccess(B, { a: { n: 1 } }, { a: { n: "1" } })
+  describe("encode", () => {
+    it("struct + a class without methods nor getters", async () => {
+      class A extends S.Class<A>()({
+        n: S.NumberFromString
+      }) {}
+      await Util.expectEncodeSuccess(A, { n: 1 }, { n: "1" })
+    })
 
-    class C extends S.Class<C>()({
-      n: S.NumberFromString
-    }) {
-      get b() {
-        return 1
+    it("struct + a class with a getter", async () => {
+      class A extends S.Class<A>()({
+        n: S.NumberFromString
+      }) {
+        get s() {
+          return "s"
+        }
       }
-    }
-    class D extends S.Class<D>()({
-      n: S.NumberFromString,
-      b: S.number
-    }) {}
+      await Util.expectEncodeSuccess(A, { n: 1 } as any, { n: "1" })
+    })
 
-    await Util.expectEncodeSuccess(D, new C({ n: 1 }), { n: "1", b: 1 })
+    it("struct + nested classes", async () => {
+      class A extends S.Class<A>()({
+        n: S.NumberFromString
+      }) {}
+      class B extends S.Class<B>()({
+        a: A
+      }) {}
+      await Util.expectEncodeSuccess(S.union(B, S.NumberFromString), 1, "1")
+      await Util.expectEncodeSuccess(B, { a: { n: 1 } }, { a: { n: "1" } })
+    })
 
-    class E extends S.Class<E>()({ a: S.string }) {}
-    await Util.expectEncodeFailure(S.to(E), null as any, "Expected E (an instance of E), actual null")
+    it("class + a class with a getter", async () => {
+      class A extends S.Class<A>()({
+        n: S.NumberFromString
+      }) {
+        get s() {
+          return "s"
+        }
+      }
+      class B extends S.Class<B>()({
+        n: S.NumberFromString,
+        s: S.string
+      }) {}
+
+      await Util.expectEncodeSuccess(B, new A({ n: 1 }), { n: "1", s: "s" })
+    })
+
+    describe("encode(S.to(Class))", () => {
+      it("should always return an instance", async () => {
+        class A extends S.Class<A>()({
+          n: S.NumberFromString
+        }) {}
+        const schema = S.to(A)
+        await Util.expectEncodeSuccess(schema, new A({ n: 1 }), new A({ n: 1 }))
+        await Util.expectEncodeSuccess(schema, { n: 1 }, new A({ n: 1 }))
+      })
+
+      it("should fail on bad values", async () => {
+        class A extends S.Class<A>()({
+          n: S.NumberFromString
+        }) {}
+        const schema = S.to(A)
+        await Util.expectEncodeFailure(schema, null as any, "Expected A (an instance of A), actual null")
+      })
+    })
   })
 })
