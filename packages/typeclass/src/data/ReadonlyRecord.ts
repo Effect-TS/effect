@@ -13,14 +13,6 @@ import type * as invariant from "../Invariant.js"
 import type * as traversable from "../Traversable.js"
 import type * as traversableFilterable from "../TraversableFilterable.js"
 
-const map = ReadonlyRecord.map
-
-const imap = covariant.imap<ReadonlyRecord.ReadonlyRecordTypeLambda>(map)
-
-const partitionMap = ReadonlyRecord.partitionMap
-
-const filterMap = ReadonlyRecord.filterMap
-
 /** @internal */
 export const traverse = <F extends TypeLambda>(F: applicative.Applicative<F>): {
   <K extends string, A, R, O, E, B>(
@@ -109,47 +101,105 @@ const traverseFilterMap = <F extends TypeLambda>(
     return F.map(traverse(F)(self, f), ReadonlyRecord.getSomes)
   })
 
-/**
- * @category instances
- * @since 1.0.0
- */
-export const Covariant: covariant.Covariant<ReadonlyRecord.ReadonlyRecordTypeLambda> = {
-  imap,
-  map
-}
+const _map: covariant.Covariant<ReadonlyRecord.ReadonlyRecordTypeLambda<any>>["map"] = ReadonlyRecord.map
+
+const _imap = covariant.imap<ReadonlyRecord.ReadonlyRecordTypeLambda<any>>(_map)
+
+const _partitionMap: filterable.Filterable<ReadonlyRecord.ReadonlyRecordTypeLambda<any>>["partitionMap"] =
+  ReadonlyRecord.partitionMap
+
+const _filterMap: filterable.Filterable<ReadonlyRecord.ReadonlyRecordTypeLambda<any>>["filterMap"] =
+  ReadonlyRecord.filterMap
+
+const _traverse: traversable.Traversable<ReadonlyRecord.ReadonlyRecordTypeLambda<any>>["traverse"] = traverse
+
+const _traversePartitionMap: traversableFilterable.TraversableFilterable<
+  ReadonlyRecord.ReadonlyRecordTypeLambda<any>
+>["traversePartitionMap"] = traversePartitionMap
+
+const _traverseFilterMap: traversableFilterable.TraversableFilterable<
+  ReadonlyRecord.ReadonlyRecordTypeLambda<any>
+>["traverseFilterMap"] = traverseFilterMap
 
 /**
  * @category instances
  * @since 1.0.0
  */
-export const Invariant: invariant.Invariant<ReadonlyRecord.ReadonlyRecordTypeLambda> = {
-  imap
-}
+export const getCovariant = <K extends string>(): covariant.Covariant<
+  ReadonlyRecord.ReadonlyRecordTypeLambda<K>
+> => ({
+  imap: _imap,
+  map: _map
+})
 
 /**
  * @category instances
  * @since 1.0.0
  */
-export const Filterable: filterable.Filterable<ReadonlyRecord.ReadonlyRecordTypeLambda> = {
-  partitionMap,
-  filterMap
-}
+export const Covariant = getCovariant()
 
 /**
  * @category instances
  * @since 1.0.0
  */
-export const Traversable: traversable.Traversable<ReadonlyRecord.ReadonlyRecordTypeLambda> = {
-  traverse
-}
+export const getInvariant = <K extends string>(): invariant.Invariant<
+  ReadonlyRecord.ReadonlyRecordTypeLambda<K>
+> => ({
+  imap: _imap
+})
 
 /**
  * @category instances
  * @since 1.0.0
  */
-export const TraversableFilterable: traversableFilterable.TraversableFilterable<
-  ReadonlyRecord.ReadonlyRecordTypeLambda
-> = {
-  traversePartitionMap,
-  traverseFilterMap
-}
+export const Invariant = getInvariant()
+
+/**
+ * @category instances
+ * @since 1.0.0
+ */
+export const getFilterable = <K extends string>(): filterable.Filterable<
+  ReadonlyRecord.ReadonlyRecordTypeLambda<K>
+> => ({
+  partitionMap: _partitionMap,
+  filterMap: _filterMap
+})
+
+/**
+ * @category instances
+ * @since 1.0.0
+ */
+export const Filterable = getFilterable()
+
+/**
+ * @category instances
+ * @since 1.0.0
+ */
+export const getTraversable = <K extends string>(): traversable.Traversable<
+  ReadonlyRecord.ReadonlyRecordTypeLambda<K>
+> => ({
+  traverse: _traverse
+})
+
+/**
+ * @category instances
+ * @since 1.0.0
+ */
+export const Traversable = getTraversable()
+
+/**
+ * @category instances
+ * @since 1.0.0
+ */
+export const getTraversableFilterable = <K extends string>(): traversableFilterable.TraversableFilterable<
+  ReadonlyRecord.ReadonlyRecordTypeLambda<K>
+> => ({
+  traversePartitionMap: _traversePartitionMap,
+  traverseFilterMap: _traverseFilterMap
+})
+
+/**
+ * @category instances
+ * @since 1.0.0
+ */
+export const TraversableFilterable = getTraversableFilterable()

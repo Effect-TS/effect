@@ -48,8 +48,8 @@ export declare namespace ReadonlyRecord {
  * @category type lambdas
  * @since 2.0.0
  */
-export interface ReadonlyRecordTypeLambda extends TypeLambda {
-  readonly type: ReadonlyRecord<string, this["Target"]>
+export interface ReadonlyRecordTypeLambda<K extends string = string> extends TypeLambda {
+  readonly type: ReadonlyRecord<K, this["Target"]>
 }
 
 /**

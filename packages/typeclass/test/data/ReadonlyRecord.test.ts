@@ -14,6 +14,20 @@ describe.concurrent("ReadonlyRecord", () => {
       a: "1a",
       b: "2b"
     }))
+    expect(traverse(stringRecord, (a) => a < 1 ? Option.some(a) : Option.none())).toStrictEqual(Option.none())
+  })
+
+  it("traverse (template literal)", () => {
+    const traverse = ReadonlyRecordInstances.getTraversable<`a${string}`>().traverse(OptionInstances.Applicative)
+    const templateLiteralRecord: Record<`a${string}`, number> = {
+      a: 1,
+      ab: 2
+    }
+    expect(traverse(templateLiteralRecord, (a) => Option.some(a))).toStrictEqual(Option.some({
+      a: 1,
+      ab: 2
+    }))
+    expect(traverse(templateLiteralRecord, (a) => a < 1 ? Option.some(a) : Option.none())).toStrictEqual(Option.none())
   })
 
   it("traverse (symbol)", () => {
