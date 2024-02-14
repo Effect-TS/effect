@@ -1,7 +1,8 @@
 /**
  * @since 2.0.0
  */
-import { dual, pipe } from "./Function.js"
+import { dual } from "./Function.js"
+import * as HashMap from "./HashMap.js"
 import { hasProperty } from "./Predicate.js"
 import type * as TestAnnotation from "./TestAnnotation.js"
 
@@ -23,13 +24,13 @@ export type TestAnnotationMapTypeId = typeof TestAnnotationMapTypeId
 export interface TestAnnotationMap {
   readonly [TestAnnotationMapTypeId]: TestAnnotationMapTypeId
   /** @internal */
-  readonly map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>
+  readonly map: HashMap.HashMap<TestAnnotation.TestAnnotation<any>, any>
 }
 
 /** @internal */
 class TestAnnotationMapImpl implements TestAnnotationMap {
   readonly [TestAnnotationMapTypeId]: TestAnnotationMapTypeId = TestAnnotationMapTypeId
-  constructor(readonly map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>) {
+  constructor(readonly map: HashMap.HashMap<TestAnnotation.TestAnnotation<any>, any>) {
   }
 }
 
@@ -41,12 +42,12 @@ export const isTestAnnotationMap = (u: unknown): u is TestAnnotationMap => hasPr
 /**
  * @since 2.0.0
  */
-export const empty: (_: void) => TestAnnotationMap = () => new TestAnnotationMapImpl(new Map())
+export const empty: (_: void) => TestAnnotationMap = () => new TestAnnotationMapImpl(HashMap.empty())
 
 /**
  * @since 2.0.0
  */
-export const make = (map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>): TestAnnotationMap => {
+export const make = (map: HashMap.HashMap<TestAnnotation.TestAnnotation<any>, any>): TestAnnotationMap => {
   return new TestAnnotationMapImpl(map)
 }
 
@@ -56,11 +57,7 @@ export const make = (map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, un
 export const overwrite = dual<
   <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
   <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap
->(3, (self, key, value) =>
-  make(
-    (self.map as Map<TestAnnotation.TestAnnotation<unknown>, unknown>)
-      .set(key as TestAnnotation.TestAnnotation<unknown>, value)
-  ))
+>(3, (self, key, value) => make(HashMap.set(self.map, key, value)))
 
 /**
  * @since 2.0.0
@@ -69,11 +66,11 @@ export const update = dual<
   <A>(key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => (self: TestAnnotationMap) => TestAnnotationMap,
   <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap
 >(3, <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => {
-  let value = self.map.get(key as TestAnnotation.TestAnnotation<unknown>)
-  if (value === undefined) {
-    value = key.initial
+  let value = key.initial
+  if (HashMap.has(self.map, key.identifier)) {
+    value = HashMap.unsafeGet(self.map, key.identifier) as A
   }
-  return pipe(self, overwrite(key, f(value as A)))
+  return overwrite(self, key, f(value))
 })
 
 /**
@@ -86,11 +83,10 @@ export const get = dual<
   <A>(key: TestAnnotation.TestAnnotation<A>) => (self: TestAnnotationMap) => A,
   <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => A
 >(2, <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => {
-  const value = self.map.get(key as TestAnnotation.TestAnnotation<unknown>)
-  if (value === undefined) {
-    return key.initial as A
+  if (HashMap.has(self.map, key.identifier)) {
+    return HashMap.unsafeGet(self.map, key.identifier) as A
   }
-  return value as A
+  return key.initial
 })
 
 /**
@@ -110,13 +106,13 @@ export const combine = dual<
   (that: TestAnnotationMap) => (self: TestAnnotationMap) => TestAnnotationMap,
   (self: TestAnnotationMap, that: TestAnnotationMap) => TestAnnotationMap
 >(2, (self, that) => {
-  const result = new Map<TestAnnotation.TestAnnotation<unknown>, unknown>(self.map)
+  let result = self.map
   for (const entry of that.map) {
-    if (result.has(entry[0])) {
-      const value = result.get(entry[0])!
-      result.set(entry[0], entry[0].combine(value, entry[1]))
+    if (HashMap.has(result, entry[0])) {
+      const value = HashMap.get(result, entry[0])!
+      result = HashMap.set(result, entry[0], entry[0].combine(value, entry[1]))
     } else {
-      result.set(entry[0], entry[1])
+      result = HashMap.set(result, entry[0], entry[1])
     }
   }
   return make(result)
