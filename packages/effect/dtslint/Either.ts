@@ -4,11 +4,11 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 
 declare const string$string: Either.Either<string, string>
-declare const string$number: Either.Either<string, number>
-declare const string$boolean: Either.Either<string, boolean>
-declare const error$boolean: Either.Either<Error, boolean>
+declare const string$number: Either.Either<number, string>
+declare const string$boolean: Either.Either<boolean, string>
+declare const error$boolean: Either.Either<boolean, Error>
 
-declare const error$a: Either.Either<Error, "a">
+declare const error$a: Either.Either<"a", Error>
 
 declare const predicateUnknown: Predicate.Predicate<unknown>
 
@@ -16,107 +16,107 @@ declare const predicateUnknown: Predicate.Predicate<unknown>
 // flip
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Either<number, string>
+// $ExpectType Either<string, number>
 Either.flip(string$number)
 
 // -------------------------------------------------------------------------------------
 // try
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Either<unknown, number>
+// $ExpectType Either<number, unknown>
 Either.try(() => 1)
 
-// $ExpectType Either<Error, number>
+// $ExpectType Either<number, Error>
 Either.try({ try: () => 1, catch: () => new Error() })
 
 // -------------------------------------------------------------------------------------
 // all - tuple
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Either<never, []>
+// $ExpectType Either<[], never>
 Either.all([])
 
-// $ExpectType Either<string, [number]>
+// $ExpectType Either<[number], string>
 Either.all([string$number])
 
-// $ExpectType Either<string, [number, boolean]>
+// $ExpectType Either<[number, boolean], string>
 Either.all([string$number, string$boolean])
 
-// $ExpectType Either<string | Error, [number, boolean]>
+// $ExpectType Either<[number, boolean], string | Error>
 Either.all([string$number, error$boolean])
 
-// $ExpectType Either<string, [number, boolean]>
+// $ExpectType Either<[number, boolean], string>
 pipe([string$number, string$boolean] as const, Either.all)
 
-// $ExpectType Either<string | Error, [number, boolean]>
+// $ExpectType Either<[number, boolean], string | Error>
 pipe([string$number, error$boolean] as const, Either.all)
 
 // -------------------------------------------------------------------------------------
 // all - struct
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Either<never, {}>
+// $ExpectType Either<{}, never>
 Either.all({})
 
-// $ExpectType Either<string, { a: number; }>
+// $ExpectType Either<{ a: number; }, string>
 Either.all({ a: string$number })
 
-// $ExpectType Either<string, { a: number; b: boolean; }>
+// $ExpectType Either<{ a: number; b: boolean; }, string>
 Either.all({ a: string$number, b: string$boolean })
 
-// $ExpectType Either<string | Error, { a: number; b: boolean; }>
+// $ExpectType Either<{ a: number; b: boolean; }, string | Error>
 Either.all({ a: string$number, b: error$boolean })
 
-// $ExpectType Either<string, { a: number; b: boolean; }>
+// $ExpectType Either<{ a: number; b: boolean; }, string>
 pipe({ a: string$number, b: string$boolean }, Either.all)
 
-// $ExpectType Either<string | Error, { a: number; b: boolean; }>
+// $ExpectType Either<{ a: number; b: boolean; }, string | Error>
 pipe({ a: string$number, b: error$boolean }, Either.all)
 
 // -------------------------------------------------------------------------------------
 // all - array
 // -------------------------------------------------------------------------------------
 
-declare const eitherArray: Array<Either.Either<string, number>>
+declare const eitherArray: Array<Either.Either<number, string>>
 
-// $ExpectType Either<string, number[]>
+// $ExpectType Either<number[], string>
 Either.all(eitherArray)
 
-// $ExpectType Either<string, number[]>
+// $ExpectType Either<number[], string>
 pipe(eitherArray, Either.all)
 
 // -------------------------------------------------------------------------------------
 // all - record
 // -------------------------------------------------------------------------------------
 
-declare const eitherRecord: Record<string, Either.Either<string, number>>
+declare const eitherRecord: Record<string, Either.Either<number, string>>
 
-// $ExpectType Either<string, { [x: string]: number; }>
+// $ExpectType Either<{ [x: string]: number; }, string>
 Either.all(eitherRecord)
 
 // -------------------------------------------------------------------------------------
 // andThen
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Either<string, number>
+// $ExpectType Either<number, string>
 Either.andThen(string$string, string$number)
 
-// $ExpectType Either<string, number>
+// $ExpectType Either<number, string>
 Either.andThen(string$string, () => string$number)
 
-// $ExpectType Either<string, number>
+// $ExpectType Either<number, string>
 string$string.pipe(Either.andThen(string$number))
 
-// $ExpectType Either<string, number>
+// $ExpectType Either<number, string>
 string$string.pipe(Either.andThen(() => string$number))
 
 // -------------------------------------------------------------------------------------
 // filterOrLeft
 // -------------------------------------------------------------------------------------
 
-declare const error$arrayOfStrings: Either.Either<Error, Array<string>>
+declare const error$arrayOfStrings: Either.Either<Array<string>, Error>
 
-// $ExpectType Either<"b" | Error, [string, ...string[]]>
+// $ExpectType Either<[string, ...string[]], "b" | Error>
 pipe(
   error$arrayOfStrings,
   Either.filterOrLeft(ReadonlyArray.isNonEmptyArray, (
@@ -124,9 +124,9 @@ pipe(
   ) => "b" as const)
 )
 
-declare const error$readonlyArrayOfStrings: Either.Either<Error, ReadonlyArray<string>>
+declare const error$readonlyArrayOfStrings: Either.Either<ReadonlyArray<string>, Error>
 
-// $ExpectType Either<"b" | Error, readonly [string, ...string[]]>
+// $ExpectType Either<readonly [string, ...string[]], "b" | Error>
 pipe(
   error$readonlyArrayOfStrings,
   Either.filterOrLeft(ReadonlyArray.isNonEmptyReadonlyArray, (
@@ -134,7 +134,7 @@ pipe(
   ) => "b" as const)
 )
 
-// $ExpectType Either<"b" | Error, "a">
+// $ExpectType Either<"a", "b" | Error>
 pipe(
   error$a,
   Either.filterOrLeft(Predicate.isString, (
@@ -142,7 +142,7 @@ pipe(
   ) => "b" as const)
 )
 
-// $ExpectType Either<"b" | Error, "a">
+// $ExpectType Either<"a", "b" | Error>
 pipe(
   error$a,
   Either.filterOrLeft(Predicate.isString, (
@@ -150,7 +150,7 @@ pipe(
   ) => "b" as const)
 )
 
-// $ExpectType Either<"b" | Error, "a">
+// $ExpectType Either<"a", "b" | Error>
 pipe(
   error$a,
   Either.filterOrLeft(predicateUnknown, (
@@ -158,7 +158,7 @@ pipe(
   ) => "b" as const)
 )
 
-// $ExpectType Either<"b" | Error, "a">
+// $ExpectType Either<"a", "b" | Error>
 pipe(
   error$a,
   Either.filterOrLeft(predicateUnknown, (

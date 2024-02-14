@@ -634,7 +634,7 @@ export const dieMessage = (message: string): Effect.Effect<never> =>
 export const dieSync = (evaluate: LazyArg<unknown>): Effect.Effect<never> => flatMap(sync(evaluate), die)
 
 /* @internal */
-export const either = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Either.Either<E, A>, never, R> =>
+export const either = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Either.Either<A, E>, never, R> =>
   matchEffect(self, {
     onFailure: (e) => succeed(Either.left(e)),
     onSuccess: (a) => succeed(Either.right(a))
@@ -1126,7 +1126,7 @@ export const orDieWith: {
 /* @internal */
 export const partitionMap = <A, A1, A2>(
   elements: Iterable<A>,
-  f: (a: A) => Either.Either<A1, A2>
+  f: (a: A) => Either.Either<A2, A1>
 ): [left: Array<A1>, right: Array<A2>] =>
   ReadonlyArray.fromIterable(elements).reduceRight(
     ([lefts, rights], current) => {
@@ -2522,7 +2522,7 @@ export const exitForEachEffect: {
 })
 
 /** @internal */
-export const exitFromEither = <E, A>(either: Either.Either<E, A>): Exit.Exit<A, E> => {
+export const exitFromEither = <E, A>(either: Either.Either<A, E>): Exit.Exit<A, E> => {
   switch (either._tag) {
     case "Left":
       return exitFail(either.left)

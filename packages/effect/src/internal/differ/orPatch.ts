@@ -188,8 +188,8 @@ type Instruction =
 /** @internal */
 export const diff = <Value, Value2, Patch, Patch2>(
   options: {
-    readonly oldValue: Either<Value, Value2>
-    readonly newValue: Either<Value, Value2>
+    readonly oldValue: Either<Value2, Value>
+    readonly newValue: Either<Value2, Value>
     readonly left: Differ<Value, Patch>
     readonly right: Differ<Value2, Patch2>
   }
@@ -243,23 +243,23 @@ export const combine = Dual.dual<
 export const patch = Dual.dual<
   <Value, Value2, Patch, Patch2>(
     options: {
-      readonly oldValue: Either<Value, Value2>
+      readonly oldValue: Either<Value2, Value>
       readonly left: Differ<Value, Patch>
       readonly right: Differ<Value2, Patch2>
     }
-  ) => (self: Differ.Or.Patch<Value, Value2, Patch, Patch2>) => Either<Value, Value2>,
+  ) => (self: Differ.Or.Patch<Value, Value2, Patch, Patch2>) => Either<Value2, Value>,
   <Value, Value2, Patch, Patch2>(
     self: Differ.Or.Patch<Value, Value2, Patch, Patch2>,
     options: {
-      readonly oldValue: Either<Value, Value2>
+      readonly oldValue: Either<Value2, Value>
       readonly left: Differ<Value, Patch>
       readonly right: Differ<Value2, Patch2>
     }
-  ) => Either<Value, Value2>
+  ) => Either<Value2, Value>
 >(2, <Value, Value2, Patch, Patch2>(
   self: Differ.Or.Patch<Value, Value2, Patch, Patch2>,
   { left, oldValue, right }: {
-    oldValue: Either<Value, Value2>
+    oldValue: Either<Value2, Value>
     left: Differ<Value, Patch>
     right: Differ<Value2, Patch2>
   }

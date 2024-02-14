@@ -86,11 +86,11 @@ export const hashSet = <Value>(): Differ.Differ<HashSet<Value>, Differ.Differ.Ha
 export const orElseEither = Dual.dual<
   <Value2, Patch2>(that: Differ.Differ<Value2, Patch2>) => <Value, Patch>(
     self: Differ.Differ<Value, Patch>
-  ) => Differ.Differ<Either<Value, Value2>, Differ.Differ.Or.Patch<Value, Value2, Patch, Patch2>>,
+  ) => Differ.Differ<Either<Value2, Value>, Differ.Differ.Or.Patch<Value, Value2, Patch, Patch2>>,
   <Value, Patch, Value2, Patch2>(
     self: Differ.Differ<Value, Patch>,
     that: Differ.Differ<Value2, Patch2>
-  ) => Differ.Differ<Either<Value, Value2>, Differ.Differ.Or.Patch<Value, Value2, Patch, Patch2>>
+  ) => Differ.Differ<Either<Value2, Value>, Differ.Differ.Or.Patch<Value, Value2, Patch, Patch2>>
 >(2, (self, that) =>
   make({
     empty: OrPatch.empty(),

@@ -38,7 +38,7 @@ describe("Resource", () => {
     }))
   it.scopedLive("failed refresh doesn't affect cached value", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<Either.Either<string, number>>(Either.right(0)))
+      const ref = yield* $(Ref.make<Either.Either<number, string>>(Either.right(0)))
       const cached = yield* $(Cached.auto(Effect.flatMap(Ref.get(ref), identity), Schedule.spaced(Duration.millis(4))))
       const result1 = yield* $(Cached.get(cached))
       const result2 = yield* $(

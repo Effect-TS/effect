@@ -22,7 +22,7 @@ const CommonProto = {
   [TypeId]: {
     _A: (_: never) => _
   },
-  [NodeInspectSymbol]<E, A>(this: Either.Either<E, A>) {
+  [NodeInspectSymbol]<E, A>(this: Either.Either<A, E>) {
     return this.toJSON()
   },
   toString<E, A>(this: Either.Left<E, A>) {
@@ -70,20 +70,20 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
 export const isEither = (input: unknown): input is Either.Either<unknown, unknown> => hasProperty(input, TypeId)
 
 /** @internal */
-export const isLeft = <E, A>(ma: Either.Either<E, A>): ma is Either.Left<E, A> => ma._tag === "Left"
+export const isLeft = <E, A>(ma: Either.Either<A, E>): ma is Either.Left<E, A> => ma._tag === "Left"
 
 /** @internal */
-export const isRight = <E, A>(ma: Either.Either<E, A>): ma is Either.Right<E, A> => ma._tag === "Right"
+export const isRight = <E, A>(ma: Either.Either<A, E>): ma is Either.Right<E, A> => ma._tag === "Right"
 
 /** @internal */
-export const left = <E>(left: E): Either.Either<E, never> => {
+export const left = <E>(left: E): Either.Either<never, E> => {
   const a = Object.create(LeftProto)
   a.left = left
   return a
 }
 
 /** @internal */
-export const right = <A>(right: A): Either.Either<never, A> => {
+export const right = <A>(right: A): Either.Either<A> => {
   const a = Object.create(RightProto)
   a.right = right
   return a
@@ -91,17 +91,17 @@ export const right = <A>(right: A): Either.Either<never, A> => {
 
 /** @internal */
 export const getLeft = <E, A>(
-  self: Either.Either<E, A>
+  self: Either.Either<A, E>
 ): Option<E> => (isRight(self) ? option.none : option.some(self.left))
 
 /** @internal */
 export const getRight = <E, A>(
-  self: Either.Either<E, A>
+  self: Either.Either<A, E>
 ): Option<A> => (isLeft(self) ? option.none : option.some(self.right))
 
 /** @internal */
 export const fromOption = dual(
   2,
-  <A, E>(self: Option<A>, onNone: () => E): Either.Either<E, A> =>
+  <A, E>(self: Option<A>, onNone: () => E): Either.Either<A, E> =>
     option.isNone(self) ? left(onNone()) : right(self.value)
 )

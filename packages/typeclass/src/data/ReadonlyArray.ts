@@ -70,16 +70,16 @@ const traversePartitionMap = <F extends TypeLambda>(
   F: applicative.Applicative<F>
 ): {
   <A, R, O, E, B, C>(
-    f: (a: A) => Kind<F, R, O, E, Either<B, C>>
+    f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): (self: ReadonlyArray<A>) => Kind<F, R, O, E, [Array<B>, Array<C>]>
   <A, R, O, E, B, C>(
     self: ReadonlyArray<A>,
-    f: (a: A) => Kind<F, R, O, E, Either<B, C>>
+    f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): Kind<F, R, O, E, [Array<B>, Array<C>]>
 } =>
   dual(2, <A, R, O, E, B, C>(
     self: ReadonlyArray<A>,
-    f: (a: A) => Kind<F, R, O, E, Either<B, C>>
+    f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): Kind<F, R, O, E, [Array<B>, Array<C>]> => {
     return F.map(traverse(F)(self, f), ReadonlyArray.separate)
   })

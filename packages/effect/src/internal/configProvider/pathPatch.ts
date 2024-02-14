@@ -46,11 +46,11 @@ export const patch = dual<
     patch: PathPatch.PathPatch
   ) => (
     path: ReadonlyArray<string>
-  ) => Either.Either<ConfigError.ConfigError, ReadonlyArray<string>>,
+  ) => Either.Either<ReadonlyArray<string>, ConfigError.ConfigError>,
   (
     path: ReadonlyArray<string>,
     patch: PathPatch.PathPatch
-  ) => Either.Either<ConfigError.ConfigError, ReadonlyArray<string>>
+  ) => Either.Either<ReadonlyArray<string>, ConfigError.ConfigError>
 >(2, (path, patch) => {
   let input: List.List<PathPatch.PathPatch> = List.of(patch)
   let output: ReadonlyArray<string> = path

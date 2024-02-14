@@ -934,9 +934,9 @@ export const partition: {
  * @since 2.0.0
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A) => Either<B, C>): (self: Chunk<A>) => [left: Chunk<B>, right: Chunk<C>]
-  <A, B, C>(self: Chunk<A>, f: (a: A) => Either<B, C>): [left: Chunk<B>, right: Chunk<C>]
-} = dual(2, <A, B, C>(self: Chunk<A>, f: (a: A) => Either<B, C>): [left: Chunk<B>, right: Chunk<C>] =>
+  <A, B, C>(f: (a: A) => Either<C, B>): (self: Chunk<A>) => [left: Chunk<B>, right: Chunk<C>]
+  <A, B, C>(self: Chunk<A>, f: (a: A) => Either<C, B>): [left: Chunk<B>, right: Chunk<C>]
+} = dual(2, <A, B, C>(self: Chunk<A>, f: (a: A) => Either<C, B>): [left: Chunk<B>, right: Chunk<C>] =>
   pipe(
     RA.partitionMap(toReadonlyArray(self), f),
     ([l, r]) => [unsafeFromArray(l), unsafeFromArray(r)]
@@ -948,7 +948,7 @@ export const partitionMap: {
  * @category filtering
  * @since 2.0.0
  */
-export const separate = <A, B>(self: Chunk<Either<A, B>>): [Chunk<A>, Chunk<B>] =>
+export const separate = <A, B>(self: Chunk<Either<B, A>>): [Chunk<A>, Chunk<B>] =>
   pipe(
     RA.separate(toReadonlyArray(self)),
     ([l, r]) => [unsafeFromArray(l), unsafeFromArray(r)]

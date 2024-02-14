@@ -2,6 +2,7 @@ import type k from "ast-types/gen/kinds.js"
 import type cs from "jscodeshift"
 
 const enabled = {
+  swapEitherParams: true,
   swapLayerParams: false,
   swapSTMParams: false,
   swapSTMGenParams: false,
@@ -15,7 +16,8 @@ const enabled = {
   swapResourceParams: false,
   swapTExitParams: false,
   swapChannelParams: false,
-  swapSinkParams: true,
+  swapSinkParams: false,
+  cleanupEither: true,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
@@ -42,6 +44,7 @@ const cleanupStream = cleanup("Stream")
 const cleanupExit = cleanup("Exit")
 const cleanupSTM = cleanup("STM")
 const cleanupTake = cleanup("Take")
+const cleanupEither = cleanup("Either")
 
 const filter = (ast: cs.ASTPath<cs.TSTypeReference>, nodeName: string) => {
   const name = ast.value.typeName
@@ -105,6 +108,7 @@ const swapFiberSetParams = swapParamsEA("FiberSet")
 const swapRequestParams = swapParamsEA("Request")
 const swapResourceParams = swapParamsEA("Resource")
 const swapTExitParams = swapParamsEA("TExit")
+const swapEitherParams = swapParamsEA("Either")
 
 // from: Channel<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone>
 // to: Channel<OutElem, InElem = unknown, OutErr = never, InErr = unknown, OutDone = void, InDone = unknown, Env = never>
@@ -169,6 +173,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
   }
 
   forEveryTypeReference(root, (ast) => {
+    if (enabled.swapEitherParams) {
+      swapEitherParams(ast)
+    }
     if (enabled.swapLayerParams) {
       swapLayerParams(ast)
     }
@@ -210,6 +217,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     }
     if (enabled.swapSinkParams) {
       swapSinkParams(ast)
+    }
+    if (enabled.cleanupEither) {
+      cleanupEither(ast)
     }
     if (enabled.cleanupEffect) {
       cleanupEffect(ast)

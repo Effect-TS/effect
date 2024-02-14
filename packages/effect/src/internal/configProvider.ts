@@ -438,7 +438,7 @@ const fromFlatLoop = <A>(
 }
 
 const fromFlatLoopFail =
-  (prefix: ReadonlyArray<string>, path: string) => (index: number): Either.Either<ConfigError.ConfigError, unknown> =>
+  (prefix: ReadonlyArray<string>, path: string) => (index: number): Either.Either<unknown, ConfigError.ConfigError> =>
     Either.left(
       configError.MissingData(
         prefix,

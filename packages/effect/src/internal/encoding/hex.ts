@@ -13,7 +13,7 @@ export const encode = (bytes: Uint8Array) => {
 }
 
 /** @internal */
-export const decode = (str: string): Either.Either<Encoding.DecodeException, Uint8Array> => {
+export const decode = (str: string): Either.Either<Uint8Array, Encoding.DecodeException> => {
   const bytes = new TextEncoder().encode(str)
   if (bytes.length % 2 !== 0) {
     return Either.left(DecodeException(str, `Length must be a multiple of 2, but is ${bytes.length}`))

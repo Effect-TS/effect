@@ -57,7 +57,7 @@ export interface ValueMatcher<in Input, Filters, out Remaining, out Result, Prov
     readonly _result: Covariant<Result>
   }
   readonly provided: Provided
-  readonly value: Either.Either<Remaining, Provided>
+  readonly value: Either.Either<Provided, Remaining>
   add<I, R, RA, A, Pr>(_case: Case): ValueMatcher<I, R, RA, A, Pr>
 }
 
@@ -526,8 +526,8 @@ export const orElseAbsurd: <I, R, RA, A, Pr>(
  */
 export const either: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Either.Either<R, Unify<A>>
-  : Either.Either<R, Unify<A>> = internal.either
+) => [Pr] extends [never] ? (input: I) => Either.Either<Unify<A>, R>
+  : Either.Either<Unify<A>, R> = internal.either
 
 /**
  * @category conversions
