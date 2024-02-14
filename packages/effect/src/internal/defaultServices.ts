@@ -103,6 +103,16 @@ export const randomWith = <A, E, R>(f: (random: Random.Random) => Effect.Effect<
   )
 
 /** @internal */
+export const withRandom = dual<
+  <A extends Random.Random>(value: A) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A extends Random.Random, E, R>(effect: Effect.Effect<A, E, R>, value: A) => Effect.Effect<A, E, R>
+>(2, (effect, value) =>
+  core.fiberRefLocallyWith(
+    currentServices,
+    Context.add(random.randomTag, value)
+  )(effect))
+
+/** @internal */
 export const next: Effect.Effect<number> = randomWith((random) => random.next)
 
 /** @internal */
