@@ -545,4 +545,11 @@ describe("Schema > Class", () => {
       })
     })
   })
+
+  it(".is works with duplicate classes", async () => {
+    class A1 extends S.Class<A1>("A")({ n: S.number }) {}
+    class A2 extends S.Class<A2>("A")({ n: S.number }) {}
+
+    assert.isTrue(S.is(A1)(new A2({ n: 1 })))
+  })
 })

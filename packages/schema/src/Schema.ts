@@ -4767,7 +4767,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
  * @category classes
  * @since 1.0.0
  */
-export const Class = <Self>() =>
+export const Class = <Self>(identifier?: string) =>
 <Fields extends StructFields>(
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
@@ -4777,13 +4777,13 @@ export const Class = <Self>() =>
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self
-  > => makeClass(struct(fields), fields, Data.Class)
+  > => makeClass("Class", identifier, struct(fields), fields, Data.Class)
 
 /**
  * @category classes
  * @since 1.0.0
  */
-export const TaggedClass = <Self>() =>
+export const TaggedClass = <Self>(identifier?: string) =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
   fields: Fields
@@ -4797,14 +4797,21 @@ export const TaggedClass = <Self>() =>
   > =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
-  return makeClass(struct(fieldsWithTag), fieldsWithTag, Data.Class, { _tag: tag })
+  return makeClass(
+    "TaggedClass",
+    identifier ?? tag,
+    struct(fieldsWithTag),
+    fieldsWithTag,
+    Data.Class,
+    { _tag: tag }
+  )
 }
 
 /**
  * @category classes
  * @since 1.0.0
  */
-export const TaggedError = <Self>() =>
+export const TaggedError = <Self>(identifier?: string) =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
   fields: Fields
@@ -4821,6 +4828,8 @@ export const TaggedError = <Self>() =>
 {
   const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
   return makeClass(
+    "TaggedError",
+    identifier ?? tag,
     struct(fieldsWithTag),
     fieldsWithTag,
     Data.Error,
@@ -4856,55 +4865,63 @@ export declare namespace TaggedRequest {
  * @category classes
  * @since 1.0.0
  */
-export const TaggedRequest = <Self>() =>
-<Tag extends string, Fields extends StructFields, EA, EI, ER, AA, AI, AR>(
-  tag: Tag,
-  Failure: Schema<EA, EI, ER>,
-  Success: Schema<AA, AI, AR>,
-  fields: Fields
-): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-  : Class<
-    Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
-    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
-    Schema.Context<Fields[keyof Fields]>,
-    Simplify<ToStruct<Fields>>,
-    Self,
-    TaggedRequest<
-      Tag,
-      Schema.Context<Fields[keyof Fields]>,
+export const TaggedRequest =
+  <Self>(identifier?: string) =>
+  <Tag extends string, Fields extends StructFields, EA, EI, ER, AA, AI, AR>(
+    tag: Tag,
+    Failure: Schema<EA, EI, ER>,
+    Success: Schema<AA, AI, AR>,
+    fields: Fields
+  ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
+    : Class<
+      Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
       Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+      Schema.Context<Fields[keyof Fields]>,
+      Simplify<ToStruct<Fields>>,
       Self,
-      ER | AR,
-      EI,
-      EA,
-      AI,
-      AA
-    >
-  > =>
-{
-  class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
-    get [InternalSerializable.symbol]() {
-      return this.constructor
+      TaggedRequest<
+        Tag,
+        Schema.Context<Fields[keyof Fields]>,
+        Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+        Self,
+        ER | AR,
+        EI,
+        EA,
+        AI,
+        AA
+      >
+    > =>
+  {
+    class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
+      get [InternalSerializable.symbol]() {
+        return this.constructor
+      }
+      get [InternalSerializable.symbolResult]() {
+        return { Failure, Success }
+      }
     }
-    get [InternalSerializable.symbolResult]() {
-      return { Failure, Success }
-    }
+    const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
+    return makeClass(
+      "TaggedRequest",
+      identifier ?? tag,
+      struct(fieldsWithTag),
+      fieldsWithTag,
+      SerializableRequest,
+      { _tag: tag }
+    )
   }
-  const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
-  return makeClass(
-    struct(fieldsWithTag),
-    fieldsWithTag,
-    SerializableRequest,
-    { _tag: tag }
-  )
-}
+
+const ClassTypeId = Symbol.for("@effect/schema/Class")
 
 const makeClass = <A, I, R>(
+  kind: string,
+  identifier: string | undefined,
   selfSchema: Schema<A, I, R>,
   selfFields: StructFields,
   Base: any,
   additionalProps?: any
 ): any => {
+  const makeSymbol = (constructor: Function) => Symbol.for(`@effect/schema/${kind}/${identifier ?? constructor.name}`)
   const validate = Parser.validateSync(selfSchema)
 
   return class extends Base {
@@ -4928,15 +4945,25 @@ const makeClass = <A, I, R>(
       return pipeArguments(this, arguments)
     }
 
+    get [ClassTypeId]() {
+      return makeSymbol(this.constructor)
+    }
+
     static get ast() {
+      const classSymbol = makeSymbol(this)
       const toSchema = to(selfSchema)
       const encode = Parser.encodeUnknown(toSchema)
+      const guard = Parser.is(toSchema)
+      const fallbackInstanceOf = (u: unknown) =>
+        Predicate.hasProperty(u, ClassTypeId) && u[ClassTypeId] === classSymbol && guard(u)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const declaration: Schema<any, any, never> = declare(
         [],
         () => (input, _, ast) =>
-          input instanceof this ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input)),
+          input instanceof this || fallbackInstanceOf(input)
+            ? ParseResult.succeed(input)
+            : ParseResult.fail(ParseResult.type(ast, input)),
         () => (input, _, ast) =>
           input instanceof this
             ? ParseResult.succeed(input)
@@ -4966,10 +4993,12 @@ const makeClass = <A, I, R>(
 
     static struct = selfSchema
 
-    static extend() {
+    static extend(identifier?: string) {
       return (fields: StructFields) => {
         const newFields: StructFields = { ...selfFields, ...fields }
         return makeClass(
+          kind,
+          identifier,
           struct(newFields),
           newFields,
           this,
@@ -4982,6 +5011,8 @@ const makeClass = <A, I, R>(
       return (fields: any, decode: any, encode: any) => {
         const newFields = { ...selfFields, ...fields }
         return makeClass(
+          kind,
+          identifier,
           transformOrFail(
             selfSchema,
             to(struct(newFields)),
@@ -4999,6 +5030,8 @@ const makeClass = <A, I, R>(
       return (fields: StructFields, decode: any, encode: any) => {
         const newFields: StructFields = { ...selfFields, ...fields }
         return makeClass(
+          kind,
+          identifier,
           transformOrFail(
             from(selfSchema),
             struct(newFields),
