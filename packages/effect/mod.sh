@@ -1,5 +1,5 @@
 #!/bin/bash
-dirs=(../platform-node-shared/src)
+dirs=(../typeclass/src ../typeclass/test ../typeclass/dtslint)
 for dir in ${dirs[@]};
 do
 echo Refactoring $dir

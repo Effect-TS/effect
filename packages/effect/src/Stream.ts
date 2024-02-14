@@ -236,12 +236,12 @@ export const aggregateWithinEither: {
   <B, A, A2, E2, R2, R3, C>(
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ): <E, R>(self: Stream<A, E, R>) => Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R>
+  ): <E, R>(self: Stream<A, E, R>) => Stream<Either.Either<B, C>, E2 | E, R2 | R3 | R>
   <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ): Stream<Either.Either<C, B>, E | E2, R | R2 | R3>
+  ): Stream<Either.Either<B, C>, E | E2, R | R2 | R3>
 } = internal.aggregateWithinEither
 
 /**
@@ -1027,7 +1027,7 @@ export const dropWhileEffect: {
  * @since 2.0.0
  * @category utils
  */
-export const either: <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<E, A>, never, R> = internal.either
+export const either: <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<A, E>, never, R> = internal.either
 
 /**
  * The empty stream.
@@ -2168,8 +2168,8 @@ export const mergeWith: {
 export const mergeEither: {
   <R2, E2, A2>(
     that: Stream<A2, E2, R2>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<A, A2>, E2 | E, R2 | R>
-  <R, E, A, R2, E2, A2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<Either.Either<A, A2>, E | E2, R | R2>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<A2, A>, E2 | E, R2 | R>
+  <R, E, A, R2, E2, A2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<Either.Either<A2, A>, E | E2, R | R2>
 } = internal.mergeEither
 
 /**
@@ -2289,11 +2289,11 @@ export const orElse: {
 export const orElseEither: {
   <R2, E2, A2>(
     that: LazyArg<Stream<A2, E2, R2>>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<A, A2>, E2, R2 | R>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<A2, A>, E2, R2 | R>
   <R, E, A, R2, E2, A2>(
     self: Stream<A, E, R>,
     that: LazyArg<Stream<A2, E2, R2>>
-  ): Stream<Either.Either<A, A2>, E2, R | R2>
+  ): Stream<Either.Either<A2, A>, E2, R | R2>
 } = internal.orElseEither
 
 /**
@@ -2445,14 +2445,14 @@ export const partition: {
  */
 export const partitionEither: {
   <A, R2, E2, A2, A3>(
-    predicate: (a: NoInfer<A>) => Effect.Effect<Either.Either<A2, A3>, E2, R2>,
+    predicate: (a: NoInfer<A>) => Effect.Effect<Either.Either<A3, A2>, E2, R2>,
     options?: { readonly bufferSize?: number | undefined } | undefined
   ): <R, E>(
     self: Stream<A, E, R>
   ) => Effect.Effect<[left: Stream<A2, E2 | E>, right: Stream<A3, E2 | E>], E2 | E, Scope.Scope | R2 | R>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<A, E, R>,
-    predicate: (a: A) => Effect.Effect<Either.Either<A2, A3>, E2, R2>,
+    predicate: (a: A) => Effect.Effect<Either.Either<A3, A2>, E2, R2>,
     options?: { readonly bufferSize?: number | undefined } | undefined
   ): Effect.Effect<[left: Stream<A2, E | E2>, right: Stream<A3, E | E2>], E | E2, Scope.Scope | R | R2>
 } = internal.partitionEither
@@ -2763,11 +2763,11 @@ export const repeatEffectWithSchedule: <R, E, A, A0 extends A, R2, _>(
 export const repeatEither: {
   <R2, B>(
     schedule: Schedule.Schedule<R2, unknown, B>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<B, A>, E, R2 | R>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<Either.Either<A, B>, E, R2 | R>
   <R, E, A, R2, B>(
     self: Stream<A, E, R>,
     schedule: Schedule.Schedule<R2, unknown, B>
-  ): Stream<Either.Either<B, A>, E, R | R2>
+  ): Stream<Either.Either<A, B>, E, R | R2>
 } = internal.repeatEither
 
 /**
@@ -4378,7 +4378,7 @@ export const zipWithChunks: {
     f: (
       left: Chunk.Chunk<A>,
       right: Chunk.Chunk<A2>
-    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A2>, Chunk.Chunk<A>>]
   ): <R, E>(self: Stream<A, E, R>) => Stream<A3, E2 | E, R2 | R>
   <R, E, R2, E2, A2, A, A3>(
     self: Stream<A, E, R>,
@@ -4386,7 +4386,7 @@ export const zipWithChunks: {
     f: (
       left: Chunk.Chunk<A>,
       right: Chunk.Chunk<A2>
-    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A2>, Chunk.Chunk<A>>]
   ): Stream<A3, E | E2, R | R2>
 } = internal.zipWithChunks
 

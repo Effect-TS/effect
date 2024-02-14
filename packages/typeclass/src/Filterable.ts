@@ -16,11 +16,11 @@ import type { Covariant } from "./Covariant.js"
 export interface Filterable<F extends TypeLambda> extends TypeClass<F> {
   readonly partitionMap: {
     <A, B, C>(
-      f: (a: A) => Either.Either<B, C>
+      f: (a: A) => Either.Either<C, B>
     ): <R, O, E>(self: Kind<F, R, O, E, A>) => [Kind<F, R, O, E, B>, Kind<F, R, O, E, C>]
     <R, O, E, A, B, C>(
       self: Kind<F, R, O, E, A>,
-      f: (a: A) => Either.Either<B, C>
+      f: (a: A) => Either.Either<C, B>
     ): [Kind<F, R, O, E, B>, Kind<F, R, O, E, C>]
   }
 
@@ -43,7 +43,7 @@ export const partitionMapComposition = <F extends TypeLambda, G extends TypeLamb
 ) =>
 <FR, FO, FE, GR, GO, GE, A, B, C>(
   self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
-  f: (a: A) => Either.Either<B, C>
+  f: (a: A) => Either.Either<C, B>
 ): [Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>>, Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, C>>] => {
   const filterMap = filterMapComposition(F, G)
   return [
@@ -79,7 +79,7 @@ export const compact = <F extends TypeLambda>(
 export const separate = <F extends TypeLambda>(
   F: Filterable<F>
 ): <R, O, E, A, B>(
-  self: Kind<F, R, O, E, Either.Either<A, B>>
+  self: Kind<F, R, O, E, Either.Either<B, A>>
 ) => [Kind<F, R, O, E, A>, Kind<F, R, O, E, B>] => F.partitionMap(identity)
 
 /**

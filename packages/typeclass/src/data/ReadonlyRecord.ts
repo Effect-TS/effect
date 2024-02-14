@@ -45,18 +45,18 @@ const traversePartitionMap = <F extends TypeLambda>(
   F: applicative.Applicative<F>
 ): {
   <A, R, O, E, B, C>(
-    f: (a: A) => Kind<F, R, O, E, Either<B, C>>
+    f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): (
     self: ReadonlyRecord.ReadonlyRecord<A>
   ) => Kind<F, R, O, E, [Record<string, B>, Record<string, C>]>
   <A, R, O, E, B, C>(
     self: ReadonlyRecord.ReadonlyRecord<A>,
-    f: (a: A) => Kind<F, R, O, E, Either<B, C>>
+    f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): Kind<F, R, O, E, [Record<string, B>, Record<string, C>]>
 } =>
   dual(2, <A, R, O, E, B, C>(
     self: ReadonlyRecord.ReadonlyRecord<A>,
-    f: (a: A) => Kind<F, R, O, E, Either<B, C>>
+    f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): Kind<F, R, O, E, [Record<string, B>, Record<string, C>]> => {
     return F.map(traverse(F)(self, f), ReadonlyRecord.separate)
   })

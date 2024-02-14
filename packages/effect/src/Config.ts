@@ -55,7 +55,7 @@ export declare namespace Config {
    */
   export interface Primitive<out A> extends Config<A> {
     readonly description: string
-    parse(text: string): Either.Either<ConfigError.ConfigError, A>
+    parse(text: string): Either.Either<A, ConfigError.ConfigError>
   }
 
   /**
@@ -233,8 +233,8 @@ export const mapAttempt: {
  * @category utils
  */
 export const mapOrFail: {
-  <A, B>(f: (a: A) => Either.Either<ConfigError.ConfigError, B>): (self: Config<A>) => Config<B>
-  <A, B>(self: Config<A>, f: (a: A) => Either.Either<ConfigError.ConfigError, B>): Config<B>
+  <A, B>(f: (a: A) => Either.Either<B, ConfigError.ConfigError>): (self: Config<A>) => Config<B>
+  <A, B>(self: Config<A>, f: (a: A) => Either.Either<B, ConfigError.ConfigError>): Config<B>
 } = internal.mapOrFail
 
 /**
@@ -303,7 +303,7 @@ export const option: <A>(self: Config<A>) => Config<Option.Option<A>> = internal
  */
 export const primitive: <A>(
   description: string,
-  parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
+  parse: (text: string) => Either.Either<A, ConfigError.ConfigError>
 ) => Config<A> = internal.primitive
 
 /**

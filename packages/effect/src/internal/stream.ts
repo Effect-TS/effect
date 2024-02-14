@@ -164,19 +164,19 @@ export const aggregateWithinEither = dual<
   <B, A, A2, E2, R2, R3, C>(
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<B, C>, E2 | E, R2 | R3 | R>,
   <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ) => Stream.Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R>
+  ) => Stream.Stream<Either.Either<B, C>, E2 | E, R2 | R3 | R>
 >(
   3,
   <A, E, R, B, A2, E2, R2, R3, C>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<B, A | A2, A2, E2, R2>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ): Stream.Stream<Either.Either<C, B>, E2 | E, R2 | R3 | R> => {
+  ): Stream.Stream<Either.Either<B, C>, E2 | E, R2 | R3 | R> => {
     const layer = Effect.all([
       Handoff.make<HandoffSignal.HandoffSignal<A, E | E2>>(),
       Ref.make<SinkEndReason.SinkEndReason>(SinkEndReason.ScheduleEnd),
@@ -284,7 +284,7 @@ export const aggregateWithinEither = dual<
           sinkFiber: Fiber.RuntimeFiber<readonly [Chunk.Chunk<Chunk.Chunk<A | A2>>, B], E | E2>,
           scheduleFiber: Fiber.RuntimeFiber<C, Option.Option<never>>,
           scope: Scope.Scope
-        ): Channel.Channel<Chunk.Chunk<Either.Either<C, B>>, unknown, E | E2, unknown, unknown, unknown, R2 | R3> => {
+        ): Channel.Channel<Chunk.Chunk<Either.Either<B, C>>, unknown, E | E2, unknown, unknown, unknown, R2 | R3> => {
           const forkSink = pipe(
             Ref.set(consumed, false),
             Effect.zipRight(Ref.set(endAfterEmit, false)),
@@ -302,7 +302,7 @@ export const aggregateWithinEither = dual<
             leftovers: Chunk.Chunk<Chunk.Chunk<A | A2>>,
             b: B,
             c: Option.Option<C>
-          ): Channel.Channel<Chunk.Chunk<Either.Either<C, B>>, unknown, E | E2, unknown, unknown, unknown, R2 | R3> =>
+          ): Channel.Channel<Chunk.Chunk<Either.Either<B, C>>, unknown, E | E2, unknown, unknown, unknown, R2 | R3> =>
             pipe(
               Ref.set(sinkLeftovers, Chunk.flatten(leftovers)),
               Effect.zipRight(
@@ -319,8 +319,8 @@ export const aggregateWithinEither = dual<
                           const toWrite = pipe(
                             c,
                             Option.match({
-                              onNone: (): Chunk.Chunk<Either.Either<C, B>> => Chunk.of(Either.right(b)),
-                              onSome: (c): Chunk.Chunk<Either.Either<C, B>> =>
+                              onNone: (): Chunk.Chunk<Either.Either<B, C>> => Chunk.of(Either.right(b)),
+                              onSome: (c): Chunk.Chunk<Either.Either<B, C>> =>
                                 Chunk.make(Either.right(b), Either.left(c))
                             })
                           )
@@ -340,7 +340,7 @@ export const aggregateWithinEither = dual<
                         Ref.get(consumed),
                         Effect.map((wasConsumed) =>
                           wasConsumed ?
-                            core.write(Chunk.of<Either.Either<C, B>>(Either.right(b))) :
+                            core.write(Chunk.of<Either.Either<B, C>>(Either.right(b))) :
                             core.unit
                         ),
                         channel.unwrap
@@ -2246,7 +2246,7 @@ export const dropWhileEffect = dual<
 )
 
 /** @internal */
-export const either = <A, E, R>(self: Stream.Stream<A, E, R>): Stream.Stream<Either.Either<E, A>, never, R> =>
+export const either = <A, E, R>(self: Stream.Stream<A, E, R>): Stream.Stream<Either.Either<A, E>, never, R> =>
   pipe(self, map(Either.right), catchAll((error) => make(Either.left(error))))
 
 /** @internal */
@@ -3903,17 +3903,17 @@ export const mergeAll = dual<
 export const mergeEither = dual<
   <R2, E2, A2>(
     that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<A, A2>, E2 | E, R2 | R>,
+  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<A2, A>, E2 | E, R2 | R>,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<A, E, R>,
     that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<Either.Either<A, A2>, E2 | E, R2 | R>
+  ) => Stream.Stream<Either.Either<A2, A>, E2 | E, R2 | R>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<A, E, R>,
     that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<Either.Either<A, A2>, E2 | E, R2 | R> =>
+  ): Stream.Stream<Either.Either<A2, A>, E2 | E, R2 | R> =>
     mergeWith(self, that, { onSelf: Either.left, onOther: Either.right })
 )
 
@@ -4081,17 +4081,17 @@ export const orElse = dual<
 export const orElseEither = dual<
   <R2, E2, A2>(
     that: LazyArg<Stream.Stream<A2, E2, R2>>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<A, A2>, E2, R2 | R>,
+  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<A2, A>, E2, R2 | R>,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<A, E, R>,
     that: LazyArg<Stream.Stream<A2, E2, R2>>
-  ) => Stream.Stream<Either.Either<A, A2>, E2, R2 | R>
+  ) => Stream.Stream<Either.Either<A2, A>, E2, R2 | R>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<A, E, R>,
     that: LazyArg<Stream.Stream<A2, E2, R2>>
-  ): Stream.Stream<Either.Either<A, A2>, E2, R2 | R> =>
+  ): Stream.Stream<Either.Either<A2, A>, E2, R2 | R> =>
     pipe(self, map(Either.left), orElse(() => pipe(that(), map(Either.right))))
 )
 
@@ -4391,7 +4391,7 @@ export const partition: {
 /** @internal */
 export const partitionEither = dual<
   <A, R2, E2, A2, A3>(
-    predicate: (a: NoInfer<A>) => Effect.Effect<Either.Either<A2, A3>, E2, R2>,
+    predicate: (a: NoInfer<A>) => Effect.Effect<Either.Either<A3, A2>, E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
@@ -4404,7 +4404,7 @@ export const partitionEither = dual<
   >,
   <R, E, A, R2, E2, A2, A3>(
     self: Stream.Stream<A, E, R>,
-    predicate: (a: A) => Effect.Effect<Either.Either<A2, A3>, E2, R2>,
+    predicate: (a: A) => Effect.Effect<Either.Either<A3, A2>, E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
@@ -4417,7 +4417,7 @@ export const partitionEither = dual<
   (args) => typeof args[1] === "function",
   <R, E, A, R2, E2, A2, A3>(
     self: Stream.Stream<A, E, R>,
-    predicate: (a: A) => Effect.Effect<Either.Either<A2, A3>, E2, R2>,
+    predicate: (a: A) => Effect.Effect<Either.Either<A3, A2>, E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
@@ -4857,19 +4857,19 @@ export const repeatEffectOption = <A, E, R>(effect: Effect.Effect<A, Option.Opti
 export const repeatEither = dual<
   <R2, B>(
     schedule: Schedule.Schedule<R2, unknown, B>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<B, A>, E, R2 | R>,
+  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Either.Either<A, B>, E, R2 | R>,
   <R, E, A, R2, B>(
     self: Stream.Stream<A, E, R>,
     schedule: Schedule.Schedule<R2, unknown, B>
-  ) => Stream.Stream<Either.Either<B, A>, E, R2 | R>
+  ) => Stream.Stream<Either.Either<A, B>, E, R2 | R>
 >(
   2,
   <R, E, A, R2, B>(
     self: Stream.Stream<A, E, R>,
     schedule: Schedule.Schedule<R2, unknown, B>
-  ): Stream.Stream<Either.Either<B, A>, E, R2 | R> =>
+  ): Stream.Stream<Either.Either<A, B>, E, R2 | R> =>
     repeatWith(self, schedule, {
-      onElement: (a): Either.Either<B, A> => Either.right(a),
+      onElement: (a): Either.Either<A, B> => Either.right(a),
       onSchedule: Either.left
     })
 )
@@ -7813,7 +7813,7 @@ export const zipWithChunks = dual<
     f: (
       left: Chunk.Chunk<A>,
       right: Chunk.Chunk<A2>
-    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A2>, Chunk.Chunk<A>>]
   ) => <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<A3, E2 | E, R2 | R>,
   <R, E, R2, E2, A2, A, A3>(
     self: Stream.Stream<A, E, R>,
@@ -7821,7 +7821,7 @@ export const zipWithChunks = dual<
     f: (
       left: Chunk.Chunk<A>,
       right: Chunk.Chunk<A2>
-    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A2>, Chunk.Chunk<A>>]
   ) => Stream.Stream<A3, E2 | E, R2 | R>
 >(3, <R, E, R2, E2, A2, A, A3>(
   self: Stream.Stream<A, E, R>,
@@ -7829,7 +7829,7 @@ export const zipWithChunks = dual<
   f: (
     left: Chunk.Chunk<A>,
     right: Chunk.Chunk<A2>
-  ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+  ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A2>, Chunk.Chunk<A>>]
 ): Stream.Stream<A3, E2 | E, R2 | R> => {
   const pull = (
     state: ZipChunksState.ZipChunksState<A, A2>,
@@ -7991,7 +7991,7 @@ const zipChunks = <A, B, C>(
   left: Chunk.Chunk<A>,
   right: Chunk.Chunk<B>,
   f: (a: A, b: B) => C
-): [Chunk.Chunk<C>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<B>>] => {
+): [Chunk.Chunk<C>, Either.Either<Chunk.Chunk<B>, Chunk.Chunk<A>>] => {
   if (left.length > right.length) {
     return [
       pipe(left, Chunk.take(right.length), Chunk.zipWith(right, f)),

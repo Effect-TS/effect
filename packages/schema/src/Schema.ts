@@ -215,7 +215,7 @@ export const encodeUnknownEither = <A, I>(
   options?: ParseOptions
 ) => {
   const encodeUnknownEither = Parser.encodeUnknownEither(schema, options)
-  return (u: unknown, overrideOptions?: ParseOptions): Either.Either<ParseResult.ParseError, I> =>
+  return (u: unknown, overrideOptions?: ParseOptions): Either.Either<I, ParseResult.ParseError> =>
     Either.mapLeft(encodeUnknownEither(u, overrideOptions), ParseResult.parseError)
 }
 
@@ -247,7 +247,7 @@ export const encode: <A, I, R>(
 export const encodeEither: <A, I>(
   schema: Schema<A, I, never>,
   options?: ParseOptions
-) => (a: A, overrideOptions?: ParseOptions) => Either.Either<ParseResult.ParseError, I> = encodeUnknownEither
+) => (a: A, overrideOptions?: ParseOptions) => Either.Either<I, ParseResult.ParseError> = encodeUnknownEither
 
 /**
  * @category encoding
@@ -280,7 +280,7 @@ export const decodeUnknownEither = <A, I>(
   options?: ParseOptions
 ) => {
   const decodeUnknownEither = ParseResult.decodeUnknownEither(schema, options)
-  return (u: unknown, overrideOptions?: ParseOptions): Either.Either<ParseResult.ParseError, A> =>
+  return (u: unknown, overrideOptions?: ParseOptions): Either.Either<A, ParseResult.ParseError> =>
     Either.mapLeft(decodeUnknownEither(u, overrideOptions), ParseResult.parseError)
 }
 
@@ -312,7 +312,7 @@ export const decode: <A, I, R>(
 export const decodeEither: <A, I>(
   schema: Schema<A, I, never>,
   options?: ParseOptions
-) => (i: I, overrideOptions?: ParseOptions) => Either.Either<ParseResult.ParseError, A> = decodeUnknownEither
+) => (i: I, overrideOptions?: ParseOptions) => Either.Either<A, ParseResult.ParseError> = decodeUnknownEither
 
 /**
  * @category decoding
@@ -345,7 +345,7 @@ export const validateEither = <A, I, R>(
   options?: ParseOptions
 ) => {
   const validateEither = Parser.validateEither(schema, options)
-  return (u: unknown, overrideOptions?: ParseOptions): Either.Either<ParseResult.ParseError, A> =>
+  return (u: unknown, overrideOptions?: ParseOptions): Either.Either<A, ParseResult.ParseError> =>
     Either.mapLeft(validateEither(u, overrideOptions), ParseResult.parseError)
 }
 
@@ -3570,7 +3570,7 @@ export {
 
 const makeEncodingTransformation = (
   id: string,
-  decode: (s: string) => Either.Either<Encoding.DecodeException, Uint8Array>,
+  decode: (s: string) => Either.Either<Uint8Array, Encoding.DecodeException>,
   encode: (u: Uint8Array) => string
 ): Schema<Uint8Array, string> =>
   transformOrFail(
@@ -3916,8 +3916,13 @@ export const option = <A, I, R>(
     optionFromSelf(to(value)),
     optionDecode,
     Option.match({
-      onNone: () => ({ _tag: "None" }) as const,
-      onSome: (value) => ({ _tag: "Some", value }) as const
+      onNone: () => (({
+        _tag: "None"
+      }) as const),
+      onSome: (value) => (({
+        _tag: "Some",
+        value
+      }) as const)
     })
   )
 
@@ -3998,13 +4003,13 @@ const eitherFrom = <E, IE, R1, A, IA, R2>(
     description(`EitherFrom<${format(left)}, ${format(right)}>`)
   )
 
-const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<E, A> =>
+const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<A, E> =>
   input._tag === "Left" ? Either.left(input.left) : Either.right(input.right)
 
 const eitherArbitrary = <E, A>(
   left: Arbitrary<E>,
   right: Arbitrary<A>
-): Arbitrary<Either.Either<E, A>> => {
+): Arbitrary<Either.Either<A, E>> => {
   const arb = arbitrary.make(eitherFrom(schemaFromArbitrary(left), schemaFromArbitrary(right)))
   return (fc) => arb(fc).map(eitherDecode)
 }
@@ -4012,7 +4017,7 @@ const eitherArbitrary = <E, A>(
 const eitherPretty = <E, A>(
   left: Pretty.Pretty<E>,
   right: Pretty.Pretty<A>
-): Pretty.Pretty<Either.Either<E, A>> =>
+): Pretty.Pretty<Either.Either<A, E>> =>
   Either.match({
     onLeft: (e) => `left(${left(e)})`,
     onRight: (a) => `right(${right(a)})`
@@ -4021,7 +4026,7 @@ const eitherPretty = <E, A>(
 const eitherParse = <RE, E, RA, A>(
   decodeUnknownLeft: ParseResult.DecodeUnknown<E, RE>,
   parseright: ParseResult.DecodeUnknown<A, RA>
-): ParseResult.DeclarationDecodeUnknown<Either.Either<E, A>, RE | RA> =>
+): ParseResult.DeclarationDecodeUnknown<Either.Either<A, E>, RE | RA> =>
 (u, options, ast) =>
   Either.isEither(u) ?
     Either.match(u, {
@@ -4037,7 +4042,7 @@ const eitherParse = <RE, E, RA, A>(
 export const eitherFromSelf = <E, IE, RE, A, IA, RA>({ left, right }: {
   readonly left: Schema<E, IE, RE>
   readonly right: Schema<A, IA, RA>
-}): Schema<Either.Either<E, A>, Either.Either<IE, IA>, RE | RA> => {
+}): Schema<Either.Either<A, E>, Either.Either<IA, IE>, RE | RA> => {
   return declare(
     [left, right],
     (left, right) => eitherParse(ParseResult.decodeUnknown(left), ParseResult.decodeUnknown(right)),
@@ -4051,8 +4056,14 @@ export const eitherFromSelf = <E, IE, RE, A, IA, RA>({ left, right }: {
   )
 }
 
-const makeLeftFrom = <E>(left: E) => ({ _tag: "Left", left }) as const
-const makeRightFrom = <A>(right: A) => ({ _tag: "Right", right }) as const
+const makeLeftFrom = <E>(left: E) => (({
+  _tag: "Left",
+  left
+}) as const)
+const makeRightFrom = <A>(right: A) => (({
+  _tag: "Right",
+  right
+}) as const)
 
 /**
  * @category Either transformations
@@ -4061,7 +4072,7 @@ const makeRightFrom = <A>(right: A) => ({ _tag: "Right", right }) as const
 export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
   readonly left: Schema<E, IE, R1>
   readonly right: Schema<A, IA, R2>
-}): Schema<Either.Either<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
+}): Schema<Either.Either<A, E>, EitherFrom<IE, IA>, R1 | R2> =>
   transform(
     eitherFrom(left, right),
     eitherFromSelf({ left: to(left), right: to(right) }),
@@ -4082,7 +4093,7 @@ export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
 export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>({ left, right }: {
   readonly left: Schema<EA, EI, R1>
   readonly right: Schema<AA, AI, R2>
-}): Schema<Either.Either<EA, AA>, EI | AI, R1 | R2> => {
+}): Schema<Either.Either<AA, EA>, EI | AI, R1 | R2> => {
   const toleft = to(left)
   const toright = to(right)
   const fromLeft = transform(left, leftFrom(toleft), makeLeftFrom, (l) => l.left)

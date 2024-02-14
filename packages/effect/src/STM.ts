@@ -517,7 +517,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => STM<never> = core.dieSync
  * @since 2.0.0
  * @category mutations
  */
-export const either: <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<E, A>, never, R> = stm.either
+export const either: <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<A, E>, never, R> = stm.either
 
 /**
  * Executes the specified finalization transaction whether or not this effect
@@ -817,7 +817,7 @@ export const forEach: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromEither: <E, A>(either: Either.Either<E, A>) => STM<A, E> = stm.fromEither
+export const fromEither: <E, A>(either: Either.Either<A, E>) => STM<A, E> = stm.fromEither
 
 /**
  * Lifts an `Option` into a `STM`.
@@ -1396,8 +1396,8 @@ export const orElse: {
  * @category error handling
  */
 export const orElseEither: {
-  <R2, E2, A2>(that: LazyArg<STM<A2, E2, R2>>): <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<A, A2>, E2, R2 | R>
-  <R, E, A, R2, E2, A2>(self: STM<A, E, R>, that: LazyArg<STM<A2, E2, R2>>): STM<Either.Either<A, A2>, E2, R | R2>
+  <R2, E2, A2>(that: LazyArg<STM<A2, E2, R2>>): <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<A2, A>, E2, R2 | R>
+  <R, E, A, R2, E2, A2>(self: STM<A, E, R>, that: LazyArg<STM<A2, E2, R2>>): STM<Either.Either<A2, A>, E2, R | R2>
 } = stm.orElseEither
 
 /**

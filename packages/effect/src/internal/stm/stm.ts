@@ -320,7 +320,7 @@ export const cond = <A, E>(
 }
 
 /** @internal */
-export const either = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<Either.Either<E, A>, never, R> =>
+export const either = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<Either.Either<A, E>, never, R> =>
   match(self, { onFailure: Either.left, onSuccess: Either.right })
 
 /** @internal */
@@ -595,7 +595,7 @@ export const forEach = dual<
 )
 
 /** @internal */
-export const fromEither = <E, A>(either: Either.Either<E, A>): STM.STM<A, E> => {
+export const fromEither = <E, A>(either: Either.Either<A, E>): STM.STM<A, E> => {
   switch (either._tag) {
     case "Left": {
       return core.fail(either.left)
@@ -909,17 +909,17 @@ export const orElseEither = dual<
     that: LazyArg<STM.STM<A2, E2, R2>>
   ) => <A, E, R>(
     self: STM.STM<A, E, R>
-  ) => STM.STM<Either.Either<A, A2>, E2, R2 | R>,
+  ) => STM.STM<Either.Either<A2, A>, E2, R2 | R>,
   <R, E, A, R2, E2, A2>(
     self: STM.STM<A, E, R>,
     that: LazyArg<STM.STM<A2, E2, R2>>
-  ) => STM.STM<Either.Either<A, A2>, E2, R2 | R>
+  ) => STM.STM<Either.Either<A2, A>, E2, R2 | R>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: STM.STM<A, E, R>,
     that: LazyArg<STM.STM<A2, E2, R2>>
-  ): STM.STM<Either.Either<A, A2>, E2, R2 | R> =>
+  ): STM.STM<Either.Either<A2, A>, E2, R2 | R> =>
     orElse(core.map(self, Either.left), () => core.map(that(), Either.right))
 )
 
