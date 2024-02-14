@@ -4921,7 +4921,7 @@ const makeClass = <A, I, R>(
 
     static get ast() {
       const toSchema = to(selfSchema)
-      const encode = Parser.encode<any, any, never>(toSchema)
+      const encode = Parser.encodeUnknown(toSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const declaration: Schema<any, any, never> = declare(
