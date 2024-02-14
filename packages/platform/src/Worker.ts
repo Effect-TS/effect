@@ -17,7 +17,7 @@ import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type * as Tracer from "effect/Tracer"
 import * as internal from "./internal/worker.js"
-import type { WorkerError } from "./WorkerError.js"
+import type { WorkerError, WorkerErrorFrom } from "./WorkerError.js"
 
 /**
  * @since 1.0.0
@@ -134,7 +134,7 @@ export declare namespace Worker {
     | readonly [id: number, end: 1]
     | readonly [id: number, end: 1, ReadonlyArray<O>]
     | readonly [id: number, error: 2, E]
-    | readonly [id: number, defect: 3, unknown]
+    | readonly [id: number, defect: 3, Schema.CauseFrom<WorkerErrorFrom>]
 }
 
 /**

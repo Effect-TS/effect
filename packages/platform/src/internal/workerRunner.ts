@@ -16,7 +16,7 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
-import * as WorkerError from "../WorkerError.js"
+import { WorkerError } from "../WorkerError.js"
 import type * as WorkerRunner from "../WorkerRunner.js"
 
 /** @internal */
@@ -51,7 +51,7 @@ export const make = <I, R, E, O>(
     yield* _(
       Queue.take(backing.queue),
       options?.decode ?
-        Effect.flatMap((req): Effect.Effect<Worker.Worker.Request<I>, WorkerError.WorkerError> => {
+        Effect.flatMap((req): Effect.Effect<Worker.Worker.Request<I>, WorkerError> => {
           if (req[1] === 1) {
             return Effect.succeed(req)
           }
@@ -86,10 +86,10 @@ export const make = <I, R, E, O>(
                         ...collector.unsafeRead()
                       ])
                     ),
-                    Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
+                    Effect.catchAllCause((cause) => backing.send([id, 3, WorkerError.encodeCause(cause)]))
                   )
                 },
-                onRight: (cause) => backing.send([id, 3, Cause.squash(cause)])
+                onRight: (cause) => backing.send([id, 3, WorkerError.encodeCause(cause)])
               }),
             onSuccess: (data) => {
               const transfers = options?.transfers ? options.transfers(data) : []
@@ -103,7 +103,7 @@ export const make = <I, R, E, O>(
                     ...collector.unsafeRead()
                   ])
                 ),
-                Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
+                Effect.catchAllCause((cause) => backing.send([id, 3, WorkerError.encodeCause(cause)]))
               )
             }
           }) :
@@ -152,10 +152,10 @@ export const make = <I, R, E, O>(
                           ...collector.unsafeRead()
                         ])
                       ),
-                      Effect.catchAllCause((cause) => backing.send([id, 3, Cause.squash(cause)]))
+                      Effect.catchAllCause((cause) => backing.send([id, 3, WorkerError.encodeCause(cause)]))
                     )
                   },
-                  onRight: (cause) => backing.send([id, 3, Cause.squash(cause)])
+                  onRight: (cause) => backing.send([id, 3, WorkerError.encodeCause(cause)])
                 }),
               onSuccess: () => backing.send([id, 1])
             })
@@ -188,8 +188,7 @@ export const make = <I, R, E, O>(
 export const layer = <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: WorkerRunner.Runner.Options<I, E, O>
-): Layer.Layer<never, WorkerError.WorkerError, WorkerRunner.PlatformRunner | R> =>
-  Layer.scopedDiscard(make(process, options))
+): Layer.Layer<never, WorkerError, WorkerRunner.PlatformRunner | R> => Layer.scopedDiscard(make(process, options))
 
 /** @internal */
 export const makeSerialized = <
@@ -202,7 +201,7 @@ export const makeSerialized = <
   handlers: Handlers
 ): Effect.Effect<
   void,
-  WorkerError.WorkerError,
+  WorkerError,
   | R
   | WorkerRunner.PlatformRunner
   | Scope.Scope
@@ -228,19 +227,19 @@ export const makeSerialized = <
       decode(message) {
         return Effect.mapError(
           parseRequest(message),
-          (error) => WorkerError.WorkerError("decode", error)
+          (error) => new WorkerError({ reason: "decode", error })
         )
       },
       encodeError(request, message) {
         return Effect.mapError(
           Serializable.serializeFailure(request as any, message),
-          (error) => WorkerError.WorkerError("encode", error)
+          (error) => new WorkerError({ reason: "encode", error })
         )
       },
       encodeOutput(request, message) {
-        return Effect.mapError(
+        return Effect.catchAllCause(
           Serializable.serializeSuccess(request as any, message),
-          (error) => WorkerError.WorkerError("encode", error)
+          (error) => new WorkerError({ reason: "encode", error })
         )
       }
     }))
@@ -257,7 +256,7 @@ export const layerSerialized = <
   handlers: Handlers
 ): Layer.Layer<
   never,
-  WorkerError.WorkerError,
+  WorkerError,
   | R
   | WorkerRunner.PlatformRunner
   | WorkerRunner.SerializedRunner.HandlersContext<Handlers>
