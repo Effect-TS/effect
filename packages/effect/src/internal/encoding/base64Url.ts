@@ -8,7 +8,7 @@ export const encode = (data: Uint8Array) =>
   Base64.encode(data).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
 
 /** @internal */
-export const decode = (str: string): Either.Either<Encoding.DecodeException, Uint8Array> => {
+export const decode = (str: string): Either.Either<Uint8Array, Encoding.DecodeException> => {
   const length = str.length
   if (length % 4 === 1) {
     return Either.left(

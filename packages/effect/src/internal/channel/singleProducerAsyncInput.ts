@@ -47,7 +47,7 @@ interface Empty {
 /** @internal */
 interface Emit<Err, Elem, Done> {
   readonly _tag: OP_STATE_EMIT
-  readonly notifyConsumers: ReadonlyArray<Deferred.Deferred<Either.Either<Done, Elem>, Err>>
+  readonly notifyConsumers: ReadonlyArray<Deferred.Deferred<Either.Either<Elem, Done>, Err>>
 }
 
 /** @internal */
@@ -70,7 +70,7 @@ const stateEmpty = (notifyProducer: Deferred.Deferred<void>): State<never, never
 
 /** @internal */
 const stateEmit = <Err, Elem, Done>(
-  notifyConsumers: ReadonlyArray<Deferred.Deferred<Either.Either<Done, Elem>, Err>>
+  notifyConsumers: ReadonlyArray<Deferred.Deferred<Either.Either<Elem, Done>, Err>>
 ): State<Err, Elem, Done> => ({
   _tag: OP_STATE_EMIT,
   notifyConsumers
@@ -198,10 +198,10 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
     )
   }
 
-  get take(): Effect.Effect<Exit.Exit<Elem, Either.Either<Err, Done>>> {
+  get take(): Effect.Effect<Exit.Exit<Elem, Either.Either<Done, Err>>> {
     return this.takeWith(
       (cause) => Exit.failCause(Cause.map(cause, Either.left)),
-      (elem) => Exit.succeed(elem) as Exit.Exit<Elem, Either.Either<Err, Done>>,
+      (elem) => Exit.succeed(elem) as Exit.Exit<Elem, Either.Either<Done, Err>>,
       (done) => Exit.fail(Either.right(done))
     )
   }
@@ -211,7 +211,7 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
   ): Effect.Effect<A> {
-    return Effect.flatMap(Deferred.make<Either.Either<Done, Elem>, Err>(), (deferred) =>
+    return Effect.flatMap(Deferred.make<Either.Either<Elem, Done>, Err>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
           switch (state._tag) {

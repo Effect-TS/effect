@@ -1435,7 +1435,7 @@ export const fromPubSub = <In>(
 /** @internal */
 export const fromPush = <In, E, A, L, R>(
   push: Effect.Effect<
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<E, A>, Chunk.Chunk<L>], R>,
+    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<A, E>, Chunk.Chunk<L>], R>,
     never,
     R
   >
@@ -1445,7 +1445,7 @@ export const fromPush = <In, E, A, L, R>(
 const fromPushPull = <R, E, In, L, Z>(
   push: (
     option: Option.Option<Chunk.Chunk<In>>
-  ) => Effect.Effect<void, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], R>
+  ) => Effect.Effect<void, readonly [Either.Either<Z, E>, Chunk.Chunk<L>], R>
 ): Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, Z, unknown, R> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
@@ -1609,14 +1609,14 @@ export const raceBoth = dual<
     }
   ) => <A, In, L, E, R>(
     self: Sink.Sink<A, In, L, E, R>
-  ) => Sink.Sink<Either.Either<A, A1>, In & In1, L1 | L, E1 | E, R1 | R>,
+  ) => Sink.Sink<Either.Either<A1, A>, In & In1, L1 | L, E1 | E, R1 | R>,
   <A, In, L, E, R, A1, In1, L1, E1, R1>(
     self: Sink.Sink<A, In, L, E, R>,
     that: Sink.Sink<A1, In1, L1, E1, R1>,
     options?: {
       readonly capacity?: number | undefined
     }
-  ) => Sink.Sink<Either.Either<A, A1>, In & In1, L1 | L, E1 | E, R1 | R>
+  ) => Sink.Sink<Either.Either<A1, A>, In & In1, L1 | L, E1 | E, R1 | R>
 >(
   (args) => isSink(args[1]),
   (self, that, options) =>
@@ -1660,7 +1660,7 @@ export const raceWith = dual<
   ): Sink.Sink<A3 | A4, In & In2, L2 | L, E2 | E, R2 | R> => {
     const scoped = Effect.gen(function*($) {
       const pubsub = yield* $(
-        PubSub.bounded<Either.Either<Exit.Exit<unknown>, Chunk.Chunk<In & In2>>>(options?.capacity ?? 16)
+        PubSub.bounded<Either.Either<Chunk.Chunk<In & In2>, Exit.Exit<unknown>>>(options?.capacity ?? 16)
       )
       const channel1 = yield* $(channel.fromPubSubScoped(pubsub))
       const channel2 = yield* $(channel.fromPubSubScoped(pubsub))

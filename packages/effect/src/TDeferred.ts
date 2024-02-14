@@ -31,7 +31,7 @@ export interface TDeferred<in out A, in out E = never> extends TDeferred.Varianc
  */
 export interface TDeferred<in out A, in out E> {
   /** @internal */
-  readonly ref: TRef.TRef<Option.Option<Either.Either<E, A>>>
+  readonly ref: TRef.TRef<Option.Option<Either.Either<A, E>>>
 }
 
 /**
@@ -65,8 +65,8 @@ export {
  * @category mutations
  */
 export const done: {
-  <E, A>(either: Either.Either<E, A>): (self: TDeferred<A, E>) => STM.STM<boolean>
-  <A, E>(self: TDeferred<A, E>, either: Either.Either<E, A>): STM.STM<boolean>
+  <E, A>(either: Either.Either<A, E>): (self: TDeferred<A, E>) => STM.STM<boolean>
+  <A, E>(self: TDeferred<A, E>, either: Either.Either<A, E>): STM.STM<boolean>
 } = internal.done
 
 /**
@@ -88,7 +88,7 @@ export const make: <A, E = never>() => STM.STM<TDeferred<A, E>> = internal.make
  * @since 2.0.0
  * @category getters
  */
-export const poll: <A, E>(self: TDeferred<A, E>) => STM.STM<Option.Option<Either.Either<E, A>>> = internal.poll
+export const poll: <A, E>(self: TDeferred<A, E>) => STM.STM<Option.Option<Either.Either<A, E>>> = internal.poll
 
 /**
  * @since 2.0.0

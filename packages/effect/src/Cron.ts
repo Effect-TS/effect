@@ -184,7 +184,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  * @since 2.0.0
  * @category constructors
  */
-export const parse = (cron: string): Either.Either<ParseError, Cron> => {
+export const parse = (cron: string): Either.Either<Cron, ParseError> => {
   const segments = cron.split(" ").filter(String.isNonEmpty)
   if (segments.length !== 5) {
     return Either.left(ParseError(`Invalid number of segments in cron expression`, cron))
@@ -439,7 +439,7 @@ const weekdayOptions: SegmentOptions = {
 const parseSegment = (
   input: string,
   options: SegmentOptions
-): Either.Either<ParseError, ReadonlySet<number>> => {
+): Either.Either<ReadonlySet<number>, ParseError> => {
   const capacity = options.max - options.min + 1
   const values = new Set<number>()
   const fields = input.split(",")

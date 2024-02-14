@@ -35,7 +35,7 @@ export const encode = (bytes: Uint8Array) => {
 }
 
 /** @internal */
-export const decode = (str: string): Either.Either<Encoding.DecodeException, Uint8Array> => {
+export const decode = (str: string): Either.Either<Uint8Array, Encoding.DecodeException> => {
   const length = str.length
   if (length % 4 !== 0) {
     return Either.left(

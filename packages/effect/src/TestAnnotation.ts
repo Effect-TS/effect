@@ -80,9 +80,9 @@ export const make = <A>(
  * @since 2.0.0
  */
 export const compose = <A>(
-  left: Either.Either<number, Chunk.Chunk<A>>,
-  right: Either.Either<number, Chunk.Chunk<A>>
-): Either.Either<number, Chunk.Chunk<A>> => {
+  left: Either.Either<Chunk.Chunk<A>, number>,
+  right: Either.Either<Chunk.Chunk<A>, number>
+): Either.Either<Chunk.Chunk<A>, number> => {
   if (Either.isLeft(left) && Either.isLeft(right)) {
     return Either.left(left.left + right.left)
   }
@@ -102,12 +102,9 @@ export const compose = <A>(
  * @since 2.0.0
  */
 export const fibers: TestAnnotation<
-  Either.Either<
-    number,
-    Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>
-  >
+  Either.Either<Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>, number>
 > = make<
-  Either.Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
+  Either.Either<Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>, number>
 >(
   "fibers",
   Either.left(0),

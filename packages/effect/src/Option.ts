@@ -255,7 +255,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
  * @category conversions
  * @since 2.0.0
  */
-export const getRight: <E, A>(self: Either<E, A>) => Option<A> = either.getRight
+export const getRight: <E, A>(self: Either<A, E>) => Option<A> = either.getRight
 
 /**
  * Converts a `Either` to an `Option` discarding the value.
@@ -270,7 +270,7 @@ export const getRight: <E, A>(self: Either<E, A>) => Option<A> = either.getRight
  * @category conversions
  * @since 2.0.0
  */
-export const getLeft: <E, A>(self: Either<E, A>) => Option<E> = either.getLeft
+export const getLeft: <E, A>(self: Either<A, E>) => Option<E> = either.getLeft
 
 /**
  * Returns the value of the `Option` if it is `Some`, otherwise returns `onNone`
@@ -395,11 +395,11 @@ export const orElseSome: {
  * @since 2.0.0
  */
 export const orElseEither: {
-  <B>(that: LazyArg<Option<B>>): <A>(self: Option<A>) => Option<Either<A, B>>
-  <A, B>(self: Option<A>, that: LazyArg<Option<B>>): Option<Either<A, B>>
+  <B>(that: LazyArg<Option<B>>): <A>(self: Option<A>) => Option<Either<B, A>>
+  <A, B>(self: Option<A>, that: LazyArg<Option<B>>): Option<Either<B, A>>
 } = dual(
   2,
-  <A, B>(self: Option<A>, that: LazyArg<Option<B>>): Option<Either<A, B>> =>
+  <A, B>(self: Option<A>, that: LazyArg<Option<B>>): Option<Either<B, A>> =>
     isNone(self) ? map(that(), either.right) : map(self, either.left)
 )
 
@@ -955,11 +955,11 @@ export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [se
  * @since 2.0.0
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A) => Either<B, C>): (self: Option<A>) => [left: Option<B>, right: Option<C>]
-  <A, B, C>(self: Option<A>, f: (a: A) => Either<B, C>): [left: Option<B>, right: Option<C>]
+  <A, B, C>(f: (a: A) => Either<C, B>): (self: Option<A>) => [left: Option<B>, right: Option<C>]
+  <A, B, C>(self: Option<A>, f: (a: A) => Either<C, B>): [left: Option<B>, right: Option<C>]
 } = dual(2, <A, B, C>(
   self: Option<A>,
-  f: (a: A) => Either<B, C>
+  f: (a: A) => Either<C, B>
 ): [excluded: Option<B>, satisfying: Option<C>] => {
   if (isNone(self)) {
     return [none(), none()]

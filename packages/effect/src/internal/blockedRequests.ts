@@ -103,7 +103,7 @@ export const reduce = <Z>(
   reducer: RequestBlock.RequestBlock.Reducer<Z>
 ): Z => {
   let input: List.List<RequestBlock.RequestBlock> = List.of(self)
-  let output = List.empty<Either.Either<BlockedRequestsCase, Z>>()
+  let output = List.empty<Either.Either<Z, BlockedRequestsCase>>()
   while (List.isCons(input)) {
     const current: RequestBlock.RequestBlock = input.head
     switch (current._tag) {
