@@ -30,7 +30,7 @@ export interface SingleProducerAsyncInput<in out Err, in out Elem, in out Done>
   extends AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done>
 {
   readonly close: Effect.Effect<unknown>
-  readonly take: Effect.Effect<Exit.Exit<Elem, Either.Either<Err, Done>>>
+  readonly take: Effect.Effect<Exit.Exit<Elem, Either.Either<Done, Err>>>
 }
 
 /**

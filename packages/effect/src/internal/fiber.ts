@@ -260,8 +260,8 @@ export const orElse = dual<
 
 /** @internal */
 export const orElseEither = dual<
-  <A2, E2>(that: Fiber.Fiber<A2, E2>) => <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<Either.Either<A, A2>, E | E2>,
-  <A, E, A2, E2>(self: Fiber.Fiber<A, E>, that: Fiber.Fiber<A2, E2>) => Fiber.Fiber<Either.Either<A, A2>, E | E2>
+  <A2, E2>(that: Fiber.Fiber<A2, E2>) => <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<Either.Either<A2, A>, E | E2>,
+  <A, E, A2, E2>(self: Fiber.Fiber<A, E>, that: Fiber.Fiber<A2, E2>) => Fiber.Fiber<Either.Either<A2, A>, E | E2>
 >(2, (self, that) => orElse(map(self, Either.left), map(that, Either.right)))
 
 /** @internal */

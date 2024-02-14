@@ -401,7 +401,7 @@ export declare namespace All {
    */
   export type ReturnIterable<T extends Iterable<EffectAny>, Discard extends boolean, Mode> = [T] extends
     [Iterable<Effect.Variance<infer A, infer E, infer R>>] ? Effect<
-      Discard extends true ? void : Mode extends "either" ? Array<Either.Either<E, A>> : Array<A>,
+      Discard extends true ? void : Mode extends "either" ? Array<Either.Either<A, E>> : Array<A>,
       Mode extends "either" ? never
         : Mode extends "validate" ? Array<Option.Option<E>>
         : E,
@@ -417,7 +417,7 @@ export declare namespace All {
       : T[number] extends never ? []
       : Mode extends "either" ? {
           -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _A, infer _E, infer _R>] ?
-            Either.Either<_E, _A>
+            Either.Either<_A, _E>
             : never
         }
       : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _A, infer _E, infer _R>] ? _A : never },
@@ -441,7 +441,7 @@ export declare namespace All {
       Discard extends true ? void
         : Mode extends "either" ? {
             -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _A, infer _E, infer _R>] ?
-              Either.Either<_E, _A>
+              Either.Either<_A, _E>
               : never
           }
         : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _A, infer _E, infer _R>] ? _A : never },
@@ -3262,7 +3262,7 @@ export {
  * @since 2.0.0
  * @category conversions
  */
-export const either: <A, E, R>(self: Effect<A, E, R>) => Effect<Either.Either<E, A>, never, R> = core.either
+export const either: <A, E, R>(self: Effect<A, E, R>) => Effect<Either.Either<A, E>, never, R> = core.either
 
 /**
  * @since 2.0.0

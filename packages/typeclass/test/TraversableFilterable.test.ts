@@ -10,7 +10,7 @@ describe.concurrent("TraversableFilterable", () => {
   it("traversePartitionMap", () => {
     const traversePartitionMap: <A, B, C>(
       self: ReadonlyArray<A>,
-      f: (a: A) => O.Option<E.Either<B, C>>
+      f: (a: A) => O.Option<E.Either<C, B>>
     ) => O.Option<[ReadonlyArray<B>, ReadonlyArray<C>]> = _.traversePartitionMap({
       ...ReadonlyArrayInstances.Traversable,
       ...ReadonlyArrayInstances.Covariant,

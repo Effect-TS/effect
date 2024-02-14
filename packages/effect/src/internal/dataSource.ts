@@ -162,7 +162,7 @@ export const eitherWith = dual<
     C extends Request.Request<any, any>
   >(
     that: RequestResolver.RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
   ) => <R>(
     self: RequestResolver.RequestResolver<A, R>
   ) => RequestResolver.RequestResolver<C, R | R2>,
@@ -175,7 +175,7 @@ export const eitherWith = dual<
   >(
     self: RequestResolver.RequestResolver<A, R>,
     that: RequestResolver.RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
   ) => RequestResolver.RequestResolver<C, R | R2>
 >(3, <
   R,
@@ -186,7 +186,7 @@ export const eitherWith = dual<
 >(
   self: RequestResolver.RequestResolver<A, R>,
   that: RequestResolver.RequestResolver<B, R2>,
-  f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+  f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
 ) =>
   new core.RequestResolverImpl<R | R2, C>(
     (batch) =>
