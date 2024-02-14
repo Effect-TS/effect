@@ -67,7 +67,7 @@ import { OpSupervision } from "./runtimeFlags.js"
 import * as supervisor from "./supervisor.js"
 import * as SupervisorPatch from "./supervisor/patch.js"
 import * as tracer from "./tracer.js"
-import { moduleVersion } from "./version.js"
+import * as version from "./version.js"
 
 /** @internal */
 export const fiberStarted = metric.counter("effect_fiber_started")
@@ -1287,11 +1287,11 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         // @ts-expect-error
         cur = this._tracer.context(
           () => {
-            if (moduleVersion !== (cur as core.Primitive)[EffectTypeId]._V) {
+            if (version.getCurrentVersion() !== (cur as core.Primitive)[EffectTypeId]._V) {
               return core.dieMessage(
                 `Cannot execute an Effect versioned ${
                   (cur as core.Primitive)[EffectTypeId]._V
-                } with a Runtime of version ${moduleVersion}`
+                } with a Runtime of version ${version.getCurrentVersion()}`
               )
             }
             // @ts-expect-error

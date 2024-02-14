@@ -7,7 +7,7 @@ import { pipeArguments } from "../Pipeable.js"
 import type * as Sink from "../Sink.js"
 import type * as Stream from "../Stream.js"
 import * as OpCodes from "./opCodes/effect.js"
-import { moduleVersion } from "./version.js"
+import * as version from "./version.js"
 
 /** @internal */
 export const EffectTypeId: Effect.EffectTypeId = Symbol.for("effect/Effect") as Effect.EffectTypeId
@@ -30,7 +30,7 @@ export const effectVariance = {
   /* c8 ignore next */
   _A: (_: never) => _,
 
-  _V: moduleVersion
+  _V: version.getCurrentVersion()
 }
 
 const sinkVariance = {

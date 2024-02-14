@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import { moduleVersion } from "./internal/version.js"
+import * as version from "./internal/version.js"
 
-const globalStoreId = Symbol.for(`effect/GlobalValue/globalStoreId/${moduleVersion}`)
+const globalStoreId = Symbol.for(`effect/GlobalValue/globalStoreId/${version.getCurrentVersion()}`)
 
 if (!(globalStoreId in globalThis)) {
   ;(globalThis as any)[globalStoreId] = new Map()
