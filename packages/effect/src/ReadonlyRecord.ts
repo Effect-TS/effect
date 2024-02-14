@@ -49,7 +49,7 @@ export declare namespace ReadonlyRecord {
  * @since 2.0.0
  */
 export interface ReadonlyRecordTypeLambda extends TypeLambda {
-  readonly type: ReadonlyRecord<string | symbol, this["Target"]>
+  readonly type: ReadonlyRecord<string, this["Target"]>
 }
 
 /**

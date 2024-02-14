@@ -21,19 +21,20 @@ const partitionMap = ReadonlyRecord.partitionMap
 
 const filterMap = ReadonlyRecord.filterMap
 
-const traverse = <F extends TypeLambda>(F: applicative.Applicative<F>): {
+/** @internal */
+export const traverse = <F extends TypeLambda>(F: applicative.Applicative<F>): {
   <K extends string | symbol, A, R, O, E, B>(
     f: (a: A, key: K) => Kind<F, R, O, E, B>
-  ): (self: Record<K, A>) => Kind<F, R, O, E, Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, B>>
+  ): (self: Record<K, A>) => Kind<F, R, O, E, Record<K, B>>
   <K extends string | symbol, A, R, O, E, B>(
     self: Record<K, A>,
     f: (a: A, key: K) => Kind<F, R, O, E, B>
-  ): Kind<F, R, O, E, Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, B>>
+  ): Kind<F, R, O, E, Record<K, B>>
 } =>
   dual(2, <K extends string | symbol, A, R, O, E, B>(
     self: Record<string, A>,
     f: (a: A, key: string) => Kind<F, R, O, E, B>
-  ): Kind<F, R, O, E, Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, B>> =>
+  ): Kind<F, R, O, E, Record<K, B>> =>
     F.map(
       F.productAll(
         Object.entries(self).map(([key, a]) => F.map(f(a, key), (b) => [key, b] as const))
