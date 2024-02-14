@@ -215,7 +215,7 @@ export const reduceWithContext = dual<
   <C, Z>(self: ConfigError.ConfigError, context: C, reducer: ConfigError.ConfigErrorReducer<C, Z>) => Z
 >(3, <C, Z>(self: ConfigError.ConfigError, context: C, reducer: ConfigError.ConfigErrorReducer<C, Z>) => {
   const input: Array<ConfigError.ConfigError> = [self]
-  const output: Array<Either.Either<ConfigErrorCase, Z>> = []
+  const output: Array<Either.Either<Z, ConfigErrorCase>> = []
   while (input.length > 0) {
     const error = input.pop()!
     switch (error._tag) {

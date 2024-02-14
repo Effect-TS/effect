@@ -405,8 +405,8 @@ describe("Effect", () => {
     const causes = causesArb(1, smallInts, fc.string())
     const successes = smallInts.map(Effect.succeed)
     const exits = fc.oneof(
-      causes.map((s): Either.Either<Cause.Cause<number>, Effect.Effect<number>> => Either.left(s)),
-      successes.map((s): Either.Either<Cause.Cause<number>, Effect.Effect<number>> => Either.right(s))
+      causes.map((s): Either.Either<Effect.Effect<number>, Cause.Cause<number>> => Either.left(s)),
+      successes.map((s): Either.Either<Effect.Effect<number>, Cause.Cause<number>> => Either.right(s))
     ).map(Either.match({
       onLeft: Exit.failCause,
       onRight: Exit.succeed

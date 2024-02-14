@@ -629,7 +629,7 @@ export const getSomes: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<str
  * @category filtering
  * @since 2.0.0
  */
-export const getLefts = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string, E> => {
+export const getLefts = <E, A>(self: ReadonlyRecord<Either<A, E>>): Record<string, E> => {
   const out: Record<string, E> = {}
   for (const key of Object.keys(self)) {
     const value = self[key]
@@ -656,7 +656,7 @@ export const getLefts = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<strin
  * @category filtering
  * @since 2.0.0
  */
-export const getRights = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string, A> => {
+export const getRights = <E, A>(self: ReadonlyRecord<Either<A, E>>): Record<string, A> => {
   const out: Record<string, A> = {}
   for (const key of Object.keys(self)) {
     const value = self[key]
@@ -687,17 +687,17 @@ export const getRights = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<stri
  */
 export const partitionMap: {
   <K extends string, A, B, C>(
-    f: (a: A, key: K) => Either<B, C>
+    f: (a: A, key: K) => Either<C, B>
   ): (self: Record<K, A>) => [left: Record<string, B>, right: Record<string, C>]
   <K extends string, A, B, C>(
     self: Record<K, A>,
-    f: (a: A, key: K) => Either<B, C>
+    f: (a: A, key: K) => Either<C, B>
   ): [left: Record<string, B>, right: Record<string, C>]
 } = dual(
   2,
   <A, B, C>(
     self: Record<string, A>,
-    f: (a: A, key: string) => Either<B, C>
+    f: (a: A, key: string) => Either<C, B>
   ): [left: Record<string, B>, right: Record<string, C>] => {
     const left: Record<string, B> = {}
     const right: Record<string, C> = {}
@@ -732,7 +732,7 @@ export const partitionMap: {
  * @since 2.0.0
  */
 export const separate: <A, B>(
-  self: ReadonlyRecord<Either<A, B>>
+  self: ReadonlyRecord<Either<B, A>>
 ) => [Record<string, A>, Record<string, B>] = partitionMap(identity)
 
 /**

@@ -132,10 +132,10 @@ ReadonlyRecord.toEntries(brandedRecord)
 // collect
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Either<never, number>[]
+// $ExpectType Either<number, never>[]
 ReadonlyRecord.collect({ a: Either.right(1), b: Either.right(2), c: Either.right(3) }, (_, n) => n)
 
-// $ExpectType Either<never, number>[]
+// $ExpectType Either<number, never>[]
 pipe({ a: Either.right(1), b: Either.right(2), c: Either.right(3) }, ReadonlyRecord.collect((_, n) => n))
 
 // $ExpectType number[]

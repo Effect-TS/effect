@@ -27,7 +27,7 @@ const tDeferredVariance = {
 /** @internal */
 class TDeferredImpl<in out A, in out E = never> implements TDeferred.TDeferred<A, E> {
   readonly [TDeferredTypeId] = tDeferredVariance
-  constructor(readonly ref: TRef.TRef<Option.Option<Either.Either<E, A>>>) {}
+  constructor(readonly ref: TRef.TRef<Option.Option<Either.Either<A, E>>>) {}
 }
 
 /** @internal */
@@ -41,8 +41,8 @@ export const _await = <A, E>(self: TDeferred.TDeferred<A, E>): STM.STM<A, E> =>
 
 /** @internal */
 export const done = dual<
-  <E, A>(either: Either.Either<E, A>) => (self: TDeferred.TDeferred<A, E>) => STM.STM<boolean>,
-  <A, E>(self: TDeferred.TDeferred<A, E>, either: Either.Either<E, A>) => STM.STM<boolean>
+  <E, A>(either: Either.Either<A, E>) => (self: TDeferred.TDeferred<A, E>) => STM.STM<boolean>,
+  <A, E>(self: TDeferred.TDeferred<A, E>, either: Either.Either<A, E>) => STM.STM<boolean>
 >(2, (self, either) =>
   core.flatMap(
     tRef.get(self.ref),
@@ -65,14 +65,14 @@ export const fail = dual<
 /** @internal */
 export const make = <A, E = never>(): STM.STM<TDeferred.TDeferred<A, E>> =>
   core.map(
-    tRef.make<Option.Option<Either.Either<E, A>>>(Option.none()),
+    tRef.make<Option.Option<Either.Either<A, E>>>(Option.none()),
     (ref) => new TDeferredImpl(ref)
   )
 
 /** @internal */
 export const poll = <A, E>(
   self: TDeferred.TDeferred<A, E>
-): STM.STM<Option.Option<Either.Either<E, A>>> => tRef.get(self.ref)
+): STM.STM<Option.Option<Either.Either<A, E>>> => tRef.get(self.ref)
 
 /** @internal */
 export const succeed = dual<

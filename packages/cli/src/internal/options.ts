@@ -505,8 +505,8 @@ export const orElse = dual<
 export const orElseEither = dual<
   <B>(
     that: Options.Options<B>
-  ) => <A>(self: Options.Options<A>) => Options.Options<Either.Either<A, B>>,
-  <A, B>(self: Options.Options<A>, that: Options.Options<B>) => Options.Options<Either.Either<A, B>>
+  ) => <A>(self: Options.Options<A>) => Options.Options<Either.Either<B, A>>,
+  <A, B>(self: Options.Options<A>, that: Options.Options<B>) => Options.Options<Either.Either<B, A>>
 >(2, (self, that) => makeOrElse(self, that))
 
 /** @internal */
@@ -980,7 +980,7 @@ const makeMap = <A, B>(
 const makeOrElse = <A, B>(
   left: Options.Options<A>,
   right: Options.Options<B>
-): Options.Options<Either.Either<A, B>> => {
+): Options.Options<Either.Either<B, A>> => {
   const op = Object.create(proto)
   op._tag = "OrElse"
   op.left = left
