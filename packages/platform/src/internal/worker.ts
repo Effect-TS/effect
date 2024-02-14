@@ -282,7 +282,7 @@ export const makeManager = Effect.gen(function*(_) {
           yield* _(
             Effect.sync(initialMessage),
             Effect.flatMap(executeEffect),
-            Effect.catchAllCause((cause) => new WorkerError({ reason: "spawn", cause }))
+            Effect.mapError((error) => new WorkerError({ reason: "spawn", error }))
           )
         }
 
@@ -363,9 +363,9 @@ export const makeSerialized = <
       manager.spawn({
         ...options as any,
         encode(message) {
-          return Effect.catchAllCause(
+          return Effect.mapError(
             Serializable.serialize(message as any),
-            (cause) => new WorkerError({ reason: "encode", cause })
+            (error) => new WorkerError({ reason: "encode", error })
           )
         }
       })

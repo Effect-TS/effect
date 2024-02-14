@@ -37,7 +37,7 @@ const causeDefectPretty: Schema.Schema<unknown> = Schema.transform(
  */
 export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError", {
   reason: Schema.literal("spawn", "decode", "send", "unknown", "encode"),
-  cause: Schema.cause({ error: causeDefectPretty, defect: causeDefectPretty })
+  error: causeDefectPretty
 }) {
   /**
    * @since 1.0.0
@@ -65,6 +65,13 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
   static readonly decodeCause: (u: Schema.CauseFrom<WorkerErrorFrom>) => Cause.Cause<WorkerError> = Schema.decodeSync(
     this.Cause
   )
+
+  /**
+   * @since 1.0.0
+   */
+  get message() {
+    return `${this.reason}: ${String(this.error)}`
+  }
 }
 
 /**
@@ -74,5 +81,5 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
 export interface WorkerErrorFrom {
   readonly _tag: "WorkerError"
   readonly reason: "spawn" | "decode" | "send" | "unknown" | "encode"
-  readonly cause: Schema.CauseFrom<unknown>
+  readonly error: unknown
 }

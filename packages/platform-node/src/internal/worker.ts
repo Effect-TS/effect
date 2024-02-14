@@ -31,13 +31,13 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
             queue.unsafeOffer(message)
           })
           worker.on("messageerror", (error) => {
-            resume(Effect.fail(WorkerError("decode", error.message, error.stack)))
+            resume(new WorkerError({ reason: "decode", error }))
           })
           worker.on("error", (error) => {
-            resume(Effect.fail(WorkerError("unknown", error.message, error.stack)))
+            resume(new WorkerError({ reason: "unknown", error }))
           })
           worker.on("exit", (code) => {
-            resume(Effect.fail(WorkerError("unknown", new Error(`exited with code ${code}`))))
+            resume(new WorkerError({ reason: "unknown", error: new Error(`exited with code ${code}`) }))
           })
         }),
         Effect.interruptible,
@@ -46,7 +46,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
         Effect.try({
           try: () => worker.postMessage([0, message], transfers as any),
-          catch: (error) => WorkerError("send", (error as any).message, (error as any).stack)
+          catch: (error) => new WorkerError({ reason: "send", error })
         })
       return { fiber, queue, send }
     })

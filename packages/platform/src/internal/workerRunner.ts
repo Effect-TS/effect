@@ -225,21 +225,21 @@ export const makeSerialized = <
       return Stream.provideContext(result as any, context)
     }, {
       decode(message) {
-        return Effect.catchAllCause(
+        return Effect.mapError(
           parseRequest(message),
-          (cause) => new WorkerError({ reason: "decode", cause })
+          (error) => new WorkerError({ reason: "decode", error })
         )
       },
       encodeError(request, message) {
-        return Effect.catchAllCause(
+        return Effect.mapError(
           Serializable.serializeFailure(request as any, message),
-          (cause) => new WorkerError({ reason: "encode", cause })
+          (error) => new WorkerError({ reason: "encode", error })
         )
       },
       encodeOutput(request, message) {
         return Effect.catchAllCause(
           Serializable.serializeSuccess(request as any, message),
-          (cause) => new WorkerError({ reason: "encode", cause })
+          (error) => new WorkerError({ reason: "encode", error })
         )
       }
     }))

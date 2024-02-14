@@ -12,7 +12,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
   start<I, O>(shutdown: Effect.Effect<void>) {
     return Effect.gen(function*(_) {
       if (!WorkerThreads.parentPort) {
-        return yield* _(Effect.fail(WorkerError("spawn", "not in worker")))
+        return yield* _(new WorkerError({ reason: "spawn", error: new Error("not in worker") }))
       }
       const port = WorkerThreads.parentPort
       const queue = yield* _(Queue.unbounded<I>())
@@ -26,10 +26,10 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             }
           })
           port.on("messageerror", (error) => {
-            resume(Effect.fail(WorkerError("decode", error.message, error.stack)))
+            resume(new WorkerError({ reason: "decode", error }))
           })
           port.on("error", (error) => {
-            resume(Effect.fail(WorkerError("unknown", error.message, error.stack)))
+            resume(new WorkerError({ reason: "unknown", error }))
           })
         }),
         Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.unit : Effect.logDebug(cause)),
