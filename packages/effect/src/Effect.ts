@@ -4524,6 +4524,28 @@ export const random: Effect<Random.Random> = effect.random
 export const randomWith: <A, E, R>(f: (random: Random.Random) => Effect<A, E, R>) => Effect<A, E, R> =
   defaultServices.randomWith
 
+/**
+ * Executes the specified workflow with the specified implementation of the
+ * random service.
+ *
+ * @since 2.0.0
+ * @category random
+ */
+export const withRandom: {
+  <A extends Random.Random>(value: A): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <A extends Random.Random, E, R>(effect: Effect<A, E, R>, value: A): Effect<A, E, R>
+} = defaultServices.withRandom
+
+/**
+ * Sets the implementation of the random service to the specified value and
+ * restores it to its original value when the scope is closed.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const withRandomScoped: <A extends Random.Random>(value: A) => Effect<void, never, Scope.Scope> =
+  fiberRuntime.withRandomScoped
+
 // -------------------------------------------------------------------------------------
 // runtime
 // -------------------------------------------------------------------------------------

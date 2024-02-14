@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import type * as Chunk from "./Chunk.js"
+import type * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/random.js"
@@ -111,3 +112,9 @@ export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>
  */
 export const randomWith: <A, E, R>(f: (random: Random) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
   defaultServices.randomWith
+
+/**
+ * @since 2.0.0
+ * @category context
+ */
+export const Random: Context.Tag<Random, Random> = internal.randomTag

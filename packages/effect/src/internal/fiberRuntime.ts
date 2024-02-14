@@ -28,6 +28,7 @@ import * as MRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
+import type * as Random from "../Random.js"
 import * as RA from "../ReadonlyArray.js"
 import * as Ref from "../Ref.js"
 import type { Entry, Request } from "../Request.js"
@@ -59,6 +60,7 @@ import * as metric from "./metric.js"
 import * as metricBoundaries from "./metric/boundaries.js"
 import * as metricLabel from "./metric/label.js"
 import * as OpCodes from "./opCodes/effect.js"
+import { randomTag } from "./random.js"
 import { complete } from "./request.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 import { OpSupervision } from "./runtimeFlags.js"
@@ -2704,6 +2706,10 @@ export const validateFirst = dual<
 /* @internal */
 export const withClockScoped = <A extends Clock.Clock>(value: A) =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(clock.clockTag, value))
+
+/* @internal */
+export const withRandomScoped = <A extends Random.Random>(value: A) =>
+  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(randomTag, value))
 
 /* @internal */
 export const withConfigProviderScoped = (value: ConfigProvider) =>
