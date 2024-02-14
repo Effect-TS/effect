@@ -32,49 +32,49 @@ const bimap: {
   <E1, E2, A, B>(
     onLeft: (e: E1) => E2,
     onRight: (a: A) => B
-  ): (self: Either.Either<E1, A>) => Either.Either<E2, B>
+  ): (self: Either.Either<A, E1>) => Either.Either<B, E2>
   <E1, A, E2, B>(
-    self: Either.Either<E1, A>,
+    self: Either.Either<A, E1>,
     onLeft: (e: E1) => E2,
     onRight: (a: A) => B
-  ): Either.Either<E2, B>
+  ): Either.Either<B, E2>
 } = dual(
   3,
   <E1, A, E2, B>(
-    self: Either.Either<E1, A>,
+    self: Either.Either<A, E1>,
     onLeft: (e: E1) => E2,
     onRight: (a: A) => B
-  ): Either.Either<E2, B> => Either.mapBoth(self, { onLeft, onRight })
+  ): Either.Either<B, E2> => Either.mapBoth(self, { onLeft, onRight })
 )
 
 const flatMap: {
   <A, E2, B>(
-    f: (a: A) => Either.Either<E2, B>
-  ): <E1>(self: Either.Either<E1, A>) => Either.Either<E1 | E2, B>
+    f: (a: A) => Either.Either<B, E2>
+  ): <E1>(self: Either.Either<A, E1>) => Either.Either<B, E1 | E2>
   <E1, A, E2, B>(
-    self: Either.Either<E1, A>,
-    f: (a: A) => Either.Either<E2, B>
-  ): Either.Either<E1 | E2, B>
+    self: Either.Either<A, E1>,
+    f: (a: A) => Either.Either<B, E2>
+  ): Either.Either<B, E1 | E2>
 } = dual(
   2,
   <E1, A, E2, B>(
-    self: Either.Either<E1, A>,
-    f: (a: A) => Either.Either<E2, B>
-  ): Either.Either<E1 | E2, B> => Either.isLeft(self) ? Either.left(self.left) : f(self.right)
+    self: Either.Either<A, E1>,
+    f: (a: A) => Either.Either<B, E2>
+  ): Either.Either<B, E1 | E2> => Either.isLeft(self) ? Either.left(self.left) : f(self.right)
 )
 
 const product = <E1, A, E2, B>(
-  self: Either.Either<E1, A>,
-  that: Either.Either<E2, B>
-): Either.Either<E1 | E2, [A, B]> =>
+  self: Either.Either<A, E1>,
+  that: Either.Either<B, E2>
+): Either.Either<[A, B], E1 | E2> =>
   Either.isRight(self) ?
     (Either.isRight(that) ? Either.right([self.right, that.right]) : Either.left(that.left)) :
     Either.left(self.left)
 
 const productMany = <E, A>(
-  self: Either.Either<E, A>,
-  collection: Iterable<Either.Either<E, A>>
-): Either.Either<E, [A, ...Array<A>]> => {
+  self: Either.Either<A, E>,
+  collection: Iterable<Either.Either<A, E>>
+): Either.Either<[A, ...Array<A>], E> => {
   if (Either.isLeft(self)) {
     return Either.left(self.left)
   }
@@ -89,8 +89,8 @@ const productMany = <E, A>(
 }
 
 const productAll = <E, A>(
-  collection: Iterable<Either.Either<E, A>>
-): Either.Either<E, Array<A>> => {
+  collection: Iterable<Either.Either<A, E>>
+): Either.Either<Array<A>, E> => {
   const out: Array<A> = []
   for (const e of collection) {
     if (Either.isLeft(e)) {
@@ -102,14 +102,14 @@ const productAll = <E, A>(
 }
 
 const coproduct = <E1, A, E2, B>(
-  self: Either.Either<E1, A>,
-  that: Either.Either<E2, B>
-): Either.Either<E1 | E2, A | B> => Either.isRight(self) ? self : that
+  self: Either.Either<A, E1>,
+  that: Either.Either<B, E2>
+): Either.Either<A | B, E1 | E2> => Either.isRight(self) ? self : that
 
 const coproductMany = <E, A>(
-  self: Either.Either<E, A>,
-  collection: Iterable<Either.Either<E, A>>
-): Either.Either<E, A> => {
+  self: Either.Either<A, E>,
+  collection: Iterable<Either.Either<A, E>>
+): Either.Either<A, E> => {
   let out = self
   if (Either.isRight(out)) {
     return out
@@ -127,19 +127,19 @@ const traverse = <F extends TypeLambda>(
 ): {
   <A, R, O, E, B>(
     f: (a: A) => Kind<F, R, O, E, B>
-  ): <TE>(self: Either.Either<TE, A>) => Kind<F, R, O, E, Either.Either<TE, B>>
+  ): <TE>(self: Either.Either<A, TE>) => Kind<F, R, O, E, Either.Either<B, TE>>
   <TE, A, R, O, E, B>(
-    self: Either.Either<TE, A>,
+    self: Either.Either<A, TE>,
     f: (a: A) => Kind<F, R, O, E, B>
-  ): Kind<F, R, O, E, Either.Either<TE, B>>
+  ): Kind<F, R, O, E, Either.Either<B, TE>>
 } =>
   dual(2, <TE, A, R, O, E, B>(
-    self: Either.Either<TE, A>,
+    self: Either.Either<A, TE>,
     f: (a: A) => Kind<F, R, O, E, B>
-  ): Kind<F, R, O, E, Either.Either<TE, B>> =>
+  ): Kind<F, R, O, E, Either.Either<B, TE>> =>
     Either.isLeft(self) ?
-      F.of<Either.Either<TE, B>>(Either.left(self.left)) :
-      F.map<R, O, E, B, Either.Either<TE, B>>(f(self.right), Either.right))
+      F.of<Either.Either<B, TE>>(Either.left(self.left)) :
+      F.map<R, O, E, B, Either.Either<B, TE>>(f(self.right), Either.right))
 
 /**
  * @category instances
@@ -287,7 +287,7 @@ export const SemiAlternative: semiAlternative.SemiAlternative<Either.EitherTypeL
 export const Foldable: foldable.Foldable<Either.EitherTypeLambda> = {
   reduce: dual(
     3,
-    <E, A, B>(self: Either.Either<E, A>, b: B, f: (b: B, a: A) => B): B => Either.isLeft(self) ? b : f(b, self.right)
+    <E, A, B>(self: Either.Either<A, E>, b: B, f: (b: B, a: A) => B): B => Either.isLeft(self) ? b : f(b, self.right)
   )
 }
 

@@ -419,8 +419,8 @@ export const orElse: {
  * @category combinators
  */
 export const orElseEither: {
-  <A>(that: Options<A>): <B>(self: Options<B>) => Options<Either<B, A>>
-  <A, B>(self: Options<A>, that: Options<B>): Options<Either<B, A>>
+  <A>(that: Options<A>): <B>(self: Options<B>) => Options<Either<A, B>>
+  <A, B>(self: Options<A>, that: Options<B>): Options<Either<A, B>>
 } = InternalOptions.orElseEither
 
 /**

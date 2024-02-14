@@ -22,8 +22,8 @@ const proto = {
 
 /** @internal */
 export const BothRunning = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  left: Fiber.Fiber<Either.Either<Done, Elem>, Err>,
-  right: Fiber.Fiber<Either.Either<Done1, Elem>, Err1>
+  left: Fiber.Fiber<Either.Either<Elem, Done>, Err>,
+  right: Fiber.Fiber<Either.Either<Elem, Done1>, Err1>
 ): MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_BOTH_RUNNING
@@ -84,8 +84,8 @@ export const match = dual<
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Either.Either<Done, Elem>, Err>,
-        right: Fiber.Fiber<Either.Either<Done1, Elem>, Err1>
+        left: Fiber.Fiber<Either.Either<Elem, Done>, Err>,
+        right: Fiber.Fiber<Either.Either<Elem, Done1>, Err1>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit.Exit<Done1, Err1>) => Effect.Effect<Done2, Err2, Env>) => Z
       readonly onRightDone: (f: (exit: Exit.Exit<Done, Err>) => Effect.Effect<Done2, Err2, Env>) => Z
@@ -95,8 +95,8 @@ export const match = dual<
     self: MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Either.Either<Done, Elem>, Err>,
-        right: Fiber.Fiber<Either.Either<Done1, Elem>, Err1>
+        left: Fiber.Fiber<Either.Either<Elem, Done>, Err>,
+        right: Fiber.Fiber<Either.Either<Elem, Done1>, Err1>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit.Exit<Done1, Err1>) => Effect.Effect<Done2, Err2, Env>) => Z
       readonly onRightDone: (f: (exit: Exit.Exit<Done, Err>) => Effect.Effect<Done2, Err2, Env>) => Z

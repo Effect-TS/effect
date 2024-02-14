@@ -314,7 +314,7 @@ describe("Effect", () => {
     }))
   it.effect("sandbox of interruptible", () =>
     Effect.gen(function*($) {
-      const recovered = yield* $(Ref.make<Option.Option<Either.Either<boolean, never>>>(Option.none()))
+      const recovered = yield* $(Ref.make<Option.Option<Either.Either<never, boolean>>>(Option.none()))
       const fiber = yield* $(withLatch((release) =>
         pipe(
           release,

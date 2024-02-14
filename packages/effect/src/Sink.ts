@@ -1014,7 +1014,7 @@ export const fromPubSub: <In>(
  */
 export const fromPush: <In, E, A, L, R>(
   push: Effect.Effect<
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<E, A>, Chunk.Chunk<L>], R>,
+    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<A, E>, Chunk.Chunk<L>], R>,
     never,
     R
   >
@@ -1189,12 +1189,12 @@ export const raceBoth: {
   <A1, In1, L1, E1, R1>(
     that: Sink<A1, In1, L1, E1, R1>,
     options?: { readonly capacity?: number | undefined } | undefined
-  ): <A, In, L, E, R>(self: Sink<A, In, L, E, R>) => Sink<Either.Either<A, A1>, In & In1, L1 | L, E1 | E, R1 | R>
+  ): <A, In, L, E, R>(self: Sink<A, In, L, E, R>) => Sink<Either.Either<A1, A>, In & In1, L1 | L, E1 | E, R1 | R>
   <A, In, L, E, R, A1, In1, L1, E1, R1>(
     self: Sink<A, In, L, E, R>,
     that: Sink<A1, In1, L1, E1, R1>,
     options?: { readonly capacity?: number | undefined } | undefined
-  ): Sink<Either.Either<A, A1>, In & In1, L | L1, E | E1, R | R1>
+  ): Sink<Either.Either<A1, A>, In & In1, L | L1, E | E1, R | R1>
 } = internal.raceBoth
 
 /**

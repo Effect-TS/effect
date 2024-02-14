@@ -20,7 +20,7 @@ import * as Gen from "./Utils.js"
  * @category models
  * @since 2.0.0
  */
-export type Either<E, A> = Left<E, A> | Right<E, A>
+export type Either<R, L = never> = Left<L, R> | Right<L, R>
 
 /**
  * @category symbols
@@ -73,7 +73,7 @@ export interface Right<out E, out A> extends Pipeable, Inspectable {
  * @since 2.0.0
  */
 export interface EitherUnify<A extends { [Unify.typeSymbol]?: any }> {
-  Either?: () => A[Unify.typeSymbol] extends Either<infer E0, infer A0> | infer _ ? Either<E0, A0> : never
+  Either?: () => A[Unify.typeSymbol] extends Either<infer A0, infer E0> | infer _ ? Either<A0, E0> : never
 }
 
 /**
@@ -87,7 +87,7 @@ export interface EitherUnifyIgnore {}
  * @since 2.0.0
  */
 export interface EitherTypeLambda extends TypeLambda {
-  readonly type: Either<this["Out1"], this["Target"]>
+  readonly type: Either<this["Target"], this["Out1"]>
 }
 
 /**
@@ -97,7 +97,7 @@ export interface EitherTypeLambda extends TypeLambda {
  * @category constructors
  * @since 2.0.0
  */
-export const right: <A>(a: A) => Either<never, A> = either.right
+export const right: <A>(a: A) => Either<A> = either.right
 
 /**
  * Constructs a new `Either` holding a `Left` value. This usually represents a failure, due to the right-bias of this
@@ -106,7 +106,7 @@ export const right: <A>(a: A) => Either<never, A> = either.right
  * @category constructors
  * @since 2.0.0
  */
-export const left: <E>(e: E) => Either<E, never> = either.left
+export const left: <E>(e: E) => Either<never, E> = either.left
 
 /**
  * Takes a lazy default and a nullable value, if the value is not nully (`null` or `undefined`), turn it into a `Right`, if the value is nully use
@@ -122,11 +122,11 @@ export const left: <E>(e: E) => Either<E, never> = either.left
  * @since 2.0.0
  */
 export const fromNullable: {
-  <A, E>(onNullable: (a: A) => E): (self: A) => Either<E, NonNullable<A>>
-  <A, E>(self: A, onNullable: (a: A) => E): Either<E, NonNullable<A>>
+  <A, E>(onNullable: (a: A) => E): (self: A) => Either<NonNullable<A>, E>
+  <A, E>(self: A, onNullable: (a: A) => E): Either<NonNullable<A>, E>
 } = dual(
   2,
-  <A, E>(self: A, onNullable: (a: A) => E): Either<E, NonNullable<A>> =>
+  <A, E>(self: A, onNullable: (a: A) => E): Either<NonNullable<A>, E> =>
     self == null ? left(onNullable(self)) : right(self as NonNullable<A>)
 )
 
@@ -142,8 +142,8 @@ export const fromNullable: {
  * @since 2.0.0
  */
 export const fromOption: {
-  <A, E>(self: Option<A>, onNone: () => E): Either<E, A>
-  <E>(onNone: () => E): <A>(self: Option<A>) => Either<E, A>
+  <A, E>(self: Option<A>, onNone: () => E): Either<A, E>
+  <E>(onNone: () => E): <A>(self: Option<A>) => Either<A, E>
 } = either.fromOption
 
 const try_: {
@@ -152,8 +152,8 @@ const try_: {
       readonly try: LazyArg<A>
       readonly catch: (error: unknown) => E
     }
-  ): Either<E, A>
-  <A>(evaluate: LazyArg<A>): Either<unknown, A>
+  ): Either<A, E>
+  <A>(evaluate: LazyArg<A>): Either<A, unknown>
 } = (<A, E>(
   evaluate: LazyArg<A> | {
     readonly try: LazyArg<A>
@@ -217,7 +217,7 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
  * @category guards
  * @since 2.0.0
  */
-export const isLeft: <E, A>(self: Either<E, A>) => self is Left<E, A> = either.isLeft
+export const isLeft: <E, A>(self: Either<A, E>) => self is Left<E, A> = either.isLeft
 
 /**
  * Determine if a `Either` is a `Right`.
@@ -233,7 +233,7 @@ export const isLeft: <E, A>(self: Either<E, A>) => self is Left<E, A> = either.i
  * @category guards
  * @since 2.0.0
  */
-export const isRight: <E, A>(self: Either<E, A>) => self is Right<E, A> = either.isRight
+export const isRight: <E, A>(self: Either<A, E>) => self is Right<E, A> = either.isRight
 
 /**
  * Converts a `Either` to an `Option` discarding the `Left`.
@@ -250,7 +250,7 @@ export const isRight: <E, A>(self: Either<E, A>) => self is Right<E, A> = either
  * @category getters
  * @since 2.0.0
  */
-export const getRight: <E, A>(self: Either<E, A>) => Option<A> = either.getRight
+export const getRight: <E, A>(self: Either<A, E>) => Option<A> = either.getRight
 
 /**
  * Converts a `Either` to an `Option` discarding the value.
@@ -265,7 +265,7 @@ export const getRight: <E, A>(self: Either<E, A>) => Option<A> = either.getRight
  * @category getters
  * @since 2.0.0
  */
-export const getLeft: <E, A>(self: Either<E, A>) => Option<E> = either.getLeft
+export const getLeft: <E, A>(self: Either<A, E>) => Option<E> = either.getLeft
 
 /**
  * @category equivalence
@@ -274,7 +274,7 @@ export const getLeft: <E, A>(self: Either<E, A>) => Option<E> = either.getLeft
 export const getEquivalence = <E, A>(
   EE: Equivalence.Equivalence<E>,
   EA: Equivalence.Equivalence<A>
-): Equivalence.Equivalence<Either<E, A>> =>
+): Equivalence.Equivalence<Either<A, E>> =>
   Equivalence.make((x, y) =>
     x === y ||
     (isLeft(x) ?
@@ -290,17 +290,17 @@ export const mapBoth: {
   <E1, E2, A, B>(options: {
     readonly onLeft: (e: E1) => E2
     readonly onRight: (a: A) => B
-  }): (self: Either<E1, A>) => Either<E2, B>
-  <E1, A, E2, B>(self: Either<E1, A>, options: {
+  }): (self: Either<A, E1>) => Either<B, E2>
+  <E1, A, E2, B>(self: Either<A, E1>, options: {
     readonly onLeft: (e: E1) => E2
     readonly onRight: (a: A) => B
-  }): Either<E2, B>
+  }): Either<B, E2>
 } = dual(
   2,
-  <E1, A, E2, B>(self: Either<E1, A>, { onLeft, onRight }: {
+  <E1, A, E2, B>(self: Either<A, E1>, { onLeft, onRight }: {
     readonly onLeft: (e: E1) => E2
     readonly onRight: (a: A) => B
-  }): Either<E2, B> => isLeft(self) ? left(onLeft(self.left)) : right(onRight(self.right))
+  }): Either<B, E2> => isLeft(self) ? left(onLeft(self.left)) : right(onRight(self.right))
 )
 
 /**
@@ -313,11 +313,11 @@ export const mapBoth: {
  * @since 2.0.0
  */
 export const mapLeft: {
-  <E, G>(f: (e: E) => G): <A>(self: Either<E, A>) => Either<G, A>
-  <E, A, G>(self: Either<E, A>, f: (e: E) => G): Either<G, A>
+  <E, G>(f: (e: E) => G): <A>(self: Either<A, E>) => Either<A, G>
+  <E, A, G>(self: Either<A, E>, f: (e: E) => G): Either<A, G>
 } = dual(
   2,
-  <E, A, G>(self: Either<E, A>, f: (e: E) => G): Either<G, A> => isLeft(self) ? left(f(self.left)) : right(self.right)
+  <E, A, G>(self: Either<A, E>, f: (e: E) => G): Either<A, G> => isLeft(self) ? left(f(self.left)) : right(self.right)
 )
 
 /**
@@ -330,11 +330,11 @@ export const mapLeft: {
  * @since 2.0.0
  */
 export const map: {
-  <A, B>(f: (a: A) => B): <E>(self: Either<E, A>) => Either<E, B>
-  <E, A, B>(self: Either<E, A>, f: (a: A) => B): Either<E, B>
+  <A, B>(f: (a: A) => B): <E>(self: Either<A, E>) => Either<B, E>
+  <E, A, B>(self: Either<A, E>, f: (a: A) => B): Either<B, E>
 } = dual(
   2,
-  <E, A, B>(self: Either<E, A>, f: (a: A) => B): Either<E, B> => isRight(self) ? right(f(self.right)) : left(self.left)
+  <E, A, B>(self: Either<A, E>, f: (a: A) => B): Either<B, E> => isRight(self) ? right(f(self.right)) : left(self.left)
 )
 
 /**
@@ -362,14 +362,14 @@ export const match: {
   <E, B, A, C = B>(options: {
     readonly onLeft: (e: E) => B
     readonly onRight: (a: A) => C
-  }): (self: Either<E, A>) => B | C
-  <E, A, B, C = B>(self: Either<E, A>, options: {
+  }): (self: Either<A, E>) => B | C
+  <E, A, B, C = B>(self: Either<A, E>, options: {
     readonly onLeft: (e: E) => B
     readonly onRight: (a: A) => C
   }): B | C
 } = dual(
   2,
-  <E, A, B, C = B>(self: Either<E, A>, { onLeft, onRight }: {
+  <E, A, B, C = B>(self: Either<A, E>, { onLeft, onRight }: {
     readonly onLeft: (e: E) => B
     readonly onRight: (a: A) => C
   }): B | C => isLeft(self) ? onLeft(self.left) : onRight(self.right)
@@ -407,28 +407,28 @@ export const filterOrLeft: {
   <A, B extends A, E2>(
     refinement: Refinement<NoInfer<A>, B>,
     orLeftWith: (a: NoInfer<A>) => E2
-  ): <E>(self: Either<E, A>) => Either<E2 | E, B>
+  ): <E>(self: Either<A, E>) => Either<B, E2 | E>
   <A, E2>(
     predicate: Predicate<NoInfer<A>>,
     orLeftWith: (a: NoInfer<A>) => E2
-  ): <E>(self: Either<E, A>) => Either<E2 | E, A>
+  ): <E>(self: Either<A, E>) => Either<A, E2 | E>
   <E, A, B extends A, E2>(
-    self: Either<E, A>,
+    self: Either<A, E>,
     refinement: Refinement<A, B>,
     orLeftWith: (a: A) => E2
-  ): Either<E | E2, B>
-  <E, A, E2>(self: Either<E, A>, predicate: Predicate<A>, orLeftWith: (a: A) => E2): Either<E | E2, A>
+  ): Either<B, E | E2>
+  <E, A, E2>(self: Either<A, E>, predicate: Predicate<A>, orLeftWith: (a: A) => E2): Either<A, E | E2>
 } = dual(3, <E, A, E2>(
-  self: Either<E, A>,
+  self: Either<A, E>,
   predicate: Predicate<A>,
   orLeftWith: (a: A) => E2
-): Either<E | E2, A> => flatMap(self, (a) => predicate(a) ? right(a) : left(orLeftWith(a))))
+): Either<A, E | E2> => flatMap(self, (a) => predicate(a) ? right(a) : left(orLeftWith(a))))
 
 /**
  * @category getters
  * @since 2.0.0
  */
-export const merge: <E, A>(self: Either<E, A>) => E | A = match({
+export const merge: <E, A>(self: Either<A, E>) => E | A = match({
   onLeft: identity,
   onRight: identity
 })
@@ -446,11 +446,11 @@ export const merge: <E, A>(self: Either<E, A>) => E | A = match({
  * @since 2.0.0
  */
 export const getOrElse: {
-  <E, B>(onLeft: (e: E) => B): <A>(self: Either<E, A>) => B | A
-  <E, A, B>(self: Either<E, A>, onLeft: (e: E) => B): A | B
+  <E, B>(onLeft: (e: E) => B): <A>(self: Either<A, E>) => B | A
+  <E, A, B>(self: Either<A, E>, onLeft: (e: E) => B): A | B
 } = dual(
   2,
-  <E, A, B>(self: Either<E, A>, onLeft: (e: E) => B): A | B => isLeft(self) ? onLeft(self.left) : self.right
+  <E, A, B>(self: Either<A, E>, onLeft: (e: E) => B): A | B => isLeft(self) ? onLeft(self.left) : self.right
 )
 
 /**
@@ -463,7 +463,7 @@ export const getOrElse: {
  * @category getters
  * @since 2.0.0
  */
-export const getOrNull: <E, A>(self: Either<E, A>) => A | null = getOrElse(constNull)
+export const getOrNull: <E, A>(self: Either<A, E>) => A | null = getOrElse(constNull)
 
 /**
  * @example
@@ -475,7 +475,7 @@ export const getOrNull: <E, A>(self: Either<E, A>) => A | null = getOrElse(const
  * @category getters
  * @since 2.0.0
  */
-export const getOrUndefined: <E, A>(self: Either<E, A>) => A | undefined = getOrElse(constUndefined)
+export const getOrUndefined: <E, A>(self: Either<A, E>) => A | undefined = getOrElse(constUndefined)
 
 /**
  * Extracts the value of an `Either` or throws if the `Either` is `Left`.
@@ -498,9 +498,9 @@ export const getOrUndefined: <E, A>(self: Either<E, A>) => A | undefined = getOr
  * @since 2.0.0
  */
 export const getOrThrowWith: {
-  <E>(onLeft: (e: E) => unknown): <A>(self: Either<E, A>) => A
-  <E, A>(self: Either<E, A>, onLeft: (e: E) => unknown): A
-} = dual(2, <E, A>(self: Either<E, A>, onLeft: (e: E) => unknown): A => {
+  <E>(onLeft: (e: E) => unknown): <A>(self: Either<A, E>) => A
+  <E, A>(self: Either<A, E>, onLeft: (e: E) => unknown): A
+} = dual(2, <E, A>(self: Either<A, E>, onLeft: (e: E) => unknown): A => {
   if (isRight(self)) {
     return self.right
   }
@@ -524,7 +524,7 @@ export const getOrThrowWith: {
  * @category getters
  * @since 2.0.0
  */
-export const getOrThrow: <E, A>(self: Either<E, A>) => A = getOrThrowWith(() =>
+export const getOrThrow: <E, A>(self: Either<A, E>) => A = getOrThrowWith(() =>
   new Error("getOrThrow called on a Left")
 )
 
@@ -538,11 +538,11 @@ export const getOrThrow: <E, A>(self: Either<E, A>) => A = getOrThrowWith(() =>
  * @since 2.0.0
  */
 export const orElse: {
-  <E1, E2, B>(that: (e1: E1) => Either<E2, B>): <A>(self: Either<E1, A>) => Either<E2, A | B>
-  <E1, A, E2, B>(self: Either<E1, A>, that: (e1: E1) => Either<E2, B>): Either<E2, A | B>
+  <E1, E2, B>(that: (e1: E1) => Either<B, E2>): <A>(self: Either<A, E1>) => Either<A | B, E2>
+  <E1, A, E2, B>(self: Either<A, E1>, that: (e1: E1) => Either<B, E2>): Either<A | B, E2>
 } = dual(
   2,
-  <E1, A, E2, B>(self: Either<E1, A>, that: (e1: E1) => Either<E2, B>): Either<E2, A | B> =>
+  <E1, A, E2, B>(self: Either<A, E1>, that: (e1: E1) => Either<B, E2>): Either<A | B, E2> =>
     isLeft(self) ? that(self.left) : right(self.right)
 )
 
@@ -551,11 +551,11 @@ export const orElse: {
  * @since 2.0.0
  */
 export const flatMap: {
-  <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E1 | E2, B>
-  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B>
+  <A, E2, B>(f: (a: A) => Either<B, E2>): <E1>(self: Either<A, E1>) => Either<B, E1 | E2>
+  <E1, A, E2, B>(self: Either<A, E1>, f: (a: A) => Either<B, E2>): Either<B, E1 | E2>
 } = dual(
   2,
-  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B> =>
+  <E1, A, E2, B>(self: Either<A, E1>, f: (a: A) => Either<B, E2>): Either<B, E1 | E2> =>
     isLeft(self) ? left(self.left) : f(self.right)
 )
 
@@ -566,17 +566,17 @@ export const flatMap: {
  * @since 2.0.0
  */
 export const andThen: {
-  <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E1 | E2, B>
-  <E2, B>(f: Either<E2, B>): <E1, A>(self: Either<E1, A>) => Either<E1 | E2, B>
-  <A, B>(f: (a: A) => B): <E1>(self: Either<E1, A>) => Either<E1, B>
-  <B>(b: B): <A, E1>(self: Either<E1, A>) => Either<E1, B>
-  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B>
-  <E1, A, E2, B>(self: Either<E1, A>, f: Either<E2, B>): Either<E1 | E2, B>
-  <E1, A, B>(self: Either<E1, A>, f: (a: A) => B): Either<E1, B>
-  <E1, A, B>(self: Either<E1, A>, f: B): Either<E1, B>
+  <A, E2, B>(f: (a: A) => Either<B, E2>): <E1>(self: Either<A, E1>) => Either<B, E1 | E2>
+  <E2, B>(f: Either<B, E2>): <E1, A>(self: Either<A, E1>) => Either<B, E1 | E2>
+  <A, B>(f: (a: A) => B): <E1>(self: Either<A, E1>) => Either<B, E1>
+  <B>(b: B): <A, E1>(self: Either<A, E1>) => Either<B, E1>
+  <E1, A, E2, B>(self: Either<A, E1>, f: (a: A) => Either<B, E2>): Either<B, E1 | E2>
+  <E1, A, E2, B>(self: Either<A, E1>, f: Either<B, E2>): Either<B, E1 | E2>
+  <E1, A, B>(self: Either<A, E1>, f: (a: A) => B): Either<B, E1>
+  <E1, A, B>(self: Either<A, E1>, f: B): Either<B, E1>
 } = dual(
   2,
-  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B> | Either<E2, B>): Either<E1 | E2, B> =>
+  <E1, A, E2, B>(self: Either<A, E1>, f: (a: A) => Either<B, E2> | Either<B, E2>): Either<B, E1 | E2> =>
     flatMap(self, (a) => {
       const b = isFunction(f) ? f(a) : f
       return isEither(b) ? b : right(b)
@@ -589,17 +589,17 @@ export const andThen: {
  */
 export const zipWith: {
   <E2, A2, A, B>(
-    that: Either<E2, A2>,
+    that: Either<A2, E2>,
     f: (a: A, b: A2) => B
-  ): <E>(self: Either<E, A>) => Either<E2 | E, B>
+  ): <E>(self: Either<A, E>) => Either<B, E2 | E>
   <E, A, E2, A2, B>(
-    self: Either<E, A>,
-    that: Either<E2, A2>,
+    self: Either<A, E>,
+    that: Either<A2, E2>,
     f: (a: A, b: A2) => B
-  ): Either<E | E2, B>
+  ): Either<B, E | E2>
 } = dual(
   3,
-  <E, A, E2, A2, B>(self: Either<E, A>, that: Either<E2, A2>, f: (a: A, b: A2) => B): Either<E | E2, B> =>
+  <E, A, E2, A2, B>(self: Either<A, E>, that: Either<A2, E2>, f: (a: A, b: A2) => B): Either<B, E | E2> =>
     flatMap(self, (a) => map(that, (b) => f(a, b)))
 )
 
@@ -608,11 +608,11 @@ export const zipWith: {
  * @since 2.0.0
  */
 export const ap: {
-  <E2, A>(that: Either<E2, A>): <E, B>(self: Either<E, (a: A) => B>) => Either<E | E2, B>
-  <E, A, B, E2>(self: Either<E, (a: A) => B>, that: Either<E2, A>): Either<E | E2, B>
+  <E2, A>(that: Either<A, E2>): <E, B>(self: Either<(a: A) => B, E>) => Either<B, E | E2>
+  <E, A, B, E2>(self: Either<(a: A) => B, E>, that: Either<A, E2>): Either<B, E | E2>
 } = dual(
   2,
-  <E, A, B, E2>(self: Either<E, (a: A) => B>, that: Either<E2, A>): Either<E | E2, B> =>
+  <E, A, B, E2>(self: Either<(a: A) => B, E>, that: Either<A, E2>): Either<B, E | E2> =>
     zipWith(self, that, (f, a) => f(a))
 )
 
@@ -639,13 +639,13 @@ export const ap: {
 export const all: <const I extends Iterable<Either<any, any>> | Record<string, Either<any, any>>>(
   input: I
 ) => [I] extends [ReadonlyArray<Either<any, any>>] ? Either<
-    I[number] extends never ? never : [I[number]] extends [Either<infer E, any>] ? E : never,
-    { -readonly [K in keyof I]: [I[K]] extends [Either<any, infer A>] ? A : never }
+    { -readonly [K in keyof I]: [I[K]] extends [Either<infer A, any>] ? A : never },
+    I[number] extends never ? never : [I[number]] extends [Either<any, infer E>] ? E : never
   >
-  : [I] extends [Iterable<Either<infer E, infer A>>] ? Either<E, Array<A>>
+  : [I] extends [Iterable<Either<infer A, infer E>>] ? Either<Array<A>, E>
   : Either<
-    I[keyof I] extends never ? never : [I[keyof I]] extends [Either<infer E, any>] ? E : never,
-    { -readonly [K in keyof I]: [I[K]] extends [Either<any, infer A>] ? A : never }
+    { -readonly [K in keyof I]: [I[K]] extends [Either<infer A, any>] ? A : never },
+    I[keyof I] extends never ? never : [I[keyof I]] extends [Either<any, infer E>] ? E : never
   > = (
     input: Iterable<Either<any, any>> | Record<string, Either<any, any>>
   ): Either<any, any> => {
@@ -678,7 +678,7 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
  * @since 2.0.0
  * @category mapping
  */
-export const flip = <E, A>(self: Either<E, A>): Either<A, E> => isLeft(self) ? right(self.left) : left(self.right)
+export const flip = <E, A>(self: Either<A, E>): Either<E, A> => isLeft(self) ? right(self.left) : left(self.right)
 
 const adapter = Gen.adapter<EitherTypeLambda>()
 

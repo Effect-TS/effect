@@ -84,7 +84,7 @@ Effect.all([string, number], { mode: "validate" })
 // $ExpectType Effect<void, [Option<"err-1">, Option<"err-2">], "dep-1" | "dep-2">
 Effect.all([string, number], { mode: "validate", discard: true })
 
-// $ExpectType Effect<[Either<"err-1", string>, Either<"err-2", number>], never, "dep-1" | "dep-2">
+// $ExpectType Effect<[Either<string, "err-1">, Either<number, "err-2">], never, "dep-1" | "dep-2">
 Effect.all([string, number], { mode: "either" })
 
 // $ExpectType Effect<void, never, "dep-1" | "dep-2">
@@ -118,7 +118,7 @@ Effect.all({ a: string, b: number }, { mode: "validate" })
 // $ExpectType Effect<void, { a: Option<"err-1">; b: Option<"err-2">; }, "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { mode: "validate", discard: true })
 
-// $ExpectType Effect<{ a: Either<"err-1", string>; b: Either<"err-2", number>; }, never, "dep-1" | "dep-2">
+// $ExpectType Effect<{ a: Either<string, "err-1">; b: Either<number, "err-2">; }, never, "dep-1" | "dep-2">
 Effect.all({ a: string, b: number }, { mode: "either" })
 
 // $ExpectType Effect<void, never, "dep-1" | "dep-2">
@@ -152,7 +152,7 @@ Effect.all(stringArray, { mode: "validate" })
 // $ExpectType Effect<void, Option<"err-3">[], "dep-3">
 Effect.all(stringArray, { mode: "validate", discard: true })
 
-// $ExpectType Effect<Either<"err-3", string>[], never, "dep-3">
+// $ExpectType Effect<Either<string, "err-3">[], never, "dep-3">
 Effect.all(stringArray, { mode: "either" })
 
 // $ExpectType Effect<void, never, "dep-3">
@@ -186,7 +186,7 @@ Effect.all(numberRecord, { mode: "validate" })
 // $ExpectType Effect<void, { [x: string]: Option<"err-4">; }, "dep-4">
 Effect.all(numberRecord, { mode: "validate", discard: true })
 
-// $ExpectType Effect<{ [x: string]: Either<"err-4", number>; }, never, "dep-4">
+// $ExpectType Effect<{ [x: string]: Either<number, "err-4">; }, never, "dep-4">
 Effect.all(numberRecord, { mode: "either" })
 
 // $ExpectType Effect<void, never, "dep-4">
@@ -220,7 +220,7 @@ pipe([string, number] as const, Effect.allWith({ mode: "validate" }))
 // $ExpectType Effect<void, [Option<"err-1">, Option<"err-2">], "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ mode: "validate", discard: true }))
 
-// $ExpectType Effect<[Either<"err-1", string>, Either<"err-2", number>], never, "dep-1" | "dep-2">
+// $ExpectType Effect<[Either<string, "err-1">, Either<number, "err-2">], never, "dep-1" | "dep-2">
 pipe([string, number] as const, Effect.allWith({ mode: "either" }))
 
 // $ExpectType Effect<void, never, "dep-1" | "dep-2">
@@ -254,7 +254,7 @@ pipe({ a: string, b: number }, Effect.allWith({ mode: "validate" }))
 // $ExpectType Effect<void, { a: Option<"err-1">; b: Option<"err-2">; }, "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ mode: "validate", discard: true }))
 
-// $ExpectType Effect<{ a: Either<"err-1", string>; b: Either<"err-2", number>; }, never, "dep-1" | "dep-2">
+// $ExpectType Effect<{ a: Either<string, "err-1">; b: Either<number, "err-2">; }, never, "dep-1" | "dep-2">
 pipe({ a: string, b: number }, Effect.allWith({ mode: "either" }))
 
 // $ExpectType Effect<void, never, "dep-1" | "dep-2">
@@ -288,7 +288,7 @@ pipe(stringArray, Effect.allWith({ mode: "validate" }))
 // $ExpectType Effect<void, Option<"err-3">[], "dep-3">
 pipe(stringArray, Effect.allWith({ mode: "validate", discard: true }))
 
-// $ExpectType Effect<Either<"err-3", string>[], never, "dep-3">
+// $ExpectType Effect<Either<string, "err-3">[], never, "dep-3">
 pipe(stringArray, Effect.allWith({ mode: "either" }))
 
 // $ExpectType Effect<void, never, "dep-3">
@@ -322,7 +322,7 @@ pipe(numberRecord, Effect.allWith({ mode: "validate" }))
 // $ExpectType Effect<void, { [x: string]: Option<"err-4">; }, "dep-4">
 pipe(numberRecord, Effect.allWith({ mode: "validate", discard: true }))
 
-// $ExpectType Effect<{ [x: string]: Either<"err-4", number>; }, never, "dep-4">
+// $ExpectType Effect<{ [x: string]: Either<number, "err-4">; }, never, "dep-4">
 pipe(numberRecord, Effect.allWith({ mode: "either" }))
 
 // $ExpectType Effect<void, never, "dep-4">

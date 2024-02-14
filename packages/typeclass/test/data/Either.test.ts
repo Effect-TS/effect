@@ -43,9 +43,9 @@ describe.concurrent("Either", () => {
 
   it("SemiProduct.productMany", () => {
     const productMany: <E, A>(
-      self: Either.Either<E, A>,
-      collection: Iterable<Either.Either<E, A>>
-    ) => Either.Either<E, [A, ...Array<A>]> = EitherInstances.SemiProduct.productMany
+      self: Either.Either<A, E>,
+      collection: Iterable<Either.Either<A, E>>
+    ) => Either.Either<[A, ...Array<A>], E> = EitherInstances.SemiProduct.productMany
 
     Util.deepStrictEqual(productMany(Either.right(1), []), Either.right([1]))
     Util.deepStrictEqual(

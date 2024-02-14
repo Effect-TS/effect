@@ -6,7 +6,6 @@ import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as FiberRef from "effect/FiberRef"
 import type { LazyArg } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
@@ -183,7 +182,7 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
   }
 
   get stream(): Stream.Stream<Uint8Array, E> {
-    return Stream.asyncInterrupt<Uint8Array, E>((emit) => {
+    return Stream.async<Uint8Array, E>((emit) => {
       let offset = 0
       const onReadyStateChange = () => {
         if (this.source.readyState === 3) {
@@ -202,10 +201,10 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
       this.source.addEventListener("readystatechange", onReadyStateChange)
       this.source.addEventListener("error", onError)
       onReadyStateChange()
-      return Either.left(Effect.sync(() => {
+      return Effect.sync(() => {
         this.source.removeEventListener("readystatechange", onReadyStateChange)
         this.source.removeEventListener("error", onError)
-      }))
+      })
     })
   }
 
