@@ -4087,11 +4087,11 @@ export const schedule: {
 export const scheduleForked: {
   <R2, Out>(
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Scope.Scope | R2 | R, never, Fiber.RuntimeFiber<Out, E>>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<Out, E>, never, Scope.Scope | R2 | R>
   <R, E, A, R2, Out>(
     self: Effect<A, E, R>,
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ): Effect<Scope.Scope | R | R2, never, Fiber.RuntimeFiber<Out, E>>
+  ): Effect<Fiber.RuntimeFiber<Out, E>, never, Scope.Scope | R | R2>
 } = circular.scheduleForked
 
 /**
