@@ -1429,16 +1429,20 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
   pick(ast, getPropertyKeys(ast).filter((name) => !keys.includes(name)))
 
+/** @internal */
+export const orUndefined = (ast: AST): AST => createUnion([ast, undefinedKeyword])
+
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Partial`.
  *
  * @since 1.0.0
  */
-export const partial = (ast: AST): AST => {
+export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
+  const exact = options?.exact === true
   switch (ast._tag) {
     case "Tuple":
       return createTuple(
-        ast.elements.map((e) => createElement(e.type, true)),
+        ast.elements.map((e) => createElement(exact ? e.type : orUndefined(e.type), true)),
         pipe(
           ast.rest,
           Option.map((rest) => [createUnion([...rest, undefinedKeyword])])
@@ -1447,22 +1451,23 @@ export const partial = (ast: AST): AST => {
       )
     case "TypeLiteral":
       return createTypeLiteral(
-        ast.propertySignatures.map((f) => createPropertySignature(f.name, f.type, true, f.isReadonly, f.annotations)),
-        ast.indexSignatures
+        ast.propertySignatures.map((ps) =>
+          createPropertySignature(ps.name, exact ? ps.type : orUndefined(ps.type), true, ps.isReadonly, ps.annotations)
+        ),
+        ast.indexSignatures.map((is) => createIndexSignature(is.parameter, orUndefined(is.type), is.isReadonly))
       )
     case "Union":
-      return createUnion(ast.types.map((member) => partial(member)))
+      return createUnion(ast.types.map((member) => partial(member, options)))
     case "Suspend":
-      return createSuspend(() => partial(ast.f()))
+      return createSuspend(() => partial(ast.f(), options))
     case "Declaration":
       throw new Error("`partial` cannot handle declarations")
     case "Refinement":
       throw new Error("`partial` cannot handle refinements")
     case "Transform":
       throw new Error("`partial` cannot handle transformations")
-    default:
-      return ast
   }
+  return ast
 }
 
 /**
@@ -1499,9 +1504,8 @@ export const required = (ast: AST): AST => {
       throw new Error("`required` cannot handle refinements")
     case "Transform":
       throw new Error("`required` cannot handle transformations")
-    default:
-      return ast
   }
+  return ast
 }
 
 /**
