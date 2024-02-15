@@ -24,9 +24,9 @@ const resourceVariance = {
 }
 
 /** @internal */
-export const auto = <A, E, R, R2, Out>(
+export const auto = <A, E, R, Out, R2>(
   acquire: Effect.Effect<A, E, R>,
-  policy: Schedule.Schedule<R2, unknown, Out>
+  policy: Schedule.Schedule<Out, unknown, R2>
 ): Effect.Effect<Resource.Resource<A, E>, never, R | R2 | Scope.Scope> =>
   core.tap(manual(acquire), (manual) =>
     fiberRuntime.acquireRelease(
