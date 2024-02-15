@@ -23,12 +23,14 @@ import type { MatchRecord, Simplify } from "./Types.js"
 export const pick = <Keys extends Array<PropertyKey>>(
   ...keys: Keys
 ) =>
-<S extends Record<Keys[number], any>>(
+<S extends { [K in Keys[number]]?: any }>(
   s: S
-): MatchRecord<S, { [K in Keys[number]]: S[K] | undefined }, { [K in Keys[number]]: S[K] }> => {
+): MatchRecord<S, { [K in Keys[number]]?: S[K] }, Simplify<Pick<S, Keys[number]>>> => {
   const out: any = {}
   for (const k of keys) {
-    out[k] = (s as any)[k]
+    if (k in s) {
+      out[k] = (s as any)[k]
+    }
   }
   return out
 }
@@ -47,7 +49,7 @@ export const pick = <Keys extends Array<PropertyKey>>(
 export const omit = <Keys extends Array<PropertyKey>>(
   ...keys: Keys
 ) =>
-<S extends Record<Keys[number], any>>(s: S): Simplify<Omit<S, Keys[number]>> => {
+<S extends { [K in Keys[number]]?: any }>(s: S): Simplify<Omit<S, Keys[number]>> => {
   const out: any = { ...s }
   for (const k of keys) {
     delete out[k]
@@ -167,4 +169,5 @@ export const evolve: {
  * @since 2.0.0
  */
 export const get =
-  <K extends PropertyKey>(key: K) => <S extends Record<K, any>>(s: S): MatchRecord<S, S[K] | undefined, S[K]> => s[key]
+  <K extends PropertyKey>(key: K) => <S extends { [P in K]?: any }>(s: S): MatchRecord<S, S[K] | undefined, S[K]> =>
+    s[key]
