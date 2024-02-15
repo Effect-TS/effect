@@ -46,11 +46,19 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
     return this.textEffect
   }
 
+  get unsafeText(): string {
+    return Effect.runSync(this.text)
+  }
+
   get json(): Effect.Effect<unknown, E> {
     return Effect.tryMap(this.text, {
       try: (_) => _ === "" ? null : JSON.parse(_) as unknown,
       catch: this.onError
     })
+  }
+
+  get unsafeJson(): unknown {
+    return Effect.runSync(this.json)
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, E> {
