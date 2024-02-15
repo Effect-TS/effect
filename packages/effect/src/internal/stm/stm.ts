@@ -179,16 +179,16 @@ export const let_ = dual<
 
 /** @internal */
 export const catchSome = dual<
-  <E, R2, E2, A2>(
+  <E, A2, E2, R2>(
     pf: (error: E) => Option.Option<STM.STM<A2, E2, R2>>
-  ) => <R, A>(
+  ) => <A, R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<A2 | A, E | E2, R2 | R>,
-  <R, A, E, R2, E2, A2>(
+  <A, E, R, A2, E2, R2>(
     self: STM.STM<A, E, R>,
     pf: (error: E) => Option.Option<STM.STM<A2, E2, R2>>
   ) => STM.STM<A2 | A, E | E2, R2 | R>
->(2, <R, A, E, R2, E2, A2>(
+>(2, <A, E, R, A2, E2, R2>(
   self: STM.STM<A, E, R>,
   pf: (error: E) => Option.Option<STM.STM<A2, E2, R2>>
 ): STM.STM<A2 | A, E | E2, R2 | R> =>
@@ -225,7 +225,7 @@ export const catchTags: {
     }
   >(
     cases: Cases
-  ): <R, A>(self: STM.STM<A, E, R>) => STM.STM<
+  ): <A, R>(self: STM.STM<A, E, R>) => STM.STM<
     | A
     | {
       [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => STM.STM<infer A, any, any>) ? A : never
@@ -837,8 +837,8 @@ export const mapBoth = dual<
 
 /** @internal */
 export const mapError = dual<
-  <E, E2>(f: (error: E) => E2) => <R, A>(self: STM.STM<A, E, R>) => STM.STM<A, E2, R>,
-  <R, A, E, E2>(self: STM.STM<A, E, R>, f: (error: E) => E2) => STM.STM<A, E2, R>
+  <E, E2>(f: (error: E) => E2) => <A, R>(self: STM.STM<A, E, R>) => STM.STM<A, E2, R>,
+  <A, E, R, E2>(self: STM.STM<A, E, R>, f: (error: E) => E2) => STM.STM<A, E2, R>
 >(2, (self, f) =>
   core.matchSTM(self, {
     onFailure: (e) => core.fail(f(e)),
@@ -1090,8 +1090,8 @@ export const reduceRight = dual<
 
 /** @internal */
 export const refineOrDie = dual<
-  <E, E2>(pf: (error: E) => Option.Option<E2>) => <R, A>(self: STM.STM<A, E, R>) => STM.STM<A, E2, R>,
-  <R, A, E, E2>(self: STM.STM<A, E, R>, pf: (error: E) => Option.Option<E2>) => STM.STM<A, E2, R>
+  <E, E2>(pf: (error: E) => Option.Option<E2>) => <A, R>(self: STM.STM<A, E, R>) => STM.STM<A, E2, R>,
+  <A, E, R, E2>(self: STM.STM<A, E, R>, pf: (error: E) => Option.Option<E2>) => STM.STM<A, E2, R>
 >(2, (self, pf) => refineOrDieWith(self, pf, identity))
 
 /** @internal */
@@ -1099,10 +1099,10 @@ export const refineOrDieWith = dual<
   <E, E2>(
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
-  ) => <R, A>(
+  ) => <A, R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<A, E2, R>,
-  <R, A, E, E2>(
+  <A, E, R, E2>(
     self: STM.STM<A, E, R>,
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
@@ -1333,13 +1333,13 @@ export const tapBoth = dual<
 
 /** @internal */
 export const tapError: {
-  <E, R2, E2, _>(
-    f: (error: NoInfer<E>) => STM.STM<_, E2, R2>
-  ): <R, A>(self: STM.STM<A, E, R>) => STM.STM<A, E | E2, R2 | R>
-  <R, A, E, R2, E2, _>(self: STM.STM<A, E, R>, f: (error: E) => STM.STM<_, E2, R2>): STM.STM<A, E | E2, R | R2>
+  <E, X, E2, R2>(
+    f: (error: NoInfer<E>) => STM.STM<X, E2, R2>
+  ): <A, R>(self: STM.STM<A, E, R>) => STM.STM<A, E | E2, R2 | R>
+  <A, E, R, X, E2, R2>(self: STM.STM<A, E, R>, f: (error: E) => STM.STM<X, E2, R2>): STM.STM<A, E | E2, R | R2>
 } = dual(
   2,
-  <R, A, E, R2, E2, _>(self: STM.STM<A, E, R>, f: (error: E) => STM.STM<_, E2, R2>): STM.STM<A, E | E2, R | R2> =>
+  <A, E, R, X, E2, R2>(self: STM.STM<A, E, R>, f: (error: E) => STM.STM<X, E2, R2>): STM.STM<A, E | E2, R | R2> =>
     core.matchSTM(self, {
       onFailure: (e) => core.zipRight(f(e), core.fail(e)),
       onSuccess: core.succeed

@@ -13,21 +13,21 @@ import { invokeWithInterrupt, zipWithOptions } from "./fiberRuntime.js"
 import { complete } from "./request.js"
 
 /** @internal */
-export const make = <R, A>(
+export const make = <A, R>(
   runAll: (requests: Array<Array<A>>) => Effect.Effect<void, never, R>
 ): RequestResolver.RequestResolver<A, R> =>
   new core.RequestResolverImpl((requests) => runAll(requests.map((_) => _.map((_) => _.request))))
 
 /** @internal */
-export const makeWithEntry = <R, A>(
+export const makeWithEntry = <A, R>(
   runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<void, never, R>
 ): RequestResolver.RequestResolver<A, R> => new core.RequestResolverImpl((requests) => runAll(requests))
 
 /** @internal */
-export const makeBatched = <R, A extends Request.Request<any, any>>(
+export const makeBatched = <A extends Request.Request<any, any>, R>(
   run: (requests: Array<A>) => Effect.Effect<void, never, R>
 ): RequestResolver.RequestResolver<A, R> =>
-  new core.RequestResolverImpl<R, A>(
+  new core.RequestResolverImpl<A, R>(
     (requests) =>
       requests.length > 1 ?
         core.forEachSequentialDiscard(requests, (block) =>
@@ -50,16 +50,16 @@ export const makeBatched = <R, A extends Request.Request<any, any>>(
 
 /** @internal */
 export const around = dual<
-  <R2, A2, R3, _>(
+  <A2, R2, X, R3>(
     before: Effect.Effect<A2, never, R2>,
-    after: (a: A2) => Effect.Effect<_, never, R3>
-  ) => <R, A>(
+    after: (a: A2) => Effect.Effect<X, never, R3>
+  ) => <A, R>(
     self: RequestResolver.RequestResolver<A, R>
   ) => RequestResolver.RequestResolver<A, R | R2 | R3>,
-  <R, A, R2, A2, R3, _>(
+  <A, R, A2, R2, X, R3>(
     self: RequestResolver.RequestResolver<A, R>,
     before: Effect.Effect<A2, never, R2>,
-    after: (a: A2) => Effect.Effect<_, never, R3>
+    after: (a: A2) => Effect.Effect<X, never, R3>
   ) => RequestResolver.RequestResolver<A, R | R2 | R3>
 >(3, (self, before, after) =>
   new core.RequestResolverImpl(
@@ -100,14 +100,14 @@ export const aroundRequests = dual<
 
 /** @internal */
 export const batchN = dual<
-  (n: number) => <R, A>(
+  (n: number) => <A, R>(
     self: RequestResolver.RequestResolver<A, R>
   ) => RequestResolver.RequestResolver<A, R>,
-  <R, A>(
+  <A, R>(
     self: RequestResolver.RequestResolver<A, R>,
     n: number
   ) => RequestResolver.RequestResolver<A, R>
->(2, <R, A>(
+>(2, <A, R>(
   self: RequestResolver.RequestResolver<A, R>,
   n: number
 ): RequestResolver.RequestResolver<A, R> =>
@@ -144,7 +144,7 @@ export const mapInputContext = dual<
   self: RequestResolver.RequestResolver<A, R>,
   f: (context: Context.Context<R0>) => Context.Context<R>
 ) =>
-  new core.RequestResolverImpl<R0, A>(
+  new core.RequestResolverImpl<A, R0>(
     (requests) =>
       core.mapInputContext(
         self.runAll(requests),
@@ -188,7 +188,7 @@ export const eitherWith = dual<
   that: RequestResolver.RequestResolver<B, R2>,
   f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
 ) =>
-  new core.RequestResolverImpl<R | R2, C>(
+  new core.RequestResolverImpl<C, R | R2>(
     (batch) =>
       pipe(
         core.forEachSequential(batch, (requests) => {
@@ -262,7 +262,7 @@ export const fromEffectTagged = <
   A,
   ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer _A, infer _E, infer R> ? R : never
 > =>
-  makeBatched<any, A>((requests: Array<A>) => {
+  makeBatched<A, any>((requests: Array<A>) => {
     const grouped: Record<string, Array<A>> = {}
     const tags: Array<A["_tag"]> = []
     for (let i = 0, len = requests.length; i < len; i++) {

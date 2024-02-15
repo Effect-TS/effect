@@ -579,12 +579,12 @@ export class STMDriver<in out R, out E, out A> {
 
 /** @internal */
 export const catchAll = dual<
-  <E, R1, E1, B>(
+  <E, B, E1, R1>(
     f: (e: E) => STM.STM<B, E1, R1>
-  ) => <R, A>(
+  ) => <A, R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<B | A, E1, R1 | R>,
-  <R, A, E, R1, E1, B>(
+  <A, E, R, B, E1, R1>(
     self: STM.STM<A, E, R>,
     f: (e: E) => STM.STM<B, E1, R1>
   ) => STM.STM<B | A, E1, R1 | R>

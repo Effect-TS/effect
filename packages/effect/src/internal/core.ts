@@ -1707,7 +1707,7 @@ const requestResolverVariance = {
 }
 
 /** @internal */
-export class RequestResolverImpl<out R, in A> implements RequestResolver.RequestResolver<A, R> {
+export class RequestResolverImpl<in A, out R> implements RequestResolver.RequestResolver<A, R> {
   readonly [RequestResolverTypeId] = requestResolverVariance
   constructor(
     readonly runAll: (
@@ -1757,7 +1757,7 @@ export const resolverLocally = dual<
   self: FiberRef.FiberRef<A>,
   value: A
 ): RequestResolver.RequestResolver<B, R> =>
-  new RequestResolverImpl<R, B>(
+  new RequestResolverImpl<B, R>(
     (requests) =>
       fiberRefLocally(
         use.runAll(requests),

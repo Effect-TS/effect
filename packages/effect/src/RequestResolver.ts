@@ -115,7 +115,7 @@ export const isRequestResolver: (u: unknown) => u is RequestResolver<unknown, un
  * @since 2.0.0
  * @category constructors
  */
-export const make: <R, A>(
+export const make: <A, R>(
   runAll: (requests: Array<Array<A>>) => Effect.Effect<void, never, R>
 ) => RequestResolver<A, R> = internal.make
 
@@ -126,7 +126,7 @@ export const make: <R, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const makeWithEntry: <R, A>(
+export const makeWithEntry: <A, R>(
   runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<void, never, R>
 ) => RequestResolver<A, R> = internal.makeWithEntry
 
@@ -137,7 +137,7 @@ export const makeWithEntry: <R, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const makeBatched: <R, A extends Request.Request<any, any>>(
+export const makeBatched: <A extends Request.Request<any, any>, R>(
   run: (requests: Array<A>) => Effect.Effect<void, never, R>
 ) => RequestResolver<A, R> = internal.makeBatched
 
@@ -149,14 +149,14 @@ export const makeBatched: <R, A extends Request.Request<any, any>>(
  * @category combinators
  */
 export const around: {
-  <R2, A2, R3, _>(
+  <A2, R2, X, R3>(
     before: Effect.Effect<A2, never, R2>,
-    after: (a: A2) => Effect.Effect<_, never, R3>
-  ): <R, A>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
-  <R, A, R2, A2, R3, _>(
+    after: (a: A2) => Effect.Effect<X, never, R3>
+  ): <A, R>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
+  <A, R, A2, R2, X, R3>(
     self: RequestResolver<A, R>,
     before: Effect.Effect<A2, never, R2>,
-    after: (a: A2) => Effect.Effect<_, never, R3>
+    after: (a: A2) => Effect.Effect<X, never, R3>
   ): RequestResolver<A, R | R2 | R3>
 } = internal.around
 
@@ -204,8 +204,8 @@ export const aroundRequests: {
  * @category combinators
  */
 export const batchN: {
-  (n: number): <R, A>(self: RequestResolver<A, R>) => RequestResolver<A, R>
-  <R, A>(self: RequestResolver<A, R>, n: number): RequestResolver<A, R>
+  (n: number): <A, R>(self: RequestResolver<A, R>) => RequestResolver<A, R>
+  <A, R>(self: RequestResolver<A, R>, n: number): RequestResolver<A, R>
 } = internal.batchN
 
 /**

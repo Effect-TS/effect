@@ -456,8 +456,8 @@ export const bufferChunks: {
  * @category error handling
  */
 export const catchAll: {
-  <E, R2, E2, A2>(f: (error: E) => Stream<A2, E2, R2>): <R, A>(self: Stream<A, E, R>) => Stream<A2 | A, E2, R2 | R>
-  <R, A, E, R2, E2, A2>(self: Stream<A, E, R>, f: (error: E) => Stream<A2, E2, R2>): Stream<A | A2, E2, R | R2>
+  <E, A2, E2, R2>(f: (error: E) => Stream<A2, E2, R2>): <A, R>(self: Stream<A, E, R>) => Stream<A2 | A, E2, R2 | R>
+  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, f: (error: E) => Stream<A2, E2, R2>): Stream<A | A2, E2, R | R2>
 } = internal.catchAll
 
 /**
@@ -469,10 +469,10 @@ export const catchAll: {
  * @category error handling
  */
 export const catchAllCause: {
-  <E, R2, E2, A2>(
+  <E, A2, E2, R2>(
     f: (cause: Cause.Cause<E>) => Stream<A2, E2, R2>
-  ): <R, A>(self: Stream<A, E, R>) => Stream<A2 | A, E2, R2 | R>
-  <R, A, E, R2, E2, A2>(
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A2 | A, E2, R2 | R>
+  <A, E, R, A2, E2, R2>(
     self: Stream<A, E, R>,
     f: (cause: Cause.Cause<E>) => Stream<A2, E2, R2>
   ): Stream<A | A2, E2, R | R2>
@@ -488,8 +488,8 @@ export const catchAllCause: {
 export const catchSome: {
   <E, R2, E2, A2>(
     pf: (error: E) => Option.Option<Stream<A2, E2, R2>>
-  ): <R, A>(self: Stream<A, E, R>) => Stream<A2 | A, E | E2, R2 | R>
-  <R, A, E, R2, E2, A2>(
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A2 | A, E | E2, R2 | R>
+  <A, E, R, R2, E2, A2>(
     self: Stream<A, E, R>,
     pf: (error: E) => Option.Option<Stream<A2, E2, R2>>
   ): Stream<A | A2, E | E2, R | R2>
@@ -527,7 +527,7 @@ export const catchTags: {
     Cases extends { [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Stream<any, any, any> }
   >(
     cases: Cases
-  ): <R, A>(
+  ): <A, R>(
     self: Stream<A, E, R>
   ) => Stream<
     | A
@@ -547,9 +547,9 @@ export const catchTags: {
     }[keyof Cases]
   >
   <
-    R,
-    E extends { _tag: string },
     A,
+    E extends { _tag: string },
+    R,
     Cases extends { [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Stream<any, any, any> }
   >(
     self: Stream<A, E, R>,
@@ -582,10 +582,10 @@ export const catchTags: {
  * @category error handling
  */
 export const catchSomeCause: {
-  <E, R2, E2, A2>(
+  <E, A2, E2, R2>(
     pf: (cause: Cause.Cause<E>) => Option.Option<Stream<A2, E2, R2>>
-  ): <R, A>(self: Stream<A, E, R>) => Stream<A2 | A, E | E2, R2 | R>
-  <R, A, E, R2, E2, A2>(
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A2 | A, E | E2, R2 | R>
+  <A, E, R, A2, E2, R2>(
     self: Stream<A, E, R>,
     pf: (cause: Cause.Cause<E>) => Option.Option<Stream<A2, E2, R2>>
   ): Stream<A | A2, E | E2, R | R2>
@@ -2224,12 +2224,12 @@ export const never: Stream<never> = internal.never
  * @category utils
  */
 export const onError: {
-  <E, R2, _>(
-    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<_, never, R2>
-  ): <R, A>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
-  <R, A, E, R2, _>(
+  <E, X, R2>(
+    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
+  <A, E, R, X, R2>(
     self: Stream<A, E, R>,
-    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<_, never, R2>
+    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
   ): Stream<A, E, R | R2>
 } = internal.onError
 
@@ -2669,8 +2669,8 @@ export const rechunk: {
  * @category error handling
  */
 export const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, A>(self: Stream<A, E, R>) => Stream<A, E2, R>
-  <R, A, E, E2>(self: Stream<A, E, R>, pf: (error: E) => Option.Option<E2>): Stream<A, E2, R>
+  <E, E2>(pf: (error: E) => Option.Option<E2>): <A, R>(self: Stream<A, E, R>) => Stream<A, E2, R>
+  <A, E, R, E2>(self: Stream<A, E, R>, pf: (error: E) => Option.Option<E2>): Stream<A, E2, R>
 } = internal.refineOrDie
 
 /**
@@ -2684,8 +2684,8 @@ export const refineOrDieWith: {
   <E, E2>(
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
-  ): <R, A>(self: Stream<A, E, R>) => Stream<A, E2, R>
-  <R, A, E, E2>(self: Stream<A, E, R>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): Stream<A, E2, R>
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A, E2, R>
+  <A, E, R, E2>(self: Stream<A, E, R>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): Stream<A, E2, R>
 } = internal.refineOrDieWith
 
 /**
@@ -3609,12 +3609,12 @@ export const tapError: {
  * @category utils
  */
 export const tapErrorCause: {
-  <E, R2, E2, _>(
-    f: (cause: Cause.Cause<NoInfer<E>>) => Effect.Effect<_, E2, R2>
-  ): <R, A>(self: Stream<A, E, R>) => Stream<A, E | E2, R2 | R>
-  <R, A, E, R2, E2, _>(
+  <E, X, E2, R2>(
+    f: (cause: Cause.Cause<NoInfer<E>>) => Effect.Effect<X, E2, R2>
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A, E | E2, R2 | R>
+  <A, E, R, X, E2, R2>(
     self: Stream<A, E, R>,
-    f: (cause: Cause.Cause<E>) => Effect.Effect<_, E2, R2>
+    f: (cause: Cause.Cause<E>) => Effect.Effect<X, E2, R2>
   ): Stream<A, E | E2, R | R2>
 } = internal.tapErrorCause
 

@@ -1016,12 +1016,12 @@ const bufferSignal = <A, E, R>(
 export const catchAll = dual<
   <E, A2, E2, R2>(
     f: (error: E) => Stream.Stream<A2, E2, R2>
-  ) => <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2 | A, E2, R2 | R>,
-  <R, A, E, A2, E2, R2>(
+  ) => <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2 | A, E2, R2 | R>,
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     f: (error: E) => Stream.Stream<A2, E2, R2>
   ) => Stream.Stream<A2 | A, E2, R2 | R>
->(2, <R, A, E, A2, E2, R2>(
+>(2, <A, E, R, A2, E2, R2>(
   self: Stream.Stream<A, E, R>,
   f: (error: E) => Stream.Stream<A2, E2, R2>
 ): Stream.Stream<A2 | A, E2, R2 | R> =>
@@ -1035,14 +1035,14 @@ export const catchAll = dual<
 export const catchAllCause = dual<
   <E, A2, E2, R2>(
     f: (cause: Cause.Cause<E>) => Stream.Stream<A2, E2, R2>
-  ) => <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2 | A, E2, R2 | R>,
-  <R, A, E, A2, E2, R2>(
+  ) => <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2 | A, E2, R2 | R>,
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     f: (cause: Cause.Cause<E>) => Stream.Stream<A2, E2, R2>
   ) => Stream.Stream<A2 | A, E2, R2 | R>
 >(
   2,
-  <R, A, E, A2, E2, R2>(
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     f: (cause: Cause.Cause<E>) => Stream.Stream<A2, E2, R2>
   ): Stream.Stream<A | A2, E2, R | R2> =>
@@ -1053,14 +1053,14 @@ export const catchAllCause = dual<
 export const catchSome = dual<
   <E, A2, E2, R2>(
     pf: (error: E) => Option.Option<Stream.Stream<A2, E2, R2>>
-  ) => <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2 | A, E | E2, R2 | R>,
-  <R, A, E, A2, E2, R2>(
+  ) => <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2 | A, E | E2, R2 | R>,
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     pf: (error: E) => Option.Option<Stream.Stream<A2, E2, R2>>
   ) => Stream.Stream<A2 | A, E | E2, R2 | R>
 >(
   2,
-  <R, A, E, A2, E2, R2>(
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     pf: (error: E) => Option.Option<Stream.Stream<A2, E2, R2>>
   ): Stream.Stream<A2 | A, E | E2, R2 | R> =>
@@ -1071,14 +1071,14 @@ export const catchSome = dual<
 export const catchSomeCause = dual<
   <E, A2, E2, R2>(
     pf: (cause: Cause.Cause<E>) => Option.Option<Stream.Stream<A2, E2, R2>>
-  ) => <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2 | A, E | E2, R2 | R>,
-  <R, A, E, A2, E2, R2>(
+  ) => <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2 | A, E | E2, R2 | R>,
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     pf: (cause: Cause.Cause<E>) => Option.Option<Stream.Stream<A2, E2, R2>>
   ) => Stream.Stream<A2 | A, E | E2, R2 | R>
 >(
   2,
-  <R, A, E, A2, E2, R2>(
+  <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     pf: (cause: Cause.Cause<E>) => Option.Option<Stream.Stream<A2, E2, R2>>
   ): Stream.Stream<A2 | A, E | E2, R2 | R> =>
@@ -1113,7 +1113,7 @@ export const catchTags: {
     }
   >(
     cases: Cases
-  ): <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<
+  ): <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<
     | A
     | {
       [K in keyof Cases]: Cases[K] extends
@@ -1134,9 +1134,9 @@ export const catchTags: {
     }[keyof Cases]
   >
   <
-    R,
-    E extends { _tag: string },
     A,
+    E extends { _tag: string },
+    R,
     Cases extends {
       [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Stream.Stream<any, any, any>
     }
@@ -4009,18 +4009,18 @@ export const never: Stream.Stream<never> = fromEffect(Effect.never)
 
 /** @internal */
 export const onError = dual<
-  <E, R2, _>(
-    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<_, never, R2>
-  ) => <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R2 | R>,
-  <R, A, E, R2, _>(
+  <E, X, R2>(
+    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
+  ) => <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R2 | R>,
+  <A, E, R, X, R2>(
     self: Stream.Stream<A, E, R>,
-    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<_, never, R2>
+    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
   ) => Stream.Stream<A, E, R2 | R>
 >(
   2,
-  <R, A, E, R2, _>(
+  <A, E, R, X, R2>(
     self: Stream.Stream<A, E, R>,
-    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<_, never, R2>
+    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
   ): Stream.Stream<A, E, R | R2> =>
     pipe(self, catchAllCause((cause) => fromEffect(pipe(cleanup(cause), Effect.zipRight(Effect.failCause(cause))))))
 )
@@ -4768,11 +4768,11 @@ class StreamRechunker<out A, in out E> {
 
 /** @internal */
 export const refineOrDie = dual<
-  <E, E2>(pf: (error: E) => Option.Option<E2>) => <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2, R>,
-  <R, A, E, E2>(self: Stream.Stream<A, E, R>, pf: (error: E) => Option.Option<E2>) => Stream.Stream<A, E2, R>
+  <E, E2>(pf: (error: E) => Option.Option<E2>) => <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2, R>,
+  <A, E, R, E2>(self: Stream.Stream<A, E, R>, pf: (error: E) => Option.Option<E2>) => Stream.Stream<A, E2, R>
 >(
   2,
-  <R, A, E, E2>(self: Stream.Stream<A, E, R>, pf: (error: E) => Option.Option<E2>): Stream.Stream<A, E2, R> =>
+  <A, E, R, E2>(self: Stream.Stream<A, E, R>, pf: (error: E) => Option.Option<E2>): Stream.Stream<A, E2, R> =>
     pipe(self, refineOrDieWith(pf, identity))
 )
 
@@ -4781,15 +4781,15 @@ export const refineOrDieWith = dual<
   <E, E2>(
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
-  ) => <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2, R>,
-  <R, A, E, E2>(
+  ) => <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2, R>,
+  <A, E, R, E2>(
     self: Stream.Stream<A, E, R>,
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
   ) => Stream.Stream<A, E2, R>
 >(
   3,
-  <R, A, E, E2>(
+  <A, E, R, E2>(
     self: Stream.Stream<A, E, R>,
     pf: (error: E) => Option.Option<E2>,
     f: (error: E) => unknown
@@ -6147,18 +6147,18 @@ export const tapError: {
 
 /** @internal */
 export const tapErrorCause: {
-  <E, R2, E2, _>(
-    f: (cause: Cause.Cause<NoInfer<E>>) => Effect.Effect<_, E2, R2>
-  ): <R, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E | E2, R2 | R>
-  <R, A, E, R2, E2, _>(
+  <E, X, E2, R2>(
+    f: (cause: Cause.Cause<NoInfer<E>>) => Effect.Effect<X, E2, R2>
+  ): <A, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E | E2, R2 | R>
+  <A, E, R, X, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    f: (cause: Cause.Cause<E>) => Effect.Effect<_, E2, R2>
+    f: (cause: Cause.Cause<E>) => Effect.Effect<X, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2>
 } = dual(
   2,
-  <R, A, E, R2, E2, _>(
+  <A, E, R, X, E2, R2>(
     self: Stream.Stream<A, E, R>,
-    f: (cause: Cause.Cause<E>) => Effect.Effect<_, E2, R2>
+    f: (cause: Cause.Cause<E>) => Effect.Effect<X, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2> => {
     const loop: Channel.Channel<Chunk.Chunk<A>, Chunk.Chunk<A>, E | E2, E, unknown, unknown, R | R2> = core
       .readWithCause({

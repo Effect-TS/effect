@@ -312,8 +312,8 @@ export const attempt: <A>(evaluate: LazyArg<A>) => STM<A, unknown> = stm.attempt
  * @category error handling
  */
 export const catchAll: {
-  <E, R1, E1, B>(f: (e: E) => STM<B, E1, R1>): <R, A>(self: STM<A, E, R>) => STM<B | A, E1, R1 | R>
-  <R, A, E, R1, E1, B>(self: STM<A, E, R>, f: (e: E) => STM<B, E1, R1>): STM<A | B, E1, R | R1>
+  <E, B, E1, R1>(f: (e: E) => STM<B, E1, R1>): <A, R>(self: STM<A, E, R>) => STM<B | A, E1, R1 | R>
+  <A, E, R, B, E1, R1>(self: STM<A, E, R>, f: (e: E) => STM<B, E1, R1>): STM<A | B, E1, R | R1>
 } = core.catchAll
 
 /**
@@ -323,12 +323,10 @@ export const catchAll: {
  * @category error handling
  */
 export const catchSome: {
-  <E, R2, E2, A2>(
+  <E, A2, E2, R2>(
     pf: (error: E) => Option.Option<STM<A2, E2, R2>>
-  ): <R, A>(
-    self: STM<A, E, R>
-  ) => STM<A2 | A, E | E2, R2 | R>
-  <R, A, E, R2, E2, A2>(
+  ): <A, R>(self: STM<A, E, R>) => STM<A2 | A, E | E2, R2 | R>
+  <A, E, R, A2, E2, R2>(
     self: STM<A, E, R>,
     pf: (error: E) => Option.Option<STM<A2, E2, R2>>
   ): STM<A | A2, E | E2, R | R2>
@@ -364,7 +362,7 @@ export const catchTags: {
     Cases extends { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => STM<any, any, any>) }
   >(
     cases: Cases
-  ): <R, A>(
+  ): <A, R>(
     self: STM<A, E, R>
   ) => STM<
     | A
@@ -1277,8 +1275,8 @@ export const mapBoth: {
  * @category mapping
  */
 export const mapError: {
-  <E, E2>(f: (error: E) => E2): <R, A>(self: STM<A, E, R>) => STM<A, E2, R>
-  <R, A, E, E2>(self: STM<A, E, R>, f: (error: E) => E2): STM<A, E2, R>
+  <E, E2>(f: (error: E) => E2): <A, R>(self: STM<A, E, R>) => STM<A, E2, R>
+  <A, E, R, E2>(self: STM<A, E, R>, f: (error: E) => E2): STM<A, E2, R>
 } = stm.mapError
 
 /**
@@ -1553,8 +1551,8 @@ export const reduceRight: {
  * @category mutations
  */
 export const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, A>(self: STM<A, E, R>) => STM<A, E2, R>
-  <R, A, E, E2>(self: STM<A, E, R>, pf: (error: E) => Option.Option<E2>): STM<A, E2, R>
+  <E, E2>(pf: (error: E) => Option.Option<E2>): <A, R>(self: STM<A, E, R>) => STM<A, E2, R>
+  <A, E, R, E2>(self: STM<A, E, R>, pf: (error: E) => Option.Option<E2>): STM<A, E2, R>
 } = stm.refineOrDie
 
 /**
@@ -1565,8 +1563,8 @@ export const refineOrDie: {
  * @category mutations
  */
 export const refineOrDieWith: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): <R, A>(self: STM<A, E, R>) => STM<A, E2, R>
-  <R, A, E, E2>(self: STM<A, E, R>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): STM<A, E2, R>
+  <E, E2>(pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): <A, R>(self: STM<A, E, R>) => STM<A, E2, R>
+  <A, E, R, E2>(self: STM<A, E, R>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): STM<A, E2, R>
 } = stm.refineOrDieWith
 
 /**
@@ -1809,8 +1807,8 @@ export const tapBoth: {
  * @category sequencing
  */
 export const tapError: {
-  <E, R2, E2, _>(f: (error: NoInfer<E>) => STM<_, E2, R2>): <R, A>(self: STM<A, E, R>) => STM<A, E | E2, R2 | R>
-  <R, A, E, R2, E2, _>(self: STM<A, E, R>, f: (error: E) => STM<_, E2, R2>): STM<A, E | E2, R | R2>
+  <E, X, E2, R2>(f: (error: NoInfer<E>) => STM<X, E2, R2>): <A, R>(self: STM<A, E, R>) => STM<A, E | E2, R2 | R>
+  <A, E, R, X, E2, R2>(self: STM<A, E, R>, f: (error: E) => STM<X, E2, R2>): STM<A, E | E2, R | R2>
 } = stm.tapError
 
 const try_: {
@@ -1820,6 +1818,7 @@ const try_: {
   }): STM<A, E>
   <A>(try_: LazyArg<A>): STM<A, unknown>
 } = stm.try_
+
 export {
   /**
    * Imports a synchronous side-effect into a pure value, translating any thrown

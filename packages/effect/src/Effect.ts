@@ -2640,7 +2640,7 @@ export const forkScoped: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.Runtim
 export const forkWithErrorHandler: {
   <E, X>(
     handler: (e: E) => Effect<X>
-  ): <R, A>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R>
+  ): <A, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R>
   <A, E, R, X>(
     self: Effect<A, E, R>,
     handler: (e: E) => Effect<X>
