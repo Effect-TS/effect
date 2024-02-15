@@ -341,11 +341,11 @@ export const catchSome: {
  * @category error handling
  */
 export const catchTag: {
-  <K extends E["_tag"] & string, E extends { _tag: string }, R1, E1, A1>(
+  <K extends E["_tag"] & string, E extends { _tag: string }, A1, E1, R1>(
     k: K,
     f: (e: Extract<E, { _tag: K }>) => STM<A1, E1, R1>
-  ): <R, A>(self: STM<A, E, R>) => STM<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
-  <R, E extends { _tag: string }, A, K extends E["_tag"] & string, R1, E1, A1>(
+  ): <A, R>(self: STM<A, E, R>) => STM<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
+  <A, E extends { _tag: string }, R, K extends E["_tag"] & string, A1, E1, R1>(
     self: STM<A, E, R>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => STM<A1, E1, R1>
@@ -1095,26 +1095,23 @@ export const gen: <Eff extends STMGen<any, any, any>, AEff>(
 export const head: <A, E, R>(self: STM<Iterable<A>, E, R>) => STM<A, Option.Option<E>, R> = stm.head
 
 const if_: {
-  <R1, R2, E1, E2, A, A1>(
-    options: {
-      readonly onTrue: STM<A, E1, R1>
-      readonly onFalse: STM<A1, E2, R2>
-    }
-  ): <R = never, E = never>(self: boolean | STM<boolean, E, R>) => STM<A | A1, E1 | E2 | E, R1 | R2 | R>
-  <R, E, R1, R2, E1, E2, A, A1>(
+  <A, E1, R1, A2, E2, R2>(options: {
+    readonly onTrue: STM<A, E1, R1>
+    readonly onFalse: STM<A2, E2, R2> /**
+     * Flattens out a nested `STM` effect.
+     *
+     * @since 2.0.0
+     * @category sequencing
+     */
+  }): <E = never, R = never>(self: boolean | STM<boolean, E, R>) => STM<A | A2, E1 | E2 | E, R1 | R2 | R>
+  <A, E1, R1, A2, E2, R2, E = never, R = never>(
     self: boolean,
-    options: {
-      readonly onTrue: STM<A, E1, R1>
-      readonly onFalse: STM<A1, E2, R2>
-    }
-  ): STM<A | A1, E | E1 | E2, R | R1 | R2>
-  <R, E, R1, R2, E1, E2, A, A1>(
+    options: { readonly onTrue: STM<A, E1, R1>; readonly onFalse: STM<A2, E2, R2> }
+  ): STM<A | A2, E1 | E2 | E, R1 | R2 | R>
+  <E, R, A, E1, R1, A2, E2, R2>(
     self: STM<boolean, E, R>,
-    options: {
-      readonly onTrue: STM<A, E1, R1>
-      readonly onFalse: STM<A1, E2, R2>
-    }
-  ): STM<A | A1, E | E1 | E2, R | R1 | R2>
+    options: { readonly onTrue: STM<A, E1, R1>; readonly onFalse: STM<A2, E2, R2> }
+  ): STM<A | A2, E | E1 | E2, R | R1 | R2>
 } = stm.if_
 
 export {
@@ -1184,7 +1181,7 @@ export const isSuccess: <A, E, R>(self: STM<A, E, R>) => STM<boolean, never, R> 
  * @since 2.0.0
  * @category constructors
  */
-export const iterate: <R, E, Z>(
+export const iterate: <Z, E, R>(
   initial: Z,
   options: {
     readonly while: Predicate<Z>
@@ -1265,17 +1262,11 @@ export const mapAttempt: {
  */
 export const mapBoth: {
   <E, E2, A, A2>(
-    options: {
-      readonly onFailure: (error: E) => E2
-      readonly onSuccess: (value: A) => A2
-    }
+    options: { readonly onFailure: (error: E) => E2; readonly onSuccess: (value: A) => A2 }
   ): <R>(self: STM<A, E, R>) => STM<A2, E2, R>
-  <R, E, E2, A, A2>(
+  <A, E, R, E2, A2>(
     self: STM<A, E, R>,
-    options: {
-      readonly onFailure: (error: E) => E2
-      readonly onSuccess: (value: A) => A2
-    }
+    options: { readonly onFailure: (error: E) => E2; readonly onSuccess: (value: A) => A2 }
   ): STM<A2, E2, R>
 } = stm.mapBoth
 
@@ -1802,18 +1793,12 @@ export const tap: {
  * @category sequencing
  */
 export const tapBoth: {
-  <E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
-    options: {
-      readonly onFailure: (error: XE) => STM<A2, E2, R2>
-      readonly onSuccess: (value: XA) => STM<A3, E3, R3>
-    }
+  <XE extends E, A2, E2, R2, XA extends A, A3, E3, R3, A, E>(
+    options: { readonly onFailure: (error: XE) => STM<A2, E2, R2>; readonly onSuccess: (value: XA) => STM<A3, E3, R3> }
   ): <R>(self: STM<A, E, R>) => STM<A, E | E2 | E3, R2 | R3 | R>
-  <R, E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
+  <A, E, R, XE extends E, A2, E2, R2, XA extends A, A3, E3, R3>(
     self: STM<A, E, R>,
-    options: {
-      readonly onFailure: (error: XE) => STM<A2, E2, R2>
-      readonly onSuccess: (value: XA) => STM<A3, E3, R3>
-    }
+    options: { readonly onFailure: (error: XE) => STM<A2, E2, R2>; readonly onSuccess: (value: XA) => STM<A3, E3, R3> }
   ): STM<A, E | E2 | E3, R | R2 | R3>
 } = stm.tapBoth
 

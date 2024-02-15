@@ -308,8 +308,7 @@ export const collectAllWhileWith: {
   }
 )
 
-/** @internal */
-const collectAllWhileWithLoop = <R, E, In, L extends In, Z, S>(
+const collectAllWhileWithLoop = <Z, In, L extends In, E, R, S>(
   self: Sink.Sink<Z, In, L, E, R>,
   leftoversRef: Ref.Ref<Chunk.Chunk<In>>,
   upstreamDoneRef: Ref.Ref<boolean>,
@@ -474,12 +473,12 @@ export const dimap = dual<
 
 /** @internal */
 export const dimapEffect = dual<
-  <In0, R2, E2, In, A, R3, E3, A2>(
+  <In0, In, E2, R2, A, A2, E3, R3>(
     options: {
       readonly onInput: (input: In0) => Effect.Effect<In, E2, R2>
       readonly onDone: (a: A) => Effect.Effect<A2, E3, R3>
     }
-  ) => <R, E, L>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>,
+  ) => <L, E, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>,
   <A, In, L, E, R, In0, E2, R2, A2, E3, R3>(
     self: Sink.Sink<A, In, L, E, R>,
     options: {
@@ -527,7 +526,7 @@ export const dimapChunksEffect = dual<
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
       readonly onDone: (a: A) => Effect.Effect<A2, E3, R3>
     }
-  ) => <R, E, L>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>,
+  ) => <L, E, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>,
   <A, In, L, E, R, In0, E2, R2, A2, E3, R3>(
     self: Sink.Sink<A, In, L, E, R>,
     options: {
@@ -1442,7 +1441,7 @@ export const fromPush = <In, L0, R0, L, R>(
 ): Sink.Sink<R0, In, L, L0, Exclude<R, Scope.Scope>> =>
   new SinkImpl(channel.unwrapScoped(pipe(push, Effect.map(fromPushPull))))
 
-const fromPushPull = <R, E, In, L, Z>(
+const fromPushPull = <In, Z, E, L, R>(
   push: (
     option: Option.Option<Chunk.Chunk<In>>
   ) => Effect.Effect<void, readonly [Either.Either<Z, E>, Chunk.Chunk<L>], R>
@@ -1590,7 +1589,7 @@ export const provideContext = dual<
 export const race = dual<
   <R1, E1, In1, L1, A1>(
     that: Sink.Sink<A1, In1, L1, E1, R1>
-  ) => <R, E, In, L, A>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A1 | A, In & In1, L1 | L, E1 | E, R1 | R>,
+  ) => <A, In, L, E, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A1 | A, In & In1, L1 | L, E1 | E, R1 | R>,
   <A, In, L, E, R, A1, In1, L1, E1, R1>(
     self: Sink.Sink<A, In, L, E, R>,
     that: Sink.Sink<A1, In1, L1, E1, R1>
@@ -1907,7 +1906,7 @@ export const take = <In>(n: number): Sink.Sink<Chunk.Chunk<In>, In, In> =>
   )
 
 /** @internal */
-export const toChannel = <R, E, In, L, A>(
+export const toChannel = <A, In, L, E, R>(
   self: Sink.Sink<A, In, L, E, R>
 ): Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, A, unknown, R> =>
   Effect.isEffect(self) ?

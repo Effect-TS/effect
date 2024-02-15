@@ -378,12 +378,12 @@ export const dimap: {
  * @category mapping
  */
 export const dimapEffect: {
-  <In0, R2, E2, In, A, R3, E3, A2>(
+  <In0, In, E2, R2, A, A2, E3, R3>(
     options: {
       readonly onInput: (input: In0) => Effect.Effect<In, E2, R2>
       readonly onDone: (a: A) => Effect.Effect<A2, E3, R3>
     }
-  ): <R, E, L>(self: Sink<A, In, L, E, R>) => Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>
+  ): <L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>
   <A, In, L, E, R, In0, E2, R2, A2, E3, R3>(
     self: Sink<A, In, L, E, R>,
     options: {
@@ -423,7 +423,7 @@ export const dimapChunksEffect: {
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
       readonly onDone: (a: A) => Effect.Effect<A2, E3, R3>
     }
-  ): <R, E, L>(self: Sink<A, In, L, E, R>) => Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>
+  ): <L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>
   <A, In, L, E, R, In0, E2, R2, A2, E3, R3>(
     self: Sink<A, In, L, E, R>,
     options: {
@@ -1171,7 +1171,7 @@ export const provideContext: {
 export const race: {
   <R1, E1, In1, L1, A1>(
     that: Sink<A1, In1, L1, E1, R1>
-  ): <R, E, In, L, A>(self: Sink<A, In, L, E, R>) => Sink<A1 | A, In & In1, L1 | L, E1 | E, R1 | R>
+  ): <A, In, L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A1 | A, In & In1, L1 | L, E1 | E, R1 | R>
   <A, In, L, E, R, A1, In1, L1, E1, R1>(
     self: Sink<A, In, L, E, R>,
     that: Sink<A1, In1, L1, E1, R1>

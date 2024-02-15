@@ -86,7 +86,7 @@ export const Emit = (): ChannelState<never, never> => {
 }
 
 /** @internal */
-export const FromEffect = <R, E, _>(effect: Effect.Effect<_, E, R>): ChannelState<E, R> => {
+export const fromEffect = <X, E, R>(effect: Effect.Effect<X, E, R>): ChannelState<E, R> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_FROM_EFFECT
   op.effect = effect

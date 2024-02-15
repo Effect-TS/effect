@@ -153,7 +153,7 @@ export class ChannelExecutor<
                           }
                         })) as Effect.Effect<unknown, never, Env>
 
-                    result = ChannelState.FromEffect(
+                    result = ChannelState.fromEffect(
                       Effect.flatMap(
                         Effect.forkDaemon(drainer()),
                         (fiber) =>
@@ -246,7 +246,7 @@ export class ChannelExecutor<
                       Effect.provide(this._providedEnv)
                     )
 
-                  result = ChannelState.FromEffect(
+                  result = ChannelState.fromEffect(
                     Effect.matchCauseEffect(effect, {
                       onFailure: (cause) => {
                         const state = this.doneHalt(cause)
@@ -491,7 +491,7 @@ export class ChannelExecutor<
       Effect.flatMap(() => Effect.sync(() => this.doneSucceed(value)))
     )
 
-    return ChannelState.FromEffect(effect)
+    return ChannelState.fromEffect(effect)
   }
 
   doneHalt(cause: Cause.Cause<unknown>): ChannelState.ChannelState<unknown, Env> | undefined {
@@ -526,7 +526,7 @@ export class ChannelExecutor<
       Effect.flatMap(() => Effect.sync(() => this.doneHalt(cause)))
     )
 
-    return ChannelState.FromEffect(effect)
+    return ChannelState.fromEffect(effect)
   }
 
   processCancellation(): ChannelState.ChannelState<unknown, Env> {
@@ -552,7 +552,7 @@ export class ChannelExecutor<
           })
       })
     )
-    return ChannelState.FromEffect(effect) as ChannelState.ChannelState<unknown, Env>;
+    return ChannelState.fromEffect(effect) as ChannelState.ChannelState<unknown, Env>
   }
 
   provide(effect: Effect.Effect<unknown, unknown, unknown>): Effect.Effect<unknown, unknown, unknown> {
@@ -924,9 +924,9 @@ export class ChannelExecutor<
         return state === undefined ?
           undefined :
           // NOTE: assuming finalizers cannot fail
-          ChannelState.effectOrUndefinedIgnored(state as ChannelState.ChannelState<never, Env>);
+          ChannelState.effectOrUndefinedIgnored(state as ChannelState.ChannelState<never, Env>)
       }
-    );
+    )
   }
 
   drainChildExecutors(
@@ -1015,7 +1015,7 @@ const runFinalizers = <Env>(
 /**
  * @internal
  */
-export const readUpstream = <R, E, E2, A>(
+export const readUpstream = <A, E2, R, E>(
   r: ChannelState.Read,
   onSuccess: () => Effect.Effect<A, E2, R>,
   onFailure: (cause: Cause.Cause<E>) => Effect.Effect<A, E2, R>
@@ -1163,14 +1163,14 @@ const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
       return pipe(
         op.effect as Effect.Effect<OutDone, OutErr, Env>,
         Effect.flatMap(() => runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec))
-      );
+      )
     }
     case ChannelStateOpCodes.OP_EMIT: {
       // Can't really happen because Out <:< Nothing. So just skip ahead.
       return runScopedInterpret<Env, InErr, InDone, OutErr, OutDone>(
         exec.run() as ChannelState.ChannelState<OutErr, Env>,
         exec
-      );
+      )
     }
     case ChannelStateOpCodes.OP_DONE: {
       return Effect.suspend(() => exec.getDone())
@@ -1180,7 +1180,7 @@ const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
         op,
         () => runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec),
         Effect.failCause
-      ) as Effect.Effect<OutDone, OutErr, Env>;
+      ) as Effect.Effect<OutDone, OutErr, Env>
     }
   }
 }

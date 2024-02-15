@@ -186,8 +186,8 @@ export const replace: {
  * @category context
  */
 export const replaceEffect: {
-  <R, E, B>(that: Effect<Logger<unknown, B>, E, R>): <A>(self: Logger<unknown, A>) => Layer.Layer<never, E, R>
-  <A, R, E, B>(self: Logger<unknown, A>, that: Effect<Logger<unknown, B>, E, R>): Layer.Layer<never, E, R>
+  <B, E, R>(that: Effect<Logger<unknown, B>, E, R>): <A>(self: Logger<unknown, A>) => Layer.Layer<never, E, R>
+  <A, B, E, R>(self: Logger<unknown, A>, that: Effect<Logger<unknown, B>, E, R>): Layer.Layer<never, E, R>
 } = circular.replaceLoggerEffect
 
 /**
@@ -195,10 +195,10 @@ export const replaceEffect: {
  * @category context
  */
 export const replaceScoped: {
-  <R, E, B>(
+  <B, E, R>(
     that: Effect<Logger<unknown, B>, E, R>
   ): <A>(self: Logger<unknown, A>) => Layer.Layer<never, E, Exclude<R, Scope>>
-  <A, R, E, B>(
+  <A, B, E, R>(
     self: Logger<unknown, A>,
     that: Effect<Logger<unknown, B>, E, R>
   ): Layer.Layer<never, E, Exclude<R, Scope>>

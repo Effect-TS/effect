@@ -2021,21 +2021,21 @@ export const mapInputContext = dual<
 
 /** @internal */
 export const provideSomeLayer = dual<
-  <Env2, OutErr2, Env0>(
-    layer: Layer.Layer<Env2, OutErr2, Env0>
+  <R2, OutErr2, Env0>(
+    layer: Layer.Layer<R2, OutErr2, Env0>
   ) => <OutElem, InElem, OutErr, InErr, OutDone, InDone, R>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, R>
-  ) => Channel.Channel<OutElem, InElem, OutErr2 | OutErr, InErr, OutDone, InDone, Env0 | Exclude<R, Env2>>,
-  <OutElem, InElem, OutErr, InErr, OutDone, InDone, R, Env2, OutErr2, Env0>(
+  ) => Channel.Channel<OutElem, InElem, OutErr2 | OutErr, InErr, OutDone, InDone, Env0 | Exclude<R, R2>>,
+  <OutElem, InElem, OutErr, InErr, OutDone, InDone, R, R2, OutErr2, Env0>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, R>,
-    layer: Layer.Layer<Env2, OutErr2, Env0>
-  ) => Channel.Channel<OutElem, InElem, OutErr2 | OutErr, InErr, OutDone, InDone, Env0 | Exclude<R, Env2>>
->(2, <OutElem, InElem, OutErr, InErr, OutDone, InDone, R, Env2, OutErr2, Env0>(
+    layer: Layer.Layer<R2, OutErr2, Env0>
+  ) => Channel.Channel<OutElem, InElem, OutErr2 | OutErr, InErr, OutDone, InDone, Env0 | Exclude<R, R2>>
+>(2, <OutElem, InElem, OutErr, InErr, OutDone, InDone, R, R2, OutErr2, Env0>(
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, R>,
-  layer: Layer.Layer<Env2, OutErr2, Env0>
-): Channel.Channel<OutElem, InElem, OutErr | OutErr2, InErr, OutDone, InDone, Env0 | Exclude<R, Env2>> =>
+  layer: Layer.Layer<R2, OutErr2, Env0>
+): Channel.Channel<OutElem, InElem, OutErr | OutErr2, InErr, OutDone, InDone, Env0 | Exclude<R, R2>> =>
   // @ts-expect-error
-  provideLayer(self, Layer.merge(Layer.context<Exclude<R, Env2>>(), layer)))
+  provideLayer(self, Layer.merge(Layer.context<Exclude<R, R2>>(), layer)))
 
 /** @internal */
 export const read = <In>(): Channel.Channel<never, In, Option.Option<never>, unknown, In, unknown> =>

@@ -503,11 +503,11 @@ export const catchSome: {
  * @category error handling
  */
 export const catchTag: {
-  <K extends E["_tag"] & string, E extends { _tag: string }, R1, E1, A1>(
+  <K extends E["_tag"] & string, E extends { _tag: string }, A1, E1, R1>(
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Stream<A1, E1, R1>
-  ): <R, A>(self: Stream<A, E, R>) => Stream<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
-  <R, E extends { _tag: string }, A, K extends E["_tag"] & string, R1, E1, A1>(
+  ): <A, R>(self: Stream<A, E, R>) => Stream<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
+  <A, E extends { _tag: string }, R, K extends E["_tag"] & string, A1, E1, R1>(
     self: Stream<A, E, R>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Stream<A1, E1, R1>
@@ -1106,7 +1106,7 @@ export const contextWithStream: <R0, A, E, R>(
  * @since 2.0.0
  * @category constructors
  */
-export const execute: <R, E, _>(effect: Effect.Effect<_, E, R>) => Stream<never, E, R> = internal.execute
+export const execute: <X, E, R>(effect: Effect.Effect<X, E, R>) => Stream<never, E, R> = internal.execute
 
 /**
  * Terminates with the specified error.
@@ -1331,13 +1331,13 @@ export const flattenEffect: {
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly unordered?: boolean | undefined }
       | undefined
-  ): <R, E, R2, E2, A>(self: Stream<Effect.Effect<A, E2, R2>, E, R>) => Stream<A, E | E2, R | R2>
-  <R, E, R2, E2, A>(
+  ): <A, E2, R2, E, R>(self: Stream<Effect.Effect<A, E2, R2>, E, R>) => Stream<A, E2 | E, R2 | R>
+  <A, E2, R2, E, R>(
     self: Stream<Effect.Effect<A, E2, R2>, E, R>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly unordered?: boolean | undefined }
       | undefined
-  ): Stream<A, E | E2, R | R2>
+  ): Stream<A, E2 | E, R2 | R>
 } = internal.flattenEffect
 
 /**
@@ -1372,7 +1372,7 @@ export const flattenIterables: <A, E, R>(self: Stream<Iterable<A>, E, R>) => Str
  * @since 2.0.0
  * @category sequencing
  */
-export const flattenTake: <R, E, E2, A>(self: Stream<Take.Take<A, E2>, E, R>) => Stream<A, E | E2, R> =
+export const flattenTake: <A, E2, E, R>(self: Stream<Take.Take<A, E2>, E, R>) => Stream<A, E | E2, R> =
   internal.flattenTake
 
 /**
@@ -1906,7 +1906,7 @@ export const map: {
  */
 export const mapAccum: {
   <S, A, A2>(s: S, f: (s: S, a: A) => readonly [S, A2]): <E, R>(self: Stream<A, E, R>) => Stream<A2, E, R>
-  <R, E, S, A, A2>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => readonly [S, A2]): Stream<A2, E, R>
+  <A, E, R, S, A2>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => readonly [S, A2]): Stream<A2, E, R>
 } = internal.mapAccum
 
 /**
@@ -1939,7 +1939,7 @@ export const mapBoth: {
   <E, E2, A, A2>(
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
   ): <R>(self: Stream<A, E, R>) => Stream<A2, E2, R>
-  <R, E, E2, A, A2>(
+  <A, E, R, E2, A2>(
     self: Stream<A, E, R>,
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
   ): Stream<A2, E2, R>
@@ -2910,7 +2910,7 @@ export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E
  */
 export const runFold: {
   <S, A>(s: S, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, R>
-  <R, E, S, A>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, R>
+  <A, E, R, S>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, R>
 } = internal.runFold
 
 /**
@@ -2920,11 +2920,11 @@ export const runFold: {
  * @category destructors
  */
 export const runFoldEffect: {
-  <S, A, R2, E2>(
+  <S, A, E2, R2>(
     s: S,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
   ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E2 | E, R2 | R>
-  <R, E, S, A, R2, E2>(
+  <A, E, R, S, E2, R2>(
     self: Stream<A, E, R>,
     s: S,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
@@ -2940,7 +2940,7 @@ export const runFoldEffect: {
  */
 export const runFoldScoped: {
   <S, A>(s: S, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Scope.Scope | R>
-  <R, E, S, A>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, Scope.Scope | R>
+  <A, E, R, S>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, Scope.Scope | R>
 } = internal.runFoldScoped
 
 /**
@@ -3929,7 +3929,7 @@ export const unit: Stream<void> = internal.unit
  * @since 2.0.0
  * @category constructors
  */
-export const unwrap: <R, E, R2, E2, A>(effect: Effect.Effect<Stream<A, E2, R2>, E, R>) => Stream<A, E | E2, R | R2> =
+export const unwrap: <A, E2, R2, E, R>(effect: Effect.Effect<Stream<A, E2, R2>, E, R>) => Stream<A, E | E2, R | R2> =
   internal.unwrap
 
 /**
@@ -3938,7 +3938,7 @@ export const unwrap: <R, E, R2, E2, A>(effect: Effect.Effect<Stream<A, E2, R2>, 
  * @since 2.0.0
  * @category constructors
  */
-export const unwrapScoped: <R, E, R2, E2, A>(
+export const unwrapScoped: <A, E2, R2, E, R>(
   effect: Effect.Effect<Stream<A, E2, R2>, E, R>
 ) => Stream<A, E | E2, R2 | Exclude<R, Scope.Scope>> = internal.unwrapScoped
 
@@ -4090,7 +4090,7 @@ export const zipAll: {
   <A2, E2, R2, A>(
     options: { readonly other: Stream<A2, E2, R2>; readonly defaultSelf: A; readonly defaultOther: A2 }
   ): <E, R>(self: Stream<A, E, R>) => Stream<[A, A2], E2 | E, R2 | R>
-  <R, E, A2, E2, R2, A>(
+  <A, E, R, A2, E2, R2>(
     self: Stream<A, E, R>,
     options: { readonly other: Stream<A2, E2, R2>; readonly defaultSelf: A; readonly defaultOther: A2 }
   ): Stream<[A, A2], E | E2, R | R2>
@@ -4108,7 +4108,7 @@ export const zipAll: {
  */
 export const zipAllLeft: {
   <A2, E2, R2, A>(that: Stream<A2, E2, R2>, defaultLeft: A): <E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
-  <R, E, A2, E2, R2, A>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>, defaultLeft: A): Stream<A, E | E2, R | R2>
+  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>, defaultLeft: A): Stream<A, E | E2, R | R2>
 } = internal.zipAllLeft
 
 /**
@@ -4152,7 +4152,7 @@ export const zipAllSortedByKey: {
       readonly order: Order.Order<K>
     }
   ): <E, R>(self: Stream<readonly [K, A], E, R>) => Stream<[K, [A, A2]], E2 | E, R2 | R>
-  <R, E, A2, E2, R2, A, K>(
+  <K, A, E, R, A2, E2, R2>(
     self: Stream<readonly [K, A], E, R>,
     options: {
       readonly other: Stream<readonly [K, A2], E2, R2>
@@ -4184,7 +4184,7 @@ export const zipAllSortedByKeyLeft: {
       readonly order: Order.Order<K>
     }
   ): <E, R>(self: Stream<readonly [K, A], E, R>) => Stream<[K, A], E2 | E, R2 | R>
-  <R, E, A2, E2, R2, A, K>(
+  <K, A, E, R, A2, E2, R2>(
     self: Stream<readonly [K, A], E, R>,
     options: {
       readonly other: Stream<readonly [K, A2], E2, R2>
@@ -4280,7 +4280,7 @@ export const zipAllWith: {
       readonly onBoth: (a: A, a2: A2) => A3
     }
   ): <E, R>(self: Stream<A, E, R>) => Stream<A3, E2 | E, R2 | R>
-  <R, E, A2, E2, R2, A, A3>(
+  <A, E, R, A2, E2, R2, A3>(
     self: Stream<A, E, R>,
     options: {
       readonly other: Stream<A2, E2, R2>
@@ -4398,7 +4398,7 @@ export const zipWithChunks: {
       right: Chunk.Chunk<A2>
     ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A2>, Chunk.Chunk<A>>]
   ): <E, R>(self: Stream<A, E, R>) => Stream<A3, E2 | E, R2 | R>
-  <R, E, A2, E2, R2, A, A3>(
+  <A, E, R, A2, E2, R2, A3>(
     self: Stream<A, E, R>,
     that: Stream<A2, E2, R2>,
     f: (

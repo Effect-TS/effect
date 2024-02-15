@@ -1072,7 +1072,7 @@ export const zipWith = dual<
   }))
 
 /** @internal */
-export const unwrapEffect = <R, E, R1, E1, A>(
+export const unwrapEffect = <A, E1, R1, E, R>(
   self: Effect.Effect<Layer.Layer<A, E1, R1>, E, R>
 ): Layer.Layer<A, E | E1, R | R1> => {
   const tag = Context.GenericTag<Layer.Layer<A, E1, R1>>("effect/Layer/unwrapEffect/Layer.Layer<R1, E1, A>")
@@ -1080,7 +1080,7 @@ export const unwrapEffect = <R, E, R1, E1, A>(
 }
 
 /** @internal */
-export const unwrapScoped = <R, E, R1, E1, A>(
+export const unwrapScoped = <A, E1, R1, E, R>(
   self: Effect.Effect<Layer.Layer<A, E1, R1>, E, R>
 ): Layer.Layer<A, E | E1, R1 | Exclude<R, Scope.Scope>> => {
   const tag = Context.GenericTag<Layer.Layer<A, E1, R1>>("effect/Layer/unwrapScoped/Layer.Layer<R1, E1, A>")

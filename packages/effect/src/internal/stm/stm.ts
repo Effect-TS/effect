@@ -197,12 +197,13 @@ export const catchSome = dual<
     (e): STM.STM<A | A2, E | E2, R | R2> => Option.getOrElse(pf(e), () => core.fail(e))
   ))
 
+/** @internal */
 export const catchTag = dual<
-  <K extends E["_tag"] & string, E extends { _tag: string }, R1, E1, A1>(
+  <K extends E["_tag"] & string, E extends { _tag: string }, A1, E1, R1>(
     k: K,
     f: (e: Extract<E, { _tag: K }>) => STM.STM<A1, E1, R1>
-  ) => <R, A>(self: STM.STM<A, E, R>) => STM.STM<A | A1, Exclude<E, { _tag: K }> | E1, R | R1>,
-  <R, E extends { _tag: string }, A, K extends E["_tag"] & string, R1, E1, A1>(
+  ) => <A, R>(self: STM.STM<A, E, R>) => STM.STM<A | A1, Exclude<E, { _tag: K }> | E1, R | R1>,
+  <A, E extends { _tag: string }, R, K extends E["_tag"] & string, A1, E1, R1>(
     self: STM.STM<A, E, R>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => STM.STM<A1, E1, R1>
@@ -669,44 +670,44 @@ export const head = <A, E, R>(self: STM.STM<Iterable<A>, E, R>): STM.STM<A, Opti
 
 /** @internal */
 export const if_ = dual<
-  <R1, R2, E1, E2, A, A1>(
+  <A, E1, R1, A2, E2, R2>(
     options: {
       readonly onTrue: STM.STM<A, E1, R1>
-      readonly onFalse: STM.STM<A1, E2, R2>
+      readonly onFalse: STM.STM<A2, E2, R2>
     }
-  ) => <R = never, E = never>(
+  ) => <E = never, R = never>(
     self: STM.STM<boolean, E, R> | boolean
-  ) => STM.STM<A | A1, E1 | E2 | E, R1 | R2 | R>,
+  ) => STM.STM<A | A2, E1 | E2 | E, R1 | R2 | R>,
   {
-    <R, E, R1, R2, E1, E2, A, A1>(
+    <A, E1, R1, A2, E2, R2, E = never, R = never>(
       self: boolean,
       options: {
         readonly onTrue: STM.STM<A, E1, R1>
-        readonly onFalse: STM.STM<A1, E2, R2>
+        readonly onFalse: STM.STM<A2, E2, R2>
       }
-    ): STM.STM<A | A1, E1 | E2 | E, R1 | R2 | R>
-    <R, E, R1, R2, E1, E2, A, A1>(
+    ): STM.STM<A | A2, E1 | E2 | E, R1 | R2 | R>
+    <E, R, A, E1, R1, A2, E2, R2>(
       self: STM.STM<boolean, E, R>,
       options: {
         readonly onTrue: STM.STM<A, E1, R1>
-        readonly onFalse: STM.STM<A1, E2, R2>
+        readonly onFalse: STM.STM<A2, E2, R2>
       }
-    ): STM.STM<A | A1, E1 | E2 | E, R1 | R2 | R>
+    ): STM.STM<A | A2, E1 | E2 | E, R1 | R2 | R>
   }
 >(
   (args) => typeof args[0] === "boolean" || core.isSTM(args[0]),
-  <R, E, R1, R2, E1, E2, A, A1>(
+  <E, R, A, E1, R1, A2, E2, R2>(
     self: STM.STM<boolean, E, R> | boolean,
     { onFalse, onTrue }: {
       readonly onTrue: STM.STM<A, E1, R1>
-      readonly onFalse: STM.STM<A1, E2, R2>
+      readonly onFalse: STM.STM<A2, E2, R2>
     }
   ) => {
     if (typeof self === "boolean") {
       return self ? onTrue : onFalse
     }
 
-    return core.flatMap(self, (bool): STM.STM<A | A1, E1 | E2 | E, R1 | R2 | R> => bool ? onTrue : onFalse)
+    return core.flatMap(self, (bool): STM.STM<A | A2, E1 | E2 | E, R1 | R2 | R> => bool ? onTrue : onFalse)
   }
 )
 
@@ -723,7 +724,7 @@ export const isSuccess = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<boolean, nev
   match(self, { onFailure: constFalse, onSuccess: constTrue })
 
 /** @internal */
-export const iterate = <R, E, Z>(
+export const iterate = <Z, E, R>(
   initial: Z,
   options: {
     readonly while: (z: Z) => boolean
@@ -731,7 +732,7 @@ export const iterate = <R, E, Z>(
   }
 ): STM.STM<Z, E, R> => iterateLoop(initial, options.while, options.body)
 
-const iterateLoop = <R, E, Z>(
+const iterateLoop = <Z, E, R>(
   initial: Z,
   cont: (z: Z) => boolean,
   body: (z: Z) => STM.STM<Z, E, R>
@@ -824,7 +825,7 @@ export const mapBoth = dual<
     readonly onFailure: (error: E) => E2
     readonly onSuccess: (value: A) => A2
   }) => <R>(self: STM.STM<A, E, R>) => STM.STM<A2, E2, R>,
-  <R, E, E2, A, A2>(self: STM.STM<A, E, R>, options: {
+  <A, E, R, E2, A2>(self: STM.STM<A, E, R>, options: {
     readonly onFailure: (error: E) => E2
     readonly onSuccess: (value: A) => A2
   }) => STM.STM<A2, E2, R>
@@ -1309,7 +1310,7 @@ export const tap: {
 
 /** @internal */
 export const tapBoth = dual<
-  <E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
+  <XE extends E, A2, E2, R2, XA extends A, A3, E3, R3, A, E>(
     options: {
       readonly onFailure: (error: XE) => STM.STM<A2, E2, R2>
       readonly onSuccess: (value: XA) => STM.STM<A3, E3, R3>
@@ -1317,7 +1318,7 @@ export const tapBoth = dual<
   ) => <R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<A, E | E2 | E3, R2 | R3 | R>,
-  <R, E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
+  <A, E, R, XE extends E, A2, E2, R2, XA extends A, A3, E3, R3>(
     self: STM.STM<A, E, R>,
     options: {
       readonly onFailure: (error: XE) => STM.STM<A2, E2, R2>

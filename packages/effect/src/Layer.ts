@@ -843,14 +843,14 @@ export const zipWith: {
  * @since 2.0.0
  * @category utils
  */
-export const unwrapEffect: <R, E, R1, E1, A>(self: Effect.Effect<Layer<A, E1, R1>, E, R>) => Layer<A, E | E1, R | R1> =
+export const unwrapEffect: <A, E1, R1, E, R>(self: Effect.Effect<Layer<A, E1, R1>, E, R>) => Layer<A, E | E1, R | R1> =
   internal.unwrapEffect
 
 /**
  * @since 2.0.0
  * @category utils
  */
-export const unwrapScoped: <R, E, R1, E1, A>(
+export const unwrapScoped: <A, E1, R1, E, R>(
   self: Effect.Effect<Layer<A, E1, R1>, E, R>
 ) => Layer<A, E | E1, R1 | Exclude<R, Scope.Scope>> = internal.unwrapScoped
 
