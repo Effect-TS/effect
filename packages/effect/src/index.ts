@@ -457,6 +457,13 @@ export * as MetricState from "./MetricState.js"
 
 /**
  * @since 2.0.0
+ *
+ * Enables low level framework authors to run on their own isolated effect version
+ */
+export * as ModuleVersion from "./ModuleVersion.js"
+
+/**
+ * @since 2.0.0
  */
 export * as MutableHashMap from "./MutableHashMap.js"
 
