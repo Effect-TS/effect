@@ -531,17 +531,17 @@ export const mapInputRequestEffect = dual<
 /** @internal */
 export const retry: {
   <R1, E extends E0, E0, B>(
-    policy: Schedule.Schedule<R1, E0, B>
+    policy: Schedule.Schedule<B, E0, R1>
   ): <R, A>(self: Client.Client<R, E, A>) => Client.Client<R1 | R, E, A>
   <R, E extends E0, E0, A, R1, B>(
     self: Client.Client<R, E, A>,
-    policy: Schedule.Schedule<R1, E0, B>
+    policy: Schedule.Schedule<B, E0, R1>
   ): Client.Client<R | R1, E, A>
 } = dual(
   2,
   <R, E extends E0, E0, A, R1, B>(
     self: Client.Client<R, E, A>,
-    policy: Schedule.Schedule<R1, E0, B>
+    policy: Schedule.Schedule<B, E0, R1>
   ): Client.Client<R | R1, E, A> => transformResponse(self, Effect.retry(policy))
 )
 
