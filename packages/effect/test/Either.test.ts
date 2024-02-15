@@ -252,7 +252,7 @@ describe("Either", () => {
   })
 
   it("flatMap", () => {
-    const f = Either.flatMap<string, string, number>(flow(S.length, Either.right))
+    const f = Either.flatMap(flow(S.length, Either.right))
     Util.deepStrictEqual(pipe(Either.right("abc"), f), Either.right(3))
     Util.deepStrictEqual(pipe(Either.left("maError"), f), Either.left("maError"))
   })
