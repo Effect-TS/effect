@@ -74,16 +74,16 @@ export const around = dual<
 
 /** @internal */
 export const aroundRequests = dual<
-  <A, R2, A2, R3, _>(
+  <A, A2, R2, X, R3>(
     before: (requests: ReadonlyArray<NoInfer<A>>) => Effect.Effect<A2, never, R2>,
-    after: (requests: ReadonlyArray<NoInfer<A>>, _: A2) => Effect.Effect<_, never, R3>
+    after: (requests: ReadonlyArray<NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
   ) => <R>(
     self: RequestResolver.RequestResolver<A, R>
   ) => RequestResolver.RequestResolver<A, R | R2 | R3>,
-  <R, A, R2, A2, R3, _>(
+  <A, R, A2, R2, X, R3>(
     self: RequestResolver.RequestResolver<A, R>,
     before: (requests: ReadonlyArray<NoInfer<A>>) => Effect.Effect<A2, never, R2>,
-    after: (requests: ReadonlyArray<NoInfer<A>>, _: A2) => Effect.Effect<_, never, R3>
+    after: (requests: ReadonlyArray<NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
   ) => RequestResolver.RequestResolver<A, R | R2 | R3>
 >(3, (self, before, after) =>
   new core.RequestResolverImpl(
@@ -308,16 +308,16 @@ export const provideContext = dual<
 
 /** @internal */
 export const race = dual<
-  <R2, A2 extends Request.Request<any, any>>(
+  <A2 extends Request.Request<any, any>, R2>(
     that: RequestResolver.RequestResolver<A2, R2>
-  ) => <R, A extends Request.Request<any, any>>(
+  ) => <A extends Request.Request<any, any>, R>(
     self: RequestResolver.RequestResolver<A, R>
   ) => RequestResolver.RequestResolver<A | A2, R | R2>,
-  <R, A extends Request.Request<any, any>, R2, A2 extends Request.Request<any, any>>(
+  <A extends Request.Request<any, any>, R, A2 extends Request.Request<any, any>, R2>(
     self: RequestResolver.RequestResolver<A, R>,
     that: RequestResolver.RequestResolver<A2, R2>
   ) => RequestResolver.RequestResolver<A | A2, R | R2>
->(2, <R, A, R2, A2>(
+>(2, <A, R, A2, R2>(
   self: RequestResolver.RequestResolver<A, R>,
   that: RequestResolver.RequestResolver<A2, R2>
 ) =>

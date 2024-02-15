@@ -186,14 +186,14 @@ export const around: {
  * )
  */
 export const aroundRequests: {
-  <A, R2, A2, R3, _>(
+  <A, A2, R2, X, R3>(
     before: (requests: ReadonlyArray<Types.NoInfer<A>>) => Effect.Effect<A2, never, R2>,
-    after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<_, never, R3>
+    after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
-  <R, A, R2, A2, R3, _>(
+  <A, R, A2, R2, X, R3>(
     self: RequestResolver<A, R>,
     before: (requests: ReadonlyArray<Types.NoInfer<A>>) => Effect.Effect<A2, never, R2>,
-    after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<_, never, R3>
+    after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
   ): RequestResolver<A, R | R2 | R3>
 } = internal.aroundRequests
 
@@ -337,10 +337,10 @@ export const provideContext: {
  * @category combinators
  */
 export const race: {
-  <R2, A2 extends Request.Request<any, any>>(
+  <A2 extends Request.Request<any, any>, R2>(
     that: RequestResolver<A2, R2>
-  ): <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
-  <R, A extends Request.Request<any, any>, R2, A2 extends Request.Request<any, any>>(
+  ): <A extends Request.Request<any, any>, R>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
+  <A extends Request.Request<any, any>, R, A2 extends Request.Request<any, any>, R2>(
     self: RequestResolver<A, R>,
     that: RequestResolver<A2, R2>
   ): RequestResolver<A | A2, R | R2>
