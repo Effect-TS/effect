@@ -1,5 +1,13 @@
 # @effect/platform-node
 
+## 0.44.3
+
+### Patch Changes
+
+- [#2150](https://github.com/Effect-TS/effect/pull/2150) [`f612749`](https://github.com/Effect-TS/effect/commit/f612749ddfff40cadef3387100135f2cb9a4a9f3) Thanks [@tim-smart](https://github.com/tim-smart)! - add unsafe body accessors to node http IncomingMessage
+
+  these can be used from debuggers to inspect the request body.
+
 ## 0.44.2
 
 ### Patch Changes
