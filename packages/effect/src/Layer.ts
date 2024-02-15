@@ -597,12 +597,12 @@ export const fiberRefLocallyScopedWith: <A>(self: FiberRef<A>, value: (_: A) => 
  * @category retrying
  */
 export const retry: {
-  <RIn2, E, X>(
-    schedule: Schedule.Schedule<RIn2, E, X>
-  ): <RIn, ROut>(self: Layer<ROut, E, RIn>) => Layer<ROut, E, RIn2 | RIn>
-  <RIn, E, ROut, RIn2, X>(
+  <X, E, RIn2>(
+    schedule: Schedule.Schedule<X, E, RIn2>
+  ): <ROut, RIn>(self: Layer<ROut, E, RIn>) => Layer<ROut, E, RIn2 | RIn>
+  <ROut, E, RIn, X, RIn2>(
     self: Layer<ROut, E, RIn>,
-    schedule: Schedule.Schedule<RIn2, E, X>
+    schedule: Schedule.Schedule<X, E, RIn2>
   ): Layer<ROut, E, RIn | RIn2>
 } = internal.retry
 

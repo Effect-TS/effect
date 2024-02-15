@@ -770,14 +770,14 @@ export const project = dual<
 
 /** @internal */
 export const retry = dual<
-  <RIn2, E, X>(
-    schedule: Schedule.Schedule<RIn2, E, X>
-  ) => <RIn, ROut>(
+  <X, E, RIn2>(
+    schedule: Schedule.Schedule<X, E, RIn2>
+  ) => <ROut, RIn>(
     self: Layer.Layer<ROut, E, RIn>
   ) => Layer.Layer<ROut, E, RIn | RIn2>,
-  <RIn, E, ROut, RIn2, X>(
+  <ROut, E, RIn, X, RIn2>(
     self: Layer.Layer<ROut, E, RIn>,
-    schedule: Schedule.Schedule<RIn2, E, X>
+    schedule: Schedule.Schedule<X, E, RIn2>
   ) => Layer.Layer<ROut, E, RIn | RIn2>
 >(2, (self, schedule) =>
   suspend(() => {
@@ -790,10 +790,9 @@ export const retry = dual<
     )
   }))
 
-/** @internal */
-const retryLoop = <RIn, E, ROut, RIn2, X>(
+const retryLoop = <ROut, E, RIn, X, RIn2>(
   self: Layer.Layer<ROut, E, RIn>,
-  schedule: Schedule.Schedule<RIn2, E, X>,
+  schedule: Schedule.Schedule<X, E, RIn2>,
   stateTag: Context.Tag<{ state: unknown }, { state: unknown }>,
   state: unknown
 ): Layer.Layer<ROut, E, RIn | RIn2> => {
@@ -808,9 +807,8 @@ const retryLoop = <RIn, E, ROut, RIn2, X>(
   )
 }
 
-/** @internal */
-const retryUpdate = <RIn, E, X>(
-  schedule: Schedule.Schedule<RIn, E, X>,
+const retryUpdate = <X, E, RIn>(
+  schedule: Schedule.Schedule<X, E, RIn>,
   stateTag: Context.Tag<{ state: unknown }, { state: unknown }>,
   error: E,
   state: unknown

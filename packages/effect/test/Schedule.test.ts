@@ -797,7 +797,7 @@ const failOn0 = (ref: Ref.Ref<number>): Effect.Effect<number, string> => {
 const alwaysFail = (ref: Ref.Ref<number>): Effect.Effect<number, string> => {
   return Ref.updateAndGet(ref, (n) => n + 1).pipe(Effect.flatMap((n) => Effect.fail(`Error: ${n}`)))
 }
-const repeat = <Env, B>(schedule: Schedule.Schedule<Env, number, B>): Effect.Effect<B, never, Env> => {
+const repeat = <Env, B>(schedule: Schedule.Schedule<B, number, Env>): Effect.Effect<B, never, Env> => {
   return Ref.make(0).pipe(
     Effect.flatMap((ref) => ref.pipe(Ref.updateAndGet((n) => n + 1), Effect.repeat(schedule)))
   )
@@ -808,7 +808,7 @@ const roundToNearestHour = (date: Date): number => {
   return date.getMilliseconds()
 }
 const checkDelays = <Env>(
-  schedule: Schedule.Schedule<Env, number, Duration.Duration>
+  schedule: Schedule.Schedule<Duration.Duration, number, Env>
 ): Effect.Effect<
   readonly [
     Chunk.Chunk<Duration.Duration>,
@@ -825,7 +825,7 @@ const checkDelays = <Env>(
     return [actual, expected] as const
   })
 }
-const checkRepetitions = <Env>(schedule: Schedule.Schedule<Env, number, number>): Effect.Effect<
+const checkRepetitions = <Env>(schedule: Schedule.Schedule<number, number, Env>): Effect.Effect<
   readonly [
     Chunk.Chunk<number>,
     Chunk.Chunk<number>
@@ -850,7 +850,7 @@ export const run = <A, E, R>(
   )
 }
 export const runCollect = <Env, In, Out>(
-  schedule: Schedule.Schedule<Env, In, Out>,
+  schedule: Schedule.Schedule<Out, In, Env>,
   input: Iterable<In>
 ): Effect.Effect<Chunk.Chunk<Out>, never, Env> => {
   return run(
@@ -860,7 +860,7 @@ export const runCollect = <Env, In, Out>(
   )
 }
 const runCollectLoop = <Env, In, Out>(
-  driver: Schedule.ScheduleDriver<Env, In, Out>,
+  driver: Schedule.ScheduleDriver<Out, In, Env>,
   input: Chunk.Chunk<In>,
   acc: Chunk.Chunk<Out>
 ): Effect.Effect<Chunk.Chunk<Out>, never, Env> => {
@@ -883,7 +883,7 @@ const runCollectLoop = <Env, In, Out>(
   )
 }
 const runManually = <Env, In, Out>(
-  schedule: Schedule.Schedule<Env, In, Out>,
+  schedule: Schedule.Schedule<Out, In, Env>,
   inputs: Iterable<
     readonly [
       number,
@@ -906,7 +906,7 @@ const runManually = <Env, In, Out>(
   return runManuallyLoop(schedule, schedule.initial, Chunk.fromIterable(inputs), Chunk.empty())
 }
 const runManuallyLoop = <Env, In, Out>(
-  schedule: Schedule.Schedule<Env, In, Out>,
+  schedule: Schedule.Schedule<Out, In, Env>,
   state: unknown,
   inputs: Chunk.Chunk<
     readonly [
