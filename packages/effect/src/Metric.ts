@@ -57,7 +57,7 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
   unsafeUpdate(input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>): void
   unsafeValue(extraTags: ReadonlyArray<MetricLabel.MetricLabel>): Out
   register(): this
-  <R, E, A extends In>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
+  <A extends In, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
 }
 
 /**
@@ -528,7 +528,7 @@ export const trackAll: {
  */
 export const trackDefect: {
   <Type, Out>(metric: Metric<Type, unknown, Out>): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A, Type, Out>(self: Effect.Effect<A, E, R>, metric: Metric<Type, unknown, Out>): Effect.Effect<A, E, R>
+  <A, E, R, Type, Out>(self: Effect.Effect<A, E, R>, metric: Metric<Type, unknown, Out>): Effect.Effect<A, E, R>
 } = internal.trackDefect
 
 /**
@@ -544,7 +544,7 @@ export const trackDefectWith: {
     metric: Metric<Type, In, Out>,
     f: (defect: unknown) => In
   ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A, Type, In, Out>(
+  <A, E, R, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>,
     f: (defect: unknown) => In
@@ -563,7 +563,7 @@ export const trackDuration: {
   <Type, Out>(
     metric: Metric<Type, Duration.Duration, Out>
   ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A, Type, Out>(
+  <A, E, R, Type, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, Duration.Duration, Out>
   ): Effect.Effect<A, E, R>
@@ -582,7 +582,7 @@ export const trackDurationWith: {
     metric: Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
   ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A, Type, In, Out>(
+  <A, E, R, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
@@ -636,8 +636,8 @@ export const trackErrorWith: {
 export const trackSuccess: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>
-  ): <R, E, A extends In>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A extends In, Type, In, Out>(
+  ): <A extends In, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A extends In, E, R, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>
   ): Effect.Effect<A, E, R>
@@ -655,8 +655,8 @@ export const trackSuccessWith: {
   <Type, In, Out, In2>(
     metric: Metric<Type, In, Out>,
     f: (value: In2) => In
-  ): <R, E, A extends In2>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A extends In2, Type, In, Out, In2>(
+  ): <A extends In2, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A extends In2, E, R, Type, In, Out, In2>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>,
     f: (value: In2) => In

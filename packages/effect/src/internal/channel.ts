@@ -660,9 +660,9 @@ export const foldChannel = dual<
   }))
 
 /** @internal */
-export const fromEither = <E, A>(
-  either: Either.Either<A, E>
-): Channel.Channel<never, unknown, E, unknown, A, unknown> =>
+export const fromEither = <R, L>(
+  either: Either.Either<R, L>
+): Channel.Channel<never, unknown, L, unknown, R, unknown> =>
   core.suspend(() => Either.match(either, { onLeft: core.fail, onRight: core.succeed }))
 
 /** @internal */

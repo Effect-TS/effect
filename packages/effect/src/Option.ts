@@ -255,7 +255,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
  * @category conversions
  * @since 2.0.0
  */
-export const getRight: <E, A>(self: Either<A, E>) => Option<A> = either.getRight
+export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
 
 /**
  * Converts a `Either` to an `Option` discarding the value.
@@ -270,7 +270,7 @@ export const getRight: <E, A>(self: Either<A, E>) => Option<A> = either.getRight
  * @category conversions
  * @since 2.0.0
  */
-export const getLeft: <E, A>(self: Either<A, E>) => Option<E> = either.getLeft
+export const getLeft: <R, L>(self: Either<R, L>) => Option<L> = either.getLeft
 
 /**
  * Returns the value of the `Option` if it is `Some`, otherwise returns `onNone`

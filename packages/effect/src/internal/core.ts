@@ -2522,7 +2522,7 @@ export const exitForEachEffect: {
 })
 
 /** @internal */
-export const exitFromEither = <E, A>(either: Either.Either<A, E>): Exit.Exit<A, E> => {
+export const exitFromEither = <R, L>(either: Either.Either<R, L>): Exit.Exit<R, L> => {
   switch (either._tag) {
     case "Left":
       return exitFail(either.left)

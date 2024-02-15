@@ -991,7 +991,7 @@ export const loop: {
     ? loopDiscard(initial, options.while, options.step, options.body)
     : core.map(loopInternal(initial, options.while, options.step, options.body), Array.from)
 
-const loopInternal = <Z, R, E, A>(
+const loopInternal = <Z, A, E, R>(
   initial: Z,
   cont: Predicate.Predicate<Z>,
   inc: (z: Z) => Z,
@@ -1846,7 +1846,7 @@ export const withMetric = dual<
 >(2, (self, metric) => metric(self))
 
 /** @internal */
-export const serviceFunctionEffect = <T extends Effect.Effect<any, any, any>, Args extends Array<any>, R, E, A>(
+export const serviceFunctionEffect = <T extends Effect.Effect<any, any, any>, Args extends Array<any>, A, E, R>(
   getService: T,
   f: (_: Effect.Effect.Success<T>) => (...args: Args) => Effect.Effect<A, E, R>
 ) =>

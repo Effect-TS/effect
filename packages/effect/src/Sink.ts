@@ -1012,13 +1012,13 @@ export const fromPubSub: <In>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromPush: <In, E, A, L, R>(
+export const fromPush: <In, L0, R0, L, R>(
   push: Effect.Effect<
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<A, E>, Chunk.Chunk<L>], R>,
+    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<R0, L0>, Chunk.Chunk<L>], R>,
     never,
     R
   >
-) => Sink<A, In, L, E, Exclude<R, Scope.Scope>> = internal.fromPush
+) => Sink<R0, In, L, L0, Exclude<R, Scope.Scope>> = internal.fromPush
 
 /**
  * Create a sink which enqueues each element into the specified queue.

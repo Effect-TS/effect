@@ -504,10 +504,10 @@ export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Layer.Layer
 
 /** @internal */
 export const flatMap = dual<
-  <A, R2, E2, A2>(
+  <A, A2, E2, R2>(
     f: (context: Context.Context<A>) => Layer.Layer<A2, E2, R2>
-  ) => <R, E>(self: Layer.Layer<A, E, R>) => Layer.Layer<A2, E | E2, R | R2>,
-  <R, E, A, R2, E2, A2>(
+  ) => <E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A2, E | E2, R | R2>,
+  <A, E, R, A2, E2, R2>(
     self: Layer.Layer<A, E, R>,
     f: (context: Context.Context<A>) => Layer.Layer<A2, E2, R2>
   ) => Layer.Layer<A2, E | E2, R | R2>
@@ -515,12 +515,12 @@ export const flatMap = dual<
 
 /** @internal */
 export const flatten = dual<
-  <R2, E2, A, I>(
+  <I, A, E2, R2>(
     tag: Context.Tag<I, Layer.Layer<A, E2, R2>>
-  ) => <R, E>(
+  ) => <E, R>(
     self: Layer.Layer<I, E, R>
   ) => Layer.Layer<A, E | E2, R | R2>,
-  <R, E, A, R2, E2, I>(
+  <I, E, R, A, E2, R2>(
     self: Layer.Layer<I, E, R>,
     tag: Context.Tag<I, Layer.Layer<A, E2, R2>>
   ) => Layer.Layer<A, E | E2, R | R2>
@@ -569,7 +569,7 @@ export function fromEffectContext<A, E, R>(
 /** @internal */
 export const fiberRefLocally = dual<
   <X>(ref: FiberRef<X>, value: X) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
-  <R, E, A, X>(self: Layer.Layer<A, E, R>, ref: FiberRef<X>, value: X) => Layer.Layer<A, E, R>
+  <A, E, R, X>(self: Layer.Layer<A, E, R>, ref: FiberRef<X>, value: X) => Layer.Layer<A, E, R>
 >(3, (self, ref, value) => locallyEffect(self, core.fiberRefLocally(ref, value)))
 
 /** @internal */
@@ -592,7 +592,7 @@ export const locallyEffect = dual<
 /** @internal */
 export const fiberRefLocallyWith = dual<
   <X>(ref: FiberRef<X>, value: (_: X) => X) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
-  <R, E, A, X>(self: Layer.Layer<A, E, R>, ref: FiberRef<X>, value: (_: X) => X) => Layer.Layer<A, E, R>
+  <A, E, R, X>(self: Layer.Layer<A, E, R>, ref: FiberRef<X>, value: (_: X) => X) => Layer.Layer<A, E, R>
 >(3, (self, ref, value) => locallyEffect(self, core.fiberRefLocallyWith(ref, value)))
 
 /** @internal */
@@ -624,8 +624,8 @@ export const launch = <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>): Effect.Ef
 export const map = dual<
   <A, B>(
     f: (context: Context.Context<A>) => Context.Context<B>
-  ) => <R, E>(self: Layer.Layer<A, E, R>) => Layer.Layer<B, E, R>,
-  <R, E, A, B>(
+  ) => <E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<B, E, R>,
+  <A, E, R, B>(
     self: Layer.Layer<A, E, R>,
     f: (context: Context.Context<A>) => Context.Context<B>
   ) => Layer.Layer<B, E, R>
@@ -633,19 +633,19 @@ export const map = dual<
 
 /** @internal */
 export const mapError = dual<
-  <E, E2>(f: (error: E) => E2) => <R, A>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E2, R>,
-  <R, E, A, E2>(self: Layer.Layer<A, E, R>, f: (error: E) => E2) => Layer.Layer<A, E2, R>
+  <E, E2>(f: (error: E) => E2) => <A, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E2, R>,
+  <A, E, R, E2>(self: Layer.Layer<A, E, R>, f: (error: E) => E2) => Layer.Layer<A, E2, R>
 >(2, (self, f) => catchAll(self, (error) => failSync(() => f(error))))
 
 /** @internal */
 export const matchCause = dual<
-  <E, A, R2, E2, A2, R3, E3, A3>(
+  <E, A2, E2, R2, A, A3, E3, R3>(
     options: {
       readonly onFailure: (cause: Cause.Cause<E>) => Layer.Layer<A2, E2, R2>
       readonly onSuccess: (context: Context.Context<A>) => Layer.Layer<A3, E3, R3>
     }
   ) => <R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A2 & A3, E2 | E3, R | R2 | R3>,
-  <R, E, A, R2, E2, A2, R3, E3, A3>(
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
     self: Layer.Layer<A, E, R>,
     options: {
       readonly onFailure: (cause: Cause.Cause<E>) => Layer.Layer<A2, E2, R2>
@@ -663,13 +663,13 @@ export const matchCause = dual<
 
 /** @internal */
 export const match = dual<
-  <E, R2, E2, A2, A, R3, E3, A3>(
+  <E, A2, E2, R2, A, A3, E3, R3>(
     options: {
       readonly onFailure: (error: E) => Layer.Layer<A2, E2, R2>
       readonly onSuccess: (context: Context.Context<A>) => Layer.Layer<A3, E3, R3>
     }
   ) => <R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A2 & A3, E2 | E3, R | R2 | R3>,
-  <R, E, A, R2, E2, A2, R3, E3, A3>(
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
     self: Layer.Layer<A, E, R>,
     options: {
       readonly onFailure: (error: E) => Layer.Layer<A2, E2, R2>
@@ -740,10 +740,10 @@ export const orDie = <A, E, R>(self: Layer.Layer<A, E, R>): Layer.Layer<A, never
 
 /** @internal */
 export const orElse = dual<
-  <R2, E2, A2>(
+  <A2, E2, R2>(
     that: LazyArg<Layer.Layer<A2, E2, R2>>
   ) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A & A2, E | E2, R | R2>,
-  <R, E, A, R2, E2, A2>(
+  <A, E, R, A2, E2, R2>(
     self: Layer.Layer<A, E, R>,
     that: LazyArg<Layer.Layer<A2, E2, R2>>
   ) => Layer.Layer<A & A2, E | E2, R | R2>
@@ -1137,10 +1137,10 @@ export const withParentSpan = dual<
 // circular with Effect
 
 const provideSomeLayer = dual<
-  <R2, E2, A2>(
+  <A2, E2, R2>(
     layer: Layer.Layer<A2, E2, R2>
   ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R2 | Exclude<R, A2>>,
-  <R, E, A, R2, E2, A2>(
+  <A, E, R, A2, E2, R2>(
     self: Effect.Effect<A, E, R>,
     layer: Layer.Layer<A2, E2, R2>
   ) => Effect.Effect<A, E | E2, R2 | Exclude<R, A2>>
@@ -1201,11 +1201,11 @@ export const effect_provide = dual<
       self: Effect.Effect<A, E, R>,
       layer: Layer.Layer<R3, E2, R2>
     ): Effect.Effect<A, E | E2, R2 | Exclude<R, R3>>
-    <R, E, A, R2>(
+    <A, E, R, R2>(
       self: Effect.Effect<A, E, R>,
       context: Context.Context<R2>
     ): Effect.Effect<A, E, Exclude<R, R2>>
-    <R, E, A, R2>(
+    <A, E, R, R2>(
       self: Effect.Effect<A, E, R>,
       runtime: Runtime.Runtime<R2>
     ): Effect.Effect<A, E, Exclude<R, R2>>

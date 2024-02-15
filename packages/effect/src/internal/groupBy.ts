@@ -126,13 +126,13 @@ export const make = <R, E, K, V>(
 
 /** @internal */
 export const groupBy = dual<
-  <A, R2, E2, K, V>(
+  <A, K, V, E2, R2>(
     f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>,
-  <R, E, A, R2, E2, K, V>(
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>,
+  <A, E, R, K, V, E2, R2>(
     self: Stream.Stream<A, E, R>,
     f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: {
@@ -141,7 +141,7 @@ export const groupBy = dual<
   ) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>
 >(
   (args) => stream.isStream(args[0]),
-  <R, E, A, R2, E2, K, V>(
+  <A, E, R, K, V, E2, R2>(
     self: Stream.Stream<A, E, R>,
     f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: {
@@ -209,23 +209,23 @@ export const groupBy = dual<
 /** @internal */
 export const mapEffectOptions = dual<
   {
-    <A, R2, E2, A2>(
+    <A, A2, E2, R2>(
       f: (a: A) => Effect.Effect<A2, E2, R2>,
       options?: {
         readonly concurrency?: number | "unbounded" | undefined
         readonly unordered?: boolean | undefined
       }
-    ): <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>
-    <A, R2, E2, A2, K>(
+    ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>
+    <A, A2, E2, R2, K>(
       f: (a: A) => Effect.Effect<A2, E2, R2>,
       options: {
         readonly key: (a: A) => K
         readonly bufferSize?: number | undefined
       }
-    ): <R, E>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>
+    ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>
   },
   {
-    <R, E, A, R2, E2, A2>(
+    <A, E, R, A2, E2, R2>(
       self: Stream.Stream<A, E, R>,
       f: (a: A) => Effect.Effect<A2, E2, R2>,
       options?: {
@@ -233,7 +233,7 @@ export const mapEffectOptions = dual<
         readonly unordered?: boolean | undefined
       }
     ): Stream.Stream<A2, E2 | E, R2 | R>
-    <R, E, A, R2, E2, A2, K>(
+    <A, E, R, A2, E2, R2, K>(
       self: Stream.Stream<A, E, R>,
       f: (a: A) => Effect.Effect<A2, E2, R2>,
       options: {
@@ -244,7 +244,7 @@ export const mapEffectOptions = dual<
   }
 >(
   (args) => typeof args[0] !== "function",
-  (<R, E, A, R2, E2, A2, K>(
+  (<A, E, R, A2, E2, R2, K>(
     self: Stream.Stream<A, E, R>,
     f: (a: A) => Effect.Effect<A2, E2, R2>,
     options?: {
@@ -399,8 +399,8 @@ export const groupByKey = dual<
     options?: {
       readonly bufferSize?: number | undefined
     }
-  ) => <R, E>(self: Stream.Stream<A, E, R>) => GroupBy.GroupBy<R, E, K, A>,
-  <R, E, A, K>(
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => GroupBy.GroupBy<R, E, K, A>,
+  <A, E, R, K>(
     self: Stream.Stream<A, E, R>,
     f: (a: A) => K,
     options?: {
@@ -409,7 +409,7 @@ export const groupByKey = dual<
   ) => GroupBy.GroupBy<R, E, K, A>
 >(
   (args) => typeof args[0] !== "function",
-  <R, E, A, K>(
+  <A, E, R, K>(
     self: Stream.Stream<A, E, R>,
     f: (a: A) => K,
     options?: {

@@ -414,7 +414,7 @@ export const contextWith = <R0, R>(f: (environment: Context.Context<R0>) => R): 
   map(context<R0>(), f)
 
 /** @internal */
-export const contextWithSTM = <R0, R, E, A>(
+export const contextWithSTM = <R0, A, E, R>(
   f: (environment: Context.Context<R0>) => STM.STM<A, E, R>
 ): STM.STM<A, E, R0 | R> => flatMap(context<R0>(), f)
 
@@ -634,7 +634,7 @@ export const effect = <R, A>(
 /** @internal */
 export const ensuring = dual<
   <R1, B>(finalizer: STM.STM<B, never, R1>) => <A, E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E, R1 | R>,
-  <R, E, A, R1, B>(self: STM.STM<A, E, R>, finalizer: STM.STM<B, never, R1>) => STM.STM<A, E, R1 | R>
+  <A, E, R, R1, B>(self: STM.STM<A, E, R>, finalizer: STM.STM<B, never, R1>) => STM.STM<A, E, R1 | R>
 >(2, (self, finalizer) =>
   matchSTM(self, {
     onFailure: (e) => zipRight(finalizer, fail(e)),
@@ -653,8 +653,8 @@ export const failSync = <E>(evaluate: LazyArg<E>): STM.STM<never, E> => {
 
 /** @internal */
 export const flatMap = dual<
-  <A, R1, E1, A2>(f: (a: A) => STM.STM<A2, E1, R1>) => <R, E>(self: STM.STM<A, E, R>) => STM.STM<A2, E1 | E, R1 | R>,
-  <R, E, A, R1, E1, A2>(self: STM.STM<A, E, R>, f: (a: A) => STM.STM<A2, E1, R1>) => STM.STM<A2, E1 | E, R1 | R>
+  <A, A2, E1, R1>(f: (a: A) => STM.STM<A2, E1, R1>) => <E, R>(self: STM.STM<A, E, R>) => STM.STM<A2, E1 | E, R1 | R>,
+  <A, E, R, A2, E1, R1>(self: STM.STM<A, E, R>, f: (a: A) => STM.STM<A2, E1, R1>) => STM.STM<A2, E1 | E, R1 | R>
 >(2, (self, f) => {
   const stm = new STMPrimitive(OpCodes.OP_ON_SUCCESS)
   stm.i1 = self
@@ -664,20 +664,20 @@ export const flatMap = dual<
 
 /** @internal */
 export const matchSTM = dual<
-  <E, R1, E1, A1, A, R2, E2, A2>(
+  <E, A1, E1, R1, A, A2, E2, R2>(
     options: {
       readonly onFailure: (e: E) => STM.STM<A1, E1, R1>
       readonly onSuccess: (a: A) => STM.STM<A2, E2, R2>
     }
   ) => <R>(self: STM.STM<A, E, R>) => STM.STM<A1 | A2, E1 | E2, R1 | R2 | R>,
-  <R, E, R1, E1, A1, A, R2, E2, A2>(
+  <A, E, R, A1, E1, R1, A2, E2, R2>(
     self: STM.STM<A, E, R>,
     options: {
       readonly onFailure: (e: E) => STM.STM<A1, E1, R1>
       readonly onSuccess: (a: A) => STM.STM<A2, E2, R2>
     }
   ) => STM.STM<A1 | A2, E1 | E2, R1 | R2 | R>
->(2, <R, E, R1, E1, A1, A, R2, E2, A2>(
+>(2, <A, E, R, A1, E1, R1, A2, E2, R2>(
   self: STM.STM<A, E, R>,
   { onFailure, onSuccess }: {
     readonly onFailure: (e: E) => STM.STM<A1, E1, R1>
@@ -725,18 +725,18 @@ export const interruptAs = (fiberId: FiberId.FiberId): STM.STM<never> => {
 
 /** @internal */
 export const map = dual<
-  <A, B>(f: (a: A) => B) => <R, E>(self: STM.STM<A, E, R>) => STM.STM<B, E, R>,
-  <R, E, A, B>(self: STM.STM<A, E, R>, f: (a: A) => B) => STM.STM<B, E, R>
+  <A, B>(f: (a: A) => B) => <E, R>(self: STM.STM<A, E, R>) => STM.STM<B, E, R>,
+  <A, E, R, B>(self: STM.STM<A, E, R>, f: (a: A) => B) => STM.STM<B, E, R>
 >(2, (self, f) => pipe(self, flatMap((a) => sync(() => f(a)))))
 
 /** @internal */
 export const orTry = dual<
-  <R1, E1, A1>(
+  <A1, E1, R1>(
     that: LazyArg<STM.STM<A1, E1, R1>>
   ) => <A, E, R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<A1 | A, E1 | E, R1 | R>,
-  <R, E, A, R1, E1, A1>(
+  <A, E, R, A1, E1, R1>(
     self: STM.STM<A, E, R>,
     that: LazyArg<STM.STM<A1, E1, R1>>
   ) => STM.STM<A1 | A, E1 | E, R1 | R>
@@ -766,12 +766,12 @@ export const sync = <A>(evaluate: () => A): STM.STM<A> => {
 
 /** @internal */
 export const zip = dual<
-  <R1, E1, A1>(
+  <A1, E1, R1>(
     that: STM.STM<A1, E1, R1>
   ) => <A, E, R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<[A, A1], E1 | E, R1 | R>,
-  <R, E, A, R1, E1, A1>(
+  <A, E, R, A1, E1, R1>(
     self: STM.STM<A, E, R>,
     that: STM.STM<A1, E1, R1>
   ) => STM.STM<[A, A1], E1 | E, R1 | R>
@@ -779,25 +779,25 @@ export const zip = dual<
 
 /** @internal */
 export const zipLeft = dual<
-  <R1, E1, A1>(that: STM.STM<A1, E1, R1>) => <A, E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E1 | E, R1 | R>,
-  <R, E, A, R1, E1, A1>(self: STM.STM<A, E, R>, that: STM.STM<A1, E1, R1>) => STM.STM<A, E1 | E, R1 | R>
+  <A1, E1, R1>(that: STM.STM<A1, E1, R1>) => <A, E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E1 | E, R1 | R>,
+  <A, E, R, A1, E1, R1>(self: STM.STM<A, E, R>, that: STM.STM<A1, E1, R1>) => STM.STM<A, E1 | E, R1 | R>
 >(2, (self, that) => pipe(self, flatMap((a) => pipe(that, map(() => a)))))
 
 /** @internal */
 export const zipRight = dual<
-  <R1, E1, A1>(that: STM.STM<A1, E1, R1>) => <A, E, R>(self: STM.STM<A, E, R>) => STM.STM<A1, E1 | E, R1 | R>,
-  <R, E, A, R1, E1, A1>(self: STM.STM<A, E, R>, that: STM.STM<A1, E1, R1>) => STM.STM<A1, E1 | E, R1 | R>
+  <A1, E1, R1>(that: STM.STM<A1, E1, R1>) => <A, E, R>(self: STM.STM<A, E, R>) => STM.STM<A1, E1 | E, R1 | R>,
+  <A, E, R, A1, E1, R1>(self: STM.STM<A, E, R>, that: STM.STM<A1, E1, R1>) => STM.STM<A1, E1 | E, R1 | R>
 >(2, (self, that) => pipe(self, flatMap(() => that)))
 
 /** @internal */
 export const zipWith = dual<
-  <R1, E1, A1, A, A2>(
+  <A1, E1, R1, A, A2>(
     that: STM.STM<A1, E1, R1>,
     f: (a: A, b: A1) => A2
-  ) => <R, E>(
+  ) => <E, R>(
     self: STM.STM<A, E, R>
   ) => STM.STM<A2, E1 | E, R1 | R>,
-  <R, E, R1, E1, A1, A, A2>(
+  <A, E, R, A1, E1, R1, A2>(
     self: STM.STM<A, E, R>,
     that: STM.STM<A1, E1, R1>,
     f: (a: A, b: A1) => A2

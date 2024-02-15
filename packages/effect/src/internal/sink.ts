@@ -1433,13 +1433,13 @@ export const fromPubSub = <In>(
 ): Sink.Sink<void, In> => fromQueue(pubsub, options)
 
 /** @internal */
-export const fromPush = <In, E, A, L, R>(
+export const fromPush = <In, L0, R0, L, R>(
   push: Effect.Effect<
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<A, E>, Chunk.Chunk<L>], R>,
+    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<R0, L0>, Chunk.Chunk<L>], R>,
     never,
     R
   >
-): Sink.Sink<A, In, L, E, Exclude<R, Scope.Scope>> =>
+): Sink.Sink<R0, In, L, L0, Exclude<R, Scope.Scope>> =>
   new SinkImpl(channel.unwrapScoped(pipe(push, Effect.map(fromPushPull))))
 
 const fromPushPull = <R, E, In, L, Z>(

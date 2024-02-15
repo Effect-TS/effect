@@ -160,10 +160,10 @@ declare module "./Context.js" {
  * @category models
  */
 declare module "./Either.js" {
-  interface Left<E, A> extends Effect<A, E> {
+  interface Left<L, R> extends Effect<R, L> {
     readonly _tag: "Left"
   }
-  interface Right<E, A> extends Effect<A, E> {
+  interface Right<L, R> extends Effect<R, L> {
     readonly _tag: "Right"
   }
   interface EitherUnifyIgnore {
@@ -400,11 +400,11 @@ export declare namespace All {
    * @since 2.0.0
    */
   export type ReturnIterable<T extends Iterable<EffectAny>, Discard extends boolean, Mode> = [T] extends
-    [Iterable<Effect.Variance<infer A, infer E, infer R>>] ? Effect<
-      Discard extends true ? void : Mode extends "either" ? Array<Either.Either<A, E>> : Array<A>,
+    [Iterable<Effect.Variance<infer R0, infer L0, infer R>>] ? Effect<
+      Discard extends true ? void : Mode extends "either" ? Array<Either.Either<R0, L0>> : Array<R0>,
       Mode extends "either" ? never
-        : Mode extends "validate" ? Array<Option.Option<E>>
-        : E,
+        : Mode extends "validate" ? Array<Option.Option<L0>>
+        : L0,
       R
     >
     : never
@@ -2641,7 +2641,7 @@ export const forkWithErrorHandler: {
   <E, X>(
     handler: (e: E) => Effect<X>
   ): <R, A>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R>
-  <R, E, A, X>(
+  <A, E, R, X>(
     self: Effect<A, E, R>,
     handler: (e: E) => Effect<X>
   ): Effect<Fiber.RuntimeFiber<A, E>, never, R>
@@ -2675,7 +2675,7 @@ export const fromFiberEffect: <A, E, R>(fiber: Effect<Fiber.Fiber<A, E>, E, R>) 
  */
 export const supervised: {
   <X>(supervisor: Supervisor.Supervisor<X>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <R, E, A, X>(self: Effect<A, E, R>, supervisor: Supervisor.Supervisor<X>): Effect<A, E, R>
+  <A, E, R, X>(self: Effect<A, E, R>, supervisor: Supervisor.Supervisor<X>): Effect<A, E, R>
 } = circular.supervised
 
 /**
@@ -3052,8 +3052,8 @@ export const provide: {
   <R2>(context: Context.Context<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <R2>(runtime: Runtime.Runtime<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <A, E, R, R2, E2, R3>(self: Effect<A, E, R>, layer: Layer.Layer<R3, E2, R2>): Effect<A, E | E2, R2 | Exclude<R, R3>>
-  <R, E, A, R2>(self: Effect<A, E, R>, context: Context.Context<R2>): Effect<A, E, Exclude<R, R2>>
-  <R, E, A, R2>(self: Effect<A, E, R>, runtime: Runtime.Runtime<R2>): Effect<A, E, Exclude<R, R2>>
+  <A, E, R, R2>(self: Effect<A, E, R>, context: Context.Context<R2>): Effect<A, E, Exclude<R, R2>>
+  <A, E, R, R2>(self: Effect<A, E, R>, runtime: Runtime.Runtime<R2>): Effect<A, E, Exclude<R, R2>>
 } = layer.effect_provide
 
 /**
@@ -3107,7 +3107,7 @@ export const serviceFunction: <T extends Effect<any, any, any>, Args extends Arr
  * @since 2.0.0
  * @category context
  */
-export const serviceFunctionEffect: <T extends Effect<any, any, any>, Args extends Array<any>, R, E, A>(
+export const serviceFunctionEffect: <T extends Effect<any, any, any>, Args extends Array<any>, A, E, R>(
   getService: T,
   f: (_: Effect.Success<T>) => (...args: Args) => Effect<A, E, R>
 ) => (...args: Args) => Effect<A, E | Effect.Error<T>, R | Effect.Context<T>> = effect.serviceFunctionEffect
@@ -4613,8 +4613,8 @@ export const metricLabels: Effect<ReadonlyArray<MetricLabel.MetricLabel>> = core
  * @category metrics
  */
 export const withMetric: {
-  <Type, In, Out>(metric: Metric.Metric<Type, In, Out>): <R, E, A extends In>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <R, E, A extends In, Type, In, Out>(self: Effect<A, E, R>, metric: Metric.Metric<Type, In, Out>): Effect<A, E, R>
+  <Type, In, Out>(metric: Metric.Metric<Type, In, Out>): <A extends In, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <A extends In, E, R, Type, In, Out>(self: Effect<A, E, R>, metric: Metric.Metric<Type, In, Out>): Effect<A, E, R>
 } = effect.withMetric
 
 // -------------------------------------------------------------------------------------

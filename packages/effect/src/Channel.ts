@@ -1077,7 +1077,7 @@ export const fromEffect: <A, E, R>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromEither: <E, A>(either: Either.Either<A, E>) => Channel<never, unknown, E, unknown, A, unknown> =
+export const fromEither: <R, L>(either: Either.Either<R, L>) => Channel<never, unknown, L, unknown, R, unknown> =
   channel.fromEither
 
 /**
