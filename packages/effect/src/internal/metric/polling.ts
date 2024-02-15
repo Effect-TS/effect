@@ -92,14 +92,14 @@ export const pollAndUpdate = <Type, In, R, E, Out>(
 
 /** @internal */
 export const retry = dual<
-  <_, E, R2>(
-    policy: Schedule.Schedule<_, E, R2>
+  <X, E, R2>(
+    policy: Schedule.Schedule<X, E, R2>
   ) => <Type, In, R, Out>(
     self: MetricPolling.MetricPolling<Type, In, R, E, Out>
   ) => MetricPolling.MetricPolling<Type, In, R | R2, E, Out>,
-  <Type, In, R, E, Out, _, R2>(
+  <Type, In, R, E, Out, X, R2>(
     self: MetricPolling.MetricPolling<Type, In, R, E, Out>,
-    policy: Schedule.Schedule<_, E, R2>
+    policy: Schedule.Schedule<X, E, R2>
   ) => MetricPolling.MetricPolling<Type, In, R | R2, E, Out>
 >(2, (self, policy) => ({
   [MetricPollingTypeId]: MetricPollingTypeId,

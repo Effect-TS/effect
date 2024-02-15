@@ -81,10 +81,10 @@ export const replaceLogger = dual<
 
 /** @internal */
 export const replaceLoggerEffect = dual<
-  <R, E, B>(
+  <B, E, R>(
     that: Effect.Effect<Logger.Logger<unknown, B>, E, R>
   ) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<never, E, R>,
-  <A, R, E, B>(
+  <A, B, E, R>(
     self: Logger.Logger<unknown, A>,
     that: Effect.Effect<Logger.Logger<unknown, B>, E, R>
   ) => Layer.Layer<never, E, R>
@@ -92,10 +92,10 @@ export const replaceLoggerEffect = dual<
 
 /** @internal */
 export const replaceLoggerScoped = dual<
-  <R, E, B>(
+  <B, E, R>(
     that: Effect.Effect<Logger.Logger<unknown, B>, E, R>
   ) => <A>(self: Logger.Logger<unknown, A>) => Layer.Layer<never, E, Exclude<R, Scope>>,
-  <A, R, E, B>(
+  <A, B, E, R>(
     self: Logger.Logger<unknown, A>,
     that: Effect.Effect<Logger.Logger<unknown, B>, E, R>
   ) => Layer.Layer<never, E, Exclude<R, Scope>>

@@ -429,7 +429,7 @@ class SequentialImpl implements SequentialCollection {
 }
 
 /** @internal */
-export const sequentialCollectionMake = <R, A>(
+export const sequentialCollectionMake = <A, R>(
   map: HashMap.HashMap<
     RequestResolver.RequestResolver<A, R>,
     Array<Array<Request.Entry<A>>>

@@ -378,12 +378,12 @@ export const dimap: {
  * @category mapping
  */
 export const dimapEffect: {
-  <In0, R2, E2, In, A, R3, E3, A2>(
+  <In0, In, E2, R2, A, A2, E3, R3>(
     options: {
       readonly onInput: (input: In0) => Effect.Effect<In, E2, R2>
       readonly onDone: (a: A) => Effect.Effect<A2, E3, R3>
     }
-  ): <R, E, L>(self: Sink<A, In, L, E, R>) => Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>
+  ): <L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>
   <A, In, L, E, R, In0, E2, R2, A2, E3, R3>(
     self: Sink<A, In, L, E, R>,
     options: {
@@ -423,7 +423,7 @@ export const dimapChunksEffect: {
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
       readonly onDone: (a: A) => Effect.Effect<A2, E3, R3>
     }
-  ): <R, E, L>(self: Sink<A, In, L, E, R>) => Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>
+  ): <L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>
   <A, In, L, E, R, In0, E2, R2, A2, E3, R3>(
     self: Sink<A, In, L, E, R>,
     options: {
@@ -494,10 +494,10 @@ export const dropWhileEffect: <In, E, R>(
  * @category finalization
  */
 export const ensuring: {
-  <_, R2>(
-    finalizer: Effect.Effect<_, never, R2>
+  <X, R2>(
+    finalizer: Effect.Effect<X, never, R2>
   ): <A, In, L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A, In, L, E, R2 | R>
-  <A, In, L, E, R, _, R2>(self: Sink<A, In, L, E, R>, finalizer: Effect.Effect<_, never, R2>): Sink<A, In, L, E, R | R2>
+  <A, In, L, E, R, X, R2>(self: Sink<A, In, L, E, R>, finalizer: Effect.Effect<X, never, R2>): Sink<A, In, L, E, R | R2>
 } = internal.ensuring
 
 /**
@@ -509,12 +509,12 @@ export const ensuring: {
  * @category finalization
  */
 export const ensuringWith: {
-  <A, E, _, R2>(
-    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<_, never, R2>
+  <A, E, X, R2>(
+    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<X, never, R2>
   ): <In, L, R>(self: Sink<A, In, L, E, R>) => Sink<A, In, L, E, R2 | R>
-  <A, In, L, E, R, _, R2>(
+  <A, In, L, E, R, X, R2>(
     self: Sink<A, In, L, E, R>,
-    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<_, never, R2>
+    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<X, never, R2>
   ): Sink<A, In, L, E, R | R2>
 } = internal.ensuringWith
 
@@ -908,7 +908,7 @@ export const foldWeightedEffect: <S, In, E, R, E2, R2>(
  * @since 2.0.0
  * @category constructors
  */
-export const forEach: <In, _, E, R>(f: (input: In) => Effect.Effect<_, E, R>) => Sink<void, In, never, E, R> =
+export const forEach: <In, X, E, R>(f: (input: In) => Effect.Effect<X, E, R>) => Sink<void, In, never, E, R> =
   internal.forEach
 
 /**
@@ -918,8 +918,8 @@ export const forEach: <In, _, E, R>(f: (input: In) => Effect.Effect<_, E, R>) =>
  * @since 2.0.0
  * @category constructors
  */
-export const forEachChunk: <In, _, E, R>(
-  f: (input: Chunk.Chunk<In>) => Effect.Effect<_, E, R>
+export const forEachChunk: <In, X, E, R>(
+  f: (input: Chunk.Chunk<In>) => Effect.Effect<X, E, R>
 ) => Sink<void, In, never, E, R> = internal.forEachChunk
 
 /**
@@ -1012,13 +1012,13 @@ export const fromPubSub: <In>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromPush: <In, E, A, L, R>(
+export const fromPush: <In, L0, R0, L, R>(
   push: Effect.Effect<
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<A, E>, Chunk.Chunk<L>], R>,
+    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<R0, L0>, Chunk.Chunk<L>], R>,
     never,
     R
   >
-) => Sink<A, In, L, E, Exclude<R, Scope.Scope>> = internal.fromPush
+) => Sink<R0, In, L, L0, Exclude<R, Scope.Scope>> = internal.fromPush
 
 /**
  * Create a sink which enqueues each element into the specified queue.
@@ -1171,7 +1171,7 @@ export const provideContext: {
 export const race: {
   <R1, E1, In1, L1, A1>(
     that: Sink<A1, In1, L1, E1, R1>
-  ): <R, E, In, L, A>(self: Sink<A, In, L, E, R>) => Sink<A1 | A, In & In1, L1 | L, E1 | E, R1 | R>
+  ): <A, In, L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A1 | A, In & In1, L1 | L, E1 | E, R1 | R>
   <A, In, L, E, R, A1, In1, L1, E1, R1>(
     self: Sink<A, In, L, E, R>,
     that: Sink<A1, In1, L1, E1, R1>

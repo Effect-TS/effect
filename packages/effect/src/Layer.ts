@@ -252,7 +252,7 @@ export const effect: {
  * @since 2.0.0
  * @category constructors
  */
-export const effectDiscard: <_, E, R>(effect: Effect.Effect<_, E, R>) => Layer<never, E, R> = internal.fromEffectDiscard
+export const effectDiscard: <X, E, R>(effect: Effect.Effect<X, E, R>) => Layer<never, E, R> = internal.fromEffectDiscard
 
 /**
  * Constructs a layer from the specified effect, which must return one or more
@@ -323,10 +323,10 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Layer<unkn
  * @category sequencing
  */
 export const flatMap: {
-  <A, R2, E2, A2>(
+  <A, A2, E2, R2>(
     f: (context: Context.Context<A>) => Layer<A2, E2, R2>
-  ): <R, E>(self: Layer<A, E, R>) => Layer<A2, E2 | E, R2 | R>
-  <R, E, A, R2, E2, A2>(
+  ): <E, R>(self: Layer<A, E, R>) => Layer<A2, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2>(
     self: Layer<A, E, R>,
     f: (context: Context.Context<A>) => Layer<A2, E2, R2>
   ): Layer<A2, E | E2, R | R2>
@@ -339,8 +339,8 @@ export const flatMap: {
  * @category sequencing
  */
 export const flatten: {
-  <R2, E2, A, I>(tag: Context.Tag<I, Layer<A, E2, R2>>): <R, E>(self: Layer<I, E, R>) => Layer<A, E2 | E, R2 | R>
-  <R, E, A, R2, E2, I>(self: Layer<I, E, R>, tag: Context.Tag<I, Layer<A, E2, R2>>): Layer<A, E | E2, R | R2>
+  <I, A, E2, R2>(tag: Context.Tag<I, Layer<A, E2, R2>>): <E, R>(self: Layer<I, E, R>) => Layer<A, E2 | E, R2 | R>
+  <I, E, R, A, E2, R2>(self: Layer<I, E, R>, tag: Context.Tag<I, Layer<A, E2, R2>>): Layer<A, E | E2, R | R2>
 } = internal.flatten
 
 /**
@@ -383,8 +383,8 @@ export const launch: <RIn, E, ROut>(self: Layer<ROut, E, RIn>) => Effect.Effect<
  * @category mapping
  */
 export const map: {
-  <A, B>(f: (context: Context.Context<A>) => Context.Context<B>): <R, E>(self: Layer<A, E, R>) => Layer<B, E, R>
-  <R, E, A, B>(self: Layer<A, E, R>, f: (context: Context.Context<A>) => Context.Context<B>): Layer<B, E, R>
+  <A, B>(f: (context: Context.Context<A>) => Context.Context<B>): <E, R>(self: Layer<A, E, R>) => Layer<B, E, R>
+  <A, E, R, B>(self: Layer<A, E, R>, f: (context: Context.Context<A>) => Context.Context<B>): Layer<B, E, R>
 } = internal.map
 
 /**
@@ -394,8 +394,8 @@ export const map: {
  * @category mapping
  */
 export const mapError: {
-  <E, E2>(f: (error: E) => E2): <R, A>(self: Layer<A, E, R>) => Layer<A, E2, R>
-  <R, E, A, E2>(self: Layer<A, E, R>, f: (error: E) => E2): Layer<A, E2, R>
+  <E, E2>(f: (error: E) => E2): <A, R>(self: Layer<A, E, R>) => Layer<A, E2, R>
+  <A, E, R, E2>(self: Layer<A, E, R>, f: (error: E) => E2): Layer<A, E2, R>
 } = internal.mapError
 
 /**
@@ -407,13 +407,13 @@ export const mapError: {
  * @category folding
  */
 export const match: {
-  <E, R2, E2, A2, A, R3, E3, A3>(
+  <E, A2, E2, R2, A, A3, E3, R3>(
     options: {
       readonly onFailure: (error: E) => Layer<A2, E2, R2>
       readonly onSuccess: (context: Context.Context<A>) => Layer<A3, E3, R3>
     }
   ): <R>(self: Layer<A, E, R>) => Layer<A2 & A3, E2 | E3, R2 | R3 | R>
-  <R, E, A, R2, E2, A2, R3, E3, A3>(
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
     self: Layer<A, E, R>,
     options: {
       readonly onFailure: (error: E) => Layer<A2, E2, R2>
@@ -431,13 +431,13 @@ export const match: {
  * @category folding
  */
 export const matchCause: {
-  <E, A, R2, E2, A2, R3, E3, A3>(
+  <E, A2, E2, R2, A, A3, E3, R3>(
     options: {
       readonly onFailure: (cause: Cause.Cause<E>) => Layer<A2, E2, R2>
       readonly onSuccess: (context: Context.Context<A>) => Layer<A3, E3, R3>
     }
   ): <R>(self: Layer<A, E, R>) => Layer<A2 & A3, E2 | E3, R2 | R3 | R>
-  <R, E, A, R2, E2, A2, R3, E3, A3>(
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
     self: Layer<A, E, R>,
     options: {
       readonly onFailure: (cause: Cause.Cause<E>) => Layer<A2, E2, R2>
@@ -504,8 +504,8 @@ export const orDie: <A, E, R>(self: Layer<A, E, R>) => Layer<A, never, R> = inte
  * @category error handling
  */
 export const orElse: {
-  <R2, E2, A2>(that: LazyArg<Layer<A2, E2, R2>>): <A, E, R>(self: Layer<A, E, R>) => Layer<A & A2, E2 | E, R2 | R>
-  <R, E, A, R2, E2, A2>(self: Layer<A, E, R>, that: LazyArg<Layer<A2, E2, R2>>): Layer<A & A2, E | E2, R | R2>
+  <A2, E2, R2>(that: LazyArg<Layer<A2, E2, R2>>): <A, E, R>(self: Layer<A, E, R>) => Layer<A & A2, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2>(self: Layer<A, E, R>, that: LazyArg<Layer<A2, E2, R2>>): Layer<A & A2, E | E2, R | R2>
 } = internal.orElse
 
 /**
@@ -561,7 +561,7 @@ export const locally: {
     ref: FiberRef<X>,
     value: X
   ): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R>
-  <R, E, A, X>(
+  <A, E, R, X>(
     self: Layer<A, E, R>,
     ref: FiberRef<X>,
     value: X
@@ -574,7 +574,7 @@ export const locally: {
  */
 export const locallyWith: {
   <X>(ref: FiberRef<X>, value: (_: X) => X): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R>
-  <R, E, A, X>(self: Layer<A, E, R>, ref: FiberRef<X>, value: (_: X) => X): Layer<A, E, R>
+  <A, E, R, X>(self: Layer<A, E, R>, ref: FiberRef<X>, value: (_: X) => X): Layer<A, E, R>
 } = internal.fiberRefLocallyWith
 
 /**
@@ -626,10 +626,10 @@ export const scope: Layer<Scope.CloseableScope> = internal.scope
 export const scoped: {
   <T extends Context.Tag<any, any>>(
     tag: T
-  ): <R, E>(
+  ): <E, R>(
     effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ) => Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>
-  <T extends Context.Tag<any, any>, R, E>(
+  <T extends Context.Tag<any, any>, E, R>(
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ): Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>
@@ -641,7 +641,7 @@ export const scoped: {
  * @since 2.0.0
  * @category constructors
  */
-export const scopedDiscard: <_, E, R>(effect: Effect.Effect<_, E, R>) => Layer<never, E, Exclude<R, Scope.Scope>> =
+export const scopedDiscard: <X, E, R>(effect: Effect.Effect<X, E, R>) => Layer<never, E, Exclude<R, Scope.Scope>> =
   internal.scopedDiscard
 
 /**
@@ -828,11 +828,11 @@ export const provideMerge: {
  * @category zipping
  */
 export const zipWith: {
-  <R2, E2, B, A, C>(
+  <B, E2, R2, A, C>(
     that: Layer<B, E2, R2>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
-  ): <R, E>(self: Layer<A, E, R>) => Layer<C, E2 | E, R2 | R>
-  <R, E, R2, E2, B, A, C>(
+  ): <E, R>(self: Layer<A, E, R>) => Layer<C, E2 | E, R2 | R>
+  <A, E, R, B, E2, R2, C>(
     self: Layer<A, E, R>,
     that: Layer<B, E2, R2>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
@@ -843,14 +843,14 @@ export const zipWith: {
  * @since 2.0.0
  * @category utils
  */
-export const unwrapEffect: <R, E, R1, E1, A>(self: Effect.Effect<Layer<A, E1, R1>, E, R>) => Layer<A, E | E1, R | R1> =
+export const unwrapEffect: <A, E1, R1, E, R>(self: Effect.Effect<Layer<A, E1, R1>, E, R>) => Layer<A, E | E1, R | R1> =
   internal.unwrapEffect
 
 /**
  * @since 2.0.0
  * @category utils
  */
-export const unwrapScoped: <R, E, R1, E1, A>(
+export const unwrapScoped: <A, E1, R1, E, R>(
   self: Effect.Effect<Layer<A, E1, R1>, E, R>
 ) => Layer<A, E | E1, R1 | Exclude<R, Scope.Scope>> = internal.unwrapScoped
 
@@ -914,7 +914,7 @@ export const setRequestCache: {
   (
     cache: Request.Cache
   ): Layer<never>
-} = (<R, E>(cache: Request.Cache | Effect.Effect<Request.Cache, E, R>) =>
+} = (<E, R>(cache: Request.Cache | Effect.Effect<Request.Cache, E, R>) =>
   scopedDiscard(
     core.isEffect(cache) ?
       core.flatMap(cache, (x) => fiberRuntime.fiberRefLocallyScoped(query.currentCache as any, x)) :

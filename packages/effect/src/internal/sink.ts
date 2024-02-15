@@ -308,8 +308,7 @@ export const collectAllWhileWith: {
   }
 )
 
-/** @internal */
-const collectAllWhileWithLoop = <R, E, In, L extends In, Z, S>(
+const collectAllWhileWithLoop = <Z, In, L extends In, E, R, S>(
   self: Sink.Sink<Z, In, L, E, R>,
   leftoversRef: Ref.Ref<Chunk.Chunk<In>>,
   upstreamDoneRef: Ref.Ref<boolean>,
@@ -474,12 +473,12 @@ export const dimap = dual<
 
 /** @internal */
 export const dimapEffect = dual<
-  <In0, R2, E2, In, A, R3, E3, A2>(
+  <In0, In, E2, R2, A, A2, E3, R3>(
     options: {
       readonly onInput: (input: In0) => Effect.Effect<In, E2, R2>
       readonly onDone: (a: A) => Effect.Effect<A2, E3, R3>
     }
-  ) => <R, E, L>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>,
+  ) => <L, E, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>,
   <A, In, L, E, R, In0, E2, R2, A2, E3, R3>(
     self: Sink.Sink<A, In, L, E, R>,
     options: {
@@ -527,7 +526,7 @@ export const dimapChunksEffect = dual<
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect.Effect<Chunk.Chunk<In>, E2, R2>
       readonly onDone: (a: A) => Effect.Effect<A2, E3, R3>
     }
-  ) => <R, E, L>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>,
+  ) => <L, E, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A2, In0, L, E2 | E3 | E, R2 | R3 | R>,
   <A, In, L, E, R, In0, E2, R2, A2, E3, R3>(
     self: Sink.Sink<A, In, L, E, R>,
     options: {
@@ -655,12 +654,12 @@ const dropWhileEffectReader = <In, R, E>(
 
 /** @internal */
 export const ensuring = dual<
-  <_, R2>(
-    finalizer: Effect.Effect<_, never, R2>
+  <X, R2>(
+    finalizer: Effect.Effect<X, never, R2>
   ) => <A, In, L, E, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A, In, L, E, R2 | R>,
-  <A, In, L, E, R, _, R2>(
+  <A, In, L, E, R, X, R2>(
     self: Sink.Sink<A, In, L, E, R>,
-    finalizer: Effect.Effect<_, never, R2>
+    finalizer: Effect.Effect<X, never, R2>
   ) => Sink.Sink<A, In, L, E, R2 | R>
 >(
   2,
@@ -669,12 +668,12 @@ export const ensuring = dual<
 
 /** @internal */
 export const ensuringWith = dual<
-  <A, E, _, R2>(
-    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<_, never, R2>
+  <A, E, X, R2>(
+    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<X, never, R2>
   ) => <In, L, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A, In, L, E, R2 | R>,
-  <A, In, L, E, R, _, R2>(
+  <A, In, L, E, R, X, R2>(
     self: Sink.Sink<A, In, L, E, R>,
-    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<_, never, R2>
+    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<X, never, R2>
   ) => Sink.Sink<A, In, L, E, R2 | R>
 >(
   2,
@@ -1245,8 +1244,7 @@ export const foldWeightedEffect = <S, In, E, R, E2, R2>(
     decompose: (input) => Effect.succeed(Chunk.of(input))
   })
 
-/** @internal */
-const foldWeightedDecomposeEffectLoop = <S, In, R, E, R2, E2, R3, E3>(
+const foldWeightedDecomposeEffectLoop = <S, In, E, R, E2, R2, E3, R3>(
   s: S,
   max: number,
   costFn: (s: S, input: In) => Effect.Effect<number, E, R>,
@@ -1274,7 +1272,7 @@ const foldWeightedDecomposeEffectLoop = <S, In, R, E, R2, E2, R3, E3>(
   })
 
 /** @internal */
-const foldWeightedDecomposeEffectFold = <S, In, R, E, R2, E2, R3, E3>(
+const foldWeightedDecomposeEffectFold = <S, In, E, R, E2, R2, E3, R3>(
   s: S,
   max: number,
   costFn: (s: S, input: In) => Effect.Effect<number, E, R>,
@@ -1343,7 +1341,7 @@ export const flatMap = dual<
 )
 
 /** @internal */
-export const forEach = <In, _, E, R>(f: (input: In) => Effect.Effect<_, E, R>): Sink.Sink<void, In, never, E, R> => {
+export const forEach = <In, X, E, R>(f: (input: In) => Effect.Effect<X, E, R>): Sink.Sink<void, In, never, E, R> => {
   const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(core.fromEffect(Effect.forEach(input, (v) => f(v), { discard: true })), core.flatMap(() => process)),
@@ -1354,8 +1352,8 @@ export const forEach = <In, _, E, R>(f: (input: In) => Effect.Effect<_, E, R>): 
 }
 
 /** @internal */
-export const forEachChunk = <In, _, E, R>(
-  f: (input: Chunk.Chunk<In>) => Effect.Effect<_, E, R>
+export const forEachChunk = <In, X, E, R>(
+  f: (input: Chunk.Chunk<In>) => Effect.Effect<X, E, R>
 ): Sink.Sink<void, In, never, E, R> => {
   const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) => pipe(core.fromEffect(f(input)), core.flatMap(() => process)),
@@ -1433,16 +1431,16 @@ export const fromPubSub = <In>(
 ): Sink.Sink<void, In> => fromQueue(pubsub, options)
 
 /** @internal */
-export const fromPush = <In, E, A, L, R>(
+export const fromPush = <In, L0, R0, L, R>(
   push: Effect.Effect<
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<A, E>, Chunk.Chunk<L>], R>,
+    (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<void, readonly [Either.Either<R0, L0>, Chunk.Chunk<L>], R>,
     never,
     R
   >
-): Sink.Sink<A, In, L, E, Exclude<R, Scope.Scope>> =>
+): Sink.Sink<R0, In, L, L0, Exclude<R, Scope.Scope>> =>
   new SinkImpl(channel.unwrapScoped(pipe(push, Effect.map(fromPushPull))))
 
-const fromPushPull = <R, E, In, L, Z>(
+const fromPushPull = <In, Z, E, L, R>(
   push: (
     option: Option.Option<Chunk.Chunk<In>>
   ) => Effect.Effect<void, readonly [Either.Either<Z, E>, Chunk.Chunk<L>], R>
@@ -1590,7 +1588,7 @@ export const provideContext = dual<
 export const race = dual<
   <R1, E1, In1, L1, A1>(
     that: Sink.Sink<A1, In1, L1, E1, R1>
-  ) => <R, E, In, L, A>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A1 | A, In & In1, L1 | L, E1 | E, R1 | R>,
+  ) => <A, In, L, E, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A1 | A, In & In1, L1 | L, E1 | E, R1 | R>,
   <A, In, L, E, R, A1, In1, L1, E1, R1>(
     self: Sink.Sink<A, In, L, E, R>,
     that: Sink.Sink<A1, In1, L1, E1, R1>
@@ -1907,7 +1905,7 @@ export const take = <In>(n: number): Sink.Sink<Chunk.Chunk<In>, In, In> =>
   )
 
 /** @internal */
-export const toChannel = <R, E, In, L, A>(
+export const toChannel = <A, In, L, E, R>(
   self: Sink.Sink<A, In, L, E, R>
 ): Channel.Channel<Chunk.Chunk<L>, Chunk.Chunk<In>, E, never, A, unknown, R> =>
   Effect.isEffect(self) ?
