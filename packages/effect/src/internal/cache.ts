@@ -551,11 +551,11 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
       switch (value._tag) {
         case "Complete": {
           this.trackAccess(value.key)
-          this.trackHit()
           if (this.hasExpired(clock, value.timeToLiveMillis)) {
             MutableHashMap.remove(this.cacheState.map, value.key.current)
             return core.succeed(Option.none<Value>())
           }
+          this.trackHit()
           return core.map(value.exit, Option.some)
         }
         case "Pending": {
