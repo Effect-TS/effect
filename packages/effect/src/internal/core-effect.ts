@@ -168,10 +168,13 @@ export const catchAllDefect = dual<
     self: Effect.Effect<A, E, R>,
     f: (defect: unknown) => Effect.Effect<A2, E2, R2>
   ) => Effect.Effect<A | A2, E | E2, R | R2>
->(2, (self, f) =>
+>(2, <A, E, R, A2, E2, R2>(
+  self: Effect.Effect<A, E, R>,
+  f: (defect: unknown) => Effect.Effect<A2, E2, R2>
+): Effect.Effect<A | A2, E | E2, R | R2> =>
   core.catchAllCause(
     self,
-    core.unified((cause) => {
+    (cause): Effect.Effect<A | A2, E | E2, R | R2> => {
       const option = internalCause.find(cause, (_) => internalCause.isDieType(_) ? Option.some(_) : Option.none())
       switch (option._tag) {
         case "None": {
@@ -181,7 +184,7 @@ export const catchAllDefect = dual<
           return f(option.value.defect)
         }
       }
-    })
+    }
   ))
 
 /* @internal */
@@ -226,10 +229,13 @@ export const catchSomeDefect = dual<
   ) => Effect.Effect<A | A2, E | E2, R | R2>
 >(
   2,
-  (self, pf) =>
+  <A, E, R, A2, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    pf: (defect: unknown) => Option.Option<Effect.Effect<A2, E2, R2>>
+  ): Effect.Effect<A | A2, E | E2, R | R2> =>
     core.catchAllCause(
       self,
-      core.unified((cause) => {
+      (cause): Effect.Effect<A | A2, E | E2, R | R2> => {
         const option = internalCause.find(cause, (_) => internalCause.isDieType(_) ? Option.some(_) : Option.none())
         switch (option._tag) {
           case "None": {
@@ -240,7 +246,7 @@ export const catchSomeDefect = dual<
             return optionEffect._tag === "Some" ? optionEffect.value : core.failCause(cause)
           }
         }
-      })
+      }
     )
 )
 

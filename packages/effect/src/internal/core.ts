@@ -530,15 +530,6 @@ export const catchAll: {
   ): Effect.Effect<A2 | A, E2, R2 | R> => matchEffect(self, { onFailure: f, onSuccess: succeed })
 )
 
-/**
- * @macro identity
- * @internal
- */
-export const unified = <Args extends ReadonlyArray<any>, Ret extends Effect.Effect<any, any, any>>(
-  f: (...args: Args) => Ret
-) =>
-(...args: Args): Effect.Effect.Unify<Ret> => f(...args)
-
 /* @internal */
 export const catchIf: {
   <E, EB extends E, A2, E2, R2>(
@@ -941,7 +932,7 @@ export const if_ = dual<
   (self: boolean | Effect.Effect<unknown, unknown, unknown>, { onFalse, onTrue }: {
     readonly onTrue: Effect.Effect<unknown, unknown, unknown>
     readonly onFalse: Effect.Effect<unknown, unknown, unknown>
-  }) => typeof self === "boolean" ? (self ? onTrue : onFalse) : flatMap(self, unified((b) => (b ? onTrue : onFalse)))
+  }) => typeof self === "boolean" ? (self ? onTrue : onFalse) : flatMap(self, (b) => (b ? onTrue : onFalse))
 )
 
 /* @internal */
@@ -1051,7 +1042,7 @@ export const onError: {
 } = dual(2, <A, E, R, X, R2>(
   self: Effect.Effect<A, E, R>,
   cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
-): Effect.Effect<A, E, R2 | R> => onExit(self, unified((exit) => exitIsSuccess(exit) ? unit : cleanup(exit.i0))))
+): Effect.Effect<A, E, R2 | R> => onExit(self, (exit) => exitIsSuccess(exit) ? unit : cleanup(exit.i0)))
 
 /* @internal */
 export const onExit: {
