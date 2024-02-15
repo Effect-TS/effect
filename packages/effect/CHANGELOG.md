@@ -1,5 +1,95 @@
 # effect
 
+## 2.3.6
+
+### Patch Changes
+
+- [#2145](https://github.com/Effect-TS/effect/pull/2145) [`b1163b2`](https://github.com/Effect-TS/effect/commit/b1163b2bd67b65bafbbb39fc4c67576e5cbaf444) Thanks [@tim-smart](https://github.com/tim-smart)! - add RequestResolver.aroundRequests api
+
+  This can be used to run side effects that introspect the requests being
+  executed.
+
+  Example:
+
+  ```ts
+  import { Effect, Request, RequestResolver } from "effect";
+
+  interface GetUserById extends Request.Request<unknown> {
+    readonly id: number;
+  }
+
+  declare const resolver: RequestResolver.RequestResolver<GetUserById>;
+
+  RequestResolver.aroundRequests(
+    resolver,
+    (requests) => Effect.log(`got ${requests.length} requests`),
+    (requests, _) => Effect.log(`finised running ${requests.length} requests`),
+  );
+  ```
+
+- [#2148](https://github.com/Effect-TS/effect/pull/2148) [`b46b869`](https://github.com/Effect-TS/effect/commit/b46b869e59a6da5aa235a9fcc25e1e0d24e9e8f8) Thanks [@riordanpawley](https://github.com/riordanpawley)! - Flipped scheduleForked types to match new <A, E, R> signature
+
+- [#2139](https://github.com/Effect-TS/effect/pull/2139) [`de1b226`](https://github.com/Effect-TS/effect/commit/de1b226282b5ab6c2809dd93f3bdb066f24a1333) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Introduce FiberId.Single, make FiberId.None behave like FiberId.Runtime, relax FiberRefs to use Single instead of Runtime.
+
+  This change is a precursor to enable easier APIs to modify the Runtime when patching FiberRefs.
+
+- [#2137](https://github.com/Effect-TS/effect/pull/2137) [`a663390`](https://github.com/Effect-TS/effect/commit/a66339090ae7b960f8a8b90a0dcdc505de5aaf3e) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Expose Random Tag and functions to use a specific random service implementation
+
+- [#2143](https://github.com/Effect-TS/effect/pull/2143) [`ff88f80`](https://github.com/Effect-TS/effect/commit/ff88f808c4ed9947a148045849e7410b00acad0a) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix Cause.pretty when toString is invalid
+
+  ```ts
+  import { Cause } from "effect";
+
+  console.log(Cause.pretty(Cause.fail([{ toString: "" }])));
+  ```
+
+  The code above used to throw now it prints:
+
+  ```bash
+  Error: [{"toString":""}]
+  ```
+
+- [#2080](https://github.com/Effect-TS/effect/pull/2080) [`11be07b`](https://github.com/Effect-TS/effect/commit/11be07bf65d82cfdf994cdb9d8ca937f995cb4f0) Thanks [@KhraksMamtsov](https://github.com/KhraksMamtsov)! - Add functional analogue of `satisfies` operator.
+  This is a convenient operator to use in the `pipe` chain to localize type errors closer to their source.
+
+  ```ts
+  import { satisfies } from "effect/Function";
+
+  const test1 = satisfies<number>()(5 as const);
+  // ^? const test: 5
+
+  // @ts-expect-error
+  const test2 = satisfies<string>()(5);
+  // ^? Argument of type 'number' is not assignable to parameter of type 'string'
+  ```
+
+- [#2147](https://github.com/Effect-TS/effect/pull/2147) [`c568645`](https://github.com/Effect-TS/effect/commit/c5686451c87d26382135a1c63b00ef171bb24f62) Thanks [@tim-smart](https://github.com/tim-smart)! - generate a random span id for the built-in tracer
+
+  This ensures the same span id isn't used between application runs.
+
+- [#2144](https://github.com/Effect-TS/effect/pull/2144) [`88835e5`](https://github.com/Effect-TS/effect/commit/88835e575a0bfbeff9a3696a332f32192c940e12) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix withRandom and withClock types
+
+- [#2138](https://github.com/Effect-TS/effect/pull/2138) [`b415577`](https://github.com/Effect-TS/effect/commit/b415577f6c576073733929c858e5aac27b6d5880) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix internals of TestAnnotationsMap making it respect equality
+
+- [#2149](https://github.com/Effect-TS/effect/pull/2149) [`ff8046f`](https://github.com/Effect-TS/effect/commit/ff8046f57dfd073eba60ce6d3144ab060fbf93ce) Thanks [@tim-smart](https://github.com/tim-smart)! - add Runtime.updateFiberRefs/setFiberRef/deleteFiberRef
+
+  This change allows you to update fiber ref values inside a Runtime object.
+
+  Example:
+
+  ```ts
+  import { Effect, FiberRef, Runtime } from "effect";
+
+  const ref = FiberRef.unsafeMake(0);
+
+  const updatedRuntime = Runtime.defaultRuntime.pipe(
+    Runtime.setFiberRef(ref, 1),
+  );
+
+  // returns 1
+  const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref));
+  ```
+
 ## 2.3.5
 
 ### Patch Changes

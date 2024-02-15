@@ -1,5 +1,94 @@
 # @effect/schema
 
+## 0.62.7
+
+### Patch Changes
+
+- [#2141](https://github.com/Effect-TS/effect/pull/2141) [`dbff62c`](https://github.com/Effect-TS/effect/commit/dbff62c3026054350a671f6210058ec5844c285e) Thanks [@gcanti](https://github.com/gcanti)! - add `{ exact: true }` optional argument to the `partial` API, mirroring the implementation in the `optional` API, closes #2140
+
+  The `partial` operation allows you to make all properties within a schema optional.
+
+  By default, the `partial` operation adds a union with `undefined` to the types. If you wish to avoid this, you can opt-out by passing a `{ exact: true }` argument to the `partial` operation.
+
+  **Example**
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  /*
+  const schema: S.Schema<{
+      readonly a?: string | undefined;
+  }, {
+      readonly a?: string | undefined;
+  }, never>
+  */
+  const schema = S.partial(S.struct({ a: S.string }));
+
+  S.decodeUnknownSync(schema)({ a: "a" }); // ok
+  S.decodeUnknownSync(schema)({ a: undefined }); // ok
+
+  /*
+  const exact: S.Schema<{
+      readonly a?: string;
+  }, {
+      readonly a?: string;
+  }, never>
+  */
+  const exactSchema = S.partial(S.struct({ a: S.string }), { exact: true });
+
+  S.decodeUnknownSync(exactSchema)({ a: "a" }); // ok
+  S.decodeUnknownSync(exactSchema)({ a: undefined });
+  /*
+  throws:
+  Error: { a?: string }
+  └─ ["a"]
+     └─ Expected a string, actual undefined
+  */
+  ```
+
+- [#2128](https://github.com/Effect-TS/effect/pull/2128) [`e572b07`](https://github.com/Effect-TS/effect/commit/e572b076e9b4369d9cc8e55414006eef376c93d9) Thanks [@tim-smart](https://github.com/tim-smart)! - allow passing structs when encoding schema classes
+
+  The following will no longer throw an error:
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  class C extends S.Class<C>()({
+    n: S.NumberFromString,
+  }) {
+    get b() {
+      return 1;
+    }
+  }
+  class D extends S.Class<D>()({
+    n: S.NumberFromString,
+    b: S.number,
+  }) {}
+
+  console.log(S.encodeSync(D)(new C({ n: 1 })));
+  // Output: { b: 1, n: '1' }
+  ```
+
+- [#2123](https://github.com/Effect-TS/effect/pull/2123) [`e787a57`](https://github.com/Effect-TS/effect/commit/e787a5772e30d8b840cb98b49d36996e7d659a6c) Thanks [@gcanti](https://github.com/gcanti)! - Refactor the `declare` signature to ensure that the decoding and encoding functions do not utilize context.
+
+  As a result, we can relax the signature of the following functions to accept `R !== never`:
+
+  - `Parser.validateSync`
+  - `Parser.validateOption`
+  - `Parser.validateEither`
+  - `Parser.is`
+  - `Parser.asserts`
+  - `Schema.validateSync`
+  - `Schema.validateOption`
+  - `Schema.validateEither`
+  - `Schema.is`
+  - `Schema.asserts`
+
+  Additionally, the `Class` API no longer requires the optional argument `disableValidation` to be `true` when `R !== never`.
+
+- Updated dependencies [[`b1163b2`](https://github.com/Effect-TS/effect/commit/b1163b2bd67b65bafbbb39fc4c67576e5cbaf444), [`b46b869`](https://github.com/Effect-TS/effect/commit/b46b869e59a6da5aa235a9fcc25e1e0d24e9e8f8), [`de1b226`](https://github.com/Effect-TS/effect/commit/de1b226282b5ab6c2809dd93f3bdb066f24a1333), [`a663390`](https://github.com/Effect-TS/effect/commit/a66339090ae7b960f8a8b90a0dcdc505de5aaf3e), [`ff88f80`](https://github.com/Effect-TS/effect/commit/ff88f808c4ed9947a148045849e7410b00acad0a), [`11be07b`](https://github.com/Effect-TS/effect/commit/11be07bf65d82cfdf994cdb9d8ca937f995cb4f0), [`c568645`](https://github.com/Effect-TS/effect/commit/c5686451c87d26382135a1c63b00ef171bb24f62), [`88835e5`](https://github.com/Effect-TS/effect/commit/88835e575a0bfbeff9a3696a332f32192c940e12), [`b415577`](https://github.com/Effect-TS/effect/commit/b415577f6c576073733929c858e5aac27b6d5880), [`ff8046f`](https://github.com/Effect-TS/effect/commit/ff8046f57dfd073eba60ce6d3144ab060fbf93ce)]:
+  - effect@2.3.6
+
 ## 0.62.6
 
 ### Patch Changes
