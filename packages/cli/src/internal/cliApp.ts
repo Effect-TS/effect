@@ -8,6 +8,7 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Unify from "effect/Unify"
 import type * as BuiltInOptions from "../BuiltInOptions.js"
 import type * as CliApp from "../CliApp.js"
 import type * as CliConfig from "../CliConfig.js"
@@ -80,7 +81,7 @@ export const run = dual<
     // Handle the command
     return Effect.matchEffect(InternalCommand.parse(self.command, prefixedArgs, config), {
       onFailure: (e) => Effect.zipRight(printDocs(e.error), Effect.fail(e)),
-      onSuccess: Effect.unifiedFn((directive) => {
+      onSuccess: Unify.unify((directive) => {
         switch (directive._tag) {
           case "UserDefined": {
             return ReadonlyArray.matchLeft(directive.leftover, {
