@@ -389,6 +389,47 @@ export const provideService: {
 )
 
 /** @internal */
+export const updateFiberRefs: {
+  (f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): <R>(self: Runtime.Runtime<R>) => Runtime.Runtime<R>
+  <R>(self: Runtime.Runtime<R>, f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): Runtime.Runtime<R>
+} = dual(
+  2,
+  <R>(self: Runtime.Runtime<R>, f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): Runtime.Runtime<R> =>
+    make({
+      context: self.context,
+      runtimeFlags: self.runtimeFlags,
+      fiberRefs: f(self.fiberRefs)
+    })
+)
+
+/** @internal */
+export const setFiberRef: {
+  <A>(fiberRef: FiberRef.FiberRef<A>, value: A): <R>(self: Runtime.Runtime<R>) => Runtime.Runtime<R>
+  <R, A>(self: Runtime.Runtime<R>, fiberRef: FiberRef.FiberRef<A>, value: A): Runtime.Runtime<R>
+} = dual(
+  3,
+  <R, A>(self: Runtime.Runtime<R>, fiberRef: FiberRef.FiberRef<A>, value: A): Runtime.Runtime<R> =>
+    updateFiberRefs(
+      self,
+      FiberRefs.updateAs({
+        fiberId: FiberId.none,
+        fiberRef,
+        value
+      })
+    )
+)
+
+/** @internal */
+export const deleteFiberRef: {
+  <A>(fiberRef: FiberRef.FiberRef<A>): <R>(self: Runtime.Runtime<R>) => Runtime.Runtime<R>
+  <R, A>(self: Runtime.Runtime<R>, fiberRef: FiberRef.FiberRef<A>): Runtime.Runtime<R>
+} = dual(
+  2,
+  <R, A>(self: Runtime.Runtime<R>, fiberRef: FiberRef.FiberRef<A>): Runtime.Runtime<R> =>
+    updateFiberRefs(self, FiberRefs.delete(fiberRef))
+)
+
+/** @internal */
 export const unsafeRunEffect = unsafeRunCallback(defaultRuntime)
 
 /** @internal */
