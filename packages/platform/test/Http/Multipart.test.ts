@@ -1,5 +1,5 @@
 import * as Multipart from "@effect/platform/Http/Multipart"
-import { Chunk, Effect, identity, Stream } from "effect"
+import { Chunk, Effect, identity, Stream, Unify } from "effect"
 import { assert, describe, test } from "vitest"
 
 describe("Multipart", () => {
@@ -15,7 +15,7 @@ describe("Multipart", () => {
         Stream.fromReadableStream(() => response.body!, identity),
         Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(response.headers))),
         Stream.mapEffect((part) => {
-          return Effect.unified(
+          return Unify.unify(
             part._tag === "File" ?
               Effect.zip(
                 Effect.succeed(part.name),
