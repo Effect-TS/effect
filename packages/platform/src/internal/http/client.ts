@@ -555,7 +555,7 @@ export const schemaFunction = dual<
     request: ClientRequest.ClientRequest
   ) => (
     a: SA
-  ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, Exclude<SR | R, Scope.Scope>>,
+  ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>,
   <R, E, A, SA, SI, SR>(
     self: Client.Client<R, E, A>,
     schema: Schema.Schema<SA, SI, SR>
@@ -563,29 +563,27 @@ export const schemaFunction = dual<
     request: ClientRequest.ClientRequest
   ) => (
     a: SA
-  ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, Exclude<SR | R, Scope.Scope>>
+  ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>
 >(2, (self, schema) => {
   const encode = Schema.encode(schema)
   return (request) => (a) =>
-    Effect.scoped(
-      Effect.flatMap(
-        Effect.tryMap(encode(a), {
-          try: (body) => new TextEncoder().encode(JSON.stringify(body)),
-          catch: (error) =>
-            internalError.requestError({
-              request,
-              reason: "Encode",
-              error
-            })
-        }),
-        (body) =>
-          self(
-            internalRequest.setBody(
-              request,
-              internalBody.uint8Array(body, "application/json")
-            )
+    Effect.flatMap(
+      Effect.tryMap(encode(a), {
+        try: (body) => new TextEncoder().encode(JSON.stringify(body)),
+        catch: (error) =>
+          internalError.requestError({
+            request,
+            reason: "Encode",
+            error
+          })
+      }),
+      (body) =>
+        self(
+          internalRequest.setBody(
+            request,
+            internalBody.uint8Array(body, "application/json")
           )
-      )
+        )
     )
 })
 

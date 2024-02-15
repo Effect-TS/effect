@@ -386,25 +386,13 @@ export const schemaFunction: {
     self: Client<R, E, A>
   ) => (
     request: ClientRequest.ClientRequest
-  ) => (
-    a: SA
-  ) => Effect.Effect<
-    A,
-    E | ParseResult.ParseError | Error.RequestError,
-    Exclude<SR, Scope.Scope> | Exclude<R, Scope.Scope>
-  >
+  ) => (a: SA) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>
   <R, E, A, SA, SI, SR>(
     self: Client<R, E, A>,
     schema: Schema.Schema<SA, SI, SR>
   ): (
     request: ClientRequest.ClientRequest
-  ) => (
-    a: SA
-  ) => Effect.Effect<
-    A,
-    ParseResult.ParseError | Error.RequestError | E,
-    Exclude<R, Scope.Scope> | Exclude<SR, Scope.Scope>
-  >
+  ) => (a: SA) => Effect.Effect<A, ParseResult.ParseError | Error.RequestError | E, R | SR>
 } = internal.schemaFunction
 
 /**
