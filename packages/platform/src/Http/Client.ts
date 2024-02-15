@@ -365,8 +365,8 @@ export const mapInputRequestEffect: {
  * @category error handling
  */
 export const retry: {
-  <R1, E extends E0, E0, B>(policy: Schedule.Schedule<R1, E0, B>): <R, A>(self: Client<R, E, A>) => Client<R1 | R, E, A>
-  <R, E extends E0, E0, A, R1, B>(self: Client<R, E, A>, policy: Schedule.Schedule<R1, E0, B>): Client<R | R1, E, A>
+  <R1, E extends E0, E0, B>(policy: Schedule.Schedule<B, E0, R1>): <R, A>(self: Client<R, E, A>) => Client<R1 | R, E, A>
+  <R, E extends E0, E0, A, R1, B>(self: Client<R, E, A>, policy: Schedule.Schedule<B, E0, R1>): Client<R | R1, E, A>
 } = internal.retry
 
 /**
