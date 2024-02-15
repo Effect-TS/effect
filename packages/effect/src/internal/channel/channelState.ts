@@ -12,23 +12,23 @@ export const ChannelStateTypeId = Symbol.for("effect/ChannelState")
 export type ChannelStateTypeId = typeof ChannelStateTypeId
 
 /** @internal */
-export interface ChannelState<out R, out E> extends ChannelState.Variance<R, E> {}
+export interface ChannelState<out E, out R> extends ChannelState.Variance<E, R> {}
 
 /** @internal */
 export declare namespace ChannelState {
-  export interface Variance<out R, out E> {
+  export interface Variance<out E, out R> {
     readonly [ChannelStateTypeId]: {
-      readonly _R: Types.Covariant<R>
       readonly _E: Types.Covariant<E>
+      readonly _R: Types.Covariant<R>
     }
   }
 }
 
 const channelStateVariance = {
   /* c8 ignore next */
-  _R: (_: never) => _,
+  _E: (_: never) => _,
   /* c8 ignore next */
-  _E: (_: never) => _
+  _R: (_: never) => _
 }
 
 /** @internal */
@@ -86,7 +86,7 @@ export const Emit = (): ChannelState<never, never> => {
 }
 
 /** @internal */
-export const FromEffect = <R, E, _>(effect: Effect.Effect<_, E, R>): ChannelState<R, E> => {
+export const FromEffect = <R, E, _>(effect: Effect.Effect<_, E, R>): ChannelState<E, R> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_FROM_EFFECT
   op.effect = effect
@@ -99,7 +99,7 @@ export const Read = <R>(
   onEffect: (effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>,
   onEmit: (value: unknown) => Effect.Effect<void, never, R> | undefined,
   onDone: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R> | undefined
-): ChannelState<R, never> => {
+): ChannelState<never, R> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_READ
   op.upstream = upstream
@@ -113,22 +113,22 @@ export const Read = <R>(
 export const isChannelState = (u: unknown): u is ChannelState<unknown, unknown> => hasProperty(u, ChannelStateTypeId)
 
 /** @internal */
-export const isDone = <R, E>(self: ChannelState<R, E>): self is Done => (self as Primitive)._tag === OpCodes.OP_DONE
+export const isDone = <E, R>(self: ChannelState<E, R>): self is Done => (self as Primitive)._tag === OpCodes.OP_DONE
 
 /** @internal */
-export const isEmit = <R, E>(self: ChannelState<R, E>): self is Emit => (self as Primitive)._tag === OpCodes.OP_EMIT
+export const isEmit = <E, R>(self: ChannelState<E, R>): self is Emit => (self as Primitive)._tag === OpCodes.OP_EMIT
 
 /** @internal */
-export const isFromEffect = <R, E>(self: ChannelState<R, E>): self is FromEffect =>
+export const isFromEffect = <E, R>(self: ChannelState<E, R>): self is FromEffect =>
   (self as Primitive)._tag === OpCodes.OP_FROM_EFFECT
 
 /** @internal */
-export const isRead = <R, E>(self: ChannelState<R, E>): self is Read => (self as Primitive)._tag === OpCodes.OP_READ
+export const isRead = <E, R>(self: ChannelState<E, R>): self is Read => (self as Primitive)._tag === OpCodes.OP_READ
 
 /** @internal */
-export const effect = <R, E>(self: ChannelState<R, E>): Effect.Effect<void, E, R> =>
+export const effect = <E, R>(self: ChannelState<E, R>): Effect.Effect<void, E, R> =>
   isFromEffect(self) ? self.effect as Effect.Effect<void, E, R> : Effect.unit
 
 /** @internal */
-export const effectOrUndefinedIgnored = <R, E>(self: ChannelState<R, E>): Effect.Effect<void, E, R> | undefined =>
+export const effectOrUndefinedIgnored = <E, R>(self: ChannelState<E, R>): Effect.Effect<void, E, R> | undefined =>
   isFromEffect(self) ? Effect.ignore(self.effect as Effect.Effect<void, E, R>) : undefined

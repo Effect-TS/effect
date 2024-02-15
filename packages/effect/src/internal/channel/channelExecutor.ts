@@ -87,8 +87,8 @@ export class ChannelExecutor<
     this._providedEnv = providedEnv
   }
 
-  run(): ChannelState.ChannelState<Env, unknown> {
-    let result: ChannelState.ChannelState<Env, unknown> | undefined = undefined
+  run(): ChannelState.ChannelState<unknown, Env> {
+    let result: ChannelState.ChannelState<unknown, Env> | undefined = undefined
     while (result === undefined) {
       if (this._cancelled !== undefined) {
         result = this.processCancellation()
@@ -261,7 +261,7 @@ export class ChannelExecutor<
                           Effect.unit
                       }
                     })
-                  ) as ChannelState.ChannelState<Env, unknown> | undefined
+                  ) as ChannelState.ChannelState<unknown, Env> | undefined
 
                   break
                 }
@@ -459,7 +459,7 @@ export class ChannelExecutor<
     )
   }
 
-  doneSucceed(value: unknown): ChannelState.ChannelState<Env, unknown> | undefined {
+  doneSucceed(value: unknown): ChannelState.ChannelState<unknown, Env> | undefined {
     if (this._doneStack.length === 0) {
       this._done = Exit.succeed(value)
       this._currentChannel = undefined
@@ -494,7 +494,7 @@ export class ChannelExecutor<
     return ChannelState.FromEffect(effect)
   }
 
-  doneHalt(cause: Cause.Cause<unknown>): ChannelState.ChannelState<Env, unknown> | undefined {
+  doneHalt(cause: Cause.Cause<unknown>): ChannelState.ChannelState<unknown, Env> | undefined {
     if (this._doneStack.length === 0) {
       this._done = Exit.failCause(cause)
       this._currentChannel = undefined
@@ -529,14 +529,14 @@ export class ChannelExecutor<
     return ChannelState.FromEffect(effect)
   }
 
-  processCancellation(): ChannelState.ChannelState<Env, unknown> {
+  processCancellation(): ChannelState.ChannelState<unknown, Env> {
     this._currentChannel = undefined
     this._done = this._cancelled
     this._cancelled = undefined
     return ChannelState.Done()
   }
 
-  runBracketOut(bracketOut: core.BracketOut): ChannelState.ChannelState<Env, unknown> {
+  runBracketOut(bracketOut: core.BracketOut): ChannelState.ChannelState<unknown, Env> {
     const effect = Effect.uninterruptible(
       Effect.matchCauseEffect(this.provide(bracketOut.acquire() as Effect.Effect<OutDone, OutErr, Env>), {
         onFailure: (cause) =>
@@ -552,7 +552,7 @@ export class ChannelExecutor<
           })
       })
     )
-    return ChannelState.FromEffect(effect) as ChannelState.ChannelState<Env, unknown>
+    return ChannelState.FromEffect(effect) as ChannelState.ChannelState<unknown, Env>;
   }
 
   provide(effect: Effect.Effect<unknown, unknown, unknown>): Effect.Effect<unknown, unknown, unknown> {
@@ -571,7 +571,7 @@ export class ChannelExecutor<
     this._doneStack.push(new Continuation.ContinuationFinalizerImpl(f))
   }
 
-  runSubexecutor(): ChannelState.ChannelState<Env, unknown> | undefined {
+  runSubexecutor(): ChannelState.ChannelState<unknown, Env> | undefined {
     const subexecutor = this._activeSubexecutor as Subexecutor.Primitive<Env>
     switch (subexecutor._tag) {
       case Subexecutor.OP_PULL_FROM_CHILD: {
@@ -615,7 +615,7 @@ export class ChannelExecutor<
   finishSubexecutorWithCloseEffect(
     subexecutorDone: Exit.Exit<unknown, unknown>,
     ...closeFuncs: Array<(exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown, never, Env> | undefined>
-  ): ChannelState.ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<unknown, Env> | undefined {
     this.addFinalizer(() =>
       pipe(
         closeFuncs,
@@ -659,7 +659,7 @@ export class ChannelExecutor<
     parentSubexecutor: Subexecutor.Subexecutor<Env>,
     onEmitted: (emitted: unknown) => ChildExecutorDecision.ChildExecutorDecision,
     subexecutor: Subexecutor.PullFromChild<Env>
-  ): ChannelState.ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<unknown, Env> | undefined {
     return ChannelState.Read(
       childExecutor,
       identity,
@@ -753,7 +753,7 @@ export class ChannelExecutor<
     childExecutor: ErasedExecutor<Env>,
     parentSubexecutor: Subexecutor.Subexecutor<Env>,
     cause: Cause.Cause<unknown>
-  ): ChannelState.ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<unknown, Env> | undefined {
     return this.finishSubexecutorWithCloseEffect(
       Exit.failCause(cause),
       (exit) => parentSubexecutor.close(exit),
@@ -763,7 +763,7 @@ export class ChannelExecutor<
 
   pullFromUpstream(
     subexecutor: Subexecutor.PullFromUpstream<Env>
-  ): ChannelState.ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<unknown, Env> | undefined {
     if (subexecutor.activeChildExecutors.length === 0) {
       return this.performPullFromUpstream(subexecutor)
     }
@@ -798,7 +798,7 @@ export class ChannelExecutor<
 
   performPullFromUpstream(
     subexecutor: Subexecutor.PullFromUpstream<Env>
-  ): ChannelState.ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<unknown, Env> | undefined {
     return ChannelState.Read(
       subexecutor.upstreamExecutor,
       (effect) => {
@@ -924,14 +924,14 @@ export class ChannelExecutor<
         return state === undefined ?
           undefined :
           // NOTE: assuming finalizers cannot fail
-          ChannelState.effectOrUndefinedIgnored(state as ChannelState.ChannelState<Env, never>)
+          ChannelState.effectOrUndefinedIgnored(state as ChannelState.ChannelState<never, Env>);
       }
-    )
+    );
   }
 
   drainChildExecutors(
     subexecutor: Subexecutor.DrainChildExecutors<Env>
-  ): ChannelState.ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<unknown, Env> | undefined {
     if (subexecutor.activeChildExecutors.length === 0) {
       const lastClose = this._closeLastSubstream
       if (lastClose !== undefined) {
@@ -1111,7 +1111,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       (exec) =>
         Effect.suspend(() =>
           pipe(
-            runScopedInterpret(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
+            runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec),
             Effect.intoDeferred(channelDeferred),
             Effect.zipRight(Deferred.await(channelDeferred)),
             Effect.zipLeft(Deferred.await(scopeDeferred))
@@ -1154,7 +1154,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
 
 /** @internal */
 const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
-  channelState: ChannelState.ChannelState<Env, OutErr>,
+  channelState: ChannelState.ChannelState<OutErr, Env>,
   exec: ChannelExecutor<never, unknown, OutErr, InErr, OutDone, InDone, Env>
 ): Effect.Effect<OutDone, OutErr, Env> => {
   const op = channelState as ChannelState.Primitive
@@ -1162,15 +1162,15 @@ const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
     case ChannelStateOpCodes.OP_FROM_EFFECT: {
       return pipe(
         op.effect as Effect.Effect<OutDone, OutErr, Env>,
-        Effect.flatMap(() => runScopedInterpret(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
-      )
+        Effect.flatMap(() => runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec))
+      );
     }
     case ChannelStateOpCodes.OP_EMIT: {
       // Can't really happen because Out <:< Nothing. So just skip ahead.
       return runScopedInterpret<Env, InErr, InDone, OutErr, OutDone>(
-        exec.run() as ChannelState.ChannelState<Env, OutErr>,
+        exec.run() as ChannelState.ChannelState<OutErr, Env>,
         exec
-      )
+      );
     }
     case ChannelStateOpCodes.OP_DONE: {
       return Effect.suspend(() => exec.getDone())
@@ -1178,9 +1178,9 @@ const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
     case ChannelStateOpCodes.OP_READ: {
       return readUpstream(
         op,
-        () => runScopedInterpret(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
+        () => runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec),
         Effect.failCause
-      ) as Effect.Effect<OutDone, OutErr, Env>
+      ) as Effect.Effect<OutDone, OutErr, Env>;
     }
   }
 }

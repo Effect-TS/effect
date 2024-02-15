@@ -2122,12 +2122,12 @@ export const toPull = <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
         return finalize === undefined ? Effect.unit : finalize
       }
     ),
-    (exec) => Effect.suspend(() => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
+    (exec) => Effect.suspend(() => interpretToPull(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec))
   )
 
 /** @internal */
 const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-  channelState: ChannelState.ChannelState<Env, OutErr>,
+  channelState: ChannelState.ChannelState<OutErr, Env>,
   exec: executor.ChannelExecutor<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
 ): Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env> => {
   const state = channelState as ChannelState.Primitive
@@ -2145,13 +2145,13 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     case ChannelStateOpCodes.OP_FROM_EFFECT: {
       return pipe(
         state.effect as Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env>,
-        Effect.flatMap(() => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
+        Effect.flatMap(() => interpretToPull(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec))
       )
     }
     case ChannelStateOpCodes.OP_READ: {
       return executor.readUpstream(
         state,
-        () => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
+        () => interpretToPull(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec),
         (cause) => Effect.failCause(cause) as Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env>
       )
     }
