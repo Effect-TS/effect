@@ -375,14 +375,14 @@ export const raceFirst = dual<
 
 /** @internal */
 export const scheduleForked = dual<
-  <R2, Out>(
-    schedule: Schedule.Schedule<R2, unknown, Out>
+  <Out, R2>(
+    schedule: Schedule.Schedule<Out, unknown, R2>
   ) => <A, E, R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope.Scope>,
-  <A, E, R, R2, Out>(
+  <A, E, R, Out, R2>(
     self: Effect.Effect<A, E, R>,
-    schedule: Schedule.Schedule<R2, unknown, Out>
+    schedule: Schedule.Schedule<Out, unknown, R2>
   ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope.Scope>
 >(2, (self, schedule) => pipe(self, _schedule.schedule_Effect(schedule), forkScoped))
 

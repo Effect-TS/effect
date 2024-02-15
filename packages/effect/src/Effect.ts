@@ -1737,13 +1737,13 @@ export declare namespace Retry {
    */
   export type Return<R, E, A, O extends Options<E>> = Effect<
     A,
-    | (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer _O> } ? E
+    | (O extends { schedule: Schedule.Schedule<infer _O, infer _I, infer _R> } ? E
       : O extends { until: Refinement<E, infer E2> } ? E2
       : E)
     | (O extends { while: (...args: Array<any>) => Effect<infer _A, infer E, infer _R> } ? E : never)
     | (O extends { until: (...args: Array<any>) => Effect<infer _A, infer E, infer _R> } ? E : never),
     | R
-    | (O extends { schedule: Schedule.Schedule<infer R, infer _I, infer _O> } ? R : never)
+    | (O extends { schedule: Schedule.Schedule<infer _O, infer _I, infer R> } ? R : never)
     | (O extends { while: (...args: Array<any>) => Effect<infer _A, infer _E, infer R> } ? R : never)
     | (O extends { until: (...args: Array<any>) => Effect<infer _A, infer _E, infer R> } ? R : never)
   > extends infer Z ? Z : never
@@ -1772,16 +1772,16 @@ export const retry: {
   ): <A, R>(
     self: Effect<A, E, R>
   ) => Retry.Return<R, E, A, O>
-  <R1, E, B>(
-    policy: Schedule.Schedule<R1, NoInfer<E>, B>
+  <B, E, R1>(
+    policy: Schedule.Schedule<B, NoInfer<E>, R1>
   ): <A, R>(self: Effect<A, E, R>) => Effect<A, E, R1 | R>
   <A, E, R, O extends Retry.Options<E>>(
     self: Effect<A, E, R>,
     options: O
   ): Retry.Return<R, E, A, O>
-  <R, E, A, R1, B>(
+  <A, E, R, B, R1>(
     self: Effect<A, E, R>,
-    policy: Schedule.Schedule<R1, E, B>
+    policy: Schedule.Schedule<B, E, R1>
   ): Effect<A, E, R1 | R>
 } = _schedule.retry_combined
 
@@ -1794,13 +1794,13 @@ export const retry: {
  * @category error handling
  */
 export const retryOrElse: {
-  <R1, E, A1, A2, E2, R2>(
-    policy: Schedule.Schedule<R1, NoInfer<E>, A1>,
+  <A1, E, R1, A2, E2, R2>(
+    policy: Schedule.Schedule<A1, NoInfer<E>, R1>,
     orElse: (e: NoInfer<E>, out: A1) => Effect<A2, E2, R2>
   ): <A, R>(self: Effect<A, E, R>) => Effect<A2 | A, E | E2, R1 | R2 | R>
   <A, E, R, A1, R1, A2, E2, R2>(
     self: Effect<A, E, R>,
-    policy: Schedule.Schedule<R1, NoInfer<E>, A1>,
+    policy: Schedule.Schedule<A1, NoInfer<E>, R1>,
     orElse: (e: NoInfer<E>, out: A1) => Effect<A2, E2, R2>
   ): Effect<A | A2, E | E2, R | R1 | R2>
 } = _schedule.retryOrElse_Effect
@@ -3936,14 +3936,14 @@ export declare namespace Repeat {
    * @category repetition / recursion
    */
   export type Return<R, E, A, O extends Options<A>> = Effect<
-    (O extends { schedule: Schedule.Schedule<infer _R, infer _I, infer Out> } ? Out
+    (O extends { schedule: Schedule.Schedule<infer Out, infer _I, infer _R> } ? Out
       : O extends { until: Refinement<A, infer B> } ? B
       : A),
     | E
     | (O extends { while: (...args: Array<any>) => Effect<infer _A, infer E, infer _R> } ? E : never)
     | (O extends { until: (...args: Array<any>) => Effect<infer _A, infer E, infer _R> } ? E : never),
     | R
-    | (O extends { schedule: Schedule.Schedule<infer R, infer _I, infer _O> } ? R : never)
+    | (O extends { schedule: Schedule.Schedule<infer _O, infer _I, infer R> } ? R : never)
     | (O extends { while: (...args: Array<any>) => Effect<infer _A, infer _E, infer R> } ? R : never)
     | (O extends { until: (...args: Array<any>) => Effect<infer _A, infer _E, infer R> } ? R : never)
   > extends infer Z ? Z : never
@@ -3971,19 +3971,19 @@ export declare namespace Repeat {
  * @category repetition / recursion
  */
 export const repeat: {
-  <A, O extends Repeat.Options<A>>(
+  <O extends Repeat.Options<A>, A>(
     options: O
   ): <E, R>(
     self: Effect<A, E, R>
   ) => Repeat.Return<R, E, A, O>
-  <R1, A, B>(
-    schedule: Schedule.Schedule<R1, A, B>
+  <B, A, R1>(
+    schedule: Schedule.Schedule<B, A, R1>
   ): <E, R>(self: Effect<A, E, R>) => Effect<B, E, R1 | R>
   <A, E, R, O extends Repeat.Options<A>>(
     self: Effect<A, E, R>,
     options: O
   ): Repeat.Return<R, E, A, O>
-  <A, E, R, R1, B>(self: Effect<A, E, R>, schedule: Schedule.Schedule<R1, A, B>): Effect<B, E, R | R1>
+  <A, E, R, B, R1>(self: Effect<A, E, R>, schedule: Schedule.Schedule<B, A, R1>): Effect<B, E, R | R1>
 } = _schedule.repeat_combined
 
 /**
@@ -4014,12 +4014,12 @@ export const repeatN: {
  */
 export const repeatOrElse: {
   <R2, A, B, E, E2, R3>(
-    schedule: Schedule.Schedule<R2, A, B>,
+    schedule: Schedule.Schedule<B, A, R2>,
     orElse: (error: E, option: Option.Option<B>) => Effect<B, E2, R3>
   ): <R>(self: Effect<A, E, R>) => Effect<B, E2, R2 | R3 | R>
   <A, E, R, R2, B, E2, R3>(
     self: Effect<A, E, R>,
-    schedule: Schedule.Schedule<R2, A, B>,
+    schedule: Schedule.Schedule<B, A, R2>,
     orElse: (error: E, option: Option.Option<B>) => Effect<B, E2, R3>
   ): Effect<B, E2, R | R2 | R3>
 } = _schedule.repeatOrElse_Effect
@@ -4034,8 +4034,8 @@ export const repeatOrElse: {
  * @category repetition / recursion
  */
 export const schedule: {
-  <R2, Out>(schedule: Schedule.Schedule<R2, unknown, Out>): <A, E, R>(self: Effect<A, E, R>) => Effect<Out, E, R2 | R>
-  <A, E, R, R2, Out>(self: Effect<A, E, R>, schedule: Schedule.Schedule<R2, unknown, Out>): Effect<Out, E, R | R2>
+  <R2, Out>(schedule: Schedule.Schedule<Out, unknown, R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<Out, E, R2 | R>
+  <A, E, R, R2, Out>(self: Effect<A, E, R>, schedule: Schedule.Schedule<Out, unknown, R2>): Effect<Out, E, R | R2>
 } = _schedule.schedule_Effect
 
 /**
@@ -4046,12 +4046,12 @@ export const schedule: {
  * @category repetition / recursion
  */
 export const scheduleForked: {
-  <R2, Out>(
-    schedule: Schedule.Schedule<R2, unknown, Out>
+  <Out, R2>(
+    schedule: Schedule.Schedule<Out, unknown, R2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<Out, E>, never, Scope.Scope | R2 | R>
-  <R, E, A, R2, Out>(
+  <A, E, R, Out, R2>(
     self: Effect<A, E, R>,
-    schedule: Schedule.Schedule<R2, unknown, Out>
+    schedule: Schedule.Schedule<Out, unknown, R2>
   ): Effect<Fiber.RuntimeFiber<Out, E>, never, Scope.Scope | R | R2>
 } = circular.scheduleForked
 
@@ -4065,12 +4065,12 @@ export const scheduleForked: {
 export const scheduleFrom: {
   <R2, In, Out>(
     initial: In,
-    schedule: Schedule.Schedule<R2, In, Out>
+    schedule: Schedule.Schedule<Out, In, R2>
   ): <E, R>(self: Effect<In, E, R>) => Effect<Out, E, R2 | R>
   <In, E, R, R2, Out>(
     self: Effect<In, E, R>,
     initial: In,
-    schedule: Schedule.Schedule<R2, In, Out>
+    schedule: Schedule.Schedule<Out, In, R2>
   ): Effect<Out, E, R | R2>
 } = _schedule.scheduleFrom_Effect
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-dirs=(../typeclass/src ../typeclass/test ../typeclass/dtslint)
+dirs=(../effect/src ../effect/test)
 for dir in ${dirs[@]};
 do
 echo Refactoring $dir

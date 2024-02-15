@@ -11,11 +11,7 @@ import * as STM from "effect/STM"
 import * as TReentrantLock from "effect/TReentrantLock"
 import { assert, describe } from "vitest"
 
-const pollSchedule = <E, A>(): Schedule.Schedule<
-  never,
-  Option.Option<Exit.Exit<E, A>>,
-  Option.Option<Exit.Exit<E, A>>
-> =>
+const pollSchedule = <E, A>(): Schedule.Schedule<Option.Option<Exit.Exit<E, A>>, Option.Option<Exit.Exit<E, A>>> =>
   pipe(
     Schedule.recurs(100),
     Schedule.zipRight(
