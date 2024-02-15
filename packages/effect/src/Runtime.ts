@@ -7,6 +7,7 @@ import type * as Effect from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import type * as FiberId from "./FiberId.js"
+import type * as FiberRef from "./FiberRef.js"
 import type * as FiberRefs from "./FiberRefs.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/runtime.js"
@@ -277,3 +278,53 @@ export const provideService: {
   <I, S>(tag: Context.Tag<I, S>, service: S): <R>(self: Runtime<R>) => Runtime<I | R>
   <R, I, S>(self: Runtime<R>, tag: Context.Tag<I, S>, service: S): Runtime<R | I>
 } = internal.provideService
+
+/**
+ * @since 2.0.0
+ * @category fiber refs
+ */
+export const updateFiberRefs: {
+  (f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): <R>(self: Runtime<R>) => Runtime<R>
+  <R>(self: Runtime<R>, f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): Runtime<R>
+} = internal.updateFiberRefs
+
+/**
+ * @since 2.0.0
+ * @category fiber refs
+ * @example
+ * import { Effect, FiberRef, Runtime } from "effect"
+ *
+ * const ref = FiberRef.unsafeMake(0)
+ *
+ * const updatedRuntime = Runtime.defaultRuntime.pipe(
+ *   Runtime.setFiberRef(ref, 1)
+ * )
+ *
+ * // returns 1
+ * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+ */
+export const setFiberRef: {
+  <A>(fiberRef: FiberRef.FiberRef<A>, value: A): <R>(self: Runtime<R>) => Runtime<R>
+  <R, A>(self: Runtime<R>, fiberRef: FiberRef.FiberRef<A>, value: A): Runtime<R>
+} = internal.setFiberRef
+
+/**
+ * @since 2.0.0
+ * @category fiber refs
+ * @example
+ * import { Effect, FiberRef, Runtime } from "effect"
+ *
+ * const ref = FiberRef.unsafeMake(0)
+ *
+ * const updatedRuntime = Runtime.defaultRuntime.pipe(
+ *   Runtime.setFiberRef(ref, 1),
+ *   Runtime.deleteFiberRef(ref)
+ * )
+ *
+ * // returns 0
+ * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+ */
+export const deleteFiberRef: {
+  <A>(fiberRef: FiberRef.FiberRef<A>): <R>(self: Runtime<R>) => Runtime<R>
+  <R, A>(self: Runtime<R>, fiberRef: FiberRef.FiberRef<A>): Runtime<R>
+} = internal.deleteFiberRef
