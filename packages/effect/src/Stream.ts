@@ -169,9 +169,9 @@ export const accumulateChunks: <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, 
  * @since 2.0.0
  * @category constructors
  */
-export const acquireRelease: <A, E, R, R2, _>(
+export const acquireRelease: <A, E, R, R2, X>(
   acquire: Effect.Effect<A, E, R>,
-  release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<_, never, R2>
+  release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
 ) => Stream<A, E, R | R2> = internal.acquireRelease
 
 /**
@@ -486,10 +486,10 @@ export const catchAllCause: {
  * @category error handling
  */
 export const catchSome: {
-  <E, R2, E2, A2>(
+  <E, A2, E2, R2>(
     pf: (error: E) => Option.Option<Stream<A2, E2, R2>>
   ): <A, R>(self: Stream<A, E, R>) => Stream<A2 | A, E | E2, R2 | R>
-  <A, E, R, R2, E2, A2>(
+  <A, E, R, A2, E2, R2>(
     self: Stream<A, E, R>,
     pf: (error: E) => Option.Option<Stream<A2, E2, R2>>
   ): Stream<A | A2, E | E2, R | R2>
@@ -669,7 +669,7 @@ export const chunksWith: {
  * @category utils
  */
 export const combine: {
-  <R2, E2, A2, S, R3, E, A, R4, R5, A3>(
+  <A2, E2, R2, S, R3, E, A, R4, R5, A3>(
     that: Stream<A2, E2, R2>,
     s: S,
     f: (
@@ -678,7 +678,7 @@ export const combine: {
       pullRight: Effect.Effect<A2, Option.Option<E2>, R4>
     ) => Effect.Effect<Exit.Exit<readonly [A3, S], Option.Option<E2 | E>>, never, R5>
   ): <R>(self: Stream<A, E, R>) => Stream<A3, E2 | E, R2 | R3 | R4 | R5 | R>
-  <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
+  <R, A2, E2, R2, S, R3, E, A, R4, R5, A3>(
     self: Stream<A, E, R>,
     that: Stream<A2, E2, R2>,
     s: S,
@@ -701,7 +701,7 @@ export const combine: {
  * @category utils
  */
 export const combineChunks: {
-  <R2, E2, A2, S, R3, E, A, R4, R5, A3>(
+  <A2, E2, R2, S, R3, E, A, R4, R5, A3>(
     that: Stream<A2, E2, R2>,
     s: S,
     f: (
@@ -710,7 +710,7 @@ export const combineChunks: {
       pullRight: Effect.Effect<Chunk.Chunk<A2>, Option.Option<E2>, R4>
     ) => Effect.Effect<Exit.Exit<readonly [Chunk.Chunk<A3>, S], Option.Option<E2 | E>>, never, R5>
   ): <R>(self: Stream<A, E, R>) => Stream<A3, E2 | E, R2 | R3 | R4 | R5 | R>
-  <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
+  <R, A2, E2, R2, S, R3, E, A, R4, R5, A3>(
     self: Stream<A, E, R>,
     that: Stream<A2, E2, R2>,
     s: S,
@@ -1044,8 +1044,8 @@ export const empty: Stream<never> = internal.empty
  * @category utils
  */
 export const ensuring: {
-  <_, R2>(finalizer: Effect.Effect<_, never, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
-  <A, E, R, _, R2>(self: Stream<A, E, R>, finalizer: Effect.Effect<_, never, R2>): Stream<A, E, R | R2>
+  <X, R2>(finalizer: Effect.Effect<X, never, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
+  <A, E, R, X, R2>(self: Stream<A, E, R>, finalizer: Effect.Effect<X, never, R2>): Stream<A, E, R | R2>
 } = internal.ensuring
 
 /**
@@ -1229,7 +1229,7 @@ export const filterMapWhileEffect: {
  * @since 2.0.0
  * @category constructors
  */
-export const finalizer: <R, _>(finalizer: Effect.Effect<_, never, R>) => Stream<void, never, R> = internal.finalizer
+export const finalizer: <R, X>(finalizer: Effect.Effect<X, never, R>) => Stream<void, never, R> = internal.finalizer
 
 /**
  * Finds the first element emitted by this stream that satisfies the provided
@@ -1736,8 +1736,8 @@ export const haltAfter: {
  * @category utils
  */
 export const haltWhen: {
-  <_, E2, R2>(effect: Effect.Effect<_, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
-  <A, E, R, _, E2, R2>(self: Stream<A, E, R>, effect: Effect.Effect<_, E2, R2>): Stream<A, E | E2, R | R2>
+  <X, E2, R2>(effect: Effect.Effect<X, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
+  <A, E, R, X, E2, R2>(self: Stream<A, E, R>, effect: Effect.Effect<X, E2, R2>): Stream<A, E | E2, R | R2>
 } = internal.haltWhen
 
 /**
@@ -1749,8 +1749,8 @@ export const haltWhen: {
  * @category utils
  */
 export const haltWhenDeferred: {
-  <_, E2>(deferred: Deferred.Deferred<_, E2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R>
-  <A, E, R, _, E2>(self: Stream<A, E, R>, deferred: Deferred.Deferred<_, E2>): Stream<A, E | E2, R>
+  <X, E2>(deferred: Deferred.Deferred<X, E2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R>
+  <A, E, R, X, E2>(self: Stream<A, E, R>, deferred: Deferred.Deferred<X, E2>): Stream<A, E | E2, R>
 } = internal.haltWhenDeferred
 
 /**
@@ -1851,8 +1851,8 @@ export const interruptAfter: {
  * @category utils
  */
 export const interruptWhen: {
-  <_, E2, R2>(effect: Effect.Effect<_, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
-  <A, E, R, _, E2, R2>(self: Stream<A, E, R>, effect: Effect.Effect<_, E2, R2>): Stream<A, E | E2, R | R2>
+  <X, E2, R2>(effect: Effect.Effect<X, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
+  <A, E, R, X, E2, R2>(self: Stream<A, E, R>, effect: Effect.Effect<X, E2, R2>): Stream<A, E | E2, R | R2>
 } = internal.interruptWhen
 
 /**
@@ -1866,8 +1866,8 @@ export const interruptWhen: {
  * @category utils
  */
 export const interruptWhenDeferred: {
-  <_, E2>(deferred: Deferred.Deferred<_, E2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R>
-  <A, E, R, _, E2>(self: Stream<A, E, R>, deferred: Deferred.Deferred<_, E2>): Stream<A, E | E2, R>
+  <X, E2>(deferred: Deferred.Deferred<X, E2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R>
+  <A, E, R, X, E2>(self: Stream<A, E, R>, deferred: Deferred.Deferred<X, E2>): Stream<A, E | E2, R>
 } = internal.interruptWhenDeferred
 
 /**
@@ -2139,7 +2139,7 @@ export const mergeAll: {
  * @category utils
  */
 export const mergeWith: {
-  <R2, E2, A2, A, A3, A4>(
+  <A2, E2, R2, A, A3, A4>(
     other: Stream<A2, E2, R2>,
     options: {
       readonly onSelf: (a: A) => A3
@@ -2583,11 +2583,11 @@ export const provideService: {
  * @category context
  */
 export const provideServiceEffect: {
-  <T extends Context.Tag<any, any>, R2, E2>(
+  <T extends Context.Tag<any, any>, E2, R2>(
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E2, R2>
   ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>>
-  <A, E, R, T extends Context.Tag<any, any>, R2, E2>(
+  <A, E, R, T extends Context.Tag<any, any>, E2, R2>(
     self: Stream<A, E, R>,
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E2, R2>
@@ -2602,11 +2602,11 @@ export const provideServiceEffect: {
  * @category context
  */
 export const provideServiceStream: {
-  <T extends Context.Tag<any, any>, R2, E2>(
+  <T extends Context.Tag<any, any>, E2, R2>(
     tag: T,
     stream: Stream<Context.Tag.Service<T>, E2, R2>
   ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | Exclude<R, Context.Tag.Identifier<T>>>
-  <A, E, R, T extends Context.Tag<any, any>, R2, E2>(
+  <A, E, R, T extends Context.Tag<any, any>, E2, R2>(
     self: Stream<A, E, R>,
     tag: T,
     stream: Stream<Context.Tag.Service<T>, E2, R2>
@@ -2747,9 +2747,9 @@ export const repeatEffectOption: <A, E, R>(effect: Effect.Effect<A, Option.Optio
  * @since 2.0.0
  * @category constructors
  */
-export const repeatEffectWithSchedule: <A, E, R, _, A0 extends A, R2>(
+export const repeatEffectWithSchedule: <A, E, R, X, A0 extends A, R2>(
   effect: Effect.Effect<A, E, R>,
-  schedule: Schedule.Schedule<_, A0, R2>
+  schedule: Schedule.Schedule<X, A0, R2>
 ) => Stream<A, E, R | R2> = internal.repeatEffectWithSchedule
 
 /**
@@ -2855,10 +2855,10 @@ export const repeatWith: {
  * @category utils
  */
 export const retry: {
-  <E0 extends E, R2, E, _>(
-    schedule: Schedule.Schedule<_, E0, R2>
+  <E0 extends E, R2, E, X>(
+    schedule: Schedule.Schedule<X, E0, R2>
   ): <A, R>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
-  <A, E, R, _, E0 extends E, R2>(self: Stream<A, E, R>, schedule: Schedule.Schedule<_, E0, R2>): Stream<A, E, R | R2>
+  <A, E, R, X, E0 extends E, R2>(self: Stream<A, E, R>, schedule: Schedule.Schedule<X, E0, R2>): Stream<A, E, R | R2>
 } = internal.retry
 
 /**
@@ -3031,7 +3031,7 @@ export const runFoldWhileScopedEffect: {
     cont: Predicate<S>,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
   ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E2 | E, R2 | R | Scope.Scope>
-  <A, E, R, S, R2, E2>(
+  <A, E, R, S, E2, R2>(
     self: Stream<A, E, R>,
     s: S,
     cont: Predicate<S>,
@@ -3321,10 +3321,10 @@ export const scanReduceEffect: {
  * @category utils
  */
 export const schedule: {
-  <_, A0 extends A, R2, A>(
-    schedule: Schedule.Schedule<_, A0, R2>
+  <X, A0 extends A, R2, A>(
+    schedule: Schedule.Schedule<X, A0, R2>
   ): <E, R>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
-  <A, E, R, _, A0 extends A, R2>(self: Stream<A, E, R>, schedule: Schedule.Schedule<_, A0, R2>): Stream<A, E, R | R2>
+  <A, E, R, X, A0 extends A, R2>(self: Stream<A, E, R>, schedule: Schedule.Schedule<X, A0, R2>): Stream<A, E, R | R2>
 } = internal.schedule
 
 /**

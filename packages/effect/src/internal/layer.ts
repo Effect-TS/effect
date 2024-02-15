@@ -553,7 +553,7 @@ export const fromEffect = dual<
 })
 
 /** @internal */
-export const fromEffectDiscard = <_, E, R>(effect: Effect.Effect<_, E, R>) =>
+export const fromEffectDiscard = <X, E, R>(effect: Effect.Effect<X, E, R>) =>
   fromEffectContext(core.map(effect, () => Context.empty()))
 
 /** @internal */
@@ -853,8 +853,8 @@ export const scoped = dual<
 })
 
 /** @internal */
-export const scopedDiscard = <_, E, R>(
-  effect: Effect.Effect<_, E, R>
+export const scopedDiscard = <X, E, R>(
+  effect: Effect.Effect<X, E, R>
 ): Layer.Layer<never, E, Exclude<R, Scope.Scope>> => scopedContext(pipe(effect, core.as(Context.empty())))
 
 /** @internal */
@@ -1186,9 +1186,9 @@ const provideSomeRuntime = dual<
 /** @internal */
 export const effect_provide = dual<
   {
-    <R2, E2, R3>(
-      layer: Layer.Layer<R3, E2, R2>
-    ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R2 | Exclude<R, R3>>
+    <ROut, E2, RIn>(
+      layer: Layer.Layer<ROut, E2, RIn>
+    ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, RIn | Exclude<R, ROut>>
     <R2>(
       context: Context.Context<R2>
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, R2>>
@@ -1197,10 +1197,10 @@ export const effect_provide = dual<
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, R2>>
   },
   {
-    <A, E, R, R2, E2, R3>(
+    <A, E, R, ROut, E2, RIn>(
       self: Effect.Effect<A, E, R>,
-      layer: Layer.Layer<R3, E2, R2>
-    ): Effect.Effect<A, E | E2, R2 | Exclude<R, R3>>
+      layer: Layer.Layer<ROut, E2, RIn>
+    ): Effect.Effect<A, E | E2, RIn | Exclude<R, ROut>>
     <A, E, R, R2>(
       self: Effect.Effect<A, E, R>,
       context: Context.Context<R2>
@@ -1212,13 +1212,13 @@ export const effect_provide = dual<
   }
 >(
   2,
-  <A, E, R, R2>(
+  <A, E, R, ROut>(
     self: Effect.Effect<A, E, R>,
-    source: Layer.Layer<R2, any, any> | Context.Context<R2> | Runtime.Runtime<R2>
-  ): Effect.Effect<any, any, Exclude<R, R2>> =>
+    source: Layer.Layer<ROut, any, any> | Context.Context<ROut> | Runtime.Runtime<ROut>
+  ): Effect.Effect<any, any, Exclude<R, ROut>> =>
     isLayer(source)
-      ? provideSomeLayer(self, source as Layer.Layer<R2, any, any>)
+      ? provideSomeLayer(self, source as Layer.Layer<ROut, any, any>)
       : Context.isContext(source)
       ? core.provideSomeContext(self, source)
-      : provideSomeRuntime(self, source as Runtime.Runtime<R2>)
+      : provideSomeRuntime(self, source as Runtime.Runtime<ROut>)
 )

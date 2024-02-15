@@ -654,12 +654,12 @@ const dropWhileEffectReader = <In, R, E>(
 
 /** @internal */
 export const ensuring = dual<
-  <_, R2>(
-    finalizer: Effect.Effect<_, never, R2>
+  <X, R2>(
+    finalizer: Effect.Effect<X, never, R2>
   ) => <A, In, L, E, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A, In, L, E, R2 | R>,
-  <A, In, L, E, R, _, R2>(
+  <A, In, L, E, R, X, R2>(
     self: Sink.Sink<A, In, L, E, R>,
-    finalizer: Effect.Effect<_, never, R2>
+    finalizer: Effect.Effect<X, never, R2>
   ) => Sink.Sink<A, In, L, E, R2 | R>
 >(
   2,
@@ -668,12 +668,12 @@ export const ensuring = dual<
 
 /** @internal */
 export const ensuringWith = dual<
-  <A, E, _, R2>(
-    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<_, never, R2>
+  <A, E, X, R2>(
+    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<X, never, R2>
   ) => <In, L, R>(self: Sink.Sink<A, In, L, E, R>) => Sink.Sink<A, In, L, E, R2 | R>,
-  <A, In, L, E, R, _, R2>(
+  <A, In, L, E, R, X, R2>(
     self: Sink.Sink<A, In, L, E, R>,
-    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<_, never, R2>
+    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<X, never, R2>
   ) => Sink.Sink<A, In, L, E, R2 | R>
 >(
   2,
@@ -1244,8 +1244,7 @@ export const foldWeightedEffect = <S, In, E, R, E2, R2>(
     decompose: (input) => Effect.succeed(Chunk.of(input))
   })
 
-/** @internal */
-const foldWeightedDecomposeEffectLoop = <S, In, R, E, R2, E2, R3, E3>(
+const foldWeightedDecomposeEffectLoop = <S, In, E, R, E2, R2, E3, R3>(
   s: S,
   max: number,
   costFn: (s: S, input: In) => Effect.Effect<number, E, R>,
@@ -1273,7 +1272,7 @@ const foldWeightedDecomposeEffectLoop = <S, In, R, E, R2, E2, R3, E3>(
   })
 
 /** @internal */
-const foldWeightedDecomposeEffectFold = <S, In, R, E, R2, E2, R3, E3>(
+const foldWeightedDecomposeEffectFold = <S, In, E, R, E2, R2, E3, R3>(
   s: S,
   max: number,
   costFn: (s: S, input: In) => Effect.Effect<number, E, R>,
@@ -1342,7 +1341,7 @@ export const flatMap = dual<
 )
 
 /** @internal */
-export const forEach = <In, _, E, R>(f: (input: In) => Effect.Effect<_, E, R>): Sink.Sink<void, In, never, E, R> => {
+export const forEach = <In, X, E, R>(f: (input: In) => Effect.Effect<X, E, R>): Sink.Sink<void, In, never, E, R> => {
   const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(core.fromEffect(Effect.forEach(input, (v) => f(v), { discard: true })), core.flatMap(() => process)),
@@ -1353,8 +1352,8 @@ export const forEach = <In, _, E, R>(f: (input: In) => Effect.Effect<_, E, R>): 
 }
 
 /** @internal */
-export const forEachChunk = <In, _, E, R>(
-  f: (input: Chunk.Chunk<In>) => Effect.Effect<_, E, R>
+export const forEachChunk = <In, X, E, R>(
+  f: (input: Chunk.Chunk<In>) => Effect.Effect<X, E, R>
 ): Sink.Sink<void, In, never, E, R> => {
   const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) => pipe(core.fromEffect(f(input)), core.flatMap(() => process)),

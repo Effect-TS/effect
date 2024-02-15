@@ -252,7 +252,7 @@ export const effect: {
  * @since 2.0.0
  * @category constructors
  */
-export const effectDiscard: <_, E, R>(effect: Effect.Effect<_, E, R>) => Layer<never, E, R> = internal.fromEffectDiscard
+export const effectDiscard: <X, E, R>(effect: Effect.Effect<X, E, R>) => Layer<never, E, R> = internal.fromEffectDiscard
 
 /**
  * Constructs a layer from the specified effect, which must return one or more
@@ -641,7 +641,7 @@ export const scoped: {
  * @since 2.0.0
  * @category constructors
  */
-export const scopedDiscard: <_, E, R>(effect: Effect.Effect<_, E, R>) => Layer<never, E, Exclude<R, Scope.Scope>> =
+export const scopedDiscard: <X, E, R>(effect: Effect.Effect<X, E, R>) => Layer<never, E, Exclude<R, Scope.Scope>> =
   internal.scopedDiscard
 
 /**

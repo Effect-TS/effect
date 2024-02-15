@@ -182,8 +182,8 @@ export const catchAll = dual<
 
 /** @internal */
 export const concatMap = dual<
-  <OutElem, OutElem2, InElem2, OutErr2, InErr2, _, InDone2, Env2>(
-    f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, _, InDone2, Env2>
+  <OutElem, OutElem2, InElem2, OutErr2, InErr2, X, InDone2, Env2>(
+    f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, X, InDone2, Env2>
   ) => <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
   ) => Channel.Channel<
@@ -195,9 +195,9 @@ export const concatMap = dual<
     InDone & InDone2,
     Env2 | Env
   >,
-  <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, OutElem2, Env2, InErr2, InElem2, InDone2, OutErr2, _>(
+  <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, OutElem2, Env2, InErr2, InElem2, InDone2, OutErr2, X>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-    f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, _, InDone2, Env2>
+    f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, X, InDone2, Env2>
   ) => Channel.Channel<
     OutElem2,
     InElem & InElem2,
@@ -207,9 +207,9 @@ export const concatMap = dual<
     InDone & InDone2,
     Env2 | Env
   >
->(2, <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, OutElem2, Env2, InErr2, InElem2, InDone2, OutErr2, _>(
+>(2, <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, OutElem2, Env2, InErr2, InElem2, InDone2, OutErr2, X>(
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-  f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, _, InDone2, Env2>
+  f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, X, InDone2, Env2>
 ): Channel.Channel<
   OutElem2,
   InElem & InElem2,

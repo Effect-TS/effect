@@ -607,8 +607,8 @@ export const map: {
  * @since 2.0.0
  */
 export const as: {
-  <B>(b: B): <_>(self: Option<_>) => Option<B>
-} = dual(2, <_, B>(self: Option<_>, b: B): Option<B> => map(self, () => b))
+  <B>(b: B): <X>(self: Option<X>) => Option<B>
+} = dual(2, <X, B>(self: Option<X>, b: B): Option<B> => map(self, () => b))
 
 /**
  * Maps the `Some` value of this `Option` to the `void` constant value.
@@ -724,8 +724,8 @@ export const flatten: <A>(self: Option<Option<A>>) => Option<A> = flatMap(identi
  */
 export const zipRight: {
   <B>(that: Option<B>): <_>(self: Option<_>) => Option<B>
-  <_, B>(self: Option<_>, that: Option<B>): Option<B>
-} = dual(2, <_, B>(self: Option<_>, that: Option<B>): Option<B> => flatMap(self, () => that))
+  <X, B>(self: Option<X>, that: Option<B>): Option<B>
+} = dual(2, <X, B>(self: Option<X>, that: Option<B>): Option<B> => flatMap(self, () => that))
 
 /**
  * @category sequencing
@@ -749,8 +749,8 @@ export const composeK: {
  */
 export const zipLeft: {
   <_>(that: Option<_>): <A>(self: Option<A>) => Option<A>
-  <A, _>(self: Option<A>, that: Option<_>): Option<A>
-} = dual(2, <A, _>(self: Option<A>, that: Option<_>): Option<A> => tap(self, () => that))
+  <A, X>(self: Option<A>, that: Option<X>): Option<A>
+} = dual(2, <A, X>(self: Option<A>, that: Option<X>): Option<A> => tap(self, () => that))
 
 /**
  * Applies the provided function `f` to the value of the `Option` if it is `Some` and returns the original `Option`
@@ -774,9 +774,9 @@ export const zipLeft: {
  * @since 2.0.0
  */
 export const tap: {
-  <A, _>(f: (a: A) => Option<_>): (self: Option<A>) => Option<A>
-  <A, _>(self: Option<A>, f: (a: A) => Option<_>): Option<A>
-} = dual(2, <A, _>(self: Option<A>, f: (a: A) => Option<_>): Option<A> => flatMap(self, (a) => map(f(a), () => a)))
+  <A, X>(f: (a: A) => Option<X>): (self: Option<A>) => Option<A>
+  <A, X>(self: Option<A>, f: (a: A) => Option<X>): Option<A>
+} = dual(2, <A, X>(self: Option<A>, f: (a: A) => Option<X>): Option<A> => flatMap(self, (a) => map(f(a), () => a)))
 
 /**
  * @category combining

@@ -941,13 +941,13 @@ export const orElseOptional = dual<
   ) => <A, E, R>(
     self: STM.STM<A, Option.Option<E>, R>
   ) => STM.STM<A2 | A, Option.Option<E2 | E>, R2 | R>,
-  <A, E, R, R2, E2, A2>(
+  <A, E, R, A2, E2, R2>(
     self: STM.STM<A, Option.Option<E>, R>,
     that: LazyArg<STM.STM<A2, Option.Option<E2>, R2>>
   ) => STM.STM<A2 | A, Option.Option<E2 | E>, R2 | R>
 >(
   2,
-  <A, E, R, R2, E2, A2>(
+  <A, E, R, A2, E2, R2>(
     self: STM.STM<A, Option.Option<E>, R>,
     that: LazyArg<STM.STM<A2, Option.Option<E2>, R2>>
   ): STM.STM<A2 | A, Option.Option<E2 | E>, R2 | R> =>
@@ -1300,11 +1300,11 @@ export const suspend = <A, E, R>(evaluate: LazyArg<STM.STM<A, E, R>>): STM.STM<A
 
 /** @internal */
 export const tap: {
-  <A, _, E2, R2>(f: (a: A) => STM.STM<_, E2, R2>): <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E2 | E, R2 | R>
-  <A, E, R, _, E2, R2>(self: STM.STM<A, E, R>, f: (a: A) => STM.STM<_, E2, R2>): STM.STM<A, E | E2, R | R2>
+  <A, X, E2, R2>(f: (a: A) => STM.STM<X, E2, R2>): <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E2 | E, R2 | R>
+  <A, E, R, X, E2, R2>(self: STM.STM<A, E, R>, f: (a: A) => STM.STM<X, E2, R2>): STM.STM<A, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R, _, E2, R2>(self: STM.STM<A, E, R>, f: (a: A) => STM.STM<_, E2, R2>): STM.STM<A, E | E2, R | R2> =>
+  <A, E, R, X, E2, R2>(self: STM.STM<A, E, R>, f: (a: A) => STM.STM<X, E2, R2>): STM.STM<A, E | E2, R | R2> =>
     core.flatMap(self, (a) => as(f(a), a))
 )
 

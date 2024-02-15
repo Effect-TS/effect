@@ -494,10 +494,10 @@ export const dropWhileEffect: <In, E, R>(
  * @category finalization
  */
 export const ensuring: {
-  <_, R2>(
-    finalizer: Effect.Effect<_, never, R2>
+  <X, R2>(
+    finalizer: Effect.Effect<X, never, R2>
   ): <A, In, L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A, In, L, E, R2 | R>
-  <A, In, L, E, R, _, R2>(self: Sink<A, In, L, E, R>, finalizer: Effect.Effect<_, never, R2>): Sink<A, In, L, E, R | R2>
+  <A, In, L, E, R, X, R2>(self: Sink<A, In, L, E, R>, finalizer: Effect.Effect<X, never, R2>): Sink<A, In, L, E, R | R2>
 } = internal.ensuring
 
 /**
@@ -509,12 +509,12 @@ export const ensuring: {
  * @category finalization
  */
 export const ensuringWith: {
-  <A, E, _, R2>(
-    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<_, never, R2>
+  <A, E, X, R2>(
+    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<X, never, R2>
   ): <In, L, R>(self: Sink<A, In, L, E, R>) => Sink<A, In, L, E, R2 | R>
-  <A, In, L, E, R, _, R2>(
+  <A, In, L, E, R, X, R2>(
     self: Sink<A, In, L, E, R>,
-    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<_, never, R2>
+    finalizer: (exit: Exit.Exit<A, E>) => Effect.Effect<X, never, R2>
   ): Sink<A, In, L, E, R | R2>
 } = internal.ensuringWith
 
@@ -908,7 +908,7 @@ export const foldWeightedEffect: <S, In, E, R, E2, R2>(
  * @since 2.0.0
  * @category constructors
  */
-export const forEach: <In, _, E, R>(f: (input: In) => Effect.Effect<_, E, R>) => Sink<void, In, never, E, R> =
+export const forEach: <In, X, E, R>(f: (input: In) => Effect.Effect<X, E, R>) => Sink<void, In, never, E, R> =
   internal.forEach
 
 /**
@@ -918,8 +918,8 @@ export const forEach: <In, _, E, R>(f: (input: In) => Effect.Effect<_, E, R>) =>
  * @since 2.0.0
  * @category constructors
  */
-export const forEachChunk: <In, _, E, R>(
-  f: (input: Chunk.Chunk<In>) => Effect.Effect<_, E, R>
+export const forEachChunk: <In, X, E, R>(
+  f: (input: Chunk.Chunk<In>) => Effect.Effect<X, E, R>
 ) => Sink<void, In, never, E, R> = internal.forEachChunk
 
 /**

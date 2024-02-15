@@ -1393,7 +1393,7 @@ export const orElseOptional: {
   <A2, E2, R2>(
     that: LazyArg<STM<A2, Option.Option<E2>, R2>>
   ): <A, E, R>(self: STM<A, Option.Option<E>, R>) => STM<A2 | A, Option.Option<E2 | E>, R2 | R>
-  <A, E, R, R2, E2, A2>(
+  <A, E, R, A2, E2, R2>(
     self: STM<A, Option.Option<E>, R>,
     that: LazyArg<STM<A2, Option.Option<E2>, R2>>
   ): STM<A | A2, Option.Option<E | E2>, R | R2>
@@ -1780,8 +1780,8 @@ export const sync: <A>(evaluate: () => A) => STM<A> = core.sync
  * @category sequencing
  */
 export const tap: {
-  <A, _, E2, R2>(f: (a: A) => STM<_, E2, R2>): <E, R>(self: STM<A, E, R>) => STM<A, E2 | E, R2 | R>
-  <A, E, R, _, E2, R2>(self: STM<A, E, R>, f: (a: A) => STM<_, E2, R2>): STM<A, E | E2, R | R2>
+  <A, X, E2, R2>(f: (a: A) => STM<X, E2, R2>): <E, R>(self: STM<A, E, R>) => STM<A, E2 | E, R2 | R>
+  <A, E, R, X, E2, R2>(self: STM<A, E, R>, f: (a: A) => STM<X, E2, R2>): STM<A, E | E2, R | R2>
 } = stm.tap
 
 /**

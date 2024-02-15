@@ -45,13 +45,13 @@ export const isGroupBy = (u: unknown): u is GroupBy.GroupBy<unknown, unknown, un
 
 /** @internal */
 export const evaluate = dual<
-  <K, E, V, R2, E2, A>(
+  <K, V, E, A, E2, R2>(
     f: (key: K, stream: Stream.Stream<V, E>) => Stream.Stream<A, E2, R2>,
     options?: {
       readonly bufferSize?: number | undefined
     }
   ) => <R>(self: GroupBy.GroupBy<R, E, K, V>) => Stream.Stream<A, E | E2, R2 | R>,
-  <R, K, E, V, R2, E2, A>(
+  <R, E, K, V, A, E2, R2>(
     self: GroupBy.GroupBy<R, E, K, V>,
     f: (key: K, stream: Stream.Stream<V, E>) => Stream.Stream<A, E2, R2>,
     options?: {
@@ -60,7 +60,7 @@ export const evaluate = dual<
   ) => Stream.Stream<A, E | E2, R2 | R>
 >(
   (args) => isGroupBy(args[0]),
-  <R, K, E, V, R2, E2, A>(
+  <R, E, K, V, A, E2, R2>(
     self: GroupBy.GroupBy<R, E, K, V>,
     f: (key: K, stream: Stream.Stream<V, E>) => Stream.Stream<A, E2, R2>,
     options?: {
@@ -299,7 +299,7 @@ export const bindEffect = dual<
     E | E2,
     R | R2
   >
->((args) => typeof args[0] !== "string", <R, E, N extends string, K, R2, E2, A>(
+>((args) => typeof args[0] !== "string", <K, E, R, N extends string, A, E2, R2>(
   self: Stream.Stream<K, E, R>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => Effect.Effect<A, E2, R2>,

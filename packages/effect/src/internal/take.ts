@@ -186,14 +186,14 @@ export const of = <A>(value: A): Take.Take<A> => new TakeImpl(Exit.succeed(Chunk
 
 /** @internal */
 export const tap = dual<
-  <A, _, E2, R>(
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
+  <A, X, E2, R>(
+    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<X, E2, R>
   ) => <E>(self: Take.Take<A, E>) => Effect.Effect<void, E2 | E, R>,
-  <A, E, _, E2, R>(
+  <A, E, X, E2, R>(
     self: Take.Take<A, E>,
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
+    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<X, E2, R>
   ) => Effect.Effect<void, E2 | E, R>
->(2, <A, E, _, E2, R>(
+>(2, <A, E, X, E2, R>(
   self: Take.Take<A, E>,
-  f: (chunk: Chunk.Chunk<A>) => Effect.Effect<_, E2, R>
+  f: (chunk: Chunk.Chunk<A>) => Effect.Effect<X, E2, R>
 ): Effect.Effect<void, E2 | E, R> => pipe(self.exit, Exit.forEachEffect(f), Effect.asUnit))

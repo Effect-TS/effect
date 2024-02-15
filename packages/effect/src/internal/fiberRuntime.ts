@@ -1915,9 +1915,9 @@ export const forEachParUnbounded = <A, B, E, R>(
   })
 
 /** @internal */
-export const forEachConcurrentDiscard = <A, _, E, R>(
+export const forEachConcurrentDiscard = <A, X, E, R>(
   self: Iterable<A>,
-  f: (a: A, i: number) => Effect.Effect<_, E, R>,
+  f: (a: A, i: number) => Effect.Effect<X, E, R>,
   batching: boolean,
   processAll: boolean,
   n?: number
@@ -1933,7 +1933,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
         let counter = 0
         let interrupted = false
         const fibersCount = n ? Math.min(todos.length, n) : todos.length
-        const fibers = new Set<FiberRuntime<Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
+        const fibers = new Set<FiberRuntime<Exit.Exit<X, E> | Effect.Blocked<X, E>>>()
         const results = new Array()
         const interruptAll = () =>
           fibers.forEach((fiber) => {
@@ -1941,8 +1941,8 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
               fiber.unsafeInterruptAsFork(parent.id())
             }, 0)
           })
-        const startOrder = new Array<FiberRuntime<Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
-        const joinOrder = new Array<FiberRuntime<Exit.Exit<_, E> | Effect.Blocked<_, E>>>()
+        const startOrder = new Array<FiberRuntime<Exit.Exit<X, E> | Effect.Blocked<X, E>>>()
+        const joinOrder = new Array<FiberRuntime<Exit.Exit<X, E> | Effect.Blocked<X, E>>>()
         const residual = new Array<core.Blocked>()
         const collectExits = () => {
           const exits: Array<Exit.Exit<any, E>> = results
@@ -1978,7 +1978,7 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
         const stepOrExit = batching ? core.step : core.exit
         const processingFiber = runFiber(
           core.async<any, any, any>((resume) => {
-            const pushResult = <_, E>(res: Exit.Exit<_, E> | Effect.Blocked<_, E>, index: number) => {
+            const pushResult = <X, E>(res: Exit.Exit<X, E> | Effect.Blocked<X, E>, index: number) => {
               if (res._op === "Blocked") {
                 residual.push(res as core.Blocked)
               } else {
@@ -2002,8 +2002,8 @@ export const forEachConcurrentDiscard = <A, _, E, R>(
                     ))
                 }
                 const onRes = (
-                  res: Exit.Exit<_, E> | Effect.Blocked<_, E>
-                ): Effect.Effect<Exit.Exit<_, E> | Effect.Blocked<_, E>, never, R> => {
+                  res: Exit.Exit<X, E> | Effect.Blocked<X, E>
+                ): Effect.Effect<Exit.Exit<X, E> | Effect.Blocked<X, E>, never, R> => {
                   if (todos.length > 0) {
                     pushResult(res, index)
                     if (todos.length > 0) {
@@ -3315,7 +3315,7 @@ export const raceFibersWith = dual<
     }, FiberId.combine(leftFiber.id(), rightFiber.id()))
   }))
 
-const completeRace = <R, R1, R2, E2, A2, R3, E3, A3>(
+const completeRace = <A2, A3, E2, E3, R, R1, R2, R3>(
   winner: Fiber.RuntimeFiber<any, any>,
   loser: Fiber.RuntimeFiber<any, any>,
   cont: (winner: Fiber.RuntimeFiber<any, any>, loser: Fiber.RuntimeFiber<any, any>) => Effect.Effect<any, any, any>,

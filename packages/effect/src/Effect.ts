@@ -3046,12 +3046,15 @@ export const mapInputContext: {
  * @category context
  */
 export const provide: {
-  <R2, E2, R3>(
-    layer: Layer.Layer<R3, E2, R2>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, R2 | Exclude<R, R3>>
+  <ROut, E2, RIn>(
+    layer: Layer.Layer<ROut, E2, RIn>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, RIn | Exclude<R, ROut>>
   <R2>(context: Context.Context<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <R2>(runtime: Runtime.Runtime<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
-  <A, E, R, R2, E2, R3>(self: Effect<A, E, R>, layer: Layer.Layer<R3, E2, R2>): Effect<A, E | E2, R2 | Exclude<R, R3>>
+  <A, E, R, ROut, E2, RIn>(
+    self: Effect<A, E, R>,
+    layer: Layer.Layer<ROut, E2, RIn>
+  ): Effect<A, E | E2, RIn | Exclude<R, ROut>>
   <A, E, R, R2>(self: Effect<A, E, R>, context: Context.Context<R2>): Effect<A, E, Exclude<R, R2>>
   <A, E, R, R2>(self: Effect<A, E, R>, runtime: Runtime.Runtime<R2>): Effect<A, E, Exclude<R, R2>>
 } = layer.effect_provide
