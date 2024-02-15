@@ -111,10 +111,10 @@ declare module "./Context.js" {
  * @category models
  */
 declare module "./Either.js" {
-  interface Left<E, A> extends STM<A, E> {
+  interface Left<L, R> extends STM<R, L> {
     readonly _tag: "Left"
   }
-  interface Right<E, A> extends STM<A, E> {
+  interface Right<L, R> extends STM<R, L> {
     readonly _tag: "Right"
   }
 }
@@ -179,11 +179,11 @@ export const isSTM: (u: unknown) => u is STM<unknown, unknown, unknown> = core.i
  * @category constructors
  */
 export const acquireUseRelease: {
-  <A, R2, E2, A2, R3, E3, A3>(
+  <A, A2, E2, R2, A3, E3, R3>(
     use: (resource: A) => STM<A2, E2, R2>,
     release: (resource: A) => STM<A3, E3, R3>
-  ): <R, E>(acquire: STM<A, E, R>) => Effect.Effect<A2, E2 | E3 | E, R2 | R3 | R>
-  <R, E, A, R2, E2, A2, R3, E3, A3>(
+  ): <E, R>(acquire: STM<A, E, R>) => Effect.Effect<A2, E2 | E3 | E, R2 | R3 | R>
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
     acquire: STM<A, E, R>,
     use: (resource: A) => STM<A2, E2, R2>,
     release: (resource: A) => STM<A3, E3, R3>
@@ -268,7 +268,7 @@ export const all: All.Signature = stm.all
  */
 export const as: {
   <A2>(value: A2): <A, E, R>(self: STM<A, E, R>) => STM<A2, E, R>
-  <R, E, A, A2>(self: STM<A, E, R>, value: A2): STM<A2, E, R>
+  <A, E, R, A2>(self: STM<A, E, R>, value: A2): STM<A2, E, R>
 } = stm.as
 
 /**
@@ -312,8 +312,8 @@ export const attempt: <A>(evaluate: LazyArg<A>) => STM<A, unknown> = stm.attempt
  * @category error handling
  */
 export const catchAll: {
-  <E, R1, E1, B>(f: (e: E) => STM<B, E1, R1>): <R, A>(self: STM<A, E, R>) => STM<B | A, E1, R1 | R>
-  <R, A, E, R1, E1, B>(self: STM<A, E, R>, f: (e: E) => STM<B, E1, R1>): STM<A | B, E1, R | R1>
+  <E, B, E1, R1>(f: (e: E) => STM<B, E1, R1>): <A, R>(self: STM<A, E, R>) => STM<B | A, E1, R1 | R>
+  <A, E, R, B, E1, R1>(self: STM<A, E, R>, f: (e: E) => STM<B, E1, R1>): STM<A | B, E1, R | R1>
 } = core.catchAll
 
 /**
@@ -323,12 +323,10 @@ export const catchAll: {
  * @category error handling
  */
 export const catchSome: {
-  <E, R2, E2, A2>(
+  <E, A2, E2, R2>(
     pf: (error: E) => Option.Option<STM<A2, E2, R2>>
-  ): <R, A>(
-    self: STM<A, E, R>
-  ) => STM<A2 | A, E | E2, R2 | R>
-  <R, A, E, R2, E2, A2>(
+  ): <A, R>(self: STM<A, E, R>) => STM<A2 | A, E | E2, R2 | R>
+  <A, E, R, A2, E2, R2>(
     self: STM<A, E, R>,
     pf: (error: E) => Option.Option<STM<A2, E2, R2>>
   ): STM<A | A2, E | E2, R | R2>
@@ -341,11 +339,11 @@ export const catchSome: {
  * @category error handling
  */
 export const catchTag: {
-  <K extends E["_tag"] & string, E extends { _tag: string }, R1, E1, A1>(
+  <K extends E["_tag"] & string, E extends { _tag: string }, A1, E1, R1>(
     k: K,
     f: (e: Extract<E, { _tag: K }>) => STM<A1, E1, R1>
-  ): <R, A>(self: STM<A, E, R>) => STM<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
-  <R, E extends { _tag: string }, A, K extends E["_tag"] & string, R1, E1, A1>(
+  ): <A, R>(self: STM<A, E, R>) => STM<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
+  <A, E extends { _tag: string }, R, K extends E["_tag"] & string, A1, E1, R1>(
     self: STM<A, E, R>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => STM<A1, E1, R1>
@@ -364,7 +362,7 @@ export const catchTags: {
     Cases extends { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => STM<any, any, any>) }
   >(
     cases: Cases
-  ): <R, A>(
+  ): <A, R>(
     self: STM<A, E, R>
   ) => STM<
     | A
@@ -407,8 +405,8 @@ export const check: (predicate: LazyArg<boolean>) => STM<void> = stm.check
  * @category mutations
  */
 export const collect: {
-  <A, A2>(pf: (a: A) => Option.Option<A2>): <R, E>(self: STM<A, E, R>) => STM<A2, E, R>
-  <R, E, A, A2>(self: STM<A, E, R>, pf: (a: A) => Option.Option<A2>): STM<A2, E, R>
+  <A, A2>(pf: (a: A) => Option.Option<A2>): <E, R>(self: STM<A, E, R>) => STM<A2, E, R>
+  <A, E, R, A2>(self: STM<A, E, R>, pf: (a: A) => Option.Option<A2>): STM<A2, E, R>
 } = stm.collect
 
 /**
@@ -418,8 +416,8 @@ export const collect: {
  * @category mutations
  */
 export const collectSTM: {
-  <A, R2, E2, A2>(pf: (a: A) => Option.Option<STM<A2, E2, R2>>): <R, E>(self: STM<A, E, R>) => STM<A2, E2 | E, R2 | R>
-  <R, E, A, R2, E2, A2>(self: STM<A, E, R>, pf: (a: A) => Option.Option<STM<A2, E2, R2>>): STM<A2, E | E2, R | R2>
+  <A, A2, E2, R2>(pf: (a: A) => Option.Option<STM<A2, E2, R2>>): <E, R>(self: STM<A, E, R>) => STM<A2, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2>(self: STM<A, E, R>, pf: (a: A) => Option.Option<STM<A2, E2, R2>>): STM<A2, E | E2, R | R2>
 } = stm.collectSTM
 
 /**
@@ -470,7 +468,7 @@ export const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) =>
  * @since 2.0.0
  * @category constructors
  */
-export const contextWithSTM: <R0, R, E, A>(
+export const contextWithSTM: <R0, A, E, R>(
   f: (environment: Context.Context<R0>) => STM<A, E, R>
 ) => STM<A, E, R0 | R> = core.contextWithSTM
 
@@ -529,7 +527,7 @@ export const either: <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<A, E>, n
  */
 export const ensuring: {
   <R1, B>(finalizer: STM<B, never, R1>): <A, E, R>(self: STM<A, E, R>) => STM<A, E, R1 | R>
-  <R, E, A, R1, B>(self: STM<A, E, R>, finalizer: STM<B, never, R1>): STM<A, E, R | R1>
+  <A, E, R, R1, B>(self: STM<A, E, R>, finalizer: STM<B, never, R1>): STM<A, E, R | R1>
 } = core.ensuring
 
 /**
@@ -622,9 +620,9 @@ export const filterOrDie: {
   <A, B extends A>(
     refinement: Refinement<NoInfer<A>, B>,
     defect: LazyArg<unknown>
-  ): <R, E>(self: STM<A, E, R>) => STM<B, E, R>
-  <A>(predicate: Predicate<NoInfer<A>>, defect: LazyArg<unknown>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
-  <R, E, A, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>, defect: LazyArg<unknown>): STM<B, E, R>
+  ): <E, R>(self: STM<A, E, R>) => STM<B, E, R>
+  <A>(predicate: Predicate<NoInfer<A>>, defect: LazyArg<unknown>): <E, R>(self: STM<A, E, R>) => STM<A, E, R>
+  <A, E, R, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>, defect: LazyArg<unknown>): STM<B, E, R>
   <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>, defect: LazyArg<unknown>): STM<A, E, R>
 } = stm.filterOrDie
 
@@ -636,9 +634,9 @@ export const filterOrDie: {
  * @category filtering
  */
 export const filterOrDieMessage: {
-  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>, message: string): <R, E>(self: STM<A, E, R>) => STM<B, E, R>
-  <A>(predicate: Predicate<NoInfer<A>>, message: string): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
-  <R, E, A, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>, message: string): STM<B, E, R>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>, message: string): <E, R>(self: STM<A, E, R>) => STM<B, E, R>
+  <A>(predicate: Predicate<NoInfer<A>>, message: string): <E, R>(self: STM<A, E, R>) => STM<A, E, R>
+  <A, E, R, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>, message: string): STM<B, E, R>
   <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>, message: string): STM<A, E, R>
 } = stm.filterOrDieMessage
 
@@ -649,20 +647,20 @@ export const filterOrDieMessage: {
  * @category filtering
  */
 export const filterOrElse: {
-  <A, B extends A, R2, E2, C>(
+  <A, B extends A, C, E2, R2>(
     refinement: Refinement<NoInfer<A>, B>,
     orElse: (a: NoInfer<A>) => STM<C, E2, R2>
-  ): <R, E>(self: STM<A, E, R>) => STM<B | C, E2 | E, R2 | R>
-  <A, R2, E2, B>(
+  ): <E, R>(self: STM<A, E, R>) => STM<B | C, E2 | E, R2 | R>
+  <A, B, E2, R2>(
     predicate: Predicate<NoInfer<A>>,
     orElse: (a: NoInfer<A>) => STM<B, E2, R2>
-  ): <R, E>(self: STM<A, E, R>) => STM<A | B, E2 | E, R2 | R>
-  <R, E, A, B extends A, R2, E2, C>(
+  ): <E, R>(self: STM<A, E, R>) => STM<A | B, E2 | E, R2 | R>
+  <A, E, R, B extends A, C, E2, R2>(
     self: STM<A, E, R>,
     refinement: Refinement<A, B>,
     orElse: (a: A) => STM<C, E2, R2>
   ): STM<B | C, E | E2, R | R2>
-  <R, E, A, R2, E2, B>(
+  <A, E, R, B, E2, R2>(
     self: STM<A, E, R>,
     predicate: Predicate<A>,
     orElse: (a: A) => STM<B, E2, R2>
@@ -679,17 +677,17 @@ export const filterOrFail: {
   <A, B extends A, E2>(
     refinement: Refinement<NoInfer<A>, B>,
     orFailWith: (a: NoInfer<A>) => E2
-  ): <R, E>(self: STM<A, E, R>) => STM<B, E2 | E, R>
+  ): <E, R>(self: STM<A, E, R>) => STM<B, E2 | E, R>
   <A, E2>(
     predicate: Predicate<NoInfer<A>>,
     orFailWith: (a: NoInfer<A>) => E2
-  ): <R, E>(self: STM<A, E, R>) => STM<A, E2 | E, R>
-  <R, E, A, B extends A, E2>(
+  ): <E, R>(self: STM<A, E, R>) => STM<A, E2 | E, R>
+  <A, E, R, B extends A, E2>(
     self: STM<A, E, R>,
     refinement: Refinement<A, B>,
     orFailWith: (a: A) => E2
   ): STM<B, E | E2, R>
-  <R, E, A, E2>(self: STM<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => E2): STM<A, E | E2, R>
+  <A, E, R, E2>(self: STM<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => E2): STM<A, E | E2, R>
 } = stm.filterOrFail
 
 /**
@@ -700,8 +698,8 @@ export const filterOrFail: {
  * @category sequencing
  */
 export const flatMap: {
-  <A, R1, E1, A2>(f: (a: A) => STM<A2, E1, R1>): <R, E>(self: STM<A, E, R>) => STM<A2, E1 | E, R1 | R>
-  <R, E, A, R1, E1, A2>(self: STM<A, E, R>, f: (a: A) => STM<A2, E1, R1>): STM<A2, E | E1, R | R1>
+  <A, A2, E1, R1>(f: (a: A) => STM<A2, E1, R1>): <E, R>(self: STM<A, E, R>) => STM<A2, E1 | E, R1 | R>
+  <A, E, R, A2, E1, R1>(self: STM<A, E, R>, f: (a: A) => STM<A2, E1, R1>): STM<A2, E | E1, R | R1>
 } = core.flatMap
 
 /**
@@ -710,7 +708,7 @@ export const flatMap: {
  * @since 2.0.0
  * @category sequencing
  */
-export const flatten: <R, E, R2, E2, A>(self: STM<STM<A, E2, R2>, E, R>) => STM<A, E | E2, R | R2> = stm.flatten
+export const flatten: <A, E2, R2, E, R>(self: STM<STM<A, E2, R2>, E, R>) => STM<A, E2 | E, R2 | R> = stm.flatten
 
 /**
  * Flips the success and failure channels of this transactional effect. This
@@ -730,8 +728,8 @@ export const flip: <A, E, R>(self: STM<A, E, R>) => STM<E, A, R> = stm.flip
  * @category mutations
  */
 export const flipWith: {
-  <R, A, E, R2, A2, E2>(f: (stm: STM<E, A, R>) => STM<E2, A2, R2>): (self: STM<A, E, R>) => STM<A | A2, E | E2, R | R2>
-  <R, A, E, R2, A2, E2>(self: STM<A, E, R>, f: (stm: STM<E, A, R>) => STM<E2, A2, R2>): STM<A | A2, E | E2, R | R2>
+  <E, A, R, E2, A2, R2>(f: (stm: STM<E, A, R>) => STM<E2, A2, R2>): (self: STM<A, E, R>) => STM<A | A2, E | E2, R | R2>
+  <A, E, R, E2, A2, R2>(self: STM<A, E, R>, f: (stm: STM<E, A, R>) => STM<E2, A2, R2>): STM<A | A2, E | E2, R | R2>
 } = stm.flipWith
 
 /**
@@ -743,17 +741,11 @@ export const flipWith: {
  */
 export const match: {
   <E, A2, A, A3>(
-    options: {
-      readonly onFailure: (error: E) => A2
-      readonly onSuccess: (value: A) => A3
-    }
+    options: { readonly onFailure: (error: E) => A2; readonly onSuccess: (value: A) => A3 }
   ): <R>(self: STM<A, E, R>) => STM<A2 | A3, never, R>
-  <R, E, A2, A, A3>(
+  <A, E, R, A2, A3>(
     self: STM<A, E, R>,
-    options: {
-      readonly onFailure: (error: E) => A2
-      readonly onSuccess: (value: A) => A3
-    }
+    options: { readonly onFailure: (error: E) => A2; readonly onSuccess: (value: A) => A3 }
   ): STM<A2 | A3, never, R>
 } = stm.match
 
@@ -764,18 +756,12 @@ export const match: {
  * @category folding
  */
 export const matchSTM: {
-  <E, R1, E1, A1, A, R2, E2, A2>(
-    options: {
-      readonly onFailure: (e: E) => STM<A1, E1, R1>
-      readonly onSuccess: (a: A) => STM<A2, E2, R2>
-    }
+  <E, A1, E1, R1, A, A2, E2, R2>(
+    options: { readonly onFailure: (e: E) => STM<A1, E1, R1>; readonly onSuccess: (a: A) => STM<A2, E2, R2> }
   ): <R>(self: STM<A, E, R>) => STM<A1 | A2, E1 | E2, R1 | R2 | R>
-  <R, E, R1, E1, A1, A, R2, E2, A2>(
+  <A, E, R, A1, E1, R1, A2, E2, R2>(
     self: STM<A, E, R>,
-    options: {
-      readonly onFailure: (e: E) => STM<A1, E1, R1>
-      readonly onSuccess: (a: A) => STM<A2, E2, R2>
-    }
+    options: { readonly onFailure: (e: E) => STM<A1, E1, R1>; readonly onSuccess: (a: A) => STM<A2, E2, R2> }
   ): STM<A1 | A2, E1 | E2, R | R1 | R2>
 } = core.matchSTM
 
@@ -787,28 +773,20 @@ export const matchSTM: {
  * @category traversing
  */
 export const forEach: {
-  <A, R, E, A2>(
+  <A, A2, E, R>(
     f: (a: A) => STM<A2, E, R>,
-    options?: {
-      readonly discard?: false | undefined
-    }
+    options?: { readonly discard?: false | undefined } | undefined
   ): (elements: Iterable<A>) => STM<Array<A2>, E, R>
-  <A, R, E, A2>(
+  <A, A2, E, R>(
     f: (a: A) => STM<A2, E, R>,
-    options: {
-      readonly discard: true
-    }
+    options: { readonly discard: true }
   ): (elements: Iterable<A>) => STM<void, E, R>
-  <A, R, E, A2>(
+  <A, A2, E, R>(
     elements: Iterable<A>,
     f: (a: A) => STM<A2, E, R>,
-    options?: {
-      readonly discard?: false | undefined
-    }
+    options?: { readonly discard?: false | undefined } | undefined
   ): STM<Array<A2>, E, R>
-  <A, R, E, A2>(elements: Iterable<A>, f: (a: A) => STM<A2, E, R>, options: {
-    readonly discard: true
-  }): STM<void, E, R>
+  <A, A2, E, R>(elements: Iterable<A>, f: (a: A) => STM<A2, E, R>, options: { readonly discard: true }): STM<void, E, R>
 } = stm.forEach
 
 /**
@@ -817,7 +795,7 @@ export const forEach: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromEither: <E, A>(either: Either.Either<A, E>) => STM<A, E> = stm.fromEither
+export const fromEither: <A, E>(either: Either.Either<A, E>) => STM<A, E> = stm.fromEither
 
 /**
  * Lifts an `Option` into a `STM`.
@@ -1115,26 +1093,23 @@ export const gen: <Eff extends STMGen<any, any, any>, AEff>(
 export const head: <A, E, R>(self: STM<Iterable<A>, E, R>) => STM<A, Option.Option<E>, R> = stm.head
 
 const if_: {
-  <R1, R2, E1, E2, A, A1>(
-    options: {
-      readonly onTrue: STM<A, E1, R1>
-      readonly onFalse: STM<A1, E2, R2>
-    }
-  ): <R = never, E = never>(self: boolean | STM<boolean, E, R>) => STM<A | A1, E1 | E2 | E, R1 | R2 | R>
-  <R, E, R1, R2, E1, E2, A, A1>(
+  <A, E1, R1, A2, E2, R2>(options: {
+    readonly onTrue: STM<A, E1, R1>
+    readonly onFalse: STM<A2, E2, R2> /**
+     * Flattens out a nested `STM` effect.
+     *
+     * @since 2.0.0
+     * @category sequencing
+     */
+  }): <E = never, R = never>(self: boolean | STM<boolean, E, R>) => STM<A | A2, E1 | E2 | E, R1 | R2 | R>
+  <A, E1, R1, A2, E2, R2, E = never, R = never>(
     self: boolean,
-    options: {
-      readonly onTrue: STM<A, E1, R1>
-      readonly onFalse: STM<A1, E2, R2>
-    }
-  ): STM<A | A1, E | E1 | E2, R | R1 | R2>
-  <R, E, R1, R2, E1, E2, A, A1>(
+    options: { readonly onTrue: STM<A, E1, R1>; readonly onFalse: STM<A2, E2, R2> }
+  ): STM<A | A2, E1 | E2 | E, R1 | R2 | R>
+  <E, R, A, E1, R1, A2, E2, R2>(
     self: STM<boolean, E, R>,
-    options: {
-      readonly onTrue: STM<A, E1, R1>
-      readonly onFalse: STM<A1, E2, R2>
-    }
-  ): STM<A | A1, E | E1 | E2, R | R1 | R2>
+    options: { readonly onTrue: STM<A, E1, R1>; readonly onFalse: STM<A2, E2, R2> }
+  ): STM<A | A2, E | E1 | E2, R | R1 | R2>
 } = stm.if_
 
 export {
@@ -1204,7 +1179,7 @@ export const isSuccess: <A, E, R>(self: STM<A, E, R>) => STM<boolean, never, R> 
  * @since 2.0.0
  * @category constructors
  */
-export const iterate: <R, E, Z>(
+export const iterate: <Z, E, R>(
   initial: Z,
   options: {
     readonly while: Predicate<Z>
@@ -1232,19 +1207,19 @@ export const iterate: <R, E, Z>(
  * @category constructors
  */
 export const loop: {
-  <Z, R, E, A>(
+  <Z, A, E, R>(
     initial: Z,
     options: {
-      readonly while: Predicate<Z>
+      readonly while: (z: Z) => boolean
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => STM<A, E, R>
       readonly discard?: false | undefined
     }
   ): STM<Array<A>, E, R>
-  <Z, R, E, A>(
+  <Z, A, E, R>(
     initial: Z,
     options: {
-      readonly while: Predicate<Z>
+      readonly while: (z: Z) => boolean
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => STM<A, E, R>
       readonly discard: true
@@ -1259,8 +1234,8 @@ export const loop: {
  * @category mapping
  */
 export const map: {
-  <A, B>(f: (a: A) => B): <R, E>(self: STM<A, E, R>) => STM<B, E, R>
-  <R, E, A, B>(self: STM<A, E, R>, f: (a: A) => B): STM<B, E, R>
+  <A, B>(f: (a: A) => B): <E, R>(self: STM<A, E, R>) => STM<B, E, R>
+  <A, E, R, B>(self: STM<A, E, R>, f: (a: A) => B): STM<B, E, R>
 } = core.map
 
 /**
@@ -1272,8 +1247,8 @@ export const map: {
  * @category mapping
  */
 export const mapAttempt: {
-  <A, B>(f: (a: A) => B): <R, E>(self: STM<A, E, R>) => STM<B, unknown, R>
-  <R, E, A, B>(self: STM<A, E, R>, f: (a: A) => B): STM<B, unknown, R>
+  <A, B>(f: (a: A) => B): <E, R>(self: STM<A, E, R>) => STM<B, unknown, R>
+  <A, E, R, B>(self: STM<A, E, R>, f: (a: A) => B): STM<B, unknown, R>
 } = stm.mapAttempt
 
 /**
@@ -1285,17 +1260,11 @@ export const mapAttempt: {
  */
 export const mapBoth: {
   <E, E2, A, A2>(
-    options: {
-      readonly onFailure: (error: E) => E2
-      readonly onSuccess: (value: A) => A2
-    }
+    options: { readonly onFailure: (error: E) => E2; readonly onSuccess: (value: A) => A2 }
   ): <R>(self: STM<A, E, R>) => STM<A2, E2, R>
-  <R, E, E2, A, A2>(
+  <A, E, R, E2, A2>(
     self: STM<A, E, R>,
-    options: {
-      readonly onFailure: (error: E) => E2
-      readonly onSuccess: (value: A) => A2
-    }
+    options: { readonly onFailure: (error: E) => E2; readonly onSuccess: (value: A) => A2 }
   ): STM<A2, E2, R>
 } = stm.mapBoth
 
@@ -1306,8 +1275,8 @@ export const mapBoth: {
  * @category mapping
  */
 export const mapError: {
-  <E, E2>(f: (error: E) => E2): <R, A>(self: STM<A, E, R>) => STM<A, E2, R>
-  <R, A, E, E2>(self: STM<A, E, R>, f: (error: E) => E2): STM<A, E2, R>
+  <E, E2>(f: (error: E) => E2): <A, R>(self: STM<A, E, R>) => STM<A, E2, R>
+  <A, E, R, E2>(self: STM<A, E, R>, f: (error: E) => E2): STM<A, E2, R>
 } = stm.mapError
 
 /**
@@ -1326,8 +1295,8 @@ export const merge: <A, E, R>(self: STM<A, E, R>) => STM<E | A, never, R> = stm.
  * @category constructors
  */
 export const mergeAll: {
-  <A2, A>(zero: A2, f: (a2: A2, a: A) => A2): <R, E>(iterable: Iterable<STM<A, E, R>>) => STM<A2, E, R>
-  <R, E, A2, A>(iterable: Iterable<STM<A, E, R>>, zero: A2, f: (a2: A2, a: A) => A2): STM<A2, E, R>
+  <A2, A>(zero: A2, f: (a2: A2, a: A) => A2): <E, R>(iterable: Iterable<STM<A, E, R>>) => STM<A2, E, R>
+  <A, E, R, A2>(iterable: Iterable<STM<A, E, R>>, zero: A2, f: (a2: A2, a: A) => A2): STM<A2, E, R>
 } = stm.mergeAll
 
 /**
@@ -1336,7 +1305,7 @@ export const mergeAll: {
  * @since 2.0.0
  * @category mutations
  */
-export const negate: <R, E>(self: STM<boolean, E, R>) => STM<boolean, E, R> = stm.negate
+export const negate: <E, R>(self: STM<boolean, E, R>) => STM<boolean, E, R> = stm.negate
 
 /**
  * Requires the option produced by this value to be `None`.
@@ -1371,8 +1340,8 @@ export const orDie: <A, E, R>(self: STM<A, E, R>) => STM<A, never, R> = stm.orDi
  * @category error handling
  */
 export const orDieWith: {
-  <E>(f: (error: E) => unknown): <R, A>(self: STM<A, E, R>) => STM<A, never, R>
-  <R, A, E>(self: STM<A, E, R>, f: (error: E) => unknown): STM<A, never, R>
+  <E>(f: (error: E) => unknown): <A, R>(self: STM<A, E, R>) => STM<A, never, R>
+  <A, E, R>(self: STM<A, E, R>, f: (error: E) => unknown): STM<A, never, R>
 } = stm.orDieWith
 
 /**
@@ -1383,8 +1352,8 @@ export const orDieWith: {
  * @category error handling
  */
 export const orElse: {
-  <R2, E2, A2>(that: LazyArg<STM<A2, E2, R2>>): <A, E, R>(self: STM<A, E, R>) => STM<A2 | A, E2, R2 | R>
-  <R, E, A, R2, E2, A2>(self: STM<A, E, R>, that: LazyArg<STM<A2, E2, R2>>): STM<A | A2, E2, R | R2>
+  <A2, E2, R2>(that: LazyArg<STM<A2, E2, R2>>): <A, E, R>(self: STM<A, E, R>) => STM<A2 | A, E2, R2 | R>
+  <A, E, R, A2, E2, R2>(self: STM<A, E, R>, that: LazyArg<STM<A2, E2, R2>>): STM<A | A2, E2, R | R2>
 } = stm.orElse
 
 /**
@@ -1396,8 +1365,8 @@ export const orElse: {
  * @category error handling
  */
 export const orElseEither: {
-  <R2, E2, A2>(that: LazyArg<STM<A2, E2, R2>>): <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<A2, A>, E2, R2 | R>
-  <R, E, A, R2, E2, A2>(self: STM<A, E, R>, that: LazyArg<STM<A2, E2, R2>>): STM<Either.Either<A2, A>, E2, R | R2>
+  <A2, E2, R2>(that: LazyArg<STM<A2, E2, R2>>): <A, E, R>(self: STM<A, E, R>) => STM<Either.Either<A2, A>, E2, R2 | R>
+  <A, E, R, A2, E2, R2>(self: STM<A, E, R>, that: LazyArg<STM<A2, E2, R2>>): STM<Either.Either<A2, A>, E2, R | R2>
 } = stm.orElseEither
 
 /**
@@ -1409,7 +1378,7 @@ export const orElseEither: {
  */
 export const orElseFail: {
   <E2>(error: LazyArg<E2>): <A, E, R>(self: STM<A, E, R>) => STM<A, E2, R>
-  <R, E, A, E2>(self: STM<A, E, R>, error: LazyArg<E2>): STM<A, E2, R>
+  <A, E, R, E2>(self: STM<A, E, R>, error: LazyArg<E2>): STM<A, E2, R>
 } = stm.orElseFail
 
 /**
@@ -1421,12 +1390,10 @@ export const orElseFail: {
  * @category error handling
  */
 export const orElseOptional: {
-  <R2, E2, A2>(
+  <A2, E2, R2>(
     that: LazyArg<STM<A2, Option.Option<E2>, R2>>
-  ): <A, E, R>(
-    self: STM<A, Option.Option<E>, R>
-  ) => STM<A2 | A, Option.Option<E2 | E>, R2 | R>
-  <R, E, A, R2, E2, A2>(
+  ): <A, E, R>(self: STM<A, Option.Option<E>, R>) => STM<A2 | A, Option.Option<E2 | E>, R2 | R>
+  <A, E, R, A2, E2, R2>(
     self: STM<A, Option.Option<E>, R>,
     that: LazyArg<STM<A2, Option.Option<E2>, R2>>
   ): STM<A | A2, Option.Option<E | E2>, R | R2>
@@ -1441,7 +1408,7 @@ export const orElseOptional: {
  */
 export const orElseSucceed: {
   <A2>(value: LazyArg<A2>): <A, E, R>(self: STM<A, E, R>) => STM<A2 | A, never, R>
-  <R, E, A, A2>(self: STM<A, E, R>, value: LazyArg<A2>): STM<A | A2, never, R>
+  <A, E, R, A2>(self: STM<A, E, R>, value: LazyArg<A2>): STM<A | A2, never, R>
 } = stm.orElseSucceed
 
 /**
@@ -1452,8 +1419,8 @@ export const orElseSucceed: {
  * @category error handling
  */
 export const orTry: {
-  <R1, E1, A1>(that: LazyArg<STM<A1, E1, R1>>): <A, E, R>(self: STM<A, E, R>) => STM<A1 | A, E1 | E, R1 | R>
-  <R, E, A, R1, E1, A1>(self: STM<A, E, R>, that: LazyArg<STM<A1, E1, R1>>): STM<A | A1, E | E1, R | R1>
+  <A1, E1, R1>(that: LazyArg<STM<A1, E1, R1>>): <A, E, R>(self: STM<A, E, R>) => STM<A1 | A, E1 | E, R1 | R>
+  <A, E, R, A1, E1, R1>(self: STM<A, E, R>, that: LazyArg<STM<A1, E1, R1>>): STM<A | A1, E | E1, R | R1>
 } = core.orTry
 
 /**
@@ -1464,10 +1431,10 @@ export const orTry: {
  * @category traversing
  */
 export const partition: {
-  <R, E, A, A2>(
+  <A, A2, E, R>(
     f: (a: A) => STM<A2, E, R>
   ): (elements: Iterable<A>) => STM<[excluded: Array<E>, satisfying: Array<A2>], never, R>
-  <R, E, A, A2>(
+  <A, A2, E, R>(
     elements: Iterable<A>,
     f: (a: A) => STM<A2, E, R>
   ): STM<[excluded: Array<E>, satisfying: Array<A2>], never, R>
@@ -1509,7 +1476,7 @@ export const provideService: {
     tag: T,
     resource: Context.Tag.Service<T>
   ): <A, E, R>(self: STM<A, E, R>) => STM<A, E, Exclude<R, Context.Tag.Identifier<T>>>
-  <R, E, A, T extends Context.Tag<any, any>>(
+  <A, E, R, T extends Context.Tag<any, any>>(
     self: STM<A, E, R>,
     tag: T,
     resource: Context.Tag.Service<T>
@@ -1524,11 +1491,11 @@ export const provideService: {
  * @category context
  */
 export const provideServiceSTM: {
-  <T extends Context.Tag<any, any>, R1, E1>(
+  <T extends Context.Tag<any, any>, E1, R1>(
     tag: T,
     stm: STM<Context.Tag.Service<T>, E1, R1>
   ): <A, E, R>(self: STM<A, E, R>) => STM<A, E1 | E, R1 | Exclude<R, Context.Tag.Identifier<T>>>
-  <R, E, A, T extends Context.Tag<any, any>, R1, E1>(
+  <A, E, R, T extends Context.Tag<any, any>, E1, R1>(
     self: STM<A, E, R>,
     tag: T,
     stm: STM<Context.Tag.Service<T>, E1, R1>
@@ -1543,8 +1510,8 @@ export const provideServiceSTM: {
  * @category constructors
  */
 export const reduce: {
-  <S, A, R, E>(zero: S, f: (s: S, a: A) => STM<S, E, R>): (iterable: Iterable<A>) => STM<S, E, R>
-  <S, A, R, E>(iterable: Iterable<A>, zero: S, f: (s: S, a: A) => STM<S, E, R>): STM<S, E, R>
+  <S, A, E, R>(zero: S, f: (s: S, a: A) => STM<S, E, R>): (iterable: Iterable<A>) => STM<S, E, R>
+  <S, A, E, R>(iterable: Iterable<A>, zero: S, f: (s: S, a: A) => STM<S, E, R>): STM<S, E, R>
 } = stm.reduce
 
 /**
@@ -1554,13 +1521,11 @@ export const reduce: {
  * @category constructors
  */
 export const reduceAll: {
-  <R2, E2, A>(
+  <A, E2, R2>(
     initial: STM<A, E2, R2>,
     f: (x: A, y: A) => A
-  ): <R, E>(
-    iterable: Iterable<STM<A, E, R>>
-  ) => STM<A, E2 | E, R2 | R>
-  <R, E, R2, E2, A>(
+  ): <E, R>(iterable: Iterable<STM<A, E, R>>) => STM<A, E2 | E, R2 | R>
+  <A, E, R, E2, R2>(
     iterable: Iterable<STM<A, E, R>>,
     initial: STM<A, E2, R2>,
     f: (x: A, y: A) => A
@@ -1586,8 +1551,8 @@ export const reduceRight: {
  * @category mutations
  */
 export const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, A>(self: STM<A, E, R>) => STM<A, E2, R>
-  <R, A, E, E2>(self: STM<A, E, R>, pf: (error: E) => Option.Option<E2>): STM<A, E2, R>
+  <E, E2>(pf: (error: E) => Option.Option<E2>): <A, R>(self: STM<A, E, R>) => STM<A, E2, R>
+  <A, E, R, E2>(self: STM<A, E, R>, pf: (error: E) => Option.Option<E2>): STM<A, E2, R>
 } = stm.refineOrDie
 
 /**
@@ -1598,8 +1563,8 @@ export const refineOrDie: {
  * @category mutations
  */
 export const refineOrDieWith: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): <R, A>(self: STM<A, E, R>) => STM<A, E2, R>
-  <R, A, E, E2>(self: STM<A, E, R>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): STM<A, E2, R>
+  <E, E2>(pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): <A, R>(self: STM<A, E, R>) => STM<A, E2, R>
+  <A, E, R, E2>(self: STM<A, E, R>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): STM<A, E2, R>
 } = stm.refineOrDieWith
 
 /**
@@ -1610,8 +1575,8 @@ export const refineOrDieWith: {
  * @category mutations
  */
 export const reject: {
-  <A, E2>(pf: (a: A) => Option.Option<E2>): <R, E>(self: STM<A, E, R>) => STM<A, E2 | E, R>
-  <R, E, A, E2>(self: STM<A, E, R>, pf: (a: A) => Option.Option<E2>): STM<A, E | E2, R>
+  <A, E2>(pf: (a: A) => Option.Option<E2>): <E, R>(self: STM<A, E, R>) => STM<A, E2 | E, R>
+  <A, E, R, E2>(self: STM<A, E, R>, pf: (a: A) => Option.Option<E2>): STM<A, E | E2, R>
 } = stm.reject
 
 /**
@@ -1623,8 +1588,8 @@ export const reject: {
  * @category mutations
  */
 export const rejectSTM: {
-  <A, R2, E2>(pf: (a: A) => Option.Option<STM<E2, E2, R2>>): <R, E>(self: STM<A, E, R>) => STM<A, E2 | E, R2 | R>
-  <R, E, A, R2, E2>(self: STM<A, E, R>, pf: (a: A) => Option.Option<STM<E2, E2, R2>>): STM<A, E | E2, R | R2>
+  <A, E2, R2>(pf: (a: A) => Option.Option<STM<E2, E2, R2>>): <E, R>(self: STM<A, E, R>) => STM<A, E2 | E, R2 | R>
+  <A, E, R, E2, R2>(self: STM<A, E, R>, pf: (a: A) => Option.Option<STM<E2, E2, R2>>): STM<A, E | E2, R | R2>
 } = stm.rejectSTM
 
 /**
@@ -1643,7 +1608,7 @@ export const rejectSTM: {
  * @category mutations
  */
 export const repeatUntil: {
-  <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
+  <A>(predicate: Predicate<A>): <E, R>(self: STM<A, E, R>) => STM<A, E, R>
   <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.repeatUntil
 
@@ -1664,7 +1629,7 @@ export const repeatUntil: {
  * @category mutations
  */
 export const repeatWhile: {
-  <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
+  <A>(predicate: Predicate<A>): <E, R>(self: STM<A, E, R>) => STM<A, E, R>
   <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.repeatWhile
 
@@ -1721,9 +1686,9 @@ export const retry: STM<never> = core.retry
  * @category mutations
  */
 export const retryUntil: {
-  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <R, E>(self: STM<A, E, R>) => STM<B, E, R>
-  <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
-  <R, E, A, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>): STM<B, E, R>
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): <E, R>(self: STM<A, E, R>) => STM<B, E, R>
+  <A>(predicate: Predicate<A>): <E, R>(self: STM<A, E, R>) => STM<A, E, R>
+  <A, E, R, B extends A>(self: STM<A, E, R>, refinement: Refinement<A, B>): STM<B, E, R>
   <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.retryUntil
 
@@ -1735,7 +1700,7 @@ export const retryUntil: {
  * @category mutations
  */
 export const retryWhile: {
-  <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
+  <A>(predicate: Predicate<A>): <E, R>(self: STM<A, E, R>) => STM<A, E, R>
   <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.retryWhile
 
@@ -1780,13 +1745,11 @@ export const succeedSome: <A>(value: A) => STM<Option.Option<A>> = stm.succeedSo
  * @category mutations
  */
 export const summarized: {
-  <R2, E2, A2, A3>(
+  <A2, E2, R2, A3>(
     summary: STM<A2, E2, R2>,
     f: (before: A2, after: A2) => A3
-  ): <A, E, R>(
-    self: STM<A, E, R>
-  ) => STM<[A3, A], E2 | E, R2 | R>
-  <R, E, A, R2, E2, A2, A3>(
+  ): <A, E, R>(self: STM<A, E, R>) => STM<[A3, A], E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2, A3>(
     self: STM<A, E, R>,
     summary: STM<A2, E2, R2>,
     f: (before: A2, after: A2) => A3
@@ -1817,8 +1780,8 @@ export const sync: <A>(evaluate: () => A) => STM<A> = core.sync
  * @category sequencing
  */
 export const tap: {
-  <A, R2, E2, _>(f: (a: A) => STM<_, E2, R2>): <R, E>(self: STM<A, E, R>) => STM<A, E2 | E, R2 | R>
-  <R, E, A, R2, E2, _>(self: STM<A, E, R>, f: (a: A) => STM<_, E2, R2>): STM<A, E | E2, R | R2>
+  <A, X, E2, R2>(f: (a: A) => STM<X, E2, R2>): <E, R>(self: STM<A, E, R>) => STM<A, E2 | E, R2 | R>
+  <A, E, R, X, E2, R2>(self: STM<A, E, R>, f: (a: A) => STM<X, E2, R2>): STM<A, E | E2, R | R2>
 } = stm.tap
 
 /**
@@ -1828,18 +1791,12 @@ export const tap: {
  * @category sequencing
  */
 export const tapBoth: {
-  <E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
-    options: {
-      readonly onFailure: (error: XE) => STM<A2, E2, R2>
-      readonly onSuccess: (value: XA) => STM<A3, E3, R3>
-    }
+  <XE extends E, A2, E2, R2, XA extends A, A3, E3, R3, A, E>(
+    options: { readonly onFailure: (error: XE) => STM<A2, E2, R2>; readonly onSuccess: (value: XA) => STM<A3, E3, R3> }
   ): <R>(self: STM<A, E, R>) => STM<A, E | E2 | E3, R2 | R3 | R>
-  <R, E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
+  <A, E, R, XE extends E, A2, E2, R2, XA extends A, A3, E3, R3>(
     self: STM<A, E, R>,
-    options: {
-      readonly onFailure: (error: XE) => STM<A2, E2, R2>
-      readonly onSuccess: (value: XA) => STM<A3, E3, R3>
-    }
+    options: { readonly onFailure: (error: XE) => STM<A2, E2, R2>; readonly onSuccess: (value: XA) => STM<A3, E3, R3> }
   ): STM<A, E | E2 | E3, R | R2 | R3>
 } = stm.tapBoth
 
@@ -1850,8 +1807,8 @@ export const tapBoth: {
  * @category sequencing
  */
 export const tapError: {
-  <E, R2, E2, _>(f: (error: NoInfer<E>) => STM<_, E2, R2>): <R, A>(self: STM<A, E, R>) => STM<A, E | E2, R2 | R>
-  <R, A, E, R2, E2, _>(self: STM<A, E, R>, f: (error: E) => STM<_, E2, R2>): STM<A, E | E2, R | R2>
+  <E, X, E2, R2>(f: (error: NoInfer<E>) => STM<X, E2, R2>): <A, R>(self: STM<A, E, R>) => STM<A, E | E2, R2 | R>
+  <A, E, R, X, E2, R2>(self: STM<A, E, R>, f: (error: E) => STM<X, E2, R2>): STM<A, E | E2, R | R2>
 } = stm.tapError
 
 const try_: {
@@ -1861,6 +1818,7 @@ const try_: {
   }): STM<A, E>
   <A>(try_: LazyArg<A>): STM<A, unknown>
 } = stm.try_
+
 export {
   /**
    * Imports a synchronous side-effect into a pure value, translating any thrown
@@ -1890,8 +1848,8 @@ export const unless: {
  * @category mutations
  */
 export const unlessSTM: {
-  <R2, E2>(predicate: STM<boolean, E2, R2>): <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E2 | E, R2 | R>
-  <R, E, A, R2, E2>(self: STM<A, E, R>, predicate: STM<boolean, E2, R2>): STM<Option.Option<A>, E | E2, R | R2>
+  <E2, R2>(predicate: STM<boolean, E2, R2>): <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E2 | E, R2 | R>
+  <A, E, R, E2, R2>(self: STM<A, E, R>, predicate: STM<boolean, E2, R2>): STM<Option.Option<A>, E | E2, R | R2>
 } = stm.unlessSTM
 
 /**
@@ -1921,8 +1879,8 @@ export const unit: STM<void> = stm.unit
  * @category mutations
  */
 export const validateAll: {
-  <R, E, A, B>(f: (a: A) => STM<B, E, R>): (elements: Iterable<A>) => STM<Array<B>, [E, ...Array<E>], R>
-  <R, E, A, B>(elements: Iterable<A>, f: (a: A) => STM<B, E, R>): STM<Array<B>, [E, ...Array<E>], R>
+  <A, B, E, R>(f: (a: A) => STM<B, E, R>): (elements: Iterable<A>) => STM<Array<B>, [E, ...Array<E>], R>
+  <A, B, E, R>(elements: Iterable<A>, f: (a: A) => STM<B, E, R>): STM<Array<B>, [E, ...Array<E>], R>
 } = stm.validateAll
 
 /**
@@ -1933,8 +1891,8 @@ export const validateAll: {
  * @category mutations
  */
 export const validateFirst: {
-  <R, E, A, B>(f: (a: A) => STM<B, E, R>): (elements: Iterable<A>) => STM<B, Array<E>, R>
-  <R, E, A, B>(elements: Iterable<A>, f: (a: A) => STM<B, E, R>): STM<B, Array<E>, R>
+  <A, B, E, R>(f: (a: A) => STM<B, E, R>): (elements: Iterable<A>) => STM<B, Array<E>, R>
+  <A, B, E, R>(elements: Iterable<A>, f: (a: A) => STM<B, E, R>): STM<B, Array<E>, R>
 } = stm.validateFirst
 
 /**
@@ -1955,8 +1913,8 @@ export const when: {
  * @category mutations
  */
 export const whenSTM: {
-  <R2, E2>(predicate: STM<boolean, E2, R2>): <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E2 | E, R2 | R>
-  <R, E, A, R2, E2>(self: STM<A, E, R>, predicate: STM<boolean, E2, R2>): STM<Option.Option<A>, E | E2, R | R2>
+  <E2, R2>(predicate: STM<boolean, E2, R2>): <A, E, R>(self: STM<A, E, R>) => STM<Option.Option<A>, E2 | E, R2 | R>
+  <A, E, R, E2, R2>(self: STM<A, E, R>, predicate: STM<boolean, E2, R2>): STM<Option.Option<A>, E | E2, R | R2>
 } = stm.whenSTM
 
 /**
@@ -1966,8 +1924,8 @@ export const whenSTM: {
  * @category zipping
  */
 export const zip: {
-  <R1, E1, A1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<[A, A1], E1 | E, R1 | R>
-  <R, E, A, R1, E1, A1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<[A, A1], E | E1, R | R1>
+  <A1, E1, R1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<[A, A1], E1 | E, R1 | R>
+  <A, E, R, A1, E1, R1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<[A, A1], E | E1, R | R1>
 } = core.zip
 
 /**
@@ -1978,8 +1936,8 @@ export const zip: {
  * @category zipping
  */
 export const zipLeft: {
-  <R1, E1, A1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<A, E1 | E, R1 | R>
-  <R, E, A, R1, E1, A1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<A, E | E1, R | R1>
+  <A1, E1, R1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<A, E1 | E, R1 | R>
+  <A, E, R, A1, E1, R1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<A, E | E1, R | R1>
 } = core.zipLeft
 
 /**
@@ -1990,8 +1948,8 @@ export const zipLeft: {
  * @category zipping
  */
 export const zipRight: {
-  <R1, E1, A1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<A1, E1 | E, R1 | R>
-  <R, E, A, R1, E1, A1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<A1, E | E1, R | R1>
+  <A1, E1, R1>(that: STM<A1, E1, R1>): <A, E, R>(self: STM<A, E, R>) => STM<A1, E1 | E, R1 | R>
+  <A, E, R, A1, E1, R1>(self: STM<A, E, R>, that: STM<A1, E1, R1>): STM<A1, E | E1, R | R1>
 } = core.zipRight
 
 /**
@@ -2002,17 +1960,11 @@ export const zipRight: {
  * @category zipping
  */
 export const zipWith: {
-  <R1, E1, A1, A, A2>(
+  <A1, E1, R1, A, A2>(
     that: STM<A1, E1, R1>,
     f: (a: A, b: A1) => A2
-  ): <R, E>(
-    self: STM<A, E, R>
-  ) => STM<A2, E1 | E, R1 | R>
-  <R, E, R1, E1, A1, A, A2>(
-    self: STM<A, E, R>,
-    that: STM<A1, E1, R1>,
-    f: (a: A, b: A1) => A2
-  ): STM<A2, E | E1, R | R1>
+  ): <E, R>(self: STM<A, E, R>) => STM<A2, E1 | E, R1 | R>
+  <A, E, R, A1, E1, R1, A2>(self: STM<A, E, R>, that: STM<A1, E1, R1>, f: (a: A, b: A1) => A2): STM<A2, E | E1, R | R1>
 } = core.zipWith
 
 /**
@@ -2058,11 +2010,11 @@ export const Do: STM<{}> = succeed({})
  * @since 2.0.0
  */
 export const bind: {
-  <N extends string, K, R2, E2, A>(
+  <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM<A, E2, R2>
-  ): <R, E>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-  <R, E, N extends string, K, R2, E2, A>(
+  ): <E, R>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  <K, E, R, N extends string, A, E2, R2>(
     self: STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM<A, E2, R2>
@@ -2073,13 +2025,14 @@ const let_: {
   <N extends string, K, A>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ): <R, E>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
-  <R, E, K, N extends string, A>(
+  ): <E, R>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
+  <K, E, R, N extends string, A>(
     self: STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
   ): STM<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
 } = stm.let_
+
 export {
   /**
    * @category do notation
@@ -2094,5 +2047,5 @@ export {
  */
 export const bindTo: {
   <N extends string>(tag: N): <A, E, R>(self: STM<A, E, R>) => STM<Record<N, A>, E, R>
-  <R, E, A, N extends string>(self: STM<A, E, R>, tag: N): STM<Record<N, A>, E, R>
+  <A, E, R, N extends string>(self: STM<A, E, R>, tag: N): STM<Record<N, A>, E, R>
 } = stm.bindTo

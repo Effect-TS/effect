@@ -1667,8 +1667,8 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(id
  * @category filtering
  * @since 2.0.0
  */
-export const getLefts = <E, A>(self: Iterable<Either<A, E>>): Array<E> => {
-  const out: Array<E> = []
+export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Array<L> => {
+  const out: Array<L> = []
   for (const a of self) {
     if (E.isLeft(a)) {
       out.push(a.left)
@@ -1693,8 +1693,8 @@ export const getLefts = <E, A>(self: Iterable<Either<A, E>>): Array<E> => {
  * @category filtering
  * @since 2.0.0
  */
-export const getRights = <E, A>(self: Iterable<Either<A, E>>): Array<A> => {
-  const out: Array<A> = []
+export const getRights = <R, L>(self: Iterable<Either<R, L>>): Array<R> => {
+  const out: Array<R> = []
   for (const a of self) {
     if (E.isRight(a)) {
       out.push(a.right)
@@ -1766,7 +1766,7 @@ export const partition: {
  * @category filtering
  * @since 2.0.0
  */
-export const separate: <E, A>(self: Iterable<Either<A, E>>) => [Array<E>, Array<A>] = partitionMap(
+export const separate: <R, L>(self: Iterable<Either<R, L>>) => [Array<L>, Array<R>] = partitionMap(
   identity
 )
 

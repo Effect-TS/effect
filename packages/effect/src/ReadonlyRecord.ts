@@ -729,10 +729,10 @@ export const getSomes: <K extends string, A>(
  * @category filtering
  * @since 2.0.0
  */
-export const getLefts = <K extends string, E, A>(
-  self: ReadonlyRecord<K, Either<A, E>>
-): Record<ReadonlyRecord.NonLiteralKey<K>, E> => {
-  const out: Record<string, E> = empty()
+export const getLefts = <K extends string, R, L>(
+  self: ReadonlyRecord<K, Either<R, L>>
+): Record<ReadonlyRecord.NonLiteralKey<K>, L> => {
+  const out: Record<string, L> = empty()
   for (const key of keys(self)) {
     const value = self[key]
     if (E.isLeft(value)) {
@@ -758,10 +758,10 @@ export const getLefts = <K extends string, E, A>(
  * @category filtering
  * @since 2.0.0
  */
-export const getRights = <K extends string, E, A>(
-  self: ReadonlyRecord<K, Either<A, E>>
-): Record<string, A> => {
-  const out: Record<string, A> = empty()
+export const getRights = <K extends string, R, L>(
+  self: ReadonlyRecord<K, Either<R, L>>
+): Record<string, R> => {
+  const out: Record<string, R> = empty()
   for (const key of keys(self)) {
     const value = self[key]
     if (E.isRight(value)) {

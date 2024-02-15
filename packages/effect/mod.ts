@@ -2,7 +2,8 @@ import type k from "ast-types/gen/kinds.js"
 import type cs from "jscodeshift"
 
 const enabled = {
-  swapScheduleParams: true,
+  swapChannelStateParams: true,
+  swapScheduleParams: false,
   swapEitherParams: false,
   swapLayerParams: false,
   swapSTMParams: false,
@@ -18,7 +19,7 @@ const enabled = {
   swapTExitParams: false,
   swapChannelParams: false,
   swapSinkParams: false,
-  cleanupEither: true,
+  cleanupEither: false,
   cleanupSTM: false,
   cleanupEffect: false,
   cleanupStream: false,
@@ -95,7 +96,7 @@ const swapParamsEA = (nodeName: string) => (ast: cs.ASTPath<cs.TSTypeReference>)
   ) {
     const params = ast.value.typeParameters.params
     const newParams = [params[1], params[0]]
-    popNever(newParams)
+    // popNever(newParams)
     ast.value.typeParameters.params = newParams
   }
 }
@@ -110,6 +111,7 @@ const swapRequestParams = swapParamsEA("Request")
 const swapResourceParams = swapParamsEA("Resource")
 const swapTExitParams = swapParamsEA("TExit")
 const swapEitherParams = swapParamsEA("Either")
+const swapChannelStateParams = swapParamsEA("ChannelState")
 
 // from: Channel<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone>
 // to: Channel<OutElem, InElem = unknown, OutErr = never, InErr = unknown, OutDone = void, InDone = unknown, Env = never>
@@ -197,6 +199,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
   }
 
   forEveryTypeReference(root, (ast) => {
+    if (enabled.swapChannelStateParams) {
+      swapChannelStateParams(ast)
+    }
     if (enabled.swapScheduleParams) {
       swapScheduleParams(ast)
     }

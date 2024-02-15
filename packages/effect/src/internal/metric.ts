@@ -425,12 +425,12 @@ export const trackDurationWith = dual<
 export const trackError = dual<
   <Type, In, Out>(
     metric: Metric.Metric<Type, In, Out>
-  ) => <R, E extends In, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E extends In, A, Type, In, Out>(
+  ) => <A, E extends In, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E extends In, R, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, In, Out>
   ) => Effect.Effect<A, E, R>
->(2, <R, E extends In, A, Type, In, Out>(
+>(2, <A, E extends In, R, Type, In, Out>(
   self: Effect.Effect<A, E, R>,
   metric: Metric.Metric<Type, In, Out>
 ) => trackErrorWith(self, metric, (a: In) => a))
@@ -440,13 +440,13 @@ export const trackErrorWith = dual<
   <Type, In, Out, In2>(
     metric: Metric.Metric<Type, In, Out>,
     f: (error: In2) => In
-  ) => <R, E extends In2, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E extends In2, A, Type, In, Out, In2>(
+  ) => <A, E extends In2, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E extends In2, R, Type, In, Out, In2>(
     self: Effect.Effect<A, E, R>,
     metric: Metric.Metric<Type, In, Out>,
     f: (error: In2) => In
   ) => Effect.Effect<A, E, R>
->(3, <R, E extends In2, A, Type, In, Out, In2>(
+>(3, <A, E extends In2, R, Type, In, Out, In2>(
   self: Effect.Effect<A, E, R>,
   metric: Metric.Metric<Type, In, Out>,
   f: (error: In2) => In

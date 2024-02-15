@@ -1886,10 +1886,10 @@ const repeatOrElseEffectLoop = <A, E, R, R1, B, C, E2, R2>(
 
 /** @internal */
 export const retry_Effect = dual<
-  <R1, E, B>(
+  <B, E, R1>(
     policy: Schedule.Schedule<B, E, R1>
-  ) => <R, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R | R1>,
-  <A, E, R, R1, B>(
+  ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R | R1>,
+  <A, E, R, B, R1>(
     self: Effect.Effect<A, E, R>,
     policy: Schedule.Schedule<B, E, R1>
   ) => Effect.Effect<A, E, R | R1>

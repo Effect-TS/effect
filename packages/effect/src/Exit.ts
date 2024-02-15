@@ -226,12 +226,12 @@ export const forEachEffect: {
 } = core.exitForEachEffect
 
 /**
- * Converts an `Either<E, A>` into an `Exit<A, E>`.
+ * Converts an `Either<R, L>` into an `Exit<R, L>`.
  *
  * @since 2.0.0
  * @category conversions
  */
-export const fromEither: <E, A>(either: Either.Either<A, E>) => Exit<A, E> = core.exitFromEither
+export const fromEither: <R, L>(either: Either.Either<R, L>) => Exit<R, L> = core.exitFromEither
 
 /**
  * Converts an `Option<A>` into an `Exit<void, A>`.

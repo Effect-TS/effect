@@ -41,7 +41,7 @@ export const _await = <A, E>(self: TDeferred.TDeferred<A, E>): STM.STM<A, E> =>
 
 /** @internal */
 export const done = dual<
-  <E, A>(either: Either.Either<A, E>) => (self: TDeferred.TDeferred<A, E>) => STM.STM<boolean>,
+  <A, E>(either: Either.Either<A, E>) => (self: TDeferred.TDeferred<A, E>) => STM.STM<boolean>,
   <A, E>(self: TDeferred.TDeferred<A, E>, either: Either.Either<A, E>) => STM.STM<boolean>
 >(2, (self, either) =>
   core.flatMap(
