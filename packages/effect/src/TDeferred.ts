@@ -65,7 +65,7 @@ export {
  * @category mutations
  */
 export const done: {
-  <E, A>(either: Either.Either<A, E>): (self: TDeferred<A, E>) => STM.STM<boolean>
+  <A, E>(either: Either.Either<A, E>): (self: TDeferred<A, E>) => STM.STM<boolean>
   <A, E>(self: TDeferred<A, E>, either: Either.Either<A, E>): STM.STM<boolean>
 } = internal.done
 

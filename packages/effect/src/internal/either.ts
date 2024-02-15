@@ -20,12 +20,12 @@ export const TypeId: Either.TypeId = Symbol.for("effect/Either") as Either.TypeI
 const CommonProto = {
   ...EffectPrototype,
   [TypeId]: {
-    _A: (_: never) => _
+    _R: (_: never) => _
   },
-  [NodeInspectSymbol]<E, A>(this: Either.Either<A, E>) {
+  [NodeInspectSymbol]<L, R>(this: Either.Either<R, L>) {
     return this.toJSON()
   },
-  toString<E, A>(this: Either.Left<E, A>) {
+  toString<L, R>(this: Either.Left<L, R>) {
     return format(this.toJSON())
   }
 }
@@ -33,13 +33,13 @@ const CommonProto = {
 const RightProto = Object.assign(Object.create(CommonProto), {
   _tag: "Right",
   _op: "Right",
-  [Equal.symbol]<E, A>(this: Either.Right<E, A>, that: unknown): boolean {
+  [Equal.symbol]<L, R>(this: Either.Right<L, R>, that: unknown): boolean {
     return isEither(that) && isRight(that) && Equal.equals(that.right, this.right)
   },
-  [Hash.symbol]<E, A>(this: Either.Right<E, A>) {
-    return Hash.cached(this, Hash.combine(Hash.hash(this._tag))(Hash.hash(this.right)))
+  [Hash.symbol]<L, R>(this: Either.Right<L, R>) {
+    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.right))
   },
-  toJSON<E, A>(this: Either.Right<E, A>) {
+  toJSON<L, R>(this: Either.Right<L, R>) {
     return {
       _id: "Either",
       _tag: this._tag,
@@ -51,11 +51,11 @@ const RightProto = Object.assign(Object.create(CommonProto), {
 const LeftProto = Object.assign(Object.create(CommonProto), {
   _tag: "Left",
   _op: "Left",
-  [Equal.symbol]<E, A>(this: Either.Left<E, A>, that: unknown): boolean {
+  [Equal.symbol]<L, R>(this: Either.Left<L, R>, that: unknown): boolean {
     return isEither(that) && isLeft(that) && Equal.equals(that.left, this.left)
   },
-  [Hash.symbol]<E, A>(this: Either.Left<E, A>) {
-    return Hash.cached(this, Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left)))
+  [Hash.symbol]<L, R>(this: Either.Left<L, R>) {
+    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left))
   },
   toJSON<E, A>(this: Either.Left<E, A>) {
     return {
@@ -70,38 +70,38 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
 export const isEither = (input: unknown): input is Either.Either<unknown, unknown> => hasProperty(input, TypeId)
 
 /** @internal */
-export const isLeft = <E, A>(ma: Either.Either<A, E>): ma is Either.Left<E, A> => ma._tag === "Left"
+export const isLeft = <R, L>(ma: Either.Either<R, L>): ma is Either.Left<L, R> => ma._tag === "Left"
 
 /** @internal */
-export const isRight = <E, A>(ma: Either.Either<A, E>): ma is Either.Right<E, A> => ma._tag === "Right"
+export const isRight = <R, L>(ma: Either.Either<R, L>): ma is Either.Right<L, R> => ma._tag === "Right"
 
 /** @internal */
-export const left = <E>(left: E): Either.Either<never, E> => {
+export const left = <L>(left: L): Either.Either<never, L> => {
   const a = Object.create(LeftProto)
   a.left = left
   return a
 }
 
 /** @internal */
-export const right = <A>(right: A): Either.Either<A> => {
+export const right = <R>(right: R): Either.Either<R> => {
   const a = Object.create(RightProto)
   a.right = right
   return a
 }
 
 /** @internal */
-export const getLeft = <E, A>(
-  self: Either.Either<A, E>
-): Option<E> => (isRight(self) ? option.none : option.some(self.left))
+export const getLeft = <R, L>(
+  self: Either.Either<R, L>
+): Option<L> => (isRight(self) ? option.none : option.some(self.left))
 
 /** @internal */
-export const getRight = <E, A>(
-  self: Either.Either<A, E>
-): Option<A> => (isLeft(self) ? option.none : option.some(self.right))
+export const getRight = <R, L>(
+  self: Either.Either<R, L>
+): Option<R> => (isLeft(self) ? option.none : option.some(self.right))
 
 /** @internal */
 export const fromOption = dual(
   2,
-  <A, E>(self: Option<A>, onNone: () => E): Either.Either<A, E> =>
+  <R, L>(self: Option<R>, onNone: () => L): Either.Either<R, L> =>
     option.isNone(self) ? left(onNone()) : right(self.value)
 )

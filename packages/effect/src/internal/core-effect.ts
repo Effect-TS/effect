@@ -997,7 +997,7 @@ export const loop: {
     ? loopDiscard(initial, options.while, options.step, options.body)
     : core.map(loopInternal(initial, options.while, options.step, options.body), Array.from)
 
-const loopInternal = <Z, R, E, A>(
+const loopInternal = <Z, A, E, R>(
   initial: Z,
   cont: Predicate.Predicate<Z>,
   inc: (z: Z) => Z,
@@ -1110,7 +1110,7 @@ export const merge = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<E | 
   })
 
 /* @internal */
-export const negate = <R, E>(self: Effect.Effect<boolean, E, R>): Effect.Effect<boolean, E, R> =>
+export const negate = <E, R>(self: Effect.Effect<boolean, E, R>): Effect.Effect<boolean, E, R> =>
   core.map(self, (b) => !b)
 
 /* @internal */
@@ -1852,7 +1852,7 @@ export const withMetric = dual<
 >(2, (self, metric) => metric(self))
 
 /** @internal */
-export const serviceFunctionEffect = <T extends Effect.Effect<any, any, any>, Args extends Array<any>, R, E, A>(
+export const serviceFunctionEffect = <T extends Effect.Effect<any, any, any>, Args extends Array<any>, A, E, R>(
   getService: T,
   f: (_: Effect.Effect.Success<T>) => (...args: Args) => Effect.Effect<A, E, R>
 ) =>

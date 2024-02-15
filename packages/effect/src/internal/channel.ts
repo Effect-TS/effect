@@ -182,8 +182,8 @@ export const catchAll = dual<
 
 /** @internal */
 export const concatMap = dual<
-  <OutElem, OutElem2, InElem2, OutErr2, InErr2, _, InDone2, Env2>(
-    f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, _, InDone2, Env2>
+  <OutElem, OutElem2, InElem2, OutErr2, InErr2, X, InDone2, Env2>(
+    f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, X, InDone2, Env2>
   ) => <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
   ) => Channel.Channel<
@@ -195,9 +195,9 @@ export const concatMap = dual<
     InDone & InDone2,
     Env2 | Env
   >,
-  <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, OutElem2, Env2, InErr2, InElem2, InDone2, OutErr2, _>(
+  <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, OutElem2, Env2, InErr2, InElem2, InDone2, OutErr2, X>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-    f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, _, InDone2, Env2>
+    f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, X, InDone2, Env2>
   ) => Channel.Channel<
     OutElem2,
     InElem & InElem2,
@@ -207,9 +207,9 @@ export const concatMap = dual<
     InDone & InDone2,
     Env2 | Env
   >
->(2, <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, OutElem2, Env2, InErr2, InElem2, InDone2, OutErr2, _>(
+>(2, <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, OutElem2, Env2, InErr2, InElem2, InDone2, OutErr2, X>(
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-  f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, _, InDone2, Env2>
+  f: (o: OutElem) => Channel.Channel<OutElem2, InElem2, OutErr2, InErr2, X, InDone2, Env2>
 ): Channel.Channel<
   OutElem2,
   InElem & InElem2,
@@ -660,9 +660,9 @@ export const foldChannel = dual<
   }))
 
 /** @internal */
-export const fromEither = <E, A>(
-  either: Either.Either<A, E>
-): Channel.Channel<never, unknown, E, unknown, A, unknown> =>
+export const fromEither = <R, L>(
+  either: Either.Either<R, L>
+): Channel.Channel<never, unknown, L, unknown, R, unknown> =>
   core.suspend(() => Either.match(either, { onLeft: core.fail, onRight: core.succeed }))
 
 /** @internal */
@@ -2021,21 +2021,21 @@ export const mapInputContext = dual<
 
 /** @internal */
 export const provideSomeLayer = dual<
-  <Env2, OutErr2, Env0>(
-    layer: Layer.Layer<Env2, OutErr2, Env0>
+  <R2, OutErr2, Env0>(
+    layer: Layer.Layer<R2, OutErr2, Env0>
   ) => <OutElem, InElem, OutErr, InErr, OutDone, InDone, R>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, R>
-  ) => Channel.Channel<OutElem, InElem, OutErr2 | OutErr, InErr, OutDone, InDone, Env0 | Exclude<R, Env2>>,
-  <OutElem, InElem, OutErr, InErr, OutDone, InDone, R, Env2, OutErr2, Env0>(
+  ) => Channel.Channel<OutElem, InElem, OutErr2 | OutErr, InErr, OutDone, InDone, Env0 | Exclude<R, R2>>,
+  <OutElem, InElem, OutErr, InErr, OutDone, InDone, R, R2, OutErr2, Env0>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, R>,
-    layer: Layer.Layer<Env2, OutErr2, Env0>
-  ) => Channel.Channel<OutElem, InElem, OutErr2 | OutErr, InErr, OutDone, InDone, Env0 | Exclude<R, Env2>>
->(2, <OutElem, InElem, OutErr, InErr, OutDone, InDone, R, Env2, OutErr2, Env0>(
+    layer: Layer.Layer<R2, OutErr2, Env0>
+  ) => Channel.Channel<OutElem, InElem, OutErr2 | OutErr, InErr, OutDone, InDone, Env0 | Exclude<R, R2>>
+>(2, <OutElem, InElem, OutErr, InErr, OutDone, InDone, R, R2, OutErr2, Env0>(
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, R>,
-  layer: Layer.Layer<Env2, OutErr2, Env0>
-): Channel.Channel<OutElem, InElem, OutErr | OutErr2, InErr, OutDone, InDone, Env0 | Exclude<R, Env2>> =>
+  layer: Layer.Layer<R2, OutErr2, Env0>
+): Channel.Channel<OutElem, InElem, OutErr | OutErr2, InErr, OutDone, InDone, Env0 | Exclude<R, R2>> =>
   // @ts-expect-error
-  provideLayer(self, Layer.merge(Layer.context<Exclude<R, Env2>>(), layer)))
+  provideLayer(self, Layer.merge(Layer.context<Exclude<R, R2>>(), layer)))
 
 /** @internal */
 export const read = <In>(): Channel.Channel<never, In, Option.Option<never>, unknown, In, unknown> =>
@@ -2122,12 +2122,12 @@ export const toPull = <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
         return finalize === undefined ? Effect.unit : finalize
       }
     ),
-    (exec) => Effect.suspend(() => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
+    (exec) => Effect.suspend(() => interpretToPull(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec))
   )
 
 /** @internal */
 const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-  channelState: ChannelState.ChannelState<Env, OutErr>,
+  channelState: ChannelState.ChannelState<OutErr, Env>,
   exec: executor.ChannelExecutor<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
 ): Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env> => {
   const state = channelState as ChannelState.Primitive
@@ -2145,13 +2145,13 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     case ChannelStateOpCodes.OP_FROM_EFFECT: {
       return pipe(
         state.effect as Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env>,
-        Effect.flatMap(() => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
+        Effect.flatMap(() => interpretToPull(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec))
       )
     }
     case ChannelStateOpCodes.OP_READ: {
       return executor.readUpstream(
         state,
-        () => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
+        () => interpretToPull(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec),
         (cause) => Effect.failCause(cause) as Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env>
       )
     }

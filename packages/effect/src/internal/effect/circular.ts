@@ -83,7 +83,7 @@ class Semaphore {
 
   readonly releaseAll: Effect.Effect<number> = this.updateTaken((_) => 0)
 
-  readonly withPermits = (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) =>
+  readonly withPermits = (n: number) => <A, E, R>(self: Effect.Effect<A, E, R>) =>
     core.uninterruptibleMask((restore) =>
       core.flatMap(
         restore(this.take(n)),
