@@ -1104,7 +1104,7 @@ export const merge = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<E | 
   })
 
 /* @internal */
-export const negate = <R, E>(self: Effect.Effect<boolean, E, R>): Effect.Effect<boolean, E, R> =>
+export const negate = <E, R>(self: Effect.Effect<boolean, E, R>): Effect.Effect<boolean, E, R> =>
   core.map(self, (b) => !b)
 
 /* @internal */

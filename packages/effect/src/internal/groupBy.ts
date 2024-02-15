@@ -274,19 +274,19 @@ export const mapEffectOptions = dual<
 
 /** @internal */
 export const bindEffect = dual<
-  <N extends string, K, R2, E2, A>(
+  <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => Effect.Effect<A, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
     }
-  ) => <R, E>(self: Stream.Stream<K, E, R>) => Stream.Stream<
+  ) => <E, R>(self: Stream.Stream<K, E, R>) => Stream.Stream<
     Effect.MergeRecord<K, { [k in N]: A }>,
     E | E2,
     R | R2
   >,
-  <R, E, N extends string, K, R2, E2, A>(
+  <K, E, R, N extends string, A, E2, R2>(
     self: Stream.Stream<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => Effect.Effect<A, E2, R2>,

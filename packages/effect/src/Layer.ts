@@ -626,10 +626,10 @@ export const scope: Layer<Scope.CloseableScope> = internal.scope
 export const scoped: {
   <T extends Context.Tag<any, any>>(
     tag: T
-  ): <R, E>(
+  ): <E, R>(
     effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ) => Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>
-  <T extends Context.Tag<any, any>, R, E>(
+  <T extends Context.Tag<any, any>, E, R>(
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ): Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>
@@ -828,11 +828,11 @@ export const provideMerge: {
  * @category zipping
  */
 export const zipWith: {
-  <R2, E2, B, A, C>(
+  <B, E2, R2, A, C>(
     that: Layer<B, E2, R2>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
-  ): <R, E>(self: Layer<A, E, R>) => Layer<C, E2 | E, R2 | R>
-  <R, E, R2, E2, B, A, C>(
+  ): <E, R>(self: Layer<A, E, R>) => Layer<C, E2 | E, R2 | R>
+  <A, E, R, B, E2, R2, C>(
     self: Layer<A, E, R>,
     that: Layer<B, E2, R2>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
@@ -914,7 +914,7 @@ export const setRequestCache: {
   (
     cache: Request.Cache
   ): Layer<never>
-} = (<R, E>(cache: Request.Cache | Effect.Effect<Request.Cache, E, R>) =>
+} = (<E, R>(cache: Request.Cache | Effect.Effect<Request.Cache, E, R>) =>
   scopedDiscard(
     core.isEffect(cache) ?
       core.flatMap(cache, (x) => fiberRuntime.fiberRefLocallyScoped(query.currentCache as any, x)) :

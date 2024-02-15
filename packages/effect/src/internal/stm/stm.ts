@@ -111,16 +111,16 @@ export const attempt = <A>(evaluate: LazyArg<A>): STM.STM<A, unknown> =>
   })
 
 export const bind = dual<
-  <N extends string, K, R2, E2, A>(
+  <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM.STM<A, E2, R2>
-  ) => <R, E>(self: STM.STM<K, E, R>) => STM.STM<Effect.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>,
-  <R, E, N extends string, K, R2, E2, A>(
+  ) => <E, R>(self: STM.STM<K, E, R>) => STM.STM<Effect.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>,
+  <K, E, R, N extends string, A, E2, R2>(
     self: STM.STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM.STM<A, E2, R2>
   ) => STM.STM<Effect.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
->(3, <R, E, N extends string, K, R2, E2, A>(
+>(3, <K, E, R, N extends string, A, E2, R2>(
   self: STM.STM<K, E, R>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => STM.STM<A, E2, R2>
@@ -157,12 +157,12 @@ export const let_ = dual<
   <N extends string, K, A>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ) => <R, E>(self: STM.STM<K, E, R>) => STM.STM<
+  ) => <E, R>(self: STM.STM<K, E, R>) => STM.STM<
     Effect.MergeRecord<K, { [k in N]: A }>,
     E,
     R
   >,
-  <R, E, K, N extends string, A>(
+  <K, E, R, N extends string, A>(
     self: STM.STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
@@ -171,7 +171,7 @@ export const let_ = dual<
     E,
     R
   >
->(3, <R, E, K, N extends string, A>(self: STM.STM<K, E, R>, tag: Exclude<N, keyof K>, f: (_: K) => A) =>
+>(3, <K, E, R, N extends string, A>(self: STM.STM<K, E, R>, tag: Exclude<N, keyof K>, f: (_: K) => A) =>
   core.map(
     self,
     (k): Effect.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
@@ -864,7 +864,7 @@ export const mergeAll = dual<
 )
 
 /** @internal */
-export const negate = <R, E>(self: STM.STM<boolean, E, R>): STM.STM<boolean, E, R> => pipe(self, core.map((b) => !b))
+export const negate = <E, R>(self: STM.STM<boolean, E, R>): STM.STM<boolean, E, R> => pipe(self, core.map((b) => !b))
 
 /** @internal */
 export const none = <A, E, R>(self: STM.STM<Option.Option<A>, E, R>): STM.STM<void, Option.Option<E>, R> =>
@@ -885,8 +885,8 @@ export const orDie = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<A, never, R> => 
 
 /** @internal */
 export const orDieWith = dual<
-  <E>(f: (error: E) => unknown) => <R, A>(self: STM.STM<A, E, R>) => STM.STM<A, never, R>,
-  <R, A, E>(self: STM.STM<A, E, R>, f: (error: E) => unknown) => STM.STM<A, never, R>
+  <E>(f: (error: E) => unknown) => <A, R>(self: STM.STM<A, E, R>) => STM.STM<A, never, R>,
+  <A, E, R>(self: STM.STM<A, E, R>, f: (error: E) => unknown) => STM.STM<A, never, R>
 >(2, (self, f) => pipe(self, mapError(f), core.catchAll(core.die)))
 
 /** @internal */
@@ -1049,18 +1049,18 @@ export const reduce = dual<
 
 /** @internal */
 export const reduceAll = dual<
-  <R2, E2, A>(
+  <A, E2, R2>(
     initial: STM.STM<A, E2, R2>,
     f: (x: A, y: A) => A
-  ) => <R, E>(
+  ) => <E, R>(
     iterable: Iterable<STM.STM<A, E, R>>
   ) => STM.STM<A, E2 | E, R2 | R>,
-  <R, E, R2, E2, A>(
+  <A, E, R, E2, R2>(
     iterable: Iterable<STM.STM<A, E, R>>,
     initial: STM.STM<A, E2, R2>,
     f: (x: A, y: A) => A
   ) => STM.STM<A, E2 | E, R2 | R>
->(3, <R, E, R2, E2, A>(
+>(3, <A, E, R, E2, R2>(
   iterable: Iterable<STM.STM<A, E, R>>,
   initial: STM.STM<A, E2, R2>,
   f: (x: A, y: A) => A
@@ -1146,7 +1146,7 @@ export const rejectSTM = dual<
 
 /** @internal */
 export const repeatUntil = dual<
-  <A>(predicate: Predicate<A>) => <R, E>(self: STM.STM<A, E, R>) => STM.STM<A, E, R>,
+  <A>(predicate: Predicate<A>) => <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E, R>,
   <A, E, R>(self: STM.STM<A, E, R>, predicate: Predicate<A>) => STM.STM<A, E, R>
 >(2, (self, predicate) => repeatUntilLoop(self, predicate))
 
@@ -1158,7 +1158,7 @@ const repeatUntilLoop = <A, E, R>(self: STM.STM<A, E, R>, predicate: Predicate<A
 
 /** @internal */
 export const repeatWhile = dual<
-  <A>(predicate: Predicate<A>) => <R, E>(self: STM.STM<A, E, R>) => STM.STM<A, E, R>,
+  <A>(predicate: Predicate<A>) => <E, R>(self: STM.STM<A, E, R>) => STM.STM<A, E, R>,
   <A, E, R>(self: STM.STM<A, E, R>, predicate: Predicate<A>) => STM.STM<A, E, R>
 >(2, (self, predicate) => repeatWhileLoop(self, predicate))
 

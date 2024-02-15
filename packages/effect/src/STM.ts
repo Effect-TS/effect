@@ -1316,7 +1316,7 @@ export const mergeAll: {
  * @since 2.0.0
  * @category mutations
  */
-export const negate: <R, E>(self: STM<boolean, E, R>) => STM<boolean, E, R> = stm.negate
+export const negate: <E, R>(self: STM<boolean, E, R>) => STM<boolean, E, R> = stm.negate
 
 /**
  * Requires the option produced by this value to be `None`.
@@ -1351,8 +1351,8 @@ export const orDie: <A, E, R>(self: STM<A, E, R>) => STM<A, never, R> = stm.orDi
  * @category error handling
  */
 export const orDieWith: {
-  <E>(f: (error: E) => unknown): <R, A>(self: STM<A, E, R>) => STM<A, never, R>
-  <R, A, E>(self: STM<A, E, R>, f: (error: E) => unknown): STM<A, never, R>
+  <E>(f: (error: E) => unknown): <A, R>(self: STM<A, E, R>) => STM<A, never, R>
+  <A, E, R>(self: STM<A, E, R>, f: (error: E) => unknown): STM<A, never, R>
 } = stm.orDieWith
 
 /**
@@ -1532,13 +1532,11 @@ export const reduce: {
  * @category constructors
  */
 export const reduceAll: {
-  <R2, E2, A>(
+  <A, E2, R2>(
     initial: STM<A, E2, R2>,
     f: (x: A, y: A) => A
-  ): <R, E>(
-    iterable: Iterable<STM<A, E, R>>
-  ) => STM<A, E2 | E, R2 | R>
-  <R, E, R2, E2, A>(
+  ): <E, R>(iterable: Iterable<STM<A, E, R>>) => STM<A, E2 | E, R2 | R>
+  <A, E, R, E2, R2>(
     iterable: Iterable<STM<A, E, R>>,
     initial: STM<A, E2, R2>,
     f: (x: A, y: A) => A
@@ -1621,7 +1619,7 @@ export const rejectSTM: {
  * @category mutations
  */
 export const repeatUntil: {
-  <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
+  <A>(predicate: Predicate<A>): <E, R>(self: STM<A, E, R>) => STM<A, E, R>
   <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.repeatUntil
 
@@ -1642,7 +1640,7 @@ export const repeatUntil: {
  * @category mutations
  */
 export const repeatWhile: {
-  <A>(predicate: Predicate<A>): <R, E>(self: STM<A, E, R>) => STM<A, E, R>
+  <A>(predicate: Predicate<A>): <E, R>(self: STM<A, E, R>) => STM<A, E, R>
   <A, E, R>(self: STM<A, E, R>, predicate: Predicate<A>): STM<A, E, R>
 } = stm.repeatWhile
 
@@ -2028,11 +2026,11 @@ export const Do: STM<{}> = succeed({})
  * @since 2.0.0
  */
 export const bind: {
-  <N extends string, K, R2, E2, A>(
+  <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM<A, E2, R2>
-  ): <R, E>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-  <R, E, N extends string, K, R2, E2, A>(
+  ): <E, R>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  <K, E, R, N extends string, A, E2, R2>(
     self: STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM<A, E2, R2>
@@ -2043,13 +2041,14 @@ const let_: {
   <N extends string, K, A>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ): <R, E>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
-  <R, E, K, N extends string, A>(
+  ): <E, R>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
+  <K, E, R, N extends string, A>(
     self: STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
   ): STM<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
 } = stm.let_
+
 export {
   /**
    * @category do notation

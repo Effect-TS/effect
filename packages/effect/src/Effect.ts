@@ -2177,7 +2177,7 @@ export const merge: <A, E, R>(self: Effect<A, E, R>) => Effect<E | A, never, R> 
  * @since 2.0.0
  * @category mapping
  */
-export const negate: <R, E>(self: Effect<boolean, E, R>) => Effect<boolean, E, R> = effect.negate
+export const negate: <E, R>(self: Effect<boolean, E, R>) => Effect<boolean, E, R> = effect.negate
 
 // -------------------------------------------------------------------------------------
 // scoping, resources & finalization

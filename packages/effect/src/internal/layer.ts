@@ -838,10 +838,10 @@ const retryUpdate = <X, E, RIn>(
 export const scoped = dual<
   <T extends Context.Tag<any, any>>(
     tag: T
-  ) => <R, E>(
+  ) => <E, R>(
     effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ) => Layer.Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>,
-  <T extends Context.Tag<any, any>, R, E>(
+  <T extends Context.Tag<any, any>, E, R>(
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E, R>
   ) => Layer.Layer<Context.Tag.Identifier<T>, E, Exclude<R, Scope.Scope>>
@@ -1052,11 +1052,11 @@ export const provideMerge = dual<
 
 /** @internal */
 export const zipWith = dual<
-  <R2, E2, B, A, C>(
+  <B, E2, R2, A, C>(
     that: Layer.Layer<B, E2, R2>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
-  ) => <R, E>(self: Layer.Layer<A, E, R>) => Layer.Layer<C, E | E2, R | R2>,
-  <R, E, R2, E2, B, A, C>(
+  ) => <E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<C, E | E2, R | R2>,
+  <A, E, R, B, E2, R2, C>(
     self: Layer.Layer<A, E, R>,
     that: Layer.Layer<B, E2, R2>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>

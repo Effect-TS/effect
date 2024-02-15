@@ -114,14 +114,14 @@ export const find = dual<
 
 /** @internal */
 export const findSTM = dual<
-  <K, V, R, E, A>(
+  <K, V, A, E, R>(
     f: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
   ) => (self: TMap.TMap<K, V>) => STM.STM<Option.Option<A>, E, R>,
-  <K, V, R, E, A>(
+  <K, V, A, E, R>(
     self: TMap.TMap<K, V>,
     f: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
   ) => STM.STM<Option.Option<A>, E, R>
->(2, <K, V, R, E, A>(
+>(2, <K, V, A, E, R>(
   self: TMap.TMap<K, V>,
   f: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
 ) =>
@@ -156,14 +156,14 @@ export const findAll = dual<
 
 /** @internal */
 export const findAllSTM = dual<
-  <K, V, R, E, A>(
+  <K, V, A, E, R>(
     pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
   ) => (self: TMap.TMap<K, V>) => STM.STM<Array<A>, E, R>,
-  <K, V, R, E, A>(
+  <K, V, A, E, R>(
     self: TMap.TMap<K, V>,
     pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
   ) => STM.STM<Array<A>, E, R>
->(2, <K, V, R, E, A>(
+>(2, <K, V, A, E, R>(
   self: TMap.TMap<K, V>,
   pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
 ) =>
@@ -553,10 +553,10 @@ export const takeFirst = dual<
 
 /** @internal */
 export const takeFirstSTM = dual<
-  <K, V, R, E, A>(
+  <K, V, A, E, R>(
     pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
   ) => (self: TMap.TMap<K, V>) => STM.STM<A, E, R>,
-  <K, V, R, E, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>) => STM.STM<A, E, R>
+  <K, V, A, E, R>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>) => STM.STM<A, E, R>
 >(2, (self, pf) =>
   pipe(
     findSTM(self, (key, value) => core.map(pf(key, value), (a) => [key, a] as const)),
@@ -618,14 +618,14 @@ export const takeSome = dual<
 
 /** @internal */
 export const takeSomeSTM = dual<
-  <K, V, R, E, A>(
+  <K, V, A, E, R>(
     pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
   ) => (self: TMap.TMap<K, V>) => STM.STM<RA.NonEmptyArray<A>, E, R>,
-  <K, V, R, E, A>(
+  <K, V, A, E, R>(
     self: TMap.TMap<K, V>,
     pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
   ) => STM.STM<RA.NonEmptyArray<A>, E, R>
->(2, <K, V, R, E, A>(
+>(2, <K, V, A, E, R>(
   self: TMap.TMap<K, V>,
   pf: (key: K, value: V) => STM.STM<A, Option.Option<E>, R>
 ) =>

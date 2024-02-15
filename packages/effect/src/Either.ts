@@ -610,11 +610,11 @@ export const zipWith: {
  * @since 2.0.0
  */
 export const ap: {
-  <R, L2>(that: Either<R, L2>): <L, R2>(self: Either<(right: L) => R2, L>) => Either<R2, L | L2>
-  <R, L, R2, L2>(self: Either<(right: R) => R2, L>, that: Either<R, L2>): Either<R2, L | L2>
+  <R, L2>(that: Either<R, L2>): <R2, L>(self: Either<(right: R) => R2, L>) => Either<R2, L | L2>
+  <R, R2, L, L2>(self: Either<(right: R) => R2, L>, that: Either<R, L2>): Either<R2, L | L2>
 } = dual(
   2,
-  <R, L, R2, L2>(self: Either<(right: R) => R2, L>, that: Either<R, L2>): Either<R2, L | L2> =>
+  <R, R2, L, L2>(self: Either<(right: R) => R2, L>, that: Either<R, L2>): Either<R2, L | L2> =>
     zipWith(self, that, (f, a) => f(a))
 )
 
