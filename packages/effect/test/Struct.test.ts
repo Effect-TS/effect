@@ -6,17 +6,79 @@ import { assert, describe, expect, it } from "vitest"
 
 describe("Struct", () => {
   it("exports", () => {
-    expect(Struct.getOrder).exist // alias of order.struct, tested there
+    expect(Struct.getOrder).exist // alias of `Order.ts#struct`
   })
 
   it("pick", () => {
     expect(pipe({ a: "a", b: 1, c: true }, Struct.pick("a", "b"))).toEqual({ a: "a", b: 1 })
-    const record: Record<string, number> = {}
-    expect(pipe(record, Struct.pick("a", "b"))).toStrictEqual({ a: undefined, b: undefined })
+
+    const record1: Record<string, number> = {}
+    expect(pipe(record1, Struct.pick("a", "b"))).toStrictEqual({})
+    const record2: Record<string, number> = { b: 1 }
+    expect(pipe(record2, Struct.pick("a", "b"))).toStrictEqual({ b: 1 })
+
+    const optionalStringStruct1: {
+      a?: string
+      b: number
+      c: boolean
+    } = { b: 1, c: true }
+    expect(pipe(optionalStringStruct1, Struct.pick("a", "b"))).toStrictEqual({ b: 1 })
+    const optionalStringStruct2: {
+      a?: string
+      b: number
+      c: boolean
+    } = { a: "a", b: 1, c: true }
+    expect(pipe(optionalStringStruct2, Struct.pick("a", "b"))).toStrictEqual({ a: "a", b: 1 })
+
+    const a = Symbol.for("a")
+    const optionalSymbolStruct1: {
+      [a]?: string
+      b: number
+      c: boolean
+    } = { b: 1, c: true }
+    expect(pipe(optionalSymbolStruct1, Struct.pick(a, "b"))).toStrictEqual({ b: 1 })
+    const optionalSymbolStruct2: {
+      [a]?: string
+      b: number
+      c: boolean
+    } = { [a]: "a", b: 1, c: true }
+    expect(pipe(optionalSymbolStruct2, Struct.pick(a, "b"))).toStrictEqual({ [a]: "a", b: 1 })
   })
 
   it("omit", () => {
     expect(pipe({ a: "a", b: 1, c: true }, Struct.omit("c"))).toEqual({ a: "a", b: 1 })
+
+    const record1: Record<string, number> = {}
+    expect(pipe(record1, Struct.omit("a", "c"))).toStrictEqual({})
+    const record2: Record<string, number> = { b: 1 }
+    expect(pipe(record2, Struct.omit("a", "c"))).toStrictEqual({ b: 1 })
+
+    const optionalStringStruct1: {
+      a?: string
+      b: number
+      c: boolean
+    } = { b: 1, c: true }
+    expect(pipe(optionalStringStruct1, Struct.omit("c"))).toStrictEqual({ b: 1 })
+    const optionalStringStruct2: {
+      a?: string
+      b: number
+      c: boolean
+    } = { a: "a", b: 1, c: true }
+    expect(pipe(optionalStringStruct2, Struct.omit("c"))).toStrictEqual({ a: "a", b: 1 })
+
+    const a = Symbol.for("a")
+    const optionalSymbolStruct1: {
+      [a]?: string
+      b: number
+      c: boolean
+    } = { b: 1, c: true }
+    expect(pipe(optionalSymbolStruct1, Struct.omit("c"))).toStrictEqual({ b: 1 })
+    const optionalSymbolStruct2: {
+      [a]?: string
+      b: number
+      c: boolean
+    } = { [a]: "a", b: 1, c: true }
+    expect(pipe(optionalSymbolStruct2, Struct.omit("c"))).toStrictEqual({ [a]: "a", b: 1 })
   })
 
   it("evolve", () => {
@@ -56,5 +118,10 @@ describe("Struct", () => {
       PersonEquivalence({ name: "John", age: 25 }, { name: "John", age: 40 }),
       false
     )
+  })
+
+  it("get", () => {
+    expect(pipe({ a: 1 }, Struct.get("a"))).toStrictEqual(1)
+    expect(pipe({}, Struct.get("a"))).toStrictEqual(undefined)
   })
 })

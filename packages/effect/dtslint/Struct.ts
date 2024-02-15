@@ -14,6 +14,11 @@ declare const templateLiteralNumberRecord: Record<`a${string}`, number>
 const stringStruct = { a: "a", b: 1, c: true }
 const symbolStruct = { [asym]: "a", [bsym]: 1, [csym]: true }
 const numberStruct = { 1: "a", 2: 1, 3: true }
+declare const optionalStringStruct: {
+  a?: string
+  b: number
+  c: boolean
+}
 
 // -------------------------------------------------------------------------------------
 // evolve
@@ -29,7 +34,7 @@ pipe({ a: "a", b: 2 }, S.evolve({ a: (s) => s.length }))
 // get
 // -------------------------------------------------------------------------------------
 
-// @ts-expect-error
+// $ExpectType unknown
 pipe({}, S.get("a"))
 
 // $ExpectType string
@@ -41,7 +46,7 @@ S.get("a")(stringStruct)
 // $ExpectType number | undefined
 pipe(stringNumberRecord, S.get("a"))
 
-// $ExpectType <S extends Record<"a", any>>(s: S) => MatchRecord<S, S["a"] | undefined, S["a"]>
+// $ExpectType <S extends { a?: any; }>(s: S) => MatchRecord<S, S["a"] | undefined, S["a"]>
 S.get("a")
 
 // $ExpectType string
@@ -53,7 +58,7 @@ S.get(asym)(symbolStruct)
 // $ExpectType number | undefined
 pipe(symbolNumberRecord, S.get(asym))
 
-// $ExpectType <S extends Record<typeof asym, any>>(s: S) => MatchRecord<S, S[typeof asym] | undefined, S[typeof asym]>
+// $ExpectType <S extends { [asym]?: any; }>(s: S) => MatchRecord<S, S[typeof asym] | undefined, S[typeof asym]>
 S.get(asym)
 
 // $ExpectType string
@@ -65,7 +70,7 @@ S.get(1)(numberStruct)
 // $ExpectType number | undefined
 pipe(numberNumberRecord, S.get(1))
 
-// $ExpectType <S extends Record<1, any>>(s: S) => MatchRecord<S, S[1] | undefined, S[1]>
+// $ExpectType <S extends { 1?: any; }>(s: S) => MatchRecord<S, S[1] | undefined, S[1]>
 S.get(1)
 
 // $ExpectType number | undefined
@@ -76,6 +81,12 @@ pipe(hole<Record<string, number> & { a: boolean }>(), S.get("a"))
 
 // @ts-expect-error
 pipe(hole<Record<string, number> & { a: boolean }>(), S.get("b"))
+
+// $ExpectType string | undefined
+pipe(optionalStringStruct, S.get("a"))
+
+// $ExpectType string | undefined
+S.get("a")(optionalStringStruct)
 
 // -------------------------------------------------------------------------------------
 // pick
@@ -93,7 +104,7 @@ S.pick("d" as string)(stringStruct)
 // $ExpectType { a: string; b: number; }
 pipe(stringStruct, S.pick("a", "b"))
 
-// $ExpectType { a: number | undefined; b: number | undefined; }
+// $ExpectType { a?: number; b?: number; }
 pipe(stringNumberRecord, S.pick("a", "b"))
 
 // @ts-expect-error
@@ -108,7 +119,7 @@ S.pick(dsym as symbol)(symbolStruct)
 // $ExpectType { [asym]: string; [bsym]: number; }
 pipe(symbolStruct, S.pick(asym, bsym))
 
-// $ExpectType { [asym]: number | undefined; [bsym]: number | undefined; }
+// $ExpectType { [asym]?: number; [bsym]?: number; }
 pipe(symbolNumberRecord, S.pick(asym, bsym))
 
 // $ExpectType { 1: string; 2: number; }
@@ -123,10 +134,10 @@ S.pick(4)(numberStruct)
 // $ExpectType { [x: number]: unknown; }
 S.pick(4 as number)(numberStruct)
 
-// $ExpectType { 1: number | undefined; 2: number | undefined; }
+// $ExpectType { 1?: number; 2?: number; }
 pipe(numberNumberRecord, S.pick(1, 2))
 
-// $ExpectType { ab: number | undefined; aa: number | undefined; }
+// $ExpectType { ab?: number; aa?: number; }
 pipe(templateLiteralNumberRecord, S.pick("aa", "ab"))
 
 // $ExpectType { a: boolean; }
@@ -134,6 +145,9 @@ pipe(hole<Record<string, number> & { a: boolean }>(), S.pick("a"))
 
 // @ts-expect-error
 pipe(hole<Record<string, number> & { a: boolean }>(), S.pick("b"))
+
+// $ExpectType { a?: string; b: number; }
+pipe(optionalStringStruct, S.pick("a", "b"))
 
 // -------------------------------------------------------------------------------------
 // omit
@@ -174,3 +188,6 @@ pipe(symbolNumberRecord, S.omit(asym))
 
 // $ExpectType { [x: number]: number; }
 pipe(numberNumberRecord, S.omit(1))
+
+// $ExpectType { a?: string; b: number; }
+pipe(optionalStringStruct, S.omit("c"))
