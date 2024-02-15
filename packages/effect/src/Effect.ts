@@ -19,7 +19,7 @@ import type * as FiberRef from "./FiberRef.js"
 import type * as FiberRefs from "./FiberRefs.js"
 import type * as FiberRefsPatch from "./FiberRefsPatch.js"
 import type { LazyArg } from "./Function.js"
-import { dual, identity } from "./Function.js"
+import { dual } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
@@ -212,15 +212,6 @@ export declare namespace Effect {
     readonly _E: Covariant<E>
     readonly _R: Covariant<R>
   }
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Unify<Ret extends Effect<any, any, any>> = Effect<
-    Success<Ret>,
-    Error<Ret>,
-    Context<Ret>
-  >
   /**
    * @since 2.0.0
    * @category type-level
@@ -4616,28 +4607,6 @@ export const withMetric: {
   <Type, In, Out>(metric: Metric.Metric<Type, In, Out>): <R, E, A extends In>(self: Effect<A, E, R>) => Effect<A, E, R>
   <R, E, A extends In, Type, In, Out>(self: Effect<A, E, R>, metric: Metric.Metric<Type, In, Out>): Effect<A, E, R>
 } = effect.withMetric
-
-// -------------------------------------------------------------------------------------
-// unify
-// -------------------------------------------------------------------------------------
-
-/**
- * Used to unify functions that would otherwise return `Effect<A, B, C> | Effect<D, E, F>`
- *
- * @category unify
- * @since 2.0.0
- */
-export const unifiedFn: <Args extends ReadonlyArray<any>, Ret extends Effect<any, any, any>>(
-  f: (...args: Args) => Ret
-) => (...args: Args) => Effect.Unify<Ret> = core.unified
-
-/**
- * Used to unify effects that would otherwise be `Effect<A, B, C> | Effect<D, E, F>`
- *
- * @category unify
- * @since 2.0.0
- */
-export const unified: <Ret extends Effect<any, any, any>>(f: Ret) => Effect.Unify<Ret> = identity
 
 // -------------------------------------------------------------------------------------
 // semaphore
