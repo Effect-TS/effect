@@ -62,11 +62,11 @@ export declare namespace Reloadable {
  * @since 2.0.0
  * @category constructors
  */
-export const auto: <Out extends Context.Tag<any, any>, In, E, R>(
+export const auto: <Out extends Context.Tag<any, any>, E, In, R>(
   tag: Out,
   options: {
     readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
-    readonly schedule: Schedule.Schedule<R, unknown, unknown>
+    readonly schedule: Schedule.Schedule<unknown, unknown, R>
   }
 ) => Layer.Layer<Reloadable<Context.Tag.Identifier<Out>>, E, In | R> = internal.auto
 
@@ -78,11 +78,11 @@ export const auto: <Out extends Context.Tag<any, any>, In, E, R>(
  * @since 2.0.0
  * @category constructors
  */
-export const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, R>(
+export const autoFromConfig: <Out extends Context.Tag<any, any>, E, In, R>(
   tag: Out,
   options: {
     readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
-    readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<R, unknown, unknown>
+    readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<unknown, unknown, R>
   }
 ) => Layer.Layer<Reloadable<Context.Tag.Identifier<Out>>, E, In | R> = internal.autoFromConfig
 

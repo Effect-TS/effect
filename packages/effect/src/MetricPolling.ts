@@ -70,14 +70,14 @@ export const collectAll: <R, E, Out>(
  * @category utils
  */
 export const launch: {
-  <R2, A2>(
-    schedule: Schedule.Schedule<R2, unknown, A2>
+  <A2, R2>(
+    schedule: Schedule.Schedule<A2, unknown, R2>
   ): <Type, In, R, E, Out>(
     self: MetricPolling<Type, In, R, E, Out>
-  ) => Effect.Effect<Fiber.Fiber<A2, E>, never, Scope.Scope | R2 | R>
-  <Type, In, R, E, Out, R2, A2>(
+  ) => Effect.Effect<Fiber.Fiber<A2, E>, never, R2 | R | Scope.Scope>
+  <Type, In, R, E, Out, A2, R2>(
     self: MetricPolling<Type, In, R, E, Out>,
-    schedule: Schedule.Schedule<R2, unknown, A2>
+    schedule: Schedule.Schedule<A2, unknown, R2>
   ): Effect.Effect<Fiber.Fiber<A2, E>, never, Scope.Scope | R | R2>
 } = internal.launch
 
@@ -108,12 +108,12 @@ export const pollAndUpdate: <Type, In, R, E, Out>(
  * @category constructors
  */
 export const retry: {
-  <R2, E, _>(
-    policy: Schedule.Schedule<R2, E, _>
+  <_, E, R2>(
+    policy: Schedule.Schedule<_, E, R2>
   ): <Type, In, R, Out>(self: MetricPolling<Type, In, R, E, Out>) => MetricPolling<Type, In, R2 | R, E, Out>
-  <Type, In, R, Out, R2, E, _>(
+  <Type, In, R, E, Out, _, R2>(
     self: MetricPolling<Type, In, R, E, Out>,
-    policy: Schedule.Schedule<R2, E, _>
+    policy: Schedule.Schedule<_, E, R2>
   ): MetricPolling<Type, In, R | R2, E, Out>
 } = internal.retry
 

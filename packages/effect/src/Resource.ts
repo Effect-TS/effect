@@ -61,10 +61,10 @@ export declare namespace Resource {
  * @since 2.0.0
  * @category constructors
  */
-export const auto: <A, E, R, R2, Out>(
+export const auto: <A, E, R, Out, R2>(
   acquire: Effect.Effect<A, E, R>,
-  policy: Schedule.Schedule<R2, unknown, Out>
-) => Effect.Effect<Resource<A, E>, never, Scope.Scope | R | R2> = internal.auto
+  policy: Schedule.Schedule<Out, unknown, R2>
+) => Effect.Effect<Resource<A, E>, never, R | R2 | Scope.Scope> = internal.auto
 
 /**
  * Retrieves the current value stored in the cache.
