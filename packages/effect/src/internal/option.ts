@@ -42,6 +42,7 @@ const SomeProto = Object.assign(Object.create(CommonProto), {
   }
 })
 
+const NoneHash = Hash.hash("None")
 const NoneProto = Object.assign(Object.create(CommonProto), {
   _tag: "None",
   _op: "None",
@@ -49,7 +50,7 @@ const NoneProto = Object.assign(Object.create(CommonProto), {
     return isOption(that) && isNone(that)
   },
   [Hash.symbol]<A>(this: Option.None<A>) {
-    return Hash.combine(Hash.hash(this._tag))
+    return NoneHash
   },
   toJSON<A>(this: Option.None<A>) {
     return {
