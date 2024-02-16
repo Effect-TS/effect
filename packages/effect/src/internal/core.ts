@@ -703,13 +703,13 @@ export const andThen: {
   ) => [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>
     : [X] extends [Promise<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
     : Effect.Effect<X, E, R>
-  <A, R, E, X>(
+  <A, E, R, X>(
     self: Effect.Effect<A, E, R>,
     f: (a: NoInfer<A>) => X
   ): [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>
     : [X] extends [Promise<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
     : Effect.Effect<X, E, R>
-  <A, R, E, X>(
+  <A, E, R, X>(
     self: Effect.Effect<A, E, R>,
     f: X
   ): [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>

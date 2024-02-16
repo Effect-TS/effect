@@ -72,7 +72,7 @@ export const Await = <R, E0, Z0, E, Z>(
 }
 
 /** @internal */
-export const AwaitConst = <R, E, Z>(
+export const AwaitConst = <Z, E, R>(
   effect: Effect.Effect<Z, E, R>
 ): MergeDecision.MergeDecision<R, unknown, unknown, E, Z> => Await(() => effect)
 
