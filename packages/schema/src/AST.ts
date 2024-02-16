@@ -46,7 +46,7 @@ export const TypeAnnotationId = Symbol.for("@effect/schema/annotation/Type")
  * @category annotations
  * @since 1.0.0
  */
-export type MessageAnnotation<A> = (a: A) => string
+export type MessageAnnotation = (u: unknown) => string
 
 /**
  * @category annotations
@@ -173,7 +173,7 @@ export const getAnnotation: {
  * @category annotations
  * @since 1.0.0
  */
-export const getMessageAnnotation = getAnnotation<MessageAnnotation<unknown>>(
+export const getMessageAnnotation = getAnnotation<MessageAnnotation>(
   MessageAnnotationId
 )
 
