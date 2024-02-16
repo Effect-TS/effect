@@ -517,7 +517,7 @@ const declarePrimitive = <A>(
  * @since 1.0.0
  */
 export interface DeclareAnnotations<P extends ReadonlyArray<any>, A> extends DocAnnotations {
-  readonly message?: AST.MessageAnnotation<A>
+  readonly message?: AST.MessageAnnotation
   readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
   readonly arbitrary?: (...arbitraries: { readonly [K in keyof P]: Arbitrary<P[K]> }) => Arbitrary<A>
   readonly pretty?: (...pretties: { readonly [K in keyof P]: Pretty.Pretty<P[K]> }) => Pretty.Pretty<A>
@@ -1909,7 +1909,7 @@ export const annotations = (annotations: AST.Annotations) => <A, I, R>(self: Sch
  * @category annotations
  * @since 1.0.0
  */
-export const message = (message: AST.MessageAnnotation<unknown>) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+export const message = (message: AST.MessageAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   make(AST.setAnnotation(self.ast, AST.MessageAnnotationId, message))
 
 /**
