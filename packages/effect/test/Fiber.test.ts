@@ -122,7 +122,7 @@ describe("Fiber", () => {
     }))
   it.effect("shard example", () =>
     Effect.gen(function*($) {
-      const shard = <R, E, A>(
+      const shard = <A, E, R>(
         queue: Queue.Queue<A>,
         n: number,
         worker: (a: A) => Effect.Effect<void, E, R>

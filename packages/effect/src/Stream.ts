@@ -1620,12 +1620,12 @@ export const groupBy: {
   <A, K, V, E2, R2>(
     f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: { readonly bufferSize?: number | undefined } | undefined
-  ): <E, R>(self: Stream<A, E, R>) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>
+  ): <E, R>(self: Stream<A, E, R>) => GroupBy.GroupBy<K, V, E2 | E, R2 | R>
   <A, E, R, K, V, E2, R2>(
     self: Stream<A, E, R>,
     f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: { readonly bufferSize?: number | undefined } | undefined
-  ): GroupBy.GroupBy<R | R2, E | E2, K, V>
+  ): GroupBy.GroupBy<K, V, E | E2, R | R2>
 } = _groupBy.groupBy
 
 /**
@@ -1671,14 +1671,14 @@ export const groupByKey: {
     options?: {
       readonly bufferSize?: number | undefined
     }
-  ): <E, R>(self: Stream<A, E, R>) => GroupBy.GroupBy<R, E, K, A>
+  ): <E, R>(self: Stream<A, E, R>) => GroupBy.GroupBy<K, A, E, R>
   <A, E, R, K>(
     self: Stream<A, E, R>,
     f: (a: A) => K,
     options?: {
       readonly bufferSize?: number | undefined
     }
-  ): GroupBy.GroupBy<R, E, K, A>
+  ): GroupBy.GroupBy<K, A, E, R>
 } = _groupBy.groupByKey
 
 /**

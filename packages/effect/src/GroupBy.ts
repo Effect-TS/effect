@@ -29,7 +29,7 @@ export type GroupByTypeId = typeof GroupByTypeId
  * @since 2.0.0
  * @category models
  */
-export interface GroupBy<out R, out E, out K, out V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
+export interface GroupBy<out K, out V, out E = never, out R = never> extends GroupBy.Variance<K, V, E, R>, Pipeable {
   readonly grouped: Stream.Stream<readonly [K, Queue.Dequeue<Take.Take<V, E>>], E, R>
 }
 
@@ -41,12 +41,12 @@ export declare namespace GroupBy {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<out R, out E, out K, out V> {
+  export interface Variance<out K, out V, out E, out R> {
     readonly [GroupByTypeId]: {
-      readonly _R: Covariant<R>
-      readonly _E: Covariant<E>
       readonly _K: Covariant<K>
       readonly _V: Covariant<V>
+      readonly _E: Covariant<E>
+      readonly _R: Covariant<R>
     }
   }
 }
@@ -62,9 +62,9 @@ export const evaluate: {
   <K, V, E, A, E2, R2>(
     f: (key: K, stream: Stream.Stream<V, E, never>) => Stream.Stream<A, E2, R2>,
     options?: { readonly bufferSize?: number | undefined } | undefined
-  ): <R>(self: GroupBy<R, E, K, V>) => Stream.Stream<A, E | E2, R2 | R>
-  <R, E, K, V, A, E2, R2>(
-    self: GroupBy<R, E, K, V>,
+  ): <R>(self: GroupBy<K, V, E, R>) => Stream.Stream<A, E | E2, R2 | R>
+  <K, V, E, R, A, E2, R2>(
+    self: GroupBy<K, V, E, R>,
     f: (key: K, stream: Stream.Stream<V, E, never>) => Stream.Stream<A, E2, R2>,
     options?: { readonly bufferSize?: number | undefined } | undefined
   ): Stream.Stream<A, E | E2, R | R2>
@@ -77,8 +77,8 @@ export const evaluate: {
  * @category utils
  */
 export const filter: {
-  <K>(predicate: Predicate<NoInfer<K>>): <R, E, V>(self: GroupBy<R, E, K, V>) => GroupBy<R, E, K, V>
-  <R, E, V, K>(self: GroupBy<R, E, K, V>, predicate: Predicate<K>): GroupBy<R, E, K, V>
+  <K>(predicate: Predicate<NoInfer<K>>): <V, E, R>(self: GroupBy<K, V, E, R>) => GroupBy<K, V, E, R>
+  <K, V, E, R>(self: GroupBy<K, V, E, R>, predicate: Predicate<K>): GroupBy<K, V, E, R>
 } = internal.filter
 
 /**
@@ -88,8 +88,8 @@ export const filter: {
  * @category utils
  */
 export const first: {
-  (n: number): <R, E, K, V>(self: GroupBy<R, E, K, V>) => GroupBy<R, E, K, V>
-  <R, E, K, V>(self: GroupBy<R, E, K, V>, n: number): GroupBy<R, E, K, V>
+  (n: number): <K, V, E, R>(self: GroupBy<K, V, E, R>) => GroupBy<K, V, E, R>
+  <K, V, E, R>(self: GroupBy<K, V, E, R>, n: number): GroupBy<K, V, E, R>
 } = internal.first
 
 /**
@@ -98,6 +98,6 @@ export const first: {
  * @since 2.0.0
  * @category constructors
  */
-export const make: <R, E, K, V>(
+export const make: <K, V, E, R>(
   grouped: Stream.Stream<readonly [K, Queue.Dequeue<Take.Take<V, E>>], E, R>
-) => GroupBy<R, E, K, V> = internal.make
+) => GroupBy<K, V, E, R> = internal.make
