@@ -497,7 +497,7 @@ export const pop: {
   self: ReadonlyRecord<K, A>,
   key: X
 ): Option.Option<[A, Record<Exclude<K, X>, A>]> =>
-  has(self, key) ? Option.some([self[key], remove(self as any, key)]) : Option.none())
+  has(self, key) ? Option.some([self[key], remove(self, key)]) : Option.none())
 
 /**
  * Maps a record into another record by applying a transformation function to each of its values.
