@@ -251,9 +251,9 @@ describe("ArrayFormatter", () => {
         )
 
         expectIssues(schema, null, [{
-          _tag: "Refinement",
+          _tag: "Type",
           path: [],
-          message: "my custom message null"
+          message: "Expected a string, actual null"
         }])
         expectIssues(schema, "", [{
           _tag: "Refinement",

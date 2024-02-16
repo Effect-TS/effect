@@ -352,7 +352,9 @@ describe("TreeFormatter", () => {
         await Util.expectDecodeUnknownFailure(
           schema,
           null,
-          `my custom message null`
+          `a string at least 1 character(s) long
+└─ From side refinement failure
+   └─ Expected a string, actual null`
         )
         await Util.expectDecodeUnknownFailure(
           schema,

@@ -114,7 +114,7 @@ const getParseIsssueMessage = (
 /** @internal */
 export const getRefinementMessage = (e: ParseResult.Refinement, actual: unknown): Option.Option<string> => {
   if (e.kind === "From") {
-    return getParseIsssueMessage(e.error, () => getMessage(e.ast, actual))
+    return getParseIsssueMessage(e.error, () => getMessage(e.ast.from, actual))
   }
   return getMessage(e.ast, actual)
 }

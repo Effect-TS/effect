@@ -58,4 +58,26 @@ describe("Schema > filter", () => {
    └─ b should be equal to a's value ("a")`
     )
   })
+
+  it("Error from the original schema is propagated", async () => {
+    const schema = S.struct({ a: S.string, b: S.string }).pipe(
+      S.filter((o) => o.b === o.a, { message: () => "b should be equal to a" })
+    )
+
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      { a: "a", b: "b" },
+      `b should be equal to a`
+    )
+
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      { a: "a", b: 2 },
+      `<refinement schema>
+└─ From side refinement failure
+   └─ { a: string; b: string }
+      └─ ["b"]
+         └─ Expected a string, actual 2`
+    )
+  })
 })
