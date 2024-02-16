@@ -5,15 +5,17 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 
-declare const numbers: Record<string, number>
-declare const numbersOrStrings: Record<string, number | string>
-declare const structAB: Record<"a" | "b", number>
-declare const structCD: Record<"c" | "d", string>
+declare const string$numbers: Record<string, number>
+declare const string$numbersOrStrings: Record<string, number | string>
+declare const string$structAB: Record<"a" | "b", number>
+declare const string$structCD: Record<"c" | "d", string>
 
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")
+
+declare const symbol$numbers: Record<symbol, number>
 
 // -------------------------------------------------------------------------------------
 // NonLiteralKey
@@ -62,15 +64,18 @@ hole<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<`a${number}b${string}c${number}
 // map
 // -------------------------------------------------------------------------------------
 
+// $ExpectType Record<string, number>
+ReadonlyRecord.map(symbol$numbers, (n) => n + 1)
+
 // $ExpectType Record<string, boolean>
-ReadonlyRecord.map(numbers, (
+ReadonlyRecord.map(string$numbers, (
   value, // $ExpectType number
   _key // $ExpectType string
 ) => value > 0)
 
 // $ExpectType Record<string, boolean>
 pipe(
-  numbers,
+  string$numbers,
   ReadonlyRecord.map((
     value, // $ExpectType number
     _key // $ExpectType string
@@ -78,14 +83,14 @@ pipe(
 )
 
 // $ExpectType Record<"a" | "b", boolean>
-ReadonlyRecord.map(structAB, (
+ReadonlyRecord.map(string$structAB, (
   value, // $ExpectType number
   _key // $ExpectType "a" | "b"
 ) => value > 0)
 
 // $ExpectType Record<"a" | "b", boolean>
 pipe(
-  structAB,
+  string$structAB,
   ReadonlyRecord.map((
     value, // $ExpectType number
     _key // $ExpectType "a" | "b"
@@ -106,37 +111,37 @@ mapToBoolean()
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<number>
-pipe(numbers, ReadonlyRecord.get("a"))
+pipe(string$numbers, ReadonlyRecord.get("a"))
 
 // -------------------------------------------------------------------------------------
 // replaceOption
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<Record<string, number>>
-pipe(numbers, ReadonlyRecord.replaceOption("a", 2))
+pipe(string$numbers, ReadonlyRecord.replaceOption("a", 2))
 
 // $ExpectType Option<Record<string, number | boolean>>
-pipe(numbers, ReadonlyRecord.replaceOption("a", true))
+pipe(string$numbers, ReadonlyRecord.replaceOption("a", true))
 
 // -------------------------------------------------------------------------------------
 // modify
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, number>
-pipe(numbers, ReadonlyRecord.modify("a", () => 2))
+pipe(string$numbers, ReadonlyRecord.modify("a", () => 2))
 
 // $ExpectType Record<string, number | boolean>
-pipe(numbers, ReadonlyRecord.modify("a", () => true))
+pipe(string$numbers, ReadonlyRecord.modify("a", () => true))
 
 // -------------------------------------------------------------------------------------
 // modifyOption
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<Record<string, number>>
-pipe(numbers, ReadonlyRecord.modifyOption("a", () => 2))
+pipe(string$numbers, ReadonlyRecord.modifyOption("a", () => 2))
 
 // $ExpectType Option<Record<string, number | boolean>>
-pipe(numbers, ReadonlyRecord.modifyOption("a", () => true))
+pipe(string$numbers, ReadonlyRecord.modifyOption("a", () => true))
 
 // -------------------------------------------------------------------------------------
 // toEntries
@@ -144,9 +149,9 @@ pipe(numbers, ReadonlyRecord.modifyOption("a", () => true))
 
 // baseline
 // $ExpectType [string, number][]
-ReadonlyRecord.toEntries(numbers)
+ReadonlyRecord.toEntries(string$numbers)
 // $ExpectType ["a" | "b", number][]
-ReadonlyRecord.toEntries(structAB)
+ReadonlyRecord.toEntries(string$structAB)
 // $ExpectType ["a" | "b" | "c", string | number | boolean][]
 ReadonlyRecord.toEntries({ a: "a", b: 2, c: true })
 
@@ -167,11 +172,11 @@ ReadonlyRecord.collect({ a: Either.right(1), b: Either.right(2), c: Either.right
 pipe({ a: Either.right(1), b: Either.right(2), c: Either.right(3) }, ReadonlyRecord.collect((_, n) => n))
 
 // $ExpectType number[]
-ReadonlyRecord.collect(numbers, (_, a) => a)
+ReadonlyRecord.collect(string$numbers, (_, a) => a)
 
 // $ExpectType number[]
 pipe(
-  structAB,
+  string$structAB,
   ReadonlyRecord.collect((
     _key, // $ExpectType "a" | "b"
     value
@@ -179,7 +184,7 @@ pipe(
 )
 
 // $ExpectType number[]
-ReadonlyRecord.collect(structAB, (
+ReadonlyRecord.collect(string$structAB, (
   _key, // $ExpectType "a" | "b"
   value
 ) => value)
@@ -189,7 +194,7 @@ ReadonlyRecord.collect(structAB, (
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, string>
-ReadonlyRecord.filterMap(numbers, (
+ReadonlyRecord.filterMap(string$numbers, (
   value,
   // $ExpectType string
   _key
@@ -197,7 +202,7 @@ ReadonlyRecord.filterMap(numbers, (
 
 // $ExpectType Record<string, number>
 pipe(
-  structAB,
+  string$structAB,
   ReadonlyRecord.filterMap((
     value,
     // $ExpectType "a" | "b"
@@ -206,7 +211,7 @@ pipe(
 )
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.filterMap(structAB, (
+ReadonlyRecord.filterMap(string$structAB, (
   value,
   // $ExpectType "a" | "b"
   key
@@ -217,7 +222,7 @@ ReadonlyRecord.filterMap(structAB, (
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.filter(numbers, (
+ReadonlyRecord.filter(string$numbers, (
   // $ExpectType number
   value,
   // $ExpectType string
@@ -226,7 +231,7 @@ ReadonlyRecord.filter(numbers, (
 
 // $ExpectType Record<string, number>
 pipe(
-  structAB,
+  string$structAB,
   ReadonlyRecord.filter((
     // $ExpectType number
     _value,
@@ -236,7 +241,7 @@ pipe(
 )
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.filter(structAB, (
+ReadonlyRecord.filter(string$structAB, (
   // $ExpectType number
   _value,
   // $ExpectType "a" | "b"
@@ -244,29 +249,29 @@ ReadonlyRecord.filter(structAB, (
 ) => key === "a")
 
 // $ExpectType Record<string, string | number>
-ReadonlyRecord.filter(numbersOrStrings, predicateNumbersOrStrings)
+ReadonlyRecord.filter(string$numbersOrStrings, predicateNumbersOrStrings)
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.filter(numbers, predicateNumbersOrStrings)
+ReadonlyRecord.filter(string$numbers, predicateNumbersOrStrings)
 
 // $ExpectType Record<string, string | number>
-pipe(numbersOrStrings, ReadonlyRecord.filter(predicateNumbersOrStrings))
+pipe(string$numbersOrStrings, ReadonlyRecord.filter(predicateNumbersOrStrings))
 
 // $ExpectType Record<string, number>
-pipe(numbers, ReadonlyRecord.filter(predicateNumbersOrStrings))
+pipe(string$numbers, ReadonlyRecord.filter(predicateNumbersOrStrings))
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.filter(numbersOrStrings, Predicate.isNumber)
+ReadonlyRecord.filter(string$numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Record<string, number>
-pipe(numbersOrStrings, ReadonlyRecord.filter(Predicate.isNumber))
+pipe(string$numbersOrStrings, ReadonlyRecord.filter(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // partitionMap
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [left: Record<string, boolean>, right: Record<string, string>]
-ReadonlyRecord.partitionMap(numbers, (
+ReadonlyRecord.partitionMap(string$numbers, (
   value,
   // $ExpectType string
   _key
@@ -274,7 +279,7 @@ ReadonlyRecord.partitionMap(numbers, (
 
 // $ExpectType [left: Record<string, boolean>, right: Record<string, string>]
 pipe(
-  structAB,
+  string$structAB,
   ReadonlyRecord.partitionMap((
     _value,
     // $ExpectType "a" | "b"
@@ -283,7 +288,7 @@ pipe(
 )
 
 // $ExpectType [left: Record<string, boolean>, right: Record<string, string>]
-ReadonlyRecord.partitionMap(structAB, (
+ReadonlyRecord.partitionMap(string$structAB, (
   _value,
   // $ExpectType "a" | "b"
   key
@@ -294,7 +299,7 @@ ReadonlyRecord.partitionMap(structAB, (
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [excluded: Record<string, number>, satisfying: Record<string, number>]
-ReadonlyRecord.partition(numbers, (
+ReadonlyRecord.partition(string$numbers, (
   // $ExpectType number
   value,
   // $ExpectType string
@@ -303,7 +308,7 @@ ReadonlyRecord.partition(numbers, (
 
 // $ExpectType [excluded: Record<string, number>, satisfying: Record<string, number>]
 pipe(
-  structAB,
+  string$structAB,
   ReadonlyRecord.partition((
     // $ExpectType number
     _value,
@@ -313,7 +318,7 @@ pipe(
 )
 
 // $ExpectType [excluded: Record<string, number>, satisfying: Record<string, number>]
-ReadonlyRecord.partition(structAB, (
+ReadonlyRecord.partition(string$structAB, (
   // $ExpectType number
   _value,
   // $ExpectType "a" | "b"
@@ -321,62 +326,62 @@ ReadonlyRecord.partition(structAB, (
 ) => key === "a")
 
 // $ExpectType [excluded: Record<string, string | number>, satisfying: Record<string, string | number>]
-ReadonlyRecord.partition(numbersOrStrings, predicateNumbersOrStrings)
+ReadonlyRecord.partition(string$numbersOrStrings, predicateNumbersOrStrings)
 
 // $ExpectType [excluded: Record<string, string | number>, satisfying: Record<string, string | number>]
-pipe(numbersOrStrings, ReadonlyRecord.partition(predicateNumbersOrStrings))
+pipe(string$numbersOrStrings, ReadonlyRecord.partition(predicateNumbersOrStrings))
 
 // $ExpectType [excluded: Record<string, string>, satisfying: Record<string, number>]
-ReadonlyRecord.partition(numbersOrStrings, Predicate.isNumber)
+ReadonlyRecord.partition(string$numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType [excluded: Record<string, string>, satisfying: Record<string, number>]
-pipe(numbersOrStrings, ReadonlyRecord.partition(Predicate.isNumber))
+pipe(string$numbersOrStrings, ReadonlyRecord.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // keys
 // -------------------------------------------------------------------------------------
 
 // $ExpectType ("a" | "b")[]
-ReadonlyRecord.keys(structAB)
+ReadonlyRecord.keys(string$structAB)
 
 // -------------------------------------------------------------------------------------
 // values
 // -------------------------------------------------------------------------------------
 
 // $ExpectType number[]
-ReadonlyRecord.values(structAB)
+ReadonlyRecord.values(string$structAB)
 
 // -------------------------------------------------------------------------------------
 // set
 // -------------------------------------------------------------------------------------
 // $ExpectType Record<string, number | boolean>
-ReadonlyRecord.set(numbers, "a", true)
+ReadonlyRecord.set(string$numbers, "a", true)
 
 // -------------------------------------------------------------------------------------
 // set
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, number | boolean>
-ReadonlyRecord.set(numbers, "a", true)
+ReadonlyRecord.set(string$numbers, "a", true)
 
 // $ExpectType Record<"a" | "b" | "c", number | boolean>
-ReadonlyRecord.set(structAB, "c", true)
+ReadonlyRecord.set(string$structAB, "c", true)
 
 // -------------------------------------------------------------------------------------
 // remove
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.remove(numbers, "a")
+ReadonlyRecord.remove(string$numbers, "a")
 
 // $ExpectType Record<"b", number>
-ReadonlyRecord.remove(structAB, "a")
+ReadonlyRecord.remove(string$structAB, "a")
 
 // -------------------------------------------------------------------------------------
 // reduce
 // -------------------------------------------------------------------------------------
 
-ReadonlyRecord.reduce(structAB, "", (
+ReadonlyRecord.reduce(string$structAB, "", (
   // $ExpectType string
   _acc,
   // $ExpectType number
@@ -389,14 +394,14 @@ ReadonlyRecord.reduce(structAB, "", (
 // some
 // -------------------------------------------------------------------------------------
 
-ReadonlyRecord.some(structAB, (
+ReadonlyRecord.some(string$structAB, (
   _value,
   // $ExpectType "a" | "b"
   _key
 ) => false)
 
 pipe(
-  numbersOrStrings,
+  string$numbersOrStrings,
   ReadonlyRecord.some((
     _item // $ExpectType string | number
   ) => true)
@@ -407,13 +412,13 @@ pipe(
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.union(numbers, numbers, (_, b) => b)
+ReadonlyRecord.union(string$numbers, string$numbers, (_, b) => b)
 
 // $ExpectType Record<string, string | number>
-ReadonlyRecord.union(numbers, numbersOrStrings, (_, b) => b)
+ReadonlyRecord.union(string$numbers, string$numbersOrStrings, (_, b) => b)
 
 // $ExpectType Record<"a" | "b" | "c" | "d", string | number>
-ReadonlyRecord.union(structAB, structCD, (_, b) => b)
+ReadonlyRecord.union(string$structAB, string$structCD, (_, b) => b)
 
 // -------------------------------------------------------------------------------------
 // singleton
@@ -427,25 +432,25 @@ ReadonlyRecord.singleton("a", 1)
 // -------------------------------------------------------------------------------------
 
 pipe(
-  numbersOrStrings,
+  string$numbersOrStrings,
   ReadonlyRecord.every((
     _item // $ExpectType string | number
   ) => true)
 )
 
-ReadonlyRecord.every(structAB, (
+ReadonlyRecord.every(string$structAB, (
   // $ExpectType number
   _value,
   // $ExpectType "a" | "b"
   _key
 ) => false)
 
-if (ReadonlyRecord.every(numbersOrStrings, Predicate.isString)) {
-  numbersOrStrings // $ExpectType ReadonlyRecord<string, string>
+if (ReadonlyRecord.every(string$numbersOrStrings, Predicate.isString)) {
+  string$numbersOrStrings // $ExpectType ReadonlyRecord<string, string>
 }
 
-if (ReadonlyRecord.every(numbersOrStrings, Predicate.isString)) {
-  numbersOrStrings // $ExpectType ReadonlyRecord<string, string>
+if (ReadonlyRecord.every(string$numbersOrStrings, Predicate.isString)) {
+  string$numbersOrStrings // $ExpectType ReadonlyRecord<string, string>
 }
 
 // -------------------------------------------------------------------------------------
@@ -453,30 +458,30 @@ if (ReadonlyRecord.every(numbersOrStrings, Predicate.isString)) {
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.intersection(numbers, numbersOrStrings, (a, _) => a)
+ReadonlyRecord.intersection(string$numbers, string$numbersOrStrings, (a, _) => a)
 
 // $ExpectType Record<string, string | number>
-ReadonlyRecord.intersection(numbers, numbersOrStrings, (_, b) => b)
+ReadonlyRecord.intersection(string$numbers, string$numbersOrStrings, (_, b) => b)
 
 // $ExpectType Record<never, string>
-ReadonlyRecord.intersection(structAB, structCD, (_, b) => b)
+ReadonlyRecord.intersection(string$structAB, string$structCD, (_, b) => b)
 
 // $ExpectType Record<never, number>
-ReadonlyRecord.intersection(structAB, structCD, (a, _) => a)
+ReadonlyRecord.intersection(string$structAB, string$structCD, (a, _) => a)
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.intersection(numbers, numbers, (a, _) => a)
+ReadonlyRecord.intersection(string$numbers, string$numbers, (a, _) => a)
 
 // $ExpectType Record<string, number>
-ReadonlyRecord.intersection(numbers, structCD, (a, _) => a)
+ReadonlyRecord.intersection(string$numbers, string$structCD, (a, _) => a)
 
 // $ExpectType Record<never, number>
-ReadonlyRecord.intersection(structAB, {
+ReadonlyRecord.intersection(string$structAB, {
   c: 2
 }, (a, _) => a)
 
 // $ExpectType Record<"b", number>
-ReadonlyRecord.intersection(structAB, {
+ReadonlyRecord.intersection(string$structAB, {
   b: 2
 }, (a, _) => a)
 
@@ -484,13 +489,13 @@ ReadonlyRecord.intersection(structAB, {
 // has
 // -------------------------------------------------------------------------------------
 
-if (ReadonlyRecord.has(numbers, "a")) {
+if (ReadonlyRecord.has(string$numbers, "a")) {
   // $ExpectType Record<string, number>
-  numbers
+  string$numbers
 }
 
 // @ts-expect-error
-ReadonlyRecord.has(structAB, "c")
+ReadonlyRecord.has(string$structAB, "c")
 
 // -------------------------------------------------------------------------------------
 // empty
