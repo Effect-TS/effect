@@ -3,6 +3,7 @@
  */
 import { dual } from "effect/Function"
 import type * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as Secret from "effect/Secret"
@@ -143,7 +144,11 @@ export const remove: {
 } = dual<
   (key: string) => (self: Headers) => Headers,
   (self: Headers, key: string) => Headers
->(2, (self, key) => ReadonlyRecord.remove(self, key.toLowerCase()) as Headers)
+>(2, (self, key) => {
+  const out = { ...self }
+  delete out[key.toLowerCase()]
+  return out
+})
 
 /**
  * @since 1.0.0
@@ -156,10 +161,19 @@ export const redact: {
   (self: Headers, key: string | ReadonlyArray<string>) => Record<string, string | Secret.Secret>
 >(
   2,
-  (self, key) =>
-    typeof key === "string"
-      ? ReadonlyRecord.modify(self, key.toLowerCase(), Secret.fromString)
-      : key.reduce<Record<string, string | Secret.Secret>>((headers, key) =>
-        ReadonlyRecord.modify(headers, key.toLowerCase(), (value) =>
-          typeof value === "string" ? Secret.fromString(value) : value), self)
+  (self, key) => {
+    const out: Record<string, string | Secret.Secret> = { ...self }
+    const modify = (key: string) => {
+      const k = key.toLowerCase()
+      if (has(self, k)) {
+        out[k] = Secret.fromString(self[k])
+      }
+    }
+    if (Predicate.isString(key)) {
+      modify(key)
+    } else {
+      key.forEach(modify)
+    }
+    return out
+  }
 )
