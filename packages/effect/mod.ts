@@ -2,7 +2,8 @@ import type k from "ast-types/gen/kinds.js"
 import type cs from "jscodeshift"
 
 const enabled = {
-  swapChannelStateParams: true,
+  swapGroupByParams: false,
+  swapChannelStateParams: false,
   swapScheduleParams: false,
   swapEitherParams: false,
   swapLayerParams: false,
@@ -113,6 +114,23 @@ const swapTExitParams = swapParamsEA("TExit")
 const swapEitherParams = swapParamsEA("Either")
 const swapChannelStateParams = swapParamsEA("ChannelState")
 
+// from: GroupBy<out R, out E, out K, out V>
+// to: GroupBy<out K, out V, out E = never, out R = never>
+const swapGroupByParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
+  const is = filter(ast, "GroupBy")
+  if (
+    is(ast.value.typeName) &&
+    ast.value.typeParameters &&
+    ast.value.typeParameters.params.length === 4
+  ) {
+    const params = ast.value.typeParameters.params
+    const newParams = [params[2], params[3], params[1], params[0]]
+    popNever(newParams)
+    popNever(newParams)
+    ast.value.typeParameters.params = newParams
+  }
+}
+
 // from: Channel<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone>
 // to: Channel<OutElem, InElem = unknown, OutErr = never, InErr = unknown, OutDone = void, InDone = unknown, Env = never>
 const swapChannelParams = (ast: cs.ASTPath<cs.TSTypeReference>) => {
@@ -199,6 +217,9 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
   }
 
   forEveryTypeReference(root, (ast) => {
+    if (enabled.swapGroupByParams) {
+      swapGroupByParams(ast)
+    }
     if (enabled.swapChannelStateParams) {
       swapChannelStateParams(ast)
     }

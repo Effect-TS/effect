@@ -2727,7 +2727,7 @@ export const flattenEffect = dual<
 )
 
 /** @internal */
-export const flattenExitOption = <R, E, E2, A>(
+export const flattenExitOption = <A, E2, E, R>(
   self: Stream.Stream<Exit.Exit<A, Option.Option<E2>>, E, R>
 ): Stream.Stream<A, E | E2, R> => {
   const processChunk = (
