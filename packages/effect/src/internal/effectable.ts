@@ -72,9 +72,7 @@ export const EffectPrototype: Effect.Effect<never> & Equal.Equal = {
   [Equal.symbol](that: any) {
     return this === that
   },
-  [Hash.symbol]() {
-    return Hash.random(this)
-  },
+  [Hash.symbol]: Hash.cachedMethod(Hash.random),
   pipe() {
     return pipeArguments(this, arguments)
   }
@@ -82,9 +80,7 @@ export const EffectPrototype: Effect.Effect<never> & Equal.Equal = {
 
 /** @internal */
 export const StructuralPrototype: Equal.Equal = {
-  [Hash.symbol](this: Equal.Equal) {
-    return Hash.structure(this)
-  },
+  [Hash.symbol]: Hash.cachedMethod(Hash.structure),
   [Equal.symbol](this: Equal.Equal, that: Equal.Equal) {
     const selfKeys = Object.keys(this)
     const thatKeys = Object.keys(that as object)
