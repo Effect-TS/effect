@@ -1352,7 +1352,7 @@ export const flattenEffect: {
  * @since 2.0.0
  * @category sequencing
  */
-export const flattenExitOption: <R, E, E2, A>(
+export const flattenExitOption: <A, E2, E, R>(
   self: Stream<Exit.Exit<A, Option.Option<E2>>, E, R>
 ) => Stream<A, E | E2, R> = internal.flattenExitOption
 

@@ -39,18 +39,18 @@ export const collectFirst = dual<
 
 /** @internal */
 export const collectFirstSTM = dual<
-  <A, R, E, B>(
+  <A, B, E, R>(
     pf: (a: A) => Option.Option<STM.STM<B, E, R>>
   ) => (
     self: TArray.TArray<A>
   ) => STM.STM<Option.Option<B>, E, R>,
-  <A, R, E, B>(
+  <A, B, E, R>(
     self: TArray.TArray<A>,
     pf: (a: A) => Option.Option<STM.STM<B, E, R>>
   ) => STM.STM<Option.Option<B>, E, R>
 >(
   2,
-  <A, R, E, B>(self: TArray.TArray<A>, pf: (a: A) => Option.Option<STM.STM<B, E, R>>) =>
+  <A, B, E, R>(self: TArray.TArray<A>, pf: (a: A) => Option.Option<STM.STM<B, E, R>>) =>
     core.withSTMRuntime((runtime) => {
       let index = 0
       let result: Option.Option<STM.STM<B, E, R>> = Option.none()

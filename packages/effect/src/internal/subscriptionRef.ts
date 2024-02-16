@@ -101,14 +101,14 @@ export const modify = dual<
 
 /** @internal */
 export const modifyEffect = dual<
-  <A, R, E, B>(
+  <B, A, E, R>(
     f: (a: A) => Effect.Effect<readonly [B, A], E, R>
   ) => (self: SubscriptionRef.SubscriptionRef<A>) => Effect.Effect<B, E, R>,
-  <A, R, E, B>(
+  <A, B, E, R>(
     self: SubscriptionRef.SubscriptionRef<A>,
     f: (a: A) => Effect.Effect<readonly [B, A], E, R>
   ) => Effect.Effect<B, E, R>
->(2, <A, R, E, B>(
+>(2, <A, B, E, R>(
   self: SubscriptionRef.SubscriptionRef<A>,
   f: (a: A) => Effect.Effect<readonly [B, A], E, R>
 ): Effect.Effect<B, E, R> => self.modifyEffect(f))
