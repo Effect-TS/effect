@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type { LazyArg } from "./Function.js"
 import { pipe } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import { hasProperty } from "./Predicate.js"
@@ -155,4 +156,30 @@ export const array = <A>(arr: ReadonlyArray<A>) => {
     h = pipe(h, combine(hash(arr[i])))
   }
   return optimize(h)
+}
+
+const cacheSymbol = Symbol.for("effect/Hash/cache")
+
+/**
+ * @since 2.0.0
+ * @category hashing
+ */
+export const cached = (self: object, calculate: LazyArg<number>): number => {
+  if (cacheSymbol in self) {
+    return self[cacheSymbol] as number
+  }
+  return (self as any)[cacheSymbol] = calculate()
+}
+
+/**
+ * @since 2.0.0
+ * @category hashing
+ */
+export const cachedMethod = <Fn extends (self: any) => number>(calculate: Fn): LazyArg<number> => {
+  return function(this: object) {
+    if (cacheSymbol in this) {
+      return this[cacheSymbol] as number
+    }
+    return (this as any)[cacheSymbol] = calculate(this)
+  }
 }

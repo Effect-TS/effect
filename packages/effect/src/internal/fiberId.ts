@@ -71,12 +71,8 @@ class Runtime implements FiberId.Runtime {
     readonly id: number,
     readonly startTimeMillis: number
   ) {}
-  _hash: number | undefined;
   [Hash.symbol](): number {
-    if (this._hash == undefined) {
-      this._hash = Hash.string(`${FiberIdSymbolKey}-${this._tag}-${this.id}-${this.startTimeMillis}`)
-    }
-    return this._hash
+    return Hash.cached(this, () => Hash.string(`${FiberIdSymbolKey}-${this._tag}-${this.id}-${this.startTimeMillis}`))
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberId(that) &&

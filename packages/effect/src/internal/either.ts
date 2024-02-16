@@ -54,9 +54,9 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
   [Equal.symbol]<E, A>(this: Either.Left<E, A>, that: unknown): boolean {
     return isEither(that) && isLeft(that) && Equal.equals(that.left, this.left)
   },
-  [Hash.symbol]<E, A>(this: Either.Left<E, A>) {
-    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left))
-  },
+  [Hash.symbol]: Hash.cachedMethod(<E, A>(self: Either.Left<E, A>) =>
+    Hash.combine(Hash.hash(self._tag))(Hash.hash(self.left))
+  ),
   toJSON<E, A>(this: Either.Left<E, A>) {
     return {
       _id: "Either",
