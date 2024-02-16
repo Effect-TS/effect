@@ -780,11 +780,11 @@ export const reduceRight: {
  * @category collecting & elements
  */
 export const reduceWhile: {
-  <A, R, E, Z>(
+  <Z, A, E, R>(
     zero: Z,
     options: { readonly while: Predicate<Z>; readonly body: (s: Z, a: A, i: number) => Effect<Z, E, R> }
   ): (elements: Iterable<A>) => Effect<Z, E, R>
-  <A, R, E, Z>(
+  <A, Z, E, R>(
     elements: Iterable<A>,
     zero: Z,
     options: { readonly while: Predicate<Z>; readonly body: (s: Z, a: A, i: number) => Effect<Z, E, R> }
@@ -3574,13 +3574,13 @@ export const andThen: {
   ) => [X] extends [Effect<infer A1, infer E1, infer R1>] ? Effect<A1, E | E1, R | R1>
     : [X] extends [Promise<infer A1>] ? Effect<A1, E | Cause.UnknownException, R>
     : Effect<X, E, R>
-  <A, R, E, X>(
+  <A, E, R, X>(
     self: Effect<A, E, R>,
     f: (a: NoInfer<A>) => X
   ): [X] extends [Effect<infer A1, infer E1, infer R1>] ? Effect<A1, E | E1, R | R1>
     : [X] extends [Promise<infer A1>] ? Effect<A1, E | Cause.UnknownException, R>
     : Effect<X, E, R>
-  <A, R, E, X>(
+  <A, E, R, X>(
     self: Effect<A, E, R>,
     f: X
   ): [X] extends [Effect<infer A1, infer E1, infer R1>] ? Effect<A1, E | E1, R | R1>

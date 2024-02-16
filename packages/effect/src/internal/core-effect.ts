@@ -1282,14 +1282,14 @@ export const reduceRight = dual<
 
 /* @internal */
 export const reduceWhile = dual<
-  <A, R, E, Z>(
+  <Z, A, E, R>(
     zero: Z,
     options: {
       readonly while: Predicate.Predicate<Z>
       readonly body: (s: Z, a: A, i: number) => Effect.Effect<Z, E, R>
     }
   ) => (elements: Iterable<A>) => Effect.Effect<Z, E, R>,
-  <A, R, E, Z>(
+  <A, Z, E, R>(
     elements: Iterable<A>,
     zero: Z,
     options: {
@@ -1297,7 +1297,7 @@ export const reduceWhile = dual<
       readonly body: (s: Z, a: A, i: number) => Effect.Effect<Z, E, R>
     }
   ) => Effect.Effect<Z, E, R>
->(3, <A, R, E, Z>(
+>(3, <A, Z, E, R>(
   elements: Iterable<A>,
   zero: Z,
   options: {

@@ -139,8 +139,8 @@ export const modify: {
  * @category utils
  */
 export const modifyEffect: {
-  <A, R, E, B>(f: (a: A) => Effect.Effect<readonly [B, A], E, R>): (self: SubscriptionRef<A>) => Effect.Effect<B, E, R>
-  <A, R, E, B>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<readonly [B, A], E, R>): Effect.Effect<B, E, R>
+  <B, A, E, R>(f: (a: A) => Effect.Effect<readonly [B, A], E, R>): (self: SubscriptionRef<A>) => Effect.Effect<B, E, R>
+  <A, B, E, R>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<readonly [B, A], E, R>): Effect.Effect<B, E, R>
 } = internal.modifyEffect
 
 /**

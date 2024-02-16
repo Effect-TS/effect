@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
 
-export const unfoldEffect = <A, R, E, S>(
+export const unfoldEffect = <A, S, E, R>(
   s: S,
   f: (s: S) => Effect.Effect<Option.Option<readonly [A, S]>, E, R>
 ): Effect.Effect<ReadonlyArray<A>, E, R> =>
@@ -11,7 +11,7 @@ export const unfoldEffect = <A, R, E, S>(
     (list) => Array.from(List.reverse(list))
   )
 
-const unfoldEffectLoop = <A, R, E, S>(
+const unfoldEffectLoop = <A, S, E, R>(
   s: S,
   f: (s: S) => Effect.Effect<Option.Option<readonly [A, S]>, E, R>,
   acc: List.List<A>

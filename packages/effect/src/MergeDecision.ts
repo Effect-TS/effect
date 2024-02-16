@@ -61,7 +61,7 @@ export const Await: <R, E0, Z0, E, Z>(
  * @since 2.0.0
  * @category constructors
  */
-export const AwaitConst: <R, E, Z>(effect: Effect.Effect<Z, E, R>) => MergeDecision<R, unknown, unknown, E, Z> =
+export const AwaitConst: <Z, E, R>(effect: Effect.Effect<Z, E, R>) => MergeDecision<R, unknown, unknown, E, Z> =
   internal.AwaitConst
 
 /**

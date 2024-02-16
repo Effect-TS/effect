@@ -191,8 +191,8 @@ export const takeFirst = dual<
 
 /** @internal */
 export const takeFirstSTM = dual<
-  <A, R, E, B>(pf: (a: A) => STM.STM<B, Option.Option<E>, R>) => (self: TSet.TSet<A>) => STM.STM<B, E, R>,
-  <A, R, E, B>(self: TSet.TSet<A>, pf: (a: A) => STM.STM<B, Option.Option<E>, R>) => STM.STM<B, E, R>
+  <A, B, E, R>(pf: (a: A) => STM.STM<B, Option.Option<E>, R>) => (self: TSet.TSet<A>) => STM.STM<B, E, R>,
+  <A, B, E, R>(self: TSet.TSet<A>, pf: (a: A) => STM.STM<B, Option.Option<E>, R>) => STM.STM<B, E, R>
 >(2, (self, pf) => tMap.takeFirstSTM(self.tMap, (key) => pf(key)))
 
 /** @internal */
@@ -203,10 +203,10 @@ export const takeSome = dual<
 
 /** @internal */
 export const takeSomeSTM = dual<
-  <A, R, E, B>(
+  <A, B, E, R>(
     pf: (a: A) => STM.STM<B, Option.Option<E>, R>
   ) => (self: TSet.TSet<A>) => STM.STM<RA.NonEmptyArray<B>, E, R>,
-  <A, R, E, B>(
+  <A, B, E, R>(
     self: TSet.TSet<A>,
     pf: (a: A) => STM.STM<B, Option.Option<E>, R>
   ) => STM.STM<RA.NonEmptyArray<B>, E, R>
