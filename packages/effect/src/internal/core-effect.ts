@@ -25,7 +25,7 @@ import * as ReadonlyArray from "../ReadonlyArray.js"
 import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
-import type { NoInfer } from "../Types.js"
+import type { MergeRecord, NoInfer } from "../Types.js"
 import * as internalCause from "./cause.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
@@ -371,21 +371,21 @@ export const bind: {
   <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => Effect.Effect<A, E2, R2>
-  ): <E, R>(self: Effect.Effect<K, E, R>) => Effect.Effect<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  ): <E, R>(self: Effect.Effect<K, E, R>) => Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
   <K, E, R, N extends string, A, E2, R2>(
     self: Effect.Effect<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => Effect.Effect<A, E2, R2>
-  ): Effect.Effect<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  ): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
 } = dual(3, <K, E, R, N extends string, A, E2, R2>(
   self: Effect.Effect<K, E, R>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => Effect.Effect<A, E2, R2>
-): Effect.Effect<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R> =>
+): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R> =>
   core.flatMap(self, (k) =>
     core.map(
       f(k),
-      (a): Effect.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
     )))
 
 /* @internal */
@@ -403,20 +403,20 @@ export const let_: {
   <N extends string, K, A>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ): <E, R>(self: Effect.Effect<K, E, R>) => Effect.Effect<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
+  ): <E, R>(self: Effect.Effect<K, E, R>) => Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R>
   <K, E, R, N extends string, A>(
     self: Effect.Effect<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ): Effect.Effect<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
+  ): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R>
 } = dual(3, <K, E, R, N extends string, A>(
   self: Effect.Effect<K, E, R>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => A
-): Effect.Effect<Effect.MergeRecord<K, { [k in N]: A }>, E, R> =>
+): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R> =>
   core.map(
     self,
-    (k): Effect.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
+    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
   ))
 
 /* @internal */

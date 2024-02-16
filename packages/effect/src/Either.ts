@@ -12,7 +12,7 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -714,17 +714,6 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
 // -------------------------------------------------------------------------------------
 // do notation
 // -------------------------------------------------------------------------------------
-
-/**
- * @since 2.4.0
- * @category models
- */
-export type MergeRecord<K, H> = {
-  [k in keyof K | keyof H]: k extends keyof K ? K[k]
-    : k extends keyof H ? H[k]
-    : never
-} extends infer X ? X
-  : never
 
 /**
  * @since 2.4.0

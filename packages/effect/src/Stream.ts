@@ -29,7 +29,7 @@ import type * as Emit from "./StreamEmit.js"
 import type * as HaltStrategy from "./StreamHaltStrategy.js"
 import type * as Take from "./Take.js"
 import type * as Tracer from "./Tracer.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -4467,7 +4467,7 @@ export const bind: {
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
       | undefined
-  ): <E, R>(self: Stream<K, E, R>) => Stream<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  ): <E, R>(self: Stream<K, E, R>) => Stream<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
   <K, E, R, N extends string, A, E2, R2>(
     self: Stream<K, E, R>,
     tag: Exclude<N, keyof K>,
@@ -4475,7 +4475,7 @@ export const bind: {
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
       | undefined
-  ): Stream<Effect.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
+  ): Stream<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
 } = internal.bind
 
 /**
@@ -4491,7 +4491,7 @@ export const bindEffect: {
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
       | undefined
-  ): <E, R>(self: Stream<K, E, R>) => Stream<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  ): <E, R>(self: Stream<K, E, R>) => Stream<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
   <K, E, R, N extends string, A, E2, R2>(
     self: Stream<K, E, R>,
     tag: Exclude<N, keyof K>,
@@ -4499,7 +4499,7 @@ export const bindEffect: {
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly unordered?: boolean | undefined }
       | undefined
-  ): Stream<Effect.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
+  ): Stream<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
 } = _groupBy.bindEffect
 
 /**
@@ -4515,12 +4515,12 @@ const let_: {
   <N extends string, K, A>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ): <E, R>(self: Stream<K, E, R>) => Stream<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
+  ): <E, R>(self: Stream<K, E, R>) => Stream<MergeRecord<K, { [k in N]: A }>, E, R>
   <K, E, R, N extends string, A>(
     self: Stream<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ): Stream<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
+  ): Stream<MergeRecord<K, { [k in N]: A }>, E, R>
 } = internal.let_
 
 export {

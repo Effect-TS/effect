@@ -115,6 +115,17 @@ export type MergeRight<K, H> = Simplify<
 >
 
 /**
+ * @since 2.0.0
+ * @category models
+ */
+export type MergeRecord<K, H> = {
+  [k in keyof K | keyof H]: k extends keyof K ? K[k]
+    : k extends keyof H ? H[k]
+    : never
+} extends infer X ? X
+  : never
+
+/**
  * Describes the concurrency to use when executing multiple Effect's.
  *
  * @since 2.0.0

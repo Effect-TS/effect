@@ -13,7 +13,7 @@ import * as Queue from "../Queue.js"
 import * as Ref from "../Ref.js"
 import type * as Stream from "../Stream.js"
 import type * as Take from "../Take.js"
-import type { NoInfer } from "../Types.js"
+import type { MergeRecord, NoInfer } from "../Types.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as core from "./core-stream.js"
@@ -282,7 +282,7 @@ export const bindEffect = dual<
       readonly bufferSize?: number | undefined
     }
   ) => <E, R>(self: Stream.Stream<K, E, R>) => Stream.Stream<
-    Effect.MergeRecord<K, { [k in N]: A }>,
+    MergeRecord<K, { [k in N]: A }>,
     E | E2,
     R | R2
   >,
@@ -295,7 +295,7 @@ export const bindEffect = dual<
       readonly unordered?: boolean | undefined
     }
   ) => Stream.Stream<
-    Effect.MergeRecord<K, { [k in N]: A }>,
+    MergeRecord<K, { [k in N]: A }>,
     E | E2,
     R | R2
   >
@@ -311,7 +311,7 @@ export const bindEffect = dual<
   mapEffectOptions(self, (k) =>
     Effect.map(
       f(k),
-      (a): Effect.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
     ), options))
 
 const mapDequeue = <A, B>(dequeue: Queue.Dequeue<A>, f: (a: A) => B): Queue.Dequeue<B> => new MapDequeue(dequeue, f)
