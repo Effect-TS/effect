@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
 describe("Schema > filter", () => {
-  it("filter/ annotation options", () => {
+  it("annotation options", () => {
     const schema = S.string.pipe(
       S.filter((s): s is string => s.length === 1, {
         typeId: Symbol.for("Char"),
@@ -57,5 +57,12 @@ describe("Schema > filter", () => {
 └─ Predicate refinement failure
    └─ b should be equal to a's value ("a")`
     )
+  })
+
+  it("custom message", async () => {
+    const schema = S.string.pipe(S.filter((s): s is string => s.length === 1, {
+      message: (u) => `invalid ${u}`
+    }))
+    await Util.expectDecodeUnknownFailure(schema, null, `invalid null`)
   })
 })
