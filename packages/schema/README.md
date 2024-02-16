@@ -514,6 +514,9 @@ console.log(
 */
 ```
 
+> [!NOTE]
+> The [`onExcessProperty`](#excess-properties) and [`error`](#all-errors) options also affect encoding.
+
 ### All errors
 
 The `errors` option allows you to receive all parsing errors when attempting to parse a value using a schema. By default only the first error is returned, but by setting the `errors` option to `"all"`, you can receive all errors that occurred during the parsing process. This can be useful for debugging or for providing more comprehensive error messages to the user.
@@ -546,6 +549,9 @@ Error: { name: string; age: number }
 */
 ```
 
+> [!NOTE]
+> The [`onExcessProperty`](#excess-properties) and [`error`](#all-errors) options also affect encoding.
+
 ## Encoding
 
 To use the `Schema` defined above to encode a value to `unknown`, you can use the `encode` function:
@@ -573,6 +579,9 @@ if (Either.isRight(encoded)) {
 ```
 
 Note that during encoding, the number value `30` was converted to a string `"30"`.
+
+> [!NOTE]
+> The [`onExcessProperty`](#excess-properties) and [`error`](#all-errors) options also affect encoding.
 
 ## Formatting Errors
 
