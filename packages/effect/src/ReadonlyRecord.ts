@@ -26,7 +26,7 @@ export type ReadonlyRecord<in out K extends string | symbol, out A> = {
  */
 export declare namespace ReadonlyRecord {
   type IsFiniteString<T extends string> = [T] extends [`${infer Head}${infer Rest}`]
-    ? string extends Head ? false : Rest extends "" ? true : IsFiniteString<Rest> :
+    ? string extends Head ? false : `${number}` extends Head ? false : Rest extends "" ? true : IsFiniteString<Rest> :
     false
 
   /**
@@ -440,7 +440,7 @@ export const replaceOption: {
 
 /**
  * If the given key exists in the record, returns a new record with the key removed,
- * otherwise returns the original record.
+ * otherwise returns a copy of the original record.
  *
  * @param self - the record to remove the key from.
  * @param key - the key to remove from the record.
