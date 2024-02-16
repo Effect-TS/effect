@@ -1,7 +1,9 @@
 import * as Util from "effect-test/util"
 import * as Chunk from "effect/Chunk"
 import * as E from "effect/Either"
+import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
 import * as N from "effect/Number"
 import * as _ from "effect/Option"
 import * as S from "effect/String"
@@ -85,6 +87,18 @@ describe("Option", () => {
     const { inspect } = require("node:util")
     expect(inspect(_.none())).toEqual(inspect({ _id: "Option", _tag: "None" }))
     expect(inspect(_.some(1))).toEqual(inspect({ _id: "Option", _tag: "Some", value: 1 }))
+  })
+
+  it("Equal", () => {
+    expect(Equal.equals(_.some(1), _.some(1))).toEqual(true)
+    expect(Equal.equals(_.some(1), _.some(2))).toEqual(false)
+    expect(Equal.equals(_.none(), _.none())).toEqual(true)
+  })
+
+  it("Hash", () => {
+    expect(Hash.hash(_.some(1))).toEqual(Hash.hash(_.some(1)))
+    expect(Hash.hash(_.some(1)) === Hash.hash(_.some(2))).toEqual(false)
+    expect(Hash.hash(_.none())).toEqual(Hash.hash(_.none()))
   })
 
   it("getRight", () => {
