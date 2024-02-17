@@ -317,4 +317,51 @@ describe("Either", () => {
     Util.deepStrictEqual(pipe(Either.left("a"), Either.orElse(() => Either.right(2))), Either.right(2))
     Util.deepStrictEqual(pipe(Either.left("a"), Either.orElse(() => Either.left("b"))), Either.left("b"))
   })
+
+  it("Do", () => {
+    Util.deepStrictEqual(Either.Do, Either.right({}))
+  })
+
+  it("bindTo", () => {
+    Util.deepStrictEqual(
+      pipe(
+        Either.right(1),
+        Either.bindTo("a")
+      ),
+      Either.right({ a: 1 })
+    )
+    Util.deepStrictEqual(
+      pipe(
+        Either.left("b"),
+        Either.bindTo("a")
+      ),
+      Either.left("b")
+    )
+  })
+
+  it("bind", () => {
+    Util.deepStrictEqual(
+      pipe(Either.right(1), Either.bindTo("a"), Either.bind("b", ({ a }) => Either.right(a + 1))),
+      Either.right({ a: 1, b: 2 })
+    )
+    Util.deepStrictEqual(
+      pipe(Either.right(1), Either.bindTo("a"), Either.bind("b", () => Either.left("c"))),
+      Either.left("c")
+    )
+    Util.deepStrictEqual(
+      pipe(Either.left("d"), Either.bindTo("a"), Either.bind("b", () => Either.right(2))),
+      Either.left("d")
+    )
+  })
+
+  it("let", () => {
+    Util.deepStrictEqual(
+      pipe(Either.Do, Either.bind("a", () => Either.right(1)), Either.let("b", ({ a }) => a + 1)),
+      Either.right({ a: 1, b: 2 })
+    )
+    Util.deepStrictEqual(
+      pipe(Either.left("d"), Either.bindTo("a"), Either.let("b", () => Either.right(2))),
+      Either.left("d")
+    )
+  })
 })
