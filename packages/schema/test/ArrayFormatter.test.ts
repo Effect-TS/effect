@@ -171,7 +171,7 @@ describe("ArrayFormatter", () => {
   describe("messages", () => {
     it("declaration", () => {
       const schema = S.optionFromSelf(S.number).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       expectIssues(schema, null, [{
@@ -183,7 +183,7 @@ describe("ArrayFormatter", () => {
 
     it("literal", () => {
       const schema = S.literal("a").pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       expectIssues(schema, null, [{
@@ -195,7 +195,7 @@ describe("ArrayFormatter", () => {
 
     it("uniqueSymbol", () => {
       const schema = S.uniqueSymbol(Symbol.for("@effect/schema/test/a")).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       expectIssues(schema, null, [{
@@ -206,7 +206,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("string", () => {
-      const schema = S.string.pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+      const schema = S.string.pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
 
       expectIssues(schema, null, [{
         _tag: "Type",
@@ -221,7 +221,7 @@ describe("ArrayFormatter", () => {
         Banana
       }
       const schema = S.enums(Fruits).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       expectIssues(schema, null, [{
@@ -233,7 +233,7 @@ describe("ArrayFormatter", () => {
 
     it("templateLiteral", () => {
       const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b")).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       expectIssues(schema, null, [{
@@ -247,7 +247,7 @@ describe("ArrayFormatter", () => {
       it("top level message", () => {
         const schema = S.string.pipe(
           S.minLength(1),
-          S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+          S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
         )
 
         expectIssues(schema, null, [{
@@ -265,10 +265,10 @@ describe("ArrayFormatter", () => {
       it("inner messages", () => {
         const schema = S.string.pipe(
           S.minLength(1, {
-            message: (actual) => `minLength custom message ${JSON.stringify(actual)}`
+            message: (issue) => `minLength custom message ${JSON.stringify(issue.actual)}`
           }),
           S.maxLength(3, {
-            message: (actual) => `maxLength custom message ${JSON.stringify(actual)}`
+            message: (issue) => `maxLength custom message ${JSON.stringify(issue.actual)}`
           })
         )
 
@@ -292,7 +292,7 @@ describe("ArrayFormatter", () => {
 
     it("tuple", () => {
       const schema = S.tuple(S.string, S.number).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       expectIssues(schema, null, [{
@@ -311,7 +311,7 @@ describe("ArrayFormatter", () => {
       const schema = S.struct({
         a: S.string,
         b: S.string
-      }).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+      }).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
 
       expectIssues(schema, null, [{
         _tag: "Type",
@@ -327,7 +327,7 @@ describe("ArrayFormatter", () => {
 
     it("union", () => {
       const schema = S.union(S.string, S.number).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       expectIssues(schema, null, [{
@@ -340,7 +340,7 @@ describe("ArrayFormatter", () => {
     describe("transformation", () => {
       it("top level message", () => {
         const schema = S.NumberFromString.pipe(
-          S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+          S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
         )
 
         expectIssues(schema, null, [{
@@ -391,7 +391,7 @@ describe("ArrayFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
-        ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+        ).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
 
         expectIssues(schema, null, [{
           _tag: "Type",
@@ -410,7 +410,7 @@ describe("ArrayFormatter", () => {
         const schema: S.Schema<A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
-        ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+        ).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
 
         expectIssues(schema, null, [{
           _tag: "Type",
@@ -430,7 +430,7 @@ describe("ArrayFormatter", () => {
           S.number,
           S.union(
             S.suspend(() => schema).pipe(
-              S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+              S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
             ),
             S.literal(null)
           )
@@ -459,7 +459,7 @@ describe("ArrayFormatter", () => {
           S.union(
             S.suspend(() =>
               schema.pipe(
-                S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+                S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
               )
             ),
             S.literal(null)

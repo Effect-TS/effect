@@ -268,7 +268,7 @@ describe("TreeFormatter", () => {
   describe("messages", () => {
     it("declaration", async () => {
       const schema = S.optionFromSelf(S.number).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       await Util.expectDecodeUnknownFailure(
@@ -280,7 +280,7 @@ describe("TreeFormatter", () => {
 
     it("literal", async () => {
       const schema = S.literal("a").pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       await Util.expectDecodeUnknownFailure(
@@ -292,7 +292,7 @@ describe("TreeFormatter", () => {
 
     it("uniqueSymbol", async () => {
       const schema = S.uniqueSymbol(Symbol.for("@effect/schema/test/a")).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       await Util.expectDecodeUnknownFailure(
@@ -304,7 +304,7 @@ describe("TreeFormatter", () => {
 
     it("string", async () => {
       const schema = S.string.pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       await Util.expectDecodeUnknownFailure(
@@ -320,7 +320,7 @@ describe("TreeFormatter", () => {
         Banana
       }
       const schema = S.enums(Fruits).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       await Util.expectDecodeUnknownFailure(
@@ -332,7 +332,7 @@ describe("TreeFormatter", () => {
 
     it("templateLiteral", async () => {
       const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b")).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       await Util.expectDecodeUnknownFailure(
@@ -346,7 +346,7 @@ describe("TreeFormatter", () => {
       it("top level message", async () => {
         const schema = S.string.pipe(
           S.minLength(1),
-          S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+          S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
         )
 
         await Util.expectDecodeUnknownFailure(
@@ -370,10 +370,10 @@ describe("TreeFormatter", () => {
       it("inner messages", async () => {
         const schema = S.string.pipe(
           S.minLength(1, {
-            message: (actual) => `minLength custom message ${JSON.stringify(actual)}`
+            message: (issue) => `minLength custom message ${JSON.stringify(issue.actual)}`
           }),
           S.maxLength(3, {
-            message: (actual) => `maxLength custom message ${JSON.stringify(actual)}`
+            message: (issue) => `maxLength custom message ${JSON.stringify(issue.actual)}`
           })
         )
 
@@ -408,7 +408,7 @@ describe("TreeFormatter", () => {
 
     it("tuple", async () => {
       const schema = S.tuple(S.string, S.number).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       await Util.expectDecodeUnknownFailure(
@@ -427,7 +427,7 @@ describe("TreeFormatter", () => {
       const schema = S.struct({
         a: S.string,
         b: S.string
-      }).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+      }).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -443,7 +443,7 @@ describe("TreeFormatter", () => {
 
     it("union", async () => {
       const schema = S.union(S.string, S.number).pipe(
-        S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
       )
 
       await Util.expectDecodeUnknownFailure(
@@ -456,7 +456,7 @@ describe("TreeFormatter", () => {
     describe("transformation", () => {
       it("top level message", async () => {
         const schema = S.NumberFromString.pipe(
-          S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+          S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
         )
 
         await Util.expectDecodeUnknownFailure(
@@ -507,7 +507,7 @@ describe("TreeFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
-        ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+        ).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -526,7 +526,7 @@ describe("TreeFormatter", () => {
         const schema: S.Schema<A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
-        ).pipe(S.message((actual) => `my custom message ${JSON.stringify(actual)}`))
+        ).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -546,7 +546,7 @@ describe("TreeFormatter", () => {
           S.number,
           S.union(
             S.suspend(() => schema).pipe(
-              S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+              S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
             ),
             S.literal(null)
           )
@@ -577,7 +577,7 @@ describe("TreeFormatter", () => {
           S.union(
             S.suspend(() =>
               schema.pipe(
-                S.message((actual) => `my custom message ${JSON.stringify(actual)}`)
+                S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
               )
             ),
             S.literal(null)
