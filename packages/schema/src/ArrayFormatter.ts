@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as Option from "effect/Option"
+import * as Effect from "effect/Effect"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
 import type * as ParseResult from "./ParseResult.js"
@@ -21,62 +21,68 @@ export interface Issue {
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected,
   path: ReadonlyArray<PropertyKey> = []
-): Array<Issue> => {
+): Effect.Effect<Array<Issue>> => {
   const _tag = e._tag
   switch (_tag) {
     case "Type":
-      return [{ _tag, path, message: TreeFormatter.formatTypeMessage(e) }]
+      return Effect.map(
+        TreeFormatter.formatTypeMessage(e),
+        (message) => [{ _tag, path, message }]
+      )
     case "Forbidden":
-      return [{ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) }]
+      return Effect.succeed([{ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) }])
     case "Unexpected":
-      return [{ _tag, path, message: `is unexpected, expected ${AST.format(e.ast, true)}` }]
+      return Effect.succeed([{ _tag, path, message: `is unexpected, expected ${AST.format(e.ast, true)}` }])
     case "Missing":
-      return [{ _tag, path, message: "is missing" }]
+      return Effect.succeed([{ _tag, path, message: "is missing" }])
     case "Union":
-      return Option.match(TreeFormatter.getMessage(e), {
-        onNone: () =>
-          ReadonlyArray.flatMap(e.errors, (e) => {
-            switch (e._tag) {
-              case "Member":
-                return go(e.error, path)
-              default:
-                return go(e, path)
-            }
-          }),
-        onSome: (message) => [{ _tag, path, message }]
+      return Effect.matchEffect(TreeFormatter.getMessage(e), {
+        onFailure: () =>
+          Effect.map(
+            Effect.forEach(e.errors, (e) => {
+              switch (e._tag) {
+                case "Member":
+                  return go(e.error, path)
+                default:
+                  return go(e, path)
+              }
+            }),
+            ReadonlyArray.flatten
+          ),
+        onSuccess: (message) => Effect.succeed([{ _tag, path, message }])
       })
     case "Tuple":
-      return Option.match(TreeFormatter.getMessage(e), {
-        onNone: () =>
-          ReadonlyArray.flatMap(
-            e.errors,
-            (index) => go(index.error, [...path, index.index])
+      return Effect.matchEffect(TreeFormatter.getMessage(e), {
+        onFailure: () =>
+          Effect.map(
+            Effect.forEach(e.errors, (index) => go(index.error, [...path, index.index])),
+            ReadonlyArray.flatten
           ),
-        onSome: (message) => [{ _tag, path, message }]
+        onSuccess: (message) => Effect.succeed([{ _tag, path, message }])
       })
     case "TypeLiteral":
-      return Option.match(TreeFormatter.getMessage(e), {
-        onNone: () =>
-          ReadonlyArray.flatMap(
-            e.errors,
-            (key) => go(key.error, [...path, key.key])
+      return Effect.matchEffect(TreeFormatter.getMessage(e), {
+        onFailure: () =>
+          Effect.map(
+            Effect.forEach(e.errors, (key) => go(key.error, [...path, key.key])),
+            ReadonlyArray.flatten
           ),
-        onSome: (message) => [{ _tag, path, message }]
+        onSuccess: (message) => Effect.succeed([{ _tag, path, message }])
       })
     case "Transform":
-      return Option.match(TreeFormatter.getTransformMessage(e), {
-        onNone: () => go(e.error, path),
-        onSome: (message) => [{ _tag, path, message }]
+      return Effect.matchEffect(TreeFormatter.getTransformMessage(e), {
+        onFailure: () => go(e.error, path),
+        onSuccess: (message) => Effect.succeed([{ _tag, path, message }])
       })
     case "Refinement":
-      return Option.match(TreeFormatter.getRefinementMessage(e), {
-        onNone: () => go(e.error, path),
-        onSome: (message) => [{ _tag, path, message }]
+      return Effect.matchEffect(TreeFormatter.getRefinementMessage(e), {
+        onFailure: () => go(e.error, path),
+        onSuccess: (message) => Effect.succeed([{ _tag, path, message }])
       })
     case "Declaration":
-      return Option.match(TreeFormatter.getMessage(e), {
-        onNone: () => go(e.error, path),
-        onSome: (message) => [{ _tag, path, message }]
+      return Effect.matchEffect(TreeFormatter.getMessage(e), {
+        onFailure: () => go(e.error, path),
+        onSuccess: (message) => Effect.succeed([{ _tag, path, message }])
       })
   }
 }
@@ -85,8 +91,23 @@ const go = (
  * @category formatting
  * @since 1.0.0
  */
+export const formatIssuesEffect = (
+  issues: ReadonlyArray.NonEmptyReadonlyArray<ParseResult.ParseIssue>
+): Effect.Effect<Array<Issue>> => Effect.map(Effect.forEach(issues, (issue) => go(issue)), ReadonlyArray.flatten)
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
 export const formatIssues = (issues: ReadonlyArray.NonEmptyReadonlyArray<ParseResult.ParseIssue>): Array<Issue> =>
-  ReadonlyArray.flatMap(issues, (e) => go(e))
+  Effect.runSync(formatIssuesEffect(issues))
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatIssueEffect = (error: ParseResult.ParseIssue): Effect.Effect<Array<Issue>> =>
+  formatIssuesEffect([error])
 
 /**
  * @category formatting

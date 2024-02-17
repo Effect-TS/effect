@@ -46,7 +46,7 @@ export const TypeAnnotationId = Symbol.for("@effect/schema/annotation/Type")
  * @category annotations
  * @since 1.0.0
  */
-export type MessageAnnotation = (issue: ParseIssue) => string
+export type MessageAnnotation = (issue: ParseIssue) => string | Effect<string>
 
 /**
  * @category annotations
