@@ -12,7 +12,7 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -709,4 +709,84 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
     }
     return right(state.value)
   }
+}
+
+// -------------------------------------------------------------------------------------
+// do notation
+// -------------------------------------------------------------------------------------
+
+/**
+ * @since 2.4.0
+ * @category do notation
+ */
+export const Do: Either<{}> = right({})
+
+/**
+ * Binds an effectful value in a `do` scope
+ *
+ * @since 2.4.0
+ * @category do notation
+ */
+export const bind: {
+  <N extends string, K, A, E2>(
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => Either<A, E2>
+  ): <E>(self: Either<K, E>) => Either<MergeRecord<K, { [k in N]: A }>, E2 | E>
+  <K, E, N extends string, A, E2>(
+    self: Either<E, K>,
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => Either<A, E2>
+  ): Either<MergeRecord<K, { [k in N]: A }>, E2 | E>
+} = dual(3, <K, E, N extends string, A, E2>(
+  self: Either<K, E>,
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => Either<A, E2>
+): Either<MergeRecord<K, { [k in N]: A }>, E2 | E> =>
+  flatMap(self, (k) =>
+    map(
+      f(k),
+      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+    )))
+
+/**
+ * @category do notation
+ * @since 2.4.0
+ */
+export const bindTo: {
+  <N extends string>(tag: N): <A, E>(self: Either<A, E>) => Either<Record<N, A>, E>
+  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<Record<N, A>, E>
+} = dual(
+  2,
+  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<Record<N, A>, E> =>
+    map(self, (a) => ({ [tag]: a } as Record<N, A>))
+)
+
+const let_: {
+  <N extends string, K, A>(
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => A
+  ): <E>(self: Either<K, E>) => Either<MergeRecord<K, { [k in N]: A }>, E>
+  <K, E, N extends string, A>(
+    self: Either<K, E>,
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => A
+  ): Either<MergeRecord<K, { [k in N]: A }>, E>
+} = dual(3, <K, E, N extends string, A>(
+  self: Either<K, E>,
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A
+): Either<MergeRecord<K, { [k in N]: A }>, E> =>
+  map(
+    self,
+    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
+  ))
+
+export {
+  /**
+   * Like bind for values
+   *
+   * @since 2.4.0
+   * @category do notation
+   */
+  let_ as let
 }

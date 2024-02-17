@@ -8,11 +8,11 @@ import type * as FiberId from "../../FiberId.js"
 import type { LazyArg } from "../../Function.js"
 import { constFalse, constTrue, constVoid, dual, identity, pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
-import * as predicate from "../../Predicate.js"
 import type { Predicate, Refinement } from "../../Predicate.js"
+import * as predicate from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
 import type * as STM from "../../STM.js"
-import type { NoInfer } from "../../Types.js"
+import type { MergeRecord, NoInfer } from "../../Types.js"
 import * as effectCore from "../core.js"
 import * as SingleShotGen from "../singleShotGen.js"
 import * as core from "./core.js"
@@ -114,12 +114,12 @@ export const bind = dual<
   <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM.STM<A, E2, R2>
-  ) => <E, R>(self: STM.STM<K, E, R>) => STM.STM<Effect.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>,
+  ) => <E, R>(self: STM.STM<K, E, R>) => STM.STM<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>,
   <K, E, R, N extends string, A, E2, R2>(
     self: STM.STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM.STM<A, E2, R2>
-  ) => STM.STM<Effect.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
+  ) => STM.STM<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
 >(3, <K, E, R, N extends string, A, E2, R2>(
   self: STM.STM<K, E, R>,
   tag: Exclude<N, keyof K>,
@@ -128,7 +128,7 @@ export const bind = dual<
   core.flatMap(self, (k) =>
     core.map(
       f(k),
-      (a): Effect.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
     )))
 
 /* @internal */
@@ -158,7 +158,7 @@ export const let_ = dual<
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
   ) => <E, R>(self: STM.STM<K, E, R>) => STM.STM<
-    Effect.MergeRecord<K, { [k in N]: A }>,
+    MergeRecord<K, { [k in N]: A }>,
     E,
     R
   >,
@@ -167,14 +167,14 @@ export const let_ = dual<
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
   ) => STM.STM<
-    Effect.MergeRecord<K, { [k in N]: A }>,
+    MergeRecord<K, { [k in N]: A }>,
     E,
     R
   >
 >(3, <K, E, R, N extends string, A>(self: STM.STM<K, E, R>, tag: Exclude<N, keyof K>, f: (_: K) => A) =>
   core.map(
     self,
-    (k): Effect.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
+    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
   ))
 
 /** @internal */
