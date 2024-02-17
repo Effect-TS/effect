@@ -33,7 +33,7 @@ const go = (
     case "Missing":
       return [{ _tag, path, message: "is missing" }]
     case "Union":
-      return Option.match(TreeFormatter.getMessage(e.ast, e.actual), {
+      return Option.match(TreeFormatter.getMessage(e), {
         onNone: () =>
           ReadonlyArray.flatMap(e.errors, (e) => {
             switch (e._tag) {
@@ -46,7 +46,7 @@ const go = (
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Tuple":
-      return Option.match(TreeFormatter.getMessage(e.ast, e.actual), {
+      return Option.match(TreeFormatter.getMessage(e), {
         onNone: () =>
           ReadonlyArray.flatMap(
             e.errors,
@@ -55,7 +55,7 @@ const go = (
         onSome: (message) => [{ _tag, path, message }]
       })
     case "TypeLiteral":
-      return Option.match(TreeFormatter.getMessage(e.ast, e.actual), {
+      return Option.match(TreeFormatter.getMessage(e), {
         onNone: () =>
           ReadonlyArray.flatMap(
             e.errors,
@@ -64,17 +64,17 @@ const go = (
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Transform":
-      return Option.match(TreeFormatter.getTransformMessage(e, e.actual), {
+      return Option.match(TreeFormatter.getTransformMessage(e), {
         onNone: () => go(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Refinement":
-      return Option.match(TreeFormatter.getRefinementMessage(e, e.actual), {
+      return Option.match(TreeFormatter.getRefinementMessage(e), {
         onNone: () => go(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })
     case "Declaration":
-      return Option.match(TreeFormatter.getMessage(e.ast, e.actual), {
+      return Option.match(TreeFormatter.getMessage(e), {
         onNone: () => go(e.error, path),
         onSome: (message) => [{ _tag, path, message }]
       })

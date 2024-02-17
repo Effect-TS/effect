@@ -46,7 +46,7 @@ export const TypeAnnotationId = Symbol.for("@effect/schema/annotation/Type")
  * @category annotations
  * @since 1.0.0
  */
-export type MessageAnnotation = (u: unknown) => string
+export type MessageAnnotation = (issue: ParseIssue) => string
 
 /**
  * @category annotations
@@ -251,7 +251,7 @@ export type AST =
   | Enums
   | TemplateLiteral
   // possible transformations
-  | Refinement
+  | Refinement<AST>
   | Tuple
   | TypeLiteral
   | Union

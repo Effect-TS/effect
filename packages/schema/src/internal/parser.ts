@@ -81,7 +81,7 @@ export const declaration = (
 
 /** @internal */
 export const refinement = (
-  ast: AST.Refinement,
+  ast: AST.Refinement<AST.AST>,
   actual: unknown,
   kind: "From" | "Predicate",
   error: ParseResult.ParseIssue

@@ -2,6 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
@@ -61,8 +62,23 @@ describe("Schema > filter", () => {
 
   it("custom message", async () => {
     const schema = S.string.pipe(S.filter((s): s is string => s.length === 1, {
-      message: (u) => `invalid ${u}`
+      message: (issue) => `invalid ${issue.actual}`
     }))
     await Util.expectDecodeUnknownFailure(schema, null, `invalid null`)
+  })
+
+  it("inner custom message", async () => {
+    const schema = S.string.pipe(
+      S.filter((s): s is string => s.length === 1, {
+        message: (issue) => {
+          if (issue._tag === "Refinement" && issue.kind === "From") {
+            return TreeFormatter.formatIssue(issue.error)
+          }
+          return `invalid ${issue.actual}`
+        }
+      })
+    )
+    await Util.expectDecodeUnknownFailure(schema, "aa", `invalid aa`)
+    await Util.expectDecodeUnknownFailure(schema, null, `Expected a string, actual null`)
   })
 })

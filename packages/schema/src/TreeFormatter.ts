@@ -25,7 +25,7 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  */
 export const formatIssues = (issues: NonEmptyReadonlyArray<ParseResult.ParseIssue>): string => {
   const forest = issues.map(go)
-  return drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, issues.map(go)))
+  return drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, forest))
 }
 
 /**
@@ -76,15 +76,12 @@ const formatRefinementKind = (kind: ParseResult.Refinement["kind"]): string => {
 }
 
 /** @internal */
-export const getMessage = (ast: AST.AST, actual: unknown): Option.Option<string> => {
-  return AST.getMessageAnnotation(ast).pipe(
-    Option.map((annotation) => annotation(actual))
-  )
-}
+export const getMessage = (issue: ParseResult.ParseIssue): Option.Option<string> =>
+  Option.flatMap(AST.getMessageAnnotation(issue.ast), (annotation) => Option.fromNullable(annotation(issue)))
 
 /** @internal */
 export const formatTypeMessage = (e: ParseResult.Type): string =>
-  getMessage(e.ast, e.actual).pipe(
+  getMessage(e).pipe(
     Option.orElse(() => e.message),
     Option.getOrElse(() => `Expected ${AST.format(e.ast, true)}, actual ${AST.formatUnknown(e.actual)}`)
   )
@@ -93,36 +90,35 @@ export const formatTypeMessage = (e: ParseResult.Type): string =>
 export const formatForbiddenMessage = (e: ParseResult.Forbidden): string =>
   Option.getOrElse(e.message, () => "is forbidden")
 
-const getParseIsssueMessage = (
+const getParseIssueMessage = (
   issue: ParseResult.ParseIssue,
   orElse: () => Option.Option<string>
 ): Option.Option<string> => {
   switch (issue._tag) {
     case "Refinement":
-      return Option.orElse(getRefinementMessage(issue, issue.actual), orElse)
+      return Option.orElse(getRefinementMessage(issue), orElse)
     case "Transform":
-      return Option.orElse(getTransformMessage(issue, issue.actual), orElse)
+      return Option.orElse(getTransformMessage(issue), orElse)
     case "Tuple":
     case "TypeLiteral":
     case "Union":
     case "Type":
-      return Option.orElse(getMessage(issue.ast, issue.actual), orElse)
+      return Option.orElse(getMessage(issue), orElse)
   }
   return orElse()
 }
 
 /** @internal */
-export const getRefinementMessage = (e: ParseResult.Refinement, actual: unknown): Option.Option<string> => {
+export const getRefinementMessage = (e: ParseResult.Refinement): Option.Option<string> => {
   if (e.kind === "From") {
-    return getParseIsssueMessage(e.error, () => getMessage(e.ast, actual))
+    return getParseIssueMessage(e.error, () => getMessage(e))
   }
-  return getMessage(e.ast, actual)
+  return getMessage(e)
 }
 
 /** @internal */
-export const getTransformMessage = (e: ParseResult.Transform, actual: unknown): Option.Option<string> => {
-  return getParseIsssueMessage(e.error, () => getMessage(e.ast, actual))
-}
+export const getTransformMessage = (e: ParseResult.Transform): Option.Option<string> =>
+  getParseIssueMessage(e.error, () => getMessage(e))
 
 const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected): Tree<string> => {
   switch (e._tag) {
@@ -135,7 +131,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
     case "Missing":
       return make("is missing")
     case "Union":
-      return Option.match(getMessage(e.ast, e.actual), {
+      return Option.match(getMessage(e), {
         onNone: () =>
           make(
             AST.format(e.ast),
@@ -151,7 +147,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         onSome: make
       })
     case "Tuple":
-      return Option.match(getMessage(e.ast, e.actual), {
+      return Option.match(getMessage(e), {
         onNone: () =>
           make(
             AST.format(e.ast),
@@ -160,7 +156,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         onSome: make
       })
     case "TypeLiteral":
-      return Option.match(getMessage(e.ast, e.actual), {
+      return Option.match(getMessage(e), {
         onNone: () =>
           make(
             AST.format(e.ast),
@@ -169,12 +165,12 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         onSome: make
       })
     case "Transform":
-      return Option.match(getTransformMessage(e, e.actual), {
+      return Option.match(getTransformMessage(e), {
         onNone: () => make(AST.format(e.ast), [make(formatTransformationKind(e.kind), [go(e.error)])]),
         onSome: make
       })
     case "Refinement":
-      return Option.match(getRefinementMessage(e, e.actual), {
+      return Option.match(getRefinementMessage(e), {
         onNone: () =>
           make(AST.format(e.ast), [
             make(formatRefinementKind(e.kind), [go(e.error)])
@@ -182,7 +178,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         onSome: make
       })
     case "Declaration":
-      return Option.match(getMessage(e.ast, e.actual), {
+      return Option.match(getMessage(e), {
         onNone: () => {
           const error = e.error
           const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
