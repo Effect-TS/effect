@@ -14,7 +14,7 @@ class User extends Data.Class<{
   name: string;
 }> {
   [Hash.symbol]() {
-    return Hash.cached(this, () => Hash.string(`${this.id}-${this.name}`));
+    return Hash.cached(this, Hash.string(`${this.id}-${this.name}`));
   }
 }
 ```
