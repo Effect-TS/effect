@@ -14,7 +14,7 @@ import * as stm from "./internal/stm/stm.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -2013,24 +2013,24 @@ export const bind: {
   <N extends string, K, A, E2, R2>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM<A, E2, R2>
-  ): <E, R>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  ): <E, R>(self: STM<K, E, R>) => STM<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
   <K, E, R, N extends string, A, E2, R2>(
     self: STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => STM<A, E2, R2>
-  ): STM<Effect.MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
+  ): STM<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
 } = stm.bind
 
 const let_: {
   <N extends string, K, A>(
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ): <E, R>(self: STM<K, E, R>) => STM<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
+  ): <E, R>(self: STM<K, E, R>) => STM<MergeRecord<K, { [k in N]: A }>, E, R>
   <K, E, R, N extends string, A>(
     self: STM<K, E, R>,
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
-  ): STM<Effect.MergeRecord<K, { [k in N]: A }>, E, R>
+  ): STM<MergeRecord<K, { [k in N]: A }>, E, R>
 } = stm.let_
 
 export {

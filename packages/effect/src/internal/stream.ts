@@ -10,8 +10,8 @@ import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
-import { constTrue, dual, identity, pipe } from "../Function.js"
 import type { LazyArg } from "../Function.js"
+import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as Layer from "../Layer.js"
 import * as MergeDecision from "../MergeDecision.js"
 import * as Option from "../Option.js"
@@ -31,7 +31,7 @@ import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type * as Take from "../Take.js"
 import type * as Tracer from "../Tracer.js"
 import * as Tuple from "../Tuple.js"
-import type { NoInfer } from "../Types.js"
+import type { MergeRecord, NoInfer } from "../Types.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
@@ -8018,7 +8018,7 @@ export const bind = dual<
       readonly bufferSize?: number | undefined
     }
   ) => <E, R>(self: Stream.Stream<K, E, R>) => Stream.Stream<
-    Effect.MergeRecord<K, { [k in N]: A }>,
+    MergeRecord<K, { [k in N]: A }>,
     E | E2,
     R | R2
   >,
@@ -8031,7 +8031,7 @@ export const bind = dual<
       readonly bufferSize?: number | undefined
     }
   ) => Stream.Stream<
-    Effect.MergeRecord<K, { [k in N]: A }>,
+    MergeRecord<K, { [k in N]: A }>,
     E | E2,
     R | R2
   >
@@ -8047,7 +8047,7 @@ export const bind = dual<
   flatMap(self, (k) =>
     map(
       f(k),
-      (a): Effect.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
     ), options))
 
 /* @internal */
@@ -8077,7 +8077,7 @@ export const let_ = dual<
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
   ) => <E, R>(self: Stream.Stream<K, E, R>) => Stream.Stream<
-    Effect.MergeRecord<K, { [k in N]: A }>,
+    MergeRecord<K, { [k in N]: A }>,
     E,
     R
   >,
@@ -8086,14 +8086,14 @@ export const let_ = dual<
     tag: Exclude<N, keyof K>,
     f: (_: K) => A
   ) => Stream.Stream<
-    Effect.MergeRecord<K, { [k in N]: A }>,
+    MergeRecord<K, { [k in N]: A }>,
     E,
     R
   >
 >(3, <K, E, R, N extends string, A>(self: Stream.Stream<K, E, R>, tag: Exclude<N, keyof K>, f: (_: K) => A) =>
   map(
     self,
-    (k): Effect.MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
+    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
   ))
 
 // Circular with Channel

@@ -53,22 +53,12 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, NoInfer } from "./Types.js"
+import type { Concurrency, Covariant, MergeRecord, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 // -------------------------------------------------------------------------------------
 // models
 // -------------------------------------------------------------------------------------
-
-/**
- * @since 2.0.0
- */
-export type MergeRecord<K, H> = {
-  [k in keyof K | keyof H]: k extends keyof K ? K[k]
-    : k extends keyof H ? H[k]
-    : never
-} extends infer X ? X
-  : never
 
 /**
  * @since 2.0.0
