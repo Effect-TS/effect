@@ -119,4 +119,11 @@ export const formatIssue = (error: ParseResult.ParseIssue): Array<Issue> => form
  * @category formatting
  * @since 1.0.0
  */
+export const formatErrorEffect = (error: ParseResult.ParseError): Effect.Effect<Array<Issue>> =>
+  formatIssueEffect(error.error)
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
 export const formatError = (error: ParseResult.ParseError): Array<Issue> => formatIssue(error.error)

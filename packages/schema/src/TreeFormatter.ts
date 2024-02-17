@@ -55,6 +55,13 @@ export const formatIssue = (issue: ParseResult.ParseIssue): string => formatIssu
  * @category formatting
  * @since 1.0.0
  */
+export const formatErrorEffect = (error: ParseResult.ParseError): Effect.Effect<string> =>
+  formatIssueEffect(error.error)
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
 export const formatError = (error: ParseResult.ParseError): string => formatIssue(error.error)
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
