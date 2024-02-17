@@ -96,9 +96,7 @@ const protoEqual = {
 
 const proto = {
   [DocStreamTypeId]: { _A: (_: never) => _ },
-  [Hash.symbol](this: DocStream.DocStream<any>): number {
-    return protoHash[this._tag](this as any)
-  },
+  [Hash.symbol]: Hash.cachedMethod((self: DocStream.DocStream<any>): number => protoHash[self._tag](self as any)),
   [Equal.symbol](this: DocStream.DocStream<any>, that: unknown): boolean {
     return protoEqual[this._tag](this as any, that)
   }

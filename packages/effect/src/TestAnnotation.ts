@@ -49,9 +49,12 @@ class TestAnnotationImpl<A> implements Equal.Equal {
     readonly combine: (a: A, b: A) => A
   ) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(TestAnnotationSymbolKey),
-      Hash.combine(Hash.hash(this.identifier))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(TestAnnotationSymbolKey),
+        Hash.combine(Hash.hash(this.identifier))
+      )
     )
   }
   [Equal.symbol](that: unknown): boolean {

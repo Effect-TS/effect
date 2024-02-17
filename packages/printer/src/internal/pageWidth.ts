@@ -40,9 +40,9 @@ const protoEqual = {
 
 const proto = {
   [PageWidthTypeId]: PageWidthTypeId,
-  [Hash.symbol](this: PageWidth.PageWidth) {
-    return protoHash[this._tag](this as any)
-  },
+  [Hash.symbol]: Hash.cachedMethod((self: PageWidth.PageWidth) => {
+    return protoHash[self._tag](self as any)
+  }),
   [Equal.symbol](this: PageWidth.PageWidth, that: unknown) {
     return protoEqual[this._tag](this as any, that)
   }

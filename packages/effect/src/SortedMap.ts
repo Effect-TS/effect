@@ -40,9 +40,9 @@ const SortedMapProto: Omit<SortedMap<unknown, unknown>, "tree"> = {
     _K: (_: any) => _,
     _V: (_: never) => _
   },
-  [Hash.symbol]<K, V>(this: SortedMap<K, V>): number {
-    return pipe(Hash.hash(this.tree), Hash.combine(Hash.hash("effect/SortedMap")))
-  },
+  [Hash.symbol]: Hash.cachedMethod(<K, V>(self: SortedMap<K, V>): number =>
+    pipe(Hash.hash(self.tree), Hash.combine(Hash.hash("effect/SortedMap")))
+  ),
   [Equal.symbol]<K, V>(this: SortedMap<K, V>, that: unknown): boolean {
     return isSortedMap(that) && Equal.equals(this.tree, that.tree)
   },

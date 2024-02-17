@@ -66,9 +66,12 @@ class CounterState<A extends (number | bigint)> implements MetricState.MetricSta
   readonly [CounterStateTypeId]: MetricState.CounterStateTypeId = CounterStateTypeId
   constructor(readonly count: A) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(CounterStateSymbolKey),
-      Hash.combine(Hash.hash(this.count))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(CounterStateSymbolKey),
+        Hash.combine(Hash.hash(this.count))
+      )
     )
   }
   [Equal.symbol](that: unknown): boolean {
@@ -88,14 +91,13 @@ class FrequencyState implements MetricState.MetricState.Frequency {
   constructor(readonly occurrences: ReadonlyMap<string, number>) {}
   _hash: number | undefined;
   [Hash.symbol](): number {
-    if (this._hash !== undefined) {
-      return this._hash
-    }
-    this._hash = pipe(
-      Hash.string(FrequencyStateSymbolKey),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.occurrences.entries())))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.string(FrequencyStateSymbolKey),
+        Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.occurrences.entries())))
+      )
     )
-    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFrequencyState(that) && arrayEquals(
@@ -114,9 +116,12 @@ class GaugeState<A extends (number | bigint)> implements MetricState.MetricState
   readonly [GaugeStateTypeId]: MetricState.GaugeStateTypeId = GaugeStateTypeId
   constructor(readonly value: A) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(GaugeStateSymbolKey),
-      Hash.combine(Hash.hash(this.value))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(GaugeStateSymbolKey),
+        Hash.combine(Hash.hash(this.value))
+      )
     )
   }
   [Equal.symbol](u: unknown): boolean {
@@ -139,13 +144,16 @@ export class HistogramState implements MetricState.MetricState.Histogram {
     readonly sum: number
   ) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(HistogramStateSymbolKey),
-      Hash.combine(Hash.hash(this.buckets)),
-      Hash.combine(Hash.hash(this.count)),
-      Hash.combine(Hash.hash(this.min)),
-      Hash.combine(Hash.hash(this.max)),
-      Hash.combine(Hash.hash(this.sum))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(HistogramStateSymbolKey),
+        Hash.combine(Hash.hash(this.buckets)),
+        Hash.combine(Hash.hash(this.count)),
+        Hash.combine(Hash.hash(this.min)),
+        Hash.combine(Hash.hash(this.max)),
+        Hash.combine(Hash.hash(this.sum))
+      )
     )
   }
   [Equal.symbol](that: unknown): boolean {
@@ -174,14 +182,17 @@ export class SummaryState implements MetricState.MetricState.Summary {
     readonly sum: number
   ) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(SummaryStateSymbolKey),
-      Hash.combine(Hash.hash(this.error)),
-      Hash.combine(Hash.hash(this.quantiles)),
-      Hash.combine(Hash.hash(this.count)),
-      Hash.combine(Hash.hash(this.min)),
-      Hash.combine(Hash.hash(this.max)),
-      Hash.combine(Hash.hash(this.sum))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(SummaryStateSymbolKey),
+        Hash.combine(Hash.hash(this.error)),
+        Hash.combine(Hash.hash(this.quantiles)),
+        Hash.combine(Hash.hash(this.count)),
+        Hash.combine(Hash.hash(this.min)),
+        Hash.combine(Hash.hash(this.max)),
+        Hash.combine(Hash.hash(this.sum))
+      )
     )
   }
   [Equal.symbol](that: unknown): boolean {

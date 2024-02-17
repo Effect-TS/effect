@@ -5,9 +5,7 @@ import { StructuralPrototype } from "./effectable.js"
 
 /** @internal */
 export const ArrayProto: Equal.Equal = Object.assign(Object.create(Array.prototype), {
-  [Hash.symbol](this: Array<any>) {
-    return Hash.array(this)
-  },
+  [Hash.symbol]: Hash.cachedMethod(Hash.array),
   [Equal.symbol](this: Array<any>, that: Equal.Equal) {
     if (Array.isArray(that) && this.length === that.length) {
       return this.every((v, i) => Equal.equals(v, (that as Array<any>)[i]))

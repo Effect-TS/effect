@@ -110,9 +110,7 @@ export const ContextProto: Omit<C.Context<unknown>, "unsafeMap"> = {
     }
     return false
   },
-  [Hash.symbol]<A>(this: C.Context<A>): number {
-    return Hash.number(this.unsafeMap.size)
-  },
+  [Hash.symbol]: Hash.cachedMethod(<A>(self: C.Context<A>): number => Hash.number(self.unsafeMap.size)),
   pipe<A>(this: C.Context<A>) {
     return pipeArguments(this, arguments)
   },

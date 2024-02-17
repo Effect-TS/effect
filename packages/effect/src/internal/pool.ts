@@ -147,15 +147,18 @@ class PoolImpl<in out A, in out E> implements Pool.Pool<A, E> {
   ) {}
 
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(this.creator),
-      Hash.combine(Hash.number(this.min)),
-      Hash.combine(Hash.number(this.max)),
-      Hash.combine(Hash.hash(this.isShuttingDown)),
-      Hash.combine(Hash.hash(this.state)),
-      Hash.combine(Hash.hash(this.items)),
-      Hash.combine(Hash.hash(this.invalidated)),
-      Hash.combine(Hash.hash(this.track))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(this.creator),
+        Hash.combine(Hash.number(this.min)),
+        Hash.combine(Hash.number(this.max)),
+        Hash.combine(Hash.hash(this.isShuttingDown)),
+        Hash.combine(Hash.hash(this.state)),
+        Hash.combine(Hash.hash(this.items)),
+        Hash.combine(Hash.hash(this.invalidated)),
+        Hash.combine(Hash.hash(this.track))
+      )
     )
   }
 

@@ -98,13 +98,13 @@ export const fail = <E>(error: E): TExit<never, E> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_FAIL,
   error,
-  [Hash.symbol](): number {
-    return pipe(
+  [Hash.symbol]: Hash.cachedMethod((): number =>
+    pipe(
       Hash.hash(TExitSymbolKey),
       Hash.combine(Hash.hash(OpCodes.OP_FAIL)),
       Hash.combine(Hash.hash(error))
     )
-  },
+  ),
   [Equal.symbol](that: unknown): boolean {
     return isExit(that) && that._tag === OpCodes.OP_FAIL && Equal.equals(error, that.error)
   }
@@ -115,13 +115,13 @@ export const die = (defect: unknown): TExit<never> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_DIE,
   defect,
-  [Hash.symbol](): number {
-    return pipe(
+  [Hash.symbol]: Hash.cachedMethod((): number =>
+    pipe(
       Hash.hash(TExitSymbolKey),
       Hash.combine(Hash.hash(OpCodes.OP_DIE)),
       Hash.combine(Hash.hash(defect))
     )
-  },
+  ),
   [Equal.symbol](that: unknown): boolean {
     return isExit(that) && that._tag === OpCodes.OP_DIE && Equal.equals(defect, that.defect)
   }
@@ -132,13 +132,13 @@ export const interrupt = (fiberId: FiberId.FiberId): TExit<never> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_INTERRUPT,
   fiberId,
-  [Hash.symbol](): number {
+  [Hash.symbol]: Hash.cachedMethod((): number => {
     return pipe(
       Hash.hash(TExitSymbolKey),
       Hash.combine(Hash.hash(OpCodes.OP_INTERRUPT)),
       Hash.combine(Hash.hash(fiberId))
     )
-  },
+  }),
   [Equal.symbol](that: unknown): boolean {
     return isExit(that) && that._tag === OpCodes.OP_INTERRUPT && Equal.equals(fiberId, that.fiberId)
   }
@@ -149,28 +149,30 @@ export const succeed = <A>(value: A): TExit<A> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_SUCCEED,
   value,
-  [Hash.symbol](): number {
-    return pipe(
+  [Hash.symbol]: Hash.cachedMethod((): number =>
+    pipe(
       Hash.hash(TExitSymbolKey),
       Hash.combine(Hash.hash(OpCodes.OP_SUCCEED)),
       Hash.combine(Hash.hash(value))
     )
-  },
+  ),
   [Equal.symbol](that: unknown): boolean {
     return isExit(that) && that._tag === OpCodes.OP_SUCCEED && Equal.equals(value, that.value)
   }
 })
+
+const retryHash = pipe(
+  Hash.hash(TExitSymbolKey),
+  Hash.combine(Hash.hash(OpCodes.OP_RETRY)),
+  Hash.combine(Hash.hash("retry"))
+)
 
 /** @internal */
 export const retry: TExit<never> = {
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_RETRY,
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(TExitSymbolKey),
-      Hash.combine(Hash.hash(OpCodes.OP_RETRY)),
-      Hash.combine(Hash.hash("retry"))
-    )
+    return retryHash
   },
   [Equal.symbol](that: unknown): boolean {
     return isExit(that) && isRetry(that)

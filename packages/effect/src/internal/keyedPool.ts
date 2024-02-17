@@ -60,9 +60,12 @@ class Complete<in out A, out E> implements Equal.Equal {
   readonly [KeyedPoolMapValueSymbol]: KeyedPoolMapValueSymbol = KeyedPoolMapValueSymbol
   constructor(readonly pool: Pool.Pool<A, E>) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.string("effect/KeyedPool/Complete"),
-      Hash.combine(Hash.hash(this.pool))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.string("effect/KeyedPool/Complete"),
+        Hash.combine(Hash.hash(this.pool))
+      )
     )
   }
   [Equal.symbol](u: unknown): boolean {
@@ -78,9 +81,12 @@ class Pending<in out A, in out E> implements Equal.Equal {
   readonly [KeyedPoolMapValueSymbol]: KeyedPoolMapValueSymbol = KeyedPoolMapValueSymbol
   constructor(readonly deferred: Deferred.Deferred<Pool.Pool<A, E>>) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.string("effect/KeyedPool/Pending"),
-      Hash.combine(Hash.hash(this.deferred))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.string("effect/KeyedPool/Pending"),
+        Hash.combine(Hash.hash(this.deferred))
+      )
     )
   }
   [Equal.symbol](u: unknown): boolean {

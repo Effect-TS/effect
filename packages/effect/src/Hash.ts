@@ -158,17 +158,18 @@ export const array = <A>(arr: ReadonlyArray<A>) => {
   return optimize(h)
 }
 
-const cacheSymbol = Symbol.for("effect/Hash/cache")
-
 /**
  * @since 2.0.0
  * @category hashing
  */
-export const cached = (self: object, calculate: LazyArg<number>): number => {
-  if (cacheSymbol in self) {
-    return self[cacheSymbol] as number
-  }
-  return (self as any)[cacheSymbol] = calculate()
+export const cached = (self: object, hash: number): number => {
+  Object.defineProperty(self, symbol, {
+    value() {
+      return hash
+    },
+    enumerable: false
+  })
+  return hash
 }
 
 /**
@@ -180,6 +181,12 @@ export const cachedMethod = <Fn extends (self: any) => number>(calculate: Fn): L
     if (cacheSymbol in this) {
       return this[cacheSymbol] as number
     }
-    return (this as any)[cacheSymbol] = calculate(this)
+    const value = calculate(this)
+    Object.defineProperty(this, cacheSymbol, {
+      value,
+      enumerable: false
+    })
+    return value
   }
 }
+const cacheSymbol = Symbol.for("effect/Hash/cache")

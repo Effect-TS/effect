@@ -39,9 +39,9 @@ const SortedSetProto: Omit<SortedSet<unknown>, "keyTree"> = {
   [TypeId]: {
     _A: (_: any) => _
   },
-  [Hash.symbol]<A>(this: SortedSet<A>): number {
-    return pipe(Hash.hash(this.keyTree), Hash.combine(Hash.hash(TypeId)))
-  },
+  [Hash.symbol]: Hash.cachedMethod(<A>(self: SortedSet<A>): number =>
+    pipe(Hash.hash(self.keyTree), Hash.combine(Hash.hash(TypeId)))
+  ),
   [Equal.symbol]<A>(this: SortedSet<A>, that: unknown): boolean {
     return isSortedSet(that) && Equal.equals(this.keyTree, that.keyTree)
   },

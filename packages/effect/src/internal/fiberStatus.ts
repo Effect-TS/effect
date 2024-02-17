@@ -31,15 +31,14 @@ export const OP_SUSPENDED = "Suspended" as const
 /** @internal */
 export type OP_SUSPENDED = typeof OP_SUSPENDED
 
+const DoneHash = Hash.string(`${FiberStatusSymbolKey}-${OP_DONE}`)
+
 /** @internal */
 class Done implements FiberStatus.Done {
   readonly [FiberStatusTypeId]: FiberStatus.FiberStatusTypeId = FiberStatusTypeId
   readonly _tag = OP_DONE;
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FiberStatusSymbolKey),
-      Hash.combine(Hash.hash(this._tag))
-    )
+    return DoneHash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberStatus(that) && that._tag === OP_DONE
@@ -52,10 +51,13 @@ class Running implements FiberStatus.Running {
   readonly _tag = OP_RUNNING
   constructor(readonly runtimeFlags: RuntimeFlags) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FiberStatusSymbolKey),
-      Hash.combine(Hash.hash(this._tag)),
-      Hash.combine(Hash.hash(this.runtimeFlags))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(FiberStatusSymbolKey),
+        Hash.combine(Hash.hash(this._tag)),
+        Hash.combine(Hash.hash(this.runtimeFlags))
+      )
     )
   }
   [Equal.symbol](that: unknown): boolean {
@@ -76,11 +78,14 @@ class Suspended implements FiberStatus.Suspended {
     readonly blockingOn: FiberId
   ) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FiberStatusSymbolKey),
-      Hash.combine(Hash.hash(this._tag)),
-      Hash.combine(Hash.hash(this.runtimeFlags)),
-      Hash.combine(Hash.hash(this.blockingOn))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(FiberStatusSymbolKey),
+        Hash.combine(Hash.hash(this._tag)),
+        Hash.combine(Hash.hash(this.runtimeFlags)),
+        Hash.combine(Hash.hash(this.blockingOn))
+      )
     )
   }
   [Equal.symbol](that: unknown): boolean {

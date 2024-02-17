@@ -84,9 +84,9 @@ const protoEqual = {
 
 const proto = {
   [DocTreeTypeId]: { _A: (_: never) => _ },
-  [Hash.symbol](this: DocTree.DocTree<any>) {
-    return protoHash[this._tag](this as any)
-  },
+  [Hash.symbol]: Hash.cachedMethod((self: DocTree.DocTree<any>) => {
+    return protoHash[self._tag](self as any)
+  }),
   [Equal.symbol](this: DocTree.DocTree<any>, that: unknown) {
     return protoEqual[this._tag](this as any, that)
   }

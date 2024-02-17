@@ -36,12 +36,12 @@ const variance = {
 /** @internal */
 const proto = {
   [CauseTypeId]: variance,
-  [Hash.symbol](this: Cause.Cause<any>): number {
-    return pipe(
+  [Hash.symbol]: Hash.cachedMethod((self: Cause.Cause<any>): number =>
+    pipe(
       Hash.hash(CauseSymbolKey),
-      Hash.combine(Hash.hash(flattenCause(this)))
+      Hash.combine(Hash.hash(flattenCause(self)))
     )
-  },
+  ),
   [Equal.symbol](this: Cause.Cause<any>, that: unknown): boolean {
     return isCause(that) && causeEquals(this, that)
   },

@@ -120,10 +120,13 @@ class MapKeyImpl<out K> implements MapKey<K> {
   next: MapKey<K> | undefined = undefined
   constructor(readonly current: K) {}
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(this.current),
-      Hash.combine(Hash.hash(this.previous)),
-      Hash.combine(Hash.hash(this.next))
+    return Hash.cached(
+      this,
+      pipe(
+        Hash.hash(this.current),
+        Hash.combine(Hash.hash(this.previous)),
+        Hash.combine(Hash.hash(this.next))
+      )
     )
   }
   [Equal.symbol](that: unknown): boolean {
