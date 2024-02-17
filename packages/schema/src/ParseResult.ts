@@ -177,7 +177,7 @@ export const declaration = InternalParser.declaration
  */
 export interface Refinement {
   readonly _tag: "Refinement"
-  readonly ast: AST.Refinement
+  readonly ast: AST.Refinement<AST.AST>
   readonly actual: unknown
   readonly kind: "From" | "Predicate"
   readonly error: ParseIssue
