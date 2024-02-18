@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Effect from "effect/Effect"
+import type * as core from "effect/internal/core"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
@@ -74,6 +75,8 @@ export function make<A extends ReadonlyArray<Interpolated>>(
 
     if (Option.isOption(arg)) {
       values[i] = arg._tag === "Some" ? primitiveToString(arg.value) : ""
+    } else if (isSuccess(arg)) {
+      values[i] = primitiveToString(arg.i0 as Primitive)
     } else if (Effect.isEffect(arg)) {
       effects.push([i, arg])
     } else {
@@ -121,6 +124,8 @@ export function stream<A extends ReadonlyArray<InterpolatedWithStream>>(
     const arg = args[i]
     if (Option.isOption(arg)) {
       buffer += arg._tag === "Some" ? primitiveToString(arg.value) : ""
+    } else if (isSuccess(arg)) {
+      buffer += primitiveToString(arg.i0 as Primitive)
     } else if (Predicate.hasProperty(arg, Stream.StreamTypeId)) {
       if (buffer.length > 0) {
         chunks.push(buffer)
@@ -177,4 +182,8 @@ function consolidate(
     out += values[i]
   }
   return out + strings[strings.length - 1]
+}
+
+function isSuccess(u: unknown): u is core.Success {
+  return Effect.isEffect(u) && (u as core.Primitive)._op === "Success"
 }
