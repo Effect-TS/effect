@@ -245,8 +245,12 @@ const handleBuiltInOption = <R, E, A>(
             active: "yes",
             inactive: "no"
           }).pipe(Effect.flatMap((shouldRunCommand) => {
+            const finalArgs = pipe(
+              ReadonlyArray.drop(args, 1),
+              ReadonlyArray.prependAll(executable.split(/\s+/))
+            )
             return shouldRunCommand
-              ? Console.log().pipe(Effect.zipRight(run(self, args, execute)))
+              ? Console.log().pipe(Effect.zipRight(run(self, finalArgs, execute)))
               : Effect.unit
           }))
         ),
