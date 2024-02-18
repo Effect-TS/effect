@@ -1,5 +1,12 @@
 # @effect/schema
 
+## 0.62.8
+
+### Patch Changes
+
+- Updated dependencies [[`bc8404d`](https://github.com/Effect-TS/effect/commit/bc8404d54fd42072d200c0399cb39672837afa9f), [`2c5cbcd`](https://github.com/Effect-TS/effect/commit/2c5cbcd1161b4f40dab184999291e817314107de), [`6565916`](https://github.com/Effect-TS/effect/commit/6565916ef254bf910e47d25fd0ef55e7cb420241)]:
+  - effect@2.3.7
+
 ## 0.62.7
 
 ### Patch Changes

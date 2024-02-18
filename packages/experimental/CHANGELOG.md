@@ -1,5 +1,17 @@
 # @effect/experimental
 
+## 0.9.14
+
+### Patch Changes
+
+- [#2163](https://github.com/Effect-TS/effect/pull/2163) [`ca2b411`](https://github.com/Effect-TS/effect/commit/ca2b411e3c11ddb19d2321c7266049b7f4115617) Thanks [@IMax153](https://github.com/IMax153)! - Fix the order in which the experimental data-loader's internal worker enables interruptibility
+
+- Updated dependencies [[`bc8404d`](https://github.com/Effect-TS/effect/commit/bc8404d54fd42072d200c0399cb39672837afa9f), [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea), [`2c5cbcd`](https://github.com/Effect-TS/effect/commit/2c5cbcd1161b4f40dab184999291e817314107de), [`6565916`](https://github.com/Effect-TS/effect/commit/6565916ef254bf910e47d25fd0ef55e7cb420241), [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea)]:
+  - effect@2.3.7
+  - @effect/platform@0.45.4
+  - @effect/platform-node@0.44.5
+  - @effect/schema@0.62.8
+
 ## 0.9.13
 
 ### Patch Changes
