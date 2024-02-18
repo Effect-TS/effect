@@ -11,7 +11,13 @@ import * as Stream from "effect/Stream"
  * @category models
  * @since 1.0.0
  */
-export type Primitive = string | number | bigint | boolean
+export type PrimitiveValue = string | number | bigint | boolean | null | undefined
+
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export type Primitive = PrimitiveValue | ReadonlyArray<PrimitiveValue>
 
 /**
  * @category models
@@ -154,7 +160,11 @@ export function stream<A extends ReadonlyArray<InterpolatedWithStream>>(
   )
 }
 
-function primitiveToString(value: Primitive) {
+function primitiveToString(value: Primitive): string {
+  if (Array.isArray(value)) {
+    return value.map(primitiveToString).join("")
+  }
+
   switch (typeof value) {
     case "string": {
       return value
