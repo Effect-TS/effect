@@ -105,6 +105,15 @@ export const html: {
  * @since 1.0.0
  * @category constructors
  */
+export const htmlStream: <A extends ReadonlyArray<Template.InterpolatedWithStream>>(
+  strings: TemplateStringsArray,
+  ...args: A
+) => Effect.Effect<ServerResponse, never, Template.Interpolated.Context<A[number]>> = internal.htmlStream
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
 export const json: (
   body: unknown,
   options?: Options.WithContent

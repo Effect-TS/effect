@@ -3,6 +3,8 @@
  */
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
+import * as Stream from "effect/Stream"
 
 /**
  * @category models
@@ -23,13 +25,19 @@ export type Interpolated =
  * @category models
  * @since 1.0.0
  */
+export type InterpolatedWithStream = Interpolated | Stream.Stream<Primitive, any, any>
+
+/**
+ * @category models
+ * @since 1.0.0
+ */
 export declare namespace Interpolated {
   /**
    * @category models
    * @since 1.0.0
    */
-  export type Context<A extends Interpolated> = A extends infer T ? T extends Option.Option<infer _> ? never
-    : T extends Effect.Effect<infer _A, infer _E, infer R> ? R
+  export type Context<A> = A extends infer T ? T extends Option.Option<infer _> ? never
+    : T extends Stream.Stream<infer _A, infer _E, infer R> ? R
     : never
     : never
 
@@ -37,8 +45,8 @@ export declare namespace Interpolated {
    * @category models
    * @since 1.0.0
    */
-  export type Error<A extends Interpolated> = A extends infer T ? T extends Option.Option<infer _> ? never
-    : T extends Effect.Effect<infer _A, infer E, infer _R> ? E
+  export type Error<A> = A extends infer T ? T extends Option.Option<infer _> ? never
+    : T extends Stream.Stream<infer _A, infer E, infer _R> ? E
     : never
     : never
 }
@@ -90,6 +98,54 @@ export function make<A extends ReadonlyArray<Interpolated>>(
       }
     ),
     (_) => consolidate(strings, values)
+  )
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export function stream<A extends ReadonlyArray<InterpolatedWithStream>>(
+  strings: TemplateStringsArray,
+  ...args: A
+): Stream.Stream<
+  string,
+  Interpolated.Error<A[number]>,
+  Interpolated.Context<A[number]>
+> {
+  const chunks: Array<string | Stream.Stream<string, any, any>> = []
+  let buffer = ""
+
+  for (let i = 0, len = args.length; i < len; i++) {
+    buffer += strings[i]
+    const arg = args[i]
+    if (Option.isOption(arg)) {
+      chunks.push(arg._tag === "Some" ? primitiveToString(arg.value) : "")
+    } else if (Predicate.hasProperty(arg, Stream.StreamTypeId)) {
+      if (buffer.length > 0) {
+        chunks.push(buffer)
+        buffer = ""
+      }
+      if (Effect.isEffect(arg)) {
+        chunks.push(Effect.map(arg, primitiveToString))
+      } else {
+        chunks.push(Stream.map(arg, primitiveToString))
+      }
+    } else {
+      buffer += primitiveToString(arg)
+    }
+  }
+
+  buffer += strings[strings.length - 1]
+  if (buffer.length > 0) {
+    chunks.push(buffer)
+    buffer = ""
+  }
+
+  return Stream.flatMap(
+    Stream.fromIterable(chunks),
+    (chunk) => typeof chunk === "string" ? Stream.succeed(chunk) : chunk,
+    { concurrency: "unbounded" }
   )
 }
 

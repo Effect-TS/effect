@@ -2,7 +2,7 @@
 "@effect/platform": patch
 ---
 
-add ServerResponse.html api
+add ServerResponse.html/htmlStream api
 
 It uses the Template module to create html responses
 

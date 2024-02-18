@@ -118,6 +118,27 @@ export const html: {
 }
 
 /** @internal */
+export const htmlStream = <A extends ReadonlyArray<Template.InterpolatedWithStream>>(
+  strings: TemplateStringsArray,
+  ...args: A
+): Effect.Effect<
+  ServerResponse.ServerResponse,
+  never,
+  Template.Interpolated.Context<A[number]>
+> =>
+  Effect.map(
+    Effect.context<any>(),
+    (context) =>
+      stream(
+        Stream.provideContext(
+          Stream.encodeText(Template.stream(strings, ...args)),
+          context
+        ),
+        { contentType: "text/html" }
+      )
+  )
+
+/** @internal */
 export const json = (
   body: unknown,
   options?: ServerResponse.Options.WithContent
