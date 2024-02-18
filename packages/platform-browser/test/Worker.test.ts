@@ -95,7 +95,7 @@ describe.sequential("Worker", () => {
     }).pipe(
       Effect.scoped,
       Effect.provide(
-        BrowserWorker.layer(() => new globalThis.Worker(new URL("./fixtures/worker.ts", import.meta.url)))
+        BrowserWorker.layer(() => new globalThis.SharedWorker(new URL("./fixtures/worker.ts", import.meta.url)))
       ),
       Effect.runPromise
     ))
