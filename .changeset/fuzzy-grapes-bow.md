@@ -2,9 +2,9 @@
 "effect": patch
 ---
 
-add Hash.cached and Hash.cachedMethod
+add Hash.cached
 
-These apis assist with adding a layer of caching, when hashing immutable data structures.
+This api assists with adding a layer of caching, when hashing immutable data structures.
 
 ```ts
 import { Data, Hash } from "effect";

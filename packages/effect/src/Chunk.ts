@@ -141,7 +141,9 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
   [Equal.symbol]<A>(this: Chunk<A>, that: unknown): boolean {
     return isChunk(that) && _equivalence(this, that)
   },
-  [Hash.symbol]: Hash.cachedMethod(<A>(self: Chunk<A>): number => Hash.array(toReadonlyArray(self))),
+  [Hash.symbol]<A>(this: Chunk<A>): number {
+    return Hash.cached(this, Hash.array(toReadonlyArray(this)))
+  },
   [Symbol.iterator]<A>(this: Chunk<A>): Iterator<A> {
     switch (this.backing._tag) {
       case "IArray": {

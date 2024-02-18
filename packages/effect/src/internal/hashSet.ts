@@ -25,9 +25,12 @@ const HashSetProto: Omit<HashSetImpl<unknown>, "_keyMap"> = {
   [Symbol.iterator]<A>(this: HashSetImpl<A>): Iterator<A> {
     return HM.keys(this._keyMap)
   },
-  [Hash.symbol]: Hash.cachedMethod(<A>(self: HashSetImpl<A>): number =>
-    Hash.combine(Hash.hash(self._keyMap))(Hash.hash(HashSetSymbolKey))
-  ),
+  [Hash.symbol]<A>(this: HashSetImpl<A>): number {
+    return Hash.cached(
+      this,
+      Hash.combine(Hash.hash(this._keyMap))(Hash.hash(HashSetSymbolKey))
+    )
+  },
   [Equal.symbol]<A>(this: HashSetImpl<A>, that: unknown): boolean {
     if (isHashSet(that)) {
       return (

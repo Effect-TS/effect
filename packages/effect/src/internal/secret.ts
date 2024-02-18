@@ -16,12 +16,13 @@ export const SecretTypeId: Secret.SecretTypeId = Symbol.for(
 /** @internal */
 export const proto = {
   [SecretTypeId]: SecretTypeId,
-  [Hash.symbol]: Hash.cachedMethod((self: Secret.Secret): number =>
-    pipe(
+  [Hash.symbol](this: Secret.Secret): number {
+    return pipe(
       Hash.hash(SecretSymbolKey),
-      Hash.combine(Hash.array(self.raw))
+      Hash.combine(Hash.array(this.raw)),
+      Hash.cached(this)
     )
-  ),
+  },
   [Equal.symbol](this: Secret.Secret, that: unknown): boolean {
     return isSecret(that) && this.raw.length === that.raw.length &&
       this.raw.every((v, i) => Equal.equals(v, that.raw[i]))

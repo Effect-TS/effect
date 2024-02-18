@@ -62,13 +62,14 @@ export const done = <A, E>(exit: Exit.Exit<A, E>): STMState<A, E> => {
     [STMStateTypeId]: STMStateTypeId,
     _tag: OpCodes.OP_DONE,
     exit,
-    [Hash.symbol]: Hash.cachedMethod((): number =>
-      pipe(
+    [Hash.symbol](): number {
+      return pipe(
         Hash.hash(STMStateSymbolKey),
         Hash.combine(Hash.hash(OpCodes.OP_DONE)),
-        Hash.combine(Hash.hash(exit))
+        Hash.combine(Hash.hash(exit)),
+        Hash.cached(this)
       )
-    ),
+    },
     [Equal.symbol](that: unknown): boolean {
       return isSTMState(that) && that._tag === OpCodes.OP_DONE && Equal.equals(exit, that.exit)
     }

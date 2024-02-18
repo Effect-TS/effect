@@ -47,13 +47,13 @@ const HashMapProto: HM.HashMap<unknown, unknown> = {
   [Symbol.iterator]<K, V>(this: HashMapImpl<K, V>): Iterator<[K, V]> {
     return new HashMapIterator(this, (k, v) => [k, v])
   },
-  [Hash.symbol]: Hash.cachedMethod((self: HM.HashMap<unknown, unknown>): number => {
+  [Hash.symbol](this: HM.HashMap<unknown, unknown>): number {
     let hash = Hash.hash(HashMapSymbolKey)
-    for (const item of self) {
+    for (const item of this) {
       hash ^= pipe(Hash.hash(item[0]), Hash.combine(Hash.hash(item[1])))
     }
-    return hash
-  }),
+    return Hash.cached(this, hash)
+  },
   [Equal.symbol]<K, V>(this: HashMapImpl<K, V>, that: unknown): boolean {
     if (isHashMap(that)) {
       if ((that as HashMapImpl<K, V>)._size !== this._size) {

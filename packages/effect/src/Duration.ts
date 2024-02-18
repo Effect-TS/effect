@@ -116,7 +116,9 @@ const infinityValue: DurationValue = { _tag: "Infinity" }
 
 const DurationProto: Omit<Duration, "value"> = {
   [TypeId]: TypeId,
-  [Hash.symbol]: Hash.cachedMethod((self: Duration): number => Hash.structure(self.value)),
+  [Hash.symbol](this: Duration) {
+    return Hash.cached(this, Hash.structure(this.value))
+  },
   [Equal.symbol](this: Duration, that: unknown): boolean {
     return isDuration(that) && equals(this, that)
   },

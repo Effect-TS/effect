@@ -117,7 +117,9 @@ const ConsProto: Omit<Cons<unknown>, "head" | "tail"> = {
       this._tag === that._tag &&
       _equivalence(this, that)
   },
-  [Hash.symbol]: Hash.cachedMethod((self: Cons<unknown>): number => Hash.array(toArray(self))),
+  [Hash.symbol](this: Cons<unknown>): number {
+    return Hash.cached(this, Hash.array(toArray(this)))
+  },
   [Symbol.iterator](this: Cons<unknown>): Iterator<unknown> {
     let done = false
     // eslint-disable-next-line @typescript-eslint/no-this-alias

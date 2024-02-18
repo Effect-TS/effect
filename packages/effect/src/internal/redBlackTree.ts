@@ -33,13 +33,13 @@ const redBlackTreeVariance = {
 
 const RedBlackTreeProto: RBT.RedBlackTree<unknown, unknown> = {
   [RedBlackTreeTypeId]: redBlackTreeVariance,
-  [Hash.symbol]: Hash.cachedMethod((self: RBT.RedBlackTree<unknown, unknown>): number => {
+  [Hash.symbol](this: RBT.RedBlackTree<unknown, unknown>): number {
     let hash = Hash.hash(RedBlackTreeSymbolKey)
-    for (const item of self) {
+    for (const item of this) {
       hash ^= pipe(Hash.hash(item[0]), Hash.combine(Hash.hash(item[1])))
     }
-    return hash
-  }),
+    return Hash.cached(this, hash)
+  },
   [Equal.symbol]<K, V>(this: RedBlackTreeImpl<K, V>, that: unknown): boolean {
     if (isRedBlackTree(that)) {
       if ((this._root?.count ?? 0) !== ((that as RedBlackTreeImpl<K, V>)._root?.count ?? 0)) {

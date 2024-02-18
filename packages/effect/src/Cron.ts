@@ -44,15 +44,16 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
   [Equal.symbol](this: Cron, that: unknown) {
     return isCron(that) && equals(this, that)
   },
-  [Hash.symbol]: Hash.cachedMethod((self: Cron): number =>
-    pipe(
-      Hash.array(ReadonlyArray.fromIterable(self.minutes)),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(self.hours))),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(self.days))),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(self.months))),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(self.weekdays)))
+  [Hash.symbol](this: Cron): number {
+    return pipe(
+      Hash.array(ReadonlyArray.fromIterable(this.minutes)),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.hours))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.days))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.months))),
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.weekdays))),
+      Hash.cached(this)
     )
-  ),
+  },
   toString(this: Cron) {
     return format(this.toJSON())
   },
