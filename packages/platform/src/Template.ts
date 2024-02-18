@@ -120,7 +120,7 @@ export function stream<A extends ReadonlyArray<InterpolatedWithStream>>(
     buffer += strings[i]
     const arg = args[i]
     if (Option.isOption(arg)) {
-      chunks.push(arg._tag === "Some" ? primitiveToString(arg.value) : "")
+      buffer += arg._tag === "Some" ? primitiveToString(arg.value) : ""
     } else if (Predicate.hasProperty(arg, Stream.StreamTypeId)) {
       if (buffer.length > 0) {
         chunks.push(buffer)
