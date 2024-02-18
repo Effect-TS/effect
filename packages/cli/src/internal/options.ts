@@ -1408,15 +1408,17 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         max: getMaxSizeInternal(self)
       }).pipe(
         Effect.flatMap((n) =>
-          Ref.make(ReadonlyArray.empty<string>()).pipe(
-            Effect.flatMap((ref) =>
-              wizardInternal(self.argumentOption as Instruction, config).pipe(
-                Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
-                Effect.repeatN(n - 1),
-                Effect.zipRight(Ref.get(ref))
+          n <= 0
+            ? Effect.succeed(ReadonlyArray.empty<string>())
+            : Ref.make(ReadonlyArray.empty<string>()).pipe(
+              Effect.flatMap((ref) =>
+                wizardInternal(self.argumentOption as Instruction, config).pipe(
+                  Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
+                  Effect.repeatN(n - 1),
+                  Effect.zipRight(Ref.get(ref))
+                )
               )
             )
-          )
         )
       )
     }
