@@ -181,19 +181,20 @@ const handleBuiltInOption = <R, E, A>(
       return Console.log(InternalHelpDoc.toAnsiText(helpDoc))
     }
     case "ShowCompletions": {
+      const command = Array.from(InternalCommand.getNames(self.command))[0]!
       switch (builtIn.shellType) {
         case "bash": {
-          return InternalCommand.getBashCompletions(self.command, executable).pipe(
+          return InternalCommand.getBashCompletions(self.command, command).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
         }
         case "fish": {
-          return InternalCommand.getFishCompletions(self.command, executable).pipe(
+          return InternalCommand.getFishCompletions(self.command, command).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
         }
         case "zsh":
-          return InternalCommand.getZshCompletions(self.command, executable).pipe(
+          return InternalCommand.getZshCompletions(self.command, command).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
       }
