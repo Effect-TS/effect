@@ -927,16 +927,18 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
       }).pipe(
         Effect.zipLeft(Console.log()),
         Effect.flatMap((n) =>
-          Ref.make(ReadonlyArray.empty<string>()).pipe(
-            Effect.flatMap((ref) =>
-              wizardInternal(self.args as Instruction, config).pipe(
-                Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
-                Effect.repeatN(n - 1),
-                Effect.zipRight(Ref.get(ref)),
-                Effect.tap((args) => validateInternal(self, args, config))
+          n <= 0
+            ? Effect.succeed(ReadonlyArray.empty<string>())
+            : Ref.make(ReadonlyArray.empty<string>()).pipe(
+              Effect.flatMap((ref) =>
+                wizardInternal(self.args as Instruction, config).pipe(
+                  Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
+                  Effect.repeatN(n - 1),
+                  Effect.zipRight(Ref.get(ref)),
+                  Effect.tap((args) => validateInternal(self, args, config))
+                )
               )
             )
-          )
         )
       )
     }
