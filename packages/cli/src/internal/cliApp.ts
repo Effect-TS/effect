@@ -233,7 +233,8 @@ const handleBuiltInOption = <R, E, A>(
       )
       const help = InternalHelpDoc.sequence(header, description)
       const text = InternalHelpDoc.toAnsiText(help)
-      const wizardPrefix = getWizardPrefix(builtIn, executable, args)
+      const command = Array.from(InternalCommand.getNames(self.command))[0]!
+      const wizardPrefix = getWizardPrefix(builtIn, command, args)
       return Console.log(text).pipe(
         Effect.zipRight(InternalCommand.wizard(builtIn.command, wizardPrefix, config)),
         Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args)))),
