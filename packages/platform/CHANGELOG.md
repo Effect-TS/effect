@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.45.5
+
+### Patch Changes
+
+- [#2177](https://github.com/Effect-TS/effect/pull/2177) [`6daf084`](https://github.com/Effect-TS/effect/commit/6daf0845de008772011db8d7c75b7c37a6b4d334) Thanks [@tim-smart](https://github.com/tim-smart)! - support Arrays in platform Template module
+
 ## 0.45.4
 
 ### Patch Changes
