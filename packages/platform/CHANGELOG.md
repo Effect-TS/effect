@@ -1,5 +1,41 @@
 # @effect/platform
 
+## 0.45.4
+
+### Patch Changes
+
+- [#2174](https://github.com/Effect-TS/effect/pull/2174) [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea) Thanks [@tim-smart](https://github.com/tim-smart)! - add ServerResponse.html/htmlStream api
+
+  It uses the Template module to create html responses
+
+  Example:
+
+  ```ts
+  import { Effect } from "effect";
+  import * as Http from "@effect/platform/HttpServer";
+
+  Http.response.html`<html>${Effect.succeed(123)}</html>`;
+  ```
+
+- [#2174](https://github.com/Effect-TS/effect/pull/2174) [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea) Thanks [@tim-smart](https://github.com/tim-smart)! - add Template module to platform
+
+  The Template module can be used to create effectful text templates.
+
+  Example:
+
+  ```ts
+  import { Effect } from "effect";
+  import { Template } from "@effect/platform";
+
+  const t = Template.make`<html>${Effect.succeed(123)}</html>`;
+
+  Effect.runSync(t); // returns "<html>123</html>"
+  ```
+
+- Updated dependencies [[`bc8404d`](https://github.com/Effect-TS/effect/commit/bc8404d54fd42072d200c0399cb39672837afa9f), [`2c5cbcd`](https://github.com/Effect-TS/effect/commit/2c5cbcd1161b4f40dab184999291e817314107de), [`6565916`](https://github.com/Effect-TS/effect/commit/6565916ef254bf910e47d25fd0ef55e7cb420241)]:
+  - effect@2.3.7
+  - @effect/schema@0.62.8
+
 ## 0.45.3
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.44.5
+
+### Patch Changes
+
+- Updated dependencies [[`bc8404d`](https://github.com/Effect-TS/effect/commit/bc8404d54fd42072d200c0399cb39672837afa9f), [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea), [`2c5cbcd`](https://github.com/Effect-TS/effect/commit/2c5cbcd1161b4f40dab184999291e817314107de), [`6565916`](https://github.com/Effect-TS/effect/commit/6565916ef254bf910e47d25fd0ef55e7cb420241), [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea)]:
+  - effect@2.3.7
+  - @effect/platform@0.45.4
+  - @effect/platform-node-shared@0.1.12
+
 ## 0.44.4
 
 ### Patch Changes
