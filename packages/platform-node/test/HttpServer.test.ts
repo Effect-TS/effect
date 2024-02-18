@@ -5,7 +5,7 @@ import type { ServerResponse } from "@effect/platform/Http/ServerResponse"
 import * as HttpC from "@effect/platform/HttpClient"
 import * as Http from "@effect/platform/HttpServer"
 import * as Schema from "@effect/schema/Schema"
-import { Deferred, Fiber } from "effect"
+import { Deferred, Fiber, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -535,5 +535,29 @@ describe("HttpServer", () => {
           HttpC.response.text
         )
       ).toEqual("C")
+    }).pipe(Effect.scoped, runPromise))
+
+  it("html", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.get("/home", Http.response.html("<html />")),
+        Http.router.get(
+          "/about",
+          Http.response.html`<html>${Effect.succeed("<body />")}</html>`
+        ),
+        Http.router.get(
+          "/stream",
+          Http.response.htmlStream`<html>${Stream.make("<body />", 123, "hello")}</html>`
+        ),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const home = yield* _(HttpC.request.get("/home"), client, HttpC.response.text)
+      expect(home).toEqual("<html />")
+      const about = yield* _(HttpC.request.get("/about"), client, HttpC.response.text)
+      expect(about).toEqual("<html><body /></html>")
+      const stream = yield* _(HttpC.request.get("/stream"), client, HttpC.response.text)
+      expect(stream).toEqual("<html><body />123hello</html>")
     }).pipe(Effect.scoped, runPromise))
 })
