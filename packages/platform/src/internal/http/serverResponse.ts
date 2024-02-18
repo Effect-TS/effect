@@ -10,6 +10,7 @@ import * as Headers from "../../Http/Headers.js"
 import * as Platform from "../../Http/Platform.js"
 import type * as ServerResponse from "../../Http/ServerResponse.js"
 import * as UrlParams from "../../Http/UrlParams.js"
+import * as Template from "../../Template.js"
 import * as internalBody from "./body.js"
 
 /** @internal */
@@ -90,6 +91,31 @@ export const text = (body: string, options?: ServerResponse.Options.WithContentT
     options?.headers ?? Headers.empty,
     internalBody.text(body, getContentType(options))
   )
+
+/** @internal */
+export const html: {
+  <A extends ReadonlyArray<Template.Interpolated>>(
+    strings: TemplateStringsArray,
+    ...args: A
+  ): Effect.Effect<
+    ServerResponse.ServerResponse,
+    Template.Interpolated.Error<A[number]>,
+    Template.Interpolated.Context<A[number]>
+  >
+  (html: string): ServerResponse.ServerResponse
+} = (
+  strings: TemplateStringsArray | string,
+  ...args: ReadonlyArray<Template.Interpolated>
+) => {
+  if (typeof strings === "string") {
+    return text(strings, { contentType: "text/html" })
+  }
+
+  return Effect.map(
+    Template.make(strings, ...args),
+    (_) => text(_, { contentType: "text/html" })
+  ) as any
+}
 
 /** @internal */
 export const json = (

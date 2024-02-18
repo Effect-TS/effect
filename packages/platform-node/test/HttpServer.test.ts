@@ -536,4 +536,22 @@ describe("HttpServer", () => {
         )
       ).toEqual("C")
     }).pipe(Effect.scoped, runPromise))
+
+  it("html", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.get("/home", Http.response.html("<html />")),
+        Http.router.get(
+          "/about",
+          Http.response.html`<html>${Effect.succeed("<body />")}</html>`
+        ),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const home = yield* _(HttpC.request.get("/home"), client, HttpC.response.text)
+      expect(home).toEqual("<html />")
+      const about = yield* _(HttpC.request.get("/about"), client, HttpC.response.text)
+      expect(about).toEqual("<html><body /></html>")
+    }).pipe(Effect.scoped, runPromise))
 })

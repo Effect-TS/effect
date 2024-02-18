@@ -7,6 +7,7 @@ import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../Error.js"
 import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/serverResponse.js"
+import type * as Template from "../Template.js"
 import type * as Body from "./Body.js"
 import type * as Headers from "./Headers.js"
 import type * as Platform from "./Platform.js"
@@ -87,6 +88,18 @@ export const uint8Array: (body: Uint8Array, options?: Options.WithContentType) =
  * @category constructors
  */
 export const text: (body: string, options?: Options.WithContentType) => ServerResponse = internal.text
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const html: {
+  <A extends ReadonlyArray<Template.Interpolated>>(
+    strings: TemplateStringsArray,
+    ...args: A
+  ): Effect.Effect<ServerResponse, Template.Interpolated.Error<A[number]>, Template.Interpolated.Context<A[number]>>
+  (html: string): ServerResponse
+} = internal.html
 
 /**
  * @since 1.0.0
