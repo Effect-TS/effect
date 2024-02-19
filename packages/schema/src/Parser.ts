@@ -1158,7 +1158,13 @@ const handleForbidden = <R, A>(
   try {
     return Effect.runSync(Effect.either(effect as Effect.Effect<A, ParseResult.ParseIssue>))
   } catch (e) {
-    return Either.left(InternalParser.forbidden(ast, actual, e instanceof Error ? e.message : undefined))
+    return Either.left(
+      InternalParser.forbidden(
+        ast,
+        actual,
+        "cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work"
+      )
+    )
   }
 }
 

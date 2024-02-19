@@ -129,7 +129,7 @@ describe("ArrayFormatter", () => {
         _tag: "Forbidden",
         path: [],
         message:
-          `Fiber #7 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+          `cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       }])
     })
 
