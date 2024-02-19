@@ -99,14 +99,35 @@ const formatRefinementKind = (kind: ParseResult.Refinement["kind"]): string => {
   }
 }
 
-/** @internal */
-export const getMessage: (
+const getPrevMessage = (
+  issue: ParseResult.ParseIssue
+): Effect.Effect<string, Cause.NoSuchElementException> => {
+  switch (issue._tag) {
+    case "Refinement": {
+      if (issue.kind === "From") {
+        return getMessage(issue.error)
+      }
+      break
+    }
+    case "Transform":
+      return getMessage(issue.error)
+  }
+  return Option.none()
+}
+
+export const getCurrentMessage: (
   issue: ParseResult.ParseIssue
 ) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) =>
   AST.getMessageAnnotation(issue.ast).pipe(Effect.flatMap((annotation) => {
     const out = annotation(issue)
     return Predicate.isString(out) ? Effect.succeed(out) : out
   }))
+
+/** @internal */
+export const getMessage: (
+  issue: ParseResult.ParseIssue
+) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) =>
+  Effect.catchAll(getPrevMessage(issue), () => getCurrentMessage(issue))
 
 /** @internal */
 export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
@@ -118,38 +139,6 @@ export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
 /** @internal */
 export const formatForbiddenMessage = (e: ParseResult.Forbidden): string =>
   Option.getOrElse(e.message, () => "is forbidden")
-
-const getParseIssueMessage = (
-  issue: ParseResult.ParseIssue,
-  orElse: () => Effect.Effect<string, Cause.NoSuchElementException>
-): Effect.Effect<string, Cause.NoSuchElementException> => {
-  switch (issue._tag) {
-    case "Refinement":
-      return Effect.catchAll(getRefinementMessage(issue), orElse)
-    case "Transform":
-      return Effect.catchAll(getTransformMessage(issue), orElse)
-    case "Tuple":
-    case "TypeLiteral":
-    case "Union":
-    case "Type":
-      return Effect.catchAll(getMessage(issue), orElse)
-  }
-  return orElse()
-}
-
-/** @internal */
-export const getRefinementMessage = (
-  e: ParseResult.Refinement
-): Effect.Effect<string, Cause.NoSuchElementException> => {
-  if (e.kind === "From") {
-    return getParseIssueMessage(e.error, () => getMessage(e))
-  }
-  return getMessage(e)
-}
-
-/** @internal */
-export const getTransformMessage = (e: ParseResult.Transform): Effect.Effect<string, Cause.NoSuchElementException> =>
-  getParseIssueMessage(e.error, () => getMessage(e))
 
 const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected): Effect.Effect<Tree<string>> => {
   switch (e._tag) {
@@ -201,13 +190,13 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         onSuccess: (message) => Effect.succeed(make(message))
       })
     case "Transform":
-      return Effect.matchEffect(getTransformMessage(e), {
+      return Effect.matchEffect(getMessage(e), {
         onFailure: () =>
           Effect.map(go(e.error), (tree) => make(AST.format(e.ast), [make(formatTransformationKind(e.kind), [tree])])),
         onSuccess: (message) => Effect.succeed(make(message))
       })
     case "Refinement":
-      return Effect.matchEffect(getRefinementMessage(e), {
+      return Effect.matchEffect(getMessage(e), {
         onFailure: () =>
           Effect.map(go(e.error), (tree) => make(AST.format(e.ast), [make(formatRefinementKind(e.kind), [tree])])),
         onSuccess: (message) => Effect.succeed(make(message))
