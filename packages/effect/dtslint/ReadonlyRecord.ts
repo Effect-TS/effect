@@ -30,6 +30,9 @@ hole<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<string>>()
 hole<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<symbol>>()
 
 // $ExpectType string
+hole<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<"">>()
+
+// $ExpectType string
 hole<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<"a">>()
 
 // $ExpectType string
