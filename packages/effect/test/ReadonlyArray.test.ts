@@ -10,6 +10,10 @@ import * as String from "effect/String"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
+const symA = Symbol.for("a")
+const symB = Symbol.for("b")
+const symC = Symbol.for("c")
+
 describe("ReadonlyArray", () => {
   it("exports", () => {
     expect(RA.fromRecord).exist
@@ -971,6 +975,15 @@ describe("ReadonlyArray", () => {
         "6": ["foobar"]
       }
     )
+    expect(RA.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC)).toStrictEqual({
+      [symA]: ["a"],
+      [symB]: ["b"]
+    })
+    expect(RA.groupBy(["a", "b", "c", "d"], (s) => s === "a" ? symA : s === "b" ? symB : symC)).toStrictEqual({
+      [symA]: ["a"],
+      [symB]: ["b"],
+      [symC]: ["c", "d"]
+    })
   })
 
   it("match", () => {
