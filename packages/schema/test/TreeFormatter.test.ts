@@ -608,49 +608,58 @@ describe("TreeFormatter", () => {
     })
   })
 
-  it("formatErrorEffect", () => {
+  it("message as Effect", () => {
     const translations = {
       it: "Nome non valido",
       en: "Invalid name"
     }
-    class Translations extends Context.Tag("Translations")<Translations, typeof translations>() {}
-    class CurrentLocale extends Context.Tag("CurrentLocale")<CurrentLocale, keyof typeof translations>() {}
+    class Translator extends Context.Tag("Translator")<Translator, {
+      locale: keyof typeof translations
+      translations: typeof translations
+    }>() {}
     const Name = S.NonEmpty.pipe(
       S.message(() =>
         Effect.gen(function*(_) {
-          const locale = yield* _(Effect.serviceOption(CurrentLocale))
-          const translations = yield* _(Effect.serviceOption(Translations))
-          return Option.all([locale, translations]).pipe(
-            Option.map(([locale, translations]) => translations[locale]),
-            Option.getOrElse(() => "Invalid string")
-          )
+          const service = yield* _(Effect.serviceOption(Translator))
+          return Option.match(service, {
+            onNone: () => "Invalid string",
+            onSome: (translator) => translator.translations[translator.locale]
+          })
         })
       )
     )
 
     const result = S.decodeUnknownEither(Name)("")
 
+    // no service
     expect(Either.mapLeft(result, (error) => Effect.runSync(_.formatErrorEffect(error))))
       .toStrictEqual(Either.left("Invalid string"))
 
-    const resultWithTranslations = Either.mapLeft(
-      result,
-      (error) => _.formatErrorEffect(error).pipe(Effect.provideService(Translations, translations))
-    )
-
-    expect(Either.mapLeft(resultWithTranslations, Effect.runSync)).toStrictEqual(Either.left("Invalid string"))
-
+    // it locale
     expect(
       Either.mapLeft(
-        resultWithTranslations,
-        (eff) => Effect.runSync(eff.pipe(Effect.provideService(CurrentLocale, "it")))
+        result,
+        (error) =>
+          Effect.runSync(
+            _.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
+              locale: "it",
+              translations
+            }))
+          )
       )
     ).toStrictEqual(Either.left("Nome non valido"))
 
+    // en locale
     expect(
       Either.mapLeft(
-        resultWithTranslations,
-        (eff) => Effect.runSync(eff.pipe(Effect.provideService(CurrentLocale, "en")))
+        result,
+        (error) =>
+          Effect.runSync(
+            _.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
+              locale: "en",
+              translations
+            }))
+          )
       )
     ).toStrictEqual(Either.left("Invalid name"))
   })

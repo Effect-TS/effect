@@ -115,7 +115,7 @@ const getPrevMessage = (
   return Option.none()
 }
 
-export const getCurrentMessage: (
+const getCurrentMessage: (
   issue: ParseResult.ParseIssue
 ) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) =>
   AST.getMessageAnnotation(issue.ast).pipe(Effect.flatMap((annotation) => {
