@@ -19,6 +19,10 @@ declare const pimitiveNumber: number
 declare const pimitiveNumerOrString: string | number
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
+const symA = Symbol.for("a")
+const symB = Symbol.for("b")
+const symC = Symbol.for("c")
+
 // -------------------------------------------------------------------------------------
 // isEmptyReadonlyArray
 // -------------------------------------------------------------------------------------
@@ -99,13 +103,17 @@ pipe(nonEmptyNumbers, ReadonlyArray.map((n) => n + 1))
 // groupBy
 // -------------------------------------------------------------------------------------
 
-// baseline
 // $ExpectType Record<string, [number, ...number[]]>
 ReadonlyArray.groupBy([1, 2, 3], String)
 
-// should not return a struct (Record<'positive' | 'negative', ...>) when using string type literals
 // $ExpectType Record<string, [number, ...number[]]>
 ReadonlyArray.groupBy([1, 2, 3], (n) => n > 0 ? "positive" as const : "negative" as const)
+
+// $ExpectType Record<symbol, [string, ...string[]]>
+ReadonlyArray.groupBy(["a", "b"], Symbol.for)
+
+// $ExpectType Record<symbol, [string, ...string[]]>
+ReadonlyArray.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC)
 
 // -------------------------------------------------------------------------------------
 // some
