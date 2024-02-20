@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -78,7 +79,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
     case "VoidKeyword":
     case "Enums":
     case "ObjectKeyword":
-      return Equivalence.strict()
+      return Equal.equals
     case "Refinement":
       return go(ast.from)
     case "Suspend": {
@@ -127,7 +128,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
     }
     case "TypeLiteral": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return Equivalence.strict()
+        return Equal.equals
       }
       const propertySignatures = ast.propertySignatures.map((ps) => go(ps.type))
       const indexSignatures = ast.indexSignatures.map((is) => go(is.type))

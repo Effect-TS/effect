@@ -3520,7 +3520,7 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
     identifier: "Uint8ArrayFromSelf",
     pretty: (): Pretty.Pretty<Uint8Array> => (u8arr) => `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
     arbitrary: (): Arbitrary<Uint8Array> => (fc) => fc.uint8Array(),
-    equivalence: (): Equivalence.Equivalence<Uint8Array> => ReadonlyArray.getEquivalence(Equivalence.strict()) as any
+    equivalence: (): Equivalence.Equivalence<Uint8Array> => ReadonlyArray.getEquivalence(Equal.equals) as any
   }
 )
 
@@ -4644,8 +4644,7 @@ export const dataFromSelf = <
     {
       description: `Data<${format(item)}>`,
       pretty: dataPretty,
-      arbitrary: dataArbitrary,
-      equivalence: () => Equal.equals
+      arbitrary: dataArbitrary
     }
   )
 }
@@ -5076,8 +5075,7 @@ export const FiberIdFromSelf: Schema<FiberId.FiberId> = declare(
   {
     identifier: "FiberIdFromSelf",
     pretty: () => fiberIdPretty,
-    arbitrary: () => fiberIdArbitrary,
-    equivalence: () => Equal.equals
+    arbitrary: () => fiberIdArbitrary
   }
 )
 
@@ -5255,8 +5253,7 @@ export const causeFromSelf = <A, I, R1, R2 = never>({ defect = unknown, error }:
     {
       description: `Cause<${format(error)}>`,
       pretty: causePretty,
-      arbitrary: causeArbitrary,
-      equivalence: () => Equal.equals
+      arbitrary: causeArbitrary
     }
   )
 }
@@ -5432,8 +5429,7 @@ export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>({ defect = unknow
     {
       description: `Exit<${format(failure)}, ${format(success)}>`,
       pretty: exitPretty,
-      arbitrary: exitArbitrary,
-      equivalence: () => Equal.equals
+      arbitrary: exitArbitrary
     }
   )
 
