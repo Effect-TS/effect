@@ -11,8 +11,13 @@ import * as Inspectable from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as AST from "./AST.js"
-import * as InternalParser from "./internal/parser.js"
+import type * as _parseResult from "./internal/parseResult.js"
 import * as TreeFormatter from "./TreeFormatter.js"
+
+type Missing = _parseResult.Missing
+type Forbidden = _parseResult.Forbidden
+type Unexpected = _parseResult.Unexpected
+type Transform = _parseResult.Transform
 
 /**
  * @since 1.0.0
@@ -92,26 +97,6 @@ export type ParseIssue =
   | Forbidden
 
 /**
- * Error that occurs when a transformation has an error.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Transform {
-  readonly _tag: "Transform"
-  readonly ast: AST.Transform
-  readonly actual: unknown
-  readonly kind: "From" | "Transformation" | "To"
-  readonly error: ParseIssue
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const transform = InternalParser.transform
-
-/**
  * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
  * The `ast` field specifies the expected type, and the `actual` field contains the value that caused the error.
  *
@@ -125,30 +110,116 @@ export interface Type {
   readonly message: Option.Option<string>
 }
 
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const type = InternalParser.type
-
-/**
- * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Forbidden {
-  readonly _tag: "Forbidden"
-  readonly ast: AST.AST
-  readonly actual: unknown
-  readonly message: Option.Option<string>
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const forbidden = InternalParser.forbidden
+export {
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  declaration,
+  /**
+   * @category optimisation
+   * @since 1.0.0
+   */
+  eitherOrUndefined,
+  /**
+   * @category optimisation
+   * @since 1.0.0
+   */
+  flatMap,
+  /**
+   * The `Forbidden` variant of the `ParseIssue` type represents an error that occurs when an Effect is encounter but disallowed from execution.
+   *
+   * @category model
+   * @since 1.0.0
+   */
+  Forbidden,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  forbidden,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  index,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  key,
+  /**
+   * @category optimisation
+   * @since 1.0.0
+   */
+  map,
+  /**
+   * @category optimisation
+   * @since 1.0.0
+   */
+  mapError,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  member,
+  /**
+   * Error that occurs when a required key or index is missing.
+   *
+   * @category model
+   * @since 1.0.0
+   */
+  Missing,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  missing,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  refinement,
+  /**
+   * Error that occurs when a transformation has an error.
+   *
+   * @category model
+   * @since 1.0.0
+   */
+  Transform,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  transform,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  type,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  typeLiteral,
+  /**
+   * Error that occurs when an unexpected key or index is present.
+   *
+   * @category model
+   * @since 1.0.0
+   */
+  Unexpected,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  unexpected,
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  union
+} from "./internal/parseResult.js"
 
 /**
  * Error that occurs when a declaration has an error.
@@ -164,12 +235,6 @@ export interface Declaration {
 }
 
 /**
- * @category constructors
- * @since 1.0.0
- */
-export const declaration = InternalParser.declaration
-
-/**
  * Error that occurs when a refinement has an error.
  *
  * @category model
@@ -182,12 +247,6 @@ export interface Refinement {
   readonly kind: "From" | "Predicate"
   readonly error: ParseIssue
 }
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const refinement = InternalParser.refinement
 
 /**
  * Error that occurs when an array or tuple has an error.
@@ -226,12 +285,6 @@ export interface TypeLiteral {
 }
 
 /**
- * @category constructors
- * @since 1.0.0
- */
-export const typeLiteral = InternalParser.typeLiteral
-
-/**
  * The `Index` error indicates that there was an error at a specific index in an array or tuple.
  *
  * @category model
@@ -244,12 +297,6 @@ export interface Index {
 }
 
 /**
- * @category constructors
- * @since 1.0.0
- */
-export const index = InternalParser.index
-
-/**
  * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in a type literal or record is invalid.
  *
  * @category model
@@ -260,45 +307,6 @@ export interface Key {
   readonly key: PropertyKey
   readonly error: ParseIssue | Missing | Unexpected
 }
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const key = InternalParser.key
-
-/**
- * Error that occurs when a required key or index is missing.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Missing {
-  readonly _tag: "Missing"
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const missing: Missing = InternalParser.missing
-
-/**
- * Error that occurs when an unexpected key or index is present.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Unexpected {
-  readonly _tag: "Unexpected"
-  readonly ast: AST.AST
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const unexpected = InternalParser.unexpected
 
 /**
  * Error that occurs when a union has an error.
@@ -314,12 +322,6 @@ export interface Union {
 }
 
 /**
- * @category constructors
- * @since 1.0.0
- */
-export const union = InternalParser.union
-
-/**
  * Error that occurs when a member in a union has an error.
  *
  * @category model
@@ -330,36 +332,6 @@ export interface Member {
   readonly ast: AST.AST
   readonly error: ParseIssue
 }
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const member = InternalParser.member
-
-/**
- * @category optimisation
- * @since 1.0.0
- */
-export const eitherOrUndefined = InternalParser.eitherOrUndefined
-
-/**
- * @category optimisation
- * @since 1.0.0
- */
-export const flatMap = InternalParser.flatMap
-
-/**
- * @category optimisation
- * @since 1.0.0
- */
-export const map = InternalParser.map
-
-/**
- * @category optimisation
- * @since 1.0.0
- */
-export const mapError = InternalParser.mapError
 
 /**
  * @category optimisation

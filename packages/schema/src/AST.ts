@@ -11,7 +11,7 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Internal from "./internal/ast.js"
+import * as _util from "./internal/util.js"
 import type { ParseIssue } from "./ParseResult.js"
 
 // -------------------------------------------------------------------------------------
@@ -927,7 +927,7 @@ export const createSuspend = (
   annotations: Annotations = {}
 ): Suspend => ({
   _tag: "Suspend",
-  f: Internal.memoizeThunk(f),
+  f: _util.memoizeThunk(f),
   annotations
 })
 
@@ -979,6 +979,11 @@ export interface ParseOptions {
   /** default "ignore" */
   readonly onExcessProperty?: "ignore" | "error" | "preserve" | undefined
 }
+
+/**
+ * @since 1.0.0
+ */
+export const defaultParseOption: ParseOptions = {}
 
 /**
  * @category model
@@ -1702,7 +1707,7 @@ export const toString = (ast: AST): string =>
         }
       } else if (key === "annotations") {
         const out: Record<string, unknown> = {}
-        for (const k of Internal.ownKeys(value)) {
+        for (const k of _util.ownKeys(value)) {
           out[String(k)] = value[k]
         }
         return out
@@ -1940,7 +1945,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
   switch (ast._tag) {
     case "TypeLiteral": {
       const propertySignatureTransforms: Array<PropertySignatureTransform> = []
-      for (const key of Internal.ownKeys(mapping)) {
+      for (const key of _util.ownKeys(mapping)) {
         const name = mapping[key]
         if (name !== undefined) {
           propertySignatureTransforms.push(createPropertySignatureTransform(

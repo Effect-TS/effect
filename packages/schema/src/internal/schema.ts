@@ -1,7 +1,3 @@
-/**
- * @since 1.0.0
- */
-
 import { pipeArguments } from "effect/Pipeable"
 import type * as AST from "../AST.js"
 import type * as Schema from "../Schema.js"

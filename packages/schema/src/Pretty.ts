@@ -4,9 +4,9 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as Internal from "./internal/ast.js"
-import * as hooks from "./internal/hooks.js"
-import * as InternalSchema from "./internal/schema.js"
+import * as _hooks from "./internal/hooks.js"
+import * as _schema from "./internal/schema.js"
+import * as _util from "./internal/util.js"
 import * as Parser from "./Parser.js"
 import type * as Schema from "./Schema.js"
 
@@ -22,7 +22,7 @@ export interface Pretty<To> {
  * @category hooks
  * @since 1.0.0
  */
-export const PrettyHookId: unique symbol = hooks.PrettyHookId
+export const PrettyHookId: unique symbol = _hooks.PrettyHookId
 
 /**
  * @category hooks
@@ -37,7 +37,7 @@ export type PrettyHookId = typeof PrettyHookId
 export const pretty =
   <A>(handler: (...args: ReadonlyArray<Pretty<any>>) => Pretty<A>) =>
   <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
-    InternalSchema.make(AST.setAnnotation(self.ast, PrettyHookId, handler))
+    _schema.make(AST.setAnnotation(self.ast, PrettyHookId, handler))
 
 /**
  * @category prettify
@@ -167,7 +167,7 @@ export const match: AST.Match<Pretty<any>> = {
       if (indexSignatureTypes.length > 0) {
         for (let i = 0; i < indexSignatureTypes.length; i++) {
           const type = indexSignatureTypes[i]
-          const keys = Internal.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
+          const keys = _util.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
           for (const key of keys) {
             if (Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
               continue
@@ -185,7 +185,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value()
     }
-    const types = ast.types.map((ast) => [Parser.is(InternalSchema.make(ast)), go(ast)] as const)
+    const types = ast.types.map((ast) => [Parser.is(_schema.make(ast)), go(ast)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
       return types[index][1](a)
@@ -194,7 +194,7 @@ export const match: AST.Match<Pretty<any>> = {
   "Suspend": (ast, go) => {
     return Option.match(getHook(ast), {
       onNone: () => {
-        const get = Internal.memoizeThunk(() => go(ast.f()))
+        const get = _util.memoizeThunk(() => go(ast.f()))
         return (a) => get()(a)
       },
       onSome: (handler) => handler()

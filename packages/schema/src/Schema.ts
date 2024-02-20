@@ -37,12 +37,11 @@ import * as ArrayFormatter from "./ArrayFormatter.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
 import * as _equivalence from "./Equivalence.js"
-import * as Internal from "./internal/ast.js"
-import * as InternalBigInt from "./internal/bigint.js"
-import * as filters from "./internal/filters.js"
-import * as hooks from "./internal/hooks.js"
-import * as InternalSchema from "./internal/schema.js"
-import * as InternalSerializable from "./internal/serializable.js"
+import * as _filters from "./internal/filters.js"
+import * as _hooks from "./internal/hooks.js"
+import * as _schema from "./internal/schema.js"
+import * as _serializable from "./internal/serializable.js"
+import * as _util from "./internal/util.js"
 import * as Parser from "./Parser.js"
 import * as ParseResult from "./ParseResult.js"
 import * as Pretty from "./Pretty.js"
@@ -52,7 +51,7 @@ import type * as Serializable from "./Serializable.js"
  * @since 1.0.0
  * @category symbol
  */
-export const TypeId: unique symbol = InternalSchema.TypeId
+export const TypeId: unique symbol = _schema.TypeId
 
 /**
  * @since 1.0.0
@@ -375,7 +374,7 @@ export const isSchema = (u: unknown): u is Schema<unknown, unknown, unknown> =>
  * @category constructors
  * @since 1.0.0
  */
-export const make: <A, I, R>(ast: AST.AST) => Schema<A, I, R> = InternalSchema.make
+export const make: <A, I, R>(ast: AST.AST) => Schema<A, I, R> = _schema.make
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   make(AST.createLiteral(value))
@@ -844,7 +843,7 @@ type PropertySignatureAST =
 
 /** @internal */
 export class PropertySignatureImpl<R, From, FromIsOptional, To, ToIsOptional> {
-  readonly [TypeId]: Schema.Variance<To, From, R>[TypeId] = InternalSchema.variance
+  readonly [TypeId]: Schema.Variance<To, From, R>[TypeId] = _schema.variance
   readonly FromIsOptional!: FromIsOptional
   readonly ToIsOptional!: ToIsOptional
 
@@ -1142,7 +1141,7 @@ export type ToStruct<Fields extends StructFields> =
 export const struct = <Fields extends StructFields>(
   fields: Fields
 ): Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, Schema.Context<Fields[keyof Fields]>> => {
-  const ownKeys = Internal.ownKeys(fields)
+  const ownKeys = _util.ownKeys(fields)
   const pss: Array<AST.PropertySignature> = []
   const pssFrom: Array<AST.PropertySignature> = []
   const pssTo: Array<AST.PropertySignature> = []
@@ -1377,7 +1376,7 @@ export const brand =
     const is = Parser.is(schema)
     const out: any = Object.assign((input: unknown) => validateSync(input), {
       [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
-      [TypeId]: InternalSchema.variance,
+      [TypeId]: _schema.variance,
       ast,
       option: (input: unknown) => validateOption(input),
       either: (input: unknown) =>
@@ -1868,9 +1867,9 @@ const toAnnotations = (
   move("default", AST.DefaultAnnotationId)
   move("documentation", AST.DocumentationAnnotationId)
   move("jsonSchema", AST.JSONSchemaAnnotationId)
-  move("arbitrary", hooks.ArbitraryHookId)
-  move("pretty", hooks.PrettyHookId)
-  move("equivalence", hooks.EquivalenceHookId)
+  move("arbitrary", _hooks.ArbitraryHookId)
+  move("pretty", _hooks.PrettyHookId)
+  move("equivalence", _hooks.EquivalenceHookId)
 
   return out
 }
@@ -1978,7 +1977,7 @@ export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <A, I, R>(se
  */
 export const equivalence =
   <A>(equivalence: Equivalence.Equivalence<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-    make(AST.setAnnotation(self.ast, hooks.EquivalenceHookId, () => equivalence))
+    make(AST.setAnnotation(self.ast, _hooks.EquivalenceHookId, () => equivalence))
 
 type Rename<A, M> = {
   [
@@ -2058,7 +2057,7 @@ export const trimmed =
  * @category type id
  * @since 1.0.0
  */
-export const MaxLengthTypeId: unique symbol = filters.MaxLengthTypeId
+export const MaxLengthTypeId: unique symbol = _filters.MaxLengthTypeId
 
 /**
  * @category type id
@@ -2091,7 +2090,7 @@ export const maxLength = <A extends string>(
  * @category type id
  * @since 1.0.0
  */
-export const MinLengthTypeId: unique symbol = filters.MinLengthTypeId
+export const MinLengthTypeId: unique symbol = _filters.MinLengthTypeId
 
 /**
  * @category type id
@@ -2299,7 +2298,7 @@ export const Uppercased: Schema<string> = string.pipe(
  * @category type id
  * @since 1.0.0
  */
-export const LengthTypeId: unique symbol = filters.LengthTypeId
+export const LengthTypeId: unique symbol = _filters.LengthTypeId
 
 /**
  * @category type id
@@ -2551,7 +2550,7 @@ export const finite =
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanTypeId: unique symbol = filters.GreaterThanTypeId
+export const GreaterThanTypeId: unique symbol = _filters.GreaterThanTypeId
 
 /**
  * @category type id
@@ -2583,7 +2582,7 @@ export const greaterThan = <A extends number>(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanOrEqualToTypeId: unique symbol = filters.GreaterThanOrEqualToTypeId
+export const GreaterThanOrEqualToTypeId: unique symbol = _filters.GreaterThanOrEqualToTypeId
 
 /**
  * @category type id
@@ -2639,7 +2638,7 @@ export const multipleOf = <A extends number>(
  * @category type id
  * @since 1.0.0
  */
-export const IntTypeId: unique symbol = filters.IntTypeId
+export const IntTypeId: unique symbol = _filters.IntTypeId
 
 /**
  * @category type id
@@ -2667,7 +2666,7 @@ export const int =
  * @category type id
  * @since 1.0.0
  */
-export const LessThanTypeId: unique symbol = filters.LessThanTypeId
+export const LessThanTypeId: unique symbol = _filters.LessThanTypeId
 
 /**
  * @category type id
@@ -2696,7 +2695,7 @@ export const lessThan =
  * @category type id
  * @since 1.0.0
  */
-export const LessThanOrEqualToTypeId: unique symbol = filters.LessThanOrEqualToTypeId
+export const LessThanOrEqualToTypeId: unique symbol = _filters.LessThanOrEqualToTypeId
 
 /**
  * @category type id
@@ -2728,7 +2727,7 @@ export const lessThanOrEqualTo = <A extends number>(
  * @category type id
  * @since 1.0.0
  */
-export const BetweenTypeId: unique symbol = filters.BetweenTypeId
+export const BetweenTypeId: unique symbol = _filters.BetweenTypeId
 
 /**
  * @category type id
@@ -2972,7 +2971,7 @@ export const symbol: Schema<symbol, string> = transform(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanBigintTypeId: unique symbol = filters.GreaterThanBigintTypeId
+export const GreaterThanBigintTypeId: unique symbol = _filters.GreaterThanBigintTypeId
 
 /**
  * @category type id
@@ -3001,7 +3000,7 @@ export const greaterThanBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanOrEqualToBigintTypeId: unique symbol = filters.GreaterThanOrEqualToBigintTypeId
+export const GreaterThanOrEqualToBigintTypeId: unique symbol = _filters.GreaterThanOrEqualToBigintTypeId
 
 /**
  * @category type id
@@ -3032,7 +3031,7 @@ export const greaterThanOrEqualToBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const LessThanBigintTypeId: unique symbol = filters.LessThanBigintTypeId
+export const LessThanBigintTypeId: unique symbol = _filters.LessThanBigintTypeId
 
 /**
  * @category type id
@@ -3061,7 +3060,7 @@ export const lessThanBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const LessThanOrEqualToBigintTypeId: unique symbol = filters.LessThanOrEqualToBigintTypeId
+export const LessThanOrEqualToBigintTypeId: unique symbol = _filters.LessThanOrEqualToBigintTypeId
 
 /**
  * @category type id
@@ -3090,7 +3089,7 @@ export const lessThanOrEqualToBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const BetweenBigintTypeId: unique symbol = filters.BetweenBigintTypeId
+export const BetweenBigintTypeId: unique symbol = _filters.BetweenBigintTypeId
 
 /**
  * @category type id
@@ -3252,6 +3251,10 @@ export const NonNegativeBigint: Schema<bigint, string> = bigint.pipe(
   nonNegativeBigint({ identifier: "NonNegativeBigint", title: "NonNegativeBigint" })
 )
 
+const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
+
+const minSafeInteger = BigInt(Number.MIN_SAFE_INTEGER)
+
 /**
  * This schema transforms a `number` into a `bigint` by parsing the number using the `BigInt` function.
  *
@@ -3269,7 +3272,7 @@ export const BigintFromNumber: Schema<bigint, number> = transformOrFail(
       catch: () => ParseResult.type(ast, n)
     }),
   (b, _, ast) => {
-    if (b > InternalBigInt.maxSafeInteger || b < InternalBigInt.minSafeInteger) {
+    if (b > maxSafeInteger || b < minSafeInteger) {
       return ParseResult.fail(ParseResult.type(ast, b))
     }
     return ParseResult.succeed(Number(b))
@@ -3620,7 +3623,7 @@ export const Hex: Schema<Uint8Array, string> = makeEncodingTransformation(
  * @category type id
  * @since 1.0.0
  */
-export const MinItemsTypeId: unique symbol = filters.MinItemsTypeId
+export const MinItemsTypeId: unique symbol = _filters.MinItemsTypeId
 
 /**
  * @category type id
@@ -3650,7 +3653,7 @@ export const minItems = <A>(
  * @category type id
  * @since 1.0.0
  */
-export const MaxItemsTypeId: unique symbol = filters.MaxItemsTypeId
+export const MaxItemsTypeId: unique symbol = _filters.MaxItemsTypeId
 
 /**
  * @category type id
@@ -3680,7 +3683,7 @@ export const maxItems = <A>(
  * @category type id
  * @since 1.0.0
  */
-export const ItemsCountTypeId: unique symbol = filters.ItemsCountTypeId
+export const ItemsCountTypeId: unique symbol = _filters.ItemsCountTypeId
 
 /**
  * @category type id
@@ -4894,10 +4897,10 @@ export const TaggedRequest = <Self>() =>
   > =>
 {
   class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
-    get [InternalSerializable.symbol]() {
+    get [_serializable.symbol]() {
       return this.constructor
     }
-    get [InternalSerializable.symbolResult]() {
+    get [_serializable.symbolResult]() {
       return { Failure, Success }
     }
   }
@@ -4929,7 +4932,7 @@ const makeClass = <A, I, R>(
       super(props, true)
     }
 
-    static [TypeId] = InternalSchema.variance
+    static [TypeId] = _schema.variance
 
     toString() {
       return Pretty.make(this.constructor as any)(this)
@@ -5660,5 +5663,5 @@ export const list = <A, I, R>(item: Schema<A, I, R>): Schema<List.List<A>, Reado
 
 const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
   suspend<A, A, never>(() => any).pipe(annotations({
-    [hooks.ArbitraryHookId]: () => value
+    [_hooks.ArbitraryHookId]: () => value
   }))

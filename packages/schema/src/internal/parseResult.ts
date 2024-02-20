@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual } from "effect/Function"
@@ -114,9 +111,26 @@ export const key = (
 ): ParseResult.Key => ({ _tag: "Key", key, error })
 
 /** @internal */
+export class Unexpected {
+  readonly _tag = "Unexpected"
+  constructor(readonly ast: AST.AST) {}
+}
+
+/** @internal */
 export const unexpected = (
   ast: AST.AST
-): ParseResult.Unexpected => ({ _tag: "Unexpected", ast })
+): ParseResult.Unexpected => new Unexpected(ast)
+
+/** @internal */
+export class Transform {
+  readonly _tag = "Transform"
+  constructor(
+    readonly ast: AST.Transform,
+    readonly actual: unknown,
+    readonly kind: "From" | "Transformation" | "To",
+    readonly error: ParseResult.ParseIssue
+  ) {}
+}
 
 /** @internal */
 export const transform = (
@@ -124,7 +138,7 @@ export const transform = (
   actual: unknown,
   kind: "From" | "Transformation" | "To",
   error: ParseResult.ParseIssue
-): ParseResult.Transform => ({ _tag: "Transform", ast, actual, kind, error })
+): ParseResult.Transform => new Transform(ast, actual, kind, error)
 
 /** @internal */
 export const type = (ast: AST.AST, actual: unknown, message?: string): ParseResult.Type => ({
@@ -135,15 +149,22 @@ export const type = (ast: AST.AST, actual: unknown, message?: string): ParseResu
 })
 
 /** @internal */
-export const forbidden = (ast: AST.AST, actual: unknown, message?: string): ParseResult.Forbidden => ({
-  _tag: "Forbidden",
-  ast,
-  actual,
-  message: Option.fromNullable(message)
-})
+export class Forbidden {
+  readonly _tag = "Forbidden"
+  constructor(readonly ast: AST.AST, readonly actual: unknown, readonly message: Option.Option<string>) {}
+}
 
 /** @internal */
-export const missing: ParseResult.Missing = { _tag: "Missing" }
+export const forbidden = (ast: AST.AST, actual: unknown, message?: string): Forbidden =>
+  new Forbidden(ast, actual, Option.fromNullable(message))
+
+/** @internal */
+export class Missing {
+  readonly _tag = "Missing"
+}
+
+/** @internal */
+export const missing: Missing = new Missing()
 
 /** @internal */
 export const member = (

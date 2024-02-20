@@ -7,11 +7,10 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as FastCheck from "fast-check"
 import * as AST from "./AST.js"
-import * as Internal from "./internal/ast.js"
-import * as filters from "./internal/filters.js"
-import * as hooks from "./internal/hooks.js"
-import * as InternalSchema from "./internal/schema.js"
-import * as Parser from "./Parser.js"
+import * as _filters from "./internal/filters.js"
+import * as _hooks from "./internal/hooks.js"
+import * as _schema from "./internal/schema.js"
+import * as _util from "./internal/util.js"
 import type * as Schema from "./Schema.js"
 
 /**
@@ -26,7 +25,7 @@ export interface Arbitrary<A> {
  * @category hooks
  * @since 1.0.0
  */
-export const ArbitraryHookId: unique symbol = hooks.ArbitraryHookId
+export const ArbitraryHookId: unique symbol = _hooks.ArbitraryHookId
 
 /**
  * @category hooks
@@ -41,7 +40,7 @@ export type ArbitraryHookId = typeof ArbitraryHookId
 export const arbitrary =
   <A>(handler: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<A>) =>
   <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
-    InternalSchema.make(AST.setAnnotation(self.ast, ArbitraryHookId, handler))
+    _schema.make(AST.setAnnotation(self.ast, ArbitraryHookId, handler))
 
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
@@ -280,10 +279,10 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
     }
     case "Refinement": {
       const from = getRefinementFromArbitrary(ast, options)
-      return (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast)))
+      return (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, AST.defaultParseOption, ast)))
     }
     case "Suspend": {
-      const get = Internal.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
+      const get = _util.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
       return (fc) => fc.constant(null).chain(() => get()(fc))
     }
     case "Transform":
@@ -371,15 +370,15 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
   const jsonSchema: any = ast.annotations[AST.JSONSchemaAnnotationId]
   switch (TypeAnnotationId) {
     // number
-    case filters.GreaterThanTypeId:
-    case filters.GreaterThanOrEqualToTypeId:
+    case _filters.GreaterThanTypeId:
+    case _filters.GreaterThanOrEqualToTypeId:
       return numberConstraints({ min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum })
-    case filters.LessThanTypeId:
-    case filters.LessThanOrEqualToTypeId:
+    case _filters.LessThanTypeId:
+    case _filters.LessThanOrEqualToTypeId:
       return numberConstraints({ max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum })
-    case filters.IntTypeId:
+    case _filters.IntTypeId:
       return integerConstraints({})
-    case filters.BetweenTypeId: {
+    case _filters.BetweenTypeId: {
       const min = jsonSchema.minimum
       const max = jsonSchema.maximum
       const constraints: NumberConstraints["constraints"] = {}
@@ -392,17 +391,17 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
       return numberConstraints(constraints)
     }
     // bigint
-    case filters.GreaterThanBigintTypeId:
-    case filters.GreaterThanOrEqualToBigintTypeId: {
+    case _filters.GreaterThanBigintTypeId:
+    case _filters.GreaterThanOrEqualToBigintTypeId: {
       const params: any = ast.annotations[TypeAnnotationId]
       return bigintConstraints({ min: params.min })
     }
-    case filters.LessThanBigintTypeId:
-    case filters.LessThanOrEqualToBigintTypeId: {
+    case _filters.LessThanBigintTypeId:
+    case _filters.LessThanOrEqualToBigintTypeId: {
       const params: any = ast.annotations[TypeAnnotationId]
       return bigintConstraints({ max: params.max })
     }
-    case filters.BetweenBigintTypeId: {
+    case _filters.BetweenBigintTypeId: {
       const params: any = ast.annotations[TypeAnnotationId]
       const min = params.min
       const max = params.max
@@ -416,18 +415,18 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
       return bigintConstraints(constraints)
     }
     // string
-    case filters.MinLengthTypeId:
+    case _filters.MinLengthTypeId:
       return stringConstraints({ minLength: jsonSchema.minLength })
-    case filters.MaxLengthTypeId:
+    case _filters.MaxLengthTypeId:
       return stringConstraints({ maxLength: jsonSchema.maxLength })
-    case filters.LengthTypeId:
+    case _filters.LengthTypeId:
       return stringConstraints({ minLength: jsonSchema.minLength, maxLength: jsonSchema.maxLength })
     // array
-    case filters.MinItemsTypeId:
+    case _filters.MinItemsTypeId:
       return arrayConstraints({ minLength: jsonSchema.minItems })
-    case filters.MaxItemsTypeId:
+    case _filters.MaxItemsTypeId:
       return arrayConstraints({ maxLength: jsonSchema.maxItems })
-    case filters.ItemsCountTypeId:
+    case _filters.ItemsCountTypeId:
       return arrayConstraints({ minLength: jsonSchema.minItems, maxLength: jsonSchema.maxItems })
   }
 }

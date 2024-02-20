@@ -41,7 +41,8 @@
     "dtslint": "dtslint dtslint",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
-    "coverage": "vitest --coverage"
+    "coverage": "vitest --coverage",
+    "circular": "madge --extensions ts --circular --no-color --no-spinner src"
   },
   "peerDependencies": {
     "effect": "workspace:^",
