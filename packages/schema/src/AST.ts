@@ -312,7 +312,7 @@ export class Literal implements Annotated {
    * @since 1.0.0
    */
   toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => formatUnknown(this.literal))
+    return Option.getOrElse(getExpected(this, verbose), () => _util.formatUnknown(this.literal))
   }
 }
 
@@ -341,7 +341,7 @@ export class UniqueSymbol implements Annotated {
    * @since 1.0.0
    */
   toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => formatUnknown(this.symbol))
+    return Option.getOrElse(getExpected(this, verbose), () => _util.formatUnknown(this.symbol))
   }
 }
 
@@ -831,6 +831,33 @@ export class Tuple implements Annotated {
   }
 }
 
+const formatTuple = (ast: Tuple): string => {
+  const formattedElements = ast.elements.map((element) => String(element.type) + (element.isOptional ? "?" : ""))
+    .join(", ")
+  return Option.match(ast.rest, {
+    onNone: () => `readonly [${formattedElements}]`,
+    onSome: ([head, ...tail]) => {
+      const formattedHead = String(head)
+      const wrappedHead = formattedHead.includes(" | ") ? `(${formattedHead})` : formattedHead
+
+      if (tail.length > 0) {
+        const formattedTail = tail.map((ast) => String(ast)).join(", ")
+        if (ast.elements.length > 0) {
+          return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
+        } else {
+          return `readonly [...${wrappedHead}[], ${formattedTail}]`
+        }
+      } else {
+        if (ast.elements.length > 0) {
+          return `readonly [${formattedElements}, ...${wrappedHead}[]]`
+        } else {
+          return `ReadonlyArray<${formattedHead}>`
+        }
+      }
+    }
+  })
+}
+
 /**
  * @category guards
  * @since 1.0.0
@@ -867,9 +894,8 @@ export const isParameter = (ast: AST): ast is Parameter => {
       return true
     case "Refinement":
       return isParameter(ast.from)
-    default:
-      return false
   }
+  return false
 }
 
 /**
@@ -954,6 +980,28 @@ export class TypeLiteral implements Annotated {
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => formatTypeLiteral(this))
+  }
+}
+
+const formatTypeLiteral = (ast: TypeLiteral): string => {
+  const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
+    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + ps.type
+  ).join("; ")
+  if (ast.indexSignatures.length > 0) {
+    const formattedIndexSignatures = ast.indexSignatures.map((is) =>
+      `[x: ${getParameterBase(is.parameter)}]: ${is.type}`
+    ).join("; ")
+    if (ast.propertySignatures.length > 0) {
+      return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
+    } else {
+      return `{ ${formattedIndexSignatures} }`
+    }
+  } else {
+    if (ast.propertySignatures.length > 0) {
+      return `{ ${formattedPropertySignatures} }`
+    } else {
+      return "{}"
+    }
   }
 }
 
@@ -1486,7 +1534,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
           propertySignatures.push(new PropertySignature(key.literal, value, false, isReadonly))
         } else {
-          throw new Error(`createRecord: unsupported literal (${formatUnknown(key.literal)})`)
+          throw new Error(`createRecord: unsupported literal (${_util.formatUnknown(key.literal)})`)
         }
         break
       case "UniqueSymbol":
@@ -2077,35 +2125,6 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
 const formatKeyword = (ast: AST, verbose: boolean = false): string =>
   Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
 
-/** @internal */
-export const formatUnknown = (u: unknown): string => {
-  if (Predicate.isString(u)) {
-    return JSON.stringify(u)
-  } else if (
-    Predicate.isNumber(u)
-    || u == null
-    || Predicate.isBoolean(u)
-    || Predicate.isSymbol(u)
-    || Predicate.isDate(u)
-  ) {
-    return String(u)
-  } else if (Predicate.isBigInt(u)) {
-    return String(u) + "n"
-  } else if (
-    !Array.isArray(u)
-    && Predicate.hasProperty(u, "toString")
-    && Predicate.isFunction(u["toString"])
-    && u["toString"] !== Object.prototype.toString
-  ) {
-    return u["toString"]()
-  }
-  try {
-    return JSON.stringify(u)
-  } catch (e) {
-    return String(u)
-  }
-}
-
 const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
   if (verbose) {
     const description = getDescriptionAnnotation(ast).pipe(
@@ -2119,58 +2138,10 @@ const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
           onSome: (description) => Option.some(`${identifier} (${description})`)
         })
     })
-  }
-  return getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => getTitleAnnotation(ast)),
-    Option.orElse(() => getDescriptionAnnotation(ast))
-  )
-}
-
-const formatTuple = (ast: Tuple): string => {
-  const formattedElements = ast.elements.map((element) => String(element.type) + (element.isOptional ? "?" : ""))
-    .join(", ")
-  return Option.match(ast.rest, {
-    onNone: () => "readonly [" + formattedElements + "]",
-    onSome: ([head, ...tail]) => {
-      const formattedHead = String(head)
-      const wrappedHead = formattedHead.includes(" | ") ? "(" + formattedHead + ")" : formattedHead
-
-      if (tail.length > 0) {
-        const formattedTail = tail.map((ast) => String(ast)).join(", ")
-        if (ast.elements.length > 0) {
-          return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
-        } else {
-          return `readonly [...${wrappedHead}[], ${formattedTail}]`
-        }
-      } else {
-        if (ast.elements.length > 0) {
-          return `readonly [${formattedElements}, ...${wrappedHead}[]]`
-        } else {
-          return `ReadonlyArray<${formattedHead}>`
-        }
-      }
-    }
-  })
-}
-
-const formatTypeLiteral = (ast: TypeLiteral): string => {
-  const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
-    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + ps.type
-  ).join("; ")
-  if (ast.indexSignatures.length > 0) {
-    const formattedIndexSignatures = ast.indexSignatures.map((is) =>
-      `[x: ${getParameterBase(is.parameter)}]: ${is.type}`
-    ).join("; ")
-    if (ast.propertySignatures.length > 0) {
-      return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
-    } else {
-      return `{ ${formattedIndexSignatures} }`
-    }
   } else {
-    if (ast.propertySignatures.length > 0) {
-      return `{ ${formattedPropertySignatures} }`
-    } else {
-      return "{}"
-    }
+    return getIdentifierAnnotation(ast).pipe(
+      Option.orElse(() => getTitleAnnotation(ast)),
+      Option.orElse(() => getDescriptionAnnotation(ast))
+    )
   }
 }

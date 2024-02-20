@@ -59,7 +59,7 @@ const toString = getMatcher((a) => String(a))
 
 const stringify = getMatcher((a) => JSON.stringify(a))
 
-const formatUnknown = getMatcher(AST.formatUnknown)
+const formatUnknown = getMatcher(_util.formatUnknown)
 
 /**
  * @since 1.0.0

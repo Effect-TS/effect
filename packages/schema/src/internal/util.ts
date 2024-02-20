@@ -1,3 +1,4 @@
+import * as Predicate from "effect/Predicate"
 import type * as AST from "../AST.js"
 
 /** @internal */
@@ -31,5 +32,34 @@ export const memoizeThunk = <A>(f: () => A): () => A => {
     a = f()
     done = true
     return a
+  }
+}
+
+/** @internal */
+export const formatUnknown = (u: unknown): string => {
+  if (Predicate.isString(u)) {
+    return JSON.stringify(u)
+  } else if (
+    Predicate.isNumber(u)
+    || u == null
+    || Predicate.isBoolean(u)
+    || Predicate.isSymbol(u)
+    || Predicate.isDate(u)
+  ) {
+    return String(u)
+  } else if (Predicate.isBigInt(u)) {
+    return String(u) + "n"
+  } else if (
+    !Array.isArray(u)
+    && Predicate.hasProperty(u, "toString")
+    && Predicate.isFunction(u["toString"])
+    && u["toString"] !== Object.prototype.toString
+  ) {
+    return u["toString"]()
+  }
+  try {
+    return JSON.stringify(u)
+  } catch (e) {
+    return String(u)
   }
 }
