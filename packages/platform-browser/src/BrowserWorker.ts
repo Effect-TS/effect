@@ -21,5 +21,5 @@ export const layerWorker: Layer.Layer<Worker.PlatformWorker> = internal.layerWor
  * @category layers
  */
 export const layer: (
-  spawn: Worker.SpawnerFn<Worker | SharedWorker>
+  spawn: (id: number) => Worker | SharedWorker | MessagePort
 ) => Layer.Layer<Worker.WorkerManager | Worker.Spawner, never, never> = internal.layer
