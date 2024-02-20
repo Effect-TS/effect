@@ -1,4 +1,5 @@
 import * as AST from "@effect/schema/AST"
+import * as Equivalence from "@effect/schema/Equivalence"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
@@ -544,5 +545,24 @@ describe("Schema > Class", () => {
         await Util.expectEncodeFailure(schema, null as any, "Expected A (an instance of A), actual null")
       })
     })
+  })
+
+  it("equivalence", () => {
+    class A extends S.TaggedClass<A>()("A", {
+      a: S.string
+    }) {}
+    const eqA = Equivalence.make(A)
+    expect(eqA(new A({ a: "a" }), new A({ a: "a" }))).toBe(true)
+    expect(eqA(new A({ a: "a" }), new A({ a: "b" }))).toBe(false)
+
+    class B extends S.TaggedClass<B>()("B", {
+      b: S.number,
+      as: S.array(A)
+    }) {}
+    const eqB = Equivalence.make(B)
+    expect(eqB(new B({ b: 1, as: [] }), new B({ b: 1, as: [] }))).toBe(true)
+    expect(eqB(new B({ b: 1, as: [] }), new B({ b: 2, as: [] }))).toBe(false)
+    expect(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "a" })] }))).toBe(true)
+    expect(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "b" })] }))).toBe(false)
   })
 })
