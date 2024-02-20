@@ -5,7 +5,11 @@
   "license": "MIT",
   "description": "A collection of reusable typeclasses for the Effect ecosystem",
   "homepage": "https://effect.website",
-  "repository": "github:effect-ts/effect",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/effect.git",
+    "directory": "packages/typeclass"
+  },
   "bugs": {
     "url": "https://github.com/effect-ts/effect/issues"
   },
