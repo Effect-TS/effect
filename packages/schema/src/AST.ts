@@ -278,6 +278,12 @@ export class Declaration implements Annotated {
     ) => (input: unknown, options: ParseOptions, self: Declaration) => Effect<any, ParseIssue, any>,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(getExpected(this, verbose), () => "<declaration schema>")
+  }
 }
 
 /**
@@ -302,6 +308,12 @@ export class Literal implements Annotated {
    */
   readonly _tag = "Literal"
   constructor(readonly literal: LiteralValue, readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(getExpected(this, verbose), () => formatUnknown(this.literal))
+  }
 }
 
 /**
@@ -325,6 +337,12 @@ export class UniqueSymbol implements Annotated {
    */
   readonly _tag = "UniqueSymbol"
   constructor(readonly symbol: symbol, readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(getExpected(this, verbose), () => formatUnknown(this.symbol))
+  }
 }
 
 /**
@@ -343,6 +361,12 @@ export class UndefinedKeyword implements Annotated {
    */
   readonly _tag = "UndefinedKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -369,6 +393,12 @@ export class VoidKeyword implements Annotated {
    */
   readonly _tag = "VoidKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -395,6 +425,12 @@ export class NeverKeyword implements Annotated {
    */
   readonly _tag = "NeverKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -421,6 +457,12 @@ export class UnknownKeyword implements Annotated {
    */
   readonly _tag = "UnknownKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -447,6 +489,12 @@ export class AnyKeyword implements Annotated {
    */
   readonly _tag = "AnyKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -473,6 +521,12 @@ export class StringKeyword implements Annotated {
    */
   readonly _tag = "StringKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -500,6 +554,12 @@ export class NumberKeyword implements Annotated {
    */
   readonly _tag = "NumberKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -527,6 +587,12 @@ export class BooleanKeyword implements Annotated {
    */
   readonly _tag = "BooleanKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -554,6 +620,12 @@ export class BigIntKeyword implements Annotated {
    */
   readonly _tag = "BigIntKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -581,6 +653,12 @@ export class SymbolKeyword implements Annotated {
    */
   readonly _tag = "SymbolKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -608,6 +686,12 @@ export class ObjectKeyword implements Annotated {
    */
   readonly _tag = "ObjectKeyword"
   constructor(readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return formatKeyword(this, verbose)
+  }
 }
 
 /**
@@ -639,6 +723,15 @@ export class Enums implements Annotated {
     readonly enums: ReadonlyArray<readonly [string, string | number]>,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(
+      getExpected(this, verbose),
+      () => `<enum ${this.enums.length} value(s): ${this.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
+    )
+  }
 }
 
 /**
@@ -653,6 +746,17 @@ export const isEnums = (ast: AST): ast is Enums => ast._tag === "Enums"
  */
 export class TemplateLiteralSpan {
   constructor(readonly type: StringKeyword | NumberKeyword, readonly literal: string) {}
+  /**
+   * @since 1.0.0
+   */
+  toString() {
+    switch (this.type._tag) {
+      case "StringKeyword":
+        return "${string}"
+      case "NumberKeyword":
+        return "${number}"
+    }
+  }
 }
 
 /**
@@ -678,7 +782,17 @@ export class TemplateLiteral implements Annotated {
     readonly spans: ReadonlyArray.NonEmptyReadonlyArray<TemplateLiteralSpan>,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(getExpected(this, verbose), () => formatTemplateLiteral(this))
+  }
 }
+
+const formatTemplateLiteral = (ast: TemplateLiteral): string =>
+  "`" + ast.head + ast.spans.map((span) => String(span) + span.literal).join("") +
+  "`"
 
 /**
  * @category guards
@@ -709,6 +823,12 @@ export class Tuple implements Annotated {
     readonly isReadonly: boolean,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(getExpected(this, verbose), () => formatTuple(this))
+  }
 }
 
 /**
@@ -829,6 +949,12 @@ export class TypeLiteral implements Annotated {
     readonly indexSignatures: ReadonlyArray<IndexSignature>,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(getExpected(this, verbose), () => formatTypeLiteral(this))
+  }
 }
 
 /**
@@ -865,6 +991,15 @@ export class Union implements Annotated {
    */
   readonly _tag = "Union"
   private constructor(readonly types: Members<AST>, readonly annotations: Annotations = {}) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(
+      getExpected(this, verbose),
+      () => this.types.map((member) => String(member)).join(" | ")
+    )
+  }
 }
 
 const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Array<A>] => as.length > 1
@@ -887,6 +1022,20 @@ export class Suspend implements Annotated {
   constructor(readonly f: () => AST, readonly annotations: Annotations = {}) {
     this.f = _util.memoizeThunk(f)
   }
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return getExpected(this, verbose).pipe(
+      Option.orElse(() =>
+        Option.flatMap(
+          Option.liftThrowable(this.f)(),
+          (ast) => getExpected(ast, verbose)
+        )
+      ),
+      Option.getOrElse(() => "<suspended schema>")
+    )
+  }
 }
 
 /**
@@ -899,7 +1048,7 @@ export const isSuspend = (ast: AST): ast is Suspend => ast._tag === "Suspend"
  * @category model
  * @since 1.0.0
  */
-export class Refinement<From = AST> implements Annotated {
+export class Refinement<From extends AST = AST> implements Annotated {
   /**
    * @since 1.0.0
    */
@@ -913,6 +1062,12 @@ export class Refinement<From = AST> implements Annotated {
     ) => Option.Option<ParseIssue>,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(getExpected(this, verbose), () => "<refinement schema>")
+  }
 }
 
 /**
@@ -952,6 +1107,15 @@ export class Transform implements Annotated {
     readonly transformation: Transformation,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString(verbose: boolean = false) {
+    return Option.getOrElse(
+      getExpected(this, verbose),
+      () => `(${String(this.from)} <-> ${String(this.to)})`
+    )
+  }
 }
 
 /**
@@ -1115,10 +1279,9 @@ export const isTypeLiteralTransformation = (
  * @since 1.0.0
  */
 export const mergeAnnotations = (ast: AST, annotations: Annotations): AST => {
-  return {
-    ...ast,
-    annotations: { ...ast.annotations, ...annotations }
-  }
+  const d = Object.getOwnPropertyDescriptors(ast)
+  d.annotations.value = { ...ast.annotations, ...annotations }
+  return Object.create(Object.getPrototypeOf(ast), d)
 }
 
 /**
@@ -1126,12 +1289,7 @@ export const mergeAnnotations = (ast: AST, annotations: Annotations): AST => {
  *
  * @since 1.0.0
  */
-export const setAnnotation = (ast: AST, sym: symbol, value: unknown): AST => {
-  return {
-    ...ast,
-    annotations: { ...ast.annotations, [sym]: value }
-  }
-}
+export const setAnnotation = (ast: AST, sym: symbol, value: unknown): AST => mergeAnnotations(ast, { [sym]: value })
 
 /**
  * Adds a rest element to the end of a tuple, or throws an exception if the rest element is already present.
@@ -1241,7 +1399,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
   }
-  throw new Error(`getNumberIndexedAccess: unsupported schema (${format(ast)})`)
+  throw new Error(`getNumberIndexedAccess: unsupported schema (${ast})`)
 }
 
 /** @internal */
@@ -1338,7 +1496,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
         key.types.forEach(go)
         break
       default:
-        throw new Error(`createRecord: unsupported key schema (${format(key)})`)
+        throw new Error(`createRecord: unsupported key schema (${key})`)
     }
   }
   go(key)
@@ -1861,7 +2019,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "Transform":
       return _keyof(ast.to)
   }
-  throw new Error(`keyof: unsupported schema (${format(ast)})`)
+  throw new Error(`keyof: unsupported schema (${ast})`)
 }
 
 /** @internal */
@@ -1913,70 +2071,11 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
     case "Transform":
       return compose(ast, rename(to(ast), mapping))
   }
-  throw new Error(`rename: cannot rename (${format(ast)})`)
+  throw new Error(`rename: cannot rename (${ast})`)
 }
 
-const formatTransformation = (from: string, to: string): string => `(${from} <-> ${to})`
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const format = (ast: AST, verbose: boolean = false): string => {
-  switch (ast._tag) {
-    case "StringKeyword":
-    case "NumberKeyword":
-    case "BooleanKeyword":
-    case "BigIntKeyword":
-    case "UndefinedKeyword":
-    case "SymbolKeyword":
-    case "ObjectKeyword":
-    case "AnyKeyword":
-    case "UnknownKeyword":
-    case "VoidKeyword":
-    case "NeverKeyword":
-      return Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
-    case "Literal":
-      return Option.getOrElse(getExpected(ast, verbose), () => formatUnknown(ast.literal))
-    case "UniqueSymbol":
-      return Option.getOrElse(getExpected(ast, verbose), () => formatUnknown(ast.symbol))
-    case "Union":
-      return Option.getOrElse(
-        getExpected(ast, verbose),
-        () => ast.types.map((member) => format(member)).join(" | ")
-      )
-    case "TemplateLiteral":
-      return Option.getOrElse(getExpected(ast, verbose), () => formatTemplateLiteral(ast))
-    case "Tuple":
-      return Option.getOrElse(getExpected(ast, verbose), () => formatTuple(ast))
-    case "TypeLiteral":
-      return Option.getOrElse(getExpected(ast, verbose), () => formatTypeLiteral(ast))
-    case "Enums":
-      return Option.getOrElse(
-        getExpected(ast, verbose),
-        () => `<enum ${ast.enums.length} value(s): ${ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
-      )
-    case "Suspend":
-      return getExpected(ast, verbose).pipe(
-        Option.orElse(() =>
-          Option.flatMap(
-            Option.liftThrowable(ast.f)(),
-            (ast) => getExpected(ast, verbose)
-          )
-        ),
-        Option.getOrElse(() => "<suspended schema>")
-      )
-    case "Declaration":
-      return Option.getOrElse(getExpected(ast, verbose), () => "<declaration schema>")
-    case "Refinement":
-      return Option.getOrElse(getExpected(ast, verbose), () => "<refinement schema>")
-    case "Transform":
-      return Option.getOrElse(
-        getExpected(ast, verbose),
-        () => formatTransformation(format(ast.from), format(ast.to))
-      )
-  }
-}
+const formatKeyword = (ast: AST, verbose: boolean = false): string =>
+  Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
 
 /** @internal */
 export const formatUnknown = (u: unknown): string => {
@@ -2007,10 +2106,6 @@ export const formatUnknown = (u: unknown): string => {
   }
 }
 
-const formatTemplateLiteral = (ast: TemplateLiteral): string =>
-  "`" + ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("") +
-  "`"
-
 const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
   if (verbose) {
     const description = getDescriptionAnnotation(ast).pipe(
@@ -2032,16 +2127,16 @@ const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
 }
 
 const formatTuple = (ast: Tuple): string => {
-  const formattedElements = ast.elements.map((element) => format(element.type) + (element.isOptional ? "?" : ""))
+  const formattedElements = ast.elements.map((element) => String(element.type) + (element.isOptional ? "?" : ""))
     .join(", ")
   return Option.match(ast.rest, {
     onNone: () => "readonly [" + formattedElements + "]",
     onSome: ([head, ...tail]) => {
-      const formattedHead = format(head)
+      const formattedHead = String(head)
       const wrappedHead = formattedHead.includes(" | ") ? "(" + formattedHead + ")" : formattedHead
 
       if (tail.length > 0) {
-        const formattedTail = tail.map((ast) => format(ast)).join(", ")
+        const formattedTail = tail.map((ast) => String(ast)).join(", ")
         if (ast.elements.length > 0) {
           return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
         } else {
@@ -2060,11 +2155,11 @@ const formatTuple = (ast: Tuple): string => {
 
 const formatTypeLiteral = (ast: TypeLiteral): string => {
   const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
-    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + format(ps.type)
+    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + ps.type
   ).join("; ")
   if (ast.indexSignatures.length > 0) {
     const formattedIndexSignatures = ast.indexSignatures.map((is) =>
-      `[x: ${format(getParameterBase(is.parameter))}]: ${format(is.type)}`
+      `[x: ${getParameterBase(is.parameter)}]: ${is.type}`
     ).join("; ")
     if (ast.propertySignatures.length > 0) {
       return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
@@ -2077,14 +2172,5 @@ const formatTypeLiteral = (ast: TypeLiteral): string => {
     } else {
       return "{}"
     }
-  }
-}
-
-const formatTemplateLiteralSpan = (span: TemplateLiteralSpan): string => {
-  switch (span.type._tag) {
-    case "StringKeyword":
-      return "${string}"
-    case "NumberKeyword":
-      return "${number}"
   }
 }

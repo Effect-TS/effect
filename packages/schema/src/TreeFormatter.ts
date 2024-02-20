@@ -133,7 +133,7 @@ export const getMessage: (
 export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
   getMessage(e).pipe(
     Effect.orElse(() => e.message),
-    Effect.catchAll(() => Effect.succeed(`Expected ${AST.format(e.ast, true)}, actual ${AST.formatUnknown(e.actual)}`))
+    Effect.catchAll(() => Effect.succeed(`Expected ${e.ast.toString(true)}, actual ${AST.formatUnknown(e.actual)}`))
   )
 
 /** @internal */
@@ -145,9 +145,9 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
     case "Type":
       return Effect.map(formatTypeMessage(e), make)
     case "Forbidden":
-      return Effect.succeed(make(AST.format(e.ast), [make(formatForbiddenMessage(e))]))
+      return Effect.succeed(make(String(e.ast), [make(formatForbiddenMessage(e))]))
     case "Unexpected":
-      return Effect.succeed(make(`is unexpected, expected ${AST.format(e.ast, true)}`))
+      return Effect.succeed(make(`is unexpected, expected ${e.ast.toString(true)}`))
     case "Missing":
       return Effect.succeed(make("is missing"))
     case "Union":
@@ -162,7 +162,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
                   return go(e)
               }
             }),
-            (forest) => make(AST.format(e.ast), forest)
+            (forest) => make(String(e.ast), forest)
           ),
         onSuccess: (message) => Effect.succeed(make(message))
       })
@@ -174,7 +174,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
               e.errors,
               (index) => Effect.map(go(index.error), (tree) => make(`[${index.index}]`, [tree]))
             ),
-            (forest) => make(AST.format(e.ast), forest)
+            (forest) => make(String(e.ast), forest)
           ),
         onSuccess: (message) => Effect.succeed(make(message))
       })
@@ -185,20 +185,20 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
             Effect.forEach(e.errors, (key) =>
               Effect.map(go(key.error), (tree) => make(`[${AST.formatUnknown(key.key)}]`, [tree]))),
             (forest) =>
-              make(AST.format(e.ast), forest)
+              make(String(e.ast), forest)
           ),
         onSuccess: (message) => Effect.succeed(make(message))
       })
     case "Transform":
       return Effect.matchEffect(getMessage(e), {
         onFailure: () =>
-          Effect.map(go(e.error), (tree) => make(AST.format(e.ast), [make(formatTransformationKind(e.kind), [tree])])),
+          Effect.map(go(e.error), (tree) => make(String(e.ast), [make(formatTransformationKind(e.kind), [tree])])),
         onSuccess: (message) => Effect.succeed(make(message))
       })
     case "Refinement":
       return Effect.matchEffect(getMessage(e), {
         onFailure: () =>
-          Effect.map(go(e.error), (tree) => make(AST.format(e.ast), [make(formatRefinementKind(e.kind), [tree])])),
+          Effect.map(go(e.error), (tree) => make(String(e.ast), [make(formatRefinementKind(e.kind), [tree])])),
         onSuccess: (message) => Effect.succeed(make(message))
       })
     case "Declaration":
@@ -208,7 +208,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
           const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
           return shouldSkipDefaultMessage
             ? go(error)
-            : Effect.map(go(e.error), (tree) => make(AST.format(e.ast), [tree]))
+            : Effect.map(go(e.error), (tree) => make(String(e.ast), [tree]))
         },
         onSuccess: (message) => Effect.succeed(make(message))
       })

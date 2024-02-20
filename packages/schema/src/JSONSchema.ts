@@ -408,10 +408,10 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
               }
               break
             }
-            throw new Error(`Unsupported index signature parameter (${AST.format(parameter)})`)
+            throw new Error(`Unsupported index signature parameter (${parameter})`)
           }
           case "SymbolKeyword":
-            throw new Error(`Unsupported index signature parameter (${AST.format(parameter)})`)
+            throw new Error(`Unsupported index signature parameter (${parameter})`)
         }
       }
       const propertySignatures = ast.propertySignatures.map((ps) => {

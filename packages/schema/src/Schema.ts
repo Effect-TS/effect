@@ -77,7 +77,7 @@ export const hash = <A, I, R>(schema: Schema<A, I, R>): number => AST.hash(schem
  * @category formatting
  * @since 1.0.0
  */
-export const format = <A, I, R>(schema: Schema<A, I, R>): string => AST.format(schema.ast)
+export const format = <A, I, R>(schema: Schema<A, I, R>): string => String(schema.ast)
 
 /**
  * @since 1.0.0
@@ -449,7 +449,7 @@ const combineTemplateLiterals = (
       a.head,
       ReadonlyArray.modifyNonEmptyLast(
         a.spans,
-        (span) => ({ ...span, literal: span.literal + String(b.literal) })
+        (span) => new AST.TemplateLiteralSpan(span.type, span.literal + String(b.literal))
       )
     )
   }
@@ -458,7 +458,7 @@ const combineTemplateLiterals = (
     ReadonlyArray.appendAll(
       ReadonlyArray.modifyNonEmptyLast(
         a.spans,
-        (span) => ({ ...span, literal: span.literal + String(b.head) })
+        (span) => new AST.TemplateLiteralSpan(span.type, span.literal + String(b.head))
       ),
       b.spans
     )
@@ -473,11 +473,11 @@ const getTemplateLiterals = (
       return [ast]
     case "NumberKeyword":
     case "StringKeyword":
-      return [AST.TemplateLiteral.make("", [{ type: ast, literal: "" }])]
+      return [AST.TemplateLiteral.make("", [new AST.TemplateLiteralSpan(ast, "")])]
     case "Union":
       return ReadonlyArray.flatMap(ast.types, getTemplateLiterals)
     default:
-      throw new Error(`templateLiteral: unsupported template literal span (${AST.format(ast)})`)
+      throw new Error(`templateLiteral: unsupported template literal span (${ast})`)
   }
 }
 

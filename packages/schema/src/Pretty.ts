@@ -70,7 +70,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value(...ast.typeParameters.map(go))
     }
-    throw new Error(`cannot build a Pretty for a declaration without annotations (${AST.format(ast)})`)
+    throw new Error(`cannot build a Pretty for a declaration without annotations (${ast})`)
   },
   "VoidKeyword": getMatcher(() => "void(0)"),
   "NeverKeyword": getMatcher(() => {
