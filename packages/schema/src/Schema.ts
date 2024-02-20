@@ -508,7 +508,7 @@ const declarePrimitive = <A>(
   annotations?: DeclareAnnotations<[], A>
 ): Schema<A> => {
   const decodeUnknown = () => (input: unknown, _: ParseOptions, ast: AST.Declaration) =>
-    is(input) ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input))
+    is(input) ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input))
   const encodeUnknown = decodeUnknown
   return make(AST.createDeclaration([], decodeUnknown, encodeUnknown, toAnnotations(annotations)))
 }
@@ -589,7 +589,7 @@ export const fromBrand = <C extends Brand.Brand<string | symbol>>(
     (a: A, _: ParseOptions, ast: AST.AST): Option.Option<ParseResult.ParseIssue> => {
       const either = constructor.either(a)
       return Either.isLeft(either) ?
-        Option.some(ParseResult.type(ast, a, either.left.map((v) => v.message).join(", "))) :
+        Option.some(new ParseResult.Type(ast, a, either.left.map((v) => v.message).join(", "))) :
         Option.none()
     },
     toAnnotations({ typeId: { id: BrandTypeId, annotation: { constructor } }, ...options })
@@ -1611,7 +1611,7 @@ export function filter<A>(
         if (Predicate.isBoolean(out)) {
           return out
             ? Option.none()
-            : Option.some(ParseResult.type(ast, a))
+            : Option.some(new ParseResult.Type(ast, a))
         }
         return out
       },
@@ -2451,12 +2451,12 @@ export const parseJson: {
     (s, _, ast) =>
       ParseResult.try({
         try: () => JSON.parse(s, options?.reviver),
-        catch: (e: any) => ParseResult.type(ast, s, e.message)
+        catch: (e: any) => new ParseResult.Type(ast, s, e.message)
       }),
     (u, _, ast) =>
       ParseResult.try({
         try: () => JSON.stringify(u, options?.replacer, options?.space),
-        catch: (e: any) => ParseResult.type(ast, u, e.message)
+        catch: (e: any) => new ParseResult.Type(ast, u, e.message)
       })
   )
 }
@@ -2848,11 +2848,11 @@ export const NumberFromString: Schema<number, string> = transformOrFail(
       return ParseResult.succeed(-Infinity)
     }
     if (s.trim() === "") {
-      return ParseResult.fail(ParseResult.type(ast, s))
+      return ParseResult.fail(new ParseResult.Type(ast, s))
     }
     const n = Number(s)
     return Number.isNaN(n)
-      ? ParseResult.fail(ParseResult.type(ast, s))
+      ? ParseResult.fail(new ParseResult.Type(ast, s))
       : ParseResult.succeed(n)
   },
   (n) => ParseResult.succeed(String(n))
@@ -3176,12 +3176,12 @@ export const bigint: Schema<bigint, string> = transformOrFail(
   bigintFromSelf,
   (s, _, ast) => {
     if (s.trim() === "") {
-      return ParseResult.fail(ParseResult.type(ast, s))
+      return ParseResult.fail(new ParseResult.Type(ast, s))
     }
 
     return ParseResult.try({
       try: () => BigInt(s),
-      catch: () => ParseResult.type(ast, s)
+      catch: () => new ParseResult.Type(ast, s)
     })
   },
   (n) => ParseResult.succeed(String(n))
@@ -3269,11 +3269,11 @@ export const BigintFromNumber: Schema<bigint, number> = transformOrFail(
   (n, _, ast) =>
     ParseResult.try({
       try: () => BigInt(n),
-      catch: () => ParseResult.type(ast, n)
+      catch: () => new ParseResult.Type(ast, n)
     }),
   (b, _, ast) => {
     if (b > maxSafeInteger || b < minSafeInteger) {
-      return ParseResult.fail(ParseResult.type(ast, b))
+      return ParseResult.fail(new ParseResult.Type(ast, b))
     }
     return ParseResult.succeed(Number(b))
   }
@@ -3348,7 +3348,7 @@ export const DurationFromNanos: Schema<Duration.Duration, bigint> = transformOrF
   (nanos) => ParseResult.succeed(Duration.nanos(nanos)),
   (duration, _, ast) =>
     Option.match(Duration.toNanos(duration), {
-      onNone: () => ParseResult.fail(ParseResult.type(ast, duration)),
+      onNone: () => ParseResult.fail(new ParseResult.Type(ast, duration)),
       onSome: (val) => ParseResult.succeed(val)
     })
 ).pipe(identifier("DurationFromNanos"))
@@ -3583,7 +3583,7 @@ const makeEncodingTransformation = (
     (s, _, ast) =>
       Either.mapLeft(
         decode(s),
-        (decodeException) => ParseResult.type(ast, s, decodeException.message)
+        (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
       ),
     (u) => ParseResult.succeed(encode(u)),
     { strict: false }
@@ -3753,7 +3753,7 @@ export const headOr: {
           ? ParseResult.succeed(as[0])
           : fallback
           ? ParseResult.succeed(fallback())
-          : ParseResult.fail(ParseResult.type(ast, as)),
+          : ParseResult.fail(new ParseResult.Type(ast, as)),
       (a) => ParseResult.succeed(ReadonlyArray.of(a))
     )
 )
@@ -3886,7 +3886,7 @@ const optionParse =
       Option.isNone(u) ?
         ParseResult.succeed(Option.none())
         : ParseResult.map(decodeUnknown(u.value, options), Option.some)
-      : ParseResult.fail(ParseResult.type(ast, u))
+      : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category Option transformations
@@ -4037,7 +4037,7 @@ const eitherParse = <RE, E, RA, A>(
       onLeft: (left) => ParseResult.map(decodeUnknownLeft(left, options), Either.left),
       onRight: (right) => ParseResult.map(parseright(right, options), Either.right)
     })
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category Either transformations
@@ -4145,7 +4145,7 @@ const readonlyMapParse = <R, K, V>(
 (u, options, ast) =>
   isMap(u) ?
     ParseResult.map(decodeUnknown(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category ReadonlyMap transformations
@@ -4204,7 +4204,7 @@ const readonlySetParse = <R, A>(
 (u, options, ast) =>
   isSet(u) ?
     ParseResult.map(decodeUnknown(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category ReadonlySet transformations
@@ -4263,7 +4263,7 @@ const _BigDecimal: Schema<BigDecimal.BigDecimal, string> = transformOrFail(
   BigDecimalFromSelf,
   (num, _, ast) =>
     BigDecimal.fromString(num).pipe(Option.match({
-      onNone: () => ParseResult.fail(ParseResult.type(ast, num)),
+      onNone: () => ParseResult.fail(new ParseResult.Type(ast, num)),
       onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
     })),
   (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val)))
@@ -4599,7 +4599,7 @@ const chunkParse = <R, A>(
     Chunk.isEmpty(u) ?
       ParseResult.succeed(Chunk.empty())
       : ParseResult.map(decodeUnknown(Chunk.toReadonlyArray(u), options), Chunk.fromIterable)
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category Chunk transformations
@@ -4650,7 +4650,7 @@ const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<an
 (u, options, ast) =>
   Equal.isEqual(u) ?
     ParseResult.map(decodeUnknown(u, options), toData)
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category Data transformations
@@ -4951,7 +4951,7 @@ const makeClass = <A, I, R>(
       const declaration: Schema<any, any, never> = declare(
         [],
         () => (input, _, ast) =>
-          input instanceof this ? ParseResult.succeed(input) : ParseResult.fail(ParseResult.type(ast, input)),
+          input instanceof this ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input)),
         () => (input, _, ast) =>
           input instanceof this
             ? ParseResult.succeed(input)
@@ -4960,7 +4960,7 @@ const makeClass = <A, I, R>(
                 encode(input),
                 (props) => new this(props, true)
               ),
-              () => ParseResult.type(ast, input)
+              () => new ParseResult.Type(ast, input)
             ),
         {
           identifier: this.name,
@@ -5262,7 +5262,7 @@ const causeParse = <R, A>(
 (u, options, ast) =>
   Cause.isCause(u) ?
     ParseResult.map(decodeUnknown(causeEncode(u), options), causeDecode)
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category Cause transformations
@@ -5429,7 +5429,7 @@ const exitParse = <RE, E, RA, A>(
       onFailure: (cause) => ParseResult.map(decodeUnknownCause(cause, options), Exit.failCause),
       onSuccess: (value) => ParseResult.map(decodeUnknownValue(value, options), Exit.succeed)
     })
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category Exit transformations
@@ -5500,7 +5500,7 @@ const hashSetParse = <R, A>(
       decodeUnknown(Array.from(u), options),
       (as): HashSet.HashSet<A> => HashSet.fromIterable(as)
     )
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category HashSet transformations
@@ -5567,7 +5567,7 @@ const hashMapParse = <R, K, V>(
 (u, options, ast) =>
   HashMap.isHashMap(u) ?
     ParseResult.map(decodeUnknown(Array.from(u), options), (as): HashMap.HashMap<K, V> => HashMap.fromIterable(as))
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category HashMap transformations
@@ -5627,7 +5627,7 @@ const listParse = <R, A>(
       decodeUnknown(Array.from(u), options),
       (as): List.List<A> => List.fromIterable(as)
     )
-    : ParseResult.fail(ParseResult.type(ast, u))
+    : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category List transformations

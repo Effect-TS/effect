@@ -30,7 +30,7 @@ const NameString = S.string.pipe(
       Name.pipe(
         Effect.filterOrFail(
           (name) => _ === name,
-          () => ParseResult.type(ast, _, "Does not match Name")
+          () => new ParseResult.Type(ast, _, "Does not match Name")
         )
       ),
     (_) => ParseResult.succeed(_)
@@ -45,7 +45,7 @@ const IdNumber = S.number.pipe(
       Effect.filterOrFail(
         Id,
         (id) => _ === id,
-        () => ParseResult.type(ast, _, "Does not match Id")
+        () => new ParseResult.Type(ast, _, "Does not match Id")
       ),
     (_) => ParseResult.succeed(_)
   )
@@ -91,7 +91,7 @@ class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
   },
   (input, _, ast) =>
     input.id === 2 ?
-      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.fail(new ParseResult.Type(ast, input)) :
       ParseResult.succeed({
         ...input,
         id: input.id.toString(),
@@ -99,7 +99,7 @@ class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
       }),
   (input, _, ast) =>
     input.id === "2" ?
-      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.fail(new ParseResult.Type(ast, input)) :
       ParseResult.succeed({
         ...input,
         id: Number(input.id)
@@ -113,7 +113,7 @@ class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTrans
   },
   (input, _, ast) =>
     input.id === 2 ?
-      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.fail(new ParseResult.Type(ast, input)) :
       ParseResult.succeed({
         ...input,
         id: input.id.toString(),
@@ -121,7 +121,7 @@ class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTrans
       }),
   (input, _, ast) =>
     input.id === "2" ?
-      ParseResult.fail(ParseResult.type(ast, input)) :
+      ParseResult.fail(new ParseResult.Type(ast, input)) :
       ParseResult.succeed({
         ...input,
         id: Number(input.id)

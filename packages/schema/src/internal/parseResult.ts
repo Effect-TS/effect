@@ -4,7 +4,125 @@ import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as AST from "../AST.js"
-import type * as ParseResult from "../ParseResult.js"
+
+/** @internal */
+export type ParseIssue =
+  | Declaration
+  | Refinement
+  | Tuple
+  | TypeLiteral
+  | Union
+  | Transform
+  | Type
+  | Forbidden
+
+/** @internal */
+export class Declaration {
+  readonly _tag = "Declaration"
+  constructor(readonly ast: AST.Declaration, readonly actual: unknown, readonly error: ParseIssue) {}
+}
+
+/** @internal */
+export class Refinement {
+  readonly _tag = "Refinement"
+  constructor(
+    readonly ast: AST.Refinement<AST.AST>,
+    readonly actual: unknown,
+    readonly kind: "From" | "Predicate",
+    readonly error: ParseIssue
+  ) {}
+}
+
+/** @internal */
+export class Tuple {
+  readonly _tag = "Tuple"
+  constructor(
+    readonly ast: AST.Tuple,
+    readonly actual: unknown,
+    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
+  ) {}
+}
+
+/** @internal */
+export class Index {
+  readonly _tag = "Index"
+  constructor(readonly index: number, readonly error: ParseIssue | Missing | Unexpected) {}
+}
+
+/** @internal */
+export class TypeLiteral {
+  readonly _tag = "TypeLiteral"
+  constructor(
+    readonly ast: AST.TypeLiteral,
+    readonly actual: unknown,
+    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
+  ) {}
+}
+
+/** @internal */
+export class Key {
+  readonly _tag = "Key"
+  constructor(readonly key: PropertyKey, readonly error: ParseIssue | Missing | Unexpected) {}
+}
+
+/** @internal */
+export class Unexpected {
+  readonly _tag = "Unexpected"
+  constructor(readonly ast: AST.AST) {}
+}
+
+/** @internal */
+export class Transform {
+  readonly _tag = "Transform"
+  constructor(
+    readonly ast: AST.Transform,
+    readonly actual: unknown,
+    readonly kind: "From" | "Transformation" | "To",
+    readonly error: ParseIssue
+  ) {}
+}
+
+/** @internal */
+export class Type {
+  readonly _tag = "Type"
+  readonly message: Option.Option<string>
+  constructor(readonly ast: AST.AST, readonly actual: unknown, message?: string) {
+    this.message = Option.fromNullable(message)
+  }
+}
+
+/** @internal */
+export class Forbidden {
+  readonly _tag = "Forbidden"
+  readonly message: Option.Option<string>
+  constructor(readonly ast: AST.AST, readonly actual: unknown, message?: string) {
+    this.message = Option.fromNullable(message)
+  }
+}
+
+/** @internal */
+export class Missing {
+  readonly _tag = "Missing"
+}
+
+/** @internal */
+export const missing: Missing = new Missing()
+
+/** @internal */
+export class Member {
+  readonly _tag = "Member"
+  constructor(readonly ast: AST.AST, readonly error: ParseIssue) {}
+}
+
+/** @internal */
+export class Union {
+  readonly _tag = "Union"
+  constructor(
+    readonly ast: AST.Union,
+    readonly actual: unknown,
+    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
+  ) {}
+}
 
 /** @internal */
 export const flatMap: {
@@ -68,113 +186,3 @@ export const eitherOrUndefined = <A, E, R>(
     return s
   }
 }
-
-/** @internal */
-export const declaration = (
-  ast: AST.Declaration,
-  actual: unknown,
-  error: ParseResult.ParseIssue
-): ParseResult.Declaration => ({ _tag: "Declaration", ast, actual, error })
-
-/** @internal */
-export const refinement = (
-  ast: AST.Refinement<AST.AST>,
-  actual: unknown,
-  kind: "From" | "Predicate",
-  error: ParseResult.ParseIssue
-): ParseResult.Refinement => ({ _tag: "Refinement", ast, actual, kind, error })
-
-/** @internal */
-export const tuple = (
-  ast: AST.Tuple,
-  actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseResult.Index>
-): ParseResult.Tuple => ({ _tag: "Tuple", ast, actual, errors })
-
-/** @internal */
-export const index = (
-  index: number,
-  error: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected
-): ParseResult.Index => ({ _tag: "Index", index, error })
-
-/** @internal */
-export const typeLiteral = (
-  ast: AST.TypeLiteral,
-  actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseResult.Key>
-): ParseResult.TypeLiteral => ({ _tag: "TypeLiteral", ast, actual, errors })
-
-/** @internal */
-export const key = (
-  key: PropertyKey,
-  error: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected
-): ParseResult.Key => ({ _tag: "Key", key, error })
-
-/** @internal */
-export class Unexpected {
-  readonly _tag = "Unexpected"
-  constructor(readonly ast: AST.AST) {}
-}
-
-/** @internal */
-export const unexpected = (
-  ast: AST.AST
-): ParseResult.Unexpected => new Unexpected(ast)
-
-/** @internal */
-export class Transform {
-  readonly _tag = "Transform"
-  constructor(
-    readonly ast: AST.Transform,
-    readonly actual: unknown,
-    readonly kind: "From" | "Transformation" | "To",
-    readonly error: ParseResult.ParseIssue
-  ) {}
-}
-
-/** @internal */
-export const transform = (
-  ast: AST.Transform,
-  actual: unknown,
-  kind: "From" | "Transformation" | "To",
-  error: ParseResult.ParseIssue
-): ParseResult.Transform => new Transform(ast, actual, kind, error)
-
-/** @internal */
-export const type = (ast: AST.AST, actual: unknown, message?: string): ParseResult.Type => ({
-  _tag: "Type",
-  ast,
-  actual,
-  message: Option.fromNullable(message)
-})
-
-/** @internal */
-export class Forbidden {
-  readonly _tag = "Forbidden"
-  constructor(readonly ast: AST.AST, readonly actual: unknown, readonly message: Option.Option<string>) {}
-}
-
-/** @internal */
-export const forbidden = (ast: AST.AST, actual: unknown, message?: string): Forbidden =>
-  new Forbidden(ast, actual, Option.fromNullable(message))
-
-/** @internal */
-export class Missing {
-  readonly _tag = "Missing"
-}
-
-/** @internal */
-export const missing: Missing = new Missing()
-
-/** @internal */
-export const member = (
-  ast: AST.AST,
-  error: ParseResult.ParseIssue
-): ParseResult.Member => ({ _tag: "Member", ast, error })
-
-/** @internal */
-export const union = (
-  ast: AST.Union,
-  actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<ParseResult.Type | ParseResult.TypeLiteral | ParseResult.Member>
-): ParseResult.Union => ({ _tag: "Union", ast, actual, errors })

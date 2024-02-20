@@ -8,16 +8,11 @@ import * as Either from "effect/Either"
 import { dual } from "effect/Function"
 import type { LazyArg } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
-import type * as Option from "effect/Option"
-import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as AST from "./AST.js"
 import type * as _parseResult from "./internal/parseResult.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
-type Missing = _parseResult.Missing
-type Forbidden = _parseResult.Forbidden
-type Unexpected = _parseResult.Unexpected
-type Transform = _parseResult.Transform
+type ParseIssue = _parseResult.ParseIssue
 
 /**
  * @since 1.0.0
@@ -80,42 +75,14 @@ export {
   _try as try
 }
 
-/**
- * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
- *
- * @category model
- * @since 1.0.0
- */
-export type ParseIssue =
-  | Declaration
-  | Refinement
-  | Tuple
-  | TypeLiteral
-  | Union
-  | Transform
-  | Type
-  | Forbidden
-
-/**
- * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
- * The `ast` field specifies the expected type, and the `actual` field contains the value that caused the error.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Type {
-  readonly _tag: "Type"
-  readonly ast: AST.AST
-  readonly actual: unknown
-  readonly message: Option.Option<string>
-}
-
 export {
   /**
-   * @category constructors
+   * Error that occurs when a declaration has an error.
+   *
+   * @category model
    * @since 1.0.0
    */
-  declaration,
+  Declaration,
   /**
    * @category optimisation
    * @since 1.0.0
@@ -134,20 +101,19 @@ export {
    */
   Forbidden,
   /**
-   * @category constructors
+   * The `Index` error indicates that there was an error at a specific index in an array or tuple.
+   *
+   * @category model
    * @since 1.0.0
    */
-  forbidden,
+  Index,
   /**
-   * @category constructors
+   * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in a type literal or record is invalid.
+   *
+   * @category model
    * @since 1.0.0
    */
-  index,
-  /**
-   * @category constructors
-   * @since 1.0.0
-   */
-  key,
+  Key,
   /**
    * @category optimisation
    * @since 1.0.0
@@ -159,10 +125,12 @@ export {
    */
   mapError,
   /**
-   * @category constructors
+   * Error that occurs when a member in a union has an error.
+   *
+   * @category model
    * @since 1.0.0
    */
-  member,
+  Member,
   /**
    * Error that occurs when a required key or index is missing.
    *
@@ -176,10 +144,12 @@ export {
    */
   missing,
   /**
-   * @category constructors
+   * Error that occurs when a refinement has an error.
+   *
+   * @category model
    * @since 1.0.0
    */
-  refinement,
+  Refinement,
   /**
    * Error that occurs when a transformation has an error.
    *
@@ -188,20 +158,27 @@ export {
    */
   Transform,
   /**
-   * @category constructors
+   * Error that occurs when an array or tuple has an error.
+   *
+   * @category model
    * @since 1.0.0
    */
-  transform,
+  Tuple,
   /**
-   * @category constructors
+   * The `Type` variant of the `ParseIssue` type represents an error that occurs when the `actual` value is not of the expected type.
+   * The `ast` field specifies the expected type, and the `actual` field contains the value that caused the error.
+   *
+   * @category model
    * @since 1.0.0
    */
-  type,
+  Type,
   /**
-   * @category constructors
+   * Error that occurs when a type literal or record has an error.
+   *
+   * @category model
    * @since 1.0.0
    */
-  typeLiteral,
+  TypeLiteral,
   /**
    * Error that occurs when an unexpected key or index is present.
    *
@@ -210,128 +187,23 @@ export {
    */
   Unexpected,
   /**
-   * @category constructors
+   * Error that occurs when a union has an error.
+   *
+   * @category model
    * @since 1.0.0
    */
-  unexpected,
-  /**
-   * @category constructors
-   * @since 1.0.0
-   */
-  union
+  Union
 } from "./internal/parseResult.js"
 
-/**
- * Error that occurs when a declaration has an error.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Declaration {
-  readonly _tag: "Declaration"
-  readonly ast: AST.Declaration
-  readonly actual: unknown
-  readonly error: ParseIssue
-}
-
-/**
- * Error that occurs when a refinement has an error.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Refinement {
-  readonly _tag: "Refinement"
-  readonly ast: AST.Refinement<AST.AST>
-  readonly actual: unknown
-  readonly kind: "From" | "Predicate"
-  readonly error: ParseIssue
-}
-
-/**
- * Error that occurs when an array or tuple has an error.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Tuple {
-  readonly _tag: "Tuple"
-  readonly ast: AST.Tuple
-  readonly actual: unknown
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const tuple = (
-  ast: AST.Tuple,
-  actual: unknown,
-  errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
-): Tuple => ({ _tag: "Tuple", ast, actual, errors })
-
-/**
- * Error that occurs when a type literal or record has an error.
- *
- * @category model
- * @since 1.0.0
- */
-export interface TypeLiteral {
-  readonly _tag: "TypeLiteral"
-  readonly ast: AST.TypeLiteral
-  readonly actual: unknown
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
-}
-
-/**
- * The `Index` error indicates that there was an error at a specific index in an array or tuple.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Index {
-  readonly _tag: "Index"
-  readonly index: number
-  readonly error: ParseIssue | Missing | Unexpected
-}
-
-/**
- * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in a type literal or record is invalid.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Key {
-  readonly _tag: "Key"
-  readonly key: PropertyKey
-  readonly error: ParseIssue | Missing | Unexpected
-}
-
-/**
- * Error that occurs when a union has an error.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Union {
-  readonly _tag: "Union"
-  readonly ast: AST.Union
-  readonly actual: unknown
-  readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
-}
-
-/**
- * Error that occurs when a member in a union has an error.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Member {
-  readonly _tag: "Member"
-  readonly ast: AST.AST
-  readonly error: ParseIssue
-}
+export type {
+  /**
+   * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
+   *
+   * @category model
+   * @since 1.0.0
+   */
+  ParseIssue
+} from "./internal/parseResult.js"
 
 /**
  * @category optimisation

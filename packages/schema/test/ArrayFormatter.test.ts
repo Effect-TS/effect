@@ -45,7 +45,7 @@ describe("ArrayFormatter", () => {
       const schema = S.string.pipe(
         S.transformOrFail(
           S.string,
-          (s, _, ast) => ParseResult.fail(ParseResult.type(ast, s, "my custom message")),
+          (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "my custom message")),
           ParseResult.succeed
         )
       )
@@ -362,7 +362,7 @@ describe("ArrayFormatter", () => {
           (s, _, ast) => {
             const n = Number(s)
             return Number.isNaN(n)
-              ? ParseResult.fail(ParseResult.type(ast, s))
+              ? ParseResult.fail(new ParseResult.Type(ast, s))
               : ParseResult.succeed(n)
           },
           (n) => ParseResult.succeed(String(n))

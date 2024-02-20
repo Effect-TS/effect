@@ -482,7 +482,7 @@ describe("TreeFormatter", () => {
           (s, _, ast) => {
             const n = Number(s)
             return Number.isNaN(n)
-              ? ParseResult.fail(ParseResult.type(ast, s))
+              ? ParseResult.fail(new ParseResult.Type(ast, s))
               : ParseResult.succeed(n)
           },
           (n) => ParseResult.succeed(String(n))
