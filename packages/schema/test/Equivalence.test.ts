@@ -4,7 +4,9 @@ import * as S from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Either from "effect/Either"
+import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
+import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import { isUnknown } from "effect/Predicate"
 import * as fc from "fast-check"
@@ -113,14 +115,27 @@ describe("Equivalence", () => {
   })
 
   describe("declaration", () => {
-    it("should return Equivalence.strict() when an annotation exists", () => {
-      const schema = S.declare(isUnknown, {
-        arbitrary: (): A.Arbitrary<string> => (fc) => fc.string()
-      })
+    it("should return Equal.equals when an annotation doesn't exist", () => {
+      const schema = S.declare(isUnknown)
       const equivalence = E.make(schema)
-      expect(equivalence).toStrictEqual(Equivalence.strict())
+      expect(equivalence).toStrictEqual(Equal.equals)
 
-      // propertyTo(schema)
+      const make = (id: number, s: string) => {
+        return {
+          [Hash.symbol]() {
+            return 0
+          },
+          [Equal.symbol](that: any) {
+            return that.id === id
+          },
+          id,
+          s
+        }
+      }
+
+      expect(equivalence(make(1, "a"), make(1, "a"))).toBe(true)
+      expect(equivalence(make(1, "a"), make(1, "b"))).toBe(true)
+      expect(equivalence(make(1, "a"), make(2, "a"))).toBe(false)
     })
 
     it("Chunk", () => {

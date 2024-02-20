@@ -62,4 +62,4 @@ export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol)
  * @since 2.0.0
  * @category instances
  */
-export const equivalence: <A>() => Equivalence<A> = () => (self, that) => equals(self, that)
+export const equivalence: <A>() => Equivalence<A> = () => equals
