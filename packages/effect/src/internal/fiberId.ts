@@ -107,13 +107,11 @@ class Composite implements FiberId.Composite {
   }
   _hash: number | undefined;
   [Hash.symbol](): number {
-    return Hash.cached(
-      this,
-      pipe(
-        Hash.string(`${FiberIdSymbolKey}-${this._tag}`),
-        Hash.combine(Hash.hash(this.left)),
-        Hash.combine(Hash.hash(this.right))
-      )
+    return pipe(
+      Hash.string(`${FiberIdSymbolKey}-${this._tag}`),
+      Hash.combine(Hash.hash(this.left)),
+      Hash.combine(Hash.hash(this.right)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {

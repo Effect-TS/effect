@@ -51,13 +51,11 @@ class Running implements FiberStatus.Running {
   readonly _tag = OP_RUNNING
   constructor(readonly runtimeFlags: RuntimeFlags) {}
   [Hash.symbol](): number {
-    return Hash.cached(
-      this,
-      pipe(
-        Hash.hash(FiberStatusSymbolKey),
-        Hash.combine(Hash.hash(this._tag)),
-        Hash.combine(Hash.hash(this.runtimeFlags))
-      )
+    return pipe(
+      Hash.hash(FiberStatusSymbolKey),
+      Hash.combine(Hash.hash(this._tag)),
+      Hash.combine(Hash.hash(this.runtimeFlags)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {
@@ -78,14 +76,12 @@ class Suspended implements FiberStatus.Suspended {
     readonly blockingOn: FiberId
   ) {}
   [Hash.symbol](): number {
-    return Hash.cached(
-      this,
-      pipe(
-        Hash.hash(FiberStatusSymbolKey),
-        Hash.combine(Hash.hash(this._tag)),
-        Hash.combine(Hash.hash(this.runtimeFlags)),
-        Hash.combine(Hash.hash(this.blockingOn))
-      )
+    return pipe(
+      Hash.hash(FiberStatusSymbolKey),
+      Hash.combine(Hash.hash(this._tag)),
+      Hash.combine(Hash.hash(this.runtimeFlags)),
+      Hash.combine(Hash.hash(this.blockingOn)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {
