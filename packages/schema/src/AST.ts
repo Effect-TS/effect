@@ -264,6 +264,9 @@ export type AST =
  * @since 1.0.0
  */
 export class Declaration implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Declaration"
   constructor(
     readonly typeParameters: ReadonlyArray<AST>,
@@ -294,6 +297,9 @@ export type LiteralValue = string | number | boolean | null | bigint
  * @since 1.0.0
  */
 export class Literal implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Literal"
   constructor(readonly literal: LiteralValue, readonly annotations: Annotations = {}) {}
 }
@@ -314,6 +320,9 @@ export const _null = new Literal(null, {
  * @since 1.0.0
  */
 export class UniqueSymbol implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "UniqueSymbol"
   constructor(readonly symbol: symbol, readonly annotations: Annotations = {}) {}
 }
@@ -329,6 +338,9 @@ export const isUniqueSymbol = (ast: AST): ast is UniqueSymbol => ast._tag === "U
  * @since 1.0.0
  */
 export class UndefinedKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "UndefinedKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -352,6 +364,9 @@ export const isUndefinedKeyword = (ast: AST): ast is UndefinedKeyword => ast._ta
  * @since 1.0.0
  */
 export class VoidKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "VoidKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -375,6 +390,9 @@ export const isVoidKeyword = (ast: AST): ast is VoidKeyword => ast._tag === "Voi
  * @since 1.0.0
  */
 export class NeverKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "NeverKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -398,6 +416,9 @@ export const isNeverKeyword = (ast: AST): ast is NeverKeyword => ast._tag === "N
  * @since 1.0.0
  */
 export class UnknownKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "UnknownKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -421,6 +442,9 @@ export const isUnknownKeyword = (ast: AST): ast is UnknownKeyword => ast._tag ==
  * @since 1.0.0
  */
 export class AnyKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "AnyKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -444,6 +468,9 @@ export const isAnyKeyword = (ast: AST): ast is AnyKeyword => ast._tag === "AnyKe
  * @since 1.0.0
  */
 export class StringKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "StringKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -468,6 +495,9 @@ export const isStringKeyword = (ast: AST): ast is StringKeyword => ast._tag === 
  * @since 1.0.0
  */
 export class NumberKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "NumberKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -492,6 +522,9 @@ export const isNumberKeyword = (ast: AST): ast is NumberKeyword => ast._tag === 
  * @since 1.0.0
  */
 export class BooleanKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "BooleanKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -516,6 +549,9 @@ export const isBooleanKeyword = (ast: AST): ast is BooleanKeyword => ast._tag ==
  * @since 1.0.0
  */
 export class BigIntKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "BigIntKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -540,6 +576,9 @@ export const isBigIntKeyword = (ast: AST): ast is BigIntKeyword => ast._tag === 
  * @since 1.0.0
  */
 export class SymbolKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "SymbolKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -564,6 +603,9 @@ export const isSymbolKeyword = (ast: AST): ast is SymbolKeyword => ast._tag === 
  * @since 1.0.0
  */
 export class ObjectKeyword implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "ObjectKeyword"
   constructor(readonly annotations: Annotations = {}) {}
 }
@@ -589,6 +631,9 @@ export const isObjectKeyword = (ast: AST): ast is ObjectKeyword => ast._tag === 
  * @since 1.0.0
  */
 export class Enums implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Enums"
   constructor(
     readonly enums: ReadonlyArray<readonly [string, string | number]>,
@@ -603,6 +648,7 @@ export class Enums implements Annotated {
 export const isEnums = (ast: AST): ast is Enums => ast._tag === "Enums"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export class TemplateLiteralSpan {
@@ -623,6 +669,9 @@ export class TemplateLiteral implements Annotated {
       new TemplateLiteral(head, spans, annotations) :
       new Literal(head)
 
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "TemplateLiteral"
   private constructor(
     readonly head: string,
@@ -638,6 +687,7 @@ export class TemplateLiteral implements Annotated {
 export const isTemplateLiteral = (ast: AST): ast is TemplateLiteral => ast._tag === "TemplateLiteral"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export class Element {
@@ -649,6 +699,9 @@ export class Element {
  * @since 1.0.0
  */
 export class Tuple implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Tuple"
   constructor(
     readonly elements: ReadonlyArray<Element>,
@@ -665,6 +718,7 @@ export class Tuple implements Annotated {
 export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export class PropertySignature implements Annotated {
@@ -699,6 +753,7 @@ export const isParameter = (ast: AST): ast is Parameter => {
 }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export class IndexSignature {
@@ -765,6 +820,9 @@ export class TypeLiteral implements Annotated {
       annotations
     )
   }
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "TypeLiteral"
   private constructor(
     readonly propertySignatures: ReadonlyArray<PropertySignature>,
@@ -802,6 +860,9 @@ export class Union implements Annotated {
     }
     return neverKeyword
   }
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Union"
   private constructor(readonly types: Members<AST>, readonly annotations: Annotations = {}) {}
 }
@@ -819,6 +880,9 @@ export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
  * @since 1.0.0
  */
 export class Suspend implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Suspend"
   constructor(readonly f: () => AST, readonly annotations: Annotations = {}) {
     this.f = _util.memoizeThunk(f)
@@ -836,6 +900,9 @@ export const isSuspend = (ast: AST): ast is Suspend => ast._tag === "Suspend"
  * @since 1.0.0
  */
 export class Refinement<From = AST> implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Refinement"
   constructor(
     readonly from: From,
@@ -875,6 +942,9 @@ export const defaultParseOption: ParseOptions = {}
  * @since 1.0.0
  */
 export class Transform implements Annotated {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Transform"
   constructor(
     readonly from: AST,
@@ -904,6 +974,9 @@ export type Transformation =
  * @since 1.0.0
  */
 export class FinalTransformation {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "FinalTransformation"
   constructor(
     readonly decode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseIssue, any>,
@@ -912,7 +985,7 @@ export class FinalTransformation {
 }
 
 /**
- * @category guard
+ * @category guards
  * @since 1.0.0
  */
 export const isFinalTransformation = (ast: Transformation): ast is FinalTransformation =>
@@ -923,6 +996,9 @@ export const isFinalTransformation = (ast: Transformation): ast is FinalTransfor
  * @since 1.0.0
  */
 export class ComposeTransformation {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "ComposeTransformation"
 }
 
@@ -933,7 +1009,7 @@ export class ComposeTransformation {
 export const composeTransformation: ComposeTransformation = new ComposeTransformation()
 
 /**
- * @category guard
+ * @category guards
  * @since 1.0.0
  */
 export const isComposeTransformation = (ast: Transformation): ast is ComposeTransformation =>
@@ -954,6 +1030,9 @@ export const isComposeTransformation = (ast: Transformation): ast is ComposeTran
  * @since 1.0.0
  */
 export class FinalPropertySignatureTransformation {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "FinalPropertySignatureTransformation"
   constructor(
     readonly decode: (o: Option.Option<any>) => Option.Option<any>,
@@ -962,7 +1041,7 @@ export class FinalPropertySignatureTransformation {
 }
 
 /**
- * @category guard
+ * @category guards
  * @since 1.0.0
  */
 export const isFinalPropertySignatureTransformation = (
@@ -1007,6 +1086,9 @@ export class TypeLiteralTransformation {
 
     return new TypeLiteralTransformation(propertySignatureTransformations)
   }
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "TypeLiteralTransformation"
   private constructor(
     readonly propertySignatureTransformations: ReadonlyArray<
@@ -1016,7 +1098,7 @@ export class TypeLiteralTransformation {
 }
 
 /**
- * @category guard
+ * @category guards
  * @since 1.0.0
  */
 export const isTypeLiteralTransformation = (
