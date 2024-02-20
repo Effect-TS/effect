@@ -5,11 +5,7 @@
   "license": "MIT",
   "description": "Modeling the schema of data structures as first-class values",
   "homepage": "https://effect.website",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/effect-ts/effect.git",
-    "directory": "packages/schema"
-  },
+  "repository": "github:effect-ts/effect",
   "bugs": {
     "url": "https://github.com/effect-ts/effect/issues"
   },

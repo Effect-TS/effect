@@ -5,11 +5,7 @@
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/effect-ts/effect.git",
-    "directory": "packages/platform-node"
-  },
+  "repository": "github:effect-ts/effect",
   "bugs": {
     "url": "https://github.com/effect-ts/effect/issues"
   },
