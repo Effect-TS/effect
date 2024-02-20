@@ -5,7 +5,11 @@
   "license": "MIT",
   "description": "Functional programming in TypeScript",
   "homepage": "https://effect.website",
-  "repository": "github:effect-ts/effect",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/effect.git",
+    "directory": "packages/rpc-http"
+  },
   "bugs": {
     "url": "https://github.com/effect-ts/effect/issues"
   },

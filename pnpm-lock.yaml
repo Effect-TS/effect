@@ -35,8 +35,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
       '@effect/build-utils':
-        specifier: ^0.7.5
-        version: 0.7.5
+        specifier: ^0.7.4
+        version: 0.7.4
       '@effect/docgen':
         specifier: ^0.3.8
         version: 0.3.8(tsx@4.7.1)(typescript@5.3.3)
@@ -1184,8 +1184,8 @@ packages:
       '@edge-runtime/primitives': 4.1.0
     dev: true
 
-  /@effect/build-utils@0.7.5:
-    resolution: {integrity: sha512-p62vQViXLvZfE9OoFSDEjPOrshHi2vhhLH4iiAlgtEZQoAOBQmRAsWlk2ToFatPeaJfWtNoNVkaZOqguehqV3w==}
+  /@effect/build-utils@0.7.4:
+    resolution: {integrity: sha512-1ddgf1w7dkJSF9gHxQN+bgwQAgU2psODo7ppTExmT8tQ8J2LDETuM6tVLj8cIcEHEdyOuNzF6ssvu8ABTTRvEA==}
     engines: {node: '>=16.17.1'}
     hasBin: true
     dev: true
