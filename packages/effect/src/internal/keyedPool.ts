@@ -62,7 +62,8 @@ class Complete<in out A, out E> implements Equal.Equal {
   [Hash.symbol](): number {
     return pipe(
       Hash.string("effect/KeyedPool/Complete"),
-      Hash.combine(Hash.hash(this.pool))
+      Hash.combine(Hash.hash(this.pool)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](u: unknown): boolean {
@@ -80,7 +81,8 @@ class Pending<in out A, in out E> implements Equal.Equal {
   [Hash.symbol](): number {
     return pipe(
       Hash.string("effect/KeyedPool/Pending"),
-      Hash.combine(Hash.hash(this.deferred))
+      Hash.combine(Hash.hash(this.deferred)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](u: unknown): boolean {

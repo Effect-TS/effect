@@ -39,7 +39,8 @@ const proto = {
   [Hash.symbol](this: Cause.Cause<any>): number {
     return pipe(
       Hash.hash(CauseSymbolKey),
-      Hash.combine(Hash.hash(flattenCause(this)))
+      Hash.combine(Hash.hash(flattenCause(this))),
+      Hash.cached(this)
     )
   },
   [Equal.symbol](this: Cause.Cause<any>, that: unknown): boolean {

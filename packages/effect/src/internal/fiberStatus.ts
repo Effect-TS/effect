@@ -31,15 +31,14 @@ export const OP_SUSPENDED = "Suspended" as const
 /** @internal */
 export type OP_SUSPENDED = typeof OP_SUSPENDED
 
+const DoneHash = Hash.string(`${FiberStatusSymbolKey}-${OP_DONE}`)
+
 /** @internal */
 class Done implements FiberStatus.Done {
   readonly [FiberStatusTypeId]: FiberStatus.FiberStatusTypeId = FiberStatusTypeId
   readonly _tag = OP_DONE;
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(FiberStatusSymbolKey),
-      Hash.combine(Hash.hash(this._tag))
-    )
+    return DoneHash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberStatus(that) && that._tag === OP_DONE
@@ -55,7 +54,8 @@ class Running implements FiberStatus.Running {
     return pipe(
       Hash.hash(FiberStatusSymbolKey),
       Hash.combine(Hash.hash(this._tag)),
-      Hash.combine(Hash.hash(this.runtimeFlags))
+      Hash.combine(Hash.hash(this.runtimeFlags)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {
@@ -80,7 +80,8 @@ class Suspended implements FiberStatus.Suspended {
       Hash.hash(FiberStatusSymbolKey),
       Hash.combine(Hash.hash(this._tag)),
       Hash.combine(Hash.hash(this.runtimeFlags)),
-      Hash.combine(Hash.hash(this.blockingOn))
+      Hash.combine(Hash.hash(this.blockingOn)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {

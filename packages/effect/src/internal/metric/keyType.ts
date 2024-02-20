@@ -81,13 +81,14 @@ class CounterKeyType<A extends (number | bigint)> implements MetricKeyType.Metri
   }
 }
 
+const FrequencyKeyTypeHash = Hash.string(FrequencyKeyTypeSymbolKey)
+
 /** @internal */
 class FrequencyKeyType implements MetricKeyType.MetricKeyType.Frequency {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
-  readonly [FrequencyKeyTypeTypeId]: MetricKeyType.FrequencyKeyTypeTypeId = FrequencyKeyTypeTypeId
-  readonly _hash = Hash.string(FrequencyKeyTypeSymbolKey);
+  readonly [FrequencyKeyTypeTypeId]: MetricKeyType.FrequencyKeyTypeTypeId = FrequencyKeyTypeTypeId;
   [Hash.symbol](): number {
-    return this._hash
+    return FrequencyKeyTypeHash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFrequencyKey(that)
@@ -97,14 +98,15 @@ class FrequencyKeyType implements MetricKeyType.MetricKeyType.Frequency {
   }
 }
 
+const GaugeKeyTypeHash = Hash.string(GaugeKeyTypeSymbolKey)
+
 /** @internal */
 class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.MetricKeyType.Gauge<A> {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [GaugeKeyTypeTypeId]: MetricKeyType.GaugeKeyTypeTypeId = GaugeKeyTypeTypeId
   constructor(readonly bigint: boolean) {}
-  readonly _hash = Hash.string(GaugeKeyTypeSymbolKey);
   [Hash.symbol](): number {
-    return this._hash
+    return GaugeKeyTypeHash
   }
   [Equal.symbol](that: unknown): boolean {
     return isGaugeKey(that)

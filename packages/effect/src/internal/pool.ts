@@ -155,7 +155,8 @@ class PoolImpl<in out A, in out E> implements Pool.Pool<A, E> {
       Hash.combine(Hash.hash(this.state)),
       Hash.combine(Hash.hash(this.items)),
       Hash.combine(Hash.hash(this.invalidated)),
-      Hash.combine(Hash.hash(this.track))
+      Hash.combine(Hash.hash(this.track)),
+      Hash.cached(this)
     )
   }
 

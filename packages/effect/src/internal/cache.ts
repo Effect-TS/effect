@@ -123,7 +123,8 @@ class MapKeyImpl<out K> implements MapKey<K> {
     return pipe(
       Hash.hash(this.current),
       Hash.combine(Hash.hash(this.previous)),
-      Hash.combine(Hash.hash(this.next))
+      Hash.combine(Hash.hash(this.next)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {

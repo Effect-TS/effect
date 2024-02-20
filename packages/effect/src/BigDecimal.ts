@@ -57,7 +57,8 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
     const normalized = normalize(this)
     return pipe(
       Hash.hash(normalized.value),
-      Hash.combine(Hash.number(normalized.scale))
+      Hash.combine(Hash.number(normalized.scale)),
+      Hash.cached(this)
     )
   },
   [Equal.symbol](this: BigDecimal, that: unknown): boolean {

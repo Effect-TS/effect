@@ -182,19 +182,20 @@ const handleBuiltInOption = <R, E, A>(
       return Console.log(InternalHelpDoc.toAnsiText(helpDoc))
     }
     case "ShowCompletions": {
+      const command = Array.from(InternalCommand.getNames(self.command))[0]!
       switch (builtIn.shellType) {
         case "bash": {
-          return InternalCommand.getBashCompletions(self.command, executable).pipe(
+          return InternalCommand.getBashCompletions(self.command, command).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
         }
         case "fish": {
-          return InternalCommand.getFishCompletions(self.command, executable).pipe(
+          return InternalCommand.getFishCompletions(self.command, command).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
         }
         case "zsh":
-          return InternalCommand.getZshCompletions(self.command, executable).pipe(
+          return InternalCommand.getZshCompletions(self.command, command).pipe(
             Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
           )
       }
@@ -233,7 +234,8 @@ const handleBuiltInOption = <R, E, A>(
       )
       const help = InternalHelpDoc.sequence(header, description)
       const text = InternalHelpDoc.toAnsiText(help)
-      const wizardPrefix = getWizardPrefix(builtIn, executable, args)
+      const command = Array.from(InternalCommand.getNames(self.command))[0]!
+      const wizardPrefix = getWizardPrefix(builtIn, command, args)
       return Console.log(text).pipe(
         Effect.zipRight(InternalCommand.wizard(builtIn.command, wizardPrefix, config)),
         Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args)))),
@@ -244,8 +246,12 @@ const handleBuiltInOption = <R, E, A>(
             active: "yes",
             inactive: "no"
           }).pipe(Effect.flatMap((shouldRunCommand) => {
+            const finalArgs = pipe(
+              ReadonlyArray.drop(args, 1),
+              ReadonlyArray.prependAll(executable.split(/\s+/))
+            )
             return shouldRunCommand
-              ? Console.log().pipe(Effect.zipRight(run(self, args, execute)))
+              ? Console.log().pipe(Effect.zipRight(run(self, finalArgs, execute)))
               : Effect.unit
           }))
         ),

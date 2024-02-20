@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-browser",
   "type": "module",
-  "version": "0.30.3",
+  "version": "0.30.6",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -26,7 +26,7 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "provenance": true
+    "provenance": false
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -46,7 +46,7 @@
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^",
-    "happy-dom": "^12.10.3",
+    "happy-dom": "^13.3.8",
     "mock-xmlhttprequest": "^8.3.0"
   },
   "effect": {

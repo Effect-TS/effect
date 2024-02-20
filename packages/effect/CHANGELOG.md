@@ -1,5 +1,68 @@
 # effect
 
+## 2.3.8
+
+### Patch Changes
+
+- [#2167](https://github.com/Effect-TS/effect/pull/2167) [`5ad2eec`](https://github.com/Effect-TS/effect/commit/5ad2eece0280b6db6a749d25cac1dcf6d33659a9) Thanks [@tim-smart](https://github.com/tim-smart)! - add Hash.cached
+
+  This api assists with adding a layer of caching, when hashing immutable data structures.
+
+  ```ts
+  import { Data, Hash } from "effect";
+
+  class User extends Data.Class<{
+    id: number;
+    name: string;
+  }> {
+    [Hash.symbol]() {
+      return Hash.cached(this, Hash.string(`${this.id}-${this.name}`));
+    }
+  }
+  ```
+
+- [#2187](https://github.com/Effect-TS/effect/pull/2187) [`e6d36c0`](https://github.com/Effect-TS/effect/commit/e6d36c0813d836f17eabb6a9c7849baffca12dbf) Thanks [@tim-smart](https://github.com/tim-smart)! - update development dependencies
+
+## 2.3.7
+
+### Patch Changes
+
+- [#2142](https://github.com/Effect-TS/effect/pull/2142) [`bc8404d`](https://github.com/Effect-TS/effect/commit/bc8404d54fd42072d200c0399cb39672837afa9f) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Expose version control via ModuleVersion.
+
+  This enables low level framework authors to run their own effect version which won't conflict with any other effect versions running on the same process.
+
+  Imagine cases where for example a function runtime is built on effect, we don't want lifecycle of the runtime to clash with lifecycle of user-land provided code.
+
+  To manually control the module version one can use:
+
+  ```ts
+  import * as ModuleVersion from "effect/ModuleVersion";
+
+  ModuleVersion.setCurrentVersion(
+    `my-effect-runtime-${ModuleVersion.getCurrentVersion()}`,
+  );
+  ```
+
+  Note that this code performs side effects and should be executed before any module is imported ideally via an init script.
+
+  The resulting order of execution has to be:
+
+  ```ts
+  import * as ModuleVersion from "effect/ModuleVersion";
+
+  ModuleVersion.setCurrentVersion(
+    `my-effect-runtime-${ModuleVersion.getCurrentVersion()}`,
+  );
+
+  import { Effect } from "effect";
+
+  // rest of code
+  ```
+
+- [#2159](https://github.com/Effect-TS/effect/pull/2159) [`2c5cbcd`](https://github.com/Effect-TS/effect/commit/2c5cbcd1161b4f40dab184999291e817314107de) Thanks [@IMax153](https://github.com/IMax153)! - Avoid incrementing cache hits for expired entries
+
+- [#2165](https://github.com/Effect-TS/effect/pull/2165) [`6565916`](https://github.com/Effect-TS/effect/commit/6565916ef254bf910e47d25fd0ef55e7cb420241) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Hash implemention for Option.none
+
 ## 2.3.6
 
 ### Patch Changes

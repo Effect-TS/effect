@@ -168,7 +168,7 @@ class STMPrimitive implements STM.STM<any, any, any> {
     return this === that
   }
   [Hash.symbol](this: {}) {
-    return Hash.random(this)
+    return Hash.cached(this, Hash.random(this))
   }
   commit(this: STM.STM<any, any, any>): Effect.Effect<any, any, any> {
     return unsafeAtomically(this, constVoid, constVoid)

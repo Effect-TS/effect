@@ -1,5 +1,35 @@
 # @effect/rpc-http
 
+## 0.26.14
+
+### Patch Changes
+
+- [#2187](https://github.com/Effect-TS/effect/pull/2187) [`e6d36c0`](https://github.com/Effect-TS/effect/commit/e6d36c0813d836f17eabb6a9c7849baffca12dbf) Thanks [@tim-smart](https://github.com/tim-smart)! - update development dependencies
+
+- Updated dependencies [[`5ad2eec`](https://github.com/Effect-TS/effect/commit/5ad2eece0280b6db6a749d25cac1dcf6d33659a9), [`e6d36c0`](https://github.com/Effect-TS/effect/commit/e6d36c0813d836f17eabb6a9c7849baffca12dbf)]:
+  - effect@2.3.8
+  - @effect/schema@0.62.9
+  - @effect/platform@0.45.6
+  - @effect/rpc@0.27.14
+
+## 0.26.13
+
+### Patch Changes
+
+- Updated dependencies [[`6daf084`](https://github.com/Effect-TS/effect/commit/6daf0845de008772011db8d7c75b7c37a6b4d334)]:
+  - @effect/platform@0.45.5
+  - @effect/rpc@0.27.13
+
+## 0.26.12
+
+### Patch Changes
+
+- Updated dependencies [[`bc8404d`](https://github.com/Effect-TS/effect/commit/bc8404d54fd42072d200c0399cb39672837afa9f), [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea), [`2c5cbcd`](https://github.com/Effect-TS/effect/commit/2c5cbcd1161b4f40dab184999291e817314107de), [`6565916`](https://github.com/Effect-TS/effect/commit/6565916ef254bf910e47d25fd0ef55e7cb420241), [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea)]:
+  - effect@2.3.7
+  - @effect/platform@0.45.4
+  - @effect/rpc@0.27.12
+  - @effect/schema@0.62.8
+
 ## 0.26.11
 
 ### Patch Changes

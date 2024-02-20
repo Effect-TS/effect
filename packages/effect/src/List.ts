@@ -118,7 +118,7 @@ const ConsProto: Omit<Cons<unknown>, "head" | "tail"> = {
       _equivalence(this, that)
   },
   [Hash.symbol](this: Cons<unknown>): number {
-    return Hash.array(toArray(this))
+    return Hash.cached(this, Hash.array(toArray(this)))
   },
   [Symbol.iterator](this: Cons<unknown>): Iterator<unknown> {
     let done = false
@@ -162,6 +162,7 @@ const makeCons = <A>(head: A, tail: List<A>): MutableCons<A> => {
   return cons
 }
 
+const NilHash = Hash.string("Nil")
 const NilProto: Nil<unknown> = {
   [TypeId]: TypeId,
   _tag: "Nil",
@@ -178,7 +179,7 @@ const NilProto: Nil<unknown> = {
     return this.toJSON()
   },
   [Hash.symbol](): number {
-    return Hash.array(toArray(this))
+    return NilHash
   },
   [Equal.symbol](that: unknown): boolean {
     return isList(that) && this._tag === that._tag

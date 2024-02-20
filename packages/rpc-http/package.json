@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-http",
-  "version": "0.26.11",
+  "version": "0.26.14",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",
@@ -26,7 +26,7 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "provenance": true
+    "provenance": false
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",

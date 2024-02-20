@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-bun",
   "type": "module",
-  "version": "0.32.3",
+  "version": "0.32.6",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -26,7 +26,7 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "provenance": true
+    "provenance": false
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -48,7 +48,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
-    "bun-types": "1.0.18-1",
+    "bun-types": "1.0.28",
     "effect": "workspace:^"
   },
   "effect": {

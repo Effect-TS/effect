@@ -8,11 +8,10 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
   [Worker.PlatformWorkerTypeId]: Worker.PlatformWorkerTypeId,
   spawn<I, O>(worker_: unknown) {
     return Effect.gen(function*(_) {
-      const worker = worker_ as globalThis.SharedWorker | globalThis.Worker
+      const worker = worker_ as globalThis.SharedWorker | globalThis.Worker | MessagePort
       let port: globalThis.Worker | MessagePort
       if ("port" in worker) {
         port = worker.port
-        port.start()
       } else {
         port = worker
       }
@@ -39,6 +38,11 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
         Effect.interruptible,
         Effect.forkScoped
       )
+      yield* _(Effect.yieldNow())
+
+      if ("start" in port) {
+        port.start()
+      }
 
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
         Effect.try({
@@ -58,8 +62,5 @@ export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerIm
 export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
 
 /** @internal */
-export const layer = (spawn: (id: number) => globalThis.Worker | globalThis.SharedWorker) =>
-  Layer.merge(
-    layerManager,
-    Worker.layerSpawner(spawn)
-  )
+export const layer = (spawn: (id: number) => globalThis.Worker | globalThis.SharedWorker | MessagePort) =>
+  Layer.merge(layerManager, Worker.layerSpawner(spawn))

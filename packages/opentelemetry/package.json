@@ -1,6 +1,6 @@
 {
   "name": "@effect/opentelemetry",
-  "version": "0.31.7",
+  "version": "0.31.9",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",
@@ -26,7 +26,7 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "provenance": true
+    "provenance": false
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -64,16 +64,16 @@
   },
   "devDependencies": {
     "@opentelemetry/api": "^1.7.0",
-    "@opentelemetry/context-async-hooks": "^1.19.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "0.46.0",
-    "@opentelemetry/exporter-prometheus": "0.46.0",
-    "@opentelemetry/exporter-trace-otlp-http": "0.46.0",
-    "@opentelemetry/otlp-exporter-base": "0.46.0",
-    "@opentelemetry/resources": "^1.19.0",
-    "@opentelemetry/sdk-metrics": "^1.19.0",
-    "@opentelemetry/sdk-trace-base": "^1.19.0",
-    "@opentelemetry/sdk-trace-node": "^1.19.0",
-    "@opentelemetry/sdk-trace-web": "^1.19.0",
-    "@opentelemetry/semantic-conventions": "^1.19.0"
+    "@opentelemetry/context-async-hooks": "^1.21.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.48.0",
+    "@opentelemetry/exporter-prometheus": "0.48.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.48.0",
+    "@opentelemetry/otlp-exporter-base": "0.48.0",
+    "@opentelemetry/resources": "^1.21.0",
+    "@opentelemetry/sdk-metrics": "^1.21.0",
+    "@opentelemetry/sdk-trace-base": "^1.21.0",
+    "@opentelemetry/sdk-trace-node": "^1.21.0",
+    "@opentelemetry/sdk-trace-web": "^1.21.0",
+    "@opentelemetry/semantic-conventions": "^1.21.0"
   }
 }

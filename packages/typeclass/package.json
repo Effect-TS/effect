@@ -1,6 +1,6 @@
 {
   "name": "@effect/typeclass",
-  "version": "0.22.21",
+  "version": "0.22.23",
   "type": "module",
   "license": "MIT",
   "description": "A collection of reusable typeclasses for the Effect ecosystem",
@@ -28,7 +28,7 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "provenance": true
+    "provenance": false
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",

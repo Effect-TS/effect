@@ -71,12 +71,8 @@ class Runtime implements FiberId.Runtime {
     readonly id: number,
     readonly startTimeMillis: number
   ) {}
-  _hash: number | undefined;
   [Hash.symbol](): number {
-    if (this._hash == undefined) {
-      this._hash = Hash.string(`${FiberIdSymbolKey}-${this._tag}-${this.id}-${this.startTimeMillis}`)
-    }
-    return this._hash
+    return Hash.cached(this, Hash.string(`${FiberIdSymbolKey}-${this._tag}-${this.id}-${this.startTimeMillis}`))
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberId(that) &&
@@ -111,14 +107,12 @@ class Composite implements FiberId.Composite {
   }
   _hash: number | undefined;
   [Hash.symbol](): number {
-    if (this._hash == undefined) {
-      this._hash = pipe(
-        Hash.string(`${FiberIdSymbolKey}-${this._tag}`),
-        Hash.combine(Hash.hash(this.left)),
-        Hash.combine(Hash.hash(this.right))
-      )
-    }
-    return this._hash
+    return pipe(
+      Hash.string(`${FiberIdSymbolKey}-${this._tag}`),
+      Hash.combine(Hash.hash(this.left)),
+      Hash.combine(Hash.hash(this.right)),
+      Hash.cached(this)
+    )
   }
   [Equal.symbol](that: unknown): boolean {
     return isFiberId(that) &&

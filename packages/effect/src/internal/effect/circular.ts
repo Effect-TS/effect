@@ -314,7 +314,7 @@ class Key<in out A> implements Equal.Equal {
     return false
   }
   [Hash.symbol]() {
-    return this.eq ? 0 : Hash.hash(this.a)
+    return this.eq ? 0 : Hash.cached(this, Hash.hash(this.a))
   }
 }
 

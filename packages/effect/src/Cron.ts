@@ -50,7 +50,8 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
       Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.hours))),
       Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.days))),
       Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.months))),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.weekdays)))
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.weekdays))),
+      Hash.cached(this)
     )
   },
   toString(this: Cron) {

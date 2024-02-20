@@ -68,7 +68,8 @@ class CounterState<A extends (number | bigint)> implements MetricState.MetricSta
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(CounterStateSymbolKey),
-      Hash.combine(Hash.hash(this.count))
+      Hash.combine(Hash.hash(this.count)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {
@@ -88,14 +89,11 @@ class FrequencyState implements MetricState.MetricState.Frequency {
   constructor(readonly occurrences: ReadonlyMap<string, number>) {}
   _hash: number | undefined;
   [Hash.symbol](): number {
-    if (this._hash !== undefined) {
-      return this._hash
-    }
-    this._hash = pipe(
+    return pipe(
       Hash.string(FrequencyStateSymbolKey),
-      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.occurrences.entries())))
+      Hash.combine(Hash.array(ReadonlyArray.fromIterable(this.occurrences.entries()))),
+      Hash.cached(this)
     )
-    return this._hash
   }
   [Equal.symbol](that: unknown): boolean {
     return isFrequencyState(that) && arrayEquals(
@@ -116,7 +114,8 @@ class GaugeState<A extends (number | bigint)> implements MetricState.MetricState
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(GaugeStateSymbolKey),
-      Hash.combine(Hash.hash(this.value))
+      Hash.combine(Hash.hash(this.value)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](u: unknown): boolean {
@@ -145,7 +144,8 @@ export class HistogramState implements MetricState.MetricState.Histogram {
       Hash.combine(Hash.hash(this.count)),
       Hash.combine(Hash.hash(this.min)),
       Hash.combine(Hash.hash(this.max)),
-      Hash.combine(Hash.hash(this.sum))
+      Hash.combine(Hash.hash(this.sum)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {
@@ -181,7 +181,8 @@ export class SummaryState implements MetricState.MetricState.Summary {
       Hash.combine(Hash.hash(this.count)),
       Hash.combine(Hash.hash(this.min)),
       Hash.combine(Hash.hash(this.max)),
-      Hash.combine(Hash.hash(this.sum))
+      Hash.combine(Hash.hash(this.sum)),
+      Hash.cached(this)
     )
   }
   [Equal.symbol](that: unknown): boolean {

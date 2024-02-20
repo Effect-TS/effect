@@ -1,6 +1,6 @@
 {
   "name": "@effect/experimental",
-  "version": "0.9.13",
+  "version": "0.9.16",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",
@@ -26,7 +26,7 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "provenance": true
+    "provenance": false
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "isomorphic-ws": "^5.0.0",
-    "msgpackr": "^1.10.0"
+    "msgpackr": "^1.10.1"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
@@ -65,7 +65,7 @@
     "@types/ws": "^8.5.10",
     "lmdb": "^2.9.2",
     "vitest-websocket-mock": "^0.3.0",
-    "ws": "^8.15.1"
+    "ws": "^8.16.0"
   },
   "effect": {
     "generateExports": {
