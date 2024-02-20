@@ -36,6 +36,7 @@ import * as arbitrary from "./Arbitrary.js"
 import * as ArrayFormatter from "./ArrayFormatter.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
+import * as _equivalence from "./Equivalence.js"
 import * as Internal from "./internal/ast.js"
 import * as InternalBigInt from "./internal/bigint.js"
 import * as filters from "./internal/filters.js"
@@ -4944,6 +4945,7 @@ const makeClass = <A, I, R>(
       const encode = Parser.encodeUnknown(toSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
+      const equivalence = _equivalence.make(toSchema)
       const declaration: Schema<any, any, never> = declare(
         [],
         () => (input, _, ast) =>
@@ -4963,7 +4965,8 @@ const makeClass = <A, I, R>(
           title: this.name,
           description: `an instance of ${this.name}`,
           pretty: () => (self: any) => `${self.constructor.name}(${pretty(self)})`,
-          arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props))
+          arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props)),
+          equivalence: () => equivalence as any
         }
       )
       const transformation = transform(
