@@ -53,7 +53,7 @@
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
     "@types/mime": "^3.0.4",
-    "@types/node": "^20.10.5",
+    "@types/node": "^20.11.19",
     "effect": "workspace:^"
   },
   "effect": {

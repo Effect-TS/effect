@@ -46,7 +46,7 @@
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^",
-    "happy-dom": "^12.10.3",
+    "happy-dom": "^13.3.8",
     "mock-xmlhttprequest": "^8.3.0"
   },
   "effect": {
