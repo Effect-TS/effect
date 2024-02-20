@@ -19,7 +19,8 @@ export const proto = {
   [Hash.symbol](this: Secret.Secret): number {
     return pipe(
       Hash.hash(SecretSymbolKey),
-      Hash.combine(Hash.array(this.raw))
+      Hash.combine(Hash.array(this.raw)),
+      Hash.cached(this)
     )
   },
   [Equal.symbol](this: Secret.Secret, that: unknown): boolean {

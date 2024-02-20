@@ -31,7 +31,7 @@ const SomeProto = Object.assign(Object.create(CommonProto), {
     return isOption(that) && isSome(that) && Equal.equals(that.value, this.value)
   },
   [Hash.symbol]<A>(this: Option.Some<A>) {
-    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.value))
+    return Hash.cached(this, Hash.combine(Hash.hash(this._tag))(Hash.hash(this.value)))
   },
   toJSON<A>(this: Option.Some<A>) {
     return {

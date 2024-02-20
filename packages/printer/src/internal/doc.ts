@@ -97,7 +97,7 @@ const protoEqual = {
 const proto = {
   [DocTypeId]: { _A: (_: never) => _ },
   [Hash.symbol](this: Doc.Doc<any>) {
-    return protoHash[this._tag](this as any)
+    return Hash.cached(this, protoHash[this._tag](this as any))
   },
   [Equal.symbol](this: Doc.Doc<any>, that: unknown): boolean {
     return protoEqual[this._tag](this as any, that as any)

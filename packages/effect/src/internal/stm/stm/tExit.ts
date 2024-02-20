@@ -102,7 +102,8 @@ export const fail = <E>(error: E): TExit<never, E> => ({
     return pipe(
       Hash.hash(TExitSymbolKey),
       Hash.combine(Hash.hash(OpCodes.OP_FAIL)),
-      Hash.combine(Hash.hash(error))
+      Hash.combine(Hash.hash(error)),
+      Hash.cached(this)
     )
   },
   [Equal.symbol](that: unknown): boolean {
@@ -119,7 +120,8 @@ export const die = (defect: unknown): TExit<never> => ({
     return pipe(
       Hash.hash(TExitSymbolKey),
       Hash.combine(Hash.hash(OpCodes.OP_DIE)),
-      Hash.combine(Hash.hash(defect))
+      Hash.combine(Hash.hash(defect)),
+      Hash.cached(this)
     )
   },
   [Equal.symbol](that: unknown): boolean {
@@ -136,7 +138,8 @@ export const interrupt = (fiberId: FiberId.FiberId): TExit<never> => ({
     return pipe(
       Hash.hash(TExitSymbolKey),
       Hash.combine(Hash.hash(OpCodes.OP_INTERRUPT)),
-      Hash.combine(Hash.hash(fiberId))
+      Hash.combine(Hash.hash(fiberId)),
+      Hash.cached(this)
     )
   },
   [Equal.symbol](that: unknown): boolean {
@@ -153,7 +156,8 @@ export const succeed = <A>(value: A): TExit<A> => ({
     return pipe(
       Hash.hash(TExitSymbolKey),
       Hash.combine(Hash.hash(OpCodes.OP_SUCCEED)),
-      Hash.combine(Hash.hash(value))
+      Hash.combine(Hash.hash(value)),
+      Hash.cached(this)
     )
   },
   [Equal.symbol](that: unknown): boolean {
@@ -161,16 +165,18 @@ export const succeed = <A>(value: A): TExit<A> => ({
   }
 })
 
+const retryHash = pipe(
+  Hash.hash(TExitSymbolKey),
+  Hash.combine(Hash.hash(OpCodes.OP_RETRY)),
+  Hash.combine(Hash.hash("retry"))
+)
+
 /** @internal */
 export const retry: TExit<never> = {
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_RETRY,
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(TExitSymbolKey),
-      Hash.combine(Hash.hash(OpCodes.OP_RETRY)),
-      Hash.combine(Hash.hash("retry"))
-    )
+    return retryHash
   },
   [Equal.symbol](that: unknown): boolean {
     return isExit(that) && isRetry(that)

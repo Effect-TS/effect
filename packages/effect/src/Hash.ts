@@ -156,3 +156,34 @@ export const array = <A>(arr: ReadonlyArray<A>) => {
   }
   return optimize(h)
 }
+
+/**
+ * @since 2.0.0
+ * @category hashing
+ */
+export const cached: {
+  (self: object): (hash: number) => number
+  (self: object, hash: number): number
+} = function() {
+  if (arguments.length === 1) {
+    const self = arguments[0] as object
+    return function(hash: number) {
+      Object.defineProperty(self, symbol, {
+        value() {
+          return hash
+        },
+        enumerable: false
+      })
+      return hash
+    } as any
+  }
+  const self = arguments[0] as object
+  const hash = arguments[1] as number
+  Object.defineProperty(self, symbol, {
+    value() {
+      return hash
+    },
+    enumerable: false
+  })
+  return hash
+}

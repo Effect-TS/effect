@@ -37,7 +37,7 @@ const RightProto = Object.assign(Object.create(CommonProto), {
     return isEither(that) && isRight(that) && Equal.equals(that.right, this.right)
   },
   [Hash.symbol]<E, A>(this: Either.Right<E, A>) {
-    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.right))
+    return Hash.cached(this, Hash.combine(Hash.hash(this._tag))(Hash.hash(this.right)))
   },
   toJSON<E, A>(this: Either.Right<E, A>) {
     return {
@@ -55,7 +55,7 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
     return isEither(that) && isLeft(that) && Equal.equals(that.left, this.left)
   },
   [Hash.symbol]<E, A>(this: Either.Left<E, A>) {
-    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left))
+    return Hash.cached(this, Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left)))
   },
   toJSON<E, A>(this: Either.Left<E, A>) {
     return {

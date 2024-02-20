@@ -66,7 +66,8 @@ export const done = <A, E>(exit: Exit.Exit<A, E>): STMState<A, E> => {
       return pipe(
         Hash.hash(STMStateSymbolKey),
         Hash.combine(Hash.hash(OpCodes.OP_DONE)),
-        Hash.combine(Hash.hash(exit))
+        Hash.combine(Hash.hash(exit)),
+        Hash.cached(this)
       )
     },
     [Equal.symbol](that: unknown): boolean {
@@ -75,32 +76,36 @@ export const done = <A, E>(exit: Exit.Exit<A, E>): STMState<A, E> => {
   }
 }
 
+const interruptedHash = pipe(
+  Hash.hash(STMStateSymbolKey),
+  Hash.combine(Hash.hash(OpCodes.OP_INTERRUPTED)),
+  Hash.combine(Hash.hash("interrupted"))
+)
+
 /** @internal */
 export const interrupted: STMState<never> = {
   [STMStateTypeId]: STMStateTypeId,
   _tag: OpCodes.OP_INTERRUPTED,
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(STMStateSymbolKey),
-      Hash.combine(Hash.hash(OpCodes.OP_INTERRUPTED)),
-      Hash.combine(Hash.hash("interrupted"))
-    )
+    return interruptedHash
   },
   [Equal.symbol](that: unknown): boolean {
     return isSTMState(that) && that._tag === OpCodes.OP_INTERRUPTED
   }
 }
 
+const runningHash = pipe(
+  Hash.hash(STMStateSymbolKey),
+  Hash.combine(Hash.hash(OpCodes.OP_RUNNING)),
+  Hash.combine(Hash.hash("running"))
+)
+
 /** @internal */
 export const running: STMState<never> = {
   [STMStateTypeId]: STMStateTypeId,
   _tag: OpCodes.OP_RUNNING,
   [Hash.symbol](): number {
-    return pipe(
-      Hash.hash(STMStateSymbolKey),
-      Hash.combine(Hash.hash(OpCodes.OP_RUNNING)),
-      Hash.combine(Hash.hash("running"))
-    )
+    return runningHash
   },
   [Equal.symbol](that: unknown): boolean {
     return isSTMState(that) && that._tag === OpCodes.OP_RUNNING

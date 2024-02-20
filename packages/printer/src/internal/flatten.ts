@@ -34,7 +34,7 @@ const protoEqual = {
 const proto = {
   [FlattenTypeId]: { _A: (_: never) => _ },
   [Hash.symbol](this: Flatten.Flatten<any>): number {
-    return protoHash[this._tag](this as any)
+    return Hash.cached(this, protoHash[this._tag](this as any))
   },
   [Equal.symbol](this: Flatten.Flatten<any>, that: unknown): boolean {
     return protoEqual[this._tag](this as any, that)

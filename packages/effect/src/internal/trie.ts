@@ -34,12 +34,12 @@ const TrieProto: TR.Trie<unknown> = {
   [Symbol.iterator]<V>(this: TrieImpl<V>): Iterator<[string, V]> {
     return new TrieIterator(this, (k, v) => [k, v], () => true)
   },
-  [Hash.symbol](): number {
+  [Hash.symbol](this: TR.Trie<unknown>): number {
     let hash = Hash.hash(TrieSymbolKey)
     for (const item of this) {
       hash ^= pipe(Hash.hash(item[0]), Hash.combine(Hash.hash(item[1])))
     }
-    return hash
+    return Hash.cached(this, hash)
   },
   [Equal.symbol]<V>(this: TrieImpl<V>, that: unknown): boolean {
     if (isTrie(that)) {

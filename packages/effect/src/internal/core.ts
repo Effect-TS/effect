@@ -158,7 +158,7 @@ class EffectPrimitive {
     return this === that
   }
   [Hash.symbol](this: {}) {
-    return Hash.random(this)
+    return Hash.cached(this, Hash.random(this))
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -195,7 +195,7 @@ class EffectPrimitiveFailure {
     return this === that
   }
   [Hash.symbol](this: {}) {
-    return Hash.random(this)
+    return Hash.cached(this, Hash.random(this))
   }
   get cause() {
     return this.i0
@@ -233,7 +233,7 @@ class EffectPrimitiveSuccess {
     return this === that
   }
   [Hash.symbol](this: {}) {
-    return Hash.random(this)
+    return Hash.cached(this, Hash.random(this))
   }
   get value() {
     return this.i0
@@ -1734,7 +1734,7 @@ export class RequestResolverImpl<out R, in A> implements RequestResolver.Request
     this.runAll = runAll as any
   }
   [Hash.symbol](): number {
-    return this.target ? Hash.hash(this.target) : Hash.random(this)
+    return Hash.cached(this, this.target ? Hash.hash(this.target) : Hash.random(this))
   }
   [Equal.symbol](that: unknown): boolean {
     return this.target ?
