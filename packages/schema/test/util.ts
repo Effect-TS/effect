@@ -28,35 +28,35 @@ const effectifyDecode = <R>(
 const effectifyAST = (ast: AST.AST): AST.AST => {
   switch (ast._tag) {
     case "Tuple":
-      return AST.createTuple(
-        ast.elements.map((e) => AST.createElement(effectifyAST(e.type), e.isOptional)),
+      return new AST.Tuple(
+        ast.elements.map((e) => new AST.Element(effectifyAST(e.type), e.isOptional)),
         Option.map(ast.rest, RA.map((ast) => effectifyAST(ast))),
         ast.isReadonly,
         ast.annotations
       )
     case "TypeLiteral":
-      return AST.createTypeLiteral(
+      return AST.TypeLiteral.make(
         ast.propertySignatures.map((p) => ({ ...p, type: effectifyAST(p.type) })),
         ast.indexSignatures.map((is) => {
-          return AST.createIndexSignature(is.parameter, effectifyAST(is.type), is.isReadonly)
+          return AST.IndexSignature.make(is.parameter, effectifyAST(is.type), is.isReadonly)
         }),
         ast.annotations
       )
     case "Union":
-      return AST.createUnion(ast.types.map((ast) => effectifyAST(ast)), ast.annotations)
+      return AST.Union.make(ast.types.map((ast) => effectifyAST(ast)), ast.annotations)
     case "Suspend":
-      return AST.createSuspend(() => effectifyAST(ast.f()), ast.annotations)
+      return new AST.Suspend(() => effectifyAST(ast.f()), ast.annotations)
     case "Refinement":
-      return AST.createRefinement(
+      return new AST.Refinement(
         effectifyAST(ast.from),
         ast.filter,
         ast.annotations
       )
     case "Transform":
-      return AST.createTransform(
+      return new AST.Transform(
         effectifyAST(ast.from),
         effectifyAST(ast.to),
-        AST.createFinalTransformation(
+        new AST.FinalTransformation(
           effectifyDecode(getFinalTransformation(ast.transformation, true)),
           effectifyDecode(getFinalTransformation(ast.transformation, false))
         ),
@@ -66,10 +66,10 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
   const schema = S.make(ast)
   const decode = S.decode(schema)
   const encode = S.encode(schema)
-  return AST.createTransform(
+  return new AST.Transform(
     AST.from(ast),
     AST.to(ast),
-    AST.createFinalTransformation(
+    new AST.FinalTransformation(
       (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(decode(a, options), (e) => e.error)),
       (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(encode(a, options), (e) => e.error))
     )

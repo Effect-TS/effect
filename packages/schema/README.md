@@ -1199,7 +1199,7 @@ const schema = S.struct({ a: S.string, b: S.string }).pipe(
     o.b === o.a
       ? Option.none()
       : Option.some(
-          ParseResult.type(
+          new ParseResult.Type(
             S.literal(o.a).ast,
             o.b,
             `b ("${o.b}") should be equal to a ("${o.a}")`
@@ -2000,7 +2000,7 @@ export class PersonWithTransform extends Person.transformOrFail<PersonWithTransf
   },
   (input) =>
     Effect.mapBoth(getAge(input.id), {
-      onFailure: (e) => ParseResult.type(S.string.ast, input.id, e.message),
+      onFailure: (e) => new ParseResult.Type(S.string.ast, input.id, e.message),
       // must return { age: Option<number> }
       onSuccess: (age) => ({ ...input, age: Option.some(age) }),
     }),
@@ -2025,7 +2025,7 @@ export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWi
   },
   (input) =>
     Effect.mapBoth(getAge(input.id), {
-      onFailure: (e) => ParseResult.type(S.string.ast, input, e.message),
+      onFailure: (e) => new ParseResult.Type(S.string.ast, input, e.message),
       // must return { age?: number }
       onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input }),
     }),
@@ -2399,7 +2399,9 @@ export const transformedSchema: S.Schema<boolean, string> = S.transformOrFail(
       ? ParseResult.succeed(true)
       : s === "false"
         ? ParseResult.succeed(false)
-        : ParseResult.fail(ParseResult.type(S.literal("true", "false").ast, s)),
+        : ParseResult.fail(
+            new ParseResult.Type(S.literal("true", "false").ast, s)
+          ),
   // define a function that converts a boolean into a string
   (b) => ParseResult.succeed(String(b))
 );
@@ -2432,7 +2434,7 @@ const PeopleIdFromString = S.transformOrFail(
   PeopleId,
   (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
-      onFailure: (e) => ParseResult.type(ast, s, e.message),
+      onFailure: (e) => new ParseResult.Type(ast, s, e.message),
       onSuccess: () => s,
     }),
   ParseResult.succeed
@@ -2499,7 +2501,7 @@ const PeopleIdFromString = S.transformOrFail(
   PeopleId,
   (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
-      onFailure: (e) => ParseResult.type(ast, s, e.message),
+      onFailure: (e) => new ParseResult.Type(ast, s, e.message),
       onSuccess: () => s,
     }),
   ParseResult.succeed
@@ -3181,7 +3183,7 @@ export const myReadonlySet = <A, I, R>(
         // Return a Set containing the parsed elements
         return ParseResult.map(elements, (as): ReadonlySet<A> => new Set(as));
       }
-      return ParseResult.fail(ParseResult.type(ast, input));
+      return ParseResult.fail(new ParseResult.Type(ast, input));
     },
     // Encoding function
     (item) => (input, parseOptions, ast) => {
@@ -3194,7 +3196,7 @@ export const myReadonlySet = <A, I, R>(
         // Return a Set containing the parsed elements
         return ParseResult.map(elements, (is): ReadonlySet<I> => new Set(is));
       }
-      return ParseResult.fail(ParseResult.type(ast, input));
+      return ParseResult.fail(new ParseResult.Type(ast, input));
     },
     {
       description: `ReadonlySet<${S.format(item)}>`,
@@ -3354,7 +3356,7 @@ const NormalizeUrlString: S.Schema<string> = S.transformOrFail(
     ParseResult.try({
       try: () => new URL(value).toString(),
       catch: (err) =>
-        ParseResult.type(
+        new ParseResult.Type(
           ast,
           value,
           err instanceof Error ? err.message : undefined
@@ -3409,11 +3411,11 @@ import * as Option from "effect/Option";
 const pair = <A, I, R>(
   schema: S.Schema<A, I, R>
 ): S.Schema<readonly [A, A], readonly [I, I], R> => {
-  const element = AST.createElement(
+  const element = new AST.Element(
     schema.ast, // <= the element type
     false // <= is optional?
   );
-  const tuple = AST.createTuple(
+  const tuple = new AST.Tuple(
     [element, element], // <= elements definitions
     Option.none(), // <= rest element
     true // <= is readonly?
@@ -3732,7 +3734,7 @@ const IntFromString = S.transformOrFail(
   (s, _, ast) => {
     const n = Number(s);
     return Number.isNaN(n)
-      ? ParseResult.fail(ParseResult.type(ast, s))
+      ? ParseResult.fail(new ParseResult.Type(ast, s))
       : ParseResult.succeed(n);
   },
   (n) => ParseResult.succeed(String(n))
@@ -3793,7 +3795,7 @@ const IntFromString = S.transformOrFail(
   (s, _, ast) => {
     const n = Number(s);
     return Number.isNaN(n)
-      ? ParseResult.fail(ParseResult.type(ast, s))
+      ? ParseResult.fail(new ParseResult.Type(ast, s))
       : ParseResult.succeed(n);
   },
   (n) => ParseResult.succeed(String(n))

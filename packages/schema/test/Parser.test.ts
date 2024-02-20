@@ -32,7 +32,7 @@ describe("Parser", () => {
     expect(P.getLiterals(S.string.ast, true)).toEqual([])
     // TypeLiteral
     expect(P.getLiterals(S.struct({ _tag: S.literal("a") }).ast, true))
-      .toEqual([["_tag", AST.createLiteral("a")]])
+      .toEqual([["_tag", new AST.Literal("a")]])
     // Refinement
     expect(
       P.getLiterals(
@@ -41,7 +41,7 @@ describe("Parser", () => {
         ).ast,
         true
       )
-    ).toEqual([["_tag", AST.createLiteral("a")]])
+    ).toEqual([["_tag", new AST.Literal("a")]])
 
     // Transform
     expect(
@@ -56,7 +56,7 @@ describe("Parser", () => {
         S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
         false
       )
-    ).toEqual([["kind", AST.createLiteral("circle")]])
+    ).toEqual([["kind", new AST.Literal("circle")]])
     // property Transform encode
     expect(
       P.getLiterals(
@@ -71,7 +71,7 @@ describe("Parser", () => {
           .ast,
         false
       )
-    ).toEqual([["_tag", AST.createLiteral("b")]])
+    ).toEqual([["_tag", new AST.Literal("b")]])
   })
 
   it("getSearchTree", () => {
@@ -87,7 +87,7 @@ describe("Parser", () => {
             buckets: {
               a: [S.struct({ _tag: S.literal("a") }).ast]
             },
-            ast: AST.createLiteral("a")
+            ast: new AST.Literal("a")
           }
         },
         otherwise: [S.number.ast]
@@ -106,7 +106,7 @@ describe("Parser", () => {
             a: [S.struct({ _tag: S.literal("a") }).ast],
             b: [S.struct({ _tag: S.literal("b") }).ast]
           },
-          ast: AST.createUnion([AST.createLiteral("a"), AST.createLiteral("b")])
+          ast: AST.Union.make([new AST.Literal("a"), new AST.Literal("b")])
         }
       },
       otherwise: []
@@ -123,13 +123,13 @@ describe("Parser", () => {
           buckets: {
             A: [S.struct({ a: S.literal("A"), c: S.string }).ast]
           },
-          ast: AST.createLiteral("A")
+          ast: new AST.Literal("A")
         },
         b: {
           buckets: {
             B: [S.struct({ b: S.literal("B"), d: S.number }).ast]
           },
-          ast: AST.createLiteral("B")
+          ast: new AST.Literal("B")
         }
       },
       otherwise: []
@@ -148,14 +148,14 @@ describe("Parser", () => {
           buckets: {
             catA: [S.struct({ category: S.literal("catA"), tag: S.literal("a") }).ast]
           },
-          ast: AST.createLiteral("catA")
+          ast: new AST.Literal("catA")
         },
         tag: {
           buckets: {
             b: [S.struct({ category: S.literal("catA"), tag: S.literal("b") }).ast],
             c: [S.struct({ category: S.literal("catA"), tag: S.literal("c") }).ast]
           },
-          ast: AST.createUnion([AST.createLiteral("b"), AST.createLiteral("c")])
+          ast: AST.Union.make([new AST.Literal("b"), new AST.Literal("c")])
         }
       },
       otherwise: []
@@ -186,11 +186,11 @@ describe("Parser", () => {
             c: [S.struct({ type: S.literal("c"), value: S.string }).ast],
             null: [S.struct({ type: S.literal(null), value: S.string }).ast]
           },
-          ast: AST.createUnion([
-            AST.createLiteral("a"),
-            AST.createLiteral("b"),
-            AST.createLiteral("c"),
-            AST.createLiteral(null)
+          ast: AST.Union.make([
+            new AST.Literal("a"),
+            new AST.Literal("b"),
+            new AST.Literal("c"),
+            new AST.Literal(null)
           ])
         }
       },

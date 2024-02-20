@@ -463,7 +463,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       if (Option.isSome(ast.rest)) {
         requiredLen += ast.rest.value.length - 1
       }
-      const expectedAST = AST.createUnion(ast.elements.map((_, i) => AST.createLiteral(i)))
+      const expectedAST = AST.Union.make(ast.elements.map((_, i) => new AST.Literal(i)))
       return (input: unknown, options) => {
         if (!Array.isArray(input)) {
           return Either.left(new _parseResult.Type(ast, input))
@@ -697,10 +697,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           is.parameter
         ] as const
       )
-      const expectedAST = AST.createUnion(
+      const expectedAST = AST.Union.make(
         ast.indexSignatures.map((is): AST.AST => is.parameter).concat(
           _util.ownKeys(expectedKeys).map((key) =>
-            Predicate.isSymbol(key) ? AST.createUniqueSymbol(key) : AST.createLiteral(key)
+            Predicate.isSymbol(key) ? new AST.UniqueSymbol(key) : new AST.Literal(key)
           )
         )
       )
@@ -929,8 +929,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([
                     stepKey++,
                     new _parseResult.TypeLiteral(
-                      AST.createTypeLiteral([
-                        AST.createPropertySignature(name, searchTree.keys[name].ast, false, true)
+                      AST.TypeLiteral.make([
+                        new AST.PropertySignature(name, searchTree.keys[name].ast, false, true)
                       ], []),
                       input,
                       [new _parseResult.Key(name, new _parseResult.Type(searchTree.keys[name].ast, input[name]))]
@@ -941,8 +941,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 es.push([
                   stepKey++,
                   new _parseResult.TypeLiteral(
-                    AST.createTypeLiteral([
-                      AST.createPropertySignature(name, searchTree.keys[name].ast, false, true)
+                    AST.TypeLiteral.make([
+                      new AST.PropertySignature(name, searchTree.keys[name].ast, false, true)
                     ], []),
                     input,
                     [new _parseResult.Key(name, _parseResult.missing)]
@@ -1121,10 +1121,10 @@ export const getSearchTree = (
             continue
           }
           buckets[hash].push(member)
-          keys[key].ast = AST.createUnion([keys[key].ast, literal])
+          keys[key].ast = AST.Union.make([keys[key].ast, literal])
         } else {
           buckets[hash] = [member]
-          keys[key].ast = AST.createUnion([keys[key].ast, literal])
+          keys[key].ast = AST.Union.make([keys[key].ast, literal])
           break
         }
       }

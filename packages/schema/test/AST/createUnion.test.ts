@@ -4,20 +4,20 @@ import { describe, expect, it } from "vitest"
 
 describe("AST/createUnion", () => {
   it("should remove never from members", () => {
-    expect(AST.createUnion([AST.neverKeyword, AST.neverKeyword])).toEqual(
+    expect(AST.Union.make([AST.neverKeyword, AST.neverKeyword])).toEqual(
       AST.neverKeyword
     )
-    expect(AST.createUnion([AST.neverKeyword, AST.stringKeyword])).toEqual(AST.stringKeyword)
-    expect(AST.createUnion([AST.stringKeyword, AST.neverKeyword])).toEqual(AST.stringKeyword)
+    expect(AST.Union.make([AST.neverKeyword, AST.stringKeyword])).toEqual(AST.stringKeyword)
+    expect(AST.Union.make([AST.stringKeyword, AST.neverKeyword])).toEqual(AST.stringKeyword)
     expect(
-      AST.createUnion([
+      AST.Union.make([
         AST.neverKeyword,
         AST.stringKeyword,
         AST.neverKeyword,
         AST.numberKeyword
       ])
     )
-      .toEqual(AST.createUnion([AST.stringKeyword, AST.numberKeyword]))
+      .toEqual(AST.Union.make([AST.stringKeyword, AST.numberKeyword]))
   })
 
   it("should unify any with anything", () => {

@@ -4,15 +4,15 @@ import { describe, expect, it } from "vitest"
 
 describe("AST/appendRestElement", () => {
   it("should add a rest element", () => {
-    const tuple = AST.createTuple(
-      [AST.createElement(AST.stringKeyword, false)],
+    const tuple = new AST.Tuple(
+      [new AST.Element(AST.stringKeyword, false)],
       Option.none(),
       true
     )
     const actual = AST.appendRestElement(tuple, AST.numberKeyword)
     expect(actual).toEqual(
-      AST.createTuple(
-        [AST.createElement(AST.stringKeyword, false)],
+      new AST.Tuple(
+        [new AST.Element(AST.stringKeyword, false)],
         Option.some([AST.numberKeyword]),
         true
       )
@@ -23,7 +23,7 @@ describe("AST/appendRestElement", () => {
     expect(() =>
       AST.appendRestElement(
         AST.appendRestElement(
-          AST.createTuple([AST.createElement(AST.stringKeyword, false)], Option.none(), true),
+          new AST.Tuple([new AST.Element(AST.stringKeyword, false)], Option.none(), true),
           AST.numberKeyword
         ),
         AST.booleanKeyword

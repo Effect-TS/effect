@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest"
 
 describe("AST > createRecord", () => {
   it("numeric literal", () => {
-    expect(AST.createRecord(AST.createLiteral(1), AST.numberKeyword, true)).toEqual(
-      AST.createTypeLiteral([AST.createPropertySignature(1, AST.numberKeyword, false, true)], [])
+    expect(AST.createRecord(new AST.Literal(1), AST.numberKeyword, true)).toEqual(
+      AST.TypeLiteral.make([new AST.PropertySignature(1, AST.numberKeyword, false, true)], [])
     )
   })
 
@@ -15,7 +15,7 @@ describe("AST > createRecord", () => {
   })
 
   it("should throw on unsupported literals", () => {
-    expect(() => AST.createRecord(AST.createLiteral(true), AST.numberKeyword, true)).toThrow(
+    expect(() => AST.createRecord(new AST.Literal(true), AST.numberKeyword, true)).toThrow(
       new Error("createRecord: unsupported literal (true)")
     )
   })

@@ -10,33 +10,33 @@ describe("Schema/mutable", () => {
 
   it("struct", () => {
     const schema = S.mutable(S.struct({ a: S.number }))
-    expect(schema.ast).toEqual(AST.createTypeLiteral([
-      AST.createPropertySignature("a", S.number.ast, false, false)
+    expect(schema.ast).toEqual(AST.TypeLiteral.make([
+      new AST.PropertySignature("a", S.number.ast, false, false)
     ], []))
   })
 
   it("record", () => {
     const schema = S.mutable(S.record(S.string, S.number))
     expect(schema.ast).toEqual(
-      AST.createTypeLiteral([], [AST.createIndexSignature(S.string.ast, S.number.ast, false)])
+      AST.TypeLiteral.make([], [AST.IndexSignature.make(S.string.ast, S.number.ast, false)])
     )
   })
 
   it("array", () => {
     const schema = S.mutable(S.array(S.string))
     expect(schema.ast).toEqual(
-      AST.createTuple([], Option.some([S.string.ast]), false)
+      new AST.Tuple([], Option.some([S.string.ast]), false)
     )
   })
 
   it("union", () => {
     const schema = S.mutable(S.union(S.struct({ a: S.number }), S.array(S.string)))
     expect(schema.ast).toEqual(
-      AST.createUnion([
-        AST.createTypeLiteral([
-          AST.createPropertySignature("a", S.number.ast, false, false)
+      AST.Union.make([
+        AST.TypeLiteral.make([
+          new AST.PropertySignature("a", S.number.ast, false, false)
         ], []),
-        AST.createTuple([], Option.some([S.string.ast]), false)
+        new AST.Tuple([], Option.some([S.string.ast]), false)
       ])
     )
   })
@@ -45,7 +45,7 @@ describe("Schema/mutable", () => {
     const schema = S.mutable(S.array(S.string).pipe(S.maxItems(2)))
     if (AST.isRefinement(schema.ast)) {
       expect(schema.ast.from).toEqual(
-        AST.createTuple([], Option.some([S.string.ast]), false)
+        new AST.Tuple([], Option.some([S.string.ast]), false)
       )
     }
   })
@@ -56,7 +56,7 @@ describe("Schema/mutable", () => {
     ))
     if (AST.isSuspend(schema.ast)) {
       expect(schema.ast.f()).toEqual(
-        AST.createTuple([], Option.some([S.string.ast]), false)
+        new AST.Tuple([], Option.some([S.string.ast]), false)
       )
     }
   })
@@ -65,10 +65,10 @@ describe("Schema/mutable", () => {
     const schema = S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
     if (AST.isTransform(schema.ast)) {
       expect(schema.ast.from).toEqual(
-        AST.createTuple([], Option.some([S.string.ast]), false)
+        new AST.Tuple([], Option.some([S.string.ast]), false)
       )
       expect(schema.ast.to).toEqual(
-        AST.createTuple([], Option.some([S.string.ast]), false)
+        new AST.Tuple([], Option.some([S.string.ast]), false)
       )
     }
   })

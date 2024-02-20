@@ -8,15 +8,15 @@ import { describe, it } from "vitest"
 describe("Schema > PropertySignatureTransformations", () => {
   it("default", async () => {
     const transform: S.Schema<{ readonly a: number }, { readonly a?: string }> = S.make(
-      AST.createTransform(
+      new AST.Transform(
         S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
         S.struct({ a: S.number }).ast,
-        AST.createTypeLiteralTransformation(
+        AST.TypeLiteralTransformation.make(
           [
-            AST.createPropertySignatureTransform(
+            new AST.PropertySignatureTransform(
               "a",
               "a",
-              AST.createFinalPropertySignatureTransformation(
+              new AST.FinalPropertySignatureTransformation(
                 O.orElse(() => O.some(0)),
                 identity
               )
@@ -45,15 +45,15 @@ describe("Schema > PropertySignatureTransformations", () => {
 
   it("bidirectional default", async () => {
     const transform: S.Schema<{ readonly a: number }, { readonly a?: string }> = S.make(
-      AST.createTransform(
+      new AST.Transform(
         S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
         S.struct({ a: S.number }).ast,
-        AST.createTypeLiteralTransformation(
+        AST.TypeLiteralTransformation.make(
           [
-            AST.createPropertySignatureTransform(
+            new AST.PropertySignatureTransform(
               "a",
               "a",
-              AST.createFinalPropertySignatureTransformation(
+              new AST.FinalPropertySignatureTransformation(
                 O.orElse(() => O.some(0)),
                 (o) => O.flatMap(o, O.liftPredicate((v) => v !== 0))
               )
@@ -83,15 +83,15 @@ describe("Schema > PropertySignatureTransformations", () => {
   it("optional -> Option", async () => {
     const transform: S.Schema<{ readonly a: O.Option<number> }, { readonly a?: string }> = S
       .make(
-        AST.createTransform(
+        new AST.Transform(
           S.struct({ a: S.optional(S.NumberFromString, { exact: true }) }).ast,
           S.struct({ a: S.optionFromSelf(S.number) }).ast,
-          AST.createTypeLiteralTransformation(
+          AST.TypeLiteralTransformation.make(
             [
-              AST.createPropertySignatureTransform(
+              new AST.PropertySignatureTransform(
                 "a",
                 "a",
-                AST.createFinalPropertySignatureTransformation(
+                new AST.FinalPropertySignatureTransformation(
                   O.some,
                   O.flatten
                 )
@@ -120,15 +120,15 @@ describe("Schema > PropertySignatureTransformations", () => {
 
   it("empty string as optional", async () => {
     const transform: S.Schema<{ readonly a?: string }, { readonly a: string }> = S.make(
-      AST.createTransform(
+      new AST.Transform(
         S.struct({ a: S.string }).ast,
         S.struct({ a: S.optional(S.string, { exact: true }) }).ast,
-        AST.createTypeLiteralTransformation(
+        AST.TypeLiteralTransformation.make(
           [
-            AST.createPropertySignatureTransform(
+            new AST.PropertySignatureTransform(
               "a",
               "a",
-              AST.createFinalPropertySignatureTransformation(
+              new AST.FinalPropertySignatureTransformation(
                 O.flatMap(O.liftPredicate((v) => v !== "")),
                 identity
               )
@@ -145,15 +145,15 @@ describe("Schema > PropertySignatureTransformations", () => {
 
   it("rename", async () => {
     const transform: S.Schema<{ readonly b: number }, { readonly a: number }> = S.make(
-      AST.createTransform(
+      new AST.Transform(
         S.struct({ a: S.number }).ast,
         S.struct({ b: S.number }).ast,
-        AST.createTypeLiteralTransformation(
+        AST.TypeLiteralTransformation.make(
           [
-            AST.createPropertySignatureTransform(
+            new AST.PropertySignatureTransform(
               "a",
               "b",
-              AST.createFinalPropertySignatureTransformation(
+              new AST.FinalPropertySignatureTransformation(
                 identity,
                 identity
               )
@@ -170,15 +170,15 @@ describe("Schema > PropertySignatureTransformations", () => {
   it("rename transformation", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const rename: S.Schema<{ readonly [a]: symbol }, { readonly a: string }> = S.make(
-      AST.createTransform(
+      new AST.Transform(
         S.struct({ a: S.string }).ast,
         S.struct({ [a]: S.symbol }).ast,
-        AST.createTypeLiteralTransformation(
+        AST.TypeLiteralTransformation.make(
           [
-            AST.createPropertySignatureTransform(
+            new AST.PropertySignatureTransform(
               "a",
               a,
-              AST.createFinalPropertySignatureTransformation(
+              new AST.FinalPropertySignatureTransformation(
                 identity,
                 identity
               )
@@ -195,15 +195,15 @@ describe("Schema > PropertySignatureTransformations", () => {
 
   it("reversed default", async () => {
     const transform: S.Schema<{ readonly a?: number }, { readonly a: string }> = S.make(
-      AST.createTransform(
+      new AST.Transform(
         S.struct({ a: S.number }).ast,
         S.struct({ a: S.optional(S.number, { exact: true }) }).ast,
-        AST.createTypeLiteralTransformation(
+        AST.TypeLiteralTransformation.make(
           [
-            AST.createPropertySignatureTransform(
+            new AST.PropertySignatureTransform(
               "a",
               "a",
-              AST.createFinalPropertySignatureTransformation(
+              new AST.FinalPropertySignatureTransformation(
                 identity,
                 O.orElse(() => O.some(0))
               )

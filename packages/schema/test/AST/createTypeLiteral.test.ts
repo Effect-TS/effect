@@ -9,8 +9,8 @@ describe("AST/createTypeLiteral", () => {
       expect(schema.ast).toEqual({
         _tag: "TypeLiteral",
         propertySignatures: [
-          AST.createPropertySignature("b", AST.createLiteral("b"), false, true),
-          AST.createPropertySignature("a", AST.stringKeyword, false, true)
+          new AST.PropertySignature("b", new AST.Literal("b"), false, true),
+          new AST.PropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
         annotations: {}
@@ -22,8 +22,8 @@ describe("AST/createTypeLiteral", () => {
       expect(schema.ast).toEqual({
         _tag: "TypeLiteral",
         propertySignatures: [
-          AST.createPropertySignature("b", AST.undefinedKeyword, false, true),
-          AST.createPropertySignature("a", AST.stringKeyword, false, true)
+          new AST.PropertySignature("b", AST.undefinedKeyword, false, true),
+          new AST.PropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
         annotations: {}
@@ -35,8 +35,8 @@ describe("AST/createTypeLiteral", () => {
       expect(schema.ast).toEqual({
         _tag: "TypeLiteral",
         propertySignatures: [
-          AST.createPropertySignature("b", AST.booleanKeyword, false, true),
-          AST.createPropertySignature("a", AST.stringKeyword, false, true)
+          new AST.PropertySignature("b", AST.booleanKeyword, false, true),
+          new AST.PropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
         annotations: {}
@@ -48,8 +48,8 @@ describe("AST/createTypeLiteral", () => {
       expect(schema.ast).toEqual({
         _tag: "TypeLiteral",
         propertySignatures: [
-          AST.createPropertySignature("b", AST.createLiteral(null), false, true),
-          AST.createPropertySignature("a", AST.booleanKeyword, false, true)
+          new AST.PropertySignature("b", new AST.Literal(null), false, true),
+          new AST.PropertySignature("a", AST.booleanKeyword, false, true)
         ],
         indexSignatures: [],
         annotations: {}

@@ -13,31 +13,31 @@ describe("Schema > templateLiteral", () => {
   describe("AST", () => {
     it("a", () => {
       const schema = S.templateLiteral(S.literal("a"))
-      expect(schema.ast).toEqual(AST.createLiteral("a"))
+      expect(schema.ast).toEqual(new AST.Literal("a"))
     })
 
     it("a b", () => {
       const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
       expect(schema.ast).toEqual(
-        AST.createLiteral("a b")
+        new AST.Literal("a b")
       )
     })
 
     it("(a | b) c", () => {
       const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"))
       expect(schema.ast).toEqual(
-        AST.createUnion([AST.createLiteral("ac"), AST.createLiteral("bc")])
+        AST.Union.make([new AST.Literal("ac"), new AST.Literal("bc")])
       )
     })
 
     it("(a | b) c (d | e)", () => {
       const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"), S.literal("d", "e"))
       expect(schema.ast).toEqual(
-        AST.createUnion([
-          AST.createLiteral("acd"),
-          AST.createLiteral("ace"),
-          AST.createLiteral("bcd"),
-          AST.createLiteral("bce")
+        AST.Union.make([
+          new AST.Literal("acd"),
+          new AST.Literal("ace"),
+          new AST.Literal("bcd"),
+          new AST.Literal("bce")
         ])
       )
     })
@@ -45,11 +45,11 @@ describe("Schema > templateLiteral", () => {
     it("(a | b) string (d | e)", () => {
       const schema = S.templateLiteral(S.literal("a", "b"), S.string, S.literal("d", "e"))
       expect(schema.ast).toEqual(
-        AST.createUnion([
-          AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "d" }]),
-          AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "e" }]),
-          AST.createTemplateLiteral("b", [{ type: AST.stringKeyword, literal: "d" }]),
-          AST.createTemplateLiteral("b", [{ type: AST.stringKeyword, literal: "e" }])
+        AST.Union.make([
+          AST.TemplateLiteral.make("a", [{ type: AST.stringKeyword, literal: "d" }]),
+          AST.TemplateLiteral.make("a", [{ type: AST.stringKeyword, literal: "e" }]),
+          AST.TemplateLiteral.make("b", [{ type: AST.stringKeyword, literal: "d" }]),
+          AST.TemplateLiteral.make("b", [{ type: AST.stringKeyword, literal: "e" }])
         ])
       )
     })
@@ -57,14 +57,14 @@ describe("Schema > templateLiteral", () => {
     it("a${string}", () => {
       const schema = S.templateLiteral(S.literal("a"), S.string)
       expect(schema.ast).toEqual(
-        AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "" }])
+        AST.TemplateLiteral.make("a", [{ type: AST.stringKeyword, literal: "" }])
       )
     })
 
     it("a${string}b", () => {
       const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
       expect(schema.ast).toEqual(
-        AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "b" }])
+        AST.TemplateLiteral.make("a", [{ type: AST.stringKeyword, literal: "b" }])
       )
     })
   })

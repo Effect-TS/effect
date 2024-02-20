@@ -9,12 +9,12 @@ describe("Schema/literal", () => {
   })
 
   it("should return an unwrapped AST with exactly one literal", () => {
-    expect(S.literal(1).ast).toEqual(AST.createLiteral(1))
+    expect(S.literal(1).ast).toEqual(new AST.Literal(1))
   })
 
   it("should return a union with more than one literal", () => {
     expect(S.literal(1, 2).ast).toEqual(
-      AST.createUnion([AST.createLiteral(1), AST.createLiteral(2)])
+      AST.Union.make([new AST.Literal(1), new AST.Literal(2)])
     )
   })
 
