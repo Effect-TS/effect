@@ -67,6 +67,14 @@ const _try: <A>(options: {
   catch: (e: unknown) => ParseIssue
 }) => Either.Either<ParseIssue, A> = Either.try
 
+export {
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  _try as try
+}
+
 /**
  * @category constructors
  * @since 1.0.0
@@ -75,14 +83,6 @@ export const fromOption: {
   <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<ParseIssue, A>
   <A>(onNone: () => ParseIssue): (self: Option.Option<A>) => Either.Either<ParseIssue, A>
 } = Either.fromOption
-
-export {
-  /**
-   * @category constructors
-   * @since 1.0.0
-   */
-  _try as try
-}
 
 /**
  * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
