@@ -5,8 +5,8 @@
 import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { dual } from "effect/Function"
 import type { LazyArg } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
@@ -74,6 +74,15 @@ export {
    */
   _try as try
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const fromOption: {
+  <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<ParseIssue, A>
+  <A>(onNone: () => ParseIssue): (self: Option.Option<A>) => Either.Either<ParseIssue, A>
+} = Either.fromOption
 
 /**
  * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.

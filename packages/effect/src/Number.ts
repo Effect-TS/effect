@@ -467,3 +467,29 @@ export const nextPow2 = (n: number): number => {
   const nextPow = Math.ceil(Math.log(n) / Math.log(2))
   return Math.max(Math.pow(2, nextPow), 2)
 }
+
+/**
+ * Tries to parse a `number` from a `string` using the `Number()` function.
+ * The following special string values are supported: "NaN", "Infinity", "-Infinity".
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const parse = (s: string): Option<number> => {
+  if (s === "NaN") {
+    return option.some(NaN)
+  }
+  if (s === "Infinity") {
+    return option.some(Infinity)
+  }
+  if (s === "-Infinity") {
+    return option.some(-Infinity)
+  }
+  if (s.trim() === "") {
+    return option.none
+  }
+  const n = Number(s)
+  return Number.isNaN(n)
+    ? option.none
+    : option.some(n)
+}
