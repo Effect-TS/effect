@@ -1,5 +1,139 @@
 # effect
 
+## 2.4.0
+
+### Minor Changes
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`5de7be5`](https://github.com/Effect-TS/effect/commit/5de7be5beca2e963b503e6029dcc3217848187d2) Thanks [@github-actions](https://github.com/apps/github-actions)! - remove ReadonlyRecord.fromIterable (duplicate of fromEntries)
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`489fcf3`](https://github.com/Effect-TS/effect/commit/489fcf363ff2b2a953166b740cb9a62d7fc2a101) Thanks [@github-actions](https://github.com/apps/github-actions)! - - swap `Schedule` type parameters from `Schedule<out Env, in In, out Out>` to `Schedule<out Out, in In = unknown, out R = never>`, closes #2154
+
+  - swap `ScheduleDriver` type parameters from `ScheduleDriver<out Env, in In, out Out>` to `ScheduleDriver<out Out, in In = unknown, out R = never>`
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`7d9c3bf`](https://github.com/Effect-TS/effect/commit/7d9c3bff6c18d451e0e4781042945ec5c7be1b9f) Thanks [@github-actions](https://github.com/apps/github-actions)! - Consolidate `Effect.asyncOption`, `Effect.asyncEither`, `Stream.asyncOption`, `Stream.asyncEither`, and `Stream.asyncInterrupt`
+
+  This PR removes `Effect.asyncOption` and `Effect.asyncEither` as their behavior can be entirely implemented with the new signature of `Effect.async`, which optionally returns a cleanup `Effect` from the registration callback.
+
+  ```ts
+  declare const async: <A, E = never, R = never>(
+    register: (
+      callback: (_: Effect<A, E, R>) => void,
+      signal: AbortSignal,
+    ) => void | Effect<void, never, R>,
+    blockingOn?: FiberId,
+  ) => Effect<A, E, R>;
+  ```
+
+  Additionally, this PR removes `Stream.asyncOption`, `Stream.asyncEither`, and `Stream.asyncInterrupt` as their behavior can be entirely implemented with the new signature of `Stream.async`, which can optionally return a cleanup `Effect` from the registration callback.
+
+  ```ts
+  declare const async: <A, E = never, R = never>(
+    register: (emit: Emit<R, E, A, void>) => Effect<void, never, R> | void,
+    outputBuffer?: number,
+  ) => Stream<A, E, R>;
+  ```
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`d8d278b`](https://github.com/Effect-TS/effect/commit/d8d278b2efb2966947029885e01f7b68348a021f) Thanks [@github-actions](https://github.com/apps/github-actions)! - swap `GroupBy` type parameters from `GroupBy<out R, out E, out K, out V>` to `GroupBy<out K, out V, out E = never, out R = never>`
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`14c5711`](https://github.com/Effect-TS/effect/commit/14c57110078f0862b8da5c7a2c5d980f54447484) Thanks [@github-actions](https://github.com/apps/github-actions)! - Remove Effect.unified and Effect.unifiedFn in favour of Unify.unify.
+
+  The `Unify` module fully replaces the need for specific unify functions, when before you did:
+
+  ```ts
+  import { Effect } from "effect";
+
+  const effect = Effect.unified(
+    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO"),
+  );
+  const effectFn = Effect.unifiedFn((n: number) =>
+    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO"),
+  );
+  ```
+
+  You can now do:
+
+  ```ts
+  import { Effect, Unify } from "effect";
+
+  const effect = Unify.unify(
+    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO"),
+  );
+  const effectFn = Unify.unify((n: number) =>
+    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO"),
+  );
+  ```
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`5de7be5`](https://github.com/Effect-TS/effect/commit/5de7be5beca2e963b503e6029dcc3217848187d2) Thanks [@github-actions](https://github.com/apps/github-actions)! - add key type to ReadonlyRecord
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`585fcce`](https://github.com/Effect-TS/effect/commit/585fcce162d0f07a48d7cd984a9b722966fbebbe) Thanks [@github-actions](https://github.com/apps/github-actions)! - add support for optional property keys to `pick`, `omit` and `get`
+
+  Before:
+
+  ```ts
+  import { pipe } from "effect/Function";
+  import * as S from "effect/Struct";
+
+  const struct: {
+    a?: string;
+    b: number;
+    c: boolean;
+  } = { b: 1, c: true };
+
+  // error
+  const x = pipe(struct, S.pick("a", "b"));
+
+  const record: Record<string, number> = {};
+
+  const y = pipe(record, S.pick("a", "b"));
+  console.log(y); // => { a: undefined, b: undefined }
+
+  // error
+  console.log(pipe(struct, S.get("a")));
+  ```
+
+  Now
+
+  ```ts
+  import { pipe } from "effect/Function";
+  import * as S from "effect/Struct";
+
+  const struct: {
+    a?: string;
+    b: number;
+    c: boolean;
+  } = { b: 1, c: true };
+
+  const x = pipe(struct, S.pick("a", "b"));
+  console.log(x); // => { b: 1 }
+
+  const record: Record<string, number> = {};
+
+  const y = pipe(record, S.pick("a", "b"));
+  console.log(y); // => {}
+
+  console.log(pipe(struct, S.get("a"))); // => undefined
+  ```
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`a025b12`](https://github.com/Effect-TS/effect/commit/a025b121235ba01cfce8d62a775491880c575561) Thanks [@github-actions](https://github.com/apps/github-actions)! - Swap type params of Either from `Either<E, A>` to `Either<R, L = never>`.
+
+  Along the same line of the other changes this allows to shorten the most common types such as:
+
+  ```ts
+  import { Either } from "effect";
+
+  const right: Either.Either<string> = Either.right("ok");
+  ```
+
+### Patch Changes
+
+- [#2193](https://github.com/Effect-TS/effect/pull/2193) [`b9cb3a9`](https://github.com/Effect-TS/effect/commit/b9cb3a9c9bfdd75536bd70b4e8b557c12d4923ff) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added Number.parse, BigInt.toNumber, ParseResult.fromOption
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`93b412d`](https://github.com/Effect-TS/effect/commit/93b412d4a9ed762dc9fa5807e51fad0fc78a614a) Thanks [@github-actions](https://github.com/apps/github-actions)! - ReadonlyArray.groupBy: allow for grouping by symbols, closes #2180
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`55b26a6`](https://github.com/Effect-TS/effect/commit/55b26a6342b4826f1116e7a1eb660118c274458e) Thanks [@github-actions](https://github.com/apps/github-actions)! - Either: fix `fromOption` overloads order
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`2097739`](https://github.com/Effect-TS/effect/commit/20977393d2383bff709304e81ec7d51cafd57108) Thanks [@github-actions](https://github.com/apps/github-actions)! - Add Do notation methods `Do`, `bindTo`, `bind` and `let` to Either
+
 ## 2.3.8
 
 ### Patch Changes

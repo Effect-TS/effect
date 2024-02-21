@@ -1,5 +1,45 @@
 # @effect/schema
 
+## 0.63.0
+
+### Minor Changes
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`54ddbb7`](https://github.com/Effect-TS/effect/commit/54ddbb720aeeb657537b01ae221cdcd5e919c1a6) Thanks [@github-actions](https://github.com/apps/github-actions)! - Updated the `MessageAnnotation` type to accept a `ParseIssue`; it's now `(issue: ParseResult.ParseIssue) => string` to support custom error messages, which can be triggered under any circumstances.
+
+  You can retrieve the actual value by accessing the `actual` property of the `issue` object:
+
+  ```diff
+  import * as S from "@effect/schema/Schema";
+
+  const schema = S.string.pipe(
+    S.filter((s): s is string => s.length === 1, {
+  -    message: (actual) => `invalid value ${actual}`,
+  +    message: (issue) => `invalid value ${issue.actual}`,
+    })
+  );
+  ```
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`a025b12`](https://github.com/Effect-TS/effect/commit/a025b121235ba01cfce8d62a775491880c575561) Thanks [@github-actions](https://github.com/apps/github-actions)! - Swap type params of Either from `Either<E, A>` to `Either<R, L = never>`.
+
+  Along the same line of the other changes this allows to shorten the most common types such as:
+
+  ```ts
+  import { Either } from "effect";
+
+  const right: Either.Either<string> = Either.right("ok");
+  ```
+
+### Patch Changes
+
+- [#2193](https://github.com/Effect-TS/effect/pull/2193) [`b9cb3a9`](https://github.com/Effect-TS/effect/commit/b9cb3a9c9bfdd75536bd70b4e8b557c12d4923ff) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added Number.parse, BigInt.toNumber, ParseResult.fromOption
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`136ef40`](https://github.com/Effect-TS/effect/commit/136ef40fe4a394abfa5c6a7ec103eea57251423e) Thanks [@github-actions](https://github.com/apps/github-actions)! - Equivalence: return `Equal.equals` instead of `Equivalence.strict()` as default
+
+- [#2101](https://github.com/Effect-TS/effect/pull/2101) [`f24ac9f`](https://github.com/Effect-TS/effect/commit/f24ac9f0c2c520add58f09fbdcec5defda03bd52) Thanks [@github-actions](https://github.com/apps/github-actions)! - add support for `Equivalence` to class APIs
+
+- Updated dependencies [[`5de7be5`](https://github.com/Effect-TS/effect/commit/5de7be5beca2e963b503e6029dcc3217848187d2), [`489fcf3`](https://github.com/Effect-TS/effect/commit/489fcf363ff2b2a953166b740cb9a62d7fc2a101), [`7d9c3bf`](https://github.com/Effect-TS/effect/commit/7d9c3bff6c18d451e0e4781042945ec5c7be1b9f), [`d8d278b`](https://github.com/Effect-TS/effect/commit/d8d278b2efb2966947029885e01f7b68348a021f), [`14c5711`](https://github.com/Effect-TS/effect/commit/14c57110078f0862b8da5c7a2c5d980f54447484), [`5de7be5`](https://github.com/Effect-TS/effect/commit/5de7be5beca2e963b503e6029dcc3217848187d2), [`b9cb3a9`](https://github.com/Effect-TS/effect/commit/b9cb3a9c9bfdd75536bd70b4e8b557c12d4923ff), [`585fcce`](https://github.com/Effect-TS/effect/commit/585fcce162d0f07a48d7cd984a9b722966fbebbe), [`93b412d`](https://github.com/Effect-TS/effect/commit/93b412d4a9ed762dc9fa5807e51fad0fc78a614a), [`55b26a6`](https://github.com/Effect-TS/effect/commit/55b26a6342b4826f1116e7a1eb660118c274458e), [`a025b12`](https://github.com/Effect-TS/effect/commit/a025b121235ba01cfce8d62a775491880c575561), [`2097739`](https://github.com/Effect-TS/effect/commit/20977393d2383bff709304e81ec7d51cafd57108)]:
+  - effect@2.4.0
+
 ## 0.62.9
 
 ### Patch Changes
