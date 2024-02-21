@@ -33,11 +33,11 @@ const CommonProto = {
 const RightProto = Object.assign(Object.create(CommonProto), {
   _tag: "Right",
   _op: "Right",
-  [Equal.symbol]<R, L>(this: Either.Right<R, L>, that: unknown): boolean {
+  [Equal.symbol]<L, R>(this: Either.Right<L, R>, that: unknown): boolean {
     return isEither(that) && isRight(that) && Equal.equals(that.right, this.right)
   },
-  [Hash.symbol]<R, L>(this: Either.Right<R, L>) {
-    return Hash.cached(this, Hash.combine(Hash.hash(this._tag))(Hash.hash(this.right)))
+  [Hash.symbol]<L, R>(this: Either.Right<L, R>) {
+    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.right))
   },
   toJSON<L, R>(this: Either.Right<L, R>) {
     return {
@@ -51,11 +51,11 @@ const RightProto = Object.assign(Object.create(CommonProto), {
 const LeftProto = Object.assign(Object.create(CommonProto), {
   _tag: "Left",
   _op: "Left",
-  [Equal.symbol]<R, L>(this: Either.Left<R, L>, that: unknown): boolean {
+  [Equal.symbol]<L, R>(this: Either.Left<L, R>, that: unknown): boolean {
     return isEither(that) && isLeft(that) && Equal.equals(that.left, this.left)
   },
-  [Hash.symbol]<R, L>(this: Either.Left<R, L>) {
-    return Hash.cached(this, Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left)))
+  [Hash.symbol]<L, R>(this: Either.Left<L, R>) {
+    return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left))
   },
   toJSON<E, A>(this: Either.Left<E, A>) {
     return {
