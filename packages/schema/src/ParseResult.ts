@@ -67,6 +67,10 @@ const _try: <A>(options: {
   catch: (e: unknown) => ParseIssue
 }) => Either.Either<ParseIssue, A> = Either.try
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export const fromOption: {
   <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<ParseIssue, A>
   <A>(onNone: () => ParseIssue): (self: Option.Option<A>) => Either.Either<ParseIssue, A>
