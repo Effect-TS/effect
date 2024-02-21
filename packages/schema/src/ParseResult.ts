@@ -5,8 +5,8 @@
 import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { dual } from "effect/Function"
 import type { LazyArg } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
@@ -66,6 +66,11 @@ const _try: <A>(options: {
   try: LazyArg<A>
   catch: (e: unknown) => ParseIssue
 }) => Either.Either<ParseIssue, A> = Either.try
+
+export const fromOption: {
+  <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<ParseIssue, A>
+  <A>(onNone: () => ParseIssue): (self: Option.Option<A>) => Either.Either<ParseIssue, A>
+} = Either.fromOption
 
 export {
   /**

@@ -545,3 +545,16 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
   }
   return out
 }
+
+/**
+ * Convers a bigint into a number
+ *
+ * @since 2.0.0
+ * @category conversions
+ */
+export const toNumber = (b: bigint): Option.Option<number> => {
+  if (b > BigInt(Number.MAX_SAFE_INTEGER) || b < BigInt(Number.MIN_SAFE_INTEGER)) {
+    return Option.none()
+  }
+  return Option.some(Number(b))
+}

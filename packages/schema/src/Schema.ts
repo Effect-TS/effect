@@ -37,7 +37,6 @@ import * as ArrayFormatter from "./ArrayFormatter.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
 import * as Internal from "./internal/ast.js"
-import * as InternalBigInt from "./internal/bigint.js"
 import * as filters from "./internal/filters.js"
 import * as hooks from "./internal/hooks.js"
 import * as InternalSchema from "./internal/schema.js"
@@ -2837,24 +2836,7 @@ export const clamp =
 export const NumberFromString: Schema<number, string> = transformOrFail(
   string,
   number,
-  (s, _, ast) => {
-    if (s === "NaN") {
-      return ParseResult.succeed(NaN)
-    }
-    if (s === "Infinity") {
-      return ParseResult.succeed(Infinity)
-    }
-    if (s === "-Infinity") {
-      return ParseResult.succeed(-Infinity)
-    }
-    if (s.trim() === "") {
-      return ParseResult.fail(ParseResult.type(ast, s))
-    }
-    const n = Number(s)
-    return Number.isNaN(n)
-      ? ParseResult.fail(ParseResult.type(ast, s))
-      : ParseResult.succeed(n)
-  },
+  (s, _, ast) => ParseResult.fromOption(N.parse(s), () => ParseResult.type(ast, s)),
   (n) => ParseResult.succeed(String(n))
 ).pipe(identifier("NumberFromString"))
 
@@ -3267,12 +3249,7 @@ export const BigintFromNumber: Schema<bigint, number> = transformOrFail(
       try: () => BigInt(n),
       catch: () => ParseResult.type(ast, n)
     }),
-  (b, _, ast) => {
-    if (b > InternalBigInt.maxSafeInteger || b < InternalBigInt.minSafeInteger) {
-      return ParseResult.fail(ParseResult.type(ast, b))
-    }
-    return ParseResult.succeed(Number(b))
-  }
+  (b, _, ast) => ParseResult.fromOption(BigInt_.toNumber(b), () => ParseResult.type(ast, b))
 ).pipe(identifier("BigintFromNumber"))
 
 /**
