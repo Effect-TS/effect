@@ -80,8 +80,8 @@ export {
  * @since 1.0.0
  */
 export const fromOption: {
-  <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<ParseIssue, A>
-  <A>(onNone: () => ParseIssue): (self: Option.Option<A>) => Either.Either<ParseIssue, A>
+  <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<A, ParseIssue>
+  <A>(onNone: () => ParseIssue): (self: Option.Option<A>) => Either.Either<A, ParseIssue>
 } = Either.fromOption
 
 /**
