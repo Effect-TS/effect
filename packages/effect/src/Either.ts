@@ -142,8 +142,8 @@ export const fromNullable: {
  * @since 2.0.0
  */
 export const fromOption: {
-  <R, L>(self: Option<R>, onNone: () => L): Either<R, L>
   <L>(onNone: () => L): <R>(self: Option<R>) => Either<R, L>
+  <R, L>(self: Option<R>, onNone: () => L): Either<R, L>
 } = either.fromOption
 
 const try_: {
