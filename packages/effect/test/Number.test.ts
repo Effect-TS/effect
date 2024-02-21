@@ -127,4 +127,12 @@ describe("Number", () => {
     assert.deepStrictEqual(Number.multiplyAll([2, 0, 4]), 0)
     assert.deepStrictEqual(Number.multiplyAll([2, 3, 4]), 24)
   })
+
+  it("parse", () => {
+    assert.deepStrictEqual(Number.parse("NaN"), Option.some(NaN))
+    assert.deepStrictEqual(Number.parse("Infinity"), Option.some(Infinity))
+    assert.deepStrictEqual(Number.parse("-Infinity"), Option.some(-Infinity))
+    assert.deepStrictEqual(Number.parse("42"), Option.some(42))
+    assert.deepStrictEqual(Number.parse("a"), Option.none())
+  })
 })
