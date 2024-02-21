@@ -362,13 +362,17 @@ export const validatePromise = <A, I>(
 }
 
 /**
+ * @since 1.0.0
+ */
+export type AnySchema<R = unknown> = Schema<any, any, R> | Schema<never, never, R>
+
+/**
  * Tests if a value is a `Schema`.
  *
  * @category guards
  * @since 1.0.0
  */
-export const isSchema = (u: unknown): u is Schema<unknown, unknown, unknown> =>
-  Predicate.isObject(u) && TypeId in u && "ast" in u
+export const isSchema = (u: unknown): u is AnySchema => Predicate.isObject(u) && TypeId in u && "ast" in u
 
 /**
  * @category constructors
@@ -422,7 +426,7 @@ export type Join<T> = T extends [infer Head, ...infer Tail]
  * @category constructors
  * @since 1.0.0
  */
-export const templateLiteral = <T extends [Schema<any, any, never>, ...Array<Schema<any, any, never>>]>(
+export const templateLiteral = <T extends [AnySchema<never>, ...Array<AnySchema<never>>]>(
   ...[head, ...tail]: T
 ): Schema<Join<{ [K in keyof T]: Schema.To<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
@@ -482,7 +486,7 @@ const getTemplateLiterals = (
 }
 
 const declareConstructor = <
-  const P extends ReadonlyArray<Schema<any, any, any>>,
+  const P extends ReadonlyArray<AnySchema>,
   I,
   A
 >(
@@ -539,7 +543,7 @@ export const declare: {
     is: (input: unknown) => input is A,
     annotations?: DeclareAnnotations<readonly [], A>
   ): Schema<A>
-  <const P extends ReadonlyArray<Schema<any, any, any>>, I, A>(
+  <const P extends ReadonlyArray<AnySchema>, I, A>(
     typeParameters: P,
     decodeUnknown: (
       ...typeParameters: { readonly [K in keyof P]: Schema<Schema.To<P[K]>, Schema.From<P[K]>, never> }
@@ -706,7 +710,7 @@ export const object: Schema<object> = make(AST.objectKeyword)
  * @category combinators
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<Schema<any, any, any>>>(
+export const union = <Members extends ReadonlyArray<AnySchema>>(
   ...members: Members
 ): Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>> =>
   make(AST.Union.make(members.map((m) => m.ast)))
@@ -743,7 +747,7 @@ export const keyof = <A, I, R>(schema: Schema<A, I, R>): Schema<keyof A> => make
  * @category combinators
  * @since 1.0.0
  */
-export const tuple = <Elements extends ReadonlyArray<Schema<any, any, any>>>(
+export const tuple = <Elements extends ReadonlyArray<AnySchema>>(
   ...elements: Elements
 ): Schema<
   { readonly [K in keyof Elements]: Schema.To<Elements[K]> },
@@ -821,7 +825,7 @@ export const nonEmptyArray = <A, I, R>(
 /**
  * @since 1.0.0
  */
-export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R = never>
+export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R>
   extends Schema.Variance<To, From, R>, Pipeable
 {
   readonly FromIsOptional: FromIsOptional
@@ -1097,8 +1101,8 @@ export const optional: {
  */
 export type FromOptionalKeys<Fields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<any, true, any, boolean, any>
-    | PropertySignature<never, true, never, boolean, any> ? K
+    | PropertySignature<any, true, any, boolean, unknown>
+    | PropertySignature<never, true, never, boolean, unknown> ? K
     : never
 }[keyof Fields]
 
@@ -1107,8 +1111,8 @@ export type FromOptionalKeys<Fields> = {
  */
 export type ToOptionalKeys<Fields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<any, boolean, any, true, any>
-    | PropertySignature<never, boolean, never, true, any> ? K
+    | PropertySignature<any, boolean, any, true, unknown>
+    | PropertySignature<never, boolean, never, true, unknown> ? K
     : never
 }[keyof Fields]
 
@@ -1117,10 +1121,9 @@ export type ToOptionalKeys<Fields> = {
  */
 export type StructFields = Record<
   PropertyKey,
-  | Schema<any, any, any>
-  | Schema<never, never, any>
-  | PropertySignature<any, boolean, any, boolean, any>
-  | PropertySignature<never, boolean, never, boolean, any>
+  | AnySchema
+  | PropertySignature<any, boolean, any, boolean, unknown>
+  | PropertySignature<never, boolean, never, boolean, unknown>
 >
 
 /**
@@ -2449,7 +2452,7 @@ export const parseJson: {
   (options?: ParseJsonOptions): Schema<unknown, string>
 } = <A, I, R>(schema?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) => {
   if (isSchema(schema)) {
-    return compose(parseJson(o), schema) as any
+    return compose(parseJson(o), schema as any) as any
   }
   const options: ParseJsonOptions | undefined = schema as any
   return transformOrFail(
@@ -4955,7 +4958,7 @@ const makeClass = <A, I, R>(
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const equivalence = _equivalence.make(toSchema)
-      const declaration: Schema<any, any, never> = declare(
+      const declaration: AnySchema<never> = declare(
         [],
         () => (input, _, ast) =>
           input instanceof this ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input)),
