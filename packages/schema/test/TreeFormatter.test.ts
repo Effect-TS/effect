@@ -613,10 +613,12 @@ describe("TreeFormatter", () => {
       it: "Nome non valido",
       en: "Invalid name"
     }
+
     class Translator extends Context.Tag("Translator")<Translator, {
       locale: keyof typeof translations
       translations: typeof translations
     }>() {}
+
     const Name = S.NonEmpty.pipe(
       S.message(() =>
         Effect.gen(function*(_) {
