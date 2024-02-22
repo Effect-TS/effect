@@ -69,12 +69,12 @@ export type Discriminant = typeof Discriminant
  * @category models
  */
 export type ConfigError =
-  | internal.And
-  | internal.Or
-  | internal.InvalidData
-  | internal.MissingData
-  | internal.SourceUnavailable
-  | internal.Unsupported
+  | And
+  | Or
+  | InvalidData
+  | MissingData
+  | SourceUnavailable
+  | Unsupported
 
 /**
  * @since 2.0.0
