@@ -2847,24 +2847,7 @@ export const clamp =
 export const NumberFromString: Schema<number, string> = transformOrFail(
   string,
   number,
-  (s, _, ast) => {
-    if (s === "NaN") {
-      return ParseResult.succeed(NaN)
-    }
-    if (s === "Infinity") {
-      return ParseResult.succeed(Infinity)
-    }
-    if (s === "-Infinity") {
-      return ParseResult.succeed(-Infinity)
-    }
-    if (s.trim() === "") {
-      return ParseResult.fail(new ParseResult.Type(ast, s))
-    }
-    const n = Number(s)
-    return Number.isNaN(n)
-      ? ParseResult.fail(new ParseResult.Type(ast, s))
-      : ParseResult.succeed(n)
-  },
+  (s, _, ast) => ParseResult.fromOption(N.parse(s), () => new ParseResult.Type(ast, s)),
   (n) => ParseResult.succeed(String(n))
 ).pipe(identifier("NumberFromString"))
 
@@ -3261,10 +3244,6 @@ export const NonNegativeBigint: Schema<bigint, string> = bigint.pipe(
   nonNegativeBigint({ identifier: "NonNegativeBigint", title: "NonNegativeBigint" })
 )
 
-const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
-
-const minSafeInteger = BigInt(Number.MIN_SAFE_INTEGER)
-
 /**
  * This schema transforms a `number` into a `bigint` by parsing the number using the `BigInt` function.
  *
@@ -3281,12 +3260,7 @@ export const BigintFromNumber: Schema<bigint, number> = transformOrFail(
       try: () => BigInt(n),
       catch: () => new ParseResult.Type(ast, n)
     }),
-  (b, _, ast) => {
-    if (b > maxSafeInteger || b < minSafeInteger) {
-      return ParseResult.fail(new ParseResult.Type(ast, b))
-    }
-    return ParseResult.succeed(Number(b))
-  }
+  (b, _, ast) => ParseResult.fromOption(BigInt_.toNumber(b), () => new ParseResult.Type(ast, b))
 ).pipe(identifier("BigintFromNumber"))
 
 /**

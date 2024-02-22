@@ -8,6 +8,7 @@ import * as Either from "effect/Either"
 import type { LazyArg } from "effect/Function"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
+import type * as Option from "effect/Option"
 import type * as AST from "./AST.js"
 import type * as _parseResult from "./internal/parseResult.js"
 import * as TreeFormatter from "./TreeFormatter.js"
@@ -74,6 +75,15 @@ export {
    */
   _try as try
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const fromOption: {
+  (onNone: () => ParseIssue): <A>(self: Option.Option<A>) => Either.Either<A, ParseIssue>
+  <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<A, ParseIssue>
+} = Either.fromOption
 
 export {
   /**

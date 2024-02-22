@@ -2,22 +2,9 @@
 "@effect/schema": minor
 ---
 
-Updated the `MessageAnnotation` type to accept a `ParseIssue`; it's now `(issue: ParseResult.ParseIssue) => string | Effect<string>` to support custom error messages, which can be triggered under any circumstances.
+Updated the `MessageAnnotation` type to return `string | Effect<string>`.
 
-You can retrieve the actual value by accessing the `actual` property of the `issue` object:
-
-```diff
-import * as S from "@effect/schema/Schema";
-
-const schema = S.string.pipe(
-  S.filter((s): s is string => s.length === 1, {
--    message: (actual) => `invalid value ${actual}`,
-+    message: (issue) => `invalid value ${issue.actual}`,
-  })
-);
-```
-
-Additionally, you can now return an `Effect<string>` if your message needs some optional service:
+You can now return an `Effect<string>` if your message needs some optional service:
 
 ```ts
 import * as S from "@effect/schema/Schema";

@@ -251,7 +251,7 @@ export type AST =
   | Enums
   | TemplateLiteral
   // possible transformations
-  | Refinement<AST>
+  | Refinement
   | Tuple
   | TypeLiteral
   | Union
