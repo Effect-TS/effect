@@ -16,7 +16,7 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
-import { WorkerError } from "../WorkerError.js"
+import { isWorkerError, WorkerError } from "../WorkerError.js"
 import type * as WorkerRunner from "../WorkerRunner.js"
 
 /** @internal */
@@ -67,113 +67,96 @@ export const make = <I, R, E, O>(
           return Fiber.interrupt(fiber)
         }
 
-        const stream = process(req[2])
         const collector = Transferable.unsafeMakeCollector()
-
-        let effect = Effect.isEffect(stream) ?
-          Effect.matchCauseEffect(stream, {
-            onFailure: (cause) =>
-              Either.match(Cause.failureOrCause(cause), {
-                onLeft: (error) => {
-                  const transfers = options?.transfers ? options.transfers(error) : []
-                  return pipe(
-                    options?.encodeError
-                      ? Effect.provideService(options.encodeError(req[2], error), Transferable.Collector, collector)
-                      : Effect.succeed(error),
-                    Effect.flatMap((payload) =>
-                      backing.send([id, 2, payload as any], [
-                        ...transfers,
-                        ...collector.unsafeRead()
-                      ])
-                    ),
-                    Effect.catchAllCause((cause) => backing.send([id, 3, WorkerError.encodeCause(cause)]))
-                  )
-                },
-                onRight: (cause) => backing.send([id, 3, WorkerError.encodeCause(cause)])
-              }),
-            onSuccess: (data) => {
-              const transfers = options?.transfers ? options.transfers(data) : []
-              return pipe(
-                options?.encodeOutput
-                  ? Effect.provideService(options.encodeOutput(req[2], data), Transferable.Collector, collector)
-                  : Effect.succeed(data),
-                Effect.flatMap((payload) =>
-                  backing.send([id, 0, [payload]], [
-                    ...transfers,
-                    ...collector.unsafeRead()
-                  ])
-                ),
-                Effect.catchAllCause((cause) => backing.send([id, 3, WorkerError.encodeCause(cause)]))
-              )
-            }
-          }) :
-          pipe(
-            stream,
-            Stream.chunks,
-            Stream.tap((data) => {
-              if (options?.encodeOutput === undefined) {
-                const payload = Chunk.toReadonlyArray(data)
-                const transfers = options?.transfers ? payload.flatMap(options.transfers) : undefined
-                return backing.send([id, 0, payload], transfers)
-              }
-
-              const transfers: Array<unknown> = []
-              collector.unsafeClear()
-              return pipe(
-                Effect.forEach(data, (data) => {
-                  if (options?.transfers) {
-                    for (const option of options.transfers(data)) {
-                      transfers.push(option)
-                    }
-                  }
-                  return Effect.orDie(options.encodeOutput!(req[2], data))
-                }),
-                Effect.provideService(Transferable.Collector, collector),
-                Effect.flatMap((payload) => {
-                  collector.unsafeRead().forEach((transfer) => transfers.push(transfer))
-                  return backing.send([id, 0, payload], transfers)
-                })
-              )
-            }),
-            Stream.runDrain,
-            Effect.matchCauseEffect({
-              onFailure: (cause) =>
-                Either.match(Cause.failureOrCause(cause), {
-                  onLeft: (error) => {
-                    const transfers = options?.transfers ? options.transfers(error) : []
-                    collector.unsafeClear()
-                    return pipe(
-                      options?.encodeError
-                        ? Effect.provideService(options.encodeError(req[2], error), Transferable.Collector, collector)
-                        : Effect.succeed(error),
-                      Effect.flatMap((payload) =>
-                        backing.send([id, 2, payload as any], [
-                          ...transfers,
-                          ...collector.unsafeRead()
-                        ])
-                      ),
-                      Effect.catchAllCause((cause) => backing.send([id, 3, WorkerError.encodeCause(cause)]))
-                    )
-                  },
-                  onRight: (cause) => backing.send([id, 3, WorkerError.encodeCause(cause)])
-                }),
-              onSuccess: () => backing.send([id, 1])
-            })
-          )
-
-        if (req[3]) {
-          const [traceId, spanId, sampled] = req[3]
-          effect = Effect.withParentSpan(effect, {
-            _tag: "ExternalSpan",
-            traceId,
-            spanId,
-            sampled,
-            context: Context.empty()
-          })
-        }
-
         return pipe(
-          effect,
+          Effect.sync(() => process(req[2])),
+          Effect.flatMap((stream) => {
+            let effect = Effect.isEffect(stream) ?
+              Effect.flatMap(stream, (data) => {
+                const transfers = options?.transfers ? options.transfers(data) : []
+                return pipe(
+                  options?.encodeOutput
+                    ? Effect.provideService(options.encodeOutput(req[2], data), Transferable.Collector, collector)
+                    : Effect.succeed(data),
+                  Effect.flatMap((payload) =>
+                    backing.send([id, 0, [payload]], [
+                      ...transfers,
+                      ...collector.unsafeRead()
+                    ])
+                  )
+                )
+              }) :
+              pipe(
+                stream,
+                Stream.chunks,
+                Stream.tap((data) => {
+                  if (options?.encodeOutput === undefined) {
+                    const payload = Chunk.toReadonlyArray(data)
+                    const transfers = options?.transfers ? payload.flatMap(options.transfers) : undefined
+                    return backing.send([id, 0, payload], transfers)
+                  }
+
+                  const transfers: Array<unknown> = []
+                  collector.unsafeClear()
+                  return pipe(
+                    Effect.forEach(data, (data) => {
+                      if (options?.transfers) {
+                        for (const option of options.transfers(data)) {
+                          transfers.push(option)
+                        }
+                      }
+                      return Effect.orDie(options.encodeOutput!(req[2], data))
+                    }),
+                    Effect.provideService(Transferable.Collector, collector),
+                    Effect.flatMap((payload) => {
+                      collector.unsafeRead().forEach((transfer) => transfers.push(transfer))
+                      return backing.send([id, 0, payload], transfers)
+                    })
+                  )
+                }),
+                Stream.runDrain,
+                Effect.andThen(backing.send([id, 1]))
+              )
+
+            if (req[3]) {
+              const [traceId, spanId, sampled] = req[3]
+              effect = Effect.withParentSpan(effect, {
+                _tag: "ExternalSpan",
+                traceId,
+                spanId,
+                sampled,
+                context: Context.empty()
+              })
+            }
+
+            return effect
+          }),
+          Effect.catchIf(isWorkerError, (error) => backing.send([id, 3, WorkerError.encodeCause(Cause.fail(error))])),
+          Effect.catchAllCause((cause) =>
+            Either.match(Cause.failureOrCause(cause), {
+              onLeft: (error) => {
+                const transfers = options?.transfers ? options.transfers(error) : []
+                collector.unsafeClear()
+                return pipe(
+                  options?.encodeError
+                    ? Effect.provideService(
+                      options.encodeError(req[2], error),
+                      Transferable.Collector,
+                      collector
+                    )
+                    : Effect.succeed(error),
+                  Effect.flatMap((payload) =>
+                    backing.send([id, 2, payload as any], [
+                      ...transfers,
+                      ...collector.unsafeRead()
+                    ])
+                  ),
+                  Effect.catchAllCause((cause) => backing.send([id, 3, WorkerError.encodeCause(cause)]))
+                )
+              },
+              onRight: (cause) => backing.send([id, 3, WorkerError.encodeCause(cause)])
+            })
+          ),
           Effect.ensuring(Effect.sync(() => fiberMap.delete(id))),
           Effect.fork,
           Effect.tap((fiber) => Effect.sync(() => fiberMap.set(id, fiber)))
