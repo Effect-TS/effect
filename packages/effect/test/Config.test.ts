@@ -40,7 +40,7 @@ describe("Config", () => {
       assertFailure(
         config,
         [["ITEMS", "value"]],
-        ConfigError.InvalidData(["ITEMS"], "Expected a boolean value but received value")
+        new ConfigError.InvalidData(["ITEMS"], "Expected a boolean value but received value")
       )
     })
 
@@ -55,11 +55,11 @@ describe("Config", () => {
       assertSuccess(config, [["BOOL", "off"]], false)
       assertSuccess(config, [["BOOL", "0"]], false)
 
-      assertFailure(config, [], ConfigError.MissingData(["BOOL"], "Expected BOOL to exist in the provided map"))
+      assertFailure(config, [], new ConfigError.MissingData(["BOOL"], "Expected BOOL to exist in the provided map"))
       assertFailure(
         config,
         [["BOOL", "value"]],
-        ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
+        new ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
       )
     })
   })
@@ -71,7 +71,7 @@ describe("Config", () => {
       assertFailure(
         config,
         [["ITEMS", "value"]],
-        ConfigError.InvalidData(["ITEMS"], "Expected a number value but received value")
+        new ConfigError.InvalidData(["ITEMS"], "Expected a number value but received value")
       )
     })
 
@@ -84,11 +84,11 @@ describe("Config", () => {
       assertSuccess(config, [["NUMBER", "0"]], 0)
       assertSuccess(config, [["NUMBER", "-0"]], -0)
 
-      assertFailure(config, [], ConfigError.MissingData(["NUMBER"], "Expected NUMBER to exist in the provided map"))
+      assertFailure(config, [], new ConfigError.MissingData(["NUMBER"], "Expected NUMBER to exist in the provided map"))
       assertFailure(
         config,
         [["NUMBER", "value"]],
-        ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
+        new ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
       )
     })
   })
@@ -100,7 +100,7 @@ describe("Config", () => {
       assertFailure(
         config,
         [["ITEMS", "value"]],
-        ConfigError.InvalidData(["ITEMS"], "Expected one of (a, b) but received value")
+        new ConfigError.InvalidData(["ITEMS"], "Expected one of (a, b) but received value")
       )
     })
 
@@ -113,11 +113,15 @@ describe("Config", () => {
       assertSuccess(config, [["LITERAL", "false"]], false)
       assertSuccess(config, [["LITERAL", "null"]], null)
 
-      assertFailure(config, [], ConfigError.MissingData(["LITERAL"], "Expected LITERAL to exist in the provided map"))
+      assertFailure(
+        config,
+        [],
+        new ConfigError.MissingData(["LITERAL"], "Expected LITERAL to exist in the provided map")
+      )
       assertFailure(
         config,
         [["LITERAL", "value"]],
-        ConfigError.InvalidData(["LITERAL"], "Expected one of (a, 0, -0.3, 5, false, null) but received value")
+        new ConfigError.InvalidData(["LITERAL"], "Expected one of (a, 0, -0.3, 5, false, null) but received value")
       )
     })
   })
@@ -129,7 +133,7 @@ describe("Config", () => {
       assertFailure(
         config,
         [["", "value"]],
-        ConfigError.InvalidData([], "Expected a Date value but received value")
+        new ConfigError.InvalidData([], "Expected a Date value but received value")
       )
     })
 
@@ -137,18 +141,18 @@ describe("Config", () => {
       const config = Config.date("DATE")
       assertSuccess(config, [["DATE", "0"]], new Date(Date.parse("0")))
 
-      assertFailure(config, [], ConfigError.MissingData(["DATE"], "Expected DATE to exist in the provided map"))
+      assertFailure(config, [], new ConfigError.MissingData(["DATE"], "Expected DATE to exist in the provided map"))
       assertFailure(
         config,
         [["DATE", "value"]],
-        ConfigError.InvalidData(["DATE"], "Expected a Date value but received value")
+        new ConfigError.InvalidData(["DATE"], "Expected a Date value but received value")
       )
     })
   })
 
   it("fail", () => {
     const config = Config.fail("failure message")
-    assertFailure(config, [], ConfigError.MissingData([], "failure message"))
+    assertFailure(config, [], new ConfigError.MissingData([], "failure message"))
   })
 
   it("mapAttempt", () => {
@@ -166,14 +170,14 @@ describe("Config", () => {
     assertFailure(
       config,
       [["STRING", "value"]],
-      ConfigError.InvalidData(["STRING"], "invalid number")
+      new ConfigError.InvalidData(["STRING"], "invalid number")
     )
     assertFailure(
       config,
       [["STRING", "-1"]],
-      ConfigError.InvalidData(["STRING"], "invalid negative number")
+      new ConfigError.InvalidData(["STRING"], "invalid negative number")
     )
-    assertFailure(config, [], ConfigError.MissingData(["STRING"], "Expected STRING to exist in the provided map"))
+    assertFailure(config, [], new ConfigError.MissingData(["STRING"], "Expected STRING to exist in the provided map"))
   })
 
   describe("logLevel", () => {
@@ -181,7 +185,7 @@ describe("Config", () => {
       const config = Config.logLevel()
       assertSuccess(config, [["", "DEBUG"]], LogLevel.Debug)
 
-      assertFailure(config, [["", "-"]], ConfigError.InvalidData([], "Expected a log level but received -"))
+      assertFailure(config, [["", "-"]], new ConfigError.InvalidData([], "Expected a log level but received -"))
     })
 
     it("name != undefined", () => {
@@ -191,7 +195,7 @@ describe("Config", () => {
       assertFailure(
         config,
         [["LOG_LEVEL", "-"]],
-        ConfigError.InvalidData(["LOG_LEVEL"], "Expected a log level but received -")
+        new ConfigError.InvalidData(["LOG_LEVEL"], "Expected a log level but received -")
       )
     })
   })
@@ -209,7 +213,7 @@ describe("Config", () => {
       assertFailure(
         flat,
         [["NUMBER", "-1"]],
-        ConfigError.InvalidData(["NUMBER"], "a positive number")
+        new ConfigError.InvalidData(["NUMBER"], "a positive number")
       )
 
       const nested = flat.pipe(
@@ -220,7 +224,7 @@ describe("Config", () => {
       assertFailure(
         nested,
         [["NESTED1.NUMBER", "-1"]],
-        ConfigError.InvalidData(["NESTED1", "NUMBER"], "a positive number")
+        new ConfigError.InvalidData(["NESTED1", "NUMBER"], "a positive number")
       )
 
       const doubleNested = nested.pipe(Config.nested("NESTED2"))
@@ -229,7 +233,7 @@ describe("Config", () => {
       assertFailure(
         doubleNested,
         [["NESTED2.NESTED1.NUMBER", "-1"]],
-        ConfigError.InvalidData(["NESTED2", "NESTED1", "NUMBER"], "a positive number")
+        new ConfigError.InvalidData(["NESTED2", "NESTED1", "NUMBER"], "a positive number")
       )
     })
   })
@@ -256,7 +260,7 @@ describe("Config", () => {
         config,
         [["key", "value"]],
         // available data but not an integer
-        ConfigError.InvalidData(["key"], "Expected an integer value but received value")
+        new ConfigError.InvalidData(["key"], "Expected an integer value but received value")
       )
     })
 
@@ -271,9 +275,9 @@ describe("Config", () => {
       assertFailure(
         config,
         [["key2", "value"]],
-        ConfigError.And(
-          ConfigError.MissingData(["key1"], "Expected key1 to exist in the provided map"),
-          ConfigError.InvalidData(["key2"], "Expected an integer value but received value")
+        new ConfigError.And(
+          new ConfigError.MissingData(["key1"], "Expected key1 to exist in the provided map"),
+          new ConfigError.InvalidData(["key2"], "Expected an integer value but received value")
         )
       )
     })
@@ -290,9 +294,9 @@ describe("Config", () => {
       assertFailure(
         config,
         [["key2", "value"]],
-        ConfigError.Or(
-          ConfigError.MissingData(["key1"], "Expected key1 to exist in the provided map"),
-          ConfigError.InvalidData(["key2"], "Expected an integer value but received value")
+        new ConfigError.Or(
+          new ConfigError.MissingData(["key1"], "Expected key1 to exist in the provided map"),
+          new ConfigError.InvalidData(["key2"], "Expected an integer value but received value")
         )
       )
     })
@@ -310,7 +314,7 @@ describe("Config", () => {
       assertFailure(
         config,
         [["key", "value"]],
-        ConfigError.InvalidData(["key"], "Expected an integer value but received value")
+        new ConfigError.InvalidData(["key"], "Expected an integer value but received value")
       )
     })
 
@@ -324,17 +328,17 @@ describe("Config", () => {
       assertFailure(
         config,
         [["key1", "value"]],
-        ConfigError.And(
-          ConfigError.InvalidData(["key1"], "Expected an integer value but received value"),
-          ConfigError.MissingData(["key2"], "Expected key2 to exist in the provided map")
+        new ConfigError.And(
+          new ConfigError.InvalidData(["key1"], "Expected an integer value but received value"),
+          new ConfigError.MissingData(["key2"], "Expected key2 to exist in the provided map")
         )
       )
       assertFailure(
         config,
         [["key2", "value"]],
-        ConfigError.And(
-          ConfigError.MissingData(["key1"], "Expected key1 to exist in the provided map"),
-          ConfigError.InvalidData(["key2"], "Expected an integer value but received value")
+        new ConfigError.And(
+          new ConfigError.MissingData(["key1"], "Expected key1 to exist in the provided map"),
+          new ConfigError.InvalidData(["key2"], "Expected an integer value but received value")
         )
       )
     })
@@ -350,9 +354,9 @@ describe("Config", () => {
       assertFailure(
         config,
         [["key2", "value"]],
-        ConfigError.Or(
-          ConfigError.MissingData(["key1"], "Expected key1 to exist in the provided map"),
-          ConfigError.InvalidData(["key2"], "Expected an integer value but received value")
+        new ConfigError.Or(
+          new ConfigError.MissingData(["key1"], "Expected key1 to exist in the provided map"),
+          new ConfigError.InvalidData(["key2"], "Expected an integer value but received value")
         )
       )
     })
@@ -387,7 +391,7 @@ describe("Config", () => {
       assertFailure(
         config,
         [["key1", "123"], ["items", "1,value,3"], ["key2", "value"]],
-        ConfigError.InvalidData(["items"], "Expected an integer value but received value")
+        new ConfigError.InvalidData(["items"], "Expected an integer value but received value")
       )
     })
   })
@@ -415,12 +419,12 @@ describe("Config", () => {
         assertFailure(
           config,
           [["NUMBER", "value"], ["BOOL", "true"]],
-          ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
+          new ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
         )
         assertFailure(
           config,
           [["NUMBER", "1"], ["BOOL", "value"]],
-          ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
+          new ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
         )
       })
     })
@@ -432,12 +436,12 @@ describe("Config", () => {
       assertFailure(
         config,
         [["NUMBER", "value"], ["BOOL", "true"]],
-        ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
+        new ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
       )
       assertFailure(
         config,
         [["NUMBER", "1"], ["BOOL", "value"]],
-        ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
+        new ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
       )
     })
   })

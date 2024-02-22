@@ -164,7 +164,7 @@ export const boolean = (name?: string): Config.Config<boolean> => {
           return Either.right(false)
         }
         default: {
-          const error = configError.InvalidData(
+          const error = new configError.InvalidData(
             [],
             `Expected a boolean value but received ${text}`
           )
@@ -194,7 +194,7 @@ export const date = (name?: string): Config.Config<Date> => {
       const result = Date.parse(text)
       if (Number.isNaN(result)) {
         return Either.left(
-          configError.InvalidData(
+          new configError.InvalidData(
             [],
             `Expected a Date value but received ${text}`
           )
@@ -211,7 +211,7 @@ export const fail = (message: string): Config.Config<never> => {
   const fail = Object.create(proto)
   fail._tag = OpCodes.OP_FAIL
   fail.message = message
-  fail.parse = () => Either.left(configError.Unsupported([], message))
+  fail.parse = () => Either.left(new configError.Unsupported([], message))
   return fail
 }
 
@@ -223,7 +223,7 @@ export const number = (name?: string): Config.Config<number> => {
       const result = Number.parseFloat(text)
       if (Number.isNaN(result)) {
         return Either.left(
-          configError.InvalidData(
+          new configError.InvalidData(
             [],
             `Expected a number value but received ${text}`
           )
@@ -243,7 +243,7 @@ export const integer = (name?: string): Config.Config<number> => {
       const result = Number.parseInt(text, 10)
       if (Number.isNaN(result)) {
         return Either.left(
-          configError.InvalidData(
+          new configError.InvalidData(
             [],
             `Expected an integer value but received ${text}`
           )
@@ -265,7 +265,7 @@ export const literal = <Literals extends ReadonlyArray<Config.LiteralValue>>(...
     const found = literals.find((value) => String(value) === text)
     if (found === undefined) {
       return Either.left(
-        configError.InvalidData(
+        new configError.InvalidData(
           [],
           `Expected one of (${valuesString}) but received ${text}`
         )
@@ -282,7 +282,7 @@ export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
     const label = value.toUpperCase()
     const level = core.allLogLevels.find((level) => level.label === label)
     return level === undefined
-      ? Either.left(configError.InvalidData([], `Expected a log level but received ${value}`))
+      ? Either.left(new configError.InvalidData([], `Expected a log level but received ${value}`))
       : Either.right(level)
   })
   return name === undefined ? config : nested(config, name)
@@ -304,7 +304,7 @@ export const mapAttempt = dual<
       return Either.right(f(a))
     } catch (error) {
       return Either.left(
-        configError.InvalidData(
+        new configError.InvalidData(
           [],
           error instanceof Error ? error.message : `${error}`
         )
@@ -567,7 +567,7 @@ export const validate = dual<
     if (validation(a)) {
       return Either.right(a)
     }
-    return Either.left(configError.InvalidData([], message))
+    return Either.left(new configError.InvalidData([], message))
   }))
 
 /** @internal */

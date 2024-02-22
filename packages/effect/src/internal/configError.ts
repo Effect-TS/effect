@@ -1,5 +1,6 @@
 import type * as Cause from "../Cause.js"
 import type * as ConfigError from "../ConfigError.js"
+import { TaggedError } from "../Data.js"
 import * as Either from "../Either.js"
 import { constFalse, constTrue, dual, pipe } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
@@ -28,146 +29,133 @@ export const proto = {
 }
 
 /** @internal */
-export const And = (self: ConfigError.ConfigError, that: ConfigError.ConfigError): ConfigError.ConfigError => {
-  const error = Object.create(proto)
-  error._tag = "ConfigError"
-  error[Discriminant] = OpCodes.OP_AND
-  error.left = self
-  error.right = that
-  Object.defineProperty(error, "toString", {
-    enumerable: false,
-    value(this: ConfigError.And) {
-      return `${this.left} and ${this.right}`
-    }
-  })
-  return error
+export class And extends TaggedError("ConfigError") implements ConfigError.ConfigError.Proto {
+  [ConfigErrorTypeId]: typeof ConfigError.ConfigErrorTypeId
+  readonly [Discriminant] = OpCodes.OP_AND
+  constructor(readonly left: ConfigError.ConfigError, readonly right: ConfigError.ConfigError) {
+    super()
+    this[ConfigErrorTypeId] = ConfigErrorTypeId
+  }
+
+  toString(): string {
+    return `${this.left} and ${this.right}`
+  }
 }
 
 /** @internal */
-export const Or = (self: ConfigError.ConfigError, that: ConfigError.ConfigError): ConfigError.ConfigError => {
-  const error = Object.create(proto)
-  error._tag = "ConfigError"
-  error[Discriminant] = OpCodes.OP_OR
-  error.left = self
-  error.right = that
-  Object.defineProperty(error, "toString", {
-    enumerable: false,
-    value(this: ConfigError.Or) {
-      return `${this.left} or ${this.right}`
-    }
-  })
-  return error
+export class Or extends TaggedError("ConfigError") implements ConfigError.ConfigError.Proto {
+  [ConfigErrorTypeId]: typeof ConfigError.ConfigErrorTypeId
+  readonly [Discriminant] = OpCodes.OP_OR
+  constructor(readonly left: ConfigError.ConfigError, readonly right: ConfigError.ConfigError) {
+    super()
+    this[ConfigErrorTypeId] = ConfigErrorTypeId
+  }
+
+  toString(): string {
+    return `${this.left} or ${this.right}`
+  }
 }
 
 /** @internal */
-export const InvalidData = (
-  path: ReadonlyArray<string>,
-  message: string,
-  options: ConfigError.Options = { pathDelim: "." }
-): ConfigError.ConfigError => {
-  const error = Object.create(proto)
-  error._tag = "ConfigError"
-  error[Discriminant] = OpCodes.OP_INVALID_DATA
-  error.path = path
-  error.message = message
-  Object.defineProperty(error, "toString", {
-    enumerable: false,
-    value(this: ConfigError.InvalidData) {
-      const path = pipe(this.path, RA.join(options.pathDelim))
-      return `(Invalid data at ${path}: "${this.message}")`
-    }
-  })
-  return error
+export class InvalidData extends TaggedError("ConfigError") implements ConfigError.ConfigError.Proto {
+  readonly [ConfigErrorTypeId]: typeof ConfigError.ConfigErrorTypeId
+  readonly [Discriminant] = OpCodes.OP_INVALID_DATA
+  constructor(
+    readonly path: ReadonlyArray<string>,
+    readonly message: string,
+    readonly options: ConfigError.Options = { pathDelim: "." }
+  ) {
+    super()
+    this[ConfigErrorTypeId] = ConfigErrorTypeId
+  }
+
+  toString() {
+    const path = pipe(this.path, RA.join(this.options.pathDelim))
+    return `(Invalid data at ${path}: "${this.message}")`
+  }
 }
 
 /** @internal */
-export const MissingData = (
-  path: ReadonlyArray<string>,
-  message: string,
-  options: ConfigError.Options = { pathDelim: "." }
-): ConfigError.ConfigError => {
-  const error = Object.create(proto)
-  error._tag = "ConfigError"
-  error[Discriminant] = OpCodes.OP_MISSING_DATA
-  error.path = path
-  error.message = message
-  Object.defineProperty(error, "toString", {
-    enumerable: false,
-    value(this: ConfigError.MissingData) {
-      const path = pipe(this.path, RA.join(options.pathDelim))
-      return `(Missing data at ${path}: "${this.message}")`
-    }
-  })
-  return error
+export class MissingData extends TaggedError("ConfigError") implements ConfigError.ConfigError.Proto {
+  readonly [ConfigErrorTypeId]: typeof ConfigError.ConfigErrorTypeId
+  readonly [Discriminant] = OpCodes.OP_MISSING_DATA
+  constructor(
+    readonly path: ReadonlyArray<string>,
+    readonly message: string,
+    readonly options: ConfigError.Options = { pathDelim: "." }
+  ) {
+    super()
+    this[ConfigErrorTypeId] = ConfigErrorTypeId
+  }
+
+  toString() {
+    const path = pipe(this.path, RA.join(this.options.pathDelim))
+    return `(Missing data at ${path}: "${this.message}")`
+  }
 }
 
 /** @internal */
-export const SourceUnavailable = (
-  path: ReadonlyArray<string>,
-  message: string,
-  cause: Cause.Cause<unknown>,
-  options: ConfigError.Options = { pathDelim: "." }
-): ConfigError.ConfigError => {
-  const error = Object.create(proto)
-  error._tag = "ConfigError"
-  error[Discriminant] = OpCodes.OP_SOURCE_UNAVAILABLE
-  error.path = path
-  error.message = message
-  error.cause = cause
-  Object.defineProperty(error, "toString", {
-    enumerable: false,
-    value(this: ConfigError.SourceUnavailable) {
-      const path = pipe(this.path, RA.join(options.pathDelim))
-      return `(Source unavailable at ${path}: "${this.message}")`
-    }
-  })
-  return error
+export class SourceUnavailable extends TaggedError("ConfigError") implements ConfigError.ConfigError.Proto {
+  readonly [ConfigErrorTypeId]: typeof ConfigError.ConfigErrorTypeId
+  readonly [Discriminant] = OpCodes.OP_SOURCE_UNAVAILABLE
+  constructor(
+    readonly path: ReadonlyArray<string>,
+    readonly message: string,
+    readonly cause: Cause.Cause<unknown>,
+    readonly options: ConfigError.Options = { pathDelim: "." }
+  ) {
+    super()
+    this[ConfigErrorTypeId] = ConfigErrorTypeId
+  }
+
+  toString() {
+    const path = pipe(this.path, RA.join(this.options.pathDelim))
+    return `(Source unavailable at ${path}: "${this.message}")`
+  }
 }
 
 /** @internal */
-export const Unsupported = (
-  path: ReadonlyArray<string>,
-  message: string,
-  options: ConfigError.Options = { pathDelim: "." }
-): ConfigError.ConfigError => {
-  const error = Object.create(proto)
-  error._tag = "ConfigError"
-  error[Discriminant] = OpCodes.OP_UNSUPPORTED
-  error.path = path
-  error.message = message
-  Object.defineProperty(error, "toString", {
-    enumerable: false,
-    value(this: ConfigError.Unsupported) {
-      const path = pipe(this.path, RA.join(options.pathDelim))
-      return `(Unsupported operation at ${path}: "${this.message}")`
-    }
-  })
-  return error
+export class Unsupported extends TaggedError("ConfigError") implements ConfigError.ConfigError.Proto {
+  readonly [ConfigErrorTypeId]: typeof ConfigError.ConfigErrorTypeId
+  readonly [Discriminant] = OpCodes.OP_UNSUPPORTED
+  constructor(
+    readonly path: ReadonlyArray<string>,
+    readonly message: string,
+    readonly options: ConfigError.Options = { pathDelim: "." }
+  ) {
+    super()
+    this[ConfigErrorTypeId] = ConfigErrorTypeId
+  }
+
+  toString() {
+    const path = pipe(this.path, RA.join(this.options.pathDelim))
+    return `(Unsupported operation at ${path}: "${this.message}")`
+  }
 }
 
 /** @internal */
 export const isConfigError = (u: unknown): u is ConfigError.ConfigError => hasProperty(u, ConfigErrorTypeId)
 
 /** @internal */
-export const isAnd = (self: ConfigError.ConfigError): self is ConfigError.And => self[Discriminant] === OpCodes.OP_AND
+export const isAnd = (self: ConfigError.ConfigError): self is And => self[Discriminant] === OpCodes.OP_AND
 
 /** @internal */
-export const isOr = (self: ConfigError.ConfigError): self is ConfigError.Or => self[Discriminant] === OpCodes.OP_OR
+export const isOr = (self: ConfigError.ConfigError): self is Or => self[Discriminant] === OpCodes.OP_OR
 
 /** @internal */
-export const isInvalidData = (self: ConfigError.ConfigError): self is ConfigError.InvalidData =>
+export const isInvalidData = (self: ConfigError.ConfigError): self is InvalidData =>
   self[Discriminant] === OpCodes.OP_INVALID_DATA
 
 /** @internal */
-export const isMissingData = (self: ConfigError.ConfigError): self is ConfigError.MissingData =>
+export const isMissingData = (self: ConfigError.ConfigError): self is MissingData =>
   self[Discriminant] === OpCodes.OP_MISSING_DATA
 
 /** @internal */
-export const isSourceUnavailable = (self: ConfigError.ConfigError): self is ConfigError.SourceUnavailable =>
+export const isSourceUnavailable = (self: ConfigError.ConfigError): self is SourceUnavailable =>
   self[Discriminant] === OpCodes.OP_SOURCE_UNAVAILABLE
 
 /** @internal */
-export const isUnsupported = (self: ConfigError.ConfigError): self is ConfigError.Unsupported =>
+export const isUnsupported = (self: ConfigError.ConfigError): self is Unsupported =>
   self[Discriminant] === OpCodes.OP_UNSUPPORTED
 
 /** @internal */
@@ -180,22 +168,22 @@ export const prefixed: {
 >(2, (self, prefix) => {
   switch (self[Discriminant]) {
     case OpCodes.OP_AND: {
-      return And(prefixed(self.left, prefix), prefixed(self.right, prefix))
+      return new And(prefixed(self.left, prefix), prefixed(self.right, prefix))
     }
     case OpCodes.OP_OR: {
-      return Or(prefixed(self.left, prefix), prefixed(self.right, prefix))
+      return new Or(prefixed(self.left, prefix), prefixed(self.right, prefix))
     }
     case OpCodes.OP_INVALID_DATA: {
-      return InvalidData([...prefix, ...self.path], self.message)
+      return new InvalidData([...prefix, ...self.path], self.message)
     }
     case OpCodes.OP_MISSING_DATA: {
-      return MissingData([...prefix, ...self.path], self.message)
+      return new MissingData([...prefix, ...self.path], self.message)
     }
     case OpCodes.OP_SOURCE_UNAVAILABLE: {
-      return SourceUnavailable([...prefix, ...self.path], self.message, self.cause)
+      return new SourceUnavailable([...prefix, ...self.path], self.message, self.cause)
     }
     case OpCodes.OP_UNSUPPORTED: {
-      return Unsupported([...prefix, ...self.path], self.message)
+      return new Unsupported([...prefix, ...self.path], self.message)
     }
   }
 })

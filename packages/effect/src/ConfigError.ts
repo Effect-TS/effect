@@ -2,7 +2,41 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.js"
+import type { And, InvalidData, MissingData, Or, SourceUnavailable, Unsupported } from "./internal/configError.js"
 import * as internal from "./internal/configError.js"
+
+export {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  And,
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  InvalidData,
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  MissingData,
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  Or,
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  SourceUnavailable,
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  Unsupported
+} from "./internal/configError.js"
 
 /**
  * @since 2.0.0
@@ -35,12 +69,12 @@ export type Discriminant = typeof Discriminant
  * @category models
  */
 export type ConfigError =
-  | And
-  | Or
-  | InvalidData
-  | MissingData
-  | SourceUnavailable
-  | Unsupported
+  | internal.And
+  | internal.Or
+  | internal.InvalidData
+  | internal.MissingData
+  | internal.SourceUnavailable
+  | internal.Unsupported
 
 /**
  * @since 2.0.0
@@ -69,76 +103,15 @@ export declare namespace ConfigError {
 export interface ConfigErrorReducer<in C, in out Z> {
   andCase(context: C, left: Z, right: Z): Z
   orCase(context: C, left: Z, right: Z): Z
-  invalidDataCase(context: C, path: Array<string>, message: string): Z
-  missingDataCase(context: C, path: Array<string>, message: string): Z
+  invalidDataCase(context: C, path: ReadonlyArray<string>, message: string): Z
+  missingDataCase(context: C, path: ReadonlyArray<string>, message: string): Z
   sourceUnavailableCase(
     context: C,
-    path: Array<string>,
+    path: ReadonlyArray<string>,
     message: string,
     cause: Cause.Cause<unknown>
   ): Z
-  unsupportedCase(context: C, path: Array<string>, message: string): Z
-}
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface And extends ConfigError.Proto {
-  readonly [Discriminant]: "And"
-  readonly left: ConfigError
-  readonly right: ConfigError
-}
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Or extends ConfigError.Proto {
-  readonly [Discriminant]: "Or"
-  readonly left: ConfigError
-  readonly right: ConfigError
-}
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface InvalidData extends ConfigError.Proto {
-  readonly [Discriminant]: "InvalidData"
-  readonly path: Array<string>
-  readonly message: string
-}
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MissingData extends ConfigError.Proto {
-  readonly [Discriminant]: "MissingData"
-  readonly path: Array<string>
-  readonly message: string
-}
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface SourceUnavailable extends ConfigError.Proto {
-  readonly [Discriminant]: "SourceUnavailable"
-  readonly path: Array<string>
-  readonly message: string
-  readonly cause: Cause.Cause<unknown>
-}
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Unsupported extends ConfigError.Proto {
-  readonly [Discriminant]: "Unsupported"
-  readonly path: Array<string>
-  readonly message: string
+  unsupportedCase(context: C, path: ReadonlyArray<string>, message: string): Z
 }
 
 /**
@@ -148,50 +121,6 @@ export interface Unsupported extends ConfigError.Proto {
 export interface Options {
   readonly pathDelim: string
 }
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const And: (self: ConfigError, that: ConfigError) => ConfigError = internal.And
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const Or: (self: ConfigError, that: ConfigError) => ConfigError = internal.Or
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const MissingData: (path: Array<string>, message: string, options?: Options) => ConfigError =
-  internal.MissingData
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const InvalidData: (path: Array<string>, message: string, options?: Options) => ConfigError =
-  internal.InvalidData
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const SourceUnavailable: (
-  path: Array<string>,
-  message: string,
-  cause: Cause.Cause<unknown>,
-  options?: Options
-) => ConfigError = internal.SourceUnavailable
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const Unsupported: (path: Array<string>, message: string, options?: Options) => ConfigError =
-  internal.Unsupported
 
 /**
  * Returns `true` if the specified value is a `ConfigError`, `false` otherwise.

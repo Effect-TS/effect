@@ -88,7 +88,7 @@ export const fromFlat = (flat: ConfigProvider.ConfigProvider.Flat): ConfigProvid
         Option.match(ReadonlyArray.head(chunk), {
           onNone: () =>
             core.fail(
-              configError.MissingData(
+              new configError.MissingData(
                 ReadonlyArray.empty(),
                 `Expected a single value having structure: ${config}`
               )
@@ -119,7 +119,7 @@ export const fromEnv = (
     const valueOpt = pathString in current ? Option.some(current[pathString]!) : Option.none()
     return pipe(
       valueOpt,
-      core.mapError(() => configError.MissingData(path, `Expected ${pathString} to exist in the process context`)),
+      core.mapError(() => new configError.MissingData(path, `Expected ${pathString} to exist in the process context`)),
       core.flatMap((value) => parsePrimitive(value, path, primitive, seqDelim, split))
     )
   }
@@ -171,7 +171,7 @@ export const fromMap = (
       Option.none()
     return pipe(
       valueOpt,
-      core.mapError(() => configError.MissingData(path, `Expected ${pathString} to exist in the provided map`)),
+      core.mapError(() => new configError.MissingData(path, `Expected ${pathString} to exist in the provided map`)),
       core.flatMap((value) => parsePrimitive(value, path, primitive, seqDelim, split))
     )
   }
@@ -251,7 +251,7 @@ const fromFlatLoop = <A>(
       ) as unknown as Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
     }
     case OpCodes.OP_FAIL: {
-      return core.fail(configError.MissingData(prefix, op.message)) as Effect.Effect<
+      return core.fail(new configError.MissingData(prefix, op.message)) as Effect.Effect<
         ReadonlyArray<A>,
         ConfigError.ConfigError
       >
@@ -263,7 +263,7 @@ const fromFlatLoop = <A>(
           if (op.condition(error1)) {
             return pipe(
               fromFlatLoop(flat, prefix, op.second, split),
-              core.catchAll((error2) => core.fail(configError.Or(error1, error2)))
+              core.catchAll((error2) => core.fail(new configError.Or(error1, error2)))
             )
           }
           return core.fail(error1)
@@ -310,7 +310,7 @@ const fromFlatLoop = <A>(
             core.flatMap((values) => {
               if (values.length === 0) {
                 const name = pipe(ReadonlyArray.last(prefix), Option.getOrElse(() => "<n/a>"))
-                return core.fail(configError.MissingData([], `Expected ${op.description} with name ${name}`))
+                return core.fail(new configError.MissingData([], `Expected ${op.description} with name ${name}`))
               }
               return core.succeed(values)
             })
@@ -397,7 +397,7 @@ const fromFlatLoop = <A>(
               core.either,
               core.flatMap((right) => {
                 if (Either.isLeft(left) && Either.isLeft(right)) {
-                  return core.fail(configError.And(left.left, right.left))
+                  return core.fail(new configError.And(left.left, right.left))
                 }
                 if (Either.isLeft(left) && Either.isRight(right)) {
                   return core.fail(left.left)
@@ -440,7 +440,7 @@ const fromFlatLoop = <A>(
 const fromFlatLoopFail =
   (prefix: ReadonlyArray<string>, path: string) => (index: number): Either.Either<ConfigError.ConfigError, unknown> =>
     Either.left(
-      configError.MissingData(
+      new configError.MissingData(
         prefix,
         `The element at index ${index} in a sequence at path "${path}" was missing`
       )
@@ -513,7 +513,7 @@ const orElseFlat = (
               pipe(
                 pathPatch.patch(path, that.patch),
                 core.flatMap((patch) => that.load(patch, config, split)),
-                core.catchAll((error2) => core.fail(configError.Or(error1, error2)))
+                core.catchAll((error2) => core.fail(new configError.Or(error1, error2)))
               )
             )
           )
@@ -534,7 +534,7 @@ const orElseFlat = (
                 core.either,
                 core.flatMap((right) => {
                   if (Either.isLeft(left) && Either.isLeft(right)) {
-                    return core.fail(configError.And(left.left, right.left))
+                    return core.fail(new configError.And(left.left, right.left))
                   }
                   if (Either.isLeft(left) && Either.isRight(right)) {
                     return core.succeed(right.right)

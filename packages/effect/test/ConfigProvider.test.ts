@@ -196,7 +196,7 @@ describe("ConfigProvider", () => {
       assert.deepStrictEqual(
         result,
         Exit.fail(
-          ConfigError.MissingData(
+          new ConfigError.MissingData(
             ["hostPorts"],
             "The element at index 1 in a sequence at path \"hostPorts\" was missing"
           )
@@ -559,7 +559,7 @@ describe("ConfigProvider", () => {
       assert.deepStrictEqual(
         result,
         Exit.fail(
-          ConfigError.MissingData(
+          new ConfigError.MissingData(
             ["k1", "k2"],
             "Expected k1.k2 to exist in the provided map"
           )
@@ -668,10 +668,12 @@ describe("ConfigProvider", () => {
       expect(result1).toBe("value1")
       expect(result2).toBe("value2")
       expect(result31).toEqual(Option.none())
-      expect(result32).toEqual(Either.left(ConfigError.Or(
-        ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map"),
-        ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map")
-      )))
+      expect(result32).toEqual(Either.left(
+        new ConfigError.Or(
+          new ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map"),
+          new ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map")
+        )
+      ))
       expect(result4).toBe("value41")
     }))
 
@@ -750,16 +752,18 @@ describe("ConfigProvider", () => {
 
       expect(result1).toEqual([[1, 2], [3, 4]])
       expect(result2).toEqual([[11, 21], [31, 41]])
-      expect(result3).toEqual(Either.left(ConfigError.And(
-        ConfigError.MissingData(
-          ["parent3", "child", "employees"],
-          "Expected parent1 to be in path in ConfigProvider#unnested"
-        ),
-        ConfigError.MissingData(
-          ["parent3", "child", "employees"],
-          "Expected parent2 to be in path in ConfigProvider#unnested"
+      expect(result3).toEqual(Either.left(
+        new ConfigError.And(
+          new ConfigError.MissingData(
+            ["parent3", "child", "employees"],
+            "Expected parent1 to be in path in ConfigProvider#unnested"
+          ),
+          new ConfigError.MissingData(
+            ["parent3", "child", "employees"],
+            "Expected parent2 to be in path in ConfigProvider#unnested"
+          )
         )
-      )))
+      ))
     }))
 
   it.effect("orElse - with index sequences and combined provider unnested", () =>
@@ -847,7 +851,7 @@ describe("ConfigProvider", () => {
       )
       const config = Config.string("key")
       const result = yield* $(Effect.exit(configProvider.load(config)))
-      const error = ConfigError.MissingData(
+      const error = new ConfigError.MissingData(
         ["key"],
         "Expected nested to be in path in ConfigProvider#unnested"
       )

@@ -84,10 +84,12 @@ export const patch = dual<
           output = RA.tailNonEmpty(output as RA.NonEmptyArray<string>)
           input = input.tail
         } else {
-          return Either.left(configError.MissingData(
-            output,
-            `Expected ${patch.name} to be in path in ConfigProvider#unnested`
-          ))
+          return Either.left(
+            new configError.MissingData(
+              output,
+              `Expected ${patch.name} to be in path in ConfigProvider#unnested`
+            )
+          )
         }
         break
       }
