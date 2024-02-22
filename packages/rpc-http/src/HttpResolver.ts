@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Body from "@effect/platform/Http/Body"
-import type * as Client from "@effect/platform/Http/Client"
+import * as Client from "@effect/platform/Http/Client"
 import * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import * as Resolver from "@effect/rpc/Resolver"
 import type * as Router from "@effect/rpc/Router"
@@ -11,6 +11,7 @@ import type * as Serializable from "@effect/schema/Serializable"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import type * as RequestResolver from "effect/RequestResolver"
+import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 
 /**
@@ -57,3 +58,51 @@ export const makeEffect = <R extends Router.Router<any, any>>(
       Effect.scoped
     )
   )<R>()
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeClient = <R extends Router.Router<any, any>>(
+  baseUrl: string
+): Serializable.SerializableWithResult.Context<Router.Router.Request<R>> extends never ?
+  "HttpResolver.makeClient: request context is not `never`"
+  : Resolver.Client<
+    RequestResolver.RequestResolver<
+      Rpc.Request<Router.Router.Request<R>>
+    >
+  > =>
+  Resolver.toClient(make<R>(
+    Client.fetchOk().pipe(
+      Client.mapRequest(ClientRequest.prependUrl(baseUrl)),
+      Client.retry(
+        Schedule.exponential(50).pipe(
+          Schedule.intersect(Schedule.recurs(5))
+        )
+      )
+    )
+  ) as any) as any
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeClientEffect = <R extends Router.Router<any, any>>(
+  baseUrl: string
+): Serializable.SerializableWithResult.Context<Router.Router.Request<R>> extends never ?
+  "HttpResolver.makeClientEffect: request context is not `never`"
+  : Resolver.Client<
+    RequestResolver.RequestResolver<
+      Rpc.Request<Router.Router.Request<R>>
+    >
+  > =>
+  Resolver.toClient(makeEffect<R>(
+    Client.fetchOk().pipe(
+      Client.mapRequest(ClientRequest.prependUrl(baseUrl)),
+      Client.retry(
+        Schedule.exponential(50).pipe(
+          Schedule.intersect(Schedule.recurs(5))
+        )
+      )
+    )
+  ) as any) as any
