@@ -248,6 +248,20 @@ export const annotateHeadersEffect: {
 
 /**
  * @since 1.0.0
+ * @category models
+ */
+export type Client<
+  R extends
+    | RequestResolver.RequestResolver<Rpc.Request<any>, never>
+    | Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<any>, never>, never, any>
+> = R extends Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<infer RReq>>, infer _E, infer R> ?
+  (<Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req, R>)
+  : R extends RequestResolver.RequestResolver<Rpc.Request<infer RReq>, never> ?
+    (<Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req>)
+  : never
+
+/**
+ * @since 1.0.0
  * @category combinators
  */
 export const toClient = <
@@ -259,8 +273,4 @@ export const toClient = <
   options?: {
     readonly spanPrefix?: string
   }
-): R extends Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<infer RReq>>, infer _E, infer R> ?
-  (<Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req, R>)
-  : R extends RequestResolver.RequestResolver<Rpc.Request<infer RReq>, never> ?
-    (<Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req>)
-  : never => ((request: Schema.TaggedRequest.Any) => Rpc.call(request, resolver, options)) as any
+): Client<R> => ((request: Schema.TaggedRequest.Any) => Rpc.call(request, resolver, options)) as any
