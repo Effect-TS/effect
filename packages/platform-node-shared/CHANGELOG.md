@@ -1,5 +1,12 @@
 # @effect/platform-node-shared
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [[`aa6556f`](https://github.com/Effect-TS/effect/commit/aa6556f007117caea84d6965aa30846a11879e9d)]:
+  - @effect/platform@0.46.1
+
 ## 0.2.0
 
 ### Minor Changes
