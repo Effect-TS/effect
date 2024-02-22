@@ -1,5 +1,7 @@
 import * as Config from "effect/Config"
+import type * as ConfigError from "effect/ConfigError"
 import { pipe } from "effect/Function"
+import type { Tags } from "effect/Types"
 
 declare const string: Config.Config<string>
 declare const number: Config.Config<number>
@@ -45,3 +47,6 @@ Config.all(numberRecord)
 
 // $ExpectType Config<{ [x: string]: number; }>
 pipe(numberRecord, Config.all)
+
+// $ExpectType "ConfigError"
+export type T = Tags<ConfigError.ConfigError>

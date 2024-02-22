@@ -15,6 +15,14 @@ export const ConfigErrorTypeId: ConfigError.ConfigErrorTypeId = Symbol.for(
 ) as ConfigError.ConfigErrorTypeId
 
 /** @internal */
+const DiscriminantSymbolKey = "effect/ConfigError.Discriminant"
+
+/** @internal */
+export const Discriminant: ConfigError.Discriminant = Symbol.for(
+  DiscriminantSymbolKey
+) as ConfigError.Discriminant
+
+/** @internal */
 export const proto = {
   [ConfigErrorTypeId]: ConfigErrorTypeId
 }
@@ -22,7 +30,8 @@ export const proto = {
 /** @internal */
 export const And = (self: ConfigError.ConfigError, that: ConfigError.ConfigError): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_AND
+  error._tag = "ConfigError"
+  error[Discriminant] = OpCodes.OP_AND
   error.left = self
   error.right = that
   Object.defineProperty(error, "toString", {
@@ -37,7 +46,8 @@ export const And = (self: ConfigError.ConfigError, that: ConfigError.ConfigError
 /** @internal */
 export const Or = (self: ConfigError.ConfigError, that: ConfigError.ConfigError): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_OR
+  error._tag = "ConfigError"
+  error[Discriminant] = OpCodes.OP_OR
   error.left = self
   error.right = that
   Object.defineProperty(error, "toString", {
@@ -56,7 +66,8 @@ export const InvalidData = (
   options: ConfigError.Options = { pathDelim: "." }
 ): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_INVALID_DATA
+  error._tag = "ConfigError"
+  error[Discriminant] = OpCodes.OP_INVALID_DATA
   error.path = path
   error.message = message
   Object.defineProperty(error, "toString", {
@@ -76,7 +87,8 @@ export const MissingData = (
   options: ConfigError.Options = { pathDelim: "." }
 ): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_MISSING_DATA
+  error._tag = "ConfigError"
+  error[Discriminant] = OpCodes.OP_MISSING_DATA
   error.path = path
   error.message = message
   Object.defineProperty(error, "toString", {
@@ -97,7 +109,8 @@ export const SourceUnavailable = (
   options: ConfigError.Options = { pathDelim: "." }
 ): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_SOURCE_UNAVAILABLE
+  error._tag = "ConfigError"
+  error[Discriminant] = OpCodes.OP_SOURCE_UNAVAILABLE
   error.path = path
   error.message = message
   error.cause = cause
@@ -118,7 +131,8 @@ export const Unsupported = (
   options: ConfigError.Options = { pathDelim: "." }
 ): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_UNSUPPORTED
+  error._tag = "ConfigError"
+  error[Discriminant] = OpCodes.OP_UNSUPPORTED
   error.path = path
   error.message = message
   Object.defineProperty(error, "toString", {
@@ -135,26 +149,26 @@ export const Unsupported = (
 export const isConfigError = (u: unknown): u is ConfigError.ConfigError => hasProperty(u, ConfigErrorTypeId)
 
 /** @internal */
-export const isAnd = (self: ConfigError.ConfigError): self is ConfigError.And => self._tag === OpCodes.OP_AND
+export const isAnd = (self: ConfigError.ConfigError): self is ConfigError.And => self[Discriminant] === OpCodes.OP_AND
 
 /** @internal */
-export const isOr = (self: ConfigError.ConfigError): self is ConfigError.Or => self._tag === OpCodes.OP_OR
+export const isOr = (self: ConfigError.ConfigError): self is ConfigError.Or => self[Discriminant] === OpCodes.OP_OR
 
 /** @internal */
 export const isInvalidData = (self: ConfigError.ConfigError): self is ConfigError.InvalidData =>
-  self._tag === OpCodes.OP_INVALID_DATA
+  self[Discriminant] === OpCodes.OP_INVALID_DATA
 
 /** @internal */
 export const isMissingData = (self: ConfigError.ConfigError): self is ConfigError.MissingData =>
-  self._tag === OpCodes.OP_MISSING_DATA
+  self[Discriminant] === OpCodes.OP_MISSING_DATA
 
 /** @internal */
 export const isSourceUnavailable = (self: ConfigError.ConfigError): self is ConfigError.SourceUnavailable =>
-  self._tag === OpCodes.OP_SOURCE_UNAVAILABLE
+  self[Discriminant] === OpCodes.OP_SOURCE_UNAVAILABLE
 
 /** @internal */
 export const isUnsupported = (self: ConfigError.ConfigError): self is ConfigError.Unsupported =>
-  self._tag === OpCodes.OP_UNSUPPORTED
+  self[Discriminant] === OpCodes.OP_UNSUPPORTED
 
 /** @internal */
 export const prefixed: {
@@ -164,7 +178,7 @@ export const prefixed: {
   (prefix: ReadonlyArray<string>) => (self: ConfigError.ConfigError) => ConfigError.ConfigError,
   (self: ConfigError.ConfigError, prefix: ReadonlyArray<string>) => ConfigError.ConfigError
 >(2, (self, prefix) => {
-  switch (self._tag) {
+  switch (self[Discriminant]) {
     case OpCodes.OP_AND: {
       return And(prefixed(self.left, prefix), prefixed(self.right, prefix))
     }
@@ -218,7 +232,7 @@ export const reduceWithContext = dual<
   const output: Array<Either.Either<ConfigErrorCase, Z>> = []
   while (input.length > 0) {
     const error = input.pop()!
-    switch (error._tag) {
+    switch (error[Discriminant]) {
       case OpCodes.OP_AND: {
         input.push(error.right)
         input.push(error.left)

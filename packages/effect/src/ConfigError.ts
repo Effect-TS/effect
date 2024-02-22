@@ -17,6 +17,18 @@ export const ConfigErrorTypeId: unique symbol = internal.ConfigErrorTypeId
 export type ConfigErrorTypeId = typeof ConfigErrorTypeId
 
 /**
+ * @since 2.0.0
+ * @category symbols
+ */
+export const Discriminant: unique symbol = internal.Discriminant
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type Discriminant = typeof Discriminant
+
+/**
  * The possible ways that loading configuration data may fail.
  *
  * @since 2.0.0
@@ -39,6 +51,7 @@ export declare namespace ConfigError {
    * @category models
    */
   export interface Proto {
+    readonly _tag: "ConfigError"
     readonly [ConfigErrorTypeId]: ConfigErrorTypeId
   }
 
@@ -72,7 +85,7 @@ export interface ConfigErrorReducer<in C, in out Z> {
  * @category models
  */
 export interface And extends ConfigError.Proto {
-  readonly _tag: "And"
+  readonly [Discriminant]: "And"
   readonly left: ConfigError
   readonly right: ConfigError
 }
@@ -82,7 +95,7 @@ export interface And extends ConfigError.Proto {
  * @category models
  */
 export interface Or extends ConfigError.Proto {
-  readonly _tag: "Or"
+  readonly [Discriminant]: "Or"
   readonly left: ConfigError
   readonly right: ConfigError
 }
@@ -92,7 +105,7 @@ export interface Or extends ConfigError.Proto {
  * @category models
  */
 export interface InvalidData extends ConfigError.Proto {
-  readonly _tag: "InvalidData"
+  readonly [Discriminant]: "InvalidData"
   readonly path: Array<string>
   readonly message: string
 }
@@ -102,7 +115,7 @@ export interface InvalidData extends ConfigError.Proto {
  * @category models
  */
 export interface MissingData extends ConfigError.Proto {
-  readonly _tag: "MissingData"
+  readonly [Discriminant]: "MissingData"
   readonly path: Array<string>
   readonly message: string
 }
@@ -112,7 +125,7 @@ export interface MissingData extends ConfigError.Proto {
  * @category models
  */
 export interface SourceUnavailable extends ConfigError.Proto {
-  readonly _tag: "SourceUnavailable"
+  readonly [Discriminant]: "SourceUnavailable"
   readonly path: Array<string>
   readonly message: string
   readonly cause: Cause.Cause<unknown>
@@ -123,7 +136,7 @@ export interface SourceUnavailable extends ConfigError.Proto {
  * @category models
  */
 export interface Unsupported extends ConfigError.Proto {
-  readonly _tag: "Unsupported"
+  readonly [Discriminant]: "Unsupported"
   readonly path: Array<string>
   readonly message: string
 }
