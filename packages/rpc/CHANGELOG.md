@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.27.16
+
+### Patch Changes
+
+- [#2198](https://github.com/Effect-TS/effect/pull/2198) [`0c58b32`](https://github.com/Effect-TS/effect/commit/0c58b32dcfbed9bb5db78e9c08f6a557ec2f640b) Thanks [@tim-smart](https://github.com/tim-smart)! - add convenience client constructors to /rpc-http
+
+- Updated dependencies [[`aa6556f`](https://github.com/Effect-TS/effect/commit/aa6556f007117caea84d6965aa30846a11879e9d)]:
+  - @effect/platform@0.46.1
+
 ## 0.27.15
 
 ### Patch Changes

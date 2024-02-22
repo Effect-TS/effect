@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.46.1
+
+### Patch Changes
+
+- [#2196](https://github.com/Effect-TS/effect/pull/2196) [`aa6556f`](https://github.com/Effect-TS/effect/commit/aa6556f007117caea84d6965aa30846a11879e9d) Thanks [@tim-smart](https://github.com/tim-smart)! - handle defects in worker runner
+
 ## 0.46.0
 
 ### Minor Changes
