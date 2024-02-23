@@ -581,8 +581,7 @@ function getMin(
  * @category utils
  * @since 1.0.0
  */
-export const sample = (fc: typeof FastCheck) => <A, I>(schema: Schema.Schema<A, I>, n: number) => {
-  const arbitrary = make(schema)
-  const arb = arbitrary(fc)
-  return fc.sample(arb, n)
+export const sample = <A, I>(fc: typeof FastCheck, schema: Schema.Schema<A, I>) => {
+  const arb = make(schema)(fc)
+  return (n: number) => fc.sample(arb, n)
 }
