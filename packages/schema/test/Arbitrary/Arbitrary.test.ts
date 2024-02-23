@@ -503,8 +503,7 @@ describe("Arbitrary > Arbitrary", () => {
   describe("should handle annotations", () => {
     const expectHook = <A, I>(source: S.Schema<A, I>) => {
       const schema = source.pipe(Arbitrary.arbitrary(() => (fc) => fc.constant("custom arbitrary") as any))
-      const arb = Arbitrary.make(schema)(fc)
-      expect(fc.sample(arb, 1)[0]).toEqual("custom arbitrary")
+      expect(Arbitrary.sample(fc)(schema, 1)[0]).toEqual("custom arbitrary")
     }
 
     it("void", () => {

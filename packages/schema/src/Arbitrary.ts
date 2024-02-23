@@ -574,3 +574,15 @@ function getMin(
 ): bigint | number | undefined {
   return n1 === undefined ? n2 : n2 === undefined ? n1 : n1 <= n2 ? n1 : n2
 }
+
+/**
+ * Returns n arbitrary instances of a given schema.
+ *
+ * @category utils
+ * @since 1.0.0
+ */
+export const sample = (fc: typeof FastCheck) => <A, I>(schema: Schema.Schema<A, I>, n: number) => {
+  const arbitrary = make(schema)
+  const arb = arbitrary(fc)
+  return fc.sample(arb, n)
+}

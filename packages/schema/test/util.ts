@@ -216,12 +216,6 @@ export const expectPromiseFailure = async <A>(promise: Promise<A>, message: stri
   }
 }
 
-export const sample = <A, I>(schema: S.Schema<A, I>, n: number) => {
-  const arbitrary = A.make(schema)
-  const arb = arbitrary(fc)
-  console.log(JSON.stringify(fc.sample(arb, n), null, 2))
-}
-
 export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).pipe(
   S.identifier("NumberFromChar")
 )
