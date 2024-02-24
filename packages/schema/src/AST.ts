@@ -22,7 +22,7 @@ import type { ParseIssue } from "./ParseResult.js"
  * @category annotations
  * @since 1.0.0
  */
-export type BrandAnnotation = ReadonlyArray<string>
+export type BrandAnnotation = ReadonlyArray.NonEmptyReadonlyArray<string | symbol>
 
 /**
  * @category annotations
@@ -184,6 +184,14 @@ export const getAnnotation: {
     Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
       Option.some(annotated.annotations[key] as any) :
       Option.none()
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getBrandAnnotation = getAnnotation<BrandAnnotation>(
+  BrandAnnotationId
 )
 
 /**

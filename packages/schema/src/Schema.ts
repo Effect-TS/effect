@@ -1342,15 +1342,37 @@ export const pluck: {
  */
 export interface BrandSchema<A extends Brand.Brand<any>, I, R> extends Schema<A, I, R>, Brand.Brand.Constructor<A> {}
 
-const appendBrandAnnotation = <B extends string | symbol>(
-  ast: AST.AST,
-  brand: B,
-  options?: DocAnnotations
-): AST.AST => {
-  const annotations = toAnnotations(options)
-  const brands = ast.annotations[AST.BrandAnnotationId] as Array<string> | undefined
-  annotations[AST.BrandAnnotationId] = brands ? [...brands, brand] : [brand]
-  return AST.annotations(ast, annotations)
+const makeBrandSchema = (self: AST.AST, brand: string | symbol, options?: DocAnnotations) => {
+  const brands: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self), {
+    onNone: () => [brand],
+    onSome: (brands) => [...brands, brand]
+  })
+  const ast = AST.annotations(self, { ...toAnnotations(options), [AST.BrandAnnotationId]: brands })
+  const schema = make(ast)
+  const validateSync = Parser.validateSync(schema)
+  const validateOption = Parser.validateOption(schema)
+  const _validateEither = validateEither(schema)
+  const is = Parser.is(schema)
+  const out: any = Object.assign((input: unknown) => validateSync(input), {
+    [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
+    [TypeId]: _schema.variance,
+    ast,
+    option: (input: unknown) => validateOption(input),
+    either: (input: unknown) =>
+      Either.mapLeft(
+        _validateEither(input),
+        (e) =>
+          ArrayFormatter.formatError(e).map((err) => ({
+            meta: err.path,
+            message: err.message
+          }))
+      ),
+    is: (input: unknown) => is(input),
+    pipe() {
+      return pipeArguments(this, arguments)
+    }
+  })
+  return out
 }
 
 /**
@@ -1374,34 +1396,7 @@ const appendBrandAnnotation = <B extends string | symbol>(
  */
 export const brand =
   <B extends string | symbol, A>(brand: B, options?: DocAnnotations) =>
-  <I>(self: Schema<A, I, never>): BrandSchema<A & Brand.Brand<B>, I, never> => {
-    const ast = appendBrandAnnotation(self.ast, brand, options)
-    const schema = make<I, A, never>(ast)
-    const validateSync = Parser.validateSync(schema)
-    const validateOption = Parser.validateOption(schema)
-    const _validateEither = validateEither(schema)
-    const is = Parser.is(schema)
-    const out: any = Object.assign((input: unknown) => validateSync(input), {
-      [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
-      [TypeId]: _schema.variance,
-      ast,
-      option: (input: unknown) => validateOption(input),
-      either: (input: unknown) =>
-        Either.mapLeft(
-          _validateEither(input),
-          (e) =>
-            ArrayFormatter.formatError(e).map((err) => ({
-              meta: err.path,
-              message: err.message
-            }))
-        ),
-      is: (input: unknown): input is A & Brand.Brand<B> => is(input),
-      pipe() {
-        return pipeArguments(this, arguments)
-      }
-    })
-    return out
-  }
+  <I>(self: Schema<A, I, never>): BrandSchema<A & Brand.Brand<B>, I, never> => makeBrandSchema(self.ast, brand, options)
 
 /**
  * @category combinators
