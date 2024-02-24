@@ -16,13 +16,14 @@ export const ConfigErrorTypeId: ConfigError.ConfigErrorTypeId = Symbol.for(
 
 /** @internal */
 export const proto = {
+  _tag: "ConfigError",
   [ConfigErrorTypeId]: ConfigErrorTypeId
 }
 
 /** @internal */
 export const And = (self: ConfigError.ConfigError, that: ConfigError.ConfigError): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_AND
+  error._op = OpCodes.OP_AND
   error.left = self
   error.right = that
   Object.defineProperty(error, "toString", {
@@ -37,7 +38,7 @@ export const And = (self: ConfigError.ConfigError, that: ConfigError.ConfigError
 /** @internal */
 export const Or = (self: ConfigError.ConfigError, that: ConfigError.ConfigError): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_OR
+  error._op = OpCodes.OP_OR
   error.left = self
   error.right = that
   Object.defineProperty(error, "toString", {
@@ -56,7 +57,7 @@ export const InvalidData = (
   options: ConfigError.Options = { pathDelim: "." }
 ): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_INVALID_DATA
+  error._op = OpCodes.OP_INVALID_DATA
   error.path = path
   error.message = message
   Object.defineProperty(error, "toString", {
@@ -76,7 +77,7 @@ export const MissingData = (
   options: ConfigError.Options = { pathDelim: "." }
 ): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_MISSING_DATA
+  error._op = OpCodes.OP_MISSING_DATA
   error.path = path
   error.message = message
   Object.defineProperty(error, "toString", {
@@ -97,7 +98,7 @@ export const SourceUnavailable = (
   options: ConfigError.Options = { pathDelim: "." }
 ): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_SOURCE_UNAVAILABLE
+  error._op = OpCodes.OP_SOURCE_UNAVAILABLE
   error.path = path
   error.message = message
   error.cause = cause
@@ -118,7 +119,7 @@ export const Unsupported = (
   options: ConfigError.Options = { pathDelim: "." }
 ): ConfigError.ConfigError => {
   const error = Object.create(proto)
-  error._tag = OpCodes.OP_UNSUPPORTED
+  error._op = OpCodes.OP_UNSUPPORTED
   error.path = path
   error.message = message
   Object.defineProperty(error, "toString", {
@@ -135,26 +136,26 @@ export const Unsupported = (
 export const isConfigError = (u: unknown): u is ConfigError.ConfigError => hasProperty(u, ConfigErrorTypeId)
 
 /** @internal */
-export const isAnd = (self: ConfigError.ConfigError): self is ConfigError.And => self._tag === OpCodes.OP_AND
+export const isAnd = (self: ConfigError.ConfigError): self is ConfigError.And => self._op === OpCodes.OP_AND
 
 /** @internal */
-export const isOr = (self: ConfigError.ConfigError): self is ConfigError.Or => self._tag === OpCodes.OP_OR
+export const isOr = (self: ConfigError.ConfigError): self is ConfigError.Or => self._op === OpCodes.OP_OR
 
 /** @internal */
 export const isInvalidData = (self: ConfigError.ConfigError): self is ConfigError.InvalidData =>
-  self._tag === OpCodes.OP_INVALID_DATA
+  self._op === OpCodes.OP_INVALID_DATA
 
 /** @internal */
 export const isMissingData = (self: ConfigError.ConfigError): self is ConfigError.MissingData =>
-  self._tag === OpCodes.OP_MISSING_DATA
+  self._op === OpCodes.OP_MISSING_DATA
 
 /** @internal */
 export const isSourceUnavailable = (self: ConfigError.ConfigError): self is ConfigError.SourceUnavailable =>
-  self._tag === OpCodes.OP_SOURCE_UNAVAILABLE
+  self._op === OpCodes.OP_SOURCE_UNAVAILABLE
 
 /** @internal */
 export const isUnsupported = (self: ConfigError.ConfigError): self is ConfigError.Unsupported =>
-  self._tag === OpCodes.OP_UNSUPPORTED
+  self._op === OpCodes.OP_UNSUPPORTED
 
 /** @internal */
 export const prefixed: {
@@ -164,7 +165,7 @@ export const prefixed: {
   (prefix: ReadonlyArray<string>) => (self: ConfigError.ConfigError) => ConfigError.ConfigError,
   (self: ConfigError.ConfigError, prefix: ReadonlyArray<string>) => ConfigError.ConfigError
 >(2, (self, prefix) => {
-  switch (self._tag) {
+  switch (self._op) {
     case OpCodes.OP_AND: {
       return And(prefixed(self.left, prefix), prefixed(self.right, prefix))
     }
@@ -201,12 +202,12 @@ type ConfigErrorCase = AndCase | OrCase
 
 /** @internal */
 interface AndCase {
-  readonly _tag: "AndCase"
+  readonly _op: "AndCase"
 }
 
 /** @internal */
 interface OrCase {
-  readonly _tag: "OrCase"
+  readonly _op: "OrCase"
 }
 
 /** @internal */
@@ -218,17 +219,17 @@ export const reduceWithContext = dual<
   const output: Array<Either.Either<Z, ConfigErrorCase>> = []
   while (input.length > 0) {
     const error = input.pop()!
-    switch (error._tag) {
+    switch (error._op) {
       case OpCodes.OP_AND: {
         input.push(error.right)
         input.push(error.left)
-        output.push(Either.left({ _tag: "AndCase" }))
+        output.push(Either.left({ _op: "AndCase" }))
         break
       }
       case OpCodes.OP_OR: {
         input.push(error.right)
         input.push(error.left)
-        output.push(Either.left({ _tag: "OrCase" }))
+        output.push(Either.left({ _op: "OrCase" }))
         break
       }
       case OpCodes.OP_INVALID_DATA: {
@@ -252,9 +253,9 @@ export const reduceWithContext = dual<
   const accumulator: Array<Z> = []
   while (output.length > 0) {
     const either = output.pop()!
-    switch (either._tag) {
+    switch (either._op) {
       case "Left": {
-        switch (either.left._tag) {
+        switch (either.left._op) {
           case "AndCase": {
             const left = accumulator.pop()!
             const right = accumulator.pop()!
