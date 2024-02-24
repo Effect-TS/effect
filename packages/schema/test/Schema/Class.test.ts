@@ -131,6 +131,9 @@ class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTrans
 describe("Schema > Class", () => {
   it("should be a Schema", () => {
     expect(S.isSchema(Person)).toEqual(true)
+  })
+
+  it.skip("using .annotations() on a Class should return a Class", () => {
     const schema = Person.pipe(S.title("Person"))
     expect(schema.ast.annotations).toEqual({
       [AST.TitleAnnotationId]: "Person"

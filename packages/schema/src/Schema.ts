@@ -1906,6 +1906,18 @@ export interface FilterAnnotations<A> extends DeclareAnnotations<readonly [A], A
  * @category annotations
  * @since 1.0.0
  */
+export const annotations: {
+  (annotations: AST.Annotations): <S extends AnySchema>(self: S) => S
+  <S extends AnySchema>(self: S, annotations: AST.Annotations): S
+} = dual(
+  2,
+  <A, I, R>(self: Schema<A, I, R>, annotations: AST.Annotations): Schema<A, I, R> => self.annotations(annotations)
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
 export const message = (message: AST.MessageAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.annotations({ [AST.MessageAnnotationId]: message })
 

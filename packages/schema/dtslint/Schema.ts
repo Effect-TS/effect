@@ -428,6 +428,18 @@ pipe(S.number, S.int(), S.brand("Int"))
 // $ExpectType BrandSchema<number & Brand<"Int">, string, never>
 pipe(S.NumberFromString, S.int(), S.brand("Int"))
 
+// $ExpectType BrandSchema<number & Brand<"Int">, number, never>
+pipe(S.number, S.int(), S.brand("Int")).annotations({})
+
+// $ExpectType BrandSchema<number & Brand<"Int">, number, never>
+S.number.pipe(S.int(), S.brand("Int"), S.annotations({}))
+
+// $ExpectType BrandSchema<number & Brand<"Int">, number, never>
+S.annotations(S.number.pipe(S.int(), S.brand("Int")), {})
+
+// @ts-expect-error
+S.never.pipe(S.annotations({}))
+
 // ---------------------------------------------
 // Partial
 // ---------------------------------------------
@@ -670,6 +682,15 @@ pipe(UnionFilter, S.filter(S.is(S.struct({ b: S.string }))))
 
 // $ExpectType Schema<number & Brand<"MyNumber">, number, never>
 pipe(S.number, S.filter((n): n is number & Brand.Brand<"MyNumber"> => n > 0))
+
+// $ExpectType Schema<string, string, never>
+S.string.annotations({})
+
+// $ExpectType Schema<string, string, never>
+pipe(S.string, S.annotations({}))
+
+// $ExpectType Schema<string, string, never>
+S.string.pipe(S.annotations({}))
 
 // annotations
 pipe(
