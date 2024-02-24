@@ -286,11 +286,13 @@ export class Declaration implements Annotated {
   }
 }
 
+const createGuard = <T extends AST["_tag"]>(tag: T) => (ast: AST): ast is Extract<AST, { _tag: T }> => ast._tag === tag
+
 /**
  * @category guards
  * @since 1.0.0
  */
-export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Declaration"
+export const isDeclaration: (ast: AST) => ast is Declaration = createGuard("Declaration")
 
 /**
  * @category model
@@ -320,7 +322,7 @@ export class Literal implements Annotated {
  * @category guards
  * @since 1.0.0
  */
-export const isLiteral = (ast: AST): ast is Literal => ast._tag === "Literal"
+export const isLiteral: (ast: AST) => ast is Literal = createGuard("Literal")
 
 /** @internal */
 export const _null = new Literal(null, {
@@ -349,7 +351,7 @@ export class UniqueSymbol implements Annotated {
  * @category guards
  * @since 1.0.0
  */
-export const isUniqueSymbol = (ast: AST): ast is UniqueSymbol => ast._tag === "UniqueSymbol"
+export const isUniqueSymbol: (ast: AST) => ast is UniqueSymbol = createGuard("UniqueSymbol")
 
 /**
  * @category model
@@ -381,7 +383,7 @@ export const undefinedKeyword: UndefinedKeyword = new UndefinedKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isUndefinedKeyword = (ast: AST): ast is UndefinedKeyword => ast._tag === "UndefinedKeyword"
+export const isUndefinedKeyword: (ast: AST) => ast is UndefinedKeyword = createGuard("UndefinedKeyword")
 
 /**
  * @category model
@@ -413,7 +415,7 @@ export const voidKeyword: VoidKeyword = new VoidKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isVoidKeyword = (ast: AST): ast is VoidKeyword => ast._tag === "VoidKeyword"
+export const isVoidKeyword: (ast: AST) => ast is VoidKeyword = createGuard("VoidKeyword")
 
 /**
  * @category model
@@ -445,7 +447,7 @@ export const neverKeyword: NeverKeyword = new NeverKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isNeverKeyword = (ast: AST): ast is NeverKeyword => ast._tag === "NeverKeyword"
+export const isNeverKeyword: (ast: AST) => ast is NeverKeyword = createGuard("NeverKeyword")
 
 /**
  * @category model
@@ -477,7 +479,7 @@ export const unknownKeyword: UnknownKeyword = new UnknownKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isUnknownKeyword = (ast: AST): ast is UnknownKeyword => ast._tag === "UnknownKeyword"
+export const isUnknownKeyword: (ast: AST) => ast is UnknownKeyword = createGuard("UnknownKeyword")
 
 /**
  * @category model
@@ -509,7 +511,7 @@ export const anyKeyword: AnyKeyword = new AnyKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isAnyKeyword = (ast: AST): ast is AnyKeyword => ast._tag === "AnyKeyword"
+export const isAnyKeyword: (ast: AST) => ast is AnyKeyword = createGuard("AnyKeyword")
 
 /**
  * @category model
@@ -542,7 +544,7 @@ export const stringKeyword: StringKeyword = new StringKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isStringKeyword = (ast: AST): ast is StringKeyword => ast._tag === "StringKeyword"
+export const isStringKeyword: (ast: AST) => ast is StringKeyword = createGuard("StringKeyword")
 
 /**
  * @category model
@@ -575,7 +577,7 @@ export const numberKeyword: NumberKeyword = new NumberKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isNumberKeyword = (ast: AST): ast is NumberKeyword => ast._tag === "NumberKeyword"
+export const isNumberKeyword: (ast: AST) => ast is NumberKeyword = createGuard("NumberKeyword")
 
 /**
  * @category model
@@ -608,7 +610,7 @@ export const booleanKeyword: BooleanKeyword = new BooleanKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isBooleanKeyword = (ast: AST): ast is BooleanKeyword => ast._tag === "BooleanKeyword"
+export const isBooleanKeyword: (ast: AST) => ast is BooleanKeyword = createGuard("BooleanKeyword")
 
 /**
  * @category model
@@ -641,7 +643,7 @@ export const bigIntKeyword: BigIntKeyword = new BigIntKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isBigIntKeyword = (ast: AST): ast is BigIntKeyword => ast._tag === "BigIntKeyword"
+export const isBigIntKeyword: (ast: AST) => ast is BigIntKeyword = createGuard("BigIntKeyword")
 
 /**
  * @category model
@@ -674,7 +676,7 @@ export const symbolKeyword: SymbolKeyword = new SymbolKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isSymbolKeyword = (ast: AST): ast is SymbolKeyword => ast._tag === "SymbolKeyword"
+export const isSymbolKeyword: (ast: AST) => ast is SymbolKeyword = createGuard("SymbolKeyword")
 
 /**
  * @category model
@@ -708,7 +710,7 @@ export const objectKeyword: ObjectKeyword = new ObjectKeyword({
  * @category guards
  * @since 1.0.0
  */
-export const isObjectKeyword = (ast: AST): ast is ObjectKeyword => ast._tag === "ObjectKeyword"
+export const isObjectKeyword: (ast: AST) => ast is ObjectKeyword = createGuard("ObjectKeyword")
 
 /**
  * @category model
@@ -738,7 +740,7 @@ export class Enums implements Annotated {
  * @category guards
  * @since 1.0.0
  */
-export const isEnums = (ast: AST): ast is Enums => ast._tag === "Enums"
+export const isEnums: (ast: AST) => ast is Enums = createGuard("Enums")
 
 /**
  * @category model
@@ -798,7 +800,7 @@ const formatTemplateLiteral = (ast: TemplateLiteral): string =>
  * @category guards
  * @since 1.0.0
  */
-export const isTemplateLiteral = (ast: AST): ast is TemplateLiteral => ast._tag === "TemplateLiteral"
+export const isTemplateLiteral: (ast: AST) => ast is TemplateLiteral = createGuard("TemplateLiteral")
 
 /**
  * @category model
@@ -862,7 +864,7 @@ const formatTuple = (ast: Tuple): string => {
  * @category guards
  * @since 1.0.0
  */
-export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
+export const isTuple: (ast: AST) => ast is Tuple = createGuard("Tuple")
 
 /**
  * @category model
@@ -1009,7 +1011,7 @@ const formatTypeLiteral = (ast: TypeLiteral): string => {
  * @category guards
  * @since 1.0.0
  */
-export const isTypeLiteral = (ast: AST): ast is TypeLiteral => ast._tag === "TypeLiteral"
+export const isTypeLiteral: (ast: AST) => ast is TypeLiteral = createGuard("TypeLiteral")
 
 /**
  * @since 1.0.0
@@ -1056,7 +1058,7 @@ const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Array<A>] 
  * @category guards
  * @since 1.0.0
  */
-export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
+export const isUnion: (ast: AST) => ast is Union = createGuard("Union")
 
 /**
  * @category model
@@ -1090,7 +1092,7 @@ export class Suspend implements Annotated {
  * @category guards
  * @since 1.0.0
  */
-export const isSuspend = (ast: AST): ast is Suspend => ast._tag === "Suspend"
+export const isSuspend: (ast: AST) => ast is Suspend = createGuard("Suspend")
 
 /**
  * @category model
@@ -1122,7 +1124,7 @@ export class Refinement<From extends AST = AST> implements Annotated {
  * @category guards
  * @since 1.0.0
  */
-export const isRefinement = (ast: AST): ast is Refinement => ast._tag === "Refinement"
+export const isRefinement: (ast: AST) => ast is Refinement<AST> = createGuard("Refinement")
 
 /**
  * @category model
@@ -1170,7 +1172,7 @@ export class Transform implements Annotated {
  * @category guards
  * @since 1.0.0
  */
-export const isTransform = (ast: AST): ast is Transform => ast._tag === "Transform"
+export const isTransform: (ast: AST) => ast is Transform = createGuard("Transform")
 
 /**
  * @category model
