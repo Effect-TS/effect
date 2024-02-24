@@ -364,7 +364,7 @@ export const validatePromise = <A, I>(
 /**
  * @since 1.0.0
  */
-export type AnySchema<R = unknown> = Schema<any, any, R> | Schema<never, never, R>
+export type AnySchema<R = unknown> = Schema<any, any, R>
 
 /**
  * Tests if a value is a `Schema`.
@@ -1122,6 +1122,7 @@ export type ToOptionalKeys<Fields> = {
 export type StructFields = Record<
   PropertyKey,
   | AnySchema
+  | typeof never
   | PropertySignature<any, boolean, any, boolean, unknown>
   | PropertySignature<never, boolean, never, boolean, unknown>
 >
