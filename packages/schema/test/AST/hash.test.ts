@@ -10,7 +10,7 @@ const expectHash = <A, I, R>(schema: S.Schema<A, I, R>, n: number) => {
   expect(AST.hash(schema.ast)).toBe(n)
 }
 
-describe("AST > toString", () => {
+describe("AST > .toString()", () => {
   it("string", () => {
     const schema = S.string
     expectToString(

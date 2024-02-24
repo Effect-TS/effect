@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("AST/createTypeLiteral", () => {
+describe("AST.TypeLiteral", () => {
   describe("should give precedence to property signatures / index signatures containing less inhabitants", () => {
     it("literal vs string", () => {
       const schema = S.struct({ a: S.string, b: S.literal("b") })

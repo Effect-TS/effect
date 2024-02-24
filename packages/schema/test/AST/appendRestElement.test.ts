@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("AST/appendRestElement", () => {
+describe("AST > appendRestElement", () => {
   it("should add a rest element", () => {
     const tuple = new AST.Tuple(
       [new AST.Element(AST.stringKeyword, false)],

@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("AST/createUnion", () => {
+describe("AST.Union", () => {
   it("should remove never from members", () => {
     expect(AST.Union.make([AST.neverKeyword, AST.neverKeyword])).toEqual(
       AST.neverKeyword

@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("AST/guards", () => {
+describe("AST > guards", () => {
   it("isDeclaration", () => {
     expect(AST.isDeclaration(S.optionFromSelf(S.number).ast)).toEqual(true)
     expect(AST.isDeclaration(S.number.ast)).toEqual(false)

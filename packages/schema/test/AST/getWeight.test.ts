@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("AST/getWeight", () => {
+describe("AST > getWeight", () => {
   it("order", () => {
     const transformation = S.optionFromSelf(S.number)
     const union = S.union(S.struct({ a: S.string }), S.struct({ b: S.number }))

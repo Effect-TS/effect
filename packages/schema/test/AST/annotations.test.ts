@@ -5,6 +5,7 @@ describe("AST > annotations", () => {
   it("setAnnotation", () => {
     const symA = Symbol.for("a")
     const ast = AST.setAnnotation(AST.stringKeyword, symA, "A")
+    expect(ast instanceof AST.StringKeyword).toBe(true)
     expect(ast).toStrictEqual(
       new AST.StringKeyword({
         [AST.TitleAnnotationId]: "string",

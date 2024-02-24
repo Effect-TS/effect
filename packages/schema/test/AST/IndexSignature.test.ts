@@ -1,8 +1,8 @@
 import * as AST from "@effect/schema/AST"
 import { describe, expect, it } from "vitest"
 
-describe("AST/createIndexSignature", () => {
-  it("createIndexSignature/ should throw on unsupported ASTs", () => {
+describe("AST.IndexSignature", () => {
+  it("new IndexSignature should throw on unsupported ASTs", () => {
     expect(() => AST.IndexSignature.make(AST.booleanKeyword, AST.stringKeyword, true))
       .toThrow(
         new Error(
