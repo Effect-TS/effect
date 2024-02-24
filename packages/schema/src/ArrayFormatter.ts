@@ -17,6 +17,31 @@ export interface Issue {
   readonly message: string
 }
 
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatIssueEffect = (issue: ParseResult.ParseIssue): Effect.Effect<Array<Issue>> => go(issue)
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatIssue = (issue: ParseResult.ParseIssue): Array<Issue> => Effect.runSync(formatIssueEffect(issue))
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatErrorEffect = (error: ParseResult.ParseError): Effect.Effect<Array<Issue>> =>
+  formatIssueEffect(error.error)
+
+/**
+ * @category formatting
+ * @since 1.0.0
+ */
+export const formatError = (error: ParseResult.ParseError): Array<Issue> => formatIssue(error.error)
+
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected,
   path: ReadonlyArray<PropertyKey> = []
@@ -85,44 +110,3 @@ const go = (
       })
   }
 }
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const formatIssuesEffect = (
-  issues: ReadonlyArray.NonEmptyReadonlyArray<ParseResult.ParseIssue>
-): Effect.Effect<Array<Issue>> => Effect.map(Effect.forEach(issues, (issue) => go(issue)), ReadonlyArray.flatten)
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const formatIssues = (issues: ReadonlyArray.NonEmptyReadonlyArray<ParseResult.ParseIssue>): Array<Issue> =>
-  Effect.runSync(formatIssuesEffect(issues))
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const formatIssueEffect = (error: ParseResult.ParseIssue): Effect.Effect<Array<Issue>> =>
-  formatIssuesEffect([error])
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const formatIssue = (error: ParseResult.ParseIssue): Array<Issue> => formatIssues([error])
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const formatErrorEffect = (error: ParseResult.ParseError): Effect.Effect<Array<Issue>> =>
-  formatIssueEffect(error.error)
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const formatError = (error: ParseResult.ParseError): Array<Issue> => formatIssue(error.error)

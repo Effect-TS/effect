@@ -2,7 +2,16 @@
 "@effect/schema": minor
 ---
 
-- AST: remove `format`
-- remove `Format` module
+AST: remove `format`
 
-Before: `AST.format(ast, verbose?)`, Now: `ast.toString(verbose?)`
+Before
+
+```ts
+AST.format(ast, verbose?)
+```
+
+Now
+
+```ts
+ast.toString(verbose?)
+```

@@ -4,6 +4,18 @@
 
 Updated the `MessageAnnotation` type to return `string | Effect<string>`.
 
+TreeFormatter:
+
+- add `formatErrorEffect`
+- add `formatIssueEffect`
+- remove `formatIssues`
+
+ArrayFormatter:
+
+- add `formatErrorEffect`
+- add `formatIssueEffect`
+- remove `formatIssues`
+
 You can now return an `Effect<string>` if your message needs some optional service:
 
 ```ts

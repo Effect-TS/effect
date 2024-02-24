@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-add `AnySchema` helper
+Schema: add `AnySchema` helper

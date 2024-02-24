@@ -6,7 +6,6 @@ import type * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
 import * as _util from "./internal/util.js"
 import type * as ParseResult from "./ParseResult.js"
@@ -27,30 +26,14 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  * @category formatting
  * @since 1.0.0
  */
-export const formatIssuesEffect = (issues: NonEmptyReadonlyArray<ParseResult.ParseIssue>): Effect.Effect<string> =>
-  Effect.map(
-    Effect.forEach(issues, go),
-    (forest) => drawTree(forest.length === 1 ? forest[0] : make(`error(s) found`, forest))
-  )
+export const formatIssueEffect = (issue: ParseResult.ParseIssue): Effect.Effect<string> =>
+  Effect.map(go(issue), (tree) => drawTree(tree))
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatIssues = (issues: NonEmptyReadonlyArray<ParseResult.ParseIssue>): string =>
-  Effect.runSync(formatIssuesEffect(issues))
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const formatIssueEffect = (error: ParseResult.ParseIssue): Effect.Effect<string> => formatIssuesEffect([error])
-
-/**
- * @category formatting
- * @since 1.0.0
- */
-export const formatIssue = (issue: ParseResult.ParseIssue): string => formatIssues([issue])
+export const formatIssue = (issue: ParseResult.ParseIssue): string => Effect.runSync(formatIssueEffect(issue))
 
 /**
  * @category formatting
