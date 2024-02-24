@@ -39,6 +39,7 @@ export declare namespace ConfigError {
    * @category models
    */
   export interface Proto {
+    readonly _tag: "ConfigError"
     readonly [ConfigErrorTypeId]: ConfigErrorTypeId
   }
 
@@ -72,7 +73,7 @@ export interface ConfigErrorReducer<in C, in out Z> {
  * @category models
  */
 export interface And extends ConfigError.Proto {
-  readonly _tag: "And"
+  readonly _op: "And"
   readonly left: ConfigError
   readonly right: ConfigError
 }
@@ -82,7 +83,7 @@ export interface And extends ConfigError.Proto {
  * @category models
  */
 export interface Or extends ConfigError.Proto {
-  readonly _tag: "Or"
+  readonly _op: "Or"
   readonly left: ConfigError
   readonly right: ConfigError
 }
@@ -92,7 +93,7 @@ export interface Or extends ConfigError.Proto {
  * @category models
  */
 export interface InvalidData extends ConfigError.Proto {
-  readonly _tag: "InvalidData"
+  readonly _op: "InvalidData"
   readonly path: Array<string>
   readonly message: string
 }
@@ -102,7 +103,7 @@ export interface InvalidData extends ConfigError.Proto {
  * @category models
  */
 export interface MissingData extends ConfigError.Proto {
-  readonly _tag: "MissingData"
+  readonly _op: "MissingData"
   readonly path: Array<string>
   readonly message: string
 }
@@ -112,7 +113,7 @@ export interface MissingData extends ConfigError.Proto {
  * @category models
  */
 export interface SourceUnavailable extends ConfigError.Proto {
-  readonly _tag: "SourceUnavailable"
+  readonly _op: "SourceUnavailable"
   readonly path: Array<string>
   readonly message: string
   readonly cause: Cause.Cause<unknown>
@@ -123,7 +124,7 @@ export interface SourceUnavailable extends ConfigError.Proto {
  * @category models
  */
 export interface Unsupported extends ConfigError.Proto {
-  readonly _tag: "Unsupported"
+  readonly _op: "Unsupported"
   readonly path: Array<string>
   readonly message: string
 }
