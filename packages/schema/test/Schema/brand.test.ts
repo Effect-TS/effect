@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest"
 describe("Schema > brand", () => {
   describe("annotations", () => {
     it("brand as string (1 brand)", () => {
-      // const Branded: S.Schema<number, number & Brand<"A"> & Brand<"B">>
+      // const Branded: S.BrandSchema<number & Brand<"A">, number, never>
       const Branded = S.number.pipe(
         S.int(),
         S.brand("A", {

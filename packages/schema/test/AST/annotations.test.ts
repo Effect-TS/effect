@@ -2,9 +2,9 @@ import * as AST from "@effect/schema/AST"
 import { describe, expect, it } from "vitest"
 
 describe("AST > annotations", () => {
-  it("setAnnotation", () => {
+  it("annotations", () => {
     const symA = Symbol.for("a")
-    const ast = AST.setAnnotation(AST.stringKeyword, symA, "A")
+    const ast = AST.annotations(AST.stringKeyword, { [symA]: "A" })
     expect(ast instanceof AST.StringKeyword).toBe(true)
     expect(ast).toStrictEqual(
       new AST.StringKeyword({

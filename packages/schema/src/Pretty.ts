@@ -36,8 +36,7 @@ export type PrettyHookId = typeof PrettyHookId
  */
 export const pretty =
   <A>(handler: (...args: ReadonlyArray<Pretty<any>>) => Pretty<A>) =>
-  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
-    _schema.make(AST.setAnnotation(self.ast, PrettyHookId, handler))
+  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> => _schema.annotations(self, { [PrettyHookId]: handler })
 
 /**
  * @category prettify

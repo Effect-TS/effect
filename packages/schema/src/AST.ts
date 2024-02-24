@@ -1328,18 +1328,11 @@ export const isTypeLiteralTransformation: (ast: Transformation) => ast is TypeLi
  *
  * @since 1.0.0
  */
-export const mergeAnnotations = (ast: AST, annotations: Annotations): AST => {
+export const annotations = (ast: AST, annotations: Annotations): AST => {
   const d = Object.getOwnPropertyDescriptors(ast)
   d.annotations.value = { ...ast.annotations, ...annotations }
   return Object.create(Object.getPrototypeOf(ast), d)
 }
-
-/**
- * Adds an annotation, potentially overwriting the existing annotation with the specified id.
- *
- * @since 1.0.0
- */
-export const setAnnotation = (ast: AST, sym: symbol, value: unknown): AST => mergeAnnotations(ast, { [sym]: value })
 
 /**
  * Adds a rest element to the end of a tuple, or throws an exception if the rest element is already present.

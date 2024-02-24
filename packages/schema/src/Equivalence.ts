@@ -33,7 +33,7 @@ export type EquivalenceHookId = typeof EquivalenceHookId
 export const equivalence =
   <A>(handler: (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<A>) =>
   <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
-    _schema.make(AST.setAnnotation(self.ast, EquivalenceHookId, handler))
+    _schema.annotations(self, { [EquivalenceHookId]: handler })
 
 /**
  * @category Equivalence

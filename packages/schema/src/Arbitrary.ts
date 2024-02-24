@@ -40,7 +40,7 @@ export type ArbitraryHookId = typeof ArbitraryHookId
 export const arbitrary =
   <A>(handler: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<A>) =>
   <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
-    _schema.make(AST.setAnnotation(self.ast, ArbitraryHookId, handler))
+    _schema.annotations(self, { [ArbitraryHookId]: handler })
 
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
