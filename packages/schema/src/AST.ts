@@ -138,6 +138,23 @@ export type DocumentationAnnotation = string
  */
 export const DocumentationAnnotationId = Symbol.for("@effect/schema/annotation/Documentation")
 
+/** @internal */
+export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
+
+/**
+ * Used by:
+ *
+ * - AST.keyof
+ * - AST.getPropertyKeyIndexedAccess
+ * - AST.getPropertyKeys
+ * - AST.getPropertySignatures
+ * - AST.getWeight
+ * - Parser.getLiterals
+ *
+ * @internal
+ */
+export type SurrogateAnnotation = AST
+
 /**
  * @category annotations
  * @since 1.0.0
@@ -223,6 +240,11 @@ export const getDefaultAnnotation = getAnnotation<DefaultAnnotation>(
  */
 export const getJSONSchemaAnnotation = getAnnotation<JSONSchemaAnnotation>(
   JSONSchemaAnnotationId
+)
+
+/** @internal */
+export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(
+  SurrogateAnnotationId
 )
 
 // -------------------------------------------------------------------------------------
@@ -1390,6 +1412,13 @@ export const getTemplateLiteralRegex = (ast: TemplateLiteral): RegExp => {
  */
 export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
   switch (ast._tag) {
+    case "Declaration": {
+      const annotation = getSurrogateSchemaAnnotation(ast)
+      if (Option.isSome(annotation)) {
+        return getPropertySignatures(annotation.value)
+      }
+      break
+    }
     case "TypeLiteral":
       return ast.propertySignatures.slice()
     case "Suspend":
@@ -1433,6 +1462,13 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
 /** @internal */
 export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
   switch (ast._tag) {
+    case "Declaration": {
+      const annotation = getSurrogateSchemaAnnotation(ast)
+      if (Option.isSome(annotation)) {
+        return getPropertyKeyIndexedAccess(annotation.value, name)
+      }
+      break
+    }
     case "TypeLiteral": {
       const ops = ReadonlyArray.findFirst(ast.propertySignatures, (ps) => ps.name === name)
       if (Option.isSome(ops)) {
@@ -1479,6 +1515,13 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
 
 const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
   switch (ast._tag) {
+    case "Declaration": {
+      const annotation = getSurrogateSchemaAnnotation(ast)
+      if (Option.isSome(annotation)) {
+        return getPropertyKeys(annotation.value)
+      }
+      break
+    }
     case "TypeLiteral":
       return ast.propertySignatures.map((ps) => ps.name)
     case "Suspend":
@@ -1909,6 +1952,11 @@ export const getWeight = (ast: AST): Weight => {
         [4, y, z]
     }
     case "Declaration": {
+      const annotation = getSurrogateSchemaAnnotation(ast)
+      if (Option.isSome(annotation)) {
+        const [_, y, z] = getWeight(annotation.value)
+        return [6, y, z]
+      }
       return [6, 0, 0]
     }
     case "Suspend":
@@ -2033,6 +2081,13 @@ const intersection = ReadonlyArray.intersectionWith(equals)
 
 const _keyof = (ast: AST): Array<AST> => {
   switch (ast._tag) {
+    case "Declaration": {
+      const annotation = getSurrogateSchemaAnnotation(ast)
+      if (Option.isSome(annotation)) {
+        return _keyof(annotation.value)
+      }
+      break
+    }
     case "TypeLiteral":
       return ast.propertySignatures.map((p): AST =>
         Predicate.isSymbol(p.name) ? new UniqueSymbol(p.name) : new Literal(p.name)

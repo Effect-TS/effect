@@ -1053,6 +1053,13 @@ export const getLiterals = (
   isDecoding: boolean
 ): ReadonlyArray<[PropertyKey, AST.Literal]> => {
   switch (ast._tag) {
+    case "Declaration": {
+      const annotation = AST.getSurrogateSchemaAnnotation(ast)
+      if (Option.isSome(annotation)) {
+        return getLiterals(annotation.value, isDecoding)
+      }
+      break
+    }
     case "TypeLiteral": {
       const out: Array<[PropertyKey, AST.Literal]> = []
       for (let i = 0; i < ast.propertySignatures.length; i++) {

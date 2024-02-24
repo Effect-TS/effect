@@ -1,6 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Schema > omit", () => {
   it("struct", async () => {
@@ -96,5 +96,11 @@ describe("Schema > omit", () => {
     )
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { a: "", b: 1 })
+  })
+
+  it("Class", () => {
+    class A extends S.Class<A>()({ a: S.string, b: S.number }) {}
+    const schema = A.pipe(S.to, S.omit("a"))
+    expect(schema.ast).toStrictEqual(S.struct({ b: S.number }).ast)
   })
 })

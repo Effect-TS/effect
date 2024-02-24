@@ -4952,7 +4952,8 @@ const makeClass = <A, I, R>(
           description: `an instance of ${this.name}`,
           pretty: () => (self: any) => `${self.constructor.name}(${pretty(self)})`,
           arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props)),
-          equivalence: () => equivalence as any
+          equivalence: () => equivalence as any,
+          [AST.SurrogateAnnotationId]: toSchema.ast
         }
       )
       const transformation = transform(

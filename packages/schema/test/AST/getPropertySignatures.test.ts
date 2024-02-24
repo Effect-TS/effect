@@ -17,4 +17,13 @@ describe("AST > getPropertySignatures", () => {
       new AST.PropertySignature("_tag", S.literal("A", "B").ast, false, true)
     ])
   })
+
+  it("Class", () => {
+    class A extends S.Class<A>()({ a: S.string, b: S.number }) {}
+    const schema = A.pipe(S.to)
+    expect(AST.getPropertySignatures(schema.ast)).toEqual([
+      new AST.PropertySignature("a", S.string.ast, false, true),
+      new AST.PropertySignature("b", S.number.ast, false, true)
+    ])
+  })
 })

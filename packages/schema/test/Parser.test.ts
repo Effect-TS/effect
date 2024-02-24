@@ -28,50 +28,71 @@ describe("Parser", () => {
     )
   })
 
-  it("getLiterals", () => {
-    expect(P.getLiterals(S.string.ast, true)).toEqual([])
-    // TypeLiteral
-    expect(P.getLiterals(S.struct({ _tag: S.literal("a") }).ast, true))
-      .toEqual([["_tag", new AST.Literal("a")]])
-    // Refinement
-    expect(
-      P.getLiterals(
-        S.struct({ _tag: S.literal("a") }).pipe(
-          S.filter(() => true)
-        ).ast,
-        true
-      )
-    ).toEqual([["_tag", new AST.Literal("a")]])
+  describe("getLiterals", () => {
+    it("StringKeyword", () => {
+      expect(P.getLiterals(S.string.ast, true)).toEqual([])
+    })
 
-    // Transform
-    expect(
-      P.getLiterals(
-        S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
-        true
-      )
-    ).toEqual([])
-    // Transform encode
-    expect(
-      P.getLiterals(
-        S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
-        false
-      )
-    ).toEqual([["kind", new AST.Literal("circle")]])
-    // property Transform encode
-    expect(
-      P.getLiterals(
-        S.struct({
-          _tag: S.transform(
-            S.literal("a"),
-            S.literal("b"),
-            () => "b" as const,
-            () => "a" as const
-          )
-        })
-          .ast,
-        false
-      )
-    ).toEqual([["_tag", new AST.Literal("b")]])
+    it("TypeLiteral", () => {
+      expect(P.getLiterals(S.struct({ _tag: S.literal("a") }).ast, true))
+        .toEqual([["_tag", new AST.Literal("a")]])
+    })
+
+    it("Refinement", () => {
+      expect(
+        P.getLiterals(
+          S.struct({ _tag: S.literal("a") }).pipe(
+            S.filter(() => true)
+          ).ast,
+          true
+        )
+      ).toEqual([["_tag", new AST.Literal("a")]])
+    })
+
+    it("Transform (decode)", () => {
+      expect(
+        P.getLiterals(
+          S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
+          true
+        )
+      ).toEqual([])
+    })
+
+    it("Transform (encode)", () => {
+      expect(
+        P.getLiterals(
+          S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
+          false
+        )
+      ).toEqual([["kind", new AST.Literal("circle")]])
+    })
+
+    it("property Transform (encode)", () => {
+      expect(
+        P.getLiterals(
+          S.struct({
+            _tag: S.transform(
+              S.literal("a"),
+              S.literal("b"),
+              () => "b" as const,
+              () => "a" as const
+            )
+          })
+            .ast,
+          false
+        )
+      ).toEqual([["_tag", new AST.Literal("b")]])
+    })
+
+    it("Class (decode)", () => {
+      class A extends S.Class<A>()({ _tag: S.literal("a") }) {}
+      expect(P.getLiterals(A.ast, true)).toEqual([["_tag", new AST.Literal("a")]])
+    })
+
+    it("Class (encode)", () => {
+      class A extends S.Class<A>()({ _tag: S.literal("a") }) {}
+      expect(P.getLiterals(A.ast, false)).toEqual([["_tag", new AST.Literal("a")]])
+    })
   })
 
   it("getSearchTree", () => {

@@ -103,6 +103,12 @@ describe("Schema > keyof", () => {
     })
   })
 
+  it("should support Class", () => {
+    class A extends S.Class<A>()({ a: S.string }) {}
+    // type K = keyof S.Schema.To<typeof A> // "a"
+    expect(AST.keyof(A.ast)).toEqual(S.literal("a").ast)
+  })
+
   it("should throw on unsupported schemas", () => {
     expect(() => S.keyof(S.option(S.string))).toThrow(
       new Error("keyof: unsupported schema (Option<string>)")
