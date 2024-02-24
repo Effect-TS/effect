@@ -1175,16 +1175,6 @@ function sortByIndex(es: Array<[number, any]>): any {
 // transformations interpreter
 // -------------------------------------------------------------------------------------
 
-const getFinalPropertySignatureTransformation = (
-  transformation: AST.PropertySignatureTransformation,
-  isDecoding: boolean
-) => {
-  switch (transformation._tag) {
-    case "FinalPropertySignatureTransformation":
-      return isDecoding ? transformation.decode : transformation.encode
-  }
-}
-
 /** @internal */
 export const getFinalTransformation = (
   transformation: AST.Transformation,
@@ -1206,12 +1196,9 @@ export const getFinalTransformation = (
           const [from, to] = isDecoding ?
             [pst.from, pst.to] :
             [pst.to, pst.from]
-          const transform = getFinalPropertySignatureTransformation(
-            pst.propertySignatureTransformation,
-            isDecoding
-          )
+          const transformation = isDecoding ? pst.decode : pst.encode
           const f = (input: any) => {
-            const o = transform(
+            const o = transformation(
               Object.prototype.hasOwnProperty.call(input, from) ?
                 Option.some(input[from]) :
                 Option.none()

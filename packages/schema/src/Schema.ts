@@ -843,8 +843,8 @@ type PropertySignatureAST =
     readonly _tag: "OptionalToRequired"
     readonly from: AST.AST
     readonly to: AST.AST
-    readonly decode: AST.FinalPropertySignatureTransformation["decode"]
-    readonly encode: AST.FinalPropertySignatureTransformation["encode"]
+    readonly decode: AST.PropertySignatureTransformation["decode"]
+    readonly encode: AST.PropertySignatureTransformation["encode"]
     readonly annotations?: AST.Annotations | undefined
   }
 
@@ -1151,7 +1151,7 @@ export const struct = <Fields extends StructFields>(
   const pss: Array<AST.PropertySignature> = []
   const pssFrom: Array<AST.PropertySignature> = []
   const pssTo: Array<AST.PropertySignature> = []
-  const psTransformations: Array<AST.PropertySignatureTransform> = []
+  const psTransformations: Array<AST.PropertySignatureTransformation> = []
   for (let i = 0; i < ownKeys.length; i++) {
     const key = ownKeys[i]
     const field = fields[key] as any
@@ -1171,10 +1171,11 @@ export const struct = <Fields extends StructFields>(
           pssFrom.push(new AST.PropertySignature(key, from, true, true))
           pssTo.push(new AST.PropertySignature(key, psAst.to, false, true, annotations))
           psTransformations.push(
-            new AST.PropertySignatureTransform(
+            new AST.PropertySignatureTransformation(
               key,
               key,
-              new AST.FinalPropertySignatureTransformation(psAst.decode, psAst.encode)
+              psAst.decode,
+              psAst.encode
             )
           )
           break
@@ -1825,13 +1826,11 @@ export const attachPropertySignature: {
         options ? AST.mergeAnnotations(attached, toAnnotations(options)) : attached,
         AST.TypeLiteralTransformation.make(
           [
-            new AST.PropertySignatureTransform(
+            new AST.PropertySignatureTransformation(
               key,
               key,
-              new AST.FinalPropertySignatureTransformation(
-                () => Option.some(value),
-                () => Option.none()
-              )
+              () => Option.some(value),
+              () => Option.none()
             )
           ]
         )

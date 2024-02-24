@@ -13,13 +13,11 @@ describe("Schema > PropertySignatureTransformations", () => {
         S.struct({ a: S.number }).ast,
         AST.TypeLiteralTransformation.make(
           [
-            new AST.PropertySignatureTransform(
+            new AST.PropertySignatureTransformation(
               "a",
               "a",
-              new AST.FinalPropertySignatureTransformation(
-                O.orElse(() => O.some(0)),
-                identity
-              )
+              O.orElse(() => O.some(0)),
+              identity
             )
           ]
         )
@@ -50,13 +48,11 @@ describe("Schema > PropertySignatureTransformations", () => {
         S.struct({ a: S.number }).ast,
         AST.TypeLiteralTransformation.make(
           [
-            new AST.PropertySignatureTransform(
+            new AST.PropertySignatureTransformation(
               "a",
               "a",
-              new AST.FinalPropertySignatureTransformation(
-                O.orElse(() => O.some(0)),
-                (o) => O.flatMap(o, O.liftPredicate((v) => v !== 0))
-              )
+              O.orElse(() => O.some(0)),
+              (o) => O.flatMap(o, O.liftPredicate((v) => v !== 0))
             )
           ]
         )
@@ -88,13 +84,11 @@ describe("Schema > PropertySignatureTransformations", () => {
           S.struct({ a: S.optionFromSelf(S.number) }).ast,
           AST.TypeLiteralTransformation.make(
             [
-              new AST.PropertySignatureTransform(
+              new AST.PropertySignatureTransformation(
                 "a",
                 "a",
-                new AST.FinalPropertySignatureTransformation(
-                  O.some,
-                  O.flatten
-                )
+                O.some,
+                O.flatten
               )
             ]
           )
@@ -125,13 +119,11 @@ describe("Schema > PropertySignatureTransformations", () => {
         S.struct({ a: S.optional(S.string, { exact: true }) }).ast,
         AST.TypeLiteralTransformation.make(
           [
-            new AST.PropertySignatureTransform(
+            new AST.PropertySignatureTransformation(
               "a",
               "a",
-              new AST.FinalPropertySignatureTransformation(
-                O.flatMap(O.liftPredicate((v) => v !== "")),
-                identity
-              )
+              O.flatMap(O.liftPredicate((v) => v !== "")),
+              identity
             )
           ]
         )
@@ -150,13 +142,11 @@ describe("Schema > PropertySignatureTransformations", () => {
         S.struct({ b: S.number }).ast,
         AST.TypeLiteralTransformation.make(
           [
-            new AST.PropertySignatureTransform(
+            new AST.PropertySignatureTransformation(
               "a",
               "b",
-              new AST.FinalPropertySignatureTransformation(
-                identity,
-                identity
-              )
+              identity,
+              identity
             )
           ]
         )
@@ -175,13 +165,11 @@ describe("Schema > PropertySignatureTransformations", () => {
         S.struct({ [a]: S.symbol }).ast,
         AST.TypeLiteralTransformation.make(
           [
-            new AST.PropertySignatureTransform(
+            new AST.PropertySignatureTransformation(
               "a",
               a,
-              new AST.FinalPropertySignatureTransformation(
-                identity,
-                identity
-              )
+              identity,
+              identity
             )
           ]
         )
@@ -200,13 +188,11 @@ describe("Schema > PropertySignatureTransformations", () => {
         S.struct({ a: S.optional(S.number, { exact: true }) }).ast,
         AST.TypeLiteralTransformation.make(
           [
-            new AST.PropertySignatureTransform(
+            new AST.PropertySignatureTransformation(
               "a",
               "a",
-              new AST.FinalPropertySignatureTransformation(
-                identity,
-                O.orElse(() => O.some(0))
-              )
+              identity,
+              O.orElse(() => O.some(0))
             )
           ]
         )
