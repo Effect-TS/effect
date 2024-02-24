@@ -65,6 +65,7 @@ export type TypeId = typeof TypeId
  */
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly ast: AST.AST
+  annotations(annotations: AST.Annotations): Schema<A, I, R>
 }
 
 /**
@@ -1340,7 +1341,9 @@ export const pluck: {
  * @category model
  * @since 1.0.0
  */
-export interface BrandSchema<A extends Brand.Brand<any>, I, R> extends Schema<A, I, R>, Brand.Brand.Constructor<A> {}
+export interface BrandSchema<A extends Brand.Brand<any>, I, R> extends Schema<A, I, R>, Brand.Brand.Constructor<A> {
+  annotations(annotations: AST.Annotations): BrandSchema<A, I, R>
+}
 
 const makeBrandSchema = <A, I, B extends string | symbol>(
   self: AST.AST,
@@ -1355,12 +1358,13 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
       onRight: () => Option.none()
     })
   )
-  // make refined a schema...
+  // make refined a BrandSchema...
   refined[TypeId] = _schema.variance
   refined.ast = ast
   refined.pipe = function() {
     return pipeArguments(this, arguments)
   }
+  refined.annotations = (annotations: AST.Annotations) => makeBrandSchema(ast, annotations)
   return refined
 }
 
@@ -1902,31 +1906,22 @@ export interface FilterAnnotations<A> extends DeclareAnnotations<readonly [A], A
  * @category annotations
  * @since 1.0.0
  */
-export const annotations: {
-  (annotations: AST.Annotations): <A, I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
-  <A, I, R>(self: Schema<A, I, R>, annotations: AST.Annotations): Schema<A, I, R>
-} = _schema.annotations
-
-/**
- * @category annotations
- * @since 1.0.0
- */
 export const message = (message: AST.MessageAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  annotations(self, { [AST.MessageAnnotationId]: message })
+  self.annotations({ [AST.MessageAnnotationId]: message })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const identifier = (identifier: AST.IdentifierAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  annotations(self, { [AST.IdentifierAnnotationId]: identifier })
+  self.annotations({ [AST.IdentifierAnnotationId]: identifier })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const title = (title: AST.TitleAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  annotations(self, { [AST.TitleAnnotationId]: title })
+  self.annotations({ [AST.TitleAnnotationId]: title })
 
 /**
  * @category annotations
@@ -1934,17 +1929,17 @@ export const title = (title: AST.TitleAnnotation) => <A, I, R>(self: Schema<A, I
  */
 export const description =
   (description: AST.DescriptionAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-    annotations(self, { [AST.DescriptionAnnotationId]: description })
+    self.annotations({ [AST.DescriptionAnnotationId]: description })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const examples = (examples: AST.ExamplesAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  annotations(self, { [AST.ExamplesAnnotationId]: examples })
+  self.annotations({ [AST.ExamplesAnnotationId]: examples })
 
 const _default = <A>(value: A) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  annotations(self, { [AST.DefaultAnnotationId]: value })
+  self.annotations({ [AST.DefaultAnnotationId]: value })
 
 export {
   /**
@@ -1960,7 +1955,7 @@ export {
  */
 export const documentation =
   (documentation: AST.DocumentationAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-    annotations(self, { [AST.DocumentationAnnotationId]: documentation })
+    self.annotations({ [AST.DocumentationAnnotationId]: documentation })
 
 /**
  * Attaches a JSON Schema annotation to a schema that represents a refinement.
@@ -1971,7 +1966,7 @@ export const documentation =
  * @since 1.0.0
  */
 export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  annotations(self, { [AST.JSONSchemaAnnotationId]: jsonSchema })
+  self.annotations({ [AST.JSONSchemaAnnotationId]: jsonSchema })
 
 /**
  * @category annotations
@@ -1979,7 +1974,7 @@ export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <A, I, R>(se
  */
 export const equivalence =
   <A>(equivalence: Equivalence.Equivalence<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-    annotations(self, { [_hooks.EquivalenceHookId]: () => equivalence })
+    self.annotations({ [_hooks.EquivalenceHookId]: () => equivalence })
 
 type Rename<A, M> = {
   [
@@ -2416,11 +2411,11 @@ export type ParseJsonOptions = {
   readonly space?: Parameters<typeof JSON.stringify>[2]
 }
 
-const JsonString = string.pipe(annotations({
+const JsonString = string.annotations({
   [AST.IdentifierAnnotationId]: "JsonString",
   [AST.TitleAnnotationId]: "JsonString",
   [AST.DescriptionAnnotationId]: "a JSON string"
-}))
+})
 
 /**
  * The `parseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
@@ -5639,6 +5634,6 @@ export const list = <A, I, R>(item: Schema<A, I, R>): Schema<List.List<A>, Reado
   )
 
 const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
-  suspend<A, A, never>(() => any).pipe(annotations({
+  suspend<A, A, never>(() => any).annotations({
     [_hooks.ArbitraryHookId]: () => value
-  }))
+  })

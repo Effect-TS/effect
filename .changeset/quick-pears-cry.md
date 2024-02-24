@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-Schema: make `annotations` dual
+Schema: refactor `annotations` API to be a method within the `Schema` interface

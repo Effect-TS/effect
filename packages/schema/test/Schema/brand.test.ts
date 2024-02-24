@@ -5,19 +5,24 @@ import * as Util from "@effect/schema/test/util"
 import * as Brand from "effect/Brand"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import { assert, describe, expect, it } from "vitest"
+import * as _schema from "../../src/internal/schema.js"
+
+const isBrandConstructor = (u: unknown): u is Brand.Brand.Constructor<any> =>
+  Predicate.hasProperty(u, Brand.RefinedConstructorsTypeId)
 
 describe("Schema > brand", () => {
   describe("annotations", () => {
-    it.skip("using S.annotations on a BrandSchema should return a BrandSchema", () => {
+    it("using .annotations() on a BrandSchema should return a BrandSchema", () => {
       const Branded = S.number.pipe(
         S.int(),
         S.brand("A")
       )
-      const schema = Branded.pipe(S.annotations({
+      const schema = Branded.annotations({
         [AST.DescriptionAnnotationId]: "an A brand"
-      }))
-      expect((schema as any)[Brand.RefinedConstructorsTypeId]).toStrictEqual(Brand.RefinedConstructorsTypeId)
+      })
+      expect(isBrandConstructor(schema)).toBe(true)
     })
 
     it("brand as string (1 brand)", () => {

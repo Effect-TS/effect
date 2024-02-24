@@ -4,12 +4,12 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > annotations", () => {
+describe("Schema > .annotations()", () => {
   it("annotations", () => {
-    const schema = S.string.pipe(S.annotations({
+    const schema = S.string.annotations({
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"
-    }))
+    })
     expect(schema.ast.annotations).toEqual({
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"
