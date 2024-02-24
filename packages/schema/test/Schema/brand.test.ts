@@ -88,10 +88,9 @@ describe("Schema > brand", () => {
   it("either", () => {
     const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
     expect(Int.either(1)).toEqual(Either.right(1))
-    expect(Int.either(1.2)).toEqual(Either.left([{
-      meta: [],
-      message: "Expected an integer, actual 1.2"
-    }]))
+    expect(Either.mapLeft(Int.either(1.2), (errors) => errors[0].message)).toEqual(Either.left(`integer
+└─ Predicate refinement failure
+   └─ Expected an integer, actual 1.2`))
   })
 
   it("is", () => {

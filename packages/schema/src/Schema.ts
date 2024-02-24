@@ -33,7 +33,6 @@ import * as S from "effect/String"
 import type { Covariant, Equals, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as arbitrary from "./Arbitrary.js"
-import * as ArrayFormatter from "./ArrayFormatter.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
 import * as _equivalence from "./Equivalence.js"
@@ -46,6 +45,7 @@ import * as Parser from "./Parser.js"
 import * as ParseResult from "./ParseResult.js"
 import * as Pretty from "./Pretty.js"
 import type * as Serializable from "./Serializable.js"
+import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
  * @since 1.0.0
@@ -1349,25 +1349,24 @@ const makeBrandSchema = (self: AST.AST, brand: string | symbol, options?: DocAnn
   })
   const ast = AST.annotations(self, { ...toAnnotations(options), [AST.BrandAnnotationId]: brands })
   const schema = make(ast)
-  const validateSync = Parser.validateSync(schema)
-  const validateOption = Parser.validateOption(schema)
+  const _validateSync = Parser.validateSync(schema)
+  const _validateOption = Parser.validateOption(schema)
   const _validateEither = validateEither(schema)
-  const is = Parser.is(schema)
-  const out: any = Object.assign((input: unknown) => validateSync(input), {
+  const _is = Parser.is(schema)
+  const out: any = Object.assign((input: unknown) => _validateSync(input), {
     [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
     [TypeId]: _schema.variance,
     ast,
-    option: (input: unknown) => validateOption(input),
+    option: (input: unknown) => _validateOption(input),
     either: (input: unknown) =>
       Either.mapLeft(
         _validateEither(input),
-        (e) =>
-          ArrayFormatter.formatError(e).map((err) => ({
-            meta: err.path,
-            message: err.message
-          }))
+        (e) => [{
+          meta: e,
+          message: TreeFormatter.formatError(e)
+        }]
       ),
-    is: (input: unknown) => is(input),
+    is: (input: unknown) => _is(input),
     pipe() {
       return pipeArguments(this, arguments)
     }
