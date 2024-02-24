@@ -1441,23 +1441,25 @@ describe("JSONSchema", () => {
     })
   })
 
-  it("should support Classes", () => {
-    class A extends S.Class<A>()({ a: S.string }) {}
-    const jsonSchema = JSONSchema.make(S.from(A))
-    expect(jsonSchema).toEqual({
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "type": "object",
-      "required": [
-        "a"
-      ],
-      "properties": {
-        "a": {
-          "type": "string",
-          "description": "a string",
-          "title": "string"
-        }
-      },
-      "additionalProperties": false
+  describe("Class", () => {
+    it("should support S.from(Class)", () => {
+      class A extends S.Class<A>()({ a: S.string }) {}
+      const jsonSchema = JSONSchema.make(S.from(A))
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "type": "string",
+            "description": "a string",
+            "title": "string"
+          }
+        },
+        "additionalProperties": false
+      })
     })
   })
 
