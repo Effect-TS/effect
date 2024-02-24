@@ -1907,8 +1907,8 @@ export interface FilterAnnotations<A> extends DeclareAnnotations<readonly [A], A
  * @since 1.0.0
  */
 export const annotations: {
-  (annotations: AST.Annotations): <S extends AnySchema>(self: S) => S
-  <S extends AnySchema>(self: S, annotations: AST.Annotations): S
+  (annotations: AST.Annotations): <A, I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
+  <A, I, R>(self: Schema<A, I, R>, annotations: AST.Annotations): Schema<A, I, R>
 } = dual(
   2,
   <A, I, R>(self: Schema<A, I, R>, annotations: AST.Annotations): Schema<A, I, R> => self.annotations(annotations)
@@ -4923,6 +4923,17 @@ const makeClass = <A, I, R>(
 
     static pipe() {
       return pipeArguments(this, arguments)
+    }
+
+    static annotations(annotations: AST.Annotations) {
+      const ast = this.ast as AST.Transform
+      return make(
+        new AST.Transform(
+          ast.from,
+          AST.annotations(ast.to, annotations),
+          ast.transformation
+        )
+      )
     }
 
     static get ast() {

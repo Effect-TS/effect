@@ -431,13 +431,13 @@ pipe(S.NumberFromString, S.int(), S.brand("Int"))
 // $ExpectType BrandSchema<number & Brand<"Int">, number, never>
 pipe(S.number, S.int(), S.brand("Int")).annotations({})
 
-// $ExpectType BrandSchema<number & Brand<"Int">, number, never>
+// $ExpectType Schema<number & Brand<"Int">, number, never>
 S.number.pipe(S.int(), S.brand("Int"), S.annotations({}))
 
-// $ExpectType BrandSchema<number & Brand<"Int">, number, never>
+// $ExpectType Schema<number & Brand<"Int">, number, never>
 S.annotations(S.number.pipe(S.int(), S.brand("Int")), {})
 
-// @ts-expect-error
+// $ExpectType Schema<never, never, never>
 S.never.pipe(S.annotations({}))
 
 // ---------------------------------------------
