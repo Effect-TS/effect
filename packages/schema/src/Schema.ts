@@ -1342,36 +1342,26 @@ export const pluck: {
  */
 export interface BrandSchema<A extends Brand.Brand<any>, I, R> extends Schema<A, I, R>, Brand.Brand.Constructor<A> {}
 
-const makeBrandSchema = (self: AST.AST, brand: string | symbol, options?: DocAnnotations) => {
-  const brands: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self), {
-    onNone: () => [brand],
-    onSome: (brands) => [...brands, brand]
-  })
-  const ast = AST.annotations(self, { ...toAnnotations(options), [AST.BrandAnnotationId]: brands })
-  const schema = make(ast)
-  const _validateSync = Parser.validateSync(schema)
-  const _validateOption = Parser.validateOption(schema)
-  const _validateEither = validateEither(schema)
-  const _is = Parser.is(schema)
-  const out: any = Object.assign((input: unknown) => _validateSync(input), {
-    [Brand.RefinedConstructorsTypeId]: Brand.RefinedConstructorsTypeId,
-    [TypeId]: _schema.variance,
-    ast,
-    option: (input: unknown) => _validateOption(input),
-    either: (input: unknown) =>
-      Either.mapLeft(
-        _validateEither(input),
-        (e) => [{
-          meta: e,
-          message: TreeFormatter.formatError(e)
-        }]
-      ),
-    is: (input: unknown) => _is(input),
-    pipe() {
-      return pipeArguments(this, arguments)
-    }
-  })
-  return out
+const makeBrandSchema = <A, I, B extends string | symbol>(
+  self: AST.AST,
+  annotations: AST.Annotations
+): BrandSchema<A & Brand.Brand<B>, I, never> => {
+  const ast = AST.annotations(self, annotations)
+  const _validateEither = validateEither(make(ast))
+
+  const refined: any = Brand.refined((unbranded) =>
+    Either.match(_validateEither(unbranded), {
+      onLeft: (e) => Option.some(Brand.error(TreeFormatter.formatError(e), e)),
+      onRight: () => Option.none()
+    })
+  )
+  // make refined a schema...
+  refined[TypeId] = _schema.variance
+  refined.ast = ast
+  refined.pipe = function() {
+    return pipeArguments(this, arguments)
+  }
+  return refined
 }
 
 /**
@@ -1395,7 +1385,14 @@ const makeBrandSchema = (self: AST.AST, brand: string | symbol, options?: DocAnn
  */
 export const brand =
   <B extends string | symbol, A>(brand: B, options?: DocAnnotations) =>
-  <I>(self: Schema<A, I, never>): BrandSchema<A & Brand.Brand<B>, I, never> => makeBrandSchema(self.ast, brand, options)
+  <I>(self: Schema<A, I, never>): BrandSchema<A & Brand.Brand<B>, I, never> => {
+    const brands: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self.ast), {
+      onNone: () => [brand],
+      onSome: (brands) => [...brands, brand]
+    })
+    const annotations = { ...toAnnotations(options), [AST.BrandAnnotationId]: brands }
+    return makeBrandSchema(self.ast, annotations)
+  }
 
 /**
  * @category combinators

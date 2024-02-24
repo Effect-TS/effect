@@ -1,12 +1,25 @@
 import * as AST from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as Brand from "effect/Brand"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 describe("Schema > brand", () => {
   describe("annotations", () => {
+    it.skip("using S.annotations on a BrandSchema should return a BrandSchema", () => {
+      const Branded = S.number.pipe(
+        S.int(),
+        S.brand("A")
+      )
+      const schema = Branded.pipe(S.annotations({
+        [AST.DescriptionAnnotationId]: "an A brand"
+      }))
+      expect((schema as any)[Brand.RefinedConstructorsTypeId]).toStrictEqual(Brand.RefinedConstructorsTypeId)
+    })
+
     it("brand as string (1 brand)", () => {
       // const Branded: S.BrandSchema<number & Brand<"A">, number, never>
       const Branded = S.number.pipe(
@@ -72,11 +85,26 @@ describe("Schema > brand", () => {
       S.brand("Int")
     )
     expect(IntegerFromString(1)).toEqual(1)
-    expect(() => IntegerFromString(1.2)).toThrow(
-      new Error(`IntegerFromString
+    try {
+      IntegerFromString(1.1)
+      assert.fail("expected `IntegerFromString(1.1)` to throw an error")
+    } catch (e) {
+      expect(e).toStrictEqual(
+        Brand.error(
+          `IntegerFromString
 └─ Predicate refinement failure
-   └─ Expected IntegerFromString (an integer), actual 1.2`)
-    )
+   └─ Expected IntegerFromString (an integer), actual 1.1`,
+          ParseResult.parseError(
+            new ParseResult.Refinement(
+              IntegerFromString.ast as any,
+              1.1,
+              "Predicate",
+              new ParseResult.Type(IntegerFromString.ast, 1.1)
+            )
+          )
+        )
+      )
+    }
   })
 
   it("option", () => {
