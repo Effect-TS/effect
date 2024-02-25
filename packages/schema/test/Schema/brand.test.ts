@@ -15,26 +15,26 @@ const isBrandConstructor = (u: unknown): u is Brand.Brand.Constructor<any> =>
 describe("Schema > brand", () => {
   describe("annotations", () => {
     it("using .annotations() on a BrandSchema should return a BrandSchema", () => {
-      const Branded = S.number.pipe(
+      const schema = S.number.pipe(
         S.int(),
         S.brand("A")
       )
-      const schema = Branded.annotations({
+      const annotatedSchema = schema.annotations({
         [AST.DescriptionAnnotationId]: "an A brand"
       })
-      expect(isBrandConstructor(schema)).toBe(true)
+      expect(isBrandConstructor(annotatedSchema)).toBe(true)
     })
 
     it("brand as string (1 brand)", () => {
       // const Branded: S.BrandSchema<number & Brand<"A">, number, never>
-      const Branded = S.number.pipe(
+      const schema = S.number.pipe(
         S.int(),
         S.brand("A", {
           description: "an A brand"
         })
       )
 
-      expect(Branded.ast.annotations).toEqual({
+      expect(schema.ast.annotations).toEqual({
         [AST.TypeAnnotationId]: S.IntTypeId,
         [AST.BrandAnnotationId]: ["A"],
         [AST.TitleAnnotationId]: "integer",
@@ -45,7 +45,7 @@ describe("Schema > brand", () => {
 
     it("brand as string (2 brands)", () => {
       // const Branded: S.Schema<number, number & Brand<"A"> & Brand<"B">>
-      const Branded = S.number.pipe(
+      const schema = S.number.pipe(
         S.int(),
         S.brand("A"),
         S.brand("B", {
@@ -53,7 +53,7 @@ describe("Schema > brand", () => {
         })
       )
 
-      expect(Branded.ast.annotations).toEqual({
+      expect(schema.ast.annotations).toEqual({
         [AST.TypeAnnotationId]: S.IntTypeId,
         [AST.BrandAnnotationId]: ["A", "B"],
         [AST.TitleAnnotationId]: "integer",
@@ -66,14 +66,14 @@ describe("Schema > brand", () => {
       const A = Symbol.for("A")
       const B = Symbol.for("B")
       // const Branded: S.Schema<number, number & Brand<unique symbol> & Brand<unique symbol>>
-      const Branded = S.number.pipe(
+      const schema = S.number.pipe(
         S.int(),
         S.brand(A),
         S.brand(B, {
           description: "a B brand"
         })
       )
-      expect(Branded.ast.annotations).toEqual({
+      expect(schema.ast.annotations).toEqual({
         [AST.TypeAnnotationId]: S.IntTypeId,
         [AST.BrandAnnotationId]: [A, B],
         [AST.TitleAnnotationId]: "integer",

@@ -1341,14 +1341,14 @@ export const pluck: {
  * @category model
  * @since 1.0.0
  */
-export interface BrandSchema<A extends Brand.Brand<any>, I, R> extends Schema<A, I, R>, Brand.Brand.Constructor<A> {
-  annotations(annotations: AST.Annotations): BrandSchema<A, I, R>
+export interface BrandSchema<A extends Brand.Brand<any>, I> extends Schema<A, I>, Brand.Brand.Constructor<A> {
+  annotations(annotations: AST.Annotations): BrandSchema<A, I>
 }
 
 const makeBrandSchema = <A, I, B extends string | symbol>(
   self: AST.AST,
   annotations: AST.Annotations
-): BrandSchema<A & Brand.Brand<B>, I, never> => {
+): BrandSchema<A & Brand.Brand<B>, I> => {
   const ast = AST.annotations(self, annotations)
   const _validateEither = validateEither(make(ast))
 
@@ -1389,12 +1389,12 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
  */
 export const brand =
   <B extends string | symbol, A>(brand: B, options?: DocAnnotations) =>
-  <I>(self: Schema<A, I, never>): BrandSchema<A & Brand.Brand<B>, I, never> => {
-    const brands: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self.ast), {
+  <I>(self: Schema<A, I>): BrandSchema<A & Brand.Brand<B>, I> => {
+    const brandAnnotation: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self.ast), {
       onNone: () => [brand],
       onSome: (brands) => [...brands, brand]
     })
-    const annotations = { ...toAnnotations(options), [AST.BrandAnnotationId]: brands }
+    const annotations = { ...toAnnotations(options), [AST.BrandAnnotationId]: brandAnnotation }
     return makeBrandSchema(self.ast, annotations)
   }
 
@@ -1836,7 +1836,7 @@ export const attachPropertySignature: {
 
 const toAnnotations = (
   options?: Record<string | symbol, any>
-): Mutable<AST.Annotations> => {
+): AST.Annotations => {
   if (!options) {
     return {}
   }
