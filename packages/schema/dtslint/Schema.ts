@@ -940,14 +940,18 @@ S.Secret
 S.SecretFromSelf
 
 // ---------------------------------------------
-// propertySignatureAnnotations
+// asPropertySignature
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<string, false, string, false, never>
-S.string.pipe(S.propertySignatureAnnotations({ description: "description" }))
+S.asPropertySignature(S.string).annotations({ description: "description" })
+
+// ---------------------------------------------
+// PropertySignature annotations
+// ---------------------------------------------
 
 // $ExpectType PropertySignature<string | undefined, true, string | undefined, true, never>
-S.optional(S.string).pipe(S.propertySignatureAnnotations({ description: "description" }))
+S.optional(S.string).annotations({ description: "description" })
 
 // ---------------------------------------------
 // pluck

@@ -1397,18 +1397,18 @@ describe("JSONSchema", () => {
       })
     })
 
-    it("struct properties support", () => {
+    it("PropertySignature support", () => {
       const schema = S.struct({
-        foo: S.string.pipe(S.propertySignatureAnnotations({
+        foo: S.asPropertySignature(S.string).annotations({
           description: "foo description",
           title: "foo title",
           examples: ["foo example"]
-        })),
-        bar: JsonNumber.pipe(S.propertySignatureAnnotations({
+        }),
+        bar: S.asPropertySignature(JsonNumber).annotations({
           description: "bar description",
           title: "bar title",
           examples: ["bar example"]
-        }))
+        })
       })
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toEqual({

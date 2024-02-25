@@ -12,7 +12,7 @@ describe("isSchema", () => {
   })
 
   it("PropertySignature", () => {
-    expect(S.isSchema(S.string.pipe(S.propertySignatureAnnotations({})))).toBe(false)
+    expect(S.isSchema(S.asPropertySignature(S.string))).toBe(false)
     expect(S.isSchema(S.optional(S.string, { exact: true }))).toBe(false)
   })
 })

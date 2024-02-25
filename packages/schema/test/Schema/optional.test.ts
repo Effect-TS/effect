@@ -8,9 +8,8 @@ describe("optional APIs", () => {
   it("annotations", async () => {
     const schema = S.struct({
       a: S.optional(S.NumberFromString, {
-        exact: true,
-        annotations: { description: "my description" }
-      })
+        exact: true
+      }).annotations({ description: "my description" })
     })
     expect((schema.ast as any).propertySignatures[0].annotations).toStrictEqual({
       [AST.DescriptionAnnotationId]: "my description"

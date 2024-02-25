@@ -137,11 +137,11 @@ Schema.array(aContext)
 Schema.nonEmptyArray(aContext)
 
 // ---------------------------------------------
-// propertySignatureAnnotations
+// asPropertySignature
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<string, false, string, false, "a">
-aContext.pipe(Schema.propertySignatureAnnotations({}))
+aContext.pipe(Schema.asPropertySignature)
 
 // ---------------------------------------------
 // optionalToRequired
