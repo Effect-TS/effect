@@ -175,10 +175,10 @@ describe("Stream", () => {
   it.effect("deep provide", () =>
     Effect.gen(function*($) {
       const messages: Array<string> = []
-      const effect = Effect.acquireRelease(
-        pipe(StringService, Effect.tap((s) => Effect.sync(() => messages.push(s.string)))),
-        () => pipe(StringService, Effect.tap((s) => Effect.sync(() => messages.push(s.string))))
-      )
+      const effect = Effect.acquireRelease({
+        acquire: pipe(StringService, Effect.tap((s) => Effect.sync(() => messages.push(s.string)))),
+        release: () => pipe(StringService, Effect.tap((s) => Effect.sync(() => messages.push(s.string))))
+      })
       const L0 = Layer.succeed(StringService, { string: "test0" })
       const L1 = Layer.succeed(StringService, { string: "test1" })
       const L2 = Layer.succeed(StringService, { string: "test2" })

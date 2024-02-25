@@ -41,8 +41,8 @@ export const layerTracerProvider = (
     Effect.flatMap(
       Resource.Resource,
       (resource) =>
-        Effect.acquireRelease(
-          Effect.sync(() => {
+        Effect.acquireRelease({
+          acquire: Effect.sync(() => {
             const provider = new WebTracerProvider({
               ...(config ?? undefined),
               resource
@@ -50,8 +50,8 @@ export const layerTracerProvider = (
             provider.addSpanProcessor(processor)
             return provider
           }),
-          (provider) => Effect.ignoreLogged(Effect.promise(() => provider.shutdown()))
-        )
+          release: (provider) => Effect.ignoreLogged(Effect.promise(() => provider.shutdown()))
+        })
     )
   )
 

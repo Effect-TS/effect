@@ -30,14 +30,14 @@ export const makeXMLHttpRequest = Client.makeDefault((request) =>
     })).pipe(
       Effect.zip(
         Effect.flatMap(FiberRef.get(currentXMLHttpRequest), (makeXhr) =>
-          Effect.acquireRelease(
-            Effect.sync(() => makeXhr()),
-            (xhr) =>
+          Effect.acquireRelease({
+            acquire: Effect.sync(() => makeXhr()),
+            release: (xhr) =>
               Effect.sync(() => {
                 xhr.abort()
                 xhr.onreadystatechange = null
               })
-          ))
+          }))
       ),
       Effect.flatMap(([url, xhr]) => {
         xhr.open(request.method, url.toString(), true)

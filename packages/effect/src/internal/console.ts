@@ -81,10 +81,10 @@ export const group = (options?: {
   collapsed?: boolean | undefined
 }) =>
   consoleWith((_) =>
-    fiberRuntime.acquireRelease(
-      _.group(options),
-      () => _.groupEnd
-    )
+    fiberRuntime.acquireRelease({
+      acquire: _.group(options),
+      release: () => _.groupEnd
+    })
   )
 
 /** @internal */
@@ -100,10 +100,10 @@ export const table = (tabularData: any, properties?: ReadonlyArray<string>) =>
 /** @internal */
 export const time = (label?: string) =>
   consoleWith((_) =>
-    fiberRuntime.acquireRelease(
-      _.time(label),
-      () => _.timeEnd(label)
-    )
+    fiberRuntime.acquireRelease({
+      acquire: _.time(label),
+      release: () => _.timeEnd(label)
+    })
   )
 
 /** @internal */

@@ -30,14 +30,14 @@ export const HttpAgent = Context.GenericTag<NodeClient.HttpAgent>("@effect/platf
 export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<NodeClient.HttpAgent, never, Scope.Scope> =>
   Effect.map(
     Effect.all([
-      Effect.acquireRelease(
-        Effect.sync(() => new Http.Agent(options)),
-        (agent) => Effect.sync(() => agent.destroy())
-      ),
-      Effect.acquireRelease(
-        Effect.sync(() => new Https.Agent(options)),
-        (agent) => Effect.sync(() => agent.destroy())
-      )
+      Effect.acquireRelease({
+        acquire: Effect.sync(() => new Http.Agent(options)),
+        release: (agent) => Effect.sync(() => agent.destroy())
+      }),
+      Effect.acquireRelease({
+        acquire: Effect.sync(() => new Https.Agent(options)),
+        release: (agent) => Effect.sync(() => agent.destroy())
+      })
     ]),
     ([http, https]) => ({
       [HttpAgentTypeId]: HttpAgentTypeId,
@@ -53,10 +53,10 @@ export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<NodeCl
 /** @internal */
 export const agentLayer = makeAgentLayer()
 
-const makeAbortController = Effect.acquireRelease(
-  Effect.sync(() => new AbortController()),
-  (controller) => Effect.sync(() => controller.abort())
-)
+const makeAbortController = Effect.acquireRelease({
+  acquire: Effect.sync(() => new AbortController()),
+  release: (controller) => Effect.sync(() => controller.abort())
+})
 
 const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
   Client.makeDefault((request) =>

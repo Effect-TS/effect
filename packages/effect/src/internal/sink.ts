@@ -1482,7 +1482,10 @@ export const fromQueue = <In>(
   options?.shutdown ?
     unwrapScoped(
       Effect.map(
-        Effect.acquireRelease(Effect.succeed(queue), Queue.shutdown),
+        Effect.acquireRelease({
+          acquire: Effect.succeed(queue),
+          release: Queue.shutdown
+        }),
         fromQueue
       )
     ) :

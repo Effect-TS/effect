@@ -2186,13 +2186,13 @@ export const negate: <E, R>(self: Effect<boolean, E, R>) => Effect<boolean, E, R
  * @category scoping, resources & finalization
  */
 export const acquireRelease: {
+  <A, E, R, X, R2>(options: {
+    readonly acquire: Effect<A, E, R>
+    readonly release: (a: NoInfer<A>, exit: Exit.Exit<unknown, unknown>) => Effect<X, never, R2>
+  }): Effect<A, E, Scope.Scope | R | R2>
   <A, X, R2>(
     release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<X, never, R2>
   ): <E, R>(acquire: Effect<A, E, R>) => Effect<A, E, Scope.Scope | R2 | R>
-  <A, E, R, X, R2>(
-    acquire: Effect<A, E, R>,
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<X, never, R2>
-  ): Effect<A, E, Scope.Scope | R | R2>
 } = fiberRuntime.acquireRelease
 
 /**
@@ -2219,13 +2219,13 @@ export const acquireRelease: {
  * @category scoping, resources & finalization
  */
 export const acquireReleaseInterruptible: {
+  <A, E, R, X, R2>(options: {
+    acquire: Effect<A, E, R>
+    release: (exit: Exit.Exit<unknown, unknown>) => Effect<X, never, R2>
+  }): Effect<A, E, Scope.Scope | R | R2>
   <X, R2>(
     release: (exit: Exit.Exit<unknown, unknown>) => Effect<X, never, R2>
   ): <A, E, R>(acquire: Effect<A, E, R>) => Effect<A, E, Scope.Scope | R2 | R>
-  <A, E, R, X, R2>(
-    acquire: Effect<A, E, R>,
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<X, never, R2>
-  ): Effect<A, E, Scope.Scope | R | R2>
 } = fiberRuntime.acquireReleaseInterruptible
 
 /**

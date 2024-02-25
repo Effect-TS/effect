@@ -243,10 +243,10 @@ export const make: STM.STM<TReentrantLock.TReentrantLock> = core.map(
 
 /** @internal */
 export const readLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<number, never, Scope.Scope> =>
-  Effect.acquireRelease(
-    core.commit(acquireRead(self)),
-    () => core.commit(releaseRead(self))
-  )
+  Effect.acquireRelease({
+    acquire: core.commit(acquireRead(self)),
+    release: () => core.commit(releaseRead(self))
+  })
 
 /** @internal */
 export const readLocks = (self: TReentrantLock.TReentrantLock): STM.STM<number> =>
@@ -332,10 +332,10 @@ export const withWriteLock = dual<
 
 /** @internal */
 export const writeLock = (self: TReentrantLock.TReentrantLock): Effect.Effect<number, never, Scope.Scope> =>
-  Effect.acquireRelease(
-    core.commit(acquireWrite(self)),
-    () => core.commit(releaseWrite(self))
-  )
+  Effect.acquireRelease({
+    acquire: core.commit(acquireWrite(self)),
+    release: () => core.commit(releaseWrite(self))
+  })
 
 /** @internal */
 export const writeLocked = (self: TReentrantLock.TReentrantLock): STM.STM<boolean> =>

@@ -96,10 +96,10 @@ export const make: <A, E, R>(
  * import { createConnection } from "mysql2";
  * import { Duration, Effect, Pool } from "effect"
  *
- * const acquireDBConnection = Effect.acquireRelease(
- *   Effect.sync(() => createConnection('mysql://...')),
- *   (connection) => Effect.sync(() => connection.end(() => {})),
- * )
+ * const acquireDBConnection = Effect.acquireRelease({
+ *   acquire: Effect.sync(() => createConnection('mysql://...')),
+ *   release: (connection) => Effect.sync(() => connection.end(() => {})),
+ * })
  *
  * const connectionPool = Effect.flatMap(
  *  Pool.makeWithTTL({

@@ -46,10 +46,10 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<string>()))
       yield* $(
-        Stream.acquireRelease(
-          Ref.update(ref, Chunk.append("Acquire")),
-          () => Ref.update(ref, Chunk.append("Release"))
-        ),
+        Stream.acquireRelease({
+          acquire: Ref.update(ref, Chunk.append("Acquire")),
+          release: () => Ref.update(ref, Chunk.append("Release"))
+        }),
         Stream.flatMap(() => Stream.finalizer(Ref.update(ref, Chunk.append("Use")))),
         Stream.ensuring(Ref.update(ref, Chunk.append("Ensuring"))),
         Stream.runDrain

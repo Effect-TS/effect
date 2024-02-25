@@ -70,16 +70,17 @@ export const make = (
             server.on("connection", (conn) => {
               pipe(
                 Socket.fromNetSocket(
-                  Effect.acquireRelease(
-                    Effect.succeed(conn),
-                    (conn) =>
+                  Effect.acquireRelease({
+                    acquire: Effect.succeed(conn),
+
+                    release: (conn) =>
                       Effect.sync(() => {
                         if (conn.closed === false) {
                           conn.destroySoon()
                         }
                         conn.removeAllListeners()
                       })
-                  )
+                  })
                 ),
                 Effect.flatMap(handler),
                 Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),
@@ -171,13 +172,14 @@ export const makeWebSocket = (
             server.on("connection", (conn, req) => {
               pipe(
                 Socket.fromWebSocket(
-                  Effect.acquireRelease(
-                    Effect.succeed(conn as unknown as globalThis.WebSocket),
-                    (conn) =>
+                  Effect.acquireRelease({
+                    acquire: Effect.succeed(conn as unknown as globalThis.WebSocket),
+
+                    release: (conn) =>
                       Effect.sync(() => {
                         conn.close()
                       })
-                  )
+                  })
                 ),
                 Effect.flatMap(handler),
                 Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),

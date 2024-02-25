@@ -246,14 +246,15 @@ export const makeProducer = Effect.map(
 
 /** @internal */
 export const registerProducer = (self: MetricProducer, metricReader: LazyArg<MetricReader>) =>
-  Effect.acquireRelease(
-    Effect.sync(() => {
+  Effect.acquireRelease({
+    acquire: Effect.sync(() => {
       const reader = metricReader()
       reader.setMetricProducer(self)
       return reader
     }),
-    (reader) => Effect.ignoreLogged(Effect.promise(() => reader.shutdown()))
-  )
+
+    release: (reader) => Effect.ignoreLogged(Effect.promise(() => reader.shutdown()))
+  })
 
 /** @internal */
 export const layer = (evaluate: LazyArg<MetricReader>) =>

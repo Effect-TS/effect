@@ -80,10 +80,10 @@ export const makeManager = Effect.gen(function*(_) {
           number,
           readonly [Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>, Deferred.Deferred<void>]
         >()
-        const sendQueue = yield* _(Effect.acquireRelease(
-          Queue.unbounded<readonly [message: Worker.Worker.Request, transfers?: ReadonlyArray<unknown>]>(),
-          Queue.shutdown
-        ))
+        const sendQueue = yield* _(Effect.acquireRelease({
+          acquire: Queue.unbounded<readonly [message: Worker.Worker.Request, transfers?: ReadonlyArray<unknown>]>(),
+          release: Queue.shutdown
+        }))
 
         const collector = Transferable.unsafeMakeCollector()
         const wrappedEncode = encode ?
@@ -220,10 +220,10 @@ export const makeManager = Effect.gen(function*(_) {
 
         const execute = (request: I) =>
           Stream.flatMap(
-            Stream.acquireRelease(
-              executeAcquire(request),
-              executeRelease
-            ),
+            Stream.acquireRelease({
+              acquire: executeAcquire(request),
+              release: executeRelease
+            }),
             ([, queue]) => {
               const loop: Channel.Channel<Chunk.Chunk<O>, unknown, E | WorkerError, unknown, void, unknown> = Channel
                 .flatMap(

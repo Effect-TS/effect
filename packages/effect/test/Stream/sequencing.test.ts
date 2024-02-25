@@ -15,10 +15,10 @@ import * as Take from "effect/Take"
 import { assert, describe } from "vitest"
 
 const withPermitsScoped = (permits: number) => (semaphore: Effect.Semaphore) =>
-  Effect.acquireRelease(
-    semaphore.take(permits),
-    (n) => semaphore.release(n)
-  )
+  Effect.acquireRelease({
+    acquire: semaphore.take(permits),
+    release: (n) => semaphore.release(n)
+  })
 
 describe("Stream", () => {
   it.effect("branchAfter - switches streams", () =>
@@ -121,10 +121,16 @@ describe("Stream", () => {
       const latch = yield* $(Deferred.make<void>())
       const fiber = yield* $(
         Stream.make(
-          Stream.acquireRelease(push(1), () => push(1)),
+          Stream.acquireRelease({
+            acquire: push(1),
+            release: () => push(1)
+          }),
           Stream.fromEffect(push(2)),
           pipe(
-            Stream.acquireRelease(push(3), () => push(3)),
+            Stream.acquireRelease({
+              acquire: push(3),
+              release: () => push(3)
+            }),
             Stream.crossRight(Stream.fromEffect(pipe(
               Deferred.succeed(latch, void 0),
               Effect.zipRight(Effect.never)
@@ -147,7 +153,10 @@ describe("Stream", () => {
       const push = (message: string) => Ref.update(ref, Chunk.append(message))
       const chunks = Chunk.make(Chunk.of(void 0), Chunk.of(void 0))
       yield* $(
-        Stream.acquireRelease(push("open 1"), () => push("close 1")),
+        Stream.acquireRelease({
+          acquire: push("open 1"),
+          release: () => push("close 1")
+        }),
         Stream.flatMap(() =>
           pipe(
             Stream.fromChunks(...chunks),
@@ -155,7 +164,7 @@ describe("Stream", () => {
             Stream.ensuring(push("close 2")),
             Stream.flatMap(() =>
               pipe(
-                Stream.acquireRelease(push("open 3"), () => push("close 3")),
+                Stream.acquireRelease({ acquire: push("open 3"), release: () => push("close 3") }),
                 Stream.flatMap(() =>
                   pipe(
                     Stream.fromChunks(...chunks),
@@ -197,7 +206,12 @@ describe("Stream", () => {
       yield* $(
         Stream.fromChunks(...chunks),
         Stream.tap(() => push("use 1")),
-        Stream.flatMap(() => Stream.acquireRelease(push("open 2"), () => push("close 2"))),
+        Stream.flatMap(() =>
+          Stream.acquireRelease({
+            acquire: push("open 2"),
+            release: () => push("close 2")
+          })
+        ),
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
@@ -215,11 +229,14 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
       const inner = pipe(
-        Stream.acquireRelease(Effect.unit, (_, exit) =>
-          Exit.match(exit, {
-            onFailure: () => Ref.set(ref, true),
-            onSuccess: () => Effect.unit
-          })),
+        Stream.acquireRelease({
+          acquire: Effect.unit,
+          release: (_, exit) =>
+            Exit.match(exit, {
+              onFailure: () => Ref.set(ref, true),
+              onSuccess: () => Effect.unit
+            })
+        }),
         Stream.flatMap(() => Stream.fail("Ouch"))
       )
       yield* $(
@@ -433,15 +450,15 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<string>()))
       const push = (message: string) => Ref.update(ref, Chunk.append(message))
-      const inner = Stream.acquireRelease(push("Inner Acquire"), () => push("Inner Release"))
+      const inner = Stream.acquireRelease({ acquire: push("Inner Acquire"), release: () => push("Inner Release") })
       yield* $(
-        Stream.acquireRelease(
-          pipe(
+        Stream.acquireRelease({
+          acquire: pipe(
             push("Outer Acquire"),
             Effect.as(inner)
           ),
-          () => push("Outer Release")
-        ),
+          release: () => push("Outer Release")
+        }),
         Stream.flatMap(identity, { concurrency: 2 }),
         Stream.runDrain
       )
@@ -463,7 +480,10 @@ describe("Stream", () => {
         Stream.flatMap((n) => {
           if (n > 3) {
             return pipe(
-              Stream.acquireRelease(Effect.unit, () => Ref.set(ref, true)),
+              Stream.acquireRelease({
+                acquire: Effect.unit,
+                release: () => Ref.set(ref, true)
+              }),
               Stream.flatMap(() => Stream.empty)
             )
           }
@@ -487,10 +507,10 @@ describe("Stream", () => {
         Stream.flatMap((n) => {
           if (n > 8) {
             return pipe(
-              Stream.acquireRelease(
-                Effect.unit,
-                () => Ref.update(ref, (n) => n + 1)
-              ),
+              Stream.acquireRelease({
+                acquire: Effect.unit,
+                release: () => Ref.update(ref, (n) => n + 1)
+              }),
               Stream.flatMap(() => Stream.empty)
             )
           }
@@ -655,15 +675,15 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<string>()))
       const push = (message: string) => Ref.update(ref, Chunk.append(message))
-      const inner = Stream.acquireRelease(push("Inner Acquire"), () => push("Inner Release"))
+      const inner = Stream.acquireRelease({ acquire: push("Inner Acquire"), release: () => push("Inner Release") })
       yield* $(
-        Stream.acquireRelease(
-          pipe(
+        Stream.acquireRelease({
+          acquire: pipe(
             push("Outer Acquire"),
             Effect.as(inner)
           ),
-          () => push("Outer Release")
-        ),
+          release: () => push("Outer Release")
+        }),
         Stream.flatMap(identity, { concurrency: 2, switch: true }),
         Stream.runDrain
       )

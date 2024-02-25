@@ -170,16 +170,17 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
 }): Effect.Effect<Socket> =>
   fromWebSocket(
-    Effect.acquireRelease(
-      Effect.map(
+    Effect.acquireRelease({
+      acquire: Effect.map(
         typeof url === "string" ? Effect.succeed(url) : url,
         (url) => {
           const WS = "WebSocket" in globalThis ? globalThis.WebSocket : IsoWebSocket
           return new WS(url) as globalThis.WebSocket
         }
       ),
-      (ws) => Effect.sync(() => ws.close())
-    ),
+
+      release: (ws) => Effect.sync(() => ws.close())
+    }),
     options
   )
 

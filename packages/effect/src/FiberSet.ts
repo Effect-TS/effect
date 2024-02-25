@@ -93,7 +93,10 @@ const unsafeMake = <A, E>(): FiberSet<A, E> => {
  * @categories constructors
  */
 export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberSet<A, E>, never, Scope.Scope> =>
-  Effect.acquireRelease(Effect.sync(() => unsafeMake<A, E>()), clear)
+  Effect.acquireRelease({
+    acquire: Effect.sync(() => unsafeMake<A, E>()),
+    release: clear
+  })
 
 /**
  * Create an Effect run function that is backed by a FiberSet.

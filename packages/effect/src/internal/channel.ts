@@ -911,10 +911,10 @@ export const mapOutEffectPar = dual<
   pipe(
     Effect.gen(function*($) {
       const queue = yield* $(
-        Effect.acquireRelease(
-          Queue.bounded<Effect.Effect<Either.Either<OutElem1, OutDone>, OutErr | OutErr1, Env1>>(n),
-          (queue) => Queue.shutdown(queue)
-        )
+        Effect.acquireRelease({
+          acquire: Queue.bounded<Effect.Effect<Either.Either<OutElem1, OutDone>, OutErr | OutErr1, Env1>>(n),
+          release: (queue) => Queue.shutdown(queue)
+        })
       )
       const errorSignal = yield* $(Deferred.make<never, OutErr1>())
       const withPermits = n === Number.POSITIVE_INFINITY ?
@@ -1142,16 +1142,16 @@ export const mergeAllWith = (
       >())
       const queueReader = fromInput(input)
       const queue = yield* $(
-        Effect.acquireRelease(
-          Queue.bounded<Effect.Effect<Either.Either<OutElem, OutDone>, OutErr | OutErr1, Env>>(bufferSize),
-          (queue) => Queue.shutdown(queue)
-        )
+        Effect.acquireRelease({
+          acquire: Queue.bounded<Effect.Effect<Either.Either<OutElem, OutDone>, OutErr | OutErr1, Env>>(bufferSize),
+          release: (queue) => Queue.shutdown(queue)
+        })
       )
       const cancelers = yield* $(
-        Effect.acquireRelease(
-          Queue.unbounded<Deferred.Deferred<void>>(),
-          (queue) => Queue.shutdown(queue)
-        )
+        Effect.acquireRelease({
+          acquire: Queue.unbounded<Deferred.Deferred<void>>(),
+          release: (queue) => Queue.shutdown(queue)
+        })
       )
       const lastDone = yield* $(Ref.make<Option.Option<OutDone>>(Option.none()))
       const errorSignal = yield* $(Deferred.make<void>())
@@ -2115,13 +2115,13 @@ export const toPull = <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
 ): Effect.Effect<Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env>, never, Env | Scope.Scope> =>
   Effect.map(
-    Effect.acquireRelease(
-      Effect.sync(() => new executor.ChannelExecutor(self, void 0, identity)),
-      (exec, exit) => {
+    Effect.acquireRelease({
+      acquire: Effect.sync(() => new executor.ChannelExecutor(self, void 0, identity)),
+      release: (exec, exit) => {
         const finalize = exec.close(exit)
         return finalize === undefined ? Effect.unit : finalize
       }
-    ),
+    }),
     (exec) => Effect.suspend(() => interpretToPull(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec))
   )
 

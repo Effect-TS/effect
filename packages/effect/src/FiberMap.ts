@@ -97,7 +97,10 @@ const unsafeMake = <K, A = unknown, E = unknown>(): FiberMap<K, A, E> => {
  * @categories constructors
  */
 export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A, E>, never, Scope.Scope> =>
-  Effect.acquireRelease(Effect.sync(() => unsafeMake<K, A, E>()), clear)
+  Effect.acquireRelease({
+    acquire: Effect.sync(() => unsafeMake<K, A, E>()),
+    release: clear
+  })
 
 /**
  * Create an Effect run function that is backed by a FiberMap.

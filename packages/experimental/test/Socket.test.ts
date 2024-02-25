@@ -42,14 +42,15 @@ describe("Socket", () => {
   describe("WebSocket", () => {
     const url = `ws://localhost:1234`
 
-    const makeServer = Effect.acquireRelease(
-      Effect.sync(() => new WS(url)),
-      (ws) =>
+    const makeServer = Effect.acquireRelease({
+      acquire: Effect.sync(() => new WS(url)),
+
+      release: (ws) =>
         Effect.sync(() => {
           ws.close()
           WS.clean()
         })
-    )
+    })
 
     test("messages", () =>
       Effect.gen(function*(_) {

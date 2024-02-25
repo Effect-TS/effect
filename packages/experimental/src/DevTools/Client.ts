@@ -44,10 +44,10 @@ export const Client = Context.GenericTag<Client, ClientImpl>("@effect/experiment
  */
 export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*(_) {
   const socket = yield* _(Socket.Socket)
-  const requests = yield* _(Effect.acquireRelease(
-    Queue.sliding<Domain.Request>(1024),
-    Queue.shutdown
-  ))
+  const requests = yield* _(Effect.acquireRelease({
+    acquire: Queue.sliding<Domain.Request>(1024),
+    release: Queue.shutdown
+  }))
 
   function metricsSnapshot(): Domain.MetricsSnapshot {
     const snapshot = Metric.unsafeSnapshot()

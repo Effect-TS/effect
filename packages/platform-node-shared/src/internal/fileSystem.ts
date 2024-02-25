@@ -157,10 +157,10 @@ const makeTempDirectoryScoped = (() => {
   return (
     options?: FileSystem.MakeTempDirectoryOptions
   ) =>
-    Effect.acquireRelease(
-      makeDirectory(options),
-      (directory) => Effect.orDie(removeDirectory(directory, { recursive: true }))
-    )
+    Effect.acquireRelease({
+      acquire: makeDirectory(options),
+      release: (directory) => Effect.orDie(removeDirectory(directory, { recursive: true }))
+    })
 })()
 
 // == open
@@ -179,10 +179,10 @@ const openFactory = (method: string) => {
 
   return (path: string, options?: FileSystem.OpenFileOptions) =>
     pipe(
-      Effect.acquireRelease(
-        nodeOpen(path, options?.flag ?? "r", options?.mode),
-        (fd) => Effect.orDie(nodeClose(fd))
-      ),
+      Effect.acquireRelease({
+        acquire: nodeOpen(path, options?.flag ?? "r", options?.mode),
+        release: (fd) => Effect.orDie(nodeClose(fd))
+      }),
       Effect.map((fd) => makeFile(FileSystem.FileDescriptor(fd), options?.flag?.startsWith("a") ?? false))
     )
 }
@@ -380,10 +380,10 @@ const makeTempFileScoped = (() => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
   const removeFile = removeFactory("makeTempFileScoped")
   return (options?: FileSystem.MakeTempFileOptions) =>
-    Effect.acquireRelease(
-      makeFile(options),
-      (file) => Effect.orDie(removeFile(file))
-    )
+    Effect.acquireRelease({
+      acquire: makeFile(options),
+      release: (file) => Effect.orDie(removeFile(file))
+    })
 })()
 
 // == readDirectory

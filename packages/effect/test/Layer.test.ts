@@ -28,12 +28,12 @@ describe("Layer", () => {
       const deferred = yield* $(Deferred.make<void>())
       const layer1 = Layer.effectContext<never, never, never>(Effect.never)
       const layer2 = Layer.scopedContext(
-        Effect.acquireRelease(
-          Deferred.succeed(deferred, void 0).pipe(
+        Effect.acquireRelease({
+          acquire: Deferred.succeed(deferred, void 0).pipe(
             Effect.map((bool) => Context.make(BoolTag, bool))
           ),
-          () => Effect.unit
-        )
+          release: () => Effect.unit
+        })
       )
       const env = layer1.pipe(Layer.merge(layer2), Layer.build)
       const fiber = yield* $(Effect.scoped(env), Effect.forkDaemon)
@@ -47,13 +47,13 @@ describe("Layer", () => {
       const testRef = yield* $(Ref.make<Chunk.Chunk<string>>(Chunk.empty()))
       const layer = Layer.scoped(
         ChunkTag,
-        Effect.acquireRelease(
-          Ref.make<Chunk.Chunk<string>>(Chunk.empty()),
-          (ref) =>
+        Effect.acquireRelease({
+          acquire: Ref.make<Chunk.Chunk<string>>(Chunk.empty()),
+          release: (ref) =>
             Ref.get(ref).pipe(
               Effect.flatMap((chunk) => Ref.set(testRef, chunk))
             )
-        ).pipe(
+        }).pipe(
           Effect.tap(() => Effect.unit)
         )
       )
@@ -173,7 +173,7 @@ describe("Layer", () => {
       const layer3 = Layer.succeed(BazTag, { baz: "baz" })
       const layer4 = Layer.scoped(
         ScopedTag,
-        Effect.scoped(Effect.acquireRelease(sleep, () => sleep))
+        Effect.scoped(Effect.acquireRelease({ acquire: sleep, release: () => sleep }))
       )
 
       const layer = Layer.merge(
@@ -715,10 +715,10 @@ export const Service1Tag = Context.GenericTag<Service1>("Service1")
 export const makeLayer1 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<Service1> => {
   return Layer.scoped(
     Service1Tag,
-    Effect.acquireRelease(
-      ref.pipe(Ref.update(Chunk.append(acquire1)), Effect.as(new Service1())),
-      () => Ref.update(ref, Chunk.append(release1))
-    )
+    Effect.acquireRelease({
+      acquire: ref.pipe(Ref.update(Chunk.append(acquire1)), Effect.as(new Service1())),
+      release: () => Ref.update(ref, Chunk.append(release1))
+    })
   )
 }
 export class Service2 {
@@ -730,10 +730,10 @@ export const Service2Tag = Context.GenericTag<Service2>("Service2")
 export const makeLayer2 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<Service2> => {
   return Layer.scoped(
     Service2Tag,
-    Effect.acquireRelease(
-      ref.pipe(Ref.update(Chunk.append(acquire2)), Effect.as(new Service2())),
-      () => Ref.update(ref, Chunk.append(release2))
-    )
+    Effect.acquireRelease({
+      acquire: ref.pipe(Ref.update(Chunk.append(acquire2)), Effect.as(new Service2())),
+      release: () => Ref.update(ref, Chunk.append(release2))
+    })
   )
 }
 export class Service3 {
@@ -745,9 +745,9 @@ export const Service3Tag = Context.GenericTag<Service3>("Service3")
 export const makeLayer3 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<Service3> => {
   return Layer.scoped(
     Service3Tag,
-    Effect.acquireRelease(
-      ref.pipe(Ref.update(Chunk.append(acquire3)), Effect.as(new Service3())),
-      () => Ref.update(ref, Chunk.append(release3))
-    )
+    Effect.acquireRelease({
+      acquire: ref.pipe(Ref.update(Chunk.append(acquire3)), Effect.as(new Service3())),
+      release: () => Ref.update(ref, Chunk.append(release3))
+    })
   )
 }

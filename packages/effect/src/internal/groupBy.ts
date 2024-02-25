@@ -154,12 +154,14 @@ export const groupBy = dual<
           const decider = yield* $(
             Deferred.make<(key: K, value: V) => Effect.Effect<Predicate<number>>>()
           )
-          const output = yield* $(Effect.acquireRelease(
-            Queue.bounded<Exit.Exit<readonly [K, Queue.Dequeue<Take.Take<V, E | E2>>], Option.Option<E | E2>>>(
+          const output = yield* $(Effect.acquireRelease({
+            acquire: Queue.bounded<
+              Exit.Exit<readonly [K, Queue.Dequeue<Take.Take<V, E | E2>>], Option.Option<E | E2>>
+            >(
               options?.bufferSize ?? 16
             ),
-            (queue) => Queue.shutdown(queue)
-          ))
+            release: (queue) => Queue.shutdown(queue)
+          }))
           const ref = yield* $(Ref.make<Map<K, number>>(new Map()))
           const add = yield* $(
             stream.mapEffectSequential(self, f),
@@ -486,10 +488,10 @@ export const groupByKey = dual<
         Effect.sync(() => new Map<K, Queue.Queue<Take.Take<A, E>>>()),
         Effect.flatMap((map) =>
           pipe(
-            Effect.acquireRelease(
-              Queue.unbounded<Take.Take<readonly [K, Queue.Queue<Take.Take<A, E>>], E>>(),
-              (queue) => Queue.shutdown(queue)
-            ),
+            Effect.acquireRelease({
+              acquire: Queue.unbounded<Take.Take<readonly [K, Queue.Queue<Take.Take<A, E>>], E>>(),
+              release: (queue) => Queue.shutdown(queue)
+            }),
             Effect.flatMap((queue) =>
               pipe(
                 self,

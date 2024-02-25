@@ -34,10 +34,10 @@ describe("Effect", () => {
       )
 
       yield* $(
-        Effect.acquireRelease(
-          withValue("A")(logRef("acquire")),
-          () => withValue("R")(logRef("release"))
-        ),
+        Effect.acquireRelease({
+          acquire: withValue("A")(logRef("acquire")),
+          release: () => withValue("R")(logRef("release"))
+        }),
         withValue("INNER"),
         Effect.scoped,
         withValue("OUTER"),

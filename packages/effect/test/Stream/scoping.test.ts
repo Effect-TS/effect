@@ -18,10 +18,10 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
       const stream = pipe(
-        Stream.acquireRelease(
-          Effect.succeed(Chunk.range(0, 2)),
-          () => Ref.set(ref, true)
-        ),
+        Stream.acquireRelease({
+          acquire: Effect.succeed(Chunk.range(0, 2)),
+          release: () => Ref.set(ref, true)
+        }),
         Stream.flatMap(Stream.fromIterable)
       )
       const result = yield* $(Stream.runCollect(stream))
@@ -34,10 +34,10 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
       const stream = pipe(
-        Stream.acquireRelease(
-          Effect.succeed(Chunk.range(0, 2)),
-          () => Ref.set(ref, true)
-        ),
+        Stream.acquireRelease({
+          acquire: Effect.succeed(Chunk.range(0, 2)),
+          release: () => Ref.set(ref, true)
+        }),
         Stream.flatMap(Stream.fromIterable),
         Stream.take(2)
       )
@@ -52,7 +52,10 @@ describe("Stream", () => {
       const ref = yield* $(Ref.make(false))
       const stream = pipe(
         Stream.make(1),
-        Stream.concat(Stream.acquireRelease(Ref.set(ref, true), () => Effect.unit)),
+        Stream.concat(Stream.acquireRelease({
+          acquire: Ref.set(ref, true),
+          release: () => Effect.unit
+        })),
         Stream.take(0)
       )
       yield* $(Stream.runDrain(stream))
@@ -64,7 +67,10 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
       yield* $(
-        Stream.acquireRelease(Effect.unit, () => Ref.set(ref, true)),
+        Stream.acquireRelease({
+          acquire: Effect.unit,
+          release: () => Ref.set(ref, true)
+        }),
         Stream.flatMap(() => Stream.fromEffect(Effect.dieMessage("boom"))),
         Stream.runDrain,
         Effect.exit
@@ -76,14 +82,20 @@ describe("Stream", () => {
   it.effect("acquireRelease - flatMap associativity does not effect lifetime", () =>
     Effect.gen(function*($) {
       const leftAssoc = yield* $(
-        Stream.acquireRelease(Ref.make(true), (ref) => Ref.set(ref, false)),
+        Stream.acquireRelease({
+          acquire: Ref.make(true),
+          release: (ref) => Ref.set(ref, false)
+        }),
         Stream.flatMap(Stream.succeed),
         Stream.flatMap((ref) => Stream.fromEffect(Ref.get(ref))),
         Stream.runCollect,
         Effect.map(Chunk.head)
       )
       const rightAssoc = yield* $(
-        Stream.acquireRelease(Ref.make(true), (ref) => Ref.set(ref, false)),
+        Stream.acquireRelease({
+          acquire: Ref.make(true),
+          release: (ref) => Ref.set(ref, false)
+        }),
         Stream.flatMap((ref) =>
           pipe(
             Stream.succeed(ref),
@@ -100,7 +112,10 @@ describe("Stream", () => {
   it.effect("acquireRelease - propagates errors", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.acquireRelease(Effect.unit, () => Effect.dieMessage("die")),
+        Stream.acquireRelease({
+          acquire: Effect.unit,
+          release: () => Effect.dieMessage("die")
+        }),
         Stream.runCollect,
         Effect.exit
       )
@@ -111,10 +126,10 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(Chunk.empty<string>()))
       yield* $(
-        Stream.acquireRelease(
-          Ref.update(ref, Chunk.append("Acquire")),
-          () => Ref.update(ref, Chunk.append("Release"))
-        ),
+        Stream.acquireRelease({
+          acquire: Ref.update(ref, Chunk.append("Acquire")),
+          release: () => Ref.update(ref, Chunk.append("Release"))
+        }),
         Stream.crossRight(Stream.fromEffect(Ref.update(ref, Chunk.append("Use")))),
         Stream.ensuring(Ref.update(ref, Chunk.append("Ensuring"))),
         Stream.runDrain
@@ -152,10 +167,10 @@ describe("Stream", () => {
     const program = Effect.gen(function*($) {
       const stream = (deferred: Deferred.Deferred<void, never>, ref: Ref.Ref<ReadonlyArray<string>>) =>
         pipe(
-          Effect.acquireRelease(
-            Ref.update(ref, (array) => [...array, "acquire outer"]),
-            () => Ref.update(ref, (array) => [...array, "release outer"])
-          ),
+          Effect.acquireRelease({
+            acquire: Ref.update(ref, (array) => [...array, "acquire outer"]),
+            release: () => Ref.update(ref, (array) => [...array, "release outer"])
+          }),
           Effect.zipRight(Deferred.succeed(deferred, void 0)),
           Effect.zipRight(Deferred.await(awaiter)),
           Effect.zipRight(Effect.succeed(Stream.make(1, 2, 3))),

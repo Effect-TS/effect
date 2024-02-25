@@ -541,10 +541,10 @@ export const subscribe = <A>(self: TPubSub.TPubSub<A>): STM.STM<TQueue.TDequeue<
 
 /** @internal */
 export const subscribeScoped = <A>(self: TPubSub.TPubSub<A>): Effect.Effect<TQueue.TDequeue<A>, never, Scope.Scope> =>
-  Effect.acquireRelease(
-    subscribe(self),
-    (dequeue) => tQueue.shutdown(dequeue)
-  )
+  Effect.acquireRelease({
+    acquire: subscribe(self),
+    release: (dequeue) => tQueue.shutdown(dequeue)
+  })
 
 /** @internal */
 export const unbounded = <A>(): STM.STM<TPubSub.TPubSub<A>> => makeTPubSub<A>(Number.MAX_SAFE_INTEGER, tQueue.Dropping)

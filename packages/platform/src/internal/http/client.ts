@@ -93,10 +93,10 @@ export const fetch = (options?: RequestInit): Client.Client.Default =>
           const headers = new Headers(request.headers)
           const send = (body: BodyInit | undefined) =>
             pipe(
-              Effect.acquireRelease(
-                Effect.sync(() => new AbortController()),
-                (controller) => Effect.sync(() => controller.abort())
-              ),
+              Effect.acquireRelease({
+                acquire: Effect.sync(() => new AbortController()),
+                release: (controller) => Effect.sync(() => controller.abort())
+              }),
               Effect.flatMap((controller) =>
                 Effect.tryPromise({
                   try: () =>

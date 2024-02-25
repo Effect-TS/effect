@@ -14,19 +14,19 @@ import * as Persistence from "../Persistence.js"
  */
 export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
   Effect.gen(function*(_) {
-    const lmdb = yield* _(Effect.acquireRelease(
-      Effect.sync(() => Lmdb.open(options)),
-      (lmdb) => Effect.promise(() => lmdb.close())
-    ))
+    const lmdb = yield* _(Effect.acquireRelease({
+      acquire: Effect.sync(() => Lmdb.open(options)),
+      release: (lmdb) => Effect.promise(() => lmdb.close())
+    }))
 
     return Persistence.BackingPersistence.of({
       [Persistence.BackingPersistenceTypeId]: Persistence.BackingPersistenceTypeId,
       make: (storeId) =>
         Effect.gen(function*(_) {
-          const store = yield* _(Effect.acquireRelease(
-            Effect.sync(() => lmdb.openDB({ name: storeId })),
-            (store) => Effect.promise(() => store.close())
-          ))
+          const store = yield* _(Effect.acquireRelease({
+            acquire: Effect.sync(() => lmdb.openDB({ name: storeId })),
+            release: (store) => Effect.promise(() => store.close())
+          }))
           return identity<Persistence.BackingPersistenceStore>({
             get: (key) =>
               Effect.try({

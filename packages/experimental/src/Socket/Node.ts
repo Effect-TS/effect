@@ -44,8 +44,8 @@ export const makeNet = (
   options: Net.NetConnectOpts
 ): Effect.Effect<Socket.Socket, Socket.SocketError, Scope.Scope> =>
   fromNetSocket(
-    Effect.acquireRelease(
-      Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
+    Effect.acquireRelease({
+      acquire: Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
         const conn = Net.createConnection(options)
         conn.on("connect", () => {
           conn.removeAllListeners()
@@ -58,14 +58,15 @@ export const makeNet = (
           conn.destroy()
         })
       }),
-      (conn) =>
+
+      release: (conn) =>
         Effect.sync(() => {
           if (conn.closed === false) {
             conn.destroySoon()
           }
           conn.removeAllListeners()
         })
-    )
+    })
   )
 
 /**
@@ -121,10 +122,10 @@ export const fromNetSocket = (
       }).pipe(Effect.scoped)
 
     const write = (chunk: Uint8Array) => Queue.offer(sendQueue, chunk)
-    const writer = Effect.acquireRelease(
-      Effect.succeed(write),
-      () => Queue.offer(sendQueue, EOF)
-    )
+    const writer = Effect.acquireRelease({
+      acquire: Effect.succeed(write),
+      release: () => Queue.offer(sendQueue, EOF)
+    })
 
     return Socket.Socket.of({
       [Socket.SocketTypeId]: Socket.SocketTypeId,

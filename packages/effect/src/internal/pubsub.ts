@@ -1123,7 +1123,10 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
       (tuple) => tuple[0].addFinalizer(() => tuple[1].shutdown)
     )
     return core.map(
-      fiberRuntime.acquireRelease(acquire, (tuple, exit) => tuple[0].close(exit)),
+      fiberRuntime.acquireRelease({
+        acquire,
+        release: (tuple, exit) => tuple[0].close(exit)
+      }),
       (tuple) => tuple[1]
     )
   }

@@ -136,10 +136,10 @@ describe("Stream", () => {
   it.effect("runScoped - properly closes resources", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
-      const resource = Effect.acquireRelease(
-        Effect.succeed(1),
-        () => Ref.set(ref, true)
-      )
+      const resource = Effect.acquireRelease({
+        acquire: Effect.succeed(1),
+        release: () => Ref.set(ref, true)
+      })
       const stream = pipe(Stream.scoped(resource), Stream.flatMap((a) => Stream.make(a, a, a)))
       const [result, state] = yield* $(
         stream,

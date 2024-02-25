@@ -142,10 +142,10 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<Exit.Exit<unknown, unknown>>(Exit.unit))
       yield* $(
-        Stream.acquireRelease(
-          Effect.unit,
-          (_, exit) => Ref.set(ref, exit)
-        ),
+        Stream.acquireRelease({
+          acquire: Effect.unit,
+          release: (_, exit) => Ref.set(ref, exit)
+        }),
         Stream.flatMap(() => Stream.fail("boom")),
         Stream.either,
         Stream.runDrain,

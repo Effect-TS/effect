@@ -80,9 +80,10 @@ const runCommand =
             onSome: (dir) => fileSystem.access(dir)
           }),
           Effect.zipRight(
-            Effect.acquireRelease(
-              spawn,
-              ([handle, exitCode]) =>
+            Effect.acquireRelease({
+              acquire: spawn,
+
+              release: ([handle, exitCode]) =>
                 Effect.flatMap(Deferred.isDone(exitCode), (done) =>
                   done ? Effect.unit : Effect.suspend(() => {
                     if (handle.kill("SIGTERM")) {
@@ -90,7 +91,7 @@ const runCommand =
                     }
                     return Effect.unit
                   }))
-            )
+            })
           ),
           Effect.map(([handle, exitCodeDeferred]): CommandExecutor.Process => {
             let stdin: Sink.Sink<void, unknown, never, Error.PlatformError> = Sink.drain

@@ -60,10 +60,10 @@ export const makeEffect = <V, E>(
           const child = yield* $(Scope.fork(parent, ExecutionStrategy.sequential))
           yield* $(Ref.update(resourceAcquisitionCount, (n) => n + 1))
           yield* $(Scope.addFinalizer(child, Ref.update(resourceAcquisitionReleasing, (n) => n + 1)))
-          return yield* $(Effect.acquireReleaseInterruptible(
-            restore(effect),
-            (exit) => Scope.close(child, exit)
-          ))
+          return yield* $(Effect.acquireReleaseInterruptible({
+            acquire: restore(effect),
+            release: (exit) => Scope.close(child, exit)
+          }))
         })
       )
       return new ObservableResourceImpl(scoped, getState)

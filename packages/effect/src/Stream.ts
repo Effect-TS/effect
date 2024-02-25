@@ -169,10 +169,15 @@ export const accumulateChunks: <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, 
  * @since 2.0.0
  * @category constructors
  */
-export const acquireRelease: <A, E, R, R2, X>(
-  acquire: Effect.Effect<A, E, R>,
-  release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
-) => Stream<A, E, R | R2> = internal.acquireRelease
+export const acquireRelease: {
+  <A, E, R, R2, X>(options: {
+    readonly acquire: Effect.Effect<A, E, R>
+    readonly release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
+  }): Stream<A, E, R | R2>
+  <A, X, R2>(
+    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
+  ): <E, R>(acquire: Effect.Effect<A, E, R>) => Stream<A, E, R | R2>
+} = internal.acquireRelease
 
 /**
  * Aggregates elements of this stream using the provided sink for as long as

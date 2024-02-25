@@ -36,9 +36,10 @@ export const make = (
   options: Net.ListenOptions
 ): Effect.Effect<Server.Server, Error.ServeError, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const server = yield* _(Effect.acquireRelease(
-      Effect.sync(evaluate),
-      (server) =>
+    const server = yield* _(Effect.acquireRelease({
+      acquire: Effect.sync(evaluate),
+
+      release: (server) =>
         Effect.async<void>((resume) => {
           server.close((error) => {
             if (error) {
@@ -48,7 +49,7 @@ export const make = (
             }
           })
         })
-    ))
+    }))
 
     yield* _(Effect.async<void, Error.ServeError>((resume) => {
       server.on("error", (error) => {

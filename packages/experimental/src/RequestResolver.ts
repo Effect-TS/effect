@@ -54,10 +54,10 @@ export const dataLoader = dual<
 ) =>
   Effect.gen(function*(_) {
     const queue = yield* _(
-      Effect.acquireRelease(
-        Queue.unbounded<DataLoaderItem<A>>(),
-        Queue.shutdown
-      )
+      Effect.acquireRelease({
+        acquire: Queue.unbounded<DataLoaderItem<A>>(),
+        release: Queue.shutdown
+      })
     )
     const batch = yield* _(Ref.make(ReadonlyArray.empty<DataLoaderItem<A>>()))
     const takeOne = Effect.flatMap(Queue.take(queue), (item) => Ref.updateAndGet(batch, ReadonlyArray.append(item)))
