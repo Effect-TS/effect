@@ -65,7 +65,7 @@ export type TypeId = typeof TypeId
  */
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly ast: AST.AST
-  annotations(annotations: AST.Annotations): Schema<A, I, R>
+  annotations(annotations: Annotations<A>): Schema<A, I, R>
 }
 
 /**
@@ -395,10 +395,7 @@ export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
  * @category constructors
  * @since 1.0.0
  */
-export const uniqueSymbol = <S extends symbol>(
-  symbol: S,
-  annotations?: AST.Annotations
-): Schema<S> => make(new AST.UniqueSymbol(symbol, annotations))
+export const uniqueSymbol = <S extends symbol>(symbol: S): Schema<S> => make(new AST.UniqueSymbol(symbol))
 
 /**
  * @category constructors
@@ -509,7 +506,7 @@ const declareConstructor = <
       typeParameters.map((tp) => tp.ast),
       (...typeParameters) => decodeUnknown(...typeParameters.map((ast) => make(ast)) as any),
       (...typeParameters) => encodeUnknown(...typeParameters.map((ast) => make(ast)) as any),
-      toAnnotations(annotations)
+      _schema.toASTAnnotations(annotations)
     )
   )
 
@@ -520,7 +517,7 @@ const declarePrimitive = <A>(
   const decodeUnknown = () => (input: unknown, _: ParseOptions, ast: AST.Declaration) =>
     is(input) ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input))
   const encodeUnknown = decodeUnknown
-  return make(new AST.Declaration([], decodeUnknown, encodeUnknown, toAnnotations(annotations)))
+  return make(new AST.Declaration([], decodeUnknown, encodeUnknown, _schema.toASTAnnotations(annotations)))
 }
 
 /**
@@ -590,7 +587,7 @@ export const fromBrand = <C extends Brand.Brand<string | symbol>>(
           Option.some(new ParseResult.Type(ast, a, either.left.map((v) => v.message).join(", "))) :
           Option.none()
       },
-      toAnnotations({ typeId: { id: BrandTypeId, annotation: { constructor } }, ...options })
+      _schema.toASTAnnotations({ typeId: { id: BrandTypeId, annotation: { constructor } }, ...options })
     )
   )
 
@@ -828,7 +825,7 @@ type PropertySignatureAST =
     readonly _tag: "Declaration"
     readonly from: AST.AST
     readonly isOptional: boolean
-    readonly annotations?: AST.Annotations | undefined
+    readonly annotations?: Annotations<any> | undefined
   }
   | {
     readonly _tag: "OptionalToRequired"
@@ -836,7 +833,7 @@ type PropertySignatureAST =
     readonly to: AST.AST
     readonly decode: AST.PropertySignatureTransformation["decode"]
     readonly encode: AST.PropertySignatureTransformation["encode"]
-    readonly annotations?: AST.Annotations | undefined
+    readonly annotations?: Annotations<any> | undefined
   }
 
 /** @internal */
@@ -867,12 +864,12 @@ export const propertySignatureAnnotations =
         _tag: "Declaration",
         from: self.ast,
         isOptional: false,
-        annotations: toAnnotations(annotations)
+        annotations
       }) as any
     }
     return new PropertySignatureImpl({
       ...(self as any).propertySignatureAST,
-      annotations: toAnnotations(annotations)
+      annotations
     }) as any
   }
 
@@ -893,7 +890,7 @@ export const optionalToRequired = <A, I, R, B>(
     to: to.ast,
     decode: (o) => Option.some(decode(o)),
     encode: Option.flatMap(encode),
-    annotations: toAnnotations(annotations)
+    annotations
   })
 
 /**
@@ -1036,7 +1033,7 @@ export const optional: {
         _tag: "Declaration",
         from: schema.ast,
         isOptional: true,
-        annotations: toAnnotations(annotations)
+        annotations
       })
     }
   } else {
@@ -1082,7 +1079,7 @@ export const optional: {
         _tag: "Declaration",
         from: orUndefined(schema).ast,
         isOptional: true,
-        annotations: toAnnotations(annotations)
+        annotations
       })
     }
   }
@@ -1151,7 +1148,7 @@ export const struct = <Fields extends StructFields>(
     if ("propertySignatureAST" in field) {
       const psAst: PropertySignatureAST = field.propertySignatureAST
       const from = psAst.from
-      const annotations = psAst.annotations
+      const annotations = _schema.toASTAnnotations(psAst.annotations)
       switch (psAst._tag) {
         case "Declaration":
           pss.push(new AST.PropertySignature(key, from, psAst.isOptional, true, annotations))
@@ -1334,14 +1331,14 @@ export const pluck: {
  * @since 1.0.0
  */
 export interface BrandSchema<A extends Brand.Brand<any>, I> extends Schema<A, I>, Brand.Brand.Constructor<A> {
-  annotations(annotations: AST.Annotations): BrandSchema<A, I>
+  annotations(annotations: Annotations<A>): BrandSchema<A, I>
 }
 
 const makeBrandSchema = <A, I, B extends string | symbol>(
   self: AST.AST,
-  annotations: AST.Annotations
+  annotations: Annotations<A & Brand.Brand<B>>
 ): BrandSchema<A & Brand.Brand<B>, I> => {
-  const ast = AST.annotations(self, annotations)
+  const ast = AST.annotations(self, _schema.toASTAnnotations(annotations))
   const _validateEither = validateEither(make(ast))
 
   const refined: any = Brand.refined((unbranded) =>
@@ -1356,7 +1353,7 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
   refined.pipe = function() {
     return pipeArguments(this, arguments)
   }
-  refined.annotations = (annotations: AST.Annotations) => makeBrandSchema(ast, annotations)
+  refined.annotations = (annotations: Annotations<A & Brand.Brand<B>>) => makeBrandSchema(ast, annotations)
   return refined
 }
 
@@ -1380,14 +1377,16 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
  * @since 1.0.0
  */
 export const brand =
-  <B extends string | symbol, A>(brand: B, options?: Annotations<A & Brand.Brand<B>>) =>
+  <B extends string | symbol, A>(brand: B, annotations?: Annotations<A & Brand.Brand<B>>) =>
   <I>(self: Schema<A, I>): BrandSchema<A & Brand.Brand<B>, I> => {
     const brandAnnotation: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self.ast), {
       onNone: () => [brand],
       onSome: (brands) => [...brands, brand]
     })
-    const annotations = { ...toAnnotations(options), [AST.BrandAnnotationId]: brandAnnotation }
-    return makeBrandSchema(self.ast, annotations)
+    return makeBrandSchema(self.ast, {
+      ...annotations,
+      [AST.BrandAnnotationId]: brandAnnotation
+    })
   }
 
 /**
@@ -1574,8 +1573,8 @@ export const compose: {
  */
 export const suspend = <A, I, R>(
   f: () => Schema<A, I, R>,
-  annotations?: AST.Annotations
-): Schema<A, I, R> => make(new AST.Suspend(() => f().ast, annotations))
+  annotations?: Annotations<A>
+): Schema<A, I, R> => make(new AST.Suspend(() => f().ast, _schema.toASTAnnotations(annotations)))
 
 /**
  * @category combinators
@@ -1583,19 +1582,19 @@ export const suspend = <A, I, R>(
  */
 export function filter<A>(
   f: (a: A, options: ParseOptions, self: AST.Refinement) => Option.Option<ParseResult.ParseIssue>,
-  options?: FilterAnnotations<A>
+  annotations?: FilterAnnotations<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
 export function filter<C extends A, B extends A, A = C>(
   refinement: Predicate.Refinement<A, B>,
-  options?: FilterAnnotations<A>
+  annotations?: FilterAnnotations<A>
 ): <I, R>(self: Schema<C, I, R>) => Schema<C & B, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<NoInfer<A>>,
-  options?: FilterAnnotations<NoInfer<A>>
+  annotations?: FilterAnnotations<NoInfer<A>>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<A> | AST.Refinement["filter"],
-  options?: FilterAnnotations<A>
+  annotations?: FilterAnnotations<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> {
   return (self) =>
     make(
@@ -1610,7 +1609,7 @@ export function filter<A>(
           }
           return out
         },
-        toAnnotations(options)
+        _schema.toASTAnnotations(annotations)
       )
     )
 }
@@ -1810,7 +1809,7 @@ export const attachPropertySignature: {
     return make(
       new AST.Transform(
         schema.ast,
-        annotations ? AST.annotations(attached, toAnnotations(annotations)) : attached,
+        annotations ? AST.annotations(attached, _schema.toASTAnnotations(annotations)) : attached,
         AST.TypeLiteralTransformation.make(
           [
             new AST.PropertySignatureTransformation(
@@ -1825,50 +1824,6 @@ export const attachPropertySignature: {
     )
   }
 )
-
-const toAnnotations = (
-  options?: Record<string | symbol, any>
-): AST.Annotations => {
-  if (!options) {
-    return {}
-  }
-  const out: Mutable<AST.Annotations> = {}
-
-  // symbols are reserved for custom annotations
-  const custom = Object.getOwnPropertySymbols(options)
-  for (const sym of custom) {
-    out[sym] = options[sym]
-  }
-
-  // string keys are reserved as /schema namespace
-  if (options.typeId !== undefined) {
-    const typeId = options.typeId
-    if (typeof typeId === "object") {
-      out[AST.TypeAnnotationId] = typeId.id
-      out[typeId.id] = typeId.annotation
-    } else {
-      out[AST.TypeAnnotationId] = typeId
-    }
-  }
-  const move = (from: keyof typeof options, to: symbol) => {
-    if (options[from] !== undefined) {
-      out[to] = options[from]
-    }
-  }
-  move("message", AST.MessageAnnotationId)
-  move("identifier", AST.IdentifierAnnotationId)
-  move("title", AST.TitleAnnotationId)
-  move("description", AST.DescriptionAnnotationId)
-  move("examples", AST.ExamplesAnnotationId)
-  move("default", AST.DefaultAnnotationId)
-  move("documentation", AST.DocumentationAnnotationId)
-  move("jsonSchema", AST.JSONSchemaAnnotationId)
-  move("arbitrary", _hooks.ArbitraryHookId)
-  move("pretty", _hooks.PrettyHookId)
-  move("equivalence", _hooks.EquivalenceHookId)
-
-  return out
-}
 
 /**
  * @since 1.0.0
@@ -1912,11 +1867,11 @@ export interface FilterAnnotations<A> extends Annotations<A, readonly [A]> {}
  * @since 1.0.0
  */
 export const annotations: {
-  (annotations: AST.Annotations): <A, I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
-  <A, I, R>(self: Schema<A, I, R>, annotations: AST.Annotations): Schema<A, I, R>
+  <A>(annotations: Annotations<A>): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
+  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations<A>): Schema<A, I, R>
 } = dual(
   2,
-  <A, I, R>(self: Schema<A, I, R>, annotations: AST.Annotations): Schema<A, I, R> => self.annotations(annotations)
+  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations<A>): Schema<A, I, R> => self.annotations(annotations)
 )
 
 /**
@@ -4937,7 +4892,7 @@ const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }:
       return pipeArguments(this, arguments)
     }
 
-    static annotations(annotations: AST.Annotations) {
+    static annotations(annotations: Annotations<any>) {
       return make(this.ast).annotations(annotations)
     }
 
@@ -4947,7 +4902,7 @@ const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }:
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const equivalence = _equivalence.make(toSchema)
-      const declaration: AnySchema<never> = declare(
+      const declaration: AnySchema = declare(
         [],
         () => (input, _, ast) =>
           input instanceof this ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input)),
