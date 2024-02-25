@@ -487,19 +487,23 @@ const getTemplateLiterals = (
 }
 
 const declareConstructor = <
-  const P extends ReadonlyArray<AnySchema>,
+  const TypeParameters extends ReadonlyArray<AnySchema>,
   I,
   A
 >(
-  typeParameters: P,
+  typeParameters: TypeParameters,
   decodeUnknown: (
-    ...typeParameters: { readonly [K in keyof P]: Schema<Schema.To<P[K]>, Schema.From<P[K]>, never> }
+    ...typeParameters: {
+      readonly [K in keyof TypeParameters]: Schema<Schema.To<TypeParameters[K]>, Schema.From<TypeParameters[K]>, never>
+    }
   ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<A, ParseResult.ParseIssue, never>,
   encodeUnknown: (
-    ...typeParameters: { readonly [K in keyof P]: Schema<Schema.To<P[K]>, Schema.From<P[K]>, never> }
+    ...typeParameters: {
+      readonly [K in keyof TypeParameters]: Schema<Schema.To<TypeParameters[K]>, Schema.From<TypeParameters[K]>, never>
+    }
   ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<I, ParseResult.ParseIssue, never>,
-  annotations?: DeclareAnnotations<P, A>
-): Schema<A, I, Schema.Context<P[number]>> =>
+  annotations?: Annotations<A, TypeParameters>
+): Schema<A, I, Schema.Context<TypeParameters[number]>> =>
   make(
     new AST.Declaration(
       typeParameters.map((tp) => tp.ast),
@@ -511,25 +515,12 @@ const declareConstructor = <
 
 const declarePrimitive = <A>(
   is: (input: unknown) => input is A,
-  annotations?: DeclareAnnotations<[], A>
+  annotations?: Annotations<A>
 ): Schema<A> => {
   const decodeUnknown = () => (input: unknown, _: ParseOptions, ast: AST.Declaration) =>
     is(input) ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input))
   const encodeUnknown = decodeUnknown
   return make(new AST.Declaration([], decodeUnknown, encodeUnknown, toAnnotations(annotations)))
-}
-
-/**
- * @since 1.0.0
- */
-export interface DeclareAnnotations<P extends ReadonlyArray<any>, A> extends DocAnnotations {
-  readonly message?: AST.MessageAnnotation
-  readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
-  readonly arbitrary?: (...arbitraries: { readonly [K in keyof P]: Arbitrary<P[K]> }) => Arbitrary<A>
-  readonly pretty?: (...pretties: { readonly [K in keyof P]: Pretty.Pretty<P[K]> }) => Pretty.Pretty<A>
-  readonly equivalence?: (
-    ...equivalences: { readonly [K in keyof P]: Equivalence.Equivalence<P[K]> }
-  ) => Equivalence.Equivalence<A>
 }
 
 /**
@@ -542,7 +533,7 @@ export interface DeclareAnnotations<P extends ReadonlyArray<any>, A> extends Doc
 export const declare: {
   <A>(
     is: (input: unknown) => input is A,
-    annotations?: DeclareAnnotations<readonly [], A>
+    annotations?: Annotations<A>
   ): Schema<A>
   <const P extends ReadonlyArray<AnySchema>, I, A>(
     typeParameters: P,
@@ -560,7 +551,7 @@ export const declare: {
       options: ParseOptions,
       ast: AST.Declaration
     ) => Effect.Effect<I, ParseResult.ParseIssue, never>,
-    annotations?: DeclareAnnotations<{ readonly [K in keyof P]: Schema.To<P[K]> }, A>
+    annotations?: Annotations<A, { readonly [K in keyof P]: Schema.To<P[K]> }>
   ): Schema<A, I, Schema.Context<P[number]>>
 } = function() {
   if (Array.isArray(arguments[0])) {
@@ -615,7 +606,7 @@ export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
  */
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
-  options?: DeclareAnnotations<[], InstanceType<A>>
+  options?: Annotations<InstanceType<A>>
 ): Schema<InstanceType<A>> =>
   declare(
     (u): u is InstanceType<A> => u instanceof constructor,
@@ -866,23 +857,24 @@ export class PropertySignatureImpl<R, From, FromIsOptional, To, ToIsOptional> {
 /**
  * @since 1.0.0
  */
-export const propertySignatureAnnotations = (annotations: DocAnnotations) =>
-<S extends StructFields[PropertyKey]>(
-  self: S
-): S extends Schema<infer A, infer I, infer R> ? PropertySignature<I, false, A, false, R> : S => {
-  if (isSchema(self)) {
+export const propertySignatureAnnotations =
+  (annotations: PropertySignatureAnnotation) =>
+  <S extends StructFields[PropertyKey]>(
+    self: S
+  ): S extends Schema<infer A, infer I, infer R> ? PropertySignature<I, false, A, false, R> : S => {
+    if (isSchema(self)) {
+      return new PropertySignatureImpl({
+        _tag: "Declaration",
+        from: self.ast,
+        isOptional: false,
+        annotations: toAnnotations(annotations)
+      }) as any
+    }
     return new PropertySignatureImpl({
-      _tag: "Declaration",
-      from: self.ast,
-      isOptional: false,
+      ...(self as any).propertySignatureAST,
       annotations: toAnnotations(annotations)
     }) as any
   }
-  return new PropertySignatureImpl({
-    ...(self as any).propertySignatureAST,
-    annotations: toAnnotations(annotations)
-  }) as any
-}
 
 /**
  * @category optional
@@ -893,7 +885,7 @@ export const optionalToRequired = <A, I, R, B>(
   to: Schema<B>,
   decode: (o: Option.Option<A>) => B, // `none` here means: the value is missing in the input
   encode: (b: B) => Option.Option<A>, // `none` here means: the value will be missing in the output
-  annotations?: DocAnnotations
+  annotations?: PropertySignatureAnnotation
 ): PropertySignature<I, true, B, false, R> =>
   new PropertySignatureImpl({
     _tag: "OptionalToRequired",
@@ -914,7 +906,7 @@ export const optional: {
       readonly exact: true
       readonly default: () => A
       readonly nullable: true
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I | null, true, A, false, R>
   <A, I, R>(
@@ -922,7 +914,7 @@ export const optional: {
     options: {
       readonly exact: true
       readonly default: () => A
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I, true, A, false, R>
   <A, I, R>(
@@ -931,7 +923,7 @@ export const optional: {
       readonly exact: true
       readonly nullable: true
       readonly as: "Option"
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I | null, true, Option.Option<A>, false, R>
   <A, I, R>(
@@ -939,14 +931,14 @@ export const optional: {
     options: {
       readonly exact: true
       readonly as: "Option"
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly exact: true
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I, true, A, true, R>
   <A, I, R>(
@@ -954,7 +946,7 @@ export const optional: {
     options: {
       readonly default: () => A
       readonly nullable: true
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I | null | undefined, true, A, false, R>
   <A, I, R>(
@@ -962,27 +954,27 @@ export const optional: {
     options: {
       readonly nullable: true
       readonly as: "Option"
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I | undefined | null, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly as: "Option"
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I | undefined, true, Option.Option<A>, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly default: () => A
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I | undefined, true, A, false, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options?: {
-      readonly annotations?: DocAnnotations | undefined
+      readonly annotations?: PropertySignatureAnnotation | undefined
     }
   ): PropertySignature<I | undefined, true, A | undefined, true, R>
 } = <A, I, R>(
@@ -992,7 +984,7 @@ export const optional: {
     readonly default?: () => A
     readonly nullable?: true
     readonly as?: "Option"
-    readonly annotations?: DocAnnotations | undefined
+    readonly annotations?: PropertySignatureAnnotation | undefined
   }
 ): PropertySignature<any, any, any, any, R> => {
   const isExact = options?.exact
@@ -1388,7 +1380,7 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
  * @since 1.0.0
  */
 export const brand =
-  <B extends string | symbol, A>(brand: B, options?: DocAnnotations) =>
+  <B extends string | symbol, A>(brand: B, options?: Annotations<A & Brand.Brand<B>>) =>
   <I>(self: Schema<A, I>): BrandSchema<A & Brand.Brand<B>, I> => {
     const brandAnnotation: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self.ast), {
       onNone: () => [brand],
@@ -1790,18 +1782,18 @@ export const transformLiterals = <
  * @since 1.0.0
  */
 export const attachPropertySignature: {
-  <K extends PropertyKey, V extends AST.LiteralValue | symbol>(
+  <K extends PropertyKey, V extends AST.LiteralValue | symbol, A extends object>(
     key: K,
     value: V,
-    options?: DocAnnotations
-  ): <A extends object, I, R>(
+    annotations?: Annotations<Simplify<A & { readonly [k in K]: V }>>
+  ): <I, R>(
     schema: Schema<A, I, R>
   ) => Schema<Simplify<A & { readonly [k in K]: V }>, I, R>
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<A, I, R>,
     key: K,
     value: V,
-    options?: DocAnnotations
+    annotations?: Annotations<Simplify<A & { readonly [k in K]: V }>>
   ): Schema<Simplify<A & { readonly [k in K]: V }>, I, R>
 } = dual(
   (args) => isSchema(args[0]),
@@ -1809,7 +1801,7 @@ export const attachPropertySignature: {
     schema: Schema<A, I, R>,
     key: K,
     value: V,
-    options?: DocAnnotations
+    annotations?: Annotations<Simplify<A & { readonly [k in K]: V }>>
   ): Schema<Simplify<A & { readonly [k in K]: V }>, I, R> => {
     const attached = extend(
       to(schema),
@@ -1818,7 +1810,7 @@ export const attachPropertySignature: {
     return make(
       new AST.Transform(
         schema.ast,
-        options ? AST.annotations(attached, toAnnotations(options)) : attached,
+        annotations ? AST.annotations(attached, toAnnotations(annotations)) : attached,
         AST.TypeLiteralTransformation.make(
           [
             new AST.PropertySignatureTransformation(
@@ -1881,8 +1873,7 @@ const toAnnotations = (
 /**
  * @since 1.0.0
  */
-export interface DocAnnotations extends AST.Annotations {
-  readonly identifier?: AST.IdentifierAnnotation
+export interface PropertySignatureAnnotation extends AST.Annotations {
   readonly title?: AST.TitleAnnotation
   readonly description?: AST.DescriptionAnnotation
   readonly examples?: AST.ExamplesAnnotation
@@ -1893,14 +1884,28 @@ export interface DocAnnotations extends AST.Annotations {
 /**
  * @since 1.0.0
  */
-export interface FilterAnnotations<A> extends DeclareAnnotations<readonly [A], A> {
-  /**
-   * Attaches a JSON Schema annotation to this refinement.
-   *
-   * If the schema is composed of more than one refinement, the corresponding annotations will be merged.
-   */
+export interface Annotations<A, TypeParameters extends ReadonlyArray<any> = readonly []>
+  extends PropertySignatureAnnotation
+{
+  readonly identifier?: AST.IdentifierAnnotation
+  readonly message?: AST.MessageAnnotation
+  readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
   readonly jsonSchema?: AST.JSONSchemaAnnotation
+  readonly arbitrary?: (
+    ...arbitraries: { readonly [K in keyof TypeParameters]: Arbitrary<TypeParameters[K]> }
+  ) => Arbitrary<A>
+  readonly pretty?: (
+    ...pretties: { readonly [K in keyof TypeParameters]: Pretty.Pretty<TypeParameters[K]> }
+  ) => Pretty.Pretty<A>
+  readonly equivalence?: (
+    ...equivalences: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]> }
+  ) => Equivalence.Equivalence<A>
 }
+
+/**
+ * @since 1.0.0
+ */
+export interface FilterAnnotations<A> extends Annotations<A, readonly [A]> {}
 
 /**
  * @category annotations
@@ -4694,7 +4699,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
 
   readonly extend: <Extended>() => <FieldsB extends StructFields>(
     fields: FieldsB,
-    annotations?: DeclareAnnotations<[], Extended>
+    annotations?: Annotations<Extended>
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
     : Class<
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4722,7 +4727,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
       options: ParseOptions,
       ast: AST.Transform
     ) => Effect.Effect<A, ParseResult.ParseIssue, R3>,
-    annotations?: DeclareAnnotations<[], Transformed>
+    annotations?: Annotations<Transformed>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4750,7 +4755,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
       options: ParseOptions,
       ast: AST.Transform
     ) => Effect.Effect<I, ParseResult.ParseIssue, R3>,
-    annotations?: DeclareAnnotations<[], Transformed>
+    annotations?: Annotations<Transformed>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4770,7 +4775,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
 export const Class = <Self>() =>
 <Fields extends StructFields>(
   fields: Fields,
-  annotations?: DeclareAnnotations<[], Self>
+  annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
   : Class<
     Simplify<ToStruct<Fields>>,
@@ -4788,7 +4793,7 @@ export const TaggedClass = <Self>() =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
   fields: Fields,
-  annotations?: DeclareAnnotations<[], Self>
+  annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
@@ -4812,7 +4817,7 @@ export const TaggedError = <Self>() =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
   fields: Fields,
-  annotations?: DeclareAnnotations<[], Self>
+  annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
@@ -4864,7 +4869,7 @@ export const TaggedRequest = <Self>() =>
   Failure: Schema<EA, EI, ER>,
   Success: Schema<AA, AI, AR>,
   fields: Fields,
-  annotations?: DeclareAnnotations<[], Self>
+  annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
   : Class<
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
@@ -4906,7 +4911,7 @@ const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }:
   Base: new(...args: ReadonlyArray<any>) => any
   fromSchema?: Schema<A, I, R> | undefined
   defaults?: object | undefined
-  annotations?: DeclareAnnotations<[], any> | undefined
+  annotations?: Annotations<any> | undefined
 }): any => {
   const schema = fromSchema ?? struct(fields) as Schema<A, I, R>
   const validate = Parser.validateSync(schema)
@@ -4979,7 +4984,7 @@ const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }:
     static struct = schema
 
     static extend<Extended>() {
-      return (newFields: StructFields, annotations?: DeclareAnnotations<[], Extended>) =>
+      return (newFields: StructFields, annotations?: Annotations<Extended>) =>
         makeClass({
           fields: { ...fields, ...newFields },
           Base: this,
@@ -4989,7 +4994,7 @@ const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }:
     }
 
     static transformOrFail<Transformed>() {
-      return (newFields: StructFields, decode: any, encode: any, annotations?: DeclareAnnotations<[], Transformed>) => {
+      return (newFields: StructFields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
         const transformedFields: StructFields = { ...fields, ...newFields }
         return makeClass({
           fromSchema: transformOrFail(
@@ -5007,7 +5012,7 @@ const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }:
     }
 
     static transformOrFailFrom<Transformed>() {
-      return (newFields: StructFields, decode: any, encode: any, annotations?: DeclareAnnotations<[], Transformed>) => {
+      return (newFields: StructFields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
         const transformedFields: StructFields = { ...fields, ...newFields }
         return makeClass({
           fromSchema: transformOrFail(
