@@ -263,7 +263,7 @@ Schema.transform(aContext, bContext, () => 1, () => "")
 Schema.struct({ a: aContext }).pipe(Schema.attachPropertySignature("_tag", "A"))
 
 // ---------------------------------------------
-// annotations
+// annotations (method)
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "a">
