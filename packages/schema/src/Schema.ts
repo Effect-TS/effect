@@ -4774,7 +4774,7 @@ export const Class = <Self>() =>
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self
-  > => makeClass(struct(fields), fields, Data.Class)
+  > => makeClass({ fields, Base: Data.Class })
 
 /**
  * @category classes
@@ -4792,10 +4792,11 @@ export const TaggedClass = <Self>() =>
     Simplify<ToStruct<Fields>>,
     Self
   > =>
-{
-  const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
-  return makeClass(struct(fieldsWithTag), fieldsWithTag, Data.Class, { _tag: tag })
-}
+  makeClass({
+    fields: { ...fields, _tag: literal(tag) },
+    Base: Data.Class,
+    defaults: { _tag: tag }
+  })
 
 /**
  * @category classes
@@ -4815,15 +4816,11 @@ export const TaggedError = <Self>() =>
     {},
     Cause.YieldableError
   > =>
-{
-  const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
-  return makeClass(
-    struct(fieldsWithTag),
-    fieldsWithTag,
-    Data.Error,
-    { _tag: tag }
-  )
-}
+  makeClass({
+    fields: { ...fields, _tag: literal(tag) },
+    Base: Data.Error,
+    defaults: { _tag: tag }
+  })
 
 /**
  * @category classes
@@ -4887,27 +4884,26 @@ export const TaggedRequest = <Self>() =>
       return { Failure, Success }
     }
   }
-  const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
-  return makeClass(
-    struct(fieldsWithTag),
-    fieldsWithTag,
-    SerializableRequest,
-    { _tag: tag }
-  )
+  return makeClass({
+    fields: { ...fields, _tag: literal(tag) },
+    Base: SerializableRequest,
+    defaults: { _tag: tag }
+  })
 }
 
-const makeClass = <A, I, R>(
-  selfSchema: Schema<A, I, R>,
-  selfFields: StructFields,
-  Base: any,
-  additionalProps?: any
-): any => {
-  const validate = Parser.validateSync(selfSchema)
+const makeClass = <A, I, R>({ Base, defaults, fields, fromSchema }: {
+  fields: StructFields
+  Base: new(...args: ReadonlyArray<any>) => any
+  fromSchema?: Schema<A, I, R> | undefined
+  defaults?: object | undefined
+}): any => {
+  const schema = fromSchema ?? struct(fields) as Schema<A, I, R>
+  const validate = Parser.validateSync(schema)
 
   return class extends Base {
     constructor(props?: any, disableValidation = false) {
-      if (additionalProps !== undefined) {
-        props = { ...additionalProps, ...props }
+      if (defaults !== undefined) {
+        props = { ...defaults, ...props }
       }
       if (disableValidation !== true) {
         props = validate(props)
@@ -4937,7 +4933,7 @@ const makeClass = <A, I, R>(
     }
 
     static get ast() {
-      const toSchema = to(selfSchema)
+      const toSchema = to(schema)
       const encode = Parser.encodeUnknown(toSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
@@ -4967,7 +4963,7 @@ const makeClass = <A, I, R>(
         }
       )
       const transformation = transform(
-        selfSchema,
+        schema,
         declaration,
         (input) => new this(input, true),
         identity
@@ -4975,51 +4971,48 @@ const makeClass = <A, I, R>(
       return transformation.ast
     }
 
-    static struct = selfSchema
+    static struct = schema
 
     static extend() {
-      return (fields: StructFields) => {
-        const newFields: StructFields = { ...selfFields, ...fields }
-        return makeClass(
-          struct(newFields),
-          newFields,
-          this,
-          additionalProps
-        )
-      }
+      return (newFields: StructFields) =>
+        makeClass({
+          fields: { ...fields, ...newFields },
+          Base: this,
+          defaults
+        })
     }
 
     static transformOrFail() {
-      return (fields: any, decode: any, encode: any) => {
-        const newFields = { ...selfFields, ...fields }
-        return makeClass(
-          transformOrFail(
-            selfSchema,
-            to(struct(newFields)),
+      return (newFields: any, decode: any, encode: any) => {
+        const transformedFields = { ...fields, ...newFields }
+        return makeClass({
+          fromSchema: transformOrFail(
+            schema,
+            to(struct(transformedFields)),
             decode,
             encode
           ),
-          newFields,
-          this,
-          additionalProps
-        )
+          fields: transformedFields,
+          Base: this,
+          defaults
+        })
       }
     }
 
     static transformOrFailFrom() {
-      return (fields: StructFields, decode: any, encode: any) => {
-        const newFields: StructFields = { ...selfFields, ...fields }
-        return makeClass(
-          transformOrFail(
-            from(selfSchema),
-            struct(newFields),
+      return (newFields: StructFields, decode: any, encode: any) => {
+        const transformedFields: StructFields = { ...fields, ...newFields }
+        return makeClass({
+          fromSchema: transformOrFail(
+            from(schema),
+            struct(transformedFields),
             decode,
             encode
           ),
-          newFields,
-          this,
-          additionalProps
-        )
+          fields: transformedFields,
+          Base: this,
+          defaults
+        })
       }
     }
   }
