@@ -4693,7 +4693,8 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
   readonly struct: Schema<A, I, R>
 
   readonly extend: <Extended>() => <FieldsB extends StructFields>(
-    fields: FieldsB
+    fields: FieldsB,
+    annotations?: DeclareAnnotations<[], Extended>
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
     : Class<
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4720,7 +4721,8 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
       input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
+    ) => Effect.Effect<A, ParseResult.ParseIssue, R3>,
+    annotations?: DeclareAnnotations<[], Transformed>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4747,7 +4749,8 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
       input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
+    ) => Effect.Effect<I, ParseResult.ParseIssue, R3>,
+    annotations?: DeclareAnnotations<[], Transformed>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
@@ -4766,7 +4769,8 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
  */
 export const Class = <Self>() =>
 <Fields extends StructFields>(
-  fields: Fields
+  fields: Fields,
+  annotations?: DeclareAnnotations<[], Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
   : Class<
     Simplify<ToStruct<Fields>>,
@@ -4774,7 +4778,7 @@ export const Class = <Self>() =>
     Schema.Context<Fields[keyof Fields]>,
     Simplify<ToStruct<Fields>>,
     Self
-  > => makeClass({ fields, Base: Data.Class })
+  > => makeClass({ fields, Base: Data.Class, annotations })
 
 /**
  * @category classes
@@ -4783,7 +4787,8 @@ export const Class = <Self>() =>
 export const TaggedClass = <Self>() =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
-  fields: Fields
+  fields: Fields,
+  annotations?: DeclareAnnotations<[], Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
@@ -4795,7 +4800,8 @@ export const TaggedClass = <Self>() =>
   makeClass({
     fields: { ...fields, _tag: literal(tag) },
     Base: Data.Class,
-    defaults: { _tag: tag }
+    defaults: { _tag: tag },
+    annotations
   })
 
 /**
@@ -4805,7 +4811,8 @@ export const TaggedClass = <Self>() =>
 export const TaggedError = <Self>() =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
-  fields: Fields
+  fields: Fields,
+  annotations?: DeclareAnnotations<[], Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
@@ -4819,7 +4826,8 @@ export const TaggedError = <Self>() =>
   makeClass({
     fields: { ...fields, _tag: literal(tag) },
     Base: Data.Error,
-    defaults: { _tag: tag }
+    defaults: { _tag: tag },
+    annotations
   })
 
 /**
@@ -4855,7 +4863,8 @@ export const TaggedRequest = <Self>() =>
   tag: Tag,
   Failure: Schema<EA, EI, ER>,
   Success: Schema<AA, AI, AR>,
-  fields: Fields
+  fields: Fields,
+  annotations?: DeclareAnnotations<[], Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
   : Class<
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
@@ -4887,15 +4896,17 @@ export const TaggedRequest = <Self>() =>
   return makeClass({
     fields: { ...fields, _tag: literal(tag) },
     Base: SerializableRequest,
-    defaults: { _tag: tag }
+    defaults: { _tag: tag },
+    annotations
   })
 }
 
-const makeClass = <A, I, R>({ Base, defaults, fields, fromSchema }: {
+const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }: {
   fields: StructFields
   Base: new(...args: ReadonlyArray<any>) => any
   fromSchema?: Schema<A, I, R> | undefined
   defaults?: object | undefined
+  annotations?: DeclareAnnotations<[], any> | undefined
 }): any => {
   const schema = fromSchema ?? struct(fields) as Schema<A, I, R>
   const validate = Parser.validateSync(schema)
@@ -4922,14 +4933,7 @@ const makeClass = <A, I, R>({ Base, defaults, fields, fromSchema }: {
     }
 
     static annotations(annotations: AST.Annotations) {
-      const ast = this.ast as AST.Transform
-      return make(
-        new AST.Transform(
-          ast.from,
-          AST.annotations(ast.to, annotations),
-          ast.transformation
-        )
-      )
+      return make(this.ast).annotations(annotations)
     }
 
     static get ast() {
@@ -4959,7 +4963,8 @@ const makeClass = <A, I, R>({ Base, defaults, fields, fromSchema }: {
           pretty: () => (self: any) => `${self.constructor.name}(${pretty(self)})`,
           arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props)),
           equivalence: () => equivalence as any,
-          [AST.SurrogateAnnotationId]: toSchema.ast
+          [AST.SurrogateAnnotationId]: toSchema.ast,
+          ...annotations
         }
       )
       const transformation = transform(
@@ -4973,18 +4978,19 @@ const makeClass = <A, I, R>({ Base, defaults, fields, fromSchema }: {
 
     static struct = schema
 
-    static extend() {
-      return (newFields: StructFields) =>
+    static extend<Extended>() {
+      return (newFields: StructFields, annotations?: DeclareAnnotations<[], Extended>) =>
         makeClass({
           fields: { ...fields, ...newFields },
           Base: this,
-          defaults
+          defaults,
+          annotations
         })
     }
 
-    static transformOrFail() {
-      return (newFields: any, decode: any, encode: any) => {
-        const transformedFields = { ...fields, ...newFields }
+    static transformOrFail<Transformed>() {
+      return (newFields: StructFields, decode: any, encode: any, annotations?: DeclareAnnotations<[], Transformed>) => {
+        const transformedFields: StructFields = { ...fields, ...newFields }
         return makeClass({
           fromSchema: transformOrFail(
             schema,
@@ -4994,13 +5000,14 @@ const makeClass = <A, I, R>({ Base, defaults, fields, fromSchema }: {
           ),
           fields: transformedFields,
           Base: this,
-          defaults
+          defaults,
+          annotations
         })
       }
     }
 
-    static transformOrFailFrom() {
-      return (newFields: StructFields, decode: any, encode: any) => {
+    static transformOrFailFrom<Transformed>() {
+      return (newFields: StructFields, decode: any, encode: any, annotations?: DeclareAnnotations<[], Transformed>) => {
         const transformedFields: StructFields = { ...fields, ...newFields }
         return makeClass({
           fromSchema: transformOrFail(
@@ -5011,7 +5018,8 @@ const makeClass = <A, I, R>({ Base, defaults, fields, fromSchema }: {
           ),
           fields: transformedFields,
           Base: this,
-          defaults
+          defaults,
+          annotations
         })
       }
     }

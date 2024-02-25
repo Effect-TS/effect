@@ -133,10 +133,17 @@ describe("Schema > Class", () => {
     expect(S.isSchema(Person)).toEqual(true)
   })
 
-  it("using .annotations() on a Class should return Schema", () => {
+  it("using .annotations() on a Class should return a Schema", () => {
     const schema = Person.pipe(S.title("X"))
     expect(S.isSchema(schema)).toEqual(true)
-    expect((schema.ast as any).to.annotations[AST.TitleAnnotationId]).toEqual("X")
+    expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
+  })
+
+  it("should support annotations when declaring the Class", () => {
+    class A extends S.Class<A>()({
+      a: S.string
+    }, { title: "X" }) {}
+    expect((A.ast as AST.Transform).to.annotations[AST.TitleAnnotationId]).toEqual("X")
   })
 
   it("constructor", () => {
