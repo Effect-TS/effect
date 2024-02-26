@@ -1860,7 +1860,7 @@ export const forEach: {
 ) =>
   core.withFiberRuntime<A | void, E, R>((r) => {
     const isRequestBatchingEnabled = options?.batching === true ||
-      (options?.batching === "inherit" && r.getFiberRef(core.currentRequestBatching))
+      ((options?.batching ?? "inherit") === "inherit" && r.getFiberRef(core.currentRequestBatching))
 
     if (options?.discard) {
       return concurrency.match(
