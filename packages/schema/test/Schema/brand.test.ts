@@ -85,8 +85,7 @@ describe("Schema > brand", () => {
 
   it("the constructor should throw on invalid values", () => {
     const IntegerFromString = S.NumberFromString.pipe(
-      S.int(),
-      S.identifier("IntegerFromString"),
+      S.int({ identifier: "IntegerFromString" }),
       S.brand("Int")
     )
     expect(IntegerFromString(1)).toEqual(1)
@@ -148,9 +147,8 @@ describe("Schema > brand", () => {
     it("string brand", async () => {
       const schema = S.NumberFromString.pipe(
         S.int(),
-        S.brand("Int"),
-        S.identifier("IntegerFromString")
-      )
+        S.brand("Int")
+      ).annotations({ identifier: "IntegerFromString" })
       await Util.expectDecodeUnknownSuccess(schema, "1", 1 as any)
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -167,9 +165,8 @@ describe("Schema > brand", () => {
       const Int = Symbol.for("Int")
       const schema = S.NumberFromString.pipe(
         S.int(),
-        S.brand(Int),
-        S.identifier("IntegerFromString")
-      )
+        S.brand(Int)
+      ).annotations({ identifier: "IntegerFromString" })
       await Util.expectDecodeUnknownSuccess(schema, "1", 1 as any)
       await Util.expectDecodeUnknownFailure(
         schema,

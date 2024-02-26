@@ -44,28 +44,32 @@ export const propertyTo = <A, I>(
   fc.assert(transitivity, params)
 }
 
-const string = S.string.pipe(S.equivalence((a, b) => {
-  if (typeof a !== "string" || typeof b !== "string") {
-    throw new Error("invalid string provided to `string`")
+const string = S.string.annotations({
+  equivalence: () => (a, b) => {
+    if (typeof a !== "string" || typeof b !== "string") {
+      throw new Error("invalid string provided to `string`")
+    }
+    return a === b
   }
-  return a === b
-}))
+})
 
-const number = S.JsonNumber.pipe(S.equivalence((a, b) => {
-  if (typeof a !== "number" || typeof b !== "number") {
-    throw new Error("invalid number provided to `number`")
+const number = S.JsonNumber.annotations({
+  equivalence: () => (a, b) => {
+    if (typeof a !== "number" || typeof b !== "number") {
+      throw new Error("invalid number provided to `number`")
+    }
+    return a === b
   }
-  return a === b
-}))
+})
 
-const symbol = S.symbolFromSelf.pipe(
-  S.equivalence((a, b) => {
+const symbol = S.symbolFromSelf.annotations({
+  equivalence: () => (a, b) => {
     if (typeof a !== "symbol" || typeof b !== "symbol") {
       throw new Error("invalid symbol provided to `symbol`")
     }
     return a === b
-  })
-)
+  }
+})
 
 describe("Equivalence", () => {
   it("transformation", () => {
@@ -568,9 +572,9 @@ describe("Equivalence", () => {
     })
 
     it("custom equivalence", () => {
-      const schema = S.struct({ a: string, b: string }).pipe(
-        S.equivalence(Equivalence.make((x, y) => x.a === y.a))
-      )
+      const schema = S.struct({ a: string, b: string }).annotations({
+        equivalence: () => Equivalence.make((x, y) => x.a === y.a)
+      })
       const equivalence = E.make(schema)
 
       expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "b" })).toBe(true)

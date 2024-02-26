@@ -6,8 +6,8 @@ describe("Schema > union", () => {
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
       const schema = S.union(
-        S.struct({}).pipe(S.identifier("MyDataType1")),
-        S.struct({}).pipe(S.identifier("MyDataType2"))
+        S.struct({}).annotations({ identifier: "MyDataType1" }),
+        S.struct({}).annotations({ identifier: "MyDataType2" })
       )
       await Util.expectDecodeUnknownFailure(
         schema,

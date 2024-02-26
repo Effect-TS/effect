@@ -9,7 +9,7 @@ describe("string > trim", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.string.pipe(S.minLength(1), S.compose(S.Trim), S.identifier("MySchema"))
+    const schema = S.string.pipe(S.minLength(1), S.compose(S.Trim)).annotations({ identifier: "MySchema" })
     await Util.expectDecodeUnknownSuccess(schema, "a", "a")
     await Util.expectDecodeUnknownSuccess(schema, "a ", "a")
     await Util.expectDecodeUnknownSuccess(schema, " a ", "a")
@@ -27,7 +27,7 @@ describe("string > trim", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.string.pipe(S.minLength(1), S.compose(S.Trim), S.identifier("MySchema"))
+    const schema = S.string.pipe(S.minLength(1), S.compose(S.Trim)).annotations({ identifier: "MySchema" })
     await Util.expectEncodeSuccess(schema, "a", "a")
 
     await Util.expectEncodeFailure(

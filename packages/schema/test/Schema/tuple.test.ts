@@ -26,7 +26,7 @@ describe("Schema > tuple", () => {
 
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
-      const schema = S.tuple().pipe(S.identifier("MyDataType"))
+      const schema = S.tuple().annotations({ identifier: "MyDataType" })
       await Util.expectDecodeUnknownFailure(
         schema,
         null,

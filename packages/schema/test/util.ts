@@ -222,9 +222,9 @@ export const sample = <A, I>(schema: S.Schema<A, I>, n: number) => {
   console.log(JSON.stringify(fc.sample(arb, n), null, 2))
 }
 
-export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).pipe(
-  S.identifier("NumberFromChar")
-)
+export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).annotations({
+  identifier: "NumberFromChar"
+})
 
 export const expectFailure = async <A>(
   effect: Either.Either<A, ParseResult.ParseError> | Effect.Effect<A, ParseResult.ParseError>,
@@ -288,7 +288,7 @@ export const AsyncDeclaration = S.declare(
   }
 )
 
-export const AsyncString = effectify(S.string).pipe(S.identifier("AsyncString"))
+export const AsyncString = effectify(S.string).annotations({ identifier: "AsyncString" })
 
 const Name = Context.GenericTag<"Name", string>("Name")
 
@@ -297,4 +297,4 @@ export const DependencyString = S.transformOrFail(
   S.string,
   (s) => Effect.andThen(Name, s),
   (s) => Effect.andThen(Name, s)
-).pipe(S.identifier("DependencyString"))
+).annotations({ identifier: "DependencyString" })

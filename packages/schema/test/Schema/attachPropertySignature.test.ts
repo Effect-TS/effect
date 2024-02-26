@@ -136,9 +136,8 @@ describe("Schema/attachPropertySignature", () => {
     const schema = S.struct({
       a: S.string
     }).pipe(
-      S.attachPropertySignature("_tag", "a"),
-      S.identifier("AttachedProperty")
-    )
+      S.attachPropertySignature("_tag", "a")
+    ).annotations({ identifier: "AttachedProperty" })
     await Util.expectDecodeUnknownFailure(
       schema,
       null,

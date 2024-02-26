@@ -10,7 +10,7 @@ describe("Schema > struct", () => {
 
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
-      const schema = S.struct({}).pipe(S.identifier("MyDataType"))
+      const schema = S.struct({}).annotations({ identifier: "MyDataType" })
       await Util.expectDecodeUnknownFailure(
         schema,
         null,

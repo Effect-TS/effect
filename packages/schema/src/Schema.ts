@@ -2302,7 +2302,7 @@ export const Lowercase: Schema<string> = transform(
   Lowercased,
   (s) => s.toLowerCase(),
   identity
-).pipe(identifier("Lowercase"))
+).annotations({ identifier: "Lowercase" })
 
 /**
  * This schema converts a string to uppercase.
@@ -2315,7 +2315,7 @@ export const Uppercase: Schema<string> = transform(
   Uppercased,
   (s) => s.toUpperCase(),
   identity
-).pipe(identifier("Uppercase"))
+).annotations({ identifier: "Uppercase" })
 
 /**
  * @category string constructors
@@ -2336,7 +2336,7 @@ export const Trim: Schema<string> = transform(
   Trimmed,
   (s) => s.trim(),
   identity
-).pipe(identifier("Trim"))
+).annotations({ identifier: "Trim" })
 
 /**
  * Returns a achema that allows splitting a string into an array of strings.
@@ -2787,7 +2787,7 @@ export const NumberFromString: Schema<number, string> = transformOrFail(
   number,
   (s, _, ast) => ParseResult.fromOption(N.parse(s), () => new ParseResult.Type(ast, s)),
   (n) => ParseResult.succeed(String(n))
-).pipe(identifier("NumberFromString"))
+).annotations({ identifier: "NumberFromString" })
 
 /**
  * @category number constructors
@@ -2896,7 +2896,7 @@ export const symbol: Schema<symbol, string> = transform(
   (s) => Symbol.for(s),
   (sym) => sym.description,
   { strict: false }
-).pipe(identifier("symbol"))
+).annotations({ identifier: "symbol" })
 
 /**
  * @category type id
@@ -3116,7 +3116,7 @@ export const bigint: Schema<bigint, string> = transformOrFail(
     })
   },
   (n) => ParseResult.succeed(String(n))
-).pipe(identifier("bigint"))
+).annotations({ identifier: "bigint" })
 
 /**
  * @category bigint constructors
@@ -3199,7 +3199,7 @@ export const BigintFromNumber: Schema<bigint, number> = transformOrFail(
       catch: () => new ParseResult.Type(ast, n)
     }),
   (b, _, ast) => ParseResult.fromOption(BigInt_.toNumber(b), () => new ParseResult.Type(ast, b))
-).pipe(identifier("BigintFromNumber"))
+).annotations({ identifier: "BigintFromNumber" })
 
 /**
  * @category Secret constructors
@@ -3220,7 +3220,7 @@ const _Secret: Schema<Secret.Secret, string> = transform(
   (str) => Secret.fromString(str),
   (secret) => Secret.value(secret),
   { strict: false }
-).pipe(identifier("Secret"))
+).annotations({ identifier: "Secret" })
 
 export {
   /**
@@ -3273,7 +3273,7 @@ export const DurationFromNanos: Schema<Duration.Duration, bigint> = transformOrF
       onNone: () => ParseResult.fail(new ParseResult.Type(ast, duration)),
       onSome: (val) => ParseResult.succeed(val)
     })
-).pipe(identifier("DurationFromNanos"))
+).annotations({ identifier: "DurationFromNanos" })
 
 /**
  * A schema that transforms a `number` tuple into a `Duration`.
@@ -3287,7 +3287,7 @@ export const DurationFromMillis: Schema<Duration.Duration, number> = transform(
   DurationFromSelf,
   (ms) => Duration.millis(ms),
   (n) => Duration.toMillis(n)
-).pipe(identifier("DurationFromMillis"))
+).annotations({ identifier: "DurationFromMillis" })
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   NonNegative.pipe(
@@ -3309,7 +3309,7 @@ const _Duration: Schema<Duration.Duration, readonly [seconds: number, nanos: num
   DurationFromSelf,
   ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
   (duration) => Duration.toHrTime(duration)
-).pipe(identifier("Duration"))
+).annotations({ identifier: "Duration" })
 
 export {
   /**
@@ -3478,11 +3478,11 @@ const _Uint8Array: Schema<Uint8Array, ReadonlyArray<number>> = transform(
       title: "8-bit unsigned integer",
       description: "a 8-bit unsigned integer"
     })
-  )).pipe(description("an array of 8-bit unsigned integers")),
+  )).annotations({ description: "an array of 8-bit unsigned integers" }),
   Uint8ArrayFromSelf,
   (a) => Uint8Array.from(a),
   (arr) => Array.from(arr)
-).pipe(identifier("Uint8Array"))
+).annotations({ identifier: "Uint8Array" })
 
 export {
   /**
@@ -3509,7 +3509,7 @@ const makeEncodingTransformation = (
       ),
     (u) => ParseResult.succeed(encode(u)),
     { strict: false }
-  ).pipe(identifier(id))
+  ).annotations({ identifier: id })
 
 /**
  * @category Encoding transformations
@@ -3743,7 +3743,7 @@ export const DateFromString: Schema<Date, string> = transform(
   DateFromSelf,
   (s) => new Date(s),
   (n) => n.toISOString()
-).pipe(identifier("DateFromString"))
+).annotations({ identifier: "DateFromString" })
 
 const _Date: Schema<Date, string> = DateFromString.pipe(
   validDate({ identifier: "Date" })
@@ -3914,21 +3914,21 @@ const rightFrom = <A, IA, R>(right: Schema<A, IA, R>): Schema<RightFrom<A>, Righ
   struct({
     _tag: literal("Right"),
     right
-  }).pipe(description(`RightFrom<${format(right)}>`))
+  }).annotations({ description: `RightFrom<${format(right)}>` })
 
 const leftFrom = <E, IE, R>(left: Schema<E, IE, R>): Schema<LeftFrom<E>, LeftFrom<IE>, R> =>
   struct({
     _tag: literal("Left"),
     left
-  }).pipe(description(`LeftFrom<${format(left)}>`))
+  }).annotations({ description: `LeftFrom<${format(left)}>` })
 
 const eitherFrom = <E, IE, R1, A, IA, R2>(
   left: Schema<E, IE, R1>,
   right: Schema<A, IA, R2>
 ): Schema<EitherFrom<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
-  union(rightFrom(right), leftFrom(left)).pipe(
-    description(`EitherFrom<${format(left)}, ${format(right)}>`)
-  )
+  union(rightFrom(right), leftFrom(left)).annotations({
+    description: `EitherFrom<${format(left)}, ${format(right)}>`
+  })
 
 const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<A, E> =>
   input._tag === "Left" ? Either.left(input.left) : Either.right(input.right)
@@ -4190,7 +4190,7 @@ const _BigDecimal: Schema<BigDecimal.BigDecimal, string> = transformOrFail(
       onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
     })),
   (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val)))
-).pipe(identifier("BigDecimal"))
+).annotations({ identifier: "BigDecimal" })
 
 export {
   /**
@@ -4212,7 +4212,7 @@ export const BigDecimalFromNumber: Schema<BigDecimal.BigDecimal, number> = trans
   BigDecimalFromSelf,
   (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
   (val) => ParseResult.succeed(BigDecimal.unsafeToNumber(val))
-).pipe(identifier("BigDecimalFromNumber"))
+).annotations({ identifier: "BigDecimalFromNumber" })
 
 /**
  * @category type id
@@ -4989,11 +4989,11 @@ const FiberIdCompositeFrom = struct({
   _tag: literal("Composite"),
   left: suspend(() => FiberIdFrom),
   right: suspend(() => FiberIdFrom)
-}).pipe(identifier("FiberIdCompositeFrom"))
+}).annotations({ identifier: "FiberIdCompositeFrom" })
 
 const FiberIdNoneFrom = struct({
   _tag: literal("None")
-}).pipe(identifier("FiberIdNoneFrom"))
+}).annotations({ identifier: "FiberIdNoneFrom" })
 
 const FiberIdRuntimeFrom = struct({
   _tag: literal("Runtime"),
@@ -5005,13 +5005,13 @@ const FiberIdRuntimeFrom = struct({
     title: "startTimeMillis",
     description: "startTimeMillis"
   }))
-}).pipe(identifier("FiberIdRuntimeFrom"))
+}).annotations({ identifier: "FiberIdRuntimeFrom" })
 
 const FiberIdFrom: Schema<FiberIdFrom> = union(
   FiberIdCompositeFrom,
   FiberIdNoneFrom,
   FiberIdRuntimeFrom
-).pipe(identifier("FiberIdFrom"))
+).annotations({ identifier: "FiberIdFrom" })
 
 const fiberIdFromArbitrary = arbitrary.make(FiberIdFrom)
 
@@ -5072,7 +5072,7 @@ const _FiberId: Schema<FiberId.FiberId, FiberIdFrom> = transform(
   FiberIdFromSelf,
   fiberIdDecode,
   fiberIdEncode
-).pipe(identifier("FiberId"))
+).annotations({ identifier: "FiberId" })
 
 export {
   /**
@@ -5160,7 +5160,7 @@ const causeFrom = <E, EI, R1, R2>(
     CauseInterruptFrom,
     causeParallelFrom(recur),
     causeSequentialFrom(recur)
-  ).pipe(description(`CauseFrom<${format(error)}>`))
+  ).annotations({ description: `CauseFrom<${format(error)}>` })
   return out
 }
 

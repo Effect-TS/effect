@@ -176,9 +176,9 @@ describe("TreeFormatter", () => {
   describe("handle identifiers", () => {
     it("struct", async () => {
       const schema = S.struct({
-        a: S.string.pipe(S.identifier("MyString1")),
-        b: S.string.pipe(S.identifier("MyString2"))
-      }).pipe(S.identifier("MySchema"))
+        a: S.string.annotations({ identifier: "MyString1" }),
+        b: S.string.annotations({ identifier: "MyString2" })
+      }).annotations({ identifier: "MySchema" })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -197,7 +197,7 @@ describe("TreeFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
-        ).pipe(S.identifier("A"))
+        ).annotations({ identifier: "A" })
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -222,7 +222,7 @@ describe("TreeFormatter", () => {
         const schema: S.Schema<A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
-        ).pipe(S.identifier("A"))
+        ).annotations({ identifier: "A" })
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -246,7 +246,7 @@ describe("TreeFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.tuple(
           S.number,
-          S.union(S.suspend(() => schema).pipe(S.identifier("A")), S.literal(null))
+          S.union(S.suspend(() => schema).annotations({ identifier: "A" }), S.literal(null))
         )
 
         await Util.expectDecodeUnknownFailure(
