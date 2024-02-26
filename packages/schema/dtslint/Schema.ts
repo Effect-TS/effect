@@ -3,6 +3,8 @@ import * as S from "@effect/schema/Schema"
 import * as Brand from "effect/Brand"
 import { identity, pipe } from "effect/Function"
 
+class MyClass extends S.Class<MyClass>()({ a: S.string }) {}
+
 // ---------------------------------------------
 // From
 // ---------------------------------------------
@@ -16,6 +18,45 @@ export type FromNever = S.Schema.From<typeof S.never>
 
 // $ExpectType never
 export type ToNever = S.Schema.To<typeof S.never>
+
+// ---------------------------------------------
+// .annotations() method
+// ---------------------------------------------
+
+// $ExpectType Schema<string, string, never>
+S.string.annotations({})
+
+// $ExpectType BrandSchema<number & Brand<"Int">, number>
+pipe(S.number, S.int(), S.brand("Int")).annotations({})
+
+// $ExpectType Schema<MyClass, { readonly a: string; }, never>
+MyClass.annotations({})
+
+// ---------------------------------------------
+// S.annotations
+// ---------------------------------------------
+
+// $ExpectType Schema<string, string, never>
+S.string.pipe(S.annotations({}))
+
+// $ExpectType Schema<number & Brand<"Int">, number, never>
+S.number.pipe(S.int(), S.brand("Int"), S.annotations({}))
+
+// $ExpectType Schema<never, never, never>
+S.never.pipe(S.annotations({}))
+
+// $ExpectType Schema<MyClass, { readonly a: string; }, never>
+MyClass.pipe(S.annotations({}))
+
+// ---------------------------------------------
+// S.message
+// ---------------------------------------------
+
+// $ExpectType Schema<string, string, never>
+S.string.pipe(S.message(() => "message"))
+
+// $ExpectType Schema<MyClass, { readonly a: string; }, never>
+MyClass.pipe(S.message(() => "message"))
 
 // ---------------------------------------------
 // Primitives
@@ -428,18 +469,6 @@ pipe(S.number, S.int(), S.brand("Int"))
 // $ExpectType BrandSchema<number & Brand<"Int">, string>
 pipe(S.NumberFromString, S.int(), S.brand("Int"))
 
-// $ExpectType BrandSchema<number & Brand<"Int">, number>
-pipe(S.number, S.int(), S.brand("Int")).annotations({})
-
-// $ExpectType Schema<number & Brand<"Int">, number, never>
-S.number.pipe(S.int(), S.brand("Int"), S.annotations({}))
-
-// $ExpectType Schema<number & Brand<"Int">, number, never>
-S.annotations(S.number.pipe(S.int(), S.brand("Int")), {})
-
-// $ExpectType Schema<never, never, never>
-S.never.pipe(S.annotations({}))
-
 // ---------------------------------------------
 // Partial
 // ---------------------------------------------
@@ -683,15 +712,6 @@ pipe(UnionFilter, S.filter(S.is(S.struct({ b: S.string }))))
 // $ExpectType Schema<number & Brand<"MyNumber">, number, never>
 pipe(S.number, S.filter((n): n is number & Brand.Brand<"MyNumber"> => n > 0))
 
-// $ExpectType Schema<string, string, never>
-S.string.annotations({})
-
-// $ExpectType Schema<string, string, never>
-pipe(S.string, S.annotations({}))
-
-// $ExpectType Schema<string, string, never>
-S.string.pipe(S.annotations({}))
-
 // annotations
 pipe(
   S.string,
@@ -866,10 +886,6 @@ S.transformLiterals([0, "a"], [1, "b"])
 // Class
 // ---------------------------------------------
 
-class MyClass extends S.Class<MyClass>()({
-  a: S.string
-}) {}
-
 // $ExpectType { readonly a: string; }
 export type MyClassFrom = S.Schema.From<typeof MyClass>
 
@@ -947,7 +963,7 @@ S.SecretFromSelf
 S.asPropertySignature(S.string).annotations({ description: "description" })
 
 // ---------------------------------------------
-// PropertySignature annotations
+// PropertySignature .annotations() method
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<string | undefined, true, string | undefined, true, never>
