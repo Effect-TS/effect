@@ -68,34 +68,20 @@ describe("Schema > .annotations()", () => {
   it("message as annotation options", async () => {
     const schema =
       // initial schema, a string
-      S.string.pipe(
+      S.string
         // add an error message for non-string values
-        S.message(() => "not a string"),
-        // add a constraint to the schema, only non-empty strings are valid
-        S.nonEmpty({ message: () => "required" }),
-        // add a constraint to the schema, only strings with a length less or equal than 10 are valid
-        S.maxLength(10, { message: (issue) => `${issue.actual} is too long` })
-      )
+        .annotations({ message: () => "not a string" }).pipe(
+          // add a constraint to the schema, only non-empty strings are valid
+          S.nonEmpty({ message: () => "required" }),
+          // add a constraint to the schema, only strings with a length less or equal than 10 are valid
+          S.maxLength(10, { message: (issue) => `${issue.actual} is too long` })
+        )
 
     expect(S.isSchema(schema)).toEqual(true)
     await Util.expectDecodeUnknownFailure(schema, null, "not a string")
     await Util.expectDecodeUnknownFailure(schema, "", "required")
     await Util.expectDecodeUnknownSuccess(schema, "a", "a")
     await Util.expectDecodeUnknownFailure(schema, "aaaaaaaaaaaaaa", "aaaaaaaaaaaaaa is too long")
-  })
-
-  describe("message as annotation", () => {
-    it("primitives", async () => {
-      const schema = S.string.pipe(S.nonEmpty(), S.message(() => "custom message"))
-      expect(S.isSchema(schema)).toEqual(true)
-      await Util.expectDecodeUnknownFailure(schema, "", "custom message")
-    })
-
-    it("transformations", async () => {
-      const schema = S.NumberFromString.pipe(S.message(() => "custom message"))
-      expect(S.isSchema(schema)).toEqual(true)
-      await Util.expectDecodeUnknownFailure(schema, "", "custom message")
-    })
   })
 
   it("pretty", () => {

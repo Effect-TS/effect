@@ -271,9 +271,9 @@ describe("TreeFormatter", () => {
 
   describe("messages", () => {
     it("declaration", async () => {
-      const schema = S.optionFromSelf(S.number).pipe(
-        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-      )
+      const schema = S.optionFromSelf(S.number).annotations({
+        message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+      })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -283,9 +283,9 @@ describe("TreeFormatter", () => {
     })
 
     it("literal", async () => {
-      const schema = S.literal("a").pipe(
-        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-      )
+      const schema = S.literal("a").annotations({
+        message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+      })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -295,9 +295,9 @@ describe("TreeFormatter", () => {
     })
 
     it("uniqueSymbol", async () => {
-      const schema = S.uniqueSymbol(Symbol.for("@effect/schema/test/a")).pipe(
-        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-      )
+      const schema = S.uniqueSymbol(Symbol.for("@effect/schema/test/a")).annotations({
+        message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+      })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -307,9 +307,9 @@ describe("TreeFormatter", () => {
     })
 
     it("string", async () => {
-      const schema = S.string.pipe(
-        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-      )
+      const schema = S.string.annotations({
+        message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+      })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -323,9 +323,9 @@ describe("TreeFormatter", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits).pipe(
-        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-      )
+      const schema = S.enums(Fruits).annotations({
+        message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+      })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -335,9 +335,9 @@ describe("TreeFormatter", () => {
     })
 
     it("templateLiteral", async () => {
-      const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b")).pipe(
-        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-      )
+      const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b")).annotations({
+        message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+      })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -349,9 +349,8 @@ describe("TreeFormatter", () => {
     describe("refinement", () => {
       it("top level message", async () => {
         const schema = S.string.pipe(
-          S.minLength(1),
-          S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-        )
+          S.minLength(1)
+        ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -411,9 +410,9 @@ describe("TreeFormatter", () => {
     })
 
     it("tuple", async () => {
-      const schema = S.tuple(S.string, S.number).pipe(
-        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-      )
+      const schema = S.tuple(S.string, S.number).annotations({
+        message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+      })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -431,7 +430,7 @@ describe("TreeFormatter", () => {
       const schema = S.struct({
         a: S.string,
         b: S.string
-      }).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
+      }).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -446,9 +445,9 @@ describe("TreeFormatter", () => {
     })
 
     it("union", async () => {
-      const schema = S.union(S.string, S.number).pipe(
-        S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-      )
+      const schema = S.union(S.string, S.number).annotations({
+        message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+      })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -459,9 +458,9 @@ describe("TreeFormatter", () => {
 
     describe("transformation", () => {
       it("top level message", async () => {
-        const schema = S.NumberFromString.pipe(
-          S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-        )
+        const schema = S.NumberFromString.annotations({
+          message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+        })
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -477,8 +476,8 @@ describe("TreeFormatter", () => {
 
       it("inner messages", async () => {
         const schema = S.transformOrFail(
-          S.string.pipe(S.message(() => "please enter a string")),
-          S.Int.pipe(S.message(() => "please enter an integer")),
+          S.string.annotations({ message: () => "please enter a string" }),
+          S.Int.annotations({ message: () => "please enter an integer" }),
           (s, _, ast) => {
             const n = Number(s)
             return Number.isNaN(n)
@@ -486,7 +485,10 @@ describe("TreeFormatter", () => {
               : ParseResult.succeed(n)
           },
           (n) => ParseResult.succeed(String(n))
-        ).pipe(S.identifier("IntFromString"), S.message(() => "please enter a decodeUnknownable string"))
+        ).annotations({
+          identifier: "IntFromString",
+          message: () => "please enter a decodeUnknownable string"
+        })
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -511,7 +513,7 @@ describe("TreeFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
           () => S.tuple(S.number, S.union(schema, S.literal(null)))
-        ).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
+        ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -530,7 +532,7 @@ describe("TreeFormatter", () => {
         const schema: S.Schema<A> = S.tuple(
           S.number,
           S.union(S.suspend(() => schema), S.literal(null))
-        ).pipe(S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`))
+        ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -549,9 +551,9 @@ describe("TreeFormatter", () => {
         const schema: S.Schema<A> = S.tuple(
           S.number,
           S.union(
-            S.suspend(() => schema).pipe(
-              S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-            ),
+            S.suspend(() => schema).annotations({
+              message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+            }),
             S.literal(null)
           )
         )
@@ -580,9 +582,9 @@ describe("TreeFormatter", () => {
           S.number,
           S.union(
             S.suspend(() =>
-              schema.pipe(
-                S.message((issue) => `my custom message ${JSON.stringify(issue.actual)}`)
-              )
+              schema.annotations({
+                message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
+              })
             ),
             S.literal(null)
           )
@@ -619,8 +621,8 @@ describe("TreeFormatter", () => {
       translations: typeof translations
     }>() {}
 
-    const Name = S.NonEmpty.pipe(
-      S.message(() =>
+    const Name = S.NonEmpty.annotations({
+      message: () =>
         Effect.gen(function*(_) {
           const service = yield* _(Effect.serviceOption(Translator))
           return Option.match(service, {
@@ -628,8 +630,7 @@ describe("TreeFormatter", () => {
             onSome: (translator) => translator.translations[translator.locale]
           })
         })
-      )
-    )
+    })
 
     const result = S.decodeUnknownEither(Name)("")
 
