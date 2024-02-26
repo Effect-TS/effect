@@ -128,44 +128,143 @@ class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTrans
       })
 ) {}
 
-describe("Schema > Class", () => {
-  it("should be a Schema", () => {
-    expect(S.isSchema(Person)).toEqual(true)
-  })
+describe("Schema > Class APIs", () => {
+  describe("Class", () => {
+    it("should be a Schema", () => {
+      class A extends S.Class<A>()({ a: S.string }) {}
+      expect(S.isSchema(A)).toEqual(true)
+    })
 
-  it("should support annotations when declaring the Class", () => {
-    class A extends S.Class<A>()({
-      a: S.string
-    }, { title: "X" }) {}
-    expect((A.ast as AST.Transform).to.annotations[AST.TitleAnnotationId]).toEqual("X")
-  })
+    it("should export the fields", () => {
+      class A extends S.Class<A>()({ a: S.string }) {}
+      expect(A.fields).toEqual({ a: S.string })
+    })
 
-  it("using S.annotations() on a Class should return a Schema", () => {
-    const schema = Person.pipe(S.annotations({ title: "X" }))
-    expect(S.isSchema(schema)).toEqual(true)
-    expect(schema.ast._tag).toEqual("Transform")
-    expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
-  })
+    it("should be a constructor", () => {
+      class A extends S.Class<A>()({ a: S.string }) {}
+      const instance = new A({ a: "a" })
+      expect(instance.a).toStrictEqual("a")
+      expect(instance instanceof A).toBe(true)
+    })
 
-  it("using the .annotations() method of a Class should return a Schema", () => {
-    const schema = Person.annotations({ title: "X" })
-    expect(S.isSchema(schema)).toEqual(true)
-    expect(schema.ast._tag).toEqual("Transform")
-    expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
-  })
-
-  it("constructor", () => {
-    const john = new Person({ id: 1, name: "John" })
-    expect(john.name).toEqual("John")
-    expect(john.upperName).toEqual("JOHN")
-    expect(typeof john.upperName).toEqual("string")
-    expect(() => new Person({ id: 1, name: "" })).toThrow(
-      new Error(`{ id: number; name: a non empty string }
-└─ ["name"]
-   └─ a non empty string
+    it("the constructor should validate the input by default", () => {
+      class A extends S.Class<A>()({ a: S.NonEmpty }) {}
+      expect(() => new A({ a: "" })).toThrow(
+        new Error(`{ a: NonEmpty }
+└─ ["a"]
+   └─ NonEmpty
       └─ Predicate refinement failure
-         └─ Expected a non empty string, actual ""`)
-    )
+         └─ Expected NonEmpty (a non empty string), actual ""`)
+      )
+    })
+
+    it("the constructor can be disabled", () => {
+      class A extends S.Class<A>()({ a: S.NonEmpty }) {}
+      expect(new A({ a: "" }, true).a).toStrictEqual("")
+    })
+
+    it("should support methods", () => {
+      class A extends S.Class<A>()({ a: S.string }) {
+        method(b: string) {
+          return `method: ${this.a} ${b}`
+        }
+      }
+      expect(new A({ a: "a" }).method("b")).toEqual("method: a b")
+    })
+
+    it("should support getters", () => {
+      class A extends S.Class<A>()({ a: S.string }) {
+        get getter() {
+          return `getter: ${this.a}`
+        }
+      }
+      expect(new A({ a: "a" }).getter).toEqual("getter: a")
+    })
+
+    it("should support annotations when declaring the Class", () => {
+      class A extends S.Class<A>()({
+        a: S.string
+      }, { title: "X" }) {}
+      expect((A.ast as AST.Transform).to.annotations[AST.TitleAnnotationId]).toEqual("X")
+    })
+
+    it("using S.annotations() on a Class should return a Schema", () => {
+      class A extends S.Class<A>()({ a: S.string }) {}
+      const schema = A.pipe(S.annotations({ title: "X" }))
+      expect(S.isSchema(schema)).toEqual(true)
+      expect(schema.ast._tag).toEqual("Transform")
+      expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
+    })
+
+    it("using the .annotations() method of a Class should return a Schema", () => {
+      class A extends S.Class<A>()({ a: S.string }) {}
+      const schema = A.annotations({ title: "X" })
+      expect(S.isSchema(schema)).toEqual(true)
+      expect(schema.ast._tag).toEqual("Transform")
+      expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
+    })
+
+    it("can be extended with Class", () => {
+      class A extends S.Class<A>()({ a: S.NonEmpty }) {}
+      class B extends S.Class<B>()({
+        b: S.number,
+        ...A.fields
+      }) {}
+      expect(B.fields).toStrictEqual({
+        a: S.NonEmpty,
+        b: S.number
+      })
+      expect({ ...new B({ a: "a", b: 1 }) }).toStrictEqual({ a: "a", b: 1 })
+    })
+
+    it("can be extended with TaggedClass", () => {
+      class A extends S.Class<A>()({ a: S.NonEmpty }) {}
+      class B extends S.TaggedClass<B>()("B", {
+        b: S.number,
+        ...A.fields
+      }) {}
+      expect(B.fields).toStrictEqual({
+        _tag: S.literal("B"),
+        a: S.NonEmpty,
+        b: S.number
+      })
+      expect({ ...new B({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "B", a: "a", b: 1 })
+    })
+  })
+
+  describe("TaggedClass", () => {
+    it("the constructor can be disabled", () => {
+      class A extends S.TaggedClass<A>()("A", { a: S.NonEmpty }) {}
+      expect({ ...new A({ a: "a" }) }).toStrictEqual({ _tag: "A", a: "a" })
+    })
+
+    it("can be extended with Class", () => {
+      class A extends S.TaggedClass<A>()("A", { a: S.NonEmpty }) {}
+      class B extends S.Class<B>()({
+        b: S.number,
+        ...A.fields
+      }) {}
+      expect(B.fields).toStrictEqual({
+        _tag: S.literal("A"),
+        a: S.NonEmpty,
+        b: S.number
+      })
+      expect({ ...new B({ _tag: "A", a: "a", b: 1 }) }).toStrictEqual({ _tag: "A", a: "a", b: 1 })
+    })
+
+    // it("can be extended with TaggedClass", () => {
+    //   class A extends S.TaggedClass<A>()("A", { a: S.NonEmpty }) {}
+    //   class B extends S.TaggedClass<B>()("B", {
+    //     b: S.number,
+    //     ...A.fields
+    //   }) {}
+    //   expect(B.fields).toStrictEqual({
+    //     _tag: S.literal("B"),
+    //     a: S.NonEmpty,
+    //     b: S.number
+    //   })
+    //   expect({ ...new B({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "B", a: "a", b: 1 })
+    // })
   })
 
   it("is", () => {
@@ -498,14 +597,14 @@ describe("Schema > Class", () => {
   })
 
   describe("encode", () => {
-    it("struct + a class without methods nor getters", async () => {
+    it("struct a class without methods nor getters", async () => {
       class A extends S.Class<A>()({
         n: S.NumberFromString
       }) {}
       await Util.expectEncodeSuccess(A, { n: 1 }, { n: "1" })
     })
 
-    it("struct + a class with a getter", async () => {
+    it("struct a class with a getter", async () => {
       class A extends S.Class<A>()({
         n: S.NumberFromString
       }) {
@@ -516,7 +615,7 @@ describe("Schema > Class", () => {
       await Util.expectEncodeSuccess(A, { n: 1 } as any, { n: "1" })
     })
 
-    it("struct + nested classes", async () => {
+    it("struct nested classes", async () => {
       class A extends S.Class<A>()({
         n: S.NumberFromString
       }) {}
@@ -527,7 +626,7 @@ describe("Schema > Class", () => {
       await Util.expectEncodeSuccess(B, { a: { n: 1 } }, { a: { n: "1" } })
     })
 
-    it("class + a class with a getter", async () => {
+    it("class a class with a getter", async () => {
       class A extends S.Class<A>()({
         n: S.NumberFromString
       }) {
