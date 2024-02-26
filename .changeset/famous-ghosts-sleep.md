@@ -2,19 +2,27 @@
 "@effect/schema": patch
 ---
 
-add `annotations?` parameter to Class constructors
+- Schema: add `AnySchema` helper
 
-```ts
-import * as AST from "@effect/schema/AST";
-import * as S from "@effect/schema/Schema";
+- Schema: refactor `annotations` API to be a method within the `Schema` interface
 
-class A extends S.Class<A>()(
-  {
-    a: S.string,
-  },
-  { description: "some description..." } // <= annotations
-) {}
+- add support for `AST.keyof`, `AST.getPropertySignatures`, `Parser.getSearchTree` to Classes
 
-console.log(AST.getDescriptionAnnotation((A.ast as AST.Transform).to));
-// => { _id: 'Option', _tag: 'Some', value: 'some description...' }
-```
+- AST: fix `BrandAnnotation` type and add `getBrandAnnotation`
+
+- add `annotations?` parameter to Class constructors
+
+  ```ts
+  import * as AST from "@effect/schema/AST";
+  import * as S from "@effect/schema/Schema";
+
+  class A extends S.Class<A>()(
+    {
+      a: S.string,
+    },
+    { description: "some description..." } // <= annotations
+  ) {}
+
+  console.log(AST.getDescriptionAnnotation((A.ast as AST.Transform).to));
+  // => { _id: 'Option', _tag: 'Some', value: 'some description...' }
+  ```

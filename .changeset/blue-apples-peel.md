@@ -2,26 +2,152 @@
 "@effect/schema": minor
 ---
 
-replace `propertySignatureAnnotations` with `asPropertySignature`, add `annotations` method to `PropertySignature` and
-remove all `annotations` parameters to PropertySignature APIs (use the `annotations` method instead)
+- Schema: use `TreeFormatter` in `BrandSchema`s
 
-Before
+- refactor Schema annotations interfaces:
 
-```ts
-S.string.pipe(S.propertySignatureAnnotations({ description: "description" }));
+  - add `PropertySignatureAnnotation` (baseline)
+  - remove `DocAnnotations`
+  - rename `DeclareAnnotations` to `Annotations`
 
-S.optional(S.string, {
-  exact: true,
-  annotations: { description: "description" },
-});
-```
+- remove `Format` module
 
-Now
+- ParseResult: switch to classes and remove constructors
 
-```ts
-S.asPropertySignature(S.string).annotations({ description: "description" });
+  Before
 
-S.optional(S.string, { exact: true }).annotations({
-  description: "description",
-});
-```
+  ```ts
+  import * as ParseResult from "@effect/schema/ParseResult";
+
+  ParseResult.type(ast, actual);
+  ```
+
+  Now
+
+  ```ts
+  import * as ParseResult from "@effect/schema/ParseResult";
+
+  new ParseResult.Type(ast, actual);
+  ```
+
+- AST: simplify `AST.PropertySignatureTransform`:
+
+  - remove `FinalPropertySignatureTransformation`, `isFinalPropertySignatureTransformation`
+  - rename `PropertySignatureTransform` to `PropertySignatureTransformation` and change constructor signature
+
+- AST: remove `format`
+
+  Before
+
+  ```ts
+  AST.format(ast, verbose?)
+  ```
+
+  Now
+
+  ```ts
+  ast.toString(verbose?)
+  ```
+
+- Updated the `MessageAnnotation` type to return `string | Effect<string>`.
+
+  TreeFormatter:
+
+  - add `formatErrorEffect`
+  - add `formatIssueEffect`
+  - remove `formatIssues`
+
+  ArrayFormatter:
+
+  - add `formatErrorEffect`
+  - add `formatIssueEffect`
+  - remove `formatIssues`
+
+  You can now return an `Effect<string>` if your message needs some optional service:
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+  import * as TreeFormatter from "@effect/schema/TreeFormatter";
+  import * as Context from "effect/Context";
+  import * as Effect from "effect/Effect";
+  import * as Either from "effect/Either";
+  import * as Option from "effect/Option";
+
+  class Messages extends Context.Tag("Messages")<
+    Messages,
+    {
+      NonEmpty: string;
+    }
+  >() {}
+
+  const Name = S.NonEmpty.pipe(
+    S.message(() =>
+      Effect.gen(function* (_) {
+        const service = yield* _(Effect.serviceOption(Messages));
+        return Option.match(service, {
+          onNone: () => "Invalid string",
+          onSome: (messages) => messages.NonEmpty,
+        });
+      })
+    )
+  );
+
+  S.decodeUnknownSync(Name)(""); // => throws "Invalid string"
+
+  const result = S.decodeUnknownEither(Name)("").pipe(
+    Either.mapLeft((error) =>
+      TreeFormatter.formatErrorEffect(error).pipe(
+        Effect.provideService(Messages, { NonEmpty: "should be non empty" }),
+        Effect.runSync
+      )
+    )
+  );
+
+  console.log(result); // => { _id: 'Either', _tag: 'Left', left: 'should be non empty' }
+  ```
+
+- AST: switch to classes and remove constructors
+
+  Before
+
+  ```ts
+  import * as AST from "@effect/schema/AST";
+
+  AST.createLiteral("a");
+  ```
+
+  Now
+
+  ```ts
+  import * as AST from "@effect/schema/AST";
+
+  new AST.Literal("a");
+  ```
+
+- AST: remove `setAnnotation` (use `annotations` instead) and rename `mergeAnnotations` to `annotations`
+
+- move `defaultParseOption` from `Parser.ts` to `AST.ts`
+
+- replace `propertySignatureAnnotations` with `asPropertySignature`, add `annotations` method to `PropertySignature` and
+  remove all `annotations` parameters to PropertySignature APIs (use the `annotations` method instead)
+
+  Before
+
+  ```ts
+  S.string.pipe(S.propertySignatureAnnotations({ description: "description" }));
+
+  S.optional(S.string, {
+    exact: true,
+    annotations: { description: "description" },
+  });
+  ```
+
+  Now
+
+  ```ts
+  S.asPropertySignature(S.string).annotations({ description: "description" });
+
+  S.optional(S.string, { exact: true }).annotations({
+    description: "description",
+  });
+  ```
