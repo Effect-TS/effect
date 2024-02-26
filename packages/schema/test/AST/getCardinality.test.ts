@@ -15,7 +15,7 @@ describe("AST > getCardinality", () => {
       S.number.ast,
       S.string.ast,
       S.boolean.ast,
-      S.uniqueSymbol(Symbol.for("a")).ast,
+      S.uniqueSymbolFromSelf(Symbol.for("a")).ast,
       S.undefined.ast,
       S.void.ast,
       S.literal("a").ast,
@@ -26,7 +26,7 @@ describe("AST > getCardinality", () => {
       .sort()
     const expected = [
       S.never.ast,
-      S.uniqueSymbol(Symbol.for("a")).ast,
+      S.uniqueSymbolFromSelf(Symbol.for("a")).ast,
       S.undefined.ast,
       S.void.ast,
       S.literal("a").ast,

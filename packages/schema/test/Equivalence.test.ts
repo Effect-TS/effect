@@ -717,8 +717,8 @@ describe("Equivalence", () => {
       expectHook(S.symbol)
     })
 
-    it("uniqueSymbol", () => {
-      expectHook(S.uniqueSymbol(Symbol.for("effect/schema/test/a")))
+    it("uniqueSymbolFromSelf", () => {
+      expectHook(S.uniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
     })
 
     it("templateLiteral", () => {

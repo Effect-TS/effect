@@ -395,7 +395,7 @@ export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
  * @category constructors
  * @since 1.0.0
  */
-export const uniqueSymbol = <S extends symbol>(symbol: S): Schema<S> => make(new AST.UniqueSymbol(symbol))
+export const uniqueSymbolFromSelf = <S extends symbol>(symbol: S): Schema<S> => make(new AST.UniqueSymbol(symbol))
 
 /**
  * @category constructors
@@ -1782,7 +1782,7 @@ export const attachPropertySignature: {
   ): Schema<Simplify<A & { readonly [k in K]: V }>, I, R> => {
     const attached = extend(
       to(schema),
-      struct({ [key]: Predicate.isSymbol(value) ? uniqueSymbol(value) : literal(value) })
+      struct({ [key]: Predicate.isSymbol(value) ? uniqueSymbolFromSelf(value) : literal(value) })
     ).ast
     return make(
       new AST.Transform(

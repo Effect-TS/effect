@@ -77,7 +77,7 @@ describe("JSONSchema", () => {
   })
 
   it("a unique symbol should raise an error", () => {
-    expect(() => JSONSchema.make(S.uniqueSymbol(Symbol.for("@effect/schema/test/a")))).toThrow(
+    expect(() => JSONSchema.make(S.uniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")))).toThrow(
       new Error("cannot build a JSON Schema for a unique symbol without a JSON Schema annotation")
     )
   })
@@ -1574,8 +1574,8 @@ describe("JSONSchema", () => {
       })
     })
 
-    it("uniqueSymbol", () => {
-      const schema = S.uniqueSymbol(Symbol.for("effect/schema/test/a")).annotations({
+    it("uniqueSymbolFromSelf", () => {
+      const schema = S.uniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")).annotations({
         jsonSchema: { "type": "custom JSON Schema" }
       })
       const jsonSchema = JSONSchema.make(schema)

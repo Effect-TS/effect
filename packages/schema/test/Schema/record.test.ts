@@ -231,7 +231,7 @@ describe("Schema > record", () => {
     it("record(Symbol('a') | Symbol('b'), number)", async () => {
       const a = Symbol.for("@effect/schema/test/a")
       const b = Symbol.for("@effect/schema/test/b")
-      const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
+      const schema = S.record(S.union(S.uniqueSymbolFromSelf(a), S.uniqueSymbolFromSelf(b)), S.number)
       await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
 
       await Util.expectDecodeUnknownFailure(

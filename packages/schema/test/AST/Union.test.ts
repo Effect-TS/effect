@@ -45,7 +45,7 @@ describe("AST.Union", () => {
   })
 
   it("should unify symbol literals with symbol", () => {
-    expect(S.union(S.uniqueSymbol(Symbol.for("@effect/schema/test/a")), S.symbolFromSelf).ast)
+    expect(S.union(S.uniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")), S.symbolFromSelf).ast)
       .toEqual(
         S.symbolFromSelf.ast
       )

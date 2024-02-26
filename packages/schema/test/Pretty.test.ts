@@ -113,9 +113,9 @@ describe("Pretty", () => {
     })
   })
 
-  it("uniqueSymbol", () => {
+  it("uniqueSymbolFromSelf", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.uniqueSymbol(a)
+    const schema = S.uniqueSymbolFromSelf(a)
     const pretty = Pretty.make(schema)
     expect(pretty(a)).toEqual("Symbol(@effect/schema/test/a)")
   })
@@ -450,8 +450,8 @@ describe("Pretty", () => {
       expectHook(S.symbol)
     })
 
-    it("uniqueSymbol", () => {
-      expectHook(S.uniqueSymbol(Symbol.for("effect/schema/test/a")))
+    it("uniqueSymbolFromSelf", () => {
+      expectHook(S.uniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
     })
 
     it("templateLiteral", () => {

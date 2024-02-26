@@ -73,9 +73,9 @@ describe("Schema > is", () => {
     expect(is(null)).toEqual(false)
   })
 
-  it("uniqueSymbol", () => {
+  it("uniqueSymbolFromSelf", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.uniqueSymbol(a)
+    const schema = S.uniqueSymbolFromSelf(a)
     const is = P.is(schema)
     expect(is(a)).toEqual(true)
     expect(is(Symbol.for("@effect/schema/test/a"))).toEqual(true)
@@ -407,7 +407,7 @@ describe("Schema > is", () => {
   it("record(Symbol('a') | Symbol('b'), number)", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
-    const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
+    const schema = S.record(S.union(S.uniqueSymbolFromSelf(a), S.uniqueSymbolFromSelf(b)), S.number)
     const is = P.is(schema)
     expect(is({ [a]: 1, [b]: 2 })).toEqual(true)
 

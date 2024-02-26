@@ -62,7 +62,7 @@ describe("AST > guards", () => {
   })
 
   it("isUniqueSymbol", () => {
-    expect(AST.isUniqueSymbol(S.uniqueSymbol(Symbol.for("@effect/schema/test/a")).ast)).toEqual(
+    expect(AST.isUniqueSymbol(S.uniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")).ast)).toEqual(
       true
     )
     expect(AST.isUniqueSymbol(S.unknown.ast)).toEqual(false)

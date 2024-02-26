@@ -294,8 +294,8 @@ describe("TreeFormatter", () => {
       )
     })
 
-    it("uniqueSymbol", async () => {
-      const schema = S.uniqueSymbol(Symbol.for("@effect/schema/test/a")).annotations({
+    it("uniqueSymbolFromSelf", async () => {
+      const schema = S.uniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 

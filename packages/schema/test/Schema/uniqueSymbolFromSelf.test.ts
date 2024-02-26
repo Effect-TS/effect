@@ -2,9 +2,9 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/uniqueSymbol", () => {
+describe("Schema > uniqueSymbolFromSelf", () => {
   const a = Symbol.for("@effect/schema/test/a")
-  const schema = S.uniqueSymbol(a)
+  const schema = S.uniqueSymbolFromSelf(a)
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(schema, a)
     await Util.expectDecodeUnknownSuccess(schema, Symbol.for("@effect/schema/test/a"))

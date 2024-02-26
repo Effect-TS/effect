@@ -2,6 +2,8 @@
 "@effect/schema": minor
 ---
 
+- Schema: rename `uniqueSymbol` to `uniqueSymbolFromSelf`
+
 - AST: refactor `ExamplesAnnotation` and `DefaultAnnotation` to accept a type parameter
 
 - Schema: use `TreeFormatter` in `BrandSchema`s

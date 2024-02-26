@@ -122,9 +122,9 @@ describe("Arbitrary > Arbitrary", () => {
     expectValidArbitrary(schema)
   })
 
-  it("uniqueSymbol", () => {
+  it("uniqueSymbolFromSelf", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.uniqueSymbol(a)
+    const schema = S.uniqueSymbolFromSelf(a)
     expectValidArbitrary(schema)
   })
 
@@ -523,8 +523,8 @@ describe("Arbitrary > Arbitrary", () => {
       expectHook(S.symbol)
     })
 
-    it("uniqueSymbol", () => {
-      expectHook(S.uniqueSymbol(Symbol.for("effect/schema/test/a")))
+    it("uniqueSymbolFromSelf", () => {
+      expectHook(S.uniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
     })
 
     it("templateLiteral", () => {
