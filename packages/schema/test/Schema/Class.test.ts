@@ -205,66 +205,70 @@ describe("Schema > Class APIs", () => {
     })
 
     it("can be extended with Class", () => {
-      class A extends S.Class<A>()({ a: S.NonEmpty }) {}
-      class B extends S.Class<B>()({
-        b: S.number,
-        ...A.fields
+      class AB extends S.Class<AB>()({ a: S.string, b: S.number }) {}
+      class C extends S.Class<C>()({
+        ...AB.fields,
+        b: S.boolean,
+        c: S.string
       }) {}
-      expect(B.fields).toStrictEqual({
-        a: S.NonEmpty,
-        b: S.number
+      expect(C.fields).toStrictEqual({
+        a: S.string,
+        b: S.boolean,
+        c: S.string
       })
-      expect({ ...new B({ a: "a", b: 1 }) }).toStrictEqual({ a: "a", b: 1 })
+      expect({ ...new C({ a: "a", b: true, c: "c" }) }).toStrictEqual({ a: "a", b: true, c: "c" })
     })
 
     it("can be extended with TaggedClass", () => {
-      class A extends S.Class<A>()({ a: S.NonEmpty }) {}
-      class B extends S.TaggedClass<B>()("B", {
-        b: S.number,
-        ...A.fields
+      class AB extends S.Class<AB>()({ a: S.string, b: S.number }) {}
+      class D extends S.TaggedClass<D>()("D", {
+        ...AB.fields,
+        b: S.boolean,
+        c: S.string
       }) {}
-      expect(B.fields).toStrictEqual({
-        _tag: S.literal("B"),
-        a: S.NonEmpty,
-        b: S.number
+      expect(D.fields).toStrictEqual({
+        _tag: S.literal("D"),
+        a: S.string,
+        b: S.boolean,
+        c: S.string
       })
-      expect({ ...new B({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "B", a: "a", b: 1 })
+      expect({ ...new D({ a: "a", b: true, c: "c" }) }).toStrictEqual({ _tag: "D", a: "a", b: true, c: "c" })
     })
   })
 
   describe("TaggedClass", () => {
     it("the constructor can be disabled", () => {
-      class A extends S.TaggedClass<A>()("A", { a: S.NonEmpty }) {}
-      expect({ ...new A({ a: "a" }) }).toStrictEqual({ _tag: "A", a: "a" })
+      class TA extends S.TaggedClass<TA>()("A", { a: S.string }) {}
+      expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "A", a: "a" })
     })
 
     it("can be extended with Class", () => {
-      class A extends S.TaggedClass<A>()("A", { a: S.NonEmpty }) {}
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
       class B extends S.Class<B>()({
         b: S.number,
-        ...A.fields
+        ...TA.fields
       }) {}
       expect(B.fields).toStrictEqual({
-        _tag: S.literal("A"),
-        a: S.NonEmpty,
+        _tag: S.literal("TA"),
+        a: S.string,
         b: S.number
       })
-      expect({ ...new B({ _tag: "A", a: "a", b: 1 }) }).toStrictEqual({ _tag: "A", a: "a", b: 1 })
+      expect({ ...new B({ _tag: "TA", a: "a", b: 1 }) }).toStrictEqual({ _tag: "TA", a: "a", b: 1 })
     })
 
-    // it("can be extended with TaggedClass", () => {
-    //   class A extends S.TaggedClass<A>()("A", { a: S.NonEmpty }) {}
-    //   class B extends S.TaggedClass<B>()("B", {
-    //     b: S.number,
-    //     ...A.fields
-    //   }) {}
-    //   expect(B.fields).toStrictEqual({
-    //     _tag: S.literal("B"),
-    //     a: S.NonEmpty,
-    //     b: S.number
-    //   })
-    //   expect({ ...new B({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "B", a: "a", b: 1 })
-    // })
+    it("can be extended with TaggedClass", () => {
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      class TB extends S.TaggedClass<TB>()("TB", {
+        b: S.number,
+        ...TA.fields
+      }) {}
+      expect(TB.fields).toStrictEqual({
+        _tag: S.literal("TB"),
+        a: S.string,
+        b: S.number
+      })
+      expect({ ...new TB({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "TB", a: "a", b: 1 })
+    })
   })
 
   it("is", () => {

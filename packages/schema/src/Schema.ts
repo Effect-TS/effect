@@ -4679,7 +4679,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited, Proto>
+export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inherited, Proto>
   extends Schema<Self, Simplify<I>, R>
 {
   new(
@@ -4695,7 +4695,7 @@ export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited,
     fields: FieldsB,
     annotations?: Annotations<Extended>
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
-    : Class<
+    : ClassSchema<
       Extended,
       Omit<Fields, keyof FieldsB> & FieldsB,
       Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
@@ -4723,7 +4723,7 @@ export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited,
       ast: AST.Transform
     ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
-    : Class<
+    : ClassSchema<
       Transformed,
       Omit<Fields, keyof FieldsB> & FieldsB,
       Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
@@ -4751,7 +4751,7 @@ export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited,
       ast: AST.Transform
     ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
-    : Class<
+    : ClassSchema<
       Transformed,
       Omit<Fields, keyof FieldsB> & FieldsB,
       Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
@@ -4772,7 +4772,7 @@ export const Class = <Self>() =>
   fields: Fields,
   annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
-  : Class<
+  : ClassSchema<
     Self,
     Fields,
     ToStruct<Fields>,
@@ -4793,7 +4793,7 @@ export const TaggedClass = <Self>() =>
   fields: Fields,
   annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
-  : Class<
+  : ClassSchema<
     Self,
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
     { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
@@ -4820,7 +4820,7 @@ export const TaggedError = <Self>() =>
   fields: Fields,
   annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
-  : Class<
+  : ClassSchema<
     Self,
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
     { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
@@ -4873,7 +4873,7 @@ export const TaggedRequest = <Self>() =>
   fields: Fields,
   annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-  : Class<
+  : ClassSchema<
     Self,
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
     { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,

@@ -1,23 +1,23 @@
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Brand from "effect/Brand"
-import { identity, pipe } from "effect/Function"
+import { hole, identity, pipe } from "effect/Function"
 
-class MyClass extends S.Class<MyClass>()({ a: S.string }) {}
+class A extends S.Class<A>()({ a: S.NonEmpty }) {}
 
 // ---------------------------------------------
 // From
 // ---------------------------------------------
 
 // $ExpectType never
-export type FromNever = S.Schema.From<typeof S.never>
+hole<S.Schema.From<typeof S.never>>()
 
 // ---------------------------------------------
 // To
 // ---------------------------------------------
 
 // $ExpectType never
-export type ToNever = S.Schema.To<typeof S.never>
+hole<S.Schema.To<typeof S.never>>()
 
 // ---------------------------------------------
 // .annotations() method
@@ -29,8 +29,8 @@ S.string.annotations({})
 // $ExpectType BrandSchema<number & Brand<"Int">, number>
 pipe(S.number, S.int(), S.brand("Int")).annotations({})
 
-// $ExpectType Schema<MyClass, { readonly a: string; }, never>
-MyClass.annotations({})
+// $ExpectType Schema<A, { readonly a: string; }, never>
+A.annotations({})
 
 // ---------------------------------------------
 // S.annotations
@@ -45,8 +45,8 @@ S.number.pipe(S.int(), S.brand("Int"), S.annotations({}))
 // $ExpectType Schema<never, never, never>
 S.never.pipe(S.annotations({}))
 
-// $ExpectType Schema<MyClass, { readonly a: string; }, never>
-MyClass.pipe(S.annotations({}))
+// $ExpectType Schema<A, { readonly a: string; }, never>
+A.pipe(S.annotations({}))
 
 // ---------------------------------------------
 // S.message
@@ -55,8 +55,8 @@ MyClass.pipe(S.annotations({}))
 // $ExpectType Schema<string, string, never>
 S.string.pipe(S.message(() => "message"))
 
-// $ExpectType Schema<MyClass, { readonly a: string; }, never>
-MyClass.pipe(S.message(() => "message"))
+// $ExpectType Schema<A, { readonly a: string; }, never>
+A.pipe(S.message(() => "message"))
 
 // ---------------------------------------------
 // Primitives
@@ -979,43 +979,6 @@ S.transformLiteral(0, "a")
 S.transformLiterals([0, "a"], [1, "b"])
 
 // ---------------------------------------------
-// Class
-// ---------------------------------------------
-
-// $ExpectType { readonly a: Schema<string, string, never>; }
-MyClass.fields
-
-// $ExpectType { readonly a: string; }
-export type MyClassFrom = S.Schema.From<typeof MyClass>
-
-// $ExpectType MyClass
-export type MyClassTo = S.Schema.To<typeof MyClass>
-
-// $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, never>
-MyClass.struct
-
-class MyTaggedClass extends S.TaggedClass<MyTaggedClass>()("MyTaggedClass", {
-  a: S.string
-}) {}
-
-// $ExpectType [props: { readonly a: string; }, disableValidation?: boolean | undefined]
-export type MyTaggedClassParams = ConstructorParameters<typeof MyTaggedClass>
-
-// $ExpectType { readonly _tag: "MyTaggedClass"; readonly a: string; }
-export type MyTaggedClassFrom = S.Schema.From<typeof MyTaggedClass>
-
-// $ExpectType MyTaggedClass
-export type MyTaggedClassTo = S.Schema.To<typeof MyTaggedClass>
-
-// $ExpectType Schema<{ readonly _tag: "MyTaggedClass"; readonly a: string; }, { readonly _tag: "MyTaggedClass"; readonly a: string; }, never>
-MyTaggedClass.struct
-
-class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass", {}) {}
-
-// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
-export type VoidTaggedClassParams = ConstructorParameters<typeof VoidTaggedClass>
-
-// ---------------------------------------------
 // BigDecimal
 // ---------------------------------------------
 
@@ -1113,3 +1076,108 @@ S.causeFromSelf({ error: S.string })
 
 // $ExpectType Schema<Cause<string>, Cause<string>, "defect">
 S.causeFromSelf({ error: S.string, defect })
+
+// ---------------------------------------------
+// Class
+// ---------------------------------------------
+
+declare const aContext: S.Schema<string, string, "a">
+declare const bContext: S.Schema<number, number, "b">
+declare const cContext: S.Schema<boolean, boolean, "c">
+
+class AB extends S.Class<AB>()({ a: aContext, b: bContext }) {}
+
+// $ExpectType AB
+hole<S.Schema.To<typeof AB>>()
+
+// $ExpectType { readonly a: string; readonly b: number; }
+hole<S.Schema.From<typeof AB>>()
+
+// $ExpectType "a" | "b"
+hole<S.Schema.Context<typeof AB>>()
+
+// $ExpectType { readonly a: Schema<string, string, "a">; readonly b: Schema<number, number, "b">; }
+AB.fields
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "a" | "b">
+AB.struct
+
+// $ExpectType [props: { readonly a: string; readonly b: number; }, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof AB>>()
+
+// can be extended with Class
+
+class C extends S.Class<C>()({
+  ...AB.fields,
+  b: S.string,
+  c: cContext
+}) {}
+
+// $ExpectType C
+hole<S.Schema.To<typeof C>>()
+
+// $ExpectType { readonly a: string; readonly b: string; readonly c: boolean; }
+hole<S.Schema.From<typeof C>>()
+
+// $ExpectType "a" | "c"
+hole<S.Schema.Context<typeof C>>()
+
+// $ExpectType { readonly b: Schema<string, string, never>; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
+C.fields
+
+// $ExpectType Schema<{ readonly a: string; readonly b: string; readonly c: boolean; }, { readonly a: string; readonly b: string; readonly c: boolean; }, "a" | "c">
+C.struct
+
+// $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof C>>()
+
+// can be extended with TaggedClass
+
+class D extends S.TaggedClass<D>()("D", {
+  ...AB.fields,
+  b: S.string,
+  c: cContext
+}) {}
+
+// $ExpectType D
+hole<S.Schema.To<typeof D>>()
+
+// $ExpectType { readonly _tag: "D"; readonly a: string; readonly b: string; readonly c: boolean; }
+hole<S.Schema.From<typeof D>>()
+
+// $ExpectType "a" | "c"
+hole<S.Schema.Context<typeof D>>()
+
+// $ExpectType { readonly _tag: literal<["D"]>; readonly a: Schema<string, string, "a">; readonly b: Schema<string, string, never>; readonly c: Schema<boolean, boolean, "c">; }
+D.fields
+
+// $ExpectType Schema<{ readonly _tag: "D"; readonly a: string; readonly b: string; readonly c: boolean; }, { readonly _tag: "D"; readonly a: string; readonly b: string; readonly c: boolean; }, "a" | "c">
+D.struct
+
+// $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof D>>()
+
+// ---------------------------------------------
+// TaggedClass
+// ---------------------------------------------
+
+class MyTaggedClass extends S.TaggedClass<MyTaggedClass>()("MyTaggedClass", {
+  a: S.string
+}) {}
+
+// $ExpectType [props: { readonly a: string; }, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof MyTaggedClass>>()
+
+// $ExpectType { readonly _tag: "MyTaggedClass"; readonly a: string; }
+hole<S.Schema.From<typeof MyTaggedClass>>()
+
+// $ExpectType MyTaggedClass
+hole<S.Schema.To<typeof MyTaggedClass>>()
+
+// $ExpectType Schema<{ readonly _tag: "MyTaggedClass"; readonly a: string; }, { readonly _tag: "MyTaggedClass"; readonly a: string; }, never>
+MyTaggedClass.struct
+
+class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass", {}) {}
+
+// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof VoidTaggedClass>>()

@@ -2,6 +2,8 @@
 "@effect/schema": minor
 ---
 
+- Schema: rename `Class` interface to `ClassSchema`
+
 - Schema: expose `fields` (`Class` API)
 
   ```ts
