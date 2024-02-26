@@ -30,7 +30,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Secret from "effect/Secret"
 import * as S from "effect/String"
-import type { Covariant, Equals, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
+import type { Covariant, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as arbitrary from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
@@ -1130,19 +1130,21 @@ export type ToStruct<Fields extends StructFields> =
   & { readonly [K in Exclude<keyof Fields, ToOptionalKeys<Fields>>]: Schema.To<Fields[K]> }
   & { readonly [K in ToOptionalKeys<Fields>]?: Schema.To<Fields[K]> }
 
+type GetStructFieldsContext<Fields extends StructFields> = Schema.Context<Fields[keyof Fields]>
+
 /**
  * @category api interface
  * @since 1.0.0
  */
 export interface struct<Fields extends StructFields>
-  extends Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, Schema.Context<Fields[keyof Fields]>>
+  extends Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, GetStructFieldsContext<Fields>>
 {
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields>
 }
 
 class $struct<Fields extends StructFields>
-  extends _schema.Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, Schema.Context<Fields[keyof Fields]>>
+  extends _schema.Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, GetStructFieldsContext<Fields>>
   implements struct<Fields>
 {
   constructor(readonly fields: Fields, annotations?: Annotations<Simplify<ToStruct<Fields>>>) {
@@ -4677,13 +4679,15 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited, Proto> extends Schema<Self, I, R> {
+export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited, Proto>
+  extends Schema<Self, Simplify<I>, R>
+{
   new(
-    props: Equals<C, {}> extends true ? void | {} : C,
+    props: keyof C extends never ? void | {} : Simplify<C>,
     disableValidation?: boolean | undefined
   ): A & Omit<Inherited, keyof A> & Proto
 
-  readonly struct: Schema<A, I, R>
+  readonly struct: Schema<Simplify<A>, Simplify<I>, R>
 
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
@@ -4693,11 +4697,11 @@ export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited,
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
     : Class<
       Extended,
+      Omit<Fields, keyof FieldsB> & FieldsB,
       Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
-      Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
-      Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
-      R | Schema.Context<FieldsB[keyof FieldsB]>,
-      Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
+      Omit<I, keyof FieldsB> & FromStruct<FieldsB>,
+      GetStructFieldsContext<Omit<Fields, keyof FieldsB> & FieldsB>,
+      Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
       Self,
       Proto
     >
@@ -4722,10 +4726,10 @@ export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited,
     : Class<
       Transformed,
       Omit<Fields, keyof FieldsB> & FieldsB,
-      Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
       I,
-      R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
-      Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
+      GetStructFieldsContext<Omit<Fields, keyof FieldsB> & FieldsB> | R2 | R3,
+      Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
       Self,
       Proto
     >
@@ -4750,10 +4754,10 @@ export interface Class<Self, Fields extends StructFields, A, I, R, C, Inherited,
     : Class<
       Transformed,
       Omit<Fields, keyof FieldsB> & FieldsB,
-      Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
       I,
-      R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
-      Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
+      GetStructFieldsContext<Omit<Fields, keyof FieldsB> & FieldsB> | R2 | R3,
+      Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
       Self,
       Proto
     >
@@ -4771,10 +4775,10 @@ export const Class = <Self>() =>
   : Class<
     Self,
     Fields,
-    Simplify<ToStruct<Fields>>,
-    Simplify<FromStruct<Fields>>,
-    Schema.Context<Fields[keyof Fields]>,
-    Simplify<ToStruct<Fields>>,
+    ToStruct<Fields>,
+    FromStruct<Fields>,
+    GetStructFieldsContext<Fields>,
+    ToStruct<Fields>,
     {},
     {}
   > => makeClass({ fields, Base: Data.Class, annotations })
@@ -4792,10 +4796,10 @@ export const TaggedClass = <Self>() =>
   : Class<
     Self,
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
-    Simplify<{ readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>>,
-    Simplify<{ readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>>,
-    Schema.Context<Omit<Fields, "_tag">[keyof Omit<Fields, "_tag">]>,
-    Simplify<ToStruct<Omit<Fields, "_tag">>>,
+    { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
+    { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
+    GetStructFieldsContext<Omit<Fields, "_tag">>,
+    ToStruct<Omit<Fields, "_tag">>,
     {},
     {}
   > =>
@@ -4819,10 +4823,10 @@ export const TaggedError = <Self>() =>
   : Class<
     Self,
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
-    Simplify<{ readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>>,
-    Simplify<{ readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>>,
-    Schema.Context<Omit<Fields, "_tag">[keyof Omit<Fields, "_tag">]>,
-    Simplify<ToStruct<Omit<Fields, "_tag">>>,
+    { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
+    { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
+    GetStructFieldsContext<Omit<Fields, "_tag">>,
+    ToStruct<Omit<Fields, "_tag">>,
     {},
     Cause.YieldableError
   > =>
@@ -4872,14 +4876,14 @@ export const TaggedRequest = <Self>() =>
   : Class<
     Self,
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
-    Simplify<{ readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>>,
-    Simplify<{ readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>>,
-    Schema.Context<Omit<Fields, "_tag">[keyof Omit<Fields, "_tag">]>,
-    Simplify<ToStruct<Omit<Fields, "_tag">>>,
+    { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
+    { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
+    GetStructFieldsContext<Omit<Fields, "_tag">>,
+    ToStruct<Omit<Fields, "_tag">>,
     TaggedRequest<
       Tag,
-      Schema.Context<Omit<Fields, "_tag">[keyof Omit<Fields, "_tag">]>,
-      Simplify<{ readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>>,
+      GetStructFieldsContext<Omit<Fields, "_tag">>,
+      { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
       Self,
       ER | AR,
       EI,
