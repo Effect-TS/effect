@@ -21,6 +21,7 @@ describe("Schema > literal", () => {
 
   it("should return the literal interface when using the .annotations() method", () => {
     const schema = S.literal("a", "b").annotations({ identifier: "literal test" })
+    expect(schema.ast.annotations).toStrictEqual({ [AST.IdentifierAnnotationId]: "literal test" })
     expect(schema.literals).toStrictEqual(["a", "b"])
   })
 

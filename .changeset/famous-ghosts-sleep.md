@@ -2,7 +2,49 @@
 "@effect/schema": patch
 ---
 
-- Schema: expose `literals`
+- Schema: add `asSchema`
+
+- Schema: expose `literals` (`literal` API)
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  // const literals: readonly ["a", "b"]
+  const literals = S.literal("a", "b").literals;
+  ```
+
+- Schema: expose `fields` (`struct` API)
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  const Person = S.struct({
+    name: S.string,
+    age: S.number,
+  });
+
+  /*
+  const personFields: {
+      a: S.Schema<string, string, never>;
+      b: S.Schema<number, number, never>;
+  }
+  */
+  const personFields = Person.fields;
+
+  const PersonWithGender = S.struct({
+    gender: S.string,
+    ...Person.fields,
+  });
+
+  /*
+  const personWithGenderFields: {
+      name: S.Schema<string, string, never>;
+      age: S.Schema<number, number, never>;
+      gender: S.Schema<string, string, never>;
+  }
+  */
+  const personWithGenderFields = PersonWithGender.fields;
+  ```
 
 - Schema: add `AnySchema` helper
 

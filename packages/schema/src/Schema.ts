@@ -69,6 +69,11 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
 }
 
 /**
+ * @since 1.0.0
+ */
+export const asSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<A, I, R> => schema
+
+/**
  * @category hashing
  * @since 1.0.0
  */
@@ -1126,72 +1131,93 @@ export type ToStruct<Fields extends StructFields> =
   & { readonly [K in ToOptionalKeys<Fields>]?: Schema.To<Fields[K]> }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface struct<Fields extends StructFields>
+  extends Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, Schema.Context<Fields[keyof Fields]>>
+{
+  readonly fields: Fields
+  annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields>
+}
+
+class $struct<Fields extends StructFields>
+  extends _schema.Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, Schema.Context<Fields[keyof Fields]>>
+  implements struct<Fields>
+{
+  constructor(readonly fields: Fields, annotations?: Annotations<Simplify<ToStruct<Fields>>>) {
+    const ownKeys = _util.ownKeys(fields)
+    const pss: Array<AST.PropertySignature> = []
+    const pssFrom: Array<AST.PropertySignature> = []
+    const pssTo: Array<AST.PropertySignature> = []
+    const psTransformations: Array<AST.PropertySignatureTransformation> = []
+    for (let i = 0; i < ownKeys.length; i++) {
+      const key = ownKeys[i]
+      const field = fields[key] as any
+      if ("propertySignatureAST" in field) {
+        const propertySignatureAST: PropertySignatureAST = field.propertySignatureAST
+        const propertySignatureAnnotations = _schema.toASTAnnotations(field.propertySignatureAnnotations)
+        const from = propertySignatureAST.from
+        switch (propertySignatureAST._tag) {
+          case "Declaration":
+            pss.push(
+              new AST.PropertySignature(key, from, propertySignatureAST.isOptional, true, propertySignatureAnnotations)
+            )
+            pssFrom.push(new AST.PropertySignature(key, from, propertySignatureAST.isOptional, true))
+            pssTo.push(
+              new AST.PropertySignature(
+                key,
+                AST.to(from),
+                propertySignatureAST.isOptional,
+                true,
+                propertySignatureAnnotations
+              )
+            )
+            break
+          case "OptionalToRequired":
+            pssFrom.push(new AST.PropertySignature(key, from, true, true))
+            pssTo.push(
+              new AST.PropertySignature(key, propertySignatureAST.to, false, true, propertySignatureAnnotations)
+            )
+            psTransformations.push(
+              new AST.PropertySignatureTransformation(
+                key,
+                key,
+                propertySignatureAST.decode,
+                propertySignatureAST.encode
+              )
+            )
+            break
+        }
+      } else {
+        pss.push(new AST.PropertySignature(key, field.ast, false, true))
+        pssFrom.push(new AST.PropertySignature(key, field.ast, false, true))
+        pssTo.push(new AST.PropertySignature(key, AST.to(field.ast), false, true))
+      }
+    }
+    if (ReadonlyArray.isNonEmptyReadonlyArray(psTransformations)) {
+      super(
+        new AST.Transform(
+          AST.TypeLiteral.make(pssFrom, []),
+          AST.TypeLiteral.make(pssTo, []),
+          AST.TypeLiteralTransformation.make(psTransformations),
+          _schema.toASTAnnotations(annotations)
+        )
+      )
+    } else {
+      super(AST.TypeLiteral.make(pss, [], _schema.toASTAnnotations(annotations)))
+    }
+  }
+  annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields> {
+    return annotations ? new $struct(this.fields, annotations) : this
+  }
+}
+
+/**
  * @category combinators
  * @since 1.0.0
  */
-export const struct = <Fields extends StructFields>(
-  fields: Fields
-): Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, Schema.Context<Fields[keyof Fields]>> => {
-  const ownKeys = _util.ownKeys(fields)
-  const pss: Array<AST.PropertySignature> = []
-  const pssFrom: Array<AST.PropertySignature> = []
-  const pssTo: Array<AST.PropertySignature> = []
-  const psTransformations: Array<AST.PropertySignatureTransformation> = []
-  for (let i = 0; i < ownKeys.length; i++) {
-    const key = ownKeys[i]
-    const field = fields[key] as any
-    if ("propertySignatureAST" in field) {
-      const propertySignatureAST: PropertySignatureAST = field.propertySignatureAST
-      const propertySignatureAnnotations = _schema.toASTAnnotations(field.propertySignatureAnnotations)
-      const from = propertySignatureAST.from
-      switch (propertySignatureAST._tag) {
-        case "Declaration":
-          pss.push(
-            new AST.PropertySignature(key, from, propertySignatureAST.isOptional, true, propertySignatureAnnotations)
-          )
-          pssFrom.push(new AST.PropertySignature(key, from, propertySignatureAST.isOptional, true))
-          pssTo.push(
-            new AST.PropertySignature(
-              key,
-              AST.to(from),
-              propertySignatureAST.isOptional,
-              true,
-              propertySignatureAnnotations
-            )
-          )
-          break
-        case "OptionalToRequired":
-          pssFrom.push(new AST.PropertySignature(key, from, true, true))
-          pssTo.push(new AST.PropertySignature(key, propertySignatureAST.to, false, true, propertySignatureAnnotations))
-          psTransformations.push(
-            new AST.PropertySignatureTransformation(
-              key,
-              key,
-              propertySignatureAST.decode,
-              propertySignatureAST.encode
-            )
-          )
-          break
-      }
-    } else {
-      pss.push(new AST.PropertySignature(key, field.ast, false, true))
-      pssFrom.push(new AST.PropertySignature(key, field.ast, false, true))
-      pssTo.push(new AST.PropertySignature(key, AST.to(field.ast), false, true))
-    }
-  }
-  if (ReadonlyArray.isNonEmptyReadonlyArray(psTransformations)) {
-    return make(
-      new AST.Transform(
-        AST.TypeLiteral.make(pssFrom, []),
-        AST.TypeLiteral.make(pssTo, []),
-        AST.TypeLiteralTransformation.make(
-          psTransformations
-        )
-      )
-    )
-  }
-  return make(AST.TypeLiteral.make(pss, []))
-}
+export const struct = <Fields extends StructFields>(fields: Fields): struct<Fields> => new $struct(fields)
 
 /**
  * @category struct transformations

@@ -162,6 +162,9 @@ Schema.optional(aContext)
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "a" | "b">
+Schema.asSchema(Schema.struct({ a: aContext, b: bContext }))
+
+// $ExpectType struct<{ a: Schema<string, string, "a">; b: Schema<number, number, "b">; }>
 Schema.struct({ a: aContext, b: bContext })
 
 // ---------------------------------------------

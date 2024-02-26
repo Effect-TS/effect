@@ -12,7 +12,7 @@ export const make = <A, I, R>(ast: AST.AST): S.Schema<A, I, R> => new Schema(ast
 
 /** @internal */
 export const toASTAnnotations = (
-  options?: Record<string | symbol, any>
+  options?: Record<string | symbol, any> | undefined
 ): AST.Annotations => {
   if (!options) {
     return {}
