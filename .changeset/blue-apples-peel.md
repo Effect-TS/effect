@@ -2,6 +2,45 @@
 "@effect/schema": minor
 ---
 
+- Schema: expose `fields` (`Class` API)
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  class Person extends S.Class<Person>()({
+    name: S.string,
+    age: S.number,
+  }) {}
+
+  /*
+  const personFields: {
+      a: S.Schema<string, string, never>;
+      b: S.Schema<number, number, never>;
+  }
+  */
+  const personFields = Person.fields;
+
+  /*
+  instead of:
+  class PersonWithGender extends Person.extend<PersonWithGender>()({
+    gender: S.string
+  }) {}
+  */
+  class PersonWithGender extends S.Class<PersonWithGender>()({
+    gender: S.string,
+    ...Person.fields,
+  }) {}
+
+  /*
+  const personWithGenderFields: {
+      name: S.Schema<string, string, never>;
+      age: S.Schema<number, number, never>;
+      gender: S.Schema<string, string, never>;
+  }
+  */
+  const personWithGenderFields = PersonWithGender.fields;
+  ```
+
 - Schema: rename `uniqueSymbol` to `uniqueSymbolFromSelf`
 
 - AST: refactor `ExamplesAnnotation` and `DefaultAnnotation` to accept a type parameter

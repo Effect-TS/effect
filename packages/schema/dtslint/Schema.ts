@@ -283,6 +283,12 @@ S.nonEmptyArray(S.NumberFromString)
 // `struct` API
 // ---------------------------------------------
 
+// $ExpectType { readonly a: Schema<string, string, never>; readonly b: Schema<number, number, never>; }
+S.struct({ a: S.string, b: S.number }).fields
+
+// $ExpectType { readonly a: Schema<string, string, never>; readonly b: Schema<number, number, never>; }
+S.struct({ a: S.string, b: S.number }).annotations({}).fields
+
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, never>
 S.asSchema(S.struct({ a: S.string, b: S.number }))
 
@@ -975,6 +981,9 @@ S.transformLiterals([0, "a"], [1, "b"])
 // ---------------------------------------------
 // Class
 // ---------------------------------------------
+
+// $ExpectType { readonly a: Schema<string, string, never>; }
+MyClass.fields
 
 // $ExpectType { readonly a: string; }
 export type MyClassFrom = S.Schema.From<typeof MyClass>

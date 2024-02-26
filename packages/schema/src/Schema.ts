@@ -1137,7 +1137,7 @@ export type ToStruct<Fields extends StructFields> =
 export interface struct<Fields extends StructFields>
   extends Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, Schema.Context<Fields[keyof Fields]>>
 {
-  readonly fields: Fields
+  readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields>
 }
 
@@ -4677,7 +4677,9 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Schema<Self, I, R> {
+export interface Class<Fields extends StructFields, A, I, R, C, Self, Inherited = {}, Proto = {}>
+  extends Schema<Self, I, R>
+{
   new(
     props: Equals<C, {}> extends true ? void | {} : C,
     disableValidation?: boolean | undefined
@@ -4685,11 +4687,14 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
 
   readonly struct: Schema<A, I, R>
 
+  readonly fields: { readonly [K in keyof Fields]: Fields[K] }
+
   readonly extend: <Extended>() => <FieldsB extends StructFields>(
     fields: FieldsB,
     annotations?: Annotations<Extended>
   ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
     : Class<
+      Omit<Fields, keyof FieldsB> & FieldsB,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
       R | Schema.Context<FieldsB[keyof FieldsB]>,
@@ -4718,6 +4723,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
     annotations?: Annotations<Transformed>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
     : Class<
+      Omit<Fields, keyof FieldsB> & FieldsB,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       I,
       R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
@@ -4746,6 +4752,7 @@ export interface Class<A, I, R, C, Self, Inherited = {}, Proto = {}> extends Sch
     annotations?: Annotations<Transformed>
   ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
+      Omit<Fields, keyof FieldsB> & FieldsB,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
       I,
       R | Schema.Context<FieldsB[keyof FieldsB]> | R2 | R3,
@@ -4766,6 +4773,7 @@ export const Class = <Self>() =>
   annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
   : Class<
+    Fields,
     Simplify<ToStruct<Fields>>,
     Simplify<FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
@@ -4784,6 +4792,7 @@ export const TaggedClass = <Self>() =>
   annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
+    { _tag: Tag } & Fields,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
@@ -4808,6 +4817,7 @@ export const TaggedError = <Self>() =>
   annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
+    { _tag: Tag } & Fields,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
@@ -4860,6 +4870,7 @@ export const TaggedRequest = <Self>() =>
   annotations?: Annotations<Self>
 ): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
   : Class<
+    { _tag: Tag } & Fields,
     Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
     Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
     Schema.Context<Fields[keyof Fields]>,
