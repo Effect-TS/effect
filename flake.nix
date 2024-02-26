@@ -6,16 +6,17 @@
   };
   outputs = {nixpkgs, ...}: let
     systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
+    forAllSystems = nixpkgs.lib.genAttrs systems;
   in {
-    formatter = nixpkgs.lib.genAttrs systems (
+    formatter = forAllSystems (
       system: let
-        pkgs = import nixpkgs {inherit system;};
+        pkgs = nixpkgs.legacyPackages.${system};
       in
         pkgs.alejandra
     );
-    devShells = nixpkgs.lib.genAttrs systems (
+    devShells = forAllSystems (
       system: let
-        pkgs = import nixpkgs {inherit system;};
+        pkgs = nixpkgs.legacyPackages.${system};
         node = pkgs.nodejs_20;
         corepackEnable = pkgs.runCommand "corepack-enable" {} ''
           mkdir -p $out/bin
