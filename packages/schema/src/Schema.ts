@@ -65,7 +65,7 @@ export type TypeId = typeof TypeId
  */
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly ast: AST.AST
-  annotations(annotations: Annotations<A>): Schema<A, I, R>
+  annotations(annotations?: Annotations<A>): Schema<A, I, R>
 }
 
 /**
@@ -379,17 +379,40 @@ export const isSchema = (u: unknown): u is AnySchema => Predicate.isObject(u) &&
  * @category constructors
  * @since 1.0.0
  */
-export const make: <A, I, R>(ast: AST.AST) => Schema<A, I, R> = _schema.make
+export const make: <A, I = A, R = never>(ast: AST.AST) => Schema<A, I, R> = _schema.make
 
-const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> => make(new AST.Literal(value))
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
+  extends Schema<Literals[number]>
+{
+  readonly literals: Readonly<Literals>
+  annotations(annotations?: Annotations<Literals[number]>): literal<Literals>
+}
+
+class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
+  extends _schema.Schema<Literals[number]>
+  implements literal<Literals>
+{
+  constructor(readonly literals: Literals, annotations?: Annotations<Literals[number]>) {
+    const schema = union(...literals.map((literal) => make<Literals[number]>(new AST.Literal(literal))))
+      .annotations(annotations)
+    super(schema.ast)
+  }
+  annotations(annotations?: Annotations<Literals[number]>) {
+    return annotations ? new $literal(this.literals, annotations) : this
+  }
+}
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
+export const literal = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-): Schema<Literals[number]> => union(...literals.map((literal) => makeLiteral(literal)))
+): literal<Literals> => new $literal(literals)
 
 /**
  * @category constructors
@@ -818,7 +841,7 @@ export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R> ex
   readonly ToIsOptional: ToIsOptional
 
   annotations(
-    annotations: PropertySignatureAnnotations<To>
+    annotations?: PropertySignatureAnnotations<To>
   ): PropertySignature<From, FromIsOptional, To, ToIsOptional, R>
 }
 
@@ -850,12 +873,14 @@ export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional, R>
   ) {}
 
   annotations(
-    annotations: PropertySignatureAnnotations<To>
+    annotations?: PropertySignatureAnnotations<To>
   ): PropertySignature<From, FromIsOptional, To, ToIsOptional, R> {
-    return new PropertySignatureImpl(this.propertySignatureAST, {
-      ...this.propertySignatureAnnotations,
-      ...annotations
-    })
+    return annotations ?
+      new PropertySignatureImpl(this.propertySignatureAST, {
+        ...this.propertySignatureAnnotations,
+        ...annotations
+      }) :
+      this
   }
 }
 
@@ -1309,7 +1334,7 @@ export const pluck: {
  * @since 1.0.0
  */
 export interface BrandSchema<A extends Brand.Brand<any>, I> extends Schema<A, I>, Brand.Brand.Constructor<A> {
-  annotations(annotations: Annotations<A>): BrandSchema<A, I>
+  annotations(annotations?: Annotations<A>): BrandSchema<A, I>
 }
 
 const makeBrandSchema = <A, I, B extends string | symbol>(
@@ -1331,7 +1356,9 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
   refined.pipe = function() {
     return pipeArguments(this, arguments)
   }
-  refined.annotations = (annotations: Annotations<A & Brand.Brand<B>>) => makeBrandSchema(ast, annotations)
+  refined.annotations = (annotations: Annotations<A & Brand.Brand<B>>) => {
+    return annotations ? makeBrandSchema(ast, annotations) : refined
+  }
   return refined
 }
 
@@ -4872,7 +4899,7 @@ const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }:
       return pipeArguments(this, arguments)
     }
 
-    static annotations(annotations: Annotations<any>) {
+    static annotations(annotations?: Annotations<any>) {
       return make(this.ast).annotations(annotations)
     }
 

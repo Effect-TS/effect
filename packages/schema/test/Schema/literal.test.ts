@@ -3,11 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/literal", () => {
-  it("should return never with no literals", () => {
-    expect(S.literal().ast).toEqual(AST.neverKeyword)
-  })
-
+describe("Schema > literal", () => {
   it("should return an unwrapped AST with exactly one literal", () => {
     expect(S.literal(1).ast).toEqual(new AST.Literal(1))
   })
@@ -16,6 +12,22 @@ describe("Schema/literal", () => {
     expect(S.literal(1, 2).ast).toEqual(
       AST.Union.make([new AST.Literal(1), new AST.Literal(2)])
     )
+  })
+
+  it("should expose the literals", () => {
+    const schema = S.literal("a", "b")
+    expect(schema.literals).toStrictEqual(["a", "b"])
+  })
+
+  it("should return the literal interface when using the .annotations() method", () => {
+    const schema = S.literal("a", "b").annotations({ identifier: "literal test" })
+    expect(schema.literals).toStrictEqual(["a", "b"])
+  })
+
+  it("should return the same reference when using .annotations(undefined)", () => {
+    const schema = S.literal("a", "b")
+    const copy = schema.annotations(undefined)
+    expect(schema === copy).toBe(true)
   })
 
   describe("decoding", () => {

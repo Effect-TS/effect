@@ -25,6 +25,15 @@ describe("Schema > brand", () => {
       expect(isBrandConstructor(annotatedSchema)).toBe(true)
     })
 
+    it("should return the same reference when using .annotations(undefined)", () => {
+      const schema = S.number.pipe(
+        S.int(),
+        S.brand("A")
+      )
+      const copy = schema.annotations(undefined)
+      expect(schema === copy).toBe(true)
+    })
+
     it("brand as string (1 brand)", () => {
       // const Branded: S.BrandSchema<number & Brand<"A">, number, never>
       const schema = S.number.pipe(

@@ -105,23 +105,32 @@ S.object
 // $ExpectType Schema<null, null, never>
 S.null
 
-// $ExpectType Schema<never, never, never>
+// @ts-expect-error
 S.literal()
 
-// $ExpectType Schema<"a", "a", never>
+// $ExpectType literal<["a"]>
 S.literal("a")
 
-// $ExpectType Schema<"a" | "b" | "c", "a" | "b" | "c", never>
+// $ExpectType literal<["a", "b", "c"]>
 S.literal("a", "b", "c")
 
-// $ExpectType Schema<1, 1, never>
+// $ExpectType literal<[1]>
 S.literal(1)
 
-// $ExpectType Schema<2n, 2n, never>
+// $ExpectType literal<[2n]>
 S.literal(2n) // bigint literal
 
-// $ExpectType Schema<true, true, never>
+// $ExpectType literal<[true]>
 S.literal(true)
+
+// $ExpectType literal<["A", "B"]>
+S.literal("A", "B")
+
+// $ExpectType readonly ["A", "B"]
+S.literal("A", "B").literals
+
+// $ExpectType literal<["A", "B"]>
+S.literal("A", "B").annotations({ description: "A or B" })
 
 // ---------------------------------------------
 // strings

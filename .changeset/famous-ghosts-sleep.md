@@ -2,6 +2,8 @@
 "@effect/schema": patch
 ---
 
+- Schema: expose `literals`
+
 - Schema: add `AnySchema` helper
 
 - Schema: refactor `annotations` API to be a method within the `Schema` interface
