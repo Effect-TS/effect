@@ -1407,7 +1407,7 @@ describe("JSONSchema", () => {
         bar: S.asPropertySignature(JsonNumber).annotations({
           description: "bar description",
           title: "bar title",
-          examples: ["bar example"]
+          examples: [1]
         })
       })
       const jsonSchema = JSONSchema.make(schema)

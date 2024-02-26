@@ -94,7 +94,7 @@ export const DescriptionAnnotationId = Symbol.for("@effect/schema/annotation/Des
  * @category annotations
  * @since 1.0.0
  */
-export type ExamplesAnnotation = ReadonlyArray<unknown>
+export type ExamplesAnnotation<A> = ReadonlyArray.NonEmptyReadonlyArray<A>
 
 /**
  * @category annotations
@@ -106,7 +106,7 @@ export const ExamplesAnnotationId = Symbol.for("@effect/schema/annotation/Exampl
  * @category annotations
  * @since 1.0.0
  */
-export type DefaultAnnotation = unknown
+export type DefaultAnnotation<A> = A
 
 /**
  * @category annotations
@@ -230,17 +230,13 @@ export const getDescriptionAnnotation = getAnnotation<DescriptionAnnotation>(
  * @category annotations
  * @since 1.0.0
  */
-export const getExamplesAnnotation = getAnnotation<ExamplesAnnotation>(
-  ExamplesAnnotationId
-)
+export const getExamplesAnnotation = getAnnotation<ExamplesAnnotation<unknown>>(ExamplesAnnotationId)
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const getDefaultAnnotation = getAnnotation<DefaultAnnotation>(
-  DefaultAnnotationId
-)
+export const getDefaultAnnotation = getAnnotation<DefaultAnnotation<unknown>>(DefaultAnnotationId)
 
 /**
  * @category annotations

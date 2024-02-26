@@ -302,7 +302,7 @@ aContext.pipe(Schema.description(""))
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "a">
-aContext.pipe(Schema.examples([]))
+aContext.pipe(Schema.examples(["a"]))
 
 // ---------------------------------------------
 // documentation

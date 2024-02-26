@@ -2,6 +2,8 @@
 "@effect/schema": minor
 ---
 
+- AST: refactor `ExamplesAnnotation` and `DefaultAnnotation` to accept a type parameter
+
 - Schema: use `TreeFormatter` in `BrandSchema`s
 
 - refactor Schema annotations interfaces:

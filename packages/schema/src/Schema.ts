@@ -817,7 +817,9 @@ export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R> ex
   readonly FromIsOptional: FromIsOptional
   readonly ToIsOptional: ToIsOptional
 
-  annotations(annotations: PropertySignatureAnnotations): PropertySignature<From, FromIsOptional, To, ToIsOptional, R>
+  annotations(
+    annotations: PropertySignatureAnnotations<To>
+  ): PropertySignature<From, FromIsOptional, To, ToIsOptional, R>
 }
 
 type PropertySignatureAST =
@@ -844,10 +846,12 @@ export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional, R>
 
   constructor(
     readonly propertySignatureAST: PropertySignatureAST,
-    readonly propertySignatureAnnotations?: PropertySignatureAnnotations
+    readonly propertySignatureAnnotations?: PropertySignatureAnnotations<To>
   ) {}
 
-  annotations(annotations: PropertySignatureAnnotations): PropertySignature<From, FromIsOptional, To, ToIsOptional, R> {
+  annotations(
+    annotations: PropertySignatureAnnotations<To>
+  ): PropertySignature<From, FromIsOptional, To, ToIsOptional, R> {
     return new PropertySignatureImpl(this.propertySignatureAST, {
       ...this.propertySignatureAnnotations,
       ...annotations
@@ -1802,11 +1806,11 @@ export const attachPropertySignature: {
 /**
  * @since 1.0.0
  */
-export interface PropertySignatureAnnotations extends AST.Annotations {
+export interface PropertySignatureAnnotations<A> extends AST.Annotations {
   readonly title?: AST.TitleAnnotation
   readonly description?: AST.DescriptionAnnotation
-  readonly examples?: AST.ExamplesAnnotation
-  readonly default?: AST.DefaultAnnotation
+  readonly examples?: AST.ExamplesAnnotation<A>
+  readonly default?: AST.DefaultAnnotation<A>
   readonly documentation?: AST.DocumentationAnnotation
 }
 
@@ -1814,7 +1818,7 @@ export interface PropertySignatureAnnotations extends AST.Annotations {
  * @since 1.0.0
  */
 export interface Annotations<A, TypeParameters extends ReadonlyArray<any> = readonly []>
-  extends PropertySignatureAnnotations
+  extends PropertySignatureAnnotations<A>
 {
   readonly identifier?: AST.IdentifierAnnotation
   readonly message?: AST.MessageAnnotation
@@ -1881,7 +1885,7 @@ export const description =
  * @category annotations
  * @since 1.0.0
  */
-export const examples = (examples: AST.ExamplesAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+export const examples = <A>(examples: AST.ExamplesAnnotation<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.annotations({ [AST.ExamplesAnnotationId]: examples })
 
 const _default = <A>(value: A) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>

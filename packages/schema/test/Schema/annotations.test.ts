@@ -18,7 +18,7 @@ describe("Schema > .annotations()", () => {
   })
 
   it("title", () => {
-    const schema = S.string.pipe(S.title("MyString"))
+    const schema = S.string.annotations({ title: "MyString" })
     expect(schema.ast.annotations).toEqual({
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"
@@ -27,7 +27,7 @@ describe("Schema > .annotations()", () => {
   })
 
   it("description", () => {
-    const schema = S.string.pipe(S.description("description"))
+    const schema = S.string.annotations({ description: "description" })
     expect(schema.ast.annotations).toEqual({
       [AST.DescriptionAnnotationId]: "description",
       [AST.TitleAnnotationId]: "string"
@@ -36,7 +36,7 @@ describe("Schema > .annotations()", () => {
   })
 
   it("examples", () => {
-    const schema = S.string.pipe(S.examples(["example"]))
+    const schema = S.string.annotations({ examples: ["example"] })
     expect(schema.ast.annotations).toEqual({
       [AST.ExamplesAnnotationId]: ["example"],
       [AST.TitleAnnotationId]: "string",
