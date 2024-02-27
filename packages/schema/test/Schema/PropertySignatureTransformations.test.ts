@@ -135,50 +135,75 @@ describe("Schema > PropertySignatureTransformations", () => {
     await Util.expectEncodeSuccess(transform, { a: "a" }, { a: "a" })
   })
 
-  it("rename", async () => {
-    const transform: S.Schema<{ readonly b: number }, { readonly a: number }> = S.make(
-      new AST.Transform(
-        S.struct({ a: S.number }).ast,
-        S.struct({ b: S.number }).ast,
-        AST.TypeLiteralTransformation.make(
-          [
-            new AST.PropertySignatureTransformation(
-              "a",
-              "b",
-              identity,
-              identity
-            )
-          ]
+  describe("renaming", () => {
+    it("string key", async () => {
+      const transform: S.Schema<{ readonly b: number }, { readonly a: number }> = S.make(
+        new AST.Transform(
+          S.struct({ a: S.number }).ast,
+          S.struct({ b: S.number }).ast,
+          AST.TypeLiteralTransformation.make(
+            [
+              new AST.PropertySignatureTransformation(
+                "a",
+                "b",
+                identity,
+                identity
+              )
+            ]
+          )
         )
       )
-    )
-    await Util.expectDecodeUnknownSuccess(transform, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
+      await Util.expectDecodeUnknownSuccess(transform, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
 
-    await Util.expectEncodeSuccess(transform, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
-  })
+      await Util.expectEncodeSuccess(transform, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
+    })
 
-  it("rename transformation", async () => {
-    const a = Symbol.for("@effect/schema/test/a")
-    const rename: S.Schema<{ readonly [a]: symbol }, { readonly a: string }> = S.make(
-      new AST.Transform(
-        S.struct({ a: S.string }).ast,
-        S.struct({ [a]: S.symbol }).ast,
-        AST.TypeLiteralTransformation.make(
-          [
-            new AST.PropertySignatureTransformation(
-              "a",
-              a,
-              identity,
-              identity
-            )
-          ]
+    it("symbol key", async () => {
+      const a = Symbol.for("@effect/schema/test/a")
+      const rename: S.Schema<{ readonly [a]: symbol }, { readonly a: string }> = S.make(
+        new AST.Transform(
+          S.struct({ a: S.string }).ast,
+          S.struct({ [a]: S.symbol }).ast,
+          AST.TypeLiteralTransformation.make(
+            [
+              new AST.PropertySignatureTransformation(
+                "a",
+                a,
+                identity,
+                identity
+              )
+            ]
+          )
         )
       )
-    )
-    const schema = S.struct({ b: S.number }).pipe(S.extend(rename))
+      const schema = S.struct({ b: S.number }).pipe(S.extend(rename))
 
-    await Util.expectDecodeUnknownSuccess(schema, { a: "@effect/schema/test/a", b: 1 }, { [a]: a, b: 1 })
-    await Util.expectEncodeSuccess(schema, { [a]: a, b: 1 }, { a: "@effect/schema/test/a", b: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "@effect/schema/test/a", b: 1 }, { [a]: a, b: 1 })
+      await Util.expectEncodeSuccess(schema, { [a]: a, b: 1 }, { a: "@effect/schema/test/a", b: 1 })
+    })
+
+    it("PropertySignatureImpl", async () => {
+      const pr = new S.PropertySignatureImpl<number, false, number, false, never>({
+        _tag: "PropertySignatureTransformation",
+        from: {
+          ast: S.number.ast,
+          isOptional: false
+        },
+        to: {
+          ast: S.number.ast,
+          isOptional: false,
+          key: "b"
+        },
+        decode: identity,
+        encode: identity
+      })
+      const transform = S.struct({
+        a: pr
+      })
+      await Util.expectDecodeUnknownSuccess(transform, { a: 1 }, { b: 1 } as any, { onExcessProperty: "error" })
+
+      await Util.expectEncodeSuccess(transform, { b: 1 } as any, { a: 1 }, { onExcessProperty: "error" })
+    })
   })
 
   it("reversed default", async () => {
