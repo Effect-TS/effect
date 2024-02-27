@@ -436,7 +436,7 @@ export const literal = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST
  * @since 1.0.0
  */
 export const pickLiteral =
-  <A extends AST.LiteralValue, L extends ReadonlyArray<A>>(...literals: L) =>
+  <A extends AST.LiteralValue, L extends ReadonlyArray.NonEmptyReadonlyArray<A>>(...literals: L) =>
   <I, R>(_schema: Schema<A, I, R>): Schema<L[number]> => literal(...literals)
 
 /**
