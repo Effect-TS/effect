@@ -141,21 +141,21 @@ Schema.nonEmptyArray(aContext)
 // asPropertySignature
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<string, false, string, false, "a">
+// $ExpectType PropertySignature<string, "!", string, "!", "a">
 aContext.pipe(Schema.asPropertySignature)
 
 // ---------------------------------------------
 // optionalToRequired
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<string, true, string, false, "a">
+// $ExpectType PropertySignature<string, "?", string, "!", "a">
 Schema.optionalToRequired(aContext, Schema.string, Option.getOrElse(() => ""), Option.some)
 
 // ---------------------------------------------
 // optional
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<string | undefined, true, string | undefined, true, "a">
+// $ExpectType PropertySignature<string | undefined, "?", string | undefined, "?", "a">
 Schema.optional(aContext)
 
 // ---------------------------------------------

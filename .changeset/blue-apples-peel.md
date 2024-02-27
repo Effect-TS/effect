@@ -2,6 +2,8 @@
 "@effect/schema": minor
 ---
 
+- Schema: change `PropertySignature` signature from booleans to `"?" | "!"`
+
 - Schema: rename `Class` interface to `ClassSchema`
 
 - Schema: expose `fields` (`Class` API) and remove `struct`

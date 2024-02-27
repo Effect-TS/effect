@@ -183,7 +183,7 @@ describe("Schema > PropertySignatureTransformations", () => {
     })
 
     it("PropertySignatureImpl", async () => {
-      const pr = new S.$PropertySignature<number, false, number, false, never>({
+      const pr = new S.$PropertySignature<number, "!", number, "!", never>({
         _tag: "PropertySignatureTransformation",
         from: {
           ast: S.number.ast,
