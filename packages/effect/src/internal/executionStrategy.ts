@@ -46,27 +46,29 @@ export const isParallelN = (self: ExecutionStrategy.ExecutionStrategy): self is 
 
 /** @internal */
 export const match = dual<
-  <A>(
-    onSequential: LazyArg<A>,
-    onParallel: LazyArg<A>,
-    onParallelN: (n: number) => A
-  ) => (self: ExecutionStrategy.ExecutionStrategy) => A,
+  <A>(options: {
+    readonly onSequential: LazyArg<A>
+    readonly onParallel: LazyArg<A>
+    readonly onParallelN: (n: number) => A
+  }) => (self: ExecutionStrategy.ExecutionStrategy) => A,
   <A>(
     self: ExecutionStrategy.ExecutionStrategy,
-    onSequential: LazyArg<A>,
-    onParallel: LazyArg<A>,
-    onParallelN: (n: number) => A
+    options: {
+      readonly onSequential: LazyArg<A>
+      readonly onParallel: LazyArg<A>
+      readonly onParallelN: (n: number) => A
+    }
   ) => A
->(4, (self, onSequential, onParallel, onParallelN) => {
+>(2, (self, options) => {
   switch (self._tag) {
     case OP_SEQUENTIAL: {
-      return onSequential()
+      return options.onSequential()
     }
     case OP_PARALLEL: {
-      return onParallel()
+      return options.onParallel()
     }
     case OP_PARALLEL_N: {
-      return onParallelN(self.parallelism)
+      return options.onParallelN(self.parallelism)
     }
   }
 })
