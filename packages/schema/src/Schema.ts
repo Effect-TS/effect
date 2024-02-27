@@ -1103,7 +1103,7 @@ export const optional: {
 /**
  * @since 1.0.0
  */
-export type FromOptionalKeys<Fields> = {
+export type FromOptionalKeys<Fields extends StructFields> = {
   [K in keyof Fields]: Fields[K] extends
     | PropertySignature<any, true, any, boolean, unknown>
     | PropertySignature<never, true, never, boolean, unknown> ? K
@@ -1113,7 +1113,7 @@ export type FromOptionalKeys<Fields> = {
 /**
  * @since 1.0.0
  */
-export type ToOptionalKeys<Fields> = {
+export type ToOptionalKeys<Fields extends StructFields> = {
   [K in keyof Fields]: Fields[K] extends
     | PropertySignature<any, boolean, any, true, unknown>
     | PropertySignature<never, boolean, never, true, unknown> ? K
