@@ -22,6 +22,9 @@
   */
   const personFields = Person.fields;
 
+  // instead of Person.struct
+  const struct = S.struct(Person.fields);
+
   /*
   instead of:
   class PersonWithGender extends Person.extend<PersonWithGender>()({
