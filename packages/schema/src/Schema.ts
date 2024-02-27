@@ -420,6 +420,26 @@ export const literal = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST
 ): literal<Literals> => new $literal(literals)
 
 /**
+ * Creates a new `Schema` from a literal schema.
+ *
+ * @example
+ * import * as S from "@effect/schema/Schema"
+ * import { Either } from "effect"
+ *
+ * const schema = S.literal("a", "b", "c").pipe(S.pickLiteral("a", "b"))
+ *
+ * assert.deepStrictEqual(S.decodeSync(schema)("a"), "a")
+ * assert.deepStrictEqual(S.decodeSync(schema)("b"), "b")
+ * assert.strictEqual(Either.isLeft(S.decodeUnknownEither(schema)("c")), true)
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const pickLiteral =
+  <A extends AST.LiteralValue, L extends ReadonlyArray<A>>(...literals: L) =>
+  <I, R>(_schema: Schema<A, I, R>): Schema<L[number]> => literal(...literals)
+
+/**
  * @category constructors
  * @since 1.0.0
  */

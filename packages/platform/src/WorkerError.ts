@@ -19,6 +19,12 @@ export const WorkerErrorTypeId: unique symbol = internal.WorkerErrorTypeId
  */
 export type WorkerErrorTypeId = typeof WorkerErrorTypeId
 
+/**
+ * @since 1.0.0
+ * @category predicates
+ */
+export const isWorkerError = (u: unknown): u is WorkerError => Predicate.hasProperty(u, WorkerErrorTypeId)
+
 const causeDefectPretty: Schema.Schema<unknown> = Schema.transform(
   Schema.unknown,
   Schema.unknown,

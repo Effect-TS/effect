@@ -89,8 +89,7 @@ describe("HttpClient", () => {
       const response = yield* _(
         Http.request.head("https://jsonplaceholder.typicode.com/todos"),
         client,
-        Effect.flatMap(Http.response.schemaJson(Schema.struct({ status: Schema.literal(200) }))),
-        Effect.scoped
+        Http.response.schemaJsonEffect(Schema.struct({ status: Schema.literal(200) }))
       )
       expect(response).toEqual({ status: 200 })
     }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
@@ -101,8 +100,7 @@ describe("HttpClient", () => {
       const response = yield* _(
         Http.request.get("https://www.google.com/"),
         client,
-        Effect.flatMap((_) => _.text),
-        Effect.scoped,
+        Http.response.text,
         Effect.timeout(1),
         Effect.asSome,
         Effect.catchTag("TimeoutException", () => Effect.succeedNone)

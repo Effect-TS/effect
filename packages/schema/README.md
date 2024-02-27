@@ -1130,6 +1130,40 @@ S.literal(2n); // bigint literal
 S.literal(true);
 ```
 
+We can also `pickLiteral` from a literal schema.
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+S.literal("a", "b", "c").pipe(S.pickLiteral("a", "b")); //same as S.literal("a", "b")
+```
+
+Sometimes we need to reuse a schema literal in other parts of the code. Let's see an example:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const FruitId = S.number;
+// the source of truth regarding the Fruit category
+const FruitCategory = S.literal("sweet", "citrus", "tropical");
+
+const Fruit = S.struct({
+  id: FruitId,
+  category: FruitCategory,
+});
+
+// Here, we want to reuse our FruitCategory definition to create a subtype of Fruit
+const SweetAndCitrusFruit = S.struct({
+  fruitId: FruitId,
+  category: FruitCategory.pipe(S.pickLiteral("sweet", "citrus")),
+  /*
+    By using pickLiteral from the FruitCategory, we ensure that the values selected
+    are those defined in the category definition above.
+    If we remove "sweet" from the FruitCategory definition, TypeScript will notify us.
+    */
+});
+```
+
 ## Template literals
 
 The `templateLiteral` combinator allows you to create a schema for a TypeScript template literal type.

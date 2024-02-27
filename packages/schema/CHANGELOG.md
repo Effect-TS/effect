@@ -1,5 +1,30 @@
 # @effect/schema
 
+## 0.63.1
+
+### Patch Changes
+
+- [#2209](https://github.com/Effect-TS/effect/pull/2209) [`5d30853`](https://github.com/Effect-TS/effect/commit/5d308534cac6f187227185393c0bac9eb27f90ab) Thanks [@steffanek](https://github.com/steffanek)! - Add `pickLiteral` to Schema so that we can pick values from a Schema literal as follows:
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  const schema = S.literal("a", "b", "c").pipe(S.pickLiteral("a", "b")); // same as S.literal("a", "b")
+
+  S.decodeUnknownSync(schema)("a"); // ok
+  S.decodeUnknownSync(schema)("b"); // ok
+  S.decodeUnknownSync(schema)("c");
+  /*
+  Error: "a" | "b"
+  ├─ Union member
+  │  └─ Expected "a", actual "c"
+  └─ Union member
+     └─ Expected "b", actual "c"
+  */
+  ```
+
+- [#2217](https://github.com/Effect-TS/effect/pull/2217) [`6e350ed`](https://github.com/Effect-TS/effect/commit/6e350ed611feb0341e00aafd3c3905cd5ba53f07) Thanks [@gcanti](https://github.com/gcanti)! - JSONSchema: prune `UndefinedKeyword` if the property signature is marked as optional and contains a union that includes `UndefinedKeyword`, closes #2068
+
 ## 0.63.0
 
 ### Minor Changes

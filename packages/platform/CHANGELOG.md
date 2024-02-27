@@ -1,5 +1,18 @@
 # @effect/platform
 
+## 0.46.2
+
+### Patch Changes
+
+- Updated dependencies [[`5d30853`](https://github.com/Effect-TS/effect/commit/5d308534cac6f187227185393c0bac9eb27f90ab), [`6e350ed`](https://github.com/Effect-TS/effect/commit/6e350ed611feb0341e00aafd3c3905cd5ba53f07)]:
+  - @effect/schema@0.63.1
+
+## 0.46.1
+
+### Patch Changes
+
+- [#2196](https://github.com/Effect-TS/effect/pull/2196) [`aa6556f`](https://github.com/Effect-TS/effect/commit/aa6556f007117caea84d6965aa30846a11879e9d) Thanks [@tim-smart](https://github.com/tim-smart)! - handle defects in worker runner
+
 ## 0.46.0
 
 ### Minor Changes
