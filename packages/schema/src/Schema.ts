@@ -844,6 +844,8 @@ export const nonEmptyArray = <A, I, R>(
 export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R> extends Schema.Variance<To, From, R> {
   readonly FromIsOptional: FromIsOptional
   readonly ToIsOptional: ToIsOptional
+  readonly propertySignatureAST: PropertySignatureAST
+  readonly propertySignatureAnnotations?: PropertySignatureAnnotations<To> | undefined
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
@@ -1116,6 +1118,10 @@ export type StructFields = Record<
   | PropertySignature<never, boolean, never, boolean, unknown>
 >
 
+const isPropertySignature = (field: StructFields[PropertyKey]): field is
+  | PropertySignature<any, boolean, any, boolean, unknown>
+  | PropertySignature<never, boolean, never, boolean, unknown> => "propertySignatureAST" in field
+
 /**
  * @since 1.0.0
  */
@@ -1130,21 +1136,24 @@ export type ToStruct<Fields extends StructFields> =
   & { readonly [K in Exclude<keyof Fields, ToOptionalKeys<Fields>>]: Schema.To<Fields[K]> }
   & { readonly [K in ToOptionalKeys<Fields>]?: Schema.To<Fields[K]> }
 
-type GetStructFieldsContext<Fields extends StructFields> = Schema.Context<Fields[keyof Fields]>
+/**
+ * @since 1.0.0
+ */
+export type ContextStruct<Fields extends StructFields> = Schema.Context<Fields[keyof Fields]>
 
 /**
  * @category api interface
  * @since 1.0.0
  */
 export interface struct<Fields extends StructFields>
-  extends Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, GetStructFieldsContext<Fields>>
+  extends Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, ContextStruct<Fields>>
 {
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields>
 }
 
 class $struct<Fields extends StructFields>
-  extends _schema.Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, GetStructFieldsContext<Fields>>
+  extends _schema.Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, ContextStruct<Fields>>
   implements struct<Fields>
 {
   constructor(readonly fields: Fields, annotations?: Annotations<Simplify<ToStruct<Fields>>>) {
@@ -1155,8 +1164,8 @@ class $struct<Fields extends StructFields>
     const psTransformations: Array<AST.PropertySignatureTransformation> = []
     for (let i = 0; i < ownKeys.length; i++) {
       const key = ownKeys[i]
-      const field = fields[key] as any
-      if ("propertySignatureAST" in field) {
+      const field = fields[key]
+      if (isPropertySignature(field)) {
         const propertySignatureAST: PropertySignatureAST = field.propertySignatureAST
         const propertySignatureAnnotations = _schema.toASTAnnotations(field.propertySignatureAnnotations)
         const from = propertySignatureAST.from
@@ -4698,7 +4707,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       Omit<Fields, keyof FieldsB> & FieldsB,
       Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
       Omit<I, keyof FieldsB> & FromStruct<FieldsB>,
-      GetStructFieldsContext<Omit<Fields, keyof FieldsB> & FieldsB>,
+      ContextStruct<Omit<Fields, keyof FieldsB> & FieldsB>,
       Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
       Self,
       Proto
@@ -4726,7 +4735,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       Omit<Fields, keyof FieldsB> & FieldsB,
       Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
       I,
-      GetStructFieldsContext<Omit<Fields, keyof FieldsB> & FieldsB> | R2 | R3,
+      ContextStruct<Omit<Fields, keyof FieldsB> & FieldsB> | R2 | R3,
       Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
       Self,
       Proto
@@ -4754,7 +4763,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       Omit<Fields, keyof FieldsB> & FieldsB,
       Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
       I,
-      GetStructFieldsContext<Omit<Fields, keyof FieldsB> & FieldsB> | R2 | R3,
+      ContextStruct<Omit<Fields, keyof FieldsB> & FieldsB> | R2 | R3,
       Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
       Self,
       Proto
@@ -4775,7 +4784,7 @@ export const Class = <Self>() =>
     Fields,
     ToStruct<Fields>,
     FromStruct<Fields>,
-    GetStructFieldsContext<Fields>,
+    ContextStruct<Fields>,
     ToStruct<Fields>,
     {},
     {}
@@ -4796,7 +4805,7 @@ export const TaggedClass = <Self>() =>
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
     { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
     { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
-    GetStructFieldsContext<Omit<Fields, "_tag">>,
+    ContextStruct<Omit<Fields, "_tag">>,
     ToStruct<Omit<Fields, "_tag">>,
     {},
     {}
@@ -4823,7 +4832,7 @@ export const TaggedError = <Self>() =>
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
     { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
     { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
-    GetStructFieldsContext<Omit<Fields, "_tag">>,
+    ContextStruct<Omit<Fields, "_tag">>,
     ToStruct<Omit<Fields, "_tag">>,
     {},
     Cause.YieldableError
@@ -4876,11 +4885,11 @@ export const TaggedRequest = <Self>() =>
     { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
     { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
     { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
-    GetStructFieldsContext<Omit<Fields, "_tag">>,
+    ContextStruct<Omit<Fields, "_tag">>,
     ToStruct<Omit<Fields, "_tag">>,
     TaggedRequest<
       Tag,
-      GetStructFieldsContext<Omit<Fields, "_tag">>,
+      ContextStruct<Omit<Fields, "_tag">>,
       { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
       Self,
       ER | AR,
