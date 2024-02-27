@@ -53,33 +53,42 @@ export const isEither = (self: HaltStrategy.HaltStrategy): self is HaltStrategy.
 
 /** @internal */
 export const match = dual<
-  <Z>(onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z) => (self: HaltStrategy.HaltStrategy) => Z,
+  <Z>(options: {
+    readonly onLeft: () => Z
+    readonly onRight: () => Z
+    readonly onBoth: () => Z
+    readonly onEither: () => Z
+  }) => (self: HaltStrategy.HaltStrategy) => Z,
   <Z>(
     self: HaltStrategy.HaltStrategy,
-    onLeft: () => Z,
-    onRight: () => Z,
-    onBoth: () => Z,
-    onEither: () => Z
+    options: {
+      readonly onLeft: () => Z
+      readonly onRight: () => Z
+      readonly onBoth: () => Z
+      readonly onEither: () => Z
+    }
   ) => Z
->(5, <Z>(
+>(2, <Z>(
   self: HaltStrategy.HaltStrategy,
-  onLeft: () => Z,
-  onRight: () => Z,
-  onBoth: () => Z,
-  onEither: () => Z
+  options: {
+    readonly onLeft: () => Z
+    readonly onRight: () => Z
+    readonly onBoth: () => Z
+    readonly onEither: () => Z
+  }
 ): Z => {
   switch (self._tag) {
     case OpCodes.OP_LEFT: {
-      return onLeft()
+      return options.onLeft()
     }
     case OpCodes.OP_RIGHT: {
-      return onRight()
+      return options.onRight()
     }
     case OpCodes.OP_BOTH: {
-      return onBoth()
+      return options.onBoth()
     }
     case OpCodes.OP_EITHER: {
-      return onEither()
+      return options.onEither()
     }
   }
 })
