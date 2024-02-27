@@ -726,6 +726,35 @@ describe("JSONSchema", () => {
         new Error("Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema")
       )
     })
+
+    it("should prune `UndefinedKeyword` if the property signature is marked as optional and contains a union that includes `UndefinedKeyword`", () => {
+      const schema = S.struct({
+        a: S.optional(S.string)
+      })
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toStrictEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string",
+            "title": "string",
+            "description": "a string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      })
+    })
+
+    it("should raise an error if the property signature is not marked as optional and contains a union that includes `UndefinedKeyword`", () => {
+      const schema = S.struct({
+        a: S.orUndefined(S.string)
+      })
+      expect(() => JSONSchema.make(schema)).toThrow(
+        new Error("cannot build a JSON Schema for `undefined` without a JSON Schema annotation")
+      )
+    })
   })
 
   describe("record", () => {

@@ -221,13 +221,13 @@ const objectJsonSchema: JsonSchema7 = {
   ]
 }
 
-const emptyJsonSchema: JsonSchema7 = {
+const empty = (): JsonSchema7 => ({
   "$id": "/schemas/{}",
   "oneOf": [
     { "type": "object" },
     { "type": "array" }
   ]
-}
+})
 
 const $schema = "http://json-schema.org/draft-07/schema#"
 
@@ -273,6 +273,14 @@ const goWithMetaData = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonS
     ...go(ast, $defs),
     ...getMetaData(ast)
   }
+}
+
+const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
+  const type = ps.type
+  if (ps.isOptional && AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
+    return AST.Union.make(type.types.filter((type) => !AST.isUndefinedKeyword(type)), type.annotations)
+  }
+  return type
 }
 
 /** @internal */
@@ -374,7 +382,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
     }
     case "TypeLiteral": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return { ...emptyJsonSchema }
+        return empty()
       }
       let additionalProperties: JsonSchema7 | undefined = undefined
       let patternProperties: Record<string, JsonSchema7> | undefined = undefined
@@ -415,7 +423,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         }
       }
       const propertySignatures = ast.propertySignatures.map((ps) => {
-        return { ...goWithIdentifier(ps.type, $defs), ...getMetaData(ps) }
+        return { ...goWithIdentifier(pruneUndefinedKeyword(ps), $defs), ...getMetaData(ps) }
       })
       const output: JsonSchema7Object = {
         type: "object",
@@ -428,7 +436,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       // ---------------------------------------------
       for (let i = 0; i < propertySignatures.length; i++) {
         const name = ast.propertySignatures[i].name
-        if (typeof name === "string") {
+        if (Predicate.isString(name)) {
           output.properties[name] = propertySignatures[i]
           // ---------------------------------------------
           // handle optional property signatures
