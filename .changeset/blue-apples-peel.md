@@ -4,7 +4,7 @@
 
 - Schema: rename `Class` interface to `ClassSchema`
 
-- Schema: expose `fields` (`Class` API)
+- Schema: expose `fields` (`Class` API) and remove `struct`
 
   ```ts
   import * as S from "@effect/schema/Schema";

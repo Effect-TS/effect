@@ -2,6 +2,7 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import { Context, Effect, Option } from "effect"
+import { hole } from "effect/Function"
 
 declare const aContext: Schema.Schema<string, string, "a">
 declare const bContext: Schema.Schema<number, number, "b">
@@ -344,13 +345,7 @@ export class MyClass extends Schema.Class<MyClass>()({
 }) {}
 
 // $ExpectType "a"
-export type MyClassContext = Schema.Schema.Context<typeof MyClass>
-
-// $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "a">
-MyClass.struct
-
-// $ExpectType [props: { readonly a: string; }, disableValidation?: boolean | undefined]
-export type MyClassParams = ConstructorParameters<typeof MyClass>
+hole<Schema.Schema.Context<typeof MyClass>>()
 
 // ---------------------------------------------
 // Class.transform
@@ -365,13 +360,10 @@ export class MyClassWithTransform extends MyClass.transformOrFail<MyClassWithTra
 ) {}
 
 // $ExpectType "a" | "b" | "Tag1" | "Tag2"
-export type MyClassWithTransformContext = Schema.Schema.Context<typeof MyClassWithTransform>
+hole<Schema.Schema.Context<typeof MyClassWithTransform>>()
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; }, "a" | "b" | "Tag1" | "Tag2">
-MyClassWithTransform.struct
-
-// $ExpectType [props: { readonly a: string; readonly b: number; }, disableValidation?: boolean | undefined]
-export type MyClassWithTransformParams = ConstructorParameters<typeof MyClassWithTransform>
+// $ExpectType { readonly a: Schema<string, string, "a">; readonly b: Schema<number, number, "b">; }
+MyClassWithTransform.fields
 
 // ---------------------------------------------
 // Class.transformFrom
@@ -386,13 +378,10 @@ export class MyClassWithTransformFrom extends MyClass.transformOrFailFrom<MyClas
 ) {}
 
 // $ExpectType "a" | "b" | "Tag1" | "Tag2"
-export type MyClassWithTransformFromContext = Schema.Schema.Context<typeof MyClassWithTransformFrom>
+hole<Schema.Schema.Context<typeof MyClassWithTransformFrom>>()
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; }, "a" | "b" | "Tag1" | "Tag2">
-MyClassWithTransformFrom.struct
-
-// $ExpectType [props: { readonly a: string; readonly b: number; }, disableValidation?: boolean | undefined]
-export type MyClassWithTransformFromParams = ConstructorParameters<typeof MyClassWithTransformFrom>
+// $ExpectType { readonly a: Schema<string, string, "a">; readonly b: Schema<number, number, "b">; }
+MyClassWithTransformFrom.fields
 
 // ---------------------------------------------
 // TaggedRequest
@@ -403,10 +392,10 @@ class MyRequest extends Schema.TaggedRequest<MyRequest>()("MyRequest", bContext,
 }) {}
 
 // $ExpectType "a"
-export type MyRequestContext = Schema.Schema.Context<typeof MyRequest>
+hole<Schema.Schema.Context<typeof MyRequest>>()
 
-// $ExpectType Schema<{ readonly _tag: "MyRequest"; readonly a: string; }, { readonly _tag: "MyRequest"; readonly a: string; }, "a">
-MyRequest.struct
+// $ExpectType { readonly _tag: literal<["MyRequest"]>; readonly a: Schema<string, string, "a">; }
+MyRequest.fields
 
 declare const myRequest: MyRequest
 

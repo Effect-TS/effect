@@ -51,10 +51,6 @@ const IdNumber = S.number.pipe(
   )
 )
 
-class PersonContext extends Person.extend<PersonContext>()({
-  name: NameString
-}) {}
-
 class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
   id: S.number,
   name: S.string.pipe(S.nonEmpty())
@@ -158,9 +154,16 @@ describe("Schema > Class APIs", () => {
       )
     })
 
-    it("the constructor can be disabled", () => {
+    it("the constructor validation can be disabled", () => {
       class A extends S.Class<A>()({ a: S.NonEmpty }) {}
       expect(new A({ a: "" }, true).a).toStrictEqual("")
+    })
+
+    it("a Class with no fields should have a void constructor", () => {
+      class A extends S.Class<A>()({}) {}
+      expect({ ...new A() }).toStrictEqual({})
+      expect({ ...new A(undefined, true) }).toStrictEqual({})
+      expect({ ...new A({}) }).toStrictEqual({})
     })
 
     it("should support methods", () => {
@@ -204,42 +207,166 @@ describe("Schema > Class APIs", () => {
       expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
     })
 
+    it("decoding", async () => {
+      class A extends S.Class<A>()({ a: S.NonEmpty }) {}
+      await Util.expectDecodeUnknownSuccess(A, { a: "a" }, new A({ a: "a" }))
+      await Util.expectDecodeUnknownFailure(
+        A,
+        { a: "" },
+        `({ a: NonEmpty } <-> A)
+└─ From side transformation failure
+   └─ { a: NonEmpty }
+      └─ ["a"]
+         └─ NonEmpty
+            └─ Predicate refinement failure
+               └─ Expected NonEmpty (a non empty string), actual ""`
+      )
+    })
+
+    it("encoding", async () => {
+      class A extends S.Class<A>()({ a: S.NonEmpty }) {}
+      await Util.expectEncodeSuccess(A, new A({ a: "a" }), { a: "a" })
+      await Util.expectEncodeSuccess(A, { a: "a" }, { a: "a" })
+      await Util.expectEncodeFailure(
+        A,
+        new A({ a: "" }, true),
+        `({ a: NonEmpty } <-> A)
+└─ From side transformation failure
+   └─ { a: NonEmpty }
+      └─ ["a"]
+         └─ NonEmpty
+            └─ Predicate refinement failure
+               └─ Expected NonEmpty (a non empty string), actual ""`
+      )
+    })
+
     it("can be extended with Class", () => {
       class AB extends S.Class<AB>()({ a: S.string, b: S.number }) {}
       class C extends S.Class<C>()({
         ...AB.fields,
-        b: S.boolean,
-        c: S.string
+        b: S.string,
+        c: S.boolean
       }) {}
       expect(C.fields).toStrictEqual({
         a: S.string,
-        b: S.boolean,
-        c: S.string
+        b: S.string,
+        c: S.boolean
       })
-      expect({ ...new C({ a: "a", b: true, c: "c" }) }).toStrictEqual({ a: "a", b: true, c: "c" })
+      expect({ ...new C({ a: "a", b: "b", c: true }) }).toStrictEqual({ a: "a", b: "b", c: true })
     })
 
     it("can be extended with TaggedClass", () => {
       class AB extends S.Class<AB>()({ a: S.string, b: S.number }) {}
       class D extends S.TaggedClass<D>()("D", {
         ...AB.fields,
-        b: S.boolean,
-        c: S.string
+        b: S.string,
+        c: S.boolean
       }) {}
       expect(D.fields).toStrictEqual({
         _tag: S.literal("D"),
         a: S.string,
-        b: S.boolean,
-        c: S.string
+        b: S.string,
+        c: S.boolean
       })
-      expect({ ...new D({ a: "a", b: true, c: "c" }) }).toStrictEqual({ _tag: "D", a: "a", b: true, c: "c" })
+      expect({ ...new D({ a: "a", b: "b", c: true }) }).toStrictEqual({ _tag: "D", a: "a", b: "b", c: true })
+    })
+
+    it("S.to(Class)", async () => {
+      const PersonFromSelf = S.to(Person)
+      await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+      await Util.expectDecodeUnknownFailure(
+        PersonFromSelf,
+        { id: 1, name: "John" },
+        `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+      )
+    })
+
+    it("is", () => {
+      const is = S.is(S.to(Person))
+      expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
+      expect(is({ id: 1, name: "name" })).toEqual(false)
+    })
+
+    it("with a field with a context !== never", async () => {
+      class PersonContext extends S.Class<PersonContext>()({
+        ...Person.fields,
+        name: NameString
+      }) {}
+
+      const person = S.decodeUnknown(PersonContext)({ id: 1, name: "John" }).pipe(
+        Effect.provideService(Name, "John"),
+        Effect.runSync
+      )
+      expect(person.name).toEqual("John")
+
+      const PersonFromSelf = S.to(Person)
+      await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+      await Util.expectDecodeUnknownFailure(
+        PersonFromSelf,
+        { id: 1, name: "John" },
+        `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+      )
+    })
+
+    it(".struct", async () => {
+      class A extends S.Class<A>()({ a: S.NumberFromString }) {}
+      const schema = S.struct(A.fields)
+
+      await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
     })
   })
 
   describe("TaggedClass", () => {
-    it("the constructor can be disabled", () => {
-      class TA extends S.TaggedClass<TA>()("A", { a: S.string }) {}
-      expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "A", a: "a" })
+    it("the constructor should add a `_tag` field", () => {
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "TA", a: "a" })
+    })
+
+    it("a TaggedClass with no fields should have a void constructor", () => {
+      class TA extends S.TaggedClass<TA>()("TA", {}) {}
+      expect({ ...new TA() }).toStrictEqual({ _tag: "TA" })
+    })
+
+    it("decoding", async () => {
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmpty }) {}
+      await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
+      await Util.expectDecodeUnknownFailure(
+        TA,
+        { a: "a" },
+        `({ _tag: "TA"; a: NonEmpty } <-> TA)
+└─ From side transformation failure
+   └─ { _tag: "TA"; a: NonEmpty }
+      └─ ["_tag"]
+         └─ is missing`
+      )
+      await Util.expectDecodeUnknownFailure(
+        TA,
+        { _tag: "TA", a: "" },
+        `({ _tag: "TA"; a: NonEmpty } <-> TA)
+└─ From side transformation failure
+   └─ { _tag: "TA"; a: NonEmpty }
+      └─ ["a"]
+         └─ NonEmpty
+            └─ Predicate refinement failure
+               └─ Expected NonEmpty (a non empty string), actual ""`
+      )
+    })
+
+    it("encoding", async () => {
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmpty }) {}
+      await Util.expectEncodeSuccess(TA, new TA({ a: "a" }), { _tag: "TA", a: "a" })
+      await Util.expectEncodeSuccess(TA, { _tag: "TA", a: "a" } as any, { _tag: "TA", a: "a" })
+      await Util.expectEncodeFailure(
+        TA,
+        new TA({ a: "" }, true),
+        `({ _tag: "TA"; a: NonEmpty } <-> TA)
+└─ From side transformation failure
+   └─ { _tag: "TA"; a: NonEmpty }
+      └─ ["a"]
+         └─ NonEmpty
+            └─ Predicate refinement failure
+               └─ Expected NonEmpty (a non empty string), actual ""`
+      )
     })
 
     it("can be extended with Class", () => {
@@ -269,46 +396,6 @@ describe("Schema > Class APIs", () => {
       })
       expect({ ...new TB({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "TB", a: "a", b: 1 })
     })
-  })
-
-  it("is", () => {
-    const is = S.is(S.to(Person))
-    expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
-    expect(is({ id: 1, name: "name" })).toEqual(false)
-  })
-
-  it("schema", async () => {
-    const person = S.decodeUnknownSync(Person)({ id: 1, name: "John" })
-    expect(person.name).toEqual("John")
-
-    const PersonFromSelf = S.to(Person)
-    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectDecodeUnknownFailure(
-      PersonFromSelf,
-      { id: 1, name: "John" },
-      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
-    )
-  })
-
-  it("with context", async () => {
-    const person = S.decodeUnknown(PersonContext)({ id: 1, name: "John" }).pipe(
-      Effect.provideService(Name, "John"),
-      Effect.runSync
-    )
-    expect(person.name).toEqual("John")
-
-    const PersonFromSelf = S.to(Person)
-    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectDecodeUnknownFailure(
-      PersonFromSelf,
-      { id: 1, name: "John" },
-      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
-    )
-  })
-
-  it(".struct", async () => {
-    const person = S.decodeUnknownSync(Person.struct)({ id: 1, name: "John" })
-    assert.deepStrictEqual(person, { id: 1, name: "John" })
   })
 
   it("extends", () => {

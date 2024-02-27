@@ -4687,8 +4687,6 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
     disableValidation?: boolean | undefined
   ): A & Omit<Inherited, keyof A> & Proto
 
-  readonly struct: Schema<Simplify<A>, Simplify<I>, R>
-
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
   readonly extend: <Extended>() => <FieldsB extends StructFields>(
@@ -4921,7 +4919,7 @@ const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }:
   const validate = Parser.validateSync(schema)
 
   return class extends Base {
-    constructor(props?: any, disableValidation = false) {
+    constructor(props: A = {} as A, disableValidation = false) {
       if (defaults !== undefined) {
         props = { ...defaults, ...props }
       }

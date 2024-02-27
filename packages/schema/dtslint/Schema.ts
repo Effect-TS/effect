@@ -1081,6 +1081,11 @@ S.causeFromSelf({ error: S.string, defect })
 // Class
 // ---------------------------------------------
 
+class VoidClass extends S.Class<VoidClass>()({}) {}
+
+// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof VoidClass>>()
+
 declare const aContext: S.Schema<string, string, "a">
 declare const bContext: S.Schema<number, number, "b">
 declare const cContext: S.Schema<boolean, boolean, "c">
@@ -1098,9 +1103,6 @@ hole<S.Schema.Context<typeof AB>>()
 
 // $ExpectType { readonly a: Schema<string, string, "a">; readonly b: Schema<number, number, "b">; }
 AB.fields
-
-// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "a" | "b">
-AB.struct
 
 // $ExpectType [props: { readonly a: string; readonly b: number; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof AB>>()
@@ -1125,9 +1127,6 @@ hole<S.Schema.Context<typeof C>>()
 // $ExpectType { readonly b: Schema<string, string, never>; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 C.fields
 
-// $ExpectType Schema<{ readonly a: string; readonly b: string; readonly c: boolean; }, { readonly a: string; readonly b: string; readonly c: boolean; }, "a" | "c">
-C.struct
-
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof C>>()
 
@@ -1151,9 +1150,6 @@ hole<S.Schema.Context<typeof D>>()
 // $ExpectType { readonly _tag: literal<["D"]>; readonly a: Schema<string, string, "a">; readonly b: Schema<string, string, never>; readonly c: Schema<boolean, boolean, "c">; }
 D.fields
 
-// $ExpectType Schema<{ readonly _tag: "D"; readonly a: string; readonly b: string; readonly c: boolean; }, { readonly _tag: "D"; readonly a: string; readonly b: string; readonly c: boolean; }, "a" | "c">
-D.struct
-
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof D>>()
 
@@ -1173,9 +1169,6 @@ hole<S.Schema.From<typeof MyTaggedClass>>()
 
 // $ExpectType MyTaggedClass
 hole<S.Schema.To<typeof MyTaggedClass>>()
-
-// $ExpectType Schema<{ readonly _tag: "MyTaggedClass"; readonly a: string; }, { readonly _tag: "MyTaggedClass"; readonly a: string; }, never>
-MyTaggedClass.struct
 
 class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass", {}) {}
 
