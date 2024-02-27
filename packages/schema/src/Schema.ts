@@ -845,7 +845,6 @@ export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R> ex
   readonly FromIsOptional: FromIsOptional
   readonly ToIsOptional: ToIsOptional
   readonly propertySignatureAST: PropertySignatureAST
-  readonly propertySignatureAnnotations?: PropertySignatureAnnotations<To> | undefined
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
@@ -855,8 +854,11 @@ export interface PropertySignature<From, FromIsOptional, To, ToIsOptional, R> ex
 type PropertySignatureAST =
   | {
     readonly _tag: "PropertySignatureDeclaration"
-    readonly from: AST.AST
-    readonly isOptional: boolean
+    readonly from: {
+      readonly ast: AST.AST
+      readonly isOptional: boolean
+    }
+    readonly annotations?: PropertySignatureAnnotations<any>
   }
   | {
     readonly _tag: "PropertySignatureTransformation"
@@ -871,10 +873,11 @@ type PropertySignatureAST =
     }
     readonly decode: AST.PropertySignatureTransformation["decode"]
     readonly encode: AST.PropertySignatureTransformation["encode"]
+    readonly annotations?: PropertySignatureAnnotations<any>
   }
 
 /** @internal */
-export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional, R>
+export class $PropertySignature<From, FromIsOptional, To, ToIsOptional, R>
   implements PropertySignature<From, FromIsOptional, To, ToIsOptional, R>
 {
   readonly [TypeId]: Schema.Variance<To, From, R>[TypeId] = _schema.variance
@@ -882,19 +885,18 @@ export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional, R>
   readonly ToIsOptional!: ToIsOptional
 
   constructor(
-    readonly propertySignatureAST: PropertySignatureAST,
-    readonly propertySignatureAnnotations?: PropertySignatureAnnotations<To>
+    readonly propertySignatureAST: PropertySignatureAST
   ) {}
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
   ): PropertySignature<From, FromIsOptional, To, ToIsOptional, R> {
     return annotations ?
-      new PropertySignatureImpl(this.propertySignatureAST, {
-        ...this.propertySignatureAnnotations,
-        ...annotations
-      }) :
-      this
+      new $PropertySignature({
+        ...this.propertySignatureAST,
+        annotations: { ...this.propertySignatureAST.annotations, ...annotations }
+      })
+      : this
   }
 }
 
@@ -902,23 +904,25 @@ export class PropertySignatureImpl<From, FromIsOptional, To, ToIsOptional, R>
  * @since 1.0.0
  */
 export const asPropertySignature = <A, I, R>(self: Schema<A, I, R>): PropertySignature<I, false, A, false, R> =>
-  new PropertySignatureImpl({
+  new $PropertySignature({
     _tag: "PropertySignatureDeclaration",
-    from: self.ast,
-    isOptional: false
+    from: {
+      ast: self.ast,
+      isOptional: false
+    }
   })
 
 /**
  * @category optional
  * @since 1.0.0
  */
-export const optionalToRequired = <A, I, R, B>(
-  from: Schema<A, I, R>,
-  to: Schema<B>,
-  decode: (o: Option.Option<A>) => B, // `none` here means: the value is missing in the input
-  encode: (b: B) => Option.Option<A> // `none` here means: the value will be missing in the output
-): PropertySignature<I, true, B, false, R> =>
-  new PropertySignatureImpl({
+export const optionalToRequired = <A, I, R1, A2, I2, R2>(
+  from: Schema<A, I, R1>,
+  to: Schema<A2, I2, R2>,
+  decode: (o: Option.Option<A>) => I2, // `none` here means: the value is missing in the input
+  encode: (i2: I2) => Option.Option<A> // `none` here means: the value will be missing in the output
+): PropertySignature<I, true, A2, false, R1 | R2> =>
+  new $PropertySignature({
     _tag: "PropertySignatureTransformation",
     from: {
       ast: from.ast,
@@ -1050,10 +1054,12 @@ export const optional: {
           )
         }
       }
-      return new PropertySignatureImpl({
+      return new $PropertySignature({
         _tag: "PropertySignatureDeclaration",
-        from: schema.ast,
-        isOptional: true
+        from: {
+          ast: schema.ast,
+          isOptional: true
+        }
       })
     }
   } else {
@@ -1091,10 +1097,12 @@ export const optional: {
           )
         }
       }
-      return new PropertySignatureImpl({
+      return new $PropertySignature({
         _tag: "PropertySignatureDeclaration",
-        from: orUndefined(schema).ast,
-        isOptional: true
+        from: {
+          ast: orUndefined(schema).ast,
+          isOptional: true
+        }
       })
     }
   }
@@ -1179,24 +1187,21 @@ class $struct<Fields extends StructFields>
       const key = ownKeys[i]
       const field = fields[key]
       if (isPropertySignature(field)) {
-        const psAST: PropertySignatureAST = field.propertySignatureAST
-        const psAnnotations = _schema.toASTAnnotations(field.propertySignatureAnnotations)
-        switch (psAST._tag) {
+        const ast: PropertySignatureAST = field.propertySignatureAST
+        const from = ast.from
+        const annotations = _schema.toASTAnnotations(ast.annotations)
+        pssFrom.push(new AST.PropertySignature(key, from.ast, from.isOptional, true))
+        switch (ast._tag) {
           case "PropertySignatureDeclaration": {
-            const from = psAST.from
-            const isOptional = psAST.isOptional
-            pss.push(new AST.PropertySignature(key, from, isOptional, true, psAnnotations))
-            pssFrom.push(new AST.PropertySignature(key, from, isOptional, true))
-            pssTo.push(new AST.PropertySignature(key, AST.to(from), isOptional, true, psAnnotations))
+            pssTo.push(new AST.PropertySignature(key, AST.to(from.ast), from.isOptional, true, annotations))
+            pss.push(new AST.PropertySignature(key, from.ast, from.isOptional, true, annotations))
             break
           }
           case "PropertySignatureTransformation": {
-            const from = psAST.from
-            const to = psAST.to
+            const to = ast.to
             const toKey = to.key ?? key
-            pssFrom.push(new AST.PropertySignature(key, from.ast, from.isOptional, true))
-            pssTo.push(new AST.PropertySignature(toKey, to.ast, to.isOptional, true, psAnnotations))
-            psTransformations.push(new AST.PropertySignatureTransformation(key, toKey, psAST.decode, psAST.encode))
+            pssTo.push(new AST.PropertySignature(toKey, to.ast, to.isOptional, true, annotations))
+            psTransformations.push(new AST.PropertySignatureTransformation(key, toKey, ast.decode, ast.encode))
             break
           }
         }
