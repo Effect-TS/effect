@@ -2,7 +2,7 @@
 "@effect/schema": minor
 ---
 
-- Schema: change `PropertySignature` signature from booleans to `"?" | "!"`
+- Schema: change `PropertySignature` signature from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<To, ToOptional extends "?" | "!", Key extends PropertyKey, From, FromOptional extends "?" | "!", R = never>`
 
 - Schema: rename `Class` interface to `ClassSchema`
 
