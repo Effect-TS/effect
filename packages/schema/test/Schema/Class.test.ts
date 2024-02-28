@@ -322,6 +322,14 @@ describe("Schema > Class APIs", () => {
       expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "TA", a: "a" })
     })
 
+    it("props should not overwrite the tag", async () => {
+      class A extends S.TaggedClass<A>()("A", {
+        a: S.string
+      }) {}
+      expect(new A({ ...{ _tag: "B", a: "a" } })._tag).toBe("A")
+      expect(new A({ ...{ _tag: "B", a: "a" } }, true)._tag).toBe("A")
+    })
+
     it("a TaggedClass with no fields should have a void constructor", () => {
       class TA extends S.TaggedClass<TA>()("TA", {}) {}
       expect({ ...new TA() }).toStrictEqual({ _tag: "TA" })
@@ -395,6 +403,18 @@ describe("Schema > Class APIs", () => {
         b: S.number
       })
       expect({ ...new TB({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "TB", a: "a", b: 1 })
+    })
+
+    it("can be extended with .extend()", () => {
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      class ETA extends TA.extend<ETA>()({
+        _tag: S.literal("ETA")
+      }) {}
+      expect(ETA.fields).toStrictEqual({
+        _tag: S.literal("ETA"),
+        a: S.string
+      })
+      expect(new ETA({ _tag: "ETA", a: "a" })._tag).toBe("ETA")
     })
   })
 
@@ -556,7 +576,7 @@ describe("Schema > Class APIs", () => {
     expect(person.upperName).toEqual("JOHN")
   })
 
-  it("extending a TaggedClass with props containing a _tag field", async () => {
+  it("transforming a TaggedClass with props containing a _tag field", async () => {
     class A extends S.TaggedClass<A>()("A", {
       id: S.number
     }) {}
@@ -565,7 +585,7 @@ describe("Schema > Class APIs", () => {
       (input) => ParseResult.succeed({ ...input, _tag: "B" as const }),
       (input) => ParseResult.succeed({ ...input, _tag: "A" })
     ) {}
-
+    expect(new B({ _tag: "B", id: 1 })._tag).toBe("B")
     await Util.expectDecodeUnknownSuccess(B, { _tag: "A", id: 1 }, new B({ _tag: "B", id: 1 }))
     await Util.expectEncodeSuccess(B, new B({ _tag: "B", id: 1 }), { _tag: "A", id: 1 })
   })

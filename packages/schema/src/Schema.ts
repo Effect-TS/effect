@@ -4890,7 +4890,7 @@ export const TaggedClass = <Self>() =>
   makeClass({
     fields: { ...fields, _tag: literal(tag) },
     Base: Data.Class,
-    defaults: { _tag: tag },
+    tag: { _tag: tag },
     annotations
   })
 
@@ -4917,7 +4917,7 @@ export const TaggedError = <Self>() =>
   makeClass({
     fields: { ...fields, _tag: literal(tag) },
     Base: Data.Error,
-    defaults: { _tag: tag },
+    tag: { _tag: tag },
     annotations
   })
 
@@ -4989,30 +4989,34 @@ export const TaggedRequest = <Self>() =>
   return makeClass({
     fields: { ...fields, _tag: literal(tag) },
     Base: SerializableRequest,
-    defaults: { _tag: tag },
+    tag: { _tag: tag },
     annotations
   })
 }
 
-const makeClass = ({ Base, annotations, defaults, fields, fromSchema }: {
+const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
   fields: StructFields
   Base: new(...args: ReadonlyArray<any>) => any
   fromSchema?: AnySchema | undefined
-  defaults?: object | undefined
+  tag?: object | undefined
   annotations?: Annotations<any> | undefined
 }): any => {
   const schema = fromSchema ?? struct(fields)
   const validate = Parser.validateSync(schema)
 
   return class extends Base {
-    constructor(props = {}, disableValidation = false) {
-      if (defaults !== undefined) {
-        props = { ...defaults, ...props }
+    constructor(
+      props: { [x: string | symbol]: unknown } = {},
+      disableValidation: boolean = false,
+      outer: boolean = true
+    ) {
+      if (tag !== undefined) {
+        props = outer ? { ...props, ...tag } : { ...tag, ...props }
       }
       if (disableValidation !== true) {
         props = validate(props)
       }
-      super(props, true)
+      super(props, true, false)
     }
 
     static [TypeId] = _schema.variance
@@ -5075,7 +5079,7 @@ const makeClass = ({ Base, annotations, defaults, fields, fromSchema }: {
         makeClass({
           fields: { ...fields, ...newFields },
           Base: this,
-          defaults,
+          tag: "_tag" in newFields ? undefined : tag,
           annotations
         })
     }
@@ -5092,7 +5096,7 @@ const makeClass = ({ Base, annotations, defaults, fields, fromSchema }: {
           ),
           fields: transformedFields,
           Base: this,
-          defaults,
+          tag: "_tag" in newFields ? undefined : tag,
           annotations
         })
       }
@@ -5110,7 +5114,7 @@ const makeClass = ({ Base, annotations, defaults, fields, fromSchema }: {
           ),
           fields: transformedFields,
           Base: this,
-          defaults,
+          tag: "_tag" in newFields ? undefined : tag,
           annotations
         })
       }
