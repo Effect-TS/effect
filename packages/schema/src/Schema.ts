@@ -934,41 +934,77 @@ export class $PropertySignature<
   }
 }
 
-/**
- * @since 1.0.0
- */
-export const asPropertySignature = <A, I, R>(self: Schema<A, I, R>): PropertySignature<I, "!", A, "!", R> =>
+const _asPropertySignature = <A, I, R, isOptional extends "?" | "!">(
+  schema: Schema<A, I, R>,
+  isOptional?: isOptional
+): PropertySignature<I, isOptional, A, isOptional, R> =>
   new $PropertySignature({
     _tag: "PropertySignatureDeclaration",
     from: {
-      ast: self.ast,
-      isOptional: false
+      ast: schema.ast,
+      isOptional: isOptional === "?"
     }
   })
 
 /**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const asPropertySignature = <A, I, R>(schema: Schema<A, I, R>): PropertySignature<I, "!", A, "!", R> =>
+  _asPropertySignature(schema, "!")
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const propertySignatureTransformation = <
+  FA,
+  FI,
+  FR,
+  FromOptional extends "?" | "!",
+  TA,
+  TI,
+  TR,
+  toOptional extends "?" | "!",
+  const Key extends PropertyKey = never
+>(
+  from: Schema<FA, FI, FR>,
+  fromIsOptional: FromOptional,
+  to: Schema<TA, TI, TR>,
+  toIsOptional: toOptional,
+  decode: (o: Option.Option<FA>) => Option.Option<TI>,
+  encode: (o: Option.Option<TI>) => Option.Option<FA>,
+  key?: Key | undefined
+): PropertySignature<FI, FromOptional, TA, toOptional, FR | TR, Key> =>
+  new $PropertySignature({
+    _tag: "PropertySignatureTransformation",
+    from: {
+      ast: from.ast,
+      isOptional: fromIsOptional === "?"
+    },
+    to: {
+      ast: to.ast,
+      isOptional: toIsOptional === "?",
+      key
+    },
+    decode,
+    encode
+  })
+
+/**
+ * - `decode`: `none` as return value means: the value is missing in the input
+ * - `encode`: `none` as return value means: the value will be missing in the output
+ *
  * @category optional
  * @since 1.0.0
  */
 export const optionalToRequired = <A, I, R1, A2, I2, R2>(
   from: Schema<A, I, R1>,
   to: Schema<A2, I2, R2>,
-  decode: (o: Option.Option<A>) => I2, // `none` here means: the value is missing in the input
-  encode: (i2: I2) => Option.Option<A> // `none` here means: the value will be missing in the output
+  decode: (o: Option.Option<A>) => I2,
+  encode: (i2: I2) => Option.Option<A>
 ): PropertySignature<I, "?", A2, "!", R1 | R2> =>
-  new $PropertySignature({
-    _tag: "PropertySignatureTransformation",
-    from: {
-      ast: from.ast,
-      isOptional: true
-    },
-    to: {
-      ast: to.ast,
-      isOptional: false
-    },
-    decode: (o) => Option.some(decode(o)),
-    encode: Option.flatMap(encode)
-  })
+  propertySignatureTransformation(from, "?", to, "!", (o) => Option.some(decode(o)), Option.flatMap(encode))
 
 /**
  * @since 1.0.0
@@ -1088,13 +1124,7 @@ export const optional: {
           )
         }
       }
-      return new $PropertySignature({
-        _tag: "PropertySignatureDeclaration",
-        from: {
-          ast: schema.ast,
-          isOptional: true
-        }
-      })
+      return _asPropertySignature(schema, "?")
     }
   } else {
     if (value) {
@@ -1131,13 +1161,7 @@ export const optional: {
           )
         }
       }
-      return new $PropertySignature({
-        _tag: "PropertySignatureDeclaration",
-        from: {
-          ast: orUndefined(schema).ast,
-          isOptional: true
-        }
-      })
+      return _asPropertySignature(orUndefined(schema), "?")
     }
   }
 }
