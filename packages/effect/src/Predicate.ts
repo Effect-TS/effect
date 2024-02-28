@@ -192,7 +192,7 @@ export const isUndefined = (input: unknown): input is undefined => input === und
 export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => input !== undefined
 
 /**
- * Tests if a value is `undefined`.
+ * Tests if a value is `null`.
  *
  * @param input - The value to test.
  *
@@ -210,7 +210,7 @@ export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => i
 export const isNull = (input: unknown): input is null => input === null
 
 /**
- * Tests if a value is not `undefined`.
+ * Tests if a value is not `null`.
  *
  * @param input - The value to test.
  *
