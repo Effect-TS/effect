@@ -861,16 +861,22 @@ export const nonEmptyArray = <A, I, R>(
 /**
  * @since 1.0.0
  */
-export interface PropertySignature<From, FromOptional extends "?" | "!", To, ToOptional extends "?" | "!", R>
-  extends Schema.Variance<To, From, R>
-{
+export interface PropertySignature<
+  From,
+  FromOptional extends "?" | "!",
+  To,
+  ToOptional extends "?" | "!",
+  R = never,
+  Key extends PropertyKey = never
+> extends Schema.Variance<To, From, R> {
   readonly FromOptional: FromOptional
   readonly ToOptional: ToOptional
+  readonly Key: Key
   readonly propertySignatureAST: PropertySignatureAST
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
-  ): PropertySignature<From, FromOptional, To, ToOptional, R>
+  ): PropertySignature<From, FromOptional, To, ToOptional, R, Key>
 }
 
 type PropertySignatureAST =
@@ -899,12 +905,18 @@ type PropertySignatureAST =
   }
 
 /** @internal */
-export class $PropertySignature<From, FromOptional extends "?" | "!", To, ToOptional extends "?" | "!", R>
-  implements PropertySignature<From, FromOptional, To, ToOptional, R>
-{
+export class $PropertySignature<
+  From,
+  FromOptional extends "?" | "!",
+  To,
+  ToOptional extends "?" | "!",
+  R = never,
+  Key extends PropertyKey = never
+> implements PropertySignature<From, FromOptional, To, ToOptional, R, Key> {
   readonly [TypeId]: Schema.Variance<To, From, R>[TypeId] = _schema.variance
   readonly FromOptional!: FromOptional
   readonly ToOptional!: ToOptional
+  readonly Key!: Key
 
   constructor(
     readonly propertySignatureAST: PropertySignatureAST
@@ -912,7 +924,7 @@ export class $PropertySignature<From, FromOptional extends "?" | "!", To, ToOpti
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
-  ): PropertySignature<From, FromOptional, To, ToOptional, R> {
+  ): PropertySignature<From, FromOptional, To, ToOptional, R, Key> {
     return annotations ?
       new $PropertySignature({
         ...this.propertySignatureAST,
@@ -1135,8 +1147,8 @@ export const optional: {
  */
 export type FromOptionalKeys<Fields extends StructFields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<any, "?", any, "?" | "!", unknown>
-    | PropertySignature<never, "?", never, "?" | "!", unknown> ? K
+    | PropertySignature<any, "?", any, "?" | "!", unknown, PropertyKey>
+    | PropertySignature<never, "?", never, "?" | "!", unknown, PropertyKey> ? K
     : never
 }[keyof Fields]
 
@@ -1145,10 +1157,17 @@ export type FromOptionalKeys<Fields extends StructFields> = {
  */
 export type ToOptionalKeys<Fields extends StructFields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<any, "?" | "!", any, "?", unknown>
-    | PropertySignature<never, "?" | "!", never, "?", unknown> ? K
+    | PropertySignature<any, "?" | "!", any, "?", unknown, PropertyKey>
+    | PropertySignature<never, "?" | "!", never, "?", unknown, PropertyKey> ? K
     : never
 }[keyof Fields]
+
+/**
+ * @since 1.0.0
+ */
+export type AnyPropertySignature<Key extends PropertyKey = PropertyKey> =
+  | PropertySignature<any, "?" | "!", any, "?" | "!", unknown, Key>
+  | PropertySignature<never, "?" | "!", never, "?" | "!", unknown, Key>
 
 /**
  * @since 1.0.0
@@ -1157,27 +1176,31 @@ export type StructFields = Record<
   PropertyKey,
   | AnySchema
   | typeof never
-  | PropertySignature<any, "?" | "!", any, "?" | "!", unknown>
-  | PropertySignature<never, "?" | "!", never, "?" | "!", unknown>
+  | AnyPropertySignature
 >
 
-const isPropertySignature = (field: StructFields[PropertyKey]): field is
-  | PropertySignature<any, "?" | "!", any, "?" | "!", unknown>
-  | PropertySignature<never, "?" | "!", never, "?" | "!", unknown> => "propertySignatureAST" in field
+/**
+ * @since 1.0.0
+ */
+export type FromStruct<Fields extends StructFields, OptionalKeys extends PropertyKey = FromOptionalKeys<Fields>> =
+  & { readonly [K in Exclude<keyof Fields, OptionalKeys>]: Schema.From<Fields[K]> }
+  & { readonly [K in OptionalKeys]?: Schema.From<Fields[K]> }
+
+type IsNever<T> = [T] extends [never] ? true : false
 
 /**
  * @since 1.0.0
  */
-export type FromStruct<Fields extends StructFields> =
-  & { readonly [K in Exclude<keyof Fields, FromOptionalKeys<Fields>>]: Schema.From<Fields[K]> }
-  & { readonly [K in FromOptionalKeys<Fields>]?: Schema.From<Fields[K]> }
+export type StructFieldKey<Fields extends StructFields, K extends keyof Fields> = IsNever<K> extends true ? never :
+  Fields[K] extends AnyPropertySignature<infer Key> ? IsNever<Key> extends true ? K : Key :
+  K
 
 /**
  * @since 1.0.0
  */
-export type ToStruct<Fields extends StructFields> =
-  & { readonly [K in Exclude<keyof Fields, ToOptionalKeys<Fields>>]: Schema.To<Fields[K]> }
-  & { readonly [K in ToOptionalKeys<Fields>]?: Schema.To<Fields[K]> }
+export type ToStruct<Fields extends StructFields, OptionalKeys extends PropertyKey = ToOptionalKeys<Fields>> =
+  & { readonly [K in Exclude<keyof Fields, OptionalKeys> as StructFieldKey<Fields, K>]: Schema.To<Fields[K]> }
+  & { readonly [K in OptionalKeys as StructFieldKey<Fields, K>]?: Schema.To<Fields[K]> }
 
 /**
  * @since 1.0.0
@@ -1194,6 +1217,9 @@ export interface struct<Fields extends StructFields>
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields>
 }
+
+const isPropertySignature = (u: unknown): u is AnyPropertySignature =>
+  Predicate.isObject(u) && TypeId in u && "propertySignatureAST" in u
 
 class $struct<Fields extends StructFields>
   extends _schema.Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, ContextStruct<Fields>>
@@ -4944,18 +4970,18 @@ export const TaggedRequest = <Self>() =>
   })
 }
 
-const makeClass = <A, I, R>({ Base, annotations, defaults, fields, fromSchema }: {
+const makeClass = ({ Base, annotations, defaults, fields, fromSchema }: {
   fields: StructFields
   Base: new(...args: ReadonlyArray<any>) => any
-  fromSchema?: Schema<A, I, R> | undefined
+  fromSchema?: AnySchema | undefined
   defaults?: object | undefined
   annotations?: Annotations<any> | undefined
 }): any => {
-  const schema = fromSchema ?? struct(fields) as Schema<A, I, R>
+  const schema = fromSchema ?? struct(fields)
   const validate = Parser.validateSync(schema)
 
   return class extends Base {
-    constructor(props: A = {} as A, disableValidation = false) {
+    constructor(props = {}, disableValidation = false) {
       if (defaults !== undefined) {
         props = { ...defaults, ...props }
       }

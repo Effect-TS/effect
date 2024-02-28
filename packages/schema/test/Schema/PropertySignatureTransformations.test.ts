@@ -183,7 +183,7 @@ describe("Schema > PropertySignatureTransformations", () => {
     })
 
     it("PropertySignatureImpl", async () => {
-      const pr = new S.$PropertySignature<number, "!", number, "!", never>({
+      const pr = new S.$PropertySignature<number, "!", number, "!", never, "b">({
         _tag: "PropertySignatureTransformation",
         from: {
           ast: S.number.ast,
@@ -200,9 +200,10 @@ describe("Schema > PropertySignatureTransformations", () => {
       const transform = S.struct({
         a: pr
       })
-      await Util.expectDecodeUnknownSuccess(transform, { a: 1 }, { b: 1 } as any, { onExcessProperty: "error" })
+      const schema = S.asSchema(transform)
+      await Util.expectDecodeUnknownSuccess(schema, { a: 1 }, { b: 1 } as any, { onExcessProperty: "error" })
 
-      await Util.expectEncodeSuccess(transform, { b: 1 } as any, { a: 1 }, { onExcessProperty: "error" })
+      await Util.expectEncodeSuccess(schema, { b: 1 } as any, { a: 1 }, { onExcessProperty: "error" })
     })
   })
 
