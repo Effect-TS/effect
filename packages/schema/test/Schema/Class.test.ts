@@ -748,7 +748,12 @@ describe("Schema > Class APIs", () => {
           n: S.NumberFromString
         }) {}
         const schema = S.to(A)
-        await Util.expectEncodeFailure(schema, null as any, "Expected A (an instance of A), actual null")
+        await Util.expectEncodeFailure(
+          schema,
+          null as any,
+          `A
+└─ Expected { n: number }, actual null`
+        )
       })
     })
   })

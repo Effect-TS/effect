@@ -5041,15 +5041,12 @@ const makeClass = ({ Base, annotations, defaults, fields, fromSchema }: {
         [],
         () => (input, _, ast) =>
           input instanceof this ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input)),
-        () => (input, _, ast) =>
+        () => (input, options) =>
           input instanceof this
             ? ParseResult.succeed(input)
-            : ParseResult.mapError(
-              ParseResult.map(
-                encode(input),
-                (props) => new this(props, true)
-              ),
-              () => new ParseResult.Type(ast, input)
+            : ParseResult.map(
+              encode(input, options),
+              (props) => new this(props, true)
             ),
         {
           identifier: this.name,
