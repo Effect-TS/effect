@@ -4775,6 +4775,22 @@ export const zip: {
 } = fiberRuntime.zipOptions
 
 /**
+ * Sequentially run this effect with the specified effect, _discarding_ the result
+ * of the second effect (`that`) in the chain.
+ *
+ * `{ concurrent: true }` can be passed to the options to make it a concurrent execution
+ * of both effects instead of sequential.
+ *
+ * @example
+ *
+ * import { Effect } from 'effect';
+ *
+ * const effect = Effect.succeed("a message").pipe(
+ *   Effect.zipLeft(Effect.succeed(42)),
+ * )
+ *
+ * assert.deepStrictEqual(Effect.runSync(effect), "a message");
+ *
  * @since 2.0.0
  * @category zipping
  */
@@ -4795,6 +4811,22 @@ export const zipLeft: {
 } = fiberRuntime.zipLeftOptions
 
 /**
+ * Sequentially run this effect with the specified effect, _returning_ the result
+ * of the second effect (`that`) in the chain.
+ *
+ * `{ concurrent: true ]` can be passed to the options to make it a concurrent execution
+ * of both effects instead of sequential.
+ *
+ * @example
+ *
+ * import { Effect } from 'effect';
+ *
+ * const effect = Effect.succeed("a message").pipe(
+ *   Effect.zipRight(Effect.succeed(42)),
+ * )
+ *
+ * assert.deepStrictEqual(Effect.runSync(effect), 42);
+ *
  * @since 2.0.0
  * @category zipping
  */
