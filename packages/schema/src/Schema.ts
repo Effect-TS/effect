@@ -2073,6 +2073,7 @@ export interface PropertySignatureAnnotations<A> extends AST.Annotations {
   readonly examples?: AST.ExamplesAnnotation<A>
   readonly default?: AST.DefaultAnnotation<A>
   readonly documentation?: AST.DocumentationAnnotation
+  readonly concurrency?: AST.ConcurrencyAnnotation
 }
 
 /**
@@ -2195,6 +2196,14 @@ export const equivalence =
 export const concurrency =
   (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.annotations({ [AST.ConcurrencyAnnotationId]: concurrency })
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const concurrency =
+  (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+    make(AST.setAnnotation(self.ast, AST.ConcurrencyAnnotationId, concurrency))
 
 type Rename<A, M> = {
   [
