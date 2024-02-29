@@ -1,20 +1,22 @@
 import * as Monoid from "@effect/typeclass/Monoid"
 import * as Semigroup from "@effect/typeclass/Semigroup"
-import { dual } from "effect/Function"
+import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as Ansi from "../Ansi.js"
 import type * as Color from "../Color.js"
 import * as InternalColor from "./color.js"
 import * as SGR from "./sgr.js"
+import * as Style from "./style.js"
 
 const AnsiSymbolKey = "@effect/printer-ansi/Ansi"
 
 /** @internal */
 export const AnsiTypeId: Ansi.AnsiTypeId = Symbol.for(AnsiSymbolKey) as Ansi.AnsiTypeId
 
-interface AnsiImpl extends Ansi.Ansi {
+interface AnsiParams {
   readonly commands: ReadonlyArray<string>
+  readonly styles: ReadonlyArray<Style.Style>
   readonly foreground: Option.Option<SGR.SGR>
   readonly background: Option.Option<SGR.SGR>
   readonly bold: Option.Option<SGR.SGR>
@@ -23,20 +25,9 @@ interface AnsiImpl extends Ansi.Ansi {
   readonly underlined: Option.Option<SGR.SGR>
 }
 
-const make = (
-  params: Partial<{
-    readonly commands: ReadonlyArray<string>
-    readonly foreground: Option.Option<SGR.SGR>
-    readonly background: Option.Option<SGR.SGR>
-    readonly bold: Option.Option<SGR.SGR>
-    readonly strikethrough: Option.Option<SGR.SGR>
-    readonly italicized: Option.Option<SGR.SGR>
-    readonly underlined: Option.Option<SGR.SGR>
-  }>
-): Ansi.Ansi => ({
-  ...AnsiMonoid.empty,
-  ...params
-})
+interface AnsiImpl extends Ansi.Ansi, AnsiParams {}
+
+const make = (params: Partial<AnsiParams>): Ansi.Ansi => ({ ...AnsiMonoid.empty, ...params })
 
 // -----------------------------------------------------------------------------
 // Instances
@@ -51,6 +42,7 @@ const getFirstSomeSemigroup: Semigroup.Semigroup<Option.Option<SGR.SGR>> = Semig
 const AnsiSemigroup: Semigroup.Semigroup<AnsiImpl> = Semigroup.struct({
   [AnsiTypeId]: typeIdSemigroup,
   commands: Semigroup.array<string>(),
+  styles: Semigroup.array<Style.Style>(),
   foreground: getFirstSomeSemigroup,
   background: getFirstSomeSemigroup,
   bold: getFirstSomeSemigroup,
@@ -66,6 +58,7 @@ const monoidOrElse = Monoid.fromSemigroup(getFirstSomeSemigroup, Option.none())
 const AnsiMonoid: Monoid.Monoid<AnsiImpl> = Monoid.struct({
   [AnsiTypeId]: typeIdMonoid,
   commands: Monoid.array<string>(),
+  styles: Monoid.array<Style.Style>(),
   foreground: monoidOrElse,
   background: monoidOrElse,
   bold: monoidOrElse,
@@ -86,20 +79,28 @@ const SEP = ";"
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const bold: Ansi.Ansi = make({
-  bold: Option.some(SGR.setBold(true))
-})
+export const bold: Ansi.Ansi = make({ bold: Option.some(SGR.setBold(true)) })
 
 /** @internal */
 export const italicized: Ansi.Ansi = make({ italicized: Option.some(SGR.setItalicized(true)) })
 
 /** @internal */
-export const strikethrough: Ansi.Ansi = make({
-  strikethrough: Option.some(SGR.setStrikethrough(true))
-})
+export const strikethrough: Ansi.Ansi = make({ strikethrough: Option.some(SGR.setStrikethrough(true)) })
 
 /** @internal */
 export const underlined: Ansi.Ansi = make({ underlined: Option.some(SGR.setUnderlined(true)) })
+
+/** @internal */
+export const faint: Ansi.Ansi = make({ styles: [Style.faint(true)] })
+
+/** @internal */
+export const invert: Ansi.Ansi = make({ styles: [Style.invert(true)] })
+
+/** @internal */
+export const fg = (color: Style.Style.Color): Ansi.Ansi => make({ styles: [Style.fg(color)] })
+
+/** @internal */
+export const bg = (color: Style.Style.Color): Ansi.Ansi => make({ styles: [Style.bg(color)] })
 
 // -----------------------------------------------------------------------------
 // Colors
@@ -351,7 +352,7 @@ export const combine = dual<
 const combineInternal = (self: AnsiImpl, that: AnsiImpl): Ansi.Ansi => AnsiSemigroup.combine(self, that)
 
 const stringifyInternal = (self: AnsiImpl): string => {
-  const displaySequence = SGR.toEscapeSequence(
+  const displaySequence = SGR.toCode(
     ReadonlyArray.getSomes([
       Option.some(SGR.reset),
       self.foreground,
@@ -362,6 +363,11 @@ const stringifyInternal = (self: AnsiImpl): string => {
       self.underlined
     ])
   )
-  const commandSequence = ReadonlyArray.join(self.commands, "")
-  return `${displaySequence}${commandSequence}`
+
+  // FIXME: When both styles and sgr reconcile this won't be necessary
+  const styleControl = self.styles.length > 0 ? `${ESC}${Style.toCode(self.styles)}` : `${ESC}${displaySequence}`
+
+  const controls = ReadonlyArray.join(self.commands, "")
+
+  return `${styleControl}${controls}`
 }

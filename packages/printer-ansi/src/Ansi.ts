@@ -3,6 +3,8 @@
  */
 import type { Color } from "./Color.js"
 import * as InternalAnsi from "./internal/ansi.js"
+import type { Style } from "./internal/style.js"
+import type { TrueColor } from "./TrueColor.js"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -66,6 +68,30 @@ export const strikethrough: Ansi = InternalAnsi.strikethrough
  * @category constructors
  */
 export const underlined: Ansi = InternalAnsi.underlined
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const faint: Ansi = InternalAnsi.faint
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const invert: Ansi = InternalAnsi.invert
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fg: (color: Style.Color) => Ansi = InternalAnsi.fg
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const bg: (color: Style.Color) => Ansi = InternalAnsi.bg
 
 // -----------------------------------------------------------------------------
 // Color Constructors
