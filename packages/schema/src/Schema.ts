@@ -1890,6 +1890,7 @@ const toAnnotations = (
   move("arbitrary", hooks.ArbitraryHookId)
   move("pretty", hooks.PrettyHookId)
   move("equivalence", hooks.EquivalenceHookId)
+  move("concurrency", AST.ConcurrencyAnnotationId)
 
   return out
 }
@@ -1904,6 +1905,7 @@ export interface DocAnnotations extends AST.Annotations {
   readonly examples?: AST.ExamplesAnnotation
   readonly default?: AST.DefaultAnnotation
   readonly documentation?: AST.DocumentationAnnotation
+  readonly concurrency?: AST.ConcurrencyAnnotation
 }
 
 /**
@@ -1998,6 +2000,14 @@ export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <A, I, R>(se
 export const equivalence =
   <A>(equivalence: Equivalence.Equivalence<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     make(AST.setAnnotation(self.ast, hooks.EquivalenceHookId, () => equivalence))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const concurrency =
+  (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+    make(AST.setAnnotation(self.ast, AST.ConcurrencyAnnotationId, concurrency))
 
 type Rename<A, M> = {
   [
