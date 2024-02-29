@@ -1121,12 +1121,15 @@ export interface RuntimeClass<R, RE> extends AsyncDisposable {
  * }
  *
  * class NotificationsClass extends Layer.RuntimeClass(() => Notifications.Live) {
- *   notify: (message: string) => Promise<void> = this.$serviceFn(Notifications, (_) => _.notify)
+ *   notify(message: string): Promise<void> {
+ *     return this.runPromiseService(Notifications, (_) => _.notify(message))
+ *   }
  * }
  *
  * async function main() {
- *   await using notifications = new NotificationsClass()
+ *   const notifications = new NotificationsClass()
  *   await notifications.notify("Hello, world!")
+ *   await notifications.dispose()
  * }
  *
  * main()
