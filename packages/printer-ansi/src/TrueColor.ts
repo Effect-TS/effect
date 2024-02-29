@@ -14,7 +14,7 @@ import * as internal from "./internal/trueColor.js"
  */
 export interface TrueColor {
   readonly _tag: "TrueColor"
-  readonly value: number
+  readonly value: [number] | [number, number, number]
 }
 
 // -----------------------------------------------------------------------------
@@ -25,7 +25,7 @@ export interface TrueColor {
  * @since 1.0.0
  * @category constructors
  */
-export const trueColor = (hex: number): TrueColor => internal.trueColor(hex)
+export const trueColor = (...value: TrueColor["value"]): TrueColor => internal.trueColor(value)
 
 // -----------------------------------------------------------------------------
 // Destructors
