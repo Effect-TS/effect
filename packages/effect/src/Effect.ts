@@ -4781,18 +4781,18 @@ export const zip: {
  * `{ concurrent: true }` can be passed to the options to make it a concurrent execution
  * of both effects instead of sequential.
  *
- * @since 2.0.0
- * @category zipping
  * @example
- * ```typescript
+ *
  * import { Effect } from 'effect';
  *
- * const effect = Effect.succeed("a message" as const).pipe(
- *   Effect.zipLeft(Effect.succeed(42 as const)),
+ * const effect = Effect.succeed("a message").pipe(
+ *   Effect.zipLeft(Effect.succeed(42)),
  * )
- * 
+ *
  * assert.deepStrictEqual(Effect.runSync(effect), "a message");
- * ```
+ *
+ * @since 2.0.0
+ * @category zipping
  */
 export const zipLeft: {
   <A2, E2, R2>(
@@ -4817,18 +4817,18 @@ export const zipLeft: {
  * `{ concurrent: true ]` can be passed to the options to make it a concurrent execution
  * of both effects instead of sequential.
  *
- * @since 2.0.0
- * @category zipping
  * @example
- * ```typescript
+ *
  * import { Effect } from 'effect';
  *
- * const effect = Effect.succeed("a message" as const).pipe(
- *   Effect.zipRight(Effect.succeed(42 as const)),
+ * const effect = Effect.succeed("a message").pipe(
+ *   Effect.zipRight(Effect.succeed(42)),
  * )
- * 
+ *
  * assert.deepStrictEqual(Effect.runSync(effect), 42);
- * ```
+ *
+ * @since 2.0.0
+ * @category zipping
  */
 export const zipRight: {
   <A2, E2, R2>(
