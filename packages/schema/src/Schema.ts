@@ -2197,14 +2197,6 @@ export const concurrency =
   (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.annotations({ [AST.ConcurrencyAnnotationId]: concurrency })
 
-/**
- * @category annotations
- * @since 1.0.0
- */
-export const concurrency =
-  (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-    make(AST.setAnnotation(self.ast, AST.ConcurrencyAnnotationId, concurrency))
-
 type Rename<A, M> = {
   [
     K in keyof A as K extends keyof M ? M[K] extends PropertyKey ? M[K]
