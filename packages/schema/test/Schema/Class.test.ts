@@ -322,7 +322,7 @@ describe("Schema > Class APIs", () => {
       expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "TA", a: "a" })
     })
 
-    it("props should not overwrite the tag", async () => {
+    it("constructor parameters should not overwrite the tag", async () => {
       class A extends S.TaggedClass<A>()("A", {
         a: S.string
       }) {}

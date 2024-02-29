@@ -1210,13 +1210,11 @@ export type FromStruct<Fields extends StructFields, OptionalKeys extends Propert
   & { readonly [K in Exclude<keyof Fields, OptionalKeys>]: Schema.From<Fields[K]> }
   & { readonly [K in OptionalKeys]?: Schema.From<Fields[K]> }
 
-type IsNever<T> = [T] extends [never] ? true : false
-
 /**
  * @since 1.0.0
  */
-export type StructFieldKey<Fields extends StructFields, K extends keyof Fields> = IsNever<K> extends true ? never :
-  Fields[K] extends AnyPropertySignature<infer Key> ? IsNever<Key> extends true ? K : Key :
+export type StructFieldKey<Fields extends StructFields, K extends keyof Fields> = [K] extends [never] ? never :
+  Fields[K] extends AnyPropertySignature<infer Key> ? [Key] extends [never] ? K : Key :
   K
 
 /**
@@ -4775,10 +4773,10 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
 
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
-  readonly extend: <Extended>() => <FieldsB extends StructFields>(
+  readonly extend: <Extended = never>() => <FieldsB extends StructFields>(
     fields: FieldsB,
     annotations?: Annotations<Extended>
-  ) => [unknown] extends [Extended] ? MissingSelfGeneric<"Base.extend">
+  ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
     : ClassSchema<
       Extended,
       Omit<Fields, keyof FieldsB> & FieldsB,
@@ -4790,7 +4788,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       Proto
     >
 
-  readonly transformOrFail: <Transformed>() => <
+  readonly transformOrFail: <Transformed = never>() => <
     FieldsB extends StructFields,
     R2,
     R3
@@ -4806,7 +4804,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       options: ParseOptions,
       ast: AST.Transform
     ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
-  ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transform">
+  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
     : ClassSchema<
       Transformed,
       Omit<Fields, keyof FieldsB> & FieldsB,
@@ -4818,7 +4816,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       Proto
     >
 
-  readonly transformOrFailFrom: <Transformed>() => <
+  readonly transformOrFailFrom: <Transformed = never>() => <
     FieldsB extends StructFields,
     R2,
     R3
@@ -4834,7 +4832,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       options: ParseOptions,
       ast: AST.Transform
     ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
-  ) => [unknown] extends [Transformed] ? MissingSelfGeneric<"Base.transformFrom">
+  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
     : ClassSchema<
       Transformed,
       Omit<Fields, keyof FieldsB> & FieldsB,
@@ -4851,11 +4849,11 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
  * @category classes
  * @since 1.0.0
  */
-export const Class = <Self>() =>
+export const Class = <Self = never>() =>
 <Fields extends StructFields>(
   fields: Fields,
   annotations?: Annotations<Self>
-): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
+): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : ClassSchema<
     Self,
     Fields,
