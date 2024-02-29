@@ -71,7 +71,7 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
 /**
  * @since 1.0.0
  */
-export const asSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<A, I, R> => schema
+export const asSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<A, I, R> => make(schema.ast)
 
 /**
  * @category hashing
@@ -3987,19 +3987,21 @@ export type OptionFrom<I> =
 
 const OptionNoneFrom = struct({
   _tag: literal("None")
-})
+}).annotations({ description: "NoneFrom" })
 
 const optionSomeFrom = <A, I, R>(value: Schema<A, I, R>) =>
   struct({
     _tag: literal("Some"),
     value
-  })
+  }).annotations({ description: `SomeFrom<${format(value)}>` })
 
 const optionFrom = <A, I, R>(value: Schema<A, I, R>): Schema<OptionFrom<A>, OptionFrom<I>, R> =>
   union(
     OptionNoneFrom,
     optionSomeFrom(value)
-  )
+  ).annotations({
+    description: `OptionFrom<${format(value)}>`
+  })
 
 const optionDecode = <A>(input: OptionFrom<A>): Option.Option<A> =>
   input._tag === "None" ? Option.none() : Option.some(input.value)
@@ -4044,6 +4046,14 @@ export const optionFromSelf = <A, I, R>(
   )
 }
 
+const makeNoneFrom = {
+  _tag: "None"
+} as const
+const makeSomeFrom = <A>(value: A) => ({
+  _tag: "Some",
+  value
+} as const)
+
 /**
  * @category Option transformations
  * @since 1.0.0
@@ -4056,13 +4066,8 @@ export const option = <A, I, R>(
     optionFromSelf(to(value)),
     optionDecode,
     Option.match({
-      onNone: () => (({
-        _tag: "None"
-      }) as const),
-      onSome: (value) => (({
-        _tag: "Some",
-        value
-      }) as const)
+      onNone: () => makeNoneFrom,
+      onSome: makeSomeFrom
     })
   )
 
@@ -4230,10 +4235,10 @@ export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>({ left, right }: {
-  readonly left: Schema<EA, EI, R1>
-  readonly right: Schema<AA, AI, R2>
-}): Schema<Either.Either<AA, EA>, EI | AI, R1 | R2> => {
+export const eitherFromUnion = <LA, LI, LR, RA, RI, RR>({ left, right }: {
+  readonly left: Schema<LA, LI, LR>
+  readonly right: Schema<RA, RI, RR>
+}): Schema<Either.Either<RA, LA>, LI | RI, LR | RR> => {
   const toleft = to(left)
   const toright = to(right)
   const fromLeft = transform(left, leftFrom(toleft), makeLeftFrom, (l) => l.left)
