@@ -11,6 +11,7 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import type { Concurrency } from "effect/Types"
 import * as Internal from "./internal/ast.js"
 import type { ParseIssue } from "./ParseResult.js"
 
@@ -142,6 +143,18 @@ export const DocumentationAnnotationId = Symbol.for("@effect/schema/annotation/D
  * @category annotations
  * @since 1.0.0
  */
+export type ConcurrencyAnnotation = Concurrency | undefined
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const ConcurrencyAnnotationId = Symbol.for("@effect/schema/annotation/Concurrency")
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
 export interface Annotations {
   readonly [_: symbol]: unknown
 }
@@ -223,6 +236,19 @@ export const getDefaultAnnotation = getAnnotation<DefaultAnnotation>(
  */
 export const getJSONSchemaAnnotation = getAnnotation<JSONSchemaAnnotation>(
   JSONSchemaAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getDocumentationAnnotation = getAnnotation<DocumentationAnnotation>(
+  DocumentationAnnotationId
+)
+
+/** @internal */
+export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(
+  ConcurrencyAnnotationId
 )
 
 // -------------------------------------------------------------------------------------
