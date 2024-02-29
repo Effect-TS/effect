@@ -3,6 +3,9 @@ import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Color from "@effect/printer-ansi/Color"
 import * as String from "effect/String"
 import { describe, expect, it } from "vitest"
+import { bright, standard } from "../src/AnsiColor16.js"
+import { ansiColor256 } from "../src/AnsiColor256.js"
+import { trueColor } from "../src/TrueColor.js"
 
 const simple = Doc.text("foo")
 
@@ -141,9 +144,28 @@ describe("Terminal", () => {
         "\u001b[0;107mfoo\u001b[0m"
       )
     })
+    it("pink colors", () => {
+      expect(render(Doc.annotate(simple, Ansi.fg(standard("Magenta"))))).toBe("\u001b[35mfoo\u001b[0m")
+      expect(render(Doc.annotate(simple, Ansi.bg(standard("Magenta"))))).toBe("\u001b[45mfoo\u001b[0m")
+      expect(render(Doc.annotate(simple, Ansi.fg(bright("Magenta"))))).toBe("\u001b[95mfoo\u001b[0m")
+      expect(render(Doc.annotate(simple, Ansi.bg(bright("Magenta"))))).toBe("\u001b[105mfoo\u001b[0m")
+      expect(render(Doc.annotate(simple, Ansi.fg(ansiColor256(206))))).toBe("\u001b[38;5;206mfoo\u001b[0m")
+      expect(render(Doc.annotate(simple, Ansi.bg(ansiColor256(206))))).toBe("\u001b[48;5;206mfoo\u001b[0m")
+      expect(render(Doc.annotate(simple, Ansi.fg(trueColor(0x5f005f))))).toBe("\u001b[38;2;95;0;95mfoo\u001b[0m")
+      expect(render(Doc.annotate(simple, Ansi.bg(trueColor(0x5f005f))))).toBe("\u001b[48;2;95;0;95mfoo\u001b[0m")
+      expect(render(Doc.annotate(simple, Ansi.bg(trueColor(95, 0, 95))))).toBe("\u001b[48;2;95;0;95mfoo\u001b[0m")
+    })
   })
 
   describe("Styles", () => {
+    it("faint", () => {
+      expect(render(Doc.annotate(simple, Ansi.faint))).toBe("\u001b[2mfoo\u001b[0m")
+    })
+
+    it("invert", () => {
+      expect(render(Doc.annotate(simple, Ansi.invert))).toBe("\u001b[7mfoo\u001b[0m")
+    })
+
     it("bold", () => {
       expect(render(Doc.annotate(simple, Ansi.bold))).toBe(
         "\u001b[0;1mfoo\u001b[0m"
