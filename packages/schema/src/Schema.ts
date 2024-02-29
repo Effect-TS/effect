@@ -30,7 +30,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Secret from "effect/Secret"
 import * as S from "effect/String"
-import type { Concurrency, Covariant, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
+import type { Covariant, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as arbitrary from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
@@ -2094,7 +2094,7 @@ export interface Annotations<A, TypeParameters extends ReadonlyArray<any> = read
   readonly equivalence?: (
     ...equivalences: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]> }
   ) => Equivalence.Equivalence<A>
-  readonly concurrency?: Concurrency | undefined
+  readonly concurrency?: AST.ConcurrencyAnnotation
 }
 
 /**
@@ -2193,7 +2193,7 @@ export const equivalence =
  * @since 1.0.0
  */
 export const concurrency =
-  (concurrency: Concurrency | undefined) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.annotations({ [AST.ConcurrencyAnnotationId]: concurrency })
 
 type Rename<A, M> = {
