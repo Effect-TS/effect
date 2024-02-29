@@ -5053,13 +5053,6 @@ export const TaggedRequest = <Self>() =>
     get [_serializable.symbolResult]() {
       return { Failure, Success }
     }
-    const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
-    return makeClass(
-      struct(fieldsWithTag),
-      fieldsWithTag,
-      SerializableRequest,
-      { _tag: tag }
-    )
   }
   return makeClass({
     fields: { ...fields, _tag: literal(tag) },
