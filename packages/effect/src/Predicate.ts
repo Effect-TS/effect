@@ -54,6 +54,39 @@ export const mapInput: {
 } = dual(2, <A, B>(self: Predicate<A>, f: (b: B) => A): Predicate<B> => (b) => self(f(b)))
 
 /**
+ * Tests if a value is a `Set`.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * assert.deepStrictEqual(_.isSet(new Set([1, 2])), true)
+ * assert.deepStrictEqual(_.isSet(new Set()), true)
+ * assert.deepStrictEqual(_.isSet({}), false)
+ * assert.deepStrictEqual(_.isSet(null), false)
+ * assert.deepStrictEqual(_.isSet(undefined), false)
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isSet = (input: unknown): input is Set<unknown> => input instanceof Set
+
+/**
+ * Tests if a value is a `Map`.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * assert.deepStrictEqual(_.isMap(new Map()), true)
+ * assert.deepStrictEqual(_.isMap({}), false)
+ * assert.deepStrictEqual(_.isMap(null), false)
+ * assert.deepStrictEqual(_.isMap(undefined), false)
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isMap = (input: unknown): input is Map<unknown, unknown> => input instanceof Map
+
+/**
  * Tests if a value is a `string`.
  *
  * @param input - The value to test.
