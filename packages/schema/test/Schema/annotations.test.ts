@@ -65,6 +65,13 @@ describe("Schema > annotations", () => {
     expect(S.isSchema(schema)).toEqual(true)
   })
 
+  it("concurrency", () => {
+    const schema = S.struct({ a: S.string }).pipe(S.concurrency(1))
+    expect(schema.ast.annotations).toEqual({
+      [AST.ConcurrencyAnnotationId]: 1
+    })
+  })
+
   it("message as annotation options", async () => {
     const schema =
       // initial schema, a string
