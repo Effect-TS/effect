@@ -15,9 +15,10 @@ export const ansiColor256 = (index: number): AnsiColor256 => ({
 // Destructors
 // -----------------------------------------------------------------------------
 
+// TODO: maybe this is unnecessary
 /** @internal */
 export const toCode = (color: AnsiColor256): number =>
-  Match.value(color).pipe(
+  Match.value(color.index).pipe(
     Match.when(Match.number, (index) => Number.clamp(Math.floor(index), { minimum: 0, maximum: 255 })),
     Match.orElse(() => 0)
   )

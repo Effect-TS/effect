@@ -14,7 +14,7 @@ import * as internal from "./internal/trueColor.js"
  */
 export interface TrueColor {
   readonly _tag: "TrueColor"
-  readonly hexNumber: number
+  readonly value: number
 }
 
 // -----------------------------------------------------------------------------

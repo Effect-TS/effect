@@ -6,9 +6,9 @@ import type { TrueColor } from "../TrueColor.js"
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const trueColor = (hexNumber: number): TrueColor => ({
+export const trueColor = (value: number): TrueColor => ({
   _tag: "TrueColor",
-  hexNumber
+  value
 })
 
 const hexToRgbTuple = (hexNumber: number): [number, number, number] => {
@@ -22,12 +22,11 @@ const hexToRgbTuple = (hexNumber: number): [number, number, number] => {
 // Destructors
 // -----------------------------------------------------------------------------
 
+// TODO: Matching might be unnecessary, I thought of later accepting other color formats
 /** @internal */
 export const toCode = (color: TrueColor): Readonly<[number, number, number]> =>
-  Match.value(color).pipe(
+  Match.value(color.value).pipe(
     Match.when(Match.number, (hexNumber) =>
       pipe(Number.clamp(Math.floor(hexNumber), { minimum: 0x000000, maximum: 0xFFFFFF }), hexToRgbTuple)),
-    Match.orElse(() =>
-      [0, 0, 0] as const
-    )
+    Match.exhaustive
   )
