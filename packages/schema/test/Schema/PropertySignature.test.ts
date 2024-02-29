@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > PropertySignature", () => {
   describe("annotations", () => {
-    it("asPropertySignature().annotations()", () => {
+    it("propertySignatureDeclaration().annotations()", () => {
       const schema = S.struct({
-        a: S.asPropertySignature(S.string).annotations({
+        a: S.propertySignatureDeclaration(S.string).annotations({
           title: "title",
           [Symbol.for("custom-annotation")]: "custom-annotation-value"
         })
@@ -36,7 +36,7 @@ describe("Schema > PropertySignature", () => {
     })
 
     it("should return the same reference when using .annotations(undefined)", () => {
-      const ps = S.asPropertySignature(S.string)
+      const ps = S.propertySignatureDeclaration(S.string)
       const copy = ps.annotations(undefined)
       expect(ps === copy).toBe(true)
     })
@@ -137,15 +137,7 @@ describe("Schema > PropertySignature", () => {
 
   describe("renaming", () => {
     it("string key", async () => {
-      const ps = S.propertySignatureTransformation(
-        S.number,
-        "!",
-        S.number,
-        "!",
-        identity,
-        identity,
-        "b"
-      )
+      const ps = S.propertySignatureDeclaration(S.number).pipe(S.propertySignatureKey("b"))
       const transform = S.struct({ a: ps })
       const schema = S.asSchema(transform)
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
@@ -155,15 +147,7 @@ describe("Schema > PropertySignature", () => {
 
     it("symbol key", async () => {
       const a = Symbol.for("@effect/schema/test/a")
-      const ps = S.propertySignatureTransformation(
-        S.string,
-        "!",
-        S.symbol,
-        "!",
-        identity,
-        identity,
-        a
-      )
+      const ps = S.propertySignatureDeclaration(S.symbol).pipe(S.propertySignatureKey(a))
       const transform = S.struct({ a: ps })
       const rename = S.asSchema(transform)
       const schema = S.struct({ b: S.number }).pipe(S.extend(rename))
