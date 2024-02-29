@@ -22,7 +22,24 @@ class NumberRepo extends Context.Tag("NumberRepo")<NumberRepo, {
   static numbers = Effect.serviceConstants(NumberRepo).numbers
 }
 
+class DemoTag extends Effect.AccessTag("DemoTag")<DemoTag, {
+  readonly getNumbers: () => Array<number>
+  readonly strings: Array<string>
+}>() {
+}
+
 describe("Effect", () => {
+  it.effect("effect tag", () =>
+    Effect.gen(function*($) {
+      const [n, s] = yield* $(Effect.all([DemoTag.getNumbers(), DemoTag.$.strings]))
+      const s2 = yield* $(DemoTag.pipe(Effect.map((_) => _.strings)))
+      expect(n).toEqual([0, 1])
+      expect(s).toEqual(["a", "b"])
+      expect(s2).toEqual(["a", "b"])
+    }).pipe(Effect.provideService(DemoTag, {
+      getNumbers: () => [0, 1],
+      strings: ["a", "b"]
+    })))
   it.effect("class tag", () =>
     Effect.gen(function*($) {
       yield* $(

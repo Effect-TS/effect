@@ -24,6 +24,7 @@ import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
 import * as _console from "./internal/console.js"
+import { TagProto } from "./internal/context.js"
 import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
@@ -3103,11 +3104,10 @@ export const serviceFunctionEffect: <T extends Effect<any, any, any>, Args exten
 export const serviceFunctions: <S, SE, SR>(
   getService: Effect<S, SE, SR>
 ) => {
-  [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never }[keyof S]]:
-    S[k] extends (...args: infer Args) => Effect<infer A, infer E, infer R> ?
-      (...args: Args) => Effect<A, SE | E, SR | R> :
-      never
-} = effect.serviceFunctions
+  [k in keyof S as S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never]: S[k] extends
+    (...args: infer Args) => Effect<infer A, infer E, infer R> ? (...args: Args) => Effect<A, SE | E, SR | R>
+    : never
+} = effect.serviceFunctions as any
 
 /**
  * @since 2.0.0
@@ -3124,20 +3124,19 @@ export const serviceConstants: <S, SE, SR>(
  * @since 2.0.0
  * @category context
  */
-export const serviceMembers: <SR, SE, S>(
+export const serviceMembers: <S, SE, SR>(
   getService: Effect<S, SE, SR>
 ) => {
   functions: {
-    [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never }[keyof S]]:
-      S[k] extends (...args: infer Args) => Effect<infer A, infer E, infer R> ?
-        (...args: Args) => Effect<A, SE | E, SR | R>
-        : never
+    [k in keyof S as S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never]: S[k] extends
+      (...args: infer Args) => Effect<infer A, infer E, infer R> ? (...args: Args) => Effect<A, SE | E, SR | R>
+      : never
   }
   constants: {
     [k in { [k in keyof S]: k }[keyof S]]: S[k] extends Effect<infer A, infer E, infer R> ? Effect<A, SE | E, SR | R>
       : Effect<S[k], SE, SR>
   }
-} = effect.serviceMembers
+} = effect.serviceMembers as any
 
 /**
  * @since 2.0.0
@@ -5198,3 +5197,53 @@ export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchE
 export const optionFromOptional: <A, E, R>(
   self: Effect<A, E, R>
 ) => Effect<Option.Option<A>, Exclude<E, Cause.NoSuchElementException>, R> = effect.optionFromOptional
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
+  & Context.TagClass<Self, Id, Shape>
+  & {
+    $: {
+      [k in keyof Shape]: Shape[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+        : Effect<Shape[k], never, Self>
+    }
+  }
+  & {
+    [k in keyof Shape as Shape[k] extends (...args: Array<any>) => any ? k : never]: Shape[k] extends
+      (...args: infer Args) => Effect<infer A, infer E, infer R> ? (...args: Args) => Effect<A, E, Self | R>
+      : Shape[k] extends (...args: infer Args) => infer A ? (...args: Args) => Effect<A, never, Self>
+      : never
+  } = (id) => () => {
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const creationError = new Error()
+    Error.stackTraceLimit = limit
+    function TagClass() {}
+    Object.setPrototypeOf(TagClass, TagProto)
+    TagClass.key = id
+    Object.defineProperty(TagClass, "stack", {
+      get() {
+        return creationError.stack
+      }
+    })
+    // @ts-ignore
+    TagClass["$"] = new Proxy({}, {
+      get(_target: any, prop: any, _receiver) {
+        // @ts-expect-error
+        return core.andThen(TagClass, (s) => s[prop])
+      }
+    })
+    const done = new Proxy(TagClass, {
+      get(_target: any, prop: any, _receiver) {
+        if (prop in TagClass) {
+          // @ts-expect-error
+          return TagClass[prop]
+        }
+        // @ts-expect-error
+        return (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args))
+      }
+    })
+    return done
+  }
