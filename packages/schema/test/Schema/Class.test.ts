@@ -350,7 +350,15 @@ describe("Schema > Class", () => {
     expect(person.upperName).toEqual("JOHN")
   })
 
-  it("extending a TaggedClass with props containing a _tag field", async () => {
+  it("TaggedClass: constructor parameters should not overwrite the tag", async () => {
+    class A extends S.TaggedClass<A>()("A", {
+      a: S.string
+    }) {}
+    expect(new A({ ...{ _tag: "B", a: "a" } })._tag).toBe("A")
+    expect(new A({ ...{ _tag: "B", a: "a" } }, true)._tag).toBe("A")
+  })
+
+  it("transforming a TaggedClass with props containing a _tag field", async () => {
     class A extends S.TaggedClass<A>()("A", {
       id: S.number
     }) {}
@@ -362,6 +370,14 @@ describe("Schema > Class", () => {
 
     await Util.expectDecodeUnknownSuccess(B, { _tag: "A", id: 1 }, new B({ _tag: "B", id: 1 }))
     await Util.expectEncodeSuccess(B, new B({ _tag: "B", id: 1 }), { _tag: "A", id: 1 })
+  })
+
+  it("extending a TaggedClass with props containing a _tag field", () => {
+    class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+    class ETA extends TA.extend<ETA>()({
+      _tag: S.literal("ETA")
+    }) {}
+    expect(new ETA({ _tag: "ETA", a: "a" })._tag).toBe("ETA")
   })
 
   it("TaggedError", () => {
