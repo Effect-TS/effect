@@ -4814,7 +4814,7 @@ export const zipLeft: {
  * Sequentially run this effect with the specified effect, _returning_ the result
  * of the second effect (`that`) in the chain.
  *
- * `{ concurrent: true ]` can be passed to the options to make it a concurrent execution
+ * `{ concurrent: true }` can be passed to the options to make it a concurrent execution
  * of both effects instead of sequential.
  *
  * @example
