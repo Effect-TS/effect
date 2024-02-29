@@ -4246,8 +4246,6 @@ export const eitherFromUnion = <EA, EI, R1, AA, AI, R2>({ left, right }: {
   )
 }
 
-const isMap = (u: unknown): u is Map<unknown, unknown> => u instanceof Map
-
 const readonlyMapArbitrary = <K, V>(
   key: Arbitrary<K>,
   value: Arbitrary<V>
@@ -4279,7 +4277,7 @@ const readonlyMapParse = <R, K, V>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<readonly [K, V]>, R>
 ): ParseResult.DeclarationDecodeUnknown<ReadonlyMap<K, V>, R> =>
 (u, options, ast) =>
-  isMap(u) ?
+  Predicate.isMap(u) ?
     ParseResult.map(decodeUnknown(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
@@ -4319,8 +4317,6 @@ export const readonlyMap = <K, IK, RK, V, IV, RV>({ key, value }: {
     (map) => Array.from(map.entries())
   )
 
-const isSet = (u: unknown): u is Set<unknown> => u instanceof Set
-
 const readonlySetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => new Set(as))
 
@@ -4338,7 +4334,7 @@ const readonlySetParse = <R, A>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<ReadonlySet<A>, R> =>
 (u, options, ast) =>
-  isSet(u) ?
+  Predicate.isSet(u) ?
     ParseResult.map(decodeUnknown(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
@@ -4943,7 +4939,7 @@ export const Class = <Self = never>() =>
  * @category classes
  * @since 1.0.0
  */
-export const TaggedClass = <Self>() =>
+export const TaggedClass = <Self = "Effect.orDie">() =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
   fields: Fields,
@@ -4970,7 +4966,7 @@ export const TaggedClass = <Self>() =>
  * @category classes
  * @since 1.0.0
  */
-export const TaggedError = <Self>() =>
+export const TaggedError = <Self = "Effect.orDie">() =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
   fields: Fields,
@@ -5057,6 +5053,13 @@ export const TaggedRequest = <Self>() =>
     get [_serializable.symbolResult]() {
       return { Failure, Success }
     }
+    const fieldsWithTag: StructFields = { ...fields, _tag: literal(tag) }
+    return makeClass(
+      struct(fieldsWithTag),
+      fieldsWithTag,
+      SerializableRequest,
+      { _tag: tag }
+    )
   }
   return makeClass({
     fields: { ...fields, _tag: literal(tag) },

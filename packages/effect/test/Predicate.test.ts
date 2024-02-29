@@ -206,6 +206,21 @@ describe("Predicate", () => {
     assert.deepStrictEqual(_.isObject(Symbol.for("a")), false)
   })
 
+  it("isSet", () => {
+    assert.deepStrictEqual(_.isSet(new Set([1, 2])), true)
+    assert.deepStrictEqual(_.isSet(new Set()), true)
+    assert.deepStrictEqual(_.isSet({}), false)
+    assert.deepStrictEqual(_.isSet(null), false)
+    assert.deepStrictEqual(_.isSet(undefined), false)
+  })
+
+  it("isMap", () => {
+    assert.deepStrictEqual(_.isMap(new Map()), true)
+    assert.deepStrictEqual(_.isMap({}), false)
+    assert.deepStrictEqual(_.isMap(null), false)
+    assert.deepStrictEqual(_.isMap(undefined), false)
+  })
+
   it("hasProperty", () => {
     const a = Symbol.for("effect/test/a")
 

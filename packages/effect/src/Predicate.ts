@@ -54,6 +54,43 @@ export const mapInput: {
 } = dual(2, <A, B>(self: Predicate<A>, f: (b: B) => A): Predicate<B> => (b) => self(f(b)))
 
 /**
+ * Tests if a value is a `Set`.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * import { isSet } from "effect/Predicate"
+ *
+ * assert.deepStrictEqual(isSet(new Set([1, 2])), true)
+ * assert.deepStrictEqual(isSet(new Set()), true)
+ * assert.deepStrictEqual(isSet({}), false)
+ * assert.deepStrictEqual(isSet(null), false)
+ * assert.deepStrictEqual(isSet(undefined), false)
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isSet = (input: unknown): input is Set<unknown> => input instanceof Set
+
+/**
+ * Tests if a value is a `Map`.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * import { isMap } from "effect/Predicate"
+ *
+ * assert.deepStrictEqual(isMap(new Map()), true)
+ * assert.deepStrictEqual(isMap({}), false)
+ * assert.deepStrictEqual(isMap(null), false)
+ * assert.deepStrictEqual(isMap(undefined), false)
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isMap = (input: unknown): input is Map<unknown, unknown> => input instanceof Map
+
+/**
  * Tests if a value is a `string`.
  *
  * @param input - The value to test.
@@ -192,7 +229,7 @@ export const isUndefined = (input: unknown): input is undefined => input === und
 export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => input !== undefined
 
 /**
- * Tests if a value is `undefined`.
+ * Tests if a value is `null`.
  *
  * @param input - The value to test.
  *
@@ -210,7 +247,7 @@ export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => i
 export const isNull = (input: unknown): input is null => input === null
 
 /**
- * Tests if a value is not `undefined`.
+ * Tests if a value is not `null`.
  *
  * @param input - The value to test.
  *
