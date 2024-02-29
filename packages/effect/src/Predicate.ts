@@ -59,11 +59,13 @@ export const mapInput: {
  * @param input - The value to test.
  *
  * @example
- * assert.deepStrictEqual(_.isSet(new Set([1, 2])), true)
- * assert.deepStrictEqual(_.isSet(new Set()), true)
- * assert.deepStrictEqual(_.isSet({}), false)
- * assert.deepStrictEqual(_.isSet(null), false)
- * assert.deepStrictEqual(_.isSet(undefined), false)
+ * import { isSet } from "effect/Predicate"
+ *
+ * assert.deepStrictEqual(isSet(new Set([1, 2])), true)
+ * assert.deepStrictEqual(isSet(new Set()), true)
+ * assert.deepStrictEqual(isSet({}), false)
+ * assert.deepStrictEqual(isSet(null), false)
+ * assert.deepStrictEqual(isSet(undefined), false)
  *
  * @category guards
  * @since 2.0.0
@@ -76,10 +78,12 @@ export const isSet = (input: unknown): input is Set<unknown> => input instanceof
  * @param input - The value to test.
  *
  * @example
- * assert.deepStrictEqual(_.isMap(new Map()), true)
- * assert.deepStrictEqual(_.isMap({}), false)
- * assert.deepStrictEqual(_.isMap(null), false)
- * assert.deepStrictEqual(_.isMap(undefined), false)
+ * import { isMap } from "effect/Predicate"
+ *
+ * assert.deepStrictEqual(isMap(new Map()), true)
+ * assert.deepStrictEqual(isMap({}), false)
+ * assert.deepStrictEqual(isMap(null), false)
+ * assert.deepStrictEqual(isMap(undefined), false)
  *
  * @category guards
  * @since 2.0.0
