@@ -35,7 +35,9 @@ export type TypeId = typeof TypeId
 export interface Router<R, E> extends App.Default<Exclude<R, RouteContext>, E | Error.RouteNotFound> {
   readonly [TypeId]: TypeId
   readonly routes: Chunk.Chunk<Route<R, E>>
-  readonly mounts: Chunk.Chunk<readonly [string, App.Default<R, E>]>
+  readonly mounts: Chunk.Chunk<
+    readonly [prefix: string, httpApp: App.Default<R, E>, options?: { readonly includePrefix?: boolean } | undefined]
+  >
 }
 
 /**
@@ -230,7 +232,8 @@ export const mount: {
 export const mountApp: {
   <R1, E1>(
     path: `/${string}`,
-    that: App.Default<R1, E1>
+    that: App.Default<R1, E1>,
+    options?: { readonly includePrefix?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<
@@ -241,7 +244,8 @@ export const mountApp: {
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: `/${string}`,
-    that: App.Default<R1, E1>
+    that: App.Default<R1, E1>,
+    options?: { readonly includePrefix?: boolean | undefined } | undefined
   ): Router<
     | Exclude<R, RouteContext | ServerRequest.ServerRequest | Scope.Scope>
     | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>,
