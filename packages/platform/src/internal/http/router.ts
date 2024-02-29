@@ -7,6 +7,7 @@ import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as FindMyWay from "find-my-way-ts"
 import type * as App from "../../Http/App.js"
 import type * as Method from "../../Http/Method.js"
@@ -63,7 +64,9 @@ class RouterImpl<R, E> extends Effectable.StructuralClass<
   readonly [TypeId]: Router.TypeId
   constructor(
     readonly routes: Chunk.Chunk<Router.Route<R, E>>,
-    readonly mounts: Chunk.Chunk<readonly [string, App.Default<R, E>]>
+    readonly mounts: Chunk.Chunk<
+      readonly [prefix: string, httpApp: App.Default<R, E>, options?: { readonly includePrefix?: boolean } | undefined]
+    >
   ) {
     super()
     this[TypeId] = TypeId
@@ -111,12 +114,14 @@ const toHttpApp = <R, E>(
     (request): App.Default<Router.Router.ExcludeProvided<R>, E | Error.RouteNotFound> => {
       if (mountsLen > 0) {
         for (let i = 0; i < mountsLen; i++) {
-          const [path, app] = mounts[i]
+          const [path, app, options] = mounts[i]
           if (request.url.startsWith(path)) {
             return Effect.provideService(
               app,
               ServerRequest.ServerRequest,
-              sliceRequestUrl(request, path)
+              options?.includePrefix ?
+                request :
+                sliceRequestUrl(request, path)
             ) as App.Default<Router.Router.ExcludeProvided<R>, E>
           }
         }
@@ -247,19 +252,32 @@ export const mount = dual<
 export const mountApp = dual<
   <R1, E1>(
     path: `/${string}`,
-    that: App.Default<R1, E1>
+    that: App.Default<R1, E1>,
+    options?: {
+      readonly includePrefix?: boolean
+    }
   ) => <R, E>(
     self: Router.Router<R, E>
   ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>,
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
     path: `/${string}`,
-    that: App.Default<R1, E1>
+    that: App.Default<R1, E1>,
+    options?: {
+      readonly includePrefix?: boolean
+    }
   ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>
 >(
-  3,
-  (self, path, that) =>
-    new RouterImpl<any, any>(self.routes, Chunk.append(self.mounts, [removeTrailingSlash(path), that]))
+  (args) => Predicate.hasProperty(args[0], TypeId),
+  <R, E, R1, E1>(
+    self: Router.Router<R, E>,
+    path: `/${string}`,
+    that: App.Default<R1, E1>,
+    options?: {
+      readonly includePrefix?: boolean
+    }
+  ): Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1> =>
+    new RouterImpl<any, any>(self.routes, Chunk.append(self.mounts, [removeTrailingSlash(path), that, options])) as any
 )
 
 /** @internal */
