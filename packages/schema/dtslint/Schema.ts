@@ -269,15 +269,27 @@ pipe(S.tuple(S.string, S.NumberFromString), S.optionalElement(S.NumberFromString
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly number[], readonly number[], never>
+S.asSchema(S.array(S.number))
+
+// $ExpectType array<Schema<number, number, never>>
 S.array(S.number)
 
 // $ExpectType Schema<readonly number[], readonly string[], never>
+S.asSchema(S.array(S.NumberFromString))
+
+// $ExpectType array<Schema<number, string, never>>
 S.array(S.NumberFromString)
 
 // $ExpectType Schema<readonly [number, ...number[]], readonly [number, ...number[]], never>
+S.asSchema(S.nonEmptyArray(S.number))
+
+// $ExpectType nonEmptyArray<Schema<number, number, never>>
 S.nonEmptyArray(S.number)
 
 // $ExpectType Schema<readonly [number, ...number[]], readonly [string, ...string[]], never>
+S.asSchema(S.nonEmptyArray(S.NumberFromString))
+
+// $ExpectType nonEmptyArray<Schema<number, string, never>>
 S.nonEmptyArray(S.NumberFromString)
 
 // ---------------------------------------------

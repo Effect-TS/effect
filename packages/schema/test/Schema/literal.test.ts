@@ -4,6 +4,19 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Schema > literal", () => {
+  it("annotations()", () => {
+    const schema = S.literal(1).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    expect(schema.ast.annotations).toStrictEqual({
+      [AST.IdentifierAnnotationId]: "X",
+      [AST.TitleAnnotationId]: "Y"
+    })
+  })
+
+  it("should expose the literals", () => {
+    const schema = S.literal("a", "b")
+    expect(schema.literals).toStrictEqual(["a", "b"])
+  })
+
   it("should return an unwrapped AST with exactly one literal", () => {
     expect(S.literal(1).ast).toEqual(new AST.Literal(1))
   })
@@ -12,11 +25,6 @@ describe("Schema > literal", () => {
     expect(S.literal(1, 2).ast).toEqual(
       AST.Union.make([new AST.Literal(1), new AST.Literal(2)])
     )
-  })
-
-  it("should expose the literals", () => {
-    const schema = S.literal("a", "b")
-    expect(schema.literals).toStrictEqual(["a", "b"])
   })
 
   it("should return the literal interface when using the .annotations() method", () => {

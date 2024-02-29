@@ -128,6 +128,9 @@ Schema.tuple(aContext).pipe(Schema.optionalElement(bContext))
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly string[], readonly string[], "aContext">
+Schema.asSchema(Schema.array(aContext))
+
+// $ExpectType array<Schema<string, string, "aContext">>
 Schema.array(aContext)
 
 // ---------------------------------------------
@@ -135,6 +138,9 @@ Schema.array(aContext)
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], "aContext">
+Schema.asSchema(Schema.nonEmptyArray(aContext))
+
+// $ExpectType nonEmptyArray<Schema<string, string, "aContext">>
 Schema.nonEmptyArray(aContext)
 
 // ---------------------------------------------

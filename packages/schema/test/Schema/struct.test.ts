@@ -4,6 +4,14 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Schema > struct", () => {
+  it("annotations()", () => {
+    const schema = S.struct({}).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    expect(schema.ast.annotations).toStrictEqual({
+      [AST.IdentifierAnnotationId]: "X",
+      [AST.TitleAnnotationId]: "Y"
+    })
+  })
+
   it("should expose the fields", () => {
     const schema = S.struct({
       a: S.string,

@@ -408,7 +408,7 @@ class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralV
     super(schema.ast)
   }
   annotations(annotations?: Annotations<Literals[number]>) {
-    return annotations ? new $literal(this.literals, annotations) : this
+    return annotations ? new $literal(this.literals, { ...this.ast.annotations, ...annotations }) : this
   }
 }
 
@@ -845,19 +845,74 @@ export const optionalElement =
   }
 
 /**
- * @category combinators
+ * @category api interface
  * @since 1.0.0
  */
-export const array = <A, I, R>(item: Schema<A, I, R>): Schema<ReadonlyArray<A>, ReadonlyArray<I>, R> =>
-  make(new AST.Tuple([], Option.some([item.ast]), true))
+export interface array<Value extends AnySchema>
+  extends Schema<ReadonlyArray<Schema.To<Value>>, ReadonlyArray<Schema.From<Value>>, Schema.Context<Value>>
+{
+  readonly value: Value
+  annotations(annotations?: Annotations<ReadonlyArray<Schema.To<Value>>>): array<Value>
+}
+
+class $array<Value extends AnySchema>
+  extends _schema.Schema<ReadonlyArray<Schema.To<Value>>, ReadonlyArray<Schema.From<Value>>, Schema.Context<Value>>
+  implements array<Value>
+{
+  constructor(readonly value: Value, annotations?: Annotations<ReadonlyArray<Schema.To<Value>>>) {
+    super(new AST.Tuple([], Option.some([value.ast]), true, _schema.toASTAnnotations(annotations)))
+  }
+  annotations(annotations?: Annotations<ReadonlyArray<Schema.To<Value>>>): array<Value> {
+    return annotations ? new $array(this.value, { ...this.ast.annotations, ...annotations }) : this
+  }
+}
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nonEmptyArray = <A, I, R>(
-  item: Schema<A, I, R>
-): Schema<readonly [A, ...Array<A>], readonly [I, ...Array<I>], R> => tuple(item).pipe(rest(item))
+export const array = <Value extends AnySchema>(value: Value): array<Value> => new $array(value)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface nonEmptyArray<Value extends AnySchema> extends
+  Schema<
+    ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>,
+    ReadonlyArray.NonEmptyReadonlyArray<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{
+  readonly value: Value
+  annotations(annotations?: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>>): nonEmptyArray<Value>
+}
+
+class $nonEmptyArray<Value extends AnySchema> extends _schema.Schema<
+  ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>,
+  ReadonlyArray.NonEmptyReadonlyArray<Schema.From<Value>>,
+  Schema.Context<Value>
+> implements nonEmptyArray<Value> {
+  constructor(readonly value: Value, annotations?: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>>) {
+    super(
+      new AST.Tuple(
+        [new AST.Element(value.ast, false)],
+        Option.some([value.ast]),
+        true,
+        _schema.toASTAnnotations(annotations)
+      )
+    )
+  }
+  annotations(annotations?: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>>): nonEmptyArray<Value> {
+    return annotations ? new $nonEmptyArray(this.value, { ...this.ast.annotations, ...annotations }) : this
+  }
+}
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const nonEmptyArray = <Value extends AnySchema>(value: Value): nonEmptyArray<Value> => new $nonEmptyArray(value)
 
 /**
  * @category PropertySignature
@@ -1417,7 +1472,7 @@ class $struct<Fields extends StructFields>
     }
   }
   annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields> {
-    return annotations ? new $struct(this.fields, annotations) : this
+    return annotations ? new $struct(this.fields, { ...this.ast.annotations, ...annotations }) : this
   }
 }
 
