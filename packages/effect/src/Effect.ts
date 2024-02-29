@@ -5228,11 +5228,18 @@ export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
         return creationError.stack
       }
     })
+    const cache = new Map()
     // @ts-ignore
     TagClass["$"] = new Proxy({}, {
-      get(_target: any, prop: any, _receiver) {
+      get(_target: any, prop: any, _receiver): any {
+        const _f = cache.get(prop)
+        if (_f) {
+          return _f
+        }
         // @ts-expect-error
-        return core.andThen(TagClass, (s) => s[prop])
+        const f = core.andThen(TagClass, (s) => s[prop])
+        cache.set(prop, f)
+        return f
       }
     })
     const done = new Proxy(TagClass, {
@@ -5241,8 +5248,14 @@ export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
           // @ts-expect-error
           return TagClass[prop]
         }
+        const _f = cache.get(prop)
+        if (_f) {
+          return _f
+        }
         // @ts-expect-error
-        return (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args))
+        const f = (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args))
+        cache.set(prop, f)
+        return f
       }
     })
     return done
