@@ -4912,19 +4912,19 @@ const makeClass = <A, I, R>(
   selfSchema: Schema<A, I, R>,
   selfFields: StructFields,
   Base: any,
-  additionalProps?: any
+  tag?: any
 ): any => {
   const validate = Parser.validateSync(selfSchema)
 
   return class extends Base {
-    constructor(props?: any, disableValidation = false) {
-      if (additionalProps !== undefined) {
-        props = { ...additionalProps, ...props }
+    constructor(props?: any, disableValidation: boolean = false, outer: boolean = true) {
+      if (tag !== undefined) {
+        props = outer ? { ...props, ...tag } : { ...tag, ...props }
       }
       if (disableValidation !== true) {
         props = validate(props)
       }
-      super(props, true)
+      super(props, true, false)
     }
 
     static [TypeId] = InternalSchema.variance
@@ -4984,7 +4984,7 @@ const makeClass = <A, I, R>(
           struct(newFields),
           newFields,
           this,
-          additionalProps
+          "_tag" in fields ? undefined : tag
         )
       }
     }
@@ -5001,7 +5001,7 @@ const makeClass = <A, I, R>(
           ),
           newFields,
           this,
-          additionalProps
+          "_tag" in fields ? undefined : tag
         )
       }
     }
@@ -5018,7 +5018,7 @@ const makeClass = <A, I, R>(
           ),
           newFields,
           this,
-          additionalProps
+          "_tag" in fields ? undefined : tag
         )
       }
     }
