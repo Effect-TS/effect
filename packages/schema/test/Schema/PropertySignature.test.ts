@@ -45,9 +45,9 @@ describe("Schema > PropertySignature", () => {
   it("add a default to an optional field", async () => {
     const ps = S.propertySignatureTransformation(
       S.NumberFromString,
-      "?",
+      "?:",
       S.number,
-      "!",
+      ":",
       Option.orElse(() => Option.some(0)),
       identity
     )
@@ -74,9 +74,9 @@ describe("Schema > PropertySignature", () => {
   it("add a bidirectional default to an optional field", async () => {
     const ps = S.propertySignatureTransformation(
       S.NumberFromString,
-      "?",
+      "?:",
       S.number,
-      "!",
+      ":",
       Option.orElse(() => Option.some(0)),
       (o) => Option.flatMap(o, Option.liftPredicate((v) => v !== 0))
     )
@@ -103,9 +103,9 @@ describe("Schema > PropertySignature", () => {
   it("empty string as optional", async () => {
     const ps = S.propertySignatureTransformation(
       S.string,
-      "!",
+      ":",
       S.string,
-      "?",
+      "?:",
       Option.flatMap(Option.liftPredicate((v) => v !== "")),
       identity
     )
@@ -120,9 +120,9 @@ describe("Schema > PropertySignature", () => {
   it("reversed default", async () => {
     const ps = S.propertySignatureTransformation(
       S.number,
-      "!",
+      ":",
       S.number,
-      "?",
+      "?:",
       identity,
       Option.orElse(() => Option.some(0))
     )

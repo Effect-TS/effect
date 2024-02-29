@@ -2,7 +2,7 @@
 "@effect/schema": minor
 ---
 
-- Schema: change `PropertySignature` signature from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<To, ToOptional extends "?" | "!", Key extends PropertyKey, From, FromOptional extends "?" | "!", R = never>`
+- Schema: change `PropertySignature` signature from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<Key extends PropertyKey, ToToken extends Token, To, FromToken extends Token, From, R = never>`
 
 - Schema: rename `Class` interface to `ClassSchema`
 

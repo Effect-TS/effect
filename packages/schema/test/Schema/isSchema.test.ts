@@ -18,9 +18,9 @@ describe("isSchema", () => {
     expect(S.isSchema(S.optional(S.string, { exact: true }))).toBe(false)
     const ps = S.propertySignatureTransformation(
       S.NumberFromString,
-      "?",
+      "?:",
       S.number,
-      "!",
+      ":",
       Option.orElse(() => Option.some(0)),
       identity
     )
