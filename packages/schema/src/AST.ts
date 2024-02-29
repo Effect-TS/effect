@@ -14,6 +14,36 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as _util from "./internal/util.js"
 import type { ParseIssue } from "./ParseResult.js"
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export type AST =
+  | Declaration
+  | Literal
+  | UniqueSymbol
+  | UndefinedKeyword
+  | VoidKeyword
+  | NeverKeyword
+  | UnknownKeyword
+  | AnyKeyword
+  | StringKeyword
+  | NumberKeyword
+  | BooleanKeyword
+  | BigIntKeyword
+  | SymbolKeyword
+  | ObjectKeyword
+  | Enums
+  | TemplateLiteral
+  // possible transformations
+  | Refinement
+  | Tuple
+  | TypeLiteral
+  | Union
+  | Suspend
+  // transformations
+  | Transform
+
 // -------------------------------------------------------------------------------------
 // annotations
 // -------------------------------------------------------------------------------------
@@ -250,40 +280,6 @@ export const getJSONSchemaAnnotation = getAnnotation<JSONSchemaAnnotation>(
 export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(
   SurrogateAnnotationId
 )
-
-// -------------------------------------------------------------------------------------
-// model
-// -------------------------------------------------------------------------------------
-
-/**
- * @category model
- * @since 1.0.0
- */
-export type AST =
-  | Declaration
-  | Literal
-  | UniqueSymbol
-  | UndefinedKeyword
-  | VoidKeyword
-  | NeverKeyword
-  | UnknownKeyword
-  | AnyKeyword
-  | StringKeyword
-  | NumberKeyword
-  | BooleanKeyword
-  | BigIntKeyword
-  | SymbolKeyword
-  | ObjectKeyword
-  | Enums
-  | TemplateLiteral
-  // possible transformations
-  | Refinement
-  | Tuple
-  | TypeLiteral
-  | Union
-  | Suspend
-  // transformations
-  | Transform
 
 /**
  * @category model

@@ -8,6 +8,11 @@ import * as _hooks from "./hooks.js"
 export const TypeId: S.TypeId = Symbol.for("@effect/schema/Schema") as S.TypeId
 
 /** @internal */
+export const PropertySignatureTypeId: S.PropertySignatureTypeId = Symbol.for(
+  "@effect/schema/PropertySignature"
+) as S.PropertySignatureTypeId
+
+/** @internal */
 export const make = <A, I, R>(ast: AST.AST): S.Schema<A, I, R> => new Schema(ast)
 
 /** @internal */

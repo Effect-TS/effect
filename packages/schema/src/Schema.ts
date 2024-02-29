@@ -378,7 +378,8 @@ export type AnySchema<R = unknown> = Schema<any, any, R>
  * @category guards
  * @since 1.0.0
  */
-export const isSchema = (u: unknown): u is AnySchema => Predicate.isObject(u) && TypeId in u && "ast" in u
+export const isSchema = (u: unknown): u is AnySchema =>
+  Predicate.hasProperty(u, TypeId) && !(PropertySignatureTypeId in u)
 
 /**
  * @category constructors
@@ -859,11 +860,76 @@ export const nonEmptyArray = <A, I, R>(
 ): Schema<readonly [A, ...Array<A>], readonly [I, ...Array<I>], R> => tuple(item).pipe(rest(item))
 
 /**
+ * @category PropertySignature
  * @since 1.0.0
  */
 export type Token = "?:" | ":"
 
 /**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export class PropertySignatureDeclaration implements AST.Annotated {
+  /**
+   * @since 1.0.0
+   */
+  readonly _tag = "PropertySignatureDeclaration"
+  constructor(
+    readonly from: {
+      readonly ast: AST.AST
+      readonly token: Token
+    },
+    readonly annotations: AST.Annotations = {}
+  ) {}
+}
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export class PropertySignatureTransformation implements AST.Annotated {
+  /**
+   * @since 1.0.0
+   */
+  readonly _tag = "PropertySignatureTransformation"
+  constructor(
+    readonly from: {
+      readonly ast: AST.AST
+      readonly token: Token
+    },
+    readonly to: {
+      readonly ast: AST.AST
+      readonly token: Token
+      readonly key?: PropertyKey | undefined
+    },
+    readonly decode: AST.PropertySignatureTransformation["decode"],
+    readonly encode: AST.PropertySignatureTransformation["encode"],
+    readonly annotations: AST.Annotations = {}
+  ) {}
+}
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export type PropertySignatureAST =
+  | PropertySignatureDeclaration
+  | PropertySignatureTransformation
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export const PropertySignatureTypeId: unique symbol = _schema.PropertySignatureTypeId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type PropertySignatureTypeId = typeof PropertySignatureTypeId
+
+/**
+ * @category PropertySignature
  * @since 1.0.0
  */
 export interface PropertySignature<
@@ -874,40 +940,16 @@ export interface PropertySignature<
   From,
   R = never
 > extends Schema.Variance<To, From, R>, Pipeable {
-  readonly FromToken: FromToken
-  readonly ToToken: ToToken
-  readonly Key: Key
-  readonly propertySignatureAST: PropertySignatureAST
+  readonly [PropertySignatureTypeId]: null
+  readonly _FromToken: FromToken
+  readonly _ToToken: ToToken
+  readonly _Key: Key
+  readonly ast: PropertySignatureAST
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
   ): PropertySignature<Key, ToToken, To, FromToken, From, R>
 }
-
-type PropertySignatureAST =
-  | {
-    readonly _tag: "PropertySignatureDeclaration"
-    readonly from: {
-      readonly ast: AST.AST
-      readonly token: Token
-    }
-    readonly annotations?: PropertySignatureAnnotations<any>
-  }
-  | {
-    readonly _tag: "PropertySignatureTransformation"
-    readonly from: {
-      readonly ast: AST.AST
-      readonly token: Token
-    }
-    readonly to: {
-      readonly ast: AST.AST
-      readonly token: Token
-      readonly key?: PropertyKey | undefined
-    }
-    readonly decode: AST.PropertySignatureTransformation["decode"]
-    readonly encode: AST.PropertySignatureTransformation["encode"]
-    readonly annotations?: PropertySignatureAnnotations<any>
-  }
 
 class $PropertySignature<
   Key extends PropertyKey,
@@ -918,12 +960,13 @@ class $PropertySignature<
   R = never
 > implements PropertySignature<Key, ToToken, To, FromToken, From, R> {
   readonly [TypeId]: Schema.Variance<To, From, R>[TypeId] = _schema.variance
-  readonly FromToken!: FromToken
-  readonly ToToken!: ToToken
-  readonly Key!: Key
+  readonly [PropertySignatureTypeId] = null
+  readonly _FromToken!: FromToken
+  readonly _ToToken!: ToToken
+  readonly _Key!: Key
 
   constructor(
-    readonly propertySignatureAST: PropertySignatureAST
+    readonly ast: PropertySignatureAST
   ) {}
 
   pipe() {
@@ -933,12 +976,14 @@ class $PropertySignature<
   annotations(
     annotations?: PropertySignatureAnnotations<To>
   ): PropertySignature<Key, ToToken, To, FromToken, From, R> {
-    return annotations ?
-      new $PropertySignature({
-        ...this.propertySignatureAST,
-        annotations: { ...this.propertySignatureAST.annotations, ...annotations }
-      })
-      : this
+    if (annotations) {
+      const ast = this.ast
+      const d = Object.getOwnPropertyDescriptors(ast)
+      d.annotations.value = { ...ast.annotations, ...annotations }
+      const out: PropertySignatureAST = Object.create(Object.getPrototypeOf(ast), d)
+      return new $PropertySignature(out)
+    }
+    return this
   }
 }
 
@@ -950,13 +995,12 @@ export const propertySignatureDeclaration = <A, I, R, T extends Token = ":">(
   schema: Schema<A, I, R>,
   Token?: T
 ): PropertySignature<never, T, A, T, I, R> =>
-  new $PropertySignature({
-    _tag: "PropertySignatureDeclaration",
-    from: {
+  new $PropertySignature(
+    new PropertySignatureDeclaration({
       ast: schema.ast,
       token: Token ?? ":"
-    }
-  })
+    })
+  )
 
 /**
  * @category PropertySignature
@@ -981,20 +1025,21 @@ export const propertySignatureTransformation = <
   encode: (o: Option.Option<TI>) => Option.Option<FA>,
   key?: Key | undefined
 ): PropertySignature<Key, toToken, TA, FromToken, FI, FR | TR> =>
-  new $PropertySignature({
-    _tag: "PropertySignatureTransformation",
-    from: {
-      ast: from.ast,
-      token: fromToken
-    },
-    to: {
-      ast: to.ast,
-      token: toToken,
-      key
-    },
-    decode,
-    encode
-  })
+  new $PropertySignature(
+    new PropertySignatureTransformation(
+      {
+        ast: from.ast,
+        token: fromToken
+      },
+      {
+        ast: to.ast,
+        token: toToken,
+        key
+      },
+      decode,
+      encode
+    )
+  )
 
 /**
  * - `decode`: `none` as return value means: the value is missing in the input
@@ -1047,33 +1092,37 @@ export const propertySignatureKey: {
   self: PropertySignature<PropertyKey, ToToken, To, FromToken, From, R>,
   key: Key
 ): PropertySignature<Key, ToToken, To, FromToken, From, R> => {
-  const ast = self.propertySignatureAST
+  const ast = self.ast
   switch (ast._tag) {
     case "PropertySignatureDeclaration": {
-      return new $PropertySignature({
-        _tag: "PropertySignatureTransformation",
-        from: ast.from,
-        to: {
-          ast: AST.to(ast.from.ast),
-          token: ast.from.token,
-          key
-        },
-        decode: identity,
-        encode: identity
-      })
+      return new $PropertySignature(
+        new PropertySignatureTransformation(
+          ast.from,
+          {
+            ast: AST.to(ast.from.ast),
+            token: ast.from.token,
+            key
+          },
+          identity,
+          identity,
+          ast.annotations
+        )
+      )
     }
     case "PropertySignatureTransformation":
-      return new $PropertySignature({
-        _tag: "PropertySignatureTransformation",
-        from: ast.from,
-        to: {
-          ast: ast.to.ast,
-          token: ast.to.token,
-          key
-        },
-        decode: ast.decode,
-        encode: ast.encode
-      })
+      return new $PropertySignature(
+        new PropertySignatureTransformation(
+          ast.from,
+          {
+            ast: ast.to.ast,
+            token: ast.to.token,
+            key
+          },
+          ast.decode,
+          ast.encode,
+          ast.annotations
+        )
+      )
   }
 })
 
@@ -1312,8 +1361,7 @@ export interface struct<Fields extends StructFields>
   annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields>
 }
 
-const isPropertySignature = (u: unknown): u is AnyPropertySignature =>
-  Predicate.isObject(u) && TypeId in u && "propertySignatureAST" in u
+const isPropertySignature = (u: unknown): u is AnyPropertySignature => Predicate.hasProperty(u, PropertySignatureTypeId)
 
 const isTokenOptional = (token: Token): boolean => token === "?:"
 
@@ -1331,7 +1379,7 @@ class $struct<Fields extends StructFields>
       const key = ownKeys[i]
       const field = fields[key]
       if (isPropertySignature(field)) {
-        const ast: PropertySignatureAST = field.propertySignatureAST
+        const ast: PropertySignatureAST = field.ast
         const from = ast.from
         const annotations = _schema.toASTAnnotations(ast.annotations)
         pssFrom.push(new AST.PropertySignature(key, from.ast, isTokenOptional(from.token), true))
