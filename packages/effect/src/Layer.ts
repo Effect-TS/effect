@@ -17,12 +17,13 @@
  *
  * @since 2.0.0
  */
+import type * as Fiber from "effect/Fiber"
 import type * as Cause from "./Cause.js"
 import type * as Clock from "./Clock.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
 import * as Context from "./Context.js"
-import * as Effect from "./Effect.js"
-import * as Exit from "./Exit.js"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
 import type { FiberRef } from "./FiberRef.js"
 import type { LazyArg } from "./Function.js"
 import { clockTag } from "./internal/clock.js"
@@ -36,10 +37,10 @@ import type { LogLevel } from "./LogLevel.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Request from "./Request.js"
-import * as Runtime from "./Runtime.js"
+import type * as Runtime from "./Runtime.js"
 import type * as Schedule from "./Schedule.js"
 import * as Scheduler from "./Scheduler.js"
-import * as Scope from "./Scope.js"
+import type * as Scope from "./Scope.js"
 import type * as Tracer from "./Tracer.js"
 import type * as Types from "./Types.js"
 
@@ -1064,28 +1065,31 @@ export const buildWithMemoMap: {
  * @since 2.0.0
  * @category runtime class
  */
-export interface RuntimeClassConstructor<Args extends ReadonlyArray<any>, R> {
-  new(...args: Args): RuntimeClass<R>
+export interface RuntimeClassConstructor<Args extends ReadonlyArray<any>, R, E> {
+  new(...args: Args): RuntimeClass<R, E>
 }
 
 /**
  * @since 2.0.0
  * @category runtime class
  */
-export interface RuntimeClass<R> extends AsyncDisposable {
+export interface RuntimeClass<R, RE> extends AsyncDisposable {
   readonly dispose: () => Promise<void>
-  readonly $effect: <E, A>(effect: Effect.Effect<A, E, R>) => Promise<A>
-  readonly $effectExit: <E, A>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<A, E>>
-  readonly $effectFn: <
+  readonly runFork: <E, A>(effect: Effect.Effect<A, E, R>) => Fiber.RuntimeFiber<A, E | RE>
+  readonly runSync: <E, A>(effect: Effect.Effect<A, E, R>) => A
+  readonly runSyncExit: <E, A>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E | RE>
+  readonly runPromise: <E, A>(effect: Effect.Effect<A, E, R>) => Promise<A>
+  readonly runPromiseExit: <E, A>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<A, E | RE>>
+  readonly runPromiseFn: <
     F extends (...args: Array<any>) => Effect.Effect<any, any, R>
   >(
     fn: F
   ) => (...args: Parameters<F>) => Promise<Effect.Effect.Success<ReturnType<F>>>
-  readonly $service: <I extends R, S, A, E>(
+  readonly runPromiseService: <I extends R, S, A, E>(
     tag: Context.Tag<I, S>,
     fn: (service: S) => Effect.Effect<A, E, R>
-  ) => () => Promise<A>
-  readonly $serviceFn: <
+  ) => Promise<A>
+  readonly runPromiseServiceFn: <
     I extends R,
     S,
     F extends (...args: Array<any>) => Effect.Effect<any, any, R>
@@ -1127,60 +1131,6 @@ export interface RuntimeClass<R> extends AsyncDisposable {
  *
  * main()
  */
-export const RuntimeClass = <Args extends ReadonlyArray<any>, R, E>(
-  evaluate: (...args: Args) => Layer<R, E, never>
-): RuntimeClassConstructor<Args, R> =>
-  class {
-    #scope = Effect.runSync(Scope.make())
-    #runtime: Promise<Runtime.Runtime<R>>
-
-    constructor(...args: Args) {
-      this.#runtime = Effect.runPromise(
-        toRuntime(evaluate(...args)).pipe(Scope.extend(this.#scope))
-      )
-    }
-
-    dispose(): Promise<void> {
-      return Effect.runPromise(Scope.close(this.#scope, Exit.unit))
-    }
-
-    [Symbol.asyncDispose]() {
-      return this.dispose()
-    }
-
-    $effect<E, A>(effect: Effect.Effect<A, E, R>): Promise<A> {
-      return this.#runtime.then((runtime) => Runtime.runPromise(runtime)(effect))
-    }
-
-    $effectExit<E, A>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<A, E>> {
-      return this.#runtime.then((runtime) => Runtime.runPromiseExit(runtime)(effect))
-    }
-
-    $effectFn<F extends (...args: Array<any>) => Effect.Effect<any, any, R>>(
-      fn: F
-    ): (
-      ...args: Parameters<F>
-    ) => Promise<Effect.Effect.Success<ReturnType<F>>> {
-      return (...args) => this.$effect(fn(...args))
-    }
-
-    $service<I extends R, S, A, E>(
-      tag: Context.Tag<I, S>,
-      fn: (service: S) => Effect.Effect<A, E, R>
-    ): () => Promise<A> {
-      return () => this.$effect(Effect.flatMap(tag, (_) => fn(_)))
-    }
-
-    $serviceFn<
-      I extends R,
-      S,
-      F extends (...args: Array<any>) => Effect.Effect<any, any, R>
-    >(
-      tag: Context.Tag<I, S>,
-      fn: (service: S) => F
-    ): (
-      ...args: Parameters<F>
-    ) => Promise<Effect.Effect.Success<ReturnType<F>>> {
-      return (...args) => this.$effect(Effect.flatMap(tag, (_) => fn(_).apply(_, args)))
-    }
-  }
+export const RuntimeClass: <Args extends ReadonlyArray<any>, R, RE>(
+  evaluate: (...args: Args) => Layer<R, RE, never>
+) => RuntimeClassConstructor<Args, R, RE> = internal.RuntimeClass

@@ -4,6 +4,7 @@ import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
 import type * as Exit from "../Exit.js"
+import type * as Fiber from "../Fiber.js"
 import type { FiberRef } from "../FiberRef.js"
 import * as FiberRefsPatch from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
@@ -1222,3 +1223,86 @@ export const effect_provide = dual<
       ? core.provideSomeContext(self, source)
       : provideSomeRuntime(self, source as Runtime.Runtime<ROut>)
 )
+
+export const RuntimeClass = <Args extends ReadonlyArray<any>, R, RE>(
+  evaluate: (...args: Args) => Layer.Layer<R, RE, never>
+): Layer.RuntimeClassConstructor<Args, R, RE> =>
+  class implements Layer.RuntimeClass<R, RE> {
+    #scope = runtime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
+    #runtime: Effect.Effect<Runtime.Runtime<R>, RE>
+
+    constructor(...args: Args) {
+      this.#runtime = runtime.unsafeRunSyncEffect(
+        effect.memoize(
+          toRuntime(evaluate(...args)).pipe(Scope.extend(this.#scope))
+        )
+      )
+    }
+
+    dispose(): Promise<void> {
+      this.#runtime = core.never
+      return runtime.unsafeRunPromiseEffect(Scope.close(this.#scope, core.exitUnit))
+    }
+
+    [Symbol.asyncDispose]() {
+      return this.dispose()
+    }
+
+    #provide<A, E>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | RE> {
+      return core.flatMap(
+        this.#runtime,
+        (rt) =>
+          core.withFiberRuntime((fiber) => {
+            fiber.setFiberRefs(rt.fiberRefs)
+            fiber._runtimeFlags = rt.runtimeFlags
+            return core.provideContext(effect, rt.context)
+          })
+      )
+    }
+
+    runFork<E, A>(effect: Effect.Effect<A, E, R>): Fiber.RuntimeFiber<A, E | RE> {
+      return runtime.unsafeForkEffect(this.#provide(effect))
+    }
+
+    runSync<A, E>(effect: Effect.Effect<A, E, R>): A {
+      return runtime.unsafeRunSyncEffect(this.#provide(effect))
+    }
+
+    runSyncExit<A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E | RE> {
+      return runtime.unsafeRunSyncExitEffect(this.#provide(effect))
+    }
+
+    runPromise<E, A>(effect: Effect.Effect<A, E, R>): Promise<A> {
+      return runtime.unsafeRunPromiseEffect(this.#provide(effect))
+    }
+
+    runPromiseExit<E, A>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<A, E | RE>> {
+      return runtime.unsafeRunPromiseExitEffect(this.#provide(effect))
+    }
+
+    runPromiseFn<
+      F extends (...args: Array<any>) => Effect.Effect<any, any, R>
+    >(
+      fn: F
+    ): (...args: Parameters<F>) => Promise<Effect.Effect.Success<ReturnType<F>>> {
+      return (...args) => this.runPromise(fn(...args))
+    }
+
+    runPromiseService<I extends R, S, A, E>(
+      tag: Context.Tag<I, S>,
+      fn: (service: S) => Effect.Effect<A, E, R>
+    ): Promise<A> {
+      return this.runPromise(core.flatMap(tag, (_) => fn(_)))
+    }
+
+    runPromiseServiceFn<
+      I extends R,
+      S,
+      F extends (...args: Array<any>) => Effect.Effect<any, any, R>
+    >(
+      tag: Context.Tag<I, S>,
+      fn: (service: S) => F
+    ): (...args: Parameters<F>) => Promise<Effect.Effect.Success<ReturnType<F>>> {
+      return (...args) => this.runPromise(core.flatMap(tag, (_) => fn(_).apply(_, args)))
+    }
+  }
