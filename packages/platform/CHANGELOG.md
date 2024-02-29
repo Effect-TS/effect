@@ -1,5 +1,27 @@
 # @effect/platform
 
+## 0.46.3
+
+### Patch Changes
+
+- [#2231](https://github.com/Effect-TS/effect/pull/2231) [`7535080`](https://github.com/Effect-TS/effect/commit/7535080f2e2f9859711031161600c01807cc43ea) Thanks [@tim-smart](https://github.com/tim-smart)! - add option to include prefix when mounting an http app to a router
+
+  By default the prefix is removed. For example:
+
+  ```ts
+  // Here a request to `/child/hello` will be mapped to `/hello`
+  Http.router.mountApp("/child", httpApp);
+
+  // Here a request to `/child/hello` will be mapped to `/child/hello`
+  Http.router.mountApp("/child", httpApp, { includePrefix: true });
+  ```
+
+- [#2232](https://github.com/Effect-TS/effect/pull/2232) [`bd1d7ac`](https://github.com/Effect-TS/effect/commit/bd1d7ac75eea57a94d5e2d8e1edccb3136e84899) Thanks [@tim-smart](https://github.com/tim-smart)! - use less aggressive type exclusion in http router apis
+
+- Updated dependencies [[`a4a0006`](https://github.com/Effect-TS/effect/commit/a4a0006c7f19fc261df5cda16963d73457e4d6ac), [`39f583e`](https://github.com/Effect-TS/effect/commit/39f583eaeb29eecd6eaec3b113b24d9d413153df), [`f428198`](https://github.com/Effect-TS/effect/commit/f428198725d4b9e304ecd5ff8bad8f92d871dbe3), [`0a37676`](https://github.com/Effect-TS/effect/commit/0a37676aa0eb2a21e17af2e6df9f81f52bbc8831), [`c035972`](https://github.com/Effect-TS/effect/commit/c035972dfabdd3cb3372b5ab468aa2fd0d808f4d), [`6f503b7`](https://github.com/Effect-TS/effect/commit/6f503b774d893bf2af34f66202e270d8c45d5f31)]:
+  - effect@2.4.1
+  - @effect/schema@0.63.2
+
 ## 0.46.2
 
 ### Patch Changes
