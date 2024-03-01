@@ -46,7 +46,7 @@ export const tagged = <R extends Request.Request<any, any> & { _tag: string }>(
 }
 
 /** @internal */
-export const Class: new<Error, Success, A extends Record<string, any>>(
+export const Class: new<Success, Error, A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
 ) => Request.Request<Success, Error> & Readonly<A> = (function() {
@@ -62,7 +62,7 @@ export const Class: new<Error, Success, A extends Record<string, any>>(
 /** @internal */
 export const TaggedClass = <Tag extends string>(
   tag: Tag
-): new<Error, Success, A extends Record<string, any>>(
+): new<Success, Error, A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
     : { readonly [P in keyof A as P extends "_tag" | keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
 ) => Request.Request<Success, Error> & Readonly<A> & { readonly _tag: Tag } => {
