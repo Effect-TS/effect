@@ -1,5 +1,27 @@
 # @effect/schema
 
+## 0.63.2
+
+### Patch Changes
+
+- [#2222](https://github.com/Effect-TS/effect/pull/2222) [`39f583e`](https://github.com/Effect-TS/effect/commit/39f583eaeb29eecd6eaec3b113b24d9d413153df) Thanks [@gcanti](https://github.com/gcanti)! - TaggedClass: ensure constructor parameters don't overwrite the tag
+
+- [#2227](https://github.com/Effect-TS/effect/pull/2227) [`f428198`](https://github.com/Effect-TS/effect/commit/f428198725d4b9e304ecd5ff8bad8f92d871dbe3) Thanks [@gcanti](https://github.com/gcanti)! - add `ConcurrencyAnnotation`, default value: `undefined` (sequential)
+
+  Example:
+
+  ```ts
+  const schema = S.struct({
+    a: S.string,
+    b: S.number,
+  }).pipe(S.concurrency(1 /* number | "unbounded" | "inherit" | undefined */));
+  ```
+
+- [#2221](https://github.com/Effect-TS/effect/pull/2221) [`c035972`](https://github.com/Effect-TS/effect/commit/c035972dfabdd3cb3372b5ab468aa2fd0d808f4d) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure Schema.Class is compatible without strictNullCheck
+
+- Updated dependencies [[`a4a0006`](https://github.com/Effect-TS/effect/commit/a4a0006c7f19fc261df5cda16963d73457e4d6ac), [`0a37676`](https://github.com/Effect-TS/effect/commit/0a37676aa0eb2a21e17af2e6df9f81f52bbc8831), [`6f503b7`](https://github.com/Effect-TS/effect/commit/6f503b774d893bf2af34f66202e270d8c45d5f31)]:
+  - effect@2.4.1
+
 ## 0.63.1
 
 ### Patch Changes
