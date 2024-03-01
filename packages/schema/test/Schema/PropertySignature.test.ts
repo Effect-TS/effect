@@ -140,9 +140,9 @@ describe("Schema > PropertySignature", () => {
       const ps = S.propertySignatureDeclaration(S.number).pipe(S.propertySignatureKey("b"))
       const transform = S.struct({ a: ps })
       const schema = S.asSchema(transform)
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
+      await Util.expectDecodeUnknownSuccess(schema, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
 
-      await Util.expectEncodeSuccess(schema, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
+      await Util.expectEncodeSuccess(schema, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
     })
 
     it("symbol key", async () => {
@@ -152,8 +152,8 @@ describe("Schema > PropertySignature", () => {
       const rename = S.asSchema(transform)
       const schema = S.struct({ b: S.number }).pipe(S.extend(rename))
 
-      await Util.expectDecodeUnknownSuccess(schema, { a: "@effect/schema/test/a", b: 1 }, { [a]: a, b: 1 })
-      await Util.expectEncodeSuccess(schema, { [a]: a, b: 1 }, { a: "@effect/schema/test/a", b: 1 })
+      await Util.expectDecodeUnknownSuccess(schema, { [a]: "@effect/schema/test/a", b: 1 }, { a, b: 1 })
+      await Util.expectEncodeSuccess(schema, { a, b: 1 }, { [a]: "@effect/schema/test/a", b: 1 })
     })
   })
 })

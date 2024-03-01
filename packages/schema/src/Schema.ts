@@ -1083,11 +1083,11 @@ export class PropertySignatureTransformation implements AST.Annotated {
     readonly from: {
       readonly ast: AST.AST
       readonly token: Token
+      readonly key?: PropertyKey | undefined
     },
     readonly to: {
       readonly ast: AST.AST
       readonly token: Token
-      readonly key?: PropertyKey | undefined
     },
     readonly decode: AST.PropertySignatureTransformation["decode"],
     readonly encode: AST.PropertySignatureTransformation["encode"],
@@ -1120,9 +1120,9 @@ export type PropertySignatureTypeId = typeof PropertySignatureTypeId
  * @since 1.0.0
  */
 export interface PropertySignature<
-  Key extends PropertyKey,
   ToToken extends Token,
   To,
+  Key extends PropertyKey,
   FromToken extends Token,
   From,
   R = never
@@ -1135,22 +1135,22 @@ export interface PropertySignature<
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
-  ): PropertySignature<Key, ToToken, To, FromToken, From, R>
+  ): PropertySignature<ToToken, To, Key, FromToken, From, R>
 }
 
 class $PropertySignature<
-  Key extends PropertyKey,
   ToToken extends Token,
   To,
+  Key extends PropertyKey,
   FromToken extends Token,
   From,
   R = never
-> implements PropertySignature<Key, ToToken, To, FromToken, From, R> {
+> implements PropertySignature<ToToken, To, Key, FromToken, From, R> {
   readonly [TypeId]: Schema.Variance<To, From, R>[TypeId] = _schema.variance
   readonly [PropertySignatureTypeId] = null
+  readonly _Key!: Key
   readonly _FromToken!: FromToken
   readonly _ToToken!: ToToken
-  readonly _Key!: Key
 
   constructor(
     readonly ast: PropertySignatureAST
@@ -1162,7 +1162,7 @@ class $PropertySignature<
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
-  ): PropertySignature<Key, ToToken, To, FromToken, From, R> {
+  ): PropertySignature<ToToken, To, Key, FromToken, From, R> {
     if (annotations) {
       const ast = this.ast
       const d = Object.getOwnPropertyDescriptors(ast)
@@ -1181,7 +1181,7 @@ class $PropertySignature<
 export const propertySignatureDeclaration = <A, I, R, T extends Token = ":">(
   schema: Schema<A, I, R>,
   Token?: T
-): PropertySignature<never, T, A, T, I, R> =>
+): PropertySignature<T, A, never, T, I, R> =>
   new $PropertySignature(
     new PropertySignatureDeclaration({
       ast: schema.ast,
@@ -1211,17 +1211,17 @@ export const propertySignatureTransformation = <
   decode: (o: Option.Option<FA>) => Option.Option<TI>,
   encode: (o: Option.Option<TI>) => Option.Option<FA>,
   key?: Key | undefined
-): PropertySignature<Key, toToken, TA, FromToken, FI, FR | TR> =>
+): PropertySignature<toToken, TA, Key, FromToken, FI, FR | TR> =>
   new $PropertySignature(
     new PropertySignatureTransformation(
       {
         ast: from.ast,
-        token: fromToken
+        token: fromToken,
+        key
       },
       {
         ast: to.ast,
-        token: toToken,
-        key
+        token: toToken
       },
       decode,
       encode
@@ -1240,7 +1240,7 @@ export const optionalToRequired = <A, I, R1, A2, I2, R2>(
   to: Schema<A2, I2, R2>,
   decode: (o: Option.Option<A>) => I2,
   encode: (i2: I2) => Option.Option<A>
-): PropertySignature<never, ":", A2, "?:", I, R1 | R2> =>
+): PropertySignature<":", A2, never, "?:", I, R1 | R2> =>
   propertySignatureTransformation(from, "?:", to, ":", (o) => Option.some(decode(o)), Option.flatMap(encode))
 
 /**
@@ -1255,8 +1255,8 @@ export const propertySignatureKey: {
     FromToken extends Token,
     R
   >(
-    self: PropertySignature<PropertyKey, ToToken, To, FromToken, From, R>
-  ) => PropertySignature<Key, ToToken, To, FromToken, From, R>
+    self: PropertySignature<ToToken, To, PropertyKey, FromToken, From, R>
+  ) => PropertySignature<ToToken, To, Key, FromToken, From, R>
   <
     To,
     ToToken extends Token,
@@ -1265,9 +1265,9 @@ export const propertySignatureKey: {
     R,
     Key extends PropertyKey
   >(
-    self: PropertySignature<PropertyKey, ToToken, To, FromToken, From, R>,
+    self: PropertySignature<ToToken, To, PropertyKey, FromToken, From, R>,
     key: Key
-  ): PropertySignature<Key, ToToken, To, FromToken, From, R>
+  ): PropertySignature<ToToken, To, Key, FromToken, From, R>
 } = dual(2, <
   To,
   ToToken extends Token,
@@ -1276,19 +1276,22 @@ export const propertySignatureKey: {
   R,
   Key extends PropertyKey
 >(
-  self: PropertySignature<PropertyKey, ToToken, To, FromToken, From, R>,
+  self: PropertySignature<ToToken, To, PropertyKey, FromToken, From, R>,
   key: Key
-): PropertySignature<Key, ToToken, To, FromToken, From, R> => {
+): PropertySignature<ToToken, To, Key, FromToken, From, R> => {
   const ast = self.ast
   switch (ast._tag) {
     case "PropertySignatureDeclaration": {
       return new $PropertySignature(
         new PropertySignatureTransformation(
-          ast.from,
           {
-            ast: AST.to(ast.from.ast),
+            ast: ast.from.ast,
             token: ast.from.token,
             key
+          },
+          {
+            ast: AST.to(ast.from.ast),
+            token: ast.from.token
           },
           identity,
           identity,
@@ -1299,12 +1302,12 @@ export const propertySignatureKey: {
     case "PropertySignatureTransformation":
       return new $PropertySignature(
         new PropertySignatureTransformation(
-          ast.from,
           {
-            ast: ast.to.ast,
-            token: ast.to.token,
+            ast: ast.from.ast,
+            token: ast.from.token,
             key
           },
+          ast.to,
           ast.decode,
           ast.encode,
           ast.annotations
@@ -1325,14 +1328,14 @@ export const optional: {
       readonly default: () => A
       readonly nullable: true
     }
-  ): PropertySignature<never, ":", A, "?:", I | null, R>
+  ): PropertySignature<":", A, never, "?:", I | null, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly exact: true
       readonly default: () => A
     }
-  ): PropertySignature<never, ":", A, "?:", I, R>
+  ): PropertySignature<":", A, never, "?:", I, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
@@ -1340,49 +1343,49 @@ export const optional: {
       readonly nullable: true
       readonly as: "Option"
     }
-  ): PropertySignature<never, ":", Option.Option<A>, "?:", I | null, R>
+  ): PropertySignature<":", Option.Option<A>, never, "?:", I | null, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly exact: true
       readonly as: "Option"
     }
-  ): PropertySignature<never, ":", Option.Option<A>, "?:", I, R>
+  ): PropertySignature<":", Option.Option<A>, never, "?:", I, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly exact: true
     }
-  ): PropertySignature<never, "?:", A, "?:", I, R>
+  ): PropertySignature<"?:", A, never, "?:", I, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly default: () => A
       readonly nullable: true
     }
-  ): PropertySignature<never, ":", A, "?:", I | null | undefined, R>
+  ): PropertySignature<":", A, never, "?:", I | null | undefined, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly nullable: true
       readonly as: "Option"
     }
-  ): PropertySignature<never, ":", Option.Option<A>, "?:", I | undefined | null, R>
+  ): PropertySignature<":", Option.Option<A>, never, "?:", I | undefined | null, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly as: "Option"
     }
-  ): PropertySignature<never, ":", Option.Option<A>, "?:", I | undefined, R>
+  ): PropertySignature<":", Option.Option<A>, never, "?:", I | undefined, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly default: () => A
     }
-  ): PropertySignature<never, ":", A, "?:", I | undefined, R>
+  ): PropertySignature<":", A, never, "?:", I | undefined, R>
   <A, I, R>(
     schema: Schema<A, I, R>
-  ): PropertySignature<never, "?:", A | undefined, "?:", I | undefined, R>
+  ): PropertySignature<"?:", A | undefined, never, "?:", I | undefined, R>
 } = <A, I, R>(
   schema: Schema<A, I, R>,
   options?: {
@@ -1391,7 +1394,7 @@ export const optional: {
     readonly nullable?: true
     readonly as?: "Option"
   }
-): PropertySignature<never, any, any, any, any, any> => {
+): PropertySignature<any, any, never, any, any, any> => {
   const isExact = options?.exact
   const value = options?.default
   const isNullable = options?.nullable
@@ -1479,8 +1482,8 @@ export const optional: {
  */
 export type FromTokenKeys<Fields extends StructFields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<PropertyKey, Token, any, "?:", any, unknown>
-    | PropertySignature<PropertyKey, Token, never, "?:", never, unknown> ? K
+    | PropertySignature<Token, any, PropertyKey, "?:", any, unknown>
+    | PropertySignature<Token, never, PropertyKey, "?:", never, unknown> ? K
     : never
 }[keyof Fields]
 
@@ -1489,8 +1492,8 @@ export type FromTokenKeys<Fields extends StructFields> = {
  */
 export type ToTokenKeys<Fields extends StructFields> = {
   [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<PropertyKey, "?:", any, Token, any, unknown>
-    | PropertySignature<PropertyKey, "?:", never, Token, never, unknown> ? K
+    | PropertySignature<"?:", any, PropertyKey, Token, any, unknown>
+    | PropertySignature<"?:", never, PropertyKey, Token, never, unknown> ? K
     : never
 }[keyof Fields]
 
@@ -1498,8 +1501,8 @@ export type ToTokenKeys<Fields extends StructFields> = {
  * @since 1.0.0
  */
 export type AnyPropertySignature<Key extends PropertyKey = PropertyKey> =
-  | PropertySignature<Key, Token, any, Token, any, unknown>
-  | PropertySignature<Key, Token, never, Token, never, unknown>
+  | PropertySignature<Token, any, Key, Token, any, unknown>
+  | PropertySignature<Token, never, Key, Token, never, unknown>
 
 /**
  * @since 1.0.0
@@ -1514,13 +1517,6 @@ export type StructFields = Record<
 /**
  * @since 1.0.0
  */
-export type FromStruct<Fields extends StructFields, OptionalKeys extends PropertyKey = FromTokenKeys<Fields>> =
-  & { readonly [K in Exclude<keyof Fields, OptionalKeys>]: Schema.From<Fields[K]> }
-  & { readonly [K in OptionalKeys]?: Schema.From<Fields[K]> }
-
-/**
- * @since 1.0.0
- */
 export type StructFieldKey<Fields extends StructFields, K extends keyof Fields> = [K] extends [never] ? never :
   Fields[K] extends AnyPropertySignature<infer Key> ? [Key] extends [never] ? K : Key :
   K
@@ -1528,9 +1524,16 @@ export type StructFieldKey<Fields extends StructFields, K extends keyof Fields> 
 /**
  * @since 1.0.0
  */
+export type FromStruct<Fields extends StructFields, OptionalKeys extends PropertyKey = FromTokenKeys<Fields>> =
+  & { readonly [K in Exclude<keyof Fields, OptionalKeys> as StructFieldKey<Fields, K>]: Schema.From<Fields[K]> }
+  & { readonly [K in OptionalKeys as StructFieldKey<Fields, K>]?: Schema.From<Fields[K]> }
+
+/**
+ * @since 1.0.0
+ */
 export type ToStruct<Fields extends StructFields, OptionalKeys extends PropertyKey = ToTokenKeys<Fields>> =
-  & { readonly [K in Exclude<keyof Fields, OptionalKeys> as StructFieldKey<Fields, K>]: Schema.To<Fields[K]> }
-  & { readonly [K in OptionalKeys as StructFieldKey<Fields, K>]?: Schema.To<Fields[K]> }
+  & { readonly [K in Exclude<keyof Fields, OptionalKeys>]: Schema.To<Fields[K]> }
+  & { readonly [K in OptionalKeys]?: Schema.To<Fields[K]> }
 
 /**
  * @since 1.0.0
@@ -1567,20 +1570,22 @@ class $struct<Fields extends StructFields>
       const field = fields[key]
       if (isPropertySignature(field)) {
         const ast: PropertySignatureAST = field.ast
-        const from = ast.from
         const annotations = _schema.toASTAnnotations(ast.annotations)
-        pssFrom.push(new AST.PropertySignature(key, from.ast, isTokenOptional(from.token), true))
         switch (ast._tag) {
           case "PropertySignatureDeclaration": {
+            const from = ast.from
+            pssFrom.push(new AST.PropertySignature(key, from.ast, isTokenOptional(from.token), true))
             pssTo.push(new AST.PropertySignature(key, AST.to(from.ast), isTokenOptional(from.token), true, annotations))
             pss.push(new AST.PropertySignature(key, from.ast, isTokenOptional(from.token), true, annotations))
             break
           }
           case "PropertySignatureTransformation": {
             const to = ast.to
-            const toKey = to.key ?? key
-            pssTo.push(new AST.PropertySignature(toKey, to.ast, isTokenOptional(to.token), true, annotations))
-            psTransformations.push(new AST.PropertySignatureTransformation(key, toKey, ast.decode, ast.encode))
+            const from = ast.from
+            const fromKey = from.key ?? key
+            pssFrom.push(new AST.PropertySignature(fromKey, from.ast, isTokenOptional(from.token), true))
+            pssTo.push(new AST.PropertySignature(key, to.ast, isTokenOptional(to.token), true, annotations))
+            psTransformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
             break
           }
         }
