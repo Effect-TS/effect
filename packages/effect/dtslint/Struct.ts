@@ -149,6 +149,12 @@ pipe(hole<Record<string, number> & { a: boolean }>(), S.pick("b"))
 // $ExpectType { a?: string; b: number; }
 pipe(optionalStringStruct, S.pick("a", "b"))
 
+// $ExpectType { a: string; b: number; }
+S.pick(stringStruct, "a", "b")
+
+// $ExpectType { a?: number; b?: number; }
+S.pick(stringNumberRecord, "a", "b")
+
 // -------------------------------------------------------------------------------------
 // omit
 // -------------------------------------------------------------------------------------
@@ -191,3 +197,6 @@ pipe(numberNumberRecord, S.omit(1))
 
 // $ExpectType { a?: string; b: number; }
 pipe(optionalStringStruct, S.omit("c"))
+
+// $ExpectType { b: number; c: boolean; }
+S.omit(stringStruct, "a")
