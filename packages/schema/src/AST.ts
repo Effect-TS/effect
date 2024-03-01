@@ -155,6 +155,18 @@ export const ConcurrencyAnnotationId = Symbol.for("@effect/schema/annotation/Con
  * @category annotations
  * @since 1.0.0
  */
+export type BatchingAnnotation = boolean | "inherit" | undefined
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const BatchingAnnotationId = Symbol.for("@effect/schema/annotation/Batching")
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
 export interface Annotations {
   readonly [_: symbol]: unknown
 }
@@ -246,9 +258,20 @@ export const getDocumentationAnnotation = getAnnotation<DocumentationAnnotation>
   DocumentationAnnotationId
 )
 
-/** @internal */
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
 export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(
   ConcurrencyAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(
+  BatchingAnnotationId
 )
 
 // -------------------------------------------------------------------------------------

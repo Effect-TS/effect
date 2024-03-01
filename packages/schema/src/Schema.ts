@@ -1891,6 +1891,7 @@ const toAnnotations = (
   move("pretty", hooks.PrettyHookId)
   move("equivalence", hooks.EquivalenceHookId)
   move("concurrency", AST.ConcurrencyAnnotationId)
+  move("batching", AST.BatchingAnnotationId)
 
   return out
 }
@@ -1906,6 +1907,7 @@ export interface DocAnnotations extends AST.Annotations {
   readonly default?: AST.DefaultAnnotation
   readonly documentation?: AST.DocumentationAnnotation
   readonly concurrency?: AST.ConcurrencyAnnotation
+  readonly batching?: AST.BatchingAnnotation
 }
 
 /**
@@ -2008,6 +2010,13 @@ export const equivalence =
 export const concurrency =
   (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     make(AST.setAnnotation(self.ast, AST.ConcurrencyAnnotationId, concurrency))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const batching = (batching: AST.BatchingAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  make(AST.setAnnotation(self.ast, AST.BatchingAnnotationId, batching))
 
 type Rename<A, M> = {
   [

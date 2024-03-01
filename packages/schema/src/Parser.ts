@@ -362,6 +362,9 @@ const goMemo = (ast: AST.AST, isDecoding: boolean): Parser => {
 const getConcurrency = (ast: AST.AST): Concurrency | undefined =>
   Option.getOrUndefined(AST.getConcurrencyAnnotation(ast))
 
+const getBatching = (ast: AST.AST): boolean | "inherit" | undefined =>
+  Option.getOrUndefined(AST.getBatchingAnnotation(ast))
+
 const go = (ast: AST.AST, isDecoding: boolean): Parser => {
   switch (ast._tag) {
     case "Refinement": {
@@ -473,6 +476,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       }
       const expectedAST = AST.createUnion(ast.elements.map((_, i) => AST.createLiteral(i)))
       const concurrency = getConcurrency(ast)
+      const batching = getBatching(ast)
       return (input: unknown, options) => {
         if (!Array.isArray(input)) {
           return Either.left(InternalParser.type(ast, input))
@@ -679,7 +683,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               output: Array.from(output)
             }
             return Effect.flatMap(
-              Effect.forEach(cqueue, (f) => f(state), { concurrency, discard: true }),
+              Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
               () => computeResult(state)
             )
           })
@@ -715,6 +719,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       )
       const expected = goMemo(expectedAST, isDecoding)
       const concurrency = getConcurrency(ast)
+      const batching = getBatching(ast)
       return (input: unknown, options) => {
         if (!Predicate.isRecord(input)) {
           return Either.left(InternalParser.type(ast, input))
@@ -898,7 +903,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               output: Object.assign({}, output)
             }
             return Effect.flatMap(
-              Effect.forEach(cqueue, (f) => f(state), { concurrency, discard: true }),
+              Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
               () => computeResult(state)
             )
           })
@@ -915,6 +920,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         map.set(ast.types[i], goMemo(ast.types[i], isDecoding))
       }
       const concurrency = getConcurrency(ast) ?? 1
+      const batching = getBatching(ast)
       return (input, options) => {
         const es: Array<[number, ParseResult.Type | ParseResult.TypeLiteral | ParseResult.Member]> = []
         let stepKey = 0
@@ -1028,7 +1034,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           return Effect.suspend(() => {
             const state: State = { es: Array.from(es) }
             return Effect.flatMap(
-              Effect.forEach(cqueue, (f) => f(state), { concurrency, discard: true }),
+              Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
               () => {
                 if ("finalResult" in state) {
                   return state.finalResult
