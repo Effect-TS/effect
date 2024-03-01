@@ -1,5 +1,15 @@
 # effect
 
+## 2.4.1
+
+### Patch Changes
+
+- [#2219](https://github.com/Effect-TS/effect/pull/2219) [`a4a0006`](https://github.com/Effect-TS/effect/commit/a4a0006c7f19fc261df5cda16963d73457e4d6ac) Thanks [@KhraksMamtsov](https://github.com/KhraksMamtsov)! - fix documentation for `Predicate.isNull` `Predicate.isNotNull`
+
+- [#2223](https://github.com/Effect-TS/effect/pull/2223) [`0a37676`](https://github.com/Effect-TS/effect/commit/0a37676aa0eb2a21e17af2e6df9f81f52bbc8831) Thanks [@Schniz](https://github.com/Schniz)! - document Effect.zipLeft and Effect.zipRight
+
+- [#2224](https://github.com/Effect-TS/effect/pull/2224) [`6f503b7`](https://github.com/Effect-TS/effect/commit/6f503b774d893bf2af34f66202e270d8c45d5f31) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added isSet and isMap to Predicate module
+
 ## 2.4.0
 
 ### Minor Changes

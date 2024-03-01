@@ -1,6 +1,6 @@
 {
   "name": "@effect/printer-ansi",
-  "version": "0.32.9",
+  "version": "0.32.10",
   "type": "module",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
