@@ -891,7 +891,8 @@ export const nullish = <A, I, R>(self: Schema<A, I, R>): union<[Schema<A, I, R>,
  * @category combinators
  * @since 1.0.0
  */
-export const keyof = <A, I, R>(schema: Schema<A, I, R>): Schema<keyof A> => make(AST.keyof(schema.ast))
+export const keyof = <A, I, R>(self: Schema<A, I, R>): Schema<keyof A> =>
+  make<keyof A>(AST.keyof(self.ast)).annotations({ description: `keyof<${format(self)}>` })
 
 /**
  * @category api interface
