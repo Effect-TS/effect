@@ -72,6 +72,13 @@ describe("Schema > annotations", () => {
     })
   })
 
+  it("batching", () => {
+    const schema = S.struct({ a: S.string }).pipe(S.batching("inherit"))
+    expect(schema.ast.annotations).toEqual({
+      [AST.BatchingAnnotationId]: "inherit"
+    })
+  })
+
   it("message as annotation options", async () => {
     const schema =
       // initial schema, a string
