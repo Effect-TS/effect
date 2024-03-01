@@ -23,12 +23,14 @@ import * as HashSet from "effect/HashSet"
 import * as List from "effect/List"
 import * as N from "effect/Number"
 import * as Option from "effect/Option"
+import type * as Order from "effect/Order"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Secret from "effect/Secret"
+import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
 import type { Covariant, Equals, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
@@ -4210,6 +4212,58 @@ export const readonlySet = <A, I, R>(item: Schema<A, I, R>): Schema<ReadonlySet<
     readonlySetFromSelf(to(item)),
     (as) => new Set(as),
     (set) => Array.from(set)
+  )
+
+const sortedSetArbitrary = <A>(item: Arbitrary<A>, ord: Order.Order<A>): Arbitrary<SortedSet.SortedSet<A>> => (fc) =>
+  fc.array(item(fc)).map((as) => SortedSet.fromIterable(as, ord))
+
+const sortedSetPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<SortedSet.SortedSet<A>> => (set) =>
+  `new SortedSet([${Array.from(SortedSet.values(set)).map((a) => item(a)).join(", ")}])`
+
+const sortedSetParse = <R, A>(
+  decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>,
+  ord: Order.Order<A>
+): ParseResult.DeclarationDecodeUnknown<SortedSet.SortedSet<A>, R> =>
+(u, options, ast) =>
+  SortedSet.isSortedSet(u) ?
+    ParseResult.map(decodeUnknown(Array.from(SortedSet.values(u)), options), (as): SortedSet.SortedSet<A> =>
+      SortedSet.fromIterable(as, ord))
+    : ParseResult.fail(ParseResult.type(ast, u))
+
+/**
+ * @category ReadonlySet transformations
+ * @since 1.0.0
+ */
+export const sortedSetFromSelf = <A, I, R>(
+  ordA: Order.Order<A>,
+  ordI: Order.Order<I>,
+  item: Schema<A, I, R>
+): Schema<SortedSet.SortedSet<A>, SortedSet.SortedSet<I>, R> => {
+  return declare(
+    [item],
+    (item) => sortedSetParse(ParseResult.encodeUnknown(array(item)), ordA),
+    (item) => sortedSetParse(ParseResult.encodeUnknown(array(item)), ordI),
+    {
+      description: `ReadonlySet<${format(item)}>`,
+      pretty: sortedSetPretty,
+      arbitrary: (arb) => sortedSetArbitrary(arb, ordA)
+    }
+  )
+}
+
+/**
+ * @category ReadonlySet transformations
+ * @since 1.0.0
+ */
+export const sortedSet = <A, I, R>(
+  item: Schema<A, I, R>,
+  ordA: Order.Order<A>,
+): Schema<SortedSet.SortedSet<A>, ReadonlyArray<I>, R> =>
+  transform(
+    array(item),
+    sortedSetFromSelf(to(item), ordA, ordA),
+    (as) => SortedSet.fromIterable(as, ordA),
+    (set) => Array.from(SortedSet.values(set))
   )
 
 const bigDecimalPretty = (): Pretty.Pretty<BigDecimal.BigDecimal> => (val) =>
