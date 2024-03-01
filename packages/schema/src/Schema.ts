@@ -2128,7 +2128,6 @@ export interface PropertySignatureAnnotations<A> extends AST.Annotations {
   readonly examples?: AST.ExamplesAnnotation<A>
   readonly default?: AST.DefaultAnnotation<A>
   readonly documentation?: AST.DocumentationAnnotation
-  readonly concurrency?: AST.ConcurrencyAnnotation
 }
 
 /**
@@ -2151,6 +2150,7 @@ export interface Annotations<A, TypeParameters extends ReadonlyArray<any> = read
     ...equivalences: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]> }
   ) => Equivalence.Equivalence<A>
   readonly concurrency?: AST.ConcurrencyAnnotation
+  readonly batching?: AST.BatchingAnnotation
 }
 
 /**
@@ -2251,6 +2251,13 @@ export const equivalence =
 export const concurrency =
   (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.annotations({ [AST.ConcurrencyAnnotationId]: concurrency })
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const batching = (batching: AST.BatchingAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  self.annotations({ [AST.BatchingAnnotationId]: batching })
 
 type Rename<A, M> = {
   [

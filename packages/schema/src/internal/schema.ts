@@ -57,6 +57,7 @@ export const toASTAnnotations = (
   move("pretty", _hooks.PrettyHookId)
   move("equivalence", _hooks.EquivalenceHookId)
   move("concurrency", AST.ConcurrencyAnnotationId)
+  move("batching", AST.BatchingAnnotationId)
 
   return out
 }

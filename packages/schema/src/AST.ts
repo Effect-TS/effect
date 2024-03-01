@@ -181,6 +181,18 @@ export type ConcurrencyAnnotation = Concurrency | undefined
  */
 export const ConcurrencyAnnotationId = Symbol.for("@effect/schema/annotation/Concurrency")
 
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type BatchingAnnotation = boolean | "inherit" | undefined
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const BatchingAnnotationId = Symbol.for("@effect/schema/annotation/Batching")
+
 /** @internal */
 export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
 
@@ -297,14 +309,25 @@ export const getDocumentationAnnotation = getAnnotation<DocumentationAnnotation>
   DocumentationAnnotationId
 )
 
-/** @internal */
-export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(
-  SurrogateAnnotationId
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(
+  ConcurrencyAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(
+  BatchingAnnotationId
 )
 
 /** @internal */
-export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(
-  ConcurrencyAnnotationId
+export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(
+  SurrogateAnnotationId
 )
 
 /**
