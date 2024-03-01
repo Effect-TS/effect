@@ -63,8 +63,8 @@ jobs:
         with:
           bun-version: 1.0.25
       - name: Test
-        run: pnpm vitest --shard ${{ matrix.shard }}
+        run: pnpm vitest --bail 1 --shard ${{ matrix.shard }}
         if: matrix.runtime == 'Node'
       - name: Test
-        run: bun vitest --shard ${{ matrix.shard }}
+        run: bun vitest --bail 1 --shard ${{ matrix.shard }}
         if: matrix.runtime == 'Bun'
