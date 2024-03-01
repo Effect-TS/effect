@@ -7,6 +7,7 @@
 import * as Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as order from "./Order.js"
+import * as Predicate from "./Predicate.js"
 import type { MatchRecord, Simplify } from "./Types.js"
 
 /**
@@ -17,23 +18,32 @@ import type { MatchRecord, Simplify } from "./Types.js"
  * import { pipe } from "effect/Function"
  *
  * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, pick("a", "b")), { a: "a", b: 1 })
+ * assert.deepStrictEqual(pick({ a: "a", b: 1, c: true }, "a", "b"), { a: "a", b: 1 })
  *
  * @since 2.0.0
  */
-export const pick = <Keys extends Array<PropertyKey>>(
-  ...keys: Keys
-) =>
-<S extends { [K in Keys[number]]?: any }>(
-  s: S
-): MatchRecord<S, { [K in Keys[number]]?: S[K] }, Simplify<Pick<S, Keys[number]>>> => {
-  const out: any = {}
-  for (const k of keys) {
-    if (k in s) {
-      out[k] = (s as any)[k]
+export const pick: {
+  <Keys extends Array<PropertyKey>>(
+    ...keys: Keys
+  ): <S extends { [K in Keys[number]]?: any }>(
+    s: S
+  ) => MatchRecord<S, { [K in Keys[number]]?: S[K] }, Simplify<Pick<S, Keys[number]>>>
+  <S extends object, Keys extends Array<keyof S>>(
+    s: S,
+    ...keys: Keys
+  ): MatchRecord<S, { [K in Keys[number]]?: S[K] }, Simplify<Pick<S, Keys[number]>>>
+} = dual(
+  (args) => Predicate.isObject(args[0]),
+  <S extends object, Keys extends Array<keyof S>>(s: S, ...keys: Keys) => {
+    const out: any = {}
+    for (const k of keys) {
+      if (k in s) {
+        out[k] = (s as any)[k]
+      }
     }
+    return out
   }
-  return out
-}
+)
 
 /**
  * Create a new object by omitting properties of an existing object.
@@ -43,19 +53,28 @@ export const pick = <Keys extends Array<PropertyKey>>(
  * import { pipe } from "effect/Function"
  *
  * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, omit("c")), { a: "a", b: 1 })
+ * assert.deepStrictEqual(omit({ a: "a", b: 1, c: true }, "c"), { a: "a", b: 1 })
  *
  * @since 2.0.0
  */
-export const omit = <Keys extends Array<PropertyKey>>(
-  ...keys: Keys
-) =>
-<S extends { [K in Keys[number]]?: any }>(s: S): Simplify<Omit<S, Keys[number]>> => {
-  const out: any = { ...s }
-  for (const k of keys) {
-    delete out[k]
+export const omit: {
+  <Keys extends Array<PropertyKey>>(
+    ...keys: Keys
+  ): <S extends { [K in Keys[number]]?: any }>(s: S) => Simplify<Omit<S, Keys[number]>>
+  <S extends object, Keys extends Array<keyof S>>(
+    s: S,
+    ...keys: Keys
+  ): Simplify<Omit<S, Keys[number]>>
+} = dual(
+  (args) => Predicate.isObject(args[0]),
+  <S extends object, Keys extends Array<keyof S>>(s: S, ...keys: Keys) => {
+    const out: any = { ...s }
+    for (const k of keys) {
+      delete out[k]
+    }
+    return out
   }
-  return out
-}
+)
 
 /**
  * Given a struct of `Equivalence`s returns a new `Equivalence` that compares values of a struct
