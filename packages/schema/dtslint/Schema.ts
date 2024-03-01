@@ -288,9 +288,15 @@ S.keyof(S.struct({ a: S.string, b: S.NumberFromString }))
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number], readonly [string, number], never>
+S.asSchema(S.tuple(S.string, S.number))
+
+// $ExpectType tuple<[$string, $number]>
 S.tuple(S.string, S.number)
 
 // $ExpectType Schema<readonly [string, number], readonly [string, string], never>
+S.asSchema(S.tuple(S.string, S.NumberFromString))
+
+// $ExpectType tuple<[$string, NumberFromString]>
 S.tuple(S.string, S.NumberFromString)
 
 // ---------------------------------------------

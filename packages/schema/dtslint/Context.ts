@@ -103,6 +103,9 @@ Schema.union(aContext, bContext)
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number], readonly [string, number], "aContext" | "bContext">
+Schema.asSchema(Schema.tuple(aContext, bContext))
+
+// $ExpectType tuple<[Schema<string, string, "aContext">, Schema<number, number, "bContext">]>
 Schema.tuple(aContext, bContext)
 
 // ---------------------------------------------

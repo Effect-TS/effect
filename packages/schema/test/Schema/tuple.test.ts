@@ -1,8 +1,22 @@
+import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Schema > tuple", () => {
+  it("annotations()", () => {
+    const schema = S.tuple(S.string, S.number).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    expect(schema.ast.annotations).toStrictEqual({
+      [AST.IdentifierAnnotationId]: "X",
+      [AST.TitleAnnotationId]: "Y"
+    })
+  })
+
+  it("should expose the elements", () => {
+    const schema = S.tuple(S.string, S.number)
+    expect(schema.elements).toStrictEqual([S.string, S.number])
+  })
+
   it("rest: should throw on unsupported schemas", () => {
     const schema = S.tuple().pipe(S.filter(() => true))
     expect(() => schema.pipe(S.rest(S.number))).toThrow(

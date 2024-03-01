@@ -894,23 +894,49 @@ export const nullish = <A, I, R>(self: Schema<A, I, R>): union<[Schema<A, I, R>,
 export const keyof = <A, I, R>(schema: Schema<A, I, R>): Schema<keyof A> => make(AST.keyof(schema.ast))
 
 /**
- * @category combinators
+ * @category api interface
  * @since 1.0.0
  */
-export const tuple = <Elements extends ReadonlyArray<AnySchema>>(
-  ...elements: Elements
-): Schema<
+export interface tuple<Elements extends ReadonlyArray<AnySchema>> extends
+  Schema<
+    { readonly [K in keyof Elements]: Schema.To<Elements[K]> },
+    { readonly [K in keyof Elements]: Schema.From<Elements[K]> },
+    Schema.Context<Elements[number]>
+  >
+{
+  readonly elements: Readonly<Elements>
+  annotations(annotations?: Annotations<{ readonly [K in keyof Elements]: Schema.To<Elements[K]> }>): tuple<Elements>
+}
+
+class $tuple<Elements extends ReadonlyArray<AnySchema>> extends _schema.Schema<
   { readonly [K in keyof Elements]: Schema.To<Elements[K]> },
   { readonly [K in keyof Elements]: Schema.From<Elements[K]> },
   Schema.Context<Elements[number]>
-> =>
-  make(
-    new AST.Tuple(
-      elements.map((schema) => new AST.Element(schema.ast, false)),
-      Option.none(),
-      true
+> implements tuple<Elements> {
+  constructor(
+    readonly elements: Elements,
+    annotations?: Annotations<{ readonly [K in keyof Elements]: Schema.To<Elements[K]> }>
+  ) {
+    super(
+      new AST.Tuple(
+        elements.map((schema) => new AST.Element(schema.ast, false)),
+        Option.none(),
+        true,
+        _schema.toASTAnnotations(annotations)
+      )
     )
-  )
+  }
+  annotations(annotations?: Annotations<{ readonly [K in keyof Elements]: Schema.To<Elements[K]> }>): tuple<Elements> {
+    return annotations ? new $tuple(this.elements, { ...this.ast.annotations, ...annotations }) : this
+  }
+}
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const tuple = <Elements extends ReadonlyArray<AnySchema>>(...elements: Elements): tuple<Elements> =>
+  new $tuple(elements)
 
 /**
  * @category combinators
