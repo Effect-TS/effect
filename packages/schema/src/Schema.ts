@@ -2411,6 +2411,13 @@ export const concurrency =
 export const batching = (batching: AST.BatchingAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.annotations({ [AST.BatchingAnnotationId]: batching })
 
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const batching = (batching: AST.BatchingAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  make(AST.setAnnotation(self.ast, AST.BatchingAnnotationId, batching))
+
 type Rename<A, M> = {
   [
     K in keyof A as K extends keyof M ? M[K] extends PropertyKey ? M[K]
