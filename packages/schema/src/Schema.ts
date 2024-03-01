@@ -4234,19 +4234,22 @@ const sortedSetParse = <R, A>(
  * @category ReadonlySet transformations
  * @since 1.0.0
  */
-export const sortedSetFromSelf = <A, I, R>(
+export const sortedSetFromSelf = <A, I>(
   ordA: Order.Order<A>,
-  ordI: Order.Order<I>,
+  ordI: Order.Order<I>
+) =>
+<R>(
   item: Schema<A, I, R>
 ): Schema<SortedSet.SortedSet<A>, SortedSet.SortedSet<I>, R> => {
   return declare(
     [item],
-    (item) => sortedSetParse(ParseResult.encodeUnknown(array(item)), ordA),
+    (item) => sortedSetParse(ParseResult.decodeUnknown(array(item)), ordA),
     (item) => sortedSetParse(ParseResult.encodeUnknown(array(item)), ordI),
     {
-      description: `ReadonlySet<${format(item)}>`,
+      description: `SortedSet<${format(item)}>`,
       pretty: sortedSetPretty,
-      arbitrary: (arb) => sortedSetArbitrary(arb, ordA)
+      arbitrary: (arb) => sortedSetArbitrary(arb, ordA),
+      equivalence: () => SortedSet.getEquivalence<A>()
     }
   )
 }
@@ -4255,13 +4258,13 @@ export const sortedSetFromSelf = <A, I, R>(
  * @category ReadonlySet transformations
  * @since 1.0.0
  */
-export const sortedSet = <A, I, R>(
-  item: Schema<A, I, R>,
-  ordA: Order.Order<A>,
-): Schema<SortedSet.SortedSet<A>, ReadonlyArray<I>, R> =>
+export const sortedSet = <A>(ordA: Order.Order<A>) =>
+<I, R>(
+  item: Schema<A, I, R>
+) =>
   transform(
     array(item),
-    sortedSetFromSelf(to(item), ordA, ordA),
+    sortedSetFromSelf(ordA, ordA)(to(item)),
     (as) => SortedSet.fromIterable(as, ordA),
     (set) => Array.from(SortedSet.values(set))
   )
