@@ -1128,7 +1128,11 @@ export class Union implements Annotated {
   }
 }
 
-const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Array<A>] => as.length > 1
+/** @internal */
+export const mapMembers = <A, B>(members: Members<A>, f: (a: A) => B): Members<B> => members.map(f) as any
+
+/** @internal */
+export const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Array<A>] => as.length > 1
 
 /**
  * @category guards

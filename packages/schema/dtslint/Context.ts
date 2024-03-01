@@ -93,6 +93,9 @@ Schema.declare(
 // ---------------------------------------------
 
 // $ExpectType Schema<string | number, string | number, "aContext" | "bContext">
+Schema.asSchema(Schema.union(aContext, bContext))
+
+// $ExpectType union<[Schema<string, string, "aContext">, Schema<number, number, "bContext">]>
 Schema.union(aContext, bContext)
 
 // ---------------------------------------------

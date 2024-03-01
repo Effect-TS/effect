@@ -416,9 +416,18 @@ class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralV
  * @category constructors
  * @since 1.0.0
  */
-export const literal = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
+export function literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-): literal<Literals> => new $literal(literals)
+): literal<Literals>
+export function literal(): $never
+export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
+  ...literals: Literals
+): Schema<Literals[number]>
+export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
+  ...literals: Literals
+): Schema<Literals[number]> | $never {
+  return ReadonlyArray.isNonEmptyReadonlyArray(literals) ? new $literal(literals) : never
+}
 
 /**
  * Creates a new `Schema` from a literal schema.
@@ -438,7 +447,7 @@ export const literal = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST
  */
 export const pickLiteral =
   <A extends AST.LiteralValue, L extends ReadonlyArray.NonEmptyReadonlyArray<A>>(...literals: L) =>
-  <I, R>(_schema: Schema<A, I, R>): Schema<L[number]> => literal(...literals)
+  <I, R>(_schema: Schema<A, I, R>): literal<[...L]> => literal(...literals)
 
 /**
  * @category constructors
@@ -665,35 +674,59 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
     }
   )
 
-const _undefined: Schema<undefined> = make(AST.undefinedKeyword)
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $undefined extends Schema<undefined> {}
 
-const _void: Schema<void> = make(AST.voidKeyword)
+const $undefined: $undefined = make(AST.undefinedKeyword)
 
-const _null: Schema<null> = make(AST._null)
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $void extends Schema<void> {}
+
+const $void: $void = make(AST.voidKeyword)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $null extends Schema<null> {}
+
+const $null: $null = make(AST._null)
 
 export {
   /**
    * @category primitives
    * @since 1.0.0
    */
-  _null as null,
+  $null as null,
   /**
    * @category primitives
    * @since 1.0.0
    */
-  _undefined as undefined,
+  $undefined as undefined,
   /**
    * @category primitives
    * @since 1.0.0
    */
-  _void as void
+  $void as void
 }
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $never extends Schema<never> {}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const never: Schema<never> = make(AST.neverKeyword)
+export const never: $never = make(AST.neverKeyword)
 
 /**
  * @category primitives
@@ -744,35 +777,67 @@ export const symbolFromSelf: Schema<symbol> = make(AST.symbolKeyword)
 export const object: Schema<object> = make(AST.objectKeyword)
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface union<Members extends ReadonlyArray<AnySchema>>
+  extends Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>>
+{
+  readonly members: Readonly<Members>
+  annotations(annotations?: Annotations<Schema.To<Members[number]>>): union<Members>
+}
+
+class $union<Members extends ReadonlyArray<AnySchema>>
+  extends _schema.Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>>
+  implements union<Members>
+{
+  constructor(readonly members: Members, annotations?: Annotations<Schema.To<Members[number]>>) {
+    super(AST.Union.make(members.map((m) => m.ast), _schema.toASTAnnotations(annotations)))
+  }
+  annotations(annotations?: Annotations<Schema.To<Members[number]>>): union<Members> {
+    return annotations ? new $union(this.members, { ...this.ast.annotations, ...annotations }) : this
+  }
+}
+
+/**
  * @category combinators
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<AnySchema>>(
+export function union<Members extends AST.Members<AnySchema>>(...members: Members): union<Members>
+export function union<Member extends AnySchema>(member: Member): Member
+export function union(): $never
+export function union<Members extends ReadonlyArray<AnySchema>>(
   ...members: Members
-): Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>> =>
-  make(AST.Union.make(members.map((m) => m.ast)))
+): Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>>
+export function union<Members extends ReadonlyArray<AnySchema>>(
+  ...members: Members
+): Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>> | $never {
+  return AST.isMembers(members)
+    ? new $union(members)
+    : ReadonlyArray.isNonEmptyReadonlyArray(members)
+    ? members[0] as any
+    : never
+}
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nullable = <A, I, R>(self: Schema<A, I, R>): Schema<A | null, I | null, R> => union(_null, self)
+export const nullable = <A, I, R>(self: Schema<A, I, R>): union<[Schema<A, I, R>, $null]> => union(self, $null)
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const orUndefined = <A, I, R>(
-  self: Schema<A, I, R>
-): Schema<A | undefined, I | undefined, R> => make(AST.orUndefined(self.ast))
+export const orUndefined = <A, I, R>(self: Schema<A, I, R>): union<[Schema<A, I, R>, $undefined]> =>
+  union(self, $undefined)
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nullish = <A, I, R>(
-  self: Schema<A, I, R>
-): Schema<A | null | undefined, I | null | undefined, R> => union(_null, _undefined, self)
+export const nullish = <A, I, R>(self: Schema<A, I, R>): union<[Schema<A, I, R>, $null, $undefined]> =>
+  union(self, $null, $undefined)
 
 /**
  * @category combinators
@@ -1375,7 +1440,7 @@ export type AnyPropertySignature<Key extends PropertyKey = PropertyKey> =
 export type StructFields = Record<
   PropertyKey,
   | AnySchema
-  | typeof never
+  | $never
   | AnyPropertySignature
 >
 
@@ -2006,6 +2071,12 @@ export const transform: {
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface transformLiteral<To, From> extends Schema<To, From> {}
+
+/**
  * Creates a new `Schema` which transforms literal values.
  *
  * @example
@@ -2021,7 +2092,7 @@ export const transform: {
 export const transformLiteral = <From extends AST.LiteralValue, To extends AST.LiteralValue>(
   from: From,
   to: To
-): Schema<To, From, never> => transform(literal(from), literal(to), () => to, () => from)
+): transformLiteral<To, From> => transform(literal(from), literal(to), () => to, () => from)
 
 /**
  * Creates a new `Schema` which maps between corresponding literal values.
@@ -2040,11 +2111,20 @@ export const transformLiteral = <From extends AST.LiteralValue, To extends AST.L
  * @category constructors
  * @since 1.0.0
  */
-export const transformLiterals = <
-  const A extends ReadonlyArray<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>
->(
+export function transformLiterals<const A extends AST.Members<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>>(
   ...pairs: A
-): Schema<A[number][1], A[number][0], never> => union(...pairs.map(([from, to]) => transformLiteral(from, to)))
+): union<{ -readonly [I in keyof A]: transformLiteral<A[I][1], A[I][0]> }>
+export function transformLiterals<From extends AST.LiteralValue, To extends AST.LiteralValue>(
+  pairs: [From, To]
+): transformLiteral<To, From>
+export function transformLiterals<
+  const A extends ReadonlyArray<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>
+>(...pairs: A): Schema<A[number][1], A[number][0]>
+export function transformLiterals<
+  const A extends ReadonlyArray<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>
+>(...pairs: A): Schema<A[number][1], A[number][0]> {
+  return union(...pairs.map(([from, to]) => transformLiteral(from, to)))
+}
 
 /**
  * Attaches a property signature with the specified key and value to the schema.
@@ -4115,7 +4195,7 @@ const optionSomeFrom = <A, I, R>(value: Schema<A, I, R>) =>
     value
   }).annotations({ description: `SomeFrom<${format(value)}>` })
 
-const optionFrom = <A, I, R>(value: Schema<A, I, R>): Schema<OptionFrom<A>, OptionFrom<I>, R> =>
+const optionFrom = <A, I, R>(value: Schema<A, I, R>) =>
   union(
     OptionNoneFrom,
     optionSomeFrom(value)
@@ -4263,7 +4343,7 @@ const leftFrom = <E, IE, R>(left: Schema<E, IE, R>): Schema<LeftFrom<E>, LeftFro
 const eitherFrom = <E, IE, R1, A, IA, R2>(
   left: Schema<E, IE, R1>,
   right: Schema<A, IA, R2>
-): Schema<EitherFrom<E, A>, EitherFrom<IE, IA>, R1 | R2> =>
+) =>
   union(rightFrom(right), leftFrom(left)).annotations({
     description: `EitherFrom<${format(left)}, ${format(right)}>`
   })

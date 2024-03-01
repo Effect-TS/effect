@@ -22,17 +22,17 @@ describe("Option > optionFromNullish", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
-      `(null | undefined | NumberFromString <-> Option<number>)
+      `(NumberFromString | null | undefined <-> Option<number>)
 └─ From side transformation failure
-   └─ null | undefined | NumberFromString
+   └─ NumberFromString | null | undefined
+      ├─ Union member
+      │  └─ NumberFromString
+      │     └─ From side transformation failure
+      │        └─ Expected a string, actual {}
       ├─ Union member
       │  └─ Expected null, actual {}
-      ├─ Union member
-      │  └─ Expected undefined, actual {}
       └─ Union member
-         └─ NumberFromString
-            └─ From side transformation failure
-               └─ Expected a string, actual {}`
+         └─ Expected undefined, actual {}`
     )
   })
 

@@ -64,9 +64,15 @@ A.pipe(S.message(() => "message"))
 // ---------------------------------------------
 
 // $ExpectType Schema<void, void, never>
+S.asSchema(S.void)
+
+// $ExpectType $void
 S.void
 
 // $ExpectType Schema<undefined, undefined, never>
+S.asSchema(S.undefined)
+
+// $ExpectType $undefined
 S.undefined
 
 // $ExpectType Schema<string, string, never>
@@ -104,9 +110,12 @@ S.object
 // ---------------------------------------------
 
 // $ExpectType Schema<null, null, never>
+S.asSchema(S.null)
+
+// $ExpectType $null
 S.null
 
-// @ts-expect-error
+// $ExpectType $never
 S.literal()
 
 // $ExpectType Schema<"a", "a", never>
@@ -120,6 +129,11 @@ S.asSchema(S.literal("a", "b", "c"))
 
 // $ExpectType literal<["a", "b", "c"]>
 S.literal("a", "b", "c")
+
+const literals: Array<"a" | "b" | "c"> = ["a", "b", "c"]
+
+// $ExpectType Schema<"a" | "b" | "c", "a" | "b" | "c", never>
+S.literal(...literals)
 
 // $ExpectType literal<[1]>
 S.literal(1)
@@ -202,9 +216,15 @@ S.enums(Fruits)
 //
 
 // $ExpectType Schema<string | null, string | null, never>
+S.asSchema(S.nullable(S.string))
+
+// $ExpectType union<[Schema<string, string, never>, $null]>
 S.nullable(S.string)
 
 // $ExpectType Schema<number | null, string | null, never>
+S.asSchema(S.nullable(S.NumberFromString))
+
+// $ExpectType union<[Schema<number, string, never>, $null]>
 S.nullable(S.NumberFromString)
 
 // ---------------------------------------------
@@ -212,10 +232,19 @@ S.nullable(S.NumberFromString)
 // ---------------------------------------------
 
 // $ExpectType Schema<string | number, string | number, never>
+S.asSchema(S.union(S.string, S.number))
+
+// $ExpectType union<[Schema<string, string, never>, Schema<number, number, never>]>
 S.union(S.string, S.number)
 
 // $ExpectType Schema<number | boolean, string | boolean, never>
+S.asSchema(S.union(S.boolean, S.NumberFromString))
+
+// $ExpectType union<[Schema<boolean, boolean, never>, Schema<number, string, never>]>
 S.union(S.boolean, S.NumberFromString)
+
+// $ExpectType readonly [Schema<string, string, never>, Schema<number, number, never>]
+S.union(S.string, S.number).members
 
 // ---------------------------------------------
 // keyof
@@ -323,7 +352,7 @@ export type MyModelTo = S.Schema.To<typeof MyModel>
 // $ExpectType Schema<{ readonly a: never; }, { readonly a: never; }, never>
 S.asSchema(S.struct({ a: S.never }))
 
-// $ExpectType struct<{ a: Schema<never, never, never>; }>
+// $ExpectType struct<{ a: $never; }>
 S.struct({ a: S.never })
 
 // ---------------------------------------------
@@ -982,6 +1011,9 @@ S.string.pipe(
 // ---------------------------------------------
 
 // $ExpectType Schema<"a", 0, never>
+S.asSchema(S.transformLiteral(0, "a"))
+
+// $ExpectType transformLiteral<"a", 0>
 S.transformLiteral(0, "a")
 
 // ---------------------------------------------
@@ -989,7 +1021,18 @@ S.transformLiteral(0, "a")
 // ---------------------------------------------
 
 // $ExpectType Schema<"a" | "b", 0 | 1, never>
+S.asSchema(S.transformLiterals([0, "a"], [1, "b"]))
+
+// $ExpectType union<[transformLiteral<"a", 0>, transformLiteral<"b", 1>]>
 S.transformLiterals([0, "a"], [1, "b"])
+
+// $ExpectType transformLiteral<"a", 0>
+S.transformLiterals([0, "a"])
+
+const pairs: Array<readonly [0 | 1, "a" | "b"]> = [[0, "a"], [1, "b"]]
+
+// $ExpectType Schema<"a" | "b", 0 | 1, never>
+S.transformLiterals(...pairs)
 
 // ---------------------------------------------
 // BigDecimal
