@@ -1229,12 +1229,17 @@ export const RuntimeClass = <Args extends ReadonlyArray<any>, R, RE>(
 ): Layer.RuntimeClassConstructor<Args, R, RE> =>
   class implements Layer.RuntimeClass<R, RE> {
     #scope = runtime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
-    #runtime: Effect.Effect<Runtime.Runtime<R>, RE>
+    #runtime: Effect.Effect<Runtime.Runtime<R>, RE> | Runtime.Runtime<R>
 
     constructor(...args: Args) {
       this.#runtime = runtime.unsafeRunSyncEffect(
         effect.memoize(
-          toRuntime(evaluate(...args)).pipe(Scope.extend(this.#scope))
+          toRuntime(evaluate(...args)).pipe(
+            Scope.extend(this.#scope),
+            core.tap((rt) => {
+              this.#runtime = rt
+            })
+          )
         )
       )
     }
@@ -1248,7 +1253,14 @@ export const RuntimeClass = <Args extends ReadonlyArray<any>, R, RE>(
       return this.dispose()
     }
 
+    get #currentRuntime(): Runtime.Runtime<R> {
+      return core.isEffect(this.#runtime) ? runtime.defaultRuntime as any : this.#runtime
+    }
+
     #provide<A, E>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | RE> {
+      if (!core.isEffect(this.#runtime)) {
+        return effect as any
+      }
       return core.flatMap(
         this.#runtime,
         (rt) =>
@@ -1261,23 +1273,23 @@ export const RuntimeClass = <Args extends ReadonlyArray<any>, R, RE>(
     }
 
     runFork<E, A>(effect: Effect.Effect<A, E, R>): Fiber.RuntimeFiber<A, E | RE> {
-      return runtime.unsafeForkEffect(this.#provide(effect))
+      return runtime.unsafeFork(this.#currentRuntime)(this.#provide(effect))
     }
 
     runSync<A, E>(effect: Effect.Effect<A, E, R>): A {
-      return runtime.unsafeRunSyncEffect(this.#provide(effect))
+      return runtime.unsafeRunSync(this.#currentRuntime)(this.#provide(effect))
     }
 
     runSyncExit<A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E | RE> {
-      return runtime.unsafeRunSyncExitEffect(this.#provide(effect))
+      return runtime.unsafeRunSyncExit(this.#currentRuntime)(this.#provide(effect))
     }
 
     runPromise<E, A>(effect: Effect.Effect<A, E, R>): Promise<A> {
-      return runtime.unsafeRunPromiseEffect(this.#provide(effect))
+      return runtime.unsafeRunPromise(this.#currentRuntime)(this.#provide(effect))
     }
 
     runPromiseExit<E, A>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<A, E | RE>> {
-      return runtime.unsafeRunPromiseExitEffect(this.#provide(effect))
+      return runtime.unsafeRunPromiseExit(this.#currentRuntime)(this.#provide(effect))
     }
 
     runPromiseFn<
