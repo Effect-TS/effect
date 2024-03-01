@@ -232,6 +232,24 @@ describe("HttpServer", () => {
       expect(root).toEqual("/")
     }).pipe(Effect.scoped, runPromise))
 
+  it("mountApp/includePrefix", () =>
+    Effect.gen(function*(_) {
+      const child = Http.router.empty.pipe(
+        Http.router.get("/child/", Effect.map(Http.request.ServerRequest, (_) => Http.response.text(_.url))),
+        Http.router.get("/child/:id", Effect.map(Http.request.ServerRequest, (_) => Http.response.text(_.url)))
+      )
+      yield* _(
+        Http.router.empty,
+        Http.router.mountApp("/child", child, { includePrefix: true }),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const todo = yield* _(client(HttpC.request.get("/child/1")), HttpC.response.text)
+      expect(todo).toEqual("/child/1")
+      const root = yield* _(client(HttpC.request.get("/child")), HttpC.response.text)
+      expect(root).toEqual("/child")
+    }).pipe(Effect.scoped, runPromise))
+
   it("file", () =>
     Effect.gen(function*(_) {
       yield* _(

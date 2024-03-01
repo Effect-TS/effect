@@ -7,6 +7,7 @@ import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as FindMyWay from "find-my-way-ts"
 import type * as App from "../../Http/App.js"
 import type * as Method from "../../Http/Method.js"
@@ -63,7 +64,9 @@ class RouterImpl<R, E> extends Effectable.StructuralClass<
   readonly [TypeId]: Router.TypeId
   constructor(
     readonly routes: Chunk.Chunk<Router.Route<R, E>>,
-    readonly mounts: Chunk.Chunk<readonly [string, App.Default<R, E>]>
+    readonly mounts: Chunk.Chunk<
+      readonly [prefix: string, httpApp: App.Default<R, E>, options?: { readonly includePrefix?: boolean } | undefined]
+    >
   ) {
     super()
     this[TypeId] = TypeId
@@ -95,9 +98,24 @@ class RouterImpl<R, E> extends Effectable.StructuralClass<
 
 const toHttpApp = <R, E>(
   self: Router.Router<R, E>
-): App.Default<Router.Router.ExcludeProvided<R>, E | Error.RouteNotFound> => {
+): App.Default<R, E | Error.RouteNotFound> => {
   const router = FindMyWay.make<Router.Route<R, E>>()
-  const mounts = Chunk.toReadonlyArray(self.mounts)
+  const mounts = Chunk.toReadonlyArray(self.mounts).map(([path, app, options]) =>
+    [
+      path,
+      new RouteContextImpl(
+        new RouteImpl(
+          "*",
+          options?.includePrefix ? `${path}/*` as Router.PathInput : "/*",
+          app,
+          options?.includePrefix ? Option.none() : Option.some(path)
+        ),
+        {},
+        {}
+      ),
+      options
+    ] as const
+  )
   const mountsLen = mounts.length
   Chunk.forEach(self.routes, (route) => {
     if (route.method === "*") {
@@ -108,16 +126,22 @@ const toHttpApp = <R, E>(
   })
   return Effect.flatMap(
     ServerRequest.ServerRequest,
-    (request): App.Default<Router.Router.ExcludeProvided<R>, E | Error.RouteNotFound> => {
+    (request): App.Default<R, E | Error.RouteNotFound> => {
       if (mountsLen > 0) {
         for (let i = 0; i < mountsLen; i++) {
-          const [path, app] = mounts[i]
+          const [path, context, options] = mounts[i]
           if (request.url.startsWith(path)) {
             return Effect.provideService(
-              app,
+              Effect.provideService(
+                context.route.handler as App.Default<R, E>,
+                RouteContext,
+                context
+              ),
               ServerRequest.ServerRequest,
-              sliceRequestUrl(request, path)
-            ) as App.Default<Router.Router.ExcludeProvided<R>, E>
+              options?.includePrefix ?
+                request :
+                sliceRequestUrl(request, path)
+            )
           }
         }
       }
@@ -247,19 +271,32 @@ export const mount = dual<
 export const mountApp = dual<
   <R1, E1>(
     path: `/${string}`,
-    that: App.Default<R1, E1>
+    that: App.Default<R1, E1>,
+    options?: {
+      readonly includePrefix?: boolean
+    }
   ) => <R, E>(
     self: Router.Router<R, E>
-  ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>,
+  ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1>,
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
     path: `/${string}`,
-    that: App.Default<R1, E1>
-  ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>
+    that: App.Default<R1, E1>,
+    options?: {
+      readonly includePrefix?: boolean
+    }
+  ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1>
 >(
-  3,
-  (self, path, that) =>
-    new RouterImpl<any, any>(self.routes, Chunk.append(self.mounts, [removeTrailingSlash(path), that]))
+  (args) => Predicate.hasProperty(args[0], TypeId),
+  <R, E, R1, E1>(
+    self: Router.Router<R, E>,
+    path: `/${string}`,
+    that: App.Default<R1, E1>,
+    options?: {
+      readonly includePrefix?: boolean
+    }
+  ): Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1> =>
+    new RouterImpl<any, any>(self.routes, Chunk.append(self.mounts, [removeTrailingSlash(path), that, options])) as any
 )
 
 /** @internal */
@@ -269,12 +306,12 @@ export const route = (method: Method.Method | "*"): {
     handler: Router.Route.Handler<R1, E1>
   ): <R, E>(
     self: Router.Router<R, E>
-  ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E1 | E>
+  ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E1 | E>
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
     path: Router.PathInput,
     handler: Router.Route.Handler<R1, E1>
-  ): Router.Router<Router.Router.ExcludeProvided<R | R1>, E1 | E>
+  ): Router.Router<R | Router.Router.ExcludeProvided<R1>, E1 | E>
 } =>
   dual<
     <R1, E1>(
@@ -282,12 +319,12 @@ export const route = (method: Method.Method | "*"): {
       handler: Router.Route.Handler<R1, E1>
     ) => <R, E>(
       self: Router.Router<R, E>
-    ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>,
+    ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1>,
     <R, E, R1, E1>(
       self: Router.Router<R, E>,
       path: Router.PathInput,
       handler: Router.Route.Handler<R1, E1>
-    ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, E | E1>
+    ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1>
   >(3, (self, path, handler) =>
     new RouterImpl<any, any>(
       Chunk.append(self.routes, new RouteImpl(method, path, handler)),
@@ -343,22 +380,22 @@ export const use = dual<
 export const catchAll = dual<
   <E, R2, E2>(
     f: (e: E) => Router.Route.Handler<R2, E2>
-  ) => <R>(self: Router.Router<R, E>) => Router.Router<Router.Router.ExcludeProvided<R2 | R>, E2>,
+  ) => <R>(self: Router.Router<R, E>) => Router.Router<R | Router.Router.ExcludeProvided<R2>, E2>,
   <R, E, R2, E2>(
     self: Router.Router<R, E>,
     f: (e: E) => Router.Route.Handler<R2, E2>
-  ) => Router.Router<Router.Router.ExcludeProvided<R2 | R>, E2>
+  ) => Router.Router<R | Router.Router.ExcludeProvided<R2>, E2>
 >(2, (self, f) => use(self, Effect.catchAll(f)))
 
 /** @internal */
 export const catchAllCause = dual<
   <E, R2, E2>(
     f: (e: Cause.Cause<E>) => Router.Route.Handler<R2, E2>
-  ) => <R>(self: Router.Router<R, E>) => Router.Router<Router.Router.ExcludeProvided<R2 | R>, E2>,
+  ) => <R>(self: Router.Router<R, E>) => Router.Router<R | Router.Router.ExcludeProvided<R2>, E2>,
   <R, E, R2, E2>(
     self: Router.Router<R, E>,
     f: (e: Cause.Cause<E>) => Router.Route.Handler<R2, E2>
-  ) => Router.Router<Router.Router.ExcludeProvided<R2 | R>, E2>
+  ) => Router.Router<R | Router.Router.ExcludeProvided<R2>, E2>
 >(2, (self, f) => use(self, Effect.catchAllCause(f)))
 
 /** @internal */
@@ -368,12 +405,12 @@ export const catchTag = dual<
     f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<R1, E1>
   ) => <R>(
     self: Router.Router<R, E>
-  ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, Exclude<E, { _tag: K }> | E1>,
+  ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, Exclude<E, { _tag: K }> | E1>,
   <R, E, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1>(
     self: Router.Router<R, E>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<R1, E1>
-  ) => Router.Router<Router.Router.ExcludeProvided<R | R1>, Exclude<E, { _tag: K }> | E1>
+  ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, Exclude<E, { _tag: K }> | E1>
 >(3, (self, k, f) => use(self, Effect.catchTag(k, f)))
 
 /** @internal */
@@ -387,9 +424,9 @@ export const catchTags: {
   >(
     cases: Cases
   ): <R>(self: Router.Router<R, E>) => Router.Router<
-    Router.Router.ExcludeProvided<
-      | R
-      | {
+    | R
+    | Router.Router.ExcludeProvided<
+      {
         [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
       }[keyof Cases]
     >,
@@ -409,9 +446,9 @@ export const catchTags: {
     self: Router.Router<R, E>,
     cases: Cases
   ): Router.Router<
-    Router.Router.ExcludeProvided<
-      | R
-      | {
+    | R
+    | Router.Router.ExcludeProvided<
+      {
         [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
       }[keyof Cases]
     >,
@@ -428,18 +465,17 @@ export const provideService = dual<
     service: Context.Tag.Service<T>
   ) => <R, E>(
     self: Router.Router<R, E>
-  ) => Router.Router<Router.Router.ExcludeProvided<Exclude<R, Context.Tag.Identifier<T>>>, E>,
+  ) => Router.Router<Exclude<R, Context.Tag.Identifier<T>>, E>,
   <R, E, T extends Context.Tag<any, any>>(
     self: Router.Router<R, E>,
     tag: T,
     service: Context.Tag.Service<T>
-  ) => Router.Router<Router.Router.ExcludeProvided<Exclude<R, Context.Tag.Identifier<T>>>, E>
+  ) => Router.Router<Exclude<R, Context.Tag.Identifier<T>>, E>
 >(3, <R, E, T extends Context.Tag<any, any>>(
   self: Router.Router<R, E>,
   tag: T,
   service: Context.Tag.Service<T>
-): Router.Router<Router.Router.ExcludeProvided<Exclude<R, Context.Tag.Identifier<T>>>, E> =>
-  use(self, Effect.provideService(tag, service)))
+): Router.Router<Exclude<R, Context.Tag.Identifier<T>>, E> => use(self, Effect.provideService(tag, service)))
 
 /* @internal */
 export const provideServiceEffect = dual<
@@ -449,7 +485,10 @@ export const provideServiceEffect = dual<
   ) => <R, E>(
     self: Router.Router<R, E>
   ) => Router.Router<
-    Router.Router.ExcludeProvided<R1 | Exclude<R, Context.Tag.Identifier<T>>>,
+    Exclude<
+      R | Router.Router.ExcludeProvided<R1>,
+      Context.Tag.Identifier<T>
+    >,
     E | E1
   >,
   <R, E, T extends Context.Tag<any, any>, R1, E1>(
@@ -457,11 +496,20 @@ export const provideServiceEffect = dual<
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
   ) => Router.Router<
-    Router.Router.ExcludeProvided<R1 | Exclude<R, Context.Tag.Identifier<T>>>,
+    Exclude<
+      R | Router.Router.ExcludeProvided<R1>,
+      Context.Tag.Identifier<T>
+    >,
     E | E1
   >
 >(3, <R, E, T extends Context.Tag<any, any>, R1, E1>(
   self: Router.Router<R, E>,
   tag: T,
   effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
-) => use(self, Effect.provideServiceEffect(tag, effect)))
+): Router.Router<
+  Exclude<
+    R | Router.Router.ExcludeProvided<R1>,
+    Context.Tag.Identifier<T>
+  >,
+  E | E1
+> => use(self, Effect.provideServiceEffect(tag, effect)) as any)

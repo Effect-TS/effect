@@ -590,6 +590,14 @@ describe("Schema > Class APIs", () => {
     await Util.expectEncodeSuccess(B, new B({ _tag: "B", id: 1 }), { _tag: "A", id: 1 })
   })
 
+  it("extending a TaggedClass with props containing a _tag field", () => {
+    class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+    class ETA extends TA.extend<ETA>()({
+      _tag: S.literal("ETA")
+    }) {}
+    expect(new ETA({ _tag: "ETA", a: "a" })._tag).toBe("ETA")
+  })
+
   it("TaggedError", () => {
     class MyError extends S.TaggedError<MyError>()("MyError", {
       id: S.number
