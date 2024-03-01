@@ -1120,7 +1120,7 @@ AB.fields
 // $ExpectType [props: { readonly a: string; readonly b: number; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof AB>>()
 
-// can be extended with Class
+// can be extended with Class fields
 
 class C extends S.Class<C>()({
   ...AB.fields,
@@ -1143,7 +1143,7 @@ C.fields
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof C>>()
 
-// can be extended with TaggedClass
+// can be extended with TaggedClass fields
 
 class D extends S.TaggedClass<D>()("D", {
   ...AB.fields,
@@ -1160,7 +1160,7 @@ hole<S.Schema.From<typeof D>>()
 // $ExpectType "a" | "c"
 hole<S.Schema.Context<typeof D>>()
 
-// $ExpectType { readonly _tag: literal<["D"]>; readonly a: Schema<string, string, "a">; readonly b: Schema<string, string, never>; readonly c: Schema<boolean, boolean, "c">; }
+// $ExpectType { readonly _tag: literal<["D"]>; readonly b: Schema<string, string, never>; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 D.fields
 
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]

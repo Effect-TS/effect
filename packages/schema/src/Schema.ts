@@ -4952,86 +4952,88 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @since 1.0.0
  */
 export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inherited, Proto>
-  extends Schema<Self, Simplify<I>, R>
+  extends Schema<Self, I, R>
 {
   new(
-    props: keyof C extends never ? void | {} : Simplify<C>,
+    props: keyof C extends never ? void | {} : C,
     disableValidation?: boolean | undefined
   ): A & Omit<Inherited, keyof A> & Proto
 
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
-  readonly extend: <Extended = never>() => <FieldsB extends StructFields>(
-    fields: FieldsB,
+  readonly extend: <Extended = never>() => <newFields extends StructFields>(
+    fields: newFields,
     annotations?: Annotations<Extended>
   ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
     : ClassSchema<
       Extended,
-      Omit<Fields, keyof FieldsB> & FieldsB,
-      Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
-      Omit<I, keyof FieldsB> & FromStruct<FieldsB>,
-      ContextStruct<Omit<Fields, keyof FieldsB> & FieldsB>,
-      Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
+      newFields & newFields,
+      Simplify<A & ToStruct<newFields>>,
+      Simplify<I & FromStruct<newFields>>,
+      ContextStruct<newFields & newFields>,
+      Simplify<C & ToStruct<newFields>>,
       Self,
       Proto
     >
 
   readonly transformOrFail: <Transformed = never>() => <
-    FieldsB extends StructFields,
+    newFields extends StructFields,
     R2,
     R3
   >(
-    fields: FieldsB,
+    fields: newFields,
     decode: (
       input: A,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<Omit<A, keyof FieldsB> & ToStruct<FieldsB>, ParseResult.ParseIssue, R2>,
+    ) => Effect.Effect<Simplify<A & ToStruct<newFields>>, ParseResult.ParseIssue, R2>,
     encode: (
-      input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      input: Simplify<A & ToStruct<newFields>>,
       options: ParseOptions,
       ast: AST.Transform
     ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
     : ClassSchema<
       Transformed,
-      Omit<Fields, keyof FieldsB> & FieldsB,
-      Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
+      Fields & newFields,
+      Simplify<A & ToStruct<newFields>>,
       I,
-      ContextStruct<Omit<Fields, keyof FieldsB> & FieldsB> | R2 | R3,
-      Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
+      ContextStruct<Fields & newFields> | R2 | R3,
+      Simplify<C & ToStruct<newFields>>,
       Self,
       Proto
     >
 
   readonly transformOrFailFrom: <Transformed = never>() => <
-    FieldsB extends StructFields,
+    newFields extends StructFields,
     R2,
     R3
   >(
-    fields: FieldsB,
+    fields: newFields,
     decode: (
       input: I,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<Omit<I, keyof FieldsB> & FromStruct<FieldsB>, ParseResult.ParseIssue, R2>,
+    ) => Effect.Effect<Simplify<I & FromStruct<newFields>>, ParseResult.ParseIssue, R2>,
     encode: (
-      input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
+      input: Simplify<I & FromStruct<newFields>>,
       options: ParseOptions,
       ast: AST.Transform
     ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
     : ClassSchema<
       Transformed,
-      Omit<Fields, keyof FieldsB> & FieldsB,
-      Omit<A, keyof FieldsB> & ToStruct<FieldsB>,
+      Fields & newFields,
+      Simplify<A & ToStruct<newFields>>,
       I,
-      ContextStruct<Omit<Fields, keyof FieldsB> & FieldsB> | R2 | R3,
-      Omit<C, keyof FieldsB> & ToStruct<FieldsB>,
+      ContextStruct<Fields & newFields> | R2 | R3,
+      Simplify<C & ToStruct<newFields>>,
       Self,
       Proto
     >
 }
+
+const TAG = "_tag"
 
 /**
  * @category classes
@@ -5045,10 +5047,10 @@ export const Class = <Self = never>() =>
   : ClassSchema<
     Self,
     Fields,
-    ToStruct<Fields>,
-    FromStruct<Fields>,
+    Simplify<ToStruct<Fields>>,
+    Simplify<FromStruct<Fields>>,
     ContextStruct<Fields>,
-    ToStruct<Fields>,
+    Simplify<ToStruct<Fields>>,
     {},
     {}
   > => makeClass({ fields, Base: Data.Class, annotations })
@@ -5057,55 +5059,59 @@ export const Class = <Self = never>() =>
  * @category classes
  * @since 1.0.0
  */
-export const TaggedClass = <Self = "Effect.orDie">() =>
+export const TaggedClass = <Self = never>() =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
   fields: Fields,
   annotations?: Annotations<Self>
-): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
+): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : ClassSchema<
     Self,
-    { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
-    { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
-    { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
-    ContextStruct<Omit<Fields, "_tag">>,
-    ToStruct<Omit<Fields, "_tag">>,
+    { readonly [TAG]: literal<[Tag]> } & Fields,
+    Simplify<{ readonly [TAG]: Tag } & ToStruct<Fields>>,
+    Simplify<{ readonly [TAG]: Tag } & FromStruct<Fields>>,
+    ContextStruct<Fields>,
+    Simplify<ToStruct<Fields>>,
     {},
     {}
   > =>
-  makeClass({
-    fields: { ...fields, _tag: literal(tag) },
+{
+  return makeClass({
+    fields: extendStructFields({ [TAG]: literal(tag) }, fields),
     Base: Data.Class,
-    tag: { _tag: tag },
+    tag: { [TAG]: tag },
     annotations
   })
+}
 
 /**
  * @category classes
  * @since 1.0.0
  */
-export const TaggedError = <Self = "Effect.orDie">() =>
+export const TaggedError = <Self = never>() =>
 <Tag extends string, Fields extends StructFields>(
   tag: Tag,
   fields: Fields,
   annotations?: Annotations<Self>
-): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
+): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : ClassSchema<
     Self,
-    { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
-    { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
-    { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
-    ContextStruct<Omit<Fields, "_tag">>,
-    ToStruct<Omit<Fields, "_tag">>,
+    { readonly [TAG]: literal<[Tag]> } & Fields,
+    Simplify<{ readonly [TAG]: Tag } & ToStruct<Fields>>,
+    Simplify<{ readonly [TAG]: Tag } & FromStruct<Fields>>,
+    ContextStruct<Fields>,
+    Simplify<ToStruct<Fields>>,
     {},
     Cause.YieldableError
   > =>
-  makeClass({
-    fields: { ...fields, _tag: literal(tag) },
+{
+  return makeClass({
+    fields: extendStructFields({ [TAG]: literal(tag) }, fields),
     Base: Data.Error,
-    tag: { _tag: tag },
+    tag: { [TAG]: tag },
     annotations
   })
+}
 
 /**
  * @category classes
@@ -5114,7 +5120,7 @@ export const TaggedError = <Self = "Effect.orDie">() =>
 export interface TaggedRequest<Tag extends string, R, IS, S, RR, IE, E, IA, A>
   extends Request.Request<A, E>, Serializable.SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
 {
-  readonly _tag: Tag
+  readonly [TAG]: Tag
 }
 
 /**
@@ -5135,56 +5141,68 @@ export declare namespace TaggedRequest {
  * @category classes
  * @since 1.0.0
  */
-export const TaggedRequest = <Self>() =>
-<Tag extends string, Fields extends StructFields, EA, EI, ER, AA, AI, AR>(
-  tag: Tag,
-  Failure: Schema<EA, EI, ER>,
-  Success: Schema<AA, AI, AR>,
-  fields: Fields,
-  annotations?: Annotations<Self>
-): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-  : ClassSchema<
-    Self,
-    { readonly _tag: literal<[Tag]> } & Omit<Fields, "_tag">,
-    { readonly _tag: Tag } & ToStruct<Omit<Fields, "_tag">>,
-    { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
-    ContextStruct<Omit<Fields, "_tag">>,
-    ToStruct<Omit<Fields, "_tag">>,
-    TaggedRequest<
-      Tag,
-      ContextStruct<Omit<Fields, "_tag">>,
-      { readonly _tag: Tag } & FromStruct<Omit<Fields, "_tag">>,
+export const TaggedRequest =
+  <Self = never>() =>
+  <Tag extends string, Fields extends StructFields, EA, EI, ER, AA, AI, AR>(
+    tag: Tag,
+    Failure: Schema<EA, EI, ER>,
+    Success: Schema<AA, AI, AR>,
+    fields: Fields,
+    annotations?: Annotations<Self>
+  ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
+    : ClassSchema<
       Self,
-      ER | AR,
-      EI,
-      EA,
-      AI,
-      AA
-    >,
-    {}
-  > =>
-{
-  class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
-    get [_serializable.symbol]() {
-      return this.constructor
+      { readonly [TAG]: literal<[Tag]> } & Fields,
+      Simplify<{ readonly [TAG]: Tag } & ToStruct<Fields>>,
+      Simplify<{ readonly [TAG]: Tag } & FromStruct<Fields>>,
+      ContextStruct<Fields>,
+      Simplify<ToStruct<Fields>>,
+      TaggedRequest<
+        Tag,
+        ContextStruct<Fields>,
+        { readonly [TAG]: Tag } & FromStruct<Fields>,
+        Self,
+        ER | AR,
+        EI,
+        EA,
+        AI,
+        AA
+      >,
+      {}
+    > =>
+  {
+    class SerializableRequest extends Request.Class<any, any, { readonly [TAG]: string }> {
+      get [_serializable.symbol]() {
+        return this.constructor
+      }
+      get [_serializable.symbolResult]() {
+        return { Failure, Success }
+      }
     }
-    get [_serializable.symbolResult]() {
-      return { Failure, Success }
-    }
+    return makeClass({
+      fields: extendStructFields({ [TAG]: literal(tag) }, fields),
+      Base: SerializableRequest,
+      tag: { [TAG]: tag },
+      annotations
+    })
   }
-  return makeClass({
-    fields: { ...fields, _tag: literal(tag) },
-    Base: SerializableRequest,
-    tag: { _tag: tag },
-    annotations
-  })
+
+const extendStructFields = (a: StructFields, b: StructFields): StructFields => {
+  const out: StructFields = { ...a }
+  for (const name of _util.ownKeys(b)) {
+    if (name in a) {
+      throw new Error(AST.getDuplicatePropertySignatureErrorMessage(name))
+    }
+    out[name] = b[name]
+  }
+  return out
 }
 
 const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
   fields: StructFields
   Base: new(...args: ReadonlyArray<any>) => any
   fromSchema?: AnySchema | undefined
-  tag?: object | undefined
+  tag?: { [TAG]: AST.LiteralValue } | undefined
   annotations?: Annotations<any> | undefined
 }): any => {
   const schema = fromSchema ?? struct(fields)
@@ -5193,16 +5211,15 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
   return class extends Base {
     constructor(
       props: { [x: string | symbol]: unknown } = {},
-      disableValidation: boolean = false,
-      outer: boolean = true
+      disableValidation: boolean = false
     ) {
       if (tag !== undefined) {
-        props = outer ? { ...props, ...tag } : { ...tag, ...props }
+        props = { ...props, ...tag }
       }
       if (disableValidation !== true) {
         props = validate(props)
       }
-      super(props, true, false)
+      super(props, true)
     }
 
     static [TypeId] = _schema.variance
@@ -5261,18 +5278,20 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
     static struct = schema
 
     static extend<Extended>() {
-      return (newFields: StructFields, annotations?: Annotations<Extended>) =>
-        makeClass({
-          fields: { ...fields, ...newFields },
+      return (newFields: StructFields, annotations?: Annotations<Extended>) => {
+        const extendedFields = extendStructFields(fields, newFields)
+        return makeClass({
+          fields: extendedFields,
           Base: this,
-          tag: "_tag" in newFields ? undefined : tag,
+          tag,
           annotations
         })
+      }
     }
 
     static transformOrFail<Transformed>() {
       return (newFields: StructFields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
-        const transformedFields: StructFields = { ...fields, ...newFields }
+        const transformedFields: StructFields = extendStructFields(fields, newFields)
         return makeClass({
           fromSchema: transformOrFail(
             schema,
@@ -5282,7 +5301,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
           ),
           fields: transformedFields,
           Base: this,
-          tag: "_tag" in newFields ? undefined : tag,
+          tag,
           annotations
         })
       }
@@ -5290,7 +5309,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
 
     static transformOrFailFrom<Transformed>() {
       return (newFields: StructFields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
-        const transformedFields: StructFields = { ...fields, ...newFields }
+        const transformedFields: StructFields = extendStructFields(fields, newFields)
         return makeClass({
           fromSchema: transformOrFail(
             from(schema),
@@ -5300,7 +5319,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
           ),
           fields: transformedFields,
           Base: this,
-          tag: "_tag" in newFields ? undefined : tag,
+          tag,
           annotations
         })
       }

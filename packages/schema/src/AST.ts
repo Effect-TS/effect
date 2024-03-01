@@ -973,6 +973,10 @@ export class IndexSignature {
   ) {}
 }
 
+/** @internal */
+export const getDuplicatePropertySignatureErrorMessage = (name: PropertyKey): string =>
+  `Duplicate property signature ${String(name)}`
+
 /**
  * @category model
  * @since 1.0.0
@@ -988,7 +992,7 @@ export class TypeLiteral implements Annotated {
     for (let i = 0; i < propertySignatures.length; i++) {
       const name = propertySignatures[i].name
       if (Object.prototype.hasOwnProperty.call(keys, name)) {
-        throw new Error(`Duplicate property signature ${String(name)}`)
+        throw new Error(getDuplicatePropertySignatureErrorMessage(name))
       }
       keys[name] = null
     }

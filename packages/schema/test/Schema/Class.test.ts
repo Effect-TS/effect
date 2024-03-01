@@ -5,7 +5,7 @@ import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Util from "@effect/schema/test/util"
-import { Context, Effect, Exit } from "effect"
+import { Context, Effect, Exit, pipe, Struct } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
@@ -82,7 +82,6 @@ class PersonWithNick extends PersonWithAge.extend<PersonWithNick>()({
 
 class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
   {
-    id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
   },
   (input, _, ast) =>
@@ -90,21 +89,16 @@ class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
       ParseResult.fail(new ParseResult.Type(ast, input)) :
       ParseResult.succeed({
         ...input,
-        id: input.id.toString(),
         thing: O.some({ id: 123 })
       }),
   (input, _, ast) =>
-    input.id === "2" ?
+    input.id === 2 ?
       ParseResult.fail(new ParseResult.Type(ast, input)) :
-      ParseResult.succeed({
-        ...input,
-        id: Number(input.id)
-      })
+      ParseResult.succeed(input)
 ) {}
 
 class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>()(
   {
-    id: S.string,
     thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
   },
   (input, _, ast) =>
@@ -112,16 +106,12 @@ class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTrans
       ParseResult.fail(new ParseResult.Type(ast, input)) :
       ParseResult.succeed({
         ...input,
-        id: input.id.toString(),
         thing: { id: 123 }
       }),
   (input, _, ast) =>
-    input.id === "2" ?
+    input.id === 2 ?
       ParseResult.fail(new ParseResult.Type(ast, input)) :
-      ParseResult.succeed({
-        ...input,
-        id: Number(input.id)
-      })
+      ParseResult.succeed(input)
 ) {}
 
 describe("Schema > Class APIs", () => {
@@ -207,6 +197,13 @@ describe("Schema > Class APIs", () => {
       expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
     })
 
+    it("should expose the fields", async () => {
+      class A extends S.Class<A>()({ a: S.string }) {}
+      expect(A.fields).toStrictEqual({
+        a: S.string
+      })
+    })
+
     it("decoding", async () => {
       class A extends S.Class<A>()({ a: S.NonEmpty }) {}
       await Util.expectDecodeUnknownSuccess(A, { a: "a" }, new A({ a: "a" }))
@@ -240,7 +237,22 @@ describe("Schema > Class APIs", () => {
       )
     })
 
-    it("can be extended with Class", () => {
+    it("a custom _tag field should be allowed", () => {
+      class A extends S.Class<A>()({ _tag: S.literal("a", "b") }) {}
+      expect(A.fields).toStrictEqual({
+        _tag: S.literal("a", "b")
+      })
+    })
+
+    it("duplicated fields should not be allowed when extending with extend()", () => {
+      class A extends S.Class<A>()({ a: S.string }) {}
+      expect(() => {
+        class A2 extends A.extend<A2>()({ a: S.string }) {}
+        console.log(A2)
+      }).toThrow(new Error("Duplicate property signature a"))
+    })
+
+    it("can be extended with Class fields", () => {
       class AB extends S.Class<AB>()({ a: S.string, b: S.number }) {}
       class C extends S.Class<C>()({
         ...AB.fields,
@@ -255,7 +267,7 @@ describe("Schema > Class APIs", () => {
       expect({ ...new C({ a: "a", b: "b", c: true }) }).toStrictEqual({ a: "a", b: "b", c: true })
     })
 
-    it("can be extended with TaggedClass", () => {
+    it("can be extended with TaggedClass fields", () => {
       class AB extends S.Class<AB>()({ a: S.string, b: S.number }) {}
       class D extends S.TaggedClass<D>()("D", {
         ...AB.fields,
@@ -307,13 +319,6 @@ describe("Schema > Class APIs", () => {
         `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
       )
     })
-
-    it(".struct", async () => {
-      class A extends S.Class<A>()({ a: S.NumberFromString }) {}
-      const schema = S.struct(A.fields)
-
-      await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
-    })
   })
 
   describe("TaggedClass", () => {
@@ -333,6 +338,24 @@ describe("Schema > Class APIs", () => {
     it("a TaggedClass with no fields should have a void constructor", () => {
       class TA extends S.TaggedClass<TA>()("TA", {}) {}
       expect({ ...new TA() }).toStrictEqual({ _tag: "TA" })
+      expect({ ...new TA(undefined) }).toStrictEqual({ _tag: "TA" })
+      expect({ ...new TA(undefined, true) }).toStrictEqual({ _tag: "TA" })
+    })
+
+    it("a custom _tag field should be not allowed", () => {
+      expect(() => {
+        // @ts-expect-error
+        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.literal("X"), a: S.string }) {}
+        console.log(_TA)
+      }).toThrow(new Error("Duplicate property signature _tag"))
+    })
+
+    it("should expose the fields", async () => {
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      expect(TA.fields).toStrictEqual({
+        _tag: S.literal("TA"),
+        a: S.string
+      })
     })
 
     it("decoding", async () => {
@@ -377,7 +400,7 @@ describe("Schema > Class APIs", () => {
       )
     })
 
-    it("can be extended with Class", () => {
+    it("can be extended with Class fields", () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
       class B extends S.Class<B>()({
         b: S.number,
@@ -391,11 +414,11 @@ describe("Schema > Class APIs", () => {
       expect({ ...new B({ _tag: "TA", a: "a", b: 1 }) }).toStrictEqual({ _tag: "TA", a: "a", b: 1 })
     })
 
-    it("can be extended with TaggedClass", () => {
+    it("can be extended with TaggedClass fields", () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
       class TB extends S.TaggedClass<TB>()("TB", {
         b: S.number,
-        ...TA.fields
+        ...pipe(TA.fields, Struct.omit("_tag"))
       }) {}
       expect(TB.fields).toStrictEqual({
         _tag: S.literal("TB"),
@@ -403,18 +426,6 @@ describe("Schema > Class APIs", () => {
         b: S.number
       })
       expect({ ...new TB({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "TB", a: "a", b: 1 })
-    })
-
-    it("can be extended with .extend()", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
-      class ETA extends TA.extend<ETA>()({
-        _tag: S.literal("ETA")
-      }) {}
-      expect(ETA.fields).toStrictEqual({
-        _tag: S.literal("ETA"),
-        a: S.string
-      })
-      expect(new ETA({ _tag: "ETA", a: "a" })._tag).toBe("ETA")
     })
   })
 
@@ -484,7 +495,7 @@ describe("Schema > Class APIs", () => {
       id: 1,
       name: "John"
     })
-    expect(person.id).toEqual("1")
+    expect(person.id).toEqual(1)
     expect(person.name).toEqual("John")
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
     expect(person.upperName).toEqual("JOHN")
@@ -496,20 +507,20 @@ describe("Schema > Class APIs", () => {
         id: 2,
         name: "John"
       },
-      `(({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
+      `(({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
 └─ From side transformation failure
-   └─ ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })
+   └─ ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John"}`
+         └─ Expected ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John"}`
     )
     await Util.expectEncodeFailure(
       PersonWithTransform,
-      new PersonWithTransform({ id: "2", name: "John", thing: O.some({ id: 1 }) }),
-      `(({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
+      new PersonWithTransform({ id: 2, name: "John", thing: O.some({ id: 1 }) }),
+      `(({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
 └─ From side transformation failure
-   └─ ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })
+   └─ ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: a non empty string } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":"2","name":"John","thing":{"_id":"Option","_tag":"Some","value":{"id":1}}}`
+         └─ Expected ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John","thing":{"_id":"Option","_tag":"Some","value":{"id":1}}}`
     )
   })
 
@@ -519,7 +530,7 @@ describe("Schema > Class APIs", () => {
       id: 1,
       name: "John"
     })
-    expect(person.id).toEqual("1")
+    expect(person.id).toEqual(1)
     expect(person.name).toEqual("John")
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
     expect(person.upperName).toEqual("JOHN")
@@ -531,20 +542,20 @@ describe("Schema > Class APIs", () => {
         id: 2,
         name: "John"
       },
-      `(({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
+      `(({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
 └─ From side transformation failure
-   └─ ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }))
+   └─ ({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }))
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":2,"name":"John"}`
+         └─ Expected ({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":2,"name":"John"}`
     )
     await Util.expectEncodeFailure(
       PersonWithTransformFrom,
-      new PersonWithTransformFrom({ id: "2", name: "John", thing: O.some({ id: 1 }) }),
-      `(({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
+      new PersonWithTransformFrom({ id: 2, name: "John", thing: O.some({ id: 1 }) }),
+      `(({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
 └─ From side transformation failure
-   └─ ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> }))
+   └─ ({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }))
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: string } <-> ({ id: string; name: a non empty string; thing?: { id: number } } <-> { id: string; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":"2","name":"John","thing":{"id":1}}`
+         └─ Expected ({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":2,"name":"John","thing":{"id":1}}`
     )
   })
 
@@ -574,28 +585,6 @@ describe("Schema > Class APIs", () => {
     })
     expect(person._tag).toEqual("TaggedPerson")
     expect(person.upperName).toEqual("JOHN")
-  })
-
-  it("transforming a TaggedClass with props containing a _tag field", async () => {
-    class A extends S.TaggedClass<A>()("A", {
-      id: S.number
-    }) {}
-    class B extends A.transformOrFail<B>()(
-      { _tag: S.literal("B") },
-      (input) => ParseResult.succeed({ ...input, _tag: "B" as const }),
-      (input) => ParseResult.succeed({ ...input, _tag: "A" })
-    ) {}
-    expect(new B({ _tag: "B", id: 1 })._tag).toBe("B")
-    await Util.expectDecodeUnknownSuccess(B, { _tag: "A", id: 1 }, new B({ _tag: "B", id: 1 }))
-    await Util.expectEncodeSuccess(B, new B({ _tag: "B", id: 1 }), { _tag: "A", id: 1 })
-  })
-
-  it("extending a TaggedClass with props containing a _tag field", () => {
-    class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
-    class ETA extends TA.extend<ETA>()({
-      _tag: S.literal("ETA")
-    }) {}
-    expect(new ETA({ _tag: "ETA", a: "a" })._tag).toBe("ETA")
   })
 
   it("TaggedError", () => {
