@@ -11,6 +11,7 @@ describe("Struct", () => {
 
   it("pick", () => {
     expect(pipe({ a: "a", b: 1, c: true }, Struct.pick("a", "b"))).toEqual({ a: "a", b: 1 })
+    expect(Struct.pick({ a: "a", b: 1, c: true }, "a", "b")).toEqual({ a: "a", b: 1 })
 
     const record1: Record<string, number> = {}
     expect(pipe(record1, Struct.pick("a", "b"))).toStrictEqual({})
@@ -47,6 +48,7 @@ describe("Struct", () => {
 
   it("omit", () => {
     expect(pipe({ a: "a", b: 1, c: true }, Struct.omit("c"))).toEqual({ a: "a", b: 1 })
+    expect(pipe(Struct.omit({ a: "a", b: 1, c: true }, "c"))).toEqual({ a: "a", b: 1 })
 
     const record1: Record<string, number> = {}
     expect(pipe(record1, Struct.omit("a", "c"))).toStrictEqual({})
