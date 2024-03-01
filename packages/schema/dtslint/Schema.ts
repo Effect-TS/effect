@@ -1199,28 +1199,49 @@ AB.fields
 // $ExpectType [props: { readonly a: string; readonly b: number; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof AB>>()
 
+// can be extended with extend()
+
+class EABC extends AB.extend<EABC>()({
+  c: cContext
+}) {}
+
+// $ExpectType EABC
+hole<S.Schema.To<typeof EABC>>()
+
+// $ExpectType { readonly a: string; readonly b: number; readonly c: boolean; }
+hole<S.Schema.From<typeof EABC>>()
+
+// $ExpectType "a" | "b" | "c"
+hole<S.Schema.Context<typeof EABC>>()
+
+// $ExpectType { readonly a: Schema<string, string, "a">; readonly b: Schema<number, number, "b">; readonly c: Schema<boolean, boolean, "c">; }
+EABC.fields
+
+// $ExpectType [props: { readonly a: string; readonly b: number; readonly c: boolean; }, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof EABC>>()
+
 // can be extended with Class fields
 
-class C extends S.Class<C>()({
+class ABC extends S.Class<ABC>()({
   ...AB.fields,
   b: S.string,
   c: cContext
 }) {}
 
-// $ExpectType C
-hole<S.Schema.To<typeof C>>()
+// $ExpectType ABC
+hole<S.Schema.To<typeof ABC>>()
 
 // $ExpectType { readonly a: string; readonly b: string; readonly c: boolean; }
-hole<S.Schema.From<typeof C>>()
+hole<S.Schema.From<typeof ABC>>()
 
 // $ExpectType "a" | "c"
-hole<S.Schema.Context<typeof C>>()
+hole<S.Schema.Context<typeof ABC>>()
 
 // $ExpectType { readonly b: $string; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
-C.fields
+ABC.fields
 
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
-hole<ConstructorParameters<typeof C>>()
+hole<ConstructorParameters<typeof ABC>>()
 
 // can be extended with TaggedClass fields
 

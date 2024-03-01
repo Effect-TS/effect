@@ -5138,10 +5138,10 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
   ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
     : ClassSchema<
       Extended,
-      newFields & newFields,
+      Fields & newFields,
       Simplify<A & ToStruct<newFields>>,
       Simplify<I & FromStruct<newFields>>,
-      ContextStruct<newFields & newFields>,
+      R | ContextStruct<newFields>,
       Simplify<C & ToStruct<newFields>>,
       Self,
       Proto
@@ -5169,7 +5169,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       Fields & newFields,
       Simplify<A & ToStruct<newFields>>,
       I,
-      ContextStruct<Fields & newFields> | R2 | R3,
+      R | ContextStruct<newFields> | R2 | R3,
       Simplify<C & ToStruct<newFields>>,
       Self,
       Proto
@@ -5197,7 +5197,7 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       Fields & newFields,
       Simplify<A & ToStruct<newFields>>,
       I,
-      ContextStruct<Fields & newFields> | R2 | R3,
+      R | ContextStruct<newFields> | R2 | R3,
       Simplify<C & ToStruct<newFields>>,
       Self,
       Proto
