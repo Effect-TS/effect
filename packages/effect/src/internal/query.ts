@@ -13,7 +13,7 @@ import * as core from "./core.js"
 import { ensuring } from "./fiberRuntime.js"
 import { Listeners } from "./request.js"
 
-type RequestCache = Cache.Cache<Request.Request<any, any>, never, {
+type RequestCache = Cache.Cache<Request.Request<any, any>, {
   listeners: Request.Listeners
   handle: Deferred<any, any>
 }>
@@ -22,7 +22,7 @@ type RequestCache = Cache.Cache<Request.Request<any, any>, never, {
 export const currentCache = globalValue(
   Symbol.for("effect/FiberRef/currentCache"),
   () =>
-    core.fiberRefUnsafeMake<RequestCache>(unsafeMakeWith<Request.Request<any, any>, never, {
+    core.fiberRefUnsafeMake<RequestCache>(unsafeMakeWith<Request.Request<any, any>, {
       listeners: Request.Listeners
       handle: Deferred<any, any>
     }>(
