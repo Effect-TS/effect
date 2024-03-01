@@ -729,52 +729,100 @@ export interface $never extends Schema<never> {}
 export const never: $never = make(AST.neverKeyword)
 
 /**
- * @category primitives
+ * @category api interface
  * @since 1.0.0
  */
-export const unknown: Schema<unknown> = make(AST.unknownKeyword)
+export interface $unknown extends Schema<unknown> {}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const any: Schema<any> = make(AST.anyKeyword)
+export const unknown: $unknown = make(AST.unknownKeyword)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $any extends Schema<any> {}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const string: Schema<string> = make(AST.stringKeyword)
+export const any: $any = make(AST.anyKeyword)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $string extends Schema<string> {}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const number: Schema<number> = make(AST.numberKeyword)
+export const string: $string = make(AST.stringKeyword)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $number extends Schema<number> {}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = make(AST.booleanKeyword)
+export const number: $number = make(AST.numberKeyword)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $boolean extends Schema<boolean> {}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const bigintFromSelf: Schema<bigint> = make(AST.bigIntKeyword)
+export const boolean: $boolean = make(AST.booleanKeyword)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface bigintFromSelf extends Schema<bigint> {}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const symbolFromSelf: Schema<symbol> = make(AST.symbolKeyword)
+export const bigintFromSelf: bigintFromSelf = make(AST.bigIntKeyword)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface symbolFromSelf extends Schema<symbol> {}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const object: Schema<object> = make(AST.objectKeyword)
+export const symbolFromSelf: symbolFromSelf = make(AST.symbolKeyword)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $object extends Schema<object> {}
+
+/**
+ * @category primitives
+ * @since 1.0.0
+ */
+export const object: $object = make(AST.objectKeyword)
 
 /**
  * @category api interface
@@ -3178,6 +3226,12 @@ export const clamp =
     )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface NumberFromString extends Schema<number, string> {}
+
+/**
  * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
  *
  * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
@@ -3187,7 +3241,7 @@ export const clamp =
  * @category number constructors
  * @since 1.0.0
  */
-export const NumberFromString: Schema<number, string> = transformOrFail(
+export const NumberFromString: NumberFromString = transformOrFail(
   string,
   number,
   (s, _, ast) => ParseResult.fromOption(N.parse(s), () => new ParseResult.Type(ast, s)),
@@ -3290,12 +3344,18 @@ export const Not: Schema<boolean> = transform(
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $symbol extends Schema<symbol, string> {}
+
+/**
  * This schema transforms a `string` into a `symbol`.
  *
  * @category symbol transformations
  * @since 1.0.0
  */
-export const symbol: Schema<symbol, string> = transform(
+export const symbol: $symbol = transform(
   string,
   symbolFromSelf,
   (s) => Symbol.for(s),
@@ -3500,6 +3560,12 @@ export const clampBigint =
     )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $bigint extends Schema<bigint, string> {}
+
+/**
  * This schema transforms a `string` into a `bigint` by parsing the string using the `BigInt` function.
  *
  * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
@@ -3507,7 +3573,7 @@ export const clampBigint =
  * @category bigint transformations
  * @since 1.0.0
  */
-export const bigint: Schema<bigint, string> = transformOrFail(
+export const bigint: $bigint = transformOrFail(
   string,
   bigintFromSelf,
   (s, _, ast) => {
