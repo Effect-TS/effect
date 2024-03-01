@@ -6,14 +6,14 @@ describe("Schema > tuple", () => {
   it("rest: should throw on unsupported schemas", () => {
     const schema = S.tuple().pipe(S.filter(() => true))
     expect(() => schema.pipe(S.rest(S.number))).toThrow(
-      new Error("`rest` is not supported on this schema")
+      new Error("appendRestElement: unsupported schema (<refinement schema>)")
     )
   })
 
   it("element: should throw on unsupported schemas", () => {
     const schema = S.tuple().pipe(S.filter(() => true))
     expect(() => schema.pipe(S.element(S.number))).toThrow(
-      new Error("`element` is not supported on this schema")
+      new Error("appendElement: unsupported schema (<refinement schema>)")
     )
   })
 

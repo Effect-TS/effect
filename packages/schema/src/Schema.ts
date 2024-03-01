@@ -103,7 +103,7 @@ export declare module Schema {
   /**
    * @since 1.0.0
    */
-  export type Context<S> = S extends Schema.Variance<infer _A, infer _I, infer R> ? R : never
+  export type To<S> = S extends Schema.Variance<infer A, infer _I, infer _R> ? A : never
 
   /**
    * @since 1.0.0
@@ -113,7 +113,7 @@ export declare module Schema {
   /**
    * @since 1.0.0
    */
-  export type To<S> = S extends Schema.Variance<infer A, infer _I, infer _R> ? A : never
+  export type Context<S> = S extends Schema.Variance<infer _A, infer _I, infer R> ? R : never
 
   /**
    * @since 1.0.0
@@ -872,12 +872,8 @@ export const rest =
   <B, IB, R2>(rest: Schema<B, IB, R2>) =>
   <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R1>(
     self: Schema<A, I, R1>
-  ): Schema<readonly [...A, ...Array<B>], readonly [...I, ...Array<IB>], R1 | R2> => {
-    if (AST.isTuple(self.ast)) {
-      return make(AST.appendRestElement(self.ast, rest.ast))
-    }
-    throw new Error("`rest` is not supported on this schema")
-  }
+  ): Schema<readonly [...A, ...Array<B>], readonly [...I, ...Array<IB>], R1 | R2> =>
+    make(AST.appendRestElement(self.ast, rest.ast))
 
 /**
  * @category combinators
@@ -887,12 +883,8 @@ export const element =
   <B, IB, R2>(element: Schema<B, IB, R2>) =>
   <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R1>(
     self: Schema<A, I, R1>
-  ): Schema<readonly [...A, B], readonly [...I, IB], R1 | R2> => {
-    if (AST.isTuple(self.ast)) {
-      return make(AST.appendElement(self.ast, new AST.Element(element.ast, false)))
-    }
-    throw new Error("`element` is not supported on this schema")
-  }
+  ): Schema<readonly [...A, B], readonly [...I, IB], R1 | R2> =>
+    make(AST.appendElement(self.ast, new AST.Element(element.ast, false)))
 
 /**
  * @category combinators
