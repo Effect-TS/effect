@@ -6007,13 +6007,26 @@ const causeParse = <R, A>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface causeFromSelf<E extends Schema.Any, DR> extends
+  Annotable<
+    causeFromSelf<E, DR>,
+    Cause.Cause<Schema.To<E>>,
+    Cause.Cause<Schema.From<E>>,
+    Schema.Context<E> | DR
+  >
+{}
+
+/**
  * @category Cause transformations
  * @since 1.0.0
  */
-export const causeFromSelf = <A, I, R1, R2 = never>({ defect = unknown, error }: {
-  readonly error: Schema<A, I, R1>
-  readonly defect?: Schema<unknown, unknown, R2> | undefined
-}): Schema<Cause.Cause<A>, Cause.Cause<I>, R1 | R2> => {
+export const causeFromSelf = <E extends Schema.Any, DR = never>({ defect = unknown, error }: {
+  readonly error: E
+  readonly defect?: Schema<unknown, unknown, DR> | undefined
+}): causeFromSelf<E, DR> => {
   return declare(
     [error, defect],
     (error, defect) => causeParse(ParseResult.decodeUnknown(causeFrom(error, defect))),
@@ -6081,19 +6094,34 @@ const causeDefectPretty: Schema<unknown> = transform(
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface cause<E extends Schema.Any, DR> extends
+  Annotable<
+    cause<E, DR>,
+    Cause.Cause<Schema.To<E>>,
+    CauseFrom<Schema.From<E>>,
+    Schema.Context<E> | DR
+  >
+{}
+
+/**
  * @category Cause transformations
  * @since 1.0.0
  */
-export const cause = <E, EI, R1, R2 = never>({ defect = causeDefectPretty, error }: {
-  readonly error: Schema<E, EI, R1>
-  readonly defect?: Schema<unknown, unknown, R2> | undefined
-}): Schema<Cause.Cause<E>, CauseFrom<EI>, R1 | R2> =>
-  transform(
-    causeFrom(error, defect),
-    causeFromSelf({ error: to(error), defect: to(defect) }),
+export const cause = <E extends Schema.Any, DR = never>({ defect = causeDefectPretty, error }: {
+  readonly error: E
+  readonly defect?: Schema<unknown, unknown, DR> | undefined
+}): cause<E, DR> => {
+  const _error = asSchema(error)
+  return transform(
+    causeFrom(_error, defect),
+    causeFromSelf({ error: to(_error), defect: to(defect) }),
     causeDecode,
     causeEncode
   )
+}
 
 /**
  * @category Exit utils

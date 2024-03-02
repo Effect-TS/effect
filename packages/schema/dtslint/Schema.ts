@@ -1278,28 +1278,6 @@ S.head(S.array(S.number))
 S.headOr(S.array(S.number))
 
 // ---------------------------------------------
-// cause
-// ---------------------------------------------
-
-declare const defect: S.Schema<unknown, unknown, "defect">
-
-// $ExpectType Schema<Cause<string>, CauseFrom<string>, never>
-S.cause({ error: S.string })
-
-// $ExpectType Schema<Cause<string>, CauseFrom<string>, "defect">
-S.cause({ error: S.string, defect })
-
-// ---------------------------------------------
-// causeFromSelf
-// ---------------------------------------------
-
-// $ExpectType Schema<Cause<string>, Cause<string>, never>
-S.causeFromSelf({ error: S.string })
-
-// $ExpectType Schema<Cause<string>, Cause<string>, "defect">
-S.causeFromSelf({ error: S.string, defect })
-
-// ---------------------------------------------
 // Class
 // ---------------------------------------------
 
@@ -1799,3 +1777,35 @@ S.asSchema(S.exit({ success: S.number, failure: S.string, defect: hole<S.Schema<
 
 // $ExpectType exit<$number, $string, "a">
 S.exit({ success: S.number, failure: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// ---------------------------------------------
+// causeFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<Cause<string>, Cause<string>, never>
+S.asSchema(S.causeFromSelf({ error: S.string }))
+
+// $ExpectType causeFromSelf<$string, never>
+S.causeFromSelf({ error: S.string })
+
+// $ExpectType Schema<Cause<string>, Cause<string>, "a">
+S.asSchema(S.causeFromSelf({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() }))
+
+// $ExpectType causeFromSelf<$string, "a">
+S.causeFromSelf({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// ---------------------------------------------
+// cause
+// ---------------------------------------------
+
+// $ExpectType Schema<Cause<string>, CauseFrom<string>, never>
+S.asSchema(S.cause({ error: S.string }))
+
+// $ExpectType cause<$string, never>
+S.cause({ error: S.string })
+
+// $ExpectType Schema<Cause<string>, CauseFrom<string>, "a">
+S.asSchema(S.cause({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() }))
+
+// $ExpectType cause<$string, "a">
+S.cause({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() })
