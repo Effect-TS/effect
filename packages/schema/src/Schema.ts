@@ -670,13 +670,19 @@ export const fromBrand = <C extends Brand.Brand<string | symbol>>(
 export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface instanceOf<A> extends Annotable<instanceOf<A>, A> {}
+
+/**
  * @category constructors
  * @since 1.0.0
  */
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
   annotations?: Annotations<InstanceType<A>>
-): Schema<InstanceType<A>> =>
+): instanceOf<InstanceType<A>> =>
   declare(
     (u): u is InstanceType<A> => u instanceof constructor,
     {
@@ -4367,12 +4373,25 @@ const optionParse =
       : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface optionFromSelf<Value extends Schema.Any> extends
+  Annotable<
+    optionFromSelf<Value>,
+    Option.Option<Schema.To<Value>>,
+    Option.Option<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromSelf = <A, I, R>(
-  value: Schema<A, I, R>
-): Schema<Option.Option<A>, Option.Option<I>, R> => {
+export const optionFromSelf = <Value extends Schema.Any>(
+  value: Value
+): optionFromSelf<Value> => {
   return declare(
     [value],
     (value) => optionParse(ParseResult.decodeUnknown(value)),
@@ -4421,37 +4440,82 @@ export const option = <Value extends Schema.Any>(value: Value): option<Value> =>
 }
 
 /**
- * @category Option transformations
+ * @category api interface
  * @since 1.0.0
  */
-export const optionFromNullable = <A, I, R>(
-  value: Schema<A, I, R>
-): Schema<Option.Option<A>, I | null, R> =>
-  transform(nullable(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrNull)
+export interface optionFromNullable<Value extends Schema.Any> extends
+  Annotable<
+    optionFromNullable<Value>,
+    Option.Option<Schema.To<Value>>,
+    Schema.From<Value> | null,
+    Schema.Context<Value>
+  >
+{}
 
 /**
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromNullish = <A, I, R>(
-  value: Schema<A, I, R>,
+export const optionFromNullable = <Value extends Schema.Any>(
+  value: Value
+): optionFromNullable<Value> => {
+  const _value = asSchema(value)
+  return transform(nullable(_value), optionFromSelf(to(_value)), Option.fromNullable, Option.getOrNull)
+}
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface optionFromNullish<Value extends Schema.Any> extends
+  Annotable<
+    optionFromNullish<Value>,
+    Option.Option<Schema.To<Value>>,
+    Schema.From<Value> | null | undefined,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category Option transformations
+ * @since 1.0.0
+ */
+export const optionFromNullish = <Value extends Schema.Any>(
+  value: Value,
   onNoneEncoding: null | undefined
-): Schema<Option.Option<A>, I | null | undefined, R> =>
-  transform(
-    nullish(value),
-    optionFromSelf(to(value)),
+): optionFromNullish<Value> => {
+  const _value = asSchema(value)
+  return transform(
+    nullish(_value),
+    optionFromSelf(to(_value)),
     Option.fromNullable,
     onNoneEncoding === null ? Option.getOrNull : Option.getOrUndefined
   )
+}
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface optionFromOrUndefined<Value extends Schema.Any> extends
+  Annotable<
+    optionFromOrUndefined<Value>,
+    Option.Option<Schema.To<Value>>,
+    Schema.From<Value> | undefined,
+    Schema.Context<Value>
+  >
+{}
 
 /**
  * @category Option transformations
  * @since 1.0.0
  */
-export const optionFromOrUndefined = <A, I, R>(
-  value: Schema<A, I, R>
-): Schema<Option.Option<A>, I | undefined, R> =>
-  transform(orUndefined(value), optionFromSelf(to(value)), Option.fromNullable, Option.getOrUndefined)
+export const optionFromOrUndefined = <Value extends Schema.Any>(
+  value: Value
+): optionFromOrUndefined<Value> => {
+  const _value = asSchema(value)
+  return transform(orUndefined(_value), optionFromSelf(to(_value)), Option.fromNullable, Option.getOrUndefined)
+}
 
 /**
  * @category Either utils

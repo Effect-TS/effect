@@ -934,26 +934,6 @@ S.struct({ a: S.string, b: S.number }).pipe(S.rename({ c: "d" }))
 S.struct({ a: S.string, b: S.number }).pipe(S.rename({ a: "c", d: "e" }))
 
 // ---------------------------------------------
-// optionFromSelf
-// ---------------------------------------------
-
-// $ExpectType Schema<Option<number>, Option<number>, never>
-S.optionFromSelf(S.number)
-
-// $ExpectType Schema<Option<number>, Option<string>, never>
-S.optionFromSelf(S.NumberFromString)
-
-// ---------------------------------------------
-// optionFromNullable
-// ---------------------------------------------
-
-// $ExpectType Schema<Option<number>, number | null, never>
-S.optionFromNullable(S.number)
-
-// $ExpectType Schema<Option<number>, string | null, never>
-S.optionFromNullable(S.NumberFromString)
-
-// ---------------------------------------------
 // instanceOf
 // ---------------------------------------------
 
@@ -962,6 +942,9 @@ class Test {
 }
 
 // $ExpectType Schema<Test, Test, never>
+S.asSchema(S.instanceOf(Test))
+
+// $ExpectType instanceOf<Test>
 S.instanceOf(Test)
 
 // ---------------------------------------------
@@ -1565,6 +1548,22 @@ hole<
 >()
 
 // ---------------------------------------------
+// optionFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<Option<number>, Option<number>, never>
+S.asSchema(S.optionFromSelf(S.number))
+
+// $ExpectType optionFromSelf<$number>
+S.optionFromSelf(S.number)
+
+// $ExpectType Schema<Option<number>, Option<string>, never>
+S.asSchema(S.optionFromSelf(S.NumberFromString))
+
+// $ExpectType optionFromSelf<NumberFromString>
+S.optionFromSelf(S.NumberFromString)
+
+// ---------------------------------------------
 // option
 // ---------------------------------------------
 
@@ -1579,3 +1578,39 @@ S.asSchema(S.option(S.NumberFromString))
 
 // $ExpectType option<NumberFromString>
 S.option(S.NumberFromString)
+
+// ---------------------------------------------
+// optionFromNullable
+// ---------------------------------------------
+
+// $ExpectType Schema<Option<number>, number | null, never>
+S.asSchema(S.optionFromNullable(S.number))
+
+// $ExpectType optionFromNullable<$number>
+S.optionFromNullable(S.number)
+
+// $ExpectType Schema<Option<number>, string | null, never>
+S.asSchema(S.optionFromNullable(S.NumberFromString))
+
+// $ExpectType optionFromNullable<NumberFromString>
+S.optionFromNullable(S.NumberFromString)
+
+// ---------------------------------------------
+// optionFromUndefined
+// ---------------------------------------------
+
+// $ExpectType Schema<Option<number>, string | undefined, never>
+S.asSchema(S.optionFromOrUndefined(S.NumberFromString))
+
+// $ExpectType optionFromOrUndefined<NumberFromString>
+S.optionFromOrUndefined(S.NumberFromString)
+
+// ---------------------------------------------
+// optionFromNullish
+// ---------------------------------------------
+
+// $ExpectType Schema<Option<number>, string | null | undefined, never>
+S.asSchema(S.optionFromNullish(S.NumberFromString, null))
+
+// $ExpectType optionFromNullish<NumberFromString>
+S.optionFromNullish(S.NumberFromString, undefined)
