@@ -84,8 +84,9 @@ export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> ex
 /**
  * @since 1.0.0
  */
-export const asSchema = <S extends Schema.Any>(schema: S): Schema<Schema.To<S>, Schema.From<S>, Schema.Context<S>> =>
-  schema as any
+export const asSchema = <S extends Schema.Any | $never>(
+  schema: S
+): Schema<Schema.To<S>, Schema.From<S>, Schema.Context<S>> => schema as any
 
 /**
  * @category hashing
@@ -6264,7 +6265,7 @@ export const exitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = ne
  * @category api interface
  * @since 1.0.0
  */
-export interface exit<A extends Schema.Any, E extends Schema.Any, DR> extends
+export interface exit<A extends Schema.Any | $never, E extends Schema.Any | $never, DR> extends
   Annotable<
     exit<A, E, DR>,
     Exit.Exit<Schema.To<A>, Schema.To<E>>,
@@ -6277,7 +6278,7 @@ export interface exit<A extends Schema.Any, E extends Schema.Any, DR> extends
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exit = <A extends Schema.Any, E extends Schema.Any, DR = never>(
+export const exit = <A extends Schema.Any | $never, E extends Schema.Any | $never, DR = never>(
   { defect = causeDefectPretty, failure, success }: {
     readonly failure: E
     readonly success: A
