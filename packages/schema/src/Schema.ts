@@ -84,7 +84,8 @@ export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> ex
 /**
  * @since 1.0.0
  */
-export const asSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<A, I, R> => make(schema.ast)
+export const asSchema = <S extends Schema.Any>(schema: S): Schema<Schema.To<S>, Schema.From<S>, Schema.Context<S>> =>
+  schema as any
 
 /**
  * @category hashing
@@ -4394,21 +4395,30 @@ const makeSomeFrom = <A>(value: A) => ({
 } as const)
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface option<Value extends Schema.Any>
+  extends
+    Annotable<option<Value>, Option.Option<Schema.To<Value>>, OptionFrom<Schema.From<Value>>, Schema.Context<Value>>
+{}
+
+/**
  * @category Option transformations
  * @since 1.0.0
  */
-export const option = <A, I, R>(
-  value: Schema<A, I, R>
-): Schema<Option.Option<A>, OptionFrom<I>, R> =>
-  transform(
-    optionFrom(value),
-    optionFromSelf(to(value)),
+export const option = <Value extends Schema.Any>(value: Value): option<Value> => {
+  const _value = asSchema(value)
+  return transform(
+    optionFrom(_value),
+    optionFromSelf(to(_value)),
     optionDecode,
     Option.match({
       onNone: () => makeNoneFrom,
       onSome: makeSomeFrom
     })
   )
+}
 
 /**
  * @category Option transformations

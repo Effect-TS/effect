@@ -1563,3 +1563,19 @@ hole<
     S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
   >
 >()
+
+// ---------------------------------------------
+// option
+// ---------------------------------------------
+
+// $ExpectType Schema<Option<number>, OptionFrom<number>, never>
+S.asSchema(S.option(S.number))
+
+// $ExpectType option<$number>
+S.option(S.number)
+
+// $ExpectType Schema<Option<number>, OptionFrom<string>, never>
+S.asSchema(S.option(S.NumberFromString))
+
+// $ExpectType option<NumberFromString>
+S.option(S.NumberFromString)
