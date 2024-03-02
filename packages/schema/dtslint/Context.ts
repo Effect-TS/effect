@@ -1,12 +1,12 @@
 import * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
+import * as S from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import { Context, Effect, Option } from "effect"
 import { hole } from "effect/Function"
 
-declare const aContext: Schema.Schema<string, string, "aContext">
-declare const bContext: Schema.Schema<number, number, "bContext">
-declare const cContext: Schema.Schema<string, string, "cContext">
+declare const aContext: S.Schema<string, string, "aContext">
+declare const bContext: S.Schema<number, number, "bContext">
+declare const cContext: S.Schema<string, string, "cContext">
 
 const Taga = Context.GenericTag<"Taga", string>("Taga")
 const Tagb = Context.GenericTag<"Tagb", number>("Tagb")
@@ -18,10 +18,10 @@ const Tag2 = Context.GenericTag<"Tag2", number>("Tag2")
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, never>
-Schema.declare((u): u is string => typeof u === "string")
+S.declare((u): u is string => typeof u === "string")
 
 // $ExpectType Schema<string, number, "aContext" | "bContext">
-Schema.declare(
+S.declare(
   [aContext, bContext],
   (_a, _b) => () => ParseResult.succeed("a"),
   (_a, _b) => () => ParseResult.succeed(1),
@@ -46,42 +46,42 @@ Schema.declare(
   }
 )
 
-Schema.declare(
+S.declare(
   [aContext, bContext],
   // @ts-expect-error
   (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
   (_a, _b) => () => ParseResult.succeed(1)
 )
 
-Schema.declare(
+S.declare(
   [aContext, bContext],
   (_a, _b) => () => ParseResult.succeed("a"),
   // @ts-expect-error
   (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
 )
 
-Schema.declare(
+S.declare(
   [aContext, bContext],
   // @ts-expect-error
   (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
   (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
 )
 
-Schema.declare(
+S.declare(
   [],
   // @ts-expect-error
   () => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
   () => () => ParseResult.succeed(1)
 )
 
-Schema.declare(
+S.declare(
   [aContext, bContext],
   // @ts-expect-error
   (_a, _b) => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
   (_a, _b) => () => ParseResult.succeed(1)
 )
 
-Schema.declare(
+S.declare(
   [aContext, bContext],
   (_a, _b) => () => ParseResult.succeed("a"),
   // @ts-expect-error
@@ -93,190 +93,193 @@ Schema.declare(
 // ---------------------------------------------
 
 // $ExpectType Schema<string | number, string | number, "aContext" | "bContext">
-Schema.asSchema(Schema.union(aContext, bContext))
+S.asSchema(S.union(aContext, bContext))
 
 // $ExpectType union<[Schema<string, string, "aContext">, Schema<number, number, "bContext">]>
-Schema.union(aContext, bContext)
+S.union(aContext, bContext)
 
 // ---------------------------------------------
 // tuple
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number], readonly [string, number], "aContext" | "bContext">
-Schema.asSchema(Schema.tuple(aContext, bContext))
+S.asSchema(S.tuple(aContext, bContext))
 
 // $ExpectType tuple<[Schema<string, string, "aContext">, Schema<number, number, "bContext">]>
-Schema.tuple(aContext, bContext)
+S.tuple(aContext, bContext)
 
 // ---------------------------------------------
 // rest
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, ...number[]], readonly [string, ...number[]], "aContext" | "bContext">
-Schema.tuple(aContext).pipe(Schema.rest(bContext))
+S.tuple(aContext).pipe(S.rest(bContext))
 
 // ---------------------------------------------
 // element
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number], readonly [string, number], "aContext" | "bContext">
-Schema.tuple(aContext).pipe(Schema.element(bContext))
+S.tuple(aContext).pipe(S.element(bContext))
 
 // ---------------------------------------------
 // optionalElement
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number?], readonly [string, number?], "aContext" | "bContext">
-Schema.tuple(aContext).pipe(Schema.optionalElement(bContext))
+S.tuple(aContext).pipe(S.optionalElement(bContext))
 
 // ---------------------------------------------
 // array
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly string[], readonly string[], "aContext">
-Schema.asSchema(Schema.array(aContext))
+S.asSchema(S.array(aContext))
 
 // $ExpectType array<Schema<string, string, "aContext">>
-Schema.array(aContext)
+S.array(aContext)
 
 // ---------------------------------------------
 // nonEmptyArray
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], "aContext">
-Schema.asSchema(Schema.nonEmptyArray(aContext))
+S.asSchema(S.nonEmptyArray(aContext))
 
 // $ExpectType nonEmptyArray<Schema<string, string, "aContext">>
-Schema.nonEmptyArray(aContext)
+S.nonEmptyArray(aContext)
 
 // ---------------------------------------------
 // propertySignatureDeclaration
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, ":", string, "aContext">
-aContext.pipe(Schema.propertySignatureDeclaration)
+aContext.pipe(S.propertySignatureDeclaration)
 
 // ---------------------------------------------
 // optionalToRequired
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, "?:", string, "aContext">
-Schema.optionalToRequired(aContext, Schema.string, Option.getOrElse(() => ""), Option.some)
+S.optionalToRequired(aContext, S.string, Option.getOrElse(() => ""), Option.some)
 
 // ---------------------------------------------
 // optional
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<"?:", string | undefined, never, "?:", string | undefined, "aContext">
-Schema.optional(aContext)
+S.optional(aContext)
 
 // ---------------------------------------------
 // struct
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-Schema.asSchema(Schema.struct({ a: aContext, b: bContext }))
+S.asSchema(S.struct({ a: aContext, b: bContext }))
 
 // $ExpectType struct<{ a: Schema<string, string, "aContext">; b: Schema<number, number, "bContext">; }>
-Schema.struct({ a: aContext, b: bContext })
+S.struct({ a: aContext, b: bContext })
 
 // ---------------------------------------------
 // pick
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
-Schema.struct({ a: aContext, b: bContext }).pipe(Schema.pick("a"))
+S.struct({ a: aContext, b: bContext }).pipe(S.pick("a"))
 
 // ---------------------------------------------
 // omit
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
-Schema.struct({ a: aContext, b: bContext }).pipe(Schema.omit("b"))
+S.struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
 
 // ---------------------------------------------
 // brand
 // ---------------------------------------------
 
 // @ts-expect-error
-aContext.pipe(Schema.brand("a"))
+aContext.pipe(S.brand("a"))
 
 // ---------------------------------------------
 // partial
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, "aContext" | "bContext">
-Schema.partial(Schema.struct({ a: aContext, b: bContext }), { exact: true })
+S.partial(S.struct({ a: aContext, b: bContext }), { exact: true })
 
 // ---------------------------------------------
 // required
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-Schema.required(Schema.partial(Schema.struct({ a: aContext, b: bContext }), { exact: true }))
+S.required(S.partial(S.struct({ a: aContext, b: bContext }), { exact: true }))
 
 // ---------------------------------------------
 // mutable
 // ---------------------------------------------
 
 // $ExpectType Schema<{ a: string; b: number; }, { a: string; b: number; }, "aContext" | "bContext">
-Schema.mutable(Schema.struct({ a: aContext, b: bContext }))
+S.mutable(S.struct({ a: aContext, b: bContext }))
 
 // ---------------------------------------------
 // record
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: number; }, "aContext" | "bContext">
-Schema.record(aContext, bContext)
+S.asSchema(S.record(aContext, bContext))
+
+// $ExpectType record<Schema<string, string, "aContext">, Schema<number, number, "bContext">>
+S.record(aContext, bContext)
 
 // ---------------------------------------------
 // extend
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-Schema.struct({ a: aContext, b: bContext }).pipe(Schema.extend(Schema.struct({ b: bContext })))
+S.struct({ a: aContext, b: bContext }).pipe(S.extend(S.struct({ b: bContext })))
 
 // ---------------------------------------------
 // compose
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-aContext.pipe(Schema.compose(bContext, { strict: false }))
+aContext.pipe(S.compose(bContext, { strict: false }))
 
 // ---------------------------------------------
 // suspend
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-Schema.suspend(() => aContext)
+S.suspend(() => aContext)
 
 // ---------------------------------------------
 // filter
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.filter(() => false))
+aContext.pipe(S.filter(() => false))
 
 // ---------------------------------------------
 // transformOrFail
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-Schema.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseResult.succeed(""))
+S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseResult.succeed(""))
 
 // ---------------------------------------------
 // transform
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-Schema.transform(aContext, bContext, () => 1, () => "")
+S.transform(aContext, bContext, () => 1, () => "")
 
 // ---------------------------------------------
 // attachPropertySignature
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, "aContext">
-Schema.struct({ a: aContext }).pipe(Schema.attachPropertySignature("_tag", "A"))
+S.struct({ a: aContext }).pipe(S.attachPropertySignature("_tag", "A"))
 
 // ---------------------------------------------
 // annotations (method)
@@ -290,74 +293,74 @@ aContext.annotations({})
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.message(() => ""))
+aContext.pipe(S.message(() => ""))
 
 // ---------------------------------------------
 // identifier
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.identifier(""))
+aContext.pipe(S.identifier(""))
 
 // ---------------------------------------------
 // title
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.title(""))
+aContext.pipe(S.title(""))
 
 // ---------------------------------------------
 // description
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.description(""))
+aContext.pipe(S.description(""))
 
 // ---------------------------------------------
 // examples
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.examples(["a"]))
+aContext.pipe(S.examples(["a"]))
 
 // ---------------------------------------------
 // documentation
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.documentation(""))
+aContext.pipe(S.documentation(""))
 
 // ---------------------------------------------
 // jsonSchema
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.jsonSchema({}))
+aContext.pipe(S.jsonSchema({}))
 
 // ---------------------------------------------
 // equivalence
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, "aContext">
-aContext.pipe(Schema.equivalence(() => true))
+aContext.pipe(S.equivalence(() => true))
 
 // ---------------------------------------------
 // rename
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly c: string; readonly d: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-Schema.rename(Schema.struct({ a: aContext, b: bContext }), { a: "c", b: "d" })
+S.rename(S.struct({ a: aContext, b: bContext }), { a: "c", b: "d" })
 
 // ---------------------------------------------
 // Class
 // ---------------------------------------------
 
-export class MyClass extends Schema.Class<MyClass>()({
+export class MyClass extends S.Class<MyClass>()({
   a: aContext
 }) {}
 
 // $ExpectType "aContext"
-hole<Schema.Schema.Context<typeof MyClass>>()
+hole<S.Schema.Context<typeof MyClass>>()
 
 // ---------------------------------------------
 // Class.transform
@@ -372,7 +375,7 @@ export class MyClassWithTransform extends MyClass.transformOrFail<MyClassWithTra
 ) {}
 
 // $ExpectType "aContext" | "bContext" | "Tag1" | "Tag2"
-hole<Schema.Schema.Context<typeof MyClassWithTransform>>()
+hole<S.Schema.Context<typeof MyClassWithTransform>>()
 
 // $ExpectType { readonly a: Schema<string, string, "aContext">; readonly b: Schema<number, number, "bContext">; }
 MyClassWithTransform.fields
@@ -390,7 +393,7 @@ export class MyClassWithTransformFrom extends MyClass.transformOrFailFrom<MyClas
 ) {}
 
 // $ExpectType "aContext" | "bContext" | "Tag1" | "Tag2"
-hole<Schema.Schema.Context<typeof MyClassWithTransformFrom>>()
+hole<S.Schema.Context<typeof MyClassWithTransformFrom>>()
 
 // $ExpectType { readonly a: Schema<string, string, "aContext">; readonly b: Schema<number, number, "bContext">; }
 MyClassWithTransformFrom.fields
@@ -399,12 +402,12 @@ MyClassWithTransformFrom.fields
 // TaggedRequest
 // ---------------------------------------------
 
-class MyRequest extends Schema.TaggedRequest<MyRequest>()("MyRequest", bContext, cContext, {
+class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", bContext, cContext, {
   a: aContext
 }) {}
 
 // $ExpectType "aContext"
-hole<Schema.Schema.Context<typeof MyRequest>>()
+hole<S.Schema.Context<typeof MyRequest>>()
 
 // $ExpectType { readonly _tag: literal<["MyRequest"]>; readonly a: Schema<string, string, "aContext">; }
 MyRequest.fields

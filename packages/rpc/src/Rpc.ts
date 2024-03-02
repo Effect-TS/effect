@@ -183,31 +183,32 @@ export interface StreamRequestConstructor<Tag extends string, Self, R, IS, S, RR
  * @since 1.0.0
  * @category schemas
  */
-export const StreamRequest = <Self>() =>
-<Tag extends string, E, IE, RE, A, IA, RA, Fields extends Schema.StructFields>(
-  tag: Tag,
-  failure: Schema.Schema<E, IE, RE>,
-  success: Schema.Schema<A, IA, RA>,
-  fields: Fields
-): StreamRequestConstructor<
-  Tag,
-  Self,
-  Schema.Schema.Context<Fields[keyof Fields]>,
-  Types.Simplify<Schema.FromStruct<Fields>>,
-  Types.Simplify<Schema.ToStruct<Fields>>,
-  RE | RA,
-  IE,
-  E,
-  IA,
-  A
-> => {
-  return class extends (Schema.TaggedRequest<{}>()(tag, failure, success, fields) as any) {
-    constructor(props: any, disableValidation?: boolean) {
-      super(props, disableValidation)
-      ;(this as any)[Internal.StreamRequestTypeId] = Internal.StreamRequestTypeId
-    }
-  } as any
-}
+export const StreamRequest =
+  <Self>() =>
+  <Tag extends string, E, IE, RE, A, IA, RA, Fields extends Schema.Struct.Fields>(
+    tag: Tag,
+    failure: Schema.Schema<E, IE, RE>,
+    success: Schema.Schema<A, IA, RA>,
+    fields: Fields
+  ): StreamRequestConstructor<
+    Tag,
+    Self,
+    Schema.Schema.Context<Fields[keyof Fields]>,
+    Types.Simplify<Schema.Struct.From<Fields>>,
+    Types.Simplify<Schema.Struct.To<Fields>>,
+    RE | RA,
+    IE,
+    E,
+    IA,
+    A
+  > => {
+    return class extends (Schema.TaggedRequest<{}>()(tag, failure, success, fields) as any) {
+      constructor(props: any, disableValidation?: boolean) {
+        super(props, disableValidation)
+        ;(this as any)[Internal.StreamRequestTypeId] = Internal.StreamRequestTypeId
+      }
+    } as any
+  }
 
 /**
  * @since 1.0.0

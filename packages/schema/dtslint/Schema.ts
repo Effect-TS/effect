@@ -681,28 +681,64 @@ S.required(
 // Records
 // ---------------------------------------------
 
+// $ExpectType Schema<string, string, never>
+S.asSchema(S.record(S.string, S.string).key)
+
+// $ExpectType Schema<string, string, never>
+S.record(S.string, S.string).key
+
+// $ExpectType Schema<string, string, never>
+S.asSchema(S.record(S.string, S.string).value)
+
+// $ExpectType $string
+S.record(S.string, S.string).value
+
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
+S.asSchema(S.record(S.string, S.string))
+
+// $ExpectType record<Schema<string, string, never>, $string>
 S.record(S.string, S.string)
 
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: string; }, never>
+S.asSchema(S.record(S.string, S.NumberFromString))
+
+// $ExpectType record<Schema<string, string, never>, NumberFromString>
 S.record(S.string, S.NumberFromString)
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
+S.asSchema(S.record(pipe(S.string, S.minLength(2)), S.string))
+
+// $ExpectType record<Schema<string, string, never>, $string>
 S.record(pipe(S.string, S.minLength(2)), S.string)
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: string; }, never>
+S.asSchema(S.record(S.union(S.literal("a"), S.literal("b")), S.string))
+
+// $ExpectType record<Schema<"a" | "b", "a" | "b", never>, $string>
 S.record(S.union(S.literal("a"), S.literal("b")), S.string)
 
 // $ExpectType Schema<{ readonly [x: symbol]: string; }, { readonly [x: symbol]: string; }, never>
+S.asSchema(S.record(S.symbolFromSelf, S.string))
+
+// $ExpectType record<Schema<symbol, symbol, never>, $string>
 S.record(S.symbolFromSelf, S.string)
 
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }, never>
+S.asSchema(S.record(S.templateLiteral(S.literal("a"), S.string), S.string))
+
+// $ExpectType record<Schema<`a${string}`, `a${string}`, never>, $string>
 S.record(S.templateLiteral(S.literal("a"), S.string), S.string)
 
 // $ExpectType Schema<{ readonly [x: string & Brand<"UserId">]: string; }, { readonly [x: string]: string; }, never>
+S.asSchema(S.record(S.string.pipe(S.brand("UserId")), S.string))
+
+// $ExpectType record<Schema<string & Brand<"UserId">, string, never>, $string>
 S.record(S.string.pipe(S.brand("UserId")), S.string)
 
 // $ExpectType Schema<{ readonly [x: string & Brand<symbol>]: string; }, { readonly [x: string]: string; }, never>
+S.asSchema(S.record(S.string.pipe(S.brand(Symbol.for("UserId"))), S.string))
+
+// $ExpectType record<Schema<string & Brand<symbol>, string, never>, $string>
 S.record(S.string.pipe(S.brand(Symbol.for("UserId"))), S.string)
 
 // ---------------------------------------------

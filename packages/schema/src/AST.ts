@@ -1596,7 +1596,7 @@ const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
  *
  * @since 1.0.0
  */
-export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLiteral => {
+export const createRecord = (key: AST, value: AST, isReadonly: boolean, annotations?: Annotations): TypeLiteral => {
   const propertySignatures: Array<PropertySignature> = []
   const indexSignatures: Array<IndexSignature> = []
   const go = (key: AST): void => {
@@ -1627,7 +1627,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
     }
   }
   go(key)
-  return TypeLiteral.make(propertySignatures, indexSignatures)
+  return TypeLiteral.make(propertySignatures, indexSignatures, annotations)
 }
 
 /**

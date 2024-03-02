@@ -1858,14 +1858,46 @@ export const mutable = <A, I, R>(
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface record<K extends Schema.Any | $never, V extends Schema.Any> extends
+  Schema<
+    { readonly [P in Schema.To<K>]: Schema.To<V> },
+    { readonly [P in Schema.From<K>]: Schema.From<V> },
+    Schema.Context<K> | Schema.Context<V>
+  >
+{
+  readonly key: K
+  readonly value: V
+  annotations(annotations?: Annotations<{ readonly [P in Schema.To<K>]: Schema.To<V> }>): record<K, V>
+}
+
+class $record<K extends Schema.Any | $never, V extends Schema.Any> extends _schema.Schema<
+  { readonly [P in Schema.To<K>]: Schema.To<V> },
+  { readonly [P in Schema.From<K>]: Schema.From<V> },
+  Schema.Context<K> | Schema.Context<V>
+> implements record<K, V> {
+  constructor(
+    readonly key: K,
+    readonly value: V,
+    annotations?: Annotations<{ readonly [P in Schema.To<K>]: Schema.To<V> }>
+  ) {
+    super(AST.createRecord(key.ast, value.ast, true, _schema.toASTAnnotations(annotations)))
+  }
+  annotations(annotations?: Annotations<{ readonly [P in Schema.To<K>]: Schema.To<V> }>): record<K, V> {
+    return annotations ? new $record(this.key, this.value, { ...this.ast.annotations, ...annotations }) : this
+  }
+}
+
+/**
  * @category combinators
  * @since 1.0.0
  */
-export const record = <AK extends string | symbol, IK extends string | symbol, R1, AV, IV, R2>(
-  key: Schema<AK, IK, R1>,
-  value: Schema<AV, IV, R2>
-): Schema<{ readonly [K in AK]: AV }, { readonly [K in IK]: IV }, R1 | R2> =>
-  make(AST.createRecord(key.ast, value.ast, true))
+export const record = <A extends string | symbol, I extends string | symbol, R, V extends Schema.Any>(
+  key: Schema<A, I, R>,
+  value: V
+): record<Schema<A, I, R>, V> => new $record(key, value)
 
 /** @internal */
 export const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {

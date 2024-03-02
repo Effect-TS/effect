@@ -1,8 +1,23 @@
+import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Schema > record", () => {
+  it("annotations()", () => {
+    const schema = S.record(S.string, S.number).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    expect(schema.ast.annotations).toStrictEqual({
+      [AST.IdentifierAnnotationId]: "X",
+      [AST.TitleAnnotationId]: "Y"
+    })
+  })
+
+  it("should expose the key and the value", () => {
+    const schema = S.record(S.string, S.number)
+    expect(schema.key).toStrictEqual(S.string)
+    expect(schema.value).toStrictEqual(S.number)
+  })
+
   describe("decoding", () => {
     it("record(never, number)", async () => {
       const schema = S.record(S.never, S.number)
