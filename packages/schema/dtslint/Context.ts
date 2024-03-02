@@ -414,5 +414,5 @@ MyRequest.fields
 
 declare const myRequest: MyRequest
 
-// $ExpectType Schema<Exit<string, number>, ExitFrom<string, number>, "bContext" | "cContext">
+// $ExpectType Schema<Exit<string, number>, ExitEncoded<string, number>, "bContext" | "cContext">
 Serializable.exitSchema(myRequest)

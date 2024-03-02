@@ -1567,13 +1567,13 @@ S.optionFromSelf(S.NumberFromString)
 // option
 // ---------------------------------------------
 
-// $ExpectType Schema<Option<number>, OptionFrom<number>, never>
+// $ExpectType Schema<Option<number>, OptionEncoded<number>, never>
 S.asSchema(S.option(S.number))
 
 // $ExpectType option<$number>
 S.option(S.number)
 
-// $ExpectType Schema<Option<number>, OptionFrom<string>, never>
+// $ExpectType Schema<Option<number>, OptionEncoded<string>, never>
 S.asSchema(S.option(S.NumberFromString))
 
 // $ExpectType option<NumberFromString>
@@ -1629,7 +1629,7 @@ S.eitherFromSelf({ right: S.NumberFromString, left: S.string })
 // either
 // ---------------------------------------------
 
-// $ExpectType Schema<Either<number, string>, EitherFrom<string, string>, never>
+// $ExpectType Schema<Either<number, string>, EitherEncoded<string, string>, never>
 S.asSchema(S.either({ right: S.NumberFromString, left: S.string }))
 
 // $ExpectType either<NumberFromString, $string>
@@ -1785,13 +1785,13 @@ S.exitFromSelf({ success: S.number, failure: S.string, defect: hole<S.Schema<unk
 // exit
 // ---------------------------------------------
 
-// $ExpectType Schema<Exit<number, string>, ExitFrom<number, string>, never>
+// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, never>
 S.asSchema(S.exit({ success: S.number, failure: S.string }))
 
 // $ExpectType exit<$number, $string, never>
 S.exit({ success: S.number, failure: S.string })
 
-// $ExpectType Schema<Exit<number, string>, ExitFrom<number, string>, "a">
+// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, "a">
 S.asSchema(S.exit({ success: S.number, failure: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
 // $ExpectType exit<$number, $string, "a">
@@ -1817,13 +1817,13 @@ S.causeFromSelf({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a">>
 // cause
 // ---------------------------------------------
 
-// $ExpectType Schema<Cause<string>, CauseFrom<string>, never>
+// $ExpectType Schema<Cause<string>, CauseEncoded<string>, never>
 S.asSchema(S.cause({ error: S.string }))
 
 // $ExpectType cause<$string, never>
 S.cause({ error: S.string })
 
-// $ExpectType Schema<Cause<string>, CauseFrom<string>, "a">
+// $ExpectType Schema<Cause<string>, CauseEncoded<string>, "a">
 S.asSchema(S.cause({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
 // $ExpectType cause<$string, "a">
