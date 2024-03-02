@@ -177,7 +177,7 @@ describe("Either", () => {
   })
 
   it("getEquivalence", () => {
-    const isEquivalent = Either.getEquivalence({ right: N.Equivalence, left: S.Equivalence })
+    const isEquivalent = Either.getEquivalence(S.Equivalence, N.Equivalence)
     Util.deepStrictEqual(isEquivalent(Either.right(1), Either.right(1)), true)
     Util.deepStrictEqual(isEquivalent(Either.right(1), Either.right(2)), false)
     Util.deepStrictEqual(isEquivalent(Either.right(1), Either.left("foo")), false)

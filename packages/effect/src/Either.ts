@@ -271,15 +271,15 @@ export const getLeft: <R, L>(self: Either<R, L>) => Option<L> = either.getLeft
  * @category equivalence
  * @since 2.0.0
  */
-export const getEquivalence = <R, L>({ left, right }: {
-  right: Equivalence.Equivalence<R>
-  left: Equivalence.Equivalence<L>
-}): Equivalence.Equivalence<Either<R, L>> =>
+export const getEquivalence = <R, L>(
+  EquivalenceL: Equivalence.Equivalence<L>,
+  EquivalenceR: Equivalence.Equivalence<R>
+): Equivalence.Equivalence<Either<R, L>> =>
   Equivalence.make((x, y) =>
     x === y ||
     (isLeft(x) ?
-      isLeft(y) && left(x.left, y.left) :
-      isRight(y) && right(x.right, y.right))
+      isLeft(y) && EquivalenceL(x.left, y.left) :
+      isRight(y) && EquivalenceR(x.right, y.right))
   )
 
 /**
