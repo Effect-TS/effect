@@ -34,7 +34,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const [n, s, z] = yield* $(Effect.all([
         DemoTag.getNumbers(),
-        DemoTag.$.strings,
+        DemoTag.strings,
         DemoTag.fn("a", "b", "c")
       ]))
       const s2 = yield* $(DemoTag.pipe(Effect.map((_) => _.strings)))

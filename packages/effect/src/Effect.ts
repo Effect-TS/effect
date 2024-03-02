@@ -5205,18 +5205,11 @@ export const optionFromOptional: <A, E, R>(
 export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
   & Context.TagClass<Self, Id, Shape>
   & {
-    $: {
-      [k in keyof Shape as Shape[k] extends (...args: Array<any>) => any ? never : k]: Shape[k] extends
-        Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-        : Effect<Shape[k], never, Self>
-    }
-  }
-  & {
-    [k in keyof Shape as Shape[k] extends (...args: Array<any>) => any ? k : never]: Shape[k] extends
-      (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+    [k in keyof Shape]: Shape[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
       (...args: Readonly<Args>) => Effect<A, E, Self | R>
       : Shape[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-      : never
+      : Shape[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+      : Effect<Shape[k], never, Self>
   } = (id) => () => {
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
@@ -5230,21 +5223,23 @@ export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
         return creationError.stack
       }
     })
-    // @ts-ignore
-    TagClass["$"] = new Proxy({}, {
-      get(_target: any, prop: any, _receiver) {
-        // @ts-expect-error
-        return core.andThen(TagClass, (s) => s[prop])
-      }
-    })
     const done = new Proxy(TagClass, {
       get(_target: any, prop: any, _receiver) {
         if (prop in TagClass) {
           // @ts-expect-error
           return TagClass[prop]
         }
+        const fn = new Function()
         // @ts-expect-error
-        return (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args))
+        const cn = core.andThen(TagClass, (s) => s[prop])
+        Object.assign(fn, cn)
+        Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
+        return new Proxy(fn, {
+          apply(_, __, argArray) {
+            // @ts-expect-error
+            return core.andThen(TagClass, (s: any) => s[prop](...argArray))
+          }
+        })
       }
     })
     return done
