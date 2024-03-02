@@ -138,7 +138,7 @@ export interface Blocked<out A, out E> extends Effect<A, E> {
  * @category models
  */
 declare module "./Context.js" {
-  interface Tag<Identifier, Service> extends Effect<Service, never, Identifier> {}
+  interface Tag<Id, Value> extends Effect<Value, never, Id> {}
   interface TagUnifyIgnore {
     Effect?: true
     Either?: true
@@ -5202,22 +5202,23 @@ export const optionFromOptional: <A, E, R>(
  * @since 2.0.0
  * @category constructors
  */
-export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() =>
-  & Context.TagClass<Self, Id, Shape>
+export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
+  & Context.TagClass<Self, Id, Type>
+  & { _Type: Type }
   & {
     [
-      k in keyof Shape as Shape[k] extends ((...args: [...infer Args]) => infer Ret) ?
-        ((...args: Readonly<Args>) => Ret) extends Shape[k] ? k : never
+      k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
+        ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
         : k
-    ]: Shape[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+    ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
       (...args: Readonly<Args>) => Effect<A, E, Self | R>
-      : Shape[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-      : Shape[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-      : Effect<Shape[k], never, Self>
+      : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+      : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+      : Effect<Type[k], never, Self>
   }
   & {
     use: <X>(
-      body: (_: Shape) => X
+      body: (_: Type) => X
     ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
   } = (id) => () => {
     const limit = Error.stackTraceLimit
