@@ -27,15 +27,15 @@ export type TagTypeId = typeof TagTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Tag<in out Identifier, in out Service> extends Pipeable, Inspectable {
+export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
   readonly _tag: "Tag"
   readonly _op: "Tag"
   readonly [TagTypeId]: {
-    readonly _Service: Types.Invariant<Service>
-    readonly _Identifier: Types.Invariant<Identifier>
+    readonly _Service: Types.Invariant<Value>
+    readonly _Identifier: Types.Invariant<Id>
   }
-  of(self: Service): Service
-  context(self: Service): Context<Identifier>
+  of(self: Value): Value
+  context(self: Value): Context<Id>
   readonly stack?: string | undefined
   readonly key: string
   [Unify.typeSymbol]?: unknown
@@ -48,18 +48,17 @@ export interface Tag<in out Identifier, in out Service> extends Pipeable, Inspec
  * @category models
  */
 export interface TagClassShape<Id, Shape> {
-  readonly [TagTypeId]: {
-    readonly Id: Id
-    readonly Shape: Shape
-  }
+  readonly [TagTypeId]: TagTypeId
+  readonly Type: Shape
+  readonly Id: Id
 }
 
 /**
  * @since 2.0.0
  * @category models
  */
-export interface TagClass<Self, Id, Shape> extends Tag<Self, Shape> {
-  new(_: never): TagClassShape<Id, Shape>
+export interface TagClass<Self, Id, Type> extends Tag<Self, Type> {
+  new(_: never): TagClassShape<Id, Type>
 }
 
 /**

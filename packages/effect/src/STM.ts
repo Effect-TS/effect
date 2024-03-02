@@ -103,7 +103,7 @@ export interface STMTypeLambda extends TypeLambda {
  * @category models
  */
 declare module "./Context.js" {
-  interface Tag<Identifier, Service> extends STM<Service, never, Identifier> {}
+  interface Tag<Id, Value> extends STM<Value, never, Id> {}
 }
 
 /**

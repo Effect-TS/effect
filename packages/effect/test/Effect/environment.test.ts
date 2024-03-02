@@ -22,7 +22,35 @@ class NumberRepo extends Context.Tag("NumberRepo")<NumberRepo, {
   static numbers = Effect.serviceConstants(NumberRepo).numbers
 }
 
+class DemoTag extends Effect.Tag("DemoTag")<DemoTag, {
+  readonly getNumbers: () => Array<number>
+  readonly strings: Array<string>
+  readonly fn: (...args: ReadonlyArray<string>) => Array<string>
+  readonly fnGen: <S>(s: S) => Array<S>
+}>() {
+}
+
 describe("Effect", () => {
+  it.effect("effect tag", () =>
+    Effect.gen(function*($) {
+      const [n, s, z] = yield* $(Effect.all([
+        DemoTag.getNumbers(),
+        DemoTag.strings,
+        DemoTag.fn("a", "b", "c")
+      ]))
+      const s2 = yield* $(DemoTag.pipe(Effect.map((_) => _.strings)))
+      const s3 = yield* $(DemoTag.use((_) => _.fnGen("hello")))
+      expect(n).toEqual([0, 1])
+      expect(s).toEqual(["a", "b"])
+      expect(z).toEqual(["a", "b", "c"])
+      expect(s2).toEqual(["a", "b"])
+      expect(s3).toEqual(["hello"])
+    }).pipe(Effect.provideService(DemoTag, {
+      getNumbers: () => [0, 1],
+      strings: ["a", "b"],
+      fn: (...args) => Array.from(args),
+      fnGen: (s) => [s]
+    })))
   it.effect("class tag", () =>
     Effect.gen(function*($) {
       yield* $(
