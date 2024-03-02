@@ -1289,133 +1289,133 @@ class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass"
 hole<ConstructorParameters<typeof VoidTaggedClass>>()
 
 // ---------------------------------------------
-// ToStruct
+// Struct.To
 // ---------------------------------------------
 
 // $ExpectType {}
-hole<Simplify<S.ToStruct<{}>>>()
+hole<Simplify<S.Struct.To<{}>>>()
 
 // $ExpectType { readonly a: number; }
-hole<Simplify<S.ToStruct<{ a: S.Schema<number, string> }>>>()
+hole<Simplify<S.Struct.To<{ a: S.Schema<number, string> }>>>()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.ToStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }>
-  >
->()
-
-// $ExpectType { readonly a: number; readonly b: number; }
-hole<
-  Simplify<
-    S.ToStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }>
+    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.ToStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
+    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.ToStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
+    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
+  >
+>()
+
+// $ExpectType { readonly a: number; readonly b: number; }
+hole<
+  Simplify<
+    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.ToStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }>
+    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.ToStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }>
+    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.ToStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
+    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.ToStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
+    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
   >
 >()
 
 // ---------------------------------------------
-// FromStruct
+// Struct.From
 // ---------------------------------------------
 
 // $ExpectType {}
-hole<Simplify<S.FromStruct<{}>>>()
+hole<Simplify<S.Struct.From<{}>>>()
 
 // $ExpectType { readonly a: string; }
-hole<Simplify<S.FromStruct<{ a: S.Schema<number, string> }>>>()
+hole<Simplify<S.Struct.From<{ a: S.Schema<number, string> }>>>()
 
 // $ExpectType { readonly a: string; readonly b: string; }
 hole<
   Simplify<
-    S.FromStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }>
+    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly b?: string; }
 hole<
   Simplify<
-    S.FromStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }>
+    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c: string; }
 hole<
   Simplify<
-    S.FromStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
+    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c?: string; }
 hole<
   Simplify<
-    S.FromStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
+    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly b: string; }
 hole<
   Simplify<
-    S.FromStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }>
+    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly b?: string; }
 hole<
   Simplify<
-    S.FromStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }>
+    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c: string; }
 hole<
   Simplify<
-    S.FromStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
+    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c?: string; }
 hole<
   Simplify<
-    S.FromStruct<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
+    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
   >
 >()

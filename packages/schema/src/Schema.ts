@@ -122,6 +122,11 @@ export declare module Schema {
     input: unknown,
     options?: AST.ParseOptions
   ) => asserts input is Schema.To<S>
+
+  /**
+   * @since 1.0.0
+   */
+  export type Any<R = unknown> = Schema<any, any, R>
 }
 
 /**
@@ -368,17 +373,12 @@ export const validatePromise = <A, I>(
 }
 
 /**
- * @since 1.0.0
- */
-export type AnySchema<R = unknown> = Schema<any, any, R>
-
-/**
  * Tests if a value is a `Schema`.
  *
  * @category guards
  * @since 1.0.0
  */
-export const isSchema = (u: unknown): u is AnySchema =>
+export const isSchema = (u: unknown): u is Schema.Any =>
   Predicate.hasProperty(u, TypeId) && !(PropertySignatureTypeId in u)
 
 /**
@@ -470,10 +470,7 @@ export const enums = <A extends { [x: string]: string | number }>(
     )
   )
 
-/**
- * @since 1.0.0
- */
-export type Join<T> = T extends [infer Head, ...infer Tail]
+type Join<T> = T extends [infer Head, ...infer Tail]
   ? `${Head & (string | number | bigint | boolean | null | undefined)}${Tail extends [] ? ""
     : Join<Tail>}`
   : never
@@ -482,7 +479,7 @@ export type Join<T> = T extends [infer Head, ...infer Tail]
  * @category constructors
  * @since 1.0.0
  */
-export const templateLiteral = <T extends [AnySchema<never>, ...Array<AnySchema<never>>]>(
+export const templateLiteral = <T extends [Schema.Any<never>, ...Array<Schema.Any<never>>]>(
   ...[head, ...tail]: T
 ): Schema<Join<{ [K in keyof T]: Schema.To<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
@@ -542,7 +539,7 @@ const getTemplateLiterals = (
 }
 
 const declareConstructor = <
-  const TypeParameters extends ReadonlyArray<AnySchema>,
+  const TypeParameters extends ReadonlyArray<Schema.Any>,
   I,
   A
 >(
@@ -590,7 +587,7 @@ export const declare: {
     is: (input: unknown) => input is A,
     annotations?: Annotations<A>
   ): Schema<A>
-  <const P extends ReadonlyArray<AnySchema>, I, A>(
+  <const P extends ReadonlyArray<Schema.Any>, I, A>(
     typeParameters: P,
     decodeUnknown: (
       ...typeParameters: { readonly [K in keyof P]: Schema<Schema.To<P[K]>, Schema.From<P[K]>, never> }
@@ -828,14 +825,14 @@ export const object: $object = make(AST.objectKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface union<Members extends ReadonlyArray<AnySchema>>
+export interface union<Members extends ReadonlyArray<Schema.Any>>
   extends Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>>
 {
   readonly members: Readonly<Members>
   annotations(annotations?: Annotations<Schema.To<Members[number]>>): union<Members>
 }
 
-class $union<Members extends ReadonlyArray<AnySchema>>
+class $union<Members extends ReadonlyArray<Schema.Any>>
   extends _schema.Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>>
   implements union<Members>
 {
@@ -851,13 +848,13 @@ class $union<Members extends ReadonlyArray<AnySchema>>
  * @category combinators
  * @since 1.0.0
  */
-export function union<Members extends AST.Members<AnySchema>>(...members: Members): union<Members>
-export function union<Member extends AnySchema>(member: Member): Member
+export function union<Members extends AST.Members<Schema.Any>>(...members: Members): union<Members>
+export function union<Member extends Schema.Any>(member: Member): Member
 export function union(): $never
-export function union<Members extends ReadonlyArray<AnySchema>>(
+export function union<Members extends ReadonlyArray<Schema.Any>>(
   ...members: Members
 ): Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>>
-export function union<Members extends ReadonlyArray<AnySchema>>(
+export function union<Members extends ReadonlyArray<Schema.Any>>(
   ...members: Members
 ): Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>> | $never {
   return AST.isMembers(members)
@@ -898,7 +895,7 @@ export const keyof = <A, I, R>(self: Schema<A, I, R>): Schema<keyof A> =>
  * @category api interface
  * @since 1.0.0
  */
-export interface tuple<Elements extends ReadonlyArray<AnySchema>> extends
+export interface tuple<Elements extends ReadonlyArray<Schema.Any>> extends
   Schema<
     { readonly [K in keyof Elements]: Schema.To<Elements[K]> },
     { readonly [K in keyof Elements]: Schema.From<Elements[K]> },
@@ -909,7 +906,7 @@ export interface tuple<Elements extends ReadonlyArray<AnySchema>> extends
   annotations(annotations?: Annotations<{ readonly [K in keyof Elements]: Schema.To<Elements[K]> }>): tuple<Elements>
 }
 
-class $tuple<Elements extends ReadonlyArray<AnySchema>> extends _schema.Schema<
+class $tuple<Elements extends ReadonlyArray<Schema.Any>> extends _schema.Schema<
   { readonly [K in keyof Elements]: Schema.To<Elements[K]> },
   { readonly [K in keyof Elements]: Schema.From<Elements[K]> },
   Schema.Context<Elements[number]>
@@ -936,7 +933,7 @@ class $tuple<Elements extends ReadonlyArray<AnySchema>> extends _schema.Schema<
  * @category combinators
  * @since 1.0.0
  */
-export const tuple = <Elements extends ReadonlyArray<AnySchema>>(...elements: Elements): tuple<Elements> =>
+export const tuple = <Elements extends ReadonlyArray<Schema.Any>>(...elements: Elements): tuple<Elements> =>
   new $tuple(elements)
 
 /**
@@ -980,14 +977,14 @@ export const optionalElement =
  * @category api interface
  * @since 1.0.0
  */
-export interface array<Value extends AnySchema>
+export interface array<Value extends Schema.Any>
   extends Schema<ReadonlyArray<Schema.To<Value>>, ReadonlyArray<Schema.From<Value>>, Schema.Context<Value>>
 {
   readonly value: Value
   annotations(annotations?: Annotations<ReadonlyArray<Schema.To<Value>>>): array<Value>
 }
 
-class $array<Value extends AnySchema>
+class $array<Value extends Schema.Any>
   extends _schema.Schema<ReadonlyArray<Schema.To<Value>>, ReadonlyArray<Schema.From<Value>>, Schema.Context<Value>>
   implements array<Value>
 {
@@ -1003,13 +1000,13 @@ class $array<Value extends AnySchema>
  * @category combinators
  * @since 1.0.0
  */
-export const array = <Value extends AnySchema>(value: Value): array<Value> => new $array(value)
+export const array = <Value extends Schema.Any>(value: Value): array<Value> => new $array(value)
 
 /**
  * @category api interface
  * @since 1.0.0
  */
-export interface nonEmptyArray<Value extends AnySchema> extends
+export interface nonEmptyArray<Value extends Schema.Any> extends
   Schema<
     ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>,
     ReadonlyArray.NonEmptyReadonlyArray<Schema.From<Value>>,
@@ -1020,7 +1017,7 @@ export interface nonEmptyArray<Value extends AnySchema> extends
   annotations(annotations?: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>>): nonEmptyArray<Value>
 }
 
-class $nonEmptyArray<Value extends AnySchema> extends _schema.Schema<
+class $nonEmptyArray<Value extends Schema.Any> extends _schema.Schema<
   ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>,
   ReadonlyArray.NonEmptyReadonlyArray<Schema.From<Value>>,
   Schema.Context<Value>
@@ -1044,13 +1041,31 @@ class $nonEmptyArray<Value extends AnySchema> extends _schema.Schema<
  * @category combinators
  * @since 1.0.0
  */
-export const nonEmptyArray = <Value extends AnySchema>(value: Value): nonEmptyArray<Value> => new $nonEmptyArray(value)
+export const nonEmptyArray = <Value extends Schema.Any>(value: Value): nonEmptyArray<Value> => new $nonEmptyArray(value)
 
 /**
- * @category PropertySignature
  * @since 1.0.0
  */
-export type Token = "?:" | ":"
+export declare module PropertySignature {
+  /**
+   * @since 1.0.0
+   */
+  export type Token = "?:" | ":"
+
+  /**
+   * @since 1.0.0
+   */
+  export type Any<Key extends PropertyKey = PropertyKey> =
+    | PropertySignature<Token, any, Key, Token, any, unknown>
+    | PropertySignature<Token, never, Key, Token, never, unknown>
+
+  /**
+   * @since 1.0.0
+   */
+  export type AST =
+    | PropertySignatureDeclaration
+    | PropertySignatureTransformation
+}
 
 /**
  * @category PropertySignature
@@ -1064,7 +1079,7 @@ export class PropertySignatureDeclaration implements AST.Annotated {
   constructor(
     readonly from: {
       readonly ast: AST.AST
-      readonly token: Token
+      readonly token: PropertySignature.Token
     },
     readonly annotations: AST.Annotations = {}
   ) {}
@@ -1082,26 +1097,18 @@ export class PropertySignatureTransformation implements AST.Annotated {
   constructor(
     readonly from: {
       readonly ast: AST.AST
-      readonly token: Token
+      readonly token: PropertySignature.Token
       readonly key?: PropertyKey | undefined
     },
     readonly to: {
       readonly ast: AST.AST
-      readonly token: Token
+      readonly token: PropertySignature.Token
     },
     readonly decode: AST.PropertySignatureTransformation["decode"],
     readonly encode: AST.PropertySignatureTransformation["encode"],
     readonly annotations: AST.Annotations = {}
   ) {}
 }
-
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
-export type PropertySignatureAST =
-  | PropertySignatureDeclaration
-  | PropertySignatureTransformation
 
 /**
  * @since 1.0.0
@@ -1120,10 +1127,10 @@ export type PropertySignatureTypeId = typeof PropertySignatureTypeId
  * @since 1.0.0
  */
 export interface PropertySignature<
-  ToToken extends Token,
+  ToToken extends PropertySignature.Token,
   To,
   Key extends PropertyKey,
-  FromToken extends Token,
+  FromToken extends PropertySignature.Token,
   From,
   R = never
 > extends Schema.Variance<To, From, R>, Pipeable {
@@ -1131,7 +1138,7 @@ export interface PropertySignature<
   readonly _FromToken: FromToken
   readonly _ToToken: ToToken
   readonly _Key: Key
-  readonly ast: PropertySignatureAST
+  readonly ast: PropertySignature.AST
 
   annotations(
     annotations?: PropertySignatureAnnotations<To>
@@ -1139,10 +1146,10 @@ export interface PropertySignature<
 }
 
 class $PropertySignature<
-  ToToken extends Token,
+  ToToken extends PropertySignature.Token,
   To,
   Key extends PropertyKey,
-  FromToken extends Token,
+  FromToken extends PropertySignature.Token,
   From,
   R = never
 > implements PropertySignature<ToToken, To, Key, FromToken, From, R> {
@@ -1153,7 +1160,7 @@ class $PropertySignature<
   readonly _ToToken!: ToToken
 
   constructor(
-    readonly ast: PropertySignatureAST
+    readonly ast: PropertySignature.AST
   ) {}
 
   pipe() {
@@ -1167,7 +1174,7 @@ class $PropertySignature<
       const ast = this.ast
       const d = Object.getOwnPropertyDescriptors(ast)
       d.annotations.value = { ...ast.annotations, ...annotations }
-      const out: PropertySignatureAST = Object.create(Object.getPrototypeOf(ast), d)
+      const out: PropertySignature.AST = Object.create(Object.getPrototypeOf(ast), d)
       return new $PropertySignature(out)
     }
     return this
@@ -1178,7 +1185,7 @@ class $PropertySignature<
  * @category PropertySignature
  * @since 1.0.0
  */
-export const propertySignatureDeclaration = <A, I, R, T extends Token = ":">(
+export const propertySignatureDeclaration = <A, I, R, T extends PropertySignature.Token = ":">(
   schema: Schema<A, I, R>,
   Token?: T
 ): PropertySignature<T, A, never, T, I, R> =>
@@ -1197,11 +1204,11 @@ export const propertySignatureTransformation = <
   FA,
   FI,
   FR,
-  FromToken extends Token,
+  FromToken extends PropertySignature.Token,
   TA,
   TI,
   TR,
-  toToken extends Token,
+  toToken extends PropertySignature.Token,
   const Key extends PropertyKey = never
 >(
   from: Schema<FA, FI, FR>,
@@ -1250,18 +1257,18 @@ export const optionalToRequired = <A, I, R1, A2, I2, R2>(
 export const propertySignatureKey: {
   <Key extends PropertyKey>(key: Key): <
     To,
-    ToToken extends Token,
+    ToToken extends PropertySignature.Token,
     From,
-    FromToken extends Token,
+    FromToken extends PropertySignature.Token,
     R
   >(
     self: PropertySignature<ToToken, To, PropertyKey, FromToken, From, R>
   ) => PropertySignature<ToToken, To, Key, FromToken, From, R>
   <
     To,
-    ToToken extends Token,
+    ToToken extends PropertySignature.Token,
     From,
-    FromToken extends Token,
+    FromToken extends PropertySignature.Token,
     R,
     Key extends PropertyKey
   >(
@@ -1270,9 +1277,9 @@ export const propertySignatureKey: {
   ): PropertySignature<ToToken, To, Key, FromToken, From, R>
 } = dual(2, <
   To,
-  ToToken extends Token,
+  ToToken extends PropertySignature.Token,
   From,
-  FromToken extends Token,
+  FromToken extends PropertySignature.Token,
   R,
   Key extends PropertyKey
 >(
@@ -1480,86 +1487,76 @@ export const optional: {
 /**
  * @since 1.0.0
  */
-export type FromTokenKeys<Fields extends StructFields> = {
-  [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<Token, any, PropertyKey, "?:", any, unknown>
-    | PropertySignature<Token, never, PropertyKey, "?:", never, unknown> ? K
-    : never
-}[keyof Fields]
+export declare module Struct {
+  /**
+   * @since 1.0.0
+   */
+  export type Fields = Record<
+    PropertyKey,
+    | Schema.Any
+    | $never
+    | PropertySignature.Any
+  >
 
-/**
- * @since 1.0.0
- */
-export type ToTokenKeys<Fields extends StructFields> = {
-  [K in keyof Fields]: Fields[K] extends
-    | PropertySignature<"?:", any, PropertyKey, Token, any, unknown>
-    | PropertySignature<"?:", never, PropertyKey, Token, never, unknown> ? K
-    : never
-}[keyof Fields]
+  type Key<F extends Fields, K extends keyof F> = [K] extends [never] ? never :
+    F[K] extends PropertySignature.Any<infer Key> ? [Key] extends [never] ? K : Key :
+    K
 
-/**
- * @since 1.0.0
- */
-export type AnyPropertySignature<Key extends PropertyKey = PropertyKey> =
-  | PropertySignature<Token, any, Key, Token, any, unknown>
-  | PropertySignature<Token, never, Key, Token, never, unknown>
+  type FromTokenKeys<Fields extends Struct.Fields> = {
+    [K in keyof Fields]: Fields[K] extends
+      | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, unknown>
+      | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", never, unknown> ? K
+      : never
+  }[keyof Fields]
 
-/**
- * @since 1.0.0
- */
-export type StructFields = Record<
-  PropertyKey,
-  | AnySchema
-  | $never
-  | AnyPropertySignature
->
+  type ToTokenKeys<Fields extends Struct.Fields> = {
+    [K in keyof Fields]: Fields[K] extends
+      | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, any, unknown>
+      | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, never, unknown> ? K
+      : never
+  }[keyof Fields]
 
-/**
- * @since 1.0.0
- */
-export type StructFieldKey<Fields extends StructFields, K extends keyof Fields> = [K] extends [never] ? never :
-  Fields[K] extends AnyPropertySignature<infer Key> ? [Key] extends [never] ? K : Key :
-  K
+  /**
+   * @since 1.0.0
+   */
+  export type From<F extends Fields, OptionalKeys extends PropertyKey = FromTokenKeys<F>> =
+    & { readonly [K in Exclude<keyof F, OptionalKeys> as Key<F, K>]: Schema.From<F[K]> }
+    & { readonly [K in OptionalKeys as Key<F, K>]?: Schema.From<F[K]> }
 
-/**
- * @since 1.0.0
- */
-export type FromStruct<Fields extends StructFields, OptionalKeys extends PropertyKey = FromTokenKeys<Fields>> =
-  & { readonly [K in Exclude<keyof Fields, OptionalKeys> as StructFieldKey<Fields, K>]: Schema.From<Fields[K]> }
-  & { readonly [K in OptionalKeys as StructFieldKey<Fields, K>]?: Schema.From<Fields[K]> }
+  /**
+   * @since 1.0.0
+   */
+  export type To<F extends Fields, OptionalKeys extends PropertyKey = ToTokenKeys<F>> =
+    & { readonly [K in Exclude<keyof F, OptionalKeys>]: Schema.To<F[K]> }
+    & { readonly [K in OptionalKeys]?: Schema.To<F[K]> }
 
-/**
- * @since 1.0.0
- */
-export type ToStruct<Fields extends StructFields, OptionalKeys extends PropertyKey = ToTokenKeys<Fields>> =
-  & { readonly [K in Exclude<keyof Fields, OptionalKeys>]: Schema.To<Fields[K]> }
-  & { readonly [K in OptionalKeys]?: Schema.To<Fields[K]> }
-
-/**
- * @since 1.0.0
- */
-export type ContextStruct<Fields extends StructFields> = Schema.Context<Fields[keyof Fields]>
+  /**
+   * @since 1.0.0
+   */
+  export type Context<F extends Fields> = Schema.Context<F[keyof F]>
+}
 
 /**
  * @category api interface
  * @since 1.0.0
  */
-export interface struct<Fields extends StructFields>
-  extends Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, ContextStruct<Fields>>
+export interface struct<Fields extends Struct.Fields>
+  extends Schema<Simplify<Struct.To<Fields>>, Simplify<Struct.From<Fields>>, Struct.Context<Fields>>
 {
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
-  annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields>
+  annotations(annotations?: Annotations<Simplify<Struct.To<Fields>>>): struct<Fields>
 }
 
-const isPropertySignature = (u: unknown): u is AnyPropertySignature => Predicate.hasProperty(u, PropertySignatureTypeId)
+const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
+  Predicate.hasProperty(u, PropertySignatureTypeId)
 
-const isTokenOptional = (token: Token): boolean => token === "?:"
+const isTokenOptional = (token: PropertySignature.Token): boolean => token === "?:"
 
-class $struct<Fields extends StructFields>
-  extends _schema.Schema<Simplify<ToStruct<Fields>>, Simplify<FromStruct<Fields>>, ContextStruct<Fields>>
+class $struct<Fields extends Struct.Fields>
+  extends _schema.Schema<Simplify<Struct.To<Fields>>, Simplify<Struct.From<Fields>>, Struct.Context<Fields>>
   implements struct<Fields>
 {
-  constructor(readonly fields: Fields, annotations?: Annotations<Simplify<ToStruct<Fields>>>) {
+  constructor(readonly fields: Fields, annotations?: Annotations<Simplify<Struct.To<Fields>>>) {
     const ownKeys = _util.ownKeys(fields)
     const pss: Array<AST.PropertySignature> = []
     const pssFrom: Array<AST.PropertySignature> = []
@@ -1569,7 +1566,7 @@ class $struct<Fields extends StructFields>
       const key = ownKeys[i]
       const field = fields[key]
       if (isPropertySignature(field)) {
-        const ast: PropertySignatureAST = field.ast
+        const ast: PropertySignature.AST = field.ast
         const annotations = _schema.toASTAnnotations(ast.annotations)
         switch (ast._tag) {
           case "PropertySignatureDeclaration": {
@@ -1608,7 +1605,7 @@ class $struct<Fields extends StructFields>
       super(AST.TypeLiteral.make(pss, [], _schema.toASTAnnotations(annotations)))
     }
   }
-  annotations(annotations?: Annotations<Simplify<ToStruct<Fields>>>): struct<Fields> {
+  annotations(annotations?: Annotations<Simplify<Struct.To<Fields>>>): struct<Fields> {
     return annotations ? new $struct(this.fields, { ...this.ast.annotations, ...annotations }) : this
   }
 }
@@ -1617,7 +1614,7 @@ class $struct<Fields extends StructFields>
  * @category combinators
  * @since 1.0.0
  */
-export const struct = <Fields extends StructFields>(fields: Fields): struct<Fields> => new $struct(fields)
+export const struct = <Fields extends Struct.Fields>(fields: Fields): struct<Fields> => new $struct(fields)
 
 /**
  * @category struct transformations
@@ -5128,7 +5125,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inherited, Proto>
+export interface ClassSchema<Self, Fields extends Struct.Fields, A, I, R, C, Inherited, Proto>
   extends Schema<Self, I, R>
 {
   new(
@@ -5138,23 +5135,23 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
 
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
-  readonly extend: <Extended = never>() => <newFields extends StructFields>(
+  readonly extend: <Extended = never>() => <newFields extends Struct.Fields>(
     fields: newFields,
     annotations?: Annotations<Extended>
   ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
     : ClassSchema<
       Extended,
       Fields & newFields,
-      Simplify<A & ToStruct<newFields>>,
-      Simplify<I & FromStruct<newFields>>,
-      R | ContextStruct<newFields>,
-      Simplify<C & ToStruct<newFields>>,
+      Simplify<A & Struct.To<newFields>>,
+      Simplify<I & Struct.From<newFields>>,
+      R | Struct.Context<newFields>,
+      Simplify<C & Struct.To<newFields>>,
       Self,
       Proto
     >
 
   readonly transformOrFail: <Transformed = never>() => <
-    newFields extends StructFields,
+    newFields extends Struct.Fields,
     R2,
     R3
   >(
@@ -5163,9 +5160,9 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       input: A,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<Simplify<A & ToStruct<newFields>>, ParseResult.ParseIssue, R2>,
+    ) => Effect.Effect<Simplify<A & Struct.To<newFields>>, ParseResult.ParseIssue, R2>,
     encode: (
-      input: Simplify<A & ToStruct<newFields>>,
+      input: Simplify<A & Struct.To<newFields>>,
       options: ParseOptions,
       ast: AST.Transform
     ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
@@ -5173,16 +5170,16 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
     : ClassSchema<
       Transformed,
       Fields & newFields,
-      Simplify<A & ToStruct<newFields>>,
+      Simplify<A & Struct.To<newFields>>,
       I,
-      R | ContextStruct<newFields> | R2 | R3,
-      Simplify<C & ToStruct<newFields>>,
+      R | Struct.Context<newFields> | R2 | R3,
+      Simplify<C & Struct.To<newFields>>,
       Self,
       Proto
     >
 
   readonly transformOrFailFrom: <Transformed = never>() => <
-    newFields extends StructFields,
+    newFields extends Struct.Fields,
     R2,
     R3
   >(
@@ -5191,9 +5188,9 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
       input: I,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<Simplify<I & FromStruct<newFields>>, ParseResult.ParseIssue, R2>,
+    ) => Effect.Effect<Simplify<I & Struct.From<newFields>>, ParseResult.ParseIssue, R2>,
     encode: (
-      input: Simplify<I & FromStruct<newFields>>,
+      input: Simplify<I & Struct.From<newFields>>,
       options: ParseOptions,
       ast: AST.Transform
     ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
@@ -5201,10 +5198,10 @@ export interface ClassSchema<Self, Fields extends StructFields, A, I, R, C, Inhe
     : ClassSchema<
       Transformed,
       Fields & newFields,
-      Simplify<A & ToStruct<newFields>>,
+      Simplify<A & Struct.To<newFields>>,
       I,
-      R | ContextStruct<newFields> | R2 | R3,
-      Simplify<C & ToStruct<newFields>>,
+      R | Struct.Context<newFields> | R2 | R3,
+      Simplify<C & Struct.To<newFields>>,
       Self,
       Proto
     >
@@ -5217,17 +5214,17 @@ const TAG = "_tag"
  * @since 1.0.0
  */
 export const Class = <Self = never>() =>
-<Fields extends StructFields>(
+<Fields extends Struct.Fields>(
   fields: Fields,
   annotations?: Annotations<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : ClassSchema<
     Self,
     Fields,
-    Simplify<ToStruct<Fields>>,
-    Simplify<FromStruct<Fields>>,
-    ContextStruct<Fields>,
-    Simplify<ToStruct<Fields>>,
+    Simplify<Struct.To<Fields>>,
+    Simplify<Struct.From<Fields>>,
+    Struct.Context<Fields>,
+    Simplify<Struct.To<Fields>>,
     {},
     {}
   > => makeClass({ fields, Base: Data.Class, annotations })
@@ -5237,7 +5234,7 @@ export const Class = <Self = never>() =>
  * @since 1.0.0
  */
 export const TaggedClass = <Self = never>() =>
-<Tag extends string, Fields extends StructFields>(
+<Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fields: Fields,
   annotations?: Annotations<Self>
@@ -5245,16 +5242,16 @@ export const TaggedClass = <Self = never>() =>
   : ClassSchema<
     Self,
     { readonly [TAG]: literal<[Tag]> } & Fields,
-    Simplify<{ readonly [TAG]: Tag } & ToStruct<Fields>>,
-    Simplify<{ readonly [TAG]: Tag } & FromStruct<Fields>>,
-    ContextStruct<Fields>,
-    Simplify<ToStruct<Fields>>,
+    Simplify<{ readonly [TAG]: Tag } & Struct.To<Fields>>,
+    Simplify<{ readonly [TAG]: Tag } & Struct.From<Fields>>,
+    Struct.Context<Fields>,
+    Simplify<Struct.To<Fields>>,
     {},
     {}
   > =>
 {
   return makeClass({
-    fields: extendStructFields({ [TAG]: literal(tag) }, fields),
+    fields: extendFields({ [TAG]: literal(tag) }, fields),
     Base: Data.Class,
     tag: { [TAG]: tag },
     annotations
@@ -5266,7 +5263,7 @@ export const TaggedClass = <Self = never>() =>
  * @since 1.0.0
  */
 export const TaggedError = <Self = never>() =>
-<Tag extends string, Fields extends StructFields>(
+<Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fields: Fields,
   annotations?: Annotations<Self>
@@ -5274,16 +5271,16 @@ export const TaggedError = <Self = never>() =>
   : ClassSchema<
     Self,
     { readonly [TAG]: literal<[Tag]> } & Fields,
-    Simplify<{ readonly [TAG]: Tag } & ToStruct<Fields>>,
-    Simplify<{ readonly [TAG]: Tag } & FromStruct<Fields>>,
-    ContextStruct<Fields>,
-    Simplify<ToStruct<Fields>>,
+    Simplify<{ readonly [TAG]: Tag } & Struct.To<Fields>>,
+    Simplify<{ readonly [TAG]: Tag } & Struct.From<Fields>>,
+    Struct.Context<Fields>,
+    Simplify<Struct.To<Fields>>,
     {},
     Cause.YieldableError
   > =>
 {
   return makeClass({
-    fields: extendStructFields({ [TAG]: literal(tag) }, fields),
+    fields: extendFields({ [TAG]: literal(tag) }, fields),
     Base: Data.Error,
     tag: { [TAG]: tag },
     annotations
@@ -5320,7 +5317,7 @@ export declare namespace TaggedRequest {
  */
 export const TaggedRequest =
   <Self = never>() =>
-  <Tag extends string, Fields extends StructFields, EA, EI, ER, AA, AI, AR>(
+  <Tag extends string, Fields extends Struct.Fields, EA, EI, ER, AA, AI, AR>(
     tag: Tag,
     Failure: Schema<EA, EI, ER>,
     Success: Schema<AA, AI, AR>,
@@ -5330,14 +5327,14 @@ export const TaggedRequest =
     : ClassSchema<
       Self,
       { readonly [TAG]: literal<[Tag]> } & Fields,
-      Simplify<{ readonly [TAG]: Tag } & ToStruct<Fields>>,
-      Simplify<{ readonly [TAG]: Tag } & FromStruct<Fields>>,
-      ContextStruct<Fields>,
-      Simplify<ToStruct<Fields>>,
+      Simplify<{ readonly [TAG]: Tag } & Struct.To<Fields>>,
+      Simplify<{ readonly [TAG]: Tag } & Struct.From<Fields>>,
+      Struct.Context<Fields>,
+      Simplify<Struct.To<Fields>>,
       TaggedRequest<
         Tag,
-        ContextStruct<Fields>,
-        { readonly [TAG]: Tag } & FromStruct<Fields>,
+        Struct.Context<Fields>,
+        { readonly [TAG]: Tag } & Struct.From<Fields>,
         Self,
         ER | AR,
         EI,
@@ -5357,15 +5354,15 @@ export const TaggedRequest =
       }
     }
     return makeClass({
-      fields: extendStructFields({ [TAG]: literal(tag) }, fields),
+      fields: extendFields({ [TAG]: literal(tag) }, fields),
       Base: SerializableRequest,
       tag: { [TAG]: tag },
       annotations
     })
   }
 
-const extendStructFields = (a: StructFields, b: StructFields): StructFields => {
-  const out: StructFields = { ...a }
+const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
+  const out: Struct.Fields = { ...a }
   for (const name of _util.ownKeys(b)) {
     if (name in a) {
       throw new Error(AST.getDuplicatePropertySignatureErrorMessage(name))
@@ -5376,9 +5373,9 @@ const extendStructFields = (a: StructFields, b: StructFields): StructFields => {
 }
 
 const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
-  fields: StructFields
+  fields: Struct.Fields
   Base: new(...args: ReadonlyArray<any>) => any
-  fromSchema?: AnySchema | undefined
+  fromSchema?: Schema.Any | undefined
   tag?: { [TAG]: AST.LiteralValue } | undefined
   annotations?: Annotations<any> | undefined
 }): any => {
@@ -5421,7 +5418,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const equivalence = _equivalence.make(toSchema)
-      const declaration: AnySchema = declare(
+      const declaration: Schema.Any = declare(
         [],
         () => (input, _, ast) =>
           input instanceof this ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input)),
@@ -5455,8 +5452,8 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
     static struct = schema
 
     static extend<Extended>() {
-      return (newFields: StructFields, annotations?: Annotations<Extended>) => {
-        const extendedFields = extendStructFields(fields, newFields)
+      return (newFields: Struct.Fields, annotations?: Annotations<Extended>) => {
+        const extendedFields = extendFields(fields, newFields)
         return makeClass({
           fields: extendedFields,
           Base: this,
@@ -5467,8 +5464,8 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
     }
 
     static transformOrFail<Transformed>() {
-      return (newFields: StructFields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
-        const transformedFields: StructFields = extendStructFields(fields, newFields)
+      return (newFields: Struct.Fields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
+        const transformedFields: Struct.Fields = extendFields(fields, newFields)
         return makeClass({
           fromSchema: transformOrFail(
             schema,
@@ -5485,8 +5482,8 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
     }
 
     static transformOrFailFrom<Transformed>() {
-      return (newFields: StructFields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
-        const transformedFields: StructFields = extendStructFields(fields, newFields)
+      return (newFields: Struct.Fields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
+        const transformedFields: Struct.Fields = extendFields(fields, newFields)
         return makeClass({
           fromSchema: transformOrFail(
             from(schema),
