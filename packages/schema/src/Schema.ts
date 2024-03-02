@@ -4744,13 +4744,26 @@ const readonlyMapParse = <R, K, V>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface readonlyMapFromSelf<K extends Schema.Any, V extends Schema.Any> extends
+  Annotable<
+    readonlyMapFromSelf<K, V>,
+    ReadonlyMap<Schema.To<K>, Schema.To<V>>,
+    ReadonlyMap<Schema.From<K>, Schema.From<V>>,
+    Schema.Context<K> | Schema.Context<V>
+  >
+{}
+
+/**
  * @category ReadonlyMap transformations
  * @since 1.0.0
  */
-export const readonlyMapFromSelf = <K, IK, RK, V, IV, RV>({ key, value }: {
-  readonly key: Schema<K, IK, RK>
-  readonly value: Schema<V, IV, RV>
-}): Schema<ReadonlyMap<K, V>, ReadonlyMap<IK, IV>, RK | RV> => {
+export const readonlyMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
+}): readonlyMapFromSelf<K, V> => {
   return declare(
     [key, value],
     (key, value) => readonlyMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
@@ -4765,19 +4778,35 @@ export const readonlyMapFromSelf = <K, IK, RK, V, IV, RV>({ key, value }: {
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface readonlyMap<K extends Schema.Any, V extends Schema.Any> extends
+  Annotable<
+    readonlyMap<K, V>,
+    ReadonlyMap<Schema.To<K>, Schema.To<V>>,
+    ReadonlyArray<readonly [Schema.From<K>, Schema.From<V>]>,
+    Schema.Context<K> | Schema.Context<V>
+  >
+{}
+
+/**
  * @category ReadonlyMap transformations
  * @since 1.0.0
  */
-export const readonlyMap = <K, IK, RK, V, IV, RV>({ key, value }: {
-  readonly key: Schema<K, IK, RK>
-  readonly value: Schema<V, IV, RV>
-}): Schema<ReadonlyMap<K, V>, ReadonlyArray<readonly [IK, IV]>, RK | RV> =>
-  transform(
-    array(tuple(key, value)),
-    readonlyMapFromSelf({ key: to(key), value: to(value) }),
+export const readonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
+}): readonlyMap<K, V> => {
+  const _key = asSchema(key)
+  const _value = asSchema(value)
+  return transform(
+    array(tuple(_key, _value)),
+    readonlyMapFromSelf({ key: to(_key), value: to(_value) }),
     (as) => new Map(as),
     (map) => Array.from(map.entries())
   )
+}
 
 const readonlySetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => new Set(as))
@@ -4801,18 +4830,31 @@ const readonlySetParse = <R, A>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface readonlySetFromSelf<Value extends Schema.Any> extends
+  Annotable<
+    readonlySetFromSelf<Value>,
+    ReadonlySet<Schema.To<Value>>,
+    ReadonlySet<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category ReadonlySet transformations
  * @since 1.0.0
  */
-export const readonlySetFromSelf = <A, I, R>(
-  item: Schema<A, I, R>
-): Schema<ReadonlySet<A>, ReadonlySet<I>, R> => {
+export const readonlySetFromSelf = <Value extends Schema.Any>(
+  value: Value
+): readonlySetFromSelf<Value> => {
   return declare(
-    [item],
+    [value],
     (item) => readonlySetParse(ParseResult.decodeUnknown(array(item))),
     (item) => readonlySetParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `ReadonlySet<${format(item)}>`,
+      description: `ReadonlySet<${format(value)}>`,
       pretty: readonlySetPretty,
       arbitrary: readonlySetArbitrary,
       equivalence: readonlySetEquivalence
@@ -4821,16 +4863,31 @@ export const readonlySetFromSelf = <A, I, R>(
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface readonlySet<Value extends Schema.Any> extends
+  Annotable<
+    readonlySet<Value>,
+    ReadonlySet<Schema.To<Value>>,
+    ReadonlyArray<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category ReadonlySet transformations
  * @since 1.0.0
  */
-export const readonlySet = <A, I, R>(item: Schema<A, I, R>): Schema<ReadonlySet<A>, ReadonlyArray<I>, R> =>
-  transform(
-    array(item),
-    readonlySetFromSelf(to(item)),
+export const readonlySet = <Value extends Schema.Any>(value: Value): readonlySet<Value> => {
+  const _value = asSchema(value)
+  return transform(
+    array(_value),
+    readonlySetFromSelf(to(_value)),
     (as) => new Set(as),
     (set) => Array.from(set)
   )
+}
 
 const bigDecimalPretty = (): Pretty.Pretty<BigDecimal.BigDecimal> => (val) =>
   `BigDecimal(${BigDecimal.format(BigDecimal.normalize(val))})`
@@ -5196,16 +5253,29 @@ const chunkParse = <R, A>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface chunkFromSelf<Value extends Schema.Any> extends
+  Annotable<
+    chunkFromSelf<Value>,
+    Chunk.Chunk<Schema.To<Value>>,
+    Chunk.Chunk<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category Chunk transformations
  * @since 1.0.0
  */
-export const chunkFromSelf = <A, I, R>(item: Schema<A, I, R>): Schema<Chunk.Chunk<A>, Chunk.Chunk<I>, R> => {
+export const chunkFromSelf = <Value extends Schema.Any>(value: Value): chunkFromSelf<Value> => {
   return declare(
-    [item],
+    [value],
     (item) => chunkParse(ParseResult.decodeUnknown(array(item))),
     (item) => chunkParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `Chunk<${format(item)}>`,
+      description: `Chunk<${format(value)}>`,
       pretty: chunkPretty,
       arbitrary: chunkArbitrary,
       equivalence: Chunk.getEquivalence
@@ -5214,16 +5284,31 @@ export const chunkFromSelf = <A, I, R>(item: Schema<A, I, R>): Schema<Chunk.Chun
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface chunk<Value extends Schema.Any> extends
+  Annotable<
+    chunk<Value>,
+    Chunk.Chunk<Schema.To<Value>>,
+    ReadonlyArray<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category Chunk transformations
  * @since 1.0.0
  */
-export const chunk = <A, I, R>(item: Schema<A, I, R>): Schema<Chunk.Chunk<A>, ReadonlyArray<I>, R> =>
-  transform(
-    array(item),
-    chunkFromSelf(to(item)),
+export const chunk = <Value extends Schema.Any>(value: Value): chunk<Value> => {
+  const _value = asSchema(value)
+  return transform(
+    array(_value),
+    chunkFromSelf(to(_value)),
     (as) => as.length === 0 ? Chunk.empty() : Chunk.fromIterable(as),
     Chunk.toReadonlyArray
   )
+}
 
 const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a: A): A =>
   Array.isArray(a) ? Data.array(a) : Data.struct(a)
@@ -6144,18 +6229,31 @@ const hashSetParse = <R, A>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface hashSetFromSelf<Value extends Schema.Any> extends
+  Annotable<
+    hashSetFromSelf<Value>,
+    HashSet.HashSet<Schema.To<Value>>,
+    HashSet.HashSet<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category HashSet transformations
  * @since 1.0.0
  */
-export const hashSetFromSelf = <A, I, R>(
-  item: Schema<A, I, R>
-): Schema<HashSet.HashSet<A>, HashSet.HashSet<I>, R> => {
+export const hashSetFromSelf = <Value extends Schema.Any>(
+  value: Value
+): hashSetFromSelf<Value> => {
   return declare(
-    [item],
+    [value],
     (item) => hashSetParse(ParseResult.decodeUnknown(array(item))),
     (item) => hashSetParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `HashSet<${format(item)}>`,
+      description: `HashSet<${format(value)}>`,
       pretty: hashSetPretty,
       arbitrary: hashSetArbitrary,
       equivalence: hashSetEquivalence
@@ -6164,16 +6262,31 @@ export const hashSetFromSelf = <A, I, R>(
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface hashSet<Value extends Schema.Any> extends
+  Annotable<
+    hashSet<Value>,
+    HashSet.HashSet<Schema.To<Value>>,
+    ReadonlyArray<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category HashSet transformations
  * @since 1.0.0
  */
-export const hashSet = <A, I, R>(item: Schema<A, I, R>): Schema<HashSet.HashSet<A>, ReadonlyArray<I>, R> =>
-  transform(
-    array(item),
-    hashSetFromSelf(to(item)),
+export const hashSet = <Value extends Schema.Any>(value: Value): hashSet<Value> => {
+  const _value = asSchema(value)
+  return transform(
+    array(_value),
+    hashSetFromSelf(to(_value)),
     (as) => HashSet.fromIterable(as),
     (set) => Array.from(set)
   )
+}
 
 const hashMapArbitrary = <K, V>(
   key: Arbitrary<K>,
@@ -6211,13 +6324,26 @@ const hashMapParse = <R, K, V>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface hashMapFromSelf<K extends Schema.Any, V extends Schema.Any> extends
+  Annotable<
+    hashMapFromSelf<K, V>,
+    HashMap.HashMap<Schema.To<K>, Schema.To<V>>,
+    HashMap.HashMap<Schema.From<K>, Schema.From<V>>,
+    Schema.Context<K> | Schema.Context<V>
+  >
+{}
+
+/**
  * @category HashMap transformations
  * @since 1.0.0
  */
-export const hashMapFromSelf = <K, IK, RK, V, IV, RV>({ key, value }: {
-  readonly key: Schema<K, IK, RK>
-  readonly value: Schema<V, IV, RV>
-}): Schema<HashMap.HashMap<K, V>, HashMap.HashMap<IK, IV>, RK | RV> => {
+export const hashMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
+}): hashMapFromSelf<K, V> => {
   return declare(
     [key, value],
     (key, value) => hashMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
@@ -6232,19 +6358,35 @@ export const hashMapFromSelf = <K, IK, RK, V, IV, RV>({ key, value }: {
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface hashMap<K extends Schema.Any, V extends Schema.Any> extends
+  Annotable<
+    hashMap<K, V>,
+    HashMap.HashMap<Schema.To<K>, Schema.To<V>>,
+    ReadonlyArray<readonly [Schema.From<K>, Schema.From<V>]>,
+    Schema.Context<K> | Schema.Context<V>
+  >
+{}
+
+/**
  * @category HashMap transformations
  * @since 1.0.0
  */
-export const hashMap = <K, IK, RK, V, IV, RV>({ key, value }: {
-  readonly key: Schema<K, IK, RK>
-  readonly value: Schema<V, IV, RV>
-}): Schema<HashMap.HashMap<K, V>, ReadonlyArray<readonly [IK, IV]>, RK | RV> =>
-  transform(
-    array(tuple(key, value)),
-    hashMapFromSelf({ key: to(key), value: to(value) }),
+export const hashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
+}): hashMap<K, V> => {
+  const _key = asSchema(key)
+  const _value = asSchema(value)
+  return transform(
+    array(tuple(_key, _value)),
+    hashMapFromSelf({ key: to(_key), value: to(_value) }),
     (as) => HashMap.fromIterable(as),
     (map) => Array.from(map)
   )
+}
 
 const listArbitrary = <A>(item: Arbitrary<A>): Arbitrary<List.List<A>> => (fc) =>
   fc.array(item(fc)).map((as) => List.fromIterable(as))
@@ -6271,18 +6413,31 @@ const listParse = <R, A>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface listFromSelf<Value extends Schema.Any> extends
+  Annotable<
+    listFromSelf<Value>,
+    List.List<Schema.To<Value>>,
+    List.List<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category List transformations
  * @since 1.0.0
  */
-export const listFromSelf = <A, I, R>(
-  item: Schema<A, I, R>
-): Schema<List.List<A>, List.List<I>, R> => {
+export const listFromSelf = <Value extends Schema.Any>(
+  value: Value
+): listFromSelf<Value> => {
   return declare(
-    [item],
+    [value],
     (item) => listParse(ParseResult.decodeUnknown(array(item))),
     (item) => listParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `List<${format(item)}>`,
+      description: `List<${format(value)}>`,
       pretty: listPretty,
       arbitrary: listArbitrary,
       equivalence: listEquivalence
@@ -6291,16 +6446,31 @@ export const listFromSelf = <A, I, R>(
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface list<Value extends Schema.Any> extends
+  Annotable<
+    list<Value>,
+    List.List<Schema.To<Value>>,
+    ReadonlyArray<Schema.From<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
  * @category List transformations
  * @since 1.0.0
  */
-export const list = <A, I, R>(item: Schema<A, I, R>): Schema<List.List<A>, ReadonlyArray<I>, R> =>
-  transform(
-    array(item),
-    listFromSelf(to(item)),
+export const list = <Value extends Schema.Any>(value: Value): list<Value> => {
+  const _value = asSchema(value)
+  return transform(
+    array(_value),
+    listFromSelf(to(_value)),
     (as) => List.fromIterable(as),
     (set) => Array.from(set)
   )
+}
 
 const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
   suspend<A, A, never>(() => any).annotations({

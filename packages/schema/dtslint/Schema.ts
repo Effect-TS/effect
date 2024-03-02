@@ -1644,3 +1644,123 @@ S.asSchema(S.eitherFromUnion({ right: S.NumberFromString, left: S.boolean }))
 
 // $ExpectType eitherFromUnion<NumberFromString, $boolean>
 S.eitherFromUnion({ right: S.NumberFromString, left: S.boolean })
+
+// ---------------------------------------------
+// readonlyMapFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<ReadonlyMap<number, string>, ReadonlyMap<string, string>, never>
+S.asSchema(S.readonlyMapFromSelf({ key: S.NumberFromString, value: S.string }))
+
+// $ExpectType readonlyMapFromSelf<NumberFromString, $string>
+S.readonlyMapFromSelf({ key: S.NumberFromString, value: S.string })
+
+// ---------------------------------------------
+// readonlyMap
+// ---------------------------------------------
+
+// $ExpectType Schema<ReadonlyMap<number, string>, readonly (readonly [string, string])[], never>
+S.asSchema(S.readonlyMap({ key: S.NumberFromString, value: S.string }))
+
+// $ExpectType readonlyMap<NumberFromString, $string>
+S.readonlyMap({ key: S.NumberFromString, value: S.string })
+
+// ---------------------------------------------
+// hashMapFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<HashMap<number, string>, HashMap<string, string>, never>
+S.asSchema(S.hashMapFromSelf({ key: S.NumberFromString, value: S.string }))
+
+// $ExpectType hashMapFromSelf<NumberFromString, $string>
+S.hashMapFromSelf({ key: S.NumberFromString, value: S.string })
+
+// ---------------------------------------------
+// hashMap
+// ---------------------------------------------
+
+// $ExpectType Schema<HashMap<number, string>, readonly (readonly [string, string])[], never>
+S.asSchema(S.hashMap({ key: S.NumberFromString, value: S.string }))
+
+// $ExpectType hashMap<NumberFromString, $string>
+S.hashMap({ key: S.NumberFromString, value: S.string })
+
+// ---------------------------------------------
+// readonlySetFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<ReadonlySet<number>, ReadonlySet<string>, never>
+S.asSchema(S.readonlySetFromSelf(S.NumberFromString))
+
+// $ExpectType readonlySetFromSelf<NumberFromString>
+S.readonlySetFromSelf(S.NumberFromString)
+
+// ---------------------------------------------
+// readonlySet
+// ---------------------------------------------
+
+// $ExpectType Schema<ReadonlySet<number>, readonly string[], never>
+S.asSchema(S.readonlySet(S.NumberFromString))
+
+// $ExpectType readonlySet<NumberFromString>
+S.readonlySet(S.NumberFromString)
+
+// ---------------------------------------------
+// hashSetFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<HashSet<number>, HashSet<string>, never>
+S.asSchema(S.hashSetFromSelf(S.NumberFromString))
+
+// $ExpectType hashSetFromSelf<NumberFromString>
+S.hashSetFromSelf(S.NumberFromString)
+
+// ---------------------------------------------
+// hashSet
+// ---------------------------------------------
+
+// $ExpectType Schema<HashSet<number>, readonly string[], never>
+S.asSchema(S.hashSet(S.NumberFromString))
+
+// $ExpectType hashSet<NumberFromString>
+S.hashSet(S.NumberFromString)
+
+// ---------------------------------------------
+// chunkFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<Chunk<number>, Chunk<string>, never>
+S.asSchema(S.chunkFromSelf(S.NumberFromString))
+
+// $ExpectType chunkFromSelf<NumberFromString>
+S.chunkFromSelf(S.NumberFromString)
+
+// ---------------------------------------------
+// chunk
+// ---------------------------------------------
+
+// $ExpectType Schema<Chunk<number>, readonly string[], never>
+S.asSchema(S.chunk(S.NumberFromString))
+
+// $ExpectType chunk<NumberFromString>
+S.chunk(S.NumberFromString)
+
+// ---------------------------------------------
+// listFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<List<number>, List<string>, never>
+S.asSchema(S.listFromSelf(S.NumberFromString))
+
+// $ExpectType listFromSelf<NumberFromString>
+S.listFromSelf(S.NumberFromString)
+
+// ---------------------------------------------
+// list
+// ---------------------------------------------
+
+// $ExpectType Schema<List<number>, readonly string[], never>
+S.asSchema(S.list(S.NumberFromString))
+
+// $ExpectType list<NumberFromString>
+S.list(S.NumberFromString)
