@@ -84,7 +84,7 @@ export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> ex
 /**
  * @since 1.0.0
  */
-export const asSchema = <S extends Schema.Any | $never>(
+export const asSchema = <S extends Schema.All>(
   schema: S
 ): Schema<Schema.To<S>, Schema.From<S>, Schema.Context<S>> => schema as any
 
@@ -142,6 +142,11 @@ export declare module Schema {
    * @since 1.0.0
    */
   export type Any<R = unknown> = Schema<any, any, R>
+
+  /**
+   * @since 1.0.0
+   */
+  export type All = Any | $never
 }
 
 /**
@@ -1522,8 +1527,7 @@ export declare module Struct {
    */
   export type Fields = Record<
     PropertyKey,
-    | Schema.Any
-    | $never
+    | Schema.All
     | PropertySignature.Any
   >
 
@@ -1890,7 +1894,7 @@ export const mutable = <A, I, R>(
  * @category api interface
  * @since 1.0.0
  */
-export interface record<K extends Schema.Any | $never, V extends Schema.Any> extends
+export interface record<K extends Schema.All, V extends Schema.Any> extends
   Annotable<
     record<K, V>,
     { readonly [P in Schema.To<K>]: Schema.To<V> },
@@ -1902,7 +1906,7 @@ export interface record<K extends Schema.Any | $never, V extends Schema.Any> ext
   readonly value: V
 }
 
-class $record<K extends Schema.Any | $never, V extends Schema.Any> extends _schema.Schema<
+class $record<K extends Schema.All, V extends Schema.Any> extends _schema.Schema<
   { readonly [P in Schema.To<K>]: Schema.To<V> },
   { readonly [P in Schema.From<K>]: Schema.From<V> },
   Schema.Context<K> | Schema.Context<V>
@@ -6265,7 +6269,7 @@ export const exitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = ne
  * @category api interface
  * @since 1.0.0
  */
-export interface exit<A extends Schema.Any | $never, E extends Schema.Any | $never, DR> extends
+export interface exit<A extends Schema.All, E extends Schema.All, DR> extends
   Annotable<
     exit<A, E, DR>,
     Exit.Exit<Schema.To<A>, Schema.To<E>>,
@@ -6278,7 +6282,7 @@ export interface exit<A extends Schema.Any | $never, E extends Schema.Any | $nev
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exit = <A extends Schema.Any | $never, E extends Schema.Any | $never, DR = never>(
+export const exit = <A extends Schema.All, E extends Schema.All, DR = never>(
   { defect = causeDefectPretty, failure, success }: {
     readonly failure: E
     readonly success: A
