@@ -2,12 +2,12 @@
 "effect": patch
 ---
 
-Add Effect.AccessTag to simplify access to service.
+Add Effect.Tag to simplify access to service.
 
 This change allows to define tags in the following mannar:
 
 ```ts
-class DemoTag extends Effect.AccessTag("DemoTag")<
+class DemoTag extends Effect.Tag("DemoTag")<
   DemoTag,
   {
     readonly getNumbers: () => Array<number>;
