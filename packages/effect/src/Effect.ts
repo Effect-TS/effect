@@ -5206,14 +5206,16 @@ export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
   & Context.TagClass<Self, Id, Shape>
   & {
     $: {
-      [k in keyof Shape]: Shape[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+      [k in keyof Shape as Shape[k] extends (...args: Array<any>) => any ? never : k]: Shape[k] extends
+        Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
         : Effect<Shape[k], never, Self>
     }
   }
   & {
     [k in keyof Shape as Shape[k] extends (...args: Array<any>) => any ? k : never]: Shape[k] extends
-      (...args: infer Args) => Effect<infer A, infer E, infer R> ? (...args: Args) => Effect<A, E, Self | R>
-      : Shape[k] extends (...args: infer Args) => infer A ? (...args: Args) => Effect<A, never, Self>
+      (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+      (...args: Readonly<Args>) => Effect<A, E, Self | R>
+      : Shape[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
       : never
   } = (id) => () => {
     const limit = Error.stackTraceLimit
