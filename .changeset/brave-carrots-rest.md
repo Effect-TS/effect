@@ -20,7 +20,7 @@ And use them like:
 
 ```ts
 DemoTag.getNumbers();
-DemoTag.$.strings;
+DemoTag.strings;
 ```
 
 This fuses together `serviceFunctions` and `serviceConstants` in the static side of the tag.
