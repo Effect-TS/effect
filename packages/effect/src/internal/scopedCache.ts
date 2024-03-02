@@ -25,8 +25,8 @@ import * as fiberRuntime from "./fiberRuntime.js"
  *
  * @internal
  */
-export interface CacheState<in out Key, out Error, out Value> {
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>> // mutable by design
+export interface CacheState<in out Key, out Value, out Error = never> {
+  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Value, Error>> // mutable by design
   keys: _cache.KeySet<Key> // mutable by design
   accesses: MutableQueue.MutableQueue<_cache.MapKey<Key>> // mutable by design
   updating: MutableRef.MutableRef<boolean> // mutable by design
@@ -35,14 +35,14 @@ export interface CacheState<in out Key, out Error, out Value> {
 }
 
 /** @internal */
-export const makeCacheState = <Key, Error, Value>(
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>>,
+export const makeCacheState = <Key, Value, Error = never>(
+  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Value, Error>>,
   keys: _cache.KeySet<Key>,
   accesses: MutableQueue.MutableQueue<_cache.MapKey<Key>>,
   updating: MutableRef.MutableRef<boolean>,
   hits: number,
   misses: number
-): CacheState<Key, Error, Value> => ({
+): CacheState<Key, Value, Error> => ({
   map,
   keys,
   accesses,
@@ -56,7 +56,7 @@ export const makeCacheState = <Key, Error, Value>(
  *
  * @internal
  */
-export const initialCacheState = <Key, Error, Value>(): CacheState<Key, Error, Value> =>
+export const initialCacheState = <Key, Value, Error = never>(): CacheState<Key, Value, Error> =>
   makeCacheState(
     MutableHashMap.empty(),
     _cache.makeKeySet(),
@@ -74,13 +74,13 @@ export const initialCacheState = <Key, Error, Value>(): CacheState<Key, Error, V
  *
  * @internal
  */
-export type MapValue<Key, Error, Value> =
-  | Complete<Key, Error, Value>
-  | Pending<Key, Error, Value>
-  | Refreshing<Key, Error, Value>
+export type MapValue<Key, Value, Error> =
+  | Complete<Key, Value, Error>
+  | Pending<Key, Value, Error>
+  | Refreshing<Key, Value, Error>
 
 /** @internal */
-export interface Complete<out Key, out Error, out Value> {
+export interface Complete<out Key, out Value, out Error> {
   readonly _tag: "Complete"
   readonly key: _cache.MapKey<Key>
   readonly exit: Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>
@@ -90,27 +90,27 @@ export interface Complete<out Key, out Error, out Value> {
 }
 
 /** @internal */
-export interface Pending<out Key, out Error, out Value> {
+export interface Pending<out Key, out Value, out Error> {
   readonly _tag: "Pending"
   readonly key: _cache.MapKey<Key>
   readonly scoped: Effect.Effect<Effect.Effect<Value, Error, Scope.Scope>>
 }
 
 /** @internal */
-export interface Refreshing<out Key, out Error, out Value> {
+export interface Refreshing<out Key, out Value, out Error> {
   readonly _tag: "Refreshing"
   readonly scoped: Effect.Effect<Effect.Effect<Value, Error, Scope.Scope>>
-  readonly complete: Complete<Key, Error, Value>
+  readonly complete: Complete<Key, Value, Error>
 }
 
 /** @internal */
-export const complete = <Key, Error, Value>(
+export const complete = <Key, Value, Error = never>(
   key: _cache.MapKey<Key>,
   exit: Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>,
   ownerCount: MutableRef.MutableRef<number>,
   entryStats: Cache.EntryStats,
   timeToLive: number
-): Complete<Key, Error, Value> =>
+): Complete<Key, Value, Error> =>
   Data.struct({
     _tag: "Complete",
     key,
@@ -121,10 +121,10 @@ export const complete = <Key, Error, Value>(
   })
 
 /** @internal */
-export const pending = <Key, Error, Value>(
+export const pending = <Key, Value, Error = never>(
   key: _cache.MapKey<Key>,
   scoped: Effect.Effect<Effect.Effect<Value, Error, Scope.Scope>>
-): Pending<Key, Error, Value> =>
+): Pending<Key, Value, Error> =>
   Data.struct({
     _tag: "Pending",
     key,
@@ -132,10 +132,10 @@ export const pending = <Key, Error, Value>(
   })
 
 /** @internal */
-export const refreshing = <Key, Error, Value>(
+export const refreshing = <Key, Value, Error = never>(
   scoped: Effect.Effect<Effect.Effect<Value, Error, Scope.Scope>>,
-  complete: Complete<Key, Error, Value>
-): Refreshing<Key, Error, Value> =>
+  complete: Complete<Key, Value, Error>
+): Refreshing<Key, Value, Error> =>
   Data.struct({
     _tag: "Refreshing",
     scoped,
@@ -143,8 +143,8 @@ export const refreshing = <Key, Error, Value>(
   })
 
 /** @internal */
-export const toScoped = <Key, Error, Value>(
-  self: Complete<Key, Error, Value>
+export const toScoped = <Key, Value, Error = never>(
+  self: Complete<Key, Value, Error>
 ): Effect.Effect<Value, Error, Scope.Scope> =>
   Exit.matchEffect(self.exit, {
     onFailure: (cause) => core.failCause(cause),
@@ -156,8 +156,8 @@ export const toScoped = <Key, Error, Value>(
   })
 
 /** @internal */
-export const releaseOwner = <Key, Error, Value>(
-  self: Complete<Key, Error, Value>
+export const releaseOwner = <Key, Value, Error = never>(
+  self: Complete<Key, Value, Error>
 ): Effect.Effect<void> =>
   Exit.matchEffect(self.exit, {
     onFailure: () => core.unit,
@@ -186,13 +186,13 @@ const scopedCacheVariance = {
 }
 
 class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value>
-  implements ScopedCache.ScopedCache<Key, Error, Value>
+  implements ScopedCache.ScopedCache<Key, Value, Error>
 {
   readonly [ScopedCacheTypeId] = scopedCacheVariance
-  readonly cacheState: CacheState<Key, Error, Value>
+  readonly cacheState: CacheState<Key, Value, Error>
   constructor(
     readonly capacity: number,
-    readonly scopedLookup: ScopedCache.Lookup<Key, Environment, Error, Value>,
+    readonly scopedLookup: ScopedCache.Lookup<Key, Value, Error, Environment>,
     readonly clock: Clock.Clock,
     readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.Duration,
     readonly context: Context.Context<Environment>
@@ -285,7 +285,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
             this.resolveMapValue(value),
             core.flatMap(Option.match({
               onNone: () => {
-                const val = value as Complete<Key, Error, Value>
+                const val = value as Complete<Key, Value, Error>
                 const current = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))
                 if (Equal.equals(current, value)) {
                   MutableHashMap.remove(this.cacheState.map, key)
@@ -393,7 +393,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
   }
 
   resolveMapValue(
-    value: MapValue<Key, Error, Value>,
+    value: MapValue<Key, Value, Error>,
     ignorePending = false
   ): Effect.Effect<Effect.Effect<Option.Option<Value>, Error, Scope.Scope>> {
     switch (value._tag) {
@@ -459,14 +459,14 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
               exit.value,
               release
             ])
-            const completedResult = complete<Key, Error, Value>(
+            const completedResult = complete<Key, Value, Error>(
               _cache.makeMapKey(key),
               exitWithFinalizer,
               MutableRef.make(1),
               _cache.makeEntryStats(now),
               expiredAt
             )
-            let previousValue: MapValue<Key, Error, Value> | undefined = undefined
+            let previousValue: MapValue<Key, Value, Error> | undefined = undefined
             if (MutableHashMap.has(this.cacheState.map, key)) {
               previousValue = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))
             }
@@ -481,14 +481,14 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
             )
           }
           case "Failure": {
-            const completedResult = complete<Key, Error, Value>(
+            const completedResult = complete<Key, Value, Error>(
               _cache.makeMapKey(key),
               exit as Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>,
               MutableRef.make(0),
               _cache.makeEntryStats(now),
               expiredAt
             )
-            let previousValue: MapValue<Key, Error, Value> | undefined = undefined
+            let previousValue: MapValue<Key, Value, Error> | undefined = undefined
             if (MutableHashMap.has(this.cacheState.map, key)) {
               previousValue = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))
             }
@@ -524,8 +524,8 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
     this.cacheState.misses = this.cacheState.misses + 1
   }
 
-  trackAccess(key: _cache.MapKey<Key>): Array<MapValue<Key, Error, Value>> {
-    const cleanedKeys: Array<MapValue<Key, Error, Value>> = []
+  trackAccess(key: _cache.MapKey<Key>): Array<MapValue<Key, Value, Error>> {
+    const cleanedKeys: Array<MapValue<Key, Value, Error>> = []
     MutableQueue.offer(this.cacheState.accesses, key)
     if (MutableRef.compareAndSet(this.cacheState.updating, false, true)) {
       let loop = true
@@ -558,7 +558,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
     return cleanedKeys
   }
 
-  cleanMapValue(mapValue: MapValue<Key, Error, Value> | undefined): Effect.Effect<void> {
+  cleanMapValue(mapValue: MapValue<Key, Value, Error> | undefined): Effect.Effect<void> {
     if (mapValue === undefined) {
       return core.unit
     }
@@ -586,13 +586,13 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
 }
 
 /** @internal */
-export const make = <Key, Environment, Error, Value>(
+export const make = <Key, Value, Error = never, Environment = never>(
   options: {
-    readonly lookup: ScopedCache.Lookup<Key, Environment, Error, Value>
+    readonly lookup: ScopedCache.Lookup<Key, Value, Error, Environment>
     readonly capacity: number
     readonly timeToLive: Duration.DurationInput
   }
-): Effect.Effect<ScopedCache.ScopedCache<Key, Error, Value>, never, Environment | Scope.Scope> => {
+): Effect.Effect<ScopedCache.ScopedCache<Key, Value, Error>, never, Environment | Scope.Scope> => {
   const timeToLive = Duration.decode(options.timeToLive)
   return makeWith({
     capacity: options.capacity,
@@ -602,13 +602,13 @@ export const make = <Key, Environment, Error, Value>(
 }
 
 /** @internal */
-export const makeWith = <Key, Environment, Error, Value>(
+export const makeWith = <Key, Value, Error = never, Environment = never>(
   options: {
     readonly capacity: number
-    readonly lookup: ScopedCache.Lookup<Key, Environment, Error, Value>
+    readonly lookup: ScopedCache.Lookup<Key, Value, Error, Environment>
     readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   }
-): Effect.Effect<ScopedCache.ScopedCache<Key, Error, Value>, never, Environment | Scope.Scope> =>
+): Effect.Effect<ScopedCache.ScopedCache<Key, Value, Error>, never, Environment | Scope.Scope> =>
   core.flatMap(
     effect.clock,
     (clock) =>
@@ -620,12 +620,12 @@ export const makeWith = <Key, Environment, Error, Value>(
       )
   )
 
-const buildWith = <Key, Environment, Error, Value>(
+const buildWith = <Key, Value, Error = never, Environment = never>(
   capacity: number,
-  scopedLookup: ScopedCache.Lookup<Key, Environment, Error, Value>,
+  scopedLookup: ScopedCache.Lookup<Key, Value, Error, Environment>,
   clock: Clock.Clock,
   timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.Duration
-): Effect.Effect<ScopedCache.ScopedCache<Key, Error, Value>, never, Environment | Scope.Scope> =>
+): Effect.Effect<ScopedCache.ScopedCache<Key, Value, Error>, never, Environment | Scope.Scope> =>
   fiberRuntime.acquireRelease(
     core.flatMap(
       core.context<Environment>(),
