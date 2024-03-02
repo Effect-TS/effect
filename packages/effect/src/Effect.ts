@@ -5242,17 +5242,13 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() =>
           // @ts-expect-error
           return TagClass[prop]
         }
-        const fn = new Function()
+        // @ts-expect-error
+        const fn = (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args))
         // @ts-expect-error
         const cn = core.andThen(TagClass, (s) => s[prop])
         Object.assign(fn, cn)
         Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
-        return new Proxy(fn, {
-          apply(_, __, argArray) {
-            // @ts-expect-error
-            return core.andThen(TagClass, (s: any) => s[prop](...argArray))
-          }
-        })
+        return fn
       }
     })
     return done
