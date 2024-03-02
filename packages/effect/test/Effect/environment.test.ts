@@ -22,7 +22,7 @@ class NumberRepo extends Context.Tag("NumberRepo")<NumberRepo, {
   static numbers = Effect.serviceConstants(NumberRepo).numbers
 }
 
-class DemoTag extends Effect.AccessTag("DemoTag")<DemoTag, {
+class DemoTag extends Effect.Tag("DemoTag")<DemoTag, {
   readonly getNumbers: () => Array<number>
   readonly strings: Array<string>
   readonly fn: (...args: ReadonlyArray<string>) => Array<string>

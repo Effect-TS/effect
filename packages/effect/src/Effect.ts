@@ -5202,10 +5202,14 @@ export const optionFromOptional: <A, E, R>(
  * @since 2.0.0
  * @category constructors
  */
-export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
+export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() =>
   & Context.TagClass<Self, Id, Shape>
   & {
-    [k in keyof Shape]: Shape[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+    [
+      k in keyof Shape as Shape[k] extends ((...args: [...infer Args]) => infer Ret) ?
+        ((...args: Readonly<Args>) => Ret) extends Shape[k] ? k : never
+        : k
+    ]: Shape[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
       (...args: Readonly<Args>) => Effect<A, E, Self | R>
       : Shape[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
       : Shape[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
