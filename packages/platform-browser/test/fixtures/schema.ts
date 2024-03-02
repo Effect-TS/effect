@@ -43,4 +43,4 @@ export class GetSpan extends Schema.TaggedRequest<GetSpan>()(
 ) {}
 
 export const WorkerMessage = Schema.union(GetUserById, GetPersonById, InitialMessage, GetSpan)
-export type WorkerMessage = Schema.Schema.To<typeof WorkerMessage>
+export type WorkerMessage = Schema.Schema.Type<typeof WorkerMessage>

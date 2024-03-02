@@ -44,13 +44,13 @@ export const ExternalSpan = Schema.struct({
  * @since 1.0.0
  * @category schemas
  */
-export interface ExternalSpanFrom extends Schema.Schema.From<typeof ExternalSpan> {}
+export interface ExternalSpanFrom extends Schema.Schema.Encoded<typeof ExternalSpan> {}
 
 /**
  * @since 1.0.0
  * @category schemas
  */
-export interface ExternalSpan extends Schema.Schema.To<typeof ExternalSpan> {}
+export interface ExternalSpan extends Schema.Schema.Type<typeof ExternalSpan> {}
 
 /**
  * @since 1.0.0
@@ -96,7 +96,7 @@ export interface SpanFrom {
   readonly name: string
   readonly sampled: boolean
   readonly attributes: ReadonlyArray<readonly [string, unknown]>
-  readonly parent: Schema.OptionFrom<ParentSpanFrom>
+  readonly parent: Schema.OptionEncoded<ParentSpanFrom>
   readonly status: {
     readonly _tag: "Started"
     readonly startTime: string
@@ -249,13 +249,13 @@ export const Metric = Schema.union(Counter, Frequency, Gauge, Histogram, Summary
  * @since 1.0.0
  * @category schemas
  */
-export type Metric = Schema.Schema.To<typeof Metric>
+export type Metric = Schema.Schema.Type<typeof Metric>
 
 /**
  * @since 1.0.0
  * @category schemas
  */
-export type MetricFrom = Schema.Schema.From<typeof Metric>
+export type MetricFrom = Schema.Schema.Encoded<typeof Metric>
 
 /**
  * @since 1.0.0
@@ -270,13 +270,13 @@ export const MetricsSnapshot = Schema.struct({
  * @since 1.0.0
  * @category schemas
  */
-export type MetricsSnapshot = Schema.Schema.To<typeof MetricsSnapshot>
+export type MetricsSnapshot = Schema.Schema.Type<typeof MetricsSnapshot>
 
 /**
  * @since 1.0.0
  * @category schemas
  */
-export type MetricsSnapshotFrom = Schema.Schema.From<typeof MetricsSnapshot>
+export type MetricsSnapshotFrom = Schema.Schema.Encoded<typeof MetricsSnapshot>
 
 /**
  * @since 1.0.0
@@ -288,7 +288,7 @@ export const Request = Schema.union(Ping, Span, MetricsSnapshot)
  * @since 1.0.0
  * @category schemas
  */
-export type Request = Schema.Schema.To<typeof Request>
+export type Request = Schema.Schema.Type<typeof Request>
 
 /**
  * @since 1.0.0
@@ -312,7 +312,7 @@ export const Response = Schema.union(Pong, MetricsRequest)
  * @since 1.0.0
  * @category schemas
  */
-export type Response = Schema.Schema.To<typeof Response>
+export type Response = Schema.Schema.Type<typeof Response>
 
 /**
  * @since 1.0.0

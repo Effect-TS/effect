@@ -24,7 +24,7 @@ describe("Cause > causeFromSelf", () => {
       schema,
       Cause.fail("a"),
       `Cause<NumberFromString>
-└─ CauseFrom<NumberFromString>
+└─ CauseEncoded<NumberFromString>
    └─ Union member
       └─ { _tag: "Fail"; error: NumberFromString }
          └─ ["error"]
@@ -36,11 +36,11 @@ describe("Cause > causeFromSelf", () => {
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
       `Cause<NumberFromString>
-└─ CauseFrom<NumberFromString>
+└─ CauseEncoded<NumberFromString>
    └─ Union member
-      └─ { _tag: "Parallel"; left: CauseFrom<NumberFromString>; right: CauseFrom<NumberFromString> }
+      └─ { _tag: "Parallel"; left: CauseEncoded<NumberFromString>; right: CauseEncoded<NumberFromString> }
          └─ ["right"]
-            └─ CauseFrom<NumberFromString>
+            └─ CauseEncoded<NumberFromString>
                └─ Union member
                   └─ { _tag: "Fail"; error: NumberFromString }
                      └─ ["error"]

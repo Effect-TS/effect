@@ -1854,7 +1854,7 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
  * import * as Schema from "@effect/schema/Schema"
  *
  * const Int = Schema.number.pipe(Schema.int(), Schema.brand("Int"))
- * type Int = Schema.Schema.To<typeof Int> // number & Brand<"Int">
+ * type Int = Schema.Schema.Type<typeof Int> // number & Brand<"Int">
  *
  * @category combinators
  * @since 1.0.0

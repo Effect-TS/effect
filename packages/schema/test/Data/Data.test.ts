@@ -20,7 +20,7 @@ describe("Data > data", () => {
       schema,
       { a: "ok", b: "0" },
       `({ a: string; b: number } <-> Data<{ a: string; b: number }>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a: string; b: number }
       └─ ["b"]
          └─ Expected a number, actual "0"`

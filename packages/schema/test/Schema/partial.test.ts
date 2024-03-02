@@ -103,7 +103,7 @@ describe("Schema > partial", () => {
           `readonly [NumberFromString?]
 └─ [0]
    └─ NumberFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual undefined`
         )
       })
@@ -121,7 +121,7 @@ describe("Schema > partial", () => {
           `readonly [NumberFromString?, ...(NumberFromString | undefined)[]]
 └─ [0]
    └─ NumberFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual undefined`
         )
       })

@@ -17,7 +17,7 @@ describe("Schema > compose", async () => {
       schema1,
       "a",
       `(null | string <-> NumberFromString)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ NumberFromString
       └─ Transformation process failure
          └─ Expected NumberFromString, actual "a"`
@@ -26,9 +26,9 @@ describe("Schema > compose", async () => {
       schema1,
       null,
       `(null | string <-> NumberFromString)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ NumberFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual null`
     )
     const schema2 = S.union(S.null, S.string).pipe(
@@ -39,7 +39,7 @@ describe("Schema > compose", async () => {
       schema2,
       "a",
       `(null | string <-> NumberFromString)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ NumberFromString
       └─ Transformation process failure
          └─ Expected NumberFromString, actual "a"`
@@ -48,9 +48,9 @@ describe("Schema > compose", async () => {
       schema2,
       null,
       `(null | string <-> NumberFromString)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ NumberFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual null`
     )
   })
@@ -62,9 +62,9 @@ describe("Schema > compose", async () => {
       schema1,
       null,
       `(NumberFromString <-> null | number)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ NumberFromString
-      └─ To side transformation failure
+      └─ Type side transformation failure
          └─ Expected a number, actual null`
     )
     const schema2 = S.NumberFromString.pipe(
@@ -75,9 +75,9 @@ describe("Schema > compose", async () => {
       schema2,
       null,
       `(NumberFromString <-> null | number)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ NumberFromString
-      └─ To side transformation failure
+      └─ Type side transformation failure
          └─ Expected a number, actual null`
     )
   })

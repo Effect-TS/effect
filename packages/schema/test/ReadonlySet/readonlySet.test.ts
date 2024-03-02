@@ -16,14 +16,14 @@ describe("ReadonlySet > readonlySet", () => {
       schema,
       null,
       `(ReadonlyArray<number> <-> ReadonlySet<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> ReadonlySet<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ ReadonlyArray<number>
       └─ [1]
          └─ Expected a number, actual "a"`

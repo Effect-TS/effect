@@ -20,14 +20,14 @@ describe("ReadonlyMap > readonlyMap", () => {
       schema,
       null,
       `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected ReadonlyArray<readonly [number, string]>, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       [[1, "a"], [2, 1]],
       `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ ReadonlyArray<readonly [number, string]>
       └─ [1]
          └─ readonly [number, string]

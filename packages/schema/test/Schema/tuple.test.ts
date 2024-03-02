@@ -373,7 +373,7 @@ describe("Schema > tuple", () => {
         `readonly [NumberFromChar]
 └─ [0]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`
@@ -410,7 +410,7 @@ describe("Schema > tuple", () => {
         `readonly [NumberFromChar?]
 └─ [0]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`
@@ -470,7 +470,7 @@ describe("Schema > tuple", () => {
         `ReadonlyArray<NumberFromChar>
 └─ [0]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`
@@ -495,7 +495,7 @@ describe("Schema > tuple", () => {
         `readonly [...string[], NumberFromChar]
 └─ [0]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`

@@ -156,7 +156,7 @@ describe("Schema > brand", () => {
         `IntegerFromString
 └─ From side refinement failure
    └─ NumberFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual null`
       )
     })
@@ -174,7 +174,7 @@ describe("Schema > brand", () => {
         `IntegerFromString
 └─ From side refinement failure
    └─ NumberFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual null`
       )
     })

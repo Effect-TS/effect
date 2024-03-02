@@ -23,11 +23,11 @@ describe("Option > optionFromNullish", () => {
       schema,
       {},
       `(NumberFromString | null | undefined <-> Option<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ NumberFromString | null | undefined
       ├─ Union member
       │  └─ NumberFromString
-      │     └─ From side transformation failure
+      │     └─ Encoded side transformation failure
       │        └─ Expected a string, actual {}
       ├─ Union member
       │  └─ Expected null, actual {}

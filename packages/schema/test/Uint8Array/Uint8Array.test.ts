@@ -19,7 +19,7 @@ describe("Uint8Array > Uint8Array", () => {
       schema,
       [12354],
       `Uint8Array
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ an array of 8-bit unsigned integers
       └─ [0]
          └─ 8-bit unsigned integer

@@ -11,7 +11,7 @@ describe("Schema > decodeSync", () => {
       new Error(`{ a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`)

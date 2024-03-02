@@ -27,12 +27,12 @@ describe("FiberId", () => {
       schema,
       { _tag: "Composite", left: { _tag: "None" }, right: { _tag: "-" } },
       `FiberId
-└─ From side transformation failure
-   └─ FiberIdFrom
+└─ Encoded side transformation failure
+   └─ FiberIdEncoded
       └─ Union member
-         └─ FiberIdCompositeFrom
+         └─ FiberIdCompositeEncoded
             └─ ["right"]
-               └─ FiberIdFrom
+               └─ FiberIdEncoded
                   └─ { _tag: "Composite" | "Runtime" | "None" }
                      └─ ["_tag"]
                         └─ Expected "Composite" | "Runtime" | "None", actual "-"`

@@ -19,7 +19,7 @@ describe("string > trim", () => {
       schema,
       "",
       `MySchema
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ a string at least 1 character(s) long
       └─ Predicate refinement failure
          └─ Expected a string at least 1 character(s) long, actual ""`
@@ -34,7 +34,7 @@ describe("string > trim", () => {
       schema,
       "",
       `MySchema
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ a string at least 1 character(s) long
       └─ Predicate refinement failure
          └─ Expected a string at least 1 character(s) long, actual ""`
@@ -43,9 +43,9 @@ describe("string > trim", () => {
       schema,
       " a",
       `MySchema
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Trim
-      └─ To side transformation failure
+      └─ Type side transformation failure
          └─ Trimmed
             └─ Predicate refinement failure
                └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
@@ -54,9 +54,9 @@ describe("string > trim", () => {
       schema,
       "a ",
       `MySchema
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Trim
-      └─ To side transformation failure
+      └─ Type side transformation failure
          └─ Trimmed
             └─ Predicate refinement failure
                └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
@@ -65,9 +65,9 @@ describe("string > trim", () => {
       schema,
       " a ",
       `MySchema
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Trim
-      └─ To side transformation failure
+      └─ Type side transformation failure
          └─ Trimmed
             └─ Predicate refinement failure
                └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a "`
@@ -76,9 +76,9 @@ describe("string > trim", () => {
       schema,
       " ",
       `MySchema
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Trim
-      └─ To side transformation failure
+      └─ Type side transformation failure
          └─ Trimmed
             └─ Predicate refinement failure
                └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " "`

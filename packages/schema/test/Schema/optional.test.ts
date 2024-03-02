@@ -91,7 +91,7 @@ describe("optional APIs", () => {
           a: "a"
         },
         `({ a?: NumberFromString } <-> { a: Option<number> })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString }
       └─ ["a"]
          └─ NumberFromString
@@ -118,7 +118,7 @@ describe("optional APIs", () => {
           a: "a"
         },
         `({ a?: NumberFromString | null } <-> { a: Option<number> })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString | null }
       └─ ["a"]
          └─ NumberFromString | null
@@ -147,7 +147,7 @@ describe("optional APIs", () => {
           a: "a"
         },
         `({ a?: NumberFromString | undefined } <-> { a: Option<number> })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString | undefined }
       └─ ["a"]
          └─ NumberFromString | undefined
@@ -179,7 +179,7 @@ describe("optional APIs", () => {
           a: "a"
         },
         `({ a?: NumberFromString | null | undefined } <-> { a: Option<number> })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString | null | undefined }
       └─ ["a"]
          └─ NumberFromString | null | undefined
@@ -209,7 +209,7 @@ describe("optional APIs", () => {
         schema,
         { a: "a" },
         `({ a?: NumberFromString } <-> { a: number })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString }
       └─ ["a"]
          └─ NumberFromString
@@ -234,7 +234,7 @@ describe("optional APIs", () => {
         schema,
         { a: "a" },
         `({ a?: NumberFromString | undefined } <-> { a: number })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString | undefined }
       └─ ["a"]
          └─ NumberFromString | undefined
@@ -264,7 +264,7 @@ describe("optional APIs", () => {
         schema,
         { a: "a" },
         `({ a?: NumberFromString | null | undefined } <-> { a: number })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString | null | undefined }
       └─ ["a"]
          └─ NumberFromString | null | undefined
@@ -295,7 +295,7 @@ describe("optional APIs", () => {
         schema,
         { a: "a" },
         `({ a?: NumberFromString | null } <-> { a: number })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString | null }
       └─ ["a"]
          └─ NumberFromString | null

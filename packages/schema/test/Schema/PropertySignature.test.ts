@@ -59,7 +59,7 @@ describe("Schema > PropertySignature", () => {
       schema,
       { a: "a" },
       `({ a?: NumberFromString } <-> { a: number })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString }
       └─ ["a"]
          └─ NumberFromString
@@ -88,7 +88,7 @@ describe("Schema > PropertySignature", () => {
       schema,
       { a: "a" },
       `({ a?: NumberFromString } <-> { a: number })
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a?: NumberFromString }
       └─ ["a"]
          └─ NumberFromString

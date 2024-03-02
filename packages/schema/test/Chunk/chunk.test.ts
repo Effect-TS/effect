@@ -17,14 +17,14 @@ describe("Chunk > chunk", () => {
       schema,
       null,
       `(ReadonlyArray<number> <-> Chunk<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> Chunk<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ ReadonlyArray<number>
       └─ [1]
          └─ Expected a number, actual "a"`

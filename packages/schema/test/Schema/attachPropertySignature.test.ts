@@ -112,7 +112,7 @@ describe("Schema/attachPropertySignature", () => {
       schema1,
       null as any,
       `({ a: string } <-> AttachedProperty)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Expected AttachedProperty, actual null`
     )
     const schema2 = S.attachPropertySignature(
@@ -127,7 +127,7 @@ describe("Schema/attachPropertySignature", () => {
       schema2,
       null as any,
       `({ a: string } <-> AttachedProperty)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Expected AttachedProperty, actual null`
     )
   })
@@ -142,7 +142,7 @@ describe("Schema/attachPropertySignature", () => {
       schema,
       null,
       `AttachedProperty
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected { a: string }, actual null`
     )
   })

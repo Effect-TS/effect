@@ -16,7 +16,7 @@ describe("Duration > Duration", () => {
       schema,
       [-500, 0],
       `Duration
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ readonly [seconds, nanos]
       └─ [0]
          └─ seconds
@@ -29,7 +29,7 @@ describe("Duration > Duration", () => {
       schema,
       [0, -123],
       `Duration
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ readonly [seconds, nanos]
       └─ [1]
          └─ nanos
@@ -42,14 +42,14 @@ describe("Duration > Duration", () => {
       schema,
       123,
       `Duration
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected readonly [seconds, nanos], actual 123`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       123n,
       `Duration
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected readonly [seconds, nanos], actual 123n`
     )
   })

@@ -189,13 +189,13 @@ describe("Schema > `errors` option", () => {
           `readonly [NumberFromChar, NumberFromChar]
 ├─ [0]
 │  └─ NumberFromChar
-│     └─ From side transformation failure
+│     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
 │              └─ Expected Char (a single character), actual "10"
 └─ [1]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`,
@@ -211,13 +211,13 @@ describe("Schema > `errors` option", () => {
           `ReadonlyArray<NumberFromChar>
 ├─ [0]
 │  └─ NumberFromChar
-│     └─ From side transformation failure
+│     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
 │              └─ Expected Char (a single character), actual "10"
 └─ [1]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`,
@@ -236,13 +236,13 @@ describe("Schema > `errors` option", () => {
           `readonly [...string[], NumberFromChar, NumberFromChar]
 ├─ [0]
 │  └─ NumberFromChar
-│     └─ From side transformation failure
+│     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
 │              └─ Expected Char (a single character), actual "10"
 └─ [1]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`,
@@ -260,13 +260,13 @@ describe("Schema > `errors` option", () => {
           `{ a: NumberFromChar; b: NumberFromChar }
 ├─ ["a"]
 │  └─ NumberFromChar
-│     └─ From side transformation failure
+│     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
 │              └─ Expected Char (a single character), actual "10"
 └─ ["b"]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`,

@@ -15,7 +15,7 @@ describe("symbol > symbol", () => {
       schema,
       null,
       `symbol
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected a string, actual null`
     )
   })
@@ -26,7 +26,7 @@ describe("symbol > symbol", () => {
       schema,
       Symbol(),
       `symbol
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected a string, actual undefined`
     )
   })

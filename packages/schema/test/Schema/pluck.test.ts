@@ -12,7 +12,7 @@ describe("Schema > pluck", () => {
         schema,
         { a: 1, b: "2" },
         `({ a: string; b: NumberFromString } <-> string)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a: string; b: NumberFromString }
       └─ ["a"]
          └─ Expected a string, actual 1`
@@ -32,7 +32,7 @@ describe("Schema > pluck", () => {
         schema,
         { [a]: 1, [b]: "2" },
         `({ Symbol(effect/schema/test/a): string; Symbol(effect/schema/test/b): NumberFromString } <-> string)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { Symbol(effect/schema/test/a): string; Symbol(effect/schema/test/b): NumberFromString }
       └─ [Symbol(effect/schema/test/a)]
          └─ Expected a string, actual 1`
@@ -63,7 +63,7 @@ describe("Schema > pluck", () => {
         schema,
         {},
         `({ _tag: "A" } | { _tag: "B" } <-> "A" | "B")
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { _tag: "A" } | { _tag: "B" }
       └─ { _tag: "A" | "B" }
          └─ ["_tag"]
@@ -84,7 +84,7 @@ describe("Schema > pluck", () => {
         schema,
         "a",
         `({ a: string; b: number } <-> string)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ { a: string; b: number }
       └─ ["b"]
          └─ is missing`
@@ -102,7 +102,7 @@ describe("Schema > pluck", () => {
         schema,
         "",
         `({ a: NonEmpty } <-> NonEmpty)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ NonEmpty
       └─ Predicate refinement failure
          └─ Expected NonEmpty (a non empty string), actual ""`
@@ -121,7 +121,7 @@ describe("Schema > pluck", () => {
         schema,
         "",
         `({ Symbol(effect/schema/test/a): NonEmpty } <-> NonEmpty)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ NonEmpty
       └─ Predicate refinement failure
          └─ Expected NonEmpty (a non empty string), actual ""`

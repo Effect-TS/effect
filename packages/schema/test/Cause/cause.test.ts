@@ -68,16 +68,16 @@ describe("Cause > cause", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      `(CauseFrom<NumberFromString> <-> Cause<number>)
-└─ From side transformation failure
-   └─ Expected CauseFrom<NumberFromString>, actual null`
+      `(CauseEncoded<NumberFromString> <-> Cause<number>)
+└─ Encoded side transformation failure
+   └─ Expected CauseEncoded<NumberFromString>, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
-      `(CauseFrom<NumberFromString> <-> Cause<number>)
-└─ From side transformation failure
-   └─ CauseFrom<NumberFromString>
+      `(CauseEncoded<NumberFromString> <-> Cause<number>)
+└─ Encoded side transformation failure
+   └─ CauseEncoded<NumberFromString>
       └─ { _tag: "Parallel" | "Sequential" | "Die" | "Fail" | "Interrupt" | "Empty" }
          └─ ["_tag"]
             └─ is missing`
@@ -85,13 +85,13 @@ describe("Cause > cause", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
-      `(CauseFrom<NumberFromString> <-> Cause<number>)
-└─ From side transformation failure
-   └─ CauseFrom<NumberFromString>
+      `(CauseEncoded<NumberFromString> <-> Cause<number>)
+└─ Encoded side transformation failure
+   └─ CauseEncoded<NumberFromString>
       └─ Union member
-         └─ { _tag: "Parallel"; left: CauseFrom<NumberFromString>; right: CauseFrom<NumberFromString> }
+         └─ { _tag: "Parallel"; left: CauseEncoded<NumberFromString>; right: CauseEncoded<NumberFromString> }
             └─ ["left"]
-               └─ CauseFrom<NumberFromString>
+               └─ CauseEncoded<NumberFromString>
                   └─ Union member
                      └─ { _tag: "Fail"; error: NumberFromString }
                         └─ ["error"]

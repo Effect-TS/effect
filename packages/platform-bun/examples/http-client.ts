@@ -12,7 +12,7 @@ class Todo extends Schema.Class<Todo>()({
 }) {}
 
 const TodoWithoutId = Schema.struct(Todo.fields).pipe(Schema.omit("id"))
-type TodoWithoutId = Schema.Schema.To<typeof TodoWithoutId>
+type TodoWithoutId = Schema.Schema.Type<typeof TodoWithoutId>
 
 interface TodoService {
   readonly create: (
