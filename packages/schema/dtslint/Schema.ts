@@ -7,43 +7,33 @@ import type { Simplify } from "effect/Types"
 class A extends S.Class<A>()({ a: S.NonEmpty }) {}
 
 // ---------------------------------------------
-// From
+// Schema.From
 // ---------------------------------------------
 
 // $ExpectType never
 hole<S.Schema.From<typeof S.never>>()
 
 // ---------------------------------------------
-// To
+// Schema.To
 // ---------------------------------------------
 
 // $ExpectType never
 hole<S.Schema.To<typeof S.never>>()
 
 // ---------------------------------------------
-// .annotations() method
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, never>
-S.string.annotations({})
-
-// $ExpectType BrandSchema<number & Brand<"Int">, number>
-pipe(S.number, S.int(), S.brand("Int")).annotations({})
-
-// $ExpectType Schema<A, { readonly a: string; }, never>
-A.annotations({})
-
-// ---------------------------------------------
 // S.annotations
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, never>
+hole<S.Schema<string>>().pipe(S.annotations({}))
+
+// $ExpectType $string
 S.string.pipe(S.annotations({}))
 
-// $ExpectType Schema<number & Brand<"Int">, number, never>
+// $ExpectType BrandSchema<number & Brand<"Int">, number>
 S.number.pipe(S.int(), S.brand("Int"), S.annotations({}))
 
-// $ExpectType Schema<never, never, never>
+// $ExpectType $never
 S.never.pipe(S.annotations({}))
 
 // $ExpectType Schema<A, { readonly a: string; }, never>
@@ -54,10 +44,86 @@ A.pipe(S.annotations({}))
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, never>
-S.string.pipe(S.message(() => "message"))
+hole<S.Schema<string>>().pipe(S.message(() => ""))
+
+// $ExpectType $string
+S.string.pipe(S.message(() => ""))
 
 // $ExpectType Schema<A, { readonly a: string; }, never>
-A.pipe(S.message(() => "message"))
+A.pipe(S.message(() => ""))
+
+// ---------------------------------------------
+// S.identifier
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.identifier(""))
+
+// ---------------------------------------------
+// S.title
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.title(""))
+
+// ---------------------------------------------
+// S.description
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.description(""))
+
+// ---------------------------------------------
+// S.examples
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.examples([""]))
+
+// ---------------------------------------------
+// S.default
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.default(""))
+
+// ---------------------------------------------
+// S.documentation
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.documentation(""))
+
+// ---------------------------------------------
+// S.jsonSchema
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.jsonSchema({}))
+
+// ---------------------------------------------
+// S.equivalence
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.equivalence((
+  _a, // $ExpectType string
+  _b // $ExpectType string
+) => true))
+
+// ---------------------------------------------
+// S.concurrency
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.concurrency(1))
+
+// ---------------------------------------------
+// S.batching
+// ---------------------------------------------
+
+// $ExpectType $string
+S.string.pipe(S.batching(true))
 
 // ---------------------------------------------
 // Primitives
@@ -69,11 +135,17 @@ S.asSchema(S.void)
 // $ExpectType $void
 S.void
 
+// $ExpectType $void
+S.void.annotations()
+
 // $ExpectType Schema<undefined, undefined, never>
 S.asSchema(S.undefined)
 
 // $ExpectType $undefined
 S.undefined
+
+// $ExpectType $undefined
+S.undefined.annotations()
 
 // $ExpectType Schema<string, string, never>
 S.asSchema(S.string)
@@ -81,11 +153,17 @@ S.asSchema(S.string)
 // $ExpectType $string
 S.string
 
+// $ExpectType $string
+S.string.annotations()
+
 // $ExpectType Schema<number, number, never>
 S.asSchema(S.number)
 
 // $ExpectType $number
 S.number
+
+// $ExpectType $number
+S.number.annotations()
 
 // $ExpectType Schema<boolean, boolean, never>
 S.asSchema(S.boolean)
@@ -93,11 +171,17 @@ S.asSchema(S.boolean)
 // $ExpectType $boolean
 S.boolean
 
+// $ExpectType $boolean
+S.boolean.annotations()
+
 // $ExpectType Schema<bigint, bigint, never>
 S.asSchema(S.bigintFromSelf)
 
 // $ExpectType bigintFromSelf
 S.bigintFromSelf
+
+// $ExpectType bigintFromSelf
+S.bigintFromSelf.annotations()
 
 // $ExpectType Schema<bigint, string, never>
 S.asSchema(S.bigint)
@@ -105,11 +189,17 @@ S.asSchema(S.bigint)
 // $ExpectType $bigint
 S.bigint
 
+// $ExpectType $bigint
+S.bigint.annotations()
+
 // $ExpectType Schema<symbol, symbol, never>
 S.asSchema(S.symbolFromSelf)
 
 // $ExpectType symbolFromSelf
 S.symbolFromSelf
+
+// $ExpectType symbolFromSelf
+S.symbolFromSelf.annotations()
 
 // $ExpectType Schema<symbol, string, never>
 S.asSchema(S.symbol)
@@ -117,11 +207,17 @@ S.asSchema(S.symbol)
 // $ExpectType $symbol
 S.symbol
 
+// $ExpectType $symbol
+S.symbol.annotations()
+
 // $ExpectType Schema<unknown, unknown, never>
 S.asSchema(S.unknown)
 
 // $ExpectType $unknown
 S.unknown
+
+// $ExpectType $unknown
+S.unknown.annotations()
 
 // $ExpectType Schema<any, any, never>
 S.asSchema(S.any)
@@ -129,11 +225,17 @@ S.asSchema(S.any)
 // $ExpectType $any
 S.any
 
+// $ExpectType $any
+S.any.annotations()
+
 // $ExpectType Schema<object, object, never>
 S.asSchema(S.object)
 
 // $ExpectType $object
 S.object
+
+// $ExpectType $object
+S.object.annotations()
 
 // ---------------------------------------------
 // literals
@@ -144,6 +246,9 @@ S.asSchema(S.null)
 
 // $ExpectType $null
 S.null
+
+// $ExpectType $null
+S.null.annotations()
 
 // $ExpectType $never
 S.literal()
@@ -181,7 +286,7 @@ S.literal("A", "B")
 S.literal("A", "B").literals
 
 // $ExpectType literal<["A", "B"]>
-S.literal("A", "B").annotations({ description: "A or B" })
+S.literal("A", "B").annotations()
 
 // ---------------------------------------------
 // strings
@@ -230,7 +335,7 @@ pipe(S.number, S.nonNaN()) // not NaN
 pipe(S.number, S.finite()) // value must be finite, not Infinity or -Infinity
 
 // ---------------------------------------------
-// Native enums
+// enums
 // ---------------------------------------------
 
 enum Fruits {
@@ -241,9 +346,9 @@ enum Fruits {
 // $ExpectType Schema<Fruits, Fruits, never>
 S.enums(Fruits)
 
-//
-// Nullables
-//
+// ---------------------------------------------
+// nullable
+// ---------------------------------------------
 
 // $ExpectType Schema<string | null, string | null, never>
 S.asSchema(S.nullable(S.string))
@@ -258,8 +363,11 @@ S.asSchema(S.nullable(S.NumberFromString))
 S.nullable(S.NumberFromString)
 
 // ---------------------------------------------
-// Unions
+// union
 // ---------------------------------------------
+
+// $ExpectType union<[$string, $number]>
+S.union(S.string, S.number).annotations()
 
 // $ExpectType Schema<string | number, string | number, never>
 S.asSchema(S.union(S.string, S.number))
@@ -365,7 +473,7 @@ S.nonEmptyArray(S.NumberFromString)
 S.struct({ a: S.string, b: S.number }).fields
 
 // $ExpectType { readonly a: $string; readonly b: $number; }
-S.struct({ a: S.string, b: S.number }).annotations({}).fields
+S.struct({ a: S.string, b: S.number }).annotations().fields
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, never>
 S.asSchema(S.struct({ a: S.string, b: S.number }))

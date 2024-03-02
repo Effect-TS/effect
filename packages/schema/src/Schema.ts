@@ -68,6 +68,19 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
   annotations(annotations?: Annotations<A>): Schema<A, I, R>
 }
 
+declare module Annotable {
+  export type Self<S extends Any> = ReturnType<S["annotations"]>
+
+  export type Any = Annotable<any, any, any, unknown> | Annotable<any, never>
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> extends Schema<A, I, R> {
+  annotations(annotations?: Annotations<A>): Self
+}
+
 /**
  * @since 1.0.0
  */
@@ -118,7 +131,7 @@ export declare module Schema {
   /**
    * @since 1.0.0
    */
-  export type ToAsserts<S extends Schema<any>> = (
+  export type ToAsserts<S extends Schema.Any<never>> = (
     input: unknown,
     options?: AST.ParseOptions
   ) => asserts input is Schema.To<S>
@@ -392,10 +405,9 @@ export const make: <A, I = A, R = never>(ast: AST.AST) => Schema<A, I, R> = _sch
  * @since 1.0.0
  */
 export interface literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
-  extends Schema<Literals[number]>
+  extends Annotable<literal<Literals>, Literals[number]>
 {
   readonly literals: Readonly<Literals>
-  annotations(annotations?: Annotations<Literals[number]>): literal<Literals>
 }
 
 class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
@@ -675,7 +687,7 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
  * @category api interface
  * @since 1.0.0
  */
-export interface $undefined extends Schema<undefined> {}
+export interface $undefined extends Annotable<$undefined, undefined> {}
 
 const $undefined: $undefined = make(AST.undefinedKeyword)
 
@@ -683,7 +695,7 @@ const $undefined: $undefined = make(AST.undefinedKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface $void extends Schema<void> {}
+export interface $void extends Annotable<$void, void> {}
 
 const $void: $void = make(AST.voidKeyword)
 
@@ -691,7 +703,7 @@ const $void: $void = make(AST.voidKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface $null extends Schema<null> {}
+export interface $null extends Annotable<$null, null> {}
 
 const $null: $null = make(AST._null)
 
@@ -717,7 +729,7 @@ export {
  * @category api interface
  * @since 1.0.0
  */
-export interface $never extends Schema<never> {}
+export interface $never extends Annotable<$never, never> {}
 
 /**
  * @category primitives
@@ -729,7 +741,7 @@ export const never: $never = make(AST.neverKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface $unknown extends Schema<unknown> {}
+export interface $unknown extends Annotable<$unknown, unknown> {}
 
 /**
  * @category primitives
@@ -741,7 +753,7 @@ export const unknown: $unknown = make(AST.unknownKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface $any extends Schema<any> {}
+export interface $any extends Annotable<$any, any> {}
 
 /**
  * @category primitives
@@ -753,7 +765,7 @@ export const any: $any = make(AST.anyKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface $string extends Schema<string> {}
+export interface $string extends Annotable<$string, string> {}
 
 /**
  * @category primitives
@@ -765,7 +777,7 @@ export const string: $string = make(AST.stringKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface $number extends Schema<number> {}
+export interface $number extends Annotable<$number, number> {}
 
 /**
  * @category primitives
@@ -777,7 +789,7 @@ export const number: $number = make(AST.numberKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface $boolean extends Schema<boolean> {}
+export interface $boolean extends Annotable<$boolean, boolean> {}
 
 /**
  * @category primitives
@@ -789,7 +801,7 @@ export const boolean: $boolean = make(AST.booleanKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface bigintFromSelf extends Schema<bigint> {}
+export interface bigintFromSelf extends Annotable<bigintFromSelf, bigint> {}
 
 /**
  * @category primitives
@@ -801,7 +813,7 @@ export const bigintFromSelf: bigintFromSelf = make(AST.bigIntKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface symbolFromSelf extends Schema<symbol> {}
+export interface symbolFromSelf extends Annotable<symbolFromSelf, symbol> {}
 
 /**
  * @category primitives
@@ -813,7 +825,7 @@ export const symbolFromSelf: symbolFromSelf = make(AST.symbolKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface $object extends Schema<object> {}
+export interface $object extends Annotable<$object, object> {}
 
 /**
  * @category primitives
@@ -826,10 +838,10 @@ export const object: $object = make(AST.objectKeyword)
  * @since 1.0.0
  */
 export interface union<Members extends ReadonlyArray<Schema.Any>>
-  extends Schema<Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>>
+  extends
+    Annotable<union<Members>, Schema.To<Members[number]>, Schema.From<Members[number]>, Schema.Context<Members[number]>>
 {
   readonly members: Readonly<Members>
-  annotations(annotations?: Annotations<Schema.To<Members[number]>>): union<Members>
 }
 
 class $union<Members extends ReadonlyArray<Schema.Any>>
@@ -896,7 +908,8 @@ export const keyof = <A, I, R>(self: Schema<A, I, R>): Schema<keyof A> =>
  * @since 1.0.0
  */
 export interface tuple<Elements extends ReadonlyArray<Schema.Any>> extends
-  Schema<
+  Annotable<
+    tuple<Elements>,
     { readonly [K in keyof Elements]: Schema.To<Elements[K]> },
     { readonly [K in keyof Elements]: Schema.From<Elements[K]> },
     Schema.Context<Elements[number]>
@@ -978,10 +991,10 @@ export const optionalElement =
  * @since 1.0.0
  */
 export interface array<Value extends Schema.Any>
-  extends Schema<ReadonlyArray<Schema.To<Value>>, ReadonlyArray<Schema.From<Value>>, Schema.Context<Value>>
+  extends
+    Annotable<array<Value>, ReadonlyArray<Schema.To<Value>>, ReadonlyArray<Schema.From<Value>>, Schema.Context<Value>>
 {
   readonly value: Value
-  annotations(annotations?: Annotations<ReadonlyArray<Schema.To<Value>>>): array<Value>
 }
 
 class $array<Value extends Schema.Any>
@@ -1007,14 +1020,14 @@ export const array = <Value extends Schema.Any>(value: Value): array<Value> => n
  * @since 1.0.0
  */
 export interface nonEmptyArray<Value extends Schema.Any> extends
-  Schema<
+  Annotable<
+    nonEmptyArray<Value>,
     ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>,
     ReadonlyArray.NonEmptyReadonlyArray<Schema.From<Value>>,
     Schema.Context<Value>
   >
 {
   readonly value: Value
-  annotations(annotations?: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>>): nonEmptyArray<Value>
 }
 
 class $nonEmptyArray<Value extends Schema.Any> extends _schema.Schema<
@@ -1541,7 +1554,7 @@ export declare module Struct {
  * @since 1.0.0
  */
 export interface struct<Fields extends Struct.Fields>
-  extends Schema<Simplify<Struct.To<Fields>>, Simplify<Struct.From<Fields>>, Struct.Context<Fields>>
+  extends Annotable<struct<Fields>, Simplify<Struct.To<Fields>>, Simplify<Struct.From<Fields>>, Struct.Context<Fields>>
 {
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   annotations(annotations?: Annotations<Simplify<Struct.To<Fields>>>): struct<Fields>
@@ -1756,9 +1769,9 @@ export const pluck: {
  * @category model
  * @since 1.0.0
  */
-export interface BrandSchema<A extends Brand.Brand<any>, I> extends Schema<A, I>, Brand.Brand.Constructor<A> {
-  annotations(annotations?: Annotations<A>): BrandSchema<A, I>
-}
+export interface BrandSchema<A extends Brand.Brand<any>, I>
+  extends Annotable<BrandSchema<A, I>, A, I>, Brand.Brand.Constructor<A>
+{}
 
 const makeBrandSchema = <A, I, B extends string | symbol>(
   self: AST.AST,
@@ -1862,7 +1875,8 @@ export const mutable = <A, I, R>(
  * @since 1.0.0
  */
 export interface record<K extends Schema.Any | $never, V extends Schema.Any> extends
-  Schema<
+  Annotable<
+    record<K, V>,
     { readonly [P in Schema.To<K>]: Schema.To<V> },
     { readonly [P in Schema.From<K>]: Schema.From<V> },
     Schema.Context<K> | Schema.Context<V>
@@ -1870,7 +1884,6 @@ export interface record<K extends Schema.Any | $never, V extends Schema.Any> ext
 {
   readonly key: K
   readonly value: V
-  annotations(annotations?: Annotations<{ readonly [P in Schema.To<K>]: Schema.To<V> }>): record<K, V>
 }
 
 class $record<K extends Schema.Any | $never, V extends Schema.Any> extends _schema.Schema<
@@ -2175,7 +2188,7 @@ export const transform: {
  * @category api interface
  * @since 1.0.0
  */
-export interface transformLiteral<To, From> extends Schema<To, From> {}
+export interface transformLiteral<To, From> extends Annotable<transformLiteral<To, From>, To, From> {}
 
 /**
  * Creates a new `Schema` which transforms literal values.
@@ -2344,8 +2357,8 @@ export interface FilterAnnotations<A> extends Annotations<A, readonly [A]> {}
  * @since 1.0.0
  */
 export const annotations: {
-  <A>(annotations: Annotations<A>): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
-  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations<A>): Schema<A, I, R>
+  <S extends Annotable.Any>(annotations: Annotations<Schema.To<S>>): (self: S) => Annotable.Self<S>
+  <S extends Annotable.Any>(self: S, annotations: Annotations<Schema.To<S>>): Annotable.Self<S>
 } = dual(
   2,
   <A, I, R>(self: Schema<A, I, R>, annotations: Annotations<A>): Schema<A, I, R> => self.annotations(annotations)
@@ -2355,21 +2368,22 @@ export const annotations: {
  * @category annotations
  * @since 1.0.0
  */
-export const message = (message: AST.MessageAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+export const message = (message: AST.MessageAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
   self.annotations({ [AST.MessageAnnotationId]: message })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const identifier = (identifier: AST.IdentifierAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  self.annotations({ [AST.IdentifierAnnotationId]: identifier })
+export const identifier =
+  (identifier: AST.IdentifierAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+    self.annotations({ [AST.IdentifierAnnotationId]: identifier })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const title = (title: AST.TitleAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+export const title = (title: AST.TitleAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
   self.annotations({ [AST.TitleAnnotationId]: title })
 
 /**
@@ -2377,17 +2391,18 @@ export const title = (title: AST.TitleAnnotation) => <A, I, R>(self: Schema<A, I
  * @since 1.0.0
  */
 export const description =
-  (description: AST.DescriptionAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  (description: AST.DescriptionAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
     self.annotations({ [AST.DescriptionAnnotationId]: description })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const examples = <A>(examples: AST.ExamplesAnnotation<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  self.annotations({ [AST.ExamplesAnnotationId]: examples })
+export const examples =
+  <S extends Annotable.Any>(examples: AST.ExamplesAnnotation<Schema.To<S>>) => (self: S): Annotable.Self<S> =>
+    self.annotations({ [AST.ExamplesAnnotationId]: examples })
 
-const _default = <A>(value: A) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+const _default = <S extends Annotable.Any>(value: Schema.To<S>) => (self: S): Annotable.Self<S> =>
   self.annotations({ [AST.DefaultAnnotationId]: value })
 
 export {
@@ -2403,7 +2418,7 @@ export {
  * @since 1.0.0
  */
 export const documentation =
-  (documentation: AST.DocumentationAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  (documentation: AST.DocumentationAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
     self.annotations({ [AST.DocumentationAnnotationId]: documentation })
 
 /**
@@ -2414,15 +2429,16 @@ export const documentation =
  * @category annotations
  * @since 1.0.0
  */
-export const jsonSchema = (jsonSchema: AST.JSONSchemaAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  self.annotations({ [AST.JSONSchemaAnnotationId]: jsonSchema })
+export const jsonSchema =
+  (jsonSchema: AST.JSONSchemaAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+    self.annotations({ [AST.JSONSchemaAnnotationId]: jsonSchema })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const equivalence =
-  <A>(equivalence: Equivalence.Equivalence<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <S extends Annotable.Any>(equivalence: Equivalence.Equivalence<Schema.To<S>>) => (self: S): Annotable.Self<S> =>
     self.annotations({ [_hooks.EquivalenceHookId]: () => equivalence })
 
 /**
@@ -2430,14 +2446,14 @@ export const equivalence =
  * @since 1.0.0
  */
 export const concurrency =
-  (concurrency: AST.ConcurrencyAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  (concurrency: AST.ConcurrencyAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
     self.annotations({ [AST.ConcurrencyAnnotationId]: concurrency })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const batching = (batching: AST.BatchingAnnotation) => <A, I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+export const batching = (batching: AST.BatchingAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
   self.annotations({ [AST.BatchingAnnotationId]: batching })
 
 type Rename<A, M> = {
@@ -3290,7 +3306,7 @@ export const clamp =
  * @category api interface
  * @since 1.0.0
  */
-export interface NumberFromString extends Schema<number, string> {}
+export interface NumberFromString extends Annotable<NumberFromString, number, string> {}
 
 /**
  * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
@@ -3408,7 +3424,7 @@ export const Not: Schema<boolean> = transform(
  * @category api interface
  * @since 1.0.0
  */
-export interface $symbol extends Schema<symbol, string> {}
+export interface $symbol extends Annotable<$symbol, symbol, string> {}
 
 /**
  * This schema transforms a `string` into a `symbol`.
@@ -3624,7 +3640,7 @@ export const clampBigint =
  * @category api interface
  * @since 1.0.0
  */
-export interface $bigint extends Schema<bigint, string> {}
+export interface $bigint extends Annotable<$bigint, bigint, string> {}
 
 /**
  * This schema transforms a `string` into a `bigint` by parsing the string using the `BigInt` function.
