@@ -43,7 +43,7 @@ export type CacheTypeId = typeof CacheTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Cache<in out Key, out Error, out Value> extends ConsumerCache<Key, Error, Value> {
+export interface Cache<in out Key, out Value, out Error = never> extends ConsumerCache<Key, Value, Error> {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise computes the value with the lookup function, puts it in the
@@ -83,7 +83,7 @@ export interface Cache<in out Key, out Error, out Value> extends ConsumerCache<K
  * @since 2.0.0
  * @category models
  */
-export interface ConsumerCache<in out Key, out Error, out Value> extends Cache.Variance<Key, Error, Value> {
+export interface ConsumerCache<in out Key, out Value, out Error = never> extends Cache.Variance<Key, Value, Error> {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
@@ -156,7 +156,7 @@ export declare namespace Cache {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<in out Key, out Error, out Value> {
+  export interface Variance<in out Key, out Value, out Error> {
     readonly [CacheTypeId]: {
       readonly _Key: Types.Invariant<Key>
       readonly _Error: Types.Covariant<Error>
@@ -172,13 +172,13 @@ export declare namespace Cache {
  * @since 2.0.0
  * @category constructors
  */
-export const make: <Key, Environment, Error, Value>(
+export const make: <Key, Value, Error = never, Environment = never>(
   options: {
     readonly capacity: number
     readonly timeToLive: Duration.DurationInput
-    readonly lookup: Lookup<Key, Environment, Error, Value>
+    readonly lookup: Lookup<Key, Value, Error, Environment>
   }
-) => Effect.Effect<Cache<Key, Error, Value>, never, Environment> = internal.make
+) => Effect.Effect<Cache<Key, Value, Error>, never, Environment> = internal.make
 
 /**
  * Constructs a new cache with the specified capacity, time to live, and
@@ -188,13 +188,13 @@ export const make: <Key, Environment, Error, Value>(
  * @since 2.0.0
  * @category constructors
  */
-export const makeWith: <Key, Environment, Error, Value>(
+export const makeWith: <Key, Value, Error = never, Environment = never>(
   options: {
     readonly capacity: number
-    readonly lookup: Lookup<Key, Environment, Error, Value>
+    readonly lookup: Lookup<Key, Value, Error, Environment>
     readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   }
-) => Effect.Effect<Cache<Key, Error, Value>, never, Environment> = internal.makeWith
+) => Effect.Effect<Cache<Key, Value, Error>, never, Environment> = internal.makeWith
 
 /**
  * `CacheStats` represents a snapshot of statistics for the cache as of a
@@ -249,4 +249,6 @@ export const makeEntryStats: (loadedMillis: number) => EntryStats = internal.mak
  * @since 2.0.0
  * @category models
  */
-export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect.Effect<Value, Error, Environment>
+export type Lookup<Key, Value, Error = never, Environment = never> = (
+  key: Key
+) => Effect.Effect<Value, Error, Environment>

@@ -11,40 +11,40 @@ import type * as Scope from "effect/Scope"
 import * as TestServices from "effect/TestServices"
 import { expect } from "vitest"
 
-export interface WatchableLookup<Key, Error, Value> {
+export interface WatchableLookup<Key, Value, Error = never> {
   (key: Key): Effect.Effect<Value, Error, Scope.Scope>
-  lock(): Effect.Effect<void>
-  unlock(): Effect.Effect<void>
-  createdResources(): Effect.Effect<
+  lock: () => Effect.Effect<void>
+  unlock: () => Effect.Effect<void>
+  createdResources: () => Effect.Effect<
     HashMap.HashMap<Key, Chunk.Chunk<ObservableResource.ObservableResource<Error, Value>>>
   >
-  firstCreatedResource(key: Key): Effect.Effect<ObservableResource.ObservableResource<Error, Value>>
-  getCalledTimes(key: Key): Effect.Effect<number>
-  resourcesCleaned(
+  firstCreatedResource: (key: Key) => Effect.Effect<ObservableResource.ObservableResource<Error, Value>>
+  getCalledTimes: (key: Key) => Effect.Effect<number>
+  resourcesCleaned: (
     resources: Iterable<ObservableResource.ObservableResource<Error, Value>>
-  ): Effect.Effect<void>
-  assertCalledTimes(key: Key, sizeAssertion: (value: number) => void): Effect.Effect<void>
-  assertFirstNCreatedResourcesCleaned(key: Key, n: number): Effect.Effect<void>
-  assertAllCleaned(): Effect.Effect<void>
-  assertAllCleanedForKey(key: Key): Effect.Effect<void>
-  assertAtLeastOneResourceNotCleanedForKey(key: Key): Effect.Effect<void>
+  ) => Effect.Effect<void>
+  assertCalledTimes: (key: Key, sizeAssertion: (value: number) => void) => Effect.Effect<void>
+  assertFirstNCreatedResourcesCleaned: (key: Key, n: number) => Effect.Effect<void>
+  assertAllCleaned: () => Effect.Effect<void>
+  assertAllCleanedForKey: (key: Key) => Effect.Effect<void>
+  assertAtLeastOneResourceNotCleanedForKey: (key: Key) => Effect.Effect<void>
 }
 
 export const make = <Key, Value>(
   concreteLookup: (key: Key) => Value
-): Effect.Effect<WatchableLookup<Key, never, Value>> => makeEffect((key) => Effect.succeed(concreteLookup(key)))
+): Effect.Effect<WatchableLookup<Key, Value>> => makeEffect((key) => Effect.succeed(concreteLookup(key)))
 
-export const makeUnit = (): Effect.Effect<WatchableLookup<void, never, void>> => make((_: void) => void 0)
+export const makeUnit = (): Effect.Effect<WatchableLookup<void, void>> => make<void, void>((_: void) => void 0)
 
-export const makeEffect = <Key, Error, Value>(
+export const makeEffect = <Key, Value, Error = never>(
   concreteLookup: (key: Key) => Effect.Effect<Value, Error>
-): Effect.Effect<WatchableLookup<Key, Error, Value>> =>
+): Effect.Effect<WatchableLookup<Key, Value, Error>> =>
   Effect.map(
     Effect.zip(
       Ref.make(false),
       Ref.make(HashMap.empty<Key, Chunk.Chunk<ObservableResource.ObservableResource<Error, Value>>>())
     ),
-    ([blocked, resources]): WatchableLookup<Key, Error, Value> => {
+    ([blocked, resources]): WatchableLookup<Key, Value, Error> => {
       function lookup(key: Key): Effect.Effect<Value, Error, Scope.Scope> {
         return Effect.flatten(Effect.gen(function*($) {
           const observableResource = yield* $(ObservableResource.makeEffect(concreteLookup(key)))
