@@ -5210,6 +5210,11 @@ export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
       : Shape[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
       : Shape[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
       : Effect<Shape[k], never, Self>
+  }
+  & {
+    use: <X>(
+      body: (_: Shape) => X
+    ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
   } = (id) => () => {
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
@@ -5225,6 +5230,10 @@ export const AccessTag: <const Id extends string>(id: Id) => <Self, Shape>() =>
     })
     const done = new Proxy(TagClass, {
       get(_target: any, prop: any, _receiver) {
+        if (prop === "use") {
+          // @ts-expect-error
+          return (body) => core.andThen(TagClass, body)
+        }
         if (prop in TagClass) {
           // @ts-expect-error
           return TagClass[prop]
