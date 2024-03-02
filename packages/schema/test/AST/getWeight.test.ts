@@ -26,7 +26,7 @@ describe("AST > getWeight", () => {
 
   it("Class", () => {
     class A extends S.Class<A>()({ a: S.string, b: S.number }) {}
-    const schema = A.pipe(S.to)
+    const schema = A.pipe(S.typeSchema)
     expect(AST.getWeight(schema.ast)).toStrictEqual([6, 2, 0])
   })
 })

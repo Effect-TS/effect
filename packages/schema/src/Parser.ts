@@ -209,7 +209,7 @@ export const decode: <A, I, R>(
 export const validateSync = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(AST.to(schema.ast), true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(AST.typeAST(schema.ast), true, options)
 
 /**
  * @category validation
@@ -218,7 +218,8 @@ export const validateSync = <A, I, R>(
 export const validateOption = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(AST.to(schema.ast), true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> =>
+  getOption(AST.typeAST(schema.ast), true, options)
 
 /**
  * @category validation
@@ -228,7 +229,7 @@ export const validateEither = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
 ): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<A, ParseResult.ParseIssue> =>
-  getEither(AST.to(schema.ast), true, options)
+  getEither(AST.typeAST(schema.ast), true, options)
 
 /**
  * @category validation
@@ -250,14 +251,14 @@ export const validate = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: AST.ParseOptions
 ): (a: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<A, ParseResult.ParseIssue, R> =>
-  getEffect(AST.to(schema.ast), true, options)
+  getEffect(AST.typeAST(schema.ast), true, options)
 
 /**
  * @category validation
  * @since 1.0.0
  */
 export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
-  const parser = goMemo(AST.to(schema.ast), true)
+  const parser = goMemo(AST.typeAST(schema.ast), true)
   return (u: unknown, overrideOptions?: AST.ParseOptions): u is A =>
     Either.isRight(parser(u, { ...mergeParseOptions(options, overrideOptions), isExact: true }) as any)
 }
@@ -267,7 +268,7 @@ export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseO
  * @since 1.0.0
  */
 export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
-  const parser = goMemo(AST.to(schema.ast), true)
+  const parser = goMemo(AST.typeAST(schema.ast), true)
   return (u: unknown, overrideOptions?: AST.ParseOptions): asserts u is A => {
     const result: Either.Either<any, ParseResult.ParseIssue> = parser(u, {
       ...mergeParseOptions(options, overrideOptions),
@@ -383,7 +384,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             options
           )
       } else {
-        const from = goMemo(AST.to(ast), true)
+        const from = goMemo(AST.typeAST(ast), true)
         const to = goMemo(dropRightRefinement(ast.from), false)
         return (i, options) =>
           handleForbidden(_parseResult.flatMap(from(i, options), (a) => to(a, options)), ast, i, options)
@@ -398,7 +399,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           _parseResult.flatMap(
             _parseResult.mapError(
               from(i1, options),
-              (e) => new _parseResult.Transform(ast, i1, isDecoding ? "From" : "To", e)
+              (e) => new _parseResult.Transform(ast, i1, isDecoding ? "Encoded" : "Type", e)
             ),
             (a) =>
               _parseResult.flatMap(
@@ -409,7 +410,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 (i2) =>
                   _parseResult.mapError(
                     to(i2, options),
-                    (e) => new _parseResult.Transform(ast, i1, isDecoding ? "To" : "From", e)
+                    (e) => new _parseResult.Transform(ast, i1, isDecoding ? "Type" : "Encoded", e)
                   )
               )
           ),
@@ -1069,7 +1070,7 @@ export const getLiterals = (
       const out: Array<[PropertyKey, AST.Literal]> = []
       for (let i = 0; i < ast.propertySignatures.length; i++) {
         const propertySignature = ast.propertySignatures[i]
-        const type = isDecoding ? AST.from(propertySignature.type) : AST.to(propertySignature.type)
+        const type = isDecoding ? AST.encodedAST(propertySignature.type) : AST.typeAST(propertySignature.type)
         if (AST.isLiteral(type) && !propertySignature.isOptional) {
           out.push([propertySignature.name, type])
         }

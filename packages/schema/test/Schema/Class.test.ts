@@ -283,8 +283,8 @@ describe("Schema > Class APIs", () => {
       expect({ ...new D({ a: "a", b: "b", c: true }) }).toStrictEqual({ _tag: "D", a: "a", b: "b", c: true })
     })
 
-    it("S.to(Class)", async () => {
-      const PersonFromSelf = S.to(Person)
+    it("S.typeSchema(Class)", async () => {
+      const PersonFromSelf = S.typeSchema(Person)
       await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
       await Util.expectDecodeUnknownFailure(
         PersonFromSelf,
@@ -294,7 +294,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("is", () => {
-      const is = S.is(S.to(Person))
+      const is = S.is(S.typeSchema(Person))
       expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
       expect(is({ id: 1, name: "name" })).toEqual(false)
     })
@@ -311,7 +311,7 @@ describe("Schema > Class APIs", () => {
       )
       expect(person.name).toEqual("John")
 
-      const PersonFromSelf = S.to(Person)
+      const PersonFromSelf = S.typeSchema(Person)
       await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
       await Util.expectDecodeUnknownFailure(
         PersonFromSelf,
@@ -750,12 +750,12 @@ describe("Schema > Class APIs", () => {
       await Util.expectEncodeSuccess(B, new A({ n: 1 }), { n: "1", s: "s" })
     })
 
-    describe("encode(S.to(Class))", () => {
+    describe("encode(S.typeSchema(Class))", () => {
       it("should always return an instance", async () => {
         class A extends S.Class<A>()({
           n: S.NumberFromString
         }) {}
-        const schema = S.to(A)
+        const schema = S.typeSchema(A)
         await Util.expectEncodeSuccess(schema, new A({ n: 1 }), new A({ n: 1 }))
         await Util.expectEncodeSuccess(schema, { n: 1 }, new A({ n: 1 }))
       })
@@ -764,7 +764,7 @@ describe("Schema > Class APIs", () => {
         class A extends S.Class<A>()({
           n: S.NumberFromString
         }) {}
-        const schema = S.to(A)
+        const schema = S.typeSchema(A)
         await Util.expectEncodeFailure(
           schema,
           null as any,

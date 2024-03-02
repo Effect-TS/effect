@@ -1787,28 +1787,28 @@ export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
 
 /** @internal */
 export const getToPropertySignatures = (ps: ReadonlyArray<PropertySignature>): Array<PropertySignature> =>
-  ps.map((p) => new PropertySignature(p.name, to(p.type), p.isOptional, p.isReadonly, p.annotations))
+  ps.map((p) => new PropertySignature(p.name, typeAST(p.type), p.isOptional, p.isReadonly, p.annotations))
 
 /** @internal */
 export const getToIndexSignatures = (ps: ReadonlyArray<IndexSignature>): Array<IndexSignature> =>
-  ps.map((is) => IndexSignature.make(is.parameter, to(is.type), is.isReadonly))
+  ps.map((is) => IndexSignature.make(is.parameter, typeAST(is.type), is.isReadonly))
 
 /**
  * @since 1.0.0
  */
-export const to = (ast: AST): AST => {
+export const typeAST = (ast: AST): AST => {
   switch (ast._tag) {
     case "Declaration":
       return new Declaration(
-        ast.typeParameters.map(to),
+        ast.typeParameters.map(typeAST),
         ast.decodeUnknown,
         ast.encodeUnknown,
         ast.annotations
       )
     case "Tuple":
       return new Tuple(
-        ast.elements.map((e) => new Element(to(e.type), e.isOptional)),
-        Option.map(ast.rest, ReadonlyArray.map(to)),
+        ast.elements.map((e) => new Element(typeAST(e.type), e.isOptional)),
+        Option.map(ast.rest, ReadonlyArray.map(typeAST)),
         ast.isReadonly,
         ast.annotations
       )
@@ -1819,13 +1819,13 @@ export const to = (ast: AST): AST => {
         ast.annotations
       )
     case "Union":
-      return Union.make(ast.types.map(to), ast.annotations)
+      return Union.make(ast.types.map(typeAST), ast.annotations)
     case "Suspend":
-      return new Suspend(() => to(ast.f()), ast.annotations)
+      return new Suspend(() => typeAST(ast.f()), ast.annotations)
     case "Refinement":
-      return new Refinement(to(ast.from), ast.filter, ast.annotations)
+      return new Refinement(typeAST(ast.from), ast.filter, ast.annotations)
     case "Transform":
-      return to(ast.to)
+      return typeAST(ast.to)
   }
   return ast
 }
@@ -1840,35 +1840,37 @@ const preserveIdentifierAnnotation = (annotated: Annotated): Annotations | undef
 /**
  * @since 1.0.0
  */
-export const from = (ast: AST): AST => {
+export const encodedAST = (ast: AST): AST => {
   switch (ast._tag) {
     case "Declaration":
       return new Declaration(
-        ast.typeParameters.map(from),
+        ast.typeParameters.map(encodedAST),
         ast.decodeUnknown,
         ast.encodeUnknown,
         ast.annotations
       )
     case "Tuple":
       return new Tuple(
-        ast.elements.map((e) => new Element(from(e.type), e.isOptional)),
-        Option.map(ast.rest, ReadonlyArray.map(from)),
+        ast.elements.map((e) => new Element(encodedAST(e.type), e.isOptional)),
+        Option.map(ast.rest, ReadonlyArray.map(encodedAST)),
         ast.isReadonly,
         preserveIdentifierAnnotation(ast)
       )
     case "TypeLiteral":
       return TypeLiteral.make(
-        ast.propertySignatures.map((p) => new PropertySignature(p.name, from(p.type), p.isOptional, p.isReadonly)),
-        ast.indexSignatures.map((is) => IndexSignature.make(is.parameter, from(is.type), is.isReadonly)),
+        ast.propertySignatures.map((p) =>
+          new PropertySignature(p.name, encodedAST(p.type), p.isOptional, p.isReadonly)
+        ),
+        ast.indexSignatures.map((is) => IndexSignature.make(is.parameter, encodedAST(is.type), is.isReadonly)),
         preserveIdentifierAnnotation(ast)
       )
     case "Union":
-      return Union.make(ast.types.map(from), preserveIdentifierAnnotation(ast))
+      return Union.make(ast.types.map(encodedAST), preserveIdentifierAnnotation(ast))
     case "Suspend":
-      return new Suspend(() => from(ast.f()), preserveIdentifierAnnotation(ast))
+      return new Suspend(() => encodedAST(ast.f()), preserveIdentifierAnnotation(ast))
     case "Refinement":
     case "Transform":
-      return from(ast.from)
+      return encodedAST(ast.from)
   }
   return ast
 }
@@ -2192,7 +2194,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
             const name = mapping[ps.name]
             return new PropertySignature(
               name === undefined ? ps.name : name,
-              to(ps.type),
+              typeAST(ps.type),
               ps.isOptional,
               ps.isReadonly,
               ps.annotations
@@ -2206,7 +2208,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
     case "Suspend":
       return new Suspend(() => rename(ast.f(), mapping))
     case "Transform":
-      return compose(ast, rename(to(ast), mapping))
+      return compose(ast, rename(typeAST(ast), mapping))
   }
   throw new Error(`rename: cannot rename (${ast})`)
 }

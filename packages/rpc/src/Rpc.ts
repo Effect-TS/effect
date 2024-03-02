@@ -102,7 +102,7 @@ export declare namespace Rpc {
    * @since 1.0.0
    * @category models
    */
-  export type Request<A extends Rpc<any, any>> = Schema.Schema.To<A["schema"]>
+  export type Request<A extends Rpc<any, any>> = Schema.Schema.Type<A["schema"]>
 
   /**
    * @since 1.0.0
@@ -194,8 +194,8 @@ export const StreamRequest =
     Tag,
     Self,
     Schema.Schema.Context<Fields[keyof Fields]>,
-    Types.Simplify<Schema.Struct.From<Fields>>,
-    Types.Simplify<Schema.Struct.To<Fields>>,
+    Types.Simplify<Schema.Struct.Encoded<Fields>>,
+    Types.Simplify<Schema.Struct.Type<Fields>>,
     RE | RA,
     IE,
     E,
@@ -245,10 +245,10 @@ export interface Request<A extends Schema.TaggedRequest.Any> extends
   PrimaryKey.PrimaryKey,
   Serializable.WithResult<
     Serializable.WithResult.Context<A>,
-    Schema.Schema.From<A[typeof Serializable.symbolResult]["Failure"]>,
-    Schema.Schema.To<A[typeof Serializable.symbolResult]["Failure"]>,
-    Schema.Schema.From<A[typeof Serializable.symbolResult]["Success"]>,
-    Schema.Schema.To<A[typeof Serializable.symbolResult]["Success"]>
+    Schema.Schema.Encoded<A[typeof Serializable.symbolResult]["Failure"]>,
+    Schema.Schema.Type<A[typeof Serializable.symbolResult]["Failure"]>,
+    Schema.Schema.Encoded<A[typeof Serializable.symbolResult]["Success"]>,
+    Schema.Schema.Type<A[typeof Serializable.symbolResult]["Success"]>
   >
 {
   readonly request: A

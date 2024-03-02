@@ -17,12 +17,12 @@ describe("Arbitrary > Arbitrary", () => {
     )
   })
 
-  it("make(S.to(schema))", () => {
+  it("make(S.typeSchema(schema))", () => {
     const schema = S.NumberFromString
-    expectValidArbitrary(S.to(schema))
+    expectValidArbitrary(S.typeSchema(schema))
   })
 
-  it("make(S.from(schema))", () => {
+  it("make(S.encodedSchema(schema))", () => {
     const schema = S.struct({
       a: S.NumberFromString,
       b: S.tuple(S.NumberFromString),
@@ -30,7 +30,7 @@ describe("Arbitrary > Arbitrary", () => {
       d: S.NumberFromString.pipe(S.positive()),
       e: S.optionFromSelf(S.NumberFromString)
     })
-    expectValidArbitrary(S.from(schema))
+    expectValidArbitrary(S.encodedSchema(schema))
   })
 
   describe("templateLiteral", () => {
@@ -257,7 +257,7 @@ describe("Arbitrary > Arbitrary", () => {
       expectValidArbitrary(schema)
     })
 
-    it("make(S.from(schema))", () => {
+    it("make(S.encodedSchema(schema))", () => {
       const NumberFromString = S.NumberFromString
       interface I {
         readonly a: string | I
@@ -269,7 +269,7 @@ describe("Arbitrary > Arbitrary", () => {
         a: S.union(NumberFromString, S.suspend(() => schema))
       })
 
-      expectValidArbitrary(S.from(schema))
+      expectValidArbitrary(S.encodedSchema(schema))
     })
 
     it("tuple", () => {

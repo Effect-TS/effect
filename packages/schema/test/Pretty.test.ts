@@ -15,9 +15,9 @@ describe("Pretty", () => {
     expect(pretty(1)).toEqual(`1`)
   })
 
-  it("make(S.from(schema))", () => {
+  it("make(S.encodedSchema(schema))", () => {
     const schema = S.NumberFromString
-    const pretty = Pretty.make(S.from(schema))
+    const pretty = Pretty.make(S.encodedSchema(schema))
     expect(pretty("a")).toEqual(`"a"`)
   })
 

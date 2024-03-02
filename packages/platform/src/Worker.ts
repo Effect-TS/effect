@@ -134,7 +134,7 @@ export declare namespace Worker {
     | readonly [id: number, end: 1]
     | readonly [id: number, end: 1, ReadonlyArray<O>]
     | readonly [id: number, error: 2, E]
-    | readonly [id: number, defect: 3, Schema.CauseFrom<WorkerErrorFrom>]
+    | readonly [id: number, defect: 3, Schema.CauseEncoded<WorkerErrorFrom>]
 }
 
 /**

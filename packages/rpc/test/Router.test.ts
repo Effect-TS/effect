@@ -130,7 +130,7 @@ const handlerArray = (u: ReadonlyArray<unknown>) =>
     Effect.map(flow(
       ReadonlyArray.fromIterable,
       ReadonlyArray.map(([, response]) => response),
-      ReadonlyArray.filter((_): _ is S.ExitFrom<any, any> => Array.isArray(_) === false)
+      ReadonlyArray.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false)
     ))
   )
 const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
@@ -141,7 +141,7 @@ const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
     sampled: true,
     headers: {}
   }))).pipe(
-    Effect.map(ReadonlyArray.filter((_): _ is S.ExitFrom<any, any> => Array.isArray(_) === false))
+    Effect.map(ReadonlyArray.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false))
   )
 const resolver = Resolver.make(handler)<typeof router>()
 const resolverEffect = Resolver.makeEffect(handlerEffect)<typeof router>()

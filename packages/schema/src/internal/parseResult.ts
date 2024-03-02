@@ -77,7 +77,7 @@ export class Transform {
   constructor(
     readonly ast: AST.Transform,
     readonly actual: unknown,
-    readonly kind: "From" | "Transformation" | "To",
+    readonly kind: "Encoded" | "Transformation" | "Type",
     readonly error: ParseIssue
   ) {}
 }

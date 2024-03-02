@@ -20,7 +20,7 @@ describe("AST > getPropertySignatures", () => {
 
   it("Class", () => {
     class A extends S.Class<A>()({ a: S.string, b: S.number }) {}
-    const schema = A.pipe(S.to)
+    const schema = A.pipe(S.typeSchema)
     expect(AST.getPropertySignatures(schema.ast)).toEqual([
       new AST.PropertySignature("a", S.string.ast, false, true),
       new AST.PropertySignature("b", S.number.ast, false, true)

@@ -22,7 +22,7 @@ type Json =
   | JsonArray
   | JsonObject
 
-const propertyTo = <A, I>(schema: S.Schema<A, I>, options?: {
+const propertyType = <A, I>(schema: S.Schema<A, I>, options?: {
   params?: fc.Parameters<[A]>
 }) => {
   const arbitrary = A.make(schema)
@@ -47,7 +47,6 @@ const propertyTo = <A, I>(schema: S.Schema<A, I>, options?: {
     ),
     options?.params
   )
-  // expect(JSONSchema.to(decodedSchema)).toStrictEqual(jsonSchema)
 }
 
 const JsonNumber = S.number.pipe(
@@ -101,11 +100,11 @@ describe("JSONSchema", () => {
   })
 
   it("any", () => {
-    propertyTo(S.any)
+    propertyType(S.any)
   })
 
   it("unknown", () => {
-    propertyTo(S.unknown)
+    propertyType(S.unknown)
   })
 
   it("object", () => {
@@ -118,24 +117,24 @@ describe("JSONSchema", () => {
     expect(validate("a")).toEqual(false)
     expect(validate(1)).toEqual(false)
     expect(validate(true)).toEqual(false)
-    propertyTo(S.object)
+    propertyType(S.object)
   })
 
   it("string", () => {
-    propertyTo(S.string)
+    propertyType(S.string)
   })
 
   it("JsonNumber", () => {
-    propertyTo(JsonNumber)
+    propertyType(JsonNumber)
   })
 
   it("boolean", () => {
-    propertyTo(S.boolean)
+    propertyType(S.boolean)
   })
 
   describe("literal", () => {
     it("null", () => {
-      propertyTo(S.null)
+      propertyType(S.null)
     })
 
     it("string", () => {
@@ -145,7 +144,7 @@ describe("JSONSchema", () => {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "const": "a"
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("number", () => {
@@ -155,7 +154,7 @@ describe("JSONSchema", () => {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "const": 1
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("boolean", () => {
@@ -165,8 +164,8 @@ describe("JSONSchema", () => {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "const": true
       })
-      propertyTo(S.literal(true))
-      propertyTo(S.literal(false))
+      propertyType(S.literal(true))
+      propertyType(S.literal(false))
     })
 
     it("bigint should raise an error", () => {
@@ -198,7 +197,7 @@ describe("JSONSchema", () => {
           }
         ]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("String enums", () => {
@@ -222,7 +221,7 @@ describe("JSONSchema", () => {
           }
         ]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("String/Number enums", () => {
@@ -251,7 +250,7 @@ describe("JSONSchema", () => {
           }
         ]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("Const enums", () => {
@@ -280,7 +279,7 @@ describe("JSONSchema", () => {
           }
         ]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
   })
 
@@ -303,7 +302,7 @@ describe("JSONSchema", () => {
           }
         ]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it(`1 | "a"`, () => {
@@ -313,7 +312,7 @@ describe("JSONSchema", () => {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "enum": [1, 2]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it(`1 | true | string`, () => {
@@ -330,7 +329,7 @@ describe("JSONSchema", () => {
           { "enum": [1, true] }
         ]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it(`1 | true(with description) | string`, () => {
@@ -352,7 +351,7 @@ describe("JSONSchema", () => {
           { "const": 1 }
         ]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it(`1 | 2 | true(with description) | string`, () => {
@@ -374,7 +373,7 @@ describe("JSONSchema", () => {
           { "enum": [1, 2] }
         ]
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("union of literals with descriptions", () => {
@@ -456,7 +455,7 @@ describe("JSONSchema", () => {
       expect(validate([1])).toEqual(true)
       expect(validate(["a"])).toEqual(false)
       expect(validate([1, 2])).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("e + e?", () => {
@@ -486,7 +485,7 @@ describe("JSONSchema", () => {
       expect(validate([])).toEqual(false)
       expect(validate([1])).toEqual(false)
       expect(validate([1, 2])).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("e? + r", () => {
@@ -519,7 +518,7 @@ describe("JSONSchema", () => {
       expect(validate([1])).toEqual(false)
       expect(validate([1, 2])).toEqual(false)
       expect(validate(["a", "b", 1])).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("r + e should raise an error", () => {
@@ -563,7 +562,7 @@ describe("JSONSchema", () => {
       expect(validate([])).toEqual(false)
       expect(validate(["a"])).toEqual(false)
       expect(validate([1, "a"])).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("e + r", () => {
@@ -608,7 +607,7 @@ describe("JSONSchema", () => {
       expect(validate([])).toEqual(false)
       expect(validate([1])).toEqual(false)
       expect(validate(["a", "b"])).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("r", () => {
@@ -630,7 +629,7 @@ describe("JSONSchema", () => {
       expect(validate([1, 2, 3])).toEqual(true)
       expect(validate(["a"])).toEqual(false)
       expect(validate([1, 2, 3, "a"])).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
   })
 
@@ -654,7 +653,7 @@ describe("JSONSchema", () => {
       expect(validate(null)).toEqual(false)
       expect(validate(1)).toEqual(false)
       expect(validate(true)).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("struct", () => {
@@ -684,7 +683,7 @@ describe("JSONSchema", () => {
       expect(validate({ a: "a" })).toEqual(false)
       expect(validate({ b: 1 })).toEqual(false)
       expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("optional property signature", () => {
@@ -717,7 +716,7 @@ describe("JSONSchema", () => {
       expect(validate({})).toEqual(false)
       expect(validate({ b: 1 })).toEqual(false)
       expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("should raise an error if there is a property named with a symbol", () => {
@@ -787,7 +786,7 @@ describe("JSONSchema", () => {
       const validate = new Ajv().compile(jsonSchema)
       expect(validate({ a: 1, b: 2 })).toEqual(true)
       expect(validate({ a: 1, b: "b" })).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("record('a' | 'b', number)", () => {
@@ -814,7 +813,7 @@ describe("JSONSchema", () => {
         "required": ["a", "b"],
         "additionalProperties": false
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("record(${string}-${string}, number)", () => {
@@ -845,7 +844,7 @@ describe("JSONSchema", () => {
       expect(validate({ "a-b": 1 })).toEqual(true)
       expect(validate({ "": 1 })).toEqual(false)
       expect(validate({ "-": "a" })).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("record(pattern, number)", () => {
@@ -876,7 +875,7 @@ describe("JSONSchema", () => {
       expect(validate({ "a-b": 1 })).toEqual(true)
       expect(validate({ "": 1 })).toEqual(false)
       expect(validate({ "-": "a" })).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
   })
 
@@ -911,7 +910,7 @@ describe("JSONSchema", () => {
     expect(validate({ b: "b" })).toEqual(false)
     expect(validate({ a: 1 })).toEqual(false)
     expect(validate({ a: "a", b: 1 })).toEqual(false)
-    propertyTo(schema)
+    propertyType(schema)
   })
 
   describe("refinement", () => {
@@ -932,7 +931,7 @@ describe("JSONSchema", () => {
         "description": "a string at least 1 character(s) long",
         "minLength": 1
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("maxLength", () => {
@@ -945,7 +944,7 @@ describe("JSONSchema", () => {
         "description": "a string at most 1 character(s) long",
         "maxLength": 1
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("greaterThan", () => {
@@ -958,7 +957,7 @@ describe("JSONSchema", () => {
         "description": "a number greater than 1",
         "exclusiveMinimum": 1
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("greaterThanOrEqualTo", () => {
@@ -971,7 +970,7 @@ describe("JSONSchema", () => {
         "description": "a number greater than or equal to 1",
         "minimum": 1
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("lessThan", () => {
@@ -984,7 +983,7 @@ describe("JSONSchema", () => {
         "description": "a number less than 1",
         "exclusiveMaximum": 1
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("lessThanOrEqualTo", () => {
@@ -997,7 +996,7 @@ describe("JSONSchema", () => {
         "description": "a number less than or equal to 1",
         "maximum": 1
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("pattern", () => {
@@ -1010,7 +1009,7 @@ describe("JSONSchema", () => {
         "description": "a string matching the pattern ^abb+$",
         "pattern": "^abb+$"
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("integer", () => {
@@ -1022,7 +1021,7 @@ describe("JSONSchema", () => {
         "title": "integer",
         "description": "an integer"
       })
-      propertyTo(schema)
+      propertyType(schema)
     })
   })
 
@@ -1108,7 +1107,7 @@ describe("JSONSchema", () => {
       expect(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
       ).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("should support inner suspended schemas with inner identifier annotation", () => {
@@ -1176,7 +1175,7 @@ describe("JSONSchema", () => {
       expect(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
       ).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("should support inner suspended schemas with outer identifier annotation", () => {
@@ -1233,7 +1232,7 @@ describe("JSONSchema", () => {
           categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [{ name: "a4", categories: [1] }] }]
         })
       ).toEqual(false)
-      propertyTo(schema)
+      propertyType(schema)
     })
 
     it("should support mutually suspended schemas", () => {
@@ -1345,10 +1344,10 @@ describe("JSONSchema", () => {
           }
         }
       })).toEqual(true)
-      propertyTo(Operation, { params: { numRuns: 5 } })
+      propertyType(Operation, { params: { numRuns: 5 } })
     })
 
-    it("should handle identifier annotations when generating a schema through `from()`", () => {
+    it("should handle identifier annotations when generating a schema through `encodedSchema()`", () => {
       interface Category {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
@@ -1358,7 +1357,7 @@ describe("JSONSchema", () => {
         name: S.string,
         categories: S.array(S.suspend(() => schema).annotations({ identifier: "Category" }))
       })
-      const jsonSchema = JSONSchema.make(S.from(schema))
+      const jsonSchema = JSONSchema.make(S.encodedSchema(schema))
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -1477,9 +1476,9 @@ describe("JSONSchema", () => {
   })
 
   describe("Class", () => {
-    it("should support S.from(Class)", () => {
+    it("should support S.encodedSchema(Class)", () => {
       class A extends S.Class<A>()({ a: S.string }) {}
-      const jsonSchema = JSONSchema.make(S.from(A))
+      const jsonSchema = JSONSchema.make(S.encodedSchema(A))
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",

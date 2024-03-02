@@ -11,14 +11,14 @@ class A extends S.Class<A>()({ a: S.NonEmpty }) {}
 // ---------------------------------------------
 
 // $ExpectType never
-hole<S.Schema.From<typeof S.never>>()
+hole<S.Schema.Encoded<typeof S.never>>()
 
 // ---------------------------------------------
 // Schema.To
 // ---------------------------------------------
 
 // $ExpectType never
-hole<S.Schema.To<typeof S.never>>()
+hole<S.Schema.Type<typeof S.never>>()
 
 // ---------------------------------------------
 // S.annotations
@@ -491,10 +491,10 @@ const MyModel = S.struct({ a: S.string, b: S.NumberFromString })
 S.asSchema(MyModel)
 
 // $ExpectType { readonly a: string; readonly b: string; }
-export type MyModelFrom = S.Schema.From<typeof MyModel>
+export type MyModelFrom = S.Schema.Encoded<typeof MyModel>
 
 // $ExpectType { readonly a: string; readonly b: number; }
-export type MyModelTo = S.Schema.To<typeof MyModel>
+export type MyModelTo = S.Schema.Type<typeof MyModel>
 
 // $ExpectType Schema<{ readonly a: never; }, { readonly a: never; }, never>
 S.asSchema(S.struct({ a: S.never }))
@@ -1302,10 +1302,10 @@ declare const cContext: S.Schema<boolean, boolean, "c">
 class AB extends S.Class<AB>()({ a: aContext, b: bContext }) {}
 
 // $ExpectType AB
-hole<S.Schema.To<typeof AB>>()
+hole<S.Schema.Type<typeof AB>>()
 
 // $ExpectType { readonly a: string; readonly b: number; }
-hole<S.Schema.From<typeof AB>>()
+hole<S.Schema.Encoded<typeof AB>>()
 
 // $ExpectType "a" | "b"
 hole<S.Schema.Context<typeof AB>>()
@@ -1323,10 +1323,10 @@ class EABC extends AB.extend<EABC>()({
 }) {}
 
 // $ExpectType EABC
-hole<S.Schema.To<typeof EABC>>()
+hole<S.Schema.Type<typeof EABC>>()
 
 // $ExpectType { readonly a: string; readonly b: number; readonly c: boolean; }
-hole<S.Schema.From<typeof EABC>>()
+hole<S.Schema.Encoded<typeof EABC>>()
 
 // $ExpectType "a" | "b" | "c"
 hole<S.Schema.Context<typeof EABC>>()
@@ -1346,10 +1346,10 @@ class ABC extends S.Class<ABC>()({
 }) {}
 
 // $ExpectType ABC
-hole<S.Schema.To<typeof ABC>>()
+hole<S.Schema.Type<typeof ABC>>()
 
 // $ExpectType { readonly a: string; readonly b: string; readonly c: boolean; }
-hole<S.Schema.From<typeof ABC>>()
+hole<S.Schema.Encoded<typeof ABC>>()
 
 // $ExpectType "a" | "c"
 hole<S.Schema.Context<typeof ABC>>()
@@ -1369,10 +1369,10 @@ class D extends S.TaggedClass<D>()("D", {
 }) {}
 
 // $ExpectType D
-hole<S.Schema.To<typeof D>>()
+hole<S.Schema.Type<typeof D>>()
 
 // $ExpectType { readonly _tag: "D"; readonly a: string; readonly b: string; readonly c: boolean; }
-hole<S.Schema.From<typeof D>>()
+hole<S.Schema.Encoded<typeof D>>()
 
 // $ExpectType "a" | "c"
 hole<S.Schema.Context<typeof D>>()
@@ -1395,10 +1395,10 @@ class MyTaggedClass extends S.TaggedClass<MyTaggedClass>()("MyTaggedClass", {
 hole<ConstructorParameters<typeof MyTaggedClass>>()
 
 // $ExpectType { readonly _tag: "MyTaggedClass"; readonly a: string; }
-hole<S.Schema.From<typeof MyTaggedClass>>()
+hole<S.Schema.Encoded<typeof MyTaggedClass>>()
 
 // $ExpectType MyTaggedClass
-hole<S.Schema.To<typeof MyTaggedClass>>()
+hole<S.Schema.Type<typeof MyTaggedClass>>()
 
 class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass", {}) {}
 
@@ -1410,64 +1410,64 @@ hole<ConstructorParameters<typeof VoidTaggedClass>>()
 // ---------------------------------------------
 
 // $ExpectType {}
-hole<Simplify<S.Struct.To<{}>>>()
+hole<Simplify<S.Struct.Type<{}>>>()
 
 // $ExpectType { readonly a: number; }
-hole<Simplify<S.Struct.To<{ a: S.Schema<number, string> }>>>()
+hole<Simplify<S.Struct.Type<{ a: S.Schema<number, string> }>>>()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }>
-  >
->()
-
-// $ExpectType { readonly a: number; readonly b: number; }
-hole<
-  Simplify<
-    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }>
+    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
+    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
+    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
+  >
+>()
+
+// $ExpectType { readonly a: number; readonly b: number; }
+hole<
+  Simplify<
+    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }>
+    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }>
+    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
+    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.Struct.To<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
+    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
   >
 >()
 
@@ -1476,64 +1476,74 @@ hole<
 // ---------------------------------------------
 
 // $ExpectType {}
-hole<Simplify<S.Struct.From<{}>>>()
+hole<Simplify<S.Struct.Encoded<{}>>>()
 
 // $ExpectType { readonly a: string; }
-hole<Simplify<S.Struct.From<{ a: S.Schema<number, string> }>>>()
+hole<Simplify<S.Struct.Encoded<{ a: S.Schema<number, string> }>>>()
 
 // $ExpectType { readonly a: string; readonly b: string; }
 hole<
   Simplify<
-    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }>
+    S.Struct.Encoded<
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: string; readonly b?: string; }
 hole<
   Simplify<
-    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }>
+    S.Struct.Encoded<
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c: string; }
 hole<
   Simplify<
-    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
+    S.Struct.Encoded<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c?: string; }
 hole<
   Simplify<
-    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
+    S.Struct.Encoded<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly b: string; }
 hole<
   Simplify<
-    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }>
+    S.Struct.Encoded<
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: string; readonly b?: string; }
 hole<
   Simplify<
-    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }>
+    S.Struct.Encoded<
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c: string; }
 hole<
   Simplify<
-    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
+    S.Struct.Encoded<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c?: string; }
 hole<
   Simplify<
-    S.Struct.From<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
+    S.Struct.Encoded<
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }
+    >
   >
 >()
 

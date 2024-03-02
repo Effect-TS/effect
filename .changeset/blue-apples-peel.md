@@ -2,6 +2,12 @@
 "@effect/schema": minor
 ---
 
+- rename `Schema.Schema.To` to `Schema.Schema.Type`, `Schema.to` to `Schema.typeSchema`, `AST.to` to `AST.typeAST`
+
+- rename `Schema.Schema.From` to `Schema.Schema.Encoded` and `Schema.from` to `Schema.encodedSchema`, `AST.from` to `AST.encodedAST`
+
+- change `AST.Transform.kind` to `"Encoded" | "Transformation" | "Type"`
+
 - Schema: change `PropertySignature` signature from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<Key extends PropertyKey, ToToken extends Token, To, FromToken extends Token, From, R = never>`
 
 - Schema: rename `Class` interface to `ClassSchema`
