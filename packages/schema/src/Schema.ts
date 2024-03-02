@@ -65,7 +65,7 @@ export type TypeId = typeof TypeId
  */
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly ast: AST.AST
-  annotations(annotations?: Annotations<A>): Schema<A, I, R>
+  annotations(annotations: Annotations<A>): Schema<A, I, R>
 }
 
 declare module Annotable {
@@ -78,7 +78,7 @@ declare module Annotable {
  * @since 1.0.0
  */
 export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> extends Schema<A, I, R> {
-  annotations(annotations?: Annotations<A>): Self
+  annotations(annotations: Annotations<A>): Self
 }
 
 /**
@@ -415,12 +415,16 @@ class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralV
   implements literal<Literals>
 {
   constructor(readonly literals: Literals, annotations?: Annotations<Literals[number]>) {
-    const schema = union(...literals.map((literal) => make<Literals[number]>(new AST.Literal(literal))))
-      .annotations(annotations)
-    super(schema.ast)
+    const ast = AST.isMembers(literals)
+      ? AST.Union.make(
+        AST.mapMembers(literals, (literal) => new AST.Literal(literal)),
+        _schema.toASTAnnotations(annotations)
+      )
+      : new AST.Literal(literals[0], _schema.toASTAnnotations(annotations))
+    super(ast)
   }
-  annotations(annotations?: Annotations<Literals[number]>) {
-    return annotations ? new $literal(this.literals, { ...this.ast.annotations, ...annotations }) : this
+  annotations(annotations: Annotations<Literals[number]>) {
+    return new $literal(this.literals, { ...this.ast.annotations, ...annotations })
   }
 }
 
@@ -851,8 +855,8 @@ class $union<Members extends ReadonlyArray<Schema.Any>>
   constructor(readonly members: Members, annotations?: Annotations<Schema.To<Members[number]>>) {
     super(AST.Union.make(members.map((m) => m.ast), _schema.toASTAnnotations(annotations)))
   }
-  annotations(annotations?: Annotations<Schema.To<Members[number]>>): union<Members> {
-    return annotations ? new $union(this.members, { ...this.ast.annotations, ...annotations }) : this
+  annotations(annotations: Annotations<Schema.To<Members[number]>>): union<Members> {
+    return new $union(this.members, { ...this.ast.annotations, ...annotations })
   }
 }
 
@@ -916,7 +920,7 @@ export interface tuple<Elements extends ReadonlyArray<Schema.Any>> extends
   >
 {
   readonly elements: Readonly<Elements>
-  annotations(annotations?: Annotations<{ readonly [K in keyof Elements]: Schema.To<Elements[K]> }>): tuple<Elements>
+  annotations(annotations: Annotations<{ readonly [K in keyof Elements]: Schema.To<Elements[K]> }>): tuple<Elements>
 }
 
 class $tuple<Elements extends ReadonlyArray<Schema.Any>> extends _schema.Schema<
@@ -937,8 +941,8 @@ class $tuple<Elements extends ReadonlyArray<Schema.Any>> extends _schema.Schema<
       )
     )
   }
-  annotations(annotations?: Annotations<{ readonly [K in keyof Elements]: Schema.To<Elements[K]> }>): tuple<Elements> {
-    return annotations ? new $tuple(this.elements, { ...this.ast.annotations, ...annotations }) : this
+  annotations(annotations: Annotations<{ readonly [K in keyof Elements]: Schema.To<Elements[K]> }>): tuple<Elements> {
+    return new $tuple(this.elements, { ...this.ast.annotations, ...annotations })
   }
 }
 
@@ -1004,8 +1008,8 @@ class $array<Value extends Schema.Any>
   constructor(readonly value: Value, annotations?: Annotations<ReadonlyArray<Schema.To<Value>>>) {
     super(new AST.Tuple([], Option.some([value.ast]), true, _schema.toASTAnnotations(annotations)))
   }
-  annotations(annotations?: Annotations<ReadonlyArray<Schema.To<Value>>>): array<Value> {
-    return annotations ? new $array(this.value, { ...this.ast.annotations, ...annotations }) : this
+  annotations(annotations: Annotations<ReadonlyArray<Schema.To<Value>>>): array<Value> {
+    return new $array(this.value, { ...this.ast.annotations, ...annotations })
   }
 }
 
@@ -1045,8 +1049,8 @@ class $nonEmptyArray<Value extends Schema.Any> extends _schema.Schema<
       )
     )
   }
-  annotations(annotations?: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>>): nonEmptyArray<Value> {
-    return annotations ? new $nonEmptyArray(this.value, { ...this.ast.annotations, ...annotations }) : this
+  annotations(annotations: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.To<Value>>>): nonEmptyArray<Value> {
+    return new $nonEmptyArray(this.value, { ...this.ast.annotations, ...annotations })
   }
 }
 
@@ -1557,7 +1561,7 @@ export interface struct<Fields extends Struct.Fields>
   extends Annotable<struct<Fields>, Simplify<Struct.To<Fields>>, Simplify<Struct.From<Fields>>, Struct.Context<Fields>>
 {
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
-  annotations(annotations?: Annotations<Simplify<Struct.To<Fields>>>): struct<Fields>
+  annotations(annotations: Annotations<Simplify<Struct.To<Fields>>>): struct<Fields>
 }
 
 const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
@@ -1618,8 +1622,8 @@ class $struct<Fields extends Struct.Fields>
       super(AST.TypeLiteral.make(pss, [], _schema.toASTAnnotations(annotations)))
     }
   }
-  annotations(annotations?: Annotations<Simplify<Struct.To<Fields>>>): struct<Fields> {
-    return annotations ? new $struct(this.fields, { ...this.ast.annotations, ...annotations }) : this
+  annotations(annotations: Annotations<Simplify<Struct.To<Fields>>>): struct<Fields> {
+    return new $struct(this.fields, { ...this.ast.annotations, ...annotations })
   }
 }
 
@@ -1793,7 +1797,7 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
     return pipeArguments(this, arguments)
   }
   refined.annotations = (annotations: Annotations<A & Brand.Brand<B>>) => {
-    return annotations ? makeBrandSchema(ast, annotations) : refined
+    return makeBrandSchema(ast, annotations)
   }
   return refined
 }
@@ -1898,8 +1902,8 @@ class $record<K extends Schema.Any | $never, V extends Schema.Any> extends _sche
   ) {
     super(AST.createRecord(key.ast, value.ast, true, _schema.toASTAnnotations(annotations)))
   }
-  annotations(annotations?: Annotations<{ readonly [P in Schema.To<K>]: Schema.To<V> }>): record<K, V> {
-    return annotations ? new $record(this.key, this.value, { ...this.ast.annotations, ...annotations }) : this
+  annotations(annotations: Annotations<{ readonly [P in Schema.To<K>]: Schema.To<V> }>): record<K, V> {
+    return new $record(this.key, this.value, { ...this.ast.annotations, ...annotations })
   }
 }
 
@@ -5454,7 +5458,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, tag }: {
       return pipeArguments(this, arguments)
     }
 
-    static annotations(annotations?: Annotations<any>) {
+    static annotations(annotations: Annotations<any>) {
       return make(this.ast).annotations(annotations)
     }
 

@@ -33,12 +33,6 @@ describe("Schema > literal", () => {
     expect(schema.literals).toStrictEqual(["a", "b"])
   })
 
-  it("should return the same reference when using .annotations(undefined)", () => {
-    const schema = S.literal("a", "b")
-    const copy = schema.annotations(undefined)
-    expect(schema === copy).toBe(true)
-  })
-
   describe("decoding", () => {
     it("1 member", async () => {
       const schema = S.literal(1)

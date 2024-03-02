@@ -2,6 +2,8 @@
 "@effect/schema": patch
 ---
 
+- Schema: add `Annotable` interface
+
 - Schema: add `asSchema`
 
 - Schema: expose `literals` (`literal` API)

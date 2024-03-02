@@ -136,7 +136,7 @@ S.asSchema(S.void)
 S.void
 
 // $ExpectType $void
-S.void.annotations()
+S.void.annotations({})
 
 // $ExpectType Schema<undefined, undefined, never>
 S.asSchema(S.undefined)
@@ -145,7 +145,7 @@ S.asSchema(S.undefined)
 S.undefined
 
 // $ExpectType $undefined
-S.undefined.annotations()
+S.undefined.annotations({})
 
 // $ExpectType Schema<string, string, never>
 S.asSchema(S.string)
@@ -154,7 +154,7 @@ S.asSchema(S.string)
 S.string
 
 // $ExpectType $string
-S.string.annotations()
+S.string.annotations({})
 
 // $ExpectType Schema<number, number, never>
 S.asSchema(S.number)
@@ -163,7 +163,7 @@ S.asSchema(S.number)
 S.number
 
 // $ExpectType $number
-S.number.annotations()
+S.number.annotations({})
 
 // $ExpectType Schema<boolean, boolean, never>
 S.asSchema(S.boolean)
@@ -172,7 +172,7 @@ S.asSchema(S.boolean)
 S.boolean
 
 // $ExpectType $boolean
-S.boolean.annotations()
+S.boolean.annotations({})
 
 // $ExpectType Schema<bigint, bigint, never>
 S.asSchema(S.bigintFromSelf)
@@ -181,7 +181,7 @@ S.asSchema(S.bigintFromSelf)
 S.bigintFromSelf
 
 // $ExpectType bigintFromSelf
-S.bigintFromSelf.annotations()
+S.bigintFromSelf.annotations({})
 
 // $ExpectType Schema<bigint, string, never>
 S.asSchema(S.bigint)
@@ -190,7 +190,7 @@ S.asSchema(S.bigint)
 S.bigint
 
 // $ExpectType $bigint
-S.bigint.annotations()
+S.bigint.annotations({})
 
 // $ExpectType Schema<symbol, symbol, never>
 S.asSchema(S.symbolFromSelf)
@@ -199,7 +199,7 @@ S.asSchema(S.symbolFromSelf)
 S.symbolFromSelf
 
 // $ExpectType symbolFromSelf
-S.symbolFromSelf.annotations()
+S.symbolFromSelf.annotations({})
 
 // $ExpectType Schema<symbol, string, never>
 S.asSchema(S.symbol)
@@ -208,7 +208,7 @@ S.asSchema(S.symbol)
 S.symbol
 
 // $ExpectType $symbol
-S.symbol.annotations()
+S.symbol.annotations({})
 
 // $ExpectType Schema<unknown, unknown, never>
 S.asSchema(S.unknown)
@@ -217,7 +217,7 @@ S.asSchema(S.unknown)
 S.unknown
 
 // $ExpectType $unknown
-S.unknown.annotations()
+S.unknown.annotations({})
 
 // $ExpectType Schema<any, any, never>
 S.asSchema(S.any)
@@ -226,7 +226,7 @@ S.asSchema(S.any)
 S.any
 
 // $ExpectType $any
-S.any.annotations()
+S.any.annotations({})
 
 // $ExpectType Schema<object, object, never>
 S.asSchema(S.object)
@@ -235,7 +235,7 @@ S.asSchema(S.object)
 S.object
 
 // $ExpectType $object
-S.object.annotations()
+S.object.annotations({})
 
 // ---------------------------------------------
 // literals
@@ -248,7 +248,7 @@ S.asSchema(S.null)
 S.null
 
 // $ExpectType $null
-S.null.annotations()
+S.null.annotations({})
 
 // $ExpectType $never
 S.literal()
@@ -286,7 +286,7 @@ S.literal("A", "B")
 S.literal("A", "B").literals
 
 // $ExpectType literal<["A", "B"]>
-S.literal("A", "B").annotations()
+S.literal("A", "B").annotations({})
 
 // ---------------------------------------------
 // strings
@@ -367,7 +367,7 @@ S.nullable(S.NumberFromString)
 // ---------------------------------------------
 
 // $ExpectType union<[$string, $number]>
-S.union(S.string, S.number).annotations()
+S.union(S.string, S.number).annotations({})
 
 // $ExpectType Schema<string | number, string | number, never>
 S.asSchema(S.union(S.string, S.number))
@@ -473,7 +473,7 @@ S.nonEmptyArray(S.NumberFromString)
 S.struct({ a: S.string, b: S.number }).fields
 
 // $ExpectType { readonly a: $string; readonly b: $number; }
-S.struct({ a: S.string, b: S.number }).annotations().fields
+S.struct({ a: S.string, b: S.number }).annotations({}).fields
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, never>
 S.asSchema(S.struct({ a: S.string, b: S.number }))
@@ -1261,7 +1261,7 @@ S.SecretFromSelf
 S.propertySignatureDeclaration(S.string).annotations({ description: "description" })
 
 // ---------------------------------------------
-// PropertySignature .annotations() method
+// PropertySignature .annotations({}) method
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<"?:", string | undefined, never, "?:", string | undefined, never>

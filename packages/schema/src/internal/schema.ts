@@ -79,7 +79,7 @@ export class Schema<in out A, in out I = A, out R = never> implements S.Schema<A
   pipe() {
     return pipeArguments(this, arguments)
   }
-  annotations(annotations?: S.Annotations<A>): S.Schema<A, I, R> {
-    return annotations ? new Schema(AST.annotations(this.ast, toASTAnnotations(annotations))) : this
+  annotations(annotations: S.Annotations<A>): S.Schema<A, I, R> {
+    return new Schema(AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }

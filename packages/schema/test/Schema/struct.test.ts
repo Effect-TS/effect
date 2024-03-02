@@ -35,15 +35,6 @@ describe("Schema > struct", () => {
     })
   })
 
-  it("should return the same reference when using .annotations(undefined)", () => {
-    const schema = S.struct({
-      a: S.string,
-      b: S.number
-    })
-    const copy = schema.annotations(undefined)
-    expect(schema === copy).toBe(true)
-  })
-
   it(`should allow a "constructor" field name`, () => {
     const schema = S.struct({ constructor: S.string })
     expect(schema.ast._tag).toEqual("TypeLiteral")
