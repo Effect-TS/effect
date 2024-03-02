@@ -344,6 +344,9 @@ enum Fruits {
 }
 
 // $ExpectType Schema<Fruits, Fruits, never>
+S.asSchema(S.enums(Fruits))
+
+// $ExpectType enums<typeof Fruits>
 S.enums(Fruits)
 
 // ---------------------------------------------

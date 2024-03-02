@@ -473,12 +473,16 @@ export const pickLiteral =
 export const uniqueSymbolFromSelf = <S extends symbol>(symbol: S): Schema<S> => make(new AST.UniqueSymbol(symbol))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface enums<A extends { [x: string]: string | number }> extends Annotable<enums<A>, A[keyof A]> {}
+
+/**
  * @category constructors
  * @since 1.0.0
  */
-export const enums = <A extends { [x: string]: string | number }>(
-  enums: A
-): Schema<A[keyof A]> =>
+export const enums = <A extends { [x: string]: string | number }>(enums: A): enums<A> =>
   make(
     new AST.Enums(
       Object.keys(enums).filter(
