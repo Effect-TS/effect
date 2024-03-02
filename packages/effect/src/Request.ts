@@ -256,7 +256,7 @@ export interface Listeners {
  * @since 2.0.0
  */
 export interface Cache extends
-  _Cache.ConsumerCache<Request<any, any>, never, {
+  _Cache.ConsumerCache<Request<any, any>, {
     listeners: Listeners
     handle: Deferred<unknown, unknown>
   }>
