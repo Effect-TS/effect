@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import * as BigDecimal from "effect/BigDecimal"
-import * as BigInt_ from "effect/BigInt"
+import * as _bigDecimal from "effect/BigDecimal"
+import * as _bigInt from "effect/BigInt"
 import * as Brand from "effect/Brand"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -3646,7 +3646,7 @@ export const clampBigint =
     transform(
       self,
       self.pipe(to, betweenBigint(minimum, maximum)),
-      (self) => BigInt_.clamp(self, { minimum, maximum }),
+      (self) => _bigInt.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
     )
@@ -3746,6 +3746,12 @@ export const NonNegativeBigint: Schema<bigint, string> = bigint.pipe(
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface BigintFromNumber extends Annotable<BigintFromNumber, bigint, number> {}
+
+/**
  * This schema transforms a `number` into a `bigint` by parsing the number using the `BigInt` function.
  *
  * It returns an error if the value can't be safely encoded as a `number` due to being out of range.
@@ -3753,7 +3759,7 @@ export const NonNegativeBigint: Schema<bigint, string> = bigint.pipe(
  * @category bigint transformations
  * @since 1.0.0
  */
-export const BigintFromNumber: Schema<bigint, number> = transformOrFail(
+export const BigintFromNumber: BigintFromNumber = transformOrFail(
   number,
   bigintFromSelf,
   (n, _, ast) =>
@@ -3761,7 +3767,7 @@ export const BigintFromNumber: Schema<bigint, number> = transformOrFail(
       try: () => BigInt(n),
       catch: () => new ParseResult.Type(ast, n)
     }),
-  (b, _, ast) => ParseResult.fromOption(BigInt_.toNumber(b), () => new ParseResult.Type(ast, b))
+  (b, _, ast) => ParseResult.fromOption(_bigInt.toNumber(b), () => new ParseResult.Type(ast, b))
 ).annotations({ identifier: "BigintFromNumber" })
 
 /**
@@ -4893,44 +4899,58 @@ export const readonlySet = <Value extends Schema.Any>(value: Value): readonlySet
   )
 }
 
-const bigDecimalPretty = (): Pretty.Pretty<BigDecimal.BigDecimal> => (val) =>
-  `BigDecimal(${BigDecimal.format(BigDecimal.normalize(val))})`
+const bigDecimalPretty = (): Pretty.Pretty<_bigDecimal.BigDecimal> => (val) =>
+  `BigDecimal(${_bigDecimal.format(_bigDecimal.normalize(val))})`
 
-const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
-  fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => BigDecimal.make(value, scale))
+const bigDecimalArbitrary = (): Arbitrary<_bigDecimal.BigDecimal> => (fc) =>
+  fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => _bigDecimal.make(value, scale))
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface BigDecimalFromSelf extends Annotable<BigDecimalFromSelf, _bigDecimal.BigDecimal> {}
 
 /**
  * @category BigDecimal constructors
  * @since 1.0.0
  */
-export const BigDecimalFromSelf: Schema<BigDecimal.BigDecimal> = declare(
-  BigDecimal.isBigDecimal,
+export const BigDecimalFromSelf: BigDecimalFromSelf = declare(
+  _bigDecimal.isBigDecimal,
   {
     identifier: "BigDecimalFromSelf",
     pretty: bigDecimalPretty,
     arbitrary: bigDecimalArbitrary,
-    equivalence: () => BigDecimal.Equivalence
+    equivalence: () => _bigDecimal.Equivalence
   }
 )
 
-const _BigDecimal: Schema<BigDecimal.BigDecimal, string> = transformOrFail(
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface BigDecimal extends Annotable<BigDecimal, _bigDecimal.BigDecimal, string> {}
+
+/**
+ * @category BigDecimal transformations
+ * @since 1.0.0
+ */
+export const BigDecimal: BigDecimal = transformOrFail(
   string,
   BigDecimalFromSelf,
   (num, _, ast) =>
-    BigDecimal.fromString(num).pipe(Option.match({
+    _bigDecimal.fromString(num).pipe(Option.match({
       onNone: () => ParseResult.fail(new ParseResult.Type(ast, num)),
-      onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
+      onSome: (val) => ParseResult.succeed(_bigDecimal.normalize(val))
     })),
-  (val) => ParseResult.succeed(BigDecimal.format(BigDecimal.normalize(val)))
+  (val) => ParseResult.succeed(_bigDecimal.format(_bigDecimal.normalize(val)))
 ).annotations({ identifier: "BigDecimal" })
 
-export {
-  /**
-   * @category BigDecimal transformations
-   * @since 1.0.0
-   */
-  _BigDecimal as BigDecimal
-}
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface BigDecimalFromNumber extends Annotable<BigDecimalFromNumber, _bigDecimal.BigDecimal, number> {}
 
 /**
  * A schema that transforms a `number` into a `BigDecimal`.
@@ -4939,11 +4959,11 @@ export {
  * @category BigDecimal transformations
  * @since 1.0.0
  */
-export const BigDecimalFromNumber: Schema<BigDecimal.BigDecimal, number> = transformOrFail(
+export const BigDecimalFromNumber: BigDecimalFromNumber = transformOrFail(
   number,
   BigDecimalFromSelf,
-  (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
-  (val) => ParseResult.succeed(BigDecimal.unsafeToNumber(val))
+  (num) => ParseResult.succeed(_bigDecimal.fromNumber(num)),
+  (val) => ParseResult.succeed(_bigDecimal.unsafeToNumber(val))
 ).annotations({ identifier: "BigDecimalFromNumber" })
 
 /**
@@ -4956,15 +4976,15 @@ export const GreaterThanBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/Gre
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const greaterThanBigDecimal = <A extends BigDecimal.BigDecimal>(
-  min: BigDecimal.BigDecimal,
+export const greaterThanBigDecimal = <A extends _bigDecimal.BigDecimal>(
+  min: _bigDecimal.BigDecimal,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => BigDecimal.greaterThan(a, min), {
+    filter((a): a is A => _bigDecimal.greaterThan(a, min), {
       typeId: { id: GreaterThanBigDecimalTypeId, annotation: { min } },
-      description: `a BigDecimal greater than ${BigDecimal.format(min)}`,
+      description: `a BigDecimal greater than ${_bigDecimal.format(min)}`,
       ...annotations
     })
   )
@@ -4981,15 +5001,15 @@ export const GreaterThanOrEqualToBigDecimalTypeId = Symbol.for(
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const greaterThanOrEqualToBigDecimal = <A extends BigDecimal.BigDecimal>(
-  min: BigDecimal.BigDecimal,
+export const greaterThanOrEqualToBigDecimal = <A extends _bigDecimal.BigDecimal>(
+  min: _bigDecimal.BigDecimal,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => BigDecimal.greaterThanOrEqualTo(a, min), {
+    filter((a): a is A => _bigDecimal.greaterThanOrEqualTo(a, min), {
       typeId: { id: GreaterThanOrEqualToBigDecimalTypeId, annotation: { min } },
-      description: `a BigDecimal greater than or equal to ${BigDecimal.format(min)}`,
+      description: `a BigDecimal greater than or equal to ${_bigDecimal.format(min)}`,
       ...annotations
     })
   )
@@ -5004,15 +5024,15 @@ export const LessThanBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/LessTh
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const lessThanBigDecimal = <A extends BigDecimal.BigDecimal>(
-  max: BigDecimal.BigDecimal,
+export const lessThanBigDecimal = <A extends _bigDecimal.BigDecimal>(
+  max: _bigDecimal.BigDecimal,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => BigDecimal.lessThan(a, max), {
+    filter((a): a is A => _bigDecimal.lessThan(a, max), {
       typeId: { id: LessThanBigDecimalTypeId, annotation: { max } },
-      description: `a BigDecimal less than ${BigDecimal.format(max)}`,
+      description: `a BigDecimal less than ${_bigDecimal.format(max)}`,
       ...annotations
     })
   )
@@ -5029,15 +5049,15 @@ export const LessThanOrEqualToBigDecimalTypeId = Symbol.for(
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const lessThanOrEqualToBigDecimal = <A extends BigDecimal.BigDecimal>(
-  max: BigDecimal.BigDecimal,
+export const lessThanOrEqualToBigDecimal = <A extends _bigDecimal.BigDecimal>(
+  max: _bigDecimal.BigDecimal,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => BigDecimal.lessThanOrEqualTo(a, max), {
+    filter((a): a is A => _bigDecimal.lessThanOrEqualTo(a, max), {
       typeId: { id: LessThanOrEqualToBigDecimalTypeId, annotation: { max } },
-      description: `a BigDecimal less than or equal to ${BigDecimal.format(max)}`,
+      description: `a BigDecimal less than or equal to ${_bigDecimal.format(max)}`,
       ...annotations
     })
   )
@@ -5054,12 +5074,12 @@ export const PositiveBigDecimalTypeId = Symbol.for(
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const positiveBigDecimal = <A extends BigDecimal.BigDecimal>(
+export const positiveBigDecimal = <A extends _bigDecimal.BigDecimal>(
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => BigDecimal.isPositive(a), {
+    filter((a): a is A => _bigDecimal.isPositive(a), {
       typeId: { id: PositiveBigDecimalTypeId, annotation: {} },
       description: `a positive BigDecimal`,
       ...annotations
@@ -5089,7 +5109,7 @@ export const NonNegativeBigDecimalTypeId = Symbol.for(
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const nonNegativeBigDecimal = <A extends BigDecimal.BigDecimal>(
+export const nonNegativeBigDecimal = <A extends _bigDecimal.BigDecimal>(
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
@@ -5124,12 +5144,12 @@ export const NegativeBigDecimalTypeId = Symbol.for(
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const negativeBigDecimal = <A extends BigDecimal.BigDecimal>(
+export const negativeBigDecimal = <A extends _bigDecimal.BigDecimal>(
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => BigDecimal.isNegative(a), {
+    filter((a): a is A => _bigDecimal.isNegative(a), {
       typeId: { id: NegativeBigDecimalTypeId, annotation: {} },
       description: `a negative BigDecimal`,
       ...annotations
@@ -5159,7 +5179,7 @@ export const NonPositiveBigDecimalTypeId = Symbol.for(
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const nonPositiveBigDecimal = <A extends BigDecimal.BigDecimal>(
+export const nonPositiveBigDecimal = <A extends _bigDecimal.BigDecimal>(
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
@@ -5192,16 +5212,16 @@ export const BetweenBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/Between
  * @category BigDecimal filters
  * @since 1.0.0
  */
-export const betweenBigDecimal = <A extends BigDecimal.BigDecimal>(
-  minimum: BigDecimal.BigDecimal,
-  maximum: BigDecimal.BigDecimal,
+export const betweenBigDecimal = <A extends _bigDecimal.BigDecimal>(
+  minimum: _bigDecimal.BigDecimal,
+  maximum: _bigDecimal.BigDecimal,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => BigDecimal.between(a, { minimum, maximum }), {
+    filter((a): a is A => _bigDecimal.between(a, { minimum, maximum }), {
       typeId: { id: BetweenBigDecimalTypeId, annotation: { maximum, minimum } },
-      description: `a BigDecimal between ${BigDecimal.format(minimum)} and ${BigDecimal.format(maximum)}`,
+      description: `a BigDecimal between ${_bigDecimal.format(minimum)} and ${_bigDecimal.format(maximum)}`,
       ...annotations
     })
   )
@@ -5213,12 +5233,12 @@ export const betweenBigDecimal = <A extends BigDecimal.BigDecimal>(
  * @since 1.0.0
  */
 export const clampBigDecimal =
-  (minimum: BigDecimal.BigDecimal, maximum: BigDecimal.BigDecimal) =>
-  <R, I, A extends BigDecimal.BigDecimal>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  (minimum: _bigDecimal.BigDecimal, maximum: _bigDecimal.BigDecimal) =>
+  <R, I, A extends _bigDecimal.BigDecimal>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
       self.pipe(to, betweenBigDecimal(minimum, maximum)),
-      (self) => BigDecimal.clamp(self, { minimum, maximum }),
+      (self) => _bigDecimal.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
     )
@@ -5229,14 +5249,14 @@ export const clampBigDecimal =
  * @category BigDecimal transformations
  * @since 1.0.0
  */
-export const negateBigDecimal = <R, I, A extends BigDecimal.BigDecimal>(
+export const negateBigDecimal = <R, I, A extends _bigDecimal.BigDecimal>(
   self: Schema<A, I, R>
 ): Schema<A, I, R> =>
   transform(
     self,
     to(self),
-    (self) => BigDecimal.negate(self),
-    (self) => BigDecimal.negate(self),
+    (self) => _bigDecimal.negate(self),
+    (self) => _bigDecimal.negate(self),
     { strict: false }
   )
 

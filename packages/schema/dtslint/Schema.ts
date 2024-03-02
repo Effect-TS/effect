@@ -1205,12 +1205,21 @@ S.transformLiterals(...pairs)
 // ---------------------------------------------
 
 // $ExpectType Schema<BigDecimal, string, never>
+S.asSchema(S.BigDecimal)
+
+// $ExpectType BigDecimal
 S.BigDecimal
 
 // $ExpectType Schema<BigDecimal, BigDecimal, never>
+S.asSchema(S.BigDecimalFromSelf)
+
+// $ExpectType BigDecimalFromSelf
 S.BigDecimalFromSelf
 
 // $ExpectType Schema<BigDecimal, number, never>
+S.asSchema(S.BigDecimalFromNumber)
+
+// $ExpectType BigDecimalFromNumber
 S.BigDecimalFromNumber
 
 // ---------------------------------------------
