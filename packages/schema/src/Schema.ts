@@ -4539,77 +4539,90 @@ export type LeftFrom<IE> = {
  * @category Either utils
  * @since 1.0.0
  */
-export type EitherFrom<IE, IA> = LeftFrom<IE> | RightFrom<IA>
+export type EitherFrom<IR, IL> = RightFrom<IR> | LeftFrom<IL>
 
-const rightFrom = <A, IA, R>(right: Schema<A, IA, R>): Schema<RightFrom<A>, RightFrom<IA>, R> =>
+const rightFrom = <RA, RI, RR>(right: Schema<RA, RI, RR>): Schema<RightFrom<RA>, RightFrom<RI>, RR> =>
   struct({
     _tag: literal("Right"),
     right
   }).annotations({ description: `RightFrom<${format(right)}>` })
 
-const leftFrom = <E, IE, R>(left: Schema<E, IE, R>): Schema<LeftFrom<E>, LeftFrom<IE>, R> =>
+const leftFrom = <LA, LI, LR>(left: Schema<LA, LI, LR>): Schema<LeftFrom<LA>, LeftFrom<LI>, LR> =>
   struct({
     _tag: literal("Left"),
     left
   }).annotations({ description: `LeftFrom<${format(left)}>` })
 
-const eitherFrom = <E, IE, R1, A, IA, R2>(
-  left: Schema<E, IE, R1>,
-  right: Schema<A, IA, R2>
+const eitherFrom = <RA, RI, RR, LA, LI, LR>(
+  right: Schema<RA, RI, RR>,
+  left: Schema<LA, LI, LR>
 ) =>
   union(rightFrom(right), leftFrom(left)).annotations({
     description: `EitherFrom<${format(left)}, ${format(right)}>`
   })
 
-const eitherDecode = <E, A>(input: EitherFrom<E, A>): Either.Either<A, E> =>
+const eitherDecode = <R, L>(input: EitherFrom<R, L>): Either.Either<R, L> =>
   input._tag === "Left" ? Either.left(input.left) : Either.right(input.right)
 
-const eitherArbitrary = <E, A>(
-  left: Arbitrary<E>,
-  right: Arbitrary<A>
-): Arbitrary<Either.Either<A, E>> => {
-  const arb = arbitrary.make(eitherFrom(schemaFromArbitrary(left), schemaFromArbitrary(right)))
+const eitherArbitrary = <R, L>(
+  right: Arbitrary<R>,
+  left: Arbitrary<L>
+): Arbitrary<Either.Either<R, L>> => {
+  const arb = arbitrary.make(eitherFrom(schemaFromArbitrary(right), schemaFromArbitrary(left)))
   return (fc) => arb(fc).map(eitherDecode)
 }
 
-const eitherPretty = <E, A>(
-  left: Pretty.Pretty<E>,
-  right: Pretty.Pretty<A>
-): Pretty.Pretty<Either.Either<A, E>> =>
+const eitherPretty = <R, L>(
+  right: Pretty.Pretty<R>,
+  left: Pretty.Pretty<L>
+): Pretty.Pretty<Either.Either<R, L>> =>
   Either.match({
     onLeft: (e) => `left(${left(e)})`,
     onRight: (a) => `right(${right(a)})`
   })
 
-const eitherParse = <RE, E, RA, A>(
-  decodeUnknownLeft: ParseResult.DecodeUnknown<E, RE>,
-  parseright: ParseResult.DecodeUnknown<A, RA>
-): ParseResult.DeclarationDecodeUnknown<Either.Either<A, E>, RE | RA> =>
+const eitherParse = <RR, R, LR, L>(
+  parseRight: ParseResult.DecodeUnknown<R, RR>,
+  decodeUnknownLeft: ParseResult.DecodeUnknown<L, LR>
+): ParseResult.DeclarationDecodeUnknown<Either.Either<R, L>, LR | RR> =>
 (u, options, ast) =>
   Either.isEither(u) ?
     Either.match(u, {
       onLeft: (left) => ParseResult.map(decodeUnknownLeft(left, options), Either.left),
-      onRight: (right) => ParseResult.map(parseright(right, options), Either.right)
+      onRight: (right) => ParseResult.map(parseRight(right, options), Either.right)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface eitherFromSelf<R extends Schema.Any, L extends Schema.Any> extends
+  Annotable<
+    eitherFromSelf<R, L>,
+    Either.Either<Schema.To<R>, Schema.To<L>>,
+    Either.Either<Schema.From<R>, Schema.From<L>>,
+    Schema.Context<R> | Schema.Context<L>
+  >
+{}
 
 /**
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromSelf = <E, IE, RE, A, IA, RA>({ left, right }: {
-  readonly left: Schema<E, IE, RE>
-  readonly right: Schema<A, IA, RA>
-}): Schema<Either.Either<A, E>, Either.Either<IA, IE>, RE | RA> => {
+export const eitherFromSelf = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+  readonly left: L
+  readonly right: R
+}): eitherFromSelf<R, L> => {
   return declare(
-    [left, right],
-    (left, right) => eitherParse(ParseResult.decodeUnknown(left), ParseResult.decodeUnknown(right)),
-    (left, right) => eitherParse(ParseResult.encodeUnknown(left), ParseResult.encodeUnknown(right)),
+    [right, left],
+    (right, left) => eitherParse(ParseResult.decodeUnknown(right), ParseResult.decodeUnknown(left)),
+    (right, left) => eitherParse(ParseResult.encodeUnknown(right), ParseResult.encodeUnknown(left)),
     {
       description: `Either<${format(left)}, ${format(right)}>`,
       pretty: eitherPretty,
       arbitrary: eitherArbitrary,
-      equivalence: Either.getEquivalence
+      equivalence: (right, left) => Either.getEquivalence({ right, left })
     }
   )
 }
@@ -4624,19 +4637,48 @@ const makeRightFrom = <A>(right: A) => (({
 }) as const)
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface either<R extends Schema.Any, L extends Schema.Any> extends
+  Annotable<
+    either<R, L>,
+    Either.Either<Schema.To<R>, Schema.To<L>>,
+    EitherFrom<Schema.From<R>, Schema.From<L>>,
+    Schema.Context<R> | Schema.Context<L>
+  >
+{}
+
+/**
  * @category Either transformations
  * @since 1.0.0
  */
-export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
-  readonly left: Schema<E, IE, R1>
-  readonly right: Schema<A, IA, R2>
-}): Schema<Either.Either<A, E>, EitherFrom<IE, IA>, R1 | R2> =>
-  transform(
-    eitherFrom(left, right),
-    eitherFromSelf({ left: to(left), right: to(right) }),
+export const either = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+  readonly left: L
+  readonly right: R
+}): either<R, L> => {
+  const _right = asSchema(right)
+  const _left = asSchema(left)
+  return transform(
+    eitherFrom(_right, _left),
+    eitherFromSelf({ left: to(_left), right: to(_right) }),
     eitherDecode,
     Either.match({ onLeft: makeLeftFrom, onRight: makeRightFrom })
   )
+}
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface eitherFromUnion<R extends Schema.Any, L extends Schema.Any> extends
+  Annotable<
+    eitherFromUnion<R, L>,
+    Either.Either<Schema.To<R>, Schema.To<L>>,
+    Schema.From<R> | Schema.From<L>,
+    Schema.Context<R> | Schema.Context<L>
+  >
+{}
 
 /**
  * @example
@@ -4648,14 +4690,16 @@ export const either = <E, IE, R1, A, IA, R2>({ left, right }: {
  * @category Either transformations
  * @since 1.0.0
  */
-export const eitherFromUnion = <LA, LI, LR, RA, RI, RR>({ left, right }: {
-  readonly left: Schema<LA, LI, LR>
-  readonly right: Schema<RA, RI, RR>
-}): Schema<Either.Either<RA, LA>, LI | RI, LR | RR> => {
-  const toleft = to(left)
-  const toright = to(right)
-  const fromLeft = transform(left, leftFrom(toleft), makeLeftFrom, (l) => l.left)
-  const fromRight = transform(right, rightFrom(toright), makeRightFrom, (r) => r.right)
+export const eitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+  readonly left: L
+  readonly right: R
+}): eitherFromUnion<R, L> => {
+  const _right = asSchema(right)
+  const _left = asSchema(left)
+  const toright = to(_right)
+  const toleft = to(_left)
+  const fromRight = transform(_right, rightFrom(toright), makeRightFrom, (r) => r.right)
+  const fromLeft = transform(_left, leftFrom(toleft), makeLeftFrom, (l) => l.left)
   return transform(
     union(fromRight, fromLeft),
     eitherFromSelf({ left: toleft, right: toright }),

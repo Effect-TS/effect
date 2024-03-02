@@ -1614,3 +1614,33 @@ S.asSchema(S.optionFromNullish(S.NumberFromString, null))
 
 // $ExpectType optionFromNullish<NumberFromString>
 S.optionFromNullish(S.NumberFromString, undefined)
+
+// ---------------------------------------------
+// eitherFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<Either<number, string>, Either<string, string>, never>
+S.asSchema(S.eitherFromSelf({ right: S.NumberFromString, left: S.string }))
+
+// $ExpectType eitherFromSelf<NumberFromString, $string>
+S.eitherFromSelf({ right: S.NumberFromString, left: S.string })
+
+// ---------------------------------------------
+// either
+// ---------------------------------------------
+
+// $ExpectType Schema<Either<number, string>, EitherFrom<string, string>, never>
+S.asSchema(S.either({ right: S.NumberFromString, left: S.string }))
+
+// $ExpectType either<NumberFromString, $string>
+S.either({ right: S.NumberFromString, left: S.string })
+
+// ---------------------------------------------
+// eitherFromUnion
+// ---------------------------------------------
+
+// $ExpectType Schema<Either<number, boolean>, string | boolean, never>
+S.asSchema(S.eitherFromUnion({ right: S.NumberFromString, left: S.boolean }))
+
+// $ExpectType eitherFromUnion<NumberFromString, $boolean>
+S.eitherFromUnion({ right: S.NumberFromString, left: S.boolean })
