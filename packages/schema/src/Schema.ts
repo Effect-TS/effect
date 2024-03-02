@@ -5823,10 +5823,16 @@ const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface FiberIdFromSelf extends Annotable<FiberIdFromSelf, FiberId.FiberId> {}
+
+/**
  * @category FiberId constructors
  * @since 1.0.0
  */
-export const FiberIdFromSelf: Schema<FiberId.FiberId> = declare(
+export const FiberIdFromSelf: FiberIdFromSelf = declare(
   FiberId.isFiberId,
   {
     identifier: "FiberIdFromSelf",
@@ -5861,7 +5867,13 @@ const fiberIdEncode = (input: FiberId.FiberId): FiberIdFrom => {
   }
 }
 
-const _FiberId: Schema<FiberId.FiberId, FiberIdFrom> = transform(
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $FiberId extends Annotable<$FiberId, FiberId.FiberId, FiberIdFrom> {}
+
+const _FiberId: $FiberId = transform(
   FiberIdFrom,
   FiberIdFromSelf,
   fiberIdDecode,
@@ -6097,28 +6109,28 @@ export type ExitFrom<A, E> =
     readonly value: A
   }
 
-const exitFailureFrom = <E, EI, R1, R2>(
-  error: Schema<E, EI, R1>,
-  defect: Schema<unknown, unknown, R2>
+const exitFailureFrom = <E, EI, ER, DR>(
+  error: Schema<E, EI, ER>,
+  defect: Schema<unknown, unknown, DR>
 ) =>
   struct({
     _tag: literal("Failure"),
     cause: causeFrom(error, defect)
   })
 
-const exitSuccessFrom = <A, AI, R>(
-  value: Schema<A, AI, R>
+const exitSuccessFrom = <A, I, R>(
+  value: Schema<A, I, R>
 ) =>
   struct({
     _tag: literal("Success"),
     value
   })
 
-const exitFrom = <E, EI, R1, A, AI, R2, R3>(
-  error: Schema<E, EI, R1>,
-  value: Schema<A, AI, R2>,
-  defect: Schema<unknown, unknown, R3>
-): Schema<ExitFrom<A, E>, ExitFrom<AI, EI>, R1 | R2 | R3> =>
+const exitFrom = <A, I, R, E, EI, ER, DR>(
+  value: Schema<A, I, R>,
+  error: Schema<E, EI, ER>,
+  defect: Schema<unknown, unknown, DR>
+): Schema<ExitFrom<A, E>, ExitFrom<I, EI>, ER | R | DR> =>
   union(
     exitFailureFrom(error, defect),
     exitSuccessFrom(value)
@@ -6133,26 +6145,26 @@ const exitDecode = <A, E>(input: ExitFrom<A, E>): Exit.Exit<A, E> => {
   }
 }
 
-const exitArbitrary = <E, A>(
-  error: Arbitrary<E>,
+const exitArbitrary = <A, E>(
   value: Arbitrary<A>,
+  error: Arbitrary<E>,
   defect: Arbitrary<unknown>
 ): Arbitrary<Exit.Exit<A, E>> => {
   const arb = arbitrary.make(
-    exitFrom(schemaFromArbitrary(error), schemaFromArbitrary(value), schemaFromArbitrary(defect))
+    exitFrom(schemaFromArbitrary(value), schemaFromArbitrary(error), schemaFromArbitrary(defect))
   )
   return (fc) => arb(fc).map(exitDecode)
 }
 
-const exitPretty = <E, A>(error: Pretty.Pretty<E>, value: Pretty.Pretty<A>): Pretty.Pretty<Exit.Exit<A, E>> => (exit) =>
+const exitPretty = <A, E>(value: Pretty.Pretty<A>, error: Pretty.Pretty<E>): Pretty.Pretty<Exit.Exit<A, E>> => (exit) =>
   exit._tag === "Failure"
     ? `Exit.failCause(${causePretty(error)(exit.cause)})`
     : `Exit.succeed(${value(exit.value)})`
 
-const exitParse = <RE, E, RA, A>(
-  decodeUnknownCause: ParseResult.DecodeUnknown<Cause.Cause<E>, RE>,
-  decodeUnknownValue: ParseResult.DecodeUnknown<A, RA>
-): ParseResult.DeclarationDecodeUnknown<Exit.Exit<A, E>, RE | RA> =>
+const exitParse = <A, R, E, ER>(
+  decodeUnknownValue: ParseResult.DecodeUnknown<A, R>,
+  decodeUnknownCause: ParseResult.DecodeUnknown<Cause.Cause<E>, ER>
+): ParseResult.DeclarationDecodeUnknown<Exit.Exit<A, E>, ER | R> =>
 (u, options, ast) =>
   Exit.isExit(u) ?
     Exit.match(u, {
@@ -6162,25 +6174,40 @@ const exitParse = <RE, E, RA, A>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface exitFromSelf<A extends Schema.Any, E extends Schema.Any, DR> extends
+  Annotable<
+    exitFromSelf<A, E, DR>,
+    Exit.Exit<Schema.To<A>, Schema.To<E>>,
+    Exit.Exit<Schema.From<A>, Schema.From<E>>,
+    Schema.Context<A> | Schema.Context<E> | DR
+  >
+{}
+
+/**
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>({ defect = unknown, failure, success }: {
-  readonly failure: Schema<E, IE, RE>
-  readonly success: Schema<A, IA, RA>
-  readonly defect?: Schema<unknown, unknown, RD> | undefined
-}): Schema<Exit.Exit<A, E>, Exit.Exit<IA, IE>, RE | RA | RD> =>
+export const exitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = never>(
+  { defect = unknown, failure, success }: {
+    readonly failure: E
+    readonly success: A
+    readonly defect?: Schema<unknown, unknown, DR> | undefined
+  }
+): exitFromSelf<A, E, DR> =>
   declare(
-    [failure, success, defect],
-    (failure, success, defect) =>
+    [success, failure, defect],
+    (success, failure, defect) =>
       exitParse(
-        ParseResult.decodeUnknown(causeFromSelf({ error: failure, defect })),
-        ParseResult.decodeUnknown(success)
+        ParseResult.decodeUnknown(success),
+        ParseResult.decodeUnknown(causeFromSelf({ error: failure, defect }))
       ),
-    (failure, success, defect) =>
+    (success, failure, defect) =>
       exitParse(
-        ParseResult.encodeUnknown(causeFromSelf({ error: failure, defect })),
-        ParseResult.encodeUnknown(success)
+        ParseResult.encodeUnknown(success),
+        ParseResult.encodeUnknown(causeFromSelf({ error: failure, defect }))
       ),
     {
       description: `Exit<${format(failure)}, ${format(success)}>`,
@@ -6190,23 +6217,41 @@ export const exitFromSelf = <E, IE, RE, A, IA, RA, RD = never>({ defect = unknow
   )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface exit<A extends Schema.Any, E extends Schema.Any, DR> extends
+  Annotable<
+    exit<A, E, DR>,
+    Exit.Exit<Schema.To<A>, Schema.To<E>>,
+    ExitFrom<Schema.From<A>, Schema.From<E>>,
+    Schema.Context<A> | Schema.Context<E> | DR
+  >
+{}
+
+/**
  * @category Exit transformations
  * @since 1.0.0
  */
-export const exit = <E, IE, R1, A, IA, R2, R3 = never>({ defect = causeDefectPretty, failure, success }: {
-  readonly failure: Schema<E, IE, R1>
-  readonly success: Schema<A, IA, R2>
-  readonly defect?: Schema<unknown, unknown, R3> | undefined
-}): Schema<Exit.Exit<A, E>, ExitFrom<IA, IE>, R1 | R2 | R3> =>
-  transform(
-    exitFrom(failure, success, defect),
-    exitFromSelf({ failure: to(failure), success: to(success), defect: to(defect) }),
+export const exit = <A extends Schema.Any, E extends Schema.Any, DR = never>(
+  { defect = causeDefectPretty, failure, success }: {
+    readonly failure: E
+    readonly success: A
+    readonly defect?: Schema<unknown, unknown, DR> | undefined
+  }
+): exit<A, E, DR> => {
+  const _success = asSchema(success)
+  const _failure = asSchema(failure)
+  return transform(
+    exitFrom(_success, _failure, defect),
+    exitFromSelf({ failure: to(_failure), success: to(_success), defect: to(defect) }),
     exitDecode,
     (exit) =>
       exit._tag === "Failure"
         ? { _tag: "Failure", cause: exit.cause } as const
         : { _tag: "Success", value: exit.value } as const
   )
+}
 
 const hashSetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<HashSet.HashSet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => HashSet.fromIterable(as))

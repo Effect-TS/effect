@@ -1767,3 +1767,35 @@ S.asSchema(S.list(S.NumberFromString))
 
 // $ExpectType list<NumberFromString>
 S.list(S.NumberFromString)
+
+// ---------------------------------------------
+// exitFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<Exit<number, string>, Exit<number, string>, never>
+S.asSchema(S.exitFromSelf({ success: S.number, failure: S.string }))
+
+// $ExpectType exitFromSelf<$number, $string, never>
+S.exitFromSelf({ success: S.number, failure: S.string })
+
+// $ExpectType Schema<Exit<number, string>, Exit<number, string>, "a">
+S.asSchema(S.exitFromSelf({ success: S.number, failure: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() }))
+
+// $ExpectType exitFromSelf<$number, $string, "a">
+S.exitFromSelf({ success: S.number, failure: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// ---------------------------------------------
+// exit
+// ---------------------------------------------
+
+// $ExpectType Schema<Exit<number, string>, ExitFrom<number, string>, never>
+S.asSchema(S.exit({ success: S.number, failure: S.string }))
+
+// $ExpectType exit<$number, $string, never>
+S.exit({ success: S.number, failure: S.string })
+
+// $ExpectType Schema<Exit<number, string>, ExitFrom<number, string>, "a">
+S.asSchema(S.exit({ success: S.number, failure: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() }))
+
+// $ExpectType exit<$number, $string, "a">
+S.exit({ success: S.number, failure: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() })
