@@ -15,7 +15,7 @@ import * as Encoding from "effect/Encoding"
 import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
 import * as Exit from "effect/Exit"
-import * as FiberId from "effect/FiberId"
+import * as _fiberId from "effect/FiberId"
 import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
@@ -5809,9 +5809,9 @@ const FiberIdFrom: Schema<FiberIdFrom> = union(
 
 const fiberIdFromArbitrary = arbitrary.make(FiberIdFrom)
 
-const fiberIdArbitrary: Arbitrary<FiberId.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
+const fiberIdArbitrary: Arbitrary<_fiberId.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
 
-const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
+const fiberIdPretty: Pretty.Pretty<_fiberId.FiberId> = (fiberId) => {
   switch (fiberId._tag) {
     case "None":
       return "FiberId.none"
@@ -5826,14 +5826,14 @@ const fiberIdPretty: Pretty.Pretty<FiberId.FiberId> = (fiberId) => {
  * @category api interface
  * @since 1.0.0
  */
-export interface FiberIdFromSelf extends Annotable<FiberIdFromSelf, FiberId.FiberId> {}
+export interface FiberIdFromSelf extends Annotable<FiberIdFromSelf, _fiberId.FiberId> {}
 
 /**
  * @category FiberId constructors
  * @since 1.0.0
  */
 export const FiberIdFromSelf: FiberIdFromSelf = declare(
-  FiberId.isFiberId,
+  _fiberId.isFiberId,
   {
     identifier: "FiberIdFromSelf",
     pretty: () => fiberIdPretty,
@@ -5841,18 +5841,18 @@ export const FiberIdFromSelf: FiberIdFromSelf = declare(
   }
 )
 
-const fiberIdDecode = (input: FiberIdFrom): FiberId.FiberId => {
+const fiberIdDecode = (input: FiberIdFrom): _fiberId.FiberId => {
   switch (input._tag) {
     case "Composite":
-      return FiberId.composite(fiberIdDecode(input.left), fiberIdDecode(input.right))
+      return _fiberId.composite(fiberIdDecode(input.left), fiberIdDecode(input.right))
     case "None":
-      return FiberId.none
+      return _fiberId.none
     case "Runtime":
-      return FiberId.runtime(input.id, input.startTimeMillis)
+      return _fiberId.runtime(input.id, input.startTimeMillis)
   }
 }
 
-const fiberIdEncode = (input: FiberId.FiberId): FiberIdFrom => {
+const fiberIdEncode = (input: _fiberId.FiberId): FiberIdFrom => {
   switch (input._tag) {
     case "None":
       return { _tag: "None" }
@@ -5871,22 +5871,18 @@ const fiberIdEncode = (input: FiberId.FiberId): FiberIdFrom => {
  * @category api interface
  * @since 1.0.0
  */
-export interface $FiberId extends Annotable<$FiberId, FiberId.FiberId, FiberIdFrom> {}
+export interface FiberId extends Annotable<FiberId, _fiberId.FiberId, FiberIdFrom> {}
 
-const _FiberId: $FiberId = transform(
+/**
+ * @category FiberId transformations
+ * @since 1.0.0
+ */
+export const FiberId: FiberId = transform(
   FiberIdFrom,
   FiberIdFromSelf,
   fiberIdDecode,
   fiberIdEncode
 ).annotations({ identifier: "FiberId" })
-
-export {
-  /**
-   * @category FiberId transformations
-   * @since 1.0.0
-   */
-  _FiberId as FiberId
-}
 
 /**
  * @category Cause utils
