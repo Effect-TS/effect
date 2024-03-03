@@ -3,14 +3,6 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Schema > extend", () => {
-  it("should return a struct if both operands are structs", async () => {
-    const schema = S.extend(S.struct({ a: S.string }), S.struct({ b: S.number }))
-    expect(schema.fields).toStrictEqual({
-      a: S.string,
-      b: S.number
-    })
-  })
-
   describe("decoding", () => {
     it(`struct extend struct (dual)`, async () => {
       const schema = S.extend(S.struct({ a: S.string }), S.struct({ b: S.number }))

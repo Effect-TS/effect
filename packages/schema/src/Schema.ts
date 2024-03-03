@@ -1619,8 +1619,6 @@ const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
 
 const isTokenOptional = (token: PropertySignature.Token): boolean => token === "?:"
 
-const isStruct = (u: unknown): u is struct<Struct.Fields> => isSchema(u) && "fields" in u
-
 class $struct<Fields extends Struct.Fields>
   extends _schema.Schema<Simplify<Struct.Type<Fields>>, Simplify<Struct.Encoded<Fields>>, Struct.Context<Fields>>
   implements struct<Fields>
@@ -2066,10 +2064,6 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
   >
 {}
 
-type Extend<Self extends Schema.Any, That extends Schema.Any> = Self extends struct<any>
-  ? That extends struct<any> ? struct<Struct.Simplify<Self["fields"] & That["fields"]>> : extend<Self, That>
-  : extend<Self, That>
-
 /**
  * @category combinators
  * @since 1.0.0
@@ -2077,20 +2071,17 @@ type Extend<Self extends Schema.Any, That extends Schema.Any> = Self extends str
 export const extend: {
   <That extends Schema.Any>(
     that: That
-  ): <Self extends Schema.Any>(self: Self) => Extend<Self, That>
+  ): <Self extends Schema.Any>(self: Self) => extend<Self, That>
   <Self extends Schema.Any, That extends Schema.Any>(
     self: Self,
     that: That
-  ): Extend<Self, That>
+  ): extend<Self, That>
 } = dual(
   2,
   <Self extends Schema.Any, That extends Schema.Any>(
     self: Self,
     that: That
   ) => {
-    if (isStruct(self) && isStruct(that)) {
-      return new $struct(extendFields(self.fields, that.fields))
-    }
     return make(
       intersectUnionMembers(
         AST.isUnion(self.ast) ? self.ast.types : [self.ast],

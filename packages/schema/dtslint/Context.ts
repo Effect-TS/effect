@@ -4,9 +4,13 @@ import * as Serializable from "@effect/schema/Serializable"
 import { Context, Effect, Option } from "effect"
 import { hole } from "effect/Function"
 
-declare const aContext: S.Schema<string, string, "aContext">
-declare const bContext: S.Schema<number, number, "bContext">
-declare const cContext: S.Schema<string, string, "cContext">
+interface aContext extends S.Schema<string, string, "aContext"> {}
+interface bContext extends S.Schema<number, number, "bContext"> {}
+interface cContext extends S.Schema<boolean, boolean, "cContext"> {}
+
+declare const aContext: aContext
+declare const bContext: bContext
+declare const cContext: cContext
 
 const Taga = Context.GenericTag<"Taga", string>("Taga")
 const Tagb = Context.GenericTag<"Tagb", number>("Tagb")
@@ -95,7 +99,7 @@ S.declare(
 // $ExpectType Schema<string | number, string | number, "aContext" | "bContext">
 S.asSchema(S.union(aContext, bContext))
 
-// $ExpectType union<[Schema<string, string, "aContext">, Schema<number, number, "bContext">]>
+// $ExpectType union<[aContext, bContext]>
 S.union(aContext, bContext)
 
 // ---------------------------------------------
@@ -105,7 +109,7 @@ S.union(aContext, bContext)
 // $ExpectType Schema<readonly [string, number], readonly [string, number], "aContext" | "bContext">
 S.asSchema(S.tuple(aContext, bContext))
 
-// $ExpectType tuple<[Schema<string, string, "aContext">, Schema<number, number, "bContext">]>
+// $ExpectType tuple<[aContext, bContext]>
 S.tuple(aContext, bContext)
 
 // ---------------------------------------------
@@ -136,7 +140,7 @@ S.tuple(aContext).pipe(S.optionalElement(bContext))
 // $ExpectType Schema<readonly string[], readonly string[], "aContext">
 S.asSchema(S.array(aContext))
 
-// $ExpectType array<Schema<string, string, "aContext">>
+// $ExpectType array<aContext>
 S.array(aContext)
 
 // ---------------------------------------------
@@ -146,7 +150,7 @@ S.array(aContext)
 // $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], "aContext">
 S.asSchema(S.nonEmptyArray(aContext))
 
-// $ExpectType nonEmptyArray<Schema<string, string, "aContext">>
+// $ExpectType nonEmptyArray<aContext>
 S.nonEmptyArray(aContext)
 
 // ---------------------------------------------
@@ -177,7 +181,7 @@ S.optional(aContext)
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
 S.asSchema(S.struct({ a: aContext, b: bContext }))
 
-// $ExpectType struct<{ a: Schema<string, string, "aContext">; b: Schema<number, number, "bContext">; }>
+// $ExpectType struct<{ a: aContext; b: bContext; }>
 S.struct({ a: aContext, b: bContext })
 
 // ---------------------------------------------
@@ -229,17 +233,17 @@ S.mutable(S.struct({ a: aContext, b: bContext }))
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: number; }, "aContext" | "bContext">
 S.asSchema(S.record(aContext, bContext))
 
-// $ExpectType record<Schema<string, string, "aContext">, Schema<number, number, "bContext">>
+// $ExpectType record<Schema<string, string, "aContext">, bContext>
 S.record(aContext, bContext)
 
 // ---------------------------------------------
 // extend
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: string; }, { readonly a: string; readonly b: number; readonly c: string; }, "aContext" | "bContext" | "cContext">
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: boolean; }, { readonly a: string; readonly b: number; readonly c: boolean; }, "aContext" | "bContext" | "cContext">
 S.asSchema(S.struct({ a: aContext, b: bContext }).pipe(S.extend(S.struct({ c: cContext }))))
 
-// $ExpectType struct<{ readonly a: Schema<string, string, "aContext">; readonly b: Schema<number, number, "bContext">; readonly c: Schema<string, string, "cContext">; }>
+// $ExpectType extend<struct<{ a: aContext; b: bContext; }>, struct<{ c: cContext; }>>
 S.struct({ a: aContext, b: bContext }).pipe(S.extend(S.struct({ c: cContext })))
 
 // ---------------------------------------------
@@ -380,7 +384,7 @@ export class MyClassWithTransform extends MyClass.transformOrFail<MyClassWithTra
 // $ExpectType "aContext" | "bContext" | "Tag1" | "Tag2"
 hole<S.Schema.Context<typeof MyClassWithTransform>>()
 
-// $ExpectType { readonly a: Schema<string, string, "aContext">; readonly b: Schema<number, number, "bContext">; }
+// $ExpectType { readonly a: aContext; readonly b: bContext; }
 MyClassWithTransform.fields
 
 // ---------------------------------------------
@@ -398,7 +402,7 @@ export class MyClassWithTransformFrom extends MyClass.transformOrFailFrom<MyClas
 // $ExpectType "aContext" | "bContext" | "Tag1" | "Tag2"
 hole<S.Schema.Context<typeof MyClassWithTransformFrom>>()
 
-// $ExpectType { readonly a: Schema<string, string, "aContext">; readonly b: Schema<number, number, "bContext">; }
+// $ExpectType { readonly a: aContext; readonly b: bContext; }
 MyClassWithTransformFrom.fields
 
 // ---------------------------------------------
@@ -412,10 +416,10 @@ class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", bContext, cCon
 // $ExpectType "aContext"
 hole<S.Schema.Context<typeof MyRequest>>()
 
-// $ExpectType { readonly _tag: literal<["MyRequest"]>; readonly a: Schema<string, string, "aContext">; }
+// $ExpectType { readonly _tag: literal<["MyRequest"]>; readonly a: aContext; }
 MyRequest.fields
 
 declare const myRequest: MyRequest
 
-// $ExpectType Schema<Exit<string, number>, ExitEncoded<string, number>, "bContext" | "cContext">
+// $ExpectType Schema<Exit<boolean, number>, ExitEncoded<boolean, number>, "bContext" | "cContext">
 Serializable.exitSchema(myRequest)

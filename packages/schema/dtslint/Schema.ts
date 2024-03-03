@@ -862,7 +862,7 @@ S.asSchema(pipe(
   S.extend(S.struct({ c: S.string }))
 ))
 
-// $ExpectType struct<{ readonly a: $string; readonly b: $string; readonly c: $string; }>
+// $ExpectType extend<struct<{ a: $string; b: $string; }>, struct<{ c: $string; }>>
 pipe(
   S.struct({ a: S.string, b: S.string }),
   S.extend(S.struct({ c: S.string }))
@@ -871,7 +871,7 @@ pipe(
 // $ExpectType Schema<{ readonly a: string; readonly b: string; readonly c: string; }, { readonly a: string; readonly b: string; readonly c: string; }, never>
 S.asSchema(S.extend(S.struct({ a: S.string, b: S.string }), S.struct({ c: S.string })))
 
-// $ExpectType struct<{ readonly a: $string; readonly b: $string; readonly c: $string; }>
+// $ExpectType extend<struct<{ a: $string; b: $string; }>, struct<{ c: $string; }>>
 S.extend(S.struct({ a: S.string, b: S.string }), S.struct({ c: S.string }))
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; } | { readonly a: string; readonly c: boolean; }, { readonly a: string; readonly b: number; } | { readonly a: string; readonly c: boolean; }, never>
