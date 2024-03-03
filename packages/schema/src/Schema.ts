@@ -1821,18 +1821,10 @@ export const pluck: {
   }
 )
 
-/**
- * @category model
- * @since 1.0.0
- */
-export interface BrandSchema<A extends Brand.Brand<any>, I>
-  extends Annotable<BrandSchema<A, I>, A, I>, Brand.Brand.Constructor<A>
-{}
-
-const makeBrandSchema = <A, I, B extends string | symbol>(
+const makeBrandSchema = <S extends Schema.Any<never>, B extends string | symbol>(
   self: AST.AST,
-  annotations: Annotations<A & Brand.Brand<B>>
-): BrandSchema<A & Brand.Brand<B>, I> => {
+  annotations: Annotations<Schema.Type<S> & Brand.Brand<B>>
+): brand<S, B> => {
   const ast = AST.annotations(self, _schema.toASTAnnotations(annotations))
   const _validateEither = validateEither(make(ast))
 
@@ -1848,11 +1840,21 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
   refined.pipe = function() {
     return pipeArguments(this, arguments)
   }
-  refined.annotations = (annotations: Annotations<A & Brand.Brand<B>>) => {
+  refined.annotations = (annotations: Annotations<Schema.Type<S> & Brand.Brand<B>>) => {
     return makeBrandSchema(ast, annotations)
   }
   return refined
 }
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface brand<S extends Schema.Any<never>, B extends string | symbol>
+  extends
+    Annotable<brand<S, B>, Schema.Type<S> & Brand.Brand<B>, Schema.Encoded<S>>,
+    Brand.Brand.Constructor<Schema.Type<S> & Brand.Brand<B>>
+{}
 
 /**
  * Returns a nominal branded schema by applying a brand to a given schema.
@@ -1873,18 +1875,20 @@ const makeBrandSchema = <A, I, B extends string | symbol>(
  * @category combinators
  * @since 1.0.0
  */
-export const brand =
-  <B extends string | symbol, A>(brand: B, annotations?: Annotations<A & Brand.Brand<B>>) =>
-  <I>(self: Schema<A, I>): BrandSchema<A & Brand.Brand<B>, I> => {
-    const brandAnnotation: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self.ast), {
-      onNone: () => [brand],
-      onSome: (brands) => [...brands, brand]
-    })
-    return makeBrandSchema(self.ast, {
-      ...annotations,
-      [AST.BrandAnnotationId]: brandAnnotation
-    })
-  }
+export const brand = <S extends Schema.Any<never>, B extends string | symbol>(
+  brand: B,
+  annotations?: Annotations<Schema.Type<S> & Brand.Brand<B>>
+) =>
+(self: S): brand<S, B> => {
+  const brandAnnotation: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self.ast), {
+    onNone: () => [brand],
+    onSome: (brands) => [...brands, brand]
+  })
+  return makeBrandSchema(self.ast, {
+    ...annotations,
+    [AST.BrandAnnotationId]: brandAnnotation
+  })
+}
 
 /**
  * @category combinators

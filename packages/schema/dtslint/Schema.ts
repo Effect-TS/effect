@@ -30,7 +30,7 @@ hole<S.Schema<string>>().pipe(S.annotations({}))
 // $ExpectType $string
 S.string.pipe(S.annotations({}))
 
-// $ExpectType BrandSchema<number & Brand<"Int">, number>
+// $ExpectType brand<Schema<number, number, never>, "Int">
 S.number.pipe(S.int(), S.brand("Int"), S.annotations({}))
 
 // $ExpectType $never
@@ -38,6 +38,9 @@ S.never.pipe(S.annotations({}))
 
 // $ExpectType Schema<A, { readonly a: string; }, never>
 A.pipe(S.annotations({}))
+
+// $ExpectType number & Brand<"Int">
+S.number.pipe(S.int(), S.brand("Int"))(1)
 
 // ---------------------------------------------
 // S.message
@@ -748,10 +751,16 @@ pipe(
 // brand
 // ---------------------------------------------
 
-// $ExpectType BrandSchema<number & Brand<"Int">, number>
+// $ExpectType Schema<number & Brand<"Int">, number, never>
+S.asSchema(pipe(S.number, S.int(), S.brand("Int")))
+
+// $ExpectType brand<Schema<number, number, never>, "Int">
 pipe(S.number, S.int(), S.brand("Int"))
 
-// $ExpectType BrandSchema<number & Brand<"Int">, string>
+// $ExpectType Schema<number & Brand<"Int">, string, never>
+S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int")))
+
+// $ExpectType brand<Schema<number, string, never>, "Int">
 pipe(S.NumberFromString, S.int(), S.brand("Int"))
 
 // ---------------------------------------------
