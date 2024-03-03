@@ -4,6 +4,8 @@
 import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import type { NoSuchElementException } from "./Cause.js"
+import * as Deferred from "./Deferred.js"
+import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
 import { dual } from "./Function.js"
@@ -30,11 +32,12 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @categories models
  */
-export interface FiberMap<K, A = unknown, E = unknown>
+export interface FiberMap<in out K, out A = unknown, out E = unknown>
   extends Pipeable, Inspectable.Inspectable, Iterable<[K, Fiber.RuntimeFiber<A, E>]>
 {
   readonly [TypeId]: TypeId
   readonly backing: MutableHashMap.MutableHashMap<K, Fiber.RuntimeFiber<A, E>>
+  readonly deferred: Deferred.Deferred<never, unknown>
 }
 
 /**
@@ -65,9 +68,13 @@ const Proto = {
   }
 }
 
-const unsafeMake = <K, A = unknown, E = unknown>(): FiberMap<K, A, E> => {
+const unsafeMake = <K, A = unknown, E = unknown>(
+  backing: MutableHashMap.MutableHashMap<K, Fiber.RuntimeFiber<A, E>>,
+  deferred: Deferred.Deferred<never, E>
+): FiberMap<K, A, E> => {
   const self = Object.create(Proto)
-  self.backing = MutableHashMap.empty()
+  self.backing = backing
+  self.deferred = deferred
   return self
 }
 
@@ -97,7 +104,14 @@ const unsafeMake = <K, A = unknown, E = unknown>(): FiberMap<K, A, E> => {
  * @categories constructors
  */
 export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A, E>, never, Scope.Scope> =>
-  Effect.acquireRelease(Effect.sync(() => unsafeMake<K, A, E>()), clear)
+  Effect.acquireRelease(
+    Effect.map(Deferred.make<never, E>(), (deferred) =>
+      unsafeMake<K, A, E>(
+        MutableHashMap.empty(),
+        deferred
+      )),
+    clear
+  )
 
 /**
  * Create an Effect run function that is backed by a FiberMap.
@@ -163,6 +177,9 @@ export const unsafeSet: {
     const current = MutableHashMap.get(self.backing, key)
     if (Option.isSome(current) && fiber === current.value) {
       MutableHashMap.remove(self.backing, key)
+    }
+    if (Exit.isFailure(_)) {
+      Deferred.unsafeDone(self.deferred, _ as any)
     }
   })
 })
@@ -374,3 +391,23 @@ export const runtime: <K, A, E>(
  */
 export const size = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<number> =>
   Effect.sync(() => MutableHashMap.size(self.backing))
+
+/**
+ * Join all fibers in the FiberMap. If any of the Fiber's in the map terminate with a failure,
+ * the returned Effect will terminate with the first failure that occurred.
+ *
+ * @since 2.0.0
+ * @categories combinators
+ * @example
+ * import { Effect, FiberMap } from "effect";
+ *
+ * Effect.gen(function* (_) {
+ *   const map = yield* _(FiberMap.make());
+ *   yield* _(FiberMap.set(map, "a", Effect.runFork(Effect.fail("error"))));
+ *
+ *   // parent fiber will fail with "error"
+ *   yield* _(FiberMap.join(map));
+ * });
+ */
+export const join = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<never, E> =>
+  Deferred.await(self.deferred as Deferred.Deferred<never, E>)
