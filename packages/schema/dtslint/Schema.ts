@@ -853,18 +853,32 @@ S.asSchema(S.record(S.string.pipe(S.brand(Symbol.for("UserId"))), S.string))
 S.record(S.string.pipe(S.brand(Symbol.for("UserId"))), S.string)
 
 // ---------------------------------------------
-// Extend
+// extend
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; readonly c: string; }, { readonly a: string; readonly b: string; readonly c: string; }, never>
+S.asSchema(pipe(
+  S.struct({ a: S.string, b: S.string }),
+  S.extend(S.struct({ c: S.string }))
+))
+
+// $ExpectType struct<{ readonly a: $string; readonly b: $string; readonly c: $string; }>
 pipe(
   S.struct({ a: S.string, b: S.string }),
   S.extend(S.struct({ c: S.string }))
 )
 
-// dual
 // $ExpectType Schema<{ readonly a: string; readonly b: string; readonly c: string; }, { readonly a: string; readonly b: string; readonly c: string; }, never>
+S.asSchema(S.extend(S.struct({ a: S.string, b: S.string }), S.struct({ c: S.string })))
+
+// $ExpectType struct<{ readonly a: $string; readonly b: $string; readonly c: $string; }>
 S.extend(S.struct({ a: S.string, b: S.string }), S.struct({ c: S.string }))
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; } | { readonly a: string; readonly c: boolean; }, { readonly a: string; readonly b: number; } | { readonly a: string; readonly c: boolean; }, never>
+S.asSchema(S.extend(S.struct({ a: S.string }), S.union(S.struct({ b: S.number }), S.struct({ c: S.boolean }))))
+
+// $ExpectType extend<struct<{ a: $string; }>, union<[struct<{ b: $number; }>, struct<{ c: $boolean; }>]>>
+S.extend(S.struct({ a: S.string }), S.union(S.struct({ b: S.number }), S.struct({ c: S.boolean })))
 
 // rises an error in TypeScript@5.0
 // // $ExpectType Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, { readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, never>

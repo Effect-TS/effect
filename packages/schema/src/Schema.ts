@@ -68,9 +68,18 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
   annotations(annotations: Annotations<A>): Schema<A, I, R>
 }
 
-declare module Annotable {
+/**
+ * @since 1.0.0
+ */
+export declare namespace Annotable {
+  /**
+   * @since 1.0.0
+   */
   export type Self<S extends Any> = ReturnType<S["annotations"]>
 
+  /**
+   * @since 1.0.0
+   */
   export type Any = Annotable<any, any, any, unknown> | Annotable<any, never>
 }
 
@@ -103,7 +112,7 @@ export const format = <A, I, R>(schema: Schema<A, I, R>): string => String(schem
 /**
  * @since 1.0.0
  */
-export declare module Schema {
+export declare namespace Schema {
   /**
    * @since 1.0.0
    */
@@ -1099,7 +1108,7 @@ export const nonEmptyArray = <Value extends Schema.Any>(value: Value): nonEmptyA
 /**
  * @since 1.0.0
  */
-export declare module PropertySignature {
+export declare namespace PropertySignature {
   /**
    * @since 1.0.0
    */
@@ -1540,7 +1549,7 @@ export const optional: {
 /**
  * @since 1.0.0
  */
-export declare module Struct {
+export declare namespace Struct {
   /**
    * @since 1.0.0
    */
@@ -1586,6 +1595,11 @@ export declare module Struct {
    * @since 1.0.0
    */
   export type Context<F extends Fields> = Schema.Context<F[keyof F]>
+
+  /**
+   * @since 1.0.0
+   */
+  export type Simplify<T> = { readonly [K in keyof T]: T[K] } & {}
 }
 
 /**
@@ -1604,6 +1618,8 @@ const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
   Predicate.hasProperty(u, PropertySignatureTypeId)
 
 const isTokenOptional = (token: PropertySignature.Token): boolean => token === "?:"
+
+const isStruct = (u: unknown): u is struct<Struct.Fields> => isSchema(u) && "fields" in u
 
 class $struct<Fields extends Struct.Fields>
   extends _schema.Schema<Simplify<Struct.Type<Fields>>, Simplify<Struct.Encoded<Fields>>, Struct.Context<Fields>>
@@ -2039,29 +2055,49 @@ export const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyAr
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface extend<Self extends Schema.Any, That extends Schema.Any> extends
+  Schema<
+    Simplify<Schema.Type<Self> & Schema.Type<That>>,
+    Simplify<Schema.Encoded<Self> & Schema.Encoded<That>>,
+    Schema.Context<Self> | Schema.Context<That>
+  >
+{}
+
+type Extend<Self extends Schema.Any, That extends Schema.Any> = Self extends struct<any>
+  ? That extends struct<any> ? struct<Struct.Simplify<Self["fields"] & That["fields"]>> : extend<Self, That>
+  : extend<Self, That>
+
+/**
  * @category combinators
  * @since 1.0.0
  */
 export const extend: {
-  <B, IB, R2>(
-    that: Schema<B, IB, R2>
-  ): <A, I, R1>(self: Schema<A, I, R1>) => Schema<Simplify<A & B>, Simplify<I & IB>, R1 | R2>
-  <A, I, R1, B, IB, R2>(
-    self: Schema<A, I, R1>,
-    that: Schema<B, IB, R2>
-  ): Schema<Simplify<A & B>, Simplify<I & IB>, R1 | R2>
+  <That extends Schema.Any>(
+    that: That
+  ): <Self extends Schema.Any>(self: Self) => Extend<Self, That>
+  <Self extends Schema.Any, That extends Schema.Any>(
+    self: Self,
+    that: That
+  ): Extend<Self, That>
 } = dual(
   2,
-  <A, I, R1, B, IB, R2>(
-    self: Schema<A, I, R1>,
-    that: Schema<B, IB, R2>
-  ): Schema<Simplify<A & B>, Simplify<I & IB>, R1 | R2> =>
-    make(
+  <Self extends Schema.Any, That extends Schema.Any>(
+    self: Self,
+    that: That
+  ) => {
+    if (isStruct(self) && isStruct(that)) {
+      return new $struct(extendFields(self.fields, that.fields))
+    }
+    return make(
       intersectUnionMembers(
         AST.isUnion(self.ast) ? self.ast.types : [self.ast],
         AST.isUnion(that.ast) ? that.ast.types : [that.ast]
       )
     )
+  }
 )
 
 /**

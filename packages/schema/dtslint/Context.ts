@@ -236,8 +236,11 @@ S.record(aContext, bContext)
 // extend
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-S.struct({ a: aContext, b: bContext }).pipe(S.extend(S.struct({ b: bContext })))
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: string; }, { readonly a: string; readonly b: number; readonly c: string; }, "aContext" | "bContext" | "cContext">
+S.asSchema(S.struct({ a: aContext, b: bContext }).pipe(S.extend(S.struct({ c: cContext }))))
+
+// $ExpectType struct<{ readonly a: Schema<string, string, "aContext">; readonly b: Schema<number, number, "bContext">; readonly c: Schema<string, string, "cContext">; }>
+S.struct({ a: aContext, b: bContext }).pipe(S.extend(S.struct({ c: cContext })))
 
 // ---------------------------------------------
 // compose
