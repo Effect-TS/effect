@@ -390,7 +390,7 @@ export const runtime: <K, A, E>(
  * @since 2.0.0
  * @categories combinators
  */
-export const size = <K, E, A>(self: FiberMap<K, E, A>): Effect.Effect<number> =>
+export const size = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<number> =>
   Effect.sync(() => MutableHashMap.size(self.backing))
 
 /**
