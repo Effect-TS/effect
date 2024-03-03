@@ -3,6 +3,7 @@
  */
 import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
+import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
@@ -148,7 +149,7 @@ export const unsafeAdd: {
   self.backing.add(fiber)
   fiber.addObserver((exit) => {
     self.backing.delete(fiber)
-    if (Exit.isFailure(exit)) {
+    if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
       Deferred.unsafeDone(self.deferred, exit as any)
     }
   })

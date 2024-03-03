@@ -4,6 +4,7 @@
 import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import type { NoSuchElementException } from "./Cause.js"
+import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
@@ -173,13 +174,13 @@ export const unsafeSet: {
     previous.value.unsafeInterruptAsFork(interruptAs ?? FiberId.none)
   }
   MutableHashMap.set(self.backing, key, fiber)
-  fiber.addObserver((_) => {
+  fiber.addObserver((exit) => {
     const current = MutableHashMap.get(self.backing, key)
     if (Option.isSome(current) && fiber === current.value) {
       MutableHashMap.remove(self.backing, key)
     }
-    if (Exit.isFailure(_)) {
-      Deferred.unsafeDone(self.deferred, _ as any)
+    if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
+      Deferred.unsafeDone(self.deferred, exit as any)
     }
   })
 })
