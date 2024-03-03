@@ -146,7 +146,7 @@ export declare module Schema {
   /**
    * @since 1.0.0
    */
-  export type All = Any | $never
+  export type All<R = unknown> = Any<R> | $never
 }
 
 /**

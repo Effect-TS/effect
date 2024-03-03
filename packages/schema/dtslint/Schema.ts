@@ -7,14 +7,14 @@ import type { Simplify } from "effect/Types"
 class A extends S.Class<A>()({ a: S.NonEmpty }) {}
 
 // ---------------------------------------------
-// Schema.From
+// Schema.Encoded
 // ---------------------------------------------
 
 // $ExpectType never
 hole<S.Schema.Encoded<typeof S.never>>()
 
 // ---------------------------------------------
-// Schema.To
+// Schema.Ttype
 // ---------------------------------------------
 
 // $ExpectType never
@@ -490,11 +490,11 @@ const MyModel = S.struct({ a: S.string, b: S.NumberFromString })
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: string; }, never>
 S.asSchema(MyModel)
 
-// $ExpectType { readonly a: string; readonly b: string; }
-export type MyModelFrom = S.Schema.Encoded<typeof MyModel>
-
 // $ExpectType { readonly a: string; readonly b: number; }
-export type MyModelTo = S.Schema.Type<typeof MyModel>
+export type MyModelType = S.Schema.Type<typeof MyModel>
+
+// $ExpectType { readonly a: string; readonly b: string; }
+export type MyModelEncoded = S.Schema.Encoded<typeof MyModel>
 
 // $ExpectType Schema<{ readonly a: never; }, { readonly a: never; }, never>
 S.asSchema(S.struct({ a: S.never }))
@@ -878,24 +878,24 @@ S.extend(S.struct({ a: S.string, b: S.string }), S.struct({ c: S.string }))
 // suspend
 // ---------------------------------------------
 
-interface SuspendTo1 {
+interface SuspendType1 {
   readonly a: number
-  readonly as: ReadonlyArray<SuspendTo1>
+  readonly as: ReadonlyArray<SuspendType1>
 }
-const suspend1: S.Schema<SuspendTo1> = S.struct({
+const suspend1: S.Schema<SuspendType1> = S.struct({
   a: S.number,
   as: S.array(S.suspend(() => suspend1))
 })
 
-interface LazyFrom2 {
+interface LazyEncoded2 {
   readonly a: string
-  readonly as: ReadonlyArray<LazyFrom2>
+  readonly as: ReadonlyArray<LazyEncoded2>
 }
-interface LazyTo2 {
+interface LazyType2 {
   readonly a: number
-  readonly as: ReadonlyArray<LazyTo2>
+  readonly as: ReadonlyArray<LazyType2>
 }
-const lazy2: S.Schema<LazyTo2, LazyFrom2> = S.struct({
+const lazy2: S.Schema<LazyType2, LazyEncoded2> = S.struct({
   a: S.NumberFromString,
   as: S.array(S.suspend(() => lazy2))
 })
@@ -1406,7 +1406,7 @@ class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass"
 hole<ConstructorParameters<typeof VoidTaggedClass>>()
 
 // ---------------------------------------------
-// Struct.To
+// Struct.Type
 // ---------------------------------------------
 
 // $ExpectType {}
@@ -1472,7 +1472,7 @@ hole<
 >()
 
 // ---------------------------------------------
-// Struct.From
+// Struct.Encoded
 // ---------------------------------------------
 
 // $ExpectType {}
