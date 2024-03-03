@@ -21,7 +21,7 @@ import * as Domain from "./Domain.js"
  * @category models
  */
 export interface ClientImpl {
-  readonly unsafeAddSpan: (_: Domain.Span) => void
+  readonly unsafeAddSpan: (_: Domain.Span | Domain.SpanEvent) => void
 }
 
 /**
@@ -164,6 +164,18 @@ export const makeTracer: Effect.Effect<Tracer.Tracer, never, Client> = Effect.ge
     span(name, parent, context, links, startTime) {
       const span = currentTracer.span(name, parent, context, links, startTime)
       client.unsafeAddSpan(span)
+      const oldEvent = span.event
+      span.event = function(this: any, name, startTime, attributes) {
+        client.unsafeAddSpan({
+          _tag: "SpanEvent",
+          traceId: span.traceId,
+          spanId: span.spanId,
+          name,
+          startTime,
+          attributes: attributes || {}
+        })
+        return oldEvent.call(this, name, startTime, attributes)
+      }
       const oldEnd = span.end
       span.end = function(this: any) {
         client.unsafeAddSpan(span)
