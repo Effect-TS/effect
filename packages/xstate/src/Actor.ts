@@ -3,13 +3,12 @@
  */
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
-import * as Cause from "effect/Cause"
+import type * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Runtime from "effect/Runtime"
-import * as Scheduler from "effect/Scheduler"
 import type { ActorLogic, ActorRefFrom, ActorSystem, AnyEventObject } from "xstate"
 
 const XSTATE_EFFECT_SUCCEED = "xstate.effect.succeed" as const
@@ -173,34 +172,28 @@ export const fromEffect = <A, E = never, R = never, In = unknown>(
             _fiber: undefined
           }
         },
-        start(state, { self, system }) {
-          if (state._fiber !== undefined) {
+        start(state, { self }) {
+          if (!(state.status === "active" && state._fiber === undefined)) {
             return
           }
-          const scheduler = new Scheduler.SyncScheduler()
-          state._fiber = runFork(state._effect as Effect.Effect<A, E, R>, {
-            scheduler
-          })
-          scheduler.flush()
-          function handleExit(exit: Exit.Exit<A, E>) {
+          state._fiber = runFork(state._effect as Effect.Effect<A, E, R>)
+          state._fiber.addObserver((exit) => {
+            if (self.getSnapshot().status !== "active") {
+              return
+            }
+
             if (Exit.isSuccess(exit)) {
-              ;(system as any)._relay(self, self, {
+              self.send({
                 type: XSTATE_EFFECT_SUCCEED,
                 value: exit.value
               })
-            } else if (!Cause.isInterruptedOnly(exit.cause)) {
-              ;(system as any)._relay(self, self, {
+            } else {
+              self.send({
                 type: XSTATE_EFFECT_FAIL,
                 cause: exit.cause
               })
             }
-          }
-          const result = state._fiber.unsafePoll()
-          if (result) {
-            handleExit(result)
-          } else {
-            state._fiber.addObserver(handleExit)
-          }
+          })
         },
         getPersistedSnapshot({ _effect, _fiber, ...state }) {
           return state
