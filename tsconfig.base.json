@@ -89,7 +89,10 @@
       "@effect/schema/test/*": ["./packages/schema/test/*.js"],
       "@effect/typeclass": ["./packages/typeclass/src/index.js"],
       "@effect/typeclass/*": ["./packages/typeclass/src/*.js"],
-      "@effect/typeclass/test/*": ["./packages/typeclass/test/*.js"]
+      "@effect/typeclass/test/*": ["./packages/typeclass/test/*.js"],
+      "@effect/xstate": ["./packages/xstate/src/index.js"],
+      "@effect/xstate/*": ["./packages/xstate/src/*.js"],
+      "@effect/xstate/test/*": ["./packages/xstate/test/*.js"]
     }
   }
 }

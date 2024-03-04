@@ -17,6 +17,7 @@
     { "path": "packages/rpc-http" },
     { "path": "packages/schema" },
     { "path": "packages/schema" },
-    { "path": "packages/typeclass" }
+    { "path": "packages/typeclass" },
+    { "path": "packages/xstate" }
   ]
 }

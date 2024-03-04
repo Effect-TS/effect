@@ -468,6 +468,19 @@ importers:
         version: link:../effect/dist
     publishDirectory: dist
 
+  packages/xstate:
+    devDependencies:
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+      xstate:
+        specifier: ^5.9.1
+        version: 5.9.1
+    publishDirectory: dist
+
 packages:
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -7394,6 +7407,10 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  /xstate@5.9.1:
+    resolution: {integrity: sha512-85edx7iMqRJSRlEPevDwc98EWDYUlT5zEQ54AXuRVR+G76gFbcVTAUdtAeqOVxy8zYnUr9FBB5114iK6enljjw==}
+    dev: true
 
   /xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}

@@ -16,6 +16,7 @@
     { "path": "packages/rpc/tsconfig.build.json" },
     { "path": "packages/rpc-http/tsconfig.build.json" },
     { "path": "packages/schema/tsconfig.build.json" },
-    { "path": "packages/typeclass/tsconfig.build.json" }
+    { "path": "packages/typeclass/tsconfig.build.json" },
+    { "path": "packages/xstate/tsconfig.build.json" }
   ]
 }
