@@ -172,6 +172,8 @@ export const isFresh = <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>): boolean 
 // MemoMap
 // -----------------------------------------------------------------------------
 
+const isMemoMap = (u: unknown): u is Layer.MemoMap => hasProperty(u, MemoMapTypeId)
+
 /** @internal */
 class MemoMapImpl implements Layer.MemoMap {
   readonly [MemoMapTypeId]: Layer.MemoMapTypeId
@@ -312,6 +314,9 @@ export const makeMemoMap: Effect.Effect<Layer.MemoMap> = core.suspend(() =>
     (ref) => new MemoMapImpl(ref)
   )
 )
+
+/** @internal */
+export const unsafeMakeMemoMap = (): Layer.MemoMap => new MemoMapImpl(circular.unsafeMakeSynchronized(new Map()))
 
 /** @internal */
 export const build = <RIn, E, ROut>(
@@ -989,9 +994,9 @@ export const tapErrorCause = dual<
 /** @internal */
 export const toRuntime = <RIn, E, ROut>(
   self: Layer.Layer<ROut, E, RIn>
-): Effect.Effect<Runtime.Runtime<ROut>, E, RIn | Scope.Scope> => {
-  return pipe(
-    fiberRuntime.scopeWith((scope) => pipe(self, buildWithScope(scope))),
+): Effect.Effect<Runtime.Runtime<ROut>, E, RIn | Scope.Scope> =>
+  pipe(
+    fiberRuntime.scopeWith((scope) => buildWithScope(self, scope)),
     core.flatMap((context) =>
       pipe(
         runtime.runtime<ROut>(),
@@ -999,7 +1004,25 @@ export const toRuntime = <RIn, E, ROut>(
       )
     )
   )
-}
+
+/** @internal */
+export const toRuntimeWithMemoMap = dual<
+  (
+    memoMap: Layer.MemoMap
+  ) => <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>) => Effect.Effect<Runtime.Runtime<ROut>, E, RIn | Scope.Scope>,
+  <RIn, E, ROut>(
+    self: Layer.Layer<ROut, E, RIn>,
+    memoMap: Layer.MemoMap
+  ) => Effect.Effect<Runtime.Runtime<ROut>, E, RIn | Scope.Scope>
+>(2, (self, memoMap) =>
+  core.flatMap(
+    fiberRuntime.scopeWith((scope) => buildWithMemoMap(self, memoMap, scope)),
+    (context) =>
+      pipe(
+        runtime.runtime<any>(),
+        core.provideContext(context)
+      )
+  ))
 
 /** @internal */
 export const provide = dual<
@@ -1230,15 +1253,25 @@ export const RuntimeClass = <Args extends ReadonlyArray<any>, R, RE>(
   class implements Layer.RuntimeClass<R, RE> {
     #scope = runtime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
     #runtime: Effect.Effect<Runtime.Runtime<R>, RE> | Runtime.Runtime<R>
+    readonly memoMap: Layer.MemoMap
 
-    constructor(...args: Args) {
+    constructor(...args: [...Args, memoMap?: Layer.MemoMap]) {
+      const lastArg = args[args.length - 1]
+      if (isMemoMap(lastArg)) {
+        this.memoMap = args.pop() as Layer.MemoMap
+      } else {
+        this.memoMap = unsafeMakeMemoMap()
+      }
       this.#runtime = runtime.unsafeRunSyncEffect(
         effect.memoize(
-          toRuntime(evaluate(...args)).pipe(
-            Scope.extend(this.#scope),
-            core.tap((rt) => {
+          core.tap(
+            Scope.extend(
+              toRuntimeWithMemoMap(evaluate(...(args as unknown as Args)), this.memoMap),
+              this.#scope
+            ),
+            (rt) => {
               this.#runtime = rt
-            })
+            }
           )
         )
       )

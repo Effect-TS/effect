@@ -775,6 +775,21 @@ describe("Layer", () => {
       })()
       assert.strictEqual(count, 1)
     })
+
+    test("allows sharing a MemoMap", async () => {
+      let count = 0
+      const layer = Layer.effectDiscard(Effect.sync(() => {
+        count++
+      }))
+      class Count extends Layer.RuntimeClass(() => layer) {}
+      const instanceA = new Count()
+      const instanceB = new Count(instanceA.memoMap)
+      await instanceA.runPromise(Effect.unit)
+      await instanceB.runPromise(Effect.unit)
+      await instanceA.dispose()
+      await instanceB.dispose()
+      assert.strictEqual(count, 1)
+    })
   })
 })
 export const makeRef = (): Effect.Effect<Ref.Ref<Chunk.Chunk<string>>> => {
