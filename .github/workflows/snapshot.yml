@@ -31,7 +31,7 @@ jobs:
 
       - name: Initial comment
         id: comment
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -42,7 +42,7 @@ jobs:
             You can follow the progress [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
 
       - name: Checkout default branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Checkout pull request branch
         run: gh pr checkout ${{ github.event.issue.number }}
@@ -81,7 +81,7 @@ jobs:
           echo "tags=[$output]" >> $GITHUB_OUTPUT
 
       - name: Update comment (success)
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -99,7 +99,7 @@ jobs:
 
       - name: Update comment (failure)
         if: failure()
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
