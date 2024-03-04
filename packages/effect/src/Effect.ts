@@ -43,7 +43,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Random from "./Random.js"
 import type * as Ref from "./Ref.js"
-import type * as Request from "./Request.js"
+import * as Request from "./Request.js"
 import type { RequestBlock } from "./RequestBlock.js"
 import type { RequestResolver } from "./RequestResolver.js"
 import type * as Runtime from "./Runtime.js"
@@ -4913,18 +4913,27 @@ export const step: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E> | 
  * @category requests & batching
  */
 export const request: {
+  <A extends Request.Request<any, any>, Ds extends RequestResolver<A> | Effect<RequestResolver<A>, any, any>>(
+    dataSource: Ds
+  ): (
+    self: A
+  ) => Effect<
+    Request.Request.Success<A>,
+    Request.Request.Error<A>,
+    [Ds] extends [Effect<any, any, any>] ? Effect.Context<Ds> : never
+  >
   <
-    A extends Request.Request<any, any>,
-    Ds extends RequestResolver<A> | Effect<RequestResolver<A>, any, any>
+    Ds extends RequestResolver<A> | Effect<RequestResolver<A>, any, any>,
+    A extends Request.Request<any, any>
   >(
-    request: A,
+    self: A,
     dataSource: Ds
   ): Effect<
     Request.Request.Success<A>,
     Request.Request.Error<A>,
     [Ds] extends [Effect<any, any, any>] ? Effect.Context<Ds> : never
   >
-} = query.fromRequest as any
+} = dual((args) => Request.isRequest(args[0]), query.fromRequest)
 
 /**
  * @since 2.0.0
