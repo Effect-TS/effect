@@ -165,7 +165,7 @@ aContext.pipe(S.propertySignatureDeclaration)
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, "?:", string, "aContext">
-S.optionalToRequired(aContext, S.string, Option.getOrElse(() => ""), Option.some)
+S.optionalToRequired({ schema: aContext }, S.string, Option.getOrElse(() => ""), Option.some)
 
 // ---------------------------------------------
 // optional

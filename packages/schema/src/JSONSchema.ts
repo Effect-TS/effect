@@ -7,6 +7,7 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as AST from "./AST.js"
+import * as _hooks from "./internal/hooks.js"
 import type * as Schema from "./Schema.js"
 
 /**
@@ -246,7 +247,7 @@ export const goRoot = (ast: AST.AST): JsonSchema7Root => {
 }
 
 const goWithIdentifier = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
-  const identifier = AST.getIdentifierAnnotation(ast)
+  const identifier = AST.getJSONIdentifier(ast)
   return Option.match(identifier, {
     onNone: () => goWithMetaData(ast, $defs),
     onSome: (id) => {
@@ -508,7 +509,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       }
     }
     case "Suspend": {
-      const identifier = Option.orElse(AST.getIdentifierAnnotation(ast), () => AST.getIdentifierAnnotation(ast.f()))
+      const identifier = Option.orElse(AST.getJSONIdentifier(ast), () => AST.getJSONIdentifier(ast.f()))
       if (Option.isNone(identifier)) {
         throw new Error(
           "Generating a JSON Schema for suspended schemas requires an identifier annotation"

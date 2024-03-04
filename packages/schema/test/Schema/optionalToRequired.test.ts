@@ -6,7 +6,7 @@ import { describe, it } from "vitest"
 describe("Schema > optionalToRequired", () => {
   it("two schemas", async () => {
     const ps = S.optionalToRequired(
-      S.NumberFromString,
+      { schema: S.NumberFromString },
       S.BigintFromNumber,
       Option.getOrElse(() => 0),
       Option.some

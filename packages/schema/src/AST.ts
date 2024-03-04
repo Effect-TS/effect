@@ -196,6 +196,9 @@ export const BatchingAnnotationId = Symbol.for("@effect/schema/annotation/Batchi
 /** @internal */
 export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
 
+/** @internal */
+export const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
+
 /**
  * Used by:
  *
@@ -245,41 +248,31 @@ export const getAnnotation: {
  * @category annotations
  * @since 1.0.0
  */
-export const getBrandAnnotation = getAnnotation<BrandAnnotation>(
-  BrandAnnotationId
-)
+export const getBrandAnnotation = getAnnotation<BrandAnnotation>(BrandAnnotationId)
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const getMessageAnnotation = getAnnotation<MessageAnnotation>(
-  MessageAnnotationId
-)
+export const getMessageAnnotation = getAnnotation<MessageAnnotation>(MessageAnnotationId)
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const getTitleAnnotation = getAnnotation<TitleAnnotation>(
-  TitleAnnotationId
-)
+export const getTitleAnnotation = getAnnotation<TitleAnnotation>(TitleAnnotationId)
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const getIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(
-  IdentifierAnnotationId
-)
+export const getIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(IdentifierAnnotationId)
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const getDescriptionAnnotation = getAnnotation<DescriptionAnnotation>(
-  DescriptionAnnotationId
-)
+export const getDescriptionAnnotation = getAnnotation<DescriptionAnnotation>(DescriptionAnnotationId)
 
 /**
  * @category annotations
@@ -297,38 +290,31 @@ export const getDefaultAnnotation = getAnnotation<DefaultAnnotation<unknown>>(De
  * @category annotations
  * @since 1.0.0
  */
-export const getJSONSchemaAnnotation = getAnnotation<JSONSchemaAnnotation>(
-  JSONSchemaAnnotationId
-)
+export const getJSONSchemaAnnotation = getAnnotation<JSONSchemaAnnotation>(JSONSchemaAnnotationId)
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const getDocumentationAnnotation = getAnnotation<DocumentationAnnotation>(
-  DocumentationAnnotationId
-)
+export const getDocumentationAnnotation = getAnnotation<DocumentationAnnotation>(DocumentationAnnotationId)
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(
-  ConcurrencyAnnotationId
-)
+export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(ConcurrencyAnnotationId)
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(
-  BatchingAnnotationId
-)
+export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(BatchingAnnotationId)
 
 /** @internal */
-export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(
-  SurrogateAnnotationId
-)
+export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
+
+/** @internal */
+export const getJSONIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(JSONIdentifierAnnotationId)
 
 /**
  * @category model
@@ -1830,11 +1816,33 @@ export const typeAST = (ast: AST): AST => {
   return ast
 }
 
-const preserveIdentifierAnnotation = (annotated: Annotated): Annotations | undefined => {
-  return Option.match(getIdentifierAnnotation(annotated), {
+/** @internal */
+export const getJSONIdentifier = (annotated: Annotated) =>
+  Option.orElse(getJSONIdentifierAnnotation(annotated), () => getIdentifierAnnotation(annotated))
+
+const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | undefined => {
+  return Option.match(getJSONIdentifier(annotated), {
     onNone: () => undefined,
-    onSome: (identifier) => ({ [IdentifierAnnotationId]: identifier })
+    onSome: (identifier) => ({ [JSONIdentifierAnnotationId]: identifier })
   })
+}
+
+function mapOrElse<A>(
+  as: ReadonlyArray.NonEmptyReadonlyArray<A>,
+  f: (a: A) => A
+): ReadonlyArray.NonEmptyReadonlyArray<A>
+function mapOrElse<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A>
+function mapOrElse<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
+  let changed = false
+  const out: Array<A> = []
+  for (const a of as) {
+    const fa = f(a)
+    if (fa !== a) {
+      changed = true
+    }
+    out.push(f(a))
+  }
+  return changed ? out : as
 }
 
 /**
@@ -1842,32 +1850,48 @@ const preserveIdentifierAnnotation = (annotated: Annotated): Annotations | undef
  */
 export const encodedAST = (ast: AST): AST => {
   switch (ast._tag) {
-    case "Declaration":
-      return new Declaration(
-        ast.typeParameters.map(encodedAST),
-        ast.decodeUnknown,
-        ast.encodeUnknown,
-        ast.annotations
-      )
-    case "Tuple":
-      return new Tuple(
-        ast.elements.map((e) => new Element(encodedAST(e.type), e.isOptional)),
-        Option.map(ast.rest, ReadonlyArray.map(encodedAST)),
-        ast.isReadonly,
-        preserveIdentifierAnnotation(ast)
-      )
-    case "TypeLiteral":
-      return TypeLiteral.make(
-        ast.propertySignatures.map((p) =>
-          new PropertySignature(p.name, encodedAST(p.type), p.isOptional, p.isReadonly)
-        ),
-        ast.indexSignatures.map((is) => IndexSignature.make(is.parameter, encodedAST(is.type), is.isReadonly)),
-        preserveIdentifierAnnotation(ast)
-      )
-    case "Union":
-      return Union.make(ast.types.map(encodedAST), preserveIdentifierAnnotation(ast))
-    case "Suspend":
-      return new Suspend(() => encodedAST(ast.f()), preserveIdentifierAnnotation(ast))
+    case "Declaration": {
+      const typeParameters = mapOrElse(ast.typeParameters, encodedAST)
+      return typeParameters === ast.typeParameters ?
+        ast :
+        new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown, ast.annotations)
+    }
+    case "Tuple": {
+      const elements = mapOrElse(ast.elements, (e) => {
+        const type = encodedAST(e.type)
+        return type === e.type ? e : new Element(type, e.isOptional)
+      })
+      let rest = ast.rest
+      if (Option.isSome(rest)) {
+        const value = mapOrElse(rest.value, encodedAST)
+        if (value !== rest.value) {
+          rest = Option.some(value)
+        }
+      }
+      return elements === ast.elements && rest === ast.rest ?
+        ast :
+        new Tuple(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
+    }
+    case "TypeLiteral": {
+      const propertySignatures = mapOrElse(ast.propertySignatures, (p) => {
+        const type = encodedAST(p.type)
+        return type === p.type ? p : new PropertySignature(p.name, type, p.isOptional, p.isReadonly)
+      })
+      const indexSignatures = mapOrElse(ast.indexSignatures, (is) => {
+        const type = encodedAST(is.type)
+        return type === is.type ? is : IndexSignature.make(is.parameter, type, is.isReadonly)
+      })
+      return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
+        ast :
+        TypeLiteral.make(propertySignatures, indexSignatures, createJSONIdentifierAnnotation(ast))
+    }
+    case "Union": {
+      const types = mapOrElse(ast.types, encodedAST)
+      return types === ast.types ? ast : Union.make(ast.types.map(encodedAST), createJSONIdentifierAnnotation(ast))
+    }
+    case "Suspend": {
+      return new Suspend(() => encodedAST(ast.f()), createJSONIdentifierAnnotation(ast))
+    }
     case "Refinement":
     case "Transform":
       return encodedAST(ast.from)

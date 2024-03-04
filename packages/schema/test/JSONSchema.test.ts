@@ -719,6 +719,46 @@ describe("JSONSchema", () => {
       propertyType(schema)
     })
 
+    it("should respect annotations", () => {
+      const schema = S.struct({
+        a: S.optional(S.string).annotations({ description: "an optional string" })
+      })
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toStrictEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        required: [],
+        properties: {
+          a: {
+            type: "string",
+            "description": "an optional string",
+            title: "string"
+          }
+        },
+        additionalProperties: false
+      })
+    })
+
+    it("should respect encodedAnnotations", () => {
+      const schema = S.struct({
+        a: S.optional(S.string, { default: () => "", encodedAnnotations: { description: "an optional string" } })
+      })
+      const jsonSchema = JSONSchema.make(S.encodedSchema(schema))
+      expect(jsonSchema).toStrictEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        required: [],
+        properties: {
+          a: {
+            type: "string",
+            "description": "an optional string",
+            title: "string"
+          }
+        },
+        additionalProperties: false
+      })
+    })
+
     it("should raise an error if there is a property named with a symbol", () => {
       const a = Symbol.for("@effect/schema/test/a")
       expect(() => JSONSchema.make(S.struct({ [a]: S.string }))).toThrow(
