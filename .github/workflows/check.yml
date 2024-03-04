@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm build
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm check
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm circular
@@ -55,7 +55,7 @@ jobs:
         shard: [1/3, 2/3, 3/3]
         runtime: [Node, Bun]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
       - uses: oven-sh/setup-bun@v1
