@@ -477,7 +477,7 @@ importers:
         specifier: workspace:^
         version: link:../effect/dist
       xstate:
-        specifier: ^5.9.1
+        specifier: ^5.9
         version: 5.9.1
     publishDirectory: dist
 
