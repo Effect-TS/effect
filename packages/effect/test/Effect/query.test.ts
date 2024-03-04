@@ -13,6 +13,7 @@ import * as Resolver from "effect/RequestResolver"
 import * as TestClock from "effect/TestClock"
 import type { Concurrency } from "effect/Types"
 import { describe, expect } from "vitest"
+import { pipe } from "../../src/index.js"
 
 interface Counter {
   readonly _: unique symbol
@@ -69,13 +70,23 @@ export const interrupts = FiberRef.unsafeMake({ interrupts: 0 })
 
 export const getUserNameById = (id: number) => Effect.request(new GetNameById({ id }), UserResolver)
 
+export const getUserNameByIdPiped = (id: number) => pipe(new GetNameById({ id }), Effect.request(UserResolver))
+
 export const getAllUserNamesN = (concurrency: Concurrency) =>
   getAllUserIds.pipe(
     Effect.flatMap(Effect.forEach(getUserNameById, { concurrency, batching: true })),
     Effect.onInterrupt(() => FiberRef.getWith(interrupts, (i) => Effect.sync(() => i.interrupts++)))
   )
 
+export const getAllUserNamesPipedN = (concurrency: Concurrency) =>
+  getAllUserIds.pipe(
+    Effect.flatMap(Effect.forEach(getUserNameById, { concurrency, batching: true })),
+    Effect.onInterrupt(() => FiberRef.getWith(interrupts, (i) => Effect.sync(() => i.interrupts++)))
+  )
+
 export const getAllUserNames = getAllUserNamesN("unbounded")
+
+export const getAllUserNamesPiped = getAllUserNamesPipedN("unbounded")
 
 export const print = (request: UserRequest): string => {
   switch (request._tag) {
@@ -153,6 +164,16 @@ describe("Effect", () => {
     provideEnv(
       Effect.gen(function*($) {
         const names = yield* $(getAllUserNames)
+        const count = yield* $(Counter)
+        expect(count.count).toEqual(3)
+        expect(names.length).toBeGreaterThan(2)
+        expect(names).toEqual(userIds.map((id) => userNames.get(id)))
+      })
+    ))
+  it.effect("requests with dual syntax are executed correctly", () =>
+    provideEnv(
+      Effect.gen(function*($) {
+        const names = yield* $(getAllUserNamesPiped)
         const count = yield* $(Counter)
         expect(count.count).toEqual(3)
         expect(names.length).toBeGreaterThan(2)
