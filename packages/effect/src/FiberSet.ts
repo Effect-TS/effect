@@ -3,6 +3,9 @@
  */
 import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
+import * as Cause from "./Cause.js"
+import * as Deferred from "./Deferred.js"
+import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
 import { dual } from "./Function.js"
 import * as Inspectable from "./Inspectable.js"
@@ -31,6 +34,7 @@ export interface FiberSet<out A = unknown, out E = unknown>
 {
   readonly [TypeId]: TypeId
   readonly backing: Set<Fiber.RuntimeFiber<A, E>>
+  readonly deferred: Deferred.Deferred<never, unknown>
 }
 
 /**
@@ -61,9 +65,13 @@ const Proto = {
   }
 }
 
-const unsafeMake = <A, E>(): FiberSet<A, E> => {
+const unsafeMake = <A, E>(
+  backing: Set<Fiber.RuntimeFiber<A, E>>,
+  deferred: Deferred.Deferred<never, unknown>
+): FiberSet<A, E> => {
   const self = Object.create(Proto)
-  self.backing = new Set()
+  self.backing = backing
+  self.deferred = deferred
   return self
 }
 
@@ -93,7 +101,10 @@ const unsafeMake = <A, E>(): FiberSet<A, E> => {
  * @categories constructors
  */
 export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberSet<A, E>, never, Scope.Scope> =>
-  Effect.acquireRelease(Effect.sync(() => unsafeMake<A, E>()), clear)
+  Effect.acquireRelease(
+    Effect.map(Deferred.make<never, unknown>(), (deferred) => unsafeMake(new Set(), deferred)),
+    clear
+  )
 
 /**
  * Create an Effect run function that is backed by a FiberSet.
@@ -136,8 +147,11 @@ export const unsafeAdd: {
     return
   }
   self.backing.add(fiber)
-  fiber.addObserver((_) => {
+  fiber.addObserver((exit) => {
     self.backing.delete(fiber)
+    if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
+      Deferred.unsafeDone(self.deferred, exit as any)
+    }
   })
 })
 
@@ -264,3 +278,23 @@ export const runtime: <A, E>(
  * @categories combinators
  */
 export const size = <A, E>(self: FiberSet<A, E>): Effect.Effect<number> => Effect.sync(() => self.backing.size)
+
+/**
+ * Join all fibers in the FiberSet. If any of the Fiber's in the set terminate with a failure,
+ * the returned Effect will terminate with the first failure that occurred.
+ *
+ * @since 2.0.0
+ * @categories combinators
+ * @example
+ * import { Effect, FiberSet } from "effect";
+ *
+ * Effect.gen(function* (_) {
+ *   const set = yield* _(FiberSet.make());
+ *   yield* _(FiberSet.add(set, Effect.runFork(Effect.fail("error"))));
+ *
+ *   // parent fiber will fail with "error"
+ *   yield* _(FiberSet.join(set));
+ * });
+ */
+export const join = <A, E>(self: FiberSet<A, E>): Effect.Effect<never, E> =>
+  Deferred.await(self.deferred as Deferred.Deferred<never, E>)
