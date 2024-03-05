@@ -8,7 +8,7 @@ import * as Brand from "effect/Brand"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
-import * as Duration from "effect/Duration"
+import * as _duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
@@ -28,7 +28,7 @@ import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
-import * as Secret from "effect/Secret"
+import * as _secret from "effect/Secret"
 import * as S from "effect/String"
 import type { Covariant, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
@@ -1817,6 +1817,48 @@ class $struct<Fields extends Struct.Fields>
 export const struct = <Fields extends Struct.Fields>(fields: Fields): struct<Fields> => new $struct(fields)
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface record<K extends Schema.All, V extends Schema.Any> extends
+  Annotable<
+    record<K, V>,
+    { readonly [P in Schema.Type<K>]: Schema.Type<V> },
+    { readonly [P in Schema.Encoded<K>]: Schema.Encoded<V> },
+    Schema.Context<K> | Schema.Context<V>
+  >
+{
+  readonly key: K
+  readonly value: V
+}
+
+class $record<K extends Schema.All, V extends Schema.Any> extends _schema.Schema<
+  { readonly [P in Schema.Type<K>]: Schema.Type<V> },
+  { readonly [P in Schema.Encoded<K>]: Schema.Encoded<V> },
+  Schema.Context<K> | Schema.Context<V>
+> implements record<K, V> {
+  constructor(
+    readonly key: K,
+    readonly value: V,
+    annotations?: Annotations<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>
+  ) {
+    super(AST.createRecord(key.ast, value.ast, true, _schema.toASTAnnotations(annotations)))
+  }
+  annotations(annotations: Annotations<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>): record<K, V> {
+    return new $record(this.key, this.value, { ...this.ast.annotations, ...annotations })
+  }
+}
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const record = <A extends string | symbol, I extends string | symbol, R, V extends Schema.Any>(
+  key: Schema<A, I, R>,
+  value: V
+): record<Schema<A, I, R>, V> => new $record(key, value)
+
+/**
  * @category struct transformations
  * @since 1.0.0
  */
@@ -2061,50 +2103,7 @@ export const mutable = <A, I, R>(
   return ast === schema.ast ? schema as any : make(ast)
 }
 
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface record<K extends Schema.All, V extends Schema.Any> extends
-  Annotable<
-    record<K, V>,
-    { readonly [P in Schema.Type<K>]: Schema.Type<V> },
-    { readonly [P in Schema.Encoded<K>]: Schema.Encoded<V> },
-    Schema.Context<K> | Schema.Context<V>
-  >
-{
-  readonly key: K
-  readonly value: V
-}
-
-class $record<K extends Schema.All, V extends Schema.Any> extends _schema.Schema<
-  { readonly [P in Schema.Type<K>]: Schema.Type<V> },
-  { readonly [P in Schema.Encoded<K>]: Schema.Encoded<V> },
-  Schema.Context<K> | Schema.Context<V>
-> implements record<K, V> {
-  constructor(
-    readonly key: K,
-    readonly value: V,
-    annotations?: Annotations<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>
-  ) {
-    super(AST.createRecord(key.ast, value.ast, true, _schema.toASTAnnotations(annotations)))
-  }
-  annotations(annotations: Annotations<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>): record<K, V> {
-    return new $record(this.key, this.value, { ...this.ast.annotations, ...annotations })
-  }
-}
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const record = <A extends string | symbol, I extends string | symbol, R, V extends Schema.Any>(
-  key: Schema<A, I, R>,
-  value: V
-): record<Schema<A, I, R>, V> => new $record(key, value)
-
-/** @internal */
-export const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
+const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
   return AST.Union.make(
     xs.flatMap((x) => {
       return ys.map((y) => {
@@ -3960,60 +3959,80 @@ export const BigintFromNumber: BigintFromNumber = transformOrFail(
 ).annotations({ identifier: "BigintFromNumber" })
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface SecretFromSelf extends Annotable<SecretFromSelf, _secret.Secret> {}
+
+/**
  * @category Secret constructors
  * @since 1.0.0
  */
-export const SecretFromSelf: Schema<Secret.Secret> = declare(
-  Secret.isSecret,
+export const SecretFromSelf: SecretFromSelf = declare(
+  _secret.isSecret,
   {
     identifier: "SecretFromSelf",
-    pretty: (): Pretty.Pretty<Secret.Secret> => (secret) => String(secret),
-    arbitrary: (): Arbitrary<Secret.Secret> => (fc) => fc.string().map((_) => Secret.fromString(_))
+    pretty: (): Pretty.Pretty<_secret.Secret> => (secret) => String(secret),
+    arbitrary: (): Arbitrary<_secret.Secret> => (fc) => fc.string().map((_) => _secret.fromString(_))
   }
 )
 
-const _Secret: Schema<Secret.Secret, string> = transform(
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Secret extends Annotable<Secret, _secret.Secret, string> {}
+
+/**
+ * A schema that transforms a `string` into a `Secret`.
+ *
+ * @category Secret transformations
+ * @since 1.0.0
+ */
+export const Secret: Secret = transform(
   string,
   SecretFromSelf,
-  (str) => Secret.fromString(str),
-  (secret) => Secret.value(secret),
+  (str) => _secret.fromString(str),
+  (secret) => _secret.value(secret),
   { strict: false }
 ).annotations({ identifier: "Secret" })
 
-export {
-  /**
-   * A schema that transforms a `string` into a `Secret`.
-   *
-   * @category Secret transformations
-   * @since 1.0.0
-   */
-  _Secret as Secret
-}
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface DurationFromSelf extends Annotable<DurationFromSelf, _duration.Duration> {}
 
 /**
  * @category Duration constructors
  * @since 1.0.0
  */
-export const DurationFromSelf: Schema<Duration.Duration> = declare(
-  Duration.isDuration,
+export const DurationFromSelf: DurationFromSelf = declare(
+  _duration.isDuration,
   {
     identifier: "DurationFromSelf",
-    pretty: (): Pretty.Pretty<Duration.Duration> => String,
-    arbitrary: (): Arbitrary<Duration.Duration> => (fc) =>
+    pretty: (): Pretty.Pretty<_duration.Duration> => String,
+    arbitrary: (): Arbitrary<_duration.Duration> => (fc) =>
       fc.oneof(
-        fc.constant(Duration.infinity),
-        fc.bigUint().map((_) => Duration.nanos(_)),
-        fc.bigUint().map((_) => Duration.micros(_)),
-        fc.maxSafeNat().map((_) => Duration.millis(_)),
-        fc.maxSafeNat().map((_) => Duration.seconds(_)),
-        fc.maxSafeNat().map((_) => Duration.minutes(_)),
-        fc.maxSafeNat().map((_) => Duration.hours(_)),
-        fc.maxSafeNat().map((_) => Duration.days(_)),
-        fc.maxSafeNat().map((_) => Duration.weeks(_))
+        fc.constant(_duration.infinity),
+        fc.bigUint().map((_) => _duration.nanos(_)),
+        fc.bigUint().map((_) => _duration.micros(_)),
+        fc.maxSafeNat().map((_) => _duration.millis(_)),
+        fc.maxSafeNat().map((_) => _duration.seconds(_)),
+        fc.maxSafeNat().map((_) => _duration.minutes(_)),
+        fc.maxSafeNat().map((_) => _duration.hours(_)),
+        fc.maxSafeNat().map((_) => _duration.days(_)),
+        fc.maxSafeNat().map((_) => _duration.weeks(_))
       ),
-    equivalence: (): Equivalence.Equivalence<Duration.Duration> => Duration.Equivalence
+    equivalence: (): Equivalence.Equivalence<_duration.Duration> => _duration.Equivalence
   }
 )
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface DurationFromNanos extends Annotable<DurationFromNanos, _duration.Duration, bigint> {}
 
 /**
  * A schema that transforms a `bigint` tuple into a `Duration`.
@@ -4022,16 +4041,22 @@ export const DurationFromSelf: Schema<Duration.Duration> = declare(
  * @category Duration transformations
  * @since 1.0.0
  */
-export const DurationFromNanos: Schema<Duration.Duration, bigint> = transformOrFail(
+export const DurationFromNanos: DurationFromNanos = transformOrFail(
   bigintFromSelf,
   DurationFromSelf,
-  (nanos) => ParseResult.succeed(Duration.nanos(nanos)),
+  (nanos) => ParseResult.succeed(_duration.nanos(nanos)),
   (duration, _, ast) =>
-    Option.match(Duration.toNanos(duration), {
+    Option.match(_duration.toNanos(duration), {
       onNone: () => ParseResult.fail(new ParseResult.Type(ast, duration)),
       onSome: (val) => ParseResult.succeed(val)
     })
 ).annotations({ identifier: "DurationFromNanos" })
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface DurationFromMillis extends Annotable<DurationFromMillis, _duration.Duration, number> {}
 
 /**
  * A schema that transforms a `number` tuple into a `Duration`.
@@ -4040,11 +4065,11 @@ export const DurationFromNanos: Schema<Duration.Duration, bigint> = transformOrF
  * @category Duration transformations
  * @since 1.0.0
  */
-export const DurationFromMillis: Schema<Duration.Duration, number> = transform(
+export const DurationFromMillis: DurationFromMillis = transform(
   number,
   DurationFromSelf,
-  (ms) => Duration.millis(ms),
-  (n) => Duration.toMillis(n)
+  (ms) => _duration.millis(ms),
+  (n) => _duration.toMillis(n)
 ).annotations({ identifier: "DurationFromMillis" })
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
@@ -4062,22 +4087,24 @@ const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   )
 )
 
-const _Duration: Schema<Duration.Duration, readonly [seconds: number, nanos: number]> = transform(
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Duration extends Annotable<Duration, _duration.Duration, readonly [seconds: number, nanos: number]> {}
+
+/**
+ * A schema that transforms a `[number, number]` tuple into a `Duration`.
+ *
+ * @category Duration transformations
+ * @since 1.0.0
+ */
+export const Duration: Duration = transform(
   hrTime,
   DurationFromSelf,
-  ([seconds, nanos]) => Duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
-  (duration) => Duration.toHrTime(duration)
+  ([seconds, nanos]) => _duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
+  (duration) => _duration.toHrTime(duration)
 ).annotations({ identifier: "Duration" })
-
-export {
-  /**
-   * A schema that transforms a `[number, number]` tuple into a `Duration`.
-   *
-   * @category Duration transformations
-   * @since 1.0.0
-   */
-  _Duration as Duration
-}
 
 /**
  * Clamps a `Duration` between a minimum and a maximum value.
@@ -4086,12 +4113,12 @@ export {
  * @since 1.0.0
  */
 export const clampDuration =
-  (minimum: Duration.DurationInput, maximum: Duration.DurationInput) =>
-  <R, I, A extends Duration.Duration>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  (minimum: _duration.DurationInput, maximum: _duration.DurationInput) =>
+  <R, I, A extends _duration.Duration>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
       self.pipe(typeSchema, betweenDuration(minimum, maximum)),
-      (self) => Duration.clamp(self, { minimum, maximum }),
+      (self) => _duration.clamp(self, { minimum, maximum }),
       identity,
       { strict: false }
     )
@@ -4106,15 +4133,15 @@ export const LessThanDurationTypeId = Symbol.for("@effect/schema/TypeId/LessThan
  * @category Duration filters
  * @since 1.0.0
  */
-export const lessThanDuration = <A extends Duration.Duration>(
-  max: Duration.DurationInput,
+export const lessThanDuration = <A extends _duration.Duration>(
+  max: _duration.DurationInput,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => Duration.lessThan(a, max), {
+    filter((a): a is A => _duration.lessThan(a, max), {
       typeId: { id: LessThanDurationTypeId, annotation: { max } },
-      description: `a Duration less than ${Duration.decode(max)}`,
+      description: `a Duration less than ${_duration.decode(max)}`,
       ...annotations
     })
   )
@@ -4131,15 +4158,15 @@ export const LessThanOrEqualToDurationTypeId = Symbol.for(
  * @category Duration filters
  * @since 1.0.0
  */
-export const lessThanOrEqualToDuration = <A extends Duration.Duration>(
-  max: Duration.DurationInput,
+export const lessThanOrEqualToDuration = <A extends _duration.Duration>(
+  max: _duration.DurationInput,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => Duration.lessThanOrEqualTo(a, max), {
+    filter((a): a is A => _duration.lessThanOrEqualTo(a, max), {
       typeId: { id: LessThanDurationTypeId, annotation: { max } },
-      description: `a Duration less than or equal to ${Duration.decode(max)}`,
+      description: `a Duration less than or equal to ${_duration.decode(max)}`,
       ...annotations
     })
   )
@@ -4154,15 +4181,15 @@ export const GreaterThanDurationTypeId = Symbol.for("@effect/schema/TypeId/Great
  * @category Duration filters
  * @since 1.0.0
  */
-export const greaterThanDuration = <A extends Duration.Duration>(
-  min: Duration.DurationInput,
+export const greaterThanDuration = <A extends _duration.Duration>(
+  min: _duration.DurationInput,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => Duration.greaterThan(a, min), {
+    filter((a): a is A => _duration.greaterThan(a, min), {
       typeId: { id: GreaterThanDurationTypeId, annotation: { min } },
-      description: `a Duration greater than ${Duration.decode(min)}`,
+      description: `a Duration greater than ${_duration.decode(min)}`,
       ...annotations
     })
   )
@@ -4179,15 +4206,15 @@ export const GreaterThanOrEqualToDurationTypeId = Symbol.for(
  * @category Duration filters
  * @since 1.0.0
  */
-export const greaterThanOrEqualToDuration = <A extends Duration.Duration>(
-  min: Duration.DurationInput,
+export const greaterThanOrEqualToDuration = <A extends _duration.Duration>(
+  min: _duration.DurationInput,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => Duration.greaterThanOrEqualTo(a, min), {
+    filter((a): a is A => _duration.greaterThanOrEqualTo(a, min), {
       typeId: { id: GreaterThanOrEqualToDurationTypeId, annotation: { min } },
-      description: `a Duration greater than or equal to ${Duration.decode(min)}`,
+      description: `a Duration greater than or equal to ${_duration.decode(min)}`,
       ...annotations
     })
   )
@@ -4202,16 +4229,16 @@ export const BetweenDurationTypeId = Symbol.for("@effect/schema/TypeId/BetweenDu
  * @category Duration filters
  * @since 1.0.0
  */
-export const betweenDuration = <A extends Duration.Duration>(
-  minimum: Duration.DurationInput,
-  maximum: Duration.DurationInput,
+export const betweenDuration = <A extends _duration.Duration>(
+  minimum: _duration.DurationInput,
+  maximum: _duration.DurationInput,
   annotations?: FilterAnnotations<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
-    filter((a): a is A => Duration.between(a, { minimum, maximum }), {
+    filter((a): a is A => _duration.between(a, { minimum, maximum }), {
       typeId: { id: BetweenDurationTypeId, annotation: { maximum, minimum } },
-      description: `a Duration between ${Duration.decode(minimum)} and ${Duration.decode(maximum)}`,
+      description: `a Duration between ${_duration.decode(minimum)} and ${_duration.decode(maximum)}`,
       ...annotations
     })
   )

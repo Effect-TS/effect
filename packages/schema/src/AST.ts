@@ -984,7 +984,7 @@ export class IndexSignature {
 
 /** @internal */
 export const getDuplicatePropertySignatureErrorMessage = (name: PropertyKey): string =>
-  `Duplicate property signature ${String(name)}`
+  `Duplicate property signature ${_util.formatUnknown(name)}`
 
 /**
  * @category model
@@ -1827,12 +1827,12 @@ const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | und
   })
 }
 
-function mapOrElse<A>(
+function changeMap<A>(
   as: ReadonlyArray.NonEmptyReadonlyArray<A>,
   f: (a: A) => A
 ): ReadonlyArray.NonEmptyReadonlyArray<A>
-function mapOrElse<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A>
-function mapOrElse<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
+function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A>
+function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
   let changed = false
   const out: Array<A> = []
   for (const a of as) {
@@ -1851,19 +1851,19 @@ function mapOrElse<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
 export const encodedAST = (ast: AST): AST => {
   switch (ast._tag) {
     case "Declaration": {
-      const typeParameters = mapOrElse(ast.typeParameters, encodedAST)
+      const typeParameters = changeMap(ast.typeParameters, encodedAST)
       return typeParameters === ast.typeParameters ?
         ast :
         new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown, ast.annotations)
     }
     case "Tuple": {
-      const elements = mapOrElse(ast.elements, (e) => {
+      const elements = changeMap(ast.elements, (e) => {
         const type = encodedAST(e.type)
         return type === e.type ? e : new Element(type, e.isOptional)
       })
       let rest = ast.rest
       if (Option.isSome(rest)) {
-        const value = mapOrElse(rest.value, encodedAST)
+        const value = changeMap(rest.value, encodedAST)
         if (value !== rest.value) {
           rest = Option.some(value)
         }
@@ -1873,11 +1873,11 @@ export const encodedAST = (ast: AST): AST => {
         new Tuple(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
     }
     case "TypeLiteral": {
-      const propertySignatures = mapOrElse(ast.propertySignatures, (p) => {
+      const propertySignatures = changeMap(ast.propertySignatures, (p) => {
         const type = encodedAST(p.type)
         return type === p.type ? p : new PropertySignature(p.name, type, p.isOptional, p.isReadonly)
       })
-      const indexSignatures = mapOrElse(ast.indexSignatures, (is) => {
+      const indexSignatures = changeMap(ast.indexSignatures, (is) => {
         const type = encodedAST(is.type)
         return type === is.type ? is : IndexSignature.make(is.parameter, type, is.isReadonly)
       })
@@ -1886,12 +1886,11 @@ export const encodedAST = (ast: AST): AST => {
         TypeLiteral.make(propertySignatures, indexSignatures, createJSONIdentifierAnnotation(ast))
     }
     case "Union": {
-      const types = mapOrElse(ast.types, encodedAST)
+      const types = changeMap(ast.types, encodedAST)
       return types === ast.types ? ast : Union.make(ast.types.map(encodedAST), createJSONIdentifierAnnotation(ast))
     }
-    case "Suspend": {
+    case "Suspend":
       return new Suspend(() => encodedAST(ast.f()), createJSONIdentifierAnnotation(ast))
-    }
     case "Refinement":
     case "Transform":
       return encodedAST(ast.from)

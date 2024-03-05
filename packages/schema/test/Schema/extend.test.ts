@@ -179,7 +179,7 @@ describe("Schema > extend", () => {
         S.struct({ a: S.literal("a") }).pipe(
           S.extend(S.struct({ a: S.string }))
         )
-      ).toThrow(new Error("Duplicate property signature a"))
+      ).toThrow(new Error(`Duplicate property signature "a"`))
       expect(() =>
         S.struct({ a: S.literal("a") }).pipe(
           S.extend(
@@ -189,7 +189,7 @@ describe("Schema > extend", () => {
             )
           )
         )
-      ).toThrow(new Error("Duplicate property signature a"))
+      ).toThrow(new Error(`Duplicate property signature "a"`))
     })
 
     it("struct extend record(string, string)", async () => {

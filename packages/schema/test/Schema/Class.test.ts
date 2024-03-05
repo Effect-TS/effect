@@ -249,7 +249,7 @@ describe("Schema > Class APIs", () => {
       expect(() => {
         class A2 extends A.extend<A2>()({ a: S.string }) {}
         console.log(A2)
-      }).toThrow(new Error("Duplicate property signature a"))
+      }).toThrow(new Error(`Duplicate property signature "a"`))
     })
 
     it("can be extended with Class fields", () => {
@@ -347,7 +347,7 @@ describe("Schema > Class APIs", () => {
         // @ts-expect-error
         class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.literal("X"), a: S.string }) {}
         console.log(_TA)
-      }).toThrow(new Error("Duplicate property signature _tag"))
+      }).toThrow(new Error(`Duplicate property signature "_tag"`))
     })
 
     it("should expose the fields", async () => {
