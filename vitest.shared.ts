@@ -33,7 +33,7 @@ const config: UserConfig = {
       ...alias("rpc-http"),
       ...alias("schema"),
       ...alias("typeclass"),
-      ...alias("xstate"),
+      ...alias("xstate")
     }
   }
 }
