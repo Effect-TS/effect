@@ -44,10 +44,7 @@ export const Client = Context.GenericTag<Client, ClientImpl>("@effect/experiment
  */
 export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*(_) {
   const socket = yield* _(Socket.Socket)
-  const requests = yield* _(Effect.acquireRelease(
-    Queue.sliding<Domain.Request>(1024),
-    Queue.shutdown
-  ))
+  const requests = yield* _(Queue.sliding<Domain.Request>(1024))
 
   function metricsSnapshot(): Domain.MetricsSnapshot {
     const snapshot = Metric.unsafeSnapshot()
@@ -130,16 +127,21 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
         Schedule.union(Schedule.spaced("10 seconds"))
       )
     ),
-    Effect.interruptible,
-    Effect.forkScoped
+    Effect.forkScoped,
+    Effect.interruptible
   )
   yield* _(
     Queue.offer(requests, { _tag: "Ping" }),
     Effect.delay("3 seconds"),
     Effect.forever,
-    Effect.interruptible,
-    Effect.forkScoped
+    Effect.forkScoped,
+    Effect.interruptible
   )
+  yield* _(Effect.addFinalizer(() =>
+    requests.offer(metricsSnapshot()).pipe(
+      Effect.zipRight(Effect.yieldNow())
+    )
+  ))
 
   return Client.of({
     unsafeAddSpan: (request) => Queue.unsafeOffer(requests, request)
