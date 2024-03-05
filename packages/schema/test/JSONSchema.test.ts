@@ -1473,12 +1473,12 @@ describe("JSONSchema", () => {
 
     it("propertySignatureDeclaration", () => {
       const schema = S.struct({
-        foo: S.propertySignatureDeclaration(S.string).annotations({
+        foo: S.propertySignatureDeclaration({ schema: S.string }).annotations({
           description: "foo description",
           title: "foo title",
           examples: ["foo example"]
         }),
-        bar: S.propertySignatureDeclaration(JsonNumber).annotations({
+        bar: S.propertySignatureDeclaration({ schema: JsonNumber }).annotations({
           description: "bar description",
           title: "bar title",
           examples: [1]

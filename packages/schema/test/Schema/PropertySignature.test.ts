@@ -9,7 +9,7 @@ describe("Schema > PropertySignature", () => {
   describe("annotations", () => {
     it("propertySignatureDeclaration().annotations()", () => {
       const schema = S.struct({
-        a: S.propertySignatureDeclaration(S.string).annotations({
+        a: S.propertySignatureDeclaration({ schema: S.string }).annotations({
           title: "title",
           [Symbol.for("custom-annotation")]: "custom-annotation-value"
         })
@@ -39,11 +39,13 @@ describe("Schema > PropertySignature", () => {
   it("add a default to an optional field", async () => {
     const ps = S.propertySignatureTransformation(
       {
-        token: "?:",
-        schema: S.NumberFromString
+        schema: S.NumberFromString,
+        isOptional: true
       },
-      S.number,
-      ":",
+      {
+        schema: S.number,
+        isOptional: false
+      },
       Option.orElse(() => Option.some(0)),
       identity
     )
@@ -70,11 +72,13 @@ describe("Schema > PropertySignature", () => {
   it("add a bidirectional default to an optional field", async () => {
     const ps = S.propertySignatureTransformation(
       {
-        token: "?:",
-        schema: S.NumberFromString
+        schema: S.NumberFromString,
+        isOptional: true
       },
-      S.number,
-      ":",
+      {
+        schema: S.number,
+        isOptional: false
+      },
       Option.orElse(() => Option.some(0)),
       (o) => Option.flatMap(o, Option.liftPredicate((v) => v !== 0))
     )
@@ -101,11 +105,13 @@ describe("Schema > PropertySignature", () => {
   it("empty string as optional", async () => {
     const ps = S.propertySignatureTransformation(
       {
-        token: ":",
-        schema: S.string
+        schema: S.string,
+        isOptional: false
       },
-      S.string,
-      "?:",
+      {
+        schema: S.string,
+        isOptional: true
+      },
       Option.flatMap(Option.liftPredicate((v) => v !== "")),
       identity
     )
@@ -120,11 +126,13 @@ describe("Schema > PropertySignature", () => {
   it("reversed default", async () => {
     const ps = S.propertySignatureTransformation(
       {
-        token: ":",
-        schema: S.number
+        schema: S.number,
+        isOptional: false
       },
-      S.number,
-      "?:",
+      {
+        schema: S.number,
+        isOptional: true
+      },
       identity,
       Option.orElse(() => Option.some(0))
     )
@@ -139,7 +147,7 @@ describe("Schema > PropertySignature", () => {
 
   describe("renaming", () => {
     it("string key", async () => {
-      const ps = S.propertySignatureDeclaration(S.number).pipe(S.propertySignatureKey("b"))
+      const ps = S.propertySignatureDeclaration({ schema: S.number }).pipe(S.propertySignatureKey("b"))
       const transform = S.struct({ a: ps })
       const schema = S.asSchema(transform)
       await Util.expectDecodeUnknownSuccess(schema, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
@@ -149,7 +157,7 @@ describe("Schema > PropertySignature", () => {
 
     it("symbol key", async () => {
       const a = Symbol.for("@effect/schema/test/a")
-      const ps = S.propertySignatureDeclaration(S.symbol).pipe(S.propertySignatureKey(a))
+      const ps = S.propertySignatureDeclaration({ schema: S.symbol }).pipe(S.propertySignatureKey(a))
       const transform = S.struct({ a: ps })
       const rename = S.asSchema(transform)
       const schema = S.struct({ b: S.number }).pipe(S.extend(rename))

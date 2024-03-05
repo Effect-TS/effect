@@ -1272,11 +1272,11 @@ S.Secret
 S.SecretFromSelf
 
 // ---------------------------------------------
-// asPropertySignature
+// propertySignatureDeclaration
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, ":", string, never>
-S.propertySignatureDeclaration(S.string).annotations({ description: "description" })
+S.propertySignatureDeclaration({ schema: S.string }).annotations({ description: "description" })
 
 // ---------------------------------------------
 // PropertySignature .annotations({}) method

@@ -14,15 +14,17 @@ describe("isSchema", () => {
   })
 
   it("PropertySignature", () => {
-    expect(S.isSchema(S.propertySignatureDeclaration(S.string))).toBe(false)
+    expect(S.isSchema(S.propertySignatureDeclaration({ schema: S.string }))).toBe(false)
     expect(S.isSchema(S.optional(S.string, { exact: true }))).toBe(false)
     const ps = S.propertySignatureTransformation(
       {
-        token: "?:",
-        schema: S.NumberFromString
+        schema: S.NumberFromString,
+        isOptional: true
       },
-      S.number,
-      ":",
+      {
+        schema: S.number,
+        isOptional: false
+      },
       Option.orElse(() => Option.some(0)),
       identity
     )

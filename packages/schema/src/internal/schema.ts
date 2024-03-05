@@ -17,22 +17,22 @@ export const make = <A, I, R>(ast: AST.AST): S.Schema<A, I, R> => new Schema(ast
 
 /** @internal */
 export const toASTAnnotations = (
-  options?: Record<string | symbol, any> | undefined
+  annotations?: Record<string | symbol, any> | undefined
 ): AST.Annotations => {
-  if (!options) {
+  if (!annotations) {
     return {}
   }
   const out: Mutable<AST.Annotations> = {}
 
   // symbols are reserved for custom annotations
-  const custom = Object.getOwnPropertySymbols(options)
+  const custom = Object.getOwnPropertySymbols(annotations)
   for (const sym of custom) {
-    out[sym] = options[sym]
+    out[sym] = annotations[sym]
   }
 
   // string keys are reserved as /schema namespace
-  if (options.typeId !== undefined) {
-    const typeId = options.typeId
+  if (annotations.typeId !== undefined) {
+    const typeId = annotations.typeId
     if (typeof typeId === "object") {
       out[AST.TypeAnnotationId] = typeId.id
       out[typeId.id] = typeId.annotation
@@ -40,9 +40,9 @@ export const toASTAnnotations = (
       out[AST.TypeAnnotationId] = typeId
     }
   }
-  const move = (from: keyof typeof options, to: symbol) => {
-    if (options[from] !== undefined) {
-      out[to] = options[from]
+  const move = (from: keyof typeof annotations, to: symbol) => {
+    if (annotations[from] !== undefined) {
+      out[to] = annotations[from]
     }
   }
   move("message", AST.MessageAnnotationId)
