@@ -15,19 +15,20 @@ import * as Queue from "effect/Queue"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import {
-  type ActorLogic,
-  type ActorOptions,
-  type ActorRefFrom,
-  type ActorSystem as XstateSystem,
-  type AnyActorLogic,
-  type AnyEventObject,
-  type ConditionalRequired,
-  createActor,
-  type EventFromLogic,
-  type InputFrom,
-  type IsNotNever,
-  type SnapshotFrom
+import { createActor } from "xstate"
+import type {
+  Actor,
+  ActorLogic,
+  ActorOptions,
+  ActorRefFrom,
+  ActorSystem as XstateSystem,
+  AnyActorLogic,
+  AnyEventObject,
+  ConditionalRequired,
+  EventFromLogic,
+  InputFrom,
+  IsNotNever,
+  SnapshotFrom
 } from "xstate"
 import * as Snapshot from "./Snapshot.js"
 
@@ -667,16 +668,11 @@ export const fromStreamSchema = <In extends Schema.TaggedRequest.Any, I, R>(
  * @category models
  */
 export interface RunningActor<Logic extends AnyActorLogic> {
-  readonly id: string
-  readonly sessionId: string
-  readonly logic: Logic
-  readonly system: XstateSystem<any>
+  readonly actor: Actor<Logic>
   readonly subscribe: Effect.Effect<Queue.Dequeue<SnapshotFrom<Logic>>, never, Scope.Scope>
   readonly stream: Stream.Stream<SnapshotFrom<Logic>>
   readonly effect: Effect.Effect<SnapshotFrom<Logic>>
   readonly send: (event: EventFromLogic<Logic>) => Effect.Effect<void>
-  readonly snapshot: Effect.Effect<SnapshotFrom<Logic>>
-  readonly persistedSnapshot: Effect.Effect<Snapshot.Unknown>
 }
 
 type RunOptions<Logic extends AnyActorLogic> = ConditionalRequired<[
@@ -771,18 +767,13 @@ export const run: {
 
       return Effect.acquireRelease(
         Effect.succeed<RunningActor<Logic>>({
-          id: actor.id,
-          sessionId: actor.sessionId,
-          logic,
-          system: actor.system,
+          actor,
           subscribe,
           stream,
           effect,
           send(event) {
             return Effect.sync(() => actor.send(event))
-          },
-          snapshot: Effect.sync(() => actor.getSnapshot()),
-          persistedSnapshot: Effect.sync(() => actor.getPersistedSnapshot())
+          }
         }),
         () =>
           Effect.sync(() => {
