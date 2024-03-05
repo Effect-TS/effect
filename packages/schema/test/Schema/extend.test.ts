@@ -140,58 +140,6 @@ describe("Schema > extend", () => {
       expect(is({ d: 42 })).toBe(false)
     })
 
-    // -------------------------------------------------------------------------------------
-    // errors
-    // -------------------------------------------------------------------------------------
-
-    it("can only handle type literals or unions of type literals", () => {
-      expect(() => S.string.pipe(S.extend(S.number))).toThrow(
-        new Error("`extend` can only handle type literals or unions of type literals")
-      )
-    })
-
-    it(`extend/overlapping index signatures/ string`, () => {
-      expect(() =>
-        S.record(S.string, S.number).pipe(
-          S.extend(S.record(S.string, S.boolean))
-        )
-      ).toThrow(new Error("Duplicate index signature for type `string`"))
-    })
-
-    it(`extend/overlapping index signatures/ symbol`, () => {
-      expect(() =>
-        S.record(S.symbolFromSelf, S.number).pipe(
-          S.extend(S.record(S.symbolFromSelf, S.boolean))
-        )
-      ).toThrow(new Error("Duplicate index signature for type `symbol`"))
-    })
-
-    it("extend/overlapping index signatures/ refinements", () => {
-      expect(() =>
-        S.record(S.string, S.number).pipe(
-          S.extend(S.record(S.string.pipe(S.minLength(2)), S.boolean))
-        )
-      ).toThrow(new Error("Duplicate index signature for type `string`"))
-    })
-
-    it(`overlapping property signatures`, () => {
-      expect(() =>
-        S.struct({ a: S.literal("a") }).pipe(
-          S.extend(S.struct({ a: S.string }))
-        )
-      ).toThrow(new Error(`Duplicate property signature "a"`))
-      expect(() =>
-        S.struct({ a: S.literal("a") }).pipe(
-          S.extend(
-            S.union(
-              S.struct({ a: S.string }),
-              S.struct({ b: S.number })
-            )
-          )
-        )
-      ).toThrow(new Error(`Duplicate property signature "a"`))
-    })
-
     it("struct extend record(string, string)", async () => {
       const schema = S.struct({ a: S.string }).pipe(
         S.extend(S.record(S.string, S.string))
@@ -307,5 +255,60 @@ describe("Schema > extend", () => {
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })
     })
+  })
+
+  it(`nested struct extend nested struct`, async () => {
+    const A = S.struct({ a: S.struct({ b: S.string }) })
+    const B = S.struct({ a: S.struct({ c: S.number }) })
+    const schema = S.extend(A, B)
+    await Util.expectDecodeUnknownSuccess(schema, { a: { b: "a", c: 1 } })
+
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      { a: { b: "a", c: null } },
+      `{ a: { b: string; c: number } }
+└─ ["a"]
+   └─ { b: string; c: number }
+      └─ ["c"]
+         └─ Expected a number, actual null`
+    )
+  })
+
+  it("errors", () => {
+    expect(() => S.string.pipe(S.extend(S.number))).toThrow(
+      new Error("cannot extend `string` with `number` (path [])")
+    )
+    expect(() =>
+      S.record(S.string, S.number).pipe(
+        S.extend(S.record(S.string, S.boolean))
+      )
+    ).toThrow(new Error("Duplicate index signature for type `string`"))
+    expect(() =>
+      S.record(S.symbolFromSelf, S.number).pipe(
+        S.extend(S.record(S.symbolFromSelf, S.boolean))
+      )
+    ).toThrow(new Error("Duplicate index signature for type `symbol`"))
+    expect(() =>
+      S.record(S.string, S.number).pipe(
+        S.extend(S.record(S.string.pipe(S.minLength(2)), S.boolean))
+      )
+    ).toThrow(new Error("Duplicate index signature for type `string`"))
+    expect(() =>
+      S.struct({ a: S.literal("a") }).pipe(
+        S.extend(S.struct({ a: S.string }))
+      )
+    ).toThrow(new Error("cannot extend `\"a\"` with `string` (path [\"a\"])"))
+    expect(() =>
+      S.struct({ a: S.literal("a") }).pipe(
+        S.extend(
+          S.union(
+            S.struct({ a: S.string }),
+            S.struct({ b: S.number })
+          )
+        )
+      )
+    ).toThrow(new Error("cannot extend `\"a\"` with `string` (path [\"a\"])"))
+    expect(() => S.extend(S.struct({ a: S.struct({ b: S.string }) }), S.struct({ a: S.struct({ b: S.number }) })))
+      .toThrow(new Error("cannot extend `string` with `number` (path [\"a\", \"b\"])"))
   })
 })

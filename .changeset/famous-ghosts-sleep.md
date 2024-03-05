@@ -2,6 +2,23 @@
 "@effect/schema": patch
 ---
 
+- Schema: enhance the `extend` API to allow nested (non-overlapping) fields:
+
+```ts
+const A = S.struct({ a: S.struct({ b: S.string }) });
+const B = S.struct({ a: S.struct({ c: S.number }) });
+const schema = S.extend(A, B);
+/*
+same as:
+const schema = S.struct({
+  a: S.struct({
+    b: S.string,
+    c: S.number
+  })
+})
+*/
+```
+
 - Schema: add `Annotable` interface
 
 - Schema: add `asSchema`

@@ -2103,75 +2103,73 @@ export const mutable = <A, I, R>(
   return ast === schema.ast ? schema as any : make(ast)
 }
 
-const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
-  return AST.Union.make(
+const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) =>
+  `cannot extend \`${x}\` with \`${y}\` (path [${path?.join(", ")}])`
+
+const intersectTypeLiterals = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>): AST.TypeLiteral => {
+  if (AST.isTypeLiteral(x) && AST.isTypeLiteral(y)) {
+    const propertySignatures = [...x.propertySignatures]
+    for (const ps of y.propertySignatures) {
+      const name = ps.name
+      const i = propertySignatures.findIndex((ps) => ps.name === name)
+      if (i === -1) {
+        propertySignatures.push(ps)
+      } else {
+        const { isOptional, type } = propertySignatures[i]
+        path = [...path, _util.formatUnknown(name)]
+        propertySignatures[i] = new AST.PropertySignature(name, extendAST(type, ps.type, path), isOptional, true)
+      }
+    }
+    return AST.TypeLiteral.make(
+      propertySignatures,
+      x.indexSignatures.concat(y.indexSignatures)
+    )
+  }
+  throw new Error(getExtendErrorMessage(x, y, path))
+}
+
+const extendAST = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>): AST.AST =>
+  intersectUnionMembers(AST.isUnion(x) ? x.types : [x], AST.isUnion(y) ? y.types : [y], path)
+
+const intersectUnionMembers = (
+  xs: ReadonlyArray<AST.AST>,
+  ys: ReadonlyArray<AST.AST>,
+  path: ReadonlyArray<string>
+): AST.AST =>
+  AST.Union.make(
     xs.flatMap((x) => {
       return ys.map((y) => {
         if (AST.isTypeLiteral(x)) {
           if (AST.isTypeLiteral(y)) {
-            // isTypeLiteral(x) && isTypeLiteral(y)
-            return AST.TypeLiteral.make(
-              x.propertySignatures.concat(y.propertySignatures),
-              x.indexSignatures.concat(y.indexSignatures)
-            )
+            return intersectTypeLiterals(x, y, path)
           } else if (
-            AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation) &&
-            AST.isTypeLiteral(y.from) && AST.isTypeLiteral(y.to)
+            AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
           ) {
-            // isTypeLiteral(x) && isTransform(y)
-            const from = AST.TypeLiteral.make(
-              x.propertySignatures.concat(y.from.propertySignatures),
-              x.indexSignatures.concat(y.from.indexSignatures)
-            )
-            const to = AST.TypeLiteral.make(
-              AST.getToPropertySignatures(x.propertySignatures).concat(y.to.propertySignatures),
-              AST.getToIndexSignatures(x.indexSignatures).concat(y.to.indexSignatures)
-            )
             return new AST.Transform(
-              from,
-              to,
+              intersectTypeLiterals(x, y.from, path),
+              intersectTypeLiterals(AST.typeAST(x), y.to, path),
               AST.TypeLiteralTransformation.make(
                 y.transformation.propertySignatureTransformations
               )
             )
           }
         } else if (
-          AST.isTransform(x) && AST.isTypeLiteralTransformation(x.transformation) &&
-          AST.isTypeLiteral(x.from) && AST.isTypeLiteral(x.to)
+          AST.isTransform(x) && AST.isTypeLiteralTransformation(x.transformation)
         ) {
           if (AST.isTypeLiteral(y)) {
-            // isTransform(x) && isTypeLiteral(y)
-            const from = AST.TypeLiteral.make(
-              x.from.propertySignatures.concat(y.propertySignatures),
-              x.from.indexSignatures.concat(y.indexSignatures)
-            )
-            const to = AST.TypeLiteral.make(
-              x.to.propertySignatures.concat(AST.getToPropertySignatures(y.propertySignatures)),
-              x.to.indexSignatures.concat(AST.getToIndexSignatures(y.indexSignatures))
-            )
             return new AST.Transform(
-              from,
-              to,
+              intersectTypeLiterals(x.from, y, path),
+              intersectTypeLiterals(x.to, AST.typeAST(y), path),
               AST.TypeLiteralTransformation.make(
                 x.transformation.propertySignatureTransformations
               )
             )
           } else if (
-            AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation) &&
-            AST.isTypeLiteral(y.from) && AST.isTypeLiteral(y.to)
+            AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
           ) {
-            // isTransform(x) && isTransform(y)
-            const from = AST.TypeLiteral.make(
-              x.from.propertySignatures.concat(y.from.propertySignatures),
-              x.from.indexSignatures.concat(y.from.indexSignatures)
-            )
-            const to = AST.TypeLiteral.make(
-              x.to.propertySignatures.concat(y.to.propertySignatures),
-              x.to.indexSignatures.concat(y.to.indexSignatures)
-            )
             return new AST.Transform(
-              from,
-              to,
+              intersectTypeLiterals(x.from, y.from, path),
+              intersectTypeLiterals(x.to, y.to, path),
               AST.TypeLiteralTransformation.make(
                 x.transformation.propertySignatureTransformations.concat(
                   y.transformation.propertySignatureTransformations
@@ -2180,11 +2178,10 @@ const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST
             )
           }
         }
-        throw new Error("`extend` can only handle type literals or unions of type literals")
+        throw new Error(getExtendErrorMessage(x, y, path))
       })
     })
   )
-}
 
 /**
  * @category api interface
@@ -2215,14 +2212,7 @@ export const extend: {
   <Self extends Schema.Any, That extends Schema.Any>(
     self: Self,
     that: That
-  ) => {
-    return make(
-      intersectUnionMembers(
-        AST.isUnion(self.ast) ? self.ast.types : [self.ast],
-        AST.isUnion(that.ast) ? that.ast.types : [that.ast]
-      )
-    )
-  }
+  ) => make(extendAST(self.ast, that.ast, []))
 )
 
 /**
