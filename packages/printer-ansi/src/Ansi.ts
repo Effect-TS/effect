@@ -4,7 +4,6 @@
 import type { Color } from "./Color.js"
 import * as InternalAnsi from "./internal/ansi.js"
 import type { Style } from "./internal/style.js"
-import type { TrueColor } from "./TrueColor.js"
 
 // -----------------------------------------------------------------------------
 // Models

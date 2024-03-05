@@ -35,7 +35,7 @@ export interface Bright {
 /** @internal */
 export declare namespace AnsiColor16 {
   /** @internal */
-  export type Name = "Black" | "Red" | "Green" | "Yellow" | "Blue" | "Magenta" | "Cyan" | "White"
+  export type Name = "black" | "red" | "green" | "yellow" | "blue" | "magenta" | "cyan" | "white"
 }
 
 // -----------------------------------------------------------------------------

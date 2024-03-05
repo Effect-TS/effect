@@ -1,4 +1,4 @@
-import { Match, Number, pipe, Predicate } from "effect"
+import { Match, Number, pipe, Predicate, ReadonlyArray } from "effect"
 import type { TrueColor } from "../TrueColor.js"
 
 // -----------------------------------------------------------------------------
@@ -37,10 +37,16 @@ export const isRgbTuple = (input: unknown): input is [number, number, number] =>
 export const toCode = (color: TrueColor): Readonly<[number, number, number]> =>
   Match.value(color.value).pipe(
     Match.when(isHexNumber, ([hexNumber]) =>
-      pipe(Number.clamp(Math.floor(hexNumber), { minimum: 0x000000, maximum: 0xFFFFFF }), hexToRgbTuple)),
+      pipe(
+        Math.floor(hexNumber),
+        Number.clamp({ minimum: 0x000000, maximum: 0xFFFFFF }),
+        hexToRgbTuple
+      )),
     Match.when(isRgbTuple, (rgb) =>
-      rgb.map((x) =>
-        Number.clamp(Math.floor(x), { minimum: 0, maximum: 255 })
-      ) as [number, number, number]),
+      ReadonlyArray.map(rgb, (c) =>
+        pipe(
+          Math.floor(c),
+          Number.clamp({ minimum: 0, maximum: 255 })
+        )) as [number, number, number]),
     Match.exhaustive
   )

@@ -97,6 +97,7 @@ export const invert = (state: boolean): Style => ({ _tag: "Invert", state })
 /** @internal */
 export const fg = (color: Style.Color): Style => ({ _tag: "Foreground", color })
 
+/** @internal */
 export const bg = (color: Style.Color): Style => ({ _tag: "Background", color })
 
 // -----------------------------------------------------------------------------
@@ -113,7 +114,7 @@ const toCodeNum = (self: Style): number | Array<number> =>
         Match.tag("Standard", (self) => 30 + ansiColor16.toCode(self)),
         Match.tag("Bright", (self) => 90 + ansiColor16.toCode(self)),
         Match.tag("AnsiColor256", (self) => [38, 5, ansiColor256.toCode(self)]),
-        Match.tag("TrueColor", (self) => [38, 2, ...trueColor.toCode(self)]),
+        Match.tag("TrueColor", (self) => [38, 2].concat(trueColor.toCode(self))),
         Match.exhaustive
       )),
     Match.tag("Background", (self) =>
@@ -121,7 +122,7 @@ const toCodeNum = (self: Style): number | Array<number> =>
         Match.tag("Standard", (self) => 40 + ansiColor16.toCode(self)),
         Match.tag("Bright", (self) => 100 + ansiColor16.toCode(self)),
         Match.tag("AnsiColor256", (self) => [48, 5, ansiColor256.toCode(self)]),
-        Match.tag("TrueColor", (self) => [48, 2, ...trueColor.toCode(self)]),
+        Match.tag("TrueColor", (self) => [48, 2].concat(trueColor.toCode(self))),
         Match.exhaustive
       )),
     Match.exhaustive
