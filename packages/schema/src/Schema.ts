@@ -1309,7 +1309,7 @@ export const propertySignatureTransformation = <
   )
 
 /**
- * - `decode`: `none` as return value means: the value is missing in the input
+ * - `decode`: `none` as argument means: the value is missing in the input
  * - `encode`: `none` as return value means: the value will be missing in the output
  *
  * @category PropertySignature
@@ -1322,7 +1322,7 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
   },
   to: Schema<TA, TI, TR>,
   decode: (o: Option.Option<FA>) => TI,
-  encode: (i2: TI) => Option.Option<FA>
+  encode: (ti: TI) => Option.Option<FA>
 ): PropertySignature<":", TA, never, "?:", FI, FR | TR> =>
   propertySignatureTransformation(
     {
@@ -1334,6 +1334,36 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
     ":",
     (o) => Option.some(decode(o)),
     Option.flatMap(encode)
+  )
+
+/**
+ * - `decode`:
+ *   - `none` as argument means: the value is missing in the input
+ *   - `none` as return value means: the value will be missing in the output
+ * - `encode`: `none` as return value means: the value will be missing in the output
+ *
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
+  from: {
+    readonly schema: Schema<FA, FI, FR>
+    readonly annotations?: Annotations<FA> | undefined
+  },
+  to: Schema<TA, TI, TR>,
+  decode: (o: Option.Option<FA>) => Option.Option<TI>,
+  encode: (o: Option.Option<TI>) => Option.Option<FA>
+): PropertySignature<"?:", TA, never, "?:", FI, FR | TR> =>
+  propertySignatureTransformation(
+    {
+      schema: from.schema,
+      token: "?:",
+      annotations: from.annotations
+    },
+    to,
+    "?:",
+    decode,
+    encode
   )
 
 /**
@@ -1452,6 +1482,14 @@ export const optional: {
     schema: Schema<A, I, R>,
     options: {
       readonly exact: true
+      readonly nullable: true
+      readonly encodedAnnotations?: Annotations<A>
+    }
+  ): PropertySignature<"?:", A, never, "?:", I | null, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
+    options: {
+      readonly exact: true
     }
   ): PropertySignature<"?:", A, never, "?:", I, R>
   <A, I, R>(
@@ -1469,7 +1507,7 @@ export const optional: {
       readonly as: "Option"
       readonly encodedAnnotations?: Annotations<A | null | undefined>
     }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I | undefined | null, R>
+  ): PropertySignature<":", Option.Option<A>, never, "?:", I | null | undefined, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
@@ -1484,6 +1522,13 @@ export const optional: {
       readonly encodedAnnotations?: Annotations<A | undefined>
     }
   ): PropertySignature<":", A, never, "?:", I | undefined, R>
+  <A, I, R>(
+    schema: Schema<A, I, R>,
+    options: {
+      readonly nullable: true
+      readonly encodedAnnotations?: Annotations<A | undefined>
+    }
+  ): PropertySignature<"?:", A | undefined, never, "?:", I | null | undefined, R>
   <A, I, R>(
     schema: Schema<A, I, R>
   ): PropertySignature<"?:", A | undefined, never, "?:", I | undefined, R>
@@ -1520,25 +1565,33 @@ export const optional: {
           Option.some
         )
       }
-    } else {
-      if (asOption) {
-        if (isNullable) {
-          return optionalToRequired(
-            { schema: nullable(schema), annotations },
-            optionFromSelf(typeSchema(schema)),
-            Option.filter(Predicate.isNotNull),
-            identity
-          )
-        } else {
-          return optionalToRequired(
-            { schema, annotations },
-            optionFromSelf(typeSchema(schema)),
-            identity,
-            identity
-          )
-        }
+    } else if (asOption) {
+      if (isNullable) {
+        return optionalToRequired(
+          { schema: nullable(schema), annotations },
+          optionFromSelf(typeSchema(schema)),
+          Option.filter(Predicate.isNotNull),
+          identity
+        )
+      } else {
+        return optionalToRequired(
+          { schema, annotations },
+          optionFromSelf(typeSchema(schema)),
+          identity,
+          identity
+        )
       }
-      return propertySignatureDeclaration(schema, "?:")
+    } else {
+      if (isNullable) {
+        return optionalToOptional(
+          { schema: nullable(schema), annotations },
+          typeSchema(schema),
+          Option.filter(Predicate.isNotNull),
+          identity
+        )
+      } else {
+        return propertySignatureDeclaration(schema, "?:")
+      }
     }
   } else {
     if (defaultValue) {
@@ -1557,25 +1610,33 @@ export const optional: {
           Option.some
         )
       }
-    } else {
-      if (asOption) {
-        if (isNullable) {
-          return optionalToRequired(
-            { schema: nullish(schema), annotations },
-            optionFromSelf(typeSchema(schema)),
-            Option.filter<A | null | undefined, A>((a): a is A => a != null),
-            identity
-          )
-        } else {
-          return optionalToRequired(
-            { schema: orUndefined(schema), annotations },
-            optionFromSelf(typeSchema(schema)),
-            Option.filter(Predicate.isNotUndefined),
-            identity
-          )
-        }
+    } else if (asOption) {
+      if (isNullable) {
+        return optionalToRequired(
+          { schema: nullish(schema), annotations },
+          optionFromSelf(typeSchema(schema)),
+          Option.filter<A | null | undefined, A>((a): a is A => a != null),
+          identity
+        )
+      } else {
+        return optionalToRequired(
+          { schema: orUndefined(schema), annotations },
+          optionFromSelf(typeSchema(schema)),
+          Option.filter(Predicate.isNotUndefined),
+          identity
+        )
       }
-      return propertySignatureDeclaration(orUndefined(schema), "?:")
+    } else {
+      if (isNullable) {
+        return optionalToOptional(
+          { schema: nullish(schema), annotations },
+          orUndefined(typeSchema(schema)),
+          Option.filter(Predicate.isNotNull),
+          identity
+        )
+      } else {
+        return propertySignatureDeclaration(orUndefined(schema), "?:")
+      }
     }
   }
 }

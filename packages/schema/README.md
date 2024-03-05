@@ -1733,10 +1733,12 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 **Cheatsheet**
 
-| Combinator | From                                 | To                                                                 |
-| ---------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `optional` | `Schema<A, I, R>`                    | `PropertySignature<I \| undefined, true, A \| undefined, true, R>` |
-| `optional` | `Schema<A, I, R>`, `{ exact: true }` | `PropertySignature<I, true, A, true, R>`                           |
+| Combinator | From                                                 | To                                                                         |
+| ---------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| `optional` | `Schema<A, I, R>`                                    | `PropertySignature<I \| undefined, true, A \| undefined, true, R>`         |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true }`              | `PropertySignature<I \| null \| undefined, true, A \| undefined, true, R>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true }`                 | `PropertySignature<I, true, A, true, R>`                                   |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true }` | `PropertySignature<I \| null, true, A, true, R>`                           |
 
 #### optional(schema)
 
@@ -1749,10 +1751,32 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
   - `undefined` -> `undefined`
   - `a` -> `i`
 
+#### optional(schema, { nullable: true })
+
+- decoding
+  - `<missing value>` -> `<missing value>`
+  - `undefined` -> `undefined`
+  - `null` -> `<missing value>`
+  - `i` -> `a`
+- encoding
+  - `<missing value>` -> `<missing value>`
+  - `undefined` -> `undefined`
+  - `a` -> `i`
+
 #### optional(schema, { exact: true })
 
 - decoding
   - `<missing value>` -> `<missing value>`
+  - `i` -> `a`
+- encoding
+  - `<missing value>` -> `<missing value>`
+  - `a` -> `i`
+
+#### optional(schema, { exact: true, nullable: true })
+
+- decoding
+  - `<missing value>` -> `<missing value>`
+  - `null` -> `<missing value>`
   - `i` -> `a`
 - encoding
   - `<missing value>` -> `<missing value>`
