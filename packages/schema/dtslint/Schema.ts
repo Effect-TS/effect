@@ -416,8 +416,14 @@ S.asSchema(S.tuple(S.string, S.NumberFromString))
 // $ExpectType tuple<[$string, NumberFromString]>
 S.tuple(S.string, S.NumberFromString)
 
+// $ExpectType readonly [$string, $number]
+S.tuple(S.string, S.number).elements
+
+// $ExpectType undefined
+S.tuple(S.string, S.number).rest
+
 // ---------------------------------------------
-// tupleType / array overloading
+// tuple overloading / array overloading
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [...string[], number], readonly [...string[], number], never>
@@ -431,6 +437,15 @@ S.asSchema(S.tuple([S.string], S.number, S.boolean))
 
 // $ExpectType tupleType<readonly [$string], $number, [$boolean]>
 S.tuple([S.string], S.number, S.boolean)
+
+// $ExpectType readonly [$string]
+S.tuple([S.string], S.number).elements
+
+// $ExpectType { readonly value: $number; readonly elements: readonly []; }
+S.tuple([S.string], S.number).rest
+
+// $ExpectType { readonly value: $number; readonly elements: readonly [$boolean]; }
+S.tuple([S.string], S.number, S.boolean).rest
 
 // ---------------------------------------------
 // optionalElement

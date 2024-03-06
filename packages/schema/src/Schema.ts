@@ -1055,11 +1055,11 @@ export interface tupleType<
     Schema.Context<Elements[number]> | Schema.Context<Rest> | Schema.Context<RestElements[number]>
   >
 {
-  readonly elements: Elements
-  readonly rest: {
+  readonly elements: Readonly<Elements>
+  readonly rest: [Rest] extends [never] ? undefined : {
     readonly value: Rest
-    readonly elements: RestElements
-  } | undefined
+    readonly elements: Readonly<RestElements>
+  }
 }
 
 class $tupleType<
@@ -1092,10 +1092,10 @@ class $tupleType<
   }
   constructor(
     readonly elements: Elements,
-    readonly rest: {
+    readonly rest: [Rest] extends [never] ? undefined : {
       readonly value: Rest
-      readonly elements: RestElements
-    } | undefined,
+      readonly elements: Readonly<RestElements>
+    },
     ast: AST.AST = $tupleType.ast(elements, rest)
   ) {
     super(ast)
@@ -1150,7 +1150,7 @@ export interface array<Value extends Schema.Any> extends tupleType<readonly [], 
 
 class $array<Value extends Schema.Any> extends $tupleType<readonly [], Value, []> implements array<Value> {
   constructor(readonly value: Value, ast?: AST.AST) {
-    super([], { value, elements: [] }, ast)
+    super([], { value, elements: [] } as any, ast)
   }
   annotations(annotations: Annotations<TupleType.Type<[], Value, []>>): array<Value> {
     return new $array(this.value, _schema.annotations(this.ast, annotations))
@@ -1169,8 +1169,8 @@ export function array<Value extends Schema.Any>(value: Value): array<Value>
 export function array<Value extends Schema.Any, RestElements extends ReadonlyArray<Schema.Any>>(
   value: Value,
   ...elements: RestElements
-): array<Value> | tupleType<readonly [], Value, RestElements> {
-  return elements.length > 0 ? new $tupleType([], { value, elements }) : new $array(value)
+): any {
+  return elements.length > 0 ? new $tupleType([], { value, elements } as any) : new $array(value)
 }
 
 /**
