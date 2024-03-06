@@ -1782,88 +1782,105 @@ export interface typeLiteral<
   ): typeLiteral<Fields, IndexSignatures>
 }
 
+const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
+  Predicate.hasProperty(u, PropertySignatureTypeId)
+
+class $typeLiteral<
+  Fields extends Struct.Fields,
+  IndexSignatures extends ReadonlyArray<readonly [Schema.All, Schema.All]>
+> extends _schema.Schema<
+  Simplify<TypeLiteral.Type<Fields, IndexSignatures>>,
+  Simplify<TypeLiteral.Encoded<Fields, IndexSignatures>>,
+  Struct.Context<Fields>
+> implements typeLiteral<Fields, IndexSignatures> {
+  static ast = <
+    Fields extends Struct.Fields,
+    IndexSignatures extends ReadonlyArray<readonly [Schema.All, Schema.All]>
+  >(fields: Fields, indexSignatures: IndexSignatures): AST.AST => {
+    const ownKeys = _util.ownKeys(fields)
+    const pss: Array<AST.PropertySignature> = []
+    const from: Array<AST.PropertySignature> = []
+    const to: Array<AST.PropertySignature> = []
+    const transformations: Array<AST.PropertySignatureTransformation> = []
+    for (let i = 0; i < ownKeys.length; i++) {
+      const key = ownKeys[i]
+      const field = fields[key]
+      if (isPropertySignature(field)) {
+        const ast: PropertySignature.AST = field.ast
+        switch (ast._tag) {
+          case "PropertySignatureDeclaration": {
+            const type = ast.ast
+            const isOptional = ast.isOptional
+            const toAnnotations = _schema.toASTAnnotations(ast.annotations)
+            from.push(new AST.PropertySignature(key, type, isOptional, true))
+            to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
+            pss.push(new AST.PropertySignature(key, type, isOptional, true, toAnnotations))
+            break
+          }
+          case "PropertySignatureTransformation": {
+            const fromKey = ast.from.key ?? key
+            from.push(
+              new AST.PropertySignature(
+                fromKey,
+                ast.from.ast,
+                ast.from.isOptional,
+                true,
+                _schema.toASTAnnotations(ast.from.annotations)
+              )
+            )
+            to.push(
+              new AST.PropertySignature(
+                key,
+                ast.to.ast,
+                ast.to.isOptional,
+                true,
+                _schema.toASTAnnotations(ast.to.annotations)
+              )
+            )
+            transformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
+            break
+          }
+        }
+      } else {
+        from.push(new AST.PropertySignature(key, field.ast, false, true))
+        to.push(new AST.PropertySignature(key, AST.typeAST(field.ast), false, true))
+        pss.push(new AST.PropertySignature(key, field.ast, false, true))
+      }
+    }
+    if (ReadonlyArray.isNonEmptyReadonlyArray(transformations)) {
+      return new AST.Transform(
+        AST.TypeLiteral.make(from, []),
+        AST.TypeLiteral.make(to, []),
+        AST.TypeLiteralTransformation.make(transformations)
+      )
+    } else {
+      return AST.TypeLiteral.make(pss, [])
+    }
+  }
+  constructor(
+    readonly fields: Fields,
+    readonly indexSignatures: IndexSignatures,
+    ast: AST.AST = $typeLiteral.ast(fields, indexSignatures)
+  ) {
+    super(ast)
+  }
+  annotations(annotations: Annotations<Simplify<Struct.Type<Fields>>>): typeLiteral<Fields, IndexSignatures> {
+    return new $typeLiteral(this.fields, this.indexSignatures, _schema.annotations(this.ast, annotations))
+  }
+}
+
 /**
  * @category api interface
  * @since 1.0.0
  */
-export interface struct<Fields extends Struct.Fields>
-  extends Schema<Simplify<Struct.Type<Fields>>, Simplify<Struct.Encoded<Fields>>, Struct.Context<Fields>>
-{
+export interface struct<Fields extends Struct.Fields> extends typeLiteral<Fields, []> {
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   annotations(annotations: Annotations<Simplify<Struct.Type<Fields>>>): struct<Fields>
 }
 
-const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
-  Predicate.hasProperty(u, PropertySignatureTypeId)
-
-const $structAST = <Fields extends Struct.Fields>(fields: Fields): AST.AST => {
-  const ownKeys = _util.ownKeys(fields)
-  const pss: Array<AST.PropertySignature> = []
-  const from: Array<AST.PropertySignature> = []
-  const to: Array<AST.PropertySignature> = []
-  const transformations: Array<AST.PropertySignatureTransformation> = []
-  for (let i = 0; i < ownKeys.length; i++) {
-    const key = ownKeys[i]
-    const field = fields[key]
-    if (isPropertySignature(field)) {
-      const ast: PropertySignature.AST = field.ast
-      switch (ast._tag) {
-        case "PropertySignatureDeclaration": {
-          const type = ast.ast
-          const isOptional = ast.isOptional
-          const toAnnotations = _schema.toASTAnnotations(ast.annotations)
-          from.push(new AST.PropertySignature(key, type, isOptional, true))
-          to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
-          pss.push(new AST.PropertySignature(key, type, isOptional, true, toAnnotations))
-          break
-        }
-        case "PropertySignatureTransformation": {
-          const fromKey = ast.from.key ?? key
-          from.push(
-            new AST.PropertySignature(
-              fromKey,
-              ast.from.ast,
-              ast.from.isOptional,
-              true,
-              _schema.toASTAnnotations(ast.from.annotations)
-            )
-          )
-          to.push(
-            new AST.PropertySignature(
-              key,
-              ast.to.ast,
-              ast.to.isOptional,
-              true,
-              _schema.toASTAnnotations(ast.to.annotations)
-            )
-          )
-          transformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
-          break
-        }
-      }
-    } else {
-      from.push(new AST.PropertySignature(key, field.ast, false, true))
-      to.push(new AST.PropertySignature(key, AST.typeAST(field.ast), false, true))
-      pss.push(new AST.PropertySignature(key, field.ast, false, true))
-    }
-  }
-  if (ReadonlyArray.isNonEmptyReadonlyArray(transformations)) {
-    return new AST.Transform(
-      AST.TypeLiteral.make(from, []),
-      AST.TypeLiteral.make(to, []),
-      AST.TypeLiteralTransformation.make(transformations)
-    )
-  } else {
-    return AST.TypeLiteral.make(pss, [])
-  }
-}
-
-class $struct<Fields extends Struct.Fields>
-  extends _schema.Schema<Simplify<Struct.Type<Fields>>, Simplify<Struct.Encoded<Fields>>, Struct.Context<Fields>>
-  implements struct<Fields>
-{
-  constructor(readonly fields: Fields, ast: AST.AST = $structAST(fields)) {
-    super(ast)
+class $struct<Fields extends Struct.Fields> extends $typeLiteral<Fields, []> implements struct<Fields> {
+  constructor(fields: Fields, ast?: AST.AST) {
+    super(fields, [], ast)
   }
   annotations(annotations: Annotations<Simplify<Struct.Type<Fields>>>): struct<Fields> {
     return new $struct(this.fields, _schema.annotations(this.ast, annotations))
