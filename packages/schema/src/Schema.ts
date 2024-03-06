@@ -48,6 +48,18 @@ import type * as Serializable from "./Serializable.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
+ * Required to fix a bug in TypeScript@5.0, dtslint fails with:
+ * TypeScript@5.0 expected type to be:
+ *   { readonly [x: string]: number; }
+ * got:
+ *   { [x: string]: number; }
+ *
+ * @example
+ * import type { Simplify } from "effect/Types"
+ *
+ * // $ExpectType { readonly [x: string]: number; }
+ * type Test = Simplify<{ readonly [x: string]: number }>
+ *
  * @since 1.0.0
  */
 export type Simplify<T> = { readonly [K in keyof T]: T[K] } & {}

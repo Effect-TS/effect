@@ -49,6 +49,8 @@ export const formatUnknown = (u: unknown): string => {
     return String(u)
   } else if (Predicate.isBigInt(u)) {
     return String(u) + "n"
+  } else if (Predicate.hasProperty(u, "toJSON") && Predicate.isFunction(u["toJSON"])) {
+    return JSON.stringify(u["toJSON"]())
   } else if (
     !Array.isArray(u)
     && Predicate.hasProperty(u, "toString")
@@ -58,7 +60,16 @@ export const formatUnknown = (u: unknown): string => {
     return u["toString"]()
   }
   try {
-    return JSON.stringify(u)
+    JSON.stringify(u)
+    if (Array.isArray(u)) {
+      return `[${u.map(formatUnknown).join(",")}]`
+    } else {
+      return `{${
+        ownKeys(u).map((k) =>
+          `${Predicate.isString(k) ? JSON.stringify(k) : String(k)}:${formatUnknown((u as any)[k])}`
+        ).join(",")
+      }}`
+    }
   } catch (e) {
     return String(u)
   }

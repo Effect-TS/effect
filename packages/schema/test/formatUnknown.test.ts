@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest"
 import { formatUnknown } from "../src/internal/util.js"
 
 describe("util > formatUnknown", () => {
+  it("should format symbol property signatures", () => {
+    expect(formatUnknown({ [Symbol.for("a")]: 1 })).toEqual("{Symbol(a):1}")
+  })
+
   it("should handle unexpected errors", () => {
     const circular: any = { a: null }
     circular.a = circular
