@@ -1880,5 +1880,11 @@ S.cause({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() })
 // $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, never>
 S.asSchema(hole<S.typeLiteral<{ a: S.$string }, []>>())
 
+// $ExpectType Schema<{ readonly [x: string]: unknown; }, { readonly [x: string]: unknown; }, never>
+S.asSchema(hole<S.typeLiteral<{}, [{ key: S.$string; value: S.$unknown }]>>())
+
+// $ExpectType Schema<{ readonly [x: string]: string; readonly [x: symbol]: number; }, { readonly [x: string]: never; }, never>
+S.asSchema(hole<S.typeLiteral<{}, [{ key: S.$string; value: S.$string }, { key: S.$symbol; value: S.$number }]>>())
+
 // $ExpectType Schema<{ readonly [x: string]: unknown; readonly a: string; }, { readonly [x: string]: unknown; readonly a: string; }, never>
-S.asSchema(hole<S.typeLiteral<{ a: S.$string }, [[S.$string, S.$unknown]]>>())
+S.asSchema(hole<S.typeLiteral<{ a: S.$string }, [{ key: S.$string; value: S.$unknown }]>>())
