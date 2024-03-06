@@ -350,7 +350,7 @@ describe("Equivalence", () => {
     })
 
     it("r + e", () => {
-      const schema = S.array(string).pipe(S.element(number))
+      const schema = S.tupleType([], string, number)
       const equivalence = E.make(schema)
 
       expect(equivalence([1], [1])).toBe(true)

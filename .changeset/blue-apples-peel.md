@@ -2,6 +2,24 @@
 "@effect/schema": minor
 ---
 
+- Schema: remove `element` and `rest`:
+
+Before
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean));
+```
+
+Now
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.tupleType([S.string], S.number, S.boolean);
+```
+
 - Schema: refactor `optionalElement`:
 
 Before

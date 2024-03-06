@@ -6,7 +6,7 @@ describe("Schema > `errors` option", () => {
   describe("decoding", () => {
     describe("tuple", () => {
       it("e r e", async () => {
-        const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
+        const schema = S.tupleType([S.string], S.number, S.boolean)
         await Util.expectDecodeUnknownFailure(
           schema,
           [true],
@@ -76,7 +76,7 @@ describe("Schema > `errors` option", () => {
       })
 
       it("wrong type for post rest elements", async () => {
-        const schema = S.array(S.boolean).pipe(S.element(S.number), S.element(S.number))
+        const schema = S.tupleType([], S.boolean, S.number, S.number)
         await Util.expectDecodeUnknownFailure(
           schema,
           ["a", "b"],
@@ -226,10 +226,7 @@ describe("Schema > `errors` option", () => {
       })
 
       it("wrong type for values post rest elements", async () => {
-        const schema = S.array(S.string).pipe(
-          S.element(Util.NumberFromChar),
-          S.element(Util.NumberFromChar)
-        )
+        const schema = S.tupleType([], S.string, Util.NumberFromChar, Util.NumberFromChar)
         await Util.expectEncodeFailure(
           schema,
           [10, 10],

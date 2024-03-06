@@ -521,7 +521,7 @@ describe("JSONSchema", () => {
     })
 
     it("r + e should raise an error", () => {
-      const schema = S.array(JsonNumber).pipe(S.element(S.string))
+      const schema = S.tupleType([], JsonNumber, S.string)
       expect(() => JSONSchema.make(schema)).toThrow(
         new Error(
           "Generating a JSON Schema for post-rest elements is not currently supported. You're welcome to contribute by submitting a Pull Request."

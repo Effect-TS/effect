@@ -317,7 +317,7 @@ describe("Pretty", () => {
     })
 
     it("post rest element", () => {
-      const schema = S.array(S.number).pipe(S.element(S.boolean))
+      const schema = S.tupleType([], S.number, S.boolean)
       const pretty = Pretty.make(schema)
       expect(pretty([true])).toEqual(`[true]`)
       expect(pretty([1, true])).toEqual(`[1, true]`)
@@ -326,10 +326,7 @@ describe("Pretty", () => {
     })
 
     it("post rest elements", () => {
-      const schema = S.array(S.number).pipe(
-        S.element(S.boolean),
-        S.element(S.union(S.string, S.undefined))
-      )
+      const schema = S.tupleType([], S.number, S.boolean, S.union(S.string, S.undefined))
       const pretty = Pretty.make(schema)
       expect(pretty([true, "c"])).toEqual(`[true, "c"]`)
       expect(pretty([1, true, "c"])).toEqual(`[1, true, "c"]`)
@@ -339,17 +336,14 @@ describe("Pretty", () => {
     })
 
     it("post rest elements when rest is unknown", () => {
-      const schema = S.array(S.unknown).pipe(S.element(S.boolean))
+      const schema = S.tupleType([], S.unknown, S.boolean)
       const pretty = Pretty.make(schema)
       expect(pretty([1, "a", 2, "b", true])).toEqual(`[1, "a", 2, "b", true]`)
       expect(pretty([true])).toEqual(`[true]`)
     })
 
     it("all", () => {
-      const schema = S.tuple(S.string).pipe(
-        S.rest(S.number),
-        S.element(S.boolean)
-      )
+      const schema = S.tupleType([S.string], S.number, S.boolean)
       const pretty = Pretty.make(schema)
       expect(pretty(["a", true])).toEqual(`["a", true]`)
       expect(pretty(["a", 1, true])).toEqual(`["a", 1, true]`)

@@ -64,7 +64,7 @@ describe("Schema > required", () => {
     // type A = readonly [string, ...Array<number>, boolean]
     // type B = Required<A> // [string, ...(number | boolean)[], number | boolean]
 
-    const schema = S.required(S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean)))
+    const schema = S.required(S.tupleType([S.string], S.number, S.boolean))
 
     await Util.expectDecodeUnknownSuccess(schema, ["", 0], ["", 0])
     await Util.expectDecodeUnknownSuccess(schema, ["", true], ["", true])
@@ -92,7 +92,7 @@ describe("Schema > required", () => {
     // type B = Required<A> // [string, ...(number | boolean)[], number | boolean, number | boolean]
 
     const schema = S.required(
-      S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean), S.element(S.boolean))
+      S.tupleType([S.string], S.number, S.boolean, S.boolean)
     )
 
     await Util.expectDecodeUnknownSuccess(schema, ["", 0, true])

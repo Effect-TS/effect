@@ -975,6 +975,11 @@ export interface OptionalElement<E extends Schema.Any>
   readonly optionalElement: E
 }
 
+/**
+ * @since 1.0.0
+ */
+export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<E> => new $OptionalElement(self)
+
 class $OptionalElement<E extends Schema.Any> implements OptionalElement<E> {
   readonly [TypeId]!: Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>[TypeId]
   constructor(readonly optionalElement: E) {}
@@ -1051,14 +1056,56 @@ export interface tupleType<
   >
 {
   readonly elements: Elements
-  readonly rest: Rest
-  readonly restElements: RestElements
+  readonly rest: {
+    readonly value: Rest
+    readonly elements: RestElements
+  } | undefined
 }
 
-/**
- * @since 1.0.0
- */
-export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<E> => new $OptionalElement(self)
+class $tupleType<
+  Elements extends TupleType.Elements,
+  Rest extends Schema.Any,
+  RestElements extends ReadonlyArray<Schema.Any>
+> extends _schema.Schema<
+  TupleType.Type<Elements, Rest, RestElements>,
+  TupleType.Encoded<Elements, Rest, RestElements>,
+  Schema.Context<Elements[number]> | Schema.Context<Rest> | Schema.Context<RestElements[number]>
+> implements tupleType<Elements, Rest, RestElements> {
+  static ast = <
+    Elements extends TupleType.Elements,
+    Rest extends Schema.Any,
+    RestElements extends ReadonlyArray<Schema.Any>
+  >(
+    elements: Elements,
+    rest: {
+      readonly value: Rest
+      readonly elements: RestElements
+    } | undefined
+  ): AST.AST => {
+    return new AST.Tuple(
+      elements.map((schema) =>
+        isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
+      ),
+      Option.map(Option.fromNullable(rest), ({ elements, value }) => [value.ast, ...elements.map((e) => e.ast)]),
+      true
+    )
+  }
+  constructor(
+    readonly elements: Elements,
+    readonly rest: {
+      readonly value: Rest
+      readonly elements: RestElements
+    } | undefined,
+    ast: AST.AST = $tupleType.ast(elements, rest)
+  ) {
+    super(ast)
+  }
+  annotations(
+    annotations: Annotations<TupleType.Type<Elements, Rest, RestElements>>
+  ): tupleType<Elements, Rest, RestElements> {
+    return new $tupleType(this.elements, this.rest, _schema.annotations(this.ast, annotations))
+  }
+}
 
 /**
  * @since 1.0.0
@@ -1066,10 +1113,9 @@ export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<
 export const tupleType = <
   const Elements extends TupleType.Elements,
   Rest extends Schema.Any,
-  const RestElements extends ReadonlyArray<Schema.Any>
->(_elements: Elements, _rest: Rest, _restElements: RestElements): tupleType<Elements, Rest, RestElements> => {
-  return null as any
-}
+  RestElements extends ReadonlyArray<Schema.Any>
+>(elements: Elements, ...rest: readonly [Rest, ...RestElements]): tupleType<Elements, Rest, RestElements> =>
+  new $tupleType(elements, { value: rest[0], elements: rest.slice(1) }) as any
 
 /**
  * @category api interface
@@ -1126,17 +1172,6 @@ export const rest =
     self: Schema<A, I, R1>
   ): Schema<readonly [...A, ...Array<B>], readonly [...I, ...Array<IB>], R1 | R2> =>
     make(AST.appendRestElement(self.ast, rest.ast))
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const element =
-  <B, IB, R2>(element: Schema<B, IB, R2>) =>
-  <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R1>(
-    self: Schema<A, I, R1>
-  ): Schema<readonly [...A, B], readonly [...I, IB], R1 | R2> =>
-    make(AST.appendElement(self.ast, new AST.Element(element.ast, false)))
 
 /**
  * @category api interface
@@ -1922,8 +1957,7 @@ export interface typeLiteral<
 const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
   Predicate.hasProperty(u, PropertySignatureTypeId)
 
-/** @internal */
-export class $typeLiteral<
+class $typeLiteral<
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
 > extends _schema.Schema<

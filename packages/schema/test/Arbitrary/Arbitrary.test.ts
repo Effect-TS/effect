@@ -211,12 +211,12 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("tuple. r + e", () => {
-    const schema = S.array(S.string).pipe(S.element(S.number))
+    const schema = S.tupleType([], S.string, S.number)
     expectValidArbitrary(schema)
   })
 
   it("tuple. e + r + e", () => {
-    const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
+    const schema = S.tupleType([S.string], S.number, S.boolean)
     expectValidArbitrary(schema)
   })
 

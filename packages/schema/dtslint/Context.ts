@@ -120,13 +120,6 @@ S.tuple(aContext, bContext)
 S.tuple(aContext).pipe(S.rest(bContext))
 
 // ---------------------------------------------
-// element
-// ---------------------------------------------
-
-// $ExpectType Schema<readonly [string, number], readonly [string, number], "aContext" | "bContext">
-S.tuple(aContext).pipe(S.element(bContext))
-
-// ---------------------------------------------
 // optionalElement
 // ---------------------------------------------
 

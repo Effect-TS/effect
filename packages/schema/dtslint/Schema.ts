@@ -401,7 +401,7 @@ S.union(S.string, S.number).members
 S.keyof(S.struct({ a: S.string, b: S.NumberFromString }))
 
 // ---------------------------------------------
-// Tuples
+// tuple
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number], readonly [string, number], never>
@@ -417,24 +417,20 @@ S.asSchema(S.tuple(S.string, S.NumberFromString))
 S.tuple(S.string, S.NumberFromString)
 
 // ---------------------------------------------
-// rest
+// tupleType
 // ---------------------------------------------
 
-// $ExpectType Schema<readonly [string, number, ...boolean[]], readonly [string, number, ...boolean[]], never>
-pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
+// $ExpectType Schema<readonly [...string[], number], readonly [...string[], number], never>
+S.asSchema(S.tupleType([], S.string, S.number))
 
-// $ExpectType Schema<readonly [string, number, ...number[]], readonly [string, string, ...string[]], never>
-pipe(S.tuple(S.string, S.NumberFromString), S.rest(S.NumberFromString))
+// $ExpectType tupleType<readonly [], $string, [$number]>
+S.tupleType([], S.string, S.number)
 
-// ---------------------------------------------
-// element
-// ---------------------------------------------
+// $ExpectType Schema<readonly [string, ...number[], boolean], readonly [string, ...number[], boolean], never>
+S.asSchema(S.tupleType([S.string], S.number, S.boolean))
 
-// $ExpectType Schema<readonly [string, number, boolean], readonly [string, number, boolean], never>
-pipe(S.tuple(S.string, S.number), S.element(S.boolean))
-
-// $ExpectType Schema<readonly [string, number, number], readonly [string, string, string], never>
-pipe(S.tuple(S.string, S.NumberFromString), S.element(S.NumberFromString))
+// $ExpectType tupleType<readonly [$string], $number, [$boolean]>
+S.tupleType([S.string], S.number, S.boolean)
 
 // ---------------------------------------------
 // optionalElement
@@ -453,7 +449,7 @@ S.asSchema(S.tuple(S.string, S.NumberFromString, S.optionalElement(S.NumberFromS
 S.tuple(S.string, S.NumberFromString, S.optionalElement(S.NumberFromString))
 
 // ---------------------------------------------
-// Arrays
+// array
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly number[], readonly number[], never>
