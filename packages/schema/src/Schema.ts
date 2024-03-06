@@ -3270,6 +3270,12 @@ export const UUIDTypeId = Symbol.for("@effect/schema/TypeId/UUID")
 const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface UUID extends Annotable<UUID, string> {}
+
+/**
  * Represents a Universally Unique Identifier (UUID).
  *
  * This schema ensures that the provided string adheres to the standard UUID format.
@@ -3277,7 +3283,7 @@ const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
  * @category string constructors
  * @since 1.0.0
  */
-export const UUID: Schema<string> = string.pipe(
+export const UUID: UUID = string.pipe(
   pattern(uuidRegex, {
     typeId: UUIDTypeId,
     identifier: "UUID",
@@ -3296,6 +3302,12 @@ export const ULIDTypeId = Symbol.for("@effect/schema/TypeId/ULID")
 const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface ULID extends Annotable<ULID, string> {}
+
+/**
  * Represents a Universally Unique Lexicographically Sortable Identifier (ULID).
  *
  * ULIDs are designed to be compact, URL-safe, and ordered, making them suitable for use as identifiers.
@@ -3304,7 +3316,7 @@ const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
  * @category string constructors
  * @since 1.0.0
  */
-export const ULID: Schema<string> = string.pipe(
+export const ULID: ULID = string.pipe(
   pattern(ulidRegex, {
     typeId: ULIDTypeId,
     identifier: "ULID",
