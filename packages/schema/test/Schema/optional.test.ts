@@ -83,7 +83,6 @@ describe("optional APIs", () => {
       const schema = S.struct({
         a: S.optional(S.NumberFromString, { nullable: true })
       })
-      console.log((schema.ast as any).from.propertySignatures[0])
       await Util.expectDecodeUnknownSuccess(schema, {}, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: undefined })
       await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })

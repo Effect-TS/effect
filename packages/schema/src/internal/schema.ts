@@ -73,13 +73,17 @@ export const variance = {
 }
 
 /** @internal */
+export const annotations = <A>(ast: AST.AST, annotations: S.Annotations<A>): AST.AST =>
+  AST.annotations(ast, toASTAnnotations(annotations))
+
+/** @internal */
 export class Schema<in out A, in out I = A, out R = never> implements S.Schema<A, I, R> {
   readonly [TypeId] = variance
   constructor(readonly ast: AST.AST) {}
   pipe() {
     return pipeArguments(this, arguments)
   }
-  annotations(annotations: S.Annotations<A>): S.Schema<A, I, R> {
-    return new Schema(AST.annotations(this.ast, toASTAnnotations(annotations)))
+  annotations(a: S.Annotations<A>): S.Schema<A, I, R> {
+    return new Schema(annotations(this.ast, a))
   }
 }

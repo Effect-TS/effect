@@ -30,7 +30,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as _secret from "effect/Secret"
 import * as S from "effect/String"
-import type { Covariant, Invariant, Mutable, NoInfer, Simplify } from "effect/Types"
+import type { Covariant, Invariant, Mutable, NoInfer, Simplify, UnionToIntersection } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as arbitrary from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
@@ -430,17 +430,18 @@ class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralV
   extends _schema.Schema<Literals[number]>
   implements literal<Literals>
 {
-  constructor(readonly literals: Literals, annotations?: Annotations<Literals[number]>) {
-    const ast = AST.isMembers(literals)
-      ? AST.Union.make(
-        AST.mapMembers(literals, (literal) => new AST.Literal(literal)),
-        _schema.toASTAnnotations(annotations)
-      )
-      : new AST.Literal(literals[0], _schema.toASTAnnotations(annotations))
+  static ast = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
+    literals: Literals
+  ): AST.AST => {
+    return AST.isMembers(literals)
+      ? AST.Union.make(AST.mapMembers(literals, (literal) => new AST.Literal(literal)))
+      : new AST.Literal(literals[0])
+  }
+  constructor(readonly literals: Literals, ast: AST.AST = $literal.ast(literals)) {
     super(ast)
   }
   annotations(annotations: Annotations<Literals[number]>) {
-    return new $literal(this.literals, { ...this.ast.annotations, ...annotations })
+    return new $literal(this.literals, _schema.annotations(this.ast, annotations))
   }
 }
 
@@ -890,11 +891,14 @@ class $union<Members extends ReadonlyArray<Schema.Any>>
   extends _schema.Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
   implements union<Members>
 {
-  constructor(readonly members: Members, annotations?: Annotations<Schema.Type<Members[number]>>) {
-    super(AST.Union.make(members.map((m) => m.ast), _schema.toASTAnnotations(annotations)))
+  static ast = <Members extends ReadonlyArray<Schema.Any>>(members: Members): AST.AST => {
+    return AST.Union.make(members.map((m) => m.ast))
+  }
+  constructor(readonly members: Members, ast: AST.AST = $union.ast(members)) {
+    super(ast)
   }
   annotations(annotations: Annotations<Schema.Type<Members[number]>>): union<Members> {
-    return new $union(this.members, { ...this.ast.annotations, ...annotations })
+    return new $union(this.members, _schema.annotations(this.ast, annotations))
   }
 }
 
@@ -966,21 +970,18 @@ class $tuple<Elements extends ReadonlyArray<Schema.Any>> extends _schema.Schema<
   { readonly [K in keyof Elements]: Schema.Encoded<Elements[K]> },
   Schema.Context<Elements[number]>
 > implements tuple<Elements> {
-  constructor(
-    readonly elements: Elements,
-    annotations?: Annotations<{ readonly [K in keyof Elements]: Schema.Type<Elements[K]> }>
-  ) {
-    super(
-      new AST.Tuple(
-        elements.map((schema) => new AST.Element(schema.ast, false)),
-        Option.none(),
-        true,
-        _schema.toASTAnnotations(annotations)
-      )
+  static ast = <Elements extends ReadonlyArray<Schema.Any>>(elements: Elements): AST.AST => {
+    return new AST.Tuple(
+      elements.map((schema) => new AST.Element(schema.ast, false)),
+      Option.none(),
+      true
     )
   }
+  constructor(readonly elements: Elements, ast: AST.AST = $tuple.ast(elements)) {
+    super(ast)
+  }
   annotations(annotations: Annotations<{ readonly [K in keyof Elements]: Schema.Type<Elements[K]> }>): tuple<Elements> {
-    return new $tuple(this.elements, { ...this.ast.annotations, ...annotations })
+    return new $tuple(this.elements, _schema.annotations(this.ast, annotations))
   }
 }
 
@@ -1047,11 +1048,14 @@ class $array<Value extends Schema.Any>
   extends _schema.Schema<ReadonlyArray<Schema.Type<Value>>, ReadonlyArray<Schema.Encoded<Value>>, Schema.Context<Value>>
   implements array<Value>
 {
-  constructor(readonly value: Value, annotations?: Annotations<ReadonlyArray<Schema.Type<Value>>>) {
-    super(new AST.Tuple([], Option.some([value.ast]), true, _schema.toASTAnnotations(annotations)))
+  static ast = <Value extends Schema.Any>(value: Value): AST.AST => {
+    return new AST.Tuple([], Option.some([value.ast]), true)
+  }
+  constructor(readonly value: Value, ast: AST.AST = $array.ast(value)) {
+    super(ast)
   }
   annotations(annotations: Annotations<ReadonlyArray<Schema.Type<Value>>>): array<Value> {
-    return new $array(this.value, { ...this.ast.annotations, ...annotations })
+    return new $array(this.value, _schema.annotations(this.ast, annotations))
   }
 }
 
@@ -1081,21 +1085,18 @@ class $nonEmptyArray<Value extends Schema.Any> extends _schema.Schema<
   ReadonlyArray.NonEmptyReadonlyArray<Schema.Encoded<Value>>,
   Schema.Context<Value>
 > implements nonEmptyArray<Value> {
-  constructor(
-    readonly value: Value,
-    annotations?: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.Type<Value>>>
-  ) {
-    super(
-      new AST.Tuple(
-        [new AST.Element(value.ast, false)],
-        Option.some([value.ast]),
-        true,
-        _schema.toASTAnnotations(annotations)
-      )
+  static ast = <Value extends Schema.Any>(value: Value): AST.AST => {
+    return new AST.Tuple(
+      [new AST.Element(value.ast, false)],
+      Option.some([value.ast]),
+      true
     )
   }
+  constructor(readonly value: Value, ast: AST.AST = $nonEmptyArray.ast(value)) {
+    super(ast)
+  }
   annotations(annotations: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.Type<Value>>>): nonEmptyArray<Value> {
-    return new $nonEmptyArray(this.value, { ...this.ast.annotations, ...annotations })
+    return new $nonEmptyArray(this.value, _schema.annotations(this.ast, annotations))
   }
 }
 
@@ -1700,16 +1701,16 @@ export declare namespace Struct {
   /**
    * @since 1.0.0
    */
-  export type Encoded<F extends Fields, OptionalKeys extends PropertyKey = EncodedTokenKeys<F>> =
-    & { readonly [K in Exclude<keyof F, OptionalKeys> as Key<F, K>]: Schema.Encoded<F[K]> }
-    & { readonly [K in OptionalKeys as Key<F, K>]?: Schema.Encoded<F[K]> }
+  export type Type<F extends Fields, OptionalKeys extends PropertyKey = TypeTokenKeys<F>> =
+    & { readonly [K in Exclude<keyof F, OptionalKeys>]: Schema.Type<F[K]> }
+    & { readonly [K in OptionalKeys]?: Schema.Type<F[K]> }
 
   /**
    * @since 1.0.0
    */
-  export type Type<F extends Fields, OptionalKeys extends PropertyKey = TypeTokenKeys<F>> =
-    & { readonly [K in Exclude<keyof F, OptionalKeys>]: Schema.Type<F[K]> }
-    & { readonly [K in OptionalKeys]?: Schema.Type<F[K]> }
+  export type Encoded<F extends Fields, OptionalKeys extends PropertyKey = EncodedTokenKeys<F>> =
+    & { readonly [K in Exclude<keyof F, OptionalKeys> as Key<F, K>]: Schema.Encoded<F[K]> }
+    & { readonly [K in OptionalKeys as Key<F, K>]?: Schema.Encoded<F[K]> }
 
   /**
    * @since 1.0.0
@@ -1723,12 +1724,70 @@ export declare namespace Struct {
 }
 
 /**
+ * @since 1.0.0
+ */
+export declare namespace TypeLiteral {
+  /**
+   * @since 1.0.0
+   */
+  export type Type<
+    Fields extends Struct.Fields,
+    IndexSignatures extends ReadonlyArray<readonly [Schema.All, Schema.All]>
+  > =
+    & Struct.Type<Fields>
+    & UnionToIntersection<
+      {
+        [K in keyof IndexSignatures]: {
+          readonly [P in Schema.Type<IndexSignatures[K][0]>]: Schema.Type<IndexSignatures[K][1]>
+        }
+      }[number]
+    >
+
+  /**
+   * @since 1.0.0
+   */
+  export type Encoded<
+    Fields extends Struct.Fields,
+    IndexSignatures extends ReadonlyArray<readonly [Schema.All, Schema.All]>
+  > =
+    & Struct.Encoded<Fields>
+    & UnionToIntersection<
+      {
+        [K in keyof IndexSignatures]: {
+          readonly [P in Schema.Encoded<IndexSignatures[K][0]>]: Schema.Encoded<IndexSignatures[K][1]>
+        }
+      }[number]
+    >
+}
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface typeLiteral<
+  Fields extends Struct.Fields,
+  IndexSignatures extends ReadonlyArray<readonly [Schema.All, Schema.All]>
+> extends
+  Annotable<
+    typeLiteral<Fields, IndexSignatures>,
+    Simplify<TypeLiteral.Type<Fields, IndexSignatures>>,
+    Simplify<TypeLiteral.Encoded<Fields, IndexSignatures>>,
+    Struct.Context<Fields>
+  >
+{
+  readonly fields: { readonly [K in keyof Fields]: Fields[K] }
+  readonly indexSignatures: { readonly [K in keyof IndexSignatures]: IndexSignatures[K] }
+  annotations(
+    annotations: Annotations<Simplify<TypeLiteral.Type<Fields, IndexSignatures>>>
+  ): typeLiteral<Fields, IndexSignatures>
+}
+
+/**
  * @category api interface
  * @since 1.0.0
  */
 export interface struct<Fields extends Struct.Fields>
-  extends
-    Annotable<struct<Fields>, Simplify<Struct.Type<Fields>>, Simplify<Struct.Encoded<Fields>>, Struct.Context<Fields>>
+  extends Schema<Simplify<Struct.Type<Fields>>, Simplify<Struct.Encoded<Fields>>, Struct.Context<Fields>>
 {
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   annotations(annotations: Annotations<Simplify<Struct.Type<Fields>>>): struct<Fields>
@@ -1737,76 +1796,77 @@ export interface struct<Fields extends Struct.Fields>
 const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
   Predicate.hasProperty(u, PropertySignatureTypeId)
 
+const $structAST = <Fields extends Struct.Fields>(fields: Fields): AST.AST => {
+  const ownKeys = _util.ownKeys(fields)
+  const pss: Array<AST.PropertySignature> = []
+  const from: Array<AST.PropertySignature> = []
+  const to: Array<AST.PropertySignature> = []
+  const transformations: Array<AST.PropertySignatureTransformation> = []
+  for (let i = 0; i < ownKeys.length; i++) {
+    const key = ownKeys[i]
+    const field = fields[key]
+    if (isPropertySignature(field)) {
+      const ast: PropertySignature.AST = field.ast
+      switch (ast._tag) {
+        case "PropertySignatureDeclaration": {
+          const type = ast.ast
+          const isOptional = ast.isOptional
+          const toAnnotations = _schema.toASTAnnotations(ast.annotations)
+          from.push(new AST.PropertySignature(key, type, isOptional, true))
+          to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
+          pss.push(new AST.PropertySignature(key, type, isOptional, true, toAnnotations))
+          break
+        }
+        case "PropertySignatureTransformation": {
+          const fromKey = ast.from.key ?? key
+          from.push(
+            new AST.PropertySignature(
+              fromKey,
+              ast.from.ast,
+              ast.from.isOptional,
+              true,
+              _schema.toASTAnnotations(ast.from.annotations)
+            )
+          )
+          to.push(
+            new AST.PropertySignature(
+              key,
+              ast.to.ast,
+              ast.to.isOptional,
+              true,
+              _schema.toASTAnnotations(ast.to.annotations)
+            )
+          )
+          transformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
+          break
+        }
+      }
+    } else {
+      from.push(new AST.PropertySignature(key, field.ast, false, true))
+      to.push(new AST.PropertySignature(key, AST.typeAST(field.ast), false, true))
+      pss.push(new AST.PropertySignature(key, field.ast, false, true))
+    }
+  }
+  if (ReadonlyArray.isNonEmptyReadonlyArray(transformations)) {
+    return new AST.Transform(
+      AST.TypeLiteral.make(from, []),
+      AST.TypeLiteral.make(to, []),
+      AST.TypeLiteralTransformation.make(transformations)
+    )
+  } else {
+    return AST.TypeLiteral.make(pss, [])
+  }
+}
+
 class $struct<Fields extends Struct.Fields>
   extends _schema.Schema<Simplify<Struct.Type<Fields>>, Simplify<Struct.Encoded<Fields>>, Struct.Context<Fields>>
   implements struct<Fields>
 {
-  constructor(readonly fields: Fields, annotations?: Annotations<Simplify<Struct.Type<Fields>>>) {
-    const ownKeys = _util.ownKeys(fields)
-    const pss: Array<AST.PropertySignature> = []
-    const pssEncoded: Array<AST.PropertySignature> = []
-    const pssType: Array<AST.PropertySignature> = []
-    const psTransformations: Array<AST.PropertySignatureTransformation> = []
-    for (let i = 0; i < ownKeys.length; i++) {
-      const key = ownKeys[i]
-      const field = fields[key]
-      if (isPropertySignature(field)) {
-        const ast: PropertySignature.AST = field.ast
-        switch (ast._tag) {
-          case "PropertySignatureDeclaration": {
-            const type = ast.ast
-            const isOptional = ast.isOptional
-            const typeAnnotations = _schema.toASTAnnotations(ast.annotations)
-            pssEncoded.push(new AST.PropertySignature(key, type, isOptional, true))
-            pssType.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, typeAnnotations))
-            pss.push(new AST.PropertySignature(key, type, isOptional, true, typeAnnotations))
-            break
-          }
-          case "PropertySignatureTransformation": {
-            const fromKey = ast.from.key ?? key
-            pssEncoded.push(
-              new AST.PropertySignature(
-                fromKey,
-                ast.from.ast,
-                ast.from.isOptional,
-                true,
-                _schema.toASTAnnotations(ast.from.annotations)
-              )
-            )
-            pssType.push(
-              new AST.PropertySignature(
-                key,
-                ast.to.ast,
-                ast.to.isOptional,
-                true,
-                _schema.toASTAnnotations(ast.to.annotations)
-              )
-            )
-            psTransformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
-            break
-          }
-        }
-      } else {
-        pssEncoded.push(new AST.PropertySignature(key, field.ast, false, true))
-        pssType.push(new AST.PropertySignature(key, AST.typeAST(field.ast), false, true))
-        pss.push(new AST.PropertySignature(key, field.ast, false, true))
-      }
-    }
-    if (ReadonlyArray.isNonEmptyReadonlyArray(psTransformations)) {
-      super(
-        new AST.Transform(
-          AST.TypeLiteral.make(pssEncoded, []),
-          AST.TypeLiteral.make(pssType, []),
-          AST.TypeLiteralTransformation.make(psTransformations),
-          _schema.toASTAnnotations(annotations)
-        )
-      )
-    } else {
-      super(AST.TypeLiteral.make(pss, [], _schema.toASTAnnotations(annotations)))
-    }
+  constructor(readonly fields: Fields, ast: AST.AST = $structAST(fields)) {
+    super(ast)
   }
   annotations(annotations: Annotations<Simplify<Struct.Type<Fields>>>): struct<Fields> {
-    return new $struct(this.fields, { ...this.ast.annotations, ...annotations })
+    return new $struct(this.fields, _schema.annotations(this.ast, annotations))
   }
 }
 
@@ -1837,15 +1897,18 @@ class $record<K extends Schema.All, V extends Schema.Any> extends _schema.Schema
   { readonly [P in Schema.Encoded<K>]: Schema.Encoded<V> },
   Schema.Context<K> | Schema.Context<V>
 > implements record<K, V> {
+  static ast = <K extends Schema.All, V extends Schema.Any>(key: K, value: V): AST.AST => {
+    return AST.createRecord(key.ast, value.ast, true, _schema.toASTAnnotations(annotations))
+  }
   constructor(
     readonly key: K,
     readonly value: V,
-    annotations?: Annotations<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>
+    ast: AST.AST = $record.ast(key, value)
   ) {
-    super(AST.createRecord(key.ast, value.ast, true, _schema.toASTAnnotations(annotations)))
+    super(ast)
   }
   annotations(annotations: Annotations<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>): record<K, V> {
-    return new $record(this.key, this.value, { ...this.ast.annotations, ...annotations })
+    return new $record(this.key, this.value, _schema.annotations(this.ast, annotations))
   }
 }
 

@@ -36,6 +36,9 @@ S.number.pipe(S.int(), S.brand("Int"), S.annotations({}))
 // $ExpectType $never
 S.never.pipe(S.annotations({}))
 
+// $ExpectType struct<{ a: $string; }>
+S.struct({ a: S.string }).pipe(S.annotations({}))
+
 // $ExpectType Schema<A, { readonly a: string; }, never>
 A.pipe(S.annotations({}))
 
@@ -1869,3 +1872,13 @@ S.asSchema(S.cause({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a
 
 // $ExpectType cause<$string, "a">
 S.cause({ error: S.string, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// ---------------------------------------------
+// typeLiteral
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, never>
+S.asSchema(hole<S.typeLiteral<{ a: S.$string }, []>>())
+
+// $ExpectType Schema<{ readonly [x: string]: unknown; readonly a: string; }, { readonly [x: string]: unknown; readonly a: string; }, never>
+S.asSchema(hole<S.typeLiteral<{ a: S.$string }, [[S.$string, S.$unknown]]>>())
