@@ -451,3 +451,11 @@ export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<
   ;(Base.prototype as any).name = tag
   return Base as any
 }
+
+/**
+ * Uses a proxy to compare objects by value, supports deep equality
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const proxy: <A>(value: A, options?: { deep: boolean }) => A = internal.proxy
