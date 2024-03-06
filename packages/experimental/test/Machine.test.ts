@@ -8,6 +8,12 @@ class Decrement extends Schema.TaggedRequest<Decrement>()("Decrement", Schema.ne
 class IncrementBy extends Schema.TaggedRequest<IncrementBy>()("IncrementBy", Schema.never, Schema.number, {
   number: Schema.number
 }) {}
+class DelayedIncrementBy
+  extends Schema.TaggedRequest<DelayedIncrementBy>()("DelayedIncrementBy", Schema.never, Schema.void, {
+    delay: Schema.Positive,
+    number: Schema.number
+  })
+{}
 class Multiply extends Schema.TaggedRequest<Multiply>()("Multiply", Schema.never, Schema.number, {}) {}
 
 class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackground", Schema.never, Schema.void, {}) {}
@@ -35,6 +41,20 @@ const counter = Machine.make<number>()(
     "FailBackground",
     (_req, _, ctx) => ctx.forkWithState(Effect.fail("error"))
   )
+)
+
+const delayedCounter = counter.pipe(
+  Machine.procedure(
+    DelayedIncrementBy,
+    "DelayedIncrementBy",
+    (req, _, ctx) =>
+      ctx.forkWithState(
+        ctx.send(new IncrementBy({ number: req.number })).pipe(
+          Effect.delay(req.delay)
+        )
+      )
+  ),
+  Machine.markInternal("Increment", "Decrement")
 )
 
 class Multiplier extends Context.Tag("Multiplier")<Multiplier, number>() {
@@ -80,6 +100,19 @@ describe("Machine", () => {
       const booted = yield* _(Machine.boot(withContext, 20))
       assert.strictEqual(yield* _(booted.state), 20)
       assert.strictEqual(yield* _(booted.send(new Multiply())), 40)
+    }).pipe(Effect.scoped, Effect.runPromise))
+
+  test("forkWithState", () =>
+    Effect.gen(function*(_) {
+      const booted = yield* _(Machine.boot(delayedCounter, 2))
+      assert.strictEqual(yield* _(booted.state), 2)
+      // @ts-expect-error
+      assert.strictEqual((yield* _(booted.send(new Increment()), Effect.exit))._tag, "Failure")
+      assert.strictEqual(yield* _(booted.send(new IncrementBy({ number: 2 }))), 4)
+      assert.strictEqual(yield* _(booted.send(new DelayedIncrementBy({ number: 2, delay: 10 }))), undefined)
+      assert.strictEqual(yield* _(booted.state), 4)
+      yield* _(Effect.sleep(10))
+      assert.strictEqual(yield* _(booted.state), 6)
     }).pipe(Effect.scoped, Effect.runPromise))
 
   test("subscribe", () =>

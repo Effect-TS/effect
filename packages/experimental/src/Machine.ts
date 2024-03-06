@@ -525,10 +525,10 @@ export const procedure: {
  * @category procedures
  */
 export const markInternal: {
-  <M extends Machine.Any, Tags extends ReadonlyArray<Machine.Requests<M>["_tag"]>>(
+  <M extends Machine.Any, const Tags extends ReadonlyArray<Machine.Requests<M>["_tag"]>>(
     ...tags: Tags
   ): (self: M) => Machine.ExcludeTag<M, Tags[number]>
-  <M extends Machine.Any, Tags extends ReadonlyArray<Machine.Requests<M>["_tag"]>>(
+  <M extends Machine.Any, const Tags extends ReadonlyArray<Machine.Requests<M>["_tag"]>>(
     self: M,
     ...tags: Tags
   ): Machine.ExcludeTag<M, Tags[number]>
