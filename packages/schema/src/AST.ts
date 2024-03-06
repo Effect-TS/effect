@@ -986,6 +986,9 @@ export class IndexSignature {
 export const getDuplicatePropertySignatureErrorMessage = (name: PropertyKey): string =>
   `Duplicate property signature ${_util.formatUnknown(name)}`
 
+const getDuplicateIndexSignatureErrorMessage = (name: string): string =>
+  `Duplicate index signature for type \`${name}\``
+
 /**
  * @category model
  * @since 1.0.0
@@ -1014,12 +1017,12 @@ export class TypeLiteral implements Annotated {
       const parameter = getParameterBase(indexSignatures[i].parameter)
       if (isStringKeyword(parameter)) {
         if (parameters.string) {
-          throw new Error("Duplicate index signature for type `string`")
+          throw new Error(getDuplicateIndexSignatureErrorMessage("string"))
         }
         parameters.string = true
       } else if (isSymbolKeyword(parameter)) {
         if (parameters.symbol) {
-          throw new Error("Duplicate index signature for type `symbol`")
+          throw new Error(getDuplicateIndexSignatureErrorMessage("symbol"))
         }
         parameters.symbol = true
       }
@@ -1577,12 +1580,11 @@ const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
   return []
 }
 
-/**
- * Create a record with the specified key type and value type.
- *
- * @since 1.0.0
- */
-export const createRecord = (key: AST, value: AST, isReadonly: boolean, annotations?: Annotations): TypeLiteral => {
+/** @internal */
+export const record = (key: AST, value: AST): {
+  propertySignatures: Array<PropertySignature>
+  indexSignatures: Array<IndexSignature>
+} => {
   const propertySignatures: Array<PropertySignature> = []
   const indexSignatures: Array<IndexSignature> = []
   const go = (key: AST): void => {
@@ -1593,17 +1595,17 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean, annotati
       case "SymbolKeyword":
       case "TemplateLiteral":
       case "Refinement":
-        indexSignatures.push(IndexSignature.make(key, value, isReadonly))
+        indexSignatures.push(IndexSignature.make(key, value, true))
         break
       case "Literal":
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
-          propertySignatures.push(new PropertySignature(key.literal, value, false, isReadonly))
+          propertySignatures.push(new PropertySignature(key.literal, value, false, true))
         } else {
           throw new Error(`createRecord: unsupported literal (${_util.formatUnknown(key.literal)})`)
         }
         break
       case "UniqueSymbol":
-        propertySignatures.push(new PropertySignature(key.symbol, value, false, isReadonly))
+        propertySignatures.push(new PropertySignature(key.symbol, value, false, true))
         break
       case "Union":
         key.types.forEach(go)
@@ -1613,7 +1615,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean, annotati
     }
   }
   go(key)
-  return TypeLiteral.make(propertySignatures, indexSignatures, annotations)
+  return { propertySignatures, indexSignatures }
 }
 
 /**

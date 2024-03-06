@@ -2,6 +2,8 @@
 "@effect/schema": minor
 ---
 
+- AST: remove `createRecord`
+
 - rename `Schema.Schema.To` to `Schema.Schema.Type`, `Schema.to` to `Schema.typeSchema`, `AST.to` to `AST.typeAST`
 
 - rename `Schema.Schema.From` to `Schema.Schema.Encoded` and `Schema.from` to `Schema.encodedSchema`, `AST.from` to `AST.encodedAST`

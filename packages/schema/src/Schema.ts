@@ -1729,17 +1729,17 @@ export declare namespace IndexSignature {
   /**
    * @since 1.0.0
    */
-  export type IndexSignatures = ReadonlyArray<{ readonly key: Schema.All; readonly value: Schema.All }>
+  export type Records = ReadonlyArray<{ readonly key: Schema.All; readonly value: Schema.All }>
 
   /**
    * @since 1.0.0
    */
   export type Type<
-    IndexSignatures extends IndexSignature.IndexSignatures
+    Records extends IndexSignature.Records
   > = UnionToIntersection<
     {
-      [K in keyof IndexSignatures]: {
-        readonly [P in Schema.Type<IndexSignatures[K]["key"]>]: Schema.Type<IndexSignatures[K]["value"]>
+      [K in keyof Records]: {
+        readonly [P in Schema.Type<Records[K]["key"]>]: Schema.Type<Records[K]["value"]>
       }
     }[number]
   >
@@ -1748,14 +1748,21 @@ export declare namespace IndexSignature {
    * @since 1.0.0
    */
   export type Encoded<
-    IndexSignatures extends IndexSignature.IndexSignatures
+    Records extends IndexSignature.Records
   > = UnionToIntersection<
     {
-      [K in keyof IndexSignatures]: {
-        readonly [P in Schema.Encoded<IndexSignatures[K]["key"]>]: Schema.Encoded<IndexSignatures[K]["value"]>
+      [K in keyof Records]: {
+        readonly [P in Schema.Encoded<Records[K]["key"]>]: Schema.Encoded<Records[K]["value"]>
       }
     }[number]
   >
+
+  /**
+   * @since 1.0.0
+   */
+  export type Context<Records extends IndexSignature.Records> = {
+    [K in keyof Records]: Schema.Context<Records[K]["key"]> | Schema.Context<Records[K]["value"]>
+  }[number]
 }
 
 /**
@@ -1765,22 +1772,16 @@ export declare namespace TypeLiteral {
   /**
    * @since 1.0.0
    */
-  export type Type<
-    Fields extends Struct.Fields,
-    IndexSignatures extends IndexSignature.IndexSignatures
-  > =
+  export type Type<Fields extends Struct.Fields, Records extends IndexSignature.Records> =
     & Struct.Type<Fields>
-    & IndexSignature.Type<IndexSignatures>
+    & IndexSignature.Type<Records>
 
   /**
    * @since 1.0.0
    */
-  export type Encoded<
-    Fields extends Struct.Fields,
-    IndexSignatures extends IndexSignature.IndexSignatures
-  > =
+  export type Encoded<Fields extends Struct.Fields, Records extends IndexSignature.Records> =
     & Struct.Encoded<Fields>
-    & IndexSignature.Encoded<IndexSignatures>
+    & IndexSignature.Encoded<Records>
 }
 
 /**
@@ -1789,34 +1790,37 @@ export declare namespace TypeLiteral {
  */
 export interface typeLiteral<
   Fields extends Struct.Fields,
-  IndexSignatures extends IndexSignature.IndexSignatures
+  Records extends IndexSignature.Records
 > extends
   Annotable<
-    typeLiteral<Fields, IndexSignatures>,
-    Simplify<TypeLiteral.Type<Fields, IndexSignatures>>,
-    Simplify<TypeLiteral.Encoded<Fields, IndexSignatures>>,
-    Struct.Context<Fields>
+    typeLiteral<Fields, Records>,
+    Simplify<TypeLiteral.Type<Fields, Records>>,
+    Simplify<TypeLiteral.Encoded<Fields, Records>>,
+    | Struct.Context<Fields>
+    | IndexSignature.Context<Records>
   >
 {
   readonly fields: Simplify<Fields>
-  readonly indexSignatures: Simplify<IndexSignatures>
+  readonly records: Simplify<Records>
 }
 
 const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
   Predicate.hasProperty(u, PropertySignatureTypeId)
 
-class $typeLiteral<
+/** @internal */
+export class $typeLiteral<
   Fields extends Struct.Fields,
-  IndexSignatures extends IndexSignature.IndexSignatures
+  Records extends IndexSignature.Records
 > extends _schema.Schema<
-  Simplify<TypeLiteral.Type<Fields, IndexSignatures>>,
-  Simplify<TypeLiteral.Encoded<Fields, IndexSignatures>>,
-  Struct.Context<Fields>
-> implements typeLiteral<Fields, IndexSignatures> {
+  Simplify<TypeLiteral.Type<Fields, Records>>,
+  Simplify<TypeLiteral.Encoded<Fields, Records>>,
+  | Struct.Context<Fields>
+  | IndexSignature.Context<Records>
+> implements typeLiteral<Fields, Records> {
   static ast = <
     Fields extends Struct.Fields,
-    IndexSignatures extends IndexSignature.IndexSignatures
-  >(fields: Fields, indexSignatures: IndexSignatures): AST.AST => {
+    Records extends IndexSignature.Records
+  >(fields: Fields, records: Records): AST.AST => {
     const ownKeys = _util.ownKeys(fields)
     const pss: Array<AST.PropertySignature> = []
     if (ownKeys.length > 0) {
@@ -1869,37 +1873,47 @@ class $typeLiteral<
         }
       }
       if (ReadonlyArray.isNonEmptyReadonlyArray(transformations)) {
-        return new AST.Transform(
-          AST.TypeLiteral.make(
-            from,
-            indexSignatures.map((is) => AST.IndexSignature.make(is.key.ast, is.value.ast, true))
-          ),
-          AST.TypeLiteral.make(
-            to,
-            indexSignatures.map((is) =>
-              AST.IndexSignature.make(AST.typeAST(is.key.ast), AST.typeAST(is.value.ast), true)
+        const issFrom: Array<AST.IndexSignature> = []
+        const issTo: Array<AST.IndexSignature> = []
+        for (const r of records) {
+          const { indexSignatures, propertySignatures } = AST.record(r.key.ast, r.value.ast)
+          propertySignatures.forEach((ps) => {
+            from.push(ps)
+            to.push(
+              new AST.PropertySignature(ps.name, AST.typeAST(ps.type), ps.isOptional, ps.isReadonly, ps.annotations)
             )
-          ),
+          })
+          indexSignatures.forEach((is) => {
+            issFrom.push(is)
+            issTo.push(AST.IndexSignature.make(is.parameter, AST.typeAST(is.type), is.isReadonly))
+          })
+        }
+        return new AST.Transform(
+          AST.TypeLiteral.make(from, issFrom),
+          AST.TypeLiteral.make(to, issTo),
           AST.TypeLiteralTransformation.make(transformations)
         )
       }
     }
-    return AST.TypeLiteral.make(
-      pss,
-      indexSignatures.map((is) => AST.IndexSignature.make(is.key.ast, is.value.ast, true))
-    )
+    const iss: Array<AST.IndexSignature> = []
+    for (const r of records) {
+      const { indexSignatures, propertySignatures } = AST.record(r.key.ast, r.value.ast)
+      propertySignatures.forEach((ps) => pss.push(ps))
+      indexSignatures.forEach((is) => iss.push(is))
+    }
+    return AST.TypeLiteral.make(pss, iss)
   }
   constructor(
     readonly fields: Fields,
-    readonly indexSignatures: IndexSignatures,
-    ast: AST.AST = $typeLiteral.ast(fields, indexSignatures)
+    readonly records: Records,
+    ast: AST.AST = $typeLiteral.ast(fields, records)
   ) {
     super(ast)
   }
   annotations(
-    annotations: Annotations<Simplify<TypeLiteral.Type<Fields, IndexSignatures>>>
-  ): typeLiteral<Fields, IndexSignatures> {
-    return new $typeLiteral(this.fields, this.indexSignatures, _schema.annotations(this.ast, annotations))
+    annotations: Annotations<Simplify<TypeLiteral.Type<Fields, Records>>>
+  ): typeLiteral<Fields, Records> {
+    return new $typeLiteral(this.fields, this.records, _schema.annotations(this.ast, annotations))
   }
 }
 
@@ -1911,54 +1925,30 @@ export interface struct<Fields extends Struct.Fields> extends typeLiteral<Fields
   annotations(annotations: Annotations<Simplify<Struct.Type<Fields>>>): struct<Fields>
 }
 
-class $struct<Fields extends Struct.Fields> extends $typeLiteral<Fields, []> implements struct<Fields> {
-  constructor(fields: Fields, ast?: AST.AST) {
-    super(fields, [], ast)
-  }
-  annotations(annotations: Annotations<Simplify<Struct.Type<Fields>>>): struct<Fields> {
-    return new $struct(this.fields, _schema.annotations(this.ast, annotations))
-  }
-}
-
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const struct = <Fields extends Struct.Fields>(fields: Fields): struct<Fields> => new $struct(fields)
+export const struct = <Fields extends Struct.Fields>(fields: Fields): struct<Fields> => new $typeLiteral(fields, [])
 
 /**
  * @category api interface
  * @since 1.0.0
  */
-export interface record<K extends Schema.All, V extends Schema.Any> extends
-  Annotable<
-    record<K, V>,
-    { readonly [P in Schema.Type<K>]: Schema.Type<V> },
-    { readonly [P in Schema.Encoded<K>]: Schema.Encoded<V> },
-    Schema.Context<K> | Schema.Context<V>
-  >
-{
+export interface record<K extends Schema.All, V extends Schema.Any> extends typeLiteral<{}, [{ key: K; value: V }]> {
   readonly key: K
   readonly value: V
-  annotations(annotations: Annotations<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>): record<K, V>
+  annotations(annotations: Annotations<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>): record<K, V>
 }
 
-class $record<K extends Schema.All, V extends Schema.Any> extends _schema.Schema<
-  { readonly [P in Schema.Type<K>]: Schema.Type<V> },
-  { readonly [P in Schema.Encoded<K>]: Schema.Encoded<V> },
-  Schema.Context<K> | Schema.Context<V>
+class $record<K extends Schema.All, V extends Schema.Any> extends $typeLiteral<
+  {},
+  [{ key: K; value: V }]
 > implements record<K, V> {
-  static ast = <K extends Schema.All, V extends Schema.Any>(key: K, value: V): AST.AST => {
-    return AST.createRecord(key.ast, value.ast, true, _schema.toASTAnnotations(annotations))
+  constructor(readonly key: K, readonly value: V, ast?: AST.AST) {
+    super({}, [{ key, value }], ast)
   }
-  constructor(
-    readonly key: K,
-    readonly value: V,
-    ast: AST.AST = $record.ast(key, value)
-  ) {
-    super(ast)
-  }
-  annotations(annotations: Annotations<{ readonly [P in Schema.Type<K>]: Schema.Type<V> }>): record<K, V> {
+  annotations(annotations: Annotations<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>): record<K, V> {
     return new $record(this.key, this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1967,10 +1957,8 @@ class $record<K extends Schema.All, V extends Schema.Any> extends _schema.Schema
  * @category combinators
  * @since 1.0.0
  */
-export const record = <A extends string | symbol, I extends string | symbol, R, V extends Schema.Any>(
-  key: Schema<A, I, R>,
-  value: V
-): record<Schema<A, I, R>, V> => new $record(key, value)
+export const record = <K extends Schema.Any, V extends Schema.Any>(key: K, value: V): record<K, V> =>
+  new $record(key, value)
 
 /**
  * @category struct transformations

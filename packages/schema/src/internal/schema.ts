@@ -86,4 +86,7 @@ export class Schema<in out A, in out I = A, out R = never> implements S.Schema<A
   annotations(a: S.Annotations<A>): S.Schema<A, I, R> {
     return new Schema(annotations(this.ast, a))
   }
+  toString() {
+    return String(this.ast)
+  }
 }

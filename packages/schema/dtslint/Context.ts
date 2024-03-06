@@ -233,7 +233,7 @@ S.mutable(S.struct({ a: aContext, b: bContext }))
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: number; }, "aContext" | "bContext">
 S.asSchema(S.record(aContext, bContext))
 
-// $ExpectType record<Schema<string, string, "aContext">, bContext>
+// $ExpectType record<aContext, bContext>
 S.record(aContext, bContext)
 
 // ---------------------------------------------
