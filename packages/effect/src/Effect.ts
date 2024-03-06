@@ -5245,18 +5245,18 @@ export const optionFromOptional: <A, E, R>(
  */
 export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
   & Context.TagClass<Self, Id, Type>
-  & { _Type: Type }
-  & {
-    [
-      k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
-        ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
-        : k
-    ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
-      (...args: Readonly<Args>) => Effect<A, E, Self | R>
-      : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-      : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-      : Effect<Type[k], never, Self>
-  }
+  & (Type extends Record<PropertyKey, any> ? {
+      [
+        k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
+          ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
+          : k
+      ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+        (...args: Readonly<Args>) => Effect<A, E, Self | R>
+        : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+        : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+        : Effect<Type[k], never, Self>
+    } :
+    {})
   & {
     use: <X>(
       body: (_: Type) => X
