@@ -9,7 +9,9 @@ Before
 ```ts
 import * as S from "@effect/schema/Schema";
 
-const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean));
+const schema1 = S.tuple().pipe(S.rest(S.number), S.element(S.boolean));
+
+const schema2 = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean));
 ```
 
 Now
@@ -17,7 +19,9 @@ Now
 ```ts
 import * as S from "@effect/schema/Schema";
 
-const schema = S.tupleType([S.string], S.number, S.boolean);
+const schema1 = S.array(S.number, S.boolean);
+
+const schema2 = S.tupleType([S.string], S.number, S.boolean);
 ```
 
 - Schema: refactor `optionalElement`:

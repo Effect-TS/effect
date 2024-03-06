@@ -41,7 +41,7 @@ describe("Schema > `onExcessProperty` option", () => {
     })
 
     it("tuple. post rest elements of a struct", async () => {
-      const schema = S.tupleType([], S.string, S.struct({ b: S.number }))
+      const schema = S.array(S.string, S.struct({ b: S.number }))
       await Util.expectDecodeUnknownSuccess(schema, [{ b: 1 }])
       await Util.expectDecodeUnknownSuccess(
         schema,

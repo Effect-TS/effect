@@ -1121,34 +1121,13 @@ export const tupleType = <
  * @category api interface
  * @since 1.0.0
  */
-export interface tuple<Elements extends TupleType.Elements> extends
-  Annotable<
-    tuple<Elements>,
-    TupleType.Type<Elements, never, []>,
-    TupleType.Encoded<Elements, never, []>,
-    Schema.Context<Elements[number]>
-  >
-{
-  readonly elements: Readonly<Elements>
+export interface tuple<Elements extends TupleType.Elements> extends tupleType<Elements, never, []> {
   annotations(annotations: Annotations<TupleType.Type<Elements, never, []>>): tuple<Elements>
 }
 
-class $tuple<Elements extends TupleType.Elements> extends _schema.Schema<
-  TupleType.Type<Elements, never, []>,
-  TupleType.Encoded<Elements, never, []>,
-  Schema.Context<Elements[number]>
-> implements tuple<Elements> {
-  static ast = <Elements extends TupleType.Elements>(elements: Elements): AST.AST => {
-    return new AST.Tuple(
-      elements.map((schema) =>
-        isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
-      ),
-      Option.none(),
-      true
-    )
-  }
-  constructor(readonly elements: Elements, ast: AST.AST = $tuple.ast(elements)) {
-    super(ast)
+class $tuple<Elements extends TupleType.Elements> extends $tupleType<Elements, never, []> implements tuple<Elements> {
+  constructor(readonly elements: Elements, ast?: AST.AST) {
+    super(elements, undefined, ast)
   }
   annotations(annotations: Annotations<TupleType.Type<Elements, never, []>>): tuple<Elements> {
     return new $tuple(this.elements, _schema.annotations(this.ast, annotations))
@@ -1166,28 +1145,15 @@ export const tuple = <Elements extends TupleType.Elements>(...elements: Elements
  * @category api interface
  * @since 1.0.0
  */
-export interface array<Value extends Schema.Any> extends
-  Annotable<
-    array<Value>,
-    ReadonlyArray<Schema.Type<Value>>,
-    ReadonlyArray<Schema.Encoded<Value>>,
-    Schema.Context<Value>
-  >
-{
+export interface array<Value extends Schema.Any> extends tupleType<readonly [], Value, []> {
   readonly value: Value
 }
 
-class $array<Value extends Schema.Any>
-  extends _schema.Schema<ReadonlyArray<Schema.Type<Value>>, ReadonlyArray<Schema.Encoded<Value>>, Schema.Context<Value>>
-  implements array<Value>
-{
-  static ast = <Value extends Schema.Any>(value: Value): AST.AST => {
-    return new AST.Tuple([], Option.some([value.ast]), true)
+class $array<Value extends Schema.Any> extends $tupleType<readonly [], Value, []> implements array<Value> {
+  constructor(readonly value: Value, ast?: AST.AST) {
+    super([], { value, elements: [] }, ast)
   }
-  constructor(readonly value: Value, ast: AST.AST = $array.ast(value)) {
-    super(ast)
-  }
-  annotations(annotations: Annotations<ReadonlyArray<Schema.Type<Value>>>): array<Value> {
+  annotations(annotations: Annotations<TupleType.Type<[], Value, []>>): array<Value> {
     return new $array(this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1196,7 +1162,17 @@ class $array<Value extends Schema.Any>
  * @category combinators
  * @since 1.0.0
  */
-export const array = <Value extends Schema.Any>(value: Value): array<Value> => new $array(value)
+export function array<Value extends Schema.Any, RestElements extends ReadonlyArray.NonEmptyReadonlyArray<Schema.Any>>(
+  value: Value,
+  ...restElements: RestElements
+): tupleType<readonly [], Value, RestElements>
+export function array<Value extends Schema.Any>(value: Value): array<Value>
+export function array<Value extends Schema.Any, RestElements extends ReadonlyArray<Schema.Any>>(
+  value: Value,
+  ...elements: RestElements
+): array<Value> | tupleType<readonly [], Value, RestElements> {
+  return elements.length > 0 ? new $tupleType([], { value, elements }) : new $array(value)
+}
 
 /**
  * @category api interface

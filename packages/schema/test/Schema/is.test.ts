@@ -228,7 +228,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. r + e", () => {
-    const schema = S.tupleType([], S.string, S.number)
+    const schema = S.array(S.string, S.number)
     const is = P.is(schema)
     expect(is([1])).toEqual(true)
     expect(is(["a", 1])).toEqual(true)

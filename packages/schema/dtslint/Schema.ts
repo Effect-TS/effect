@@ -417,14 +417,14 @@ S.asSchema(S.tuple(S.string, S.NumberFromString))
 S.tuple(S.string, S.NumberFromString)
 
 // ---------------------------------------------
-// tupleType
+// tupleType / array overloading
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [...string[], number], readonly [...string[], number], never>
-S.asSchema(S.tupleType([], S.string, S.number))
+S.asSchema(S.array(S.string, S.number))
 
 // $ExpectType tupleType<readonly [], $string, [$number]>
-S.tupleType([], S.string, S.number)
+S.array(S.string, S.number)
 
 // $ExpectType Schema<readonly [string, ...number[], boolean], readonly [string, ...number[], boolean], never>
 S.asSchema(S.tupleType([S.string], S.number, S.boolean))
