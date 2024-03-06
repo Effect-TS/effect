@@ -2,6 +2,24 @@
 "@effect/schema": minor
 ---
 
+- Schema: refactor `optionalElement`:
+
+Before
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.tuple(S.string).pipe(S.optionalElement(S.number));
+```
+
+Now
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.tuple(S.string, S.optionalElement(S.number));
+```
+
 - AST: remove `createRecord`
 
 - rename `Schema.Schema.To` to `Schema.Schema.Type`, `Schema.to` to `Schema.typeSchema`, `AST.to` to `AST.typeAST`

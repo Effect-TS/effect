@@ -366,7 +366,7 @@ describe("Equivalence", () => {
 
     describe("optional element support", () => {
       it("e?", () => {
-        const schema = S.tuple().pipe(S.optionalElement(string))
+        const schema = S.tuple(S.optionalElement(string))
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)
@@ -380,7 +380,7 @@ describe("Equivalence", () => {
       })
 
       it("e? + e?", () => {
-        const schema = S.tuple().pipe(S.optionalElement(string), S.optionalElement(number))
+        const schema = S.tuple(S.optionalElement(string), S.optionalElement(number))
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)
@@ -398,7 +398,7 @@ describe("Equivalence", () => {
       })
 
       it("e + e?", () => {
-        const schema = S.tuple(string).pipe(S.optionalElement(number))
+        const schema = S.tuple(string, S.optionalElement(number))
         const equivalence = E.make(schema)
 
         expect(equivalence(["a"], ["a"])).toBe(true)
@@ -412,7 +412,7 @@ describe("Equivalence", () => {
       })
 
       it("e? + r", () => {
-        const schema = S.tuple().pipe(S.optionalElement(string), S.rest(number))
+        const schema = S.tuple(S.optionalElement(string)).pipe(S.rest(number))
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)

@@ -162,7 +162,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. optional element", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.number))
+    const schema = S.tuple(S.optionalElement(S.number))
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is([1])).toEqual(true)
@@ -174,7 +174,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. optional element with undefined", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.union(S.number, S.undefined)))
+    const schema = S.tuple(S.optionalElement(S.union(S.number, S.undefined)))
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is([1])).toEqual(true)
@@ -186,7 +186,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e + e?", () => {
-    const schema = S.tuple(S.string).pipe(S.optionalElement(S.number))
+    const schema = S.tuple(S.string, S.optionalElement(S.number))
     const is = P.is(schema)
     expect(is(["a"])).toEqual(true)
     expect(is(["a", 1])).toEqual(true)
@@ -206,7 +206,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e? + r", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(S.number))
+    const schema = S.tuple(S.optionalElement(S.string)).pipe(S.rest(S.number))
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is(["a"])).toEqual(true)

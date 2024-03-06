@@ -131,7 +131,10 @@ S.tuple(aContext).pipe(S.element(bContext))
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number?], readonly [string, number?], "aContext" | "bContext">
-S.tuple(aContext).pipe(S.optionalElement(bContext))
+S.asSchema(S.tuple(aContext, S.optionalElement(bContext)))
+
+// $ExpectType tuple<[aContext, OptionalElement<bContext>]>
+S.tuple(aContext, S.optionalElement(bContext))
 
 // ---------------------------------------------
 // array

@@ -425,7 +425,7 @@ export const validatePromise = <A, I>(
  * @since 1.0.0
  */
 export const isSchema = (u: unknown): u is Schema.Any =>
-  Predicate.hasProperty(u, TypeId) && !(PropertySignatureTypeId in u)
+  Predicate.hasProperty(u, TypeId) && Predicate.isObject(u[TypeId])
 
 /**
  * @category constructors
@@ -969,8 +969,15 @@ export const keyof = <A, I, R>(self: Schema<A, I, R>): Schema<keyof A> =>
 /**
  * @since 1.0.0
  */
-export interface OptionalElement<E extends Schema.Any> {
+export interface OptionalElement<E extends Schema.Any>
+  extends Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>
+{
   readonly optionalElement: E
+}
+
+class $OptionalElement<E extends Schema.Any> implements OptionalElement<E> {
+  readonly [TypeId]!: Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>[TypeId]
+  constructor(readonly optionalElement: E) {}
 }
 
 /**
@@ -1051,9 +1058,7 @@ export interface tupleType<
 /**
  * @since 1.0.0
  */
-export const oe = <E extends Schema.Any>(self: E): OptionalElement<E> => ({
-  optionalElement: self
-})
+export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<E> => new $OptionalElement(self)
 
 /**
  * @since 1.0.0
@@ -1108,7 +1113,7 @@ class $tuple<Elements extends TupleType.Elements> extends _schema.Schema<
  * @category combinators
  * @since 1.0.0
  */
-export const tuple = <Elements extends ReadonlyArray<Schema.Any>>(...elements: Elements): tuple<Elements> =>
+export const tuple = <Elements extends TupleType.Elements>(...elements: Elements): tuple<Elements> =>
   new $tuple(elements)
 
 /**
@@ -1132,21 +1137,6 @@ export const element =
     self: Schema<A, I, R1>
   ): Schema<readonly [...A, B], readonly [...I, IB], R1 | R2> =>
     make(AST.appendElement(self.ast, new AST.Element(element.ast, false)))
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const optionalElement =
-  <B, IB, R2>(element: Schema<B, IB, R2>) =>
-  <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R1>(
-    self: Schema<A, I, R1>
-  ): Schema<readonly [...A, B?], readonly [...I, IB?], R1 | R2> => {
-    if (AST.isTuple(self.ast)) {
-      return make(AST.appendElement(self.ast, new AST.Element(element.ast, true)))
-    }
-    throw new Error("`optionalElement` is not supported on this schema")
-  }
 
 /**
  * @category api interface
@@ -1339,7 +1329,7 @@ class $PropertySignature<
   Encoded,
   R = never
 > implements PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, R> {
-  readonly [TypeId]: Schema.Variance<Type, Encoded, R>[TypeId] = _schema.variance
+  readonly [TypeId]!: Schema.Variance<Type, Encoded, R>[TypeId]
   readonly [PropertySignatureTypeId] = null
   readonly _Key!: Key
   readonly _EncodedToken!: EncodedToken

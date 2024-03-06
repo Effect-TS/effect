@@ -3,8 +3,6 @@ import * as Util from "@effect/schema/test/util"
 import { identity } from "effect/Function"
 import { describe, expect, it } from "vitest"
 
-const NumberFromString = S.NumberFromString
-
 describe("Schema > required", () => {
   it("string", () => {
     expect(S.required(S.string).ast).toEqual(S.string.ast)
@@ -12,7 +10,7 @@ describe("Schema > required", () => {
 
   it("struct", async () => {
     const schema = S.required(S.struct({
-      a: S.optional(NumberFromString.pipe(S.greaterThan(0)), { exact: true })
+      a: S.optional(S.NumberFromString.pipe(S.greaterThan(0)), { exact: true })
     }))
 
     await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
@@ -37,7 +35,7 @@ describe("Schema > required", () => {
   it("tuple/ e?", async () => {
     // type A = [string?]
     // type B = Required<A>
-    const schema = S.required(S.tuple().pipe(S.optionalElement(NumberFromString)))
+    const schema = S.required(S.tuple(S.optionalElement(S.NumberFromString)))
 
     await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
     await Util.expectDecodeUnknownFailure(
@@ -50,7 +48,7 @@ describe("Schema > required", () => {
   })
 
   it("tuple/ e e?", async () => {
-    const schema = S.required(S.tuple(NumberFromString).pipe(S.optionalElement(S.string)))
+    const schema = S.required(S.tuple(S.NumberFromString, S.optionalElement(S.string)))
 
     await Util.expectDecodeUnknownSuccess(schema, ["0", ""], [0, ""])
     await Util.expectDecodeUnknownFailure(

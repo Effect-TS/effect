@@ -271,7 +271,7 @@ describe("Pretty", () => {
     })
 
     it("optional element", () => {
-      const schema = S.tuple().pipe(S.optionalElement(S.number))
+      const schema = S.tuple(S.optionalElement(S.number))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty([1])).toEqual(`[1]`)
@@ -280,7 +280,7 @@ describe("Pretty", () => {
     })
 
     it("optional element with undefined", () => {
-      const schema = S.tuple().pipe(S.optionalElement(S.union(S.number, S.undefined)))
+      const schema = S.tuple(S.optionalElement(S.union(S.number, S.undefined)))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty([1])).toEqual(`[1]`)
@@ -302,7 +302,7 @@ describe("Pretty", () => {
     })
 
     it("optional elements", () => {
-      const schema = S.tuple().pipe(S.optionalElement(S.string), S.optionalElement(S.number))
+      const schema = S.tuple(S.optionalElement(S.string), S.optionalElement(S.number))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty(["a"])).toEqual(`["a"]`)

@@ -181,17 +181,17 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("tuple. optional element", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.number))
+    const schema = S.tuple(S.optionalElement(S.number))
     expectValidArbitrary(schema)
   })
 
   it("tuple. optional element with undefined", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.union(S.number, S.undefined)))
+    const schema = S.tuple(S.optionalElement(S.union(S.number, S.undefined)))
     expectValidArbitrary(schema)
   })
 
   it("tuple. e + e?", () => {
-    const schema = S.tuple(S.string).pipe(S.optionalElement(S.number))
+    const schema = S.tuple(S.string, S.optionalElement(S.number))
     expectValidArbitrary(schema)
   })
 
@@ -201,7 +201,7 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("tuple. e? + r", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(S.number))
+    const schema = S.tuple(S.optionalElement(S.string)).pipe(S.rest(S.number))
     expectValidArbitrary(schema)
   })
 

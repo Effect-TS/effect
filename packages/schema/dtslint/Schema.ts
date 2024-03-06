@@ -441,10 +441,16 @@ pipe(S.tuple(S.string, S.NumberFromString), S.element(S.NumberFromString))
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number, boolean?], readonly [string, number, boolean?], never>
-pipe(S.tuple(S.string, S.number), S.optionalElement(S.boolean))
+S.asSchema(S.tuple(S.string, S.number, S.optionalElement(S.boolean)))
+
+// $ExpectType tuple<[$string, $number, OptionalElement<$boolean>]>
+S.tuple(S.string, S.number, S.optionalElement(S.boolean))
 
 // $ExpectType Schema<readonly [string, number, number?], readonly [string, string, string?], never>
-pipe(S.tuple(S.string, S.NumberFromString), S.optionalElement(S.NumberFromString))
+S.asSchema(S.tuple(S.string, S.NumberFromString, S.optionalElement(S.NumberFromString)))
+
+// $ExpectType tuple<[$string, NumberFromString, OptionalElement<NumberFromString>]>
+S.tuple(S.string, S.NumberFromString, S.optionalElement(S.NumberFromString))
 
 // ---------------------------------------------
 // Arrays

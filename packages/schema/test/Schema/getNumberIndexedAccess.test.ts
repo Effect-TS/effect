@@ -13,7 +13,7 @@ describe("Schema > getNumberIndexedAccess", () => {
   })
 
   it("tuple with optional element", async () => {
-    const schema = S.getNumberIndexedAccess(S.tuple(S.NumberFromString).pipe(S.optionalElement(S.Duration)))
+    const schema = S.getNumberIndexedAccess(S.tuple(S.NumberFromString, S.optionalElement(S.Duration)))
     await Util.expectDecodeUnknownSuccess(schema, undefined)
     await Util.expectDecodeUnknownSuccess(schema, "1", 1)
     await Util.expectDecodeUnknownSuccess(schema, [1, 0], Duration.nanos(1000000000n))
