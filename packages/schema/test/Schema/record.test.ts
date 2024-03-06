@@ -175,7 +175,7 @@ describe("Schema > record", () => {
     it("record(keyof struct({ a, b } & Record<string, string>), number)", async () => {
       const schema = S.record(
         S.keyof(
-          S.struct({ a: S.string, b: S.string }).pipe(S.extend(S.record(S.string, S.string)))
+          S.struct({ a: S.string, b: S.string }, S.record(S.string, S.string))
         ),
         S.number
       )
@@ -196,9 +196,7 @@ describe("Schema > record", () => {
     it("record(keyof struct({ a, b } & Record<symbol, string>), number)", async () => {
       const schema = S.record(
         S.keyof(
-          S.struct({ a: S.string, b: S.string }).pipe(
-            S.extend(S.record(S.symbolFromSelf, S.string))
-          )
+          S.struct({ a: S.string, b: S.string }, S.record(S.symbolFromSelf, S.string))
         ),
         S.number
       )
@@ -348,8 +346,10 @@ describe("Schema > record", () => {
     })
 
     it("record(${string}-${string}, number) & record(string, string | number)", async () => {
-      const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number).pipe(
-        S.extend(S.record(S.string, S.union(S.string, S.number)))
+      const schema = S.struct(
+        {},
+        S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number),
+        S.record(S.string, S.union(S.string, S.number))
       )
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "a": "a" })

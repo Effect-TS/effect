@@ -556,9 +556,7 @@ describe("Equivalence", () => {
     })
 
     it("struct + record", () => {
-      const schema = S.struct({ a: string, b: string }).pipe(
-        S.extend(S.record(string, string))
-      )
+      const schema = S.struct({ a: string, b: string }, S.record(string, string))
       const equivalence = E.make(schema)
 
       expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "b" })).toBe(true)

@@ -475,11 +475,14 @@ S.asSchema(S.nonEmptyArray(S.NumberFromString))
 S.nonEmptyArray(S.NumberFromString)
 
 // ---------------------------------------------
-// `struct` API
+// struct
 // ---------------------------------------------
 
 // $ExpectType { readonly a: $string; readonly b: $number; }
 S.struct({ a: S.string, b: S.number }).fields
+
+// $ExpectType readonly []
+S.struct({ a: S.string, b: S.number }).records
 
 // $ExpectType { readonly a: $string; readonly b: $number; }
 S.struct({ a: S.string, b: S.number }).annotations({}).fields
@@ -507,6 +510,18 @@ S.asSchema(S.struct({ a: S.never }))
 
 // $ExpectType struct<{ a: $never; }>
 S.struct({ a: S.never })
+
+// $ExpectType Schema<{ readonly [x: string]: number; readonly a: number; }, { readonly [x: string]: string; readonly a: string; }, never>
+S.asSchema(S.struct({ a: S.NumberFromString }, { key: S.string, value: S.NumberFromString }))
+
+// $ExpectType typeLiteral<{ a: NumberFromString; }, readonly [{ readonly key: $string; readonly value: NumberFromString; }]>
+S.struct({ a: S.NumberFromString }, { key: S.string, value: S.NumberFromString })
+
+// $ExpectType readonly [{ readonly key: $string; readonly value: $number; }]
+S.struct({ a: S.number }, { key: S.string, value: S.number }).records
+
+// $ExpectType readonly [{ readonly key: $string; readonly value: $number; }, { readonly key: $symbol; readonly value: $number; }]
+S.struct({ a: S.number }, { key: S.string, value: S.number }, { key: S.symbol, value: S.number }).records
 
 // ---------------------------------------------
 // optional { exact: true }

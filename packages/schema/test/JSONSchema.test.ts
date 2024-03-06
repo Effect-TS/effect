@@ -920,9 +920,7 @@ describe("JSONSchema", () => {
   })
 
   it("struct + record", () => {
-    const schema = S.struct({ a: S.string }).pipe(
-      S.extend(S.record(S.string, S.string))
-    )
+    const schema = S.struct({ a: S.string }, S.record(S.string, S.string))
     const jsonSchema = JSONSchema.make(schema)
     expect(jsonSchema).toStrictEqual({
       "$schema": "http://json-schema.org/draft-07/schema#",

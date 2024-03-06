@@ -1729,7 +1729,17 @@ export declare namespace IndexSignature {
   /**
    * @since 1.0.0
    */
-  export type Records = ReadonlyArray<{ readonly key: Schema.All; readonly value: Schema.All }>
+  export type Record = { readonly key: Schema.All; readonly value: Schema.All }
+
+  /**
+   * @since 1.0.0
+   */
+  export type Records = ReadonlyArray<Record>
+
+  /**
+   * @since 1.0.0
+   */
+  export type NonEmptyRecords = ReadonlyArray.NonEmptyReadonlyArray<Record>
 
   /**
    * @since 1.0.0
@@ -1810,7 +1820,7 @@ const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
 /** @internal */
 export class $typeLiteral<
   Fields extends Struct.Fields,
-  Records extends IndexSignature.Records
+  const Records extends IndexSignature.Records
 > extends _schema.Schema<
   Simplify<TypeLiteral.Type<Fields, Records>>,
   Simplify<TypeLiteral.Encoded<Fields, Records>>,
@@ -1819,7 +1829,7 @@ export class $typeLiteral<
 > implements typeLiteral<Fields, Records> {
   static ast = <
     Fields extends Struct.Fields,
-    Records extends IndexSignature.Records
+    const Records extends IndexSignature.Records
   >(fields: Fields, records: Records): AST.AST => {
     const ownKeys = _util.ownKeys(fields)
     const pss: Array<AST.PropertySignature> = []
@@ -1929,19 +1939,29 @@ export interface struct<Fields extends Struct.Fields> extends typeLiteral<Fields
  * @category combinators
  * @since 1.0.0
  */
-export const struct = <Fields extends Struct.Fields>(fields: Fields): struct<Fields> => new $typeLiteral(fields, [])
+export function struct<Fields extends Struct.Fields, const Records extends IndexSignature.NonEmptyRecords>(
+  fields: Fields,
+  ...records: Records
+): typeLiteral<Fields, Records>
+export function struct<Fields extends Struct.Fields>(fields: Fields): struct<Fields>
+export function struct<Fields extends Struct.Fields, const Records extends IndexSignature.Records>(
+  fields: Fields,
+  ...records: Records
+): typeLiteral<Fields, Records> {
+  return new $typeLiteral(fields, records)
+}
 
 /**
  * @category api interface
  * @since 1.0.0
  */
-export interface record<K extends Schema.All, V extends Schema.Any> extends typeLiteral<{}, [{ key: K; value: V }]> {
+export interface record<K extends Schema.All, V extends Schema.All> extends typeLiteral<{}, [{ key: K; value: V }]> {
   readonly key: K
   readonly value: V
   annotations(annotations: Annotations<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>): record<K, V>
 }
 
-class $record<K extends Schema.All, V extends Schema.Any> extends $typeLiteral<
+class $record<K extends Schema.All, V extends Schema.All> extends $typeLiteral<
   {},
   [{ key: K; value: V }]
 > implements record<K, V> {
@@ -1957,7 +1977,7 @@ class $record<K extends Schema.All, V extends Schema.Any> extends $typeLiteral<
  * @category combinators
  * @since 1.0.0
  */
-export const record = <K extends Schema.Any, V extends Schema.Any>(key: K, value: V): record<K, V> =>
+export const record = <K extends Schema.All, V extends Schema.All>(key: K, value: V): record<K, V> =>
   new $record(key, value)
 
 /**

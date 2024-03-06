@@ -2,6 +2,14 @@
 "@effect/schema": patch
 ---
 
+- Schema: enhance the `struct` API to allow records:
+
+```ts
+const schema1 = S.struct({ a: S.number }, { key: S.string, value: S.number });
+// or
+const schema2 = S.struct({ a: S.number }, S.record(S.string, S.number));
+```
+
 - Schema: enhance the `extend` API to allow nested (non-overlapping) fields:
 
 ```ts

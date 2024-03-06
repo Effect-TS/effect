@@ -226,9 +226,7 @@ describe("Pretty", () => {
     })
 
     it("extend: struct + record", () => {
-      const schema = S.struct({ a: S.string }).pipe(
-        S.extend(S.record(S.string, S.union(S.string, S.number)))
-      )
+      const schema = S.struct({ a: S.string }, S.record(S.string, S.union(S.string, S.number)))
       const pretty = Pretty.make(schema)
       expect(pretty({ a: "a" })).toEqual(`{ "a": "a" }`)
       expect(pretty({ a: "a", b: "b", c: 1 })).toEqual(`{ "a": "a", "b": "b", "c": 1 }`)
