@@ -6,7 +6,7 @@ describe("Schema > `errors` option", () => {
   describe("decoding", () => {
     describe("tuple", () => {
       it("e r e", async () => {
-        const schema = S.tupleType([S.string], S.number, S.boolean)
+        const schema = S.tuple([S.string], S.number, S.boolean)
         await Util.expectDecodeUnknownFailure(
           schema,
           [true],
@@ -62,7 +62,7 @@ describe("Schema > `errors` option", () => {
       })
 
       it("wrong type for rest", async () => {
-        const schema = S.tupleType([S.string], S.number)
+        const schema = S.tuple([S.string], S.number)
         await Util.expectDecodeUnknownFailure(
           schema,
           ["a", "b", "c"],

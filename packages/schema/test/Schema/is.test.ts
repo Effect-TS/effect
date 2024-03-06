@@ -196,7 +196,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e + r", () => {
-    const schema = S.tupleType([S.string], S.number)
+    const schema = S.tuple([S.string], S.number)
     const is = P.is(schema)
     expect(is(["a"])).toEqual(true)
     expect(is(["a", 1])).toEqual(true)
@@ -206,7 +206,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e? + r", () => {
-    const schema = S.tupleType([S.optionalElement(S.string)], S.number)
+    const schema = S.tuple([S.optionalElement(S.string)], S.number)
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is(["a"])).toEqual(true)
@@ -240,7 +240,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e + r + e", () => {
-    const schema = S.tupleType([S.string], S.number, S.boolean)
+    const schema = S.tuple([S.string], S.number, S.boolean)
     const is = P.is(schema)
     expect(is(["a", true])).toEqual(true)
     expect(is(["a", 1, true])).toEqual(true)
@@ -532,7 +532,7 @@ describe("Schema > is", () => {
 
   describe("rest", () => {
     it("baseline", () => {
-      const schema = S.tupleType([S.string, S.number], S.boolean)
+      const schema = S.tuple([S.string, S.number], S.boolean)
       const is = P.is(schema)
       expect(is(["a", 1])).toEqual(true)
       expect(is(["a", 1, true])).toEqual(true)

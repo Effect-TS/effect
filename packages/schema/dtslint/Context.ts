@@ -117,10 +117,10 @@ S.tuple(aContext, bContext)
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, ...number[]], readonly [string, ...number[]], "aContext" | "bContext">
-S.asSchema(S.tupleType([aContext], bContext))
+S.asSchema(S.tuple([aContext], bContext))
 
 // $ExpectType tupleType<readonly [aContext], bContext, []>
-S.tupleType([aContext], bContext)
+S.tuple([aContext], bContext)
 
 // ---------------------------------------------
 // optionalElement

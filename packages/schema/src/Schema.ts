@@ -1108,16 +1108,6 @@ class $tupleType<
 }
 
 /**
- * @since 1.0.0
- */
-export const tupleType = <
-  const Elements extends TupleType.Elements,
-  Rest extends Schema.Any,
-  RestElements extends ReadonlyArray<Schema.Any>
->(elements: Elements, ...rest: readonly [Rest, ...RestElements]): tupleType<Elements, Rest, RestElements> =>
-  new $tupleType(elements, { value: rest[0], elements: rest.slice(1) }) as any
-
-/**
  * @category api interface
  * @since 1.0.0
  */
@@ -1138,8 +1128,17 @@ class $tuple<Elements extends TupleType.Elements> extends $tupleType<Elements, n
  * @category combinators
  * @since 1.0.0
  */
-export const tuple = <Elements extends TupleType.Elements>(...elements: Elements): tuple<Elements> =>
-  new $tuple(elements)
+export function tuple<
+  const Elements extends TupleType.Elements,
+  Rest extends Schema.Any,
+  RestElements extends ReadonlyArray<Schema.Any>
+>(elements: Elements, ...rest: readonly [Rest, ...RestElements]): tupleType<Elements, Rest, RestElements>
+export function tuple<Elements extends TupleType.Elements>(...elements: Elements): tuple<Elements>
+export function tuple(...args: ReadonlyArray<any>): any {
+  return Array.isArray(args[0])
+    ? new $tupleType(args[0], { value: args[1], elements: args.slice(2) })
+    : new $tuple(args)
+}
 
 /**
  * @category api interface

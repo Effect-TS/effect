@@ -427,10 +427,10 @@ S.asSchema(S.array(S.string, S.number))
 S.array(S.string, S.number)
 
 // $ExpectType Schema<readonly [string, ...number[], boolean], readonly [string, ...number[], boolean], never>
-S.asSchema(S.tupleType([S.string], S.number, S.boolean))
+S.asSchema(S.tuple([S.string], S.number, S.boolean))
 
 // $ExpectType tupleType<readonly [$string], $number, [$boolean]>
-S.tupleType([S.string], S.number, S.boolean)
+S.tuple([S.string], S.number, S.boolean)
 
 // ---------------------------------------------
 // optionalElement

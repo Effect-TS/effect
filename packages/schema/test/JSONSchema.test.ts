@@ -489,7 +489,7 @@ describe("JSONSchema", () => {
     })
 
     it("e? + r", () => {
-      const schema = S.tupleType([S.optionalElement(S.string)], JsonNumber)
+      const schema = S.tuple([S.optionalElement(S.string)], JsonNumber)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -563,7 +563,7 @@ describe("JSONSchema", () => {
     })
 
     it("e + r", () => {
-      const schema = S.tupleType([S.string], JsonNumber)
+      const schema = S.tuple([S.string], JsonNumber)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",

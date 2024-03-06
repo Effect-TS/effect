@@ -322,7 +322,7 @@ describe("Equivalence", () => {
     })
 
     it("e + r", () => {
-      const schema = S.tupleType([S.string], S.number)
+      const schema = S.tuple([S.string], S.number)
       const equivalence = E.make(schema)
 
       expect(equivalence(["a"], ["a"])).toBe(true)
@@ -412,7 +412,7 @@ describe("Equivalence", () => {
       })
 
       it("e? + r", () => {
-        const schema = S.tupleType([S.optionalElement(S.string)], S.number)
+        const schema = S.tuple([S.optionalElement(S.string)], S.number)
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)

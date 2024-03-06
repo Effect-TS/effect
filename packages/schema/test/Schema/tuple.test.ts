@@ -212,7 +212,7 @@ describe("Schema > tuple", () => {
     })
 
     it("e + r", async () => {
-      const schema = S.tupleType([S.string], S.number)
+      const schema = S.tuple([S.string], S.number)
       await Util.expectDecodeUnknownSuccess(schema, ["a"])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1, 2])
@@ -227,7 +227,7 @@ describe("Schema > tuple", () => {
     })
 
     it("e? + r", async () => {
-      const schema = S.tupleType([S.optionalElement(S.string)], S.number)
+      const schema = S.tuple([S.optionalElement(S.string)], S.number)
       await Util.expectDecodeUnknownSuccess(schema, [])
       await Util.expectDecodeUnknownSuccess(schema, ["a"])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
@@ -294,7 +294,7 @@ describe("Schema > tuple", () => {
     })
 
     it("element / rest / element", async () => {
-      const schema = S.tupleType([S.string], S.number, S.boolean)
+      const schema = S.tuple([S.string], S.number, S.boolean)
       await Util.expectDecodeUnknownSuccess(schema, ["a", true])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1, true])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1, 2, true])
@@ -424,14 +424,14 @@ describe("Schema > tuple", () => {
     })
 
     it("e + r", async () => {
-      const schema = S.tupleType([S.string], Util.NumberFromChar)
+      const schema = S.tuple([S.string], Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
       await Util.expectEncodeSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
     })
 
     it("e? + r", async () => {
-      const schema = S.tupleType([S.optionalElement(S.string)], Util.NumberFromChar)
+      const schema = S.tuple([S.optionalElement(S.string)], Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
@@ -482,7 +482,7 @@ describe("Schema > tuple", () => {
     })
 
     it("element / rest / element", async () => {
-      const schema = S.tupleType([S.string], Util.NumberFromChar, S.boolean)
+      const schema = S.tuple([S.string], Util.NumberFromChar, S.boolean)
       await Util.expectEncodeSuccess(schema, ["a", true], ["a", true])
       await Util.expectEncodeSuccess(schema, ["a", 1, true], ["a", "1", true])
       await Util.expectEncodeSuccess(schema, ["a", 1, 2, true], ["a", "1", "2", true])

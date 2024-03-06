@@ -343,7 +343,7 @@ describe("Pretty", () => {
     })
 
     it("all", () => {
-      const schema = S.tupleType([S.string], S.number, S.boolean)
+      const schema = S.tuple([S.string], S.number, S.boolean)
       const pretty = Pretty.make(schema)
       expect(pretty(["a", true])).toEqual(`["a", true]`)
       expect(pretty(["a", 1, true])).toEqual(`["a", 1, true]`)

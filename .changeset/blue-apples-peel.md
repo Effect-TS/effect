@@ -21,7 +21,7 @@ import * as S from "@effect/schema/Schema";
 
 const schema1 = S.array(S.number, S.boolean);
 
-const schema2 = S.tupleType([S.string], S.number, S.boolean);
+const schema2 = S.tuple([S.string], S.number, S.boolean);
 ```
 
 - Schema: refactor `optionalElement`:
