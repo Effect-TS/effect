@@ -76,6 +76,17 @@ export interface OptionUnify<A extends { [Unify.typeSymbol]?: any }> {
 }
 
 /**
+ * @since 2.0.0
+ */
+export declare namespace Option {
+  /**
+   * @since 2.0.0
+   * @category type-level
+   */
+  export type Value<T extends Option<any>> = [T] extends [Option<infer _A>] ? _A : never
+}
+
+/**
  * @category models
  * @since 2.0.0
  */

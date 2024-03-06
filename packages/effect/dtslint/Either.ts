@@ -165,3 +165,9 @@ pipe(
     _s: string
   ) => "b" as const)
 )
+
+// $ExpectType number
+export type R = Either.Either.Right<typeof string$number>
+
+// $ExpectType string
+export type L = Either.Either.Left<typeof string$number>

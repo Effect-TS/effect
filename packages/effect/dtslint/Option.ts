@@ -195,3 +195,6 @@ numberOrString.pipe(Option.andThen(numberOrString))
 
 // $ExpectType Option<string | number>
 numberOrString.pipe(Option.andThen(() => numberOrString))
+
+// $ExpectType string | number
+export type V = Option.Option.Value<typeof numberOrString>
