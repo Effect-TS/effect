@@ -15,6 +15,7 @@ const AnsiSymbolKey = "@effect/printer-ansi/Ansi"
 export const AnsiTypeId: Ansi.AnsiTypeId = Symbol.for(AnsiSymbolKey) as Ansi.AnsiTypeId
 
 interface AnsiParams {
+  readonly char: ReadonlyArray<string>
   readonly commands: ReadonlyArray<string>
   readonly styles: ReadonlyArray<Style.Style>
   readonly foreground: Option.Option<SGR.SGR>
@@ -41,6 +42,7 @@ const getFirstSomeSemigroup: Semigroup.Semigroup<Option.Option<SGR.SGR>> = Semig
 
 const AnsiSemigroup: Semigroup.Semigroup<AnsiImpl> = Semigroup.struct({
   [AnsiTypeId]: typeIdSemigroup,
+  char: Semigroup.array<string>(),
   commands: Semigroup.array<string>(),
   styles: Semigroup.array<Style.Style>(),
   foreground: getFirstSomeSemigroup,
@@ -57,6 +59,7 @@ const monoidOrElse = Monoid.fromSemigroup(getFirstSomeSemigroup, Option.none())
 
 const AnsiMonoid: Monoid.Monoid<AnsiImpl> = Monoid.struct({
   [AnsiTypeId]: typeIdMonoid,
+  char: Monoid.array<string>(),
   commands: Monoid.array<string>(),
   styles: Monoid.array<Style.Style>(),
   foreground: monoidOrElse,
@@ -69,10 +72,6 @@ const AnsiMonoid: Monoid.Monoid<AnsiImpl> = Monoid.struct({
 
 /** @internal */
 export const none: Ansi.Ansi = AnsiMonoid.empty
-
-const ESC = "\u001B["
-const BEL = "\u0007"
-const SEP = ";"
 
 // -----------------------------------------------------------------------------
 // Styles
@@ -223,110 +222,100 @@ export const bgWhiteBright: Ansi.Ansi = bgColorBright(InternalColor.white)
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const beep: Ansi.Ansi = make({ commands: ReadonlyArray.of(BEL) })
+export const beep: Ansi.Ansi = make({ char: ReadonlyArray.of("\u0007") })
 
+const SEP = ";"
 /** @internal */
 export const cursorTo = (column: number, row?: number): Ansi.Ansi => {
   if (row === undefined) {
-    const command = `${ESC}${Math.max(column + 1, 0)}G`
+    const command = `${Math.max(column + 1, 0)}G`
     return make({ commands: ReadonlyArray.of(command) })
   }
-  const command = `${ESC}${row + 1}${SEP}${Math.max(column + 1, 0)}H`
+  const command = `${row + 1}${SEP}${Math.max(column + 1, 0)}H`
   return make({ commands: ReadonlyArray.of(command) })
 }
 
 /** @internal */
 export const cursorMove = (column: number, row: number = 0): Ansi.Ansi => {
-  let command = ""
+  const commands = Array<string>()
   if (row < 0) {
-    command += `${ESC}${-row}A`
+    commands.push(`${-row}A`)
   }
   if (row > 0) {
-    command += `${ESC}${row}B`
+    commands.push(`${row}B`)
   }
   if (column > 0) {
-    command += `${ESC}${column}C`
+    commands.push(`${column}C`)
   }
   if (column < 0) {
-    command += `${ESC}${-column}D`
+    commands.push(`${-column}D`)
   }
-  return make({ commands: ReadonlyArray.of(command) })
+  return make({ commands })
 }
 
 /** @internal */
-export const cursorUp = (lines: number = 1): Ansi.Ansi => {
-  const command = `${ESC}${lines}A`
-  return make({ commands: ReadonlyArray.of(command) })
-}
+export const cursorUp = (rows: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${rows}A`) })
 
 /** @internal */
-export const cursorDown = (lines: number = 1): Ansi.Ansi => {
-  const command = `${ESC}${lines}B`
-  return make({ commands: ReadonlyArray.of(command) })
-}
+export const cursorDown = (rows: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${rows}B`) })
 
 /** @internal */
-export const cursorForward = (columns: number = 1): Ansi.Ansi => {
-  const command = `${ESC}${columns}C`
-  return make({ commands: ReadonlyArray.of(command) })
-}
+export const cursorForward = (columns: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${columns}C`) })
 
 /** @internal */
-export const cursorBackward = (columns: number = 1): Ansi.Ansi => {
-  const command = `${ESC}${columns}D`
-  return make({ commands: ReadonlyArray.of(command) })
-}
+export const cursorBackward = (columns: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${columns}D`) })
 
 /** @internal */
-export const cursorLeft: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}G`) })
+export const cursorLeft: Ansi.Ansi = make({ commands: ReadonlyArray.of("G") })
 
 /** @internal */
-export const cursorSavePosition: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}s`) })
+export const cursorSavePosition: Ansi.Ansi = make({ commands: ReadonlyArray.of("s") })
 
 /** @internal */
-export const cursorRestorePosition: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}u`) })
+export const cursorRestorePosition: Ansi.Ansi = make({ commands: ReadonlyArray.of("u") })
 
 /** @internal */
-export const cursorNextLine = (rows: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${ESC}${rows}E`) })
+export const cursorNextLine = (rows: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${rows}E`) })
 
 /** @internal */
-export const cursorPrevLine = (rows: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${ESC}${rows}F`) })
+export const cursorPrevLine = (rows: number = 1): Ansi.Ansi => make({ commands: ReadonlyArray.of(`${rows}F`) })
 
 /** @internal */
-export const cursorHide: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}?25l`) })
+export const cursorHide: Ansi.Ansi = make({ commands: ReadonlyArray.of("?25l") })
 
 /** @internal */
-export const cursorShow: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}?25h`) })
+export const cursorShow: Ansi.Ansi = make({ commands: ReadonlyArray.of("?25h") })
 
 /** @internal */
 export const eraseLines = (rows: number): Ansi.Ansi => {
-  let command = ""
+  const commands = Array<string>()
   for (let i = 0; i < rows; i++) {
-    command += `${ESC}2K` + (i < rows - 1 ? `${ESC}1A` : "")
+    commands.push("2K")
+    if (i < rows - 1) commands.push("1A")
   }
   if (rows > 0) {
-    command += `${ESC}G`
+    commands.push("G")
   }
-  return make({ commands: ReadonlyArray.of(command) })
+  return make({ commands })
 }
 
 /** @internal */
-export const eraseEndLine: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}K`) })
+export const eraseEndLine: Ansi.Ansi = make({ commands: ReadonlyArray.of("K") })
 
 /** @internal */
-export const eraseStartLine: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}1K`) })
+export const eraseStartLine: Ansi.Ansi = make({ commands: ReadonlyArray.of("1K") })
 
 /** @internal */
-export const eraseLine: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}2K`) })
+export const eraseLine: Ansi.Ansi = make({ commands: ReadonlyArray.of("2K") })
 
 /** @internal */
-export const eraseDown: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}J`) })
+export const eraseDown: Ansi.Ansi = make({ commands: ReadonlyArray.of("J") })
 
 /** @internal */
-export const eraseUp: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}1J`) })
+export const eraseUp: Ansi.Ansi = make({ commands: ReadonlyArray.of("1J") })
 
 /** @internal */
-export const eraseScreen: Ansi.Ansi = make({ commands: ReadonlyArray.of(`${ESC}2J`) })
+export const eraseScreen: Ansi.Ansi = make({ commands: ReadonlyArray.of("2J") })
 
 // -----------------------------------------------------------------------------
 // Destructors
@@ -351,8 +340,16 @@ export const combine = dual<
 
 const combineInternal = (self: AnsiImpl, that: AnsiImpl): Ansi.Ansi => AnsiSemigroup.combine(self, that)
 
+/*
+├── Bell
+└── Escape
+    ├── OSC (System Comm)
+    └── CSI (Control Seq)
+        └── SGR (Styles)
+            └── Colors
+*/
 const stringifyInternal = (self: AnsiImpl): string => {
-  const displaySequence = SGR.toCode(
+  const sgr = SGR.toCode(
     ReadonlyArray.getSomes([
       Option.some(SGR.reset),
       self.foreground,
@@ -363,11 +360,9 @@ const stringifyInternal = (self: AnsiImpl): string => {
       self.underlined
     ])
   )
-
   // FIXME: When both styles and sgr reconcile this won't be necessary
-  const styleControl = self.styles.length > 0 ? `${ESC}${Style.toCode(self.styles)}` : `${ESC}${displaySequence}`
-
-  const controls = ReadonlyArray.join(self.commands, "")
-
-  return `${styleControl}${controls}`
+  const styles = self.styles.length > 0 ? Style.toCode(self.styles) : sgr
+  const sequences = pipe(self.commands, ReadonlyArray.prepend(styles), ReadonlyArray.map((c) => `\u001B[${c}`))
+  const commands = pipe(sequences, ReadonlyArray.append(self.char))
+  return `${commands.join("")}`
 }
