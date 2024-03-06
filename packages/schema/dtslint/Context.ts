@@ -113,11 +113,14 @@ S.asSchema(S.tuple(aContext, bContext))
 S.tuple(aContext, bContext)
 
 // ---------------------------------------------
-// rest
+// tupleType
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, ...number[]], readonly [string, ...number[]], "aContext" | "bContext">
-S.tuple(aContext).pipe(S.rest(bContext))
+S.asSchema(S.tupleType([aContext], bContext))
+
+// $ExpectType tupleType<readonly [aContext], bContext, []>
+S.tupleType([aContext], bContext)
 
 // ---------------------------------------------
 // optionalElement

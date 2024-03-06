@@ -196,12 +196,12 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("tuple. e + r", () => {
-    const schema = S.tuple(S.string).pipe(S.rest(S.number))
+    const schema = S.tupleType([S.string], S.number)
     expectValidArbitrary(schema)
   })
 
   it("tuple. e? + r", () => {
-    const schema = S.tuple(S.optionalElement(S.string)).pipe(S.rest(S.number))
+    const schema = S.tupleType([S.optionalElement(S.string)], S.number)
     expectValidArbitrary(schema)
   })
 

@@ -17,13 +17,6 @@ describe("Schema > tuple", () => {
     expect(schema.elements).toStrictEqual([S.string, S.number])
   })
 
-  it("rest: should throw on unsupported schemas", () => {
-    const schema = S.tuple().pipe(S.filter(() => true))
-    expect(() => schema.pipe(S.rest(S.number))).toThrow(
-      new Error("appendRestElement: unsupported schema (<refinement schema>)")
-    )
-  })
-
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
       const schema = S.tuple().annotations({ identifier: "MyDataType" })
@@ -218,8 +211,8 @@ describe("Schema > tuple", () => {
       )
     })
 
-    it("element / rest", async () => {
-      const schema = S.tuple(S.string).pipe(S.rest(S.number))
+    it("e + r", async () => {
+      const schema = S.tupleType([S.string], S.number)
       await Util.expectDecodeUnknownSuccess(schema, ["a"])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1, 2])
@@ -233,8 +226,8 @@ describe("Schema > tuple", () => {
       )
     })
 
-    it("optional element rest", async () => {
-      const schema = S.tuple(S.optionalElement(S.string)).pipe(S.rest(S.number))
+    it("e? + r", async () => {
+      const schema = S.tupleType([S.optionalElement(S.string)], S.number)
       await Util.expectDecodeUnknownSuccess(schema, [])
       await Util.expectDecodeUnknownSuccess(schema, ["a"])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
@@ -430,15 +423,15 @@ describe("Schema > tuple", () => {
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
     })
 
-    it("element / rest", async () => {
-      const schema = S.tuple(S.string).pipe(S.rest(Util.NumberFromChar))
+    it("e + r", async () => {
+      const schema = S.tupleType([S.string], Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
       await Util.expectEncodeSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
     })
 
-    it("optional element / rest", async () => {
-      const schema = S.tuple(S.optionalElement(S.string)).pipe(S.rest(Util.NumberFromChar))
+    it("e? + r", async () => {
+      const schema = S.tupleType([S.optionalElement(S.string)], Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, [], [])
       await Util.expectEncodeSuccess(schema, ["a"], ["a"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])

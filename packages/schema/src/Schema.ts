@@ -1163,17 +1163,6 @@ export const tuple = <Elements extends TupleType.Elements>(...elements: Elements
   new $tuple(elements)
 
 /**
- * @category combinators
- * @since 1.0.0
- */
-export const rest =
-  <B, IB, R2>(rest: Schema<B, IB, R2>) =>
-  <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R1>(
-    self: Schema<A, I, R1>
-  ): Schema<readonly [...A, ...Array<B>], readonly [...I, ...Array<IB>], R1 | R2> =>
-    make(AST.appendRestElement(self.ast, rest.ast))
-
-/**
  * @category api interface
  * @since 1.0.0
  */
