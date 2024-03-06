@@ -634,7 +634,12 @@ export const boot = <
       options?.forever ?
         pipe(
           run,
-          Effect.catchAllCause((cause) => Effect.log("Machine got defect", cause)),
+          Effect.catchAllCause((cause) =>
+            Effect.logDebug("Machine restarting due to defect", cause).pipe(
+              Effect.zipRight(Queue.takeAll(requests)),
+              Effect.tap(Effect.forEach(([_, deferred]) => Deferred.failCause(deferred, cause)))
+            )
+          ),
           Effect.zipRight(FiberSet.clear(fiberSet)),
           Effect.zipRight(self.initialize(input as Machine.Input<M>, options?.snapshot)),
           Effect.tap(([newState, newContext]) => {
