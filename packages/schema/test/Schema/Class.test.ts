@@ -520,7 +520,13 @@ describe("Schema > Class APIs", () => {
 └─ Encoded side transformation failure
    └─ ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John","thing":{"_id":"Option","_tag":"Some","value":{"id":1}}}`
+         └─ Expected ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John","thing":{
+  "_id": "Option",
+  "_tag": "Some",
+  "value": {
+    "id": 1
+  }
+}}`
     )
   })
 

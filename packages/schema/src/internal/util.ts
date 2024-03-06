@@ -49,8 +49,6 @@ export const formatUnknown = (u: unknown): string => {
     return String(u)
   } else if (Predicate.isBigInt(u)) {
     return String(u) + "n"
-  } else if (Predicate.hasProperty(u, "toJSON") && Predicate.isFunction(u["toJSON"])) {
-    return JSON.stringify(u["toJSON"]())
   } else if (
     !Array.isArray(u)
     && Predicate.hasProperty(u, "toString")

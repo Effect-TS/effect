@@ -1903,3 +1903,60 @@ S.asSchema(hole<S.typeLiteral<{}, [{ key: S.$string; value: S.$string }, { key: 
 
 // $ExpectType Schema<{ readonly [x: string]: unknown; readonly a: string; }, { readonly [x: string]: unknown; readonly a: string; }, never>
 S.asSchema(hole<S.typeLiteral<{ a: S.$string }, [{ key: S.$string; value: S.$unknown }]>>())
+
+// ---------------------------------------------
+// TupleType.Type
+// ---------------------------------------------
+
+// $ExpectType readonly []
+hole<S.TupleType.Type<[], never, []>>()
+
+// $ExpectType readonly [number]
+hole<S.TupleType.Type<[S.NumberFromString], never, []>>()
+
+// $ExpectType readonly number[]
+hole<S.TupleType.Type<[], S.NumberFromString, []>>()
+
+// $ExpectType readonly [number, ...number[]]
+hole<S.TupleType.Type<[S.NumberFromString], S.NumberFromString, []>>()
+
+// $ExpectType readonly [number, ...number[], number]
+hole<S.TupleType.Type<[S.NumberFromString], S.NumberFromString, [S.NumberFromString]>>()
+
+// $ExpectType readonly [number, number?]
+hole<S.TupleType.Type<[S.NumberFromString, S.OptionalElement<S.NumberFromString>], never, []>>()
+
+// $ExpectType readonly [number, number?, ...number[]]
+hole<S.TupleType.Type<[S.NumberFromString, S.OptionalElement<S.NumberFromString>], S.NumberFromString, []>>()
+
+// ---------------------------------------------
+// TupleType.Encoded
+// ---------------------------------------------
+
+// $ExpectType readonly []
+hole<S.TupleType.Encoded<[], never, []>>()
+
+// $ExpectType readonly [string]
+hole<S.TupleType.Encoded<[S.NumberFromString], never, []>>()
+
+// $ExpectType readonly string[]
+hole<S.TupleType.Encoded<[], S.NumberFromString, []>>()
+
+// $ExpectType readonly [string, ...string[]]
+hole<S.TupleType.Encoded<[S.NumberFromString], S.NumberFromString, []>>()
+
+// $ExpectType readonly [string, ...string[], string]
+hole<S.TupleType.Encoded<[S.NumberFromString], S.NumberFromString, [S.NumberFromString]>>()
+
+// $ExpectType readonly [string, string?]
+hole<S.TupleType.Encoded<[S.NumberFromString, S.OptionalElement<S.NumberFromString>], never, []>>()
+
+// $ExpectType readonly [string, string?, ...string[]]
+hole<S.TupleType.Encoded<[S.NumberFromString, S.OptionalElement<S.NumberFromString>], S.NumberFromString, []>>()
+
+// ---------------------------------------------
+// TupleType.Context
+// ---------------------------------------------
+
+// $ExpectType "a" | "b" | "c"
+hole<S.Schema.Context<S.tupleType<[typeof aContext], typeof bContext, [typeof cContext]>>>()
