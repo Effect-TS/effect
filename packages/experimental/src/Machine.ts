@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as HttpHeaders from "@effect/platform/Http/Headers"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
@@ -131,6 +130,9 @@ export type ActorTypeId = typeof ActorTypeId
 export class MachineError extends Schema.TaggedError<MachineError>()("MachineError", {
   cause: Schema.cause<never, never, never>({ error: Schema.never })
 }) {
+  /**
+   * @since 1.0.0
+   */
   static wrap<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, MachineError, R> {
     return Effect.catchAllCause(
       Effect.orDie(effect),
@@ -138,6 +140,9 @@ export class MachineError extends Schema.TaggedError<MachineError>()("MachineErr
     )
   }
 
+  /**
+   * @since 1.0.0
+   */
   get message() {
     return Cause.pretty(this.cause)
   }
@@ -150,15 +155,6 @@ export class MachineError extends Schema.TaggedError<MachineError>()("MachineErr
 export class MachineContext extends Context.Tag("@effect/experimental/Machine/Context")<
   MachineContext,
   Procedure.Procedure.BaseContext
->() {}
-
-/**
- * @since 1.0.0
- * @category tags
- */
-export class Headers extends Context.Tag("@effect/experimental/Machine/Headers")<
-  Headers,
-  HttpHeaders.Headers
 >() {}
 
 /**
