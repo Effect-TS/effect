@@ -46,7 +46,7 @@ const counter = Machine.makeWith<number, number>()(
     )
 )
 
-const counterSerialized = Machine.makeSerializable(
+const counterSerializable = Machine.makeSerializable(
   { state: Schema.NumberFromString, input: Schema.number },
   (input, previous) =>
     Machine.serializable.make(previous ?? input, {
@@ -242,7 +242,7 @@ describe("Machine", () => {
 describe("SerializableMachine", () => {
   test("counter", () =>
     Effect.gen(function*(_) {
-      const actor = yield* _(Machine.boot(counterSerialized, 10))
+      const actor = yield* _(Machine.boot(counterSerializable, 10))
 
       assert.strictEqual(yield* _(actor.state), 10)
       assert.strictEqual(yield* _(actor.send(new Increment())), 11)
@@ -254,7 +254,7 @@ describe("SerializableMachine", () => {
       const snapshot = yield* _(Machine.snapshot(actor))
       assert.deepStrictEqual(snapshot, [10, "11"])
 
-      const restored = yield* _(Machine.restore(counterSerialized, snapshot))
+      const restored = yield* _(Machine.restore(counterSerializable, snapshot))
       assert.strictEqual(yield* _(restored.state), 11)
     }).pipe(Effect.scoped, Effect.runPromise))
 })
