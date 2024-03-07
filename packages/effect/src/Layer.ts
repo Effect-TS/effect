@@ -1142,7 +1142,7 @@ export interface Runner<R, RE> extends AsyncDisposable {
  * const NotificationsRunner = Layer.toRunner(() => Notifications.Live)
  *
  * async function main() {
- *   const runner = NotificationRunner()
+ *   const runner = NotificationsRunner()
  *   await runner.runPromiseService(Notifications, (_) => _.notify("Hello, world!"))
  *   await runner.dispose()
  * }
