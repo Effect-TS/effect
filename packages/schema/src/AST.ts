@@ -1743,35 +1743,47 @@ export const getToIndexSignatures = (ps: ReadonlyArray<IndexSignature>): Array<I
  */
 export const typeAST = (ast: AST): AST => {
   switch (ast._tag) {
-    case "Declaration":
-      return new Declaration(
-        ast.typeParameters.map(typeAST),
-        ast.decodeUnknown,
-        ast.encodeUnknown,
-        ast.annotations
-      )
-    case "TupleType":
-      return new TupleType(
-        ast.elements.map((e) => new Element(typeAST(e.type), e.isOptional)),
-        ReadonlyArray.match(ast.rest, {
-          onEmpty: () => ast.rest,
-          onNonEmpty: (rest) => rest.map(typeAST)
-        }),
-        ast.isReadonly,
-        ast.annotations
-      )
-    case "TypeLiteral":
-      return new TypeLiteral(
-        getToPropertySignatures(ast.propertySignatures),
-        getToIndexSignatures(ast.indexSignatures),
-        ast.annotations
-      )
-    case "Union":
-      return Union.make(ast.types.map(typeAST), ast.annotations)
+    case "Declaration": {
+      const typeParameters = changeMap(ast.typeParameters, typeAST)
+      return typeParameters === ast.typeParameters ?
+        ast :
+        new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown, ast.annotations)
+    }
+    case "TupleType": {
+      const elements = changeMap(ast.elements, (e) => {
+        const type = typeAST(e.type)
+        return type === e.type ? e : new Element(type, e.isOptional)
+      })
+      const rest = changeMap(ast.rest, typeAST)
+      return elements === ast.elements && rest === ast.rest ?
+        ast :
+        new TupleType(elements, rest, ast.isReadonly, ast.annotations)
+    }
+    case "TypeLiteral": {
+      const propertySignatures = changeMap(ast.propertySignatures, (p) => {
+        const type = typeAST(p.type)
+        return type === p.type ? p : new PropertySignature(p.name, type, p.isOptional, p.isReadonly)
+      })
+      const indexSignatures = changeMap(ast.indexSignatures, (is) => {
+        const type = typeAST(is.type)
+        return type === is.type ? is : new IndexSignature(is.parameter, type, is.isReadonly)
+      })
+      return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
+        ast :
+        new TypeLiteral(propertySignatures, indexSignatures, ast.annotations)
+    }
+    case "Union": {
+      const types = changeMap(ast.types, typeAST)
+      return types === ast.types ? ast : Union.make(ast.types.map(typeAST), ast.annotations)
+    }
     case "Suspend":
       return new Suspend(() => typeAST(ast.f()), ast.annotations)
-    case "Refinement":
-      return new Refinement(typeAST(ast.from), ast.filter, ast.annotations)
+    case "Refinement": {
+      const from = typeAST(ast.from)
+      return from === ast.from ?
+        ast :
+        new Refinement(from, ast.filter, ast.annotations)
+    }
     case "Transform":
       return typeAST(ast.to)
   }
