@@ -1015,28 +1015,26 @@ export declare namespace TupleType {
    */
   export type Type<
     Elements extends TupleType.Elements,
-    Rest extends Schema.Any,
-    RestElements extends ReadonlyArray<Schema.Any>
-  > = [Rest] extends [never] ? ElementsType<Elements> :
-    Readonly<[
+    Rest extends ReadonlyArray<Schema.Any>
+  > = Rest extends [infer Head, ...infer Tail] ? Readonly<[
       ...ElementsType<Elements>,
-      ...ReadonlyArray<Schema.Type<Rest>>,
-      ...{ readonly [K in keyof RestElements]: Schema.Type<RestElements[K]> }
-    ]>
+      ...ReadonlyArray<Schema.Type<Head>>,
+      ...{ readonly [K in keyof Tail]: Schema.Type<Tail[K]> }
+    ]> :
+    ElementsType<Elements>
 
   /**
    * @since 1.0.0
    */
   export type Encoded<
     Elements extends TupleType.Elements,
-    Rest extends Schema.Any,
-    RestElements extends ReadonlyArray<Schema.Any>
-  > = [Rest] extends [never] ? ElementsEncoded<Elements> :
-    Readonly<[
+    Rest extends ReadonlyArray<Schema.Any>
+  > = Rest extends [infer Head, ...infer Tail] ? Readonly<[
       ...ElementsEncoded<Elements>,
-      ...ReadonlyArray<Schema.Encoded<Rest>>,
-      ...{ readonly [K in keyof RestElements]: Schema.Encoded<RestElements[K]> }
-    ]>
+      ...ReadonlyArray<Schema.Encoded<Head>>,
+      ...{ readonly [K in keyof Tail]: Schema.Encoded<Tail[K]> }
+    ]> :
+    ElementsEncoded<Elements>
 }
 
 /**
@@ -1045,64 +1043,52 @@ export declare namespace TupleType {
  */
 export interface tupleType<
   Elements extends TupleType.Elements,
-  Rest extends Schema.Any,
-  RestElements extends ReadonlyArray<Schema.Any>
+  Rest extends ReadonlyArray<Schema.Any>
 > extends
   Annotable<
-    tupleType<Elements, Rest, RestElements>,
-    TupleType.Type<Elements, Rest, RestElements>,
-    TupleType.Encoded<Elements, Rest, RestElements>,
-    Schema.Context<Elements[number]> | Schema.Context<Rest> | Schema.Context<RestElements[number]>
+    tupleType<Elements, Rest>,
+    TupleType.Type<Elements, Rest>,
+    TupleType.Encoded<Elements, Rest>,
+    Schema.Context<Elements[number]> | Schema.Context<Rest[number]>
   >
 {
   readonly elements: Readonly<Elements>
-  readonly rest: [Rest] extends [never] ? undefined : {
-    readonly value: Rest
-    readonly elements: Readonly<RestElements>
-  }
+  readonly rest: Readonly<Rest>
 }
 
 class $tupleType<
   Elements extends TupleType.Elements,
-  Rest extends Schema.Any,
-  RestElements extends ReadonlyArray<Schema.Any>
+  Rest extends ReadonlyArray<Schema.Any>
 > extends _schema.Schema<
-  TupleType.Type<Elements, Rest, RestElements>,
-  TupleType.Encoded<Elements, Rest, RestElements>,
-  Schema.Context<Elements[number]> | Schema.Context<Rest> | Schema.Context<RestElements[number]>
-> implements tupleType<Elements, Rest, RestElements> {
+  TupleType.Type<Elements, Rest>,
+  TupleType.Encoded<Elements, Rest>,
+  Schema.Context<Elements[number]> | Schema.Context<Rest[number]>
+> implements tupleType<Elements, Rest> {
   static ast = <
     Elements extends TupleType.Elements,
-    Rest extends Schema.Any,
-    RestElements extends ReadonlyArray<Schema.Any>
+    Rest extends ReadonlyArray<Schema.Any>
   >(
     elements: Elements,
-    rest: {
-      readonly value: Rest
-      readonly elements: RestElements
-    } | undefined
+    rest: Rest
   ): AST.AST => {
     return new AST.TupleType(
       elements.map((schema) =>
         isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
       ),
-      rest ? [rest.value.ast, ...rest.elements.map((e) => e.ast)] : [],
+      rest.map((e) => e.ast),
       true
     )
   }
   constructor(
     readonly elements: Elements,
-    readonly rest: [Rest] extends [never] ? undefined : {
-      readonly value: Rest
-      readonly elements: Readonly<RestElements>
-    },
+    readonly rest: Rest,
     ast: AST.AST = $tupleType.ast(elements, rest)
   ) {
     super(ast)
   }
   annotations(
-    annotations: Annotations<TupleType.Type<Elements, Rest, RestElements>>
-  ): tupleType<Elements, Rest, RestElements> {
+    annotations: Annotations<TupleType.Type<Elements, Rest>>
+  ): tupleType<Elements, Rest> {
     return new $tupleType(this.elements, this.rest, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1111,15 +1097,15 @@ class $tupleType<
  * @category api interface
  * @since 1.0.0
  */
-export interface tuple<Elements extends TupleType.Elements> extends tupleType<Elements, never, []> {
-  annotations(annotations: Annotations<TupleType.Type<Elements, never, []>>): tuple<Elements>
+export interface tuple<Elements extends TupleType.Elements> extends tupleType<Elements, []> {
+  annotations(annotations: Annotations<TupleType.Type<Elements, []>>): tuple<Elements>
 }
 
-class $tuple<Elements extends TupleType.Elements> extends $tupleType<Elements, never, []> implements tuple<Elements> {
+class $tuple<Elements extends TupleType.Elements> extends $tupleType<Elements, []> implements tuple<Elements> {
   constructor(readonly elements: Elements, ast?: AST.AST) {
-    super(elements, undefined, ast)
+    super(elements, [], ast)
   }
-  annotations(annotations: Annotations<TupleType.Type<Elements, never, []>>): tuple<Elements> {
+  annotations(annotations: Annotations<TupleType.Type<Elements, []>>): tuple<Elements> {
     return new $tuple(this.elements, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1130,13 +1116,12 @@ class $tuple<Elements extends TupleType.Elements> extends $tupleType<Elements, n
  */
 export function tuple<
   const Elements extends TupleType.Elements,
-  Rest extends Schema.Any,
-  RestElements extends ReadonlyArray<Schema.Any>
->(elements: Elements, ...rest: readonly [Rest, ...RestElements]): tupleType<Elements, Rest, RestElements>
+  Rest extends ReadonlyArray.NonEmptyReadonlyArray<Schema.Any>
+>(elements: Elements, ...rest: Rest): tupleType<Elements, Rest>
 export function tuple<Elements extends TupleType.Elements>(...elements: Elements): tuple<Elements>
 export function tuple(...args: ReadonlyArray<any>): any {
   return Array.isArray(args[0])
-    ? new $tupleType(args[0], { value: args[1], elements: args.slice(2) })
+    ? new $tupleType(args[0], args.slice(1))
     : new $tuple(args)
 }
 
@@ -1144,15 +1129,15 @@ export function tuple(...args: ReadonlyArray<any>): any {
  * @category api interface
  * @since 1.0.0
  */
-export interface array<Value extends Schema.Any> extends tupleType<readonly [], Value, []> {
+export interface array<Value extends Schema.Any> extends tupleType<readonly [], [Value]> {
   readonly value: Value
 }
 
-class $array<Value extends Schema.Any> extends $tupleType<readonly [], Value, []> implements array<Value> {
+class $array<Value extends Schema.Any> extends $tupleType<readonly [], [Value]> implements array<Value> {
   constructor(readonly value: Value, ast?: AST.AST) {
-    super([], { value, elements: [] } as any, ast)
+    super([], [value], ast)
   }
-  annotations(annotations: Annotations<TupleType.Type<[], Value, []>>): array<Value> {
+  annotations(annotations: Annotations<TupleType.Type<[], [Value]>>): array<Value> {
     return new $array(this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1164,13 +1149,13 @@ class $array<Value extends Schema.Any> extends $tupleType<readonly [], Value, []
 export function array<Value extends Schema.Any, RestElements extends ReadonlyArray.NonEmptyReadonlyArray<Schema.Any>>(
   value: Value,
   ...restElements: RestElements
-): tupleType<readonly [], Value, RestElements>
+): tupleType<readonly [], [Value, ...RestElements]>
 export function array<Value extends Schema.Any>(value: Value): array<Value>
 export function array<Value extends Schema.Any, RestElements extends ReadonlyArray<Schema.Any>>(
   value: Value,
   ...elements: RestElements
 ): any {
-  return elements.length > 0 ? new $tupleType([], { value, elements } as any) : new $array(value)
+  return elements.length > 0 ? new $tupleType([], [value, ...elements]) : new $array(value)
 }
 
 /**
