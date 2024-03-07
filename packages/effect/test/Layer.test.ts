@@ -709,8 +709,7 @@ describe("Layer", () => {
       const layer = Layer.effectDiscard(Effect.sync(() => {
         count++
       }))
-      const Count = Layer.toRunner(() => layer)
-      const instance = Count()
+      const instance = Layer.toRunner(layer)
       await instance.runPromise(Effect.unit)
       await instance.runPromise(Effect.unit)
       await instance.dispose()
@@ -720,8 +719,7 @@ describe("Layer", () => {
     test("provides context", async () => {
       const tag = Context.GenericTag<string>("string")
       const layer = Layer.succeed(tag, "test")
-      const Test = Layer.toRunner(() => layer)
-      const instance = Test()
+      const instance = Layer.toRunner(layer)
       const result = await instance.runPromise(tag)
       await instance.dispose()
       assert.strictEqual(result, "test")
@@ -729,8 +727,7 @@ describe("Layer", () => {
 
     test("provides fiberRefs", async () => {
       const layer = Layer.setRequestCaching(true)
-      const Test = Layer.toRunner(() => layer)
-      const instance = Test()
+      const instance = Layer.toRunner(layer)
       const result = await instance.runPromise(FiberRef.get(FiberRef.currentRequestCacheEnabled))
       await instance.dispose()
       assert.strictEqual(result, true)
@@ -739,8 +736,7 @@ describe("Layer", () => {
     test("runPromiseService", async () => {
       const tag = Context.GenericTag<string>("string")
       const layer = Layer.succeed(tag, "test")
-      const Test = Layer.toRunner(() => layer)
-      const instance = Test()
+      const instance = Layer.toRunner(layer)
       const result = await instance.runPromiseService(tag, (_) => Effect.succeed(_))
       await instance.dispose()
       assert.strictEqual(result, "test")
@@ -749,8 +745,7 @@ describe("Layer", () => {
     test("runPromiseServiceFn", async () => {
       const tag = Context.GenericTag<(_: string) => Effect.Effect<string>>("stringFn")
       const layer = Layer.succeed(tag, Effect.succeed)
-        const Test = Layer.toRunner(() => layer)
-      const instance = Test()
+      const instance = Layer.toRunner(layer)
       const fn = instance.runPromiseServiceFn(tag, (_) => _)
       const result = await fn("test")
       await instance.dispose()
@@ -767,9 +762,8 @@ describe("Layer", () => {
         return "test"
       })
       )
-      const Test = Layer.toRunner(() => layer)
       await (async function() {
-        await using instance = Test()
+        await using instance = Layer.toRunner(layer)
         const result = await instance.runPromise(tag)
         assert.strictEqual(result, "test")
       })()
@@ -781,9 +775,8 @@ describe("Layer", () => {
       const layer = Layer.effectDiscard(Effect.sync(() => {
         count++
       }))
-      const Count = Layer.toRunner(() => layer)
-      const instanceA = Count()
-      const instanceB = Count.withMemoMap(instanceA.memoMap)
+      const instanceA = Layer.toRunner(layer)
+      const instanceB = Layer.toRunner(layer, instanceA.memoMap)
       await instanceA.runPromise(Effect.unit)
       await instanceB.runPromise(Effect.unit)
       await instanceA.dispose()

@@ -1082,15 +1082,6 @@ export const buildWithMemoMap: {
  * @since 2.0.0
  * @category runner
  */
-export interface RunnerConstructor<Args extends ReadonlyArray<any>, R, E> {
-  (...args: Args): Runner<R, E>
-  readonly withMemoMap: (memoMap: MemoMap, ...args: Args) => Runner<R, E>
-}
-
-/**
- * @since 2.0.0
- * @category runner
- */
 export interface Runner<R, RE> extends AsyncDisposable {
   readonly dispose: () => Promise<void>
   readonly memoMap: MemoMap
@@ -1139,16 +1130,13 @@ export interface Runner<R, RE> extends AsyncDisposable {
  *   })
  * }
  *
- * const NotificationsRunner = Layer.toRunner(() => Notifications.Live)
- *
  * async function main() {
- *   const runner = NotificationsRunner()
+ *   const runner = Layer.toRunner(Notifications.Live)
  *   await runner.runPromiseService(Notifications, (_) => _.notify("Hello, world!"))
  *   await runner.dispose()
  * }
  *
  * main()
  */
-export const toRunner: <Args extends ReadonlyArray<any>, R, RE>(
-  evaluate: (...args: Args) => Layer<R, RE, never>
-) => RunnerConstructor<Args, R, RE> = internal.toRunner
+export const toRunner: <R, RE>(layer: Layer<R, RE, never>, memoMap?: MemoMap | undefined) => Runner<R, RE> =
+  internal.toRunner

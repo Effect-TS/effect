@@ -20,10 +20,8 @@ class Notifications extends Context.Tag("Notifications")<
   });
 }
 
-const NotificationsRunner = Layer.toRunner(() => Notifications.Live);
-
 async function main() {
-  const runner = NotificationsRunner();
+  const runner = Layer.toRunner(Notifications.Live);
   await runner.runPromiseService(Notifications, (_) =>
     _.notify("Hello world!")
   );
