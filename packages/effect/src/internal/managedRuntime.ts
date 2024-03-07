@@ -39,28 +39,23 @@ export const make = <R, E>(
 ): ManagedRuntime<R, E> => {
   memoMap = memoMap ?? internalLayer.unsafeMakeMemoMap()
   const scope = internalRuntime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
-  // eslint-disable-next-line prefer-const
-  let self: ManagedRuntimeImpl<R, E>
-
-  const runtime: Effect.Effect<Runtime.Runtime<R>, E> | Runtime.Runtime<R> = internalRuntime
-    .unsafeRunSyncEffect(
-      effect.memoize(
-        core.tap(
-          Scope.extend(
-            internalLayer.toRuntimeWithMemoMap(layer, memoMap),
-            scope
-          ),
-          (rt) => {
-            self.cachedRuntime = rt
-          }
-        )
-      )
-    )
-
-  self = {
+  const self: ManagedRuntimeImpl<R, E> = {
     memoMap,
     scope,
-    runtime,
+    runtime: internalRuntime
+      .unsafeRunSyncEffect(
+        effect.memoize(
+          core.tap(
+            Scope.extend(
+              internalLayer.toRuntimeWithMemoMap(layer, memoMap),
+              scope
+            ),
+            (rt) => {
+              self.cachedRuntime = rt
+            }
+          )
+        )
+      ),
     cachedRuntime: undefined,
     [Symbol.asyncDispose]() {
       return dispose(self)
@@ -69,7 +64,6 @@ export const make = <R, E>(
       return pipeArguments(this, arguments)
     }
   }
-
   return self
 }
 

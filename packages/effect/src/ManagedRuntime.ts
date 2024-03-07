@@ -19,7 +19,7 @@ export interface ManagedRuntime<in R, out E> extends Pipeable, AsyncDisposable {
 }
 
 /**
- * Convert a Layer into an ManagedRuntime, than can be used to run Effect's using
+ * Convert a Layer into an ManagedRuntime, that can be used to run Effect's using
  * your services.
  *
  * @since 2.0.0
