@@ -938,7 +938,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([
                     stepKey++,
                     new _parseResult.TypeLiteral(
-                      AST.TypeLiteral.make([
+                      new AST.TypeLiteral([
                         new AST.PropertySignature(name, searchTree.keys[name].ast, false, true)
                       ], []),
                       input,
@@ -950,7 +950,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 es.push([
                   stepKey++,
                   new _parseResult.TypeLiteral(
-                    AST.TypeLiteral.make([
+                    new AST.TypeLiteral([
                       new AST.PropertySignature(name, searchTree.keys[name].ast, false, true)
                     ], []),
                     input,

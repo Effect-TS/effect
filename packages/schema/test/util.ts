@@ -34,10 +34,10 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
         ast.annotations
       )
     case "TypeLiteral":
-      return AST.TypeLiteral.make(
+      return new AST.TypeLiteral(
         ast.propertySignatures.map((p) => ({ ...p, type: effectifyAST(p.type) })),
         ast.indexSignatures.map((is) => {
-          return AST.IndexSignature.make(is.parameter, effectifyAST(is.type), is.isReadonly)
+          return new AST.IndexSignature(is.parameter, effectifyAST(is.type), is.isReadonly)
         }),
         ast.annotations
       )

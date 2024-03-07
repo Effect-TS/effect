@@ -1998,13 +1998,13 @@ class $typeLiteral<
           })
           indexSignatures.forEach((is) => {
             issFrom.push(is)
-            issTo.push(AST.IndexSignature.make(is.parameter, AST.typeAST(is.type), is.isReadonly))
+            issTo.push(new AST.IndexSignature(is.parameter, AST.typeAST(is.type), is.isReadonly))
           })
         }
         return new AST.Transform(
-          AST.TypeLiteral.make(from, issFrom),
-          AST.TypeLiteral.make(to, issTo),
-          AST.TypeLiteralTransformation.make(transformations)
+          new AST.TypeLiteral(from, issFrom),
+          new AST.TypeLiteral(to, issTo),
+          new AST.TypeLiteralTransformation(transformations)
         )
       }
     }
@@ -2014,7 +2014,7 @@ class $typeLiteral<
       propertySignatures.forEach((ps) => pss.push(ps))
       indexSignatures.forEach((is) => iss.push(is))
     }
-    return AST.TypeLiteral.make(pss, iss)
+    return new AST.TypeLiteral(pss, iss)
   }
   constructor(
     readonly fields: Fields,
@@ -2101,7 +2101,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
           new AST.Transform(
             AST.pick(ast.from, keys),
             AST.pick(ast.to, keys),
-            AST.TypeLiteralTransformation.make(propertySignatureTransformations)
+            new AST.TypeLiteralTransformation(propertySignatureTransformations)
           )
         )
       } else {
@@ -2131,7 +2131,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
           new AST.Transform(
             AST.omit(ast.from, keys),
             AST.omit(ast.to, keys),
-            AST.TypeLiteralTransformation.make(propertySignatureTransformations)
+            new AST.TypeLiteralTransformation(propertySignatureTransformations)
           )
         )
       } else {
@@ -2345,7 +2345,7 @@ const intersectTypeLiterals = (x: AST.AST, y: AST.AST, path: ReadonlyArray<strin
         propertySignatures[i] = new AST.PropertySignature(name, extendAST(type, ps.type, path), isOptional, true)
       }
     }
-    return AST.TypeLiteral.make(
+    return new AST.TypeLiteral(
       propertySignatures,
       x.indexSignatures.concat(y.indexSignatures)
     )
@@ -2373,7 +2373,7 @@ const intersectUnionMembers = (
             return new AST.Transform(
               intersectTypeLiterals(x, y.from, path),
               intersectTypeLiterals(AST.typeAST(x), y.to, path),
-              AST.TypeLiteralTransformation.make(
+              new AST.TypeLiteralTransformation(
                 y.transformation.propertySignatureTransformations
               )
             )
@@ -2385,7 +2385,7 @@ const intersectUnionMembers = (
             return new AST.Transform(
               intersectTypeLiterals(x.from, y, path),
               intersectTypeLiterals(x.to, AST.typeAST(y), path),
-              AST.TypeLiteralTransformation.make(
+              new AST.TypeLiteralTransformation(
                 x.transformation.propertySignatureTransformations
               )
             )
@@ -2395,7 +2395,7 @@ const intersectUnionMembers = (
             return new AST.Transform(
               intersectTypeLiterals(x.from, y.from, path),
               intersectTypeLiterals(x.to, y.to, path),
-              AST.TypeLiteralTransformation.make(
+              new AST.TypeLiteralTransformation(
                 x.transformation.propertySignatureTransformations.concat(
                   y.transformation.propertySignatureTransformations
                 )
@@ -2716,7 +2716,7 @@ export const attachPropertySignature: {
       new AST.Transform(
         schema.ast,
         annotations ? AST.annotations(attached, _schema.toASTAnnotations(annotations)) : attached,
-        AST.TypeLiteralTransformation.make(
+        new AST.TypeLiteralTransformation(
           [
             new AST.PropertySignatureTransformation(
               key,

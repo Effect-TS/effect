@@ -10,15 +10,17 @@ describe("Schema/mutable", () => {
 
   it("struct", () => {
     const schema = S.mutable(S.struct({ a: S.number }))
-    expect(schema.ast).toEqual(AST.TypeLiteral.make([
-      new AST.PropertySignature("a", S.number.ast, false, false)
-    ], []))
+    expect(schema.ast).toEqual(
+      new AST.TypeLiteral([
+        new AST.PropertySignature("a", S.number.ast, false, false)
+      ], [])
+    )
   })
 
   it("record", () => {
     const schema = S.mutable(S.record(S.string, S.number))
     expect(schema.ast).toEqual(
-      AST.TypeLiteral.make([], [AST.IndexSignature.make(S.string.ast, S.number.ast, false)])
+      new AST.TypeLiteral([], [new AST.IndexSignature(S.string.ast, S.number.ast, false)])
     )
   })
 
@@ -33,7 +35,7 @@ describe("Schema/mutable", () => {
     const schema = S.mutable(S.union(S.struct({ a: S.number }), S.array(S.string)))
     expect(schema.ast).toEqual(
       AST.Union.make([
-        AST.TypeLiteral.make([
+        new AST.TypeLiteral([
           new AST.PropertySignature("a", S.number.ast, false, false)
         ], []),
         new AST.TupleType([], [S.string.ast], false)

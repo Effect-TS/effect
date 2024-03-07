@@ -967,23 +967,23 @@ export const isParameter = (ast: AST): ast is Parameter => {
  * @since 1.0.0
  */
 export class IndexSignature {
-  static make = (
+  /**
+   * @since 1.0.0
+   */
+  readonly parameter: Parameter
+  constructor(
     parameter: AST,
-    type: AST,
-    isReadonly: boolean
-  ): IndexSignature => {
-    if (isParameter(parameter)) {
-      return new IndexSignature(parameter, type, isReadonly)
-    }
-    throw new Error(
-      "An index signature parameter type must be 'string', 'symbol', a template literal type or a refinement of the previous types"
-    )
-  }
-  private constructor(
-    readonly parameter: Parameter,
     readonly type: AST,
     readonly isReadonly: boolean
-  ) {}
+  ) {
+    if (isParameter(parameter)) {
+      this.parameter = parameter
+    } else {
+      throw new Error(
+        "An index signature parameter type must be `string`, `symbol`, a template literal type or a refinement of the previous types"
+      )
+    }
+  }
 }
 
 /** @internal */
@@ -998,11 +998,23 @@ const getDuplicateIndexSignatureErrorMessage = (name: string): string =>
  * @since 1.0.0
  */
 export class TypeLiteral implements Annotated {
-  static make = (
+  /**
+   * @since 1.0.0
+   */
+  readonly _tag = "TypeLiteral"
+  /**
+   * @since 1.0.0
+   */
+  readonly propertySignatures: ReadonlyArray<PropertySignature>
+  /**
+   * @since 1.0.0
+   */
+  readonly indexSignatures: ReadonlyArray<IndexSignature>
+  constructor(
     propertySignatures: ReadonlyArray<PropertySignature>,
     indexSignatures: ReadonlyArray<IndexSignature>,
-    annotations: Annotations = {}
-  ): TypeLiteral => {
+    readonly annotations: Annotations = {}
+  ) {
     // check for duplicate property signatures
     const keys: Record<PropertyKey, null> = {}
     for (let i = 0; i < propertySignatures.length; i++) {
@@ -1031,21 +1043,10 @@ export class TypeLiteral implements Annotated {
         parameters.symbol = true
       }
     }
-    return new TypeLiteral(
-      sortPropertySignatures(propertySignatures),
-      sortIndexSignatures(indexSignatures),
-      annotations
-    )
+
+    this.propertySignatures = sortPropertySignatures(propertySignatures)
+    this.indexSignatures = sortIndexSignatures(indexSignatures)
   }
-  /**
-   * @since 1.0.0
-   */
-  readonly _tag = "TypeLiteral"
-  private constructor(
-    readonly propertySignatures: ReadonlyArray<PropertySignature>,
-    readonly indexSignatures: ReadonlyArray<IndexSignature>,
-    readonly annotations: Annotations = {}
-  ) {}
   /**
    * @since 1.0.0
    */
@@ -1331,35 +1332,39 @@ export class PropertySignatureTransformation {
   ) {}
 }
 
+const getDuplicatePropertySignatureTransformationErrorMessage = (name: PropertyKey): string =>
+  `Duplicate property signature transformation ${_util.formatUnknown(name)}`
+
 /**
  * @category model
  * @since 1.0.0
  */
 export class TypeLiteralTransformation {
-  static make = (
-    propertySignatureTransformations: TypeLiteralTransformation["propertySignatureTransformations"]
-  ): TypeLiteralTransformation => {
-    // check for duplicate property signature transformations
-    const keys: Record<PropertyKey, true> = {}
-    for (const pst of propertySignatureTransformations) {
-      const key = pst.from
-      if (keys[key]) {
-        throw new Error(`Duplicate property signature transformation ${String(key)}`)
-      }
-      keys[key] = true
-    }
-
-    return new TypeLiteralTransformation(propertySignatureTransformations)
-  }
   /**
    * @since 1.0.0
    */
   readonly _tag = "TypeLiteralTransformation"
-  private constructor(
+  constructor(
     readonly propertySignatureTransformations: ReadonlyArray<
       PropertySignatureTransformation
     >
-  ) {}
+  ) {
+    // check for duplicate property signature transformations
+    const fromKeys: Record<PropertyKey, true> = {}
+    const toKeys: Record<PropertyKey, true> = {}
+    for (const pst of propertySignatureTransformations) {
+      const from = pst.from
+      if (fromKeys[from]) {
+        throw new Error(getDuplicatePropertySignatureTransformationErrorMessage(from))
+      }
+      fromKeys[from] = true
+      const to = pst.to
+      if (toKeys[to]) {
+        throw new Error(getDuplicatePropertySignatureTransformationErrorMessage(to))
+      }
+      toKeys[to] = true
+    }
+  }
 }
 
 /**
@@ -1547,7 +1552,7 @@ export const record = (key: AST, value: AST): {
       case "SymbolKeyword":
       case "TemplateLiteral":
       case "Refinement":
-        indexSignatures.push(IndexSignature.make(key, value, true))
+        indexSignatures.push(new IndexSignature(key, value, true))
         break
       case "Literal":
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
@@ -1576,7 +1581,7 @@ export const record = (key: AST, value: AST): {
  * @since 1.0.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
-  TypeLiteral.make(keys.map((key) => getPropertyKeyIndexedAccess(ast, key)), [])
+  new TypeLiteral(keys.map((key) => getPropertyKeyIndexedAccess(ast, key)), [])
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Omit`.
@@ -1607,11 +1612,11 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
         ast.isReadonly
       )
     case "TypeLiteral":
-      return TypeLiteral.make(
+      return new TypeLiteral(
         ast.propertySignatures.map((ps) =>
           new PropertySignature(ps.name, exact ? ps.type : orUndefined(ps.type), true, ps.isReadonly, ps.annotations)
         ),
-        ast.indexSignatures.map((is) => IndexSignature.make(is.parameter, orUndefined(is.type), is.isReadonly))
+        ast.indexSignatures.map((is) => new IndexSignature(is.parameter, orUndefined(is.type), is.isReadonly))
       )
     case "Union":
       return Union.make(ast.types.map((member) => partial(member, options)))
@@ -1647,7 +1652,7 @@ export const required = (ast: AST): AST => {
         ast.isReadonly
       )
     case "TypeLiteral":
-      return TypeLiteral.make(
+      return new TypeLiteral(
         ast.propertySignatures.map((f) => new PropertySignature(f.name, f.type, false, f.isReadonly, f.annotations)),
         ast.indexSignatures
       )
@@ -1677,11 +1682,11 @@ export const mutable = (ast: AST): AST => {
     case "TupleType":
       return new TupleType(ast.elements, ast.rest, false, ast.annotations)
     case "TypeLiteral":
-      return TypeLiteral.make(
+      return new TypeLiteral(
         ast.propertySignatures.map((ps) =>
           new PropertySignature(ps.name, ps.type, ps.isOptional, false, ps.annotations)
         ),
-        ast.indexSignatures.map((is) => IndexSignature.make(is.parameter, is.type, false)),
+        ast.indexSignatures.map((is) => new IndexSignature(is.parameter, is.type, false)),
         ast.annotations
       )
     case "Union":
@@ -1731,7 +1736,7 @@ export const getToPropertySignatures = (ps: ReadonlyArray<PropertySignature>): A
 
 /** @internal */
 export const getToIndexSignatures = (ps: ReadonlyArray<IndexSignature>): Array<IndexSignature> =>
-  ps.map((is) => IndexSignature.make(is.parameter, typeAST(is.type), is.isReadonly))
+  ps.map((is) => new IndexSignature(is.parameter, typeAST(is.type), is.isReadonly))
 
 /**
  * @since 1.0.0
@@ -1756,7 +1761,7 @@ export const typeAST = (ast: AST): AST => {
         ast.annotations
       )
     case "TypeLiteral":
-      return TypeLiteral.make(
+      return new TypeLiteral(
         getToPropertySignatures(ast.propertySignatures),
         getToIndexSignatures(ast.indexSignatures),
         ast.annotations
@@ -1830,11 +1835,11 @@ export const encodedAST = (ast: AST): AST => {
       })
       const indexSignatures = changeMap(ast.indexSignatures, (is) => {
         const type = encodedAST(is.type)
-        return type === is.type ? is : IndexSignature.make(is.parameter, type, is.isReadonly)
+        return type === is.type ? is : new IndexSignature(is.parameter, type, is.isReadonly)
       })
       return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
         ast :
-        TypeLiteral.make(propertySignatures, indexSignatures, createJSONIdentifierAnnotation(ast))
+        new TypeLiteral(propertySignatures, indexSignatures, createJSONIdentifierAnnotation(ast))
     }
     case "Union": {
       const types = changeMap(ast.types, encodedAST)
@@ -2161,7 +2166,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
       }
       return new Transform(
         ast,
-        TypeLiteral.make(
+        new TypeLiteral(
           ast.propertySignatures.map((ps) => {
             const name = mapping[ps.name]
             return new PropertySignature(
@@ -2174,7 +2179,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
           }),
           ast.indexSignatures
         ),
-        TypeLiteralTransformation.make(propertySignatureTransforms)
+        new TypeLiteralTransformation(propertySignatureTransforms)
       )
     }
     case "Suspend":

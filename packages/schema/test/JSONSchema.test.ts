@@ -1858,7 +1858,7 @@ describe("JSONSchema", () => {
 
 export const decode = <A>(schema: JSONSchema.JsonSchema7Root): S.Schema<A> => S.make(decodeAST(schema, schema.$defs))
 
-const emptyTypeLiteralAST = AST.TypeLiteral.make([], [])
+const emptyTypeLiteralAST = new AST.TypeLiteral([], [])
 
 const decodeAST = (
   schema: JSONSchema.JsonSchema7,
@@ -1921,7 +1921,7 @@ const decodeAST = (
       }
       if (schema.additionalProperties && !Predicate.isBoolean(schema.additionalProperties)) {
         indexSignatures.push(
-          AST.IndexSignature.make(
+          new AST.IndexSignature(
             AST.stringKeyword,
             decodeAST(schema.additionalProperties, $defs),
             true
@@ -1931,7 +1931,7 @@ const decodeAST = (
       if (schema.patternProperties) {
         for (const pattern in schema.patternProperties) {
           indexSignatures.push(
-            AST.IndexSignature.make(
+            new AST.IndexSignature(
               S.string.pipe(S.pattern(new RegExp(pattern))).ast,
               decodeAST(schema.patternProperties[pattern], $defs),
               true
@@ -1939,7 +1939,7 @@ const decodeAST = (
           )
         }
       }
-      return AST.TypeLiteral.make(propertySignatures, indexSignatures)
+      return new AST.TypeLiteral(propertySignatures, indexSignatures)
     }
   } else if ("enum" in schema) {
     return AST.Union.make(schema.enum.map((literal) => new AST.Literal(literal)))
