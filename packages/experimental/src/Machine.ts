@@ -356,7 +356,7 @@ export const makeSerializable: {
   <State, IS, RS, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, InitErr, R>(
     options: {
       readonly state: Schema.Schema<State, IS, RS>
-      readonly input: never
+      readonly input?: undefined
     },
     initialize:
       | Effect.Effect<SerializableProcedureList<State, Public, Private, R>, InitErr, R>
@@ -394,7 +394,7 @@ export const makeSerializable: {
 >(
   options: {
     readonly state: Schema.Schema<State, IS, RS>
-    readonly input?: Schema.Schema<Input, II, RI>
+    readonly input?: Schema.Schema<Input, II, RI> | undefined
   },
   initialize:
     | Machine.InitializeSerializable<Input, State, Public, Private, R, InitErr, R>
