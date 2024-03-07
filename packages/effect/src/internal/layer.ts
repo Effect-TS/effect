@@ -1281,7 +1281,7 @@ export const toRunner = <Args extends ReadonlyArray<any>, R, RE>(
     }
 
     function dispose(): Promise<void> {
-      runtimeOrEffect = core.never
+      runtimeOrEffect = core.die("Runner disposed")
       return runtime.unsafeRunPromiseEffect(Scope.close(scope, core.exitUnit))
     }
 
