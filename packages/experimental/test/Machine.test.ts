@@ -19,8 +19,8 @@ class Multiply extends Schema.TaggedRequest<Multiply>()("Multiply", Schema.never
 
 class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackground", Schema.never, Schema.void, {}) {}
 
-const counter = Machine.make(
-  (input: number, previous?: number) =>
+const counter = Machine.makeWith<number, number>()(
+  (input, previous) =>
     Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
       Machine.procedures.add(Increment, "Increment", ({ state }) =>
         Effect.sync(() => {
@@ -45,8 +45,8 @@ const counter = Machine.make(
     )
 )
 
-const delayedCounter = Machine.make(
-  (input: number, previous?: number) =>
+const delayedCounter = Machine.makeWith<number, number>()(
+  (input, previous) =>
     Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
       Machine.procedures.addPrivate(IncrementBy, "IncrementBy", ({ request, state }) =>
         Effect.sync(() => {
@@ -130,7 +130,8 @@ const counterSerialized = Machine.toSerializable(counter, {
 describe("Machine", () => {
   test("counter", () =>
     Effect.gen(function*(_) {
-      yield* _(Effect.sleep(1000)) // wait for DevTools
+      yield* _(Effect.sleep(500)) // wait for DevTools
+
       const booted = yield* _(Machine.boot(counter, 0))
       yield* _(Effect.sleep(10))
       assert.strictEqual(yield* _(booted.state), 0)

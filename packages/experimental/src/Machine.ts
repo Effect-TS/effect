@@ -349,11 +349,11 @@ export const make: {
  * @since 1.0.0
  * @category constructors
  */
-export const makeWith = <State>(): {
+export const makeWith = <State, Input = void>(): {
   <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, InitErr, R>(
     initialize: Effect.Effect<ProcedureList.ProcedureList<State, Public, Private, R>, InitErr, R>
   ): Machine<State, Public, Private, void, InitErr, Exclude<R, Scope.Scope | MachineContext>>
-  <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, Input, InitErr, R>(
+  <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, InitErr, R>(
     initialize: Machine.Initialize<Input, State, Public, Private, R, InitErr, R>
   ): Machine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>>
 } => make
