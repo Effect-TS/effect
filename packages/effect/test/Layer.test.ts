@@ -703,14 +703,14 @@ describe("Layer", () => {
       }))
   })
 
-  describe.concurrent("RuntimeClass", () => {
+  describe.concurrent("toRunner", () => {
     test("memoizes the layer build", async () => {
       let count = 0
       const layer = Layer.effectDiscard(Effect.sync(() => {
         count++
       }))
-      class Count extends Layer.RuntimeClass(() => layer) {}
-      const instance = new Count()
+      const Count = Layer.toRunner(() => layer)
+      const instance = Count()
       await instance.runPromise(Effect.unit)
       await instance.runPromise(Effect.unit)
       await instance.dispose()
@@ -720,8 +720,8 @@ describe("Layer", () => {
     test("provides context", async () => {
       const tag = Context.GenericTag<string>("string")
       const layer = Layer.succeed(tag, "test")
-      class Test extends Layer.RuntimeClass(() => layer) {}
-      const instance = new Test()
+      const Test = Layer.toRunner(() => layer)
+      const instance = Test()
       const result = await instance.runPromise(tag)
       await instance.dispose()
       assert.strictEqual(result, "test")
@@ -729,8 +729,8 @@ describe("Layer", () => {
 
     test("provides fiberRefs", async () => {
       const layer = Layer.setRequestCaching(true)
-      class Test extends Layer.RuntimeClass(() => layer) {}
-      const instance = new Test()
+      const Test = Layer.toRunner(() => layer)
+      const instance = Test()
       const result = await instance.runPromise(FiberRef.get(FiberRef.currentRequestCacheEnabled))
       await instance.dispose()
       assert.strictEqual(result, true)
@@ -739,8 +739,8 @@ describe("Layer", () => {
     test("runPromiseService", async () => {
       const tag = Context.GenericTag<string>("string")
       const layer = Layer.succeed(tag, "test")
-      class Test extends Layer.RuntimeClass(() => layer) {}
-      const instance = new Test()
+      const Test = Layer.toRunner(() => layer)
+      const instance = Test()
       const result = await instance.runPromiseService(tag, (_) => Effect.succeed(_))
       await instance.dispose()
       assert.strictEqual(result, "test")
@@ -749,8 +749,8 @@ describe("Layer", () => {
     test("runPromiseServiceFn", async () => {
       const tag = Context.GenericTag<(_: string) => Effect.Effect<string>>("stringFn")
       const layer = Layer.succeed(tag, Effect.succeed)
-      class Test extends Layer.RuntimeClass(() => layer) {}
-      const instance = new Test()
+        const Test = Layer.toRunner(() => layer)
+      const instance = Test()
       const fn = instance.runPromiseServiceFn(tag, (_) => _)
       const result = await fn("test")
       await instance.dispose()
@@ -767,9 +767,9 @@ describe("Layer", () => {
         return "test"
       })
       )
-      class Test extends Layer.RuntimeClass(() => layer) {}
+      const Test = Layer.toRunner(() => layer)
       await (async function() {
-        await using instance = new Test()
+        await using instance = Test()
         const result = await instance.runPromise(tag)
         assert.strictEqual(result, "test")
       })()
@@ -781,9 +781,9 @@ describe("Layer", () => {
       const layer = Layer.effectDiscard(Effect.sync(() => {
         count++
       }))
-      class Count extends Layer.RuntimeClass(() => layer) {}
-      const instanceA = new Count()
-      const instanceB = new Count(instanceA.memoMap)
+      const Count = Layer.toRunner(() => layer)
+      const instanceA = Count()
+      const instanceB = Count.withMemoMap(instanceA.memoMap)
       await instanceA.runPromise(Effect.unit)
       await instanceB.runPromise(Effect.unit)
       await instanceA.dispose()

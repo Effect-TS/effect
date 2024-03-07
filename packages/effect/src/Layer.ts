@@ -1075,22 +1075,23 @@ export const buildWithMemoMap: {
 } = internal.buildWithMemoMap
 
 // -----------------------------------------------------------------------------
-// runtime class
+// runner
 // -----------------------------------------------------------------------------
 
 /**
  * @since 2.0.0
- * @category runtime class
+ * @category runner
  */
-export interface RuntimeClassConstructor<Args extends ReadonlyArray<any>, R, E> {
-  new(...args: [...Args, memoMap?: MemoMap]): RuntimeClass<R, E>
+export interface RunnerConstructor<Args extends ReadonlyArray<any>, R, E> {
+  (...args: Args): Runner<R, E>
+  readonly withMemoMap: (memoMap: MemoMap, ...args: Args) => Runner<R, E>
 }
 
 /**
  * @since 2.0.0
- * @category runtime class
+ * @category runner
  */
-export interface RuntimeClass<R, RE> extends AsyncDisposable {
+export interface Runner<R, RE> extends AsyncDisposable {
   readonly dispose: () => Promise<void>
   readonly memoMap: MemoMap
   readonly runFork: <E, A>(effect: Effect.Effect<A, E, R>) => Fiber.RuntimeFiber<A, E | RE>
@@ -1118,7 +1119,7 @@ export interface RuntimeClass<R, RE> extends AsyncDisposable {
 }
 
 /**
- * Convert a Layer into a class, than can be used to integrate Effect's with Promise
+ * Convert a Layer into an Effect runner, than can be used to integrate Effect's with Promise
  * based code.
  *
  * @since 2.0.0
@@ -1138,20 +1139,16 @@ export interface RuntimeClass<R, RE> extends AsyncDisposable {
  *   })
  * }
  *
- * class NotificationsClass extends Layer.RuntimeClass(() => Notifications.Live) {
- *   notify(message: string): Promise<void> {
- *     return this.runPromiseService(Notifications, (_) => _.notify(message))
- *   }
- * }
+ * const NotificationsRunner = Layer.toRunner(() => Notifications.Live)
  *
  * async function main() {
- *   const notifications = new NotificationsClass()
- *   await notifications.notify("Hello, world!")
- *   await notifications.dispose()
+ *   const runner = NotificationRunner()
+ *   await runner.runPromiseService(Notifications, (_) => _.notify("Hello, world!"))
+ *   await runner.dispose()
  * }
  *
  * main()
  */
-export const RuntimeClass: <Args extends ReadonlyArray<any>, R, RE>(
+export const toRunner: <Args extends ReadonlyArray<any>, R, RE>(
   evaluate: (...args: Args) => Layer<R, RE, never>
-) => RuntimeClassConstructor<Args, R, RE> = internal.RuntimeClass
+) => RunnerConstructor<Args, R, RE> = internal.toRunner
