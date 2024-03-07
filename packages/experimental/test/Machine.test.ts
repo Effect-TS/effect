@@ -139,8 +139,8 @@ describe("Machine", () => {
       })
       assert.strictEqual(yield* _(booted.send(new FailBackground())), undefined)
       const cause = yield* _(booted.join, Effect.sandbox, Effect.flip)
-      assert(Cause.isFailType(cause))
-      assert.deepStrictEqual(cause.error.cause, Cause.die("error"))
+      const failure = Cause.failures(cause).pipe(Chunk.unsafeHead)
+      assert.deepStrictEqual(failure.cause, Cause.die("error"))
     }).pipe(Effect.scoped, Machine.withTracingEnabled(true), Effect.provide(DevTools.layer()), Effect.runPromise))
 
   test("init context", () =>
