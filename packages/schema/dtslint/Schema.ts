@@ -479,6 +479,19 @@ S.asSchema(S.array(S.NumberFromString))
 // $ExpectType array<NumberFromString>
 S.array(S.NumberFromString)
 
+// $ExpectType $string
+S.array(S.string).value
+
+// $ExpectType readonly []
+S.array(S.string).elements
+
+// $ExpectType readonly [$string]
+S.array(S.string).rest
+
+// ---------------------------------------------
+// nonEmptyArray
+// ---------------------------------------------
+
 // $ExpectType Schema<readonly [number, ...number[]], readonly [number, ...number[]], never>
 S.asSchema(S.nonEmptyArray(S.number))
 
@@ -490,6 +503,15 @@ S.asSchema(S.nonEmptyArray(S.NumberFromString))
 
 // $ExpectType nonEmptyArray<NumberFromString>
 S.nonEmptyArray(S.NumberFromString)
+
+// $ExpectType $string
+S.nonEmptyArray(S.string).value
+
+// $ExpectType readonly [$string]
+S.nonEmptyArray(S.string).elements
+
+// $ExpectType readonly [$string]
+S.nonEmptyArray(S.string).rest
 
 // ---------------------------------------------
 // struct

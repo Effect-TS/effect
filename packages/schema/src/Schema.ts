@@ -1129,11 +1129,12 @@ export function tuple(...args: ReadonlyArray<any>): any {
  * @category api interface
  * @since 1.0.0
  */
-export interface array<Value extends Schema.Any> extends tupleType<readonly [], [Value]> {
+export interface array<Value extends Schema.Any> extends tupleType<[], [Value]> {
   readonly value: Value
+  annotations(annotations: Annotations<TupleType.Type<[], [Value]>>): array<Value>
 }
 
-class $array<Value extends Schema.Any> extends $tupleType<readonly [], [Value]> implements array<Value> {
+class $array<Value extends Schema.Any> extends $tupleType<[], [Value]> implements array<Value> {
   constructor(readonly value: Value, ast?: AST.AST) {
     super([], [value], ast)
   }
@@ -1162,33 +1163,16 @@ export function array<Value extends Schema.Any, RestElements extends ReadonlyArr
  * @category api interface
  * @since 1.0.0
  */
-export interface nonEmptyArray<Value extends Schema.Any> extends
-  Annotable<
-    nonEmptyArray<Value>,
-    ReadonlyArray.NonEmptyReadonlyArray<Schema.Type<Value>>,
-    ReadonlyArray.NonEmptyReadonlyArray<Schema.Encoded<Value>>,
-    Schema.Context<Value>
-  >
-{
+export interface nonEmptyArray<Value extends Schema.Any> extends tupleType<[Value], [Value]> {
   readonly value: Value
+  annotations(annotations: Annotations<TupleType.Type<[Value], [Value]>>): nonEmptyArray<Value>
 }
 
-class $nonEmptyArray<Value extends Schema.Any> extends _schema.Schema<
-  ReadonlyArray.NonEmptyReadonlyArray<Schema.Type<Value>>,
-  ReadonlyArray.NonEmptyReadonlyArray<Schema.Encoded<Value>>,
-  Schema.Context<Value>
-> implements nonEmptyArray<Value> {
-  static ast = <Value extends Schema.Any>(value: Value): AST.AST => {
-    return new AST.TupleType(
-      [new AST.Element(value.ast, false)],
-      [value.ast],
-      true
-    )
+class $nonEmptyArray<Value extends Schema.Any> extends $tupleType<[Value], [Value]> implements nonEmptyArray<Value> {
+  constructor(readonly value: Value, ast?: AST.AST) {
+    super([value], [value], ast)
   }
-  constructor(readonly value: Value, ast: AST.AST = $nonEmptyArray.ast(value)) {
-    super(ast)
-  }
-  annotations(annotations: Annotations<ReadonlyArray.NonEmptyReadonlyArray<Schema.Type<Value>>>): nonEmptyArray<Value> {
+  annotations(annotations: Annotations<TupleType.Type<[Value], [Value]>>): nonEmptyArray<Value> {
     return new $nonEmptyArray(this.value, _schema.annotations(this.ast, annotations))
   }
 }
