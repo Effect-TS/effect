@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
@@ -27,8 +25,8 @@ export type TypeId = typeof TypeId
  */
 export interface ProcedureList<
   State,
-  Public extends Schema.TaggedRequest.Any,
-  Private extends Schema.TaggedRequest.Any,
+  Public extends Procedure.TaggedRequest.Any,
+  Private extends Procedure.TaggedRequest.Any,
   R
 > extends Effect.Effect<ProcedureList<State, Public, Private, R>> {
   readonly [TypeId]: TypeId
@@ -46,7 +44,7 @@ const Proto = {
   }
 }
 
-const makeProto = <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+const makeProto = <State, Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
   options: {
     readonly initialState: State
     readonly public: ReadonlyArray<Procedure.Procedure<Public, State, R>>
@@ -77,57 +75,47 @@ export const make = <State>(initialState: State, identifier?: string): Procedure
  * @since 1.0.0
  * @category combinators
  */
-export const add: {
+export const addProcedure: {
   <
-    Req extends Schema.TaggedRequest.Any,
-    I,
-    ReqR,
+    Req extends Procedure.TaggedRequest.Any,
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
     R2
   >(
-    schema: Schema.Schema<Req, I, ReqR>,
-    tag: Req["_tag"],
-    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
-  ): <R>(
+    procedure: Procedure.Procedure<Req, State, R2>
+  ): <
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
+    R
+  >(
     self: ProcedureList<State, Public, Private, R>
-  ) => ProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableWithResult.Context<Req>>
+  ) => ProcedureList<State, Req | Public, Private, R | R2>
   <
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
     R,
-    Req extends Schema.TaggedRequest.Any,
-    I,
-    ReqR,
+    Req extends Procedure.TaggedRequest.Any,
     R2
   >(
     self: ProcedureList<State, Public, Private, R>,
-    schema: Schema.Schema<Req, I, ReqR>,
-    tag: Req["_tag"],
-    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
-  ): ProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableWithResult.Context<Req>>
+    procedure: Procedure.Procedure<Req, State, R2>
+  ): ProcedureList<State, Req | Public, Private, R | R2>
 } = dual(
-  4,
+  2,
   <
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
     R,
-    Req extends Schema.TaggedRequest.Any,
-    I,
-    ReqR,
+    Req extends Procedure.TaggedRequest.Any,
     R2
   >(
     self: ProcedureList<State, Public, Private, R>,
-    schema: Schema.Schema<Req, I, ReqR>,
-    tag: Req["_tag"],
-    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
-  ): ProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableWithResult.Context<Req>> =>
+    procedure: Procedure.Procedure<Req, State, R2>
+  ): ProcedureList<State, Req | Public, Private, R | R2> =>
     makeProto({
       ...self,
-      public: [...self.public, Procedure.make<any, any>()(schema, tag, handler)] as any
+      public: [...self.public, procedure] as any
     })
 )
 
@@ -135,59 +123,137 @@ export const add: {
  * @since 1.0.0
  * @category combinators
  */
-export const addPrivate: {
+export const addProcedurePrivate: {
   <
-    Req extends Schema.TaggedRequest.Any,
-    I,
-    ReqR,
+    Req extends Procedure.TaggedRequest.Any,
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
     R2
   >(
-    schema: Schema.Schema<Req, I, ReqR>,
+    procedure: Procedure.Procedure<Req, State, R2>
+  ): <
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
+    R
+  >(
+    self: ProcedureList<State, Public, Private, R>
+  ) => ProcedureList<State, Public, Private | Req, R | R2>
+  <
+    State,
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
+    R,
+    Req extends Procedure.TaggedRequest.Any,
+    R2
+  >(
+    self: ProcedureList<State, Public, Private, R>,
+    procedure: Procedure.Procedure<Req, State, R2>
+  ): ProcedureList<State, Public, Private | Req, R | R2>
+} = dual(
+  2,
+  <
+    State,
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
+    R,
+    Req extends Procedure.TaggedRequest.Any,
+    R2
+  >(
+    self: ProcedureList<State, Public, Private, R>,
+    procedure: Procedure.Procedure<Req, State, R2>
+  ): ProcedureList<State, Public, Private | Req, R | R2> =>
+    makeProto({
+      ...self,
+      private: [...self.private, procedure] as any
+    })
+)
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const add = <Req extends Procedure.TaggedRequest.Any>(): {
+  <
+    State,
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
+    R2
+  >(
     tag: Req["_tag"],
     handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): <R>(
     self: ProcedureList<State, Public, Private, R>
-  ) => ProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableWithResult.Context<Req>>
+  ) => ProcedureList<State, Req | Public, Private, R | R2>
   <
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
     R,
-    Req extends Schema.TaggedRequest.Any,
-    I,
-    ReqR,
     R2
   >(
     self: ProcedureList<State, Public, Private, R>,
-    schema: Schema.Schema<Req, I, ReqR>,
     tag: Req["_tag"],
     handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
-  ): ProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableWithResult.Context<Req>>
-} = dual(
-  4,
+  ): ProcedureList<State, Req | Public, Private, R | R2>
+} =>
+  dual(
+    3,
+    <
+      State,
+      Public extends Procedure.TaggedRequest.Any,
+      Private extends Procedure.TaggedRequest.Any,
+      R,
+      R2
+    >(
+      self: ProcedureList<State, Public, Private, R>,
+      tag: Req["_tag"],
+      handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
+    ): ProcedureList<State, Req | Public, Private, R | R2> =>
+      addProcedure(self, Procedure.make<any, any>()<Req>()(tag, handler))
+  )
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const addPrivate = <Req extends Procedure.TaggedRequest.Any>(): {
   <
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
+    R2
+  >(
+    tag: Req["_tag"],
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
+  ): <R>(
+    self: ProcedureList<State, Public, Private, R>
+  ) => ProcedureList<State, Public, Private | Req, R | R2>
+  <
+    State,
+    Public extends Procedure.TaggedRequest.Any,
+    Private extends Procedure.TaggedRequest.Any,
     R,
-    Req extends Schema.TaggedRequest.Any,
-    I,
-    ReqR,
     R2
   >(
     self: ProcedureList<State, Public, Private, R>,
-    schema: Schema.Schema<Req, I, ReqR>,
     tag: Req["_tag"],
     handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
-  ): ProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableWithResult.Context<Req>> =>
-    makeProto({
-      ...self,
-      private: [...self.private, Procedure.make<any, any>()(schema, tag, handler)] as any
-    })
-)
+  ): ProcedureList<State, Public, Private | Req, R | R2>
+} =>
+  dual(
+    3,
+    <
+      State,
+      Public extends Procedure.TaggedRequest.Any,
+      Private extends Procedure.TaggedRequest.Any,
+      R,
+      R2
+    >(
+      self: ProcedureList<State, Public, Private, R>,
+      tag: Req["_tag"],
+      handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
+    ): ProcedureList<State, Public, Private | Req, R | R2> =>
+      addProcedurePrivate(self, Procedure.make<any, any>()<Req>()(tag, handler))
+  )
 
 /**
  * @since 1.0.0
@@ -196,14 +262,14 @@ export const addPrivate: {
 export const withInitialState: {
   <State>(
     initialState: Types.NoInfer<State>
-  ): <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+  ): <Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
     self: ProcedureList<State, Public, Private, R>
   ) => ProcedureList<State, Public, Private, R>
-  <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+  <State, Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
     self: ProcedureList<State, Public, Private, R>,
     initialState: Types.NoInfer<State>
   ): ProcedureList<State, Public, Private, R>
-} = dual(2, <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+} = dual(2, <State, Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
   self: ProcedureList<State, Public, Private, R>,
   initialState: Types.NoInfer<State>
 ): ProcedureList<State, Public, Private, R> => makeProto({ ...self, initialState }))

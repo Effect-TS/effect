@@ -22,22 +22,48 @@ class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackgro
 const counter = Machine.makeWith<number, number>()(
   (input, previous) =>
     Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
-      Machine.procedures.add(Increment, "Increment", ({ state }) =>
+      Machine.procedures.add<Increment>()("Increment", ({ state }) =>
         Effect.sync(() => {
           const count = state + 1
           return [count, count]
         })),
-      Machine.procedures.add(Decrement, "Decrement", ({ state }) =>
+      Machine.procedures.add<Decrement>()("Decrement", ({ state }) =>
         Effect.sync(() => {
           const count = state - 1
           return [count, count]
         })),
-      Machine.procedures.add(IncrementBy, "IncrementBy", ({ request, state }) =>
+      Machine.procedures.add<IncrementBy>()("IncrementBy", ({ request, state }) =>
         Effect.sync(() => {
           const count = state + request.number
           return [count, count]
         })),
-      Machine.procedures.add(
+      Machine.procedures.add<FailBackground>()(
+        "FailBackground",
+        ({ forkWith, state }) => forkWith(Effect.fail("error"), state)
+      )
+    )
+)
+
+const counterSerialized = Machine.makeSerializable(
+  { state: Schema.NumberFromString, input: Schema.number },
+  (input, previous) =>
+    Machine.serializable.make(previous ?? input, `Counter(${input})`).pipe(
+      Machine.serializable.add(Increment, "Increment", ({ state }) =>
+        Effect.sync(() => {
+          const count = state + 1
+          return [count, count]
+        })),
+      Machine.serializable.add(Decrement, "Decrement", ({ state }) =>
+        Effect.sync(() => {
+          const count = state - 1
+          return [count, count]
+        })),
+      Machine.serializable.add(IncrementBy, "IncrementBy", ({ request, state }) =>
+        Effect.sync(() => {
+          const count = state + request.number
+          return [count, count]
+        })),
+      Machine.serializable.add(
         FailBackground,
         "FailBackground",
         ({ forkWith, state }) => forkWith(Effect.fail("error"), state)
@@ -48,13 +74,12 @@ const counter = Machine.makeWith<number, number>()(
 const delayedCounter = Machine.makeWith<number, number>()(
   (input, previous) =>
     Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
-      Machine.procedures.addPrivate(IncrementBy, "IncrementBy", ({ request, state }) =>
+      Machine.procedures.addPrivate<IncrementBy>()("IncrementBy", ({ request, state }) =>
         Effect.sync(() => {
           const count = state + request.number
           return [count, count]
         })),
-      Machine.procedures.add(
-        DelayedIncrementBy,
+      Machine.procedures.add<DelayedIncrementBy>()(
         "DelayedIncrementBy",
         ({ forkWith, request, sendAwait, state }) =>
           sendAwait(new IncrementBy({ number: request.number })).pipe(
@@ -74,7 +99,7 @@ const withContext = Machine.make(
     Effect.gen(function*(_) {
       const multiplier = yield* _(Multiplier)
       return Machine.procedures.make(previous ?? input).pipe(
-        Machine.procedures.add(Multiply, "Multiply", ({ state }) =>
+        Machine.procedures.add<Multiply>()("Multiply", ({ state }) =>
           Effect.sync(() => {
             const count = state * multiplier
             return [count, count]
@@ -91,8 +116,7 @@ const timerLoop = Machine.make(
     yield* _(unsafeSend(new Increment()))
 
     return Machine.procedures.make(0).pipe(
-      Machine.procedures.addPrivate(
-        Increment,
+      Machine.procedures.addPrivate<Increment>()(
         "Increment",
         (ctx) =>
           ctx.send(new Increment()).pipe(
@@ -107,8 +131,7 @@ const timerLoop = Machine.make(
 
 const deferReply = Machine.make(
   Machine.procedures.make(0).pipe(
-    Machine.procedures.add(
-      Increment,
+    Machine.procedures.add<Increment>()(
       "Increment",
       (ctx) => {
         const count = ctx.state + 1
@@ -122,10 +145,10 @@ const deferReply = Machine.make(
   )
 )
 
-const counterSerialized = Machine.toSerializable(counter, {
-  state: Schema.NumberFromString,
-  input: Schema.number
-})
+// const counterSerialized = Machine.toSerializable(counter, {
+//   state: Schema.NumberFromString,
+//   input: Schema.number
+// })
 
 describe("Machine", () => {
   test("counter", () =>
@@ -139,10 +162,6 @@ describe("Machine", () => {
       assert.strictEqual(yield* _(booted.send(new Increment())), 2)
       assert.strictEqual(yield* _(booted.send(new IncrementBy({ number: 2 }))), 4)
       assert.strictEqual(yield* _(booted.send(new Decrement())), 3)
-      assert.deepStrictEqual(yield* _(booted.sendUnknown({ _tag: "Decrement" })), {
-        _tag: "Success",
-        value: 2
-      })
       assert.strictEqual(yield* _(booted.send(new FailBackground())), undefined)
       const cause = yield* _(booted.join, Effect.sandbox, Effect.flip)
       const failure = Cause.failures(cause).pipe(Chunk.unsafeHead)
@@ -196,7 +215,7 @@ describe("Machine", () => {
       assert.deepStrictEqual(results, [0, 1, 2, 3])
     }).pipe(Effect.scoped, Effect.runPromise))
 
-  test.only("unsafeSend initializer", () =>
+  test("unsafeSend initializer", () =>
     Effect.gen(function*(_) {
       const actor = yield* _(Machine.boot(timerLoop))
       const results = yield* _(
@@ -221,6 +240,11 @@ describe("SerializableMachine", () => {
 
       assert.strictEqual(yield* _(actor.state), 10)
       assert.strictEqual(yield* _(actor.send(new Increment())), 11)
+      assert.strictEqual(yield* _(actor.send(new Increment())), 12)
+      assert.deepStrictEqual(yield* _(actor.sendUnknown({ _tag: "Decrement" })), {
+        _tag: "Success",
+        value: 11
+      })
       const snapshot = yield* _(Machine.snapshot(actor))
       assert.deepStrictEqual(snapshot, [10, "11"])
 

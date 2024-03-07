@@ -6,6 +6,7 @@ import type * as Serializable from "@effect/schema/Serializable"
 import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import * as Predicate from "effect/Predicate"
 import type { Request } from "effect/Request"
 
 /**
@@ -24,11 +25,62 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Procedure<Request extends Schema.TaggedRequest.Any, State, R> extends Pipeable {
+export interface TaggedRequest<Tag extends string, A, E> extends Request<A, E> {
+  readonly _tag: Tag
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export declare namespace TaggedRequest {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Any =
+    | TaggedRequest<string, any, any>
+    | TaggedRequest<string, any, never>
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Procedure<Request extends TaggedRequest.Any, State, R> extends Pipeable {
   readonly [TypeId]: TypeId
-  readonly schema: Schema.Schema<Request, unknown>
   readonly tag: Request["_tag"]
   readonly handler: Handler<Request, State, any, R>
+}
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const SerializableTypeId = Symbol.for("@effect/experimental/Machine/SerializableProcedure")
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type SerializableTypeId = typeof SerializableTypeId
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isSerializable = (u: unknown): u is SerializableProcedure<any, any, any> =>
+  Predicate.hasProperty(u, SerializableTypeId)
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface SerializableProcedure<Request extends Schema.TaggedRequest.Any, State, R>
+  extends Procedure<Request, State, R>
+{
+  readonly [SerializableTypeId]: SerializableTypeId
+  readonly schema: Schema.Schema<Request, unknown>
 }
 
 /**
@@ -48,9 +100,9 @@ export type NoReply = typeof NoReply
  * @category models
  */
 export type Handler<
-  Request extends Schema.TaggedRequest.Any,
+  Request extends TaggedRequest.Any,
   State,
-  Requests extends Schema.TaggedRequest.Any,
+  Requests extends TaggedRequest.Any,
   R
 > = (
   context: Procedure.Context<Requests | Request, Request, State>
@@ -79,8 +131,8 @@ export declare namespace Procedure {
       (id: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<void, never, R>
       <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R>
     }
-    readonly unsafeSend: <Req extends Schema.TaggedRequest.Any>(request: Req) => Effect.Effect<void>
-    readonly unsafeSendAwait: <Req extends Schema.TaggedRequest.Any>(request: Req) => Effect.Effect<
+    readonly unsafeSend: <Req extends TaggedRequest.Any>(request: Req) => Effect.Effect<void>
+    readonly unsafeSendAwait: <Req extends TaggedRequest.Any>(request: Req) => Effect.Effect<
       Request.Success<Req>,
       Request.Error<Req>
     >
@@ -90,7 +142,7 @@ export declare namespace Procedure {
    * @since 1.0.0
    * @category models
    */
-  export interface ContextProto<Requests extends Schema.TaggedRequest.Any, State> extends BaseContext {
+  export interface ContextProto<Requests extends TaggedRequest.Any, State> extends BaseContext {
     readonly send: <Req extends Requests>(request: Req) => Effect.Effect<void>
     readonly sendAwait: <Req extends Requests>(request: Req) => Effect.Effect<
       Request.Success<Req>,
@@ -133,7 +185,7 @@ export declare namespace Procedure {
    * @since 1.0.0
    * @category models
    */
-  export interface Context<Requests extends Schema.TaggedRequest.Any, Request extends Schema.TaggedRequest.Any, State>
+  export interface Context<Requests extends TaggedRequest.Any, Request extends TaggedRequest.Any, State>
     extends ContextProto<Requests, State>
   {
     readonly request: Request
@@ -161,14 +213,33 @@ export declare namespace Procedure {
  * @since 1.0.0
  * @category constructors
  */
-export const make =
-  <Requests extends Schema.TaggedRequest.Any, State>() =>
-  <Req extends Schema.TaggedRequest.Any, I, SR, R>(
-    schema: Schema.Schema<Req, I, SR>,
+export const make = <Requests extends TaggedRequest.Any, State>() =>
+<Req extends TaggedRequest.Any>() =>
+<R>(
+  tag: Req["_tag"],
+  handler: Handler<Req, State, Requests, R>
+): Procedure<Req, State, R> => ({
+  [TypeId]: TypeId,
+  handler,
+  tag,
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+})
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeSerializable =
+  <Requests extends TaggedRequest.Any, State>() =>
+  <Req extends Schema.TaggedRequest.Any, IS, R, RS>(
+    schema: Schema.Schema<Req, IS, RS>,
     tag: Req["_tag"],
     handler: Handler<Req, State, Requests, R>
-  ): Procedure<Req, State, R | Serializable.SerializableWithResult.Context<Req>> => ({
+  ): SerializableProcedure<Req, State, R | Serializable.SerializableWithResult.Context<Req>> => ({
     [TypeId]: TypeId,
+    [SerializableTypeId]: SerializableTypeId,
     schema: schema as any,
     handler,
     tag,
