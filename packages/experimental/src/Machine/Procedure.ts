@@ -2,6 +2,8 @@
  * @since 1.0.0
  */
 import type * as Schema from "@effect/schema/Schema"
+import type * as Serializable from "@effect/schema/Serializable"
+import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type { Request } from "effect/Request"
@@ -31,6 +33,18 @@ export interface Procedure<Request extends Schema.TaggedRequest.Any, State, R> e
 
 /**
  * @since 1.0.0
+ * @category symbols
+ */
+export const NoReply = Symbol.for("@effect/experimental/Machine/Procedure/NoReply")
+
+/**
+ * @since 1.0.0
+ * @category symbols
+ */
+export type NoReply = typeof NoReply
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export type Handler<
@@ -38,8 +52,16 @@ export type Handler<
   State,
   Requests extends Schema.TaggedRequest.Any,
   R
-> = (request: Request, state: State, context: Procedure.Context<Requests, State>) => Effect.Effect<
-  readonly [response: Request.Success<Request>, state: State],
+> = (
+  request: Request,
+  state: State,
+  context: Procedure.Context<Requests | Request, State>,
+  deferred: Deferred.Deferred<
+    Request.Success<Request>,
+    Request.Error<Request>
+  >
+) => Effect.Effect<
+  readonly [response: Request.Success<Request> | NoReply, state: State],
   Request.Error<Request>,
   R
 >
@@ -53,19 +75,59 @@ export declare namespace Procedure {
    * @since 1.0.0
    * @category models
    */
-  export interface Context<Requests extends Schema.TaggedRequest.Any, State> {
+  export interface BaseContext {
+    readonly fork: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<void, never, R>
+    readonly forkOne: {
+      (id: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<void, never, R>
+      <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R>
+    }
+    readonly forkReplace: {
+      (id: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<void, never, R>
+      <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R>
+    }
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Context<Requests extends Schema.TaggedRequest.Any, State> extends BaseContext {
     readonly send: <Req extends Requests>(request: Req) => Effect.Effect<
       Request.Success<Req>,
       Request.Error<Req>
     >
-    readonly fork: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<void, never, R>
-    readonly forkWith: <A, E, R>(
-      state: State,
-      effect: Effect.Effect<A, E, R>
-    ) => Effect.Effect<readonly [void, State], never, R>
-    readonly forkWithState: <A, E, R>(
-      effect: Effect.Effect<A, E, R>
-    ) => Effect.Effect<readonly [void, State], never, R>
+    readonly sendIgnore: <Req extends Requests>(request: Req) => Effect.Effect<void>
+    readonly forkWith: {
+      (state: State): <A, E, R>(
+        effect: Effect.Effect<A, E, R>
+      ) => Effect.Effect<readonly [void, State], never, R>
+      <A, E, R>(
+        effect: Effect.Effect<A, E, R>,
+        state: State
+      ): Effect.Effect<readonly [void, State], never, R>
+    }
+    readonly forkOneWith: {
+      (
+        id: string,
+        state: State
+      ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<readonly [void, State], never, R>
+      <A, E, R>(
+        effect: Effect.Effect<A, E, R>,
+        id: string,
+        state: State
+      ): Effect.Effect<readonly [void, State], never, R>
+    }
+    readonly forkReplaceWith: {
+      (
+        id: string,
+        state: State
+      ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<readonly [void, State], never, R>
+      <A, E, R>(
+        effect: Effect.Effect<A, E, R>,
+        id: string,
+        state: State
+      ): Effect.Effect<readonly [void, State], never, R>
+    }
   }
 
   /**
@@ -91,7 +153,7 @@ export const make =
     schema: Schema.Schema<Req, I, SR>,
     tag: Req["_tag"],
     handler: Handler<Req, State, Requests, R>
-  ): Procedure<Req, State, R> => ({
+  ): Procedure<Req, State, R | Serializable.SerializableWithResult.Context<Req>> => ({
     [TypeId]: TypeId,
     schema: schema as any,
     handler,
