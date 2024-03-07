@@ -1,5 +1,7 @@
 import * as Equal from "../Equal.js"
+import type { LazyArg } from "../Function.js"
 import { pipe } from "../Function.js"
+import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import type * as Types from "../Types.js"
 import { StructuralPrototype } from "./effectable.js"
@@ -38,8 +40,21 @@ export const struct = <As extends Readonly<Record<string, any>>>(as: As): As =>
 
 const deepSymbol = Symbol.for("effect/Data/deep")
 
+const regionalConfig = globalValue("effect/Data/regionalConfig", () => ({ deep: false }))
+
 /** @internal */
-export const proxy = <A>(value: A, options?: { deep: boolean }): A => {
+export const withDeepEquality = <A>(f: LazyArg<A>): A => {
+  try {
+    regionalConfig.deep = true
+    return f()
+  } finally {
+    regionalConfig.deep = false
+  }
+}
+
+/** @internal */
+export const proxy = <A>(value: A): A => {
+  const useDeep = regionalConfig.deep
   if ((typeof value === "function" || typeof value === "object") && value !== null) {
     let hashCache: any = "INIT"
     return new Proxy(value, {
@@ -51,12 +66,12 @@ export const proxy = <A>(value: A, options?: { deep: boolean }): A => {
       },
       get(target, p) {
         if (p === deepSymbol) {
-          return options?.deep
+          return useDeep
         }
         if (p === Hash.symbol) {
           return () => {
             if (hashCache === "INIT") {
-              hashCache = options?.deep === true
+              hashCache = useDeep
                 ? deepHash(value)
                 : Array.isArray(value)
                 ? Hash.array(value)
@@ -66,7 +81,7 @@ export const proxy = <A>(value: A, options?: { deep: boolean }): A => {
           }
         }
         if (p === Equal.symbol) {
-          if (options?.deep === true) {
+          if (useDeep) {
             return deepComp
           }
           if (Array.isArray(value)) {

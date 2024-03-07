@@ -11,23 +11,27 @@ describe("Data", () => {
   })
 
   it("proxy deep", () => {
-    const x = Data.proxy({
-      a: 0,
-      b: 1,
-      c: { a: 0, b: 7 }
-    }, { deep: true })
+    const x = Data.withDeepEquality(() =>
+      Data.proxy({
+        a: 0,
+        b: 1,
+        c: { a: 0, b: 7 }
+      })
+    )
 
-    const y = Data.proxy({
-      a: 0,
-      b: 1,
-      c: { a: 0, b: 7 }
-    }, { deep: true })
+    const y = Data.withDeepEquality(() =>
+      Data.proxy({
+        a: 0,
+        b: 1,
+        c: { a: 0, b: 7 }
+      })
+    )
 
     const z = Data.proxy({
       a: 0,
       b: 1,
       c: { a: 0, b: 7 }
-    }, { deep: false })
+    })
 
     expect(Equal.equals(x, y)).toBe(true)
     expect(Equal.equals(x, z)).toBe(false)

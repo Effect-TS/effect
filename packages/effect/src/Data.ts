@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.js"
+import type { LazyArg } from "./Function.js"
 import * as core from "./internal/core.js"
 import * as internal from "./internal/data.js"
 import { StructuralPrototype } from "./internal/effectable.js"
@@ -453,9 +454,16 @@ export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<
 }
 
 /**
+ * Use deep equality to compare objects by value
+ *
+ * @since 2.0.0
+ */
+export const withDeepEquality: <A>(f: LazyArg<A>) => A = internal.withDeepEquality
+
+/**
  * Uses a proxy to compare objects by value, supports deep equality
  *
  * @since 2.0.0
  * @category constructors
  */
-export const proxy: <A>(value: A, options?: { deep: boolean }) => A = internal.proxy
+export const proxy: <A>(value: A) => A = internal.proxy
