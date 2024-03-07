@@ -341,12 +341,12 @@ describe("JSONSchema", () => {
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "anyOf": [
-          { "const": true, "description": "description" },
           {
             "type": "string",
             "description": "a string",
             "title": "string"
           },
+          { "const": true, "description": "description" },
           { "const": 1 }
         ]
       })
@@ -363,12 +363,12 @@ describe("JSONSchema", () => {
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "anyOf": [
-          { "const": true, "description": "description" },
           {
             "type": "string",
             "description": "a string",
             "title": "string"
           },
+          { "const": true, "description": "description" },
           { "enum": [1, 2] }
         ]
       })

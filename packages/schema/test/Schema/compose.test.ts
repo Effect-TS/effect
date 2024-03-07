@@ -16,7 +16,7 @@ describe("Schema > compose", async () => {
     await Util.expectDecodeUnknownFailure(
       schema1,
       "a",
-      `(null | string <-> NumberFromString)
+      `(string | null <-> NumberFromString)
 └─ Type side transformation failure
    └─ NumberFromString
       └─ Transformation process failure
@@ -25,7 +25,7 @@ describe("Schema > compose", async () => {
     await Util.expectDecodeUnknownFailure(
       schema1,
       null,
-      `(null | string <-> NumberFromString)
+      `(string | null <-> NumberFromString)
 └─ Type side transformation failure
    └─ NumberFromString
       └─ Encoded side transformation failure
@@ -38,7 +38,7 @@ describe("Schema > compose", async () => {
     await Util.expectDecodeUnknownFailure(
       schema2,
       "a",
-      `(null | string <-> NumberFromString)
+      `(string | null <-> NumberFromString)
 └─ Type side transformation failure
    └─ NumberFromString
       └─ Transformation process failure
@@ -47,7 +47,7 @@ describe("Schema > compose", async () => {
     await Util.expectDecodeUnknownFailure(
       schema2,
       null,
-      `(null | string <-> NumberFromString)
+      `(string | null <-> NumberFromString)
 └─ Type side transformation failure
    └─ NumberFromString
       └─ Encoded side transformation failure
@@ -61,7 +61,7 @@ describe("Schema > compose", async () => {
     await Util.expectEncodeFailure(
       schema1,
       null,
-      `(NumberFromString <-> null | number)
+      `(NumberFromString <-> number | null)
 └─ Encoded side transformation failure
    └─ NumberFromString
       └─ Type side transformation failure
@@ -74,7 +74,7 @@ describe("Schema > compose", async () => {
     await Util.expectEncodeFailure(
       schema2,
       null,
-      `(NumberFromString <-> null | number)
+      `(NumberFromString <-> number | null)
 └─ Encoded side transformation failure
    └─ NumberFromString
       └─ Type side transformation failure

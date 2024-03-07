@@ -2030,41 +2030,127 @@ const sortUnionMembers: (self: Members<AST>) => Members<AST> = ReadonlyArray.sor
   Order.reverse(Order.mapInput(WeightOrder, getWeight))
 ) as any
 
-const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
-  let out = pipe(
-    candidates,
-    ReadonlyArray.flatMap((ast: AST): ReadonlyArray<AST> => {
+const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
+  ReadonlyArray.flatMap(candidates, (ast: AST) => {
+    switch (ast._tag) {
+      case "NeverKeyword":
+        return []
+      case "Union":
+        return ast.types
+      default:
+        return [ast]
+    }
+  })
+
+const sortCandidates = ReadonlyArray.sort(
+  pipe(
+    Number.Order,
+    Order.mapInput((ast: AST) => {
       switch (ast._tag) {
-        case "NeverKeyword":
-          return []
-        case "Union":
-          return ast.types
-        default:
-          return [ast]
+        case "AnyKeyword":
+          return 0
+        case "UnknownKeyword":
+          return 1
+        case "ObjectKeyword":
+          return 2
+        case "StringKeyword":
+        case "NumberKeyword":
+        case "BooleanKeyword":
+        case "BigIntKeyword":
+        case "SymbolKeyword":
+          return 3
       }
+      return 4
     })
   )
-  if (out.some(isAnyKeyword)) {
-    return [anyKeyword]
-  }
-  if (out.some(isUnknownKeyword)) {
-    return [unknownKeyword]
-  }
-  let i: number
-  if ((i = out.findIndex(isStringKeyword)) !== -1) {
-    out = out.filter((m, j) => j === i || (!isStringKeyword(m) && !(isLiteral(m) && typeof m.literal === "string")))
-  }
-  if ((i = out.findIndex(isNumberKeyword)) !== -1) {
-    out = out.filter((m, j) => j === i || (!isNumberKeyword(m) && !(isLiteral(m) && typeof m.literal === "number")))
-  }
-  if ((i = out.findIndex(isBooleanKeyword)) !== -1) {
-    out = out.filter((m, j) => j === i || (!isBooleanKeyword(m) && !(isLiteral(m) && typeof m.literal === "boolean")))
-  }
-  if ((i = out.findIndex(isBigIntKeyword)) !== -1) {
-    out = out.filter((m, j) => j === i || (!isBigIntKeyword(m) && !(isLiteral(m) && typeof m.literal === "bigint")))
-  }
-  if ((i = out.findIndex(isSymbolKeyword)) !== -1) {
-    out = out.filter((m, j) => j === i || (!isSymbolKeyword(m) && !isUniqueSymbol(m)))
+)
+
+const literalMap = {
+  string: "StringKeyword",
+  number: "NumberKeyword",
+  boolean: "BooleanKeyword",
+  bigint: "BigIntKeyword"
+} as const
+
+/** @internal */
+export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
+  const cs = sortCandidates(flatten(candidates))
+  const out: Array<AST> = []
+  const uniques: { [K in AST["_tag"] | "{}"]?: AST } = {}
+  const literals: Array<LiteralValue | symbol> = []
+  for (const ast of cs) {
+    switch (ast._tag) {
+      case "AnyKeyword":
+        return [anyKeyword]
+      case "UnknownKeyword":
+        return [unknownKeyword]
+      // uniques
+      case "ObjectKeyword":
+      case "UndefinedKeyword":
+      case "VoidKeyword":
+      case "StringKeyword":
+      case "NumberKeyword":
+      case "BooleanKeyword":
+      case "BigIntKeyword":
+      case "SymbolKeyword": {
+        if (!uniques[ast._tag]) {
+          uniques[ast._tag] = ast
+          out.push(ast)
+        }
+        break
+      }
+      case "Literal": {
+        const type = typeof ast.literal
+        switch (type) {
+          case "string":
+          case "number":
+          case "bigint":
+          case "boolean": {
+            const _tag = literalMap[type]
+            if (!uniques[_tag] && !literals.includes(ast.literal)) {
+              literals.push(ast.literal)
+              out.push(ast)
+            }
+            break
+          }
+          // null
+          case "object": {
+            if (!literals.includes(ast.literal)) {
+              literals.push(ast.literal)
+              out.push(ast)
+            }
+            break
+          }
+        }
+        break
+      }
+      case "UniqueSymbol": {
+        if (!uniques["SymbolKeyword"] && !literals.includes(ast.symbol)) {
+          literals.push(ast.symbol)
+          out.push(ast)
+        }
+        break
+      }
+      case "TupleType": {
+        if (!uniques["ObjectKeyword"]) {
+          out.push(ast)
+        }
+        break
+      }
+      case "TypeLiteral": {
+        if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
+          if (!uniques["{}"]) {
+            uniques["{}"] = ast
+            out.push(ast)
+          }
+        } else if (!uniques["ObjectKeyword"]) {
+          out.push(ast)
+        }
+        break
+      }
+      default:
+        out.push(ast)
+    }
   }
   return out
 }
