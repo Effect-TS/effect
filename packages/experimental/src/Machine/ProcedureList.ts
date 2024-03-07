@@ -63,12 +63,14 @@ const makeProto = <State, Public extends Procedure.TaggedRequest.Any, Private ex
  * @since 1.0.0
  * @category constructors
  */
-export const make = <State>(initialState: State, identifier?: string): ProcedureList<State, never, never, never> =>
+export const make = <State>(initialState: State, options?: {
+  readonly identifier?: string
+}): ProcedureList<State, never, never, never> =>
   makeProto({
     initialState,
     public: [],
     private: [],
-    identifier: identifier ?? "Unknown"
+    identifier: options?.identifier ?? "Unknown"
   })
 
 /**

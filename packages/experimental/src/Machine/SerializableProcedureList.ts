@@ -32,7 +32,9 @@ export interface SerializableProcedureList<
  */
 export const make: <State>(
   initialState: State,
-  identifier?: string
+  options?: {
+    readonly identifier?: string
+  }
 ) => SerializableProcedureList<State, never, never, never> = ProcedureList.make as any
 
 /**

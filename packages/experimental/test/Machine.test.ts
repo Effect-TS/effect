@@ -21,7 +21,9 @@ class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackgro
 
 const counter = Machine.makeWith<number, number>()(
   (input, previous) =>
-    Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
+    Machine.procedures.make(previous ?? input, {
+      identifier: `Counter(${input})`
+    }).pipe(
       Machine.procedures.add<Increment>()("Increment", ({ state }) =>
         Effect.sync(() => {
           const count = state + 1
@@ -47,7 +49,9 @@ const counter = Machine.makeWith<number, number>()(
 const counterSerialized = Machine.makeSerializable(
   { state: Schema.NumberFromString, input: Schema.number },
   (input, previous) =>
-    Machine.serializable.make(previous ?? input, `Counter(${input})`).pipe(
+    Machine.serializable.make(previous ?? input, {
+      identifier: `Counter(${input})`
+    }).pipe(
       Machine.serializable.add(Increment, "Increment", ({ state }) =>
         Effect.sync(() => {
           const count = state + 1
@@ -73,7 +77,9 @@ const counterSerialized = Machine.makeSerializable(
 
 const delayedCounter = Machine.makeWith<number, number>()(
   (input, previous) =>
-    Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
+    Machine.procedures.make(previous ?? input, {
+      identifier: `Counter(${input})`
+    }).pipe(
       Machine.procedures.addPrivate<IncrementBy>()("IncrementBy", ({ request, state }) =>
         Effect.sync(() => {
           const count = state + request.number
