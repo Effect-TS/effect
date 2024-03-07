@@ -5820,9 +5820,7 @@ type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
  * @category classes
  * @since 1.0.0
  */
-export interface ClassSchema<Self, Fields extends Struct.Fields, A, I, R, C, Inherited, Proto>
-  extends Schema<Self, I, R>
-{
+export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited, Proto> extends Schema<Self, I, R> {
   new(
     props: keyof C extends never ? void | {} : C,
     disableValidation?: boolean | undefined
@@ -5834,7 +5832,7 @@ export interface ClassSchema<Self, Fields extends Struct.Fields, A, I, R, C, Inh
     fields: newFields,
     annotations?: Annotations<Extended>
   ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
-    : ClassSchema<
+    : Class<
       Extended,
       Fields & newFields,
       Simplify<A & Struct.Type<newFields>>,
@@ -5862,7 +5860,7 @@ export interface ClassSchema<Self, Fields extends Struct.Fields, A, I, R, C, Inh
       ast: AST.Transform
     ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
-    : ClassSchema<
+    : Class<
       Transformed,
       Fields & newFields,
       Simplify<A & Struct.Type<newFields>>,
@@ -5890,7 +5888,7 @@ export interface ClassSchema<Self, Fields extends Struct.Fields, A, I, R, C, Inh
       ast: AST.Transform
     ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
-    : ClassSchema<
+    : Class<
       Transformed,
       Fields & newFields,
       Simplify<A & Struct.Type<newFields>>,
@@ -5913,7 +5911,7 @@ export const Class = <Self = never>(identifier: string) =>
   fields: Fields,
   annotations?: Annotations<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
-  : ClassSchema<
+  : Class<
     Self,
     Fields,
     Simplify<Struct.Type<Fields>>,
@@ -5934,7 +5932,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   fields: Fields,
   annotations?: Annotations<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
-  : ClassSchema<
+  : Class<
     Self,
     { readonly [TAG]: literal<[Tag]> } & Fields,
     Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
@@ -5965,7 +5963,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   fields: Fields,
   annotations?: Annotations<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
-  : ClassSchema<
+  : Class<
     Self,
     { readonly [TAG]: literal<[Tag]> } & Fields,
     Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
@@ -6023,7 +6021,7 @@ export const TaggedRequest =
     fields: Fields,
     annotations?: Annotations<Self>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-    : ClassSchema<
+    : Class<
       Self,
       { readonly [TAG]: literal<[Tag]> } & Fields,
       Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
