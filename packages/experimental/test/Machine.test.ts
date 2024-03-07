@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import * as Machine from "@effect/experimental/Machine"
 import { Schema } from "@effect/schema"
-import { Cause, Chunk, Context, Deferred, Effect, Exit, flow, Layer, Stream } from "effect"
+import { Cause, Chunk, Context, Deferred, Effect, Exit, Layer, Stream } from "effect"
 import { assert, describe, test } from "vitest"
 
 class Increment extends Schema.TaggedRequest<Increment>()("Increment", Schema.never, Schema.number, {}) {}
@@ -45,20 +45,24 @@ const counter = Machine.make(
     )
 )
 
-const delayedCounter = Machine.modify(
-  counter,
-  flow(
-    Machine.procedures.add(
-      DelayedIncrementBy,
-      "DelayedIncrementBy",
-      (req, state, ctx) =>
-        ctx.send(new IncrementBy({ number: req.number })).pipe(
-          Effect.delay(req.delay),
-          ctx.forkWith(state)
-        )
-    ),
-    Machine.procedures.markInternal("Increment", "Decrement")
-  )
+const delayedCounter = Machine.make(
+  (input: number, previous?: number) =>
+    Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
+      Machine.procedures.addPrivate(IncrementBy, "IncrementBy", (req, state) =>
+        Effect.sync(() => {
+          const count = state + req.number
+          return [count, count]
+        })),
+      Machine.procedures.add(
+        DelayedIncrementBy,
+        "DelayedIncrementBy",
+        (req, state, ctx) =>
+          ctx.sendAwait(new IncrementBy({ number: req.number })).pipe(
+            Effect.delay(req.delay),
+            ctx.forkWith(state)
+          )
+      )
+    )
 )
 
 class Multiplier extends Context.Tag("Multiplier")<Multiplier, number>() {
@@ -81,11 +85,11 @@ const withContext = Machine.make(
 
 const timerLoop = Machine.make(
   Machine.procedures.make(0).pipe(
-    Machine.procedures.add(
+    Machine.procedures.addPrivate(
       Increment,
       "Increment",
       (_, state, ctx) =>
-        ctx.sendIgnore(new Increment()).pipe(
+        ctx.send(new Increment()).pipe(
           Effect.delay(20),
           ctx.forkOne("timer"),
           Effect.as([state + 1, state + 1])
@@ -93,8 +97,7 @@ const timerLoop = Machine.make(
     )
   )
 ).pipe(
-  Machine.addInitializer((_, ctx) => ctx.sendIgnore(new Increment())),
-  Machine.modify(Machine.procedures.markInternal("Increment"))
+  Machine.addInitializer((_, ctx) => ctx.send(new Increment()))
 )
 
 const deferReply = Machine.make(
@@ -157,14 +160,13 @@ describe("Machine", () => {
       assert.strictEqual(yield* _(booted.state), 2)
       assert.deepStrictEqual(
         // @ts-expect-error
-        yield* _(booted.send(new Increment()), Effect.exit),
-        Exit.die("Request Increment marked as internal")
+        yield* _(booted.send(new IncrementBy({ number: 2 })), Effect.exit),
+        Exit.die("Request IncrementBy marked as internal")
       )
-      assert.strictEqual(yield* _(booted.send(new IncrementBy({ number: 2 }))), 4)
       assert.strictEqual(yield* _(booted.send(new DelayedIncrementBy({ number: 2, delay: 10 }))), undefined)
-      assert.strictEqual(yield* _(booted.state), 4)
+      assert.strictEqual(yield* _(booted.state), 2)
       yield* _(Effect.sleep(10))
-      assert.strictEqual(yield* _(booted.state), 6)
+      assert.strictEqual(yield* _(booted.state), 4)
     }).pipe(Effect.scoped, Effect.runPromise))
 
   test("subscribe", () =>

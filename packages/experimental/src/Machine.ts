@@ -62,15 +62,23 @@ export type TypeId = typeof TypeId
  */
 export const isMachine = (
   u: unknown
-): u is Machine<unknown, Schema.TaggedRequest.Any, unknown, unknown, unknown> => Predicate.hasProperty(u, TypeId)
+): u is Machine<unknown, Schema.TaggedRequest.Any, Schema.TaggedRequest.Any, unknown, unknown, unknown> =>
+  Predicate.hasProperty(u, TypeId)
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface Machine<State, Request extends Schema.TaggedRequest.Any, Input, InitErr, R> extends Pipeable {
+export interface Machine<
+  State,
+  Public extends Schema.TaggedRequest.Any,
+  Private extends Schema.TaggedRequest.Any,
+  Input,
+  InitErr,
+  R
+> extends Pipeable {
   readonly [TypeId]: TypeId
-  readonly initialize: Machine.Initialize<Input, State, Request, InitErr, R, R>
+  readonly initialize: Machine.Initialize<Input, State, Public, Private, InitErr, R, R>
   readonly retryPolicy: Schedule.Schedule<unknown, InitErr | MachineError, R> | undefined
 }
 
@@ -92,7 +100,8 @@ export type SerializableTypeId = typeof SerializableTypeId
  */
 export interface SerializableMachine<
   State,
-  Request extends Schema.TaggedRequest.Any,
+  Public extends Schema.TaggedRequest.Any,
+  Private extends Schema.TaggedRequest.Any,
   Input,
   InitErr,
   R,
@@ -100,7 +109,8 @@ export interface SerializableMachine<
 > extends
   Machine<
     State,
-    Request,
+    Public,
+    Private,
     Input,
     InitErr,
     R
@@ -167,112 +177,122 @@ export declare namespace Machine {
    * @category models
    */
   export type Any =
-    | Machine<any, any, any, any, any>
-    | Machine<any, any, any, never, any>
-    | Machine<any, never, any, never, any>
+    | Machine<any, any, any, any, any, any>
+    | Machine<any, any, any, any, never, any>
+    | Machine<any, never, any, any, never, any>
+    | Machine<any, any, never, any, never, any>
+    | Machine<any, never, never, any, never, any>
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type AnySerializible =
-    | SerializableMachine<any, any, any, any, any, any>
-    | SerializableMachine<any, any, any, never, any, any>
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Initialize<Input, State, Request extends Schema.TaggedRequest.Any, R, E, InitR> = (
+  export type Initialize<
+    Input,
+    State,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
+    R,
+    E,
+    InitR
+  > = (
     input: Input,
     previousState?: State | undefined
-  ) => Effect.Effect<ProcedureList.ProcedureList<State, Request, R>, E, InitR>
+  ) => Effect.Effect<ProcedureList.ProcedureList<State, Public, Private, R>, E, InitR>
 
   /**
    * @since 1.0.0
    */
-  export type Requests<M> = M extends Machine<infer _S, infer Requests, infer _I, infer _IE, infer _R> ? Requests
+  export type Public<M> = M extends Machine<infer _S, infer Public, infer _Pr, infer _I, infer _IE, infer _R> ? Public
     : never
 
   /**
    * @since 1.0.0
    */
-  export type State<M> = M extends Machine<infer State, infer _Req, infer _I, infer _IE, infer _R> ? State
+  export type Private<M> = M extends Machine<infer _S, infer _Pu, infer Private, infer _I, infer _IE, infer _R> ?
+    Private
     : never
 
   /**
    * @since 1.0.0
    */
-  export type InitError<M> = M extends Machine<infer _S, infer _Req, infer _I, infer InitErr, infer _R> ? InitErr
+  export type State<M> = M extends Machine<infer State, infer _Pu, infer _Pr, infer _I, infer _IE, infer _R> ? State
     : never
 
   /**
    * @since 1.0.0
    */
-  export type Context<M> = M extends Machine<infer _S, infer _Req, infer _I, infer _IE, infer R> ? R
+  export type InitError<M> = M extends Machine<infer _S, infer _Pu, infer _Pr, infer _I, infer InitErr, infer _R> ?
+    InitErr
     : never
 
   /**
    * @since 1.0.0
    */
-  export type ContextWithSchema<M> = M extends
-    SerializableMachine<infer _S, infer _Req, infer _I, infer _IE, infer R, infer SR> ? R | SR :
-    never
-
-  /**
-   * @since 1.0.0
-   */
-  export type Input<M> = M extends Machine<infer _S, infer _Req, infer Input, infer _IE, infer _R> ? Input
+  export type Context<M> = M extends Machine<infer _S, infer _Pu, infer _Pr, infer _I, infer _IE, infer R> ? R
     : never
 
   /**
    * @since 1.0.0
    */
-  export type Modify<M, State, Req extends Schema.TaggedRequest.Any, R> = M extends SerializableMachine<
-    infer _S,
-    infer _Req,
-    infer Input,
-    infer InitErr,
-    infer _R,
-    infer SR
-  > ? SerializableMachine<
-      State,
-      Req,
-      Input,
-      InitErr,
-      R,
-      SR
-    > :
-    M extends Machine<infer _S, infer _Req, infer Input, infer InitErr, infer _R> ? Machine<
+  export type Input<M> = M extends Machine<infer _S, infer _Pu, infer _Pr, infer Input, infer _IE, infer _R> ? Input
+    : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Modify<M, State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R> =
+    M extends SerializableMachine<
+      infer _S,
+      infer _Pu,
+      infer _Pr,
+      infer Input,
+      infer InitErr,
+      infer _R,
+      infer SR
+    > ? SerializableMachine<
         State,
-        Req,
+        Public,
+        Private,
         Input,
         InitErr,
-        R
+        R,
+        SR
       > :
-    never
+      M extends Machine<infer _S, infer _Pu, infer _Pr, infer Input, infer InitErr, infer _R> ? Machine<
+          State,
+          Public,
+          Private,
+          Input,
+          InitErr,
+          R
+        > :
+      never
 
   /**
    * @since 1.0.0
    */
   export type AddContext<M, R, E = never> = M extends SerializableMachine<
     infer State,
-    infer Req,
+    infer Public,
+    infer Private,
     infer Input,
     infer InitErr,
     infer R2,
     infer SR
   > ? SerializableMachine<
       State,
-      Req,
+      Public,
+      Private,
       Input,
       InitErr | E,
       R | R2,
       SR
     > :
-    M extends Machine<infer State, infer Req, infer Input, infer InitErr, infer R2> ? Machine<
+    M extends Machine<infer State, infer Public, infer Private, infer Input, infer InitErr, infer R2> ? Machine<
         State,
-        Req,
+        Public,
+        Private,
         Input,
         InitErr | E,
         R | R2
@@ -288,7 +308,7 @@ export interface Actor<M extends Machine.Any> {
   readonly [ActorTypeId]: ActorTypeId
   readonly machine: M
   readonly input: Machine.Input<M>
-  readonly send: <Req extends Machine.Requests<M>>(request: Req) => Effect.Effect<
+  readonly send: <Req extends Machine.Public<M>>(request: Req) => Effect.Effect<
     Request.Success<Req>,
     Request.Error<Req>
   >
@@ -308,17 +328,17 @@ export interface Actor<M extends Machine.Any> {
  * @category constructors
  */
 export const make: {
-  <State, Requests extends Schema.TaggedRequest.Any, InitErr, R>(
-    initialize: Effect.Effect<ProcedureList.ProcedureList<State, Requests, R>, InitErr, R>
-  ): Machine<State, Requests, void, InitErr, Exclude<R, Scope.Scope | MachineContext>>
-  <State, Requests extends Schema.TaggedRequest.Any, Input, InitErr, R>(
-    initialize: Machine.Initialize<Input, State, Requests, R, InitErr, R>
-  ): Machine<State, Requests, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>>
-} = <State, Requests extends Schema.TaggedRequest.Any, Input, InitErr, R>(
+  <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, InitErr, R>(
+    initialize: Effect.Effect<ProcedureList.ProcedureList<State, Public, Private, R>, InitErr, R>
+  ): Machine<State, Public, Private, void, InitErr, Exclude<R, Scope.Scope | MachineContext>>
+  <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, Input, InitErr, R>(
+    initialize: Machine.Initialize<Input, State, Public, Private, R, InitErr, R>
+  ): Machine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>>
+} = <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, Input, InitErr, R>(
   initialize:
-    | Machine.Initialize<Input, State, Requests, R, InitErr, R>
-    | Effect.Effect<ProcedureList.ProcedureList<State, Requests, R>, InitErr, R>
-): Machine<State, Requests, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>> => ({
+    | Machine.Initialize<Input, State, Public, Private, R, InitErr, R>
+    | Effect.Effect<ProcedureList.ProcedureList<State, Public, Private, R>, InitErr, R>
+): Machine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>> => ({
   [TypeId]: TypeId,
   initialize: Effect.isEffect(initialize) ? (() => initialize) : initialize as any,
   retryPolicy: undefined,
@@ -332,12 +352,12 @@ export const make: {
  * @category constructors
  */
 export const makeWith = <State>(): {
-  <Requests extends Schema.TaggedRequest.Any, InitErr, R>(
-    initialize: Effect.Effect<ProcedureList.ProcedureList<State, Requests, R>, InitErr, R>
-  ): Machine<State, Requests, void, InitErr, Exclude<R, Scope.Scope | MachineContext>>
-  <Requests extends Schema.TaggedRequest.Any, Input, InitErr, R>(
-    initialize: Machine.Initialize<Input, State, Requests, R, InitErr, R>
-  ): Machine<State, Requests, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>>
+  <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, InitErr, R>(
+    initialize: Effect.Effect<ProcedureList.ProcedureList<State, Public, Private, R>, InitErr, R>
+  ): Machine<State, Public, Private, void, InitErr, Exclude<R, Scope.Scope | MachineContext>>
+  <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, Input, InitErr, R>(
+    initialize: Machine.Initialize<Input, State, Public, Private, R, InitErr, R>
+  ): Machine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>>
 } => make
 
 /**
@@ -345,37 +365,63 @@ export const makeWith = <State>(): {
  * @category constructors
  */
 export const makeSerializable: {
-  <State, IS, RS, Requests extends Schema.TaggedRequest.Any, InitErr, R>(
+  <State, IS, RS, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, InitErr, R>(
     options: {
       readonly state: Schema.Schema<State, IS, RS>
     },
     initialize:
-      | Effect.Effect<ProcedureList.ProcedureList<State, Requests, R>, InitErr, R>
-      | Machine.Initialize<void, State, Requests, R, InitErr, R>
-  ): SerializableMachine<State, Requests, void, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS>
-  <State, IS, RS, Input, II, RI, Requests extends Schema.TaggedRequest.Any, InitErr, R>(
+      | Effect.Effect<ProcedureList.ProcedureList<State, Public, Private, R>, InitErr, R>
+      | Machine.Initialize<void, State, Public, Private, R, InitErr, R>
+  ): SerializableMachine<State, Public, Private, void, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS>
+  <
+    State,
+    IS,
+    RS,
+    Input,
+    II,
+    RI,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
+    InitErr,
+    R
+  >(
     options: {
       readonly state: Schema.Schema<State, IS, RS>
       readonly input: Schema.Schema<Input, II, RI>
     },
-    initialize: Machine.Initialize<Input, State, Requests, R, InitErr, R>
-  ): SerializableMachine<State, Requests, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS | RI>
-} = <State, IS, RS, Input, II, RI, Requests extends Schema.TaggedRequest.Any, InitErr, R>(
+    initialize: Machine.Initialize<Input, State, Public, Private, R, InitErr, R>
+  ): SerializableMachine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS | RI>
+} = <
+  State,
+  IS,
+  RS,
+  Input,
+  II,
+  RI,
+  Public extends Schema.TaggedRequest.Any,
+  Private extends Schema.TaggedRequest.Any,
+  InitErr,
+  R
+>(
   options: {
     readonly state: Schema.Schema<State, IS, RS>
     readonly input?: Schema.Schema<Input, II, RI>
   },
   initialize:
-    | Machine.Initialize<Input, State, Requests, R, InitErr, R>
-    | Effect.Effect<ProcedureList.ProcedureList<State, Requests, R>, InitErr, R>
-): SerializableMachine<State, Requests, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS | RI> =>
+    | Machine.Initialize<Input, State, Public, Private, R, InitErr, R>
+    | Effect.Effect<ProcedureList.ProcedureList<State, Public, Private, R>, InitErr, R>
+): SerializableMachine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS | RI> =>
   ({
     [TypeId]: TypeId,
     [SerializableTypeId]: SerializableTypeId,
     initialize: Effect.isEffect(initialize) ? (() => initialize) : initialize as any,
     identifier: "SerializableMachine",
+    retryPolicy: undefined,
     schemaInput: options.input as any,
-    schemaState: options.state as any
+    schemaState: options.state as any,
+    pipe() {
+      return pipeArguments(this, arguments)
+    }
   }) as any
 
 /**
@@ -383,31 +429,34 @@ export const makeSerializable: {
  * @category combinators
  */
 export const modify: {
-  <M extends Machine.Any, State, Req extends Schema.TaggedRequest.Any, R>(
+  <M extends Machine.Any, State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
     f: (
-      _: ProcedureList.ProcedureList<Machine.State<M>, Machine.Requests<M>, Machine.Context<M>>
-    ) => ProcedureList.ProcedureList<State, Req, R>
-  ): (self: M) => Machine.Modify<M, State, Req, Exclude<R, Scope.Scope | MachineContext>>
-  <M extends Machine.Any, State, Req extends Schema.TaggedRequest.Any, R>(
+      _: ProcedureList.ProcedureList<Machine.State<M>, Machine.Public<M>, Machine.Private<M>, Machine.Context<M>>
+    ) => ProcedureList.ProcedureList<State, Public, Private, R>
+  ): (self: M) => Machine.Modify<M, State, Public, Private, Exclude<R, Scope.Scope | MachineContext>>
+  <M extends Machine.Any, State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
     self: M,
     f: (
-      _: ProcedureList.ProcedureList<Machine.State<M>, Machine.Requests<M>, Machine.Context<M>>
-    ) => ProcedureList.ProcedureList<State, Req, R>
-  ): Machine.Modify<M, State, Req, Exclude<R, Scope.Scope | MachineContext>>
-} = dual(2, <M extends Machine.Any, State, Req extends Schema.TaggedRequest.Any, R>(
-  self: M,
-  f: (
-    _: ProcedureList.ProcedureList<Machine.State<M>, Machine.Requests<M>, Machine.Context<M>>
-  ) => ProcedureList.ProcedureList<State, Req, R>
-): Machine.Any => ({
-  ...self,
-  initialize(input, previousState) {
-    return Effect.map(
-      self.initialize(input, previousState) as any,
-      f
-    )
-  }
-}))
+      _: ProcedureList.ProcedureList<Machine.State<M>, Machine.Public<M>, Machine.Private<M>, Machine.Context<M>>
+    ) => ProcedureList.ProcedureList<State, Public, Private, R>
+  ): Machine.Modify<M, State, Public, Private, Exclude<R, Scope.Scope | MachineContext>>
+} = dual(
+  2,
+  <M extends Machine.Any, State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+    self: M,
+    f: (
+      _: ProcedureList.ProcedureList<Machine.State<M>, Machine.Public<M>, Machine.Private<M>, Machine.Context<M>>
+    ) => ProcedureList.ProcedureList<State, Public, Private, R>
+  ): Machine.Any => ({
+    ...self,
+    initialize(input, previousState) {
+      return Effect.map(
+        self.initialize(input, previousState) as any,
+        f
+      )
+    }
+  })
+)
 
 /**
  * @since 1.0.0
@@ -417,27 +466,27 @@ export const addInitializer: {
   <M extends Machine.Any, A, E, R>(
     f: (
       state: Machine.State<M>,
-      ctx: Procedure.Procedure.Context<Machine.Requests<M>, Machine.State<M>>
+      ctx: Procedure.Procedure.Context<Machine.Public<M> | Machine.Private<M>, Machine.State<M>>
     ) => Effect.Effect<A, E, R>
   ): (self: M) => Machine.AddContext<M, Exclude<R, Scope.Scope | MachineContext>, E>
   <M extends Machine.Any, A, E, R>(
     self: M,
     f: (
       state: Machine.State<M>,
-      ctx: Procedure.Procedure.Context<Machine.Requests<M>, Machine.State<M>>
+      ctx: Procedure.Procedure.Context<Machine.Public<M> | Machine.Private<M>, Machine.State<M>>
     ) => Effect.Effect<A, E, R>
   ): Machine.AddContext<M, Exclude<R, Scope.Scope | MachineContext>, E>
 } = dual(2, <M extends Machine.Any, A, E, R>(
   self: M,
   f: (
     state: Machine.State<M>,
-    ctx: Procedure.Procedure.Context<Machine.Requests<M>, Machine.State<M>>
+    ctx: Procedure.Procedure.Context<Machine.Public<M>, Machine.State<M>>
   ) => Effect.Effect<A, E, R>
 ): Machine.Any => ({
   ...self,
   initialize(input, previousState) {
     return Effect.tap(
-      self.initialize(input, previousState) as Effect.Effect<ProcedureList.ProcedureList<any, any, any>>,
+      self.initialize(input, previousState) as Effect.Effect<ProcedureList.ProcedureList<any, any, any, any>>,
       (list) =>
         Effect.flatMap(
           MachineContext,
@@ -478,11 +527,12 @@ export const toSerializable: {
       readonly state: Schema.Schema<Types.NoInfer<State>, IS, SR>
       readonly input: Schema.Schema<Types.NoInfer<Input>, II, IR>
     }
-  ): <Requests extends Schema.TaggedRequest.Any, InitErr, R>(
-    self: Machine<State, Requests, Input, InitErr, R>
+  ): <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, InitErr, R>(
+    self: Machine<State, Public, Private, Input, InitErr, R>
   ) => SerializableMachine<
     State,
-    Requests,
+    Public,
+    Private,
     Input,
     InitErr,
     R,
@@ -490,7 +540,8 @@ export const toSerializable: {
   >
   <
     State,
-    Requests extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
     Input,
     InitErr,
     R,
@@ -499,14 +550,15 @@ export const toSerializable: {
     II,
     IR
   >(
-    self: Machine<State, Requests, Input, InitErr, R>,
+    self: Machine<State, Public, Private, Input, InitErr, R>,
     options: {
       readonly state: Schema.Schema<Types.NoInfer<State>, IS, SR>
       readonly input: Schema.Schema<Types.NoInfer<Input>, II, IR>
     }
   ): SerializableMachine<
     State,
-    Requests,
+    Public,
+    Private,
     Input,
     InitErr,
     R,
@@ -514,7 +566,8 @@ export const toSerializable: {
   >
 } = dual(2, <
   State,
-  Requests extends Schema.TaggedRequest.Any,
+  Public extends Schema.TaggedRequest.Any,
+  Private extends Schema.TaggedRequest.Any,
   Input,
   InitErr,
   R,
@@ -523,14 +576,15 @@ export const toSerializable: {
   II,
   IR
 >(
-  self: Machine<State, Requests, Input, InitErr, R>,
+  self: Machine<State, Public, Private, Input, InitErr, R>,
   options: {
     readonly state: Schema.Schema<Types.NoInfer<State>, IS, SR>
     readonly input: Schema.Schema<Types.NoInfer<Input>, II, IR>
   }
 ): SerializableMachine<
   State,
-  Requests,
+  Public,
+  Private,
   Input,
   InitErr,
   R,
@@ -599,15 +653,15 @@ export const boot = <
     let currentState: Machine.State<M> = undefined as any
     let runState: {
       readonly identifier: string
-      readonly internalTags: Set<string>
-      readonly schemaUnion: Schema.Schema<Machine.Requests<M>, unknown>
+      readonly publicTags: Set<string>
+      readonly schemaUnion: Schema.Schema<Machine.Public<M>, unknown>
     } = {
       identifier: "Unknown",
-      internalTags: new Set<string>(),
+      publicTags: new Set<string>(),
       schemaUnion: undefined as any
     }
 
-    const requestContext = <R extends Machine.Requests<M>>(request: R) =>
+    const requestContext = <R extends Machine.Public<M>>(request: R) =>
       Effect.sync(() => {
         const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
         const fiberRefs = fiber.getFiberRefs()
@@ -620,7 +674,7 @@ export const boot = <
         return [request, deferred, span, addSpans] as const
       })
 
-    const send = <R extends Machine.Requests<M>>(request: R) =>
+    const send = <R extends Machine.Public<M>>(request: R) =>
       Effect.flatMap(
         requestContext(request),
         (item) => {
@@ -645,7 +699,7 @@ export const boot = <
         }
       )
 
-    const sendIgnore = <R extends Machine.Requests<M>>(request: R) =>
+    const sendIgnore = <R extends Machine.Public<M>>(request: R) =>
       Effect.flatMap(
         requestContext(request),
         (item) => {
@@ -663,11 +717,11 @@ export const boot = <
         }
       )
 
-    const sendExternal = <R extends Machine.Requests<M>>(request: R) =>
+    const sendExternal = <R extends Machine.Public<M>>(request: R) =>
       Effect.suspend(() =>
-        runState.internalTags.has(request._tag)
-          ? Effect.die(`Request ${request._tag} marked as internal`)
-          : send(request)
+        runState.publicTags.has(request._tag)
+          ? send(request)
+          : Effect.die(`Request ${request._tag} marked as internal`)
       )
 
     const sendUnknown = (u: unknown) =>
@@ -675,7 +729,7 @@ export const boot = <
         Schema.decodeUnknown(runState.schemaUnion)(u).pipe(
           Effect.flatMap((req) =>
             Effect.flatMap(
-              Effect.exit(sendExternal(req)),
+              Effect.exit(send(req)),
               (exit) => Serializable.serializeExit(req, exit)
             )
           ),
@@ -766,9 +820,9 @@ export const boot = <
             [_, state] as const
         ))
 
-      const context: Procedure.Procedure.Context<Machine.Requests<M>, Machine.State<M>> = {
-        send,
-        sendIgnore,
+      const context: Procedure.Procedure.Context<Machine.Public<M>, Machine.State<M>> = {
+        sendAwait: send,
+        send: sendIgnore,
         fork,
         forkWith,
         forkOne,
@@ -779,7 +833,7 @@ export const boot = <
 
       const procedures = yield* _(
         self.initialize(input, currentState ?? options?.previousState) as Effect.Effect<
-          ProcedureList.ProcedureList<Machine.State<M>, Machine.Requests<M>, never>,
+          ProcedureList.ProcedureList<Machine.State<M>, Machine.Public<M>, Machine.Private<M>, never>,
           Machine.InitError<M>
         >,
         Effect.provideService(MachineContext, context)
@@ -787,14 +841,18 @@ export const boot = <
       const procedureMap: Record<
         string,
         Procedure.Procedure<any, Machine.State<M>, Machine.Context<M>>
-      > = Object.fromEntries(procedures.procedures.map((p) => [p.tag, p]))
+      > = Object.fromEntries(
+        procedures.private.map((p) => [p.tag, p]).concat(
+          procedures.public.map((p) => [p.tag, p])
+        )
+      )
 
       runState = {
         identifier: procedures.identifier,
-        internalTags: new Set(procedures.internalTags),
-        schemaUnion: Schema.union(...procedures.procedures.map((p) =>
-          p.schema
-        ))
+        publicTags: new Set(procedures.public.map((p) =>
+          p.tag
+        )),
+        schemaUnion: Schema.union(...procedures.public.map((p) => p.schema))
       }
       yield* _(publishState(procedures.initialState))
       yield* _(Deferred.succeed(latch, void 0))
@@ -812,8 +870,16 @@ export const boot = <
               return Effect.die(`Unknown request ${request._tag}`)
             }
 
-            let handler = Effect.matchEffect(procedure.handler(request, currentState, context, deferred), {
-              onFailure: (e) => Deferred.fail(deferred, e),
+            let handler = Effect.matchCauseEffect(procedure.handler(request, currentState, context, deferred), {
+              onFailure: (e) => {
+                if (Cause.isFailure(e)) {
+                  return Deferred.failCause(deferred, e)
+                }
+                return Effect.zipRight(
+                  Deferred.failCause(deferred, e),
+                  Effect.failCause(e)
+                )
+              },
               onSuccess: ([response, newState]) => {
                 if (response === Procedure.NoReply) {
                   return publishState(newState)
@@ -889,7 +955,8 @@ export const boot = <
  */
 export const snapshot = <
   State,
-  Requests extends Schema.TaggedRequest.Any,
+  Public extends Schema.TaggedRequest.Any,
+  Private extends Schema.TaggedRequest.Any,
   Input,
   InitErr,
   R,
@@ -898,7 +965,8 @@ export const snapshot = <
   self: Actor<
     SerializableMachine<
       State,
-      Requests,
+      Public,
+      Private,
       Input,
       InitErr,
       R,
@@ -916,11 +984,39 @@ export const snapshot = <
  * @category runtime
  */
 export const restore = <
-  M extends Machine.AnySerializible
+  State,
+  Public extends Schema.TaggedRequest.Any,
+  Private extends Schema.TaggedRequest.Any,
+  Input,
+  InitErr,
+  R,
+  SR
 >(
-  self: M,
+  self: SerializableMachine<
+    State,
+    Public,
+    Private,
+    Input,
+    InitErr,
+    R,
+    SR
+  >,
   snapshot: readonly [input: unknown, state: unknown]
-): Effect.Effect<Actor<M>, ParseResult.ParseError, Machine.ContextWithSchema<M>> =>
+): Effect.Effect<
+  Actor<
+    SerializableMachine<
+      State,
+      Public,
+      Private,
+      Input,
+      InitErr,
+      R,
+      SR
+    >
+  >,
+  ParseResult.ParseError,
+  R | SR
+> =>
   Effect.flatMap(
     Schema.decodeUnknown(Schema.tuple(self.schemaInput, self.schemaState))(snapshot),
     ([input, previousState]) => (boot as any)(self, input, { previousState })

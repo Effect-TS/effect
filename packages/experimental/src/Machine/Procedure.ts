@@ -92,11 +92,11 @@ export declare namespace Procedure {
    * @category models
    */
   export interface Context<Requests extends Schema.TaggedRequest.Any, State> extends BaseContext {
-    readonly send: <Req extends Requests>(request: Req) => Effect.Effect<
+    readonly sendAwait: <Req extends Requests>(request: Req) => Effect.Effect<
       Request.Success<Req>,
       Request.Error<Req>
     >
-    readonly sendIgnore: <Req extends Requests>(request: Req) => Effect.Effect<void>
+    readonly send: <Req extends Requests>(request: Req) => Effect.Effect<void>
     readonly forkWith: {
       (state: State): <A, E, R>(
         effect: Effect.Effect<A, E, R>

@@ -6,7 +6,6 @@ import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
-import * as Predicate from "effect/Predicate"
 import type * as Types from "effect/Types"
 import * as Procedure from "./Procedure.js"
 
@@ -26,13 +25,16 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface ProcedureList<State, Request extends Schema.TaggedRequest.Any, R>
-  extends Effect.Effect<ProcedureList<State, Request, R>>
-{
+export interface ProcedureList<
+  State,
+  Public extends Schema.TaggedRequest.Any,
+  Private extends Schema.TaggedRequest.Any,
+  R
+> extends Effect.Effect<ProcedureList<State, Public, Private, R>> {
   readonly [TypeId]: TypeId
   readonly initialState: State
-  readonly procedures: ReadonlyArray<Procedure.Procedure<Request, State, R>>
-  readonly internalTags: ReadonlyArray<string>
+  readonly public: ReadonlyArray<Procedure.Procedure<Public, State, R>>
+  readonly private: ReadonlyArray<Procedure.Procedure<Private, State, R>>
   readonly identifier: string
 }
 
@@ -44,16 +46,18 @@ const Proto = {
   }
 }
 
-const makeProto = <State, Request extends Schema.TaggedRequest.Any, R>(options: {
-  readonly initialState: State
-  readonly procedures: ReadonlyArray<Procedure.Procedure<Request, State, R>>
-  readonly internalTags: ReadonlyArray<string>
-  readonly identifier: string
-}): ProcedureList<State, Request, R> => ({
+const makeProto = <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+  options: {
+    readonly initialState: State
+    readonly public: ReadonlyArray<Procedure.Procedure<Public, State, R>>
+    readonly private: ReadonlyArray<Procedure.Procedure<Private, State, R>>
+    readonly identifier: string
+  }
+): ProcedureList<State, Public, Private, R> => ({
   __proto__: Proto,
   initialState: options.initialState,
-  procedures: options.procedures,
-  internalTags: options.internalTags,
+  public: options.public,
+  private: options.private,
   identifier: options.identifier
 } as any)
 
@@ -61,11 +65,11 @@ const makeProto = <State, Request extends Schema.TaggedRequest.Any, R>(options: 
  * @since 1.0.0
  * @category constructors
  */
-export const make = <State>(initialState: State, identifier?: string): ProcedureList<State, never, never> =>
+export const make = <State>(initialState: State, identifier?: string): ProcedureList<State, never, never, never> =>
   makeProto({
     initialState,
-    procedures: [],
-    internalTags: [],
+    public: [],
+    private: [],
     identifier: identifier ?? "Unknown"
   })
 
@@ -74,30 +78,56 @@ export const make = <State>(initialState: State, identifier?: string): Procedure
  * @category combinators
  */
 export const add: {
-  <Req extends Schema.TaggedRequest.Any, I, ReqR, State, Requests extends Schema.TaggedRequest.Any, R2>(
+  <
+    Req extends Schema.TaggedRequest.Any,
+    I,
+    ReqR,
+    State,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
+    R2
+  >(
     schema: Schema.Schema<Req, I, ReqR>,
     tag: Req["_tag"],
-    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Requests>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): <R>(
-    self: ProcedureList<State, Requests, R>
-  ) => ProcedureList<State, Req | Requests, R | R2 | Serializable.SerializableWithResult.Context<Req>>
-  <State, Requests extends Schema.TaggedRequest.Any, R, Req extends Schema.TaggedRequest.Any, I, ReqR, R2>(
-    self: ProcedureList<State, Requests, R>,
+    self: ProcedureList<State, Public, Private, R>
+  ) => ProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableWithResult.Context<Req>>
+  <
+    State,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
+    R,
+    Req extends Schema.TaggedRequest.Any,
+    I,
+    ReqR,
+    R2
+  >(
+    self: ProcedureList<State, Public, Private, R>,
     schema: Schema.Schema<Req, I, ReqR>,
     tag: Req["_tag"],
-    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Requests>, R2>
-  ): ProcedureList<State, Req | Requests, R | R2 | Serializable.SerializableWithResult.Context<Req>>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
+  ): ProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableWithResult.Context<Req>>
 } = dual(
   4,
-  <State, Requests extends Schema.TaggedRequest.Any, R, Req extends Schema.TaggedRequest.Any, I, ReqR, R2>(
-    self: ProcedureList<State, Requests, R>,
+  <
+    State,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
+    R,
+    Req extends Schema.TaggedRequest.Any,
+    I,
+    ReqR,
+    R2
+  >(
+    self: ProcedureList<State, Public, Private, R>,
     schema: Schema.Schema<Req, I, ReqR>,
     tag: Req["_tag"],
-    handler: Procedure.Handler<Req, State, Requests, R2>
-  ): ProcedureList<State, Req | Requests, R | R2> =>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
+  ): ProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableWithResult.Context<Req>> =>
     makeProto({
       ...self,
-      procedures: [...self.procedures, Procedure.make<any, any>()(schema, tag, handler)] as any
+      public: [...self.public, Procedure.make<any, any>()(schema, tag, handler)] as any
     })
 )
 
@@ -105,23 +135,58 @@ export const add: {
  * @since 1.0.0
  * @category combinators
  */
-export const markInternal: {
-  <Requests extends Schema.TaggedRequest.Any, const Tags extends ReadonlyArray<Requests["_tag"]>>(
-    ...tags: Tags
-  ): <State, R>(
-    self: ProcedureList<State, Requests, R>
-  ) => ProcedureList<State, Exclude<Requests, { readonly _tag: Tags[number] }>, R>
-  <State, Requests extends Schema.TaggedRequest.Any, R, const Tags extends ReadonlyArray<Requests["_tag"]>>(
-    self: ProcedureList<State, Requests, R>,
-    ...tags: Tags
-  ): ProcedureList<State, Exclude<Requests, { readonly _tag: Tags[number] }>, R>
+export const addPrivate: {
+  <
+    Req extends Schema.TaggedRequest.Any,
+    I,
+    ReqR,
+    State,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
+    R2
+  >(
+    schema: Schema.Schema<Req, I, ReqR>,
+    tag: Req["_tag"],
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
+  ): <R>(
+    self: ProcedureList<State, Public, Private, R>
+  ) => ProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableWithResult.Context<Req>>
+  <
+    State,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
+    R,
+    Req extends Schema.TaggedRequest.Any,
+    I,
+    ReqR,
+    R2
+  >(
+    self: ProcedureList<State, Public, Private, R>,
+    schema: Schema.Schema<Req, I, ReqR>,
+    tag: Req["_tag"],
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
+  ): ProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableWithResult.Context<Req>>
 } = dual(
-  (args) => Predicate.hasProperty(args[0], TypeId),
-  <State, Requests extends Schema.TaggedRequest.Any, R, const Tags extends ReadonlyArray<Requests["_tag"]>>(
-    self: ProcedureList<State, Requests, R>,
-    ...tags: Tags
-  ): ProcedureList<State, Exclude<Requests, { readonly _tag: Tags[number] }>, R> =>
-    makeProto({ ...self, internalTags: [...self.internalTags, ...tags] } as any)
+  4,
+  <
+    State,
+    Public extends Schema.TaggedRequest.Any,
+    Private extends Schema.TaggedRequest.Any,
+    R,
+    Req extends Schema.TaggedRequest.Any,
+    I,
+    ReqR,
+    R2
+  >(
+    self: ProcedureList<State, Public, Private, R>,
+    schema: Schema.Schema<Req, I, ReqR>,
+    tag: Req["_tag"],
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
+  ): ProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableWithResult.Context<Req>> =>
+    makeProto({
+      ...self,
+      private: [...self.private, Procedure.make<any, any>()(schema, tag, handler)] as any
+    })
 )
 
 /**
@@ -129,14 +194,16 @@ export const markInternal: {
  * @category combinators
  */
 export const withInitialState: {
-  <State>(initialState: Types.NoInfer<State>): <Requests extends Schema.TaggedRequest.Any, R>(
-    self: ProcedureList<State, Requests, R>
-  ) => ProcedureList<State, Requests, R>
-  <State, Requests extends Schema.TaggedRequest.Any, R>(
-    self: ProcedureList<State, Requests, R>,
+  <State>(
     initialState: Types.NoInfer<State>
-  ): ProcedureList<State, Requests, R>
-} = dual(2, <State, Requests extends Schema.TaggedRequest.Any, R>(
-  self: ProcedureList<State, Requests, R>,
+  ): <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+    self: ProcedureList<State, Public, Private, R>
+  ) => ProcedureList<State, Public, Private, R>
+  <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+    self: ProcedureList<State, Public, Private, R>,
+    initialState: Types.NoInfer<State>
+  ): ProcedureList<State, Public, Private, R>
+} = dual(2, <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+  self: ProcedureList<State, Public, Private, R>,
   initialState: Types.NoInfer<State>
-): ProcedureList<State, Requests, R> => makeProto({ ...self, initialState }))
+): ProcedureList<State, Public, Private, R> => makeProto({ ...self, initialState }))
