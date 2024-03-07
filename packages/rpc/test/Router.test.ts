@@ -20,7 +20,7 @@ class SomeError extends S.TaggedError<SomeError>()("SomeError", {
   message: S.string
 }) {}
 
-class Post extends S.Class<Post>()({
+class Post extends S.Class<Post>("Post")({
   id: S.number,
   body: S.string
 }) {}

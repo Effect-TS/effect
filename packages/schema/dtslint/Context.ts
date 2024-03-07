@@ -361,7 +361,7 @@ S.rename(S.struct({ a: aContext, b: bContext }), { a: "c", b: "d" })
 // Class
 // ---------------------------------------------
 
-export class MyClass extends S.Class<MyClass>()({
+export class MyClass extends S.Class<MyClass>("MyClass")({
   a: aContext
 }) {}
 
@@ -372,7 +372,7 @@ hole<S.Schema.Context<typeof MyClass>>()
 // Class.transform
 // ---------------------------------------------
 
-export class MyClassWithTransform extends MyClass.transformOrFail<MyClassWithTransform>()(
+export class MyClassWithTransform extends MyClass.transformOrFail<MyClassWithTransform>("MyClassWithTransform")(
   {
     b: bContext
   },
@@ -390,13 +390,15 @@ MyClassWithTransform.fields
 // Class.transformFrom
 // ---------------------------------------------
 
-export class MyClassWithTransformFrom extends MyClass.transformOrFailFrom<MyClassWithTransformFrom>()(
-  {
-    b: bContext
-  },
-  (i) => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(i.a === a ? { ...i, b: 1 } : { ...i, b: 2 }))),
-  (a) => Tag2.pipe(Effect.flatMap((b) => ParseResult.succeed(a.b === b ? { a: "a1" } : { a: "a2" })))
-) {}
+export class MyClassWithTransformFrom
+  extends MyClass.transformOrFailFrom<MyClassWithTransformFrom>("MyClassWithTransformFrom")(
+    {
+      b: bContext
+    },
+    (i) => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(i.a === a ? { ...i, b: 1 } : { ...i, b: 2 }))),
+    (a) => Tag2.pipe(Effect.flatMap((b) => ParseResult.succeed(a.b === b ? { a: "a1" } : { a: "a2" })))
+  )
+{}
 
 // $ExpectType "aContext" | "bContext" | "Tag1" | "Tag2"
 hole<S.Schema.Context<typeof MyClassWithTransformFrom>>()

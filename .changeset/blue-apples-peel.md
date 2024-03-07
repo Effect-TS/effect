@@ -2,6 +2,13 @@
 "@effect/schema": minor
 ---
 
+- Schema: require an identifier for Class APIs (to avoid dual package hazard):
+
+```diff
+-class A extends S.Class<A>()({ a: S.string }) {}
++class A extends S.Class<A>("A")({ a: S.string }) {}
+```
+
 - AST: refactor `Tuple` to `TupleType`
 
 ```diff

@@ -4,7 +4,7 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import { Context, Effect, Layer } from "effect"
 
-class Todo extends Schema.Class<Todo>()({
+class Todo extends Schema.Class<Todo>("Todo")({
   userId: Schema.number,
   id: Schema.number,
   title: Schema.string,

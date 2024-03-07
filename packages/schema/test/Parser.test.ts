@@ -85,12 +85,12 @@ describe("Parser", () => {
     })
 
     it("Class (decode)", () => {
-      class A extends S.Class<A>()({ _tag: S.literal("a") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.literal("a") }) {}
       expect(P.getLiterals(A.ast, true)).toEqual([["_tag", new AST.Literal("a")]])
     })
 
     it("Class (encode)", () => {
-      class A extends S.Class<A>()({ _tag: S.literal("a") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.literal("a") }) {}
       expect(P.getLiterals(A.ast, false)).toEqual([["_tag", new AST.Literal("a")]])
     })
   })

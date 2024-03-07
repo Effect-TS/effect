@@ -104,7 +104,7 @@ describe("Schema > keyof", () => {
   })
 
   it("should support Class", () => {
-    class A extends S.Class<A>()({ a: S.string }) {}
+    class A extends S.Class<A>("A")({ a: S.string }) {}
     // type K = keyof S.Schema.To<typeof A> // "a"
     expect(AST.keyof(A.ast)).toEqual(S.literal("a").ast)
   })

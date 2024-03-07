@@ -9,7 +9,7 @@ import { assert, describe, test } from "vitest"
 
 describe("RequestResolver", () => {
   describe("persisted", () => {
-    class User extends Schema.Class<User>()({
+    class User extends Schema.Class<User>("User")({
       id: Schema.number,
       name: Schema.string
     }) {}

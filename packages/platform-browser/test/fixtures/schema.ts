@@ -1,7 +1,7 @@
 import * as Transferable from "@effect/platform/Transferable"
 import * as Schema from "@effect/schema/Schema"
 
-export class User extends Schema.Class<User>()({
+export class User extends Schema.Class<User>("User")({
   id: Schema.number,
   name: Schema.string
 }) {}
@@ -10,7 +10,7 @@ export class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserByI
   id: Schema.number
 }) {}
 
-export class Person extends Schema.Class<Person>()({
+export class Person extends Schema.Class<Person>("Person")({
   id: Schema.number,
   name: Schema.string,
   data: Transferable.Uint8Array

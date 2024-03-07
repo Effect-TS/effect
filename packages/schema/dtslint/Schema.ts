@@ -4,7 +4,7 @@ import * as Brand from "effect/Brand"
 import { hole, identity, pipe } from "effect/Function"
 import type { Simplify } from "effect/Types"
 
-class A extends S.Class<A>()({ a: S.NonEmpty }) {}
+class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
 
 // ---------------------------------------------
 // Schema.Encoded
@@ -1388,7 +1388,7 @@ S.headOr(S.array(S.number))
 // Class
 // ---------------------------------------------
 
-class VoidClass extends S.Class<VoidClass>()({}) {}
+class VoidClass extends S.Class<VoidClass>("VoidClass")({}) {}
 
 // $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof VoidClass>>()
@@ -1397,7 +1397,7 @@ declare const aContext: S.Schema<string, string, "a">
 declare const bContext: S.Schema<number, number, "b">
 declare const cContext: S.Schema<boolean, boolean, "c">
 
-class AB extends S.Class<AB>()({ a: aContext, b: bContext }) {}
+class AB extends S.Class<AB>("AB")({ a: aContext, b: bContext }) {}
 
 // $ExpectType AB
 hole<S.Schema.Type<typeof AB>>()
@@ -1416,7 +1416,7 @@ hole<ConstructorParameters<typeof AB>>()
 
 // can be extended with extend()
 
-class EABC extends AB.extend<EABC>()({
+class EABC extends AB.extend<EABC>("EABC")({
   c: cContext
 }) {}
 
@@ -1437,7 +1437,7 @@ hole<ConstructorParameters<typeof EABC>>()
 
 // can be extended with Class fields
 
-class ABC extends S.Class<ABC>()({
+class ABC extends S.Class<ABC>("ABC")({
   ...AB.fields,
   b: S.string,
   c: cContext

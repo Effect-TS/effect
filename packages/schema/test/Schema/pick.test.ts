@@ -150,7 +150,7 @@ describe("Schema > pick", () => {
   })
 
   it("Class", () => {
-    class A extends S.Class<A>()({ a: S.string, b: S.number }) {}
+    class A extends S.Class<A>("A")({ a: S.string, b: S.number }) {}
     const schema = A.pipe(S.typeSchema, S.pick("b"))
     expect(schema.ast).toStrictEqual(S.struct({ b: S.number }).ast)
   })

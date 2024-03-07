@@ -110,7 +110,7 @@ describe("KeyValueStore / prefix", () => {
     ))
 })
 
-class User extends Schema.Class<User>()({
+class User extends Schema.Class<User>("User")({
   name: Schema.string,
   age: Schema.number
 }) {}
