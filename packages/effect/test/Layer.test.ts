@@ -12,7 +12,7 @@ import * as Layer from "effect/Layer"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
-import { assert, describe, test } from "vitest"
+import { assert, describe } from "vitest"
 
 export const acquire1 = "Acquiring Module 1"
 export const acquire2 = "Acquiring Module 2"
@@ -701,88 +701,6 @@ describe("Layer", () => {
         const result = yield* $(Ref.get(ref))
         assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])
       }))
-  })
-
-  describe.concurrent("toRunner", () => {
-    test("memoizes the layer build", async () => {
-      let count = 0
-      const layer = Layer.effectDiscard(Effect.sync(() => {
-        count++
-      }))
-      const instance = Layer.toRunner(layer)
-      await instance.runPromise(Effect.unit)
-      await instance.runPromise(Effect.unit)
-      await instance.dispose()
-      assert.strictEqual(count, 1)
-    })
-
-    test("provides context", async () => {
-      const tag = Context.GenericTag<string>("string")
-      const layer = Layer.succeed(tag, "test")
-      const instance = Layer.toRunner(layer)
-      const result = await instance.runPromise(tag)
-      await instance.dispose()
-      assert.strictEqual(result, "test")
-    })
-
-    test("provides fiberRefs", async () => {
-      const layer = Layer.setRequestCaching(true)
-      const instance = Layer.toRunner(layer)
-      const result = await instance.runPromise(FiberRef.get(FiberRef.currentRequestCacheEnabled))
-      await instance.dispose()
-      assert.strictEqual(result, true)
-    })
-
-    test("runPromiseService", async () => {
-      const tag = Context.GenericTag<string>("string")
-      const layer = Layer.succeed(tag, "test")
-      const instance = Layer.toRunner(layer)
-      const result = await instance.runPromiseService(tag, (_) => Effect.succeed(_))
-      await instance.dispose()
-      assert.strictEqual(result, "test")
-    })
-
-    test("runPromiseServiceFn", async () => {
-      const tag = Context.GenericTag<(_: string) => Effect.Effect<string>>("stringFn")
-      const layer = Layer.succeed(tag, Effect.succeed)
-      const instance = Layer.toRunner(layer)
-      const fn = instance.runPromiseServiceFn(tag, (_) => _)
-      const result = await fn("test")
-      await instance.dispose()
-      assert.strictEqual(result, "test")
-    })
-
-    test("implements AsyncDisposable", async () => {
-      const tag = Context.GenericTag<string>("string")
-      let count = 0
-      const layer = Layer.scoped(tag, Effect.gen(function* (_) {
-        yield* _(Effect.addFinalizer(() => Effect.sync(() => {
-          count++
-        })))
-        return "test"
-      })
-      )
-      await (async function() {
-        await using instance = Layer.toRunner(layer)
-        const result = await instance.runPromise(tag)
-        assert.strictEqual(result, "test")
-      })()
-      assert.strictEqual(count, 1)
-    })
-
-    test("allows sharing a MemoMap", async () => {
-      let count = 0
-      const layer = Layer.effectDiscard(Effect.sync(() => {
-        count++
-      }))
-      const instanceA = Layer.toRunner(layer)
-      const instanceB = Layer.toRunner(layer, instanceA.memoMap)
-      await instanceA.runPromise(Effect.unit)
-      await instanceB.runPromise(Effect.unit)
-      await instanceA.dispose()
-      await instanceB.dispose()
-      assert.strictEqual(count, 1)
-    })
   })
 })
 export const makeRef = (): Effect.Effect<Ref.Ref<Chunk.Chunk<string>>> => {

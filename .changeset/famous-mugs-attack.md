@@ -2,16 +2,15 @@
 "effect": patch
 ---
 
-add Layer.toRunner, to make incremental adoption easier
+add ManagedRuntime module, to make incremental adoption easier
 
-You can use a Layer.toRunner to build an Effect runner that can use the
+You can use a ManagedRuntime to run Effect's that can use the
 dependencies from the given Layer. For example:
 
 ```ts
-import type { Effect } from "effect";
-import { Console, Context, Layer } from "effect";
+import { Console, Effect, Layer, ManagedRuntime } from "effect";
 
-class Notifications extends Context.Tag("Notifications")<
+class Notifications extends Effect.Tag("Notifications")<
   Notifications,
   { readonly notify: (message: string) => Effect.Effect<void> }
 >() {
@@ -21,11 +20,10 @@ class Notifications extends Context.Tag("Notifications")<
 }
 
 async function main() {
-  const runner = Layer.toRunner(Notifications.Live);
-  await runner.runPromiseService(Notifications, (_) =>
-    _.notify("Hello world!")
-  );
-  await runner.dispose();
+  const runtime = ManagedRuntime.make(Notifications.Live);
+  const runPromise = ManagedRuntime.runPromise(runtime);
+  await runPromise(Notifications.notify("Hello, world!"));
+  await ManagedRuntime.dispose(runtime);
 }
 
 main();

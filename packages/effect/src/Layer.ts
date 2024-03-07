@@ -17,7 +17,6 @@
  *
  * @since 2.0.0
  */
-import type * as Fiber from "effect/Fiber"
 import type * as Cause from "./Cause.js"
 import type * as Clock from "./Clock.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
@@ -1073,70 +1072,3 @@ export const buildWithMemoMap: {
     scope: Scope.Scope
   ): Effect.Effect<Context.Context<ROut>, E, RIn>
 } = internal.buildWithMemoMap
-
-// -----------------------------------------------------------------------------
-// runner
-// -----------------------------------------------------------------------------
-
-/**
- * @since 2.0.0
- * @category runner
- */
-export interface Runner<R, RE> extends AsyncDisposable {
-  readonly dispose: () => Promise<void>
-  readonly memoMap: MemoMap
-  readonly runFork: <E, A>(effect: Effect.Effect<A, E, R>) => Fiber.RuntimeFiber<A, E | RE>
-  readonly runSync: <E, A>(effect: Effect.Effect<A, E, R>) => A
-  readonly runSyncExit: <E, A>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E | RE>
-  readonly runPromise: <E, A>(effect: Effect.Effect<A, E, R>) => Promise<A>
-  readonly runPromiseExit: <E, A>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<A, E | RE>>
-  readonly runPromiseFn: <
-    F extends (...args: Array<any>) => Effect.Effect<any, any, R>
-  >(
-    fn: F
-  ) => (...args: Parameters<F>) => Promise<Effect.Effect.Success<ReturnType<F>>>
-  readonly runPromiseService: <I extends R, S, A, E>(
-    tag: Context.Tag<I, S>,
-    fn: (service: S) => Effect.Effect<A, E, R>
-  ) => Promise<A>
-  readonly runPromiseServiceFn: <
-    I extends R,
-    S,
-    F extends (...args: Array<any>) => Effect.Effect<any, any, R>
-  >(
-    tag: Context.Tag<I, S>,
-    fn: (service: S) => F
-  ) => (...args: Parameters<F>) => Promise<Effect.Effect.Success<ReturnType<F>>>
-}
-
-/**
- * Convert a Layer into an Effect runner, than can be used to integrate Effect's with Promise
- * based code.
- *
- * @since 2.0.0
- * @category runtime class
- * @example
- * import type { Effect } from "effect"
- * import { Console, Context, Layer } from "effect"
- *
- * class Notifications extends Context.Tag("Notifications")<
- *   Notifications,
- *   {
- *     readonly notify: (message: string) => Effect.Effect<void>
- *   }
- * >() {
- *   static Live = Layer.succeed(this, {
- *     notify: (message) => Console.log(message)
- *   })
- * }
- *
- * async function main() {
- *   const runner = Layer.toRunner(Notifications.Live)
- *   await runner.runPromiseService(Notifications, (_) => _.notify("Hello, world!"))
- *   await runner.dispose()
- * }
- *
- * main()
- */
-export const toRunner: <R, RE>(layer: Layer<R, RE, never>, memoMap?: MemoMap | undefined) => Runner<R, RE> =
-  internal.toRunner
