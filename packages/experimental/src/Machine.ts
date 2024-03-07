@@ -13,7 +13,7 @@ import * as FiberMap from "effect/FiberMap"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberRefs from "effect/FiberRefs"
 import * as FiberSet from "effect/FiberSet"
-import { dual, identity } from "effect/Function"
+import { dual, identity, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as Option from "effect/Option"
@@ -857,7 +857,7 @@ export const boot = <
       yield* _(publishState(procedures.initialState))
       yield* _(Deferred.succeed(latch, void 0))
 
-      yield* _(
+      const process = pipe(
         Queue.take(requests),
         Effect.flatMap(([request, deferred, span, addSpan]) =>
           Effect.flatMap(Deferred.isDone(deferred), (done) => {
@@ -905,16 +905,23 @@ export const boot = <
           })
         ),
         Effect.forever,
-        Effect.provideService(MachineContext, context),
-        Effect.raceFirst(FiberSet.join(fiberSet)),
-        Effect.raceFirst(FiberMap.join(fiberMap)),
+        Effect.provideService(MachineContext, context)
+      )
+
+      yield* _(
+        Effect.all([
+          process,
+          FiberSet.join(fiberSet),
+          FiberMap.join(fiberMap)
+        ], { concurrency: "unbounded", discard: true }),
         Effect.onExit((exit) => {
           if (exit._tag === "Success") return Effect.die("absurd")
           return Effect.flatMap(
             Queue.takeAll(requests),
             Effect.forEach(([, deferred]) => Deferred.failCause(deferred, exit.cause))
           )
-        })
+        }),
+        Effect.catchAllDefect((defect) => Effect.fail(new MachineError({ cause: Cause.die(defect) })))
       )
     }).pipe(Effect.scoped) as Effect.Effect<
       never,

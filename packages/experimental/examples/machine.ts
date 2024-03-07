@@ -54,7 +54,8 @@ Effect.gen(function*(_) {
   yield* _(actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" })))
   yield* _(actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" })))
   yield* _(actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" })))
-  yield* _(actor.send(new Shutdown()))
+  yield* _(actor.send(new Shutdown()), Effect.catchAllCause(Effect.log))
+  yield* _(actor.join)
 }).pipe(
   Effect.scoped,
   runMain
