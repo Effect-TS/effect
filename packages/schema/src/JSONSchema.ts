@@ -4,7 +4,6 @@
 
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as AST from "./AST.js"
 import * as _hooks from "./internal/hooks.js"
@@ -337,12 +336,9 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       throw new Error("cannot build a JSON Schema for `bigint` without a JSON Schema annotation")
     case "SymbolKeyword":
       throw new Error("cannot build a JSON Schema for `symbol` without a JSON Schema annotation")
-    case "Tuple": {
+    case "TupleType": {
       const elements = ast.elements.map((e) => goWithIdentifier(e.type, $defs))
-      const rest = Option.map(
-        ast.rest,
-        ReadonlyArray.map((ast) => goWithIdentifier(ast, $defs))
-      )
+      const rest = ast.rest.map((ast) => goWithIdentifier(ast, $defs))
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
       // handle elements
@@ -355,8 +351,8 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (Option.isSome(rest)) {
-        const head = rest.value[0]
+      if (rest.length > 0) {
+        const head = rest[0]
         if (len > 0) {
           output.additionalItems = head
         } else {
@@ -366,7 +362,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         // ---------------------------------------------
         // handle post rest elements
         // ---------------------------------------------
-        if (rest.value.length > 1) {
+        if (rest.length > 1) {
           throw new Error(
             "Generating a JSON Schema for post-rest elements is not currently supported. You're welcome to contribute by submitting a Pull Request."
           )

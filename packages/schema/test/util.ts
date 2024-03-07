@@ -10,7 +10,6 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
-import * as RA from "effect/ReadonlyArray"
 import * as Runtime from "effect/Runtime"
 import * as fc from "fast-check"
 import { expect } from "vitest"
@@ -27,10 +26,10 @@ const effectifyDecode = <R>(
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
   switch (ast._tag) {
-    case "Tuple":
-      return new AST.Tuple(
+    case "TupleType":
+      return new AST.TupleType(
         ast.elements.map((e) => new AST.Element(effectifyAST(e.type), e.isOptional)),
-        Option.map(ast.rest, RA.map((ast) => effectifyAST(ast))),
+        ast.rest.map((ast) => effectifyAST(ast)),
         ast.isReadonly,
         ast.annotations
       )

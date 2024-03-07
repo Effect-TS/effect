@@ -170,7 +170,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
         return fc.tuple(...components).map((spans) => spans.join(""))
       }
     }
-    case "Tuple": {
+    case "TupleType": {
       const elements: Array<Arbitrary<any>> = []
       let hasOptionals = false
       for (const element of ast.elements) {
@@ -179,7 +179,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
           hasOptionals = true
         }
       }
-      const rest = Option.map(ast.rest, ReadonlyArray.map((e) => go(e, options)))
+      const rest = ast.rest.map((e) => go(e, options))
       return (fc) => {
         // ---------------------------------------------
         // handle elements
@@ -204,8 +204,8 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (Option.isSome(rest)) {
-          const [head, ...tail] = rest.value
+        if (ReadonlyArray.isNonEmptyReadonlyArray(rest)) {
+          const [head, ...tail] = rest
           const arb = head(fc)
           const constraints = options.constraints
           output = output.chain((as) => {

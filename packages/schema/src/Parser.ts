@@ -463,12 +463,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const regex = AST.getTemplateLiteralRegex(ast)
       return fromRefinement(ast, (u): u is any => Predicate.isString(u) && regex.test(u))
     }
-    case "Tuple": {
+    case "TupleType": {
       const elements = ast.elements.map((e) => goMemo(e.type, isDecoding))
-      const rest = Option.map(ast.rest, ReadonlyArray.map((ast) => goMemo(ast, isDecoding)))
+      const rest = ast.rest.map((ast) => goMemo(ast, isDecoding))
       let requiredLen = ast.elements.filter((e) => !e.isOptional).length
-      if (Option.isSome(ast.rest)) {
-        requiredLen += ast.rest.value.length - 1
+      if (ast.rest.length > 0) {
+        requiredLen += ast.rest.length - 1
       }
       const expectedAST = AST.Union.make(ast.elements.map((_, i) => new AST.Literal(i)))
       const concurrency = getConcurrency(ast)
@@ -497,7 +497,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         // handle excess indexes
         // ---------------------------------------------
-        if (Option.isNone(ast.rest)) {
+        if (ast.rest.length === 0) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
             const e = new _parseResult.Index(i, new _parseResult.Unexpected(expectedAST))
             if (allErrors) {
@@ -572,8 +572,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (Option.isSome(rest)) {
-          const [head, ...tail] = rest.value
+        if (ReadonlyArray.isNonEmptyReadonlyArray(rest)) {
+          const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             const te = head(input[i], options)
             const eu = _parseResult.eitherOrUndefined(te)

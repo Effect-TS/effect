@@ -81,7 +81,7 @@ describe("AST > .toString()", () => {
       expectToString(
         schema,
         `{
-  "_tag": "Tuple",
+  "_tag": "TupleType",
   "elements": [
     {
       "type": {
@@ -109,10 +109,7 @@ describe("AST > .toString()", () => {
       "isOptional": false
     }
   ],
-  "rest": {
-    "_id": "Option",
-    "_tag": "None"
-  },
+  "rest": [],
   "isReadonly": true,
   "annotations": {}
 }`
@@ -130,7 +127,7 @@ describe("AST > .toString()", () => {
     expectToString(
       schema,
       `{
-  "_tag": "Tuple",
+  "_tag": "TupleType",
   "elements": [
     {
       "type": {
@@ -158,10 +155,7 @@ describe("AST > .toString()", () => {
       "isOptional": false
     }
   ],
-  "rest": {
-    "_id": "Option",
-    "_tag": "None"
-  },
+  "rest": [],
   "isReadonly": true,
   "annotations": {}
 }`
@@ -181,7 +175,7 @@ describe("AST > .toString()", () => {
     expectToString(
       schema,
       `{
-  "_tag": "Tuple",
+  "_tag": "TupleType",
   "elements": [
     {
       "type": {
@@ -209,10 +203,7 @@ describe("AST > .toString()", () => {
       "isOptional": false
     }
   ],
-  "rest": {
-    "_id": "Option",
-    "_tag": "None"
-  },
+  "rest": [],
   "isReadonly": true,
   "annotations": {}
 }`
@@ -244,7 +235,7 @@ describe("AST > hash", () => {
       const schema: S.Schema<A> = S.suspend( // intended outer suspend
         () => S.tuple(S.number, S.union(schema, S.literal(null)))
       )
-      expectHash(schema, -1069774720)
+      expectHash(schema, -690299032)
     })
 
     it("inner/outer", () => {
@@ -254,7 +245,7 @@ describe("AST > hash", () => {
         S.union(S.suspend(() => schema), S.literal(null))
       )
 
-      expectHash(schema, -1069774720)
+      expectHash(schema, -690299032)
     })
 
     it("inner/inner", () => {
@@ -267,7 +258,7 @@ describe("AST > hash", () => {
         )
       )
 
-      expectHash(schema, -1069774720)
+      expectHash(schema, -690299032)
     })
   })
 })

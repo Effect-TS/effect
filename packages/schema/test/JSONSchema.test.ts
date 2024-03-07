@@ -3,7 +3,6 @@ import * as AST from "@effect/schema/AST"
 import * as JSONSchema from "@effect/schema/JSONSchema"
 import * as S from "@effect/schema/Schema"
 import AjvNonEsm from "ajv"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
@@ -1892,19 +1891,19 @@ const decodeAST = (
       if (schema.items) {
         if (Array.isArray(schema.items)) {
           const minItems = schema.minItems ?? -1
-          const rest: AST.Tuple["rest"] = schema.additionalItems && !Predicate.isBoolean(schema.additionalItems)
-            ? Option.some([decodeAST(schema.additionalItems, $defs)])
-            : Option.none()
-          return new AST.Tuple(
+          const rest: AST.TupleType["rest"] = schema.additionalItems && !Predicate.isBoolean(schema.additionalItems)
+            ? [decodeAST(schema.additionalItems, $defs)]
+            : []
+          return new AST.TupleType(
             schema.items.map((item, i) => new AST.Element(decodeAST(item, $defs), i >= minItems)),
             rest,
             true
           )
         } else {
-          return new AST.Tuple([], Option.some([decodeAST(schema.items, $defs)]), true)
+          return new AST.TupleType([], [decodeAST(schema.items, $defs)], true)
         }
       } else {
-        return new AST.Tuple([], Option.none(), true)
+        return new AST.TupleType([], [], true)
       }
     } else if (type === "object") {
       const required = schema.required || []

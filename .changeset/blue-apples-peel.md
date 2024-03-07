@@ -2,6 +2,19 @@
 "@effect/schema": minor
 ---
 
+- AST: refactor `Tuple` to `TupleType`
+
+```diff
+-export class Tuple implements Annotated {
++export class TupleType implements Annotated {
+-  readonly _tag = "Tuple"
++  readonly _tag = "TupleType"
+...
+-  readonly rest: Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>,
++  readonly rest: ReadonlyArray<AST>,
+}
+```
+
 - Schema: remove `element` and `rest`:
 
 Before

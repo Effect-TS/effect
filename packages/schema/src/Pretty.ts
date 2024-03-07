@@ -92,13 +92,13 @@ export const match: AST.Match<Pretty<any>> = {
   "BooleanKeyword": toString,
   "BigIntKeyword": getMatcher((a) => `${String(a)}n`),
   "Enums": stringify,
-  "Tuple": (ast, go) => {
+  "TupleType": (ast, go) => {
     const hook = getHook(ast)
     if (Option.isSome(hook)) {
       return hook.value()
     }
     const elements = ast.elements.map((e) => go(e.type))
-    const rest = Option.map(ast.rest, ReadonlyArray.map(go))
+    const rest = ast.rest.map(go)
     return (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0
@@ -117,8 +117,8 @@ export const match: AST.Match<Pretty<any>> = {
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (Option.isSome(rest)) {
-        const [head, ...tail] = rest.value
+      if (ReadonlyArray.isNonEmptyReadonlyArray(rest)) {
+        const [head, ...tail] = rest
         for (; i < input.length - tail.length; i++) {
           output.push(head(input[i]))
         }

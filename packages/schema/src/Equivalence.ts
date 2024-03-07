@@ -85,9 +85,9 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
       const get = _util.memoizeThunk(() => go(ast.f()))
       return (a, b) => get()(a, b)
     }
-    case "Tuple": {
+    case "TupleType": {
       const elements = ast.elements.map((element) => go(element.type))
-      const rest = Option.map(ast.rest, ReadonlyArray.map(go))
+      const rest = ast.rest.map(go)
       return Equivalence.make((a, b) => {
         const len = a.length
         if (len !== b.length) {
@@ -105,8 +105,8 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (Option.isSome(rest)) {
-          const [head, ...tail] = rest.value
+        if (ReadonlyArray.isNonEmptyReadonlyArray(rest)) {
+          const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             if (!head(a[i], b[i])) {
               return false

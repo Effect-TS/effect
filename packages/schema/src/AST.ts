@@ -38,7 +38,7 @@ export type AST =
   | TemplateLiteral
   // possible transformations
   | Refinement
-  | Tuple
+  | TupleType
   | TypeLiteral
   | Union
   | Suspend
@@ -872,17 +872,21 @@ export class Element {
  * @category model
  * @since 1.0.0
  */
-export class Tuple implements Annotated {
+export class TupleType implements Annotated {
   /**
    * @since 1.0.0
    */
-  readonly _tag = "Tuple"
+  readonly _tag = "TupleType"
   constructor(
     readonly elements: ReadonlyArray<Element>,
-    readonly rest: Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>,
+    readonly rest: ReadonlyArray<AST>,
     readonly isReadonly: boolean,
     readonly annotations: Annotations = {}
-  ) {}
+  ) {
+    if (elements.some((e) => e.isOptional) && rest.length > 1) {
+      throw new Error("A required element cannot follow an optional element. ts(1257)")
+    }
+  }
   /**
    * @since 1.0.0
    */
@@ -891,12 +895,12 @@ export class Tuple implements Annotated {
   }
 }
 
-const formatTuple = (ast: Tuple): string => {
+const formatTuple = (ast: TupleType): string => {
   const formattedElements = ast.elements.map((element) => String(element.type) + (element.isOptional ? "?" : ""))
     .join(", ")
-  return Option.match(ast.rest, {
-    onNone: () => `readonly [${formattedElements}]`,
-    onSome: ([head, ...tail]) => {
+  return ReadonlyArray.matchLeft(ast.rest, {
+    onEmpty: () => `readonly [${formattedElements}]`,
+    onNonEmpty: (head, tail) => {
       const formattedHead = String(head)
       const wrappedHead = formattedHead.includes(" | ") ? `(${formattedHead})` : formattedHead
 
@@ -922,7 +926,7 @@ const formatTuple = (ast: Tuple): string => {
  * @category guards
  * @since 1.0.0
  */
-export const isTuple: (ast: AST) => ast is Tuple = createASTGuard("Tuple")
+export const isTupleType: (ast: AST) => ast is TupleType = createASTGuard("TupleType")
 
 /**
  * @category model
@@ -1381,56 +1385,6 @@ export const annotations = (ast: AST, annotations: Annotations): AST => {
 }
 
 /**
- * Adds a rest element to the end of a tuple, or throws an exception if the rest element is already present.
- *
- * @since 1.0.0
- */
-export const appendRestElement = (
-  ast: AST,
-  restElement: AST
-): Tuple => {
-  if (isTuple(ast)) {
-    if (Option.isSome(ast.rest)) {
-      // example: `type A = [...string[], ...number[]]` is illegal
-      throw new Error("A rest element cannot follow another rest element. ts(1265)")
-    }
-    return new Tuple(ast.elements, Option.some([restElement]), ast.isReadonly)
-  }
-  throw new Error(`appendRestElement: unsupported schema (${ast})`)
-}
-
-/**
- * Appends an element to a tuple or throws an exception in the following cases:
- * - A required element cannot follow an optional element. ts(1257)
- * - An optional element cannot follow a rest element. ts(1266)
- *
- * @since 1.0.0
- */
-export const appendElement = (
-  ast: AST,
-  newElement: Element
-): Tuple => {
-  if (isTuple(ast)) {
-    if (ast.elements.some((e) => e.isOptional) && !newElement.isOptional) {
-      throw new Error("A required element cannot follow an optional element. ts(1257)")
-    }
-    return pipe(
-      ast.rest,
-      Option.match({
-        onNone: () => new Tuple([...ast.elements, newElement], Option.none(), ast.isReadonly),
-        onSome: (rest) => {
-          if (newElement.isOptional) {
-            throw new Error("An optional element cannot follow a rest element. ts(1266)")
-          }
-          return new Tuple(ast.elements, Option.some([...rest, newElement.type]), ast.isReadonly)
-        }
-      })
-    )
-  }
-  throw new Error(`appendElement: unsupported schema (${ast})`)
-}
-
-/**
  * Equivalent at runtime to the TypeScript type-level `keyof` operator.
  *
  * @since 1.0.0
@@ -1475,7 +1429,7 @@ export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
 /** @internal */
 export const getNumberIndexedAccess = (ast: AST): AST => {
   switch (ast._tag) {
-    case "Tuple": {
+    case "TupleType": {
       let hasOptional = false
       const out: Array<AST> = []
       for (const e of ast.elements) {
@@ -1487,10 +1441,8 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
       if (hasOptional) {
         out.push(undefinedKeyword)
       }
-      if (Option.isSome(ast.rest)) {
-        for (const e of ast.rest.value) {
-          out.push(e)
-        }
+      for (const e of ast.rest) {
+        out.push(e)
       }
       return Union.make(out)
     }
@@ -1645,13 +1597,13 @@ export const orUndefined = (ast: AST): AST => Union.make([ast, undefinedKeyword]
 export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
   const exact = options?.exact === true
   switch (ast._tag) {
-    case "Tuple":
-      return new Tuple(
+    case "TupleType":
+      return new TupleType(
         ast.elements.map((e) => new Element(exact ? e.type : orUndefined(e.type), true)),
-        pipe(
-          ast.rest,
-          Option.map((rest) => [Union.make([...rest, undefinedKeyword])])
-        ),
+        ReadonlyArray.match(ast.rest, {
+          onEmpty: () => ast.rest,
+          onNonEmpty: (rest) => [Union.make([...rest, undefinedKeyword])]
+        }),
         ast.isReadonly
       )
     case "TypeLiteral":
@@ -1682,16 +1634,16 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
  */
 export const required = (ast: AST): AST => {
   switch (ast._tag) {
-    case "Tuple":
-      return new Tuple(
+    case "TupleType":
+      return new TupleType(
         ast.elements.map((e) => new Element(e.type, false)),
-        pipe(
-          ast.rest,
-          Option.map((rest) => {
-            const u = Union.make([...rest])
-            return ReadonlyArray.map(rest, () => u)
-          })
-        ),
+        ReadonlyArray.match(ast.rest, {
+          onEmpty: () => ast.rest,
+          onNonEmpty: (rest) => {
+            const union = Union.make([...rest])
+            return ReadonlyArray.map(rest, () => union)
+          }
+        }),
         ast.isReadonly
       )
     case "TypeLiteral":
@@ -1722,8 +1674,8 @@ export const required = (ast: AST): AST => {
  */
 export const mutable = (ast: AST): AST => {
   switch (ast._tag) {
-    case "Tuple":
-      return new Tuple(ast.elements, ast.rest, false, ast.annotations)
+    case "TupleType":
+      return new TupleType(ast.elements, ast.rest, false, ast.annotations)
     case "TypeLiteral":
       return TypeLiteral.make(
         ast.propertySignatures.map((ps) =>
@@ -1793,10 +1745,13 @@ export const typeAST = (ast: AST): AST => {
         ast.encodeUnknown,
         ast.annotations
       )
-    case "Tuple":
-      return new Tuple(
+    case "TupleType":
+      return new TupleType(
         ast.elements.map((e) => new Element(typeAST(e.type), e.isOptional)),
-        Option.map(ast.rest, ReadonlyArray.map(typeAST)),
+        ReadonlyArray.match(ast.rest, {
+          onEmpty: () => ast.rest,
+          onNonEmpty: (rest) => rest.map(typeAST)
+        }),
         ast.isReadonly,
         ast.annotations
       )
@@ -1858,21 +1813,15 @@ export const encodedAST = (ast: AST): AST => {
         ast :
         new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown, ast.annotations)
     }
-    case "Tuple": {
+    case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
         const type = encodedAST(e.type)
         return type === e.type ? e : new Element(type, e.isOptional)
       })
-      let rest = ast.rest
-      if (Option.isSome(rest)) {
-        const value = changeMap(rest.value, encodedAST)
-        if (value !== rest.value) {
-          rest = Option.some(value)
-        }
-      }
+      const rest = changeMap(ast.rest, encodedAST)
       return elements === ast.elements && rest === ast.rest ?
         ast :
-        new Tuple(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
+        new TupleType(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
     }
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (p) => {
@@ -1908,7 +1857,7 @@ const toStringMemoSet = globalValue(
 const containerASTTags = {
   Declaration: true,
   Refinement: true,
-  Tuple: true,
+  TupleType: true,
   TypeLiteral: true,
   Union: true,
   Suspend: true,
@@ -1918,7 +1867,7 @@ const containerASTTags = {
 const isContainerAST = (ast: object): ast is
   | Declaration
   | Refinement
-  | Tuple
+  | TupleType
   | TypeLiteral
   | Union
   | Suspend
@@ -2022,10 +1971,8 @@ const maxWeightAll = (weights: ReadonlyArray<Weight>): Weight => weights.reduce(
 /** @internal */
 export const getWeight = (ast: AST): Weight => {
   switch (ast._tag) {
-    case "Tuple": {
-      const y = ast.elements.length
-      const z = Option.isSome(ast.rest) ? ast.rest.value.length : 0
-      return [2, y, z]
+    case "TupleType": {
+      return [2, ast.elements.length, ast.rest.length]
     }
     case "TypeLiteral": {
       const y = ast.propertySignatures.length
@@ -2150,7 +2097,7 @@ const equals = (self: AST, that: AST) => {
     case "Enums":
       return isEnums(that) && equalsEnums(that.enums, self.enums)
     case "Refinement":
-    case "Tuple":
+    case "TupleType":
     case "TypeLiteral":
     case "Union":
     case "Suspend":

@@ -1082,11 +1082,11 @@ class $tupleType<
       readonly elements: RestElements
     } | undefined
   ): AST.AST => {
-    return new AST.Tuple(
+    return new AST.TupleType(
       elements.map((schema) =>
         isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
       ),
-      Option.map(Option.fromNullable(rest), ({ elements, value }) => [value.ast, ...elements.map((e) => e.ast)]),
+      rest ? [rest.value.ast, ...rest.elements.map((e) => e.ast)] : [],
       true
     )
   }
@@ -1194,9 +1194,9 @@ class $nonEmptyArray<Value extends Schema.Any> extends _schema.Schema<
   Schema.Context<Value>
 > implements nonEmptyArray<Value> {
   static ast = <Value extends Schema.Any>(value: Value): AST.AST => {
-    return new AST.Tuple(
+    return new AST.TupleType(
       [new AST.Element(value.ast, false)],
-      Option.some([value.ast]),
+      [value.ast],
       true
     )
   }
