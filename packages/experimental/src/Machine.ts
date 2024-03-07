@@ -596,8 +596,16 @@ export const boot = <
     ))
     const latch = yield* _(Deferred.make<void>())
 
-    let state: Machine.State<M> = undefined as any
-    let identifier: string = "Machine"
+    let currentState: Machine.State<M> = undefined as any
+    let runState: {
+      readonly identifier: string
+      readonly internalTags: Set<string>
+      readonly schemaUnion: Schema.Schema<Machine.Requests<M>, unknown>
+    } = {
+      identifier: "Unknown",
+      internalTags: new Set<string>(),
+      schemaUnion: undefined as any
+    }
 
     const requestContext = <R extends Machine.Requests<M>>(request: R) =>
       Effect.sync(() => {
@@ -626,7 +634,7 @@ export const boot = <
           return Effect.useSpan(`Machine.send ${request._tag}`, {
             parent: span,
             attributes: {
-              "effect.machine": identifier,
+              "effect.machine": runState.identifier,
               ...request
             }
           }, (span) =>
@@ -648,32 +656,36 @@ export const boot = <
           return Effect.useSpan(`Machine.sendIgnore ${request._tag}`, {
             parent: span,
             attributes: {
-              "effect.machine": identifier,
+              "effect.machine": runState.identifier,
               ...request
             }
           }, (span) => Queue.offer(requests, [request, deferred, span, true]))
         }
       )
 
-    const internalTags = new Set<string>()
     const sendExternal = <R extends Machine.Requests<M>>(request: R) =>
-      internalTags.has(request._tag) ? Effect.die(`Request ${request._tag} marked as internal`) : send(request)
+      Effect.suspend(() =>
+        runState.internalTags.has(request._tag)
+          ? Effect.die(`Request ${request._tag} marked as internal`)
+          : send(request)
+      )
 
-    let schemaUnion: Schema.Schema<Machine.Requests<M>, unknown> = undefined as any
     const sendUnknown = (u: unknown) =>
-      Schema.decodeUnknown(schemaUnion)(u).pipe(
-        Effect.flatMap((req) =>
-          Effect.flatMap(
-            Effect.exit(sendExternal(req)),
-            (exit) => Serializable.serializeExit(req, exit)
-          )
-        ),
-        Effect.provide(context)
+      Effect.suspend(() =>
+        Schema.decodeUnknown(runState.schemaUnion)(u).pipe(
+          Effect.flatMap((req) =>
+            Effect.flatMap(
+              Effect.exit(sendExternal(req)),
+              (exit) => Serializable.serializeExit(req, exit)
+            )
+          ),
+          Effect.provide(context)
+        )
       ) as Effect.Effect<Schema.ExitFrom<unknown, unknown>, ParseResult.ParseError>
 
     const publishState = (newState: Machine.State<M>) => {
-      if (state !== newState) {
-        state = newState
+      if (currentState !== newState) {
+        currentState = newState
         return PubSub.publish(pubsub, newState)
       }
       return Effect.unit
@@ -766,7 +778,7 @@ export const boot = <
       }
 
       const procedures = yield* _(
-        self.initialize(input, state ?? options?.previousState) as Effect.Effect<
+        self.initialize(input, currentState ?? options?.previousState) as Effect.Effect<
           ProcedureList.ProcedureList<Machine.State<M>, Machine.Requests<M>, never>,
           Machine.InitError<M>
         >,
@@ -777,12 +789,13 @@ export const boot = <
         Procedure.Procedure<any, Machine.State<M>, Machine.Context<M>>
       > = Object.fromEntries(procedures.procedures.map((p) => [p.tag, p]))
 
-      identifier = procedures.identifier
-      internalTags.clear()
-      procedures.internalTags.forEach((_) =>
-        internalTags.add(_)
-      )
-      schemaUnion = Schema.union(...procedures.procedures.map((p) => p.schema))
+      runState = {
+        identifier: procedures.identifier,
+        internalTags: new Set(procedures.internalTags),
+        schemaUnion: Schema.union(...procedures.procedures.map((p) =>
+          p.schema
+        ))
+      }
       yield* _(publishState(procedures.initialState))
       yield* _(Deferred.succeed(latch, void 0))
 
@@ -799,7 +812,7 @@ export const boot = <
               return Effect.die(`Unknown request ${request._tag}`)
             }
 
-            let handler = Effect.matchEffect(procedure.handler(request, state, context, deferred), {
+            let handler = Effect.matchEffect(procedure.handler(request, currentState, context, deferred), {
               onFailure: (e) => Deferred.fail(deferred, e),
               onSuccess: ([response, newState]) => {
                 if (response === Procedure.NoReply) {
@@ -815,7 +828,7 @@ export const boot = <
               handler = Effect.withSpan(handler, `Machine.process ${request._tag}`, {
                 parent: span,
                 attributes: {
-                  "effect.machine": identifier
+                  "effect.machine": runState.identifier
                 }
               })
             } else if (span !== undefined) {
@@ -837,10 +850,7 @@ export const boot = <
           )
         })
       )
-    }).pipe(
-      Effect.provide(context),
-      Effect.scoped
-    ) as Effect.Effect<
+    }).pipe(Effect.scoped) as Effect.Effect<
       never,
       MachineError | Machine.InitError<M>
     >
@@ -860,11 +870,11 @@ export const boot = <
       [ActorTypeId]: ActorTypeId,
       machine: self,
       input: input!,
-      state: Effect.sync(() => state),
+      state: Effect.sync(() => currentState),
       subscribe: PubSub.subscribe(pubsub),
       stream: Stream.fromPubSub(pubsub),
       streamWithInitial: Stream.concat(
-        Stream.sync(() => state),
+        Stream.sync(() => currentState),
         Stream.fromPubSub(pubsub)
       ),
       send: sendExternal,

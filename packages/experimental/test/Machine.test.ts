@@ -122,7 +122,7 @@ const counterSerialized = Machine.toSerializable(counter, {
 describe("Machine", () => {
   test("counter", () =>
     Effect.gen(function*(_) {
-      yield* _(Effect.sleep(1000))
+      yield* _(Effect.sleep(1000)) // wait for DevTools
       const booted = yield* _(Machine.boot(counter, 0))
       yield* _(Effect.sleep(10))
       assert.strictEqual(yield* _(booted.state), 0)
