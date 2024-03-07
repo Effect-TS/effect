@@ -1288,7 +1288,7 @@ export const toRunner = <Args extends ReadonlyArray<any>, R, RE>(
     function runPromise<E, A>(effect: Effect.Effect<A, E, R>): Promise<A> {
       return core.isEffect(runtimeOrEffect)
         ? runtime.unsafeRunPromiseEffect(provide(effect))
-        : runtime.unsafeRunPromise(runtimeOrEffect)(provide(effect))
+        : runtime.unsafeRunPromise(runtimeOrEffect)(effect)
     }
 
     return {
@@ -1300,23 +1300,23 @@ export const toRunner = <Args extends ReadonlyArray<any>, R, RE>(
       runFork<E, A>(effect: Effect.Effect<A, E, R>): Fiber.RuntimeFiber<A, E | RE> {
         return core.isEffect(runtimeOrEffect)
           ? runtime.unsafeForkEffect(provide(effect))
-          : runtime.unsafeFork(runtimeOrEffect)(provide(effect))
+          : runtime.unsafeFork(runtimeOrEffect)(effect)
       },
       runSync<A, E>(effect: Effect.Effect<A, E, R>): A {
         return core.isEffect(runtimeOrEffect)
           ? runtime.unsafeRunSyncEffect(provide(effect))
-          : runtime.unsafeRunSync(runtimeOrEffect)(provide(effect))
+          : runtime.unsafeRunSync(runtimeOrEffect)(effect)
       },
       runSyncExit<A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E | RE> {
         return core.isEffect(runtimeOrEffect)
           ? runtime.unsafeRunSyncExitEffect(provide(effect))
-          : runtime.unsafeRunSyncExit(runtimeOrEffect)(provide(effect))
+          : runtime.unsafeRunSyncExit(runtimeOrEffect)(effect)
       },
       runPromise,
       runPromiseExit<E, A>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<A, E | RE>> {
         return core.isEffect(runtimeOrEffect)
           ? runtime.unsafeRunPromiseExitEffect(provide(effect))
-          : runtime.unsafeRunPromiseExit(runtimeOrEffect)(provide(effect))
+          : runtime.unsafeRunPromiseExit(runtimeOrEffect)(effect)
       },
       runPromiseFn<
         F extends (...args: Array<any>) => Effect.Effect<any, any, R>
