@@ -53,13 +53,7 @@ export type Handler<
   Requests extends Schema.TaggedRequest.Any,
   R
 > = (
-  request: Request,
-  state: State,
-  context: Procedure.Context<Requests | Request, State>,
-  deferred: Deferred.Deferred<
-    Request.Success<Request>,
-    Request.Error<Request>
-  >
+  context: Procedure.Context<Requests | Request, Request, State>
 ) => Effect.Effect<
   readonly [response: Request.Success<Request> | NoReply, state: State],
   Request.Error<Request>,
@@ -85,18 +79,23 @@ export declare namespace Procedure {
       (id: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<void, never, R>
       <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R>
     }
+    readonly unsafeSend: <Req extends Schema.TaggedRequest.Any>(request: Req) => Effect.Effect<void>
+    readonly unsafeSendAwait: <Req extends Schema.TaggedRequest.Any>(request: Req) => Effect.Effect<
+      Request.Success<Req>,
+      Request.Error<Req>
+    >
   }
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export interface Context<Requests extends Schema.TaggedRequest.Any, State> extends BaseContext {
+  export interface ContextProto<Requests extends Schema.TaggedRequest.Any, State> extends BaseContext {
+    readonly send: <Req extends Requests>(request: Req) => Effect.Effect<void>
     readonly sendAwait: <Req extends Requests>(request: Req) => Effect.Effect<
       Request.Success<Req>,
       Request.Error<Req>
     >
-    readonly send: <Req extends Requests>(request: Req) => Effect.Effect<void>
     readonly forkWith: {
       (state: State): <A, E, R>(
         effect: Effect.Effect<A, E, R>
@@ -128,6 +127,21 @@ export declare namespace Procedure {
         state: State
       ): Effect.Effect<readonly [void, State], never, R>
     }
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Context<Requests extends Schema.TaggedRequest.Any, Request extends Schema.TaggedRequest.Any, State>
+    extends ContextProto<Requests, State>
+  {
+    readonly request: Request
+    readonly state: State
+    readonly deferred: Deferred.Deferred<
+      Request.Success<Request>,
+      Request.Error<Request>
+    >
   }
 
   /**

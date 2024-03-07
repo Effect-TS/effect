@@ -22,25 +22,25 @@ class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackgro
 const counter = Machine.make(
   (input: number, previous?: number) =>
     Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
-      Machine.procedures.add(Increment, "Increment", (_req, state) =>
+      Machine.procedures.add(Increment, "Increment", ({ state }) =>
         Effect.sync(() => {
           const count = state + 1
           return [count, count]
         })),
-      Machine.procedures.add(Decrement, "Decrement", (_req, state) =>
+      Machine.procedures.add(Decrement, "Decrement", ({ state }) =>
         Effect.sync(() => {
           const count = state - 1
           return [count, count]
         })),
-      Machine.procedures.add(IncrementBy, "IncrementBy", (req, state) =>
+      Machine.procedures.add(IncrementBy, "IncrementBy", ({ request, state }) =>
         Effect.sync(() => {
-          const count = state + req.number
+          const count = state + request.number
           return [count, count]
         })),
       Machine.procedures.add(
         FailBackground,
         "FailBackground",
-        (_req, state, ctx) => ctx.forkWith(Effect.fail("error"), state)
+        ({ forkWith, state }) => forkWith(Effect.fail("error"), state)
       )
     )
 )
@@ -48,18 +48,18 @@ const counter = Machine.make(
 const delayedCounter = Machine.make(
   (input: number, previous?: number) =>
     Machine.procedures.make(previous ?? input, `Counter(${input})`).pipe(
-      Machine.procedures.addPrivate(IncrementBy, "IncrementBy", (req, state) =>
+      Machine.procedures.addPrivate(IncrementBy, "IncrementBy", ({ request, state }) =>
         Effect.sync(() => {
-          const count = state + req.number
+          const count = state + request.number
           return [count, count]
         })),
       Machine.procedures.add(
         DelayedIncrementBy,
         "DelayedIncrementBy",
-        (req, state, ctx) =>
-          ctx.sendAwait(new IncrementBy({ number: req.number })).pipe(
-            Effect.delay(req.delay),
-            ctx.forkWith(state)
+        ({ forkWith, request, sendAwait, state }) =>
+          sendAwait(new IncrementBy({ number: request.number })).pipe(
+            Effect.delay(request.delay),
+            forkWith(state)
           )
       )
     )
@@ -74,7 +74,7 @@ const withContext = Machine.make(
     Effect.gen(function*(_) {
       const multiplier = yield* _(Multiplier)
       return Machine.procedures.make(previous ?? input).pipe(
-        Machine.procedures.add(Multiply, "Multiply", (_req, state) =>
+        Machine.procedures.add(Multiply, "Multiply", ({ state }) =>
           Effect.sync(() => {
             const count = state * multiplier
             return [count, count]
@@ -84,20 +84,25 @@ const withContext = Machine.make(
 )
 
 const timerLoop = Machine.make(
-  Machine.procedures.make(0).pipe(
-    Machine.procedures.addPrivate(
-      Increment,
-      "Increment",
-      (_, state, ctx) =>
-        ctx.send(new Increment()).pipe(
-          Effect.delay(20),
-          ctx.forkOne("timer"),
-          Effect.as([state + 1, state + 1])
-        )
+  Effect.gen(function*(_) {
+    const { unsafeSend } = yield* _(Machine.MachineContext)
+
+    // queue initial message
+    yield* _(unsafeSend(new Increment()))
+
+    return Machine.procedures.make(0).pipe(
+      Machine.procedures.addPrivate(
+        Increment,
+        "Increment",
+        (ctx) =>
+          ctx.send(new Increment()).pipe(
+            Effect.delay(20),
+            ctx.forkOne("timer"),
+            Effect.as([ctx.state + 1, ctx.state + 1])
+          )
+      )
     )
-  )
-).pipe(
-  Machine.addInitializer((_, ctx) => ctx.send(new Increment()))
+  })
 )
 
 const deferReply = Machine.make(
@@ -105,9 +110,9 @@ const deferReply = Machine.make(
     Machine.procedures.add(
       Increment,
       "Increment",
-      (_, state, ctx, d) => {
-        const count = state + 1
-        return Deferred.succeed(d, count).pipe(
+      (ctx) => {
+        const count = ctx.state + 1
+        return Deferred.succeed(ctx.deferred, count).pipe(
           Effect.delay(10),
           ctx.fork,
           Effect.as([Machine.NoReply, count])
@@ -169,36 +174,12 @@ describe("Machine", () => {
       assert.strictEqual(yield* _(booted.state), 4)
     }).pipe(Effect.scoped, Effect.runPromise))
 
-  test("subscribe", () =>
+  test("changes", () =>
     Effect.gen(function*(_) {
       const booted = yield* _(Machine.boot(counter, 0))
       const results: Array<number> = []
       yield* _(
-        booted.subscribe,
-        Effect.flatMap((q) =>
-          q.take.pipe(
-            Effect.tap((i) => {
-              results.push(i)
-            }),
-            Effect.forever
-          )
-        ),
-        Effect.fork
-      )
-      yield* _(Effect.yieldNow())
-      assert.strictEqual(yield* _(booted.send(new Increment())), 1)
-      assert.strictEqual(yield* _(booted.send(new Increment())), 2)
-      assert.strictEqual(yield* _(booted.send(new Increment())), 3)
-
-      assert.deepStrictEqual(results, [1, 2, 3])
-    }).pipe(Effect.scoped, Effect.runPromise))
-
-  test("streamWithInitial", () =>
-    Effect.gen(function*(_) {
-      const booted = yield* _(Machine.boot(counter, 0))
-      const results: Array<number> = []
-      yield* _(
-        booted.streamWithInitial,
+        booted.changes,
         Stream.runForEach((i) =>
           Effect.sync(() => {
             results.push(i)
@@ -214,11 +195,11 @@ describe("Machine", () => {
       assert.deepStrictEqual(results, [0, 1, 2, 3])
     }).pipe(Effect.scoped, Effect.runPromise))
 
-  test("addInitializer", () =>
+  test("unsafeSend initializer", () =>
     Effect.gen(function*(_) {
       const actor = yield* _(Machine.boot(timerLoop))
       const results = yield* _(
-        actor.streamWithInitial,
+        actor.changes,
         Stream.take(5),
         Stream.runCollect
       )

@@ -317,9 +317,7 @@ export interface Actor<M extends Machine.Any> {
     ParseResult.ParseError
   >
   readonly state: Effect.Effect<Machine.State<M>>
-  readonly subscribe: Effect.Effect<Queue.Dequeue<Machine.State<M>>, never, Scope.Scope>
-  readonly stream: Stream.Stream<Machine.State<M>>
-  readonly streamWithInitial: Stream.Stream<Machine.State<M>>
+  readonly changes: Stream.Stream<Machine.State<M>>
   readonly join: Effect.Effect<never, Machine.InitError<M> | MachineError>
 }
 
@@ -457,44 +455,6 @@ export const modify: {
     }
   })
 )
-
-/**
- * @since 1.0.0
- * @category combinators
- */
-export const addInitializer: {
-  <M extends Machine.Any, A, E, R>(
-    f: (
-      state: Machine.State<M>,
-      ctx: Procedure.Procedure.Context<Machine.Public<M> | Machine.Private<M>, Machine.State<M>>
-    ) => Effect.Effect<A, E, R>
-  ): (self: M) => Machine.AddContext<M, Exclude<R, Scope.Scope | MachineContext>, E>
-  <M extends Machine.Any, A, E, R>(
-    self: M,
-    f: (
-      state: Machine.State<M>,
-      ctx: Procedure.Procedure.Context<Machine.Public<M> | Machine.Private<M>, Machine.State<M>>
-    ) => Effect.Effect<A, E, R>
-  ): Machine.AddContext<M, Exclude<R, Scope.Scope | MachineContext>, E>
-} = dual(2, <M extends Machine.Any, A, E, R>(
-  self: M,
-  f: (
-    state: Machine.State<M>,
-    ctx: Procedure.Procedure.Context<Machine.Public<M>, Machine.State<M>>
-  ) => Effect.Effect<A, E, R>
-): Machine.Any => ({
-  ...self,
-  initialize(input, previousState) {
-    return Effect.tap(
-      self.initialize(input, previousState) as Effect.Effect<ProcedureList.ProcedureList<any, any, any, any>>,
-      (list) =>
-        Effect.flatMap(
-          MachineContext,
-          (ctx) => f(list.initialState, ctx as any)
-        )
-    )
-  }
-}))
 
 /**
  * @since 1.0.0
@@ -820,9 +780,11 @@ export const boot = <
             [_, state] as const
         ))
 
-      const context: Procedure.Procedure.Context<Machine.Public<M>, Machine.State<M>> = {
+      const context: Procedure.Procedure.ContextProto<Machine.Public<M>, Machine.State<M>> = {
         sendAwait: send,
         send: sendIgnore,
+        unsafeSend: sendIgnore as any,
+        unsafeSendAwait: send as any,
         fork,
         forkWith,
         forkOne,
@@ -870,26 +832,34 @@ export const boot = <
               return Effect.die(`Unknown request ${request._tag}`)
             }
 
-            let handler = Effect.matchCauseEffect(procedure.handler(request, currentState, context, deferred), {
-              onFailure: (e) => {
-                if (Cause.isFailure(e)) {
-                  return Deferred.failCause(deferred, e)
+            let handler = Effect.matchCauseEffect(
+              procedure.handler({
+                __proto__: context,
+                state: currentState,
+                request,
+                deferred
+              } as any),
+              {
+                onFailure: (e) => {
+                  if (Cause.isFailure(e)) {
+                    return Deferred.failCause(deferred, e)
+                  }
+                  return Effect.zipRight(
+                    Deferred.failCause(deferred, e),
+                    Effect.failCause(e)
+                  )
+                },
+                onSuccess: ([response, newState]) => {
+                  if (response === Procedure.NoReply) {
+                    return publishState(newState)
+                  }
+                  return Effect.zipRight(
+                    publishState(newState),
+                    Deferred.succeed(deferred, response)
+                  )
                 }
-                return Effect.zipRight(
-                  Deferred.failCause(deferred, e),
-                  Effect.failCause(e)
-                )
-              },
-              onSuccess: ([response, newState]) => {
-                if (response === Procedure.NoReply) {
-                  return publishState(newState)
-                }
-                return Effect.zipRight(
-                  publishState(newState),
-                  Deferred.succeed(deferred, response)
-                )
               }
-            })
+            )
             if (addSpan) {
               handler = Effect.withSpan(handler, `Machine.process ${request._tag}`, {
                 parent: span,
@@ -944,9 +914,7 @@ export const boot = <
       machine: self,
       input: input!,
       state: Effect.sync(() => currentState),
-      subscribe: PubSub.subscribe(pubsub),
-      stream: Stream.fromPubSub(pubsub),
-      streamWithInitial: Stream.concat(
+      changes: Stream.concat(
         Stream.sync(() => currentState),
         Stream.fromPubSub(pubsub)
       ),
