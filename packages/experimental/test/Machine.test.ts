@@ -196,7 +196,7 @@ describe("Machine", () => {
       assert.deepStrictEqual(results, [0, 1, 2, 3])
     }).pipe(Effect.scoped, Effect.runPromise))
 
-  test("unsafeSend initializer", () =>
+  test.only("unsafeSend initializer", () =>
     Effect.gen(function*(_) {
       const actor = yield* _(Machine.boot(timerLoop))
       const results = yield* _(

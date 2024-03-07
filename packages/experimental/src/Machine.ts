@@ -79,7 +79,7 @@ export interface Machine<
 > extends Pipeable {
   readonly [TypeId]: TypeId
   readonly initialize: Machine.Initialize<Input, State, Public, Private, InitErr, R, R>
-  readonly retryPolicy: Schedule.Schedule<unknown, InitErr | MachineError, R> | undefined
+  readonly retryPolicy: Schedule.Schedule<unknown, InitErr | MachineDefect, R> | undefined
 }
 
 /**
@@ -137,16 +137,16 @@ export type ActorTypeId = typeof ActorTypeId
  * @since 1.0.0
  * @category errors
  */
-export class MachineError extends Schema.TaggedError<MachineError>()("MachineError", {
+export class MachineDefect extends Schema.TaggedError<MachineDefect>()("MachineDefect", {
   cause: Schema.cause<never, never, never>({ error: Schema.never })
 }) {
   /**
    * @since 1.0.0
    */
-  static wrap<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, MachineError, R> {
+  static wrap<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, MachineDefect, R> {
     return Effect.catchAllCause(
       Effect.orDie(effect),
-      (cause) => Effect.fail(new MachineError({ cause }))
+      (cause) => Effect.fail(new MachineDefect({ cause }))
     )
   }
 
@@ -318,7 +318,7 @@ export interface Actor<M extends Machine.Any> {
   >
   readonly state: Effect.Effect<Machine.State<M>>
   readonly changes: Stream.Stream<Machine.State<M>>
-  readonly join: Effect.Effect<never, Machine.InitError<M> | MachineError>
+  readonly join: Effect.Effect<never, Machine.InitError<M> | MachineDefect>
 }
 
 /**
@@ -461,14 +461,14 @@ export const modify: {
  * @category combinators
  */
 export const retry: {
-  <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineError, R>(
+  <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(
     policy: Schedule.Schedule<Out, In, R>
   ): (self: M) => Machine.AddContext<M, R>
-  <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineError, R>(
+  <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(
     self: M,
     policy: Schedule.Schedule<Out, In, R>
   ): Machine.AddContext<M, R>
-} = dual(2, <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineError, R>(
+} = dual(2, <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(
   self: M,
   retryPolicy: Schedule.Schedule<Out, In, R>
 ): Machine.AddContext<M, R> =>
@@ -614,11 +614,11 @@ export const boot = <
     let runState: {
       readonly identifier: string
       readonly publicTags: Set<string>
-      readonly schemaUnion: Schema.Schema<Machine.Public<M>, unknown>
+      readonly decodeRequest: (u: unknown) => Effect.Effect<Machine.Public<M>, ParseResult.ParseError>
     } = {
       identifier: "Unknown",
       publicTags: new Set<string>(),
-      schemaUnion: undefined as any
+      decodeRequest: undefined as any
     }
 
     const requestContext = <R extends Machine.Public<M>>(request: R) =>
@@ -686,7 +686,7 @@ export const boot = <
 
     const sendUnknown = (u: unknown) =>
       Effect.suspend(() =>
-        Schema.decodeUnknown(runState.schemaUnion)(u).pipe(
+        runState.decodeRequest(u).pipe(
           Effect.flatMap((req) =>
             Effect.flatMap(
               Effect.exit(send(req)),
@@ -706,11 +706,11 @@ export const boot = <
     }
 
     const run = Effect.gen(function*(_) {
-      const fiberSet = yield* _(FiberSet.make<any, MachineError>())
-      const fiberMap = yield* _(FiberMap.make<string, any, MachineError>())
+      const fiberSet = yield* _(FiberSet.make<any, MachineDefect>())
+      const fiberMap = yield* _(FiberMap.make<string, any, MachineDefect>())
 
       const fork = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-        Effect.asUnit(FiberSet.run(fiberSet, MachineError.wrap(effect)))
+        Effect.asUnit(FiberSet.run(fiberSet, MachineDefect.wrap(effect)))
       const forkWith: {
         (state: Machine.State<M>): <A, E, R>(
           effect: Effect.Effect<A, E, R>
@@ -730,7 +730,7 @@ export const boot = <
         <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R>
       } = dual(2, <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R> =>
         Effect.asUnit(
-          FiberMap.run(fiberMap, id, MachineError.wrap(effect))
+          FiberMap.run(fiberMap, id, MachineDefect.wrap(effect))
         ))
       const forkReplaceWith: {
         (
@@ -814,7 +814,7 @@ export const boot = <
         publicTags: new Set(procedures.public.map((p) =>
           p.tag
         )),
-        schemaUnion: Schema.union(...procedures.public.map((p) => p.schema))
+        decodeRequest: Schema.decodeUnknown(Schema.union(...procedures.public.map((p) => p.schema)))
       }
       yield* _(publishState(procedures.initialState))
       yield* _(Deferred.succeed(latch, void 0))
@@ -829,7 +829,7 @@ export const boot = <
 
             const procedure = procedureMap[request._tag]
             if (procedure === undefined) {
-              return Effect.die(`Unknown request ${request._tag}`)
+              return Deferred.die(deferred, `Unknown request ${request._tag}`)
             }
 
             let handler = Effect.matchCauseEffect(
@@ -844,6 +844,7 @@ export const boot = <
                   if (Cause.isFailure(e)) {
                     return Deferred.failCause(deferred, e)
                   }
+                  // defects kill the actor
                   return Effect.zipRight(
                     Deferred.failCause(deferred, e),
                     Effect.failCause(e)
@@ -891,11 +892,23 @@ export const boot = <
             Effect.forEach(([, deferred]) => Deferred.failCause(deferred, exit.cause))
           )
         }),
-        Effect.catchAllDefect((defect) => Effect.fail(new MachineError({ cause: Cause.die(defect) })))
+        Effect.tapErrorCause((cause) =>
+          FiberRef.getWith(
+            FiberRef.unhandledErrorLogLevel,
+            Option.match({
+              onNone: () => Effect.unit,
+              onSome: (level) =>
+                Effect.log(`Unhandled Machine (${runState.identifier}) failure`, cause).pipe(
+                  Effect.locally(FiberRef.currentLogLevel, level)
+                )
+            })
+          )
+        ),
+        Effect.catchAllDefect((defect) => Effect.fail(new MachineDefect({ cause: Cause.die(defect) })))
       )
     }).pipe(Effect.scoped) as Effect.Effect<
       never,
-      MachineError | Machine.InitError<M>
+      MachineDefect | Machine.InitError<M>
     >
 
     const fiber = yield* _(
