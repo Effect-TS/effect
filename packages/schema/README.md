@@ -1650,7 +1650,7 @@ assert.deepStrictEqual(
 import * as S from "@effect/schema/Schema";
 
 // Schema<readonly [string, number]>
-S.tuple(S.string, S.number);
+const tuple1 = S.tuple(S.string, S.number);
 ```
 
 ### Append a required element
@@ -1658,8 +1658,11 @@ S.tuple(S.string, S.number);
 ```ts
 import * as S from "@effect/schema/Schema";
 
+// Schema<readonly [string, number]>
+const tuple1 = S.tuple(S.string, S.number);
+
 // Schema<readonly [string, number, boolean]>
-S.tuple(S.string, S.number).pipe(S.element(S.boolean));
+const tuple2 = S.tuple(...tuple1.elements, S.boolean);
 ```
 
 ### Append an optional element
@@ -1667,8 +1670,11 @@ S.tuple(S.string, S.number).pipe(S.element(S.boolean));
 ```ts
 import * as S from "@effect/schema/Schema";
 
+// Schema<readonly [string, number]>
+const tuple1 = S.tuple(S.string, S.number);
+
 // Schema<readonly [string, number, boolean?]>
-S.tuple(S.string, S.number).pipe(S.optionalElement(S.boolean));
+const tuple2 = S.tuple(...tuple1.elements, S.optionalElement(S.boolean));
 ```
 
 ### Append a rest element
@@ -1676,8 +1682,11 @@ S.tuple(S.string, S.number).pipe(S.optionalElement(S.boolean));
 ```ts
 import * as S from "@effect/schema/Schema";
 
+// Schema<readonly [string, number]>
+const tuple1 = S.tuple(S.string, S.number);
+
 // Schema<readonly [string, number, ...boolean[]]>
-S.tuple(S.string, S.number).pipe(S.rest(S.boolean));
+const tuple2 = S.tuple(tuple1.elements, S.boolean);
 ```
 
 ## Arrays
@@ -1733,12 +1742,12 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 **Cheatsheet**
 
-| Combinator | From                                                 | To                                                                         |
-| ---------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
-| `optional` | `Schema<A, I, R>`                                    | `PropertySignature<I \| undefined, true, A \| undefined, true, R>`         |
-| `optional` | `Schema<A, I, R>`, `{ nullable: true }`              | `PropertySignature<I \| null \| undefined, true, A \| undefined, true, R>` |
-| `optional` | `Schema<A, I, R>`, `{ exact: true }`                 | `PropertySignature<I, true, A, true, R>`                                   |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true }` | `PropertySignature<I \| null, true, A, true, R>`                           |
+| Combinator | From                                                 | To                                                                                                      |
+| ---------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `optional` | `Schema<A, I, R>`                                    | `PropertySignature<"?:", string \| undefined, never, "?:", string \| undefined, never>`                 |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true }`              | `PropertySignature<"?:", string \| null \| undefined, never, "?:", string \| null \| undefined, never>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true }`                 | `PropertySignature<"?:", string, never, "?:", string, never>`                                           |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true }` | `PropertySignature<"?:", string \| null, never, "?:", string \| null, never>`                           |
 
 #### optional(schema)
 
@@ -1784,12 +1793,12 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 ### Default values
 
-| Combinator | From                                                                   | To                                                             |
-| ---------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `optional` | `Schema<A, I, R>`, `{ default: () => A }`                              | `PropertySignature<I \| undefined, true, A, false, R>`         |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, default: () => A }`                 | `PropertySignature<I, true, A, false, R>`                      |
-| `optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<I \| null \| undefined, true, A, false, R>` |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<I \| null, true, A, false, R>`              |
+| Combinator | From                                                                   | To                                                                                |
+| ---------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `optional` | `Schema<A, I, R>`, `{ default: () => A }`                              | `PropertySignature<":", string, never, "?:", string \| undefined, never>`         |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, default: () => A }`                 | `PropertySignature<":", string, never, "?:", string, never>`                      |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<":", string, never, "?:", string \| null \| undefined, never>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<":", string, never, "?:", string \| null, never>`              |
 
 #### optional(schema, { default: () => A })
 
@@ -1829,12 +1838,12 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 ### Optional fields as `Option`s
 
-| Combinator | From                                                               | To                                                                     |
-| ---------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| `optional` | `Schema<A, I, R>`, `{ as: "Option" }`                              | `PropertySignature<I \| undefined, true, Option<A>, false, R>`         |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, as: "Option" }`                 | `PropertySignature<I, true, Option<A>, false, R>`                      |
-| `optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<I \| undefined \| null, true, Option<A>, false, R>` |
-| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<I \| null, true, Option<A>, false, R>`              |
+| Combinator | From                                                               | To                                                                                        |
+| ---------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `optional` | `Schema<A, I, R>`, `{ as: "Option" }`                              | `PropertySignature<":", Option<string>, never, "?:", string \| undefined, never>`         |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, as: "Option" }`                 | `PropertySignature<":", Option<string>, never, "?:", string, never>`                      |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<":", Option<string>, never, "?:", string \| null \| undefined, never>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<":", Option<string>, never, "?:", string \| null, never>`              |
 
 #### optional(schema, { as: "Option" })
 
@@ -1878,19 +1887,33 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 
 ### Renaming Properties
 
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({
+  a: S.propertySignature({ schema: S.string }).pipe(S.fromKey("c")),
+  b: S.number,
+});
+
+console.log(S.decodeUnknownSync(schema)({ c: "c", b: 1 }));
+// Output: { a: "c", b: 1 }
+```
+
+### Renaming Properties Of An Existing Schema
+
 To rename one or more properties, you can utilize the `rename` API:
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // Original Schema
-const originalSchema = S.struct({ a: S.string, b: S.number });
+const originalSchema = S.struct({ c: S.string, b: S.number });
 
 // Renaming the "a" property to "c"
-const renamedSchema = S.rename(originalSchema, { a: "c" });
+const renamedSchema = S.rename(originalSchema, { c: "a" });
 
-console.log(S.decodeUnknownSync(renamedSchema)({ a: "a", b: 1 }));
-// Output: { c: "a", b: 1 }
+console.log(S.decodeUnknownSync(renamedSchema)({ c: "c", b: 1 }));
+// Output: { a: "c", b: 1 }
 ```
 
 In the example above, we have an original schema with properties "a" and "b." Using the `rename` API, we create a new schema where we rename the "a" property to "c." The resulting schema, when used with `S.decodeUnknownSync`, transforms the input object by renaming the specified property.
@@ -1913,7 +1936,7 @@ Let's dive into an illustrative example to better understand how classes work:
 import * as S from "@effect/schema/Schema";
 
 // Define your schema by providing the type to `Class` and the desired fields
-class Person extends S.Class<Person>()({
+class Person extends S.Class<Person>("Person")({
   id: S.number,
   name: S.string.pipe(S.nonEmpty()),
 }) {}
@@ -1927,7 +1950,7 @@ The class constructor serves as a validation and instantiation tool. It ensures 
 const tim = new Person({ id: 1, name: "Tim" });
 ```
 
-Keep in mind that it throws an error for invalid properties:
+Keep in mind that it throws an error for invalid properties...
 
 ```ts
 new Person({ id: 1, name: "" });
@@ -1940,6 +1963,12 @@ Error: { id: number; name: a non empty string }
 */
 ```
 
+...unless you explicitly disable validation:
+
+```ts
+new Person({ id: 1, name: "" }, true); // no error
+```
+
 ### Custom Getters and Methods
 
 For more flexibility, you can also introduce custom getters and methods:
@@ -1947,7 +1976,7 @@ For more flexibility, you can also introduce custom getters and methods:
 ```ts
 import * as S from "@effect/schema/Schema";
 
-class Person extends S.Class<Person>()({
+class Person extends S.Class<Person>("Person")({
   id: S.number,
   name: S.string.pipe(S.nonEmpty()),
 }) {
@@ -1968,15 +1997,20 @@ The class constructor itself is a Schema, and can be assigned/provided anywhere 
 ```ts
 import * as S from "@effect/schema/Schema";
 
-class Person extends S.Class<Person>()({
+class Person extends S.Class<Person>("Person")({
   id: S.number,
   name: S.string.pipe(S.nonEmpty()),
 }) {}
 
 console.log(S.isSchema(Person)); // true
 
-// Schema<{ readonly id: number; name: string; }>
-Person.struct;
+/*
+{
+    readonly id: S.$number;
+    readonly name: S.Schema<string, string, never>;
+}
+*/
+Person.fields;
 ```
 
 ### Tagged Class variants
@@ -2009,7 +2043,7 @@ In situations where you need to augment your existing class with more fields, th
 ```ts
 import * as S from "@effect/schema/Schema";
 
-class Person extends S.Class<Person>()({
+class Person extends S.Class<Person>("Person")({
   id: S.number,
   name: S.string.pipe(S.nonEmpty()),
 }) {
@@ -2018,7 +2052,7 @@ class Person extends S.Class<Person>()({
   }
 }
 
-class PersonWithAge extends Person.extend<PersonWithAge>()({
+class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
   age: S.number,
 }) {
   get isAdult() {
@@ -2037,7 +2071,7 @@ import * as S from "@effect/schema/Schema";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 
-export class Person extends S.Class<Person>()({
+export class Person extends S.Class<Person>("Person")({
   id: S.number,
   name: S.string,
 }) {}
@@ -2048,11 +2082,13 @@ Output:
 Person { id: 1, name: 'name' }
 */
 
-function getAge(id: number): Effect.Effect<never, Error, number> {
+function getAge(id: number): Effect.Effect<number, Error> {
   return Effect.succeed(id + 2);
 }
 
-export class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>()(
+export class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>(
+  "PersonWithTransform"
+)(
   {
     age: S.optional(S.number, { exact: true, as: "Option" }),
   },
@@ -2077,7 +2113,9 @@ PersonWithTransform {
 }
 */
 
-export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>()(
+export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>(
+  "PersonWithTransformFrom"
+)(
   {
     age: S.optional(S.number, { exact: true, as: "Option" }),
   },
@@ -2262,10 +2300,29 @@ The `extend` combinator allows you to add additional fields or index signatures 
 ```ts
 import * as S from "@effect/schema/Schema";
 
+const schema = S.struct({ a: S.string, b: S.string });
+
 // Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
-S.struct({ a: S.string, b: S.string }).pipe(
+const extended = schema.pipe(
   S.extend(S.struct({ c: S.string })), // <= you can add more fields
   S.extend(S.record(S.string, S.string)) // <= you can add index signatures
+);
+```
+
+Alternatively, you can utilize the `fields` property of structs:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const schema = S.struct({ a: S.string, b: S.string });
+
+// Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
+const extended = S.struct(
+  {
+    ...schema.fields,
+    c: S.string,
+  },
+  { key: S.string, value: S.string }
 );
 ```
 
@@ -2314,7 +2371,7 @@ S.compose(S.union(S.null, S.string), S.NumberFromString);
 S.compose(S.union(S.null, S.string), S.NumberFromString, { strict: false });
 ```
 
-## InstanceOf
+## instanceOf
 
 In the following section, we demonstrate how to use the `instanceOf` combinator to create a `Schema` for a class instance.
 
@@ -2374,7 +2431,7 @@ const Expression: S.Schema<Expression> = S.struct({
 
 const Operation: S.Schema<Operation> = S.struct({
   type: S.literal("operation"),
-  operator: S.union(S.literal("+"), S.literal("-")),
+  operator: S.literal("+", "-"),
   left: Expression,
   right: Expression,
 });
@@ -2473,7 +2530,7 @@ import * as S from "@effect/schema/Schema";
 import * as TreeFormatter from "@effect/schema/TreeFormatter";
 import * as Effect from "effect/Effect";
 
-const api = (url: string): Effect.Effect<never, Error, unknown> =>
+const api = (url: string): Effect.Effect<unknown, Error> =>
   Effect.tryPromise({
     try: () =>
       fetch(url).then((res) => {
@@ -2534,9 +2591,9 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-const Fetch = Context.GenericTag<"Fetch", typeof fetch>();
+const Fetch = Context.GenericTag<"Fetch", typeof fetch>("Fetch");
 
-const api = (url: string): Effect.Effect<"Fetch", Error, unknown> =>
+const api = (url: string): Effect.Effect<unknown, Error, "Fetch"> =>
   Fetch.pipe(
     Effect.flatMap((fetch) =>
       Effect.tryPromise({
@@ -3477,7 +3534,6 @@ Then we can implement the body using the APIs exported by the `@effect/schema/AS
 ```ts
 import * as AST from "@effect/schema/AST";
 import * as S from "@effect/schema/Schema";
-import * as Option from "effect/Option";
 
 const pair = <A, I, R>(
   schema: S.Schema<A, I, R>
@@ -3486,9 +3542,9 @@ const pair = <A, I, R>(
     schema.ast, // <= the element type
     false // <= is optional?
   );
-  const tuple = new AST.Tuple(
+  const tuple = new AST.TupleType(
     [element, element], // <= elements definitions
-    Option.none(), // <= rest element
+    [], // <= rest element
     true // <= is readonly?
   );
   return S.make(tuple); // <= wrap the AST value in a Schema
@@ -3555,7 +3611,7 @@ const DeprecatedId = Symbol.for(
 );
 
 const deprecated = <A, I, R>(self: S.Schema<A, I, R>): S.Schema<A, I, R> =>
-  S.make(AST.setAnnotation(self.ast, DeprecatedId, true));
+  S.make(AST.annotations(self.ast, { [DeprecatedId]: true }));
 
 const schema = deprecated(S.string);
 
@@ -3588,7 +3644,7 @@ const DeprecatedId = Symbol.for(
 );
 
 const deprecated = <A, I, R>(self: S.Schema<A, I, R>): S.Schema<A, I, R> =>
-  S.make(AST.setAnnotation(self.ast, DeprecatedId, true));
+  S.make(AST.annotations(self.ast, { [DeprecatedId]: true }));
 
 const schema = deprecated(S.string);
 
@@ -3823,7 +3879,7 @@ throws:
 Error: Person
 └─ ["age"]
    └─ IntFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual null
 */
 
@@ -3834,7 +3890,7 @@ throws:
 Error: Person
 └─ ["age"]
    └─ IntFromString
-      └─ To side transformation failure
+      └─ Type side transformation failure
          └─ Int
             └─ Predicate refinement failure
                └─ Expected Int (an integer), actual 1.2

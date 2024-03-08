@@ -1364,7 +1364,7 @@ class $PropertySignature<
  * @category PropertySignature
  * @since 1.0.0
  */
-export const propertySignatureDeclaration = <A, I, R, IsOptional extends boolean = false>(options: {
+export const propertySignature = <A, I, R, IsOptional extends boolean = false>(options: {
   readonly schema: Schema<A, I, R>
   readonly isOptional?: IsOptional | undefined
   readonly annotations?: Annotations<A> | undefined
@@ -1433,7 +1433,7 @@ export const propertySignatureTransformation = <
  * @category PropertySignature
  * @since 1.0.0
  */
-export const propertySignatureKey: {
+export const fromKey: {
   <Key extends PropertyKey>(key: Key): <
     Type,
     TypeToken extends PropertySignature.Token,
@@ -1717,7 +1717,7 @@ export const optional: {
           identity
         )
       } else {
-        return propertySignatureDeclaration({ schema, isOptional: true })
+        return propertySignature({ schema, isOptional: true })
       }
     }
   } else {
@@ -1762,7 +1762,7 @@ export const optional: {
           identity
         )
       } else {
-        return propertySignatureDeclaration({ schema: orUndefined(schema), isOptional: true })
+        return propertySignature({ schema: orUndefined(schema), isOptional: true })
       }
     }
   }

@@ -157,7 +157,7 @@ S.nonEmptyArray(aContext)
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, ":", string, "aContext">
-S.propertySignatureDeclaration({ schema: aContext })
+S.propertySignature({ schema: aContext })
 
 // ---------------------------------------------
 // optionalToRequired

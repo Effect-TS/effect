@@ -14,7 +14,7 @@ describe("isSchema", () => {
   })
 
   it("PropertySignature", () => {
-    expect(S.isSchema(S.propertySignatureDeclaration({ schema: S.string }))).toBe(false)
+    expect(S.isSchema(S.propertySignature({ schema: S.string }))).toBe(false)
     expect(S.isSchema(S.optional(S.string, { exact: true }))).toBe(false)
     const ps = S.propertySignatureTransformation(
       {
