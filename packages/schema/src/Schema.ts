@@ -7162,11 +7162,6 @@ export const list = <Value extends Schema.Any>(value: Value): list<Value> => {
   )
 }
 
-const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
-  suspend<A, A, never>(() => any).annotations({
-    [_hooks.ArbitraryHookId]: () => value
-  })
-
 const sortedSetArbitrary = <A>(item: Arbitrary<A>, ord: Order.Order<A>): Arbitrary<SortedSet.SortedSet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => SortedSet.fromIterable(as, ord))
 
@@ -7184,40 +7179,72 @@ const sortedSetParse = <R, A>(
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
- * @category ReadonlySet transformations
+ * @category api interface
  * @since 1.0.0
  */
-export const sortedSetFromSelf = <A, I>(
-  ordA: Order.Order<A>,
-  ordI: Order.Order<I>
-) =>
-<R>(
-  item: Schema<A, I, R>
-): Schema<SortedSet.SortedSet<A>, SortedSet.SortedSet<I>, R> => {
+export interface sortedSetFromSelf<Value extends Schema.Any> extends
+  Annotable<
+    sortedSetFromSelf<Value>,
+    SortedSet.SortedSet<Schema.Type<Value>>,
+    SortedSet.SortedSet<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category SortedSet transformations
+ * @since 1.0.0
+ */
+export const sortedSetFromSelf = <Value extends Schema.Any>(
+  value: Value,
+  ordA: Order.Order<Schema.Type<Value>>,
+  ordI: Order.Order<Schema.Encoded<Value>>
+): sortedSetFromSelf<Value> => {
   return declare(
-    [item],
+    [value],
     (item) => sortedSetParse(ParseResult.decodeUnknown(array(item)), ordA),
     (item) => sortedSetParse(ParseResult.encodeUnknown(array(item)), ordI),
     {
-      description: `SortedSet<${format(item)}>`,
+      description: `SortedSet<${format(value)}>`,
       pretty: sortedSetPretty,
       arbitrary: (arb) => sortedSetArbitrary(arb, ordA),
-      equivalence: () => SortedSet.getEquivalence<A>()
+      equivalence: () => SortedSet.getEquivalence<Schema.Type<Value>>()
     }
   )
 }
 
 /**
- * @category ReadonlySet transformations
+ * @category api interface
  * @since 1.0.0
  */
-export const sortedSet = <A>(ordA: Order.Order<A>) =>
-<I, R>(
-  item: Schema<A, I, R>
-) =>
-  transform(
-    array(item),
-    sortedSetFromSelf(ordA, ordA)(typeSchema(item)),
+export interface sortedSet<Value extends Schema.Any> extends
+  Annotable<
+    sortedSet<Value>,
+    SortedSet.SortedSet<Schema.Type<Value>>,
+    ReadonlyArray<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category SortedSet transformations
+ * @since 1.0.0
+ */
+export const sortedSet = <Value extends Schema.Any>(
+  value: Value,
+  ordA: Order.Order<Schema.Type<Value>>
+): sortedSet<Value> => {
+  const _value = asSchema(value)
+  const to = typeSchema(_value)
+  return transform(
+    array(_value),
+    sortedSetFromSelf<typeof to>(to, ordA, ordA),
     (as) => SortedSet.fromIterable(as, ordA),
     (set) => Array.from(SortedSet.values(set))
   )
+}
+
+const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
+  suspend<A, A, never>(() => any).annotations({
+    [_hooks.ArbitraryHookId]: () => value
+  })

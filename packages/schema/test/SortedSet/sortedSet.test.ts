@@ -6,11 +6,11 @@ import { describe, it } from "vitest"
 
 describe("SortedSet > sortedSet", () => {
   it("property tests", () => {
-    Util.roundtrip(S.sortedSet(N.Order)(S.number))
+    Util.roundtrip(S.sortedSet(S.number, N.Order))
   })
 
   it("decoding", async () => {
-    const schema = S.sortedSet(N.Order)(S.number)
+    const schema = S.sortedSet(S.number, N.Order)
     await Util.expectDecodeUnknownSuccess(schema, [], SortedSet.fromIterable([] as Array<number>, N.Order))
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -22,14 +22,14 @@ describe("SortedSet > sortedSet", () => {
       schema,
       null,
       `(ReadonlyArray<number> <-> SortedSet<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> SortedSet<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ ReadonlyArray<number>
       └─ [1]
          └─ Expected a number, actual "a"`
@@ -37,7 +37,7 @@ describe("SortedSet > sortedSet", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.sortedSet(N.Order)(S.number)
+    const schema = S.sortedSet(S.number, N.Order)
     await Util.expectEncodeSuccess(schema, SortedSet.fromIterable([] as Array<number>, N.Order), [])
     await Util.expectEncodeSuccess(schema, SortedSet.fromIterable([1, 2, 3] as Array<number>, N.Order), [1, 2, 3])
   })
