@@ -1207,10 +1207,25 @@ S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
 // transform
 // ---------------------------------------------
 
-// $ExpectType Schema<number, string, never>
-S.string.pipe(S.transform(S.number, (s) => s.length, (n) => String(n)))
+// $ExpectType transform<$string, $number>
+const transform1 = S.string.pipe(S.transform(S.number, (s) => s.length, (n) => String(n)))
+
+// $ExpectType $string
+transform1.from
+
+// $ExpectType $number
+transform1.to
+
+// $ExpectType transform<$string, $number>
+transform1.annotations({})
 
 // $ExpectType Schema<number, string, never>
+S.asSchema(transform1)
+
+// $ExpectType Schema<number, string, never>
+S.asSchema(S.string.pipe(S.transform(S.number, (s) => s, (n) => n, { strict: false })))
+
+// $ExpectType transform<$string, $number>
 S.string.pipe(S.transform(S.number, (s) => s, (n) => n, { strict: false }))
 
 // @ts-expect-error
@@ -1223,8 +1238,8 @@ S.string.pipe(S.transform(S.number, (s) => s.length, (n) => n))
 // transformOrFail
 // ---------------------------------------------
 
-// $ExpectType Schema<number, string, never>
-S.string.pipe(
+// $ExpectType transformOrFail<$string, $number, never>
+const transformOrFail1 = S.string.pipe(
   S.transformOrFail(
     S.number,
     (s) => ParseResult.succeed(s.length),
@@ -1232,7 +1247,29 @@ S.string.pipe(
   )
 )
 
+// $ExpectType $string
+transformOrFail1.from
+
+// $ExpectType $number
+transformOrFail1.to
+
+// $ExpectType transformOrFail<$string, $number, never>
+transformOrFail1.annotations({})
+
 // $ExpectType Schema<number, string, never>
+S.asSchema(transformOrFail1)
+
+// $ExpectType Schema<number, string, never>
+S.asSchema(S.string.pipe(
+  S.transformOrFail(
+    S.number,
+    (s) => ParseResult.succeed(s),
+    (n) => ParseResult.succeed(String(n)),
+    { strict: false }
+  )
+))
+
+// $ExpectType transformOrFail<$string, $number, never>
 S.string.pipe(
   S.transformOrFail(
     S.number,

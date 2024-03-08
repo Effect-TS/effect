@@ -271,6 +271,9 @@ aContext.pipe(S.filter(() => false))
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
+S.asSchema(S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseResult.succeed("")))
+
+// $ExpectType transformOrFail<aContext, bContext, never>
 S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseResult.succeed(""))
 
 // ---------------------------------------------
@@ -278,6 +281,9 @@ S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseR
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
+S.asSchema(S.transform(aContext, bContext, () => 1, () => ""))
+
+// $ExpectType transform<aContext, bContext>
 S.transform(aContext, bContext, () => 1, () => "")
 
 // ---------------------------------------------

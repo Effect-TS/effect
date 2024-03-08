@@ -914,7 +914,7 @@ class $union<Members extends ReadonlyArray<Schema.Any>>
   constructor(readonly members: Members, ast: AST.AST = $union.ast(members)) {
     super(ast)
   }
-  annotations(annotations: Annotations<Schema.Type<Members[number]>>): union<Members> {
+  annotations(annotations: Annotations<Schema.Type<Members[number]>>) {
     return new $union(this.members, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1105,7 +1105,7 @@ class $tuple<Elements extends TupleType.Elements> extends $tupleType<Elements, [
   constructor(readonly elements: Elements, ast?: AST.AST) {
     super(elements, [], ast)
   }
-  annotations(annotations: Annotations<TupleType.Type<Elements, []>>): tuple<Elements> {
+  annotations(annotations: Annotations<TupleType.Type<Elements, []>>) {
     return new $tuple(this.elements, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1138,7 +1138,7 @@ class $array<Value extends Schema.Any> extends $tupleType<[], [Value]> implement
   constructor(readonly value: Value, ast?: AST.AST) {
     super([], [value], ast)
   }
-  annotations(annotations: Annotations<TupleType.Type<[], [Value]>>): array<Value> {
+  annotations(annotations: Annotations<TupleType.Type<[], [Value]>>) {
     return new $array(this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1172,7 +1172,7 @@ class $nonEmptyArray<Value extends Schema.Any> extends $tupleType<[Value], [Valu
   constructor(readonly value: Value, ast?: AST.AST) {
     super([value], [value], ast)
   }
-  annotations(annotations: Annotations<TupleType.Type<[Value], [Value]>>): nonEmptyArray<Value> {
+  annotations(annotations: Annotations<TupleType.Type<[Value], [Value]>>) {
     return new $nonEmptyArray(this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -2040,7 +2040,7 @@ class $record<K extends Schema.All, V extends Schema.All> extends $typeLiteral<
   constructor(readonly key: K, readonly value: V, ast?: AST.AST) {
     super({}, [{ key, value }], ast)
   }
-  annotations(annotations: Annotations<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>): record<K, V> {
+  annotations(annotations: Annotations<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>) {
     return new $record(this.key, this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -2475,6 +2475,34 @@ export function filter<A>(
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface transformOrFail<From extends Schema.Any, To extends Schema.Any, R> extends
+  Annotable<
+    transformOrFail<From, To, R>,
+    Schema.Type<To>,
+    Schema.Encoded<From>,
+    Schema.Context<From> | Schema.Context<To> | R
+  >
+{
+  readonly from: From
+  readonly to: To
+}
+
+class $transformOrFail<From extends Schema.Any, To extends Schema.Any, R>
+  extends _schema.Schema<Schema.Type<To>, Schema.Encoded<From>, Schema.Context<From> | Schema.Context<To> | R>
+  implements transformOrFail<From, To, R>
+{
+  constructor(readonly from: From, readonly to: To, ast: AST.AST) {
+    super(ast)
+  }
+  annotations(annotations: Annotations<Schema.Type<To>>) {
+    return new $transformOrFail(this.from, this.to, _schema.annotations(this.ast, annotations))
+  }
+}
+
+/**
  * Create a new `Schema` by transforming the input and output of an existing `Schema`
  * using the provided decoding functions.
  *
@@ -2482,51 +2510,85 @@ export function filter<A>(
  * @since 1.0.0
  */
 export const transformOrFail: {
-  <ToA, ToI, ToR, FromA, R3, R4>(
-    to: Schema<ToA, ToI, ToR>,
-    decode: (fromA: FromA, options: ParseOptions, ast: AST.Transform) => Effect.Effect<ToI, ParseResult.ParseIssue, R3>,
-    encode: (toI: ToI, options: ParseOptions, ast: AST.Transform) => Effect.Effect<FromA, ParseResult.ParseIssue, R4>
-  ): <FromI, FromR>(self: Schema<FromA, FromI, FromR>) => Schema<ToA, FromI, FromR | ToR | R3 | R4>
-  <ToA, ToI, ToR, FromA, R3, R4>(
-    to: Schema<ToA, ToI, ToR>,
+  <To extends Schema.Any, From extends Schema.Any, RD, RE>(
+    to: To,
     decode: (
-      fromA: FromA,
+      fromA: Schema.Type<From>,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<unknown, ParseResult.ParseIssue, R3>,
-    encode: (toI: ToI, options: ParseOptions, ast: AST.Transform) => Effect.Effect<unknown, ParseResult.ParseIssue, R4>,
-    options: { strict: false }
-  ): <FromI, FromR>(self: Schema<FromA, FromI, FromR>) => Schema<ToA, FromI, FromR | ToR | R3 | R4>
-  <FromA, FromI, FromR, ToA, ToI, ToR, R3, R4>(
-    from: Schema<FromA, FromI, FromR>,
-    to: Schema<ToA, ToI, ToR>,
-    decode: (fromA: FromA, options: ParseOptions, ast: AST.Transform) => Effect.Effect<ToI, ParseResult.ParseIssue, R3>,
-    encode: (toI: ToI, options: ParseOptions, ast: AST.Transform) => Effect.Effect<FromA, ParseResult.ParseIssue, R4>
-  ): Schema<ToA, FromI, FromR | ToR | R3 | R4>
-  <FromA, FromI, FromR, ToA, ToI, ToR, R3, R4>(
-    from: Schema<FromA, FromI, FromR>,
-    to: Schema<ToA, ToI, ToR>,
-    decode: (
-      fromA: FromA,
+    ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>,
+    encode: (
+      toI: Schema.Encoded<To>,
       options: ParseOptions,
       ast: AST.Transform
-    ) => Effect.Effect<unknown, ParseResult.ParseIssue, R3>,
-    encode: (toI: ToI, options: ParseOptions, ast: AST.Transform) => Effect.Effect<unknown, ParseResult.ParseIssue, R4>,
+    ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
+  ): (from: From) => transformOrFail<From, To, RD | RE>
+  <To extends Schema.Any, From extends Schema.Any, RD, RE>(
+    to: To,
+    decode: (
+      fromA: Schema.Type<From>,
+      options: ParseOptions,
+      ast: AST.Transform
+    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>,
+    encode: (
+      toI: Schema.Encoded<To>,
+      options: ParseOptions,
+      ast: AST.Transform
+    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>,
     options: { strict: false }
-  ): Schema<ToA, FromI, FromR | ToR | R3 | R4>
+  ): (from: From) => transformOrFail<From, To, RD | RE>
+  <To extends Schema.Any, From extends Schema.Any, RD, R4>(
+    from: From,
+    to: To,
+    decode: (
+      fromA: Schema.Type<From>,
+      options: ParseOptions,
+      ast: AST.Transform
+    ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>,
+    encode: (
+      toI: Schema.Encoded<To>,
+      options: ParseOptions,
+      ast: AST.Transform
+    ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, R4>
+  ): transformOrFail<From, To, RD | R4>
+  <To extends Schema.Any, From extends Schema.Any, RD, RE>(
+    from: From,
+    to: To,
+    decode: (
+      fromA: Schema.Type<From>,
+      options: ParseOptions,
+      ast: AST.Transform
+    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>,
+    encode: (
+      toI: Schema.Encoded<To>,
+      options: ParseOptions,
+      ast: AST.Transform
+    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>,
+    options: { strict: false }
+  ): transformOrFail<From, To, RD | RE>
 } = dual((args) => isSchema(args[0]) && isSchema(args[1]), <FromA, FromI, FromR, ToA, ToI, ToR, R3, R4>(
   from: Schema<FromA, FromI, FromR>,
   to: Schema<ToA, ToI, ToR>,
   decode: (fromA: FromA, options: ParseOptions, ast: AST.Transform) => Effect.Effect<ToI, ParseResult.ParseIssue, R3>,
   encode: (toI: ToI, options: ParseOptions, ast: AST.Transform) => Effect.Effect<FromA, ParseResult.ParseIssue, R4>
 ): Schema<ToA, FromI, FromR | ToR | R3 | R4> =>
-  make(
+  new $transformOrFail(
+    from,
+    to,
     new AST.Transform(
       from.ast,
       to.ast,
       new AST.FinalTransformation(decode, encode)
     )
   ))
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface transform<From extends Schema.Any, To extends Schema.Any> extends transformOrFail<From, To, never> {
+  annotations(annotations: Annotations<Schema.Type<To>>): transform<From, To>
+}
 
 /**
  * Create a new `Schema` by transforming the input and output of an existing `Schema`
@@ -2536,30 +2598,30 @@ export const transformOrFail: {
  * @since 1.0.0
  */
 export const transform: {
-  <ToA, ToI, ToR, FromA>(
-    to: Schema<ToA, ToI, ToR>,
-    decode: (fromA: FromA) => ToI,
-    encode: (toI: ToI) => FromA
-  ): <FromI, FromR>(from: Schema<FromA, FromI, FromR>) => Schema<ToA, FromI, FromR | ToR>
-  <ToA, ToI, ToR, FromA>(
-    to: Schema<ToA, ToI, ToR>,
-    decode: (fromA: FromA) => unknown,
-    encode: (toI: ToI) => unknown,
+  <To extends Schema.Any, From extends Schema.Any>(
+    to: To,
+    decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>,
+    encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+  ): (from: From) => transform<From, To>
+  <To extends Schema.Any, From extends Schema.Any>(
+    to: To,
+    decode: (fromA: Schema.Type<From>) => unknown,
+    encode: (toI: Schema.Encoded<To>) => unknown,
     options: { strict: false }
-  ): <FromI, FromR>(from: Schema<FromA, FromI, FromR>) => Schema<ToA, FromI, FromR | ToR>
-  <FromA, FromI, FromR, ToA, ToI, ToR>(
-    from: Schema<FromA, FromI, FromR>,
-    to: Schema<ToA, ToI, ToR>,
-    decode: (fromA: FromA) => ToI,
-    encode: (toI: ToI) => FromA
-  ): Schema<ToA, FromI, FromR | ToR>
-  <FromA, FromI, FromR, ToA, ToI, ToR>(
-    from: Schema<FromA, FromI, FromR>,
-    to: Schema<ToA, ToI, ToR>,
-    decode: (fromA: FromA) => unknown,
-    encode: (toI: ToI) => unknown,
+  ): (from: From) => transform<From, To>
+  <To extends Schema.Any, From extends Schema.Any>(
+    from: From,
+    to: To,
+    decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>,
+    encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+  ): transform<From, To>
+  <To extends Schema.Any, From extends Schema.Any>(
+    from: From,
+    to: To,
+    decode: (fromA: Schema.Type<From>) => unknown,
+    encode: (toI: Schema.Encoded<To>) => unknown,
     options: { strict: false }
-  ): Schema<ToA, FromI, FromR | ToR>
+  ): transform<From, To>
 } = dual(
   (args) => isSchema(args[0]) && isSchema(args[1]),
   <FromA, FromI, FromR, ToA, ToI, ToR>(
@@ -3121,10 +3183,16 @@ export const lowercased =
     )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Lowercased extends Annotable<Lowercased, string> {}
+
+/**
  * @category string constructors
  * @since 1.0.0
  */
-export const Lowercased: Schema<string> = string.pipe(
+export const Lowercased: Lowercased = string.pipe(
   lowercased({ identifier: "Lowercased", title: "Lowercased" })
 )
 
@@ -3151,10 +3219,16 @@ export const uppercased =
     )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Uppercased extends Annotable<Uppercased, string> {}
+
+/**
  * @category string constructors
  * @since 1.0.0
  */
-export const Uppercased: Schema<string> = string.pipe(
+export const Uppercased: Uppercased = string.pipe(
   uppercased({ identifier: "Uppercased", title: "Uppercased" })
 )
 
@@ -3209,12 +3283,18 @@ export const nonEmpty = <A extends string>(
   })
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Lowercase extends Annotable<Lowercase, string> {}
+
+/**
  * This schema converts a string to lowercase.
  *
  * @category string transformations
  * @since 1.0.0
  */
-export const Lowercase: Schema<string> = transform(
+export const Lowercase: Lowercase = transform(
   string,
   Lowercased,
   (s) => s.toLowerCase(),
@@ -3222,12 +3302,18 @@ export const Lowercase: Schema<string> = transform(
 ).annotations({ identifier: "Lowercase" })
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Uppercase extends Annotable<Uppercase, string> {}
+
+/**
  * This schema converts a string to uppercase.
  *
  * @category string transformations
  * @since 1.0.0
  */
-export const Uppercase: Schema<string> = transform(
+export const Uppercase: Uppercase = transform(
   string,
   Uppercased,
   (s) => s.toUpperCase(),
@@ -3235,12 +3321,24 @@ export const Uppercase: Schema<string> = transform(
 ).annotations({ identifier: "Uppercase" })
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Trimmed extends Annotable<Trimmed, string> {}
+
+/**
  * @category string constructors
  * @since 1.0.0
  */
-export const Trimmed: Schema<string> = string.pipe(
+export const Trimmed: Trimmed = string.pipe(
   trimmed({ identifier: "Trimmed", title: "Trimmed" })
 )
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Trim extends Annotable<Trim, string> {}
 
 /**
  * This schema allows removing whitespaces from the beginning and end of a string.
@@ -3248,7 +3346,7 @@ export const Trimmed: Schema<string> = string.pipe(
  * @category string transformations
  * @since 1.0.0
  */
-export const Trim: Schema<string> = transform(
+export const Trim: Trim = transform(
   string,
   Trimmed,
   (s) => s.trim(),
@@ -3326,10 +3424,16 @@ export const parseJson: {
 }
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface NonEmpty extends Annotable<NonEmpty, string> {}
+
+/**
  * @category string constructors
  * @since 1.0.0
  */
-export const NonEmpty: Schema<string> = string.pipe(
+export const NonEmpty: NonEmpty = string.pipe(
   nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
 )
 
@@ -3725,52 +3829,94 @@ export const NumberFromString: NumberFromString = transformOrFail(
 ).annotations({ identifier: "NumberFromString" })
 
 /**
- * @category number constructors
+ * @category api interface
  * @since 1.0.0
  */
-export const Finite: Schema<number> = number.pipe(finite({ identifier: "Finite", title: "Finite" }))
+export interface Finite extends Annotable<Finite, number> {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Int: Schema<number> = number.pipe(int({ identifier: "Int", title: "Int" }))
+export const Finite: Finite = number.pipe(finite({ identifier: "Finite", title: "Finite" }))
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Int extends Annotable<Int, number> {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNaN: Schema<number> = number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
+export const Int: Int = number.pipe(int({ identifier: "Int", title: "Int" }))
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface NonNaN extends Annotable<NonNaN, number> {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Positive: Schema<number> = number.pipe(
+export const NonNaN: NonNaN = number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Positive extends Annotable<Positive, number> {}
+
+/**
+ * @category number constructors
+ * @since 1.0.0
+ */
+export const Positive: Positive = number.pipe(
   positive({ identifier: "Positive", title: "Positive" })
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Negative extends Annotable<Negative, number> {}
+
+/**
  * @category number constructors
  * @since 1.0.0
  */
-export const Negative: Schema<number> = number.pipe(
+export const Negative: Negative = number.pipe(
   negative({ identifier: "Negative", title: "Negative" })
 )
 
 /**
- * @category number constructors
+ * @category api interface
  * @since 1.0.0
  */
-export const NonPositive: Schema<number> = number.pipe(
-  nonPositive({ identifier: "NonPositive", title: "NonPositive" })
-)
+export interface NonPositive extends Annotable<NonPositive, number> {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNegative: Schema<number> = number.pipe(
+export const NonPositive: NonPositive = number.pipe(
+  nonPositive({ identifier: "NonPositive", title: "NonPositive" })
+)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface NonNegative extends Annotable<NonNegative, number> {}
+
+/**
+ * @category number constructors
+ * @since 1.0.0
+ */
+export const NonNegative: NonNegative = number.pipe(
   nonNegative({ identifier: "NonNegative", title: "NonNegative" })
 )
 
@@ -3779,6 +3925,12 @@ export const NonNegative: Schema<number> = number.pipe(
  * @since 1.0.0
  */
 export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface JsonNumber extends Annotable<JsonNumber, number> {}
 
 /**
  * The `JsonNumber` is a schema for representing JSON numbers. It ensures that the provided value is a valid
@@ -3798,7 +3950,7 @@ export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
  * @category number constructors
  * @since 1.0.0
  */
-export const JsonNumber: Schema<number> = number.pipe(
+export const JsonNumber: JsonNumber = number.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
     identifier: "JsonNumber",
@@ -3809,10 +3961,16 @@ export const JsonNumber: Schema<number> = number.pipe(
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Not extends Annotable<Not, boolean> {}
+
+/**
  * @category boolean transformations
  * @since 1.0.0
  */
-export const Not: Schema<boolean> = transform(
+export const Not: Not = transform(
   boolean,
   boolean,
   (self) => !self,
