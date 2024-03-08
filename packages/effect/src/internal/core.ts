@@ -726,7 +726,7 @@ export const andThen: {
       })
     }
     return succeed(b)
-  })) as any
+  }))
 
 /* @internal */
 export const step = <A, E, R>(
