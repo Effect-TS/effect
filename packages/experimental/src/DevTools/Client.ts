@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Socket from "@effect/platform/Socket"
 import type { Scope } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -13,7 +14,6 @@ import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import * as MsgPack from "../MsgPack.js"
-import * as Socket from "../Socket.js"
 import * as Domain from "./Domain.js"
 
 /**

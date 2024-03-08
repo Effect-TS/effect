@@ -14,12 +14,19 @@ import * as Error from "../../Http/ServerError.js"
 import type * as ServerRequest from "../../Http/ServerRequest.js"
 import * as UrlParams from "../../Http/UrlParams.js"
 import type * as Path from "../../Path.js"
+import * as Socket from "../../Socket.js"
 
 /** @internal */
 export const TypeId: ServerRequest.TypeId = Symbol.for("@effect/platform/Http/ServerRequest") as ServerRequest.TypeId
 
 /** @internal */
 export const serverRequestTag = Context.GenericTag<ServerRequest.ServerRequest>("@effect/platform/Http/ServerRequest")
+
+/** @internal */
+export const upgrade = Effect.flatMap(serverRequestTag, (request) => request.upgrade)
+
+/** @internal */
+export const upgradeChannel = <IE = never>() => Effect.map(upgrade, Socket.toChannelWith<IE>())
 
 /** @internal */
 export const multipartPersisted = Effect.flatMap(serverRequestTag, (request) => request.multipart)
@@ -251,5 +258,13 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       })
     ))
     return this.arrayBufferEffect
+  }
+
+  get upgrade(): Effect.Effect<Socket.Socket, Error.RequestError> {
+    return Effect.fail(Error.RequestError({
+      request: this,
+      reason: "Decode",
+      error: "Not an upgradeable ServerRequest"
+    }))
   }
 }

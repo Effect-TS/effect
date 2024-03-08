@@ -12,6 +12,7 @@ import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import type * as Path from "@effect/platform/Path"
+import * as Socket from "@effect/platform/Socket"
 import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
@@ -19,12 +20,14 @@ import { type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as Http from "node:http"
+import * as Http from "node:http"
 import type * as Net from "node:net"
+import type { Duplex } from "node:stream"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import * as WS from "ws"
 import * as NodeContext from "../../NodeContext.js"
 import * as NodeSink from "../../NodeSink.js"
 import { IncomingMessageImpl } from "./incomingMessage.js"
@@ -36,6 +39,8 @@ export const make = (
   options: Net.ListenOptions
 ): Effect.Effect<Server.Server, Error.ServeError, Scope.Scope> =>
   Effect.gen(function*(_) {
+    const scope = yield* _(Effect.scope)
+
     const server = yield* _(Effect.acquireRelease(
       Effect.sync(evaluate),
       (server) =>
@@ -61,6 +66,18 @@ export const make = (
 
     const address = server.address()!
 
+    const wss = yield* _(
+      Effect.acquireRelease(
+        Effect.sync(() => new WS.WebSocketServer({ noServer: true })),
+        (wss) =>
+          Effect.async<void>((resume) => {
+            wss.close(() => resume(Effect.unit))
+          })
+      ),
+      Scope.extend(scope),
+      Effect.cached
+    )
+
     return Server.make({
       address: typeof address === "string" ?
         {
@@ -75,12 +92,15 @@ export const make = (
       serve: (httpApp, middleware) =>
         Effect.gen(function*(_) {
           const handler = yield* _(makeHandler(httpApp, middleware!))
+          const upgradeHandler = yield* _(makeUpgradeHandler(wss, httpApp, middleware!))
           yield* _(Effect.addFinalizer(() =>
             Effect.sync(() => {
               server.off("request", handler)
+              server.off("upgrade", upgradeHandler)
             })
           ))
           server.on("request", handler)
+          server.on("upgrade", upgradeHandler)
         })
     })
   }).pipe(
@@ -113,7 +133,10 @@ export const makeHandler: {
   )
   return Effect.map(Effect.runtime<R>(), (runtime) => {
     const runFork = Runtime.runFork(runtime)
-    return function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {
+    return function handler(
+      nodeRequest: Http.IncomingMessage,
+      nodeResponse: Http.ServerResponse
+    ) {
       const fiber = runFork(
         Effect.provideService(
           handledApp,
@@ -127,6 +150,65 @@ export const makeHandler: {
             nodeResponse.writeHead(499)
           }
           nodeResponse.end()
+          runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
+        }
+      })
+    }
+  })
+}
+
+/** @internal */
+export const makeUpgradeHandler = <R, E>(
+  lazyWss: Effect.Effect<WS.WebSocketServer>,
+  httpApp: App.Default<R, E>,
+  middleware?: Middleware.Middleware
+) => {
+  const handledApp = Effect.scoped(
+    middleware
+      ? middleware(App.withDefaultMiddleware(respond(httpApp)))
+      : App.withDefaultMiddleware(respond(httpApp))
+  )
+  return Effect.map(Effect.runtime<R>(), (runtime) => {
+    const runFork = Runtime.runFork(runtime)
+    return function handler(
+      nodeRequest: Http.IncomingMessage,
+      socket: Duplex,
+      head: Buffer
+    ) {
+      let nodeResponse_: Http.ServerResponse | undefined = undefined
+      const nodeResponse = () => {
+        if (nodeResponse_ === undefined) {
+          nodeResponse_ = new Http.ServerResponse(nodeRequest)
+          nodeResponse_.assignSocket(socket as any)
+        }
+        return nodeResponse_
+      }
+      const upgradeEffect = Socket.fromWebSocket(Effect.flatMap(
+        lazyWss,
+        (wss) =>
+          Effect.acquireRelease(
+            Effect.async<globalThis.WebSocket>((resume) =>
+              wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                resume(Effect.succeed(ws as any))
+              })
+            ),
+            (ws) => Effect.sync(() => ws.close())
+          )
+      ))
+      const fiber = runFork(
+        Effect.provideService(
+          handledApp,
+          ServerRequest.ServerRequest,
+          new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
+        )
+      )
+      socket.on("close", () => {
+        const res = nodeResponse()
+        if (!socket.writableEnded) {
+          if (!res.headersSent) {
+            res.writeHead(499)
+          }
+          res.end()
           runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
         }
       })
@@ -149,7 +231,7 @@ const respond = Middleware.make((httpApp) =>
         ),
         (cause) =>
           Effect.sync(() => {
-            const nodeResponse = (request as ServerRequestImpl).response
+            const nodeResponse = (request as ServerRequestImpl).resolvedResponse
             if (!nodeResponse.headersSent) {
               nodeResponse.writeHead(Cause.isInterruptedOnly(cause) ? 503 : 500)
             }
@@ -166,7 +248,8 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
 
   constructor(
     readonly source: Http.IncomingMessage,
-    readonly response: Http.ServerResponse,
+    readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>,
+    private upgradeEffect?: Effect.Effect<Socket.Socket, Error.RequestError>,
     readonly url = source.url!,
     private headersOverride?: Headers.Headers,
     remoteAddressOverride?: string
@@ -180,6 +263,10 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
     this[ServerRequest.TypeId] = ServerRequest.TypeId
   }
 
+  get resolvedResponse(): Http.ServerResponse {
+    return typeof this.response === "function" ? this.response() : this.response
+  }
+
   modify(
     options: {
       readonly url?: string | undefined
@@ -190,6 +277,7 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
     return new ServerRequestImpl(
       this.source,
       this.response,
+      this.upgradeEffect,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
       options.remoteAddress ?? this.remoteAddressOverride
@@ -232,6 +320,14 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return MultipartNode.stream(this.source, this.source.headers)
+  }
+
+  get upgrade(): Effect.Effect<Socket.Socket, Error.RequestError> {
+    return this.upgradeEffect ?? Effect.fail(Error.RequestError({
+      request: this,
+      reason: "Decode",
+      error: "not an upgradeable ServerRequest"
+    }))
   }
 
   toString(): string {
@@ -284,8 +380,10 @@ export const layerConfig = (
 
 const handleResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse) =>
   Effect.suspend((): Effect.Effect<void, Error.ResponseError> => {
-    const nodeResponse = (request as ServerRequestImpl).response
-    if (request.method === "HEAD") {
+    const nodeResponse = (request as ServerRequestImpl).resolvedResponse
+    if (nodeResponse.writableEnded) {
+      return Effect.unit
+    } else if (request.method === "HEAD") {
       nodeResponse.writeHead(response.status, response.headers)
       nodeResponse.end()
       return Effect.unit

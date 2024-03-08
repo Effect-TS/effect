@@ -1,7 +1,7 @@
 import { NodeContext, NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import * as Http from "@effect/platform/HttpServer"
 import * as Schema from "@effect/schema/Schema"
-import { Effect, Layer } from "effect"
+import { Console, Effect, Layer, Schedule, Stream } from "effect"
 import { createServer } from "node:http"
 
 const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
@@ -29,6 +29,21 @@ const HttpLive = Http.router.empty.pipe(
       console.log("got files", data.files)
       return Http.response.empty()
     }).pipe(Effect.scoped)
+  ),
+  Http.router.get(
+    "/ws",
+    Effect.gen(function*(_) {
+      const channel = yield* _(Http.request.upgradeChannel())
+      yield* _(
+        Stream.fromSchedule(Schedule.spaced(1000)),
+        Stream.map(JSON.stringify),
+        Stream.encodeText,
+        Stream.pipeThroughChannel(channel),
+        Stream.decodeText(),
+        Stream.runForEach(Console.log)
+      )
+      return Http.response.empty()
+    })
   ),
   Http.server.serve(Http.middleware.logger),
   Http.server.withLogAddress,

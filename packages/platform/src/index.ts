@@ -51,6 +51,11 @@ export * as Runtime from "./Runtime.js"
 /**
  * @since 1.0.0
  */
+export * as Socket from "./Socket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Template from "./Template.js"
 
 /**

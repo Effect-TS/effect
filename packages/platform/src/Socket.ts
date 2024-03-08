@@ -19,7 +19,7 @@ import IsoWebSocket from "isomorphic-ws"
  * @since 1.0.0
  * @category type ids
  */
-export const SocketTypeId = Symbol.for("@effect/experimental/Socket")
+export const SocketTypeId = Symbol.for("@effect/platform/Socket")
 
 /**
  * @since 1.0.0
@@ -32,7 +32,7 @@ export type SocketTypeId = typeof SocketTypeId
  * @category tags
  */
 export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
-  "@effect/experimental/Socket"
+  "@effect/platform/Socket"
 )
 
 /**
@@ -45,7 +45,6 @@ export interface Socket {
     handler: (_: Uint8Array) => Effect.Effect<_, E, R>
   ) => Effect.Effect<void, SocketError, R>
   readonly writer: Effect.Effect<(chunk: Uint8Array) => Effect.Effect<void>, never, Scope.Scope>
-  // readonly messages: Queue.Dequeue<Uint8Array>
 }
 
 /**
@@ -144,7 +143,7 @@ export const makeChannel = <IE = never>(): Channel.Channel<
 /**
  * @since 1.0.0
  */
-export const defaultCloseCodeIsError = (code: number) => code !== 1000
+export const defaultCloseCodeIsError = (code: number) => code !== 1000 && code !== 1006
 
 /**
  * @since 1.0.0
@@ -159,7 +158,7 @@ export interface WebSocket {
  * @category tags
  */
 export const WebSocket: Context.Tag<WebSocket, globalThis.WebSocket> = Context.GenericTag(
-  "@effect/experimental/Socket/WebSocket"
+  "@effect/platform/Socket/WebSocket"
 )
 
 /**
@@ -206,15 +205,12 @@ export const fromWebSocket = (
 
         ws.onmessage = (event) => {
           run(
-            Effect.catchAllCause(
-              handler(
-                event.data instanceof Uint8Array
-                  ? event.data
-                  : typeof event.data === "string"
-                  ? encoder.encode(event.data)
-                  : new Uint8Array(event.data)
-              ),
-              (cause) => Effect.log(cause, "Unhandled error in WebSocket")
+            handler(
+              event.data instanceof Uint8Array
+                ? event.data
+                : typeof event.data === "string"
+                ? encoder.encode(event.data)
+                : new Uint8Array(event.data)
             )
           )
         }

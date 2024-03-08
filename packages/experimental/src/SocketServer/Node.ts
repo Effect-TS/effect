@@ -1,6 +1,8 @@
 /**
  * @since 1.0.0
  */
+import * as NodeSocket from "@effect/platform-node/NodeSocket"
+import * as Socket from "@effect/platform/Socket"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -11,7 +13,6 @@ import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import * as Net from "node:net"
 import * as WS from "ws"
-import * as Socket from "../Socket/Node.js"
 import * as SocketServer from "../SocketServer.js"
 
 /**
@@ -69,7 +70,7 @@ export const make = (
             })
             server.on("connection", (conn) => {
               pipe(
-                Socket.fromNetSocket(
+                NodeSocket.fromNetSocket(
                   Effect.acquireRelease(
                     Effect.succeed(conn),
                     (conn) =>
@@ -84,7 +85,7 @@ export const make = (
                 Effect.flatMap(handler),
                 Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),
                 Effect.scoped,
-                Effect.provideService(Socket.NetSocket, conn),
+                Effect.provideService(NodeSocket.NetSocket, conn),
                 run
               )
             })
