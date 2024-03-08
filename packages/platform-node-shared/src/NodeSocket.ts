@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Socket from "@effect/platform/Socket"
 import * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -11,12 +12,6 @@ import * as Queue from "effect/Queue"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Net from "node:net"
-import * as Socket from "../Socket.js"
-
-/**
- * @since 1.0.0
- */
-export * from "../Socket.js"
 
 /**
  * @since 1.0.0
@@ -31,7 +26,7 @@ export interface NetSocket {
  * @category tags
  */
 export const NetSocket: Context.Tag<NetSocket, Net.Socket> = Context.GenericTag(
-  "@effect/experimental/Socket/Node/NetSocket"
+  "@effect/platform-node/NodeSocket/NetSocket"
 )
 
 const EOF = Symbol.for("@effect/experimental/Socket/Node/EOF")

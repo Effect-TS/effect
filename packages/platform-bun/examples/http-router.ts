@@ -1,7 +1,7 @@
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import * as Http from "@effect/platform/HttpServer"
 import { Schema } from "@effect/schema"
-import { Effect, Layer } from "effect"
+import { Console, Effect, Layer, Schedule, Stream } from "effect"
 
 const ServerLive = BunHttpServer.server.layer({ port: 3000 })
 
@@ -22,6 +22,20 @@ const HttpLive = Http.router.empty.pipe(
         files: Http.multipart.filesSchema
       })))
       console.log("got files", data.files)
+      return Http.response.empty()
+    })
+  ),
+  Http.router.get(
+    "/ws",
+    Effect.gen(function*(_) {
+      yield* _(
+        Stream.fromSchedule(Schedule.spaced(1000)),
+        Stream.map(JSON.stringify),
+        Stream.encodeText,
+        Stream.pipeThroughChannel(Http.request.upgradeChannel()),
+        Stream.decodeText(),
+        Stream.runForEach(Console.log)
+      )
       return Http.response.empty()
     })
   ),

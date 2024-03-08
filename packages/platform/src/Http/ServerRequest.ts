@@ -3,6 +3,8 @@
  */
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
+import type { Channel } from "effect/Channel"
+import type { Chunk } from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
@@ -10,6 +12,7 @@ import type * as Stream from "effect/Stream"
 import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/serverRequest.js"
 import type * as Path from "../Path.js"
+import type * as Socket from "../Socket.js"
 import type * as Headers from "./Headers.js"
 import type * as IncomingMessage from "./IncomingMessage.js"
 import type { Method } from "./Method.js"
@@ -54,6 +57,8 @@ export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.Req
   >
   readonly multipartStream: Stream.Stream<Multipart.Part, Multipart.MultipartError>
 
+  readonly upgrade: Effect.Effect<Socket.Socket, Error.RequestError>
+
   readonly modify: (
     options: {
       readonly url?: string
@@ -78,6 +83,26 @@ export const persistedMultipart: Effect.Effect<
   Multipart.MultipartError,
   Scope.Scope | FileSystem.FileSystem | Path.Path | ServerRequest
 > = internal.multipartPersisted
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const upgrade: Effect.Effect<Socket.Socket, Error.RequestError, ServerRequest> = internal.upgrade
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const upgradeChannel: <IE = never>() => Channel<
+  Chunk<Uint8Array>,
+  Chunk<Uint8Array>,
+  Error.RequestError | IE | Socket.SocketError,
+  IE,
+  void,
+  unknown,
+  ServerRequest
+> = internal.upgradeChannel
 
 /**
  * @since 1.0.0
