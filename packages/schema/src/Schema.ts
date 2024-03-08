@@ -4266,15 +4266,13 @@ const sortedSetParse = <R, A>(
     : ParseResult.fail(ParseResult.type(ast, u))
 
 /**
- * @category ReadonlySet transformations
+ * @category SortedSet transformations
  * @since 1.0.0
  */
-export const sortedSetFromSelf = <A, I>(
+export const sortedSetFromSelf = <A, I, R>(
+  item: Schema<A, I, R>,
   ordA: Order.Order<A>,
   ordI: Order.Order<I>
-) =>
-<R>(
-  item: Schema<A, I, R>
 ): Schema<SortedSet.SortedSet<A>, SortedSet.SortedSet<I>, R> => {
   return declare(
     [item],
@@ -4290,16 +4288,16 @@ export const sortedSetFromSelf = <A, I>(
 }
 
 /**
- * @category ReadonlySet transformations
+ * @category SortedSet transformations
  * @since 1.0.0
  */
-export const sortedSet = <A>(ordA: Order.Order<A>) =>
-<I, R>(
-  item: Schema<A, I, R>
+export const sortedSet = <A, I, R>(
+  item: Schema<A, I, R>,
+  ordA: Order.Order<A>
 ) =>
   transform(
     array(item),
-    sortedSetFromSelf(ordA, ordA)(to(item)),
+    sortedSetFromSelf(to(item), ordA, ordA),
     (as) => SortedSet.fromIterable(as, ordA),
     (set) => Array.from(SortedSet.values(set))
   )
