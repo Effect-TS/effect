@@ -1,5 +1,6 @@
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
+import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
@@ -26,7 +27,7 @@ export const serverRequestTag = Context.GenericTag<ServerRequest.ServerRequest>(
 export const upgrade = Effect.flatMap(serverRequestTag, (request) => request.upgrade)
 
 /** @internal */
-export const upgradeChannel = <IE = never>() => Effect.map(upgrade, Socket.toChannelWith<IE>())
+export const upgradeChannel = <IE = never>() => Channel.unwrap(Effect.map(upgrade, Socket.toChannelWith<IE>()))
 
 /** @internal */
 export const multipartPersisted = Effect.flatMap(serverRequestTag, (request) => request.multipart)

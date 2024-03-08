@@ -33,12 +33,11 @@ const HttpLive = Http.router.empty.pipe(
   Http.router.get(
     "/ws",
     Effect.gen(function*(_) {
-      const channel = yield* _(Http.request.upgradeChannel())
       yield* _(
         Stream.fromSchedule(Schedule.spaced(1000)),
         Stream.map(JSON.stringify),
         Stream.encodeText,
-        Stream.pipeThroughChannel(channel),
+        Stream.pipeThroughChannel(Http.request.upgradeChannel()),
         Stream.decodeText(),
         Stream.runForEach(Console.log)
       )

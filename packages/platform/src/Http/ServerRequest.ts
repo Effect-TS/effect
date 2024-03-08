@@ -94,9 +94,13 @@ export const upgrade: Effect.Effect<Socket.Socket, Error.RequestError, ServerReq
  * @since 1.0.0
  * @category accessors
  */
-export const upgradeChannel: <IE = never>() => Effect.Effect<
-  Channel<Chunk<Uint8Array>, Chunk<Uint8Array>, IE | Socket.SocketError, IE, void, unknown, never>,
-  Error.RequestError,
+export const upgradeChannel: <IE = never>() => Channel<
+  Chunk<Uint8Array>,
+  Chunk<Uint8Array>,
+  Error.RequestError | IE | Socket.SocketError,
+  IE,
+  void,
+  unknown,
   ServerRequest
 > = internal.upgradeChannel
 
