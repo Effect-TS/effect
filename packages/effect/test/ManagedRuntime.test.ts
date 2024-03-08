@@ -32,7 +32,7 @@ describe.concurrent("ManagedRuntime", () => {
   test("provides fiberRefs", async () => {
     const layer = Layer.setRequestCaching(true)
     const runtime = ManagedRuntime.make(layer)
-      const run = ManagedRuntime.runPromise(runtime)
+    const run = ManagedRuntime.runPromise(runtime)
     const result = await run(FiberRef.get(FiberRef.currentRequestCacheEnabled))
     await ManagedRuntime.dispose(runtime)
     assert.strictEqual(result, true)
