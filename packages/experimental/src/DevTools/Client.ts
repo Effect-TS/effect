@@ -21,7 +21,7 @@ import * as Domain from "./Domain.js"
  * @category models
  */
 export interface ClientImpl {
-  readonly unsafeAddSpan: (_: Domain.Span) => void
+  readonly unsafeAddSpan: (_: Domain.Span | Domain.SpanEvent) => void
 }
 
 /**
@@ -44,10 +44,7 @@ export const Client = Context.GenericTag<Client, ClientImpl>("@effect/experiment
  */
 export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*(_) {
   const socket = yield* _(Socket.Socket)
-  const requests = yield* _(Effect.acquireRelease(
-    Queue.sliding<Domain.Request>(1024),
-    Queue.shutdown
-  ))
+  const requests = yield* _(Queue.sliding<Domain.Request>(1024))
 
   function metricsSnapshot(): Domain.MetricsSnapshot {
     const snapshot = Metric.unsafeSnapshot()
@@ -130,16 +127,21 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
         Schedule.union(Schedule.spaced("10 seconds"))
       )
     ),
-    Effect.interruptible,
-    Effect.forkScoped
+    Effect.forkScoped,
+    Effect.interruptible
   )
   yield* _(
     Queue.offer(requests, { _tag: "Ping" }),
     Effect.delay("3 seconds"),
     Effect.forever,
-    Effect.interruptible,
-    Effect.forkScoped
+    Effect.forkScoped,
+    Effect.interruptible
   )
+  yield* _(Effect.addFinalizer(() =>
+    requests.offer(metricsSnapshot()).pipe(
+      Effect.zipRight(Effect.yieldNow())
+    )
+  ))
 
   return Client.of({
     unsafeAddSpan: (request) => Queue.unsafeOffer(requests, request)
@@ -164,6 +166,18 @@ export const makeTracer: Effect.Effect<Tracer.Tracer, never, Client> = Effect.ge
     span(name, parent, context, links, startTime) {
       const span = currentTracer.span(name, parent, context, links, startTime)
       client.unsafeAddSpan(span)
+      const oldEvent = span.event
+      span.event = function(this: any, name, startTime, attributes) {
+        client.unsafeAddSpan({
+          _tag: "SpanEvent",
+          traceId: span.traceId,
+          spanId: span.spanId,
+          name,
+          startTime,
+          attributes: attributes || {}
+        })
+        return oldEvent.call(this, name, startTime, attributes)
+      }
       const oldEnd = span.end
       span.end = function(this: any) {
         client.unsafeAddSpan(span)

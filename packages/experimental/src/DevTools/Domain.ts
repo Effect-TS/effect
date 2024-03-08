@@ -71,6 +71,29 @@ export const Span: Schema.Schema<Span, SpanFrom> = Schema.struct({
  * @since 1.0.0
  * @category schemas
  */
+export const SpanEvent: Schema.Schema<
+  SpanEvent,
+  {
+    readonly _tag: "SpanEvent"
+    readonly spanId: string
+    readonly traceId: string
+    readonly name: string
+    readonly attributes: { readonly [x: string]: unknown }
+    readonly startTime: string
+  }
+> = Schema.struct({
+  _tag: Schema.literal("SpanEvent"),
+  traceId: Schema.string,
+  spanId: Schema.string,
+  name: Schema.string,
+  startTime: Schema.bigint,
+  attributes: Schema.record(Schema.string, Schema.unknown)
+})
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
 export const ParentSpan = Schema.union(Span, ExternalSpan)
 
 /**
@@ -127,6 +150,19 @@ export interface Span {
     readonly startTime: bigint
     readonly endTime: bigint
   }
+}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export interface SpanEvent {
+  readonly _tag: "SpanEvent"
+  readonly spanId: string
+  readonly traceId: string
+  readonly name: string
+  readonly attributes: { readonly [x: string]: unknown }
+  readonly startTime: bigint
 }
 
 /**
@@ -282,7 +318,7 @@ export type MetricsSnapshotFrom = Schema.Schema.Encoded<typeof MetricsSnapshot>
  * @since 1.0.0
  * @category schemas
  */
-export const Request = Schema.union(Ping, Span, MetricsSnapshot)
+export const Request = Schema.union(Ping, Span, SpanEvent, MetricsSnapshot)
 
 /**
  * @since 1.0.0

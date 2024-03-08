@@ -6,6 +6,11 @@ export * as DevTools from "./DevTools.js"
 /**
  * @since 1.0.0
  */
+export * as Machine from "./Machine.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as MsgPack from "./MsgPack.js"
 
 /**

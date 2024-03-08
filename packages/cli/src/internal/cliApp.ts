@@ -96,7 +96,7 @@ export const run = dual<
                 ),
               onNonEmpty: (head) => {
                 const error = InternalHelpDoc.p(`Received unknown argument: '${head}'`)
-                return Effect.fail(InternalValidationError.invalidValue(error))
+                return Effect.zipRight(printDocs(error), Effect.fail(InternalValidationError.invalidValue(error)))
               }
             })
           }

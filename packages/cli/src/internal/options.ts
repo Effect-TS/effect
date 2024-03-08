@@ -1396,7 +1396,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
     }
     case "Variadic": {
       const repeatHelp = InternalHelpDoc.p(
-        "How many times should this argument should be repeated?"
+        "How many times should this argument be repeated?"
       )
       const message = pipe(
         getHelpInternal(self),

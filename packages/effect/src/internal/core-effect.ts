@@ -1871,10 +1871,10 @@ export const serviceFunction = <T extends Effect.Effect<any, any, any>, Args ext
 export const serviceFunctions = <S, SE, SR>(
   getService: Effect.Effect<S, SE, SR>
 ): {
-  [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect.Effect<any, any, any> ? k : never }[keyof S]]:
-    S[k] extends (...args: infer Args) => Effect.Effect<infer A, infer E, infer R>
-      ? (...args: Args) => Effect.Effect<A, E | SE, R | SR>
-      : never
+  [k in keyof S as S[k] extends (...args: Array<any>) => Effect.Effect<any, any, any> ? k : never]: S[k] extends
+    (...args: infer Args) => Effect.Effect<infer A, infer E, infer R>
+    ? (...args: Args) => Effect.Effect<A, E | SE, R | SR>
+    : never
 } =>
   new Proxy({} as any, {
     get(_target: any, prop: any, _receiver) {
@@ -1899,10 +1899,10 @@ export const serviceConstants = <S, SE, SR>(
 /** @internal */
 export const serviceMembers = <S, SE, SR>(getService: Effect.Effect<S, SE, SR>): {
   functions: {
-    [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect.Effect<any, any, any> ? k : never }[keyof S]]:
-      S[k] extends (...args: infer Args) => Effect.Effect<infer A, infer E, infer R>
-        ? (...args: Args) => Effect.Effect<A, E | SE, R | SR>
-        : never
+    [k in keyof S as S[k] extends (...args: Array<any>) => Effect.Effect<any, any, any> ? k : never]: S[k] extends
+      (...args: infer Args) => Effect.Effect<infer A, infer E, infer R>
+      ? (...args: Args) => Effect.Effect<A, E | SE, R | SR>
+      : never
   }
   constants: {
     [k in { [k in keyof S]: k }[keyof S]]: S[k] extends Effect.Effect<infer A, infer E, infer R> ?
@@ -1910,7 +1910,7 @@ export const serviceMembers = <S, SE, SR>(getService: Effect.Effect<S, SE, SR>):
       Effect.Effect<S[k], SE, SR>
   }
 } => ({
-  functions: serviceFunctions(getService),
+  functions: serviceFunctions(getService) as any,
   constants: serviceConstants(getService)
 })
 

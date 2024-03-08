@@ -91,6 +91,22 @@ export interface EitherTypeLambda extends TypeLambda {
 }
 
 /**
+ * @since 2.0.0
+ */
+export declare namespace Either {
+  /**
+   * @since 2.0.0
+   * @category type-level
+   */
+  export type Left<T extends Either<any, any>> = [T] extends [Either<infer _A, infer _E>] ? _E : never
+  /**
+   * @since 2.0.0
+   * @category type-level
+   */
+  export type Right<T extends Either<any, any>> = [T] extends [Either<infer _A, infer _E>] ? _A : never
+}
+
+/**
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
  * of this structure.
  *
