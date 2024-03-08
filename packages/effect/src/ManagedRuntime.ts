@@ -13,7 +13,7 @@ import type * as Runtime from "./Runtime.js"
  * @since 2.0.0
  * @category models
  */
-export interface ManagedRuntime<in R, out E> extends Pipeable, AsyncDisposable {
+export interface ManagedRuntime<in R, out E> extends Pipeable {
   readonly memoMap: Layer.MemoMap
   readonly runtime: Effect.Effect<Runtime.Runtime<R>, E>
 }

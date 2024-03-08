@@ -57,9 +57,6 @@ export const make = <R, E>(
         )
       ),
     cachedRuntime: undefined,
-    [Symbol.asyncDispose]() {
-      return dispose(self)
-    },
     pipe() {
       return pipeArguments(this, arguments)
     }

@@ -38,25 +38,6 @@ describe.concurrent("ManagedRuntime", () => {
     assert.strictEqual(result, true)
   })
 
-  test("implements AsyncDisposable", async () => {
-    const tag = Context.GenericTag<string>("string")
-    let count = 0
-    const layer = Layer.scoped(tag, Effect.gen(function* (_) {
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => {
-        count++
-      })))
-      return "test"
-    })
-    )
-    await (async function() {
-      await using runtime = ManagedRuntime.make(layer)
-      const run = ManagedRuntime.runPromise(runtime)
-      const result = await run(tag)
-      assert.strictEqual(result, "test")
-    })()
-    assert.strictEqual(count, 1)
-  })
-
   test("allows sharing a MemoMap", async () => {
     let count = 0
     const layer = Layer.effectDiscard(Effect.sync(() => {
