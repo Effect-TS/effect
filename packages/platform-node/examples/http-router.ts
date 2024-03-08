@@ -1,4 +1,4 @@
-import { NodeContext, NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import * as Http from "@effect/platform/HttpServer"
 import * as Schema from "@effect/schema/Schema"
 import { Console, Effect, Layer, Schedule, Stream } from "effect"
@@ -46,8 +46,7 @@ const HttpLive = Http.router.empty.pipe(
   ),
   Http.server.serve(Http.middleware.logger),
   Http.server.withLogAddress,
-  Layer.provide(ServerLive),
-  Layer.provide(NodeContext.layer)
+  Layer.provide(ServerLive)
 )
 
 NodeRuntime.runMain(Layer.launch(HttpLive))
