@@ -5289,7 +5289,15 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
           return cache.get(prop)
         }
         // @ts-expect-error
-        const fn = (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args))
+        const fn = (...args: Array<any>) =>
+          core.andThen(TagClass, (s: any) => {
+            if (typeof s[prop] === "function") {
+              cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
+              return s[prop](...args)
+            }
+            cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
+            return s[prop]
+          })
         // @ts-expect-error
         const cn = core.andThen(TagClass, (s) => s[prop])
         Object.assign(fn, cn)
