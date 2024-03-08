@@ -5988,8 +5988,8 @@ export const TaggedError = <Self = never>(identifier?: string) =>
  * @category classes
  * @since 1.0.0
  */
-export interface TaggedRequest<Tag extends string, R, IS, S, RR, IE, E, IA, A>
-  extends Request.Request<A, E>, Serializable.SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
+export interface TaggedRequest<Tag extends string, SR, SI, S, RR, EI, E, AI, A>
+  extends Request.Request<A, E>, Serializable.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
 {
   readonly [TAG]: Tag
 }

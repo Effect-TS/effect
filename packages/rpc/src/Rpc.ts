@@ -144,10 +144,10 @@ export const effect = <Req extends Schema.TaggedRequest.Any, SR, I, R>(
  * @since 1.0.0
  * @category schemas
  */
-export interface StreamRequest<Tag extends string, R, IS, S, RR, IE, E, IA, A>
+export interface StreamRequest<Tag extends string, SR, SI, S, RR, EI, E, AI, A>
   extends
     EffectRequest.Request<Stream.Stream<A, E, never>>,
-    Serializable.SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
+    Serializable.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
 {
   readonly _tag: Tag
 }

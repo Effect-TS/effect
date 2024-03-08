@@ -7,6 +7,8 @@
 
 - Serializable: swap `WithResult` type parameters
 
+- Serializable: swap `SerializableWithResult` type parameters
+
 - Schema: require an identifier for Class APIs (to avoid dual package hazard):
 
 ```diff

@@ -114,8 +114,8 @@ export const exitSchema = <A, I, E, EI, R>(
  * @since 1.0.0
  * @category model
  */
-export interface SerializableWithResult<R, IS, S, RR, IE, E, IA, A>
-  extends Serializable<S, IS, R>, WithResult<A, IA, E, IE, RR>
+export interface SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
+  extends Serializable<S, SI, SR>, WithResult<A, AI, E, EI, RR>
 {}
 
 /**
@@ -127,7 +127,7 @@ export declare namespace SerializableWithResult {
    * @since 1.0.0
    */
   export type Context<T> = T extends
-    SerializableWithResult<infer R, infer _IS, infer _S, infer RR, infer _IE, infer _E, infer _IA, infer _A> ? R | RR
+    SerializableWithResult<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
     : never
 }
 
