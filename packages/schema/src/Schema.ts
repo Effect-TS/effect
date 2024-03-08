@@ -4029,7 +4029,7 @@ export const eitherFromSelf = <E, IE, RE, A, IA, RA>({ left, right }: {
       description: `Either<${format(left)}, ${format(right)}>`,
       pretty: eitherPretty,
       arbitrary: eitherArbitrary,
-      equivalence: Either.getEquivalence
+      equivalence: (left, right) => Either.getEquivalence({ left, right })
     }
   )
 }
