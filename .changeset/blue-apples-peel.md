@@ -255,7 +255,7 @@ const schema = S.tuple(S.string, S.optionalElement(S.number));
 
 - move `defaultParseOption` from `Parser.ts` to `AST.ts`
 
-- replace `propertySignatureAnnotations` with `propertySignatureDeclaration`, add `annotations` method to `PropertySignature` and
+- replace `propertySignatureAnnotations` with `propertySignature`, add `annotations` method to `PropertySignature` and
   remove all `annotations` parameters to PropertySignature APIs (use the `annotations` method instead)
 
   Before
