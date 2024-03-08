@@ -22,7 +22,7 @@ function provide<R, ER, A, E>(
   effect: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E | ER> {
   return core.flatMap(
-    managed.runtime,
+    managed.runtimeEffect,
     (rt) =>
       core.withFiberRuntime((fiber) => {
         fiber.setFiberRefs(rt.fiberRefs)
@@ -33,16 +33,16 @@ function provide<R, ER, A, E>(
 }
 
 /** @internal */
-export const make = <R, E>(
-  layer: Layer.Layer<R, E, never>,
+export const make = <R, ER>(
+  layer: Layer.Layer<R, ER, never>,
   memoMap?: Layer.MemoMap
-): ManagedRuntime<R, E> => {
+): ManagedRuntime<R, ER> => {
   memoMap = memoMap ?? internalLayer.unsafeMakeMemoMap()
   const scope = internalRuntime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
-  const self: ManagedRuntimeImpl<R, E> = {
+  const self: ManagedRuntimeImpl<R, ER> = {
     memoMap,
     scope,
-    runtime: internalRuntime
+    runtimeEffect: internalRuntime
       .unsafeRunSyncEffect(
         effect.memoize(
           core.tap(
@@ -59,79 +59,53 @@ export const make = <R, E>(
     cachedRuntime: undefined,
     pipe() {
       return pipeArguments(this, arguments)
+    },
+    runtime() {
+      return self.cachedRuntime === undefined ?
+        internalRuntime.unsafeRunPromiseEffect(self.runtimeEffect) :
+        Promise.resolve(self.cachedRuntime)
+    },
+    dispose(): Promise<void> {
+      return internalRuntime.unsafeRunPromiseEffect(self.disposeEffect)
+    },
+    disposeEffect: core.suspend(() => {
+      ;(self as any).runtime = core.die("ManagedRuntime disposed")
+      self.cachedRuntime = undefined
+      return Scope.close(self.scope, core.exitUnit)
+    }),
+    runFork<A, E>(effect: Effect.Effect<A, E, R>, options?: Runtime.RunForkOptions): Fiber.RuntimeFiber<A, E | ER> {
+      return self.cachedRuntime === undefined ?
+        internalRuntime.unsafeForkEffect(provide(self, effect), options) :
+        internalRuntime.unsafeFork(self.cachedRuntime)(effect, options)
+    },
+    runSyncExit<A, E>(effect: Effect.Effect<A, E, R>): Exit<A, E | ER> {
+      return self.cachedRuntime === undefined ?
+        internalRuntime.unsafeRunSyncExitEffect(provide(self, effect)) :
+        internalRuntime.unsafeRunSyncExit(self.cachedRuntime)(effect)
+    },
+    runSync<A, E>(effect: Effect.Effect<A, E, R>): A {
+      return self.cachedRuntime === undefined ?
+        internalRuntime.unsafeRunSyncEffect(provide(self, effect)) :
+        internalRuntime.unsafeRunSync(self.cachedRuntime)(effect)
+    },
+    runPromiseExit<A, E>(effect: Effect.Effect<A, E, R>): Promise<Exit<A, E | ER>> {
+      return self.cachedRuntime === undefined ?
+        internalRuntime.unsafeRunPromiseExitEffect(provide(self, effect)) :
+        internalRuntime.unsafeRunPromiseExit(self.cachedRuntime)(effect)
+    },
+    runCallback<A, E>(
+      effect: Effect.Effect<A, E, R>,
+      options?: Runtime.RunCallbackOptions<A, E | ER> | undefined
+    ): Runtime.Cancel<A, E | ER> {
+      return self.cachedRuntime === undefined ?
+        internalRuntime.unsafeRunCallback(internalRuntime.defaultRuntime)(provide(self, effect), options) :
+        internalRuntime.unsafeRunCallback(self.cachedRuntime)(effect, options)
+    },
+    runPromise<A, E>(effect: Effect.Effect<A, E, R>): Promise<A> {
+      return self.cachedRuntime === undefined ?
+        internalRuntime.unsafeRunPromiseEffect(provide(self, effect)) :
+        internalRuntime.unsafeRunPromise(self.cachedRuntime)(effect)
     }
   }
   return self
 }
-
-/** @internal */
-export const dispose = <R, E>(self: ManagedRuntime<R, E>): Promise<void> =>
-  internalRuntime.unsafeRunPromiseEffect(disposeEffect(self))
-
-/** @internal */
-export const disposeEffect = <R, E>(self: ManagedRuntime<R, E>): Effect.Effect<void> =>
-  core.suspend(() => {
-    const impl = self as ManagedRuntimeImpl<R, E>
-    ;(self as any).runtime = core.die("ManagedRuntime disposed")
-    impl.cachedRuntime = undefined
-    return Scope.close(impl.scope, core.exitUnit)
-  })
-
-/** @internal */
-export const runFork =
-  <R, ER>(self: ManagedRuntime<R, ER>) =>
-  <A, E>(effect: Effect.Effect<A, E, R>, options?: Runtime.RunForkOptions): Fiber.RuntimeFiber<A, E | ER> => {
-    const impl = self as ManagedRuntimeImpl<R, ER>
-    return impl.cachedRuntime === undefined ?
-      internalRuntime.unsafeForkEffect(provide(impl, effect), options) :
-      internalRuntime.unsafeFork(impl.cachedRuntime)(effect, options)
-  }
-
-/** @internal */
-export const runSyncExit =
-  <R, ER>(self: ManagedRuntime<R, ER>) => <A, E>(effect: Effect.Effect<A, E, R>): Exit<A, E | ER> => {
-    const impl = self as ManagedRuntimeImpl<R, ER>
-    return impl.cachedRuntime === undefined ?
-      internalRuntime.unsafeRunSyncExitEffect(provide(impl, effect)) :
-      internalRuntime.unsafeRunSyncExit(impl.cachedRuntime)(effect)
-  }
-
-/** @internal */
-export const runSync = <R, ER>(self: ManagedRuntime<R, ER>) => <A, E>(effect: Effect.Effect<A, E, R>): A => {
-  const impl = self as ManagedRuntimeImpl<R, ER>
-  return impl.cachedRuntime === undefined ?
-    internalRuntime.unsafeRunSyncEffect(provide(impl, effect)) :
-    internalRuntime.unsafeRunSync(impl.cachedRuntime)(effect)
-}
-
-/** @internal */
-export const runPromiseExit =
-  <R, ER>(self: ManagedRuntime<R, ER>) => <A, E>(effect: Effect.Effect<A, E, R>): Promise<Exit<A, E | ER>> => {
-    const impl = self as ManagedRuntimeImpl<R, ER>
-    return impl.cachedRuntime === undefined ?
-      internalRuntime.unsafeRunPromiseExitEffect(provide(impl, effect)) :
-      internalRuntime.unsafeRunPromiseExit(impl.cachedRuntime)(effect)
-  }
-
-/** @internal */
-export const runCallback = <R, ER>(
-  runtime: ManagedRuntime<R, ER>
-) =>
-<A, E>(
-  effect: Effect.Effect<A, E, R>,
-  options?: Runtime.RunCallbackOptions<A, E | ER> | undefined
-): Runtime.Cancel<A, E | ER> => {
-  const impl = runtime as ManagedRuntimeImpl<R, ER>
-  return impl.cachedRuntime === undefined ?
-    internalRuntime.unsafeRunCallback(internalRuntime.defaultRuntime)(provide(impl, effect), options) :
-    internalRuntime.unsafeRunCallback(impl.cachedRuntime)(effect, options)
-}
-
-/** @internal */
-export const runPromise =
-  <R, ER>(self: ManagedRuntime<R, ER>) => <A, E>(effect: Effect.Effect<A, E, R>): Promise<A> => {
-    const impl = self as ManagedRuntimeImpl<R, ER>
-    return impl.cachedRuntime === undefined ?
-      internalRuntime.unsafeRunPromiseEffect(provide(impl, effect)) :
-      internalRuntime.unsafeRunPromise(impl.cachedRuntime)(effect)
-  }

@@ -21,9 +21,8 @@ class Notifications extends Effect.Tag("Notifications")<
 
 async function main() {
   const runtime = ManagedRuntime.make(Notifications.Live);
-  const runPromise = ManagedRuntime.runPromise(runtime);
-  await runPromise(Notifications.notify("Hello, world!"));
-  await ManagedRuntime.dispose(runtime);
+  await runtime.runPromise(Notifications.notify("Hello, world!"));
+  await runtime.dispose();
 }
 
 main();
