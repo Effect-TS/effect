@@ -1449,11 +1449,14 @@ S.enums(Fruits);
 ```ts
 import * as S from "@effect/schema/Schema";
 
-// Schema<string | null>
+// S.Schema<string | null>
 S.nullable(S.string);
 
 // Schema<string | null | undefined>
 S.nullish(S.string);
+
+// Schema<string | undefined>
+S.orUndefined(S.string);
 ```
 
 ## Unions

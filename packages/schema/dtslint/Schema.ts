@@ -364,13 +364,13 @@ S.enums(Fruits)
 // $ExpectType Schema<string | null, string | null, never>
 S.asSchema(S.nullable(S.string))
 
-// $ExpectType union<[Schema<string, string, never>, $null]>
+// $ExpectType nullable<$string>
 S.nullable(S.string)
 
 // $ExpectType Schema<number | null, string | null, never>
 S.asSchema(S.nullable(S.NumberFromString))
 
-// $ExpectType union<[Schema<number, string, never>, $null]>
+// $ExpectType nullable<NumberFromString>
 S.nullable(S.NumberFromString)
 
 // ---------------------------------------------

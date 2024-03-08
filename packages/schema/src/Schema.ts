@@ -942,24 +942,46 @@ export function union<Members extends ReadonlyArray<Schema.Any>>(
 }
 
 /**
- * @category combinators
+ * @category api interface
  * @since 1.0.0
  */
-export const nullable = <A, I, R>(self: Schema<A, I, R>): union<[Schema<A, I, R>, $null]> => union(self, $null)
+export interface nullable<S extends Schema.Any> extends union<[S, $null]> {
+  annotations(annotations: Annotations<Schema.Type<S> | null>): nullable<S>
+}
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const orUndefined = <A, I, R>(self: Schema<A, I, R>): union<[Schema<A, I, R>, $undefined]> =>
-  union(self, $undefined)
+export const nullable = <S extends Schema.Any>(self: S): nullable<S> => union(self, $null)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface orUndefined<S extends Schema.Any> extends union<[S, $undefined]> {
+  annotations(annotations: Annotations<Schema.Type<S> | undefined>): orUndefined<S>
+}
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nullish = <A, I, R>(self: Schema<A, I, R>): union<[Schema<A, I, R>, $null, $undefined]> =>
-  union(self, $null, $undefined)
+export const orUndefined = <S extends Schema.Any>(self: S): orUndefined<S> => union(self, $undefined)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface nullish<S extends Schema.Any> extends union<[S, $null, $undefined]> {
+  annotations(annotations: Annotations<Schema.Type<S> | null | undefined>): nullish<S>
+}
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const nullish = <S extends Schema.Any>(self: S): nullish<S> => union(self, $null, $undefined)
 
 /**
  * @category combinators
