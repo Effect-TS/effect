@@ -5288,13 +5288,15 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
         if (cache.has(prop)) {
           return cache.get(prop)
         }
-        // @ts-expect-error
         const fn = (...args: Array<any>) =>
+          // @ts-expect-error
           core.andThen(TagClass, (s: any) => {
             if (typeof s[prop] === "function") {
+              // @ts-expect-error
               cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
               return s[prop](...args)
             }
+            // @ts-expect-error
             cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
             return s[prop]
           })
