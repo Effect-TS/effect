@@ -976,4 +976,4 @@ S.causeFromSelf({ error: S.string })
 S.causeFromSelf({ error: S.string, defect })
 
 // $ExpectType Schema<SortedSet<number>, readonly string[], never>
-S.sortedSet(N.Order)(S.NumberFromString)
+S.sortedSet(S.NumberFromString, N.Order)
