@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-added sortedSet Schema
+add `sortedSet` and `sortedSetFromSeld` combinators
