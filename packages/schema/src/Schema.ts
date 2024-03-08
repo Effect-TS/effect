@@ -5339,7 +5339,7 @@ export const EitherFromSelf = <R extends Schema.Any, L extends Schema.Any>({ lef
       description: `Either<${format(right)}, ${format(left)}>`,
       pretty: eitherPretty,
       arbitrary: eitherArbitrary,
-      equivalence: (right, left) => either_.getEquivalence(left, right)
+      equivalence: (right, left) => either_.getEquivalence({ left, right })
     }
   )
 }
