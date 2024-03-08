@@ -3548,7 +3548,6 @@ export const flatMap: {
  * @since 2.0.0
  * @category sequencing
  */
-
 export const andThen: {
   <A, X>(
     f: (a: NoInfer<A>) => X
