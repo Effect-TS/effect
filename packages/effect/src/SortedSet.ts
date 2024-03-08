@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import * as Equal from "./Equal.js"
+import type * as Equivalence from "./Equivalence.js"
 import * as Dual from "./Function.js"
 import { pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
@@ -381,3 +382,9 @@ export const union: {
  * @category getters
  */
 export const values = <A>(self: SortedSet<A>): IterableIterator<A> => RBT.keys(self.keyTree)
+
+/**
+ * @since 2.0.0
+ * @category equivalence
+ */
+export const getEquivalence = <A>(): Equivalence.Equivalence<SortedSet<A>> => (a, b) => isSubset(a, b) && isSubset(b, a)

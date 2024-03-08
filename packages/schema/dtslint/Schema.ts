@@ -2,6 +2,7 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Brand from "effect/Brand"
 import { hole, identity, pipe } from "effect/Function"
+import * as N from "effect/Number"
 import type { Simplify } from "effect/Types"
 
 class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
@@ -2036,3 +2037,10 @@ hole<S.TupleType.Encoded<[S.NumberFromString, S.OptionalElement<S.NumberFromStri
 
 // $ExpectType "a" | "b" | "c"
 hole<S.Schema.Context<S.tupleType<[typeof aContext], [typeof bContext, typeof cContext]>>>()
+
+// ---------------------------------------------
+// sortedSet
+// ---------------------------------------------
+
+// $ExpectType Schema<SortedSet<number>, readonly string[], never>
+S.sortedSet(N.Order)(S.NumberFromString)

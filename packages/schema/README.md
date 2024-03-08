@@ -3186,6 +3186,19 @@ console.log(
 ); // Map(3) { 1 => 'a', 2 => 'b', 3 => 'c' }
 ```
 
+## SortedSet
+
+```ts
+import * as S from "@effect/schema/Schema";
+import * as N from "effect/Number";
+
+// Schema<SortedSet<number>, readonly number[]>
+const schema = S.sortedSet(N.Order)(S.number);
+const parse = S.decodeUnknownSync(schema);
+
+console.log(parse([1, 2, 3])); // SortedSet { 1, 2, 3 }
+```
+
 # Understanding Schema Declaration for New Data Types
 
 Creating schemas for new data types is crucial to defining the expected structure of information in your application. This guide explores how to declare schemas for new data types. We'll cover two important concepts: declaring schemas for primitive data types and type constructors.
