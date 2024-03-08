@@ -6550,7 +6550,7 @@ const causeDefectPretty: Schema<unknown> = transform(
  * @category api interface
  * @since 1.0.0
  */
-export interface cause<E extends Schema.Any, DR> extends
+export interface cause<E extends Schema.All, DR> extends
   Annotable<
     cause<E, DR>,
     Cause.Cause<Schema.Type<E>>,
@@ -6563,7 +6563,7 @@ export interface cause<E extends Schema.Any, DR> extends
  * @category Cause transformations
  * @since 1.0.0
  */
-export const cause = <E extends Schema.Any, DR = never>({ defect = causeDefectPretty, error }: {
+export const cause = <E extends Schema.All, DR = never>({ defect = causeDefectPretty, error }: {
   readonly error: E
   readonly defect?: Schema<unknown, unknown, DR> | undefined
 }): cause<E, DR> => {
