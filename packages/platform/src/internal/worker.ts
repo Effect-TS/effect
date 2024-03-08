@@ -405,7 +405,11 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
       makeSerialized<I>(options),
       Effect.tap((worker) => Effect.sync(() => workers.add(worker))),
       Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
-      options.onCreate ? Effect.tap(options.onCreate) : identity,
+      options.onCreate
+        ? Effect.tap(
+          options.onCreate as (worker: Worker.SerializedWorker<I>) => Effect.Effect<void, WorkerError>
+        )
+        : identity,
       Effect.provideService(WorkerManager, manager)
     )
     const backing = yield* _(

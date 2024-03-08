@@ -35,7 +35,7 @@ import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import type * as Scope from "../Scope.js"
 import type * as Tracer from "../Tracer.js"
-import type { NoInfer } from "../Types.js"
+import type { NoInfer, NotFunction } from "../Types.js"
 import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
@@ -697,7 +697,7 @@ export const andThen: {
     : [X] extends [Promise<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
     : Effect.Effect<X, E, R>
   <X>(
-    f: X
+    f: NotFunction<X>
   ): <A, E, R>(
     self: Effect.Effect<A, E, R>
   ) => [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>
@@ -711,7 +711,7 @@ export const andThen: {
     : Effect.Effect<X, E, R>
   <A, E, R, X>(
     self: Effect.Effect<A, E, R>,
-    f: X
+    f: NotFunction<X>
   ): [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>
     : [X] extends [Promise<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
     : Effect.Effect<X, E, R>
@@ -1169,7 +1169,7 @@ export const tap = dual<
       : [X] extends [Promise<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
     <X>(
-      f: X
+      f: NotFunction<X>
     ): <A, E, R>(
       self: Effect.Effect<A, E, R>
     ) => [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
@@ -1185,7 +1185,7 @@ export const tap = dual<
       : Effect.Effect<A, E, R>
     <A, E, R, X>(
       self: Effect.Effect<A, E, R>,
-      f: X
+      f: NotFunction<X>
     ): [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
       : [X] extends [Promise<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
