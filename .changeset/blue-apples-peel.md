@@ -1,5 +1,8 @@
 ---
 "@effect/schema": minor
+"@effect/experimental": minor
+"@effect/platform": minor
+"@effect/rpc": minor
 ---
 
 - Schema: require an identifier for Class APIs (to avoid dual package hazard):
