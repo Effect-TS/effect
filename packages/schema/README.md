@@ -106,18 +106,18 @@ Let's delve into this with an example.
 ```ts
 import * as S from "@effect/schema/Schema";
 
-/*
-const schema: S.Schema<{
-    readonly myfield?: string; // the type is strict
-}, {
-    readonly myfield?: string; // the type is strict
-}, never>
-*/
 const schema = S.struct({
   myfield: S.optional(S.string.pipe(S.nonEmpty()), {
     exact: true,
   }),
 });
+
+/*
+type Type = {
+    readonly myfield?: string; // the type is strict (no `| undefined`)
+}
+*/
+type Type = S.Schema.Type<typeof schema>;
 
 S.decodeSync(schema)({ myfield: undefined });
 /*
@@ -137,18 +137,18 @@ If, for some reason, you can't enable the `exactOptionalPropertyTypes` option (p
 ```ts
 import * as S from "@effect/schema/Schema";
 
-/*
-const schema: S.Schema<{
-    readonly myfield?: string | undefined; // the type is widened to string | undefined
-}, {
-    readonly myfield?: string | undefined; // the type is widened to string | undefined
-}, never>
-*/
 const schema = S.struct({
   myfield: S.optional(S.string.pipe(S.nonEmpty()), {
     exact: true,
   }),
 });
+
+/*
+type Type = {
+    readonly myfield?: string | undefined; // the type is widened to string | undefined
+}
+*/
+type Type = S.Schema.Type<typeof schema>;
 
 S.decodeSync(schema)({ myfield: undefined }); // No type error, but a decoding failure occurs
 /*
@@ -209,7 +209,7 @@ In addition to the provided `struct` and `union` functions, `@effect/schema/Sche
 
 ## Extracting Inferred Types
 
-After you've defined a `Schema<A, I, R>`, you can extract the inferred type `A` that represents the data described by the schema using the `Schema.To` type.
+After you've defined a `Schema<A, I, R>`, you can extract the inferred type `A` that represents the data described by the schema using the `Schema.Type` type.
 
 For instance, with the `Person` schema we defined earlier, you can extract the inferred type of a `Person` object as demonstrated below:
 
@@ -221,7 +221,7 @@ const Person = S.struct({
   age: S.number,
 });
 
-interface Person extends S.Schema.To<typeof Person> {}
+interface Person extends S.Schema.Type<typeof Person> {}
 /*
 Equivalent to:
 interface Person {
@@ -234,7 +234,7 @@ interface Person {
 Alternatively you can also extract a `type` instead of an `interface`:
 
 ```ts
-type Person = S.Schema.To<typeof Person>;
+type Person = S.Schema.Type<typeof Person>;
 /*
 Equivalent to:
 type Person {
@@ -253,16 +253,16 @@ type Context = S.Schema.Context<typeof Person>;
 
 ### Advanced extracting Inferred Types
 
-In cases where `I` differs from `A`, you can also extract the inferred `I` type using `Schema.From`.
+In cases where `I` differs from `A`, you can also extract the inferred `I` type using `Schema.Encoded`.
 
 ```ts
 import type * as S from "@effect/schema/Schema";
 
-// type To = number
-type To = S.Schema.To<typeof S.NumberFromString>;
+// type Type = number
+type Type = S.Schema.Type<typeof S.NumberFromString>;
 
-// type From = string
-type From = S.Schema.From<typeof S.NumberFromString>;
+// type Encoded = string
+type Encoded = S.Schema.Encoded<typeof S.NumberFromString>;
 ```
 
 To create a schema with an opaque type, you can use the following technique that re-declares the schema:
@@ -275,7 +275,7 @@ const _Person = S.struct({
   age: S.number,
 });
 
-interface Person extends S.Schema.To<typeof _Person> {}
+interface Person extends S.Schema.Type<typeof _Person> {}
 
 // Re-declare the schema to create a schema with an opaque type
 const Person: S.Schema<Person> = _Person;
@@ -289,28 +289,25 @@ Note that the technique shown above becomes more complex when the schema is defi
 import * as S from "@effect/schema/Schema";
 
 /*
-const _Person: S.Schema<{
-    readonly name: string;
-    readonly age: number;
-}, {
-    readonly name: string;
-    readonly age: string;
-}, never>
+const _Person: S.struct<{
+    name: S.$string;
+    age: S.NumberFromString;
+}>
 */
 const _Person = S.struct({
   name: S.string,
   age: S.NumberFromString,
 });
 
-interface Person extends S.Schema.To<typeof _Person> {}
+interface Person extends S.Schema.Type<typeof _Person> {}
 
-interface PersonFrom extends S.Schema.From<typeof _Person> {}
+interface PersonEncoded extends S.Schema.Encoded<typeof _Person> {}
 
 // Re-declare the schema to create a schema with an opaque type
-const Person: S.Schema<Person, PersonFrom> = _Person;
+const Person: S.Schema<Person, PersonEncoded> = _Person;
 ```
 
-In this case, the field `"age"` is of type `string` in the `From` type of the schema and is of type `number` in the `To` type of the schema. Therefore, we need to define **two** interfaces (`PersonFrom` and `Person`) and use both to redeclare our final schema `Person`.
+In this case, the field `"age"` is of type `string` in the `Encoded` type of the schema and is of type `number` in the `Type` type of the schema. Therefore, we need to define **two** interfaces (`PersonEncoded` and `Person`) and use both to redeclare our final schema `Person`.
 
 ## Decoding From Unknown
 
@@ -1403,7 +1400,7 @@ To define a schema for a branded type from scratch, you can use the `brand` comb
 import * as S from "@effect/schema/Schema";
 
 const UserId = S.string.pipe(S.brand("UserId"));
-type UserId = S.Schema.To<typeof UserId>; // string & Brand<"UserId">
+type UserId = S.Schema.Type<typeof UserId>; // string & Brand<"UserId">
 ```
 
 Note that you can use `unique symbol`s as brands to ensure uniqueness across modules / packages:
@@ -1413,7 +1410,7 @@ import * as S from "@effect/schema/Schema";
 
 const UserIdBrand = Symbol.for("UserId");
 const UserId = S.string.pipe(S.brand(UserIdBrand));
-type UserId = S.Schema.To<typeof UserId>; // string & Brand<typeof UserIdBrand>
+type UserId = S.Schema.Type<typeof UserId>; // string & Brand<typeof UserIdBrand>
 ```
 
 ### Reusing an existing branded type
@@ -1443,7 +1440,7 @@ enum Fruits {
   Banana,
 }
 
-// Schema<Fruits>
+// S.enums<typeof Fruits>
 S.enums(Fruits);
 ```
 
