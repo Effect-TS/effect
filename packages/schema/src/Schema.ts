@@ -5988,7 +5988,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
  * @category classes
  * @since 1.0.0
  */
-export interface TaggedRequest<Tag extends string, SR, SI, S, RR, EI, E, AI, A>
+export interface TaggedRequest<Tag extends string, S, SI, SR, A, AI, E, EI, RR>
   extends Request.Request<A, E>, Serializable.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
 {
   readonly [TAG]: Tag
@@ -6005,7 +6005,7 @@ export declare namespace TaggedRequest {
    */
   export type Any =
     | TaggedRequest<string, any, any, any, any, any, any, any, any>
-    | TaggedRequest<string, any, any, any, any, never, never, any, any>
+    | TaggedRequest<string, any, any, any, any, any, never, never, any>
 }
 
 /**
@@ -6030,14 +6030,14 @@ export const TaggedRequest =
       Simplify<Struct.Type<Fields>>,
       TaggedRequest<
         Tag,
-        Struct.Context<Fields>,
-        { readonly [TAG]: Tag } & Struct.Encoded<Fields>,
         Self,
-        ER | AR,
-        EI,
-        EA,
+        { readonly [TAG]: Tag } & Struct.Encoded<Fields>,
+        Struct.Context<Fields>,
+        AA,
         AI,
-        AA
+        EA,
+        EI,
+        ER | AR
       >,
       {}
     > =>

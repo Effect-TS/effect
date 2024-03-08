@@ -5,9 +5,11 @@
 "@effect/rpc": minor
 ---
 
-- Serializable: swap `WithResult` type parameters
+- Schema: swap `TaggedRequest` type parameters
 
 - Serializable: swap `SerializableWithResult` type parameters
+
+- Serializable: swap `WithResult` type parameters
 
 - Schema: require an identifier for Class APIs (to avoid dual package hazard):
 
