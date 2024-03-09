@@ -161,20 +161,31 @@ export declare namespace Schema {
   /**
    * @since 1.0.0
    */
-  export type ToAsserts<S extends Schema.Any<never>> = (
+  export type ToAsserts<S extends AnyNoContext> = (
     input: unknown,
     options?: AST.ParseOptions
   ) => asserts input is Schema.Type<S>
 
   /**
+   * Any schema, except for `$never`.
+   *
    * @since 1.0.0
    */
-  export type Any<R = unknown> = Schema<any, any, R>
+  export type Any = Schema<any, any, unknown>
 
   /**
+   * Any schema with `Context = never`, except for `$never`.
+   *
    * @since 1.0.0
    */
-  export type All<R = unknown> = Any<R> | $never
+  export type AnyNoContext = Schema<any, any, never>
+
+  /**
+   * Any schema, including `$never`.
+   *
+   * @since 1.0.0
+   */
+  export type All = Any | $never
 }
 
 /**
@@ -535,7 +546,7 @@ type Join<T> = T extends [infer Head, ...infer Tail]
  * @category constructors
  * @since 1.0.0
  */
-export const templateLiteral = <T extends [Schema.Any<never>, ...Array<Schema.Any<never>>]>(
+export const templateLiteral = <T extends [Schema.AnyNoContext, ...Array<Schema.AnyNoContext>]>(
   ...[head, ...tail]: T
 ): Schema<Join<{ [K in keyof T]: Schema.Type<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
@@ -2214,7 +2225,7 @@ export const pluck: {
   }
 )
 
-const makeBrandSchema = <S extends Schema.Any<never>, B extends string | symbol>(
+const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbol>(
   self: AST.AST,
   annotations: Annotations<Schema.Type<S> & Brand.Brand<B>>
 ): brand<S, B> => {
@@ -2243,7 +2254,7 @@ const makeBrandSchema = <S extends Schema.Any<never>, B extends string | symbol>
  * @category api interface
  * @since 1.0.0
  */
-export interface brand<S extends Schema.Any<never>, B extends string | symbol>
+export interface brand<S extends Schema.AnyNoContext, B extends string | symbol>
   extends
     Annotable<brand<S, B>, Schema.Type<S> & Brand.Brand<B>, Schema.Encoded<S>>,
     Brand.Brand.Constructor<Schema.Type<S> & Brand.Brand<B>>
@@ -2268,7 +2279,7 @@ export interface brand<S extends Schema.Any<never>, B extends string | symbol>
  * @category combinators
  * @since 1.0.0
  */
-export const brand = <S extends Schema.Any<never>, B extends string | symbol>(
+export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
   brand: B,
   annotations?: Annotations<Schema.Type<S> & Brand.Brand<B>>
 ) =>
