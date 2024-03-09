@@ -9,7 +9,7 @@ describe("Schema > PropertySignature", () => {
   describe("annotations", () => {
     it("propertySignature().annotations()", () => {
       const schema = S.struct({
-        a: S.propertySignature({ schema: S.string }).annotations({
+        a: S.propertySignature(S.string).annotations({
           title: "title",
           [Symbol.for("custom-annotation")]: "custom-annotation-value"
         })
@@ -147,7 +147,7 @@ describe("Schema > PropertySignature", () => {
 
   describe("fromKey", () => {
     it("string key", async () => {
-      const ps = S.propertySignature({ schema: S.number }).pipe(S.fromKey("b"))
+      const ps = S.propertySignature(S.number).pipe(S.fromKey("b"))
       const transform = S.struct({ a: ps })
       const schema = S.asSchema(transform)
       await Util.expectDecodeUnknownSuccess(schema, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
@@ -157,7 +157,7 @@ describe("Schema > PropertySignature", () => {
 
     it("symbol key", async () => {
       const a = Symbol.for("@effect/schema/test/a")
-      const ps = S.propertySignature({ schema: S.symbol }).pipe(S.fromKey(a))
+      const ps = S.propertySignature(S.symbol).pipe(S.fromKey(a))
       const transform = S.struct({ a: ps })
       const rename = S.asSchema(transform)
       const schema = S.struct({ b: S.number }).pipe(S.extend(rename))

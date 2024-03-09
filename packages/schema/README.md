@@ -1904,7 +1904,7 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 import * as S from "@effect/schema/Schema";
 
 const schema = S.struct({
-  a: S.propertySignature({ schema: S.string }).pipe(S.fromKey("c")),
+  a: S.propertySignature(S.string).pipe(S.fromKey("c")),
   b: S.number,
 });
 

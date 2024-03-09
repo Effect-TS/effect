@@ -1390,7 +1390,7 @@ S.SecretFromSelf
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, ":", string, never>
-S.propertySignature({ schema: S.string }).annotations({ description: "description" })
+S.propertySignature(S.string).annotations({ description: "description" })
 
 // ---------------------------------------------
 // PropertySignature .annotations({}) method

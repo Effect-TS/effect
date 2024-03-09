@@ -1364,16 +1364,18 @@ class $PropertySignature<
  * @category PropertySignature
  * @since 1.0.0
  */
-export const propertySignature = <A, I, R, IsOptional extends boolean = false>(options: {
-  readonly schema: Schema<A, I, R>
-  readonly isOptional?: IsOptional | undefined
-  readonly annotations?: Annotations<A> | undefined
-}): PropertySignature<PropertySignature.GetToken<IsOptional>, A, never, PropertySignature.GetToken<IsOptional>, I, R> =>
+export const propertySignature = <A, I, R, IsOptional extends boolean = false>(
+  schema: Schema<A, I, R>,
+  options?: {
+    readonly isOptional?: IsOptional | undefined
+    readonly annotations?: Annotations<A> | undefined
+  } | undefined
+): PropertySignature<PropertySignature.GetToken<IsOptional>, A, never, PropertySignature.GetToken<IsOptional>, I, R> =>
   new $PropertySignature(
     new PropertySignatureDeclaration(
-      options.schema.ast,
-      options.isOptional ?? false,
-      _schema.toASTAnnotations(options.annotations)
+      schema.ast,
+      options?.isOptional ?? false,
+      _schema.toASTAnnotations(options?.annotations)
     )
   )
 
@@ -1717,7 +1719,7 @@ export const optional: {
           identity
         )
       } else {
-        return propertySignature({ schema, isOptional: true })
+        return propertySignature(schema, { isOptional: true })
       }
     }
   } else {
@@ -1762,7 +1764,7 @@ export const optional: {
           identity
         )
       } else {
-        return propertySignature({ schema: orUndefined(schema), isOptional: true })
+        return propertySignature(orUndefined(schema), { isOptional: true })
       }
     }
   }
