@@ -170,7 +170,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
         return fc.tuple(...components).map((spans) => spans.join(""))
       }
     }
-    case "TupleType": {
+    case "Tuple": {
       const elements: Array<Arbitrary<any>> = []
       let hasOptionals = false
       for (const element of ast.elements) {

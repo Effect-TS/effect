@@ -27,7 +27,7 @@ describe("Schema/mutable", () => {
   it("array", () => {
     const schema = S.mutable(S.array(S.string))
     expect(schema.ast).toEqual(
-      new AST.TupleType([], [S.string.ast], false)
+      new AST.Tuple([], [S.string.ast], false)
     )
   })
 
@@ -38,7 +38,7 @@ describe("Schema/mutable", () => {
         new AST.TypeLiteral([
           new AST.PropertySignature("a", S.number.ast, false, false)
         ], []),
-        new AST.TupleType([], [S.string.ast], false)
+        new AST.Tuple([], [S.string.ast], false)
       ])
     )
   })
@@ -47,7 +47,7 @@ describe("Schema/mutable", () => {
     const schema = S.mutable(S.array(S.string).pipe(S.maxItems(2)))
     if (AST.isRefinement(schema.ast)) {
       expect(schema.ast.from).toEqual(
-        new AST.TupleType([], [S.string.ast], false)
+        new AST.Tuple([], [S.string.ast], false)
       )
     }
   })
@@ -58,7 +58,7 @@ describe("Schema/mutable", () => {
     ))
     if (AST.isSuspend(schema.ast)) {
       expect(schema.ast.f()).toEqual(
-        new AST.TupleType([], [S.string.ast], false)
+        new AST.Tuple([], [S.string.ast], false)
       )
     }
   })
@@ -67,10 +67,10 @@ describe("Schema/mutable", () => {
     const schema = S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
     if (AST.isTransform(schema.ast)) {
       expect(schema.ast.from).toEqual(
-        new AST.TupleType([], [S.string.ast], false)
+        new AST.Tuple([], [S.string.ast], false)
       )
       expect(schema.ast.to).toEqual(
-        new AST.TupleType([], [S.string.ast], false)
+        new AST.Tuple([], [S.string.ast], false)
       )
     }
   })

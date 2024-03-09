@@ -336,7 +336,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       throw new Error("cannot build a JSON Schema for `bigint` without a JSON Schema annotation")
     case "SymbolKeyword":
       throw new Error("cannot build a JSON Schema for `symbol` without a JSON Schema annotation")
-    case "TupleType": {
+    case "Tuple": {
       const elements = ast.elements.map((e) => goWithIdentifier(e.type, $defs))
       const rest = ast.rest.map((ast) => goWithIdentifier(ast, $defs))
       const output: JsonSchema7Array = { type: "array" }

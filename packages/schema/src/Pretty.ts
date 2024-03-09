@@ -92,7 +92,7 @@ export const match: AST.Match<Pretty<any>> = {
   "BooleanKeyword": toString,
   "BigIntKeyword": getMatcher((a) => `${String(a)}n`),
   "Enums": stringify,
-  "TupleType": (ast, go) => {
+  "Tuple": (ast, go) => {
     const hook = getHook(ast)
     if (Option.isSome(hook)) {
       return hook.value()

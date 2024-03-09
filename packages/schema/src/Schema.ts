@@ -1095,7 +1095,7 @@ class $tupleType<
     elements: Elements,
     rest: Rest
   ): AST.AST => {
-    return new AST.TupleType(
+    return new AST.Tuple(
       elements.map((schema) =>
         isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
       ),

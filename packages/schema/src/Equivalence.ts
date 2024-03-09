@@ -85,7 +85,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
       const get = _util.memoizeThunk(() => go(ast.f()))
       return (a, b) => get()(a, b)
     }
-    case "TupleType": {
+    case "Tuple": {
       const elements = ast.elements.map((element) => go(element.type))
       const rest = ast.rest.map(go)
       return Equivalence.make((a, b) => {

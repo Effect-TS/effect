@@ -18,8 +18,6 @@
 +class A extends S.Class<A>("A")({ a: S.string }) {}
 ```
 
-- AST: refactor `Tuple` to `TupleType`
-
 ```diff
 -export class Tuple implements Annotated {
 +export class TupleType implements Annotated {

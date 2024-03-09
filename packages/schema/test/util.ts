@@ -26,8 +26,8 @@ const effectifyDecode = <R>(
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
   switch (ast._tag) {
-    case "TupleType":
-      return new AST.TupleType(
+    case "Tuple":
+      return new AST.Tuple(
         ast.elements.map((e) => new AST.Element(effectifyAST(e.type), e.isOptional)),
         ast.rest.map((ast) => effectifyAST(ast)),
         ast.isReadonly,
