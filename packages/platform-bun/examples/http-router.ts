@@ -1,7 +1,7 @@
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import * as Http from "@effect/platform/HttpServer"
 import { Schema } from "@effect/schema"
-import { Console, Effect, Layer, Schedule, Stream } from "effect"
+import { Effect, Layer, Schedule, Stream } from "effect"
 
 const ServerLive = BunHttpServer.server.layer({ port: 3000 })
 
@@ -34,7 +34,8 @@ const HttpLive = Http.router.empty.pipe(
         Stream.encodeText,
         Stream.pipeThroughChannel(Http.request.upgradeChannel()),
         Stream.decodeText(),
-        Stream.runForEach(Console.log)
+        Stream.runForEach((_) => Effect.log(_)),
+        Effect.annotateLogs("ws", "recv")
       )
       return Http.response.empty()
     })

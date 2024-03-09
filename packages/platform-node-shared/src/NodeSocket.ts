@@ -7,9 +7,9 @@ import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
-import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Net from "node:net"
 
@@ -76,8 +76,11 @@ export const fromNetSocket = (
     const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const conn = yield* _(open)
-        const runtime = yield* _(Effect.runtime<R>(), Effect.provideService(NetSocket, conn))
-        const run = Runtime.runFork(runtime)
+        const fiberSet = yield* _(FiberSet.make<any, E | Socket.SocketError>())
+        const run = yield* _(
+          FiberSet.runtime(fiberSet)<R>(),
+          Effect.provideService(NetSocket, conn)
+        )
         const writeFiber = yield* _(
           Queue.take(sendQueue),
           Effect.tap((chunk) =>
@@ -95,14 +98,9 @@ export const fromNetSocket = (
           Effect.fork
         )
         conn.on("data", (chunk) => {
-          run(
-            Effect.catchAllCause(
-              handler(chunk),
-              (cause) => Effect.log(cause, "Unhandled error in Node Socket")
-            )
-          )
+          run(handler(chunk))
         })
-        yield* _(Effect.race(
+        yield* _(
           Effect.async<void, Socket.SocketError, never>((resume) => {
             conn.on("end", () => {
               resume(Effect.unit)
@@ -111,8 +109,9 @@ export const fromNetSocket = (
               resume(Effect.fail(new Socket.SocketError({ reason: "Read", error })))
             })
           }),
-          Fiber.join(writeFiber)
-        ))
+          Effect.raceFirst(Fiber.join(writeFiber)),
+          Effect.raceFirst(FiberSet.join(fiberSet))
+        )
       }).pipe(Effect.scoped)
 
     const write = (chunk: Uint8Array) => Queue.offer(sendQueue, chunk)
