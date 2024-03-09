@@ -905,7 +905,7 @@ const formatTuple = (ast: Tuple): string => {
       const wrappedHead = formattedHead.includes(" | ") ? `(${formattedHead})` : formattedHead
 
       if (tail.length > 0) {
-        const formattedTail = tail.map((ast) => String(ast)).join(", ")
+        const formattedTail = tail.map(String).join(", ")
         if (ast.elements.length > 0) {
           return `readonly [${formattedElements}, ...${wrappedHead}[], ${formattedTail}]`
         } else {
@@ -1098,6 +1098,26 @@ const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
  */
 export type Members<A> = readonly [A, A, ...Array<A>]
 
+const prettyUnion = (ss: ReadonlyArray<string>): string => Array.from(new Set(ss)).join(" | ")
+
+const getDefaultUnionDescription = (candidates: ReadonlyArray<AST>): string | undefined => {
+  const nested: Array<string> = []
+  let other = false
+  for (const c of candidates) {
+    if (isUnion(c)) {
+      const expected = getExpected(c, false)
+      if (Option.isSome(expected)) {
+        nested.push(expected.value)
+        continue
+      }
+    }
+    other = true
+  }
+  if (nested.length > 0) {
+    return prettyUnion(nested.concat(other ? ["..."] : []))
+  }
+}
+
 /**
  * @category model
  * @since 1.0.0
@@ -1105,10 +1125,14 @@ export type Members<A> = readonly [A, A, ...Array<A>]
 export class Union implements Annotated {
   static make = (
     candidates: ReadonlyArray<AST>,
-    annotations: Annotations = {}
+    annotations?: Annotations
   ): AST => {
     const types = unify(flatten(candidates))
     if (isMembers(types)) {
+      const defaultDescription = getDefaultUnionDescription(candidates)
+      if (defaultDescription) {
+        annotations = { [DescriptionAnnotationId]: defaultDescription, ...annotations }
+      }
       return new Union(sortUnionMembers(types), annotations)
     }
     if (ReadonlyArray.isNonEmptyReadonlyArray(types)) {
@@ -1127,7 +1151,7 @@ export class Union implements Annotated {
   toString(verbose: boolean = false) {
     return Option.getOrElse(
       getExpected(this, verbose),
-      () => this.types.map((member) => String(member)).join(" | ")
+      () => prettyUnion(this.types.map(String))
     )
   }
 }

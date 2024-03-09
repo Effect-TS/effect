@@ -16,8 +16,7 @@ describe("AST.Union", () => {
         AST.neverKeyword,
         AST.numberKeyword
       ])
-    )
-      .toEqual(AST.Union.make([AST.stringKeyword, AST.numberKeyword]))
+    ).toEqual(AST.Union.make([AST.stringKeyword, AST.numberKeyword]))
   })
 
   describe("should give precedence to schemas containing more infos", () => {
@@ -55,6 +54,42 @@ describe("AST.Union", () => {
         types: [a.ast, b.ast],
         annotations: {}
       })
+    })
+  })
+
+  it("toString() should unify", () => {
+    const member = S.struct({ a: S.string })
+    const schema = S.union(member, member)
+    expect(String(schema)).toStrictEqual("{ a: string }")
+  })
+
+  it("toString() should support suspended schemas", () => {
+    interface A {
+      readonly a?: null | A | undefined
+    }
+    const schema: S.Schema<A> = S.partial(
+      S.suspend(
+        () =>
+          S.struct({
+            a: S.union(S.null, schema)
+          })
+      )
+    )
+    expect(String(schema)).toStrictEqual("<suspended schema>")
+  })
+
+  describe("default description for nested unions", () => {
+    it("should set a default description if there is at least one nested union with annotations", () => {
+      const u = S.union(S.string, S.number)
+      const nested1 = u.annotations({ identifier: "nested1" })
+      const nested2 = u.annotations({ identifier: "nested2" })
+
+      expect(String(u)).toStrictEqual("string | number")
+      expect(String(S.union(nested1, nested1))).toStrictEqual("nested1")
+      expect(String(S.union(nested1, S.string))).toStrictEqual("nested1 | ...")
+      expect(String(S.union(nested1, u))).toStrictEqual("nested1 | ...")
+      expect(String(S.union(nested1, nested2))).toStrictEqual("nested1 | nested2")
+      expect(String(S.union(nested1, nested2, S.string))).toStrictEqual("nested1 | nested2 | ...")
     })
   })
 })

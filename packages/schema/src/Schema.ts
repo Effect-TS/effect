@@ -623,8 +623,8 @@ const declareConstructor = <
   make(
     new AST.Declaration(
       typeParameters.map((tp) => tp.ast),
-      (...typeParameters) => decodeUnknown(...typeParameters.map((ast) => make(ast)) as any),
-      (...typeParameters) => encodeUnknown(...typeParameters.map((ast) => make(ast)) as any),
+      (...typeParameters) => decodeUnknown(...typeParameters.map(make) as any),
+      (...typeParameters) => encodeUnknown(...typeParameters.map(make) as any),
       _schema.toASTAnnotations(annotations)
     )
   )

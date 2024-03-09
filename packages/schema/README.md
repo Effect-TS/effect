@@ -730,7 +730,7 @@ assertsPerson({ name: "Alice", age: 30 });
 
 ## [fast-check](https://github.com/dubzzz/fast-check) arbitraries
 
-The `arbitrary` function provided by the `@effect/schema/Arbitrary` module represents a way of generating random values that conform to a given `Schema`. This can be useful for testing purposes, as it allows you to generate random test data that is guaranteed to be valid according to the `Schema`.
+The `make` function provided by the `@effect/schema/Arbitrary` module represents a way of generating random values that conform to a given `Schema`. This can be useful for testing purposes, as it allows you to generate random test data that is guaranteed to be valid according to the `Schema`.
 
 ```ts
 import * as Arbitrary from "@effect/schema/Arbitrary";
@@ -813,7 +813,7 @@ This patch helps resolve the issue caused by the declaration of a private proper
 
 ## Pretty print
 
-The `to` function provided by the `@effect/schema/Pretty` module represents a way of pretty-printing values that conform to a given `Schema`.
+The `make` function provided by the `@effect/schema/Pretty` module represents a way of pretty-printing values that conform to a given `Schema`.
 
 You can use the `to` function to create a human-readable string representation of a value that conforms to a `Schema`. This can be useful for debugging or logging purposes, as it allows you to easily inspect the structure and data types of the value.
 
@@ -834,6 +834,19 @@ console.log(PersonPretty({ name: "Alice", age: 30 }));
 Output:
 '{ "name": "Alice", "age": 30 }'
 */
+```
+
+### Customizations
+
+```ts
+import * as Pretty from "@effect/schema/Pretty";
+import * as S from "@effect/schema/Schema";
+
+const schema = S.number.annotations({
+  pretty: () => (n: number) => `my format: ${n}`,
+});
+
+console.log(Pretty.make(schema)(1)); // my format: 1
 ```
 
 ## Generating JSON Schemas
