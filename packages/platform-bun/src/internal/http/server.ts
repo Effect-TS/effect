@@ -21,10 +21,10 @@ import * as Config from "effect/Config"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FiberSet from "effect/FiberSet"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Queue from "effect/Queue"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -51,10 +51,7 @@ export const make = (
           Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
         },
         message(ws, message) {
-          Queue.unsafeOffer(
-            ws.data.queue,
-            typeof message === "string" ? encoder.encode(message) : message
-          )
+          ws.data.run(typeof message === "string" ? encoder.encode(message) : message)
         },
         close(ws, code, reason) {
           Deferred.unsafeDone(
@@ -211,7 +208,12 @@ export const layerConfig = (
 interface WebSocketContext {
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
   readonly closeDeferred: Deferred.Deferred<void, Socket.SocketError>
-  readonly queue: Queue.Queue<Uint8Array>
+  readonly buffer: Array<Uint8Array>
+  run: (_: Uint8Array) => void
+}
+
+function wsDefaultRun(this: WebSocketContext, _: Uint8Array) {
+  this.buffer.push(_)
 }
 
 class ServerRequestImpl implements ServerRequest.ServerRequest {
@@ -365,15 +367,20 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
 
   get upgrade(): Effect.Effect<Socket.Socket, Error.RequestError> {
     return Effect.flatMap(
-      Effect.all({
-        deferred: Deferred.make<ServerWebSocket<WebSocketContext>>(),
-        closeDeferred: Deferred.make<void, Socket.SocketError>(),
-        queue: Queue.unbounded<Uint8Array>()
-      }),
-      (data) =>
+      Effect.all([
+        Deferred.make<ServerWebSocket<WebSocketContext>>(),
+        Deferred.make<void, Socket.SocketError>(),
+        Effect.makeSemaphore(1)
+      ]),
+      ([deferred, closeDeferred, semaphore]) =>
         Effect.async<Socket.Socket, Error.RequestError>((resume) => {
-          const success = this.bunServer.upgrade(this.source, {
-            data
+          const success = this.bunServer.upgrade<WebSocketContext>(this.source, {
+            data: {
+              deferred,
+              closeDeferred,
+              buffer: [],
+              run: wsDefaultRun
+            }
           })
           if (!success) {
             resume(Effect.fail(
@@ -385,18 +392,31 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
             ))
             return
           }
-          resume(Effect.map(Deferred.await(data.deferred), (ws) => {
+          resume(Effect.map(Deferred.await(deferred), (ws) => {
             const write = (chunk: Uint8Array) => Effect.sync(() => ws.sendBinary(chunk))
             const writer = Effect.succeed(write)
             const run = <R, E, _>(
               handler: (_: Uint8Array) => Effect.Effect<_, E, R>
-            ): Effect.Effect<void, Socket.SocketError, R> =>
-              Queue.take(data.queue).pipe(
-                Effect.flatMap((chunk) => Effect.fork(handler(chunk))),
-                Effect.forever,
+            ): Effect.Effect<void, Socket.SocketError | E, R> =>
+              FiberSet.make<any, E>().pipe(
+                Effect.flatMap((set) =>
+                  FiberSet.runtime(set)<R>().pipe(
+                    Effect.flatMap((run) => {
+                      ws.data.run = function(data: Uint8Array) {
+                        run(handler(data))
+                      }
+                      ws.data.buffer.forEach((data) => run(handler(data)))
+                      ws.data.buffer.length = 0
+                      return FiberSet.join(set)
+                    })
+                  )
+                ),
+                Effect.scoped,
                 Effect.onExit((exit) => Effect.sync(() => ws.close(exit._tag === "Success" ? 1000 : 1011))),
-                Effect.raceFirst(Deferred.await(data.closeDeferred))
+                Effect.raceFirst(Deferred.await(closeDeferred)),
+                semaphore.withPermits(1)
               )
+
             return Socket.Socket.of({
               [Socket.SocketTypeId]: Socket.SocketTypeId,
               run,

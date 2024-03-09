@@ -8,9 +8,9 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
-import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
 import type * as AsyncProducer from "effect/SingleProducerAsyncInput"
 import IsoWebSocket from "isomorphic-ws"
@@ -43,7 +43,7 @@ export interface Socket {
   readonly [SocketTypeId]: SocketTypeId
   readonly run: <R, E, _>(
     handler: (_: Uint8Array) => Effect.Effect<_, E, R>
-  ) => Effect.Effect<void, SocketError, R>
+  ) => Effect.Effect<void, SocketError | E, R>
   readonly writer: Effect.Effect<(chunk: Uint8Array) => Effect.Effect<void>, never, Scope.Scope>
 }
 
@@ -200,8 +200,11 @@ export const fromWebSocket = (
       Effect.gen(function*(_) {
         const ws = yield* _(acquire)
         const encoder = new TextEncoder()
-        const runtime = yield* _(Effect.runtime<R>(), Effect.provideService(WebSocket, ws))
-        const run = Runtime.runFork(runtime)
+        const fiberSet = yield* _(FiberSet.make<any, E | SocketError>())
+        const run = yield* _(
+          FiberSet.runtime(fiberSet)<R>(),
+          Effect.provideService(WebSocket, ws)
+        )
 
         ws.onmessage = (event) => {
           run(
@@ -250,7 +253,8 @@ export const fromWebSocket = (
             ws.onerror = (error) => {
               resume(Effect.fail(new SocketError({ reason: "Read", error: (error as any).message })))
             }
-          })
+          }),
+          Effect.raceFirst(FiberSet.join(fiberSet))
         )
       }).pipe(Effect.scoped)
 
