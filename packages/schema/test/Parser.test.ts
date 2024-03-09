@@ -108,7 +108,7 @@ describe("Parser", () => {
             buckets: {
               a: [S.struct({ _tag: S.literal("a") }).ast]
             },
-            ast: new AST.Literal("a")
+            literals: [new AST.Literal("a")]
           }
         },
         otherwise: [S.number.ast]
@@ -127,7 +127,7 @@ describe("Parser", () => {
             a: [S.struct({ _tag: S.literal("a") }).ast],
             b: [S.struct({ _tag: S.literal("b") }).ast]
           },
-          ast: AST.Union.make([new AST.Literal("a"), new AST.Literal("b")])
+          literals: [new AST.Literal("a"), new AST.Literal("b")]
         }
       },
       otherwise: []
@@ -144,13 +144,13 @@ describe("Parser", () => {
           buckets: {
             A: [S.struct({ a: S.literal("A"), c: S.string }).ast]
           },
-          ast: new AST.Literal("A")
+          literals: [new AST.Literal("A")]
         },
         b: {
           buckets: {
             B: [S.struct({ b: S.literal("B"), d: S.number }).ast]
           },
-          ast: new AST.Literal("B")
+          literals: [new AST.Literal("B")]
         }
       },
       otherwise: []
@@ -169,21 +169,19 @@ describe("Parser", () => {
           buckets: {
             catA: [S.struct({ category: S.literal("catA"), tag: S.literal("a") }).ast]
           },
-          ast: new AST.Literal("catA")
+          literals: [new AST.Literal("catA")]
         },
         tag: {
           buckets: {
             b: [S.struct({ category: S.literal("catA"), tag: S.literal("b") }).ast],
             c: [S.struct({ category: S.literal("catA"), tag: S.literal("c") }).ast]
           },
-          ast: AST.Union.make([new AST.Literal("b"), new AST.Literal("c")])
+          literals: [new AST.Literal("b"), new AST.Literal("c")]
         }
       },
       otherwise: []
     })
-  })
 
-  it("getSearchTree", () => {
     const schema = S.union(
       S.struct({ type: S.literal("a"), value: S.string }),
       S.struct({ type: S.literal("b"), value: S.string }),
@@ -207,12 +205,12 @@ describe("Parser", () => {
             c: [S.struct({ type: S.literal("c"), value: S.string }).ast],
             null: [S.struct({ type: S.literal(null), value: S.string }).ast]
           },
-          ast: AST.Union.make([
+          literals: [
             new AST.Literal("a"),
             new AST.Literal("b"),
             new AST.Literal("c"),
             new AST.Literal(null)
-          ])
+          ]
         }
       },
       otherwise: [

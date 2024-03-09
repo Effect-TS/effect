@@ -935,23 +935,25 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   // retrive the minimal set of candidates for decoding
                   candidates = candidates.concat(buckets[literal])
                 } else {
+                  const literals = AST.Union.make(searchTree.keys[name].literals)
                   es.push([
                     stepKey++,
                     new _parseResult.TypeLiteral(
                       new AST.TypeLiteral([
-                        new AST.PropertySignature(name, searchTree.keys[name].ast, false, true)
+                        new AST.PropertySignature(name, literals, false, true)
                       ], []),
                       input,
-                      [new _parseResult.Key(name, new _parseResult.Type(searchTree.keys[name].ast, input[name]))]
+                      [new _parseResult.Key(name, new _parseResult.Type(literals, input[name]))]
                     )
                   ])
                 }
               } else {
+                const literals = AST.Union.make(searchTree.keys[name].literals)
                 es.push([
                   stepKey++,
                   new _parseResult.TypeLiteral(
                     new AST.TypeLiteral([
-                      new AST.PropertySignature(name, searchTree.keys[name].ast, false, true)
+                      new AST.PropertySignature(name, literals, false, true)
                     ], []),
                     input,
                     [new _parseResult.Key(name, _parseResult.missing)]
@@ -1108,7 +1110,7 @@ export const getSearchTree = (
   keys: {
     readonly [key: PropertyKey]: {
       buckets: { [literal: string]: ReadonlyArray<AST.AST> }
-      ast: AST.AST // this is for error messages
+      literals: ReadonlyArray<AST.Literal> // this is for error messages
     }
   }
   otherwise: ReadonlyArray<AST.AST>
@@ -1116,7 +1118,7 @@ export const getSearchTree = (
   const keys: {
     [key: PropertyKey]: {
       buckets: { [literal: string]: Array<AST.AST> }
-      ast: AST.AST
+      literals: Array<AST.Literal>
     }
   } = {}
   const otherwise: Array<AST.AST> = []
@@ -1127,17 +1129,17 @@ export const getSearchTree = (
       for (let j = 0; j < tags.length; j++) {
         const [key, literal] = tags[j]
         const hash = String(literal.literal)
-        keys[key] = keys[key] || { buckets: {}, ast: AST.neverKeyword }
+        keys[key] = keys[key] || { buckets: {}, literals: [] }
         const buckets = keys[key].buckets
         if (Object.prototype.hasOwnProperty.call(buckets, hash)) {
           if (j < tags.length - 1) {
             continue
           }
           buckets[hash].push(member)
-          keys[key].ast = AST.Union.make([keys[key].ast, literal])
+          keys[key].literals.push(literal)
         } else {
           buckets[hash] = [member]
-          keys[key].ast = AST.Union.make([keys[key].ast, literal])
+          keys[key].literals.push(literal)
           break
         }
       }

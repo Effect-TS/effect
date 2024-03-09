@@ -3,7 +3,7 @@
  */
 
 import type { Effect } from "effect/Effect"
-import { dual, identity, pipe } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Hash from "effect/Hash"
 import * as Number from "effect/Number"
@@ -1083,6 +1083,16 @@ const formatTypeLiteral = (ast: TypeLiteral): string => {
  */
 export const isTypeLiteral: (ast: AST) => ast is TypeLiteral = createASTGuard("TypeLiteral")
 
+const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
+  ReadonlyArray.flatMap(candidates, (ast: AST) => {
+    switch (ast._tag) {
+      case "Union":
+        return ast.types
+      default:
+        return [ast]
+    }
+  })
+
 /**
  * @since 1.0.0
  */
@@ -1097,7 +1107,7 @@ export class Union implements Annotated {
     candidates: ReadonlyArray<AST>,
     annotations: Annotations = {}
   ): AST => {
-    const types = unify(candidates)
+    const types = unify(flatten(candidates))
     if (isMembers(types)) {
       return new Union(sortUnionMembers(types), annotations)
     }
@@ -1954,23 +1964,20 @@ export const getCardinality = (ast: AST): number => {
 }
 
 const sortPropertySignatures = ReadonlyArray.sort(
-  pipe(Number.Order, Order.mapInput((ps: PropertySignature) => getCardinality(ps.type)))
+  Order.mapInput(Number.Order, (ps: PropertySignature) => getCardinality(ps.type))
 )
 
 const sortIndexSignatures = ReadonlyArray.sort(
-  pipe(
-    Number.Order,
-    Order.mapInput((is: IndexSignature) => {
-      switch (getParameterBase(is.parameter)._tag) {
-        case "StringKeyword":
-          return 2
-        case "SymbolKeyword":
-          return 3
-        case "TemplateLiteral":
-          return 1
-      }
-    })
-  )
+  Order.mapInput(Number.Order, (is: IndexSignature) => {
+    switch (getParameterBase(is.parameter)._tag) {
+      case "StringKeyword":
+        return 2
+      case "SymbolKeyword":
+        return 3
+      case "TemplateLiteral":
+        return 1
+    }
+  })
 )
 
 type Weight = readonly [number, number, number]
@@ -2030,39 +2037,24 @@ const sortUnionMembers: (self: Members<AST>) => Members<AST> = ReadonlyArray.sor
   Order.reverse(Order.mapInput(WeightOrder, getWeight))
 ) as any
 
-const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
-  ReadonlyArray.flatMap(candidates, (ast: AST) => {
-    switch (ast._tag) {
-      case "NeverKeyword":
-        return []
-      case "Union":
-        return ast.types
-      default:
-        return [ast]
-    }
-  })
-
 const sortCandidates = ReadonlyArray.sort(
-  pipe(
-    Number.Order,
-    Order.mapInput((ast: AST) => {
-      switch (ast._tag) {
-        case "AnyKeyword":
-          return 0
-        case "UnknownKeyword":
-          return 1
-        case "ObjectKeyword":
-          return 2
-        case "StringKeyword":
-        case "NumberKeyword":
-        case "BooleanKeyword":
-        case "BigIntKeyword":
-        case "SymbolKeyword":
-          return 3
-      }
-      return 4
-    })
-  )
+  Order.mapInput(Number.Order, (ast: AST) => {
+    switch (ast._tag) {
+      case "AnyKeyword":
+        return 0
+      case "UnknownKeyword":
+        return 1
+      case "ObjectKeyword":
+        return 2
+      case "StringKeyword":
+      case "NumberKeyword":
+      case "BooleanKeyword":
+      case "BigIntKeyword":
+      case "SymbolKeyword":
+        return 3
+    }
+    return 4
+  })
 )
 
 const literalMap = {
@@ -2074,12 +2066,14 @@ const literalMap = {
 
 /** @internal */
 export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
-  const cs = sortCandidates(flatten(candidates))
+  const cs = sortCandidates(candidates)
   const out: Array<AST> = []
   const uniques: { [K in AST["_tag"] | "{}"]?: AST } = {}
   const literals: Array<LiteralValue | symbol> = []
   for (const ast of cs) {
     switch (ast._tag) {
+      case "NeverKeyword":
+        break
       case "AnyKeyword":
         return [anyKeyword]
       case "UnknownKeyword":
