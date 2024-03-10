@@ -1,5 +1,22 @@
 # @effect/cli
 
+## 0.35.0
+
+### Minor Changes
+
+- [#2240](https://github.com/Effect-TS/effect/pull/2240) [`0c2da75`](https://github.com/Effect-TS/effect/commit/0c2da75f4964338d1165e7f51e33c2795d16c8de) Thanks [@ccntrq](https://github.com/ccntrq)! - Remove duplicate 'should' in wizard mode prompt for variadic arguments
+
+- [#2252](https://github.com/Effect-TS/effect/pull/2252) [`89b5d1c`](https://github.com/Effect-TS/effect/commit/89b5d1c4bbd05ef9558272eba80c6f5b0707c562) Thanks [@ccntrq](https://github.com/ccntrq)! - Print unknown argument errors
+
+### Patch Changes
+
+- Updated dependencies [[`e03811e`](https://github.com/Effect-TS/effect/commit/e03811e80c93e986e6348b3b67ac2ed6d5fefff0), [`ac41d84`](https://github.com/Effect-TS/effect/commit/ac41d84776484cdce8165b7ca2c9c9b6377eee2d), [`0f3d99c`](https://github.com/Effect-TS/effect/commit/0f3d99c27521ec6b221b644a0fffc79199c3acca), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`1bf9f31`](https://github.com/Effect-TS/effect/commit/1bf9f31f07667de677673f7c29a4e7a26ebad3c8), [`e3ff789`](https://github.com/Effect-TS/effect/commit/e3ff789226f89e71eb28ca38ce79f90af6a03f1a), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`507ba40`](https://github.com/Effect-TS/effect/commit/507ba4060ff043c1a8d541dae723fa6940633b00), [`4064ea0`](https://github.com/Effect-TS/effect/commit/4064ea04e0b3fa23108ee471cd89ab2482b2f6e5), [`e466afe`](https://github.com/Effect-TS/effect/commit/e466afe32f2de598ceafd8982bd0cfbd388e5671), [`465be79`](https://github.com/Effect-TS/effect/commit/465be7926afe98169837d8a4ed5ebc059a732d21), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`de74eb8`](https://github.com/Effect-TS/effect/commit/de74eb80a79eebde5ff645033765e7a617e92f27), [`d8e6940`](https://github.com/Effect-TS/effect/commit/d8e694040f67da6fefc0f5c98fc8e15c0b48822e), [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e), [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e)]:
+  - effect@2.4.2
+  - @effect/platform@0.47.0
+  - @effect/schema@0.63.3
+  - @effect/printer@0.31.11
+  - @effect/printer-ansi@0.32.11
+
 ## 0.34.3
 
 ### Patch Changes
