@@ -4,9 +4,9 @@ import * as Option from "effect/Option"
 import { describe, it } from "vitest"
 
 describe("Schema > optionalToRequired", () => {
-  it("two schemas", async () => {
+  it("two transformation schemas", async () => {
     const ps = S.optionalToRequired(
-      { schema: S.NumberFromString },
+      S.NumberFromString,
       S.BigintFromNumber,
       Option.getOrElse(() => 0),
       Option.some

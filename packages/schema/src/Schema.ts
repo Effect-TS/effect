@@ -1528,19 +1528,15 @@ export const fromKey: {
  * @since 1.0.0
  */
 export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
-  from: {
-    readonly schema: Schema<FA, FI, FR>
-    readonly annotations?: Annotations<FA> | undefined
-  },
+  from: Schema<FA, FI, FR>,
   to: Schema<TA, TI, TR>,
   decode: (o: Option.Option<FA>) => TI,
   encode: (ti: TI) => Option.Option<FA>
 ): PropertySignature<":", TA, never, "?:", FI, FR | TR> =>
   propertySignatureTransformation(
     {
-      schema: from.schema,
-      isOptional: true,
-      annotations: from.annotations
+      schema: from,
+      isOptional: true
     },
     {
       schema: to,
@@ -1562,19 +1558,15 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
  * @since 1.0.0
  */
 export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
-  from: {
-    readonly schema: Schema<FA, FI, FR>
-    readonly annotations?: Annotations<FA> | undefined
-  },
+  from: Schema<FA, FI, FR>,
   to: Schema<TA, TI, TR>,
   decode: (o: Option.Option<FA>) => Option.Option<TI>,
   encode: (o: Option.Option<TI>) => Option.Option<FA>
 ): PropertySignature<"?:", TA, never, "?:", FI, FR | TR> =>
   propertySignatureTransformation(
     {
-      schema: from.schema,
-      isOptional: true,
-      annotations: from.annotations
+      schema: from,
+      isOptional: true
     },
     {
       schema: to,
@@ -1685,14 +1677,14 @@ export const optional: {
     if (defaultValue) {
       if (isNullable) {
         return optionalToRequired(
-          { schema: nullable(schema) },
+          nullable(schema),
           typeSchema(schema),
           Option.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
           Option.some
         )
       } else {
         return optionalToRequired(
-          { schema },
+          schema,
           typeSchema(schema),
           Option.match({ onNone: defaultValue, onSome: identity }),
           Option.some
@@ -1701,14 +1693,14 @@ export const optional: {
     } else if (asOption) {
       if (isNullable) {
         return optionalToRequired(
-          { schema: nullable(schema) },
+          nullable(schema),
           optionFromSelf(typeSchema(schema)),
           Option.filter(Predicate.isNotNull),
           identity
         )
       } else {
         return optionalToRequired(
-          { schema },
+          schema,
           optionFromSelf(typeSchema(schema)),
           identity,
           identity
@@ -1717,7 +1709,7 @@ export const optional: {
     } else {
       if (isNullable) {
         return optionalToOptional(
-          { schema: nullable(schema) },
+          nullable(schema),
           typeSchema(schema),
           Option.filter(Predicate.isNotNull),
           identity
@@ -1730,14 +1722,14 @@ export const optional: {
     if (defaultValue) {
       if (isNullable) {
         return optionalToRequired(
-          { schema: nullish(schema) },
+          nullish(schema),
           typeSchema(schema),
           Option.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
           Option.some
         )
       } else {
         return optionalToRequired(
-          { schema: orUndefined(schema) },
+          orUndefined(schema),
           typeSchema(schema),
           Option.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
           Option.some
@@ -1746,14 +1738,14 @@ export const optional: {
     } else if (asOption) {
       if (isNullable) {
         return optionalToRequired(
-          { schema: nullish(schema) },
+          nullish(schema),
           optionFromSelf(typeSchema(schema)),
           Option.filter<A | null | undefined, A>((a): a is A => a != null),
           identity
         )
       } else {
         return optionalToRequired(
-          { schema: orUndefined(schema) },
+          orUndefined(schema),
           optionFromSelf(typeSchema(schema)),
           Option.filter(Predicate.isNotUndefined),
           identity
@@ -1762,7 +1754,7 @@ export const optional: {
     } else {
       if (isNullable) {
         return optionalToOptional(
-          { schema: nullish(schema) },
+          nullish(schema),
           orUndefined(typeSchema(schema)),
           Option.filter(Predicate.isNotNull),
           identity
