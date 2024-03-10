@@ -883,7 +883,17 @@ export class Tuple implements Annotated {
     readonly isReadonly: boolean,
     readonly annotations: Annotations = {}
   ) {
-    if (elements.some((e) => e.isOptional) && rest.length > 1) {
+    let hasOptionalElement = false
+    let hasIllegalRequiredElement = false
+    for (const e of elements) {
+      if (e.isOptional) {
+        hasOptionalElement = true
+      } else if (hasOptionalElement) {
+        hasIllegalRequiredElement = true
+        break
+      }
+    }
+    if (hasIllegalRequiredElement || (hasOptionalElement && rest.length > 1)) {
       throw new Error("A required element cannot follow an optional element. ts(1257)")
     }
   }
