@@ -3,11 +3,14 @@ import * as Chunk from "effect/Chunk"
 import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity, pipe } from "effect/Function"
+import * as Logger from "effect/Logger"
 import * as Option from "effect/Option"
+import * as Queue from "effect/Queue"
+import * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as Error from "../Error.js"
-import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
+import type { File, FileSystem, OpenFileOptions, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
 
 /** @internal */
 export const tag = GenericTag<FileSystem>("@effect/platform/FileSystem")
@@ -124,3 +127,32 @@ const stream = (file: File, {
     { capacity: bufferSize }
   )
 }
+
+/** @internal */
+export const logger = (
+  path: string,
+  options?: OpenFileOptions
+) =>
+  Effect.gen(function*(_) {
+    const fs = yield* _(tag)
+    const logFile = yield* _(fs.open(path, options))
+    const scope = yield* _(Scope.Scope)
+    const queue = yield* _(Queue.unbounded<string>())
+
+    yield* _(
+      Effect.forkIn(
+        Stream.runForEachChunk(Stream.fromQueue(queue), (chunk) =>
+          logFile.write(
+            new TextEncoder().encode(Chunk.join(chunk, "\n") + "\n")
+          )),
+        scope
+      )
+    )
+
+    yield* _(Effect.yieldNow())
+
+    return Logger.make((options) => {
+      const formatted = Logger.stringLogger.log(options)
+      Queue.unsafeOffer(queue, formatted)
+    })
+  })
