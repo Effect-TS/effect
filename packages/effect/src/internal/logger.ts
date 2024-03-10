@@ -215,7 +215,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
 
 export const serializeUnknown = (u: unknown): string => {
   try {
-    return typeof u === "object" ? JSON.stringify(u) : String(u)
+    return typeof u === "object" ? jsonStringifyCircular(u) : String(u)
   } catch (_) {
     return String(u)
   }
@@ -299,21 +299,64 @@ export const structuredLogger = makeLogger<unknown, {
   readonly spans: Record<string, number>
 }>(
   ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
-    const now = date.getDate()
+    const now = date.getTime()
+    const annotationsObj: Record<string, unknown> = {}
+    const spansObj: Record<string, number> = {}
+
+    if (HashMap.size(annotations) > 0) {
+      for (const [k, v] of annotations) {
+        annotationsObj[k] = structuredMessage(v)
+      }
+    }
+
+    if (List.isCons(spans)) {
+      for (const span of spans) {
+        spansObj[span.label] = now - span.startTime
+      }
+    }
+
     return {
+      message: structuredMessage(message),
       logLevel: logLevel.label,
-      fiberId: _fiberId.threadName(fiberId),
       timestamp: date.toISOString(),
-      message,
       cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause),
-      annotations: HashMap.isEmpty(annotations) ? {} : Object.fromEntries(annotations),
-      spans: List.isCons(spans) ? Object.fromEntries(List.map(spans, (span) => [span.label, now - span.startTime])) : {}
+      annotations: annotationsObj,
+      spans: spansObj,
+      fiberId: _fiberId.threadName(fiberId)
     }
   }
 )
 
+export const structuredMessage = (u: unknown): unknown => {
+  switch (typeof u) {
+    case "bigint":
+    case "function":
+    case "symbol": {
+      return String(u)
+    }
+    default: {
+      return u
+    }
+  }
+}
+
+const jsonStringifyCircular = (obj: unknown) => {
+  let cache: Array<unknown> = []
+  const retVal = JSON.stringify(
+    obj,
+    (_key, value) =>
+      typeof value === "object" && value !== null
+        ? cache.includes(value)
+          ? undefined // circular reference
+          : cache.push(value) && value
+        : value
+  )
+  ;(cache as any) = undefined
+  return retVal
+}
+
 /** @internal */
-export const jsonLogger = map(structuredLogger, JSON.stringify)
+export const jsonLogger = map(structuredLogger, jsonStringifyCircular)
 
 /** @internal */
 const filterKeyName = (key: string) => key.replace(/[\s="]/g, "_")

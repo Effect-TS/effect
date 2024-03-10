@@ -1363,11 +1363,31 @@ export const defaultLogger: Logger<unknown, void> = globalValue(
 )
 
 /** @internal */
+export const jsonLogger: Logger<unknown, void> = globalValue(
+  Symbol.for("effect/Logger/jsonLogger"),
+  () =>
+    internalLogger.makeLogger((options) => {
+      const formatted = internalLogger.jsonLogger.log(options)
+      getConsole(options.context).log(formatted)
+    })
+)
+
+/** @internal */
 export const logFmtLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/logFmtLogger"),
   () =>
     internalLogger.makeLogger((options) => {
       const formatted = internalLogger.logfmtLogger.log(options)
+      getConsole(options.context).log(formatted)
+    })
+)
+
+/** @internal */
+export const structuredLogger: Logger<unknown, void> = globalValue(
+  Symbol.for("effect/Logger/structuredLogger"),
+  () =>
+    internalLogger.makeLogger((options) => {
+      const formatted = internalLogger.structuredLogger.log(options)
       getConsole(options.context).log(formatted)
     })
 )

@@ -184,7 +184,7 @@ describe("logfmtLogger", () => {
     })
 
     expect(result).toEqual(
-      `timestamp=${date.toJSON()} level=INFO fiber= message="[object Object]"`
+      `timestamp=${date.toJSON()} level=INFO fiber= message="{\\"hello\\":\\"world\\"}"`
     )
   })
 
@@ -294,4 +294,157 @@ describe("logfmtLogger", () => {
         ]
       ])
     }).pipe(Effect.scoped, Effect.runPromise))
+})
+
+describe("jsonLogger", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("keys with special chars", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+    const spans = List.make(LogSpan.make("imma span=\"", date.getTime() - 7))
+    const annotations = HashMap.make(
+      ["just_a_key", "just_a_value"],
+      ["I am bad key name", { coolValue: "cool value" }],
+      ["good_key", "I am a good value"],
+      ["good_bool", true],
+      ["good_number", 123]
+    )
+
+    const result = Logger.jsonLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: "My message",
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans,
+      annotations,
+      date
+    })
+
+    expect(result).toEqual(
+      JSON.stringify({
+        message: "My message",
+        logLevel: "INFO",
+        timestamp: date.toJSON(),
+        annotations: {
+          just_a_key: "just_a_value",
+          good_key: "I am a good value",
+          good_bool: true,
+          "I am bad key name": { coolValue: "cool value" },
+          good_number: 123
+        },
+        spans: { "imma span=\"": 7 },
+        fiberId: ""
+      })
+    )
+  })
+
+  it("objects", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const result = Logger.jsonLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: { hello: "world" },
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    expect(result).toEqual(JSON.stringify({
+      message: { hello: "world" },
+      logLevel: "INFO",
+      timestamp: date.toJSON(),
+      annotations: {},
+      spans: {},
+      fiberId: ""
+    }))
+  })
+
+  it("circular objects", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const msg: Record<string, any> = { hello: "world" }
+    msg.msg = msg
+
+    const result = Logger.jsonLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: msg,
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    expect(result).toEqual(JSON.stringify({
+      message: { hello: "world" },
+      logLevel: "INFO",
+      timestamp: date.toJSON(),
+      annotations: {},
+      spans: {},
+      fiberId: ""
+    }))
+  })
+
+  it("symbols", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const result = Logger.jsonLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: Symbol.for("effect/Logger/test"),
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    expect(result).toEqual(JSON.stringify({
+      message: Symbol.for("effect/Logger/test").toString(),
+      logLevel: "INFO",
+      timestamp: date.toJSON(),
+      annotations: {},
+      spans: {},
+      fiberId: ""
+    }))
+  })
+
+  it("functions", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const result = Logger.jsonLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: () => "hello world",
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    expect(result).toEqual(JSON.stringify({
+      message: "() => \"hello world\"",
+      logLevel: "INFO",
+      timestamp: date.toJSON(),
+      annotations: {},
+      spans: {},
+      fiberId: ""
+    }))
+  })
 })

@@ -319,6 +319,12 @@ export const defaultLogger: Logger<unknown, void> = fiberRuntime.defaultLogger
  * @since 2.0.0
  * @category constructors
  */
+export const jsonLogger: Logger<unknown, string> = internal.jsonLogger
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const logfmtLogger: Logger<unknown, string> = internal.logfmtLogger
 
 /**
@@ -331,13 +337,42 @@ export const stringLogger: Logger<unknown, string> = internal.stringLogger
  * @since 2.0.0
  * @category constructors
  */
+export const structuredLogger: Logger<
+  unknown,
+  {
+    readonly logLevel: string
+    readonly fiberId: string
+    readonly timestamp: string
+    readonly message: unknown
+    readonly cause: string | undefined
+    readonly annotations: Record<string, unknown>
+    readonly spans: Record<string, number>
+  }
+> = internal.structuredLogger
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const tracerLogger: Logger<unknown, void> = fiberRuntime.tracerLogger
 
 /**
  * @since 2.0.0
  * @category constructors
  */
+export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.jsonLogger)
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const logFmt: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.logFmtLogger)
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const structured: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.structuredLogger)
 
 /**
  * @since 2.0.0
