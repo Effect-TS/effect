@@ -7,6 +7,8 @@
 
 - AST: refactor `Tuple` to `TupleType`
 
+- AST: refactor `Transform` to `Transformation`
+
 - Schema: swap `TaggedRequest` type parameters
 
 - Serializable: swap `SerializableWithResult` type parameters

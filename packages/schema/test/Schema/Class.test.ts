@@ -128,7 +128,7 @@ describe("Schema > Class APIs", () => {
 
     it("should add an identifier annotation", () => {
       class A extends S.Class<A>("MyName")({ a: S.string }) {}
-      expect((A.ast as AST.Transform).to.annotations[AST.IdentifierAnnotationId]).toEqual("MyName")
+      expect((A.ast as AST.Transformation).to.annotations[AST.IdentifierAnnotationId]).toEqual("MyName")
     })
 
     it("should be a constructor", () => {
@@ -183,14 +183,14 @@ describe("Schema > Class APIs", () => {
       class A extends S.Class<A>("A")({
         a: S.string
       }, { title: "X" }) {}
-      expect((A.ast as AST.Transform).to.annotations[AST.TitleAnnotationId]).toEqual("X")
+      expect((A.ast as AST.Transformation).to.annotations[AST.TitleAnnotationId]).toEqual("X")
     })
 
     it("using S.annotations() on a Class should return a Schema", () => {
       class A extends S.Class<A>("A")({ a: S.string }) {}
       const schema = A.pipe(S.annotations({ title: "X" }))
       expect(S.isSchema(schema)).toEqual(true)
-      expect(schema.ast._tag).toEqual("Transform")
+      expect(schema.ast._tag).toEqual("Transformation")
       expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
     })
 
@@ -198,7 +198,7 @@ describe("Schema > Class APIs", () => {
       class A extends S.Class<A>("A")({ a: S.string }) {}
       const schema = A.annotations({ title: "X" })
       expect(S.isSchema(schema)).toEqual(true)
-      expect(schema.ast._tag).toEqual("Transform")
+      expect(schema.ast._tag).toEqual("Transformation")
       expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
     })
 

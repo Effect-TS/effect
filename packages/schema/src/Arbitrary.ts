@@ -284,7 +284,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
       const get = _util.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
       return (fc) => fc.constant(null).chain(() => get()(fc))
     }
-    case "Transform":
+    case "Transformation":
       return go(ast.to, options)
   }
 }

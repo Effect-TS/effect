@@ -390,7 +390,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           handleForbidden(_parseResult.flatMap(from(i, options), (a) => to(a, options)), ast, i, options)
       }
     }
-    case "Transform": {
+    case "Transformation": {
       const transform = getFinalTransformation(ast.transformation, isDecoding)
       const from = isDecoding ? goMemo(ast.from, true) : goMemo(ast.to, false)
       const to = isDecoding ? goMemo(ast.to, true) : goMemo(ast.from, false)
@@ -1083,7 +1083,7 @@ export const getLiterals = (
       return getLiterals(ast.from, isDecoding)
     case "Suspend":
       return getLiterals(ast.f(), isDecoding)
-    case "Transform":
+    case "Transformation":
       return getLiterals(isDecoding ? ast.from : ast.to, isDecoding)
   }
   return []
@@ -1192,9 +1192,13 @@ function sortByIndex(es: Array<[number, any]>): any {
 
 /** @internal */
 export const getFinalTransformation = (
-  transformation: AST.Transformation,
+  transformation: AST.TransformationKind,
   isDecoding: boolean
-): (input: any, options: AST.ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, any> => {
+): (
+  input: any,
+  options: AST.ParseOptions,
+  self: AST.Transformation
+) => Effect.Effect<any, ParseResult.ParseIssue, any> => {
   switch (transformation._tag) {
     case "FinalTransformation":
       return isDecoding ? transformation.decode : transformation.encode

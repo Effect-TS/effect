@@ -513,7 +513,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       }
       return goWithIdentifier(ast.f(), $defs)
     }
-    case "Transform":
+    case "Transformation":
       return goWithIdentifier(ast.to, $defs)
   }
 }

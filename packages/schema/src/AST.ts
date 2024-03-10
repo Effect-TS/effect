@@ -43,7 +43,7 @@ export type AST =
   | Union
   | Suspend
   // transformations
-  | Transform
+  | Transformation
 
 // -------------------------------------------------------------------------------------
 // annotations
@@ -1264,15 +1264,15 @@ export const defaultParseOption: ParseOptions = {}
  * @category model
  * @since 1.0.0
  */
-export class Transform implements Annotated {
+export class Transformation implements Annotated {
   /**
    * @since 1.0.0
    */
-  readonly _tag = "Transform"
+  readonly _tag = "Transformation"
   constructor(
     readonly from: AST,
     readonly to: AST,
-    readonly transformation: Transformation,
+    readonly transformation: TransformationKind,
     readonly annotations: Annotations = {}
   ) {}
   /**
@@ -1290,13 +1290,13 @@ export class Transform implements Annotated {
  * @category guards
  * @since 1.0.0
  */
-export const isTransform: (ast: AST) => ast is Transform = createASTGuard("Transform")
+export const isTransform: (ast: AST) => ast is Transformation = createASTGuard("Transformation")
 
 /**
  * @category model
  * @since 1.0.0
  */
-export type Transformation =
+export type TransformationKind =
   | FinalTransformation
   | ComposeTransformation
   | TypeLiteralTransformation
@@ -1311,20 +1311,20 @@ export class FinalTransformation {
    */
   readonly _tag = "FinalTransformation"
   constructor(
-    readonly decode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseIssue, any>,
-    readonly encode: (input: any, options: ParseOptions, self: Transform) => Effect<any, ParseIssue, any>
+    readonly decode: (input: any, options: ParseOptions, self: Transformation) => Effect<any, ParseIssue, any>,
+    readonly encode: (input: any, options: ParseOptions, self: Transformation) => Effect<any, ParseIssue, any>
   ) {}
 }
 
 const createTransformationGuard =
-  <T extends Transformation["_tag"]>(tag: T) => (ast: Transformation): ast is Extract<Transformation, { _tag: T }> =>
-    ast._tag === tag
+  <T extends TransformationKind["_tag"]>(tag: T) =>
+  (ast: TransformationKind): ast is Extract<TransformationKind, { _tag: T }> => ast._tag === tag
 
 /**
  * @category guards
  * @since 1.0.0
  */
-export const isFinalTransformation: (ast: Transformation) => ast is FinalTransformation = createTransformationGuard(
+export const isFinalTransformation: (ast: TransformationKind) => ast is FinalTransformation = createTransformationGuard(
   "FinalTransformation"
 )
 
@@ -1349,9 +1349,10 @@ export const composeTransformation: ComposeTransformation = new ComposeTransform
  * @category guards
  * @since 1.0.0
  */
-export const isComposeTransformation: (ast: Transformation) => ast is ComposeTransformation = createTransformationGuard(
-  "ComposeTransformation"
-)
+export const isComposeTransformation: (ast: TransformationKind) => ast is ComposeTransformation =
+  createTransformationGuard(
+    "ComposeTransformation"
+  )
 
 /**
  * Represents a `PropertySignature -> PropertySignature` transformation
@@ -1415,7 +1416,7 @@ export class TypeLiteralTransformation {
  * @category guards
  * @since 1.0.0
  */
-export const isTypeLiteralTransformation: (ast: Transformation) => ast is TypeLiteralTransformation =
+export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is TypeLiteralTransformation =
   createTransformationGuard("TypeLiteralTransformation")
 
 // -------------------------------------------------------------------------------------
@@ -1670,7 +1671,7 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
       throw new Error("`partial` cannot handle declarations")
     case "Refinement":
       throw new Error("`partial` cannot handle refinements")
-    case "Transform":
+    case "Transformation":
       throw new Error("`partial` cannot handle transformations")
   }
   return ast
@@ -1708,7 +1709,7 @@ export const required = (ast: AST): AST => {
       throw new Error("`required` cannot handle declarations")
     case "Refinement":
       throw new Error("`required` cannot handle refinements")
-    case "Transform":
+    case "Transformation":
       throw new Error("`required` cannot handle transformations")
   }
   return ast
@@ -1739,8 +1740,8 @@ export const mutable = (ast: AST): AST => {
       return new Suspend(() => mutable(ast.f()), ast.annotations)
     case "Refinement":
       return new Refinement(mutable(ast.from), ast.filter, ast.annotations)
-    case "Transform":
-      return new Transform(
+    case "Transformation":
+      return new Transformation(
         mutable(ast.from),
         mutable(ast.to),
         ast.transformation,
@@ -1828,7 +1829,7 @@ export const typeAST = (ast: AST): AST => {
         ast :
         new Refinement(from, ast.filter, ast.annotations)
     }
-    case "Transform":
+    case "Transformation":
       return typeAST(ast.to)
   }
   return ast
@@ -1904,7 +1905,7 @@ export const encodedAST = (ast: AST): AST => {
     case "Suspend":
       return new Suspend(() => encodedAST(ast.f()), createJSONIdentifierAnnotation(ast))
     case "Refinement":
-    case "Transform":
+    case "Transformation":
       return encodedAST(ast.from)
   }
   return ast
@@ -1922,7 +1923,7 @@ const containerASTTags: { [K in AST["_tag"]]?: true } = {
   TypeLiteral: true,
   Union: true,
   Suspend: true,
-  Transform: true
+  Transformation: true
 }
 
 const isContainerAST = (ast: object): ast is
@@ -1932,7 +1933,7 @@ const isContainerAST = (ast: object): ast is
   | TypeLiteral
   | Union
   | Suspend
-  | Transform => "_tag" in ast && Predicate.isString(ast["_tag"]) && ast["_tag"] in containerASTTags
+  | Transformation => "_tag" in ast && Predicate.isString(ast["_tag"]) && ast["_tag"] in containerASTTags
 
 /** @internal */
 export const toString = (ast: AST): string =>
@@ -2055,7 +2056,7 @@ export const getWeight = (ast: AST): Weight => {
       const [x, y, z] = getWeight(ast.from)
       return [x + 1, y, z]
     }
-    case "Transform":
+    case "Transformation":
       return getWeight(ast.from)
     case "ObjectKeyword":
       return [-2, 0, 0]
@@ -2232,7 +2233,7 @@ const equals = (self: AST, that: AST) => {
     case "TypeLiteral":
     case "Union":
     case "Suspend":
-    case "Transform":
+    case "Transformation":
     case "Declaration":
       return self === that
   }
@@ -2260,14 +2261,14 @@ const _keyof = (ast: AST): Array<AST> => {
         (out: Array<AST>, ast) => intersection(out, _keyof(ast)),
         _keyof(ast.types[0])
       )
-    case "Transform":
+    case "Transformation":
       return _keyof(ast.to)
   }
   throw new Error(`keyof: unsupported schema (${ast})`)
 }
 
 /** @internal */
-export const compose = (ab: AST, cd: AST): AST => new Transform(ab, cd, composeTransformation)
+export const compose = (ab: AST, cd: AST): AST => new Transformation(ab, cd, composeTransformation)
 
 /** @internal */
 export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: PropertyKey }): AST => {
@@ -2290,7 +2291,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
       if (propertySignatureTransforms.length === 0) {
         return ast
       }
-      return new Transform(
+      return new Transformation(
         ast,
         new TypeLiteral(
           ast.propertySignatures.map((ps) => {
@@ -2310,7 +2311,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
     }
     case "Suspend":
       return new Suspend(() => rename(ast.f(), mapping))
-    case "Transform":
+    case "Transformation":
       return compose(ast, rename(typeAST(ast), mapping))
   }
   throw new Error(`rename: cannot rename (${ast})`)

@@ -93,7 +93,7 @@ const go = (
           ),
         onSuccess: (message) => Effect.succeed([{ _tag, path, message }])
       })
-    case "Transform":
+    case "Transformation":
       return Effect.matchEffect(TreeFormatter.getMessage(e), {
         onFailure: () => go(e.error, path),
         onSuccess: (message) => Effect.succeed([{ _tag, path, message }])

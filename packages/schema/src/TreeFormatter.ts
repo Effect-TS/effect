@@ -93,7 +93,7 @@ const getPrevMessage = (
       }
       break
     }
-    case "Transform":
+    case "Transformation":
       return getMessage(issue.error)
   }
   return Option.none()
@@ -173,7 +173,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
           ),
         onSuccess: (message) => Effect.succeed(make(message))
       })
-    case "Transform":
+    case "Transformation":
       return Effect.matchEffect(getMessage(e), {
         onFailure: () =>
           Effect.map(go(e.error), (tree) => make(String(e.ast), [make(formatTransformationKind(e.kind), [tree])])),

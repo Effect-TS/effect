@@ -61,7 +61,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
   switch (ast._tag) {
     case "NeverKeyword":
       throw new Error("cannot build an Equivalence for `never`")
-    case "Transform":
+    case "Transformation":
       return go(ast.to)
     case "Declaration":
     case "Literal":

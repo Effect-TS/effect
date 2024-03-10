@@ -343,12 +343,12 @@ describe("ArrayFormatter", () => {
         })
 
         expectIssues(schema, null, [{
-          _tag: "Transform",
+          _tag: "Transformation",
           path: [],
           message: "my custom message null"
         }])
         expectIssues(schema, "a", [{
-          _tag: "Transform",
+          _tag: "Transformation",
           path: [],
           message: `my custom message "a"`
         }])
@@ -371,17 +371,17 @@ describe("ArrayFormatter", () => {
         })
 
         expectIssues(schema, null, [{
-          _tag: "Transform",
+          _tag: "Transformation",
           path: [],
           message: "please enter a string"
         }])
         expectIssues(schema, "1.2", [{
-          _tag: "Transform",
+          _tag: "Transformation",
           path: [],
           message: "please enter an integer"
         }])
         expectIssues(schema, "a", [{
-          _tag: "Transform",
+          _tag: "Transformation",
           path: [],
           message: "please enter a decodeUnknownable string"
         }])

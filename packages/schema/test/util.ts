@@ -20,8 +20,8 @@ const doRoundtrip = false
 export const sleep = Effect.sleep(Duration.millis(10))
 
 const effectifyDecode = <R>(
-  decode: (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, R>
-): (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, R> =>
+  decode: (input: any, options: ParseOptions, self: AST.Transformation) => Effect.Effect<any, ParseResult.ParseIssue, R>
+): (input: any, options: ParseOptions, self: AST.Transformation) => Effect.Effect<any, ParseResult.ParseIssue, R> =>
 (input, options, ast) => ParseResult.flatMap(sleep, () => decode(input, options, ast))
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
@@ -51,8 +51,8 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
         ast.filter,
         ast.annotations
       )
-    case "Transform":
-      return new AST.Transform(
+    case "Transformation":
+      return new AST.Transformation(
         effectifyAST(ast.from),
         effectifyAST(ast.to),
         new AST.FinalTransformation(
@@ -65,7 +65,7 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
   const schema = S.make(ast)
   const decode = S.decode(schema)
   const encode = S.encode(schema)
-  return new AST.Transform(
+  return new AST.Transformation(
     AST.encodedAST(ast),
     AST.typeAST(ast),
     new AST.FinalTransformation(

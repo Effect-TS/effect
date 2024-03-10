@@ -1962,7 +1962,7 @@ class $typeLiteral<
             issTo.push(new AST.IndexSignature(is.parameter, AST.typeAST(is.type), is.isReadonly))
           })
         }
-        return new AST.Transform(
+        return new AST.Transformation(
           new AST.TypeLiteral(from, issFrom),
           new AST.TypeLiteral(to, issTo),
           new AST.TypeLiteralTransformation(transformations)
@@ -2059,7 +2059,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
         .filter((t) => (keys as ReadonlyArray<PropertyKey>).includes(t.to))
       if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
         return make(
-          new AST.Transform(
+          new AST.Transformation(
             AST.pick(ast.from, keys),
             AST.pick(ast.to, keys),
             new AST.TypeLiteralTransformation(propertySignatureTransformations)
@@ -2089,7 +2089,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
         .filter((t) => !(keys as ReadonlyArray<PropertyKey>).includes(t.to))
       if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
         return make(
-          new AST.Transform(
+          new AST.Transformation(
             AST.omit(ast.from, keys),
             AST.omit(ast.to, keys),
             new AST.TypeLiteralTransformation(propertySignatureTransformations)
@@ -2331,7 +2331,7 @@ const intersectUnionMembers = (
           } else if (
             AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
           ) {
-            return new AST.Transform(
+            return new AST.Transformation(
               intersectTypeLiterals(x, y.from, path),
               intersectTypeLiterals(AST.typeAST(x), y.to, path),
               new AST.TypeLiteralTransformation(
@@ -2343,7 +2343,7 @@ const intersectUnionMembers = (
           AST.isTransform(x) && AST.isTypeLiteralTransformation(x.transformation)
         ) {
           if (AST.isTypeLiteral(y)) {
-            return new AST.Transform(
+            return new AST.Transformation(
               intersectTypeLiterals(x.from, y, path),
               intersectTypeLiterals(x.to, AST.typeAST(y), path),
               new AST.TypeLiteralTransformation(
@@ -2353,7 +2353,7 @@ const intersectUnionMembers = (
           } else if (
             AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
           ) {
-            return new AST.Transform(
+            return new AST.Transformation(
               intersectTypeLiterals(x.from, y.from, path),
               intersectTypeLiterals(x.to, y.to, path),
               new AST.TypeLiteralTransformation(
@@ -2507,12 +2507,12 @@ export const transformOrFail: {
     decode: (
       fromA: Schema.Type<From>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>,
     encode: (
       toI: Schema.Encoded<To>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
   ): (from: From) => transformOrFail<From, To, RD | RE>
   <To extends Schema.Any, From extends Schema.Any, RD, RE>(
@@ -2520,12 +2520,12 @@ export const transformOrFail: {
     decode: (
       fromA: Schema.Type<From>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>,
     encode: (
       toI: Schema.Encoded<To>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>,
     options: { strict: false }
   ): (from: From) => transformOrFail<From, To, RD | RE>
@@ -2535,12 +2535,12 @@ export const transformOrFail: {
     decode: (
       fromA: Schema.Type<From>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>,
     encode: (
       toI: Schema.Encoded<To>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, R4>
   ): transformOrFail<From, To, RD | R4>
   <To extends Schema.Any, From extends Schema.Any, RD, RE>(
@@ -2549,25 +2549,29 @@ export const transformOrFail: {
     decode: (
       fromA: Schema.Type<From>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>,
     encode: (
       toI: Schema.Encoded<To>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>,
     options: { strict: false }
   ): transformOrFail<From, To, RD | RE>
 } = dual((args) => isSchema(args[0]) && isSchema(args[1]), <FromA, FromI, FromR, ToA, ToI, ToR, R3, R4>(
   from: Schema<FromA, FromI, FromR>,
   to: Schema<ToA, ToI, ToR>,
-  decode: (fromA: FromA, options: ParseOptions, ast: AST.Transform) => Effect.Effect<ToI, ParseResult.ParseIssue, R3>,
-  encode: (toI: ToI, options: ParseOptions, ast: AST.Transform) => Effect.Effect<FromA, ParseResult.ParseIssue, R4>
+  decode: (
+    fromA: FromA,
+    options: ParseOptions,
+    ast: AST.Transformation
+  ) => Effect.Effect<ToI, ParseResult.ParseIssue, R3>,
+  encode: (toI: ToI, options: ParseOptions, ast: AST.Transformation) => Effect.Effect<FromA, ParseResult.ParseIssue, R4>
 ): Schema<ToA, FromI, FromR | ToR | R3 | R4> =>
   new $transformOrFail(
     from,
     to,
-    new AST.Transform(
+    new AST.Transformation(
       from.ast,
       to.ast,
       new AST.FinalTransformation(decode, encode)
@@ -2736,7 +2740,7 @@ export const attachPropertySignature: {
       struct({ [key]: Predicate.isSymbol(value) ? uniqueSymbolFromSelf(value) : literal(value) })
     ).ast
     return make(
-      new AST.Transform(
+      new AST.Transformation(
         schema.ast,
         annotations ? AST.annotations(attached, _schema.toASTAnnotations(annotations)) : attached,
         new AST.TypeLiteralTransformation(
@@ -5918,12 +5922,12 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     decode: (
       input: A,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<Simplify<A & Struct.Type<newFields>>, ParseResult.ParseIssue, R2>,
     encode: (
       input: Simplify<A & Struct.Type<newFields>>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
     : Class<
@@ -5946,12 +5950,12 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     decode: (
       input: I,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<Simplify<I & Struct.Encoded<newFields>>, ParseResult.ParseIssue, R2>,
     encode: (
       input: Simplify<I & Struct.Encoded<newFields>>,
       options: ParseOptions,
-      ast: AST.Transform
+      ast: AST.Transformation
     ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<

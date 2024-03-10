@@ -73,9 +73,9 @@ export class Unexpected {
 
 /** @internal */
 export class Transform {
-  readonly _tag = "Transform"
+  readonly _tag = "Transformation"
   constructor(
-    readonly ast: AST.Transform,
+    readonly ast: AST.Transformation,
     readonly actual: unknown,
     readonly kind: "Encoded" | "Transformation" | "Type",
     readonly error: ParseIssue

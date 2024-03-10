@@ -205,7 +205,7 @@ export const match: AST.Match<Pretty<any>> = {
       onSome: (handler) => handler()
     })
   },
-  "Transform": (ast, go) => {
+  "Transformation": (ast, go) => {
     return Option.match(getHook(ast), {
       onNone: () => go(ast.to),
       onSome: (handler) => handler()
