@@ -4,7 +4,6 @@
 import * as Brand from "effect/Brand"
 import type { Tag } from "effect/Context"
 import type * as Effect from "effect/Effect"
-import type { Logger } from "effect/Logger"
 import type { Option } from "effect/Option"
 import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
@@ -529,14 +528,3 @@ export const FileDescriptor = Brand.nominal<File.Descriptor>()
  * @category model
  */
 export type SeekMode = "start" | "current"
-
-/**
- * Creates a Logger that writes to the specified file.
- *
- * @since 1.0.0
- */
-export const logger: (options: {
-  path: string
-  logger?: Logger<unknown, string>
-  fileOptions?: OpenFileOptions
-}) => Effect.Effect<Logger<unknown, void>, PlatformError, FileSystem | Scope> = internal.logger
