@@ -373,3 +373,8 @@ const renderLogSpanLogfmt = (now: number) => (self: LogSpan.LogSpan): string => 
   const label = filterKeyName(self.label)
   return `${label}=${now - self.startTime}ms`
 }
+
+/** @internal */
+export const isLogger = (u: unknown): u is Logger.Logger<unknown, unknown> => {
+  return typeof u === "object" && u != null && LoggerTypeId in u
+}

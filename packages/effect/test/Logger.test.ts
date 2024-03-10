@@ -11,6 +11,16 @@ import * as Logger from "effect/Logger"
 import * as LogSpan from "effect/LogSpan"
 import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest"
 
+describe("Logger", () => {
+  it("isLogger", () => {
+    expect(Logger.isLogger(Logger.stringLogger)).toBeTruthy()
+    expect(Logger.isLogger(Logger.logfmtLogger)).toBeTruthy()
+    expect(Logger.isLogger({})).toBeFalsy()
+    expect(Logger.isLogger(null)).toBeFalsy()
+    expect(Logger.isLogger(undefined)).toBeFalsy()
+  })
+})
+
 describe("stringLogger", () => {
   beforeEach(() => {
     vi.useFakeTimers()

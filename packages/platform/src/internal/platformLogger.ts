@@ -5,7 +5,6 @@ import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
 import { dual } from "effect/Function"
 import * as Logger from "effect/Logger"
-import * as Predicate from "effect/Predicate"
 import type * as Scope from "effect/Scope"
 import type { PlatformError } from "../Error.js"
 import * as FileSystem from "../FileSystem.js"
@@ -24,7 +23,7 @@ export const toFile = dual<
     options?: FileSystem.OpenFileOptions
   ) => Effect.Effect<Logger.Logger<Message, void>, PlatformError, Scope.Scope | FileSystem.FileSystem>
 >(
-  (args) => Predicate.hasProperty(args[0], Logger.LoggerTypeId),
+  (args) => Logger.isLogger(args[0]),
   (self, path, options) =>
     Effect.gen(function*(_) {
       const fs = yield* _(FileSystem.FileSystem)
