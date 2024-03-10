@@ -41,6 +41,11 @@ export * as KeyValueStore from "./KeyValueStore.js"
 /**
  * @since 1.0.0
  */
+export * as Logger from "./Logger.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Path from "./Path.js"
 
 /**
