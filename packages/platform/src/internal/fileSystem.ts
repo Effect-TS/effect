@@ -129,13 +129,14 @@ const stream = (file: File, {
 }
 
 /** @internal */
-export const logger = (
-  path: string,
-  options?: OpenFileOptions
-) =>
+export const logger = (options: {
+  path: string
+  logger?: Logger.Logger<unknown, string>
+  fileOptions?: OpenFileOptions
+}) =>
   Effect.gen(function*(_) {
     const fs = yield* _(tag)
-    const logFile = yield* _(fs.open(path, options))
+    const logFile = yield* _(fs.open(options.path, options.fileOptions))
     const scope = yield* _(Scope.Scope)
     const queue = yield* _(Queue.unbounded<string>())
 
@@ -151,8 +152,8 @@ export const logger = (
 
     yield* _(Effect.yieldNow())
 
-    return Logger.make((options) => {
-      const formatted = Logger.stringLogger.log(options)
+    return Logger.make((o) => {
+      const formatted = (options.logger || Logger.stringLogger).log(o)
       Queue.unsafeOffer(queue, formatted)
     })
   })
