@@ -27,15 +27,15 @@ describe("PlatformLogger", () => {
             assert.strictEqual(path, "./tmp.txt")
             assert.deepStrictEqual(options, { flag: "a+" })
             return Effect.succeed({
-              write: (chunk: Uint8Array) => {
-                chunks.push(new TextDecoder().decode(chunk))
-                return Effect.unit
-              }
+              write: (chunk: Uint8Array) =>
+                Effect.tap(Effect.sleep(10), () => {
+                  chunks.push(new TextDecoder().decode(chunk))
+                })
             })
           }
         } as any)
       )
 
-      assert.deepStrictEqual(chunks, ["a\n", "b\n", "c\n", "d\ne\n"])
+      assert.deepStrictEqual(chunks, ["a\n", "b\n", "c\n", "d\n", "e\n"])
     }).pipe(Effect.runPromise))
 })

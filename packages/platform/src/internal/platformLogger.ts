@@ -1,12 +1,11 @@
 /**
  * @since 1.0.0
  */
-import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as FiberSet from "effect/FiberSet"
 import { dual } from "effect/Function"
 import * as Logger from "effect/Logger"
 import * as Predicate from "effect/Predicate"
-import * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import type { PlatformError } from "../Error.js"
 import * as FileSystem from "../FileSystem.js"
@@ -30,29 +29,11 @@ export const toFile = dual<
     Effect.gen(function*(_) {
       const fs = yield* _(FileSystem.FileSystem)
       const logFile = yield* _(fs.open(path, options))
-      const queue = yield* _(Queue.unbounded<string>())
       const encoder = new TextEncoder()
-      const write = (_: string) => logFile.write(encoder.encode(_))
-
-      yield* _(
-        queue.take,
-        Effect.flatMap((message) => write(message + "\n")),
-        Effect.forever,
-        Effect.forkScoped
-      )
-
-      yield* _(Effect.addFinalizer(() =>
-        Effect.flatMap(
-          queue.takeAll,
-          (chunk) =>
-            chunk.length > 0
-              ? Effect.ignoreLogged(write(Chunk.join(chunk, "\n") + "\n"))
-              : Effect.unit
-        )
-      ))
+      const run = yield* _(FiberSet.makeRuntime<never>())
 
       return Logger.make((options) => {
-        Queue.unsafeOffer(queue, self.log(options))
+        run(Effect.uninterruptible(logFile.write(encoder.encode(self.log(options) + "\n"))))
       })
     })
 )
