@@ -46,6 +46,11 @@ export * as Path from "./Path.js"
 /**
  * @since 1.0.0
  */
+export * as PlatformLogger from "./PlatformLogger.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Runtime from "./Runtime.js"
 
 /**
