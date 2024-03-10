@@ -66,16 +66,19 @@ type AgeEncoded = S.Schema.Encoded<typeof Age>;
 
 The benefit is that when we hover over the `Age` schema, we see `Age` instead of `Schema<number, number, never>`. This is a small improvement if we only think about the `Age` schema, but as we'll see shortly, these improvements in schema visualization add up, resulting in a significant improvement in the readability of our schemas.
 
-Many of the built-in schemas exported from `@effect/schema` have been equipped with API interfaces, for example `number`.
+Many of the built-in schemas exported from `@effect/schema` have been equipped with API interfaces, for example `number` or `never`.
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // const number: S.$number
 S.number;
+
+// const never: S.$never
+S.never;
 ```
 
-**Note**: Notice that we had to add a `$` suffix to the API interface name because we couldn't simply use "number" since it's a reserved name for the TypeScript `number` type.
+**Note**. Notice that we had to add a `$` suffix to the API interface name because we couldn't simply use "number" since it's a reserved name for the TypeScript `number` type.
 
 Now let's see an example with a combinator that, given an input schema for a certain type `A`, returns the schema of the pair `readonly [A, A]`:
 
@@ -85,16 +88,19 @@ Now let's see an example with a combinator that, given an input schema for a cer
 import * as S from "@effect/schema/Schema";
 
 // API interface
-export interface pair<S extends S.Schema.All>
+export interface pair<S extends S.Schema.Any>
   extends S.Schema<
     readonly [S.Schema.Type<S>, S.Schema.Type<S>],
     readonly [S.Schema.Encoded<S>, S.Schema.Encoded<S>],
     S.Schema.Context<S>
   > {}
 
+// API
 export const pair = <S extends S.Schema.Any>(schema: S): pair<S> =>
   S.tuple(S.asSchema(schema), S.asSchema(schema));
 ```
+
+**Note**: The `S.Schema.Any` helper represents any schema, except for `never`. For more information on the `asSchema` helper, refer to the following section "Understanding Opaque Names".
 
 If we try to use our `pair` combinator, we see that readability is also improved in this case:
 
@@ -124,7 +130,7 @@ const Coords = pair(S.number);
 const NonOpaqueCoords = S.asSchema(Coords);
 ```
 
-**Note**: The call to `asSchema` is negligible in terms of overhead since it's nothing more than a glorified identity function.
+**Note**. The call to `asSchema` is negligible in terms of overhead since it's nothing more than a glorified identity function.
 
 Many of the built-in combinators exported from `@effect/schema` have been equipped with API interfaces, for example `struct`:
 
@@ -485,7 +491,7 @@ const opaque = S.tuple(
 const nonOpaque = S.asSchema(opaque);
 ```
 
-# Enhanced `array` Constructor
+## Enhanced `array` Constructor
 
 The `array` constructor has been improved and now optionally accepts rest elements:
 

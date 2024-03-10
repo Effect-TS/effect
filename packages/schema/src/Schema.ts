@@ -167,21 +167,21 @@ export declare namespace Schema {
   ) => asserts input is Schema.Type<S>
 
   /**
-   * Any schema, except for `$never`.
+   * Any schema, except for `never`.
    *
    * @since 1.0.0
    */
   export type Any = Schema<any, any, unknown>
 
   /**
-   * Any schema with `Context = never`, except for `$never`.
+   * Any schema with `Context = never`, except for `never`.
    *
    * @since 1.0.0
    */
   export type AnyNoContext = Schema<any, any, never>
 
   /**
-   * Any schema, including `$never`.
+   * Any schema, including `never`.
    *
    * @since 1.0.0
    */
@@ -1043,7 +1043,12 @@ export declare namespace TupleType {
   /**
    * @since 1.0.0
    */
-  export type Elements = ReadonlyArray<Schema.Any | OptionalElement<Schema.Any>>
+  export type Element = Schema.Any | OptionalElement<Schema.Any>
+
+  /**
+   * @since 1.0.0
+   */
+  export type Elements = ReadonlyArray<Element>
 
   /**
    * @since 1.0.0
