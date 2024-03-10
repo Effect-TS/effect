@@ -35,9 +35,9 @@ export class Refinement {
 
 /** @internal */
 export class Tuple {
-  readonly _tag = "Tuple"
+  readonly _tag = "TupleType"
   constructor(
-    readonly ast: AST.Tuple,
+    readonly ast: AST.TupleType,
     readonly actual: unknown,
     readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
   ) {}

@@ -5,6 +5,8 @@
 "@effect/rpc": minor
 ---
 
+- AST: refactor `Tuple` to `TupleType`
+
 - Schema: swap `TaggedRequest` type parameters
 
 - Serializable: swap `SerializableWithResult` type parameters

@@ -75,7 +75,7 @@ const go = (
           ),
         onSuccess: (message) => Effect.succeed([{ _tag, path, message }])
       })
-    case "Tuple":
+    case "TupleType":
       return Effect.matchEffect(TreeFormatter.getMessage(e), {
         onFailure: () =>
           Effect.map(

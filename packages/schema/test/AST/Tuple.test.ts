@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 describe("AST.Tuple", () => {
   it("A required element cannot follow an optional element", () => {
     expect(() =>
-      new AST.Tuple(
+      new AST.TupleType(
         [new AST.Element(AST.stringKeyword, true), new AST.Element(AST.stringKeyword, false)],
         [],
         true
@@ -16,7 +16,7 @@ describe("AST.Tuple", () => {
 
   it("A required rest element cannot follow an optional element", () => {
     expect(() =>
-      new AST.Tuple(
+      new AST.TupleType(
         [new AST.Element(AST.stringKeyword, true)],
         [AST.stringKeyword, AST.stringKeyword],
         true

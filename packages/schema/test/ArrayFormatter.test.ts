@@ -300,7 +300,7 @@ describe("ArrayFormatter", () => {
         message: "my custom message null"
       }])
       expectIssues(schema, [1, 2], [{
-        _tag: "Tuple",
+        _tag: "TupleType",
         path: [],
         message: "my custom message [1,2]"
       }])
@@ -401,7 +401,7 @@ describe("ArrayFormatter", () => {
           message: "my custom message null"
         }])
         expectIssues(schema, [1, undefined], [{
-          _tag: "Tuple",
+          _tag: "TupleType",
           path: [],
           message: "my custom message [1,null]"
         }])
@@ -420,7 +420,7 @@ describe("ArrayFormatter", () => {
           message: "my custom message null"
         }])
         expectIssues(schema, [1, undefined], [{
-          _tag: "Tuple",
+          _tag: "TupleType",
           path: [],
           message: "my custom message [1,null]"
         }])

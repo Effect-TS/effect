@@ -81,7 +81,7 @@ describe("AST > .toString()", () => {
       expectToString(
         schema,
         `{
-  "_tag": "Tuple",
+  "_tag": "TupleType",
   "elements": [
     {
       "type": {
@@ -127,7 +127,7 @@ describe("AST > .toString()", () => {
     expectToString(
       schema,
       `{
-  "_tag": "Tuple",
+  "_tag": "TupleType",
   "elements": [
     {
       "type": {
@@ -175,7 +175,7 @@ describe("AST > .toString()", () => {
     expectToString(
       schema,
       `{
-  "_tag": "Tuple",
+  "_tag": "TupleType",
   "elements": [
     {
       "type": {

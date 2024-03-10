@@ -150,7 +150,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
           ),
         onSuccess: (message) => Effect.succeed(make(message))
       })
-    case "Tuple":
+    case "TupleType":
       return Effect.matchEffect(getMessage(e), {
         onFailure: () =>
           Effect.map(

@@ -463,7 +463,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const regex = AST.getTemplateLiteralRegex(ast)
       return fromRefinement(ast, (u): u is any => Predicate.isString(u) && regex.test(u))
     }
-    case "Tuple": {
+    case "TupleType": {
       const elements = ast.elements.map((e) => goMemo(e.type, isDecoding))
       const rest = ast.rest.map((ast) => goMemo(ast, isDecoding))
       let requiredLen = ast.elements.filter((e) => !e.isOptional).length

@@ -1907,19 +1907,19 @@ const decodeAST = (
       if (schema.items) {
         if (Array.isArray(schema.items)) {
           const minItems = schema.minItems ?? -1
-          const rest: AST.Tuple["rest"] = schema.additionalItems && !Predicate.isBoolean(schema.additionalItems)
+          const rest: AST.TupleType["rest"] = schema.additionalItems && !Predicate.isBoolean(schema.additionalItems)
             ? [decodeAST(schema.additionalItems, $defs)]
             : []
-          return new AST.Tuple(
+          return new AST.TupleType(
             schema.items.map((item, i) => new AST.Element(decodeAST(item, $defs), i >= minItems)),
             rest,
             true
           )
         } else {
-          return new AST.Tuple([], [decodeAST(schema.items, $defs)], true)
+          return new AST.TupleType([], [decodeAST(schema.items, $defs)], true)
         }
       } else {
-        return new AST.Tuple([], [], true)
+        return new AST.TupleType([], [], true)
       }
     } else if (type === "object") {
       const required = schema.required || []
