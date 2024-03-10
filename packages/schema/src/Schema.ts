@@ -1595,7 +1595,6 @@ export const optional: {
       readonly exact: true
       readonly default: () => A
       readonly nullable: true
-      readonly encodedAnnotations?: Annotations<A | null>
     }
   ): PropertySignature<":", A, never, "?:", I | null, R>
   <A, I, R>(
@@ -1603,7 +1602,6 @@ export const optional: {
     options: {
       readonly exact: true
       readonly default: () => A
-      readonly encodedAnnotations?: Annotations<A>
     }
   ): PropertySignature<":", A, never, "?:", I, R>
   <A, I, R>(
@@ -1612,7 +1610,6 @@ export const optional: {
       readonly exact: true
       readonly nullable: true
       readonly as: "Option"
-      readonly encodedAnnotations?: Annotations<A | null>
     }
   ): PropertySignature<":", Option.Option<A>, never, "?:", I | null, R>
   <A, I, R>(
@@ -1620,7 +1617,6 @@ export const optional: {
     options: {
       readonly exact: true
       readonly as: "Option"
-      readonly encodedAnnotations?: Annotations<A>
     }
   ): PropertySignature<":", Option.Option<A>, never, "?:", I, R>
   <A, I, R>(
@@ -1628,7 +1624,6 @@ export const optional: {
     options: {
       readonly exact: true
       readonly nullable: true
-      readonly encodedAnnotations?: Annotations<A>
     }
   ): PropertySignature<"?:", A, never, "?:", I | null, R>
   <A, I, R>(
@@ -1642,7 +1637,6 @@ export const optional: {
     options: {
       readonly default: () => A
       readonly nullable: true
-      readonly encodedAnnotations?: Annotations<A | null | undefined>
     }
   ): PropertySignature<":", A, never, "?:", I | null | undefined, R>
   <A, I, R>(
@@ -1650,28 +1644,24 @@ export const optional: {
     options: {
       readonly nullable: true
       readonly as: "Option"
-      readonly encodedAnnotations?: Annotations<A | null | undefined>
     }
   ): PropertySignature<":", Option.Option<A>, never, "?:", I | null | undefined, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly as: "Option"
-      readonly encodedAnnotations?: Annotations<A | undefined>
     }
   ): PropertySignature<":", Option.Option<A>, never, "?:", I | undefined, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly default: () => A
-      readonly encodedAnnotations?: Annotations<A | undefined>
     }
   ): PropertySignature<":", A, never, "?:", I | undefined, R>
   <A, I, R>(
     schema: Schema<A, I, R>,
     options: {
       readonly nullable: true
-      readonly encodedAnnotations?: Annotations<A | undefined>
     }
   ): PropertySignature<"?:", A | undefined, never, "?:", I | null | undefined, R>
   <A, I, R>(
@@ -1684,27 +1674,25 @@ export const optional: {
     readonly default?: () => A
     readonly nullable?: true
     readonly as?: "Option"
-    readonly encodedAnnotations?: Annotations<any>
   }
 ): PropertySignature<any, any, never, any, any, any> => {
   const isExact = options?.exact
   const defaultValue = options?.default
   const isNullable = options?.nullable
   const asOption = options?.as == "Option"
-  const annotations = options?.encodedAnnotations
 
   if (isExact) {
     if (defaultValue) {
       if (isNullable) {
         return optionalToRequired(
-          { schema: nullable(schema), annotations },
+          { schema: nullable(schema) },
           typeSchema(schema),
           Option.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
           Option.some
         )
       } else {
         return optionalToRequired(
-          { schema, annotations },
+          { schema },
           typeSchema(schema),
           Option.match({ onNone: defaultValue, onSome: identity }),
           Option.some
@@ -1713,14 +1701,14 @@ export const optional: {
     } else if (asOption) {
       if (isNullable) {
         return optionalToRequired(
-          { schema: nullable(schema), annotations },
+          { schema: nullable(schema) },
           optionFromSelf(typeSchema(schema)),
           Option.filter(Predicate.isNotNull),
           identity
         )
       } else {
         return optionalToRequired(
-          { schema, annotations },
+          { schema },
           optionFromSelf(typeSchema(schema)),
           identity,
           identity
@@ -1729,7 +1717,7 @@ export const optional: {
     } else {
       if (isNullable) {
         return optionalToOptional(
-          { schema: nullable(schema), annotations },
+          { schema: nullable(schema) },
           typeSchema(schema),
           Option.filter(Predicate.isNotNull),
           identity
@@ -1742,14 +1730,14 @@ export const optional: {
     if (defaultValue) {
       if (isNullable) {
         return optionalToRequired(
-          { schema: nullish(schema), annotations },
+          { schema: nullish(schema) },
           typeSchema(schema),
           Option.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
           Option.some
         )
       } else {
         return optionalToRequired(
-          { schema: orUndefined(schema), annotations },
+          { schema: orUndefined(schema) },
           typeSchema(schema),
           Option.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
           Option.some
@@ -1758,14 +1746,14 @@ export const optional: {
     } else if (asOption) {
       if (isNullable) {
         return optionalToRequired(
-          { schema: nullish(schema), annotations },
+          { schema: nullish(schema) },
           optionFromSelf(typeSchema(schema)),
           Option.filter<A | null | undefined, A>((a): a is A => a != null),
           identity
         )
       } else {
         return optionalToRequired(
-          { schema: orUndefined(schema), annotations },
+          { schema: orUndefined(schema) },
           optionFromSelf(typeSchema(schema)),
           Option.filter(Predicate.isNotUndefined),
           identity
@@ -1774,7 +1762,7 @@ export const optional: {
     } else {
       if (isNullable) {
         return optionalToOptional(
-          { schema: nullish(schema), annotations },
+          { schema: nullish(schema) },
           orUndefined(typeSchema(schema)),
           Option.filter(Predicate.isNotNull),
           identity

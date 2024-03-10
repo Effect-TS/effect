@@ -735,12 +735,14 @@ describe("JSONSchema", () => {
       })
     })
 
-    it("should respect encodedAnnotations", () => {
+    it.skip("should allow for encoded annotations", () => {
       const schema = S.struct({
-        a: S.optional(S.string, { default: () => "", encodedAnnotations: { description: "an optional string" } })
+        a: S.optional(S.NumberFromString, {
+          default: () => 0
+        })
       })
-      const jsonSchema = JSONSchema.make(S.encodedSchema(schema))
-      expect(jsonSchema).toStrictEqual({
+      const encodedJsonSchema = JSONSchema.make(S.encodedSchema(schema))
+      expect(encodedJsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         type: "object",
         required: [],
@@ -749,6 +751,20 @@ describe("JSONSchema", () => {
             type: "string",
             "description": "an optional string",
             title: "string"
+          }
+        },
+        additionalProperties: false
+      })
+      const typeJsonSchema = JSONSchema.make(schema)
+      expect(typeJsonSchema).toStrictEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        required: ["a"],
+        properties: {
+          a: {
+            type: "number",
+            "description": "a number",
+            title: "number"
           }
         },
         additionalProperties: false

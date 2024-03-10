@@ -24,6 +24,10 @@ type SchemaType = S.Schema.Type<typeof schema>;
 type SchemaEncoded = S.Schema.Encoded<typeof schema>;
 ```
 
+The reason for this change is that the terms "From" and "To" were too generic and depended on the context. For example, when encoding, the meaning of "From" and "To" were reversed.
+
+As a consequence, the APIs `AST.to`, `AST.from`, `Schema.to`, and `Schema.from` have been renamed respectively to `AST.typeAST`, `AST.encodedAST`, `Schema.typeSchema`, and `Schema.encodedSchema`.
+
 # New `annotations` method
 
 Now, in addition to the `pipe` method, all schemas have a `annotations` method that can be used to add annotations:
