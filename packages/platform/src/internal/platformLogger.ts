@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
+import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as FiberSet from "effect/FiberSet"
 import { dual } from "effect/Function"
 import * as Logger from "effect/Logger"
 import type * as Scope from "effect/Scope"
@@ -13,26 +13,30 @@ import * as FileSystem from "../FileSystem.js"
 export const toFile = dual<
   (
     path: string,
-    option?: FileSystem.OpenFileOptions
+    options?: FileSystem.OpenFileOptions & {
+      readonly batchWindow?: DurationInput
+    }
   ) => <Message>(
     self: Logger.Logger<Message, string>
   ) => Effect.Effect<Logger.Logger<Message, void>, PlatformError, Scope.Scope | FileSystem.FileSystem>,
   <Message>(
     self: Logger.Logger<Message, string>,
     path: string,
-    options?: FileSystem.OpenFileOptions
+    options?: FileSystem.OpenFileOptions & {
+      readonly batchWindow?: DurationInput
+    }
   ) => Effect.Effect<Logger.Logger<Message, void>, PlatformError, Scope.Scope | FileSystem.FileSystem>
 >(
   (args) => Logger.isLogger(args[0]),
   (self, path, options) =>
     Effect.gen(function*(_) {
       const fs = yield* _(FileSystem.FileSystem)
-      const logFile = yield* _(fs.open(path, options))
+      const logFile = yield* _(fs.open(path, { flag: "a+", ...options }))
       const encoder = new TextEncoder()
-      const run = yield* _(FiberSet.makeRuntime<never>())
-
-      return Logger.make((options) => {
-        run(Effect.uninterruptible(logFile.write(encoder.encode(self.log(options) + "\n"))))
-      })
+      return yield* _(Logger.batched(
+        self,
+        options?.batchWindow ?? 1000,
+        (output) => Effect.ignore(logFile.write(encoder.encode(output.join("\n") + "\n")))
+      ))
     })
 )

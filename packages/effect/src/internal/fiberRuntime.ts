@@ -1496,7 +1496,6 @@ export const batchedLogger = dual<
         core.as(
           internalLogger.makeLogger((options) => {
             buffer.push(self.log(options))
-            console.log(buffer)
           })
         )
       )

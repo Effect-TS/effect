@@ -36,6 +36,6 @@ describe("PlatformLogger", () => {
         } as any)
       )
 
-      assert.deepStrictEqual(chunks, ["a\n", "b\n", "c\n", "d\n", "e\n"])
+      assert.deepStrictEqual(chunks, ["a\nb\nc\nd\ne\n"])
     }).pipe(Effect.runPromise))
 })

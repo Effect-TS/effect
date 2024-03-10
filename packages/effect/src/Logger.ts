@@ -398,7 +398,7 @@ export const structured: Layer.Layer<never> = replace(fiberRuntime.defaultLogger
 export const minimumLogLevel: (level: LogLevel.LogLevel) => Layer.Layer<never> = circular.minimumLogLevel
 
 /**
- * Returns `true` if the specified value is a `Command`, otherwise returns `false`.
+ * Returns `true` if the specified value is a `Logger`, otherwise returns `false`.
  *
  * @since 1.0.0
  * @category guards
