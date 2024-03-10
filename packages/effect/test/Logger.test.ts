@@ -1,5 +1,6 @@
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
+import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
 import * as FiberRefs from "effect/FiberRefs"
 import { identity } from "effect/Function"
@@ -8,7 +9,7 @@ import { logLevelInfo } from "effect/internal/core"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import * as LogSpan from "effect/LogSpan"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest"
 
 describe("stringLogger", () => {
   beforeEach(() => {
@@ -248,4 +249,49 @@ describe("logfmtLogger", () => {
       `timestamp=${date.toJSON()} level=INFO fiber= message="hello world" hashmap="{\\"_id\\":\\"HashMap\\",\\"values\\":[[\\"key\\",2]]}" chunk="{\\"_id\\":\\"Chunk\\",\\"values\\":[1,2]}"`
     )
   })
+
+  it("batched", () =>
+    Effect.gen(function*(_) {
+      const chunks: Array<Array<string>> = []
+      const date = new Date()
+      vi.setSystemTime(date)
+      const logger = yield* _(
+        Logger.logfmtLogger,
+        Logger.batched("100 millis", (_) =>
+          Effect.sync(() => {
+            chunks.push(_)
+          }))
+      )
+      const log = (message: string) =>
+        logger.log({
+          fiberId: FiberId.none,
+          logLevel: logLevelInfo,
+          message,
+          cause: Cause.empty,
+          context: FiberRefs.unsafeMake(new Map()),
+          spans: List.empty(),
+          annotations: HashMap.empty(),
+          date
+        })
+
+      log("a")
+      log("b")
+      log("c")
+      yield* _(Effect.promise(() => vi.advanceTimersByTimeAsync(100)))
+      log("d")
+      log("e")
+      yield* _(Effect.promise(() => vi.advanceTimersByTimeAsync(100)))
+
+      assert.deepStrictEqual(chunks, [
+        [
+          `timestamp=${date.toISOString()} level=INFO fiber= message=a`,
+          `timestamp=${date.toISOString()} level=INFO fiber= message=b`,
+          `timestamp=${date.toISOString()} level=INFO fiber= message=c`
+        ],
+        [
+          `timestamp=${date.toISOString()} level=INFO fiber= message=d`,
+          `timestamp=${date.toISOString()} level=INFO fiber= message=e`
+        ]
+      ])
+    }).pipe(Effect.scoped, Effect.runPromise))
 })
