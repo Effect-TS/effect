@@ -16,5 +16,5 @@ import * as internal from "./internal/logger.js"
 export const fileSystemLogger: (options: {
   path: string
   fileOptions?: OpenFileOptions
-  format: (_: Logger.Logger.Options<unknown>) => string
+  format?: (_: Logger.Logger.Options<unknown>) => string
 }) => Effect<Logger.Logger<unknown, void>, PlatformError, FileSystem | Scope> = internal.fileSystemLogger
