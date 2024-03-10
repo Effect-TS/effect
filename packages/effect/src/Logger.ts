@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.js"
+import type { DurationInput } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import type * as FiberId from "./FiberId.js"
 import type * as FiberRefs from "./FiberRefs.js"
@@ -157,6 +158,22 @@ export const map: {
     f: (output: Output) => Output2
   ): Logger<Message, Output2>
 } = internal.map
+
+/**
+ * @since 2.0.0
+ * @category mapping
+ */
+export const batched: {
+  <Output, R>(
+    window: DurationInput,
+    f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
+  ): <Message>(self: Logger<Message, Output>) => Effect<Logger<Message, void>, never, R | Scope>
+  <Message, Output, R>(
+    self: Logger<Message, Output>,
+    window: DurationInput,
+    f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
+  ): Effect<Logger<Message, void>, never, Scope | R>
+} = fiberRuntime.batchedLogger
 
 /**
  * A logger that does nothing in response to logging events.

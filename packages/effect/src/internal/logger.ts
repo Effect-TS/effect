@@ -289,6 +289,33 @@ export const logfmtLogger = makeLogger<unknown, string>(
 )
 
 /** @internal */
+export const structuredLogger = makeLogger<unknown, {
+  readonly logLevel: string
+  readonly fiberId: string
+  readonly timestamp: string
+  readonly message: unknown
+  readonly cause: string | undefined
+  readonly annotations: Record<string, unknown>
+  readonly spans: Record<string, number>
+}>(
+  ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
+    const now = date.getDate()
+    return {
+      logLevel: logLevel.label,
+      fiberId: _fiberId.threadName(fiberId),
+      timestamp: date.toISOString(),
+      message,
+      cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause),
+      annotations: HashMap.isEmpty(annotations) ? {} : Object.fromEntries(annotations),
+      spans: List.isCons(spans) ? Object.fromEntries(List.map(spans, (span) => [span.label, now - span.startTime])) : {}
+    }
+  }
+)
+
+/** @internal */
+export const jsonLogger = map(structuredLogger, JSON.stringify)
+
+/** @internal */
 const filterKeyName = (key: string) => key.replace(/[\s="]/g, "_")
 
 /** @internal */

@@ -5,6 +5,7 @@ import type * as Clock from "../Clock.js"
 import type { ConfigProvider } from "../ConfigProvider.js"
 import * as Context from "../Context.js"
 import * as Deferred from "../Deferred.js"
+import type * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
 import { EffectTypeId } from "../Effectable.js"
 import type * as Either from "../Either.js"
@@ -1433,6 +1434,52 @@ export const currentLoggers: FiberRef.FiberRef<
   Symbol.for("effect/FiberRef/currentLoggers"),
   () => core.fiberRefUnsafeMakeHashSet(HashSet.make(defaultLogger, tracerLogger))
 )
+
+/** @internal */
+export const batchedLogger = dual<
+  <Output, R>(
+    window: Duration.DurationInput,
+    f: (messages: Array<NoInfer<Output>>) => Effect.Effect<void, never, R>
+  ) => <Message>(
+    self: Logger<Message, Output>
+  ) => Effect.Effect<Logger<Message, void>, never, Scope.Scope | R>,
+  <Message, Output, R>(
+    self: Logger<Message, Output>,
+    window: Duration.DurationInput,
+    f: (messages: Array<NoInfer<Output>>) => Effect.Effect<void, never, R>
+  ) => Effect.Effect<Logger<Message, void>, never, Scope.Scope | R>
+>(3, <Message, Output, R>(
+  self: Logger<Message, Output>,
+  window: Duration.DurationInput,
+  f: (messages: Array<NoInfer<Output>>) => Effect.Effect<void, never, R>
+): Effect.Effect<Logger<Message, void>, never, Scope.Scope | R> =>
+  core.flatMap(scope, (scope) => {
+    let buffer: Array<Output> = []
+    const flush = core.suspend(() => {
+      if (buffer.length === 0) {
+        return core.unit
+      }
+      const arr = buffer
+      buffer = []
+      return f(arr)
+    })
+
+    return pipe(
+      internalEffect.sleep(window),
+      core.zipRight(flush),
+      internalEffect.forever,
+      forkDaemon,
+      core.interruptible,
+      core.flatMap((fiber) => core.scopeAddFinalizer(scope, core.interruptFiber(fiber))),
+      core.zipRight(addFinalizer(() => flush)),
+      core.uninterruptible,
+      core.as(
+        internalLogger.makeLogger((options) => {
+          buffer.push(self.log(options))
+        })
+      )
+    )
+  }))
 
 // circular with Effect
 
