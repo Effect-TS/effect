@@ -3220,16 +3220,10 @@ export const lowercased =
     )
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface Lowercased extends Annotable<Lowercased, string> {}
-
-/**
  * @category string constructors
  * @since 1.0.0
  */
-export const Lowercased: Lowercased = string.pipe(
+export const Lowercased: $string = string.pipe(
   lowercased({ identifier: "Lowercased", title: "Lowercased" })
 )
 
@@ -3256,16 +3250,10 @@ export const uppercased =
     )
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface Uppercased extends Annotable<Uppercased, string> {}
-
-/**
  * @category string constructors
  * @since 1.0.0
  */
-export const Uppercased: Uppercased = string.pipe(
+export const Uppercased: $string = string.pipe(
   uppercased({ identifier: "Uppercased", title: "Uppercased" })
 )
 
@@ -3358,16 +3346,10 @@ export const Uppercase: Uppercase = transform(
 ).annotations({ identifier: "Uppercase" })
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface Trimmed extends Annotable<Trimmed, string> {}
-
-/**
  * @category string constructors
  * @since 1.0.0
  */
-export const Trimmed: Trimmed = string.pipe(
+export const Trimmed: $string = string.pipe(
   trimmed({ identifier: "Trimmed", title: "Trimmed" })
 )
 
@@ -3461,16 +3443,10 @@ export const parseJson: {
 }
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface NonEmpty extends Annotable<NonEmpty, string> {}
-
-/**
  * @category string constructors
  * @since 1.0.0
  */
-export const NonEmpty: NonEmpty = string.pipe(
+export const NonEmpty: $string = string.pipe(
   nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
 )
 
@@ -3483,12 +3459,6 @@ export const UUIDTypeId = Symbol.for("@effect/schema/TypeId/UUID")
 const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface UUID extends Annotable<UUID, string> {}
-
-/**
  * Represents a Universally Unique Identifier (UUID).
  *
  * This schema ensures that the provided string adheres to the standard UUID format.
@@ -3496,7 +3466,7 @@ export interface UUID extends Annotable<UUID, string> {}
  * @category string constructors
  * @since 1.0.0
  */
-export const UUID: UUID = string.pipe(
+export const UUID: $string = string.pipe(
   pattern(uuidRegex, {
     typeId: UUIDTypeId,
     identifier: "UUID",
@@ -3515,12 +3485,6 @@ export const ULIDTypeId = Symbol.for("@effect/schema/TypeId/ULID")
 const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface ULID extends Annotable<ULID, string> {}
-
-/**
  * Represents a Universally Unique Lexicographically Sortable Identifier (ULID).
  *
  * ULIDs are designed to be compact, URL-safe, and ordered, making them suitable for use as identifiers.
@@ -3529,7 +3493,7 @@ export interface ULID extends Annotable<ULID, string> {}
  * @category string constructors
  * @since 1.0.0
  */
-export const ULID: ULID = string.pipe(
+export const ULID: $string = string.pipe(
   pattern(ulidRegex, {
     typeId: ULIDTypeId,
     identifier: "ULID",
@@ -3866,94 +3830,52 @@ export const NumberFromString: NumberFromString = transformOrFail(
 ).annotations({ identifier: "NumberFromString" })
 
 /**
- * @category api interface
+ * @category number constructors
  * @since 1.0.0
  */
-export interface Finite extends Annotable<Finite, number> {}
+export const Finite: $number = number.pipe(finite({ identifier: "Finite", title: "Finite" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Finite: Finite = number.pipe(finite({ identifier: "Finite", title: "Finite" }))
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface Int extends Annotable<Int, number> {}
+export const Int: $number = number.pipe(int({ identifier: "Int", title: "Int" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Int: Int = number.pipe(int({ identifier: "Int", title: "Int" }))
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface NonNaN extends Annotable<NonNaN, number> {}
+export const NonNaN: $number = number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNaN: NonNaN = number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface Positive extends Annotable<Positive, number> {}
-
-/**
- * @category number constructors
- * @since 1.0.0
- */
-export const Positive: Positive = number.pipe(
+export const Positive: $number = number.pipe(
   positive({ identifier: "Positive", title: "Positive" })
 )
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface Negative extends Annotable<Negative, number> {}
-
-/**
  * @category number constructors
  * @since 1.0.0
  */
-export const Negative: Negative = number.pipe(
+export const Negative: $number = number.pipe(
   negative({ identifier: "Negative", title: "Negative" })
 )
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface NonPositive extends Annotable<NonPositive, number> {}
-
-/**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonPositive: NonPositive = number.pipe(
+export const NonPositive: $number = number.pipe(
   nonPositive({ identifier: "NonPositive", title: "NonPositive" })
 )
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface NonNegative extends Annotable<NonNegative, number> {}
-
-/**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNegative: NonNegative = number.pipe(
+export const NonNegative: $number = number.pipe(
   nonNegative({ identifier: "NonNegative", title: "NonNegative" })
 )
 
@@ -3962,12 +3884,6 @@ export const NonNegative: NonNegative = number.pipe(
  * @since 1.0.0
  */
 export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface JsonNumber extends Annotable<JsonNumber, number> {}
 
 /**
  * The `JsonNumber` is a schema for representing JSON numbers. It ensures that the provided value is a valid
@@ -3987,7 +3903,7 @@ export interface JsonNumber extends Annotable<JsonNumber, number> {}
  * @category number constructors
  * @since 1.0.0
  */
-export const JsonNumber: JsonNumber = number.pipe(
+export const JsonNumber: $number = number.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
     identifier: "JsonNumber",

@@ -18,14 +18,14 @@
 +class A extends S.Class<A>("A")({ a: S.string }) {}
 ```
 
+- AST: change `Tuple` definition
+
 ```diff
--export class Tuple implements Annotated {
-+export class TupleType implements Annotated {
--  readonly _tag = "Tuple"
-+  readonly _tag = "TupleType"
+export class Tuple implements Annotated {
 ...
 -  readonly rest: Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>,
 +  readonly rest: ReadonlyArray<AST>,
+...
 }
 ```
 
@@ -78,8 +78,6 @@ const schema = S.tuple(S.string, S.optionalElement(S.number));
 - change `AST.Transform.kind` to `"Encoded" | "Transformation" | "Type"`
 
 - Schema: change `PropertySignature` signature from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<Key extends PropertyKey, ToToken extends Token, To, FromToken extends Token, From, R = never>`
-
-- Schema: rename `Class` interface to `ClassSchema`
 
 - Schema: expose `fields` (`Class` API) and remove `struct`
 
