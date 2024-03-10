@@ -537,5 +537,5 @@ export type SeekMode = "start" | "current"
  */
 export const logger: (
   path: string,
-  options: OpenFileOptions
+  options?: OpenFileOptions
 ) => Effect.Effect<Logger<unknown, void>, PlatformError, FileSystem | Scope> = internal.logger
