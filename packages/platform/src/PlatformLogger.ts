@@ -14,21 +14,22 @@ import * as internal from "./internal/platformLogger.js"
  *
  * @since 1.0.0
  * @example
- * import type { Error, FileSystem } from "@effect/platform"
  * import { PlatformLogger } from "@effect/platform"
- * import type { Layer } from "effect"
- * import { Logger } from "effect"
+ * import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
+ * import { Effect, Layer, Logger } from "effect"
  *
  * const fileLogger = Logger.logfmtLogger.pipe(
- *   PlatformLogger.toFile("log.txt", { flag: "a+" })
+ *   PlatformLogger.toFile("log.txt")
  * )
- * const LoggerLive: Layer.Layer<
- *   never,
- *   Error.PlatformError,
- *   FileSystem.FileSystem
- * > = Logger.replaceScoped(
- *   Logger.defaultLogger,
- *   fileLogger
+ * const LoggerLive = Logger.replaceScoped(Logger.defaultLogger, fileLogger).pipe(
+ *   Layer.provide(NodeFileSystem.layer)
+ * )
+ *
+ * Effect.log("a").pipe(
+ *   Effect.zipRight(Effect.log("b")),
+ *   Effect.zipRight(Effect.log("c")),
+ *   Effect.provide(LoggerLive),
+ *   NodeRuntime.runMain
  * )
  */
 export const toFile: {
