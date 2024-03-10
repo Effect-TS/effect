@@ -17,6 +17,8 @@ describe("PlatformLogger", () => {
           yield* _(Effect.log("b"))
           yield* _(Effect.log("c"))
           yield* _(Effect.sleep(0))
+          yield* _(Effect.log("d"))
+          yield* _(Effect.log("e"))
         }),
         Effect.scoped,
         Effect.provide(LoggerLive),
@@ -34,6 +36,6 @@ describe("PlatformLogger", () => {
         } as any)
       )
 
-      assert.deepStrictEqual(chunks, ["a\n", "b\n", "c\n"])
+      assert.deepStrictEqual(chunks, ["a\n", "b\n", "c\n", "d\ne\n"])
     }).pipe(Effect.runPromise))
 })

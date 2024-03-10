@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Logger from "effect/Logger"
@@ -31,13 +32,24 @@ export const toFile = dual<
       const logFile = yield* _(fs.open(path, options))
       const queue = yield* _(Queue.unbounded<string>())
       const encoder = new TextEncoder()
+      const write = (_: string) => logFile.write(encoder.encode(_))
 
       yield* _(
         queue.take,
-        Effect.flatMap((message) => logFile.write(encoder.encode(message + "\n"))),
+        Effect.flatMap((message) => write(message + "\n")),
         Effect.forever,
         Effect.forkScoped
       )
+
+      yield* _(Effect.addFinalizer(() =>
+        Effect.flatMap(
+          queue.takeAll,
+          (chunk) =>
+            chunk.length > 0
+              ? Effect.ignoreLogged(write(Chunk.join(chunk, "\n") + "\n"))
+              : Effect.unit
+        )
+      ))
 
       return Logger.make((options) => {
         Queue.unsafeOffer(queue, self.log(options))
