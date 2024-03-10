@@ -162,6 +162,23 @@ export const map: {
 /**
  * @since 2.0.0
  * @category mapping
+ * @example
+ * import { Console, Effect, Logger } from "effect";
+ *
+ * const LoggerLive = Logger.replaceScoped(
+ *   Logger.defaultLogger,
+ *   Logger.logfmtLogger.pipe(
+ *     Logger.batched("500 millis", (messages) =>
+ *       Console.log("BATCH", messages.join("\n"))
+ *     )
+ *   )
+ * );
+ *
+ * Effect.gen(function* (_) {
+ *   yield* _(Effect.log("one"));
+ *   yield* _(Effect.log("two"));
+ *   yield* _(Effect.log("three"));
+ * }).pipe(Effect.provide(LoggerLive), Effect.runFork);
  */
 export const batched: {
   <Output, R>(

@@ -1484,19 +1484,21 @@ export const batchedLogger = dual<
       return f(arr)
     })
 
-    return pipe(
-      internalEffect.sleep(window),
-      core.zipRight(flush),
-      internalEffect.forever,
-      ensuring(flush),
-      core.interruptible,
-      forkDaemon,
-      core.flatMap((fiber) => core.scopeAddFinalizer(scope, core.interruptFiber(fiber))),
-      core.uninterruptible,
-      core.as(
-        internalLogger.makeLogger((options) => {
-          buffer.push(self.log(options))
-        })
+    return core.uninterruptibleMask((restore) =>
+      pipe(
+        internalEffect.sleep(window),
+        core.zipRight(flush),
+        internalEffect.forever,
+        restore,
+        forkDaemon,
+        core.flatMap((fiber) => core.scopeAddFinalizer(scope, core.interruptFiber(fiber))),
+        core.zipRight(addFinalizer(() => flush)),
+        core.as(
+          internalLogger.makeLogger((options) => {
+            buffer.push(self.log(options))
+            console.log(buffer)
+          })
+        )
       )
     )
   }))
