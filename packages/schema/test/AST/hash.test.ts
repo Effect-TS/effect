@@ -235,7 +235,7 @@ describe("AST > hash", () => {
       const schema: S.Schema<A> = S.suspend( // intended outer suspend
         () => S.tuple(S.number, S.union(schema, S.literal(null)))
       )
-      expectHash(schema, 368814992)
+      expectHash(schema, -690299032)
     })
 
     it("inner/outer", () => {
@@ -245,7 +245,7 @@ describe("AST > hash", () => {
         S.union(S.suspend(() => schema), S.literal(null))
       )
 
-      expectHash(schema, 368814992)
+      expectHash(schema, -690299032)
     })
 
     it("inner/inner", () => {
@@ -258,7 +258,7 @@ describe("AST > hash", () => {
         )
       )
 
-      expectHash(schema, 368814992)
+      expectHash(schema, -690299032)
     })
   })
 })
