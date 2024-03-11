@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.47.1
+
+### Patch Changes
+
+- [#2276](https://github.com/Effect-TS/effect/pull/2276) [`0680545`](https://github.com/Effect-TS/effect/commit/068054540f19bb23a79c7c021ed8b2fe34f3e19f) Thanks [@tim-smart](https://github.com/tim-smart)! - improve /platform error messages
+
+- Updated dependencies [[`20e63fb`](https://github.com/Effect-TS/effect/commit/20e63fb9207210f3fe2d136ec40d0a2dbff3225e), [`20e63fb`](https://github.com/Effect-TS/effect/commit/20e63fb9207210f3fe2d136ec40d0a2dbff3225e)]:
+  - effect@2.4.3
+  - @effect/schema@0.63.4
+
 ## 0.47.0
 
 ### Minor Changes

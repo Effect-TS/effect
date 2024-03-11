@@ -1,5 +1,17 @@
 # @effect/experimental
 
+## 0.10.1
+
+### Patch Changes
+
+- [#2274](https://github.com/Effect-TS/effect/pull/2274) [`8b552a2`](https://github.com/Effect-TS/effect/commit/8b552a28a3843c5057af342b8bc1534ed804a23d) Thanks [@tim-smart](https://github.com/tim-smart)! - improve Persistence error messages
+
+- Updated dependencies [[`0680545`](https://github.com/Effect-TS/effect/commit/068054540f19bb23a79c7c021ed8b2fe34f3e19f), [`20e63fb`](https://github.com/Effect-TS/effect/commit/20e63fb9207210f3fe2d136ec40d0a2dbff3225e), [`20e63fb`](https://github.com/Effect-TS/effect/commit/20e63fb9207210f3fe2d136ec40d0a2dbff3225e)]:
+  - @effect/platform-node@0.45.1
+  - @effect/platform@0.47.1
+  - effect@2.4.3
+  - @effect/schema@0.63.4
+
 ## 0.10.0
 
 ### Minor Changes
