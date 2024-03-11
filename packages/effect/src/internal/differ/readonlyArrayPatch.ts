@@ -174,7 +174,7 @@ export const patch = Dual.dual<
   }
   let readonlyArray = oldValue.slice()
   let patches: Array<Differ.Differ.ReadonlyArray.Patch<Value, Patch>> = ReadonlyArray.of(self)
-  while (ReadonlyArray.isNonEmptyArray(patches)) {
+  while (ReadonlyArray.isNonEmpty(patches)) {
     const head: Instruction = ReadonlyArray.headNonEmpty(patches) as Instruction
     const tail = ReadonlyArray.tailNonEmpty(patches)
     switch (head._tag) {

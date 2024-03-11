@@ -59,7 +59,7 @@ export const orElse = dual<
 /** @internal */
 export const blocks = (helpDocs: Iterable<HelpDoc.HelpDoc>): HelpDoc.HelpDoc => {
   const elements = ReadonlyArray.fromIterable(helpDocs)
-  if (ReadonlyArray.isNonEmptyArray(elements)) {
+  if (ReadonlyArray.isNonEmpty(elements)) {
     return elements.slice(1).reduce(sequence, elements[0])
   }
   return empty

@@ -48,7 +48,7 @@ const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
     onNone: () => Doc.empty,
     onSome: (error) => {
       const errorLines = error.split(/\r?\n/)
-      if (ReadonlyArray.isNonEmptyArray(errorLines)) {
+      if (ReadonlyArray.isNonEmpty(errorLines)) {
         const annotateLine = (line: string): Doc.AnsiDoc =>
           Doc.annotate(Doc.text(line), Ansi.combine(Ansi.italicized, Ansi.red))
         const prefix = Doc.cat(Doc.annotate(pointer, Ansi.red), Doc.space)

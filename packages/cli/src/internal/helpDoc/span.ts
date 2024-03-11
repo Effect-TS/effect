@@ -93,7 +93,7 @@ export const getText = (self: Span.Span): string => {
 /** @internal */
 export const spans = (spans: Iterable<Span.Span>): Span.Span => {
   const elements = ReadonlyArray.fromIterable(spans)
-  if (ReadonlyArray.isNonEmptyArray(elements)) {
+  if (ReadonlyArray.isNonEmpty(elements)) {
     return elements.slice(1).reduce(concat, elements[0])
   }
   return empty

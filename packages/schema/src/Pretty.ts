@@ -177,7 +177,7 @@ export const match: AST.Match<Pretty<any>> = {
         }
       }
 
-      return ReadonlyArray.isNonEmptyArray(output) ? "{ " + output.join(", ") + " }" : "{}"
+      return ReadonlyArray.isNonEmpty(output) ? "{ " + output.join(", ") + " }" : "{}"
     }
   },
   "Union": (ast, go) => {

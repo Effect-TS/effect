@@ -664,7 +664,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute output
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
-          ReadonlyArray.isNonEmptyArray(es) ?
+          ReadonlyArray.isNonEmpty(es) ?
             Either.left(InternalParser.tuple(ast, input, sortByIndex(es))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
@@ -883,7 +883,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute output
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
-          ReadonlyArray.isNonEmptyArray(es) ?
+          ReadonlyArray.isNonEmpty(es) ?
             Either.left(InternalParser.typeLiteral(ast, input, sortByIndex(es))) :
             Either.right(output)
         if (queue && queue.length > 0) {
@@ -1014,7 +1014,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute output
         // ---------------------------------------------
         const computeResult = (es: State["es"]) =>
-          ReadonlyArray.isNonEmptyArray(es) ?
+          ReadonlyArray.isNonEmpty(es) ?
             es.length === 1 && es[0][1]._tag === "Type" ?
               Either.left(es[0][1]) :
               Either.left(InternalParser.union(ast, input, sortByIndex(es))) :

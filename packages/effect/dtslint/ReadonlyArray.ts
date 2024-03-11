@@ -48,28 +48,28 @@ if (ReadonlyArray.isEmptyArray(numbers)) {
 Option.liftPredicate(ReadonlyArray.isEmptyArray)
 
 // -------------------------------------------------------------------------------------
-// isNonEmptyArray
+// isNonEmpty
 // -------------------------------------------------------------------------------------
 
-if (ReadonlyArray.isNonEmptyArray(readonlyNumbers)) {
+if (ReadonlyArray.isNonEmpty(readonlyNumbers)) {
   // $ExpectType readonly [number, ...number[]]
   readonlyNumbers
 }
 
 // $ExpectType <A>(a: readonly A[]) => Option<readonly [A, ...A[]]>
-Option.liftPredicate(ReadonlyArray.isNonEmptyArray)
+Option.liftPredicate(ReadonlyArray.isNonEmpty)
 
 // -------------------------------------------------------------------------------------
-// isNonEmptyArray
+// isNonEmpty
 // -------------------------------------------------------------------------------------
 
-if (ReadonlyArray.isNonEmptyArray(numbers)) {
+if (ReadonlyArray.isNonEmpty(numbers)) {
   // $ExpectType [number, ...number[]]
   numbers
 }
 
 // $ExpectType <A>(a: A[]) => Option<[A, ...A[]]>
-Option.liftPredicate(ReadonlyArray.isNonEmptyArray)
+Option.liftPredicate(ReadonlyArray.isNonEmpty)
 
 // -------------------------------------------------------------------------------------
 // map

@@ -889,14 +889,14 @@ describe("ReadonlyArray", () => {
     deepStrictEqual(RA.isEmptyArray([]), true)
   })
 
-  it("isNonEmptyArray", () => {
-    deepStrictEqual(RA.isNonEmptyArray([1, 2, 3]), true)
-    deepStrictEqual(RA.isNonEmptyArray([]), false)
+  it("isNonEmpty", () => {
+    deepStrictEqual(RA.isNonEmpty([1, 2, 3]), true)
+    deepStrictEqual(RA.isNonEmpty([]), false)
   })
 
-  it("isNonEmptyArray", () => {
-    deepStrictEqual(RA.isNonEmptyArray([1, 2, 3]), true)
-    deepStrictEqual(RA.isNonEmptyArray([]), false)
+  it("isNonEmpty", () => {
+    deepStrictEqual(RA.isNonEmpty([1, 2, 3]), true)
+    deepStrictEqual(RA.isNonEmpty([]), false)
   })
 
   it("head", () => {

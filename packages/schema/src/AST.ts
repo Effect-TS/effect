@@ -683,7 +683,7 @@ export const createTemplateLiteral = (
   spans: ReadonlyArray<TemplateLiteralSpan>,
   annotations: Annotations = {}
 ): TemplateLiteral | Literal =>
-  ReadonlyArray.isNonEmptyArray(spans) ?
+  ReadonlyArray.isNonEmpty(spans) ?
     { _tag: "TemplateLiteral", head, spans, annotations } :
     createLiteral(head)
 
@@ -897,7 +897,7 @@ export const createUnion = (
       annotations
     }
   }
-  if (ReadonlyArray.isNonEmptyArray(types)) {
+  if (ReadonlyArray.isNonEmpty(types)) {
     return types[0]
   }
   return neverKeyword

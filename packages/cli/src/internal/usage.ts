@@ -71,10 +71,10 @@ export const concat = dual<
 /** @internal */
 export const getHelp = (self: Usage.Usage): HelpDoc.HelpDoc => {
   const spans = enumerate(self, InternalCliConfig.defaultConfig)
-  if (ReadonlyArray.isNonEmptyArray(spans)) {
+  if (ReadonlyArray.isNonEmpty(spans)) {
     const head = ReadonlyArray.headNonEmpty(spans)
     const tail = ReadonlyArray.tailNonEmpty(spans)
-    if (ReadonlyArray.isNonEmptyArray(tail)) {
+    if (ReadonlyArray.isNonEmpty(tail)) {
       return pipe(
         ReadonlyArray.map(spans, (span) => InternalHelpDoc.p(span)),
         ReadonlyArray.reduceRight(
@@ -223,8 +223,8 @@ const render = (self: Usage.Usage, config: CliConfig.CliConfig): Array<Span.Span
     case "Concat": {
       const leftSpan = render(self.left, config)
       const rightSpan = render(self.right, config)
-      const separator = ReadonlyArray.isNonEmptyArray(leftSpan) &&
-          ReadonlyArray.isNonEmptyArray(rightSpan)
+      const separator = ReadonlyArray.isNonEmpty(leftSpan) &&
+          ReadonlyArray.isNonEmpty(rightSpan)
         ? InternalSpan.space
         : InternalSpan.empty
       return ReadonlyArray.flatMap(

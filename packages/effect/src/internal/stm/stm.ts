@@ -1423,7 +1423,7 @@ export const validateAll = dual<
   2,
   (elements, f) =>
     core.flatMap(partition(elements, f), ([errors, values]) =>
-      RA.isNonEmptyArray(errors) ?
+      RA.isNonEmpty(errors) ?
         core.fail(errors) :
         core.succeed(values))
 )

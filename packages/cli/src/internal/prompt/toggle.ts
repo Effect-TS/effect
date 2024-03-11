@@ -55,7 +55,7 @@ const renderOutput = (
   const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
   const promptLines = options.message.split(/\r?\n/)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  if (ReadonlyArray.isNonEmptyArray(promptLines)) {
+  if (ReadonlyArray.isNonEmpty(promptLines)) {
     const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
     return pipe(
       prefix,

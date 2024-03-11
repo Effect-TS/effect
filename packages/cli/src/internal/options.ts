@@ -232,7 +232,7 @@ export const boolean = (
     aliases,
     InternalPrimitive.boolean(Option.some(ifPresent))
   )
-  if (ReadonlyArray.isNonEmptyArray(negationNames)) {
+  if (ReadonlyArray.isNonEmpty(negationNames)) {
     const head = ReadonlyArray.headNonEmpty(negationNames)
     const tail = ReadonlyArray.tailNonEmpty(negationNames)
     const negationOption = makeSingle(
@@ -1162,7 +1162,7 @@ const parseInternal = (
     }
     case "Single": {
       const singleNames = ReadonlyArray.filterMap(getNames(self), (name) => HashMap.get(args, name))
-      if (ReadonlyArray.isNonEmptyArray(singleNames)) {
+      if (ReadonlyArray.isNonEmpty(singleNames)) {
         const head = ReadonlyArray.headNonEmpty(singleNames)
         const tail = ReadonlyArray.tailNonEmpty(singleNames)
         if (ReadonlyArray.isEmptyReadonlyArray(tail)) {
@@ -1172,7 +1172,7 @@ const parseInternal = (
             )
           }
           if (
-            ReadonlyArray.isNonEmptyArray(head) &&
+            ReadonlyArray.isNonEmpty(head) &&
             ReadonlyArray.isEmptyReadonlyArray(ReadonlyArray.tailNonEmpty(head))
           ) {
             const value = ReadonlyArray.headNonEmpty(head)
@@ -1197,7 +1197,7 @@ const parseInternal = (
         value: string
       ): Effect.Effect<[string, string], ValidationError.ValidationError> => {
         const split = value.trim().split("=")
-        if (ReadonlyArray.isNonEmptyArray(split) && split.length === 2 && split[1] !== "") {
+        if (ReadonlyArray.isNonEmpty(split) && split.length === 2 && split[1] !== "") {
           return Effect.succeed(split as unknown as [string, string])
         }
         const error = InternalHelpDoc.p(`Expected a key/value pair but received '${value}'`)
@@ -1492,7 +1492,7 @@ const matchOptions = (
     HashMap.HashMap<string, ReadonlyArray<string>>
   ]
 > => {
-  if (ReadonlyArray.isNonEmptyArray(options)) {
+  if (ReadonlyArray.isNonEmpty(options)) {
     return findOptions(input, options, config).pipe(
       Effect.flatMap(([otherArgs, otherOptions, map1]) => {
         if (HashMap.isEmpty(map1)) {
@@ -1742,7 +1742,7 @@ const parseCommandLine = (
           ): [ReadonlyArray<string>, ReadonlyArray<string>] => {
             let keyValues = ReadonlyArray.empty<string>()
             let leftover = args as ReadonlyArray<string>
-            while (ReadonlyArray.isNonEmptyArray(leftover)) {
+            while (ReadonlyArray.isNonEmpty(leftover)) {
               const name = ReadonlyArray.headNonEmpty(leftover).trim()
               const normalizedName = InternalCliConfig.normalizeCase(config, name)
               // Can be in the form of "--flag key1=value1 --flag key2=value2"
@@ -1785,7 +1785,7 @@ const parseCommandLine = (
       let optionName: string | undefined = undefined
       let values = ReadonlyArray.empty<string>()
       let leftover = args as ReadonlyArray<string>
-      while (ReadonlyArray.isNonEmptyArray(leftover)) {
+      while (ReadonlyArray.isNonEmpty(leftover)) {
         const name = ReadonlyArray.headNonEmpty(leftover)
         const normalizedName = InternalCliConfig.normalizeCase(config, name)
         if (leftover.length >= 2 && ReadonlyArray.contains(normalizedNames, normalizedName)) {
@@ -1825,7 +1825,7 @@ const matchUnclustered = (
   ],
   ValidationError.ValidationError
 > => {
-  if (ReadonlyArray.isNonEmptyArray(input)) {
+  if (ReadonlyArray.isNonEmpty(input)) {
     const flag = ReadonlyArray.headNonEmpty(input)
     const otherFlags = ReadonlyArray.tailNonEmpty(input)
     return findOptions(ReadonlyArray.of(flag), options, config).pipe(
@@ -1857,7 +1857,7 @@ const merge = (
   map1: HashMap.HashMap<string, ReadonlyArray<string>>,
   map2: ReadonlyArray<[string, ReadonlyArray<string>]>
 ): HashMap.HashMap<string, ReadonlyArray<string>> => {
-  if (ReadonlyArray.isNonEmptyArray(map2)) {
+  if (ReadonlyArray.isNonEmpty(map2)) {
     const head = ReadonlyArray.headNonEmpty(map2)
     const tail = ReadonlyArray.tailNonEmpty(map2)
     const newMap = Option.match(HashMap.get(map1, head[0]), {
@@ -2010,7 +2010,7 @@ export const getZshCompletions = (
         self.primitiveType as InternalPrimitive.Instruction
       )
       const multiple = state.multiple ? "*" : ""
-      const conflicts = ReadonlyArray.isNonEmptyArray(state.conflicts)
+      const conflicts = ReadonlyArray.isNonEmpty(state.conflicts)
         ? `(${ReadonlyArray.join(state.conflicts, " ")})`
         : ""
       return ReadonlyArray.map(

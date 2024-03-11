@@ -635,7 +635,7 @@ export const takeSomeSTM = dual<
       (key, value) => core.map(pf(key, value), (a) => [key, a] as const)
     ),
     core.map((chunk) =>
-      RA.isNonEmptyArray(chunk) ?
+      RA.isNonEmpty(chunk) ?
         Option.some(chunk) :
         Option.none()
     ),
