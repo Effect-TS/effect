@@ -57,6 +57,6 @@ export class ResponseError extends Error.RefailError(TypeId, "ResponseError")<{
 
   get message() {
     const errorString = super.message
-    return `${this.reason} error (${this.methodAndUrl}): ${errorString}`
+    return `${this.reason} error (${this.response.status} ${this.methodAndUrl}): ${errorString}`
   }
 }

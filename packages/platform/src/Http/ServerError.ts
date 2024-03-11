@@ -75,7 +75,7 @@ export class ResponseError extends RefailError(TypeId, "ResponseError")<{
   }
 
   get message() {
-    return `${this.reason} error (${this.methodAndUrl}): ${super.message}`
+    return `${this.reason} error (${this.response.status} ${this.methodAndUrl}): ${super.message}`
   }
 }
 
