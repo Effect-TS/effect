@@ -5,6 +5,7 @@ import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -70,6 +71,9 @@ export class CloseEvent {
   constructor(readonly code = 1000, readonly reason?: string) {
     this[CloseEventTypeId] = CloseEventTypeId
   }
+  toString() {
+    return this.reason ? `${this.code}: ${this.reason}` : `${this.code}`
+  }
 }
 
 /**
@@ -108,14 +112,21 @@ export class SocketError extends RefailError(SocketErrorTypeId, "SocketError")<{
  */
 export const toChannel = <IE>(
   self: Socket
-): Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, SocketError | IE, IE, void, unknown> =>
+): Channel.Channel<
+  Chunk.Chunk<Uint8Array>,
+  Chunk.Chunk<Uint8Array | CloseEvent>,
+  SocketError | IE,
+  IE,
+  void,
+  unknown
+> =>
   Channel.unwrap(
     Effect.gen(function*(_) {
       const writeScope = yield* _(Scope.make())
       const write = yield* _(Scope.extend(self.writer, writeScope))
       const exitQueue = yield* _(Queue.unbounded<Exit.Exit<Chunk.Chunk<Uint8Array>, SocketError | IE>>())
 
-      const input: AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array>, unknown> = {
+      const input: AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array | CloseEvent>, unknown> = {
         awaitRead: () => Effect.unit,
         emit(chunk) {
           return Effect.catchAllCause(
@@ -162,8 +173,14 @@ export const toChannel = <IE>(
 export const toChannelWith = <IE = never>() =>
 (
   self: Socket
-): Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, SocketError | IE, IE, void, unknown> =>
-  toChannel(self)
+): Channel.Channel<
+  Chunk.Chunk<Uint8Array>,
+  Chunk.Chunk<Uint8Array | CloseEvent>,
+  SocketError | IE,
+  IE,
+  void,
+  unknown
+> => toChannel(self)
 
 /**
  * @since 1.0.0
@@ -171,7 +188,7 @@ export const toChannelWith = <IE = never>() =>
  */
 export const makeChannel = <IE = never>(): Channel.Channel<
   Chunk.Chunk<Uint8Array>,
-  Chunk.Chunk<Uint8Array>,
+  Chunk.Chunk<Uint8Array | CloseEvent>,
   SocketError | IE,
   IE,
   void,
@@ -242,6 +259,7 @@ export const fromWebSocket = (
         const ws = yield* _(acquire)
         const encoder = new TextEncoder()
         const fiberSet = yield* _(FiberSet.make<any, E | SocketError>())
+        const closeDeferred = yield* _(Deferred.make<void, SocketError>())
         const run = yield* _(
           FiberSet.runtime(fiberSet)<R>(),
           Effect.provideService(WebSocket, ws)
@@ -279,10 +297,20 @@ export const fromWebSocket = (
         yield* _(
           Queue.take(sendQueue),
           Effect.tap((chunk) =>
-            Effect.try({
-              try: () => isCloseEvent(chunk) ? ws.close(chunk.code, chunk.reason) : ws.send(chunk),
-              catch: (error) => Effect.fail(new SocketError({ reason: "Write", error: (error as any).message }))
-            })
+            isCloseEvent(chunk) ?
+              Effect.suspend(() => {
+                ws.close(chunk.code, chunk.reason)
+                return Deferred.complete(
+                  closeDeferred,
+                  closeCodeIsError(chunk.code)
+                    ? Effect.fail(new SocketError({ reason: "Close", error: chunk.toString() }))
+                    : Effect.unit
+                )
+              }) :
+              Effect.try({
+                try: () => ws.send(chunk),
+                catch: (error) => Effect.fail(new SocketError({ reason: "Write", error: (error as any).message }))
+              })
           ),
           Effect.forever,
           Effect.fork
@@ -292,7 +320,7 @@ export const fromWebSocket = (
           Effect.async<void, SocketError, never>((resume) => {
             ws.onclose = (event) => {
               if (closeCodeIsError(event.code)) {
-                resume(Effect.fail(new SocketError({ reason: "Close", error: event })))
+                resume(Effect.fail(new SocketError({ reason: "Close", error: `${event.code}: ${event.reason}` })))
               } else {
                 resume(Effect.unit)
               }
@@ -301,7 +329,8 @@ export const fromWebSocket = (
               resume(Effect.fail(new SocketError({ reason: "Read", error: (error as any).message })))
             }
           }),
-          Effect.raceFirst(FiberSet.join(fiberSet))
+          Effect.raceFirst(FiberSet.join(fiberSet)),
+          Effect.raceFirst(Deferred.await(closeDeferred))
         )
       }).pipe(Effect.scoped)
 
@@ -324,7 +353,14 @@ export const makeWebSocketChannel = <IE = never>(
   options?: {
     readonly closeCodeIsError?: (code: number) => boolean
   }
-): Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, SocketError | IE, IE, void, unknown> =>
+): Channel.Channel<
+  Chunk.Chunk<Uint8Array>,
+  Chunk.Chunk<Uint8Array | CloseEvent>,
+  SocketError | IE,
+  IE,
+  void,
+  unknown
+> =>
   Channel.unwrapScoped(
     Effect.map(makeWebSocket(url, options), toChannelWith<IE>())
   )
