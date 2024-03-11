@@ -329,15 +329,15 @@ export const scanRight: {
  * @param self - The `Array` to check.
  *
  * @example
- * import { isEmptyArray } from "effect/ReadonlyArray"
+ * import { isEmpty } from "effect/ReadonlyArray"
  *
- * assert.deepStrictEqual(isEmptyArray([]), true);
- * assert.deepStrictEqual(isEmptyArray([1, 2, 3]), false);
+ * assert.deepStrictEqual(isEmpty([]), true);
+ * assert.deepStrictEqual(isEmpty([1, 2, 3]), false);
  *
  * @category guards
  * @since 2.0.0
  */
-export const isEmptyArray: {
+export const isEmpty: {
   <A>(self: Array<A>): self is Array<A>
   <A>(self: ReadonlyArray<A>): self is ReadonlyArray<A>
 } = readonlyArray.isEmpty
@@ -1518,7 +1518,7 @@ export const flatMap: {
 } = dual(
   2,
   <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => ReadonlyArray<B>): Array<B> => {
-    if (isEmptyArray(self)) {
+    if (isEmpty(self)) {
       return []
     }
     const out: Array<B> = []

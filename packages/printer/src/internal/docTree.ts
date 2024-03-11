@@ -255,7 +255,7 @@ const foldMapSafe = <A, M>(
       )
     }
     case "ConcatTree": {
-      if (ReadonlyArray.isEmptyArray(self.trees)) {
+      if (ReadonlyArray.isEmpty(self.trees)) {
         return Effect.succeed(M.empty)
       }
       return Effect.map(
@@ -321,7 +321,7 @@ const renderSimplyDecoratedSafe = <A, M>(
       )
     }
     case "ConcatTree": {
-      if (ReadonlyArray.isEmptyArray(self.trees)) {
+      if (ReadonlyArray.isEmpty(self.trees)) {
         return Effect.succeed(M.empty)
       }
       const head = self.trees[0]

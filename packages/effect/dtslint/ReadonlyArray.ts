@@ -24,24 +24,24 @@ const symB = Symbol.for("b")
 const symC = Symbol.for("c")
 
 // -------------------------------------------------------------------------------------
-// isEmptyArray
+// isEmpty
 // -------------------------------------------------------------------------------------
 
-if (ReadonlyArray.isEmptyArray(readonlyNumbers)) {
+if (ReadonlyArray.isEmpty(readonlyNumbers)) {
   // $ExpectType readonly []
   readonlyNumbers
 }
 
 // $ExpectType <A>(a: readonly A[]) => Option<readonly []>
-Option.liftPredicate(ReadonlyArray.isEmptyArray)
+Option.liftPredicate(ReadonlyArray.isEmpty)
 
-if (ReadonlyArray.isEmptyArray(numbers)) {
+if (ReadonlyArray.isEmpty(numbers)) {
   // $ExpectType []
   numbers
 }
 
 // $ExpectType <A>(a: A[]) => Option<[]>
-Option.liftPredicate(ReadonlyArray.isEmptyArray)
+Option.liftPredicate(ReadonlyArray.isEmpty)
 
 // -------------------------------------------------------------------------------------
 // isNonEmpty

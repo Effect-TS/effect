@@ -497,7 +497,7 @@ export const encloseSep = dual<
   sep: Doc.Doc<C>
 ) => {
   const documents = ReadonlyArray.fromIterable(docs)
-  if (ReadonlyArray.isEmptyArray(documents)) {
+  if (ReadonlyArray.isEmpty(documents)) {
     return cat(left, right)
   }
   if (documents.length === 1) {

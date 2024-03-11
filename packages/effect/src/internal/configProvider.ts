@@ -791,7 +791,7 @@ const getIndexedEntries = (
     Object.entries(value).flatMap(([key, value]) => {
       const newPath = ReadonlyArray.append(path, keyName(key))
       const result = loopAny(newPath, value)
-      if (ReadonlyArray.isEmptyArray(result)) {
+      if (ReadonlyArray.isEmpty(result)) {
         return ReadonlyArray.make([newPath, ""] as [ReadonlyArray<KeyComponent>, string])
       }
       return result
