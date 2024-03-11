@@ -28,7 +28,7 @@ export type HttpClientError = RequestError | ResponseError
  * @since 1.0.0
  * @category error
  */
-export class RequestError extends Error.RefailClass(TypeId, "RequestError")<{
+export class RequestError extends Error.RefailError(TypeId, "RequestError")<{
   readonly request: ClientRequest.ClientRequest
   readonly reason: "Transport" | "Encode" | "InvalidUrl"
 }> {
@@ -46,7 +46,7 @@ export class RequestError extends Error.RefailClass(TypeId, "RequestError")<{
  * @since 1.0.0
  * @category error
  */
-export class ResponseError extends Error.RefailClass(TypeId, "ResponseError")<{
+export class ResponseError extends Error.RefailError(TypeId, "ResponseError")<{
   readonly request: ClientRequest.ClientRequest
   readonly response: ClientResponse.ClientResponse
   readonly reason: "StatusCode" | "Decode" | "EmptyBody"
