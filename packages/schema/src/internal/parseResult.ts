@@ -12,7 +12,7 @@ export type ParseIssue =
   | Tuple
   | TypeLiteral
   | Union
-  | Transform
+  | Transformation
   | Type
   | Forbidden
 
@@ -72,7 +72,7 @@ export class Unexpected {
 }
 
 /** @internal */
-export class Transform {
+export class Transformation {
   readonly _tag = "Transformation"
   constructor(
     readonly ast: AST.Transformation,

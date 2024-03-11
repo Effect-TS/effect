@@ -2274,11 +2274,11 @@ export const compose = (ab: AST, cd: AST): AST => new Transformation(ab, cd, com
 export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: PropertyKey }): AST => {
   switch (ast._tag) {
     case "TypeLiteral": {
-      const propertySignatureTransforms: Array<PropertySignatureTransformation> = []
+      const propertySignatureTransformations: Array<PropertySignatureTransformation> = []
       for (const key of _util.ownKeys(mapping)) {
         const name = mapping[key]
         if (name !== undefined) {
-          propertySignatureTransforms.push(
+          propertySignatureTransformations.push(
             new PropertySignatureTransformation(
               key,
               name,
@@ -2288,7 +2288,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
           )
         }
       }
-      if (propertySignatureTransforms.length === 0) {
+      if (propertySignatureTransformations.length === 0) {
         return ast
       }
       return new Transformation(
@@ -2306,7 +2306,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
           }),
           ast.indexSignatures
         ),
-        new TypeLiteralTransformation(propertySignatureTransforms)
+        new TypeLiteralTransformation(propertySignatureTransformations)
       )
     }
     case "Suspend":

@@ -63,7 +63,7 @@ const draw = (indentation: string, forest: Forest<string>): string => {
   return r
 }
 
-const formatTransformationKind = (kind: ParseResult.Transform["kind"]): string => {
+const formatTransformationKind = (kind: ParseResult.Transformation["kind"]): string => {
   switch (kind) {
     case "Encoded":
       return "Encoded side transformation failure"

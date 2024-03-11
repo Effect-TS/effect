@@ -166,7 +166,7 @@ export {
    * @category model
    * @since 1.0.0
    */
-  Transform,
+  Transformation,
   /**
    * Error that occurs when an array or tuple has an error.
    *

@@ -399,18 +399,18 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           _parseResult.flatMap(
             _parseResult.mapError(
               from(i1, options),
-              (e) => new _parseResult.Transform(ast, i1, isDecoding ? "Encoded" : "Type", e)
+              (e) => new _parseResult.Transformation(ast, i1, isDecoding ? "Encoded" : "Type", e)
             ),
             (a) =>
               _parseResult.flatMap(
                 _parseResult.mapError(
                   transform(a, options ?? AST.defaultParseOption, ast),
-                  (e) => new _parseResult.Transform(ast, i1, "Transformation", e)
+                  (e) => new _parseResult.Transformation(ast, i1, "Transformation", e)
                 ),
                 (i2) =>
                   _parseResult.mapError(
                     to(i2, options),
-                    (e) => new _parseResult.Transform(ast, i1, isDecoding ? "Type" : "Encoded", e)
+                    (e) => new _parseResult.Transformation(ast, i1, isDecoding ? "Type" : "Encoded", e)
                   )
               )
           ),

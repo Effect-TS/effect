@@ -5,142 +5,38 @@
 "@effect/rpc": minor
 ---
 
-- AST: refactor `Tuple` to `TupleType`
+# Breaking Changes
 
-- AST: refactor `Transform` to `Transformation`
+- The `Format` module has been removed
 
-- Schema: swap `TaggedRequest` type parameters
+## `AST` module
 
-- Serializable: swap `SerializableWithResult` type parameters
-
-- Serializable: swap `WithResult` type parameters
-
-- Schema: require an identifier for Class APIs (to avoid dual package hazard):
-
-```diff
--class A extends S.Class<A>()({ a: S.string }) {}
-+class A extends S.Class<A>("A")({ a: S.string }) {}
-```
-
-- AST: change `Tuple` definition
-
-```diff
-export class Tuple implements Annotated {
-...
--  readonly rest: Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>,
-+  readonly rest: ReadonlyArray<AST>,
-...
-}
-```
-
-- Schema: remove `element` and `rest`:
-
-Before
-
-```ts
-import * as S from "@effect/schema/Schema";
-
-const schema1 = S.tuple().pipe(S.rest(S.number), S.element(S.boolean));
-
-const schema2 = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean));
-```
-
-Now
-
-```ts
-import * as S from "@effect/schema/Schema";
-
-const schema1 = S.array(S.number, S.boolean);
-
-const schema2 = S.tuple([S.string], S.number, S.boolean);
-```
-
-- Schema: refactor `optionalElement`:
-
-Before
-
-```ts
-import * as S from "@effect/schema/Schema";
-
-const schema = S.tuple(S.string).pipe(S.optionalElement(S.number));
-```
-
-Now
-
-```ts
-import * as S from "@effect/schema/Schema";
-
-const schema = S.tuple(S.string, S.optionalElement(S.number));
-```
-
-- AST: remove `createRecord`
-
-- rename `Schema.Schema.To` to `Schema.Schema.Type`, `Schema.to` to `Schema.typeSchema`, `AST.to` to `AST.typeAST`
-
-- rename `Schema.Schema.From` to `Schema.Schema.Encoded` and `Schema.from` to `Schema.encodedSchema`, `AST.from` to `AST.encodedAST`
-
-- change `AST.Transform.kind` to `"Encoded" | "Transformation" | "Type"`
-
-- Schema: change `PropertySignature` signature from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<Key extends PropertyKey, ToToken extends Token, To, FromToken extends Token, From, R = never>`
-
-- Schema: expose `fields` (`Class` API) and remove `struct`
+- `Tuple` has been refactored to `TupleType`, and its `_tag` has consequently been renamed. The type of its `rest` property has changed from `Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>` to `ReadonlyArray<AST>`.
+- `Transform` has been refactored to `Transformation`, and its `_tag` property has consequently been renamed. Its property `transformation` has now the type `TransformationKind = FinalTransformation | ComposeTransformation | TypeLiteralTransformation`.
+- `createRecord` has been removed
+- `AST.to` has been renamed to `AST.typeAST`
+- `AST.from` has been renamed to `AST.encodedAST`
+- `ExamplesAnnotation` and `DefaultAnnotation` now accept a type parameter
+- `format` has been removed:
+  Before
 
   ```ts
-  import * as S from "@effect/schema/Schema";
-
-  class Person extends S.Class<Person>()({
-    name: S.string,
-    age: S.number,
-  }) {}
-
-  /*
-  const personFields: {
-      a: S.Schema<string, string, never>;
-      b: S.Schema<number, number, never>;
-  }
-  */
-  const personFields = Person.fields;
-
-  // instead of Person.struct
-  const struct = S.struct(Person.fields);
-
-  /*
-  instead of:
-  class PersonWithGender extends Person.extend<PersonWithGender>()({
-    gender: S.string
-  }) {}
-  */
-  class PersonWithGender extends S.Class<PersonWithGender>()({
-    gender: S.string,
-    ...Person.fields,
-  }) {}
-
-  /*
-  const personWithGenderFields: {
-      name: S.Schema<string, string, never>;
-      age: S.Schema<number, number, never>;
-      gender: S.Schema<string, string, never>;
-  }
-  */
-  const personWithGenderFields = PersonWithGender.fields;
+  AST.format(ast, verbose?)
   ```
 
-- Schema: rename `uniqueSymbol` to `uniqueSymbolFromSelf`
+  Now
 
-- AST: refactor `ExamplesAnnotation` and `DefaultAnnotation` to accept a type parameter
+  ```ts
+  ast.toString(verbose?)
+  ```
 
-- Schema: use `TreeFormatter` in `BrandSchema`s
+- `setAnnotation` has been removed (use `annotations` instead)
+- `mergeAnnotations` has been renamed to `annotations`
+- move `defaultParseOption` from `Parser.ts` to `AST.ts`
 
-- refactor Schema annotations interfaces:
+## `ParseResult` module
 
-  - add `PropertySignatureAnnotations` (baseline)
-  - remove `DocAnnotations`
-  - rename `DeclareAnnotations` to `Annotations`
-
-- remove `Format` module
-
-- ParseResult: switch to classes and remove constructors
-
+- The `ParseResult` module now uses classes and custom constructors have been removed:
   Before
 
   ```ts
@@ -157,106 +53,70 @@ const schema = S.tuple(S.string, S.optionalElement(S.number));
   new ParseResult.Type(ast, actual);
   ```
 
-- AST: simplify `AST.PropertySignatureTransform`:
+- `Transform` has been refactored to `Transformation`, and its `kind` property now accepts `"Encoded"`, `"Transformation"`, or `"Type"` as values
 
-  - remove `FinalPropertySignatureTransformation`, `isFinalPropertySignatureTransformation`
-  - rename `PropertySignatureTransform` to `PropertySignatureTransformation` and change constructor signature
+## `Schema` module
 
-- AST: remove `format`
+- `uniqueSymbol` has been renamed to `uniqueSymbolFromSelf`
+- `Schema.Schema.To` has been renamed to `Schema.Schema.Type`, and `Schema.to` to `Schema.typeSchema`
+- `Schema.Schema.From` has been renamed to `Schema.Schema.Encoded`, and `Schema.from` to `Schema.encodedSchema`
+- The type parameters of `TaggedRequest` have been swapped
+- The signature of `PropertySignature` has been changed from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<ToToken extends Token, To, Key extends PropertyKey, FromToken extends Token, From, R>`
+- Class APIs
+  - Class APIs now expose `fields` and require an identifier
+    ```diff
+    -class A extends S.Class<A>()({ a: S.string }) {}
+    +class A extends S.Class<A>("A")({ a: S.string }) {}
+    ```
+- `element` and `rest` have been removed in favor of `array` and `tuple`:
 
   Before
-
-  ```ts
-  AST.format(ast, verbose?)
-  ```
-
-  Now
-
-  ```ts
-  ast.toString(verbose?)
-  ```
-
-- Updated the `MessageAnnotation` type to return `string | Effect<string>`.
-
-  TreeFormatter:
-
-  - add `formatErrorEffect`
-  - add `formatIssueEffect`
-  - remove `formatIssues`
-
-  ArrayFormatter:
-
-  - add `formatErrorEffect`
-  - add `formatIssueEffect`
-  - remove `formatIssues`
-
-  You can now return an `Effect<string>` if your message needs some optional service:
 
   ```ts
   import * as S from "@effect/schema/Schema";
-  import * as TreeFormatter from "@effect/schema/TreeFormatter";
-  import * as Context from "effect/Context";
-  import * as Effect from "effect/Effect";
-  import * as Either from "effect/Either";
-  import * as Option from "effect/Option";
 
-  class Messages extends Context.Tag("Messages")<
-    Messages,
-    {
-      NonEmpty: string;
-    }
-  >() {}
+  const schema1 = S.tuple().pipe(S.rest(S.number), S.element(S.boolean));
 
-  const Name = S.NonEmpty.pipe(
-    S.message(() =>
-      Effect.gen(function* (_) {
-        const service = yield* _(Effect.serviceOption(Messages));
-        return Option.match(service, {
-          onNone: () => "Invalid string",
-          onSome: (messages) => messages.NonEmpty,
-        });
-      })
-    )
+  const schema2 = S.tuple(S.string).pipe(
+    S.rest(S.number),
+    S.element(S.boolean)
   );
-
-  S.decodeUnknownSync(Name)(""); // => throws "Invalid string"
-
-  const result = S.decodeUnknownEither(Name)("").pipe(
-    Either.mapLeft((error) =>
-      TreeFormatter.formatErrorEffect(error).pipe(
-        Effect.provideService(Messages, { NonEmpty: "should be non empty" }),
-        Effect.runSync
-      )
-    )
-  );
-
-  console.log(result); // => { _id: 'Either', _tag: 'Left', left: 'should be non empty' }
-  ```
-
-- AST: switch to classes and remove constructors
-
-  Before
-
-  ```ts
-  import * as AST from "@effect/schema/AST";
-
-  AST.createLiteral("a");
   ```
 
   Now
 
   ```ts
-  import * as AST from "@effect/schema/AST";
+  import * as S from "@effect/schema/Schema";
 
-  new AST.Literal("a");
+  const schema1 = S.array(S.number, S.boolean);
+
+  const schema2 = S.tuple([S.string], S.number, S.boolean);
   ```
 
-- AST: remove `setAnnotation` (use `annotations` instead) and rename `mergeAnnotations` to `annotations`
+- `optionalElement` has been refactored:
 
-- move `defaultParseOption` from `Parser.ts` to `AST.ts`
+  Before
 
-- replace `propertySignatureAnnotations` with `propertySignature`, add `annotations` method to `PropertySignature`
+  ```ts
+  import * as S from "@effect/schema/Schema";
 
+  const schema = S.tuple(S.string).pipe(S.optionalElement(S.number));
+  ```
+
+  Now
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  const schema = S.tuple(S.string, S.optionalElement(S.number));
+  ```
+
+- use `TreeFormatter` in `BrandSchema`s
+- Schema annotations interfaces have been refactored:
+  - add `PropertySignatureAnnotations` (baseline)
+  - remove `DocAnnotations`
+  - rename `DeclareAnnotations` to `Annotations`
+- `propertySignatureAnnotations` has been replaced by the `propertySignature` constructor which owns a `annotations` method
   Before
 
   ```ts
@@ -279,3 +139,7 @@ const schema = S.tuple(S.string, S.optionalElement(S.number));
     description: "description",
   });
   ```
+
+## `Serializable` module
+
+- The type parameters of `SerializableWithResult` and `WithResult` have been swapped
