@@ -35,7 +35,9 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
       )
     case "TypeLiteral":
       return new AST.TypeLiteral(
-        ast.propertySignatures.map((p) => ({ ...p, type: effectifyAST(p.type) })),
+        ast.propertySignatures.map((p) =>
+          new AST.PropertySignature(p.name, effectifyAST(p.type), p.isOptional, p.isReadonly, p.annotations)
+        ),
         ast.indexSignatures.map((is) => {
           return new AST.IndexSignature(is.parameter, effectifyAST(is.type), is.isReadonly)
         }),

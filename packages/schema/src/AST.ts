@@ -341,6 +341,16 @@ export class Declaration implements Annotated {
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => "<declaration schema>")
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      typeParameters: this.typeParameters.map((ast) => ast.toJSON()),
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 const createASTGuard = <T extends AST["_tag"]>(tag: T) => (ast: AST): ast is Extract<AST, { _tag: T }> =>
@@ -374,6 +384,16 @@ export class Literal implements Annotated {
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => _util.formatUnknown(this.literal))
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      literal: Predicate.isBigInt(this.literal) ? String(this.literal) : this.literal,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -403,6 +423,16 @@ export class UniqueSymbol implements Annotated {
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => _util.formatUnknown(this.symbol))
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      symbol: String(this.symbol),
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -426,6 +456,15 @@ export class UndefinedKeyword implements Annotated {
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -459,6 +498,15 @@ export class VoidKeyword implements Annotated {
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -490,6 +538,15 @@ export class NeverKeyword implements Annotated {
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -523,6 +580,15 @@ export class UnknownKeyword implements Annotated {
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -555,6 +621,15 @@ export class AnyKeyword implements Annotated {
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -586,6 +661,15 @@ export class StringKeyword implements Annotated {
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -620,6 +704,15 @@ export class NumberKeyword implements Annotated {
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -652,6 +745,15 @@ export class BooleanKeyword implements Annotated {
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -686,6 +788,15 @@ export class BigIntKeyword implements Annotated {
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -719,6 +830,15 @@ export class SymbolKeyword implements Annotated {
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -751,6 +871,15 @@ export class ObjectKeyword implements Annotated {
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -792,6 +921,16 @@ export class Enums implements Annotated {
       () => `<enum ${this.enums.length} value(s): ${this.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
     )
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      enums: this.enums,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -815,6 +954,15 @@ export class TemplateLiteralSpan {
         return "${string}"
       case "NumberKeyword":
         return "${number}"
+    }
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      type: this.type.toJSON(),
+      literal: this.literal
     }
   }
 }
@@ -848,6 +996,17 @@ export class TemplateLiteral implements Annotated {
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => formatTemplateLiteral(this))
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      head: this.head,
+      spans: this.spans.map((span) => span.toJSON()),
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 const formatTemplateLiteral = (ast: TemplateLiteral): string =>
@@ -866,6 +1025,15 @@ export const isTemplateLiteral: (ast: AST) => ast is TemplateLiteral = createAST
  */
 export class Element {
   constructor(readonly type: AST, readonly isOptional: boolean) {}
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      type: this.type.toJSON(),
+      isOptional: this.isOptional
+    }
+  }
 }
 
 /**
@@ -902,6 +1070,18 @@ export class TupleType implements Annotated {
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => formatTuple(this))
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      elements: this.elements.map((e) => e.toJSON()),
+      rest: this.rest.map((ast) => ast.toJSON()),
+      isReadonly: this.isReadonly,
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -950,6 +1130,18 @@ export class PropertySignature implements Annotated {
     readonly isReadonly: boolean,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      name: String(this.name),
+      type: this.type.toJSON(),
+      isOptional: this.isOptional,
+      isReadonly: this.isReadonly,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /**
@@ -992,6 +1184,16 @@ export class IndexSignature {
       throw new Error(
         "An index signature parameter type must be `string`, `symbol`, a template literal type or a refinement of the previous types"
       )
+    }
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      parameter: this.parameter.toJSON(),
+      type: this.type.toJSON(),
+      isReadonly: this.isReadonly
     }
   }
 }
@@ -1062,6 +1264,17 @@ export class TypeLiteral implements Annotated {
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => formatTypeLiteral(this))
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      propertySignatures: this.propertySignatures.map((ps) => ps.toJSON()),
+      indexSignatures: this.indexSignatures.map((ps) => ps.toJSON()),
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -1164,6 +1377,16 @@ export class Union implements Annotated {
       () => prettyUnion(this.types.map(String))
     )
   }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      types: this.types.map((ast) => ast.toJSON()),
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
 }
 
 /** @internal */
@@ -1177,6 +1400,11 @@ export const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Arr
  * @since 1.0.0
  */
 export const isUnion: (ast: AST) => ast is Union = createASTGuard("Union")
+
+const toJSONMemoMap = globalValue(
+  Symbol.for("@effect/schema/AST/toJSONMemoMap"),
+  () => new WeakMap<AST, object>()
+)
 
 /**
  * @category model
@@ -1203,6 +1431,24 @@ export class Suspend implements Annotated {
       ),
       Option.getOrElse(() => "<suspended schema>")
     )
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    const ast = this.f()
+    let out = toJSONMemoMap.get(ast)
+    if (out) {
+      return out
+    }
+    toJSONMemoMap.set(ast, { _tag: this._tag })
+    out = {
+      _tag: this._tag,
+      ast: ast.toJSON(),
+      annotations: toJSONAnnotations(this.annotations)
+    }
+    toJSONMemoMap.set(ast, out)
+    return out
   }
 }
 
@@ -1235,6 +1481,16 @@ export class Refinement<From extends AST = AST> implements Annotated {
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => "<refinement schema>")
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      from: this.from.toJSON(),
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -1283,6 +1539,17 @@ export class Transformation implements Annotated {
       getExpected(this, verbose),
       () => `(${String(this.from)} <-> ${String(this.to)})`
     )
+  }
+  /**
+   * @since 1.0.0
+   */
+  toJSON(): object {
+    return {
+      _tag: this._tag,
+      from: this.from.toJSON(),
+      to: this.to.toJSON(),
+      annotations: toJSONAnnotations(this.annotations)
+    }
   }
 }
 
@@ -1911,65 +2178,18 @@ export const encodedAST = (ast: AST): AST => {
   return ast
 }
 
-const toStringMemoSet = globalValue(
-  Symbol.for("@effect/schema/AST/toStringMemoSet"),
-  () => new WeakSet<AST>()
-)
-
-const containerASTTags: { [K in AST["_tag"]]?: true } = {
-  Declaration: true,
-  Refinement: true,
-  TupleType: true,
-  TypeLiteral: true,
-  Union: true,
-  Suspend: true,
-  Transformation: true
+const toJSONAnnotations = (annotations: Annotations): object => {
+  const out: Record<string, unknown> = {}
+  for (const k of Object.getOwnPropertySymbols(annotations)) {
+    out[String(k)] = annotations[k]
+  }
+  return out
 }
-
-const isContainerAST = (ast: object): ast is
-  | Declaration
-  | Refinement
-  | TupleType
-  | TypeLiteral
-  | Union
-  | Suspend
-  | Transformation => "_tag" in ast && Predicate.isString(ast["_tag"]) && ast["_tag"] in containerASTTags
-
-/** @internal */
-export const toString = (ast: AST): string =>
-  JSON.stringify(ast, (key, value) => {
-    if (Predicate.isSymbol(value)) {
-      return String(value)
-    }
-    if (typeof value === "object" && value !== null) {
-      if (isContainerAST(value)) {
-        if (toStringMemoSet.has(value)) {
-          return "<suspended schema>"
-        }
-        toStringMemoSet.add(value)
-        if (isSuspend(value)) {
-          const out = value.f()
-          if (toStringMemoSet.has(out)) {
-            return "<suspended schema>"
-          }
-          toStringMemoSet.add(out)
-          return out
-        }
-      } else if (key === "annotations") {
-        const out: Record<string, unknown> = {}
-        for (const k of _util.ownKeys(value)) {
-          out[String(k)] = value[k]
-        }
-        return out
-      }
-    }
-    return value
-  }, 2)
 
 /**
  * @since 1.0.0
  */
-export const hash = (ast: AST): number => Hash.string(toString(ast))
+export const hash = (ast: AST): number => Hash.string(JSON.stringify(ast, null, 2))
 
 /** @internal */
 export const getCardinality = (ast: AST): number => {
