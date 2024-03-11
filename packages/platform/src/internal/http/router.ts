@@ -151,7 +151,7 @@ const toHttpApp = <R, E>(
         result = router.find("GET", request.url)
       }
       if (result === undefined) {
-        return Effect.fail(Error.RouteNotFound({ request }))
+        return Effect.fail(new Error.RouteNotFound({ request }))
       }
       const route = result.handler
       if (route.prefix._tag === "Some") {

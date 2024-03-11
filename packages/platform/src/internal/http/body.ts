@@ -48,8 +48,10 @@ class RawImpl implements Body.Raw {
 }
 
 /** @internal */
-export const raw = (body: unknown, contentType?: string, contentLength?: number): Body.Raw =>
-  new RawImpl(body, contentType, contentLength)
+export const raw = (body: unknown, options?: {
+  readonly contentType?: string
+  readonly contentLength?: number
+}): Body.Raw => new RawImpl(body, options?.contentType, options?.contentLength)
 
 class Uint8ArrayImpl implements Body.Uint8Array {
   readonly [TypeId]: Body.TypeId

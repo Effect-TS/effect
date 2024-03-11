@@ -23,7 +23,7 @@ export const currentXMLHttpRequest = globalValue(
 /** @internal */
 export const makeXMLHttpRequest = Client.makeDefault((request) =>
   UrlParams.makeUrl(request.url, request.urlParams, (_) =>
-    Error.RequestError({
+    new Error.RequestError({
       request,
       reason: "InvalidUrl",
       error: _
@@ -54,11 +54,13 @@ export const makeXMLHttpRequest = Client.makeDefault((request) =>
             }
             xhr.onreadystatechange = onChange
             xhr.onerror = (_event) => {
-              resume(Effect.fail(Error.RequestError({
-                request,
-                reason: "Transport",
-                error: xhr.statusText
-              })))
+              resume(Effect.fail(
+                new Error.RequestError({
+                  request,
+                  reason: "Transport",
+                  error: xhr.statusText
+                })
+              ))
             }
             onChange()
           })),
@@ -92,11 +94,13 @@ const sendBody = (
         }),
         {
           onFailure: (error) =>
-            Effect.fail(Error.RequestError({
-              request,
-              reason: "Encode",
-              error
-            })),
+            Effect.fail(
+              new Error.RequestError({
+                request,
+                reason: "Encode",
+                error
+              })
+            ),
           onSuccess: (body) => Effect.sync(() => xhr.send(body))
         }
       )
@@ -223,7 +227,7 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
     source: XMLHttpRequest
   ) {
     super(source, (_) =>
-      Error.ResponseError({
+      new Error.ResponseError({
         request,
         response: this,
         reason: "Decode",
