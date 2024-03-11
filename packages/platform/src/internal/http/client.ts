@@ -11,13 +11,12 @@ import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as Body from "../../Http/Body.js"
 import type * as Client from "../../Http/Client.js"
-import type * as Error from "../../Http/ClientError.js"
+import * as Error from "../../Http/ClientError.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
 import type * as ClientResponse from "../../Http/ClientResponse.js"
 import * as Method from "../../Http/Method.js"
 import * as UrlParams from "../../Http/UrlParams.js"
 import * as internalBody from "./body.js"
-import * as internalError from "./clientError.js"
 import * as internalRequest from "./clientRequest.js"
 import * as internalResponse from "./clientResponse.js"
 
@@ -82,7 +81,7 @@ export const fetch = (options?: RequestInit): Client.Client.Default =>
   makeDefault((request) =>
     Effect.flatMap(
       UrlParams.makeUrl(request.url, request.urlParams, (_) =>
-        internalError.requestError({
+        new Error.RequestError({
           request,
           reason: "InvalidUrl",
           error: _
@@ -109,7 +108,7 @@ export const fetch = (options?: RequestInit): Client.Client.Default =>
                       signal: controller.signal
                     } as any),
                   catch: (_) =>
-                    internalError.requestError({
+                    new Error.RequestError({
                       request,
                       reason: "Transport",
                       error: _
@@ -419,7 +418,7 @@ export const filterStatus = dual<
       effect,
       (response) => f(response.status),
       (response) =>
-        internalError.responseError({
+        new Error.ResponseError({
           request,
           response,
           reason: "StatusCode",
@@ -571,7 +570,7 @@ export const schemaFunction = dual<
       Effect.tryMap(encode(a), {
         try: (body) => new TextEncoder().encode(JSON.stringify(body)),
         catch: (error) =>
-          internalError.requestError({
+          new Error.RequestError({
             request,
             reason: "Encode",
             error

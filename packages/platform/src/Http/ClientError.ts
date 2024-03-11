@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Error from "@effect/platform/Error"
 import * as internal from "../internal/http/clientError.js"
 import type * as ClientRequest from "./ClientRequest.js"
 import type * as ClientResponse from "./ClientResponse.js"
@@ -25,55 +26,37 @@ export type HttpClientError = RequestError | ResponseError
 
 /**
  * @since 1.0.0
- */
-export declare namespace HttpError {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Proto {
-    readonly [TypeId]: TypeId
-    readonly _tag: string
-  }
-
-  /**
-   * @since 1.0.0
-   */
-  export type ProvidedFields = TypeId | "_tag"
-}
-
-/**
- * @since 1.0.0
  * @category error
  */
-export interface RequestError extends HttpError.Proto {
-  readonly _tag: "RequestError"
+export class RequestError extends Error.RefailError(TypeId, "RequestError")<{
   readonly request: ClientRequest.ClientRequest
   readonly reason: "Transport" | "Encode" | "InvalidUrl"
-  readonly error: unknown
+}> {
+  get methodAndUrl() {
+    return `${this.request.method} ${this.request.url}`
+  }
+
+  get message() {
+    const errorString = super.message
+    return `${this.reason} error (${this.methodAndUrl}): ${errorString}`
+  }
 }
 
 /**
  * @since 1.0.0
  * @category error
  */
-export const RequestError: (props: Omit<RequestError, HttpError.ProvidedFields>) => RequestError = internal.requestError
-
-/**
- * @since 1.0.0
- * @category error
- */
-export interface ResponseError extends HttpError.Proto {
-  readonly _tag: "ResponseError"
+export class ResponseError extends Error.RefailError(TypeId, "ResponseError")<{
   readonly request: ClientRequest.ClientRequest
   readonly response: ClientResponse.ClientResponse
   readonly reason: "StatusCode" | "Decode" | "EmptyBody"
-  readonly error: unknown
-}
+}> {
+  get methodAndUrl() {
+    return `${this.request.method} ${this.request.url}`
+  }
 
-/**
- * @since 1.0.0
- * @category error
- */
-export const ResponseError: (props: Omit<ResponseError, HttpError.ProvidedFields>) => ResponseError =
-  internal.responseError
+  get message() {
+    const errorString = super.message
+    return `${this.reason} error (${this.response.status} ${this.methodAndUrl}): ${errorString}`
+  }
+}

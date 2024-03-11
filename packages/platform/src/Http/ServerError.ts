@@ -3,6 +3,7 @@
  */
 import type * as Cause from "effect/Cause"
 import type * as FiberId from "effect/FiberId"
+import { RefailError, TypeIdError } from "../Error.js"
 import * as internal from "../internal/http/serverError.js"
 import type * as ServerRequest from "./ServerRequest.js"
 import type * as ServerResponse from "./ServerResponse.js"
@@ -27,32 +28,19 @@ export type HttpServerError = RequestError | ResponseError | RouteNotFound | Ser
 
 /**
  * @since 1.0.0
- */
-export declare namespace HttpError {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Proto {
-    readonly [TypeId]: TypeId
-    readonly _tag: string
-  }
-
-  /**
-   * @since 1.0.0
-   */
-  export type ProvidedFields = TypeId | "_tag"
-}
-
-/**
- * @since 1.0.0
  * @category error
  */
-export interface RequestError extends HttpError.Proto {
-  readonly _tag: "RequestError"
+export class RequestError extends RefailError(TypeId, "RequestError")<{
   readonly request: ServerRequest.ServerRequest
   readonly reason: "Transport" | "Decode"
-  readonly error: unknown
+}> {
+  get methodAndUrl() {
+    return `${this.request.method} ${this.request.url}`
+  }
+
+  get message() {
+    return `${this.reason} error (${this.methodAndUrl}): ${super.message}`
+  }
 }
 
 /**
@@ -65,57 +53,38 @@ export const isServerError: (u: unknown) => u is HttpServerError = internal.isSe
  * @since 1.0.0
  * @category error
  */
-export const RequestError: (props: Omit<RequestError, HttpError.ProvidedFields>) => RequestError = internal.requestError
-
-/**
- * @since 1.0.0
- * @category error
- */
-export interface RouteNotFound extends HttpError.Proto {
-  readonly _tag: "RouteNotFound"
+export class RouteNotFound extends TypeIdError(TypeId, "RouteNotFound")<{
   readonly request: ServerRequest.ServerRequest
+}> {
+  get message() {
+    return `${this.request.method} ${this.request.url} not found`
+  }
 }
 
 /**
  * @since 1.0.0
  * @category error
  */
-export const RouteNotFound: (props: Omit<RouteNotFound, HttpError.ProvidedFields>) => RouteNotFound =
-  internal.routeNotFound
-
-/**
- * @since 1.0.0
- * @category error
- */
-export interface ResponseError extends HttpError.Proto {
-  readonly _tag: "ResponseError"
+export class ResponseError extends RefailError(TypeId, "ResponseError")<{
   readonly request: ServerRequest.ServerRequest
   readonly response: ServerResponse.ServerResponse
   readonly reason: "Decode"
-  readonly error: unknown
+}> {
+  get methodAndUrl() {
+    return `${this.request.method} ${this.request.url}`
+  }
+
+  get message() {
+    return `${this.reason} error (${this.response.status} ${this.methodAndUrl}): ${super.message}`
+  }
 }
 
 /**
  * @since 1.0.0
  * @category error
  */
-export const ResponseError: (props: Omit<ResponseError, HttpError.ProvidedFields>) => ResponseError =
-  internal.responseError
-
-/**
- * @since 1.0.0
- * @category error
- */
-export interface ServeError extends HttpError.Proto {
-  readonly _tag: "ServeError"
-  readonly error: unknown
+export class ServeError extends RefailError(TypeId, "ServeError")<{}> {
 }
-
-/**
- * @since 1.0.0
- * @category error
- */
-export const ServeError: (props: Omit<ServeError, HttpError.ProvidedFields>) => ServeError = internal.serveError
 
 /**
  * @since 1.0.0

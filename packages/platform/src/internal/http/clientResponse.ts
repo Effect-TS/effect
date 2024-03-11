@@ -3,13 +3,12 @@ import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import type * as Error from "../../Http/ClientError.js"
+import * as Error from "../../Http/ClientError.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
 import type * as ClientResponse from "../../Http/ClientResponse.js"
 import * as Headers from "../../Http/Headers.js"
 import * as IncomingMessage from "../../Http/IncomingMessage.js"
 import * as UrlParams from "../../Http/UrlParams.js"
-import * as internalError from "./clientError.js"
 
 /** @internal */
 export const TypeId: ClientResponse.TypeId = Symbol.for("@effect/platform/Http/ClientResponse") as ClientResponse.TypeId
@@ -47,25 +46,27 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
   get stream(): Stream.Stream<Uint8Array, Error.ResponseError> {
     return this.source.body
       ? Stream.fromReadableStream(() => this.source.body!, (_) =>
-        internalError.responseError({
+        new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",
           error: _
         }))
-      : Stream.fail(internalError.responseError({
-        request: this.request,
-        response: this,
-        reason: "EmptyBody",
-        error: "can not create stream from empty body"
-      }))
+      : Stream.fail(
+        new Error.ResponseError({
+          request: this.request,
+          response: this,
+          reason: "EmptyBody",
+          error: "can not create stream from empty body"
+        })
+      )
   }
 
   get json(): Effect.Effect<unknown, Error.ResponseError> {
     return Effect.tryMap(this.text, {
       try: (text) => text === "" ? null : JSON.parse(text) as unknown,
       catch: (_) =>
-        internalError.responseError({
+        new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",
@@ -79,7 +80,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
     return this.textBody ??= Effect.tryPromise({
       try: () => this.source.text(),
       catch: (_) =>
-        internalError.responseError({
+        new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",
@@ -93,7 +94,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),
         catch: (_) =>
-          internalError.responseError({
+          new Error.ResponseError({
             request: this.request,
             response: this,
             reason: "Decode",
@@ -107,7 +108,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
     return this.formDataBody ??= Effect.tryPromise({
       try: () => this.source.formData(),
       catch: (_) =>
-        internalError.responseError({
+        new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",
@@ -121,7 +122,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
     return this.arrayBufferBody ??= Effect.tryPromise({
       try: () => this.source.arrayBuffer(),
       catch: (_) =>
-        internalError.responseError({
+        new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",

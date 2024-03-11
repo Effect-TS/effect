@@ -98,7 +98,7 @@ export const schemaBodyFormJson = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
         if (isMultipart(request)) {
           return Effect.flatMap(
             Effect.mapError(request.multipart, (error) =>
-              Error.RequestError({
+              new Error.RequestError({
                 request,
                 reason: "Decode",
                 error
@@ -158,16 +158,18 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
   get stream(): Stream.Stream<Uint8Array, Error.RequestError> {
     return this.source.body
       ? Stream.fromReadableStream(() => this.source.body as any, (_) =>
-        Error.RequestError({
+        new Error.RequestError({
           request: this,
           reason: "Decode",
           error: _
         }))
-      : Stream.fail(Error.RequestError({
-        request: this,
-        reason: "Decode",
-        error: "can not create stream from empty body"
-      }))
+      : Stream.fail(
+        new Error.RequestError({
+          request: this,
+          reason: "Decode",
+          error: "can not create stream from empty body"
+        })
+      )
   }
 
   private textEffect: Effect.Effect<string, Error.RequestError> | undefined
@@ -179,7 +181,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       Effect.tryPromise({
         try: () => this.source.text(),
         catch: (error) =>
-          Error.RequestError({
+          new Error.RequestError({
             request: this,
             reason: "Decode",
             error
@@ -193,7 +195,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     return Effect.tryMap(this.text, {
       try: (_) => JSON.parse(_) as unknown,
       catch: (error) =>
-        Error.RequestError({
+        new Error.RequestError({
           request: this,
           reason: "Decode",
           error
@@ -206,7 +208,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),
         catch: (error) =>
-          Error.RequestError({
+          new Error.RequestError({
             request: this,
             reason: "Decode",
             error
@@ -251,7 +253,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
         catch: (error) =>
-          Error.RequestError({
+          new Error.RequestError({
             request: this,
             reason: "Decode",
             error
@@ -262,10 +264,12 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, Error.RequestError> {
-    return Effect.fail(Error.RequestError({
-      request: this,
-      reason: "Decode",
-      error: "Not an upgradeable ServerRequest"
-    }))
+    return Effect.fail(
+      new Error.RequestError({
+        request: this,
+        reason: "Decode",
+        error: "Not an upgradeable ServerRequest"
+      })
+    )
   }
 }

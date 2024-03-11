@@ -62,7 +62,7 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
   Client.makeDefault((request) =>
     Effect.flatMap(
       UrlParams.makeUrl(request.url, request.urlParams, (_) =>
-        Error.RequestError({
+        new Error.RequestError({
           request,
           reason: "InvalidUrl",
           error: _
@@ -118,7 +118,7 @@ const sendBody = (
         return Effect.tryPromise({
           try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
           catch: (_) =>
-            Error.RequestError({
+            new Error.RequestError({
               request,
               reason: "Transport",
               error: _
@@ -128,13 +128,13 @@ const sendBody = (
       case "Stream": {
         return Stream.run(
           Stream.mapError(body.stream, (_) =>
-            Error.RequestError({
+            new Error.RequestError({
               request,
               reason: "Encode",
               error: _
             })),
           NodeSink.fromWritable(() => nodeRequest, (_) =>
-            Error.RequestError({
+            new Error.RequestError({
               request,
               reason: "Transport",
               error: _
@@ -147,11 +147,13 @@ const sendBody = (
 const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
   Effect.async<Http.IncomingMessage, Error.RequestError>((resume) => {
     function onError(error: Error) {
-      resume(Effect.fail(Error.RequestError({
-        request,
-        reason: "Transport",
-        error
-      })))
+      resume(Effect.fail(
+        new Error.RequestError({
+          request,
+          reason: "Transport",
+          error
+        })
+      ))
     }
     nodeRequest.on("error", onError)
 
@@ -172,11 +174,13 @@ const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest
 const waitForFinish = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
   Effect.async<void, Error.RequestError>((resume) => {
     function onError(error: Error) {
-      resume(Effect.fail(Error.RequestError({
-        request,
-        reason: "Transport",
-        error
-      })))
+      resume(Effect.fail(
+        new Error.RequestError({
+          request,
+          reason: "Transport",
+          error
+        })
+      ))
     }
     nodeRequest.once("error", onError)
 
@@ -200,7 +204,7 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
     source: Http.IncomingMessage
   ) {
     super(source, (_) =>
-      Error.ResponseError({
+      new Error.ResponseError({
         request,
         response: this,
         reason: "Decode",
