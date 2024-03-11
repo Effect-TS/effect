@@ -343,7 +343,7 @@ export const concatWith = dual<
   ) => Doc.Doc<A>
 >(2, (docs, f) => {
   const documents = ReadonlyArray.fromIterable(docs)
-  if (ReadonlyArray.isNonEmptyReadonlyArray(documents)) {
+  if (ReadonlyArray.isNonEmptyArray(documents)) {
     const head = documents[0]
     const tail = documents.slice(1)
     return tail.reduce((acc, curr) => f(acc, curr), head)

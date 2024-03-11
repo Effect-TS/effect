@@ -889,9 +889,9 @@ describe("ReadonlyArray", () => {
     deepStrictEqual(RA.isEmptyArray([]), true)
   })
 
-  it("isNonEmptyReadonlyArray", () => {
-    deepStrictEqual(RA.isNonEmptyReadonlyArray([1, 2, 3]), true)
-    deepStrictEqual(RA.isNonEmptyReadonlyArray([]), false)
+  it("isNonEmptyArray", () => {
+    deepStrictEqual(RA.isNonEmptyArray([1, 2, 3]), true)
+    deepStrictEqual(RA.isNonEmptyArray([]), false)
   })
 
   it("isNonEmptyArray", () => {

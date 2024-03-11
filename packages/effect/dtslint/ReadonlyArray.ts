@@ -48,16 +48,16 @@ if (ReadonlyArray.isEmptyArray(numbers)) {
 Option.liftPredicate(ReadonlyArray.isEmptyArray)
 
 // -------------------------------------------------------------------------------------
-// isNonEmptyReadonlyArray
+// isNonEmptyArray
 // -------------------------------------------------------------------------------------
 
-if (ReadonlyArray.isNonEmptyReadonlyArray(readonlyNumbers)) {
+if (ReadonlyArray.isNonEmptyArray(readonlyNumbers)) {
   // $ExpectType readonly [number, ...number[]]
   readonlyNumbers
 }
 
 // $ExpectType <A>(a: readonly A[]) => Option<readonly [A, ...A[]]>
-Option.liftPredicate(ReadonlyArray.isNonEmptyReadonlyArray)
+Option.liftPredicate(ReadonlyArray.isNonEmptyArray)
 
 // -------------------------------------------------------------------------------------
 // isNonEmptyArray

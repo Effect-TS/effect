@@ -102,7 +102,7 @@ export const patch = dual<
 >(3, (self, fiberId, oldValue) => {
   let fiberRefs: FiberRefs.FiberRefs = oldValue
   let patches: ReadonlyArray<FiberRefsPatch.FiberRefsPatch> = Arr.of(self)
-  while (Arr.isNonEmptyReadonlyArray(patches)) {
+  while (Arr.isNonEmptyArray(patches)) {
     const head = Arr.headNonEmpty(patches)
     const tail = Arr.tailNonEmpty(patches)
     switch (head._tag) {

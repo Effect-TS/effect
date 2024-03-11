@@ -1179,7 +1179,7 @@ export const struct = <Fields extends StructFields>(
       pssTo.push(AST.createPropertySignature(key, AST.to(field.ast), false, true))
     }
   }
-  if (ReadonlyArray.isNonEmptyReadonlyArray(psTransformations)) {
+  if (ReadonlyArray.isNonEmptyArray(psTransformations)) {
     return make(
       AST.createTransform(
         AST.createTypeLiteral(pssFrom, []),
@@ -1206,7 +1206,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     if (AST.isTypeLiteralTransformation(ast.transformation)) {
       const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
         .filter((t) => (keys as ReadonlyArray<PropertyKey>).includes(t.to))
-      if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
+      if (ReadonlyArray.isNonEmptyArray(propertySignatureTransformations)) {
         return make(
           AST.createTransform(
             AST.pick(ast.from, keys),
@@ -1236,7 +1236,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     if (AST.isTypeLiteralTransformation(ast.transformation)) {
       const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
         .filter((t) => !(keys as ReadonlyArray<PropertyKey>).includes(t.to))
-      if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
+      if (ReadonlyArray.isNonEmptyArray(propertySignatureTransformations)) {
         return make(
           AST.createTransform(
             AST.omit(ast.from, keys),

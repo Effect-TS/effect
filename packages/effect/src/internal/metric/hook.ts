@@ -290,7 +290,7 @@ const calculateQuantiles = (
 ): ReadonlyArray<readonly [number, Option.Option<number>]> => {
   // The number of samples examined
   const sampleCount = sortedSamples.length
-  if (!ReadonlyArray.isNonEmptyReadonlyArray(sortedQuantiles)) {
+  if (!ReadonlyArray.isNonEmptyArray(sortedQuantiles)) {
     return ReadonlyArray.empty()
   }
   const head = sortedQuantiles[0]
@@ -343,7 +343,7 @@ const resolveQuantile = (
   // eslint-disable-next-line no-constant-condition
   while (1) {
     // If the remaining list of samples is empty, there is nothing more to resolve
-    if (!ReadonlyArray.isNonEmptyReadonlyArray(rest_1)) {
+    if (!ReadonlyArray.isNonEmptyArray(rest_1)) {
       return {
         quantile: quantile_1,
         value: Option.none(),

@@ -412,7 +412,7 @@ const getHelpInternal = (self: Instruction, config: CliConfig.CliConfig): HelpDo
               desc
             ])
           ))
-        if (ReadonlyArray.isNonEmptyReadonlyArray(documents)) {
+        if (ReadonlyArray.isNonEmptyArray(documents)) {
           return InternalHelpDoc.enumeration(documents)
         }
         throw new Error("[BUG]: Subcommands.usage - received empty list of subcommands to print")
@@ -736,7 +736,7 @@ const parseInternal = (
                 if (InternalBuiltInOptions.isShowHelp(directive.option)) {
                   // We do not want to display the child help docs if there are
                   // no arguments indicating the CLI command was for the child
-                  return ReadonlyArray.isNonEmptyReadonlyArray(childArgs)
+                  return ReadonlyArray.isNonEmptyArray(childArgs)
                     ? Effect.orElse(helpDirectiveForChild, () => helpDirectiveForParent)
                     : helpDirectiveForParent
                 }
@@ -747,7 +747,7 @@ const parseInternal = (
               }
               case "UserDefined": {
                 const args = ReadonlyArray.appendAll(directive.leftover, childArgs)
-                if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
+                if (ReadonlyArray.isNonEmptyArray(args)) {
                   return parseChildren.pipe(Effect.mapBoth({
                     onFailure: (err) => {
                       if (InternalValidationError.isCommandMismatch(err)) {

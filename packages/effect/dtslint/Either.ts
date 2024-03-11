@@ -129,7 +129,7 @@ declare const error$readonlyArrayOfStrings: Either.Either<ReadonlyArray<string>,
 // $ExpectType Either<readonly [string, ...string[]], "b" | Error>
 pipe(
   error$readonlyArrayOfStrings,
-  Either.filterOrLeft(ReadonlyArray.isNonEmptyReadonlyArray, (
+  Either.filterOrLeft(ReadonlyArray.isNonEmptyArray, (
     _s // $ExpectType readonly string[]
   ) => "b" as const)
 )

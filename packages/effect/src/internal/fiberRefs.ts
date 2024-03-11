@@ -53,7 +53,7 @@ const findAncestor = (
   let childModified = _childModified
   let ret: readonly [unknown, boolean] | undefined = undefined
   while (ret === undefined) {
-    if (Arr.isNonEmptyReadonlyArray(parentStack) && Arr.isNonEmptyReadonlyArray(childStack)) {
+    if (Arr.isNonEmptyArray(parentStack) && Arr.isNonEmptyArray(childStack)) {
       const parentFiberId = Arr.headNonEmpty(parentStack)[0]
       const parentAncestors = Arr.tailNonEmpty(parentStack)
       const childFiberId = Arr.headNonEmpty(childStack)[0]
@@ -228,7 +228,7 @@ const unsafeUpdateAs = (
   const oldStack: ReadonlyArray<readonly [FiberId.Single, any]> = locals.get(fiberRef) ?? []
   let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]> | undefined
 
-  if (Arr.isNonEmptyReadonlyArray(oldStack)) {
+  if (Arr.isNonEmptyArray(oldStack)) {
     const [currentId, currentValue] = Arr.headNonEmpty(oldStack)
     if (currentId[Equal.symbol](fiberId)) {
       if (Equal.equals(currentValue, value)) {
