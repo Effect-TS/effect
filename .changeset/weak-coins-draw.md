@@ -6,3 +6,4 @@
 ---
 
 unify ReadonlyArray.isNonEmptyArray with isNonEmptyReadonlyArray. rename isNonEmptyArray to isNonEmpty
+unify ReadonlyArray.isEmptyArray with isEmptyReadonlyArray. rename isEmptyArray to isEmpty
