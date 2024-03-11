@@ -386,6 +386,11 @@ export * as LogSpan from "./LogSpan.js"
 export * as Logger from "./Logger.js"
 
 /**
+ * @since 2.0.0
+ */
+export * as ManagedRuntime from "./ManagedRuntime.js"
+
+/**
  * @since 1.0.0
  */
 export * as Match from "./Match.js"
