@@ -12,6 +12,6 @@ export const isNonEmpty: {
 
 /** @internal */
 export const isEmpty: {
-  <A>(self: Array<A>): self is Array<A>
-  <A>(self: ReadonlyArray<A>): self is ReadonlyArray<A>
-} = <A>(self: ReadonlyArray<A>): self is NonEmptyArray<A> => self.length === 0
+  <A>(self: Array<A>): self is []
+  <A>(self: ReadonlyArray<A>): self is readonly []
+} = <A>(self: ReadonlyArray<A>): self is [] => self.length === 0

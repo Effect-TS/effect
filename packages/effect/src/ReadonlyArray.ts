@@ -338,8 +338,8 @@ export const scanRight: {
  * @since 2.0.0
  */
 export const isEmpty: {
-  <A>(self: Array<A>): self is Array<A>
-  <A>(self: ReadonlyArray<A>): self is ReadonlyArray<A>
+  <A>(self: Array<A>): self is []
+  <A>(self: ReadonlyArray<A>): self is readonly []
 } = readonlyArray.isEmpty
 
 /**
