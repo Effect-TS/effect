@@ -785,6 +785,23 @@ export const toRuntime: <RIn, E, ROut>(
 ) => Effect.Effect<Runtime.Runtime<ROut>, E, Scope.Scope | RIn> = internal.toRuntime
 
 /**
+ * Converts a layer that requires no services into a scoped runtime, which can
+ * be used to execute effects.
+ *
+ * @since 2.0.0
+ * @category conversions
+ */
+export const toRuntimeWithMemoMap: {
+  (
+    memoMap: MemoMap
+  ): <RIn, E, ROut>(self: Layer<ROut, E, RIn>) => Effect.Effect<Runtime.Runtime<ROut>, E, Scope.Scope | RIn>
+  <RIn, E, ROut>(
+    self: Layer<ROut, E, RIn>,
+    memoMap: MemoMap
+  ): Effect.Effect<Runtime.Runtime<ROut>, E, Scope.Scope | RIn>
+} = internal.toRuntimeWithMemoMap
+
+/**
  * Feeds the output services of this builder into the input of the specified
  * builder, resulting in a new builder with the inputs of this builder as
  * well as any leftover inputs, and the outputs of the specified builder.

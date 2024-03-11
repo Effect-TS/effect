@@ -21,14 +21,14 @@ const TestEnv = TestEnvironment.TestContext.pipe(
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self: () => Effect.Effect<A, E, TestServices.TestServices>,
+    self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
     timeout: number | V.TestOptions = 5_000
   ) => {
     return it(
       name,
       () =>
         pipe(
-          Effect.suspend(self),
+          Effect.isEffect(self) ? self : Effect.suspend(self),
           Effect.provide(TestEnv),
           Effect.runPromise
         ),
@@ -38,14 +38,14 @@ export const effect = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: () => Effect.Effect<A, E, TestServices.TestServices>,
+      self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
       timeout = 5_000
     ) => {
       return it.skip(
         name,
         () =>
           pipe(
-            Effect.suspend(self),
+            Effect.isEffect(self) ? self : Effect.suspend(self),
             Effect.provide(TestEnv),
             Effect.runPromise
           ),
@@ -54,14 +54,14 @@ export const effect = (() => {
     },
     only: <E, A>(
       name: string,
-      self: () => Effect.Effect<A, E, TestServices.TestServices>,
+      self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
       timeout = 5_000
     ) => {
       return it.only(
         name,
         () =>
           pipe(
-            Effect.suspend(self),
+            Effect.isEffect(self) ? self : Effect.suspend(self),
             Effect.provide(TestEnv),
             Effect.runPromise
           ),
@@ -73,14 +73,14 @@ export const effect = (() => {
 
 export const live = <E, A>(
   name: string,
-  self: () => Effect.Effect<A, E>,
+  self: Effect.Effect<A, E> | (() => Effect.Effect<A, E>),
   timeout = 5_000
 ) => {
   return it(
     name,
     () =>
       pipe(
-        Effect.suspend(self),
+        Effect.isEffect(self) ? self : Effect.suspend(self),
         Effect.runPromise
       ),
     timeout
@@ -106,14 +106,16 @@ export const flakyTest = <A, E, R>(
 
 export const scoped = <E, A>(
   name: string,
-  self: () => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>,
+  self:
+    | Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>
+    | (() => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>),
   timeout = 5_000
 ) => {
   return it(
     name,
     () =>
       pipe(
-        Effect.suspend(self),
+        Effect.isEffect(self) ? self : Effect.suspend(self),
         Effect.scoped,
         Effect.provide(TestEnv),
         Effect.runPromise

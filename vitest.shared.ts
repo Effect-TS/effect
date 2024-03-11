@@ -8,6 +8,9 @@ const alias = (pkg: string) => ({
 
 // This is a workaround, see https://github.com/vitest-dev/vitest/issues/4744
 const config: UserConfig = {
+  esbuild: {
+    target: "es2020"
+  },
   test: {
     fakeTimers: {
       toFake: undefined

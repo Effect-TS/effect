@@ -313,6 +313,9 @@ export const makeMemoMap: Effect.Effect<Layer.MemoMap> = core.suspend(() =>
 )
 
 /** @internal */
+export const unsafeMakeMemoMap = (): Layer.MemoMap => new MemoMapImpl(circular.unsafeMakeSynchronized(new Map()))
+
+/** @internal */
 export const build = <RIn, E, ROut>(
   self: Layer.Layer<ROut, E, RIn>
 ): Effect.Effect<Context.Context<ROut>, E, RIn | Scope.Scope> =>
@@ -988,9 +991,9 @@ export const tapErrorCause = dual<
 /** @internal */
 export const toRuntime = <RIn, E, ROut>(
   self: Layer.Layer<ROut, E, RIn>
-): Effect.Effect<Runtime.Runtime<ROut>, E, RIn | Scope.Scope> => {
-  return pipe(
-    fiberRuntime.scopeWith((scope) => pipe(self, buildWithScope(scope))),
+): Effect.Effect<Runtime.Runtime<ROut>, E, RIn | Scope.Scope> =>
+  pipe(
+    fiberRuntime.scopeWith((scope) => buildWithScope(self, scope)),
     core.flatMap((context) =>
       pipe(
         runtime.runtime<ROut>(),
@@ -998,7 +1001,25 @@ export const toRuntime = <RIn, E, ROut>(
       )
     )
   )
-}
+
+/** @internal */
+export const toRuntimeWithMemoMap = dual<
+  (
+    memoMap: Layer.MemoMap
+  ) => <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>) => Effect.Effect<Runtime.Runtime<ROut>, E, RIn | Scope.Scope>,
+  <RIn, E, ROut>(
+    self: Layer.Layer<ROut, E, RIn>,
+    memoMap: Layer.MemoMap
+  ) => Effect.Effect<Runtime.Runtime<ROut>, E, RIn | Scope.Scope>
+>(2, (self, memoMap) =>
+  core.flatMap(
+    fiberRuntime.scopeWith((scope) => buildWithMemoMap(self, memoMap, scope)),
+    (context) =>
+      pipe(
+        runtime.runtime<any>(),
+        core.provideContext(context)
+      )
+  ))
 
 /** @internal */
 export const provide = dual<
