@@ -27,18 +27,15 @@ const HttpLive = Http.router.empty.pipe(
   ),
   Http.router.get(
     "/ws",
-    Effect.gen(function*(_) {
-      yield* _(
-        Stream.fromSchedule(Schedule.spaced(1000)),
-        Stream.map(JSON.stringify),
-        Stream.encodeText,
-        Stream.pipeThroughChannel(Http.request.upgradeChannel()),
-        Stream.decodeText(),
-        Stream.runForEach((_) => Effect.log(_)),
-        Effect.annotateLogs("ws", "recv")
-      )
-      return Http.response.empty()
-    })
+    Stream.fromSchedule(Schedule.spaced(1000)).pipe(
+      Stream.map(JSON.stringify),
+      Stream.encodeText,
+      Stream.pipeThroughChannel(Http.request.upgradeChannel()),
+      Stream.decodeText(),
+      Stream.runForEach((_) => Effect.log(_)),
+      Effect.annotateLogs("ws", "recv"),
+      Effect.as(Http.response.empty())
+    )
   ),
   Http.server.serve(Http.middleware.logger),
   Http.server.withLogAddress,

@@ -46,7 +46,7 @@ export const makeNet = (
           resume(Effect.succeed(conn))
         })
         conn.on("error", (error) => {
-          resume(Effect.fail(new Socket.SocketError({ reason: "Open", error })))
+          resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", error })))
         })
         return Effect.sync(() => {
           conn.destroy()
@@ -90,7 +90,7 @@ export const fromNetSocket = (
                 conn.end(() => resume(Effect.unit))
               } else {
                 conn.write(chunk, (error) => {
-                  resume(error ? Effect.fail(new Socket.SocketError({ reason: "Write", error })) : Effect.unit)
+                  resume(error ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", error })) : Effect.unit)
                 })
               }
             })
@@ -107,14 +107,14 @@ export const fromNetSocket = (
               resume(Effect.unit)
             })
             conn.on("error", (error) => {
-              resume(Effect.fail(new Socket.SocketError({ reason: "Read", error })))
+              resume(Effect.fail(new Socket.SocketGenericError({ reason: "Read", error })))
             })
             conn.on("close", (hadError) => {
               resume(
                 Effect.fail(
-                  new Socket.SocketError({
+                  new Socket.SocketCloseError({
                     reason: "Close",
-                    error: hadError ? "closed with error" : "closed without error"
+                    code: hadError ? 1006 : 1000
                   })
                 )
               )
