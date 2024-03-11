@@ -1,16 +1,17 @@
-import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-const expectToString = <A, I, R>(schema: S.Schema<A, I, R>, s: string) => {
-  expect(AST.toString(schema.ast)).toBe(s)
+const expectToString = <A, I, R>(schema: S.Schema<A, I, R>, expected: string) => {
+  const actual = JSON.stringify(schema.ast.toJSON(), null, 2)
+  expect(actual).toBe(expected)
 }
 
 const expectHash = <A, I, R>(schema: S.Schema<A, I, R>, n: number) => {
-  expect(AST.hash(schema.ast)).toBe(n)
+  expect(S.hash(schema)).toBe(n)
+  expect(S.hash(schema)).toBe(n)
 }
 
-describe("AST > toString", () => {
+describe("AST > .toString()", () => {
   it("string", () => {
     const schema = S.string
     expectToString(
@@ -23,6 +24,12 @@ describe("AST > toString", () => {
   }
 }`
     )
+  })
+
+  it("string with annotations", () => {
+    const schema1 = S.string.pipe(S.identifier("I"), S.title("T"))
+    const schema2 = S.string.pipe(S.title("T"), S.identifier("I"))
+    expect(S.hash(schema1)).toStrictEqual(S.hash(schema2))
   })
 
   it("refinement", () => {
@@ -81,39 +88,42 @@ describe("AST > toString", () => {
       expectToString(
         schema,
         `{
-  "_tag": "Tuple",
-  "elements": [
-    {
-      "type": {
-        "_tag": "NumberKeyword",
-        "annotations": {
-          "Symbol(@effect/schema/annotation/Title)": "number",
-          "Symbol(@effect/schema/annotation/Description)": "a number"
-        }
-      },
-      "isOptional": false
-    },
-    {
-      "type": {
-        "_tag": "Union",
-        "types": [
-          "<suspended schema>",
-          {
-            "_tag": "Literal",
-            "literal": null,
-            "annotations": {}
+  "_tag": "Suspend",
+  "ast": {
+    "_tag": "TupleType",
+    "elements": [
+      {
+        "type": {
+          "_tag": "NumberKeyword",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Title)": "number",
+            "Symbol(@effect/schema/annotation/Description)": "a number"
           }
-        ],
-        "annotations": {}
+        },
+        "isOptional": false
       },
-      "isOptional": false
-    }
-  ],
-  "rest": {
-    "_id": "Option",
-    "_tag": "None"
+      {
+        "type": {
+          "_tag": "Union",
+          "types": [
+            {
+              "_tag": "Suspend"
+            },
+            {
+              "_tag": "Literal",
+              "literal": null,
+              "annotations": {}
+            }
+          ],
+          "annotations": {}
+        },
+        "isOptional": false
+      }
+    ],
+    "rest": [],
+    "isReadonly": true,
+    "annotations": {}
   },
-  "isReadonly": true,
   "annotations": {}
 }`
       )
@@ -130,7 +140,7 @@ describe("AST > toString", () => {
     expectToString(
       schema,
       `{
-  "_tag": "Tuple",
+  "_tag": "TupleType",
   "elements": [
     {
       "type": {
@@ -146,7 +156,45 @@ describe("AST > toString", () => {
       "type": {
         "_tag": "Union",
         "types": [
-          "<suspended schema>",
+          {
+            "_tag": "Suspend",
+            "ast": {
+              "_tag": "TupleType",
+              "elements": [
+                {
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(@effect/schema/annotation/Title)": "number",
+                      "Symbol(@effect/schema/annotation/Description)": "a number"
+                    }
+                  },
+                  "isOptional": false
+                },
+                {
+                  "type": {
+                    "_tag": "Union",
+                    "types": [
+                      {
+                        "_tag": "Suspend"
+                      },
+                      {
+                        "_tag": "Literal",
+                        "literal": null,
+                        "annotations": {}
+                      }
+                    ],
+                    "annotations": {}
+                  },
+                  "isOptional": false
+                }
+              ],
+              "rest": [],
+              "isReadonly": true,
+              "annotations": {}
+            },
+            "annotations": {}
+          },
           {
             "_tag": "Literal",
             "literal": null,
@@ -158,10 +206,7 @@ describe("AST > toString", () => {
       "isOptional": false
     }
   ],
-  "rest": {
-    "_id": "Option",
-    "_tag": "None"
-  },
+  "rest": [],
   "isReadonly": true,
   "annotations": {}
 }`
@@ -181,7 +226,7 @@ describe("AST > toString", () => {
     expectToString(
       schema,
       `{
-  "_tag": "Tuple",
+  "_tag": "TupleType",
   "elements": [
     {
       "type": {
@@ -197,7 +242,45 @@ describe("AST > toString", () => {
       "type": {
         "_tag": "Union",
         "types": [
-          "<suspended schema>",
+          {
+            "_tag": "Suspend",
+            "ast": {
+              "_tag": "TupleType",
+              "elements": [
+                {
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(@effect/schema/annotation/Title)": "number",
+                      "Symbol(@effect/schema/annotation/Description)": "a number"
+                    }
+                  },
+                  "isOptional": false
+                },
+                {
+                  "type": {
+                    "_tag": "Union",
+                    "types": [
+                      {
+                        "_tag": "Suspend"
+                      },
+                      {
+                        "_tag": "Literal",
+                        "literal": null,
+                        "annotations": {}
+                      }
+                    ],
+                    "annotations": {}
+                  },
+                  "isOptional": false
+                }
+              ],
+              "rest": [],
+              "isReadonly": true,
+              "annotations": {}
+            },
+            "annotations": {}
+          },
           {
             "_tag": "Literal",
             "literal": null,
@@ -209,10 +292,7 @@ describe("AST > toString", () => {
       "isOptional": false
     }
   ],
-  "rest": {
-    "_id": "Option",
-    "_tag": "None"
-  },
+  "rest": [],
   "isReadonly": true,
   "annotations": {}
 }`
@@ -244,7 +324,7 @@ describe("AST > hash", () => {
       const schema: S.Schema<A> = S.suspend( // intended outer suspend
         () => S.tuple(S.number, S.union(schema, S.literal(null)))
       )
-      expectHash(schema, -1069774720)
+      expectHash(schema, -887784700)
     })
 
     it("inner/outer", () => {
@@ -254,7 +334,7 @@ describe("AST > hash", () => {
         S.union(S.suspend(() => schema), S.literal(null))
       )
 
-      expectHash(schema, -1069774720)
+      expectHash(schema, 757654673)
     })
 
     it("inner/inner", () => {
@@ -267,7 +347,7 @@ describe("AST > hash", () => {
         )
       )
 
-      expectHash(schema, -1069774720)
+      expectHash(schema, 757654673)
     })
   })
 })

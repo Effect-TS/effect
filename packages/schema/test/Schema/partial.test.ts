@@ -40,7 +40,7 @@ describe("Schema > partial", () => {
       })
 
       it("e r", async () => {
-        const schema = S.partial(S.tuple(S.NumberFromString).pipe(S.rest(S.NumberFromString)))
+        const schema = S.partial(S.tuple([S.NumberFromString], S.NumberFromString))
         await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
         await Util.expectDecodeUnknownSuccess(schema, [], [])
         await Util.expectDecodeUnknownSuccess(schema, ["1", "2"], [1, 2])
@@ -103,13 +103,13 @@ describe("Schema > partial", () => {
           `readonly [NumberFromString?]
 └─ [0]
    └─ NumberFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual undefined`
         )
       })
 
       it("e + r", async () => {
-        const schema = S.partial(S.tuple(S.NumberFromString).pipe(S.rest(S.NumberFromString)), { exact: true })
+        const schema = S.partial(S.tuple([S.NumberFromString], S.NumberFromString), { exact: true })
         await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
         await Util.expectDecodeUnknownSuccess(schema, [], [])
         await Util.expectDecodeUnknownSuccess(schema, ["1", "2"], [1, 2])
@@ -121,7 +121,7 @@ describe("Schema > partial", () => {
           `readonly [NumberFromString?, ...(NumberFromString | undefined)[]]
 └─ [0]
    └─ NumberFromString
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Expected a string, actual undefined`
         )
       })

@@ -3,7 +3,9 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("number > between", () => {
-  const schema = S.number.pipe(S.between(-1, 1), S.title("[-1, -1] interval"))
+  const schema = S.number.pipe(S.between(-1, 1)).annotations({
+    title: "[-1, -1] interval"
+  })
   it("decoding", async () => {
     await Util.expectDecodeUnknownFailure(
       schema,

@@ -8,9 +8,9 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as Internal from "./internal/ast.js"
-import * as hooks from "./internal/hooks.js"
-import * as InternalSchema from "./internal/schema.js"
+import * as _hooks from "./internal/hooks.js"
+import * as _schema from "./internal/schema.js"
+import * as _util from "./internal/util.js"
 import * as Parser from "./Parser.js"
 import type * as Schema from "./Schema.js"
 
@@ -18,7 +18,7 @@ import type * as Schema from "./Schema.js"
  * @category hooks
  * @since 1.0.0
  */
-export const EquivalenceHookId: unique symbol = hooks.EquivalenceHookId
+export const EquivalenceHookId: unique symbol = _hooks.EquivalenceHookId
 
 /**
  * @category hooks
@@ -32,8 +32,7 @@ export type EquivalenceHookId = typeof EquivalenceHookId
  */
 export const equivalence =
   <A>(handler: (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<A>) =>
-  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
-    InternalSchema.make(AST.setAnnotation(self.ast, EquivalenceHookId, handler))
+  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> => self.annotations({ [EquivalenceHookId]: handler })
 
 /**
  * @category Equivalence
@@ -62,7 +61,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
   switch (ast._tag) {
     case "NeverKeyword":
       throw new Error("cannot build an Equivalence for `never`")
-    case "Transform":
+    case "Transformation":
       return go(ast.to)
     case "Declaration":
     case "Literal":
@@ -83,12 +82,12 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
     case "Refinement":
       return go(ast.from)
     case "Suspend": {
-      const get = Internal.memoizeThunk(() => go(ast.f()))
+      const get = _util.memoizeThunk(() => go(ast.f()))
       return (a, b) => get()(a, b)
     }
-    case "Tuple": {
+    case "TupleType": {
       const elements = ast.elements.map((element) => go(element.type))
-      const rest = Option.map(ast.rest, ReadonlyArray.map(go))
+      const rest = ast.rest.map(go)
       return Equivalence.make((a, b) => {
         const len = a.length
         if (len !== b.length) {
@@ -106,8 +105,8 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (Option.isSome(rest)) {
-          const [head, ...tail] = rest.value
+        if (ReadonlyArray.isNonEmptyReadonlyArray(rest)) {
+          const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             if (!head(a[i], b[i])) {
               return false
@@ -187,7 +186,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
     }
     case "Union": {
       const searchTree = Parser.getSearchTree(ast.types, true)
-      const ownKeys = Internal.ownKeys(searchTree.keys)
+      const ownKeys = _util.ownKeys(searchTree.keys)
       const len = ownKeys.length
       return Equivalence.make((a, b) => {
         let candidates: Array<AST.AST> = []
@@ -206,7 +205,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         if (searchTree.otherwise.length > 0) {
           candidates = candidates.concat(searchTree.otherwise)
         }
-        const tuples = candidates.map((ast) => [go(ast), Parser.is(InternalSchema.make(ast))] as const)
+        const tuples = candidates.map((ast) => [go(ast), Parser.is(_schema.make(ast))] as const)
         for (let i = 0; i < tuples.length; i++) {
           const [equivalence, is] = tuples[i]
           if (is(a) && is(b)) {

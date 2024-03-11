@@ -17,12 +17,12 @@ describe("Arbitrary > Arbitrary", () => {
     )
   })
 
-  it("make(S.to(schema))", () => {
+  it("make(S.typeSchema(schema))", () => {
     const schema = S.NumberFromString
-    expectValidArbitrary(S.to(schema))
+    expectValidArbitrary(S.typeSchema(schema))
   })
 
-  it("make(S.from(schema))", () => {
+  it("make(S.encodedSchema(schema))", () => {
     const schema = S.struct({
       a: S.NumberFromString,
       b: S.tuple(S.NumberFromString),
@@ -30,7 +30,7 @@ describe("Arbitrary > Arbitrary", () => {
       d: S.NumberFromString.pipe(S.positive()),
       e: S.optionFromSelf(S.NumberFromString)
     })
-    expectValidArbitrary(S.from(schema))
+    expectValidArbitrary(S.encodedSchema(schema))
   })
 
   describe("templateLiteral", () => {
@@ -122,9 +122,9 @@ describe("Arbitrary > Arbitrary", () => {
     expectValidArbitrary(schema)
   })
 
-  it("uniqueSymbol", () => {
+  it("uniqueSymbolFromSelf", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.uniqueSymbol(a)
+    const schema = S.uniqueSymbolFromSelf(a)
     expectValidArbitrary(schema)
   })
 
@@ -181,27 +181,27 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("tuple. optional element", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.number))
+    const schema = S.tuple(S.optionalElement(S.number))
     expectValidArbitrary(schema)
   })
 
   it("tuple. optional element with undefined", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.union(S.number, S.undefined)))
+    const schema = S.tuple(S.optionalElement(S.union(S.number, S.undefined)))
     expectValidArbitrary(schema)
   })
 
   it("tuple. e + e?", () => {
-    const schema = S.tuple(S.string).pipe(S.optionalElement(S.number))
+    const schema = S.tuple(S.string, S.optionalElement(S.number))
     expectValidArbitrary(schema)
   })
 
   it("tuple. e + r", () => {
-    const schema = S.tuple(S.string).pipe(S.rest(S.number))
+    const schema = S.tuple([S.string], S.number)
     expectValidArbitrary(schema)
   })
 
   it("tuple. e? + r", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(S.number))
+    const schema = S.tuple([S.optionalElement(S.string)], S.number)
     expectValidArbitrary(schema)
   })
 
@@ -211,12 +211,12 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("tuple. r + e", () => {
-    const schema = S.array(S.string).pipe(S.element(S.number))
+    const schema = S.array(S.string, S.number)
     expectValidArbitrary(schema)
   })
 
   it("tuple. e + r + e", () => {
-    const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
+    const schema = S.tuple([S.string], S.number, S.boolean)
     expectValidArbitrary(schema)
   })
 
@@ -257,7 +257,7 @@ describe("Arbitrary > Arbitrary", () => {
       expectValidArbitrary(schema)
     })
 
-    it("make(S.from(schema))", () => {
+    it("make(S.encodedSchema(schema))", () => {
       const NumberFromString = S.NumberFromString
       interface I {
         readonly a: string | I
@@ -269,7 +269,7 @@ describe("Arbitrary > Arbitrary", () => {
         a: S.union(NumberFromString, S.suspend(() => schema))
       })
 
-      expectValidArbitrary(S.from(schema))
+      expectValidArbitrary(S.encodedSchema(schema))
     })
 
     it("tuple", () => {
@@ -377,9 +377,7 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("extend/ struct + record", () => {
-    const schema = S.struct({ a: S.string }).pipe(
-      S.extend(S.record(S.string, S.union(S.string, S.number)))
-    )
+    const schema = S.struct({ a: S.string }, S.record(S.string, S.union(S.string, S.number)))
     expectValidArbitrary(schema)
   })
 
@@ -523,8 +521,8 @@ describe("Arbitrary > Arbitrary", () => {
       expectHook(S.symbol)
     })
 
-    it("uniqueSymbol", () => {
-      expectHook(S.uniqueSymbol(Symbol.for("effect/schema/test/a")))
+    it("uniqueSymbolFromSelf", () => {
+      expectHook(S.uniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
     })
 
     it("templateLiteral", () => {

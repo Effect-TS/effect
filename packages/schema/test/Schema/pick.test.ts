@@ -1,6 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Schema > pick", () => {
   it("struct", async () => {
@@ -139,10 +139,19 @@ describe("Schema > pick", () => {
   })
 
   it("record(string, string) & record(`a${string}`, number)", async () => {
-    const schema = S.record(S.string, S.string).pipe(
-      S.extend(S.record(S.templateLiteral(S.literal("a"), S.string), S.number)),
+    const schema = S.struct(
+      {},
+      S.record(S.string, S.string),
+      S.record(S.templateLiteral(S.literal("a"), S.string), S.number)
+    ).pipe(
       S.pick("a", "b")
     )
     await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: "b" })
+  })
+
+  it("Class", () => {
+    class A extends S.Class<A>("A")({ a: S.string, b: S.number }) {}
+    const schema = A.pipe(S.typeSchema, S.pick("b"))
+    expect(schema.ast).toStrictEqual(S.struct({ b: S.number }).ast)
   })
 })

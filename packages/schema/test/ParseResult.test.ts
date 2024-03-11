@@ -5,8 +5,8 @@ import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe("ParseResult", () => {
-  const typeParseError1 = ParseResult.parseError(ParseResult.type(S.string.ast, null))
-  const typeParseError2 = ParseResult.parseError(ParseResult.type(S.number.ast, null))
+  const typeParseError1 = ParseResult.parseError(new ParseResult.Type(S.string.ast, null))
+  const typeParseError2 = ParseResult.parseError(new ParseResult.Type(S.number.ast, null))
 
   it("toString()", () => {
     const schema = S.struct({ a: S.string })
@@ -45,7 +45,7 @@ describe("ParseResult", () => {
 
   it("Error.stack", () => {
     expect(
-      ParseResult.parseError(ParseResult.type(S.string.ast, 1)).stack?.startsWith(
+      ParseResult.parseError(new ParseResult.Type(S.string.ast, 1)).stack?.startsWith(
         `ParseError: Expected a string, actual 1`
       )
     )
@@ -158,38 +158,38 @@ describe("ParseIssue.actual", () => {
     const result = S.decodeEither(S.transformOrFail(
       S.NumberFromString,
       S.boolean,
-      (n, _, ast) => ParseResult.fail(ParseResult.type(ast, n)),
-      (b, _, ast) => ParseResult.fail(ParseResult.type(ast, b))
+      (n, _, ast) => ParseResult.fail(new ParseResult.Type(ast, n)),
+      (b, _, ast) => ParseResult.fail(new ParseResult.Type(ast, b))
     ))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual("1")
-    expect((result.left.error as ParseResult.Transform).error.actual).toEqual(1)
+    expect((result.left.error as ParseResult.Transformation).error.actual).toEqual(1)
   })
 
   it("transform encode", () => {
     const result = S.encodeEither(S.transformOrFail(
       S.boolean,
       S.NumberFromString,
-      (n, _, ast) => ParseResult.fail(ParseResult.type(ast, n)),
-      (b, _, ast) => ParseResult.fail(ParseResult.type(ast, b))
+      (n, _, ast) => ParseResult.fail(new ParseResult.Type(ast, n)),
+      (b, _, ast) => ParseResult.fail(new ParseResult.Type(ast, b))
     ))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual(1)
-    expect((result.left.error as ParseResult.Transform).error.actual).toEqual("1")
+    expect((result.left.error as ParseResult.Transformation).error.actual).toEqual("1")
   })
 
   it("compose decode", () => {
     const result = S.decodeEither(S.compose(S.NumberFromString, S.negative()(S.number)))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual("1")
-    expect((result.left.error as ParseResult.Transform).error.actual).toEqual(1)
+    expect((result.left.error as ParseResult.Transformation).error.actual).toEqual(1)
   })
 
   it("compose encode", () => {
     const result = S.encodeEither(S.compose(S.length(5)(S.string), S.NumberFromString))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual(1)
-    expect((result.left.error as ParseResult.Transform).error.actual).toEqual("1")
+    expect((result.left.error as ParseResult.Transformation).error.actual).toEqual("1")
   })
 
   it("decode", () => {

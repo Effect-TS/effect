@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import type * as Schema from "../Schema.js"
 
 /** @internal */

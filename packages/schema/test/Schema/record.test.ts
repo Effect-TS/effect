@@ -1,8 +1,23 @@
+import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Schema > record", () => {
+  it("annotations()", () => {
+    const schema = S.record(S.string, S.number).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    expect(schema.ast.annotations).toStrictEqual({
+      [AST.IdentifierAnnotationId]: "X",
+      [AST.TitleAnnotationId]: "Y"
+    })
+  })
+
+  it("should expose the key and the value", () => {
+    const schema = S.record(S.string, S.number)
+    expect(schema.key).toStrictEqual(S.string)
+    expect(schema.value).toStrictEqual(S.number)
+  })
+
   describe("decoding", () => {
     it("record(never, number)", async () => {
       const schema = S.record(S.never, S.number)
@@ -160,7 +175,7 @@ describe("Schema > record", () => {
     it("record(keyof struct({ a, b } & Record<string, string>), number)", async () => {
       const schema = S.record(
         S.keyof(
-          S.struct({ a: S.string, b: S.string }).pipe(S.extend(S.record(S.string, S.string)))
+          S.struct({ a: S.string, b: S.string }, S.record(S.string, S.string))
         ),
         S.number
       )
@@ -181,9 +196,7 @@ describe("Schema > record", () => {
     it("record(keyof struct({ a, b } & Record<symbol, string>), number)", async () => {
       const schema = S.record(
         S.keyof(
-          S.struct({ a: S.string, b: S.string }).pipe(
-            S.extend(S.record(S.symbolFromSelf, S.string))
-          )
+          S.struct({ a: S.string, b: S.string }, S.record(S.symbolFromSelf, S.string))
         ),
         S.number
       )
@@ -231,7 +244,7 @@ describe("Schema > record", () => {
     it("record(Symbol('a') | Symbol('b'), number)", async () => {
       const a = Symbol.for("@effect/schema/test/a")
       const b = Symbol.for("@effect/schema/test/b")
-      const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
+      const schema = S.record(S.union(S.uniqueSymbolFromSelf(a), S.uniqueSymbolFromSelf(b)), S.number)
       await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
 
       await Util.expectDecodeUnknownFailure(
@@ -333,8 +346,10 @@ describe("Schema > record", () => {
     })
 
     it("record(${string}-${string}, number) & record(string, string | number)", async () => {
-      const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number).pipe(
-        S.extend(S.record(S.string, S.union(S.string, S.number)))
+      const schema = S.struct(
+        {},
+        S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number),
+        S.record(S.string, S.union(S.string, S.number))
       )
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "a": "a" })

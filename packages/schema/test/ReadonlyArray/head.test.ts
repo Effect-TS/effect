@@ -12,7 +12,7 @@ describe("ReadonlyArray > head", () => {
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> Option<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ ReadonlyArray<NumberFromString>
       └─ [0]
          └─ NumberFromString

@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("string > length", () => {
   it("decoding", async () => {
-    const schema = S.string.pipe(S.length(1), S.identifier("Char"))
+    const schema = S.string.pipe(S.length(1)).annotations({ identifier: "Char" })
     await Util.expectDecodeUnknownSuccess(schema, "a")
 
     await Util.expectDecodeUnknownFailure(

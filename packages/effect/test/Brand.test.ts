@@ -1,7 +1,7 @@
 import * as Brand from "effect/Brand"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
-import { assert, describe, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 declare const IntTypeId: unique symbol
 type Int = number & Brand.Brand<typeof IntTypeId>
@@ -29,7 +29,7 @@ describe("Brand", () => {
     assert.isTrue(MyNumber.is(1.1))
   })
 
-  it("refined", () => {
+  it("refined (predicate overload)", () => {
     assert.strictEqual(Int(1), 1)
     assert.throws(() => Int(1.1))
     assert.deepStrictEqual(Int.option(1), Option.some(1))
@@ -41,6 +41,24 @@ describe("Brand", () => {
     )
     assert.isTrue(Int.is(1))
     assert.isFalse(Int.is(1.1))
+    try {
+      Int(1.1)
+      assert.fail("expected `Int(1.1)` to throw an error")
+    } catch (e) {
+      expect(e).toStrictEqual(Brand.error("Expected 1.1 to be an integer"))
+    }
+  })
+
+  it("refined (Option overload)", () => {
+    const Int = Brand.refined<Int>(
+      (n) => Number.isInteger(n) ? Option.none() : Option.some(Brand.error(`Expected ${n} to be an integer`))
+    )
+    try {
+      Int(1.1)
+      assert.fail("expected `Int(1.1)` to throw an error")
+    } catch (e) {
+      expect(e).toStrictEqual(Brand.error("Expected 1.1 to be an integer"))
+    }
   })
 
   it("composition", () => {

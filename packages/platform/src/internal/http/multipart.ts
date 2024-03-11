@@ -90,7 +90,7 @@ export const withFieldMimeTypes = dual<
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
 const fileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.struct({
-  [TypeId]: Schema.uniqueSymbol(TypeId),
+  [TypeId]: Schema.uniqueSymbolFromSelf(TypeId),
   _tag: Schema.literal("PersistedFile"),
   key: Schema.string,
   name: Schema.string,

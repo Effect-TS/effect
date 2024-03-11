@@ -3,12 +3,12 @@ import * as Serializable from "@effect/schema/Serializable"
 import { Effect, Exit } from "effect"
 import { assert, describe, test } from "vitest"
 
-class Person extends S.Class<Person>()({
+class Person extends S.Class<Person>("Person")({
   id: S.number,
   name: S.string.pipe(S.nonEmpty())
 }) {}
 
-class GetPersonById extends S.Class<GetPersonById>()({
+class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
   id: S.number
 }) {
   get [Serializable.symbol]() {

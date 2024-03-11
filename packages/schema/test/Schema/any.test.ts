@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/any", () => {
+describe("Schema > any", () => {
   const schema = S.any
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(schema, undefined, undefined)

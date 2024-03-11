@@ -4,9 +4,9 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as Internal from "./internal/ast.js"
-import * as hooks from "./internal/hooks.js"
-import * as InternalSchema from "./internal/schema.js"
+import * as _hooks from "./internal/hooks.js"
+import * as _schema from "./internal/schema.js"
+import * as _util from "./internal/util.js"
 import * as Parser from "./Parser.js"
 import type * as Schema from "./Schema.js"
 
@@ -22,7 +22,7 @@ export interface Pretty<To> {
  * @category hooks
  * @since 1.0.0
  */
-export const PrettyHookId: unique symbol = hooks.PrettyHookId
+export const PrettyHookId: unique symbol = _hooks.PrettyHookId
 
 /**
  * @category hooks
@@ -36,8 +36,7 @@ export type PrettyHookId = typeof PrettyHookId
  */
 export const pretty =
   <A>(handler: (...args: ReadonlyArray<Pretty<any>>) => Pretty<A>) =>
-  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
-    InternalSchema.make(AST.setAnnotation(self.ast, PrettyHookId, handler))
+  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> => self.annotations({ [PrettyHookId]: handler })
 
 /**
  * @category prettify
@@ -59,7 +58,7 @@ const toString = getMatcher((a) => String(a))
 
 const stringify = getMatcher((a) => JSON.stringify(a))
 
-const formatUnknown = getMatcher(AST.formatUnknown)
+const formatUnknown = getMatcher(_util.formatUnknown)
 
 /**
  * @since 1.0.0
@@ -70,7 +69,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value(...ast.typeParameters.map(go))
     }
-    throw new Error(`cannot build a Pretty for a declaration without annotations (${AST.format(ast)})`)
+    throw new Error(`cannot build a Pretty for a declaration without annotations (${ast})`)
   },
   "VoidKeyword": getMatcher(() => "void(0)"),
   "NeverKeyword": getMatcher(() => {
@@ -93,13 +92,13 @@ export const match: AST.Match<Pretty<any>> = {
   "BooleanKeyword": toString,
   "BigIntKeyword": getMatcher((a) => `${String(a)}n`),
   "Enums": stringify,
-  "Tuple": (ast, go) => {
+  "TupleType": (ast, go) => {
     const hook = getHook(ast)
     if (Option.isSome(hook)) {
       return hook.value()
     }
     const elements = ast.elements.map((e) => go(e.type))
-    const rest = Option.map(ast.rest, ReadonlyArray.map(go))
+    const rest = ast.rest.map(go)
     return (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0
@@ -118,8 +117,8 @@ export const match: AST.Match<Pretty<any>> = {
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (Option.isSome(rest)) {
-        const [head, ...tail] = rest.value
+      if (ReadonlyArray.isNonEmptyReadonlyArray(rest)) {
+        const [head, ...tail] = rest
         for (; i < input.length - tail.length; i++) {
           output.push(head(input[i]))
         }
@@ -167,7 +166,7 @@ export const match: AST.Match<Pretty<any>> = {
       if (indexSignatureTypes.length > 0) {
         for (let i = 0; i < indexSignatureTypes.length; i++) {
           const type = indexSignatureTypes[i]
-          const keys = Internal.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
+          const keys = _util.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
           for (const key of keys) {
             if (Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
               continue
@@ -185,7 +184,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value()
     }
-    const types = ast.types.map((ast) => [Parser.is(InternalSchema.make(ast)), go(ast)] as const)
+    const types = ast.types.map((ast) => [Parser.is(_schema.make(ast)), go(ast)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
       return types[index][1](a)
@@ -194,7 +193,7 @@ export const match: AST.Match<Pretty<any>> = {
   "Suspend": (ast, go) => {
     return Option.match(getHook(ast), {
       onNone: () => {
-        const get = Internal.memoizeThunk(() => go(ast.f()))
+        const get = _util.memoizeThunk(() => go(ast.f()))
         return (a) => get()(a)
       },
       onSome: (handler) => handler()
@@ -206,7 +205,7 @@ export const match: AST.Match<Pretty<any>> = {
       onSome: (handler) => handler()
     })
   },
-  "Transform": (ast, go) => {
+  "Transformation": (ast, go) => {
     return Option.match(getHook(ast), {
       onNone: () => go(ast.to),
       onSome: (handler) => handler()

@@ -4,9 +4,9 @@
 
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as AST from "./AST.js"
+import * as _hooks from "./internal/hooks.js"
 import type * as Schema from "./Schema.js"
 
 /**
@@ -246,7 +246,7 @@ export const goRoot = (ast: AST.AST): JsonSchema7Root => {
 }
 
 const goWithIdentifier = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
-  const identifier = AST.getIdentifierAnnotation(ast)
+  const identifier = AST.getJSONIdentifier(ast)
   return Option.match(identifier, {
     onNone: () => goWithMetaData(ast, $defs),
     onSome: (id) => {
@@ -278,7 +278,7 @@ const goWithMetaData = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonS
 const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
   const type = ps.type
   if (ps.isOptional && AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
-    return AST.createUnion(type.types.filter((type) => !AST.isUndefinedKeyword(type)), type.annotations)
+    return AST.Union.make(type.types.filter((type) => !AST.isUndefinedKeyword(type)), type.annotations)
   }
   return type
 }
@@ -336,12 +336,9 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       throw new Error("cannot build a JSON Schema for `bigint` without a JSON Schema annotation")
     case "SymbolKeyword":
       throw new Error("cannot build a JSON Schema for `symbol` without a JSON Schema annotation")
-    case "Tuple": {
+    case "TupleType": {
       const elements = ast.elements.map((e) => goWithIdentifier(e.type, $defs))
-      const rest = Option.map(
-        ast.rest,
-        ReadonlyArray.map((ast) => goWithIdentifier(ast, $defs))
-      )
+      const rest = ast.rest.map((ast) => goWithIdentifier(ast, $defs))
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
       // handle elements
@@ -354,8 +351,8 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (Option.isSome(rest)) {
-        const head = rest.value[0]
+      if (rest.length > 0) {
+        const head = rest[0]
         if (len > 0) {
           output.additionalItems = head
         } else {
@@ -365,7 +362,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         // ---------------------------------------------
         // handle post rest elements
         // ---------------------------------------------
-        if (rest.value.length > 1) {
+        if (rest.length > 1) {
           throw new Error(
             "Generating a JSON Schema for post-rest elements is not currently supported. You're welcome to contribute by submitting a Pull Request."
           )
@@ -416,10 +413,10 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
               }
               break
             }
-            throw new Error(`Unsupported index signature parameter (${AST.format(parameter)})`)
+            throw new Error(`Unsupported index signature parameter (${parameter})`)
           }
           case "SymbolKeyword":
-            throw new Error(`Unsupported index signature parameter (${AST.format(parameter)})`)
+            throw new Error(`Unsupported index signature parameter (${parameter})`)
         }
       }
       const propertySignatures = ast.propertySignatures.map((ps) => {
@@ -436,7 +433,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       // ---------------------------------------------
       for (let i = 0; i < propertySignatures.length; i++) {
         const name = ast.propertySignatures[i].name
-        if (typeof name === "string") {
+        if (Predicate.isString(name)) {
           output.properties[name] = propertySignatures[i]
           // ---------------------------------------------
           // handle optional property signatures
@@ -508,7 +505,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       }
     }
     case "Suspend": {
-      const identifier = Option.orElse(AST.getIdentifierAnnotation(ast), () => AST.getIdentifierAnnotation(ast.f()))
+      const identifier = Option.orElse(AST.getJSONIdentifier(ast), () => AST.getJSONIdentifier(ast.f()))
       if (Option.isNone(identifier)) {
         throw new Error(
           "Generating a JSON Schema for suspended schemas requires an identifier annotation"
@@ -516,7 +513,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       }
       return goWithIdentifier(ast.f(), $defs)
     }
-    case "Transform":
+    case "Transformation":
       return goWithIdentifier(ast.to, $defs)
   }
 }

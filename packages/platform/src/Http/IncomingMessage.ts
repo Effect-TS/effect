@@ -136,7 +136,7 @@ export const schemaExternalSpan: <E>(
             } as const
           )
         }
-        return ParseResult.fail(ParseResult.type(ast, input))
+        return ParseResult.fail(new ParseResult.Type(ast, input))
       },
       (_) => ParseResult.succeed({ b3: "" } as const)
     ),

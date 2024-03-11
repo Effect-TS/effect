@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest"
 /**
  * Tests that the generated Eq is a valid Eq
  */
-export const propertyTo = <A, I>(
+export const propertyType = <A, I>(
   schema: S.Schema<A, I>,
   params?: fc.Parameters<[A, ...Array<A>]>
 ) => {
@@ -44,28 +44,32 @@ export const propertyTo = <A, I>(
   fc.assert(transitivity, params)
 }
 
-const string = S.string.pipe(S.equivalence((a, b) => {
-  if (typeof a !== "string" || typeof b !== "string") {
-    throw new Error("invalid string provided to `string`")
+const string = S.string.annotations({
+  equivalence: () => (a, b) => {
+    if (typeof a !== "string" || typeof b !== "string") {
+      throw new Error("invalid string provided to `string`")
+    }
+    return a === b
   }
-  return a === b
-}))
+})
 
-const number = S.JsonNumber.pipe(S.equivalence((a, b) => {
-  if (typeof a !== "number" || typeof b !== "number") {
-    throw new Error("invalid number provided to `number`")
+const number = S.JsonNumber.annotations({
+  equivalence: () => (a, b) => {
+    if (typeof a !== "number" || typeof b !== "number") {
+      throw new Error("invalid number provided to `number`")
+    }
+    return a === b
   }
-  return a === b
-}))
+})
 
-const symbol = S.symbolFromSelf.pipe(
-  S.equivalence((a, b) => {
+const symbol = S.symbolFromSelf.annotations({
+  equivalence: () => (a, b) => {
     if (typeof a !== "symbol" || typeof b !== "symbol") {
       throw new Error("invalid symbol provided to `symbol`")
     }
     return a === b
-  })
-)
+  }
+})
 
 describe("Equivalence", () => {
   it("transformation", () => {
@@ -77,9 +81,9 @@ describe("Equivalence", () => {
     expect(equivalence(1, 2)).toBe(false)
   })
 
-  it("E.make(S.from(schema))", () => {
+  it("E.make(S.encodedSchema(schema))", () => {
     const schema = S.NumberFromString
-    const equivalence = E.make(S.from(schema))
+    const equivalence = E.make(S.encodedSchema(schema))
 
     expect(equivalence("a", "a")).toBe(true)
 
@@ -100,7 +104,7 @@ describe("Equivalence", () => {
 
     expect(equivalence("a", "b")).toBe(false)
 
-    // propertyTo(schema)
+    // propertyType(schema)
   })
 
   it("Refinement", () => {
@@ -111,7 +115,7 @@ describe("Equivalence", () => {
 
     expect(equivalence("a", "b")).toBe(false)
 
-    // propertyTo(schema)
+    // propertyType(schema)
   })
 
   describe("declaration", () => {
@@ -148,7 +152,7 @@ describe("Equivalence", () => {
       expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2))).toBe(false)
       expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 4))).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("Date", () => {
@@ -161,7 +165,7 @@ describe("Equivalence", () => {
 
       expect(equivalence(new Date(0), new Date(1))).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("Data", () => {
@@ -170,7 +174,7 @@ describe("Equivalence", () => {
 
       expect(equivalence(Data.struct({ a: "ok", b: 0 }), Data.struct({ a: "ok", b: 0 }))).toBe(true)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("Either", () => {
@@ -183,7 +187,7 @@ describe("Equivalence", () => {
       expect(equivalence(Either.right(1), Either.right(2))).toBe(false)
       expect(equivalence(Either.left("a"), Either.left("b"))).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("Option", () => {
@@ -195,7 +199,7 @@ describe("Equivalence", () => {
 
       expect(equivalence(Option.some(1), Option.some(2))).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("ReadonlySet", () => {
@@ -207,7 +211,7 @@ describe("Equivalence", () => {
 
       expect(equivalence(new Set([1, 2, 3]), new Set([1, 2]))).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("ReadonlyMap", () => {
@@ -220,7 +224,7 @@ describe("Equivalence", () => {
       expect(equivalence(new Map([["a", 1], ["b", 2]]), new Map([["a", 3], ["b", 2]]))).toBe(false)
       expect(equivalence(new Map([["a", 1], ["b", 2]]), new Map([["a", 1], ["b", 4]]))).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("Uint8Array", () => {
@@ -236,7 +240,7 @@ describe("Equivalence", () => {
         equivalence(new Uint8Array([10, 20, 30, 40, 50]), new Uint8Array([10, 20, 30, 30, 50]))
       ).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("instanceOf", () => {
@@ -264,7 +268,7 @@ describe("Equivalence", () => {
       expect(equivalence("a", "b")).toBe(false)
       expect(equivalence(1, 2)).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("should fallback on the less precise equivalence", () => {
@@ -278,7 +282,7 @@ describe("Equivalence", () => {
 
       expect(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 })).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("discriminated", () => {
@@ -314,11 +318,11 @@ describe("Equivalence", () => {
       expect(equivalence(["a", 1], ["b", 1])).toBe(false)
       expect(equivalence(["a", 1], ["a", 2])).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("e + r", () => {
-      const schema = S.tuple(string).pipe(S.rest(number))
+      const schema = S.tuple([S.string], S.number)
       const equivalence = E.make(schema)
 
       expect(equivalence(["a"], ["a"])).toBe(true)
@@ -328,7 +332,7 @@ describe("Equivalence", () => {
       expect(equivalence(["a", 1], ["a", 2])).toBe(false)
       expect(equivalence(["a", 1, 2], ["a", 1, 3])).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("r", () => {
@@ -342,11 +346,11 @@ describe("Equivalence", () => {
       expect(equivalence([1, 2], [1, 2, 3])).toBe(false)
       expect(equivalence([1, 2, 3], [1, 2])).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("r + e", () => {
-      const schema = S.array(string).pipe(S.element(number))
+      const schema = S.array(string, number)
       const equivalence = E.make(schema)
 
       expect(equivalence([1], [1])).toBe(true)
@@ -357,12 +361,12 @@ describe("Equivalence", () => {
       expect(equivalence([2], [1])).toBe(false)
       expect(equivalence(["a", "b", 1], ["a", "c", 1])).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     describe("optional element support", () => {
       it("e?", () => {
-        const schema = S.tuple().pipe(S.optionalElement(string))
+        const schema = S.tuple(S.optionalElement(string))
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)
@@ -372,11 +376,11 @@ describe("Equivalence", () => {
         expect(equivalence([], ["a"])).toBe(false)
         expect(equivalence(["a"], [])).toBe(false)
 
-        // propertyTo(schema)
+        // propertyType(schema)
       })
 
       it("e? + e?", () => {
-        const schema = S.tuple().pipe(S.optionalElement(string), S.optionalElement(number))
+        const schema = S.tuple(S.optionalElement(string), S.optionalElement(number))
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)
@@ -390,11 +394,11 @@ describe("Equivalence", () => {
         expect(equivalence([], ["a"])).toBe(false)
         expect(equivalence(["a"], [])).toBe(false)
 
-        // propertyTo(schema)
+        // propertyType(schema)
       })
 
       it("e + e?", () => {
-        const schema = S.tuple(string).pipe(S.optionalElement(number))
+        const schema = S.tuple(string, S.optionalElement(number))
         const equivalence = E.make(schema)
 
         expect(equivalence(["a"], ["a"])).toBe(true)
@@ -404,11 +408,11 @@ describe("Equivalence", () => {
         expect(equivalence(["a"], ["a", 1])).toBe(false)
         expect(equivalence(["a", 1], ["a"])).toBe(false)
 
-        // propertyTo(schema)
+        // propertyType(schema)
       })
 
       it("e? + r", () => {
-        const schema = S.tuple().pipe(S.optionalElement(string), S.rest(number))
+        const schema = S.tuple([S.optionalElement(S.string)], S.number)
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)
@@ -420,7 +424,7 @@ describe("Equivalence", () => {
         expect(equivalence(["a"], ["b"])).toBe(false)
         expect(equivalence(["a", 1], ["a", 2])).toBe(false)
 
-        // propertyTo(schema)
+        // propertyType(schema)
       })
     })
   })
@@ -451,7 +455,7 @@ describe("Equivalence", () => {
       expect(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 })).toBe(false)
       expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 })).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("symbol keys", () => {
@@ -474,7 +478,7 @@ describe("Equivalence", () => {
       expect(equivalence({ [a]: "a", [b]: 1 }, { [a]: "c", [b]: 1 })).toBe(false)
       expect(equivalence({ [a]: "a", [b]: 1 }, { [a]: "a", [b]: 2 })).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("optional property signature", () => {
@@ -497,7 +501,7 @@ describe("Equivalence", () => {
       expect(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 })).toBe(false)
       expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 })).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
   })
 
@@ -527,7 +531,7 @@ describe("Equivalence", () => {
       expect(equivalence({ a: 1 }, { a: 1, b: 2 })).toBe(false)
       expect(equivalence({ a: 1 }, { b: 1 })).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("record(symbol, number)", () => {
@@ -548,13 +552,11 @@ describe("Equivalence", () => {
       expect(equivalence({ [a]: 1 }, { [a]: 1, [b]: 2 })).toBe(false)
       expect(equivalence({ [a]: 1 }, { [b]: 1 })).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("struct + record", () => {
-      const schema = S.struct({ a: string, b: string }).pipe(
-        S.extend(S.record(string, string))
-      )
+      const schema = S.struct({ a: string, b: string }, S.record(string, string))
       const equivalence = E.make(schema)
 
       expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "b" })).toBe(true)
@@ -564,13 +566,13 @@ describe("Equivalence", () => {
       expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "c" })).toBe(false)
       expect(equivalence({ a: "a", b: "b", c: "c1" }, { a: "a", b: "b", c: "c2" })).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
 
     it("custom equivalence", () => {
-      const schema = S.struct({ a: string, b: string }).pipe(
-        S.equivalence(Equivalence.make((x, y) => x.a === y.a))
-      )
+      const schema = S.struct({ a: string, b: string }).annotations({
+        equivalence: () => Equivalence.make((x, y) => x.a === y.a)
+      })
       const equivalence = E.make(schema)
 
       expect(equivalence({ a: "a", b: "b" }, { a: "a", b: "b" })).toBe(true)
@@ -578,7 +580,7 @@ describe("Equivalence", () => {
 
       expect(equivalence({ a: "a", b: "b" }, { a: "c", b: "b" })).toBe(false)
 
-      // propertyTo(schema)
+      // propertyType(schema)
     })
   })
 
@@ -606,7 +608,7 @@ describe("Equivalence", () => {
       const a5: A = { a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a5", as: [] }] }] }
       expect(equivalence(a4, a5)).toBe(false)
 
-      // propertyTo(schema, { numRuns: 5 })
+      // propertyType(schema, { numRuns: 5 })
     })
 
     it("should support mutually suspended schemas", () => {
@@ -686,7 +688,7 @@ describe("Equivalence", () => {
       }
       expect(equivalence(a1, a2)).toBe(false)
 
-      // propertyTo(Operation, { numRuns: 5 })
+      // propertyType(Operation, { numRuns: 5 })
     })
   })
 
@@ -713,8 +715,8 @@ describe("Equivalence", () => {
       expectHook(S.symbol)
     })
 
-    it("uniqueSymbol", () => {
-      expectHook(S.uniqueSymbol(Symbol.for("effect/schema/test/a")))
+    it("uniqueSymbolFromSelf", () => {
+      expectHook(S.uniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
     })
 
     it("templateLiteral", () => {
