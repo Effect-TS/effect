@@ -3,7 +3,8 @@
   "references": [
     { "path": "../effect" },
     { "path": "../schema" },
-    { "path": "../platform" }
+    { "path": "../platform" },
+    { "path": "../platform-node" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/build.tsbuildinfo",

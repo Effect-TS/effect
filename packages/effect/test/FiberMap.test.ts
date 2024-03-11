@@ -50,4 +50,15 @@ describe("FiberMap", () => {
 
       assert.strictEqual(yield* _(Ref.get(ref)), 10)
     }))
+
+  it.scoped("join", () =>
+    Effect.gen(function*(_) {
+      const map = yield* _(FiberMap.make<string>())
+      FiberMap.unsafeSet(map, "a", Effect.runFork(Effect.unit))
+      FiberMap.unsafeSet(map, "b", Effect.runFork(Effect.unit))
+      FiberMap.unsafeSet(map, "c", Effect.runFork(Effect.fail("fail")))
+      FiberMap.unsafeSet(map, "d", Effect.runFork(Effect.fail("ignored")))
+      const result = yield* _(FiberMap.join(map), Effect.flip)
+      assert.strictEqual(result, "fail")
+    }))
 })

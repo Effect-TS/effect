@@ -24,6 +24,7 @@ import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
 import * as _console from "./internal/console.js"
+import { TagProto } from "./internal/context.js"
 import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
@@ -42,7 +43,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Random from "./Random.js"
 import type * as Ref from "./Ref.js"
-import type * as Request from "./Request.js"
+import * as Request from "./Request.js"
 import type { RequestBlock } from "./RequestBlock.js"
 import type { RequestResolver } from "./RequestResolver.js"
 import type * as Runtime from "./Runtime.js"
@@ -53,7 +54,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, MergeRecord, NoInfer } from "./Types.js"
+import type { Concurrency, Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 // -------------------------------------------------------------------------------------
@@ -137,7 +138,7 @@ export interface Blocked<out A, out E> extends Effect<A, E> {
  * @category models
  */
 declare module "./Context.js" {
-  interface Tag<Identifier, Service> extends Effect<Service, never, Identifier> {}
+  interface Tag<Id, Value> extends Effect<Value, never, Id> {}
   interface TagUnifyIgnore {
     Effect?: true
     Either?: true
@@ -3103,11 +3104,10 @@ export const serviceFunctionEffect: <T extends Effect<any, any, any>, Args exten
 export const serviceFunctions: <S, SE, SR>(
   getService: Effect<S, SE, SR>
 ) => {
-  [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never }[keyof S]]:
-    S[k] extends (...args: infer Args) => Effect<infer A, infer E, infer R> ?
-      (...args: Args) => Effect<A, SE | E, SR | R> :
-      never
-} = effect.serviceFunctions
+  [k in keyof S as S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never]: S[k] extends
+    (...args: infer Args) => Effect<infer A, infer E, infer R> ? (...args: Args) => Effect<A, SE | E, SR | R>
+    : never
+} = effect.serviceFunctions as any
 
 /**
  * @since 2.0.0
@@ -3124,20 +3124,19 @@ export const serviceConstants: <S, SE, SR>(
  * @since 2.0.0
  * @category context
  */
-export const serviceMembers: <SR, SE, S>(
+export const serviceMembers: <S, SE, SR>(
   getService: Effect<S, SE, SR>
 ) => {
   functions: {
-    [k in { [k in keyof S]: S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never }[keyof S]]:
-      S[k] extends (...args: infer Args) => Effect<infer A, infer E, infer R> ?
-        (...args: Args) => Effect<A, SE | E, SR | R>
-        : never
+    [k in keyof S as S[k] extends (...args: Array<any>) => Effect<any, any, any> ? k : never]: S[k] extends
+      (...args: infer Args) => Effect<infer A, infer E, infer R> ? (...args: Args) => Effect<A, SE | E, SR | R>
+      : never
   }
   constants: {
     [k in { [k in keyof S]: k }[keyof S]]: S[k] extends Effect<infer A, infer E, infer R> ? Effect<A, SE | E, SR | R>
       : Effect<S[k], SE, SR>
   }
-} = effect.serviceMembers
+} = effect.serviceMembers as any
 
 /**
  * @since 2.0.0
@@ -3558,7 +3557,7 @@ export const andThen: {
     : [X] extends [Promise<infer A1>] ? Effect<A1, E | Cause.UnknownException, R>
     : Effect<X, E, R>
   <X>(
-    f: X
+    f: NotFunction<X>
   ): <A, E, R>(
     self: Effect<A, E, R>
   ) => [X] extends [Effect<infer A1, infer E1, infer R1>] ? Effect<A1, E | E1, R | R1>
@@ -3572,7 +3571,7 @@ export const andThen: {
     : Effect<X, E, R>
   <A, E, R, X>(
     self: Effect<A, E, R>,
-    f: X
+    f: NotFunction<X>
   ): [X] extends [Effect<infer A1, infer E1, infer R1>] ? Effect<A1, E | E1, R | R1>
     : [X] extends [Promise<infer A1>] ? Effect<A1, E | Cause.UnknownException, R>
     : Effect<X, E, R>
@@ -3687,7 +3686,7 @@ export const tap: {
     : [X] extends [Promise<infer _A1>] ? Effect<A, E | Cause.UnknownException, R>
     : Effect<A, E, R>
   <X>(
-    f: X
+    f: NotFunction<X>
   ): <A, E, R>(
     self: Effect<A, E, R>
   ) => [X] extends [Effect<infer _A1, infer E1, infer R1>] ? Effect<A, E | E1, R | R1>
@@ -3701,7 +3700,7 @@ export const tap: {
     : Effect<A, E, R>
   <A, E, R, X>(
     self: Effect<A, E, R>,
-    f: X
+    f: NotFunction<X>
   ): [X] extends [Effect<infer _A1, infer E1, infer R1>] ? Effect<A, E | E1, R | R1>
     : [X] extends [Promise<infer _A1>] ? Effect<A, E | Cause.UnknownException, R>
     : Effect<A, E, R>
@@ -4914,18 +4913,27 @@ export const step: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E> | 
  * @category requests & batching
  */
 export const request: {
+  <A extends Request.Request<any, any>, Ds extends RequestResolver<A> | Effect<RequestResolver<A>, any, any>>(
+    dataSource: Ds
+  ): (
+    self: A
+  ) => Effect<
+    Request.Request.Success<A>,
+    Request.Request.Error<A>,
+    [Ds] extends [Effect<any, any, any>] ? Effect.Context<Ds> : never
+  >
   <
-    A extends Request.Request<any, any>,
-    Ds extends RequestResolver<A> | Effect<RequestResolver<A>, any, any>
+    Ds extends RequestResolver<A> | Effect<RequestResolver<A>, any, any>,
+    A extends Request.Request<any, any>
   >(
-    request: A,
+    self: A,
     dataSource: Ds
   ): Effect<
     Request.Request.Success<A>,
     Request.Request.Error<A>,
     [Ds] extends [Effect<any, any, any>] ? Effect.Context<Ds> : never
   >
-} = query.fromRequest as any
+} = dual((args) => Request.isRequest(args[0]), query.fromRequest)
 
 /**
  * @since 2.0.0
@@ -5230,3 +5238,65 @@ export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchE
 export const optionFromOptional: <A, E, R>(
   self: Effect<A, E, R>
 ) => Effect<Option.Option<A>, Exclude<E, Cause.NoSuchElementException>, R> = effect.optionFromOptional
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
+  & Context.TagClass<Self, Id, Type>
+  & (Type extends Record<PropertyKey, any> ? {
+      [
+        k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
+          ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
+          : k
+      ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+        (...args: Readonly<Args>) => Effect<A, E, Self | R>
+        : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+        : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+        : Effect<Type[k], never, Self>
+    } :
+    {})
+  & {
+    use: <X>(
+      body: (_: Type) => X
+    ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+  } = (id) => () => {
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const creationError = new Error()
+    Error.stackTraceLimit = limit
+    function TagClass() {}
+    Object.setPrototypeOf(TagClass, TagProto)
+    TagClass.key = id
+    Object.defineProperty(TagClass, "stack", {
+      get() {
+        return creationError.stack
+      }
+    })
+    const cache = new Map()
+    const done = new Proxy(TagClass, {
+      get(_target: any, prop: any, _receiver) {
+        if (prop === "use") {
+          // @ts-expect-error
+          return (body) => core.andThen(TagClass, body)
+        }
+        if (prop in TagClass) {
+          // @ts-expect-error
+          return TagClass[prop]
+        }
+        if (cache.has(prop)) {
+          return cache.get(prop)
+        }
+        // @ts-expect-error
+        const fn = (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args))
+        // @ts-expect-error
+        const cn = core.andThen(TagClass, (s) => s[prop])
+        Object.assign(fn, cn)
+        Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
+        cache.set(prop, fn)
+        return fn
+      }
+    })
+    return done
+  }

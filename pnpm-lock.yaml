@@ -272,6 +272,9 @@ importers:
       find-my-way-ts:
         specifier: ^0.1.1
         version: 0.1.1
+      isomorphic-ws:
+        specifier: ^5.0.0
+        version: 5.0.0(ws@8.16.0)
       multipasta:
         specifier: ^0.1.21
         version: 0.1.21
@@ -341,6 +344,9 @@ importers:
       mime:
         specifier: ^3.0.0
         version: 3.0.0
+      ws:
+        specifier: ^8.16.0
+        version: 8.16.0
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -354,6 +360,9 @@ importers:
       '@types/node':
         specifier: ^20.11.19
         version: 20.11.19
+      '@types/ws':
+        specifier: ^8.5.10
+        version: 8.5.10
       effect:
         specifier: workspace:^
         version: link:../effect/dist

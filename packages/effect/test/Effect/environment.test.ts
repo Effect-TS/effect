@@ -2,6 +2,7 @@ import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
 import { assert, describe, expect } from "vitest"
 
 interface NumberService {
@@ -22,7 +23,63 @@ class NumberRepo extends Context.Tag("NumberRepo")<NumberRepo, {
   static numbers = Effect.serviceConstants(NumberRepo).numbers
 }
 
+class DemoTag extends Effect.Tag("DemoTag")<DemoTag, {
+  readonly getNumbers: () => Array<number>
+  readonly strings: Array<string>
+  readonly fn: (...args: ReadonlyArray<string>) => Array<string>
+  readonly fnGen: <S>(s: S) => Array<S>
+}>() {
+}
+
+class DateTag extends Effect.Tag("DateTag")<DateTag, Date>() {
+  static date = new Date(1970, 1, 1)
+  static Live = Layer.succeed(this, this.date)
+}
+
+class MapTag extends Effect.Tag("MapTag")<MapTag, Map<string, string>>() {
+  static Live = Layer.effect(this, Effect.sync(() => new Map()))
+}
+
+class NumberTag extends Effect.Tag("NumberTag")<NumberTag, number>() {
+  static Live = Layer.succeed(this, 100)
+}
+
 describe("Effect", () => {
+  it.effect("effect tag", () =>
+    Effect.gen(function*($) {
+      const [n, s, z] = yield* $(Effect.all([
+        DemoTag.getNumbers(),
+        DemoTag.strings,
+        DemoTag.fn("a", "b", "c")
+      ]))
+      const s2 = yield* $(DemoTag.pipe(Effect.map((_) => _.strings)))
+      const s3 = yield* $(DemoTag.use((_) => _.fnGen("hello")))
+      expect(n).toEqual([0, 1])
+      expect(s).toEqual(["a", "b"])
+      expect(z).toEqual(["a", "b", "c"])
+      expect(s2).toEqual(["a", "b"])
+      expect(s3).toEqual(["hello"])
+    }).pipe(Effect.provideService(DemoTag, {
+      getNumbers: () => [0, 1],
+      strings: ["a", "b"],
+      fn: (...args) => Array.from(args),
+      fnGen: (s) => [s]
+    })))
+  it.effect("effect tag with primitives", () =>
+    Effect.gen(function*($) {
+      expect(yield* $(DateTag.getTime())).toEqual(DateTag.date.getTime())
+      expect(yield* $(NumberTag)).toEqual(100)
+      expect(Array.from(yield* $(MapTag.keys()))).toEqual([])
+      yield* $(MapTag.set("foo", "bar"))
+      expect(Array.from(yield* $(MapTag.keys()))).toEqual(["foo"])
+      expect(yield* $(MapTag.get("foo"))).toEqual("bar")
+    }).pipe(
+      Effect.provide(Layer.mergeAll(
+        DateTag.Live,
+        NumberTag.Live,
+        MapTag.Live
+      ))
+    ))
   it.effect("class tag", () =>
     Effect.gen(function*($) {
       yield* $(

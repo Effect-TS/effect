@@ -1,5 +1,5 @@
 import * as MsgPack from "@effect/experimental/MsgPack"
-import * as Socket from "@effect/experimental/Socket/Node"
+import * as Socket from "@effect/platform-node/NodeSocket"
 import { Chunk, Effect, Stream } from "effect"
 import * as Net from "node:net"
 import { assert, describe, test } from "vitest"

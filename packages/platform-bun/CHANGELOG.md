@@ -1,5 +1,55 @@
 # @effect/platform-bun
 
+## 0.32.11
+
+### Patch Changes
+
+- [#2267](https://github.com/Effect-TS/effect/pull/2267) [`0f3d99c`](https://github.com/Effect-TS/effect/commit/0f3d99c27521ec6b221b644a0fffc79199c3acca) Thanks [@tim-smart](https://github.com/tim-smart)! - propogate Socket handler errors to .run Effect
+
+- [#2261](https://github.com/Effect-TS/effect/pull/2261) [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e) Thanks [@tim-smart](https://github.com/tim-smart)! - add websocket support to platform http server
+
+  You can use the `Http.request.upgrade*` apis to access the `Socket` for the request.
+
+  Here is an example server that handles websockets on the `/ws` path:
+
+  ```ts
+  import { NodeHttpServer, NodeRuntime } from "@effect/platform-node";
+  import * as Http from "@effect/platform/HttpServer";
+  import { Console, Effect, Layer, Schedule, Stream } from "effect";
+  import { createServer } from "node:http";
+
+  const ServerLive = NodeHttpServer.server.layer(() => createServer(), {
+    port: 3000,
+  });
+
+  const HttpLive = Http.router.empty.pipe(
+    Http.router.get(
+      "/ws",
+      Effect.gen(function* (_) {
+        yield* _(
+          Stream.fromSchedule(Schedule.spaced(1000)),
+          Stream.map(JSON.stringify),
+          Stream.encodeText,
+          Stream.pipeThroughChannel(Http.request.upgradeChannel()),
+          Stream.decodeText(),
+          Stream.runForEach(Console.log),
+        );
+        return Http.response.empty();
+      }),
+    ),
+    Http.server.serve(Http.middleware.logger),
+    Http.server.withLogAddress,
+    Layer.provide(ServerLive),
+  );
+
+  NodeRuntime.runMain(Layer.launch(HttpLive));
+  ```
+
+- Updated dependencies [[`e03811e`](https://github.com/Effect-TS/effect/commit/e03811e80c93e986e6348b3b67ac2ed6d5fefff0), [`ac41d84`](https://github.com/Effect-TS/effect/commit/ac41d84776484cdce8165b7ca2c9c9b6377eee2d), [`0f3d99c`](https://github.com/Effect-TS/effect/commit/0f3d99c27521ec6b221b644a0fffc79199c3acca), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`1bf9f31`](https://github.com/Effect-TS/effect/commit/1bf9f31f07667de677673f7c29a4e7a26ebad3c8), [`e3ff789`](https://github.com/Effect-TS/effect/commit/e3ff789226f89e71eb28ca38ce79f90af6a03f1a), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`507ba40`](https://github.com/Effect-TS/effect/commit/507ba4060ff043c1a8d541dae723fa6940633b00), [`4064ea0`](https://github.com/Effect-TS/effect/commit/4064ea04e0b3fa23108ee471cd89ab2482b2f6e5), [`e466afe`](https://github.com/Effect-TS/effect/commit/e466afe32f2de598ceafd8982bd0cfbd388e5671), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`de74eb8`](https://github.com/Effect-TS/effect/commit/de74eb80a79eebde5ff645033765e7a617e92f27), [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e), [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e)]:
+  - effect@2.4.2
+  - @effect/platform-node-shared@0.2.4
+  - @effect/platform@0.47.0
+
 ## 0.32.10
 
 ### Patch Changes

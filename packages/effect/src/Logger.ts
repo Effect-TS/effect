@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.js"
+import type { DurationInput } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import type * as FiberId from "./FiberId.js"
 import type * as FiberRefs from "./FiberRefs.js"
@@ -159,6 +160,39 @@ export const map: {
 } = internal.map
 
 /**
+ * @since 2.0.0
+ * @category mapping
+ * @example
+ * import { Console, Effect, Logger } from "effect";
+ *
+ * const LoggerLive = Logger.replaceScoped(
+ *   Logger.defaultLogger,
+ *   Logger.logfmtLogger.pipe(
+ *     Logger.batched("500 millis", (messages) =>
+ *       Console.log("BATCH", messages.join("\n"))
+ *     )
+ *   )
+ * );
+ *
+ * Effect.gen(function* (_) {
+ *   yield* _(Effect.log("one"));
+ *   yield* _(Effect.log("two"));
+ *   yield* _(Effect.log("three"));
+ * }).pipe(Effect.provide(LoggerLive), Effect.runFork);
+ */
+export const batched: {
+  <Output, R>(
+    window: DurationInput,
+    f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
+  ): <Message>(self: Logger<Message, Output>) => Effect<Logger<Message, void>, never, R | Scope>
+  <Message, Output, R>(
+    self: Logger<Message, Output>,
+    window: DurationInput,
+    f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
+  ): Effect<Logger<Message, void>, never, Scope | R>
+} = fiberRuntime.batchedLogger
+
+/**
  * A logger that does nothing in response to logging events.
  *
  * @since 2.0.0
@@ -302,6 +336,12 @@ export const defaultLogger: Logger<unknown, void> = fiberRuntime.defaultLogger
  * @since 2.0.0
  * @category constructors
  */
+export const jsonLogger: Logger<unknown, string> = internal.jsonLogger
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const logfmtLogger: Logger<unknown, string> = internal.logfmtLogger
 
 /**
@@ -314,7 +354,30 @@ export const stringLogger: Logger<unknown, string> = internal.stringLogger
  * @since 2.0.0
  * @category constructors
  */
+export const structuredLogger: Logger<
+  unknown,
+  {
+    readonly logLevel: string
+    readonly fiberId: string
+    readonly timestamp: string
+    readonly message: unknown
+    readonly cause: string | undefined
+    readonly annotations: Record<string, unknown>
+    readonly spans: Record<string, number>
+  }
+> = internal.structuredLogger
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const tracerLogger: Logger<unknown, void> = fiberRuntime.tracerLogger
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.jsonLogger)
 
 /**
  * @since 2.0.0
@@ -324,6 +387,20 @@ export const logFmt: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fi
 
 /**
  * @since 2.0.0
+ * @category constructors
+ */
+export const structured: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.structuredLogger)
+
+/**
+ * @since 2.0.0
  * @category context
  */
 export const minimumLogLevel: (level: LogLevel.LogLevel) => Layer.Layer<never> = circular.minimumLogLevel
+
+/**
+ * Returns `true` if the specified value is a `Logger`, otherwise returns `false`.
+ *
+ * @since 1.0.0
+ * @category guards
+ */
+export const isLogger: (u: unknown) => u is Logger<unknown, unknown> = internal.isLogger

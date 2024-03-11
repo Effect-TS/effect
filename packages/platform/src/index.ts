@@ -46,7 +46,17 @@ export * as Path from "./Path.js"
 /**
  * @since 1.0.0
  */
+export * as PlatformLogger from "./PlatformLogger.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Runtime from "./Runtime.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Socket from "./Socket.js"
 
 /**
  * @since 1.0.0

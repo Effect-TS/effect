@@ -46,6 +46,11 @@ export * as NodeSink from "./NodeSink.js"
 /**
  * @since 1.0.0
  */
+export * as NodeSocket from "./NodeSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeStream from "./NodeStream.js"
 
 /**

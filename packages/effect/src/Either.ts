@@ -12,7 +12,7 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
+import type { Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -88,6 +88,22 @@ export interface EitherUnifyIgnore {}
  */
 export interface EitherTypeLambda extends TypeLambda {
   readonly type: Either<this["Target"], this["Out1"]>
+}
+
+/**
+ * @since 2.0.0
+ */
+export declare namespace Either {
+  /**
+   * @since 2.0.0
+   * @category type-level
+   */
+  export type Left<T extends Either<any, any>> = [T] extends [Either<infer _A, infer _E>] ? _E : never
+  /**
+   * @since 2.0.0
+   * @category type-level
+   */
+  export type Right<T extends Either<any, any>> = [T] extends [Either<infer _A, infer _E>] ? _A : never
 }
 
 /**
@@ -571,11 +587,11 @@ export const andThen: {
   <R, R2, L2>(f: (right: R) => Either<R2, L2>): <L>(self: Either<R, L>) => Either<R2, L | L2>
   <R2, L2>(f: Either<R2, L2>): <L, R1>(self: Either<R1, L>) => Either<R2, L | L2>
   <R, R2>(f: (right: R) => R2): <L>(self: Either<R, L>) => Either<R2, L>
-  <R2>(right: R2): <R1, L>(self: Either<R1, L>) => Either<R2, L>
+  <R2>(right: NotFunction<R2>): <R1, L>(self: Either<R1, L>) => Either<R2, L>
   <R, L, R2, L2>(self: Either<R, L>, f: (right: R) => Either<R2, L2>): Either<R2, L | L2>
   <R, L, R2, L2>(self: Either<R, L>, f: Either<R2, L2>): Either<R2, L | L2>
   <R, L, R2>(self: Either<R, L>, f: (right: R) => R2): Either<R2, L>
-  <R, L, R2>(self: Either<R, L>, f: R2): Either<R2, L>
+  <R, L, R2>(self: Either<R, L>, f: NotFunction<R2>): Either<R2, L>
 } = dual(
   2,
   <R, L, R2, L2>(self: Either<R, L>, f: (right: R) => Either<R2, L2> | Either<R2, L2>): Either<R2, L | L2> =>

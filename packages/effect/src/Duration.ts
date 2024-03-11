@@ -46,13 +46,21 @@ export type DurationValue =
  * @category models
  */
 export type Unit =
+  | "nano"
   | "nanos"
+  | "micro"
   | "micros"
+  | "milli"
   | "millis"
+  | "second"
   | "seconds"
+  | "minute"
   | "minutes"
+  | "hour"
   | "hours"
+  | "day"
   | "days"
+  | "week"
   | "weeks"
 
 /**
@@ -66,7 +74,7 @@ export type DurationInput =
   | [seconds: number, nanos: number]
   | `${number} ${Unit}`
 
-const DURATION_REGEX = /^(-?\d+(?:\.\d+)?)\s+(nanos|micros|millis|seconds|minutes|hours|days|weeks)$/
+const DURATION_REGEX = /^(-?\d+(?:\.\d+)?)\s+(nanos?|micros?|millis?|seconds?|minutes?|hours?|days?|weeks?)$/
 
 /**
  * @since 2.0.0
@@ -89,20 +97,28 @@ export const decode = (input: DurationInput): Duration => {
       const [_, valueStr, unit] = match
       const value = Number(valueStr)
       switch (unit) {
+        case "nano":
         case "nanos":
           return nanos(BigInt(valueStr))
+        case "micro":
         case "micros":
           return micros(BigInt(valueStr))
+        case "milli":
         case "millis":
           return millis(value)
+        case "second":
         case "seconds":
           return seconds(value)
+        case "minute":
         case "minutes":
           return minutes(value)
+        case "hour":
         case "hours":
           return hours(value)
+        case "day":
         case "days":
           return days(value)
+        case "week":
         case "weeks":
           return weeks(value)
       }

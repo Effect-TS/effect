@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
+import * as Socket from "@effect/platform/Socket"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as MsgPack from "../MsgPack.js"
-import * as Socket from "../Socket.js"
 import * as SocketServer from "../SocketServer/Node.js"
 import * as Domain from "./Domain.js"
 

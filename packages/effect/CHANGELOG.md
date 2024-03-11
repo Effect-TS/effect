@@ -1,5 +1,129 @@
 # effect
 
+## 2.4.2
+
+### Patch Changes
+
+- [#2264](https://github.com/Effect-TS/effect/pull/2264) [`e03811e`](https://github.com/Effect-TS/effect/commit/e03811e80c93e986e6348b3b67ac2ed6d5fefff0) Thanks [@patroza](https://github.com/patroza)! - fix: unmatched function fallthrough in `andThen` and `tap`
+
+- [#2225](https://github.com/Effect-TS/effect/pull/2225) [`ac41d84`](https://github.com/Effect-TS/effect/commit/ac41d84776484cdce8165b7ca2c9c9b6377eee2d) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Add Effect.Tag to simplify access to service.
+
+  This change allows to define tags in the following way:
+
+  ```ts
+  class DemoTag extends Effect.Tag("DemoTag")<
+    DemoTag,
+    {
+      readonly getNumbers: () => Array<number>;
+      readonly strings: Array<string>;
+    }
+  >() {}
+  ```
+
+  And use them like:
+
+  ```ts
+  DemoTag.getNumbers();
+  DemoTag.strings;
+  ```
+
+  This fuses together `serviceFunctions` and `serviceConstants` in the static side of the tag.
+
+  Additionally it allows using the service like:
+
+  ```ts
+  DemoTag.use((_) => _.getNumbers());
+  ```
+
+  This is especially useful when having functions that contain generics in the service given that those can't be reliably transformed at the type level and because of that we can't put them on the tag.
+
+- [#2238](https://github.com/Effect-TS/effect/pull/2238) [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750) Thanks [@JJayet](https://github.com/JJayet)! - Request: swap Success and Error params
+
+- [#2270](https://github.com/Effect-TS/effect/pull/2270) [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed) Thanks [@tim-smart](https://github.com/tim-smart)! - add structured logging apis
+
+  - Logger.json / Logger.jsonLogger
+  - Logger.structured / Logger.structuredLogger
+
+  `Logger.json` logs JSON serialized strings to the console.
+
+  `Logger.structured` logs structured objects, which is useful in the browser
+  where you can inspect objects logged to the console.
+
+- [#2257](https://github.com/Effect-TS/effect/pull/2257) [`1bf9f31`](https://github.com/Effect-TS/effect/commit/1bf9f31f07667de677673f7c29a4e7a26ebad3c8) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Make sure Effect.Tag works on primitives.
+
+  This change allows the following to work just fine:
+
+  ```ts
+  import { Effect, Layer } from "effect";
+
+  class DateTag extends Effect.Tag("DateTag")<DateTag, Date>() {
+    static date = new Date(1970, 1, 1);
+    static Live = Layer.succeed(this, this.date);
+  }
+
+  class MapTag extends Effect.Tag("MapTag")<MapTag, Map<string, string>>() {
+    static Live = Layer.effect(
+      this,
+      Effect.sync(() => new Map()),
+    );
+  }
+
+  class NumberTag extends Effect.Tag("NumberTag")<NumberTag, number>() {
+    static Live = Layer.succeed(this, 100);
+  }
+  ```
+
+- [#2244](https://github.com/Effect-TS/effect/pull/2244) [`e3ff789`](https://github.com/Effect-TS/effect/commit/e3ff789226f89e71eb28ca38ce79f90af6a03f1a) Thanks [@tim-smart](https://github.com/tim-smart)! - add FiberMap/FiberSet.join api
+
+  This api can be used to propogate failures back to a parent fiber, in case any of the fibers added to the FiberMap/FiberSet fail with an error.
+
+  Example:
+
+  ```ts
+  import { Effect, FiberSet } from "effect";
+
+  Effect.gen(function* (_) {
+    const set = yield* _(FiberSet.make());
+    yield* _(FiberSet.add(set, Effect.runFork(Effect.fail("error"))));
+
+    // parent fiber will fail with "error"
+    yield* _(FiberSet.join(set));
+  });
+  ```
+
+- [#2238](https://github.com/Effect-TS/effect/pull/2238) [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750) Thanks [@JJayet](https://github.com/JJayet)! - make Effect.request dual
+
+- [#2263](https://github.com/Effect-TS/effect/pull/2263) [`507ba40`](https://github.com/Effect-TS/effect/commit/507ba4060ff043c1a8d541dae723fa6940633b00) Thanks [@thewilkybarkid](https://github.com/thewilkybarkid)! - Allow duration inputs to be singular
+
+- [#2255](https://github.com/Effect-TS/effect/pull/2255) [`e466afe`](https://github.com/Effect-TS/effect/commit/e466afe32f2de598ceafd8982bd0cfbd388e5671) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added Either.Either.{Left,Right} and Option.Option.Value type utils
+
+- [#2270](https://github.com/Effect-TS/effect/pull/2270) [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed) Thanks [@tim-smart](https://github.com/tim-smart)! - add Logger.batched, for batching logger output
+
+  It takes a duration window and an effectful function that processes the batched output.
+
+  Example:
+
+  ```ts
+  import { Console, Effect, Logger } from "effect";
+
+  const LoggerLive = Logger.replaceScoped(
+    Logger.defaultLogger,
+    Logger.logfmtLogger.pipe(
+      Logger.batched("500 millis", (messages) =>
+        Console.log("BATCH", messages.join("\n")),
+      ),
+    ),
+  );
+
+  Effect.gen(function* (_) {
+    yield* _(Effect.log("one"));
+    yield* _(Effect.log("two"));
+    yield* _(Effect.log("three"));
+  }).pipe(Effect.provide(LoggerLive), Effect.runFork);
+  ```
+
+- [#2233](https://github.com/Effect-TS/effect/pull/2233) [`de74eb8`](https://github.com/Effect-TS/effect/commit/de74eb80a79eebde5ff645033765e7a617e92f27) Thanks [@gcanti](https://github.com/gcanti)! - Struct: make `pick` / `omit` dual
+
 ## 2.4.1
 
 ### Patch Changes

@@ -18,13 +18,21 @@ describe("Duration", () => {
 
     expect(Duration.decode(10n)).toEqual(Duration.nanos(10n))
 
+    expect(Duration.decode("1 nano")).toEqual(Duration.nanos(1n))
     expect(Duration.decode("10 nanos")).toEqual(Duration.nanos(10n))
+    expect(Duration.decode("1 micro")).toEqual(Duration.micros(1n))
     expect(Duration.decode("10 micros")).toEqual(Duration.micros(10n))
+    expect(Duration.decode("1 milli")).toEqual(Duration.millis(1))
     expect(Duration.decode("10 millis")).toEqual(Duration.millis(10))
+    expect(Duration.decode("1 second")).toEqual(Duration.seconds(1))
     expect(Duration.decode("10 seconds")).toEqual(Duration.seconds(10))
+    expect(Duration.decode("1 minute")).toEqual(Duration.minutes(1))
     expect(Duration.decode("10 minutes")).toEqual(Duration.minutes(10))
+    expect(Duration.decode("1 hour")).toEqual(Duration.hours(1))
     expect(Duration.decode("10 hours")).toEqual(Duration.hours(10))
+    expect(Duration.decode("1 day")).toEqual(Duration.days(1))
     expect(Duration.decode("10 days")).toEqual(Duration.days(10))
+    expect(Duration.decode("1 week")).toEqual(Duration.weeks(1))
     expect(Duration.decode("10 weeks")).toEqual(Duration.weeks(10))
 
     expect(Duration.decode("1.5 seconds")).toEqual(Duration.seconds(1.5))

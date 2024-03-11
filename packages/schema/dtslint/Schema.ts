@@ -2,6 +2,7 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Brand from "effect/Brand"
 import { identity, pipe } from "effect/Function"
+import * as N from "effect/Number"
 
 // ---------------------------------------------
 // From
@@ -973,3 +974,6 @@ S.causeFromSelf({ error: S.string })
 
 // $ExpectType Schema<Cause<string>, Cause<string>, "defect">
 S.causeFromSelf({ error: S.string, defect })
+
+// $ExpectType Schema<SortedSet<number>, readonly string[], never>
+S.sortedSet(S.NumberFromString, N.Order)

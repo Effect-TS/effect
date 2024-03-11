@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node",
   "type": "module",
-  "version": "0.44.11",
+  "version": "0.45.0",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -43,7 +43,8 @@
   },
   "dependencies": {
     "@effect/platform-node-shared": "workspace:^",
-    "mime": "^3.0.0"
+    "mime": "^3.0.0",
+    "ws": "^8.16.0"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
@@ -54,6 +55,7 @@
     "@effect/schema": "workspace:^",
     "@types/mime": "^3.0.4",
     "@types/node": "^20.11.19",
+    "@types/ws": "^8.5.10",
     "effect": "workspace:^"
   },
   "effect": {

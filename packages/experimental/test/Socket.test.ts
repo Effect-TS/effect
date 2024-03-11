@@ -1,5 +1,6 @@
-import * as Socket from "@effect/experimental/Socket/Node"
 import * as SocketServer from "@effect/experimental/SocketServer/Node"
+import * as NodeSocket from "@effect/platform-node/NodeSocket"
+import * as Socket from "@effect/platform/Socket"
 import { Chunk, Effect, Fiber, Queue, Stream } from "effect"
 import { assert, describe, expect, test } from "vitest"
 import WS from "vitest-websocket-mock"
@@ -25,7 +26,7 @@ describe("Socket", () => {
     Effect.gen(function*(_) {
       const server = yield* _(makeServer)
       const address = yield* _(server.address)
-      const channel = Socket.makeNetChannel({ port: (address as SocketServer.TcpAddress).port })
+      const channel = NodeSocket.makeNetChannel({ port: (address as SocketServer.TcpAddress).port })
 
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
