@@ -4,6 +4,7 @@
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Serializable from "@effect/schema/Serializable"
+import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -11,6 +12,7 @@ import type * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
 import type * as Scope from "effect/Scope"
 
@@ -27,7 +29,11 @@ export type PersistenceError = PersistenceSchemaError | PersistenceBackingError
 export class PersistenceSchemaError extends Data.TaggedError("PersistenceSchemaError")<{
   readonly method: string
   readonly error: ParseResult.ParseError["error"]
-}> {}
+}> {
+  get message() {
+    return TreeFormatter.formatIssue(this.error)
+  }
+}
 
 /**
  * @since 1.0.0
@@ -36,7 +42,12 @@ export class PersistenceSchemaError extends Data.TaggedError("PersistenceSchemaE
 export class PersistenceBackingError extends Data.TaggedError("PersistenceBackingError")<{
   readonly method: string
   readonly error: unknown
-}> {}
+}> {
+  get message() {
+    const errorString = String(Predicate.hasProperty(this.error, "message") ? this.error.message : this.error)
+    return `${this.method}: ${errorString}`
+  }
+}
 
 /**
  * @since 1.0.0
