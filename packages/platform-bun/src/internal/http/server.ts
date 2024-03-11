@@ -395,7 +395,12 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
             return
           }
           resume(Effect.map(Deferred.await(deferred), (ws) => {
-            const write = (chunk: Uint8Array) => Effect.sync(() => ws.sendBinary(chunk))
+            const write = (chunk: Uint8Array | Socket.CloseEvent) =>
+              Effect.sync(() =>
+                Socket.isCloseEvent(chunk)
+                  ? ws.close(chunk.code, chunk.reason)
+                  : ws.sendBinary(chunk)
+              )
             const writer = Effect.succeed(write)
             const run = <R, E, _>(
               handler: (_: Uint8Array) => Effect.Effect<_, E, R>
@@ -420,7 +425,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
               )
 
             return Socket.Socket.of({
-              [Socket.SocketTypeId]: Socket.SocketTypeId,
+              [Socket.TypeId]: Socket.TypeId,
               run,
               writer
             })
