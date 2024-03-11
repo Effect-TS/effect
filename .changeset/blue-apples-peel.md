@@ -113,12 +113,10 @@
   - add `PropertySignatureAnnotations` (baseline)
   - remove `DocAnnotations`
   - rename `DeclareAnnotations` to `Annotations`
-- `propertySignatureAnnotations` has been replaced by the `propertySignature` constructor which owns a `annotations` method
+- the `annotations` option of the `optional` constructor has been replaced by the `annotations` method
   Before
 
   ```ts
-  S.string.pipe(S.propertySignatureAnnotations({ description: "description" }));
-
   S.optional(S.string, {
     exact: true,
     annotations: { description: "description" },
@@ -128,10 +126,6 @@
   Now
 
   ```ts
-  S.propertySignatureDeclaration(S.string).annotations({
-    description: "description",
-  });
-
   S.optional(S.string, { exact: true }).annotations({
     description: "description",
   });

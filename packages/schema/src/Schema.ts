@@ -1298,7 +1298,7 @@ export const PropertySignatureTypeId: unique symbol = _schema.PropertySignatureT
  */
 export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
-const propertySignatureAnnotations = (
+const _propertySignatureAnnotations = (
   ast: PropertySignature.AST,
   annotations?: AST.Annotations
 ): PropertySignature.AST => {
@@ -1364,7 +1364,7 @@ class $PropertySignature<
   annotations(
     annotations: PropertySignatureAnnotations<Type>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, R> {
-    return new $PropertySignature(propertySignatureAnnotations(this.ast, _schema.toASTAnnotations(annotations)))
+    return new $PropertySignature(_propertySignatureAnnotations(this.ast, _schema.toASTAnnotations(annotations)))
   }
 }
 
@@ -1372,20 +1372,22 @@ class $PropertySignature<
  * @category PropertySignature
  * @since 1.0.0
  */
-export const propertySignature = <A, I, R, IsOptional extends boolean = false>(
-  schema: Schema<A, I, R>,
-  options?: {
-    readonly isOptional?: IsOptional | undefined
-    readonly annotations?: Annotations<A> | undefined
-  } | undefined
-): PropertySignature<PropertySignature.GetToken<IsOptional>, A, never, PropertySignature.GetToken<IsOptional>, I, R> =>
-  new $PropertySignature(
-    new PropertySignatureDeclaration(
-      schema.ast,
-      options?.isOptional ?? false,
-      _schema.toASTAnnotations(options?.annotations)
-    )
-  )
+export const propertySignature = <A, I, R>(
+  self: Schema<A, I, R>
+): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> =>
+  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false))
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export const propertySignatureAnnotations = <A>(
+  annotations: PropertySignatureAnnotations<A>
+) =>
+<I, R>(
+  self: Schema<A, I, R>
+): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> =>
+  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false, _schema.toASTAnnotations(annotations)))
 
 /**
  * @category PropertySignature
@@ -1687,7 +1689,7 @@ export const optional: {
           identity
         )
       } else {
-        return propertySignature(schema, { isOptional: true })
+        return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true))
       }
     }
   } else {
@@ -1732,7 +1734,7 @@ export const optional: {
           identity
         )
       } else {
-        return propertySignature(orUndefined(schema), { isOptional: true })
+        return new $PropertySignature(new PropertySignatureDeclaration(orUndefined(schema).ast, true))
       }
     }
   }
