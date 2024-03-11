@@ -28,7 +28,6 @@ export interface NetSocket {
 export const NetSocket: Context.Tag<NetSocket, Net.Socket> = Context.GenericTag(
   "@effect/platform-node/NodeSocket/NetSocket"
 )
-
 const EOF = Symbol.for("@effect/experimental/Socket/Node/EOF")
 
 /**
@@ -71,7 +70,7 @@ export const fromNetSocket = (
   open: Effect.Effect<Net.Socket, Socket.SocketError, Scope.Scope>
 ): Effect.Effect<Socket.Socket> =>
   Effect.gen(function*(_) {
-    const sendQueue = yield* _(Queue.unbounded<Uint8Array | typeof EOF>())
+    const sendQueue = yield* _(Queue.unbounded<Uint8Array | Socket.CloseEvent | typeof EOF>())
 
     const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
@@ -85,7 +84,9 @@ export const fromNetSocket = (
           Queue.take(sendQueue),
           Effect.tap((chunk) =>
             Effect.async<void, Socket.SocketError, never>((resume) => {
-              if (chunk === EOF) {
+              if (Socket.isCloseEvent(chunk)) {
+                conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
+              } else if (chunk === EOF) {
                 conn.end(() => resume(Effect.unit))
               } else {
                 conn.write(chunk, (error) => {
@@ -108,20 +109,30 @@ export const fromNetSocket = (
             conn.on("error", (error) => {
               resume(Effect.fail(new Socket.SocketError({ reason: "Read", error })))
             })
+            conn.on("close", (hadError) => {
+              resume(
+                Effect.fail(
+                  new Socket.SocketError({
+                    reason: "Close",
+                    error: hadError ? "closed with error" : "closed without error"
+                  })
+                )
+              )
+            })
           }),
           Effect.raceFirst(Fiber.join(writeFiber)),
           Effect.raceFirst(FiberSet.join(fiberSet))
         )
       }).pipe(Effect.scoped)
 
-    const write = (chunk: Uint8Array) => Queue.offer(sendQueue, chunk)
+    const write = (chunk: Uint8Array | Socket.CloseEvent) => Queue.offer(sendQueue, chunk)
     const writer = Effect.acquireRelease(
       Effect.succeed(write),
       () => Queue.offer(sendQueue, EOF)
     )
 
     return Socket.Socket.of({
-      [Socket.SocketTypeId]: Socket.SocketTypeId,
+      [Socket.TypeId]: Socket.TypeId,
       run,
       writer
     })
