@@ -1,5 +1,43 @@
 # effect
 
+## 2.4.3
+
+### Patch Changes
+
+- [#2211](https://github.com/Effect-TS/effect/pull/2211) [`20e63fb`](https://github.com/Effect-TS/effect/commit/20e63fb9207210f3fe2d136ec40d0a2dbff3225e) Thanks [@tim-smart](https://github.com/tim-smart)! - add ManagedRuntime module, to make incremental adoption easier
+
+  You can use a ManagedRuntime to run Effect's that can use the
+  dependencies from the given Layer. For example:
+
+  ```ts
+  import { Console, Effect, Layer, ManagedRuntime } from "effect";
+
+  class Notifications extends Effect.Tag("Notifications")<
+    Notifications,
+    { readonly notify: (message: string) => Effect.Effect<void> }
+  >() {
+    static Live = Layer.succeed(this, {
+      notify: (message) => Console.log(message),
+    });
+  }
+
+  async function main() {
+    const runtime = ManagedRuntime.make(Notifications.Live);
+    await runtime.runPromise(Notifications.notify("Hello, world!"));
+    await runtime.dispose();
+  }
+
+  main();
+  ```
+
+- [#2211](https://github.com/Effect-TS/effect/pull/2211) [`20e63fb`](https://github.com/Effect-TS/effect/commit/20e63fb9207210f3fe2d136ec40d0a2dbff3225e) Thanks [@tim-smart](https://github.com/tim-smart)! - add Layer.toRuntimeWithMemoMap api
+
+  Similar to Layer.toRuntime, but allows you to share a Layer.MemoMap between
+  layer builds.
+
+  By sharing the MemoMap, layers are shared between each build - ensuring layers
+  are only built once between multiple calls to Layer.toRuntimeWithMemoMap.
+
 ## 2.4.2
 
 ### Patch Changes
