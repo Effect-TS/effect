@@ -1,8 +1,5 @@
 ---
 "@effect/schema": minor
-"@effect/experimental": minor
-"@effect/platform": minor
-"@effect/rpc": minor
 ---
 
 # Breaking Changes
