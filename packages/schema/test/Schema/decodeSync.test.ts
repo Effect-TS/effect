@@ -11,7 +11,7 @@ describe("Schema > decodeSync", () => {
       new Error(`{ a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`)
@@ -22,7 +22,7 @@ describe("Schema > decodeSync", () => {
     expect(() => S.decodeSync(Util.AsyncString)("a")).toThrow(
       new Error(
         `AsyncString
-└─ Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       )
     )
   })

@@ -21,7 +21,7 @@ describe("number > multipleOf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.number.pipe(S.multipleOf(2), S.identifier("Even"))
+    const schema = S.number.pipe(S.multipleOf(2)).annotations({ identifier: "Even" })
     await Util.expectDecodeUnknownSuccess(schema, -4)
     await Util.expectDecodeUnknownFailure(
       schema,

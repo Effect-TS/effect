@@ -1,13 +1,27 @@
+import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Schema > union", () => {
+  it("annotations()", () => {
+    const schema = S.union(S.string, S.number).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    expect(schema.ast.annotations).toStrictEqual({
+      [AST.IdentifierAnnotationId]: "X",
+      [AST.TitleAnnotationId]: "Y"
+    })
+  })
+
+  it("should expose the members", () => {
+    const schema = S.union(S.string, S.number)
+    expect(schema.members).toStrictEqual([S.string, S.number])
+  })
+
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
       const schema = S.union(
-        S.struct({}).pipe(S.identifier("MyDataType1")),
-        S.struct({}).pipe(S.identifier("MyDataType2"))
+        S.struct({ a: S.string }).annotations({ identifier: "MyDataType1" }),
+        S.struct({ a: S.string }).annotations({ identifier: "MyDataType2" })
       )
       await Util.expectDecodeUnknownFailure(
         schema,

@@ -135,7 +135,7 @@ export type ActorTypeId = typeof ActorTypeId
  * @category errors
  */
 export class MachineDefect extends Schema.TaggedError<MachineDefect>()("MachineDefect", {
-  cause: Schema.cause<never, never, never>({ error: Schema.never })
+  cause: Schema.cause({ error: Schema.never })
 }) {
   /**
    * @since 1.0.0
@@ -306,7 +306,7 @@ export interface Actor<M extends Machine.Any> {
  */
 export interface SerializableActor<M extends Machine.Any> extends Actor<M> {
   readonly sendUnknown: (request: unknown) => Effect.Effect<
-    Schema.ExitFrom<unknown, unknown>,
+    Schema.ExitEncoded<unknown, unknown>,
     ParseResult.ParseError
   >
 }
@@ -577,7 +577,7 @@ export const boot = <
           ),
           Effect.provide(context)
         )
-      ) as Effect.Effect<Schema.ExitFrom<unknown, unknown>, ParseResult.ParseError>
+      ) as Effect.Effect<Schema.ExitEncoded<unknown, unknown>, ParseResult.ParseError>
 
     const publishState = (newState: Machine.State<M>) => {
       if (currentState !== newState) {

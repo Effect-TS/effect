@@ -17,21 +17,21 @@ describe("Either > eitherFromUnion", () => {
     expect(E.isEither(S.decodeSync(schema)("1"))).toEqual(true)
   })
 
-  it("decoding error (From side transformation failure)", async () => {
+  it("decoding error (Encoded side transformation failure)", async () => {
     const schema = S.eitherFromUnion({ left: S.number, right: S.string })
     await Util.expectDecodeUnknownFailure(
       schema,
       undefined,
-      `((string <-> RightFrom<string>) | (number <-> LeftFrom<number>) <-> Either<number, string>)
-└─ From side transformation failure
-   └─ (string <-> RightFrom<string>) | (number <-> LeftFrom<number>)
+      `((string <-> RightEncoded<string>) | (number <-> LeftEncoded<number>) <-> Either<number, string>)
+└─ Encoded side transformation failure
+   └─ (string <-> RightEncoded<string>) | (number <-> LeftEncoded<number>)
       ├─ Union member
-      │  └─ (string <-> RightFrom<string>)
-      │     └─ From side transformation failure
+      │  └─ (string <-> RightEncoded<string>)
+      │     └─ Encoded side transformation failure
       │        └─ Expected a string, actual undefined
       └─ Union member
-         └─ (number <-> LeftFrom<number>)
-            └─ From side transformation failure
+         └─ (number <-> LeftEncoded<number>)
+            └─ Encoded side transformation failure
                └─ Expected a number, actual undefined`
     )
   })
@@ -41,18 +41,18 @@ describe("Either > eitherFromUnion", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       true,
-      `(((boolean <-> string) <-> RightFrom<string>) | (number <-> LeftFrom<number>) <-> Either<number, string>)
-└─ From side transformation failure
-   └─ ((boolean <-> string) <-> RightFrom<string>) | (number <-> LeftFrom<number>)
+      `(((boolean <-> string) <-> RightEncoded<string>) | (number <-> LeftEncoded<number>) <-> Either<number, string>)
+└─ Encoded side transformation failure
+   └─ ((boolean <-> string) <-> RightEncoded<string>) | (number <-> LeftEncoded<number>)
       ├─ Union member
-      │  └─ ((boolean <-> string) <-> RightFrom<string>)
-      │     └─ From side transformation failure
+      │  └─ ((boolean <-> string) <-> RightEncoded<string>)
+      │     └─ Encoded side transformation failure
       │        └─ (boolean <-> string)
-      │           └─ To side transformation failure
+      │           └─ Type side transformation failure
       │              └─ Expected a string, actual true
       └─ Union member
-         └─ (number <-> LeftFrom<number>)
-            └─ From side transformation failure
+         └─ (number <-> LeftEncoded<number>)
+            └─ Encoded side transformation failure
                └─ Expected a number, actual true`
     )
   })
@@ -76,31 +76,31 @@ describe("Either > eitherFromUnion", () => {
     await Util.expectEncodeFailure(
       schema,
       E.left(undefined),
-      `(((NumberFromString <-> unknown) <-> RightFrom<unknown>) | ((DateFromString <-> unknown) <-> LeftFrom<unknown>) <-> Either<unknown, unknown>)
-└─ From side transformation failure
-   └─ ((NumberFromString <-> unknown) <-> RightFrom<unknown>) | ((DateFromString <-> unknown) <-> LeftFrom<unknown>)
+      `(((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>) <-> Either<unknown, unknown>)
+└─ Encoded side transformation failure
+   └─ ((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>)
       └─ Union member
-         └─ ((DateFromString <-> unknown) <-> LeftFrom<unknown>)
-            └─ From side transformation failure
+         └─ ((DateFromString <-> unknown) <-> LeftEncoded<unknown>)
+            └─ Encoded side transformation failure
                └─ (DateFromString <-> unknown)
-                  └─ From side transformation failure
+                  └─ Encoded side transformation failure
                      └─ DateFromString
-                        └─ To side transformation failure
+                        └─ Type side transformation failure
                            └─ Expected DateFromSelf (a potentially invalid Date instance), actual undefined`
     )
     await Util.expectEncodeFailure(
       schema,
       E.right(undefined),
-      `(((NumberFromString <-> unknown) <-> RightFrom<unknown>) | ((DateFromString <-> unknown) <-> LeftFrom<unknown>) <-> Either<unknown, unknown>)
-└─ From side transformation failure
-   └─ ((NumberFromString <-> unknown) <-> RightFrom<unknown>) | ((DateFromString <-> unknown) <-> LeftFrom<unknown>)
+      `(((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>) <-> Either<unknown, unknown>)
+└─ Encoded side transformation failure
+   └─ ((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>)
       └─ Union member
-         └─ ((NumberFromString <-> unknown) <-> RightFrom<unknown>)
-            └─ From side transformation failure
+         └─ ((NumberFromString <-> unknown) <-> RightEncoded<unknown>)
+            └─ Encoded side transformation failure
                └─ (NumberFromString <-> unknown)
-                  └─ From side transformation failure
+                  └─ Encoded side transformation failure
                      └─ NumberFromString
-                        └─ To side transformation failure
+                        └─ Type side transformation failure
                            └─ Expected a number, actual undefined`
     )
   })
@@ -113,31 +113,31 @@ describe("Either > eitherFromUnion", () => {
     await Util.expectEncodeFailure(
       schema,
       E.left(1),
-      `(((NumberFromString <-> unknown) <-> RightFrom<unknown>) | ((DateFromString <-> unknown) <-> LeftFrom<unknown>) <-> Either<unknown, unknown>)
-└─ From side transformation failure
-   └─ ((NumberFromString <-> unknown) <-> RightFrom<unknown>) | ((DateFromString <-> unknown) <-> LeftFrom<unknown>)
+      `(((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>) <-> Either<unknown, unknown>)
+└─ Encoded side transformation failure
+   └─ ((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>)
       └─ Union member
-         └─ ((DateFromString <-> unknown) <-> LeftFrom<unknown>)
-            └─ From side transformation failure
+         └─ ((DateFromString <-> unknown) <-> LeftEncoded<unknown>)
+            └─ Encoded side transformation failure
                └─ (DateFromString <-> unknown)
-                  └─ From side transformation failure
+                  └─ Encoded side transformation failure
                      └─ DateFromString
-                        └─ To side transformation failure
+                        └─ Type side transformation failure
                            └─ Expected DateFromSelf (a potentially invalid Date instance), actual 1`
     )
     await Util.expectEncodeFailure(
       schema,
       E.right(new Date(0)),
-      `(((NumberFromString <-> unknown) <-> RightFrom<unknown>) | ((DateFromString <-> unknown) <-> LeftFrom<unknown>) <-> Either<unknown, unknown>)
-└─ From side transformation failure
-   └─ ((NumberFromString <-> unknown) <-> RightFrom<unknown>) | ((DateFromString <-> unknown) <-> LeftFrom<unknown>)
+      `(((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>) <-> Either<unknown, unknown>)
+└─ Encoded side transformation failure
+   └─ ((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>)
       └─ Union member
-         └─ ((NumberFromString <-> unknown) <-> RightFrom<unknown>)
-            └─ From side transformation failure
+         └─ ((NumberFromString <-> unknown) <-> RightEncoded<unknown>)
+            └─ Encoded side transformation failure
                └─ (NumberFromString <-> unknown)
-                  └─ From side transformation failure
+                  └─ Encoded side transformation failure
                      └─ NumberFromString
-                        └─ To side transformation failure
+                        └─ Type side transformation failure
                            └─ Expected a number, actual ${new Date(0).toString()}`
     )
   })

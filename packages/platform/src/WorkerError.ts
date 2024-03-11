@@ -55,22 +55,24 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
    */
   static readonly Cause: Schema.Schema<
     Cause.Cause<WorkerError>,
-    Schema.CauseFrom<WorkerErrorFrom>
+    Schema.CauseEncoded<WorkerErrorFrom>
   > = Schema.cause({ defect: causeDefectPretty, error: this })
 
   /**
    * @since 1.0.0
    */
-  static readonly encodeCause: (a: Cause.Cause<WorkerError>) => Schema.CauseFrom<WorkerErrorFrom> = Schema.encodeSync(
-    this.Cause
-  )
+  static readonly encodeCause: (a: Cause.Cause<WorkerError>) => Schema.CauseEncoded<WorkerErrorFrom> = Schema
+    .encodeSync(
+      this.Cause
+    )
 
   /**
    * @since 1.0.0
    */
-  static readonly decodeCause: (u: Schema.CauseFrom<WorkerErrorFrom>) => Cause.Cause<WorkerError> = Schema.decodeSync(
-    this.Cause
-  )
+  static readonly decodeCause: (u: Schema.CauseEncoded<WorkerErrorFrom>) => Cause.Cause<WorkerError> = Schema
+    .decodeSync(
+      this.Cause
+    )
 
   /**
    * @since 1.0.0

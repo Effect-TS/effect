@@ -4,16 +4,13 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Schema/literal > pickLiteral", () => {
-  it("should return never with no literals", () => {
-    expect(S.literal().pipe(S.pickLiteral()).ast).toEqual(AST.neverKeyword)
-  })
   it("should return an unwrapped AST with exactly one literal", () => {
-    expect(S.literal("a").pipe(S.pickLiteral("a")).ast).toEqual(AST.createLiteral("a"))
+    expect(S.literal("a").pipe(S.pickLiteral("a")).ast).toEqual(new AST.Literal("a"))
   })
 
   it("should return a union with more than one literal", () => {
     expect(S.literal("a", "b", "c").pipe(S.pickLiteral("a", "b")).ast).toEqual(
-      AST.createUnion([AST.createLiteral("a"), AST.createLiteral("b")])
+      AST.Union.make([new AST.Literal("a"), new AST.Literal("b")])
     )
   })
 

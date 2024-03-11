@@ -211,28 +211,33 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  * @since 2.0.0
  * @category constructors
  */
-export const refined: <A extends Brand<any>>(
+export function refined<A extends Brand<any>>(
+  f: (unbranded: Brand.Unbranded<A>) => Option.Option<Brand.BrandErrors>
+): Brand.Constructor<A>
+export function refined<A extends Brand<any>>(
   refinement: Predicate<Brand.Unbranded<A>>,
-  onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors
-) => Brand.Constructor<A> = <A extends Brand<any>>(
-  refinement: Predicate<Brand.Unbranded<A>>,
-  onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors
-): Brand.Constructor<A> => {
-  const either = (args: Brand.Unbranded<A>): Either.Either<A, Brand.BrandErrors> =>
-    refinement(args) ? Either.right(args as A) : Either.left(onFailure(args))
-  // @ts-expect-error
-  return Object.assign((args) =>
-    Either.match(either(args), {
-      onLeft: (e) => {
-        throw e
-      },
-      onRight: identity
-    }), {
+  onFailure: (unbranded: Brand.Unbranded<A>) => Brand.BrandErrors
+): Brand.Constructor<A>
+export function refined<A extends Brand<any>>(
+  ...args: [(unbranded: Brand.Unbranded<A>) => Option.Option<Brand.BrandErrors>] | [
+    Predicate<Brand.Unbranded<A>>,
+    (unbranded: Brand.Unbranded<A>) => Brand.BrandErrors
+  ]
+): Brand.Constructor<A> {
+  const either: (unbranded: Brand.Unbranded<A>) => Either.Either<A, Brand.BrandErrors> = args.length === 2 ?
+    (unbranded) => args[0](unbranded) ? Either.right(unbranded as A) : Either.left(args[1](unbranded)) :
+    (unbranded) => {
+      return Option.match(args[0](unbranded), {
+        onNone: () => Either.right(unbranded as A),
+        onSome: Either.left
+      })
+    }
+  return Object.assign((unbranded: Brand.Unbranded<A>) => Either.getOrThrowWith(either(unbranded), identity), {
     [RefinedConstructorsTypeId]: RefinedConstructorsTypeId,
     option: (args: any) => Option.getRight(either(args)),
     either,
     is: (args: any): args is Brand.Unbranded<A> & A => Either.isRight(either(args))
-  })
+  }) as any
 }
 
 /**
@@ -253,7 +258,7 @@ export const refined: <A extends Brand<any>>(
  * @since 2.0.0
  * @category constructors
  */
-export const nominal: <A extends Brand<any>>() => Brand.Constructor<A> = <A extends Brand<any>>(): Brand.Constructor<
+export const nominal = <A extends Brand<any>>(): Brand.Constructor<
   A
 > => {
   // @ts-expect-error

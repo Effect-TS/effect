@@ -44,7 +44,7 @@ export class CoordinatesOccupiedError extends Data.TaggedError("CoordinatesOccup
 /**
  * Represents a Naval Fate ship.
  */
-export class Ship extends Schema.Class<Ship>()({
+export class Ship extends Schema.Class<Ship>("Ship")({
   name: Schema.string,
   x: Schema.number,
   y: Schema.number,
@@ -68,7 +68,7 @@ export class Ship extends Schema.Class<Ship>()({
 /**
  * Represents a Naval Fate mine.
  */
-export class Mine extends Schema.Class<Mine>()({
+export class Mine extends Schema.Class<Mine>("Mine")({
   x: Schema.number,
   y: Schema.number
 }) {

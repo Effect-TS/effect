@@ -15,9 +15,9 @@ describe("Pretty", () => {
     expect(pretty(1)).toEqual(`1`)
   })
 
-  it("make(S.from(schema))", () => {
+  it("make(S.encodedSchema(schema))", () => {
     const schema = S.NumberFromString
-    const pretty = Pretty.make(S.from(schema))
+    const pretty = Pretty.make(S.encodedSchema(schema))
     expect(pretty("a")).toEqual(`"a"`)
   })
 
@@ -113,9 +113,9 @@ describe("Pretty", () => {
     })
   })
 
-  it("uniqueSymbol", () => {
+  it("uniqueSymbolFromSelf", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.uniqueSymbol(a)
+    const schema = S.uniqueSymbolFromSelf(a)
     const pretty = Pretty.make(schema)
     expect(pretty(a)).toEqual("Symbol(@effect/schema/test/a)")
   })
@@ -226,9 +226,7 @@ describe("Pretty", () => {
     })
 
     it("extend: struct + record", () => {
-      const schema = S.struct({ a: S.string }).pipe(
-        S.extend(S.record(S.string, S.union(S.string, S.number)))
-      )
+      const schema = S.struct({ a: S.string }, S.record(S.string, S.union(S.string, S.number)))
       const pretty = Pretty.make(schema)
       expect(pretty({ a: "a" })).toEqual(`{ "a": "a" }`)
       expect(pretty({ a: "a", b: "b", c: 1 })).toEqual(`{ "a": "a", "b": "b", "c": 1 }`)
@@ -273,7 +271,7 @@ describe("Pretty", () => {
     })
 
     it("optional element", () => {
-      const schema = S.tuple().pipe(S.optionalElement(S.number))
+      const schema = S.tuple(S.optionalElement(S.number))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty([1])).toEqual(`[1]`)
@@ -282,7 +280,7 @@ describe("Pretty", () => {
     })
 
     it("optional element with undefined", () => {
-      const schema = S.tuple().pipe(S.optionalElement(S.union(S.number, S.undefined)))
+      const schema = S.tuple(S.optionalElement(S.union(S.number, S.undefined)))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty([1])).toEqual(`[1]`)
@@ -304,7 +302,7 @@ describe("Pretty", () => {
     })
 
     it("optional elements", () => {
-      const schema = S.tuple().pipe(S.optionalElement(S.string), S.optionalElement(S.number))
+      const schema = S.tuple(S.optionalElement(S.string), S.optionalElement(S.number))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty(["a"])).toEqual(`["a"]`)
@@ -319,7 +317,7 @@ describe("Pretty", () => {
     })
 
     it("post rest element", () => {
-      const schema = S.array(S.number).pipe(S.element(S.boolean))
+      const schema = S.array(S.number, S.boolean)
       const pretty = Pretty.make(schema)
       expect(pretty([true])).toEqual(`[true]`)
       expect(pretty([1, true])).toEqual(`[1, true]`)
@@ -328,10 +326,7 @@ describe("Pretty", () => {
     })
 
     it("post rest elements", () => {
-      const schema = S.array(S.number).pipe(
-        S.element(S.boolean),
-        S.element(S.union(S.string, S.undefined))
-      )
+      const schema = S.array(S.number, S.boolean, S.union(S.string, S.undefined))
       const pretty = Pretty.make(schema)
       expect(pretty([true, "c"])).toEqual(`[true, "c"]`)
       expect(pretty([1, true, "c"])).toEqual(`[1, true, "c"]`)
@@ -341,17 +336,14 @@ describe("Pretty", () => {
     })
 
     it("post rest elements when rest is unknown", () => {
-      const schema = S.array(S.unknown).pipe(S.element(S.boolean))
+      const schema = S.array(S.unknown, S.boolean)
       const pretty = Pretty.make(schema)
       expect(pretty([1, "a", 2, "b", true])).toEqual(`[1, "a", 2, "b", true]`)
       expect(pretty([true])).toEqual(`[true]`)
     })
 
     it("all", () => {
-      const schema = S.tuple(S.string).pipe(
-        S.rest(S.number),
-        S.element(S.boolean)
-      )
+      const schema = S.tuple([S.string], S.number, S.boolean)
       const pretty = Pretty.make(schema)
       expect(pretty(["a", true])).toEqual(`["a", true]`)
       expect(pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
@@ -450,8 +442,8 @@ describe("Pretty", () => {
       expectHook(S.symbol)
     })
 
-    it("uniqueSymbol", () => {
-      expectHook(S.uniqueSymbol(Symbol.for("effect/schema/test/a")))
+    it("uniqueSymbolFromSelf", () => {
+      expectHook(S.uniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
     })
 
     it("templateLiteral", () => {

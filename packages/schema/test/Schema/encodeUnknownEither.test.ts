@@ -7,7 +7,7 @@ describe("Schema > encodeUnknownEither", () => {
     Util.expectEitherLeft(
       S.encodeUnknownEither(Util.AsyncString)("a"),
       `AsyncString
-└─ Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
     )
   })
 })

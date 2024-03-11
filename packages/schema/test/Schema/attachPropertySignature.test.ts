@@ -112,7 +112,7 @@ describe("Schema/attachPropertySignature", () => {
       schema1,
       null as any,
       `({ a: string } <-> AttachedProperty)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Expected AttachedProperty, actual null`
     )
     const schema2 = S.attachPropertySignature(
@@ -127,7 +127,7 @@ describe("Schema/attachPropertySignature", () => {
       schema2,
       null as any,
       `({ a: string } <-> AttachedProperty)
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Expected AttachedProperty, actual null`
     )
   })
@@ -136,14 +136,13 @@ describe("Schema/attachPropertySignature", () => {
     const schema = S.struct({
       a: S.string
     }).pipe(
-      S.attachPropertySignature("_tag", "a"),
-      S.identifier("AttachedProperty")
-    )
+      S.attachPropertySignature("_tag", "a")
+    ).annotations({ identifier: "AttachedProperty" })
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `AttachedProperty
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected { a: string }, actual null`
     )
   })

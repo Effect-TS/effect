@@ -12,7 +12,7 @@ describe("Schema > decodeEither", () => {
       `{ a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`
@@ -23,7 +23,7 @@ describe("Schema > decodeEither", () => {
     Util.expectEitherLeft(
       S.decodeEither(Util.AsyncString)("a"),
       `AsyncString
-└─ Fiber #0 cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+└─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
     )
   })
 

@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import type * as Arbitrary from "../Arbitrary.js"
 import type * as Equivalence from "../Equivalence.js"
 import type * as Pretty from "../Pretty.js"

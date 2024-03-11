@@ -5,9 +5,8 @@ import { describe, it } from "vitest"
 
 describe("Duration > betweenDuration", () => {
   const schema = S.DurationFromSelf.pipe(
-    S.betweenDuration("5 seconds", "10 seconds"),
-    S.title("[5 seconds, 10 seconds] interval")
-  )
+    S.betweenDuration("5 seconds", "10 seconds")
+  ).annotations({ title: "[5 seconds, 10 seconds] interval" })
 
   it("decoding", async () => {
     await Util.expectDecodeUnknownFailure(

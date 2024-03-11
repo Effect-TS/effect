@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("AST/getWeight", () => {
+describe("AST > getWeight", () => {
   it("order", () => {
     const transformation = S.optionFromSelf(S.number)
     const union = S.union(S.struct({ a: S.string }), S.struct({ b: S.number }))
@@ -22,5 +22,11 @@ describe("AST/getWeight", () => {
       transformation.ast
     ].map(AST.getWeight)
     expect(actual).toEqual(expected)
+  })
+
+  it("Class", () => {
+    class A extends S.Class<A>("A")({ a: S.string, b: S.number }) {}
+    const schema = A.pipe(S.typeSchema)
+    expect(AST.getWeight(schema.ast)).toStrictEqual([6, 2, 0])
   })
 })

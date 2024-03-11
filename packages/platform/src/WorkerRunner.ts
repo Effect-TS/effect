@@ -121,19 +121,19 @@ export declare namespace SerializedRunner {
       A,
       { readonly _tag: K }
     > extends Serializable.SerializableWithResult<
-      infer _RS,
-      infer _IS,
       infer S,
-      infer _RR,
-      infer _IE,
+      infer _SI,
+      infer _SR,
+      infer A,
+      infer _AI,
       infer E,
-      infer _IO,
-      infer O
+      infer _EI,
+      infer _RR
     > ? (
         _: S
       ) =>
-        | Stream.Stream<O, E, any>
-        | Effect.Effect<O, E, any>
+        | Stream.Stream<A, E, any>
+        | Effect.Effect<A, E, any>
         | Layer.Layer<any, E, any>
         | Layer.Layer<never, E, any>
       : never

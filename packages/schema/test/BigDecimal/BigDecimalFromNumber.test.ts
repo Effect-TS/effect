@@ -26,7 +26,7 @@ describe("BigDecimal > BigDecimalFromNumber", () => {
       schema,
       "abc",
       `BigDecimalFromNumber
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ Expected a number, actual "abc"`
     )
   })

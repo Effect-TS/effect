@@ -17,7 +17,7 @@ describe("ReadonlyArray > headOr", () => {
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> number)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ ReadonlyArray<NumberFromString>
       └─ [0]
          └─ NumberFromString
@@ -34,7 +34,7 @@ describe("ReadonlyArray > headOr", () => {
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> number)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ ReadonlyArray<NumberFromString>
       └─ [0]
          └─ NumberFromString

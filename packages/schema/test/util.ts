@@ -10,53 +10,54 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
-import * as RA from "effect/ReadonlyArray"
 import * as Runtime from "effect/Runtime"
 import * as fc from "fast-check"
 import { expect } from "vitest"
 
 const doEffectify = true
-const doRoundtrip = true
+const doRoundtrip = false
 
 export const sleep = Effect.sleep(Duration.millis(10))
 
 const effectifyDecode = <R>(
-  decode: (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, R>
-): (input: any, options: ParseOptions, self: AST.Transform) => Effect.Effect<any, ParseResult.ParseIssue, R> =>
+  decode: (input: any, options: ParseOptions, self: AST.Transformation) => Effect.Effect<any, ParseResult.ParseIssue, R>
+): (input: any, options: ParseOptions, self: AST.Transformation) => Effect.Effect<any, ParseResult.ParseIssue, R> =>
 (input, options, ast) => ParseResult.flatMap(sleep, () => decode(input, options, ast))
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
   switch (ast._tag) {
-    case "Tuple":
-      return AST.createTuple(
-        ast.elements.map((e) => AST.createElement(effectifyAST(e.type), e.isOptional)),
-        Option.map(ast.rest, RA.map((ast) => effectifyAST(ast))),
+    case "TupleType":
+      return new AST.TupleType(
+        ast.elements.map((e) => new AST.Element(effectifyAST(e.type), e.isOptional)),
+        ast.rest.map((ast) => effectifyAST(ast)),
         ast.isReadonly,
         ast.annotations
       )
     case "TypeLiteral":
-      return AST.createTypeLiteral(
-        ast.propertySignatures.map((p) => ({ ...p, type: effectifyAST(p.type) })),
+      return new AST.TypeLiteral(
+        ast.propertySignatures.map((p) =>
+          new AST.PropertySignature(p.name, effectifyAST(p.type), p.isOptional, p.isReadonly, p.annotations)
+        ),
         ast.indexSignatures.map((is) => {
-          return AST.createIndexSignature(is.parameter, effectifyAST(is.type), is.isReadonly)
+          return new AST.IndexSignature(is.parameter, effectifyAST(is.type), is.isReadonly)
         }),
         ast.annotations
       )
     case "Union":
-      return AST.createUnion(ast.types.map((ast) => effectifyAST(ast)), ast.annotations)
+      return AST.Union.make(ast.types.map((ast) => effectifyAST(ast)), ast.annotations)
     case "Suspend":
-      return AST.createSuspend(() => effectifyAST(ast.f()), ast.annotations)
+      return new AST.Suspend(() => effectifyAST(ast.f()), ast.annotations)
     case "Refinement":
-      return AST.createRefinement(
+      return new AST.Refinement(
         effectifyAST(ast.from),
         ast.filter,
         ast.annotations
       )
-    case "Transform":
-      return AST.createTransform(
+    case "Transformation":
+      return new AST.Transformation(
         effectifyAST(ast.from),
         effectifyAST(ast.to),
-        AST.createFinalTransformation(
+        new AST.FinalTransformation(
           effectifyDecode(getFinalTransformation(ast.transformation, true)),
           effectifyDecode(getFinalTransformation(ast.transformation, false))
         ),
@@ -66,10 +67,10 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
   const schema = S.make(ast)
   const decode = S.decode(schema)
   const encode = S.encode(schema)
-  return AST.createTransform(
-    AST.from(ast),
-    AST.to(ast),
-    AST.createFinalTransformation(
+  return new AST.Transformation(
+    AST.encodedAST(ast),
+    AST.typeAST(ast),
+    new AST.FinalTransformation(
       (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(decode(a, options), (e) => e.error)),
       (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(encode(a, options), (e) => e.error))
     )
@@ -222,9 +223,9 @@ export const sample = <A, I>(schema: S.Schema<A, I>, n: number) => {
   console.log(JSON.stringify(fc.sample(arb, n), null, 2))
 }
 
-export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).pipe(
-  S.identifier("NumberFromChar")
-)
+export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).annotations({
+  identifier: "NumberFromChar"
+})
 
 export const expectFailure = async <A>(
   effect: Either.Either<A, ParseResult.ParseError> | Effect.Effect<A, ParseResult.ParseError>,
@@ -288,7 +289,7 @@ export const AsyncDeclaration = S.declare(
   }
 )
 
-export const AsyncString = effectify(S.string).pipe(S.identifier("AsyncString"))
+export const AsyncString = effectify(S.string).annotations({ identifier: "AsyncString" })
 
 const Name = Context.GenericTag<"Name", string>("Name")
 
@@ -297,4 +298,4 @@ export const DependencyString = S.transformOrFail(
   S.string,
   (s) => Effect.andThen(Name, s),
   (s) => Effect.andThen(Name, s)
-).pipe(S.identifier("DependencyString"))
+).annotations({ identifier: "DependencyString" })

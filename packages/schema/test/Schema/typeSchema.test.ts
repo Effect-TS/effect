@@ -10,7 +10,7 @@ describe("Schema/to", () => {
         (s) => [s, s] as const,
         ([s]) => s
       ),
-      S.to
+      S.typeSchema
     )
     expect(S.decodeUnknownSync(schema)([1, 2])).toEqual([1, 2])
   })
@@ -19,7 +19,7 @@ describe("Schema/to", () => {
     const schema = S.NumberFromString.pipe(
       S.greaterThanOrEqualTo(1),
       S.lessThanOrEqualTo(2),
-      S.to
+      S.typeSchema
     )
     expect(S.is(schema)(0)).toEqual(false)
     expect(S.is(schema)(1)).toEqual(true)
@@ -40,13 +40,13 @@ describe("Schema/to", () => {
           prop: S.union(S.NumberFromString, schema)
         })
     )
-    const to = S.to(schema)
+    const to = S.typeSchema(schema)
     await Util.expectDecodeUnknownSuccess(to, { prop: 1 })
     await Util.expectDecodeUnknownSuccess(to, { prop: { prop: 1 } })
   })
 
   it("decoding", async () => {
-    const schema = S.to(S.NumberFromString)
+    const schema = S.typeSchema(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, 1)
     await Util.expectDecodeUnknownFailure(schema, null, "Expected a number, actual null")
     await Util.expectDecodeUnknownFailure(schema, "a", `Expected a number, actual "a"`)

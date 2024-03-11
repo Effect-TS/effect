@@ -6,7 +6,7 @@ describe("Schema > `errors` option", () => {
   describe("decoding", () => {
     describe("tuple", () => {
       it("e r e", async () => {
-        const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
+        const schema = S.tuple([S.string], S.number, S.boolean)
         await Util.expectDecodeUnknownFailure(
           schema,
           [true],
@@ -62,7 +62,7 @@ describe("Schema > `errors` option", () => {
       })
 
       it("wrong type for rest", async () => {
-        const schema = S.tuple(S.string).pipe(S.rest(S.number))
+        const schema = S.tuple([S.string], S.number)
         await Util.expectDecodeUnknownFailure(
           schema,
           ["a", "b", "c"],
@@ -76,7 +76,7 @@ describe("Schema > `errors` option", () => {
       })
 
       it("wrong type for post rest elements", async () => {
-        const schema = S.array(S.boolean).pipe(S.element(S.number), S.element(S.number))
+        const schema = S.array(S.boolean, S.number, S.number)
         await Util.expectDecodeUnknownFailure(
           schema,
           ["a", "b"],
@@ -189,13 +189,13 @@ describe("Schema > `errors` option", () => {
           `readonly [NumberFromChar, NumberFromChar]
 ├─ [0]
 │  └─ NumberFromChar
-│     └─ From side transformation failure
+│     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
 │              └─ Expected Char (a single character), actual "10"
 └─ [1]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`,
@@ -211,13 +211,13 @@ describe("Schema > `errors` option", () => {
           `ReadonlyArray<NumberFromChar>
 ├─ [0]
 │  └─ NumberFromChar
-│     └─ From side transformation failure
+│     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
 │              └─ Expected Char (a single character), actual "10"
 └─ [1]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`,
@@ -226,23 +226,20 @@ describe("Schema > `errors` option", () => {
       })
 
       it("wrong type for values post rest elements", async () => {
-        const schema = S.array(S.string).pipe(
-          S.element(Util.NumberFromChar),
-          S.element(Util.NumberFromChar)
-        )
+        const schema = S.array(S.string, Util.NumberFromChar, Util.NumberFromChar)
         await Util.expectEncodeFailure(
           schema,
           [10, 10],
           `readonly [...string[], NumberFromChar, NumberFromChar]
 ├─ [0]
 │  └─ NumberFromChar
-│     └─ From side transformation failure
+│     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
 │              └─ Expected Char (a single character), actual "10"
 └─ [1]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`,
@@ -260,13 +257,13 @@ describe("Schema > `errors` option", () => {
           `{ a: NumberFromChar; b: NumberFromChar }
 ├─ ["a"]
 │  └─ NumberFromChar
-│     └─ From side transformation failure
+│     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
 │              └─ Expected Char (a single character), actual "10"
 └─ ["b"]
    └─ NumberFromChar
-      └─ From side transformation failure
+      └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
                └─ Expected Char (a single character), actual "10"`,

@@ -55,13 +55,13 @@ describe("Schema > keyof", () => {
   })
 
   it("should unify string literals with string", () => {
-    const schema = S.struct({ a: S.string }).pipe(S.extend(S.record(S.string, S.string)))
+    const schema = S.struct({ a: S.string }, S.record(S.string, S.string))
     expect(AST.keyof(schema.ast)).toEqual(S.string.ast)
   })
 
   it("should unify symbol literals with symbol", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.struct({ [a]: S.string }).pipe(S.extend(S.record(S.symbolFromSelf, S.string)))
+    const schema = S.struct({ [a]: S.string }, S.record(S.symbolFromSelf, S.string))
     expect(AST.keyof(schema.ast)).toEqual(S.symbolFromSelf.ast)
   })
 
@@ -95,12 +95,18 @@ describe("Schema > keyof", () => {
 
     it("union of structs and records", () => {
       const schema = S.union(
-        S.struct({ a: S.string }).pipe(S.extend(S.record(S.string, S.number))),
-        S.struct({ a: S.number }).pipe(S.extend(S.record(S.string, S.boolean)))
+        S.struct({ a: S.string }, S.record(S.string, S.number)),
+        S.struct({ a: S.number }, S.record(S.string, S.boolean))
       )
       // type K = keyof S.Schema.To<typeof schema> // string
       expect(AST.keyof(schema.ast)).toEqual(S.string.ast)
     })
+  })
+
+  it("should support Class", () => {
+    class A extends S.Class<A>("A")({ a: S.string }) {}
+    // type K = keyof S.Schema.To<typeof A> // "a"
+    expect(AST.keyof(A.ast)).toEqual(S.literal("a").ast)
   })
 
   it("should throw on unsupported schemas", () => {

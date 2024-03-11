@@ -3,9 +3,9 @@ import * as S from "@effect/schema/Schema"
 import { pipe } from "effect/Function"
 
 export const UserId = pipe(S.number, S.int(), S.brand("UserId"))
-export type UserId = S.Schema.To<typeof UserId>
+export type UserId = S.Schema.Type<typeof UserId>
 
-export class User extends S.Class<User>()({
+export class User extends S.Class<User>("User")({
   id: UserId,
   name: S.string
 }) {}

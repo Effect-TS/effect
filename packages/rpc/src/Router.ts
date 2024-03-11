@@ -77,13 +77,16 @@ export declare namespace Router {
    * @since 1.0.0
    * @category models
    */
-  export type Response = [index: number, response: Schema.ExitFrom<any, any> | ReadonlyArray<Schema.ExitFrom<any, any>>]
+  export type Response = [
+    index: number,
+    response: Schema.ExitEncoded<any, any> | ReadonlyArray<Schema.ExitEncoded<any, any>>
+  ]
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ResponseEffect = Schema.ExitFrom<any, any> | ReadonlyArray<Schema.ExitFrom<any, any>>
+  export type ResponseEffect = Schema.ExitEncoded<any, any> | ReadonlyArray<Schema.ExitEncoded<any, any>>
 }
 
 const fromSet = <Reqs extends Schema.TaggedRequest.Any, R>(
@@ -200,7 +203,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
           rpc.schema,
-          Schema.to(Schema.tuple(rpc.schema, Schema.any)),
+          Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
           (request) => [request, rpc] as const,
           ([request]) => request
         )
@@ -298,7 +301,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
           rpc.schema,
-          Schema.to(Schema.tuple(rpc.schema, Schema.any)),
+          Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
           (request) => [request, rpc] as const,
           ([request]) => request
         )
@@ -365,8 +368,8 @@ export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
     Router.ContextRaw<R>
   > = Schema.union(...[...router.rpcs].map((rpc) =>
     Schema.transform(
-      Schema.to(rpc.schema),
-      Schema.to(Schema.tuple(rpc.schema, Schema.any)),
+      Schema.typeSchema(rpc.schema),
+      Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
       (request) => [request, rpc] as const,
       ([request]) => request
     )

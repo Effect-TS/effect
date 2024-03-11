@@ -73,9 +73,9 @@ describe("Schema > is", () => {
     expect(is(null)).toEqual(false)
   })
 
-  it("uniqueSymbol", () => {
+  it("uniqueSymbolFromSelf", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.uniqueSymbol(a)
+    const schema = S.uniqueSymbolFromSelf(a)
     const is = P.is(schema)
     expect(is(a)).toEqual(true)
     expect(is(Symbol.for("@effect/schema/test/a"))).toEqual(true)
@@ -162,7 +162,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. optional element", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.number))
+    const schema = S.tuple(S.optionalElement(S.number))
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is([1])).toEqual(true)
@@ -174,7 +174,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. optional element with undefined", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.union(S.number, S.undefined)))
+    const schema = S.tuple(S.optionalElement(S.union(S.number, S.undefined)))
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is([1])).toEqual(true)
@@ -186,7 +186,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e + e?", () => {
-    const schema = S.tuple(S.string).pipe(S.optionalElement(S.number))
+    const schema = S.tuple(S.string, S.optionalElement(S.number))
     const is = P.is(schema)
     expect(is(["a"])).toEqual(true)
     expect(is(["a", 1])).toEqual(true)
@@ -196,7 +196,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e + r", () => {
-    const schema = S.tuple(S.string).pipe(S.rest(S.number))
+    const schema = S.tuple([S.string], S.number)
     const is = P.is(schema)
     expect(is(["a"])).toEqual(true)
     expect(is(["a", 1])).toEqual(true)
@@ -206,7 +206,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e? + r", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(S.number))
+    const schema = S.tuple([S.optionalElement(S.string)], S.number)
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is(["a"])).toEqual(true)
@@ -228,7 +228,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. r + e", () => {
-    const schema = S.array(S.string).pipe(S.element(S.number))
+    const schema = S.array(S.string, S.number)
     const is = P.is(schema)
     expect(is([1])).toEqual(true)
     expect(is(["a", 1])).toEqual(true)
@@ -240,7 +240,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e + r + e", () => {
-    const schema = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
+    const schema = S.tuple([S.string], S.number, S.boolean)
     const is = P.is(schema)
     expect(is(["a", true])).toEqual(true)
     expect(is(["a", 1, true])).toEqual(true)
@@ -373,7 +373,7 @@ describe("Schema > is", () => {
 
   it("record(keyof struct({ a, b } & Record<string, string>), number)", () => {
     const schema = S.record(
-      S.keyof(S.struct({ a: S.string, b: S.string }).pipe(S.extend(S.record(S.string, S.string)))),
+      S.keyof(S.struct({ a: S.string, b: S.string }, S.record(S.string, S.string))),
       S.number
     )
     const is = P.is(schema)
@@ -388,7 +388,7 @@ describe("Schema > is", () => {
   it("record(keyof struct({ a, b } & Record<symbol, string>), number)", () => {
     const schema = S.record(
       S.keyof(
-        S.struct({ a: S.string, b: S.string }).pipe(S.extend(S.record(S.symbolFromSelf, S.string)))
+        S.struct({ a: S.string, b: S.string }, S.record(S.symbolFromSelf, S.string))
       ),
       S.number
     )
@@ -407,7 +407,7 @@ describe("Schema > is", () => {
   it("record(Symbol('a') | Symbol('b'), number)", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
-    const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
+    const schema = S.record(S.union(S.uniqueSymbolFromSelf(a), S.uniqueSymbolFromSelf(b)), S.number)
     const is = P.is(schema)
     expect(is({ [a]: 1, [b]: 2 })).toEqual(true)
 
@@ -447,8 +447,10 @@ describe("Schema > is", () => {
   })
 
   it("record(${string}-${string}, number) & record(string, string | number)", () => {
-    const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number).pipe(
-      S.extend(S.record(S.string, S.union(S.string, S.number)))
+    const schema = S.struct(
+      {},
+      S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number),
+      S.record(S.string, S.union(S.string, S.number))
     )
     const is = P.is(schema)
     expect(is({})).toEqual(true)
@@ -530,7 +532,7 @@ describe("Schema > is", () => {
 
   describe("rest", () => {
     it("baseline", () => {
-      const schema = S.tuple(S.string, S.number).pipe(S.rest(S.boolean))
+      const schema = S.tuple([S.string, S.number], S.boolean)
       const is = P.is(schema)
       expect(is(["a", 1])).toEqual(true)
       expect(is(["a", 1, true])).toEqual(true)
@@ -553,9 +555,7 @@ describe("Schema > is", () => {
     })
 
     it("record(string, string)", () => {
-      const schema = S.struct({ a: S.string }).pipe(
-        S.extend(S.record(S.string, S.string))
-      )
+      const schema = S.struct({ a: S.string }, S.record(S.string, S.string))
       const is = P.is(schema)
       expect(is({ a: "a" })).toEqual(true)
       expect(is({ a: "a", b: "b" })).toEqual(true)

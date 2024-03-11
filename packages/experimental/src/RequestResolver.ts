@@ -110,7 +110,7 @@ export const dataLoader = dual<
  * @category model
  */
 export interface PersistedRequest<R, IE, E, IA, A>
-  extends Request.Request<A, E>, PrimaryKey.PrimaryKey, Serializable.WithResult<R, IE, E, IA, A>
+  extends Request.Request<A, E>, PrimaryKey.PrimaryKey, Serializable.WithResult<A, IA, E, IE, R>
 {}
 
 /**

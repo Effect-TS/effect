@@ -24,7 +24,7 @@ describe("string > Lowercase", () => {
       schema,
       "A",
       `Lowercase
-└─ To side transformation failure
+└─ Type side transformation failure
    └─ Lowercased
       └─ Predicate refinement failure
          └─ Expected Lowercased (a lowercase string), actual "A"`

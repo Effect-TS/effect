@@ -20,11 +20,11 @@ describe("Option > optionFromOrUndefined", () => {
       schema,
       null,
       `(NumberFromString | undefined <-> Option<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ NumberFromString | undefined
       ├─ Union member
       │  └─ NumberFromString
-      │     └─ From side transformation failure
+      │     └─ Encoded side transformation failure
       │        └─ Expected a string, actual null
       └─ Union member
          └─ Expected undefined, actual null`
@@ -33,11 +33,11 @@ describe("Option > optionFromOrUndefined", () => {
       schema,
       {},
       `(NumberFromString | undefined <-> Option<number>)
-└─ From side transformation failure
+└─ Encoded side transformation failure
    └─ NumberFromString | undefined
       ├─ Union member
       │  └─ NumberFromString
-      │     └─ From side transformation failure
+      │     └─ Encoded side transformation failure
       │        └─ Expected a string, actual {}
       └─ Union member
          └─ Expected undefined, actual {}`
