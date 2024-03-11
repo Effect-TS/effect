@@ -1,3 +1,0 @@
-timestamp=2024-03-10T23:31:11.301Z level=INFO fiber=#0 message=a
-timestamp=2024-03-10T23:31:11.303Z level=INFO fiber=#0 message=b
-timestamp=2024-03-10T23:31:11.303Z level=INFO fiber=#0 message=c

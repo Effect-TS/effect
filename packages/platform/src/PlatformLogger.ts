@@ -19,7 +19,7 @@ import * as internal from "./internal/platformLogger.js"
  * import { Effect, Layer, Logger } from "effect"
  *
  * const fileLogger = Logger.logfmtLogger.pipe(
- *   PlatformLogger.toFile("log.txt")
+ *   PlatformLogger.toFile("tmp/log.txt")
  * )
  * const LoggerLive = Logger.replaceScoped(Logger.defaultLogger, fileLogger).pipe(
  *   Layer.provide(NodeFileSystem.layer)
