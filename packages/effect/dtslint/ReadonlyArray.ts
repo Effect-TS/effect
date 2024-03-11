@@ -59,10 +59,6 @@ if (ReadonlyArray.isNonEmpty(readonlyNumbers)) {
 // $ExpectType <A>(a: readonly A[]) => Option<readonly [A, ...A[]]>
 Option.liftPredicate(ReadonlyArray.isNonEmpty)
 
-// -------------------------------------------------------------------------------------
-// isNonEmpty
-// -------------------------------------------------------------------------------------
-
 if (ReadonlyArray.isNonEmpty(numbers)) {
   // $ExpectType [number, ...number[]]
   numbers
