@@ -53,11 +53,11 @@ export const make = (
         message(ws, message) {
           ws.data.run(typeof message === "string" ? encoder.encode(message) : message)
         },
-        close(ws, code, reason) {
+        close(ws, code, closeReason) {
           Deferred.unsafeDone(
             ws.data.closeDeferred,
             Socket.defaultCloseCodeIsError(code)
-              ? Exit.fail(new Socket.SocketError({ reason: "Close", error: { code, reason } }))
+              ? Exit.fail(new Socket.SocketCloseError({ reason: "Close", code, closeReason }))
               : Exit.unit
           )
         }
