@@ -35,6 +35,12 @@ export type Part = Field | File
 
 /**
  * @since 1.0.0
+ * @category refinements
+ */
+export const isPart: (u: unknown) => u is Part = internal.isPart
+
+/**
+ * @since 1.0.0
  */
 export declare namespace Part {
   /**
@@ -60,6 +66,12 @@ export interface Field extends Part.Proto {
 
 /**
  * @since 1.0.0
+ * @category refinements
+ */
+export const isField: (u: unknown) => u is Field = internal.isField
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export interface File extends Part.Proto {
@@ -72,6 +84,12 @@ export interface File extends Part.Proto {
 
 /**
  * @since 1.0.0
+ * @category refinements
+ */
+export const isFile: (u: unknown) => u is File = internal.isFile
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export interface PersistedFile extends Part.Proto {
@@ -81,6 +99,12 @@ export interface PersistedFile extends Part.Proto {
   readonly contentType: string
   readonly path: string
 }
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isPersistedFile: (u: unknown) => u is PersistedFile = internal.isPersistedFile
 
 /**
  * @since 1.0.0
@@ -121,12 +145,6 @@ export const MultipartError: (
   reason: MultipartError["reason"],
   error: unknown
 ) => MultipartError = internal.MultipartError
-
-/**
- * @since 1.0.0
- * @category refinements
- */
-export const isField: (u: unknown) => u is Field = internal.isField
 
 /**
  * @since 1.0.0
