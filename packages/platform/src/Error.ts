@@ -1,6 +1,10 @@
 /**
  * @since 1.0.0
  */
+import type * as Cause from "effect/Cause"
+import * as Data from "effect/Data"
+import * as Predicate from "effect/Predicate"
+import type { Simplify } from "../../effect/src/Types.js"
 import * as internal from "./internal/error.js"
 
 /**
@@ -20,6 +24,40 @@ export type PlatformErrorTypeId = typeof PlatformErrorTypeId
  * @category error
  */
 export type PlatformError = BadArgument | SystemError
+
+/**
+ * @since 1.0.0
+ * @category error
+ */
+export const RefailClass = <const TypeId extends symbol, const Tag extends string>(
+  typeId: TypeId,
+  tag: Tag
+): new<A extends Record<string, any>>(
+  args: Simplify<A & { readonly error: unknown }>
+) =>
+  & Cause.YieldableError
+  & Record<TypeId, TypeId>
+  & { readonly _tag: Tag; readonly error: unknown }
+  & Readonly<A> =>
+{
+  class Base extends Data.Error<{
+    readonly error: unknown
+  }> {
+    readonly _tag = tag
+    constructor(props: any) {
+      super(props)
+      if (Predicate.hasProperty(this.error, "stack")) {
+        ;(this as any).stack = this.error.stack
+      }
+    }
+    get message() {
+      return String(Predicate.hasProperty(this.error, "message") ? this.error.message : this.error)
+    }
+  }
+  ;(Base.prototype as any)[typeId] = typeId
+  ;(Base.prototype as any).name = tag
+  return Base as any
+}
 
 /**
  * @since 1.0.0

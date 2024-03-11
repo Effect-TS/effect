@@ -1,12 +1,14 @@
 /**
  * @since 1.0.0
  */
-import { dual } from "effect/Function"
+import * as Schema from "@effect/schema/Schema"
+import { dual, identity } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as Secret from "effect/Secret"
+import * as String from "effect/String"
 
 /**
  * @since 1.0.0
@@ -22,12 +24,38 @@ export type HeadersTypeId = typeof HeadersTypeId
 
 /**
  * @since 1.0.0
+ * @category refinements
+ */
+export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, HeadersTypeId)
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export interface Headers {
   readonly [HeadersTypeId]: HeadersTypeId
   readonly [key: string]: string
 }
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, {
+  identifier: "Headers",
+  equivalence: () => ReadonlyRecord.getEquivalence(String.Equivalence)
+})
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string, string>> = Schema.transform(
+  Schema.record(Schema.string, Schema.string),
+  schemaFromSelf,
+  (record) => fromInput(record),
+  identity
+)
 
 /**
  * @since 1.0.0

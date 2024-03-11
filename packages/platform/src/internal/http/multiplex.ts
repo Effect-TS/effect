@@ -29,7 +29,7 @@ class MultiplexImpl<R, E>
     this[TypeId] = TypeId
 
     let execute: (request: ServerRequest.ServerRequest) => App.Default<R, E | Error.RouteNotFound> = (request) =>
-      Effect.fail(Error.RouteNotFound({ request }))
+      Effect.fail(new Error.RouteNotFound({ request }))
 
     for (let i = apps.length - 1; i >= 0; i--) {
       const [predicate, app] = apps[i]
