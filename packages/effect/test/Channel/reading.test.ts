@@ -46,7 +46,7 @@ export const refReader = <A>(
   return pipe(
     Channel.fromEffect(
       Ref.modify(ref, (array) => {
-        if (ReadonlyArray.isEmptyReadonlyArray(array)) {
+        if (ReadonlyArray.isEmptyArray(array)) {
           return [Option.none(), ReadonlyArray.empty<A>()] as const
         }
         return [Option.some(array[0]!), array.slice(1)] as const

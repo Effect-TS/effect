@@ -38,7 +38,7 @@ const imap = covariant.imap<ReadonlyArray.ReadonlyArrayTypeLambda>(map)
 const flatMap = ReadonlyArray.flatMap
 
 const product = <A, B>(self: ReadonlyArray<A>, that: ReadonlyArray<B>): ReadonlyArray<[A, B]> => {
-  if (ReadonlyArray.isEmptyReadonlyArray(self) || ReadonlyArray.isEmptyReadonlyArray(that)) {
+  if (ReadonlyArray.isEmptyArray(self) || ReadonlyArray.isEmptyArray(that)) {
     return ReadonlyArray.empty()
   }
   const out: Array<[A, B]> = []
@@ -206,7 +206,7 @@ export const Product: product_.Product<ReadonlyArray.ReadonlyArrayTypeLambda> = 
   productMany,
   productAll: (collection) => {
     const arrays = ReadonlyArray.fromIterable(collection)
-    return ReadonlyArray.isEmptyReadonlyArray(arrays) ?
+    return ReadonlyArray.isEmptyArray(arrays) ?
       ReadonlyArray.empty() :
       SemiProduct.productMany(arrays[0], arrays.slice(1))
   }

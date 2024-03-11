@@ -1165,15 +1165,15 @@ const parseInternal = (
       if (ReadonlyArray.isNonEmpty(singleNames)) {
         const head = ReadonlyArray.headNonEmpty(singleNames)
         const tail = ReadonlyArray.tailNonEmpty(singleNames)
-        if (ReadonlyArray.isEmptyReadonlyArray(tail)) {
-          if (ReadonlyArray.isEmptyReadonlyArray(head)) {
+        if (ReadonlyArray.isEmptyArray(tail)) {
+          if (ReadonlyArray.isEmptyArray(head)) {
             return InternalPrimitive.validate(self.primitiveType, Option.none(), config).pipe(
               Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
             )
           }
           if (
             ReadonlyArray.isNonEmpty(head) &&
-            ReadonlyArray.isEmptyReadonlyArray(ReadonlyArray.tailNonEmpty(head))
+            ReadonlyArray.isEmptyArray(ReadonlyArray.tailNonEmpty(head))
           ) {
             const value = ReadonlyArray.headNonEmpty(head)
             return InternalPrimitive.validate(self.primitiveType, Option.some(value), config).pipe(
@@ -1300,7 +1300,7 @@ const parseInternal = (
       }
       // If we did not receive any variadic arguments then perform the bounds
       // checks with an empty array
-      if (ReadonlyArray.every(matchedArgument, ReadonlyArray.isEmptyReadonlyArray)) {
+      if (ReadonlyArray.every(matchedArgument, ReadonlyArray.isEmptyArray)) {
         return validateMinMax(ReadonlyArray.empty())
       }
       return parseInternal(self.argumentOption, args, config).pipe(Effect.matchEffect({
@@ -1521,7 +1521,7 @@ const matchOptions = (
       )
     )
   }
-  return ReadonlyArray.isEmptyReadonlyArray(input)
+  return ReadonlyArray.isEmptyArray(input)
     ? Effect.succeed([Option.none(), ReadonlyArray.empty(), HashMap.empty()] as [
       Option.Option<ValidationError.ValidationError>,
       ReadonlyArray<string>,

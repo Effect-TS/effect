@@ -810,7 +810,7 @@ const validateInternal = (
         }
         return validateInternal(self.args as Instruction, args, config).pipe(Effect.matchEffect({
           onFailure: (failure) =>
-            acc.length >= min1 && ReadonlyArray.isEmptyReadonlyArray(args)
+            acc.length >= min1 && ReadonlyArray.isEmptyArray(args)
               ? Effect.succeed([args, acc])
               : Effect.fail(failure),
           onSuccess: ([args, a]) => loop(args, ReadonlyArray.append(acc, a))

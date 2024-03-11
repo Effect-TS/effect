@@ -775,7 +775,7 @@ const parseInternal = (
             }
           }),
           Effect.catchSome(() =>
-            ReadonlyArray.isEmptyReadonlyArray(args)
+            ReadonlyArray.isEmptyArray(args)
               ? Option.some(helpDirectiveForParent) :
               Option.none()
           )
@@ -1040,7 +1040,7 @@ const getBashCompletionsInternal = (
         ReadonlyArray.sort(Order.string)
       )
       const wordList = ReadonlyArray.appendAll(optionNames, subcommandNames)
-      const preformatted = ReadonlyArray.isEmptyReadonlyArray(info.parentCommands)
+      const preformatted = ReadonlyArray.isEmptyArray(info.parentCommands)
         ? ReadonlyArray.of(info.command.name)
         : pipe(
           info.parentCommands,
@@ -1049,7 +1049,7 @@ const getBashCompletionsInternal = (
         )
       const caseName = ReadonlyArray.join(preformatted, ",")
       const funcName = ReadonlyArray.join(preformatted, "__")
-      const funcLines = ReadonlyArray.isEmptyReadonlyArray(info.parentCommands)
+      const funcLines = ReadonlyArray.isEmptyArray(info.parentCommands)
         ? ReadonlyArray.empty()
         : [
           `${caseName})`,
@@ -1160,7 +1160,7 @@ const getFishCompletionsInternal = (
         )
       })
     // If parent commands are empty, then the info is for the root command
-    if (ReadonlyArray.isEmptyReadonlyArray(info.parentCommands)) {
+    if (ReadonlyArray.isEmptyArray(info.parentCommands)) {
       const conditionals = ReadonlyArray.make("-n", "\"__fish_use_subcommand\"")
       return Effect.succeed(pipe(
         state,
@@ -1197,7 +1197,7 @@ const getZshCompletionsInternal = (
   executable: string
 ): Effect.Effect<Array<string>> =>
   traverseCommand(self, ReadonlyArray.empty<string>(), (state, info) => {
-    const preformatted = ReadonlyArray.isEmptyReadonlyArray(info.parentCommands)
+    const preformatted = ReadonlyArray.isEmptyArray(info.parentCommands)
       ? ReadonlyArray.of(info.command.name)
       : pipe(
         info.parentCommands,
@@ -1213,7 +1213,7 @@ const getZshCompletionsInternal = (
         return `'${name}:${desc}' \\`
       })
     )
-    const commands = ReadonlyArray.isEmptyReadonlyArray(subcommands)
+    const commands = ReadonlyArray.isEmptyArray(subcommands)
       ? `commands=()`
       : `commands=(\n${ReadonlyArray.join(indentAll(subcommands, 8), "\n")}\n    )`
     const handlerLines = [
@@ -1278,7 +1278,7 @@ const getZshSubcommandCases = (
         InternalArgs.getZshCompletions(args as InternalArgs.Instruction),
         ReadonlyArray.map((completion) => `'${completion}' \\`)
       )
-      if (ReadonlyArray.isEmptyReadonlyArray(parentCommands)) {
+      if (ReadonlyArray.isEmptyArray(parentCommands)) {
         return [
           "_arguments \"${_arguments_options[@]}\" \\",
           ...indentAll(optionCompletions, 4),
@@ -1288,7 +1288,7 @@ const getZshSubcommandCases = (
           "    && ret=0"
         ]
       }
-      if (ReadonlyArray.isEmptyReadonlyArray(subcommands)) {
+      if (ReadonlyArray.isEmptyArray(subcommands)) {
         return [
           `(${self.name})`,
           "_arguments \"${_arguments_options[@]}\" \\",
@@ -1348,7 +1348,7 @@ const getZshSubcommandCases = (
           "esac"
         ]),
         ReadonlyArray.appendAll(
-          ReadonlyArray.isEmptyReadonlyArray(parentCommands)
+          ReadonlyArray.isEmptyArray(parentCommands)
             ? ReadonlyArray.empty()
             : ReadonlyArray.of(";;")
         )
