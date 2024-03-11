@@ -6,6 +6,7 @@ import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
+import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
@@ -52,7 +53,7 @@ export interface Socket {
  * @category errors
  */
 export class SocketError extends Data.TaggedError("SocketError")<{
-  readonly reason: "Write" | "Read" | "Open" | "Close"
+  readonly reason: "Write" | "Read" | "Open" | "OpenTimeout" | "Close"
   readonly error: unknown
 }> {
   /**
@@ -167,6 +168,7 @@ export const WebSocket: Context.Tag<WebSocket, globalThis.WebSocket> = Context.G
  */
 export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
+  readonly openTimeout?: DurationInput
 }): Effect.Effect<Socket> =>
   fromWebSocket(
     Effect.acquireRelease(
@@ -190,6 +192,7 @@ export const fromWebSocket = (
   acquire: Effect.Effect<globalThis.WebSocket, SocketError, Scope.Scope>,
   options?: {
     readonly closeCodeIsError?: (code: number) => boolean
+    readonly openTimeout?: DurationInput
   }
 ): Effect.Effect<Socket> =>
   Effect.gen(function*(_) {
@@ -219,14 +222,20 @@ export const fromWebSocket = (
         }
 
         if (ws.readyState !== IsoWebSocket.OPEN) {
-          yield* _(Effect.async<void, SocketError, never>((resume) => {
-            ws.onopen = () => {
-              resume(Effect.unit)
-            }
-            ws.onerror = (error_) => {
-              resume(Effect.fail(new SocketError({ reason: "Open", error: (error_ as any).message })))
-            }
-          }))
+          yield* _(
+            Effect.async<void, SocketError, never>((resume) => {
+              ws.onopen = () => {
+                resume(Effect.unit)
+              }
+              ws.onerror = (error_) => {
+                resume(Effect.fail(new SocketError({ reason: "Open", error: (error_ as any).message })))
+              }
+            }),
+            Effect.timeoutFail({
+              duration: options?.openTimeout ?? 10000,
+              onTimeout: () => new SocketError({ reason: "OpenTimeout", error: "timeout waiting for \"open\"" })
+            })
+          )
         }
 
         yield* _(
