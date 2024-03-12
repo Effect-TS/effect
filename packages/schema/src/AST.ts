@@ -196,9 +196,6 @@ export const BatchingAnnotationId = Symbol.for("@effect/schema/annotation/Batchi
 /** @internal */
 export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
 
-/** @internal */
-export const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
-
 /**
  * Used by:
  *
@@ -312,6 +309,8 @@ export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(BatchingA
 
 /** @internal */
 export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
+
+const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
 
 /** @internal */
 export const getJSONIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(JSONIdentifierAnnotationId)
@@ -2106,12 +2105,11 @@ export const typeAST = (ast: AST): AST => {
 export const getJSONIdentifier = (annotated: Annotated) =>
   Option.orElse(getJSONIdentifierAnnotation(annotated), () => getIdentifierAnnotation(annotated))
 
-const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | undefined => {
-  return Option.match(getJSONIdentifier(annotated), {
+const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | undefined =>
+  Option.match(getJSONIdentifier(annotated), {
     onNone: () => undefined,
     onSome: (identifier) => ({ [JSONIdentifierAnnotationId]: identifier })
   })
-}
 
 function changeMap<A>(
   as: ReadonlyArray.NonEmptyReadonlyArray<A>,
@@ -2153,9 +2151,9 @@ export const encodedAST = (ast: AST): AST => {
         new TupleType(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
     }
     case "TypeLiteral": {
-      const propertySignatures = changeMap(ast.propertySignatures, (p) => {
-        const type = encodedAST(p.type)
-        return type === p.type ? p : new PropertySignature(p.name, type, p.isOptional, p.isReadonly)
+      const propertySignatures = changeMap(ast.propertySignatures, (ps) => {
+        const type = encodedAST(ps.type)
+        return type === ps.type ? ps : new PropertySignature(ps.name, type, ps.isOptional, ps.isReadonly)
       })
       const indexSignatures = changeMap(ast.indexSignatures, (is) => {
         const type = encodedAST(is.type)

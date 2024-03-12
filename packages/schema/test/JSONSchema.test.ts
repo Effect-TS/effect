@@ -741,7 +741,8 @@ describe("JSONSchema", () => {
           default: () => 0
         })
       })
-      const encodedJsonSchema = JSONSchema.make(S.encodedSchema(schema))
+      const encodedSchema = S.encodedSchema(schema)
+      const encodedJsonSchema = JSONSchema.make(encodedSchema)
       expect(encodedJsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         type: "object",
