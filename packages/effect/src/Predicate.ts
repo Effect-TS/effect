@@ -544,6 +544,14 @@ export const isPromise = (
   hasProperty(input, "then") && "catch" in input && isFunction(input.then) && isFunction(input.catch)
 
 /**
+ * @category guards
+ * @since 2.0.0
+ */
+export const isPromiseLike = (
+  input: unknown
+): input is PromiseLike<unknown> => hasProperty(input, "then") && isFunction(input.then)
+
+/**
  * @since 2.0.0
  */
 export const compose: {
