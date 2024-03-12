@@ -64,4 +64,34 @@ describe("AST > encodedAST", () => {
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(false)
     })
   })
+
+  describe("should support EncodedAnnotationsAnnotation", () => {
+    it("no transformations", () => {
+      const ast = new AST.TypeLiteral([
+        new AST.PropertySignature("a", S.string.ast, false, true, {
+          [AST.EncodedAnnotationsAnnotationId]: {
+            [AST.DescriptionAnnotationId]: "description"
+          }
+        })
+      ], [])
+      const encodedAST = AST.encodedAST(ast) as AST.TypeLiteral
+      expect(encodedAST.propertySignatures[0].annotations).toStrictEqual({
+        [AST.DescriptionAnnotationId]: "description"
+      })
+    })
+
+    it("transformation", () => {
+      const ast = new AST.TypeLiteral([
+        new AST.PropertySignature("a", S.NumberFromString.ast, false, true, {
+          [AST.EncodedAnnotationsAnnotationId]: {
+            [AST.DescriptionAnnotationId]: "description"
+          }
+        })
+      ], [])
+      const encodedAST = AST.encodedAST(ast) as AST.TypeLiteral
+      expect(encodedAST.propertySignatures[0].annotations).toStrictEqual({
+        [AST.DescriptionAnnotationId]: "description"
+      })
+    })
+  })
 })
