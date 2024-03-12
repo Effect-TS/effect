@@ -612,6 +612,100 @@ console.log(S.decodeUnknownSync(Person)({ name: "name", AGE: "18" }));
 // Output: { name: 'name', age: 18 }
 ```
 
+## Encoded annotations
+
+Sometimes, when defining a `PropertySignature` that represents a transformation, you may want to add annotations for the "Encoded" part.
+
+Let's see an example:
+
+```ts
+import * as JSONSchema from "@effect/schema/JSONSchema";
+import * as S from "@effect/schema/Schema";
+
+const Person = S.struct({
+  name: S.string,
+  // property signature transformation
+  age: S.optional(S.number, { default: () => 0 }), // add a description here saying "An optional age."
+});
+```
+
+**Note**: Notice that the `age` field is optional in the "Encoded" part of `Person` but is required in the "Type" part of `Person`.
+
+However, adding the description using the `annotations` method wouldn't work because it adds annotations to the "Type" part:
+
+```ts
+import * as JSONSchema from "@effect/schema/JSONSchema";
+import * as S from "@effect/schema/Schema";
+
+const Person = S.struct({
+  name: S.string,
+  age: S.optional(S.number, { default: () => 0 }).annotations({
+    description: "An optional age.",
+  }),
+});
+
+console.log(JSONSchema.make(Person));
+/*
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  required: [ 'name', 'age' ],
+  properties: {
+    name: { type: 'string', description: 'a string', title: 'string' },
+    age: {
+      type: 'number',
+      description: 'An optional age.',
+      title: 'number'
+    }
+  },
+  additionalProperties: false
+}
+*/
+```
+
+As you can see, the description of the `age` field is incorrect because in the "Type" part, the field is required:
+
+```
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  ...
+  required: [ 'name', 'age' ],
+  ...
+}
+```
+
+The annotation can be correctly added to the "Encoded" part using the `encodedAnnotations` option and then using `encodedSchema`:
+
+```ts
+import * as JSONSchema from "@effect/schema/JSONSchema";
+import * as S from "@effect/schema/Schema";
+
+const Person = S.struct({
+  name: S.string,
+  age: S.optional(S.number, { default: () => 0 }).annotations({
+    encodedAnnotations: { description: "An optional age." },
+  }),
+});
+
+console.log(JSONSchema.make(S.encodedSchema(Person)));
+/*
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  required: [ 'name' ],
+  properties: {
+    name: { type: 'string', description: 'a string', title: 'string' },
+    age: {
+      type: 'number',
+      description: 'An optional age.',
+      title: 'number'
+    }
+  },
+  additionalProperties: false
+}
+*/
+```
+
 # Effectful messages
 
 Now messages are not only of type `string` but can return an `Effect` so that they can have dependencies (for example, from an internationalization service). Let's see the outline of a similar situation with a very simplified example for demonstration purposes:

@@ -7,31 +7,78 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > PropertySignature", () => {
   describe("annotations", () => {
-    it("propertySignature().annotations()", () => {
+    it("propertySignature(S.string)", () => {
       const schema = S.struct({
-        a: S.propertySignature(S.string).annotations({
-          title: "title",
-          [Symbol.for("custom-annotation")]: "custom-annotation-value"
-        })
+        a: S.propertySignature(S.string).annotations({ description: "a description" }).annotations({ title: "a title" })
       })
-      const ast: any = schema.ast
+      const ast = schema.ast as AST.TypeLiteral
       expect(ast.propertySignatures[0].annotations).toEqual({
-        [AST.TitleAnnotationId]: "title",
-        [Symbol.for("custom-annotation")]: "custom-annotation-value"
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
       })
     })
 
-    it("optional().annotations()", () => {
+    it("propertySignature(S.NumberFromString)", () => {
       const schema = S.struct({
-        a: S.optional(S.string).annotations({
-          title: "title",
-          [Symbol.for("custom-annotation")]: "custom-annotation-value"
+        a: S.propertySignature(S.NumberFromString).annotations({ description: "a description" }).annotations({
+          title: "a title"
         })
       })
-      const ast: any = schema.ast
+      const ast = schema.ast as AST.TypeLiteral
       expect(ast.propertySignatures[0].annotations).toEqual({
-        [AST.TitleAnnotationId]: "title",
-        [Symbol.for("custom-annotation")]: "custom-annotation-value"
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+    })
+
+    it("optional(S.string)", () => {
+      const schema = S.struct({
+        a: S.optional(S.string).annotations({ description: "a description" }).annotations({ title: "a title" })
+      })
+      const ast = schema.ast as AST.TypeLiteral
+      expect(ast.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+    })
+
+    it("optional(S.NumberFromString)", () => {
+      const schema = S.struct({
+        a: S.optional(S.NumberFromString).annotations({ description: "a description" }).annotations({
+          title: "a title"
+        })
+      })
+      const ast = schema.ast as AST.TypeLiteral
+      expect(ast.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+    })
+
+    it("optional(S.string, { default })", () => {
+      const schema = S.struct({
+        a: S.optional(S.string, { default: () => "" }).annotations({ description: "a description" }).annotations({
+          title: "a title"
+        })
+      })
+      const ast = schema.ast as AST.Transformation
+      const to = ast.to as AST.TypeLiteral
+      expect(to.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+    })
+
+    it("optional(S.NumberFromString, { default })", () => {
+      const schema = S.struct({
+        a: S.optional(S.NumberFromString, { default: () => 0 }).annotations({ description: "a description" })
+          .annotations({ title: "a title" })
+      })
+      const ast = schema.ast as AST.Transformation
+      const to = ast.to as AST.TypeLiteral
+      expect(to.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
       })
     })
   })
@@ -167,30 +214,120 @@ describe("Schema > PropertySignature", () => {
     })
   })
 
-  describe("should support encodedAnnotations", () => {
-    it("PropertySignatureDeclaration", () => {
+  describe("annotations", () => {
+    it("propertySignature(S.string)", () => {
       const schema = S.struct({
-        a: S.optional(S.NumberFromString).annotations({ encodedAnnotations: { description: "description" } })
-          .annotations({ encodedAnnotations: { title: "title" } })
+        a: S.propertySignature(S.string).annotations({
+          description: "a description",
+          encodedAnnotations: { description: "encoded a description" }
+        }).annotations({ title: "a title", encodedAnnotations: { title: "encoded a title" } })
       })
-      const encodedAST = S.encodedSchema(schema).ast as AST.TypeLiteral
-      expect(encodedAST.propertySignatures[0].annotations).toStrictEqual({
-        [AST.DescriptionAnnotationId]: "description",
-        [AST.TitleAnnotationId]: "title"
+      const ast = schema.ast as AST.TypeLiteral
+      expect(ast.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title",
+        [AST.EncodedAnnotationsAnnotationId]: {
+          [AST.DescriptionAnnotationId]: "encoded a description",
+          [AST.TitleAnnotationId]: "encoded a title"
+        }
       })
     })
 
-    it("PropertySignatureTransformation", () => {
+    it("propertySignature(S.NumberFromString)", () => {
+      const schema = S.struct({
+        a: S.propertySignature(S.NumberFromString).annotations({
+          description: "a description",
+          encodedAnnotations: { description: "encoded a description" }
+        }).annotations({ title: "a title", encodedAnnotations: { title: "encoded a title" } })
+      })
+      const ast = schema.ast as AST.TypeLiteral
+      expect(ast.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title",
+        [AST.EncodedAnnotationsAnnotationId]: {
+          [AST.DescriptionAnnotationId]: "encoded a description",
+          [AST.TitleAnnotationId]: "encoded a title"
+        }
+      })
+    })
+
+    it("optional(S.string)", () => {
+      const schema = S.struct({
+        a: S.optional(S.string).annotations({
+          description: "a description",
+          encodedAnnotations: { description: "encoded a description" }
+        }).annotations({ title: "a title", encodedAnnotations: { title: "encoded a title" } })
+      })
+      const ast = schema.ast as AST.TypeLiteral
+      expect(ast.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title",
+        [AST.EncodedAnnotationsAnnotationId]: {
+          [AST.DescriptionAnnotationId]: "encoded a description",
+          [AST.TitleAnnotationId]: "encoded a title"
+        }
+      })
+    })
+
+    it("optional(S.NumberFromString)", () => {
+      const schema = S.struct({
+        a: S.optional(S.NumberFromString).annotations({
+          description: "a description",
+          encodedAnnotations: { description: "encoded a description" }
+        }).annotations({ title: "a title", encodedAnnotations: { title: "encoded a title" } })
+      })
+      const ast = schema.ast as AST.TypeLiteral
+      expect(ast.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title",
+        [AST.EncodedAnnotationsAnnotationId]: {
+          [AST.DescriptionAnnotationId]: "encoded a description",
+          [AST.TitleAnnotationId]: "encoded a title"
+        }
+      })
+    })
+
+    it("optional(S.string, { default })", () => {
+      const schema = S.struct({
+        a: S.optional(S.string, { default: () => "" }).annotations({
+          description: "a description",
+          encodedAnnotations: { description: "encoded a description" }
+        }).annotations({ title: "a title", encodedAnnotations: { title: "encoded a title" } })
+      })
+      const ast = schema.ast as AST.Transformation
+      const to = ast.to as AST.TypeLiteral
+      expect(to.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+      const from = ast.from as AST.TypeLiteral
+      expect(from.propertySignatures[0].annotations).toEqual({
+        [AST.EncodedAnnotationsAnnotationId]: {
+          [AST.DescriptionAnnotationId]: "encoded a description",
+          [AST.TitleAnnotationId]: "encoded a title"
+        }
+      })
+    })
+
+    it("optional(S.NumberFromString, { default })", () => {
       const schema = S.struct({
         a: S.optional(S.NumberFromString, { default: () => 0 }).annotations({
-          encodedAnnotations: { description: "description" }
-        })
-          .annotations({ encodedAnnotations: { title: "title" } })
+          description: "a description",
+          encodedAnnotations: { description: "encoded a description" }
+        }).annotations({ title: "a title", encodedAnnotations: { title: "encoded a title" } })
       })
-      const encodedAST = S.encodedSchema(schema).ast as AST.TypeLiteral
-      expect(encodedAST.propertySignatures[0].annotations).toStrictEqual({
-        [AST.DescriptionAnnotationId]: "description",
-        [AST.TitleAnnotationId]: "title"
+      const ast = schema.ast as AST.Transformation
+      const to = ast.to as AST.TypeLiteral
+      expect(to.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+      const from = ast.from as AST.TypeLiteral
+      expect(from.propertySignatures[0].annotations).toEqual({
+        [AST.EncodedAnnotationsAnnotationId]: {
+          [AST.DescriptionAnnotationId]: "encoded a description",
+          [AST.TitleAnnotationId]: "encoded a title"
+        }
       })
     })
   })

@@ -1262,9 +1262,39 @@ export class PropertySignatureDeclaration {
    */
   readonly _tag = "PropertySignatureDeclaration"
   constructor(
-    readonly ast: AST.AST,
+    readonly type: AST.AST,
     readonly isOptional: boolean,
-    readonly annotations: AST.Annotations = {}
+    readonly isReadonly: boolean,
+    readonly annotations: AST.Annotations,
+    readonly encodedAnnotations: AST.Annotations | undefined
+  ) {}
+}
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export class FromPropertySignature implements AST.Annotated {
+  constructor(
+    readonly type: AST.AST,
+    readonly isOptional: boolean,
+    readonly isReadonly: boolean,
+    readonly annotations: AST.Annotations,
+    readonly encodedAnnotations: AST.Annotations | undefined,
+    readonly fromKey?: PropertyKey | undefined
+  ) {}
+}
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export class ToPropertySignature implements AST.Annotated {
+  constructor(
+    readonly type: AST.AST,
+    readonly isOptional: boolean,
+    readonly isReadonly: boolean,
+    readonly annotations: AST.Annotations
   ) {}
 }
 
@@ -1278,9 +1308,8 @@ export class PropertySignatureTransformation {
    */
   readonly _tag = "PropertySignatureTransformation"
   constructor(
-    readonly fromKey: PropertyKey | undefined,
-    readonly from: PropertySignatureDeclaration,
-    readonly to: PropertySignatureDeclaration,
+    readonly from: FromPropertySignature,
+    readonly to: ToPropertySignature,
     readonly decode: AST.PropertySignatureTransformation["decode"],
     readonly encode: AST.PropertySignatureTransformation["encode"]
   ) {}
@@ -1298,14 +1327,20 @@ export const PropertySignatureTypeId: unique symbol = _schema.PropertySignatureT
  */
 export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
-const mergePropertySignatureAnnotations = (a: AST.Annotations, b: AST.Annotations): AST.Annotations => {
-  const aea = a[AST.EncodedAnnotationsAnnotationId] as object | undefined
-  const bea = b[AST.EncodedAnnotationsAnnotationId] as object | undefined
-  const out = { ...a, ...b }
-  if (aea || bea) {
-    return { ...out, [AST.EncodedAnnotationsAnnotationId]: { ...aea, ...bea } }
+const splitPropertySignatureAnnotations = (
+  annotations: AST.Annotations
+): [AST.Annotations, AST.Annotations | undefined] => {
+  const { [AST.EncodedAnnotationsAnnotationId]: encodedAnnotations, ...rest } = annotations
+  return [rest, encodedAnnotations as AST.Annotations | undefined]
+}
+
+const mergeAnnotations = (
+  a: AST.Annotations | undefined,
+  b: AST.Annotations | undefined
+): AST.Annotations | undefined => {
+  if (a || b) {
+    return { ...a, ...b }
   }
-  return out
 }
 
 const _propertySignatureAnnotations = (
@@ -1314,26 +1349,26 @@ const _propertySignatureAnnotations = (
 ): PropertySignature.AST => {
   switch (ast._tag) {
     case "PropertySignatureDeclaration": {
+      const [rest, encodedAnnotations] = splitPropertySignatureAnnotations(annotations)
       return new PropertySignatureDeclaration(
-        ast.ast,
+        ast.type,
         ast.isOptional,
-        mergePropertySignatureAnnotations(ast.annotations, annotations)
+        ast.isReadonly,
+        { ...ast.annotations, ...rest },
+        mergeAnnotations(ast.encodedAnnotations, encodedAnnotations)
       )
     }
     case "PropertySignatureTransformation": {
-      const { [AST.EncodedAnnotationsAnnotationId]: encodedAnnotations, ...rest } = annotations
+      const [rest, encodedAnnotations] = splitPropertySignatureAnnotations(annotations)
       return new PropertySignatureTransformation(
-        ast.fromKey,
-        encodedAnnotations
-          ? new PropertySignatureDeclaration(
-            ast.from.ast,
-            ast.from.isOptional,
-            mergePropertySignatureAnnotations(ast.from.annotations, {
-              [AST.EncodedAnnotationsAnnotationId]: encodedAnnotations
-            })
-          )
-          : ast.from,
-        new PropertySignatureDeclaration(ast.to.ast, ast.to.isOptional, { ...ast.to.annotations, ...rest }),
+        new FromPropertySignature(
+          ast.from.type,
+          ast.from.isOptional,
+          ast.from.isReadonly,
+          ast.from.annotations,
+          mergeAnnotations(ast.from.encodedAnnotations, encodedAnnotations)
+        ),
+        new ToPropertySignature(ast.to.type, ast.to.isOptional, ast.to.isReadonly, { ...ast.to.annotations, ...rest }),
         ast.decode,
         ast.encode
       )
@@ -1400,7 +1435,7 @@ class $PropertySignature<
 export const propertySignature = <A, I, R>(
   self: Schema<A, I, R>
 ): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> =>
-  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false))
+  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false, true, {}, undefined))
 
 /**
  * @category PropertySignature
@@ -1411,8 +1446,18 @@ export const propertySignatureAnnotations = <A, I>(
 ) =>
 <R>(
   self: Schema<A, I, R>
-): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> =>
-  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false, _schema.toASTAnnotations(annotations)))
+): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> => {
+  const [rest, encodedAnnotations] = splitPropertySignatureAnnotations(annotations)
+  return new $PropertySignature(
+    new PropertySignatureDeclaration(
+      self.ast,
+      false,
+      true,
+      _schema.toASTAnnotations(rest),
+      encodedAnnotations ? _schema.toASTAnnotations(encodedAnnotations) : undefined
+    )
+  )
+}
 
 /**
  * @category PropertySignature
@@ -1451,13 +1496,15 @@ export const propertySignatureTransformation = <
 > =>
   new $PropertySignature(
     new PropertySignatureTransformation(
-      from.key,
-      new PropertySignatureDeclaration(
+      new FromPropertySignature(
         from.schema.ast,
         from.isOptional,
-        _schema.toASTAnnotations(from.annotations)
+        true,
+        _schema.toASTAnnotations(from.annotations),
+        undefined,
+        from.key
       ),
-      new PropertySignatureDeclaration(to.schema.ast, to.isOptional),
+      new ToPropertySignature(to.schema.ast, to.isOptional, true, {}),
       decode,
       encode
     )
@@ -1504,9 +1551,15 @@ export const fromKey: {
     case "PropertySignatureDeclaration": {
       return new $PropertySignature(
         new PropertySignatureTransformation(
-          key,
-          ast,
-          new PropertySignatureDeclaration(AST.typeAST(ast.ast), ast.isOptional),
+          new FromPropertySignature(
+            ast.type,
+            ast.isOptional,
+            ast.isReadonly,
+            ast.annotations,
+            ast.encodedAnnotations,
+            key
+          ),
+          new ToPropertySignature(AST.typeAST(ast.type), ast.isOptional, ast.isReadonly, {}),
           identity,
           identity
         )
@@ -1515,8 +1568,14 @@ export const fromKey: {
     case "PropertySignatureTransformation":
       return new $PropertySignature(
         new PropertySignatureTransformation(
-          key,
-          ast.from,
+          new FromPropertySignature(
+            ast.from.type,
+            ast.from.isOptional,
+            ast.from.isReadonly,
+            ast.from.annotations,
+            ast.from.encodedAnnotations,
+            key
+          ),
           ast.to,
           ast.decode,
           ast.encode
@@ -1540,9 +1599,8 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
 ): PropertySignature<":", TA, never, "?:", FI, FR | TR> =>
   new $PropertySignature(
     new PropertySignatureTransformation(
-      undefined,
-      new PropertySignatureDeclaration(from.ast, true),
-      new PropertySignatureDeclaration(to.ast, false),
+      new FromPropertySignature(from.ast, true, true, {}, undefined),
+      new ToPropertySignature(to.ast, false, true, {}),
       (o) => Option.some(decode(o)),
       Option.flatMap(encode)
     )
@@ -1567,9 +1625,8 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
 ): PropertySignature<"?:", TA, never, "?:", FI, FR | TR> =>
   new $PropertySignature(
     new PropertySignatureTransformation(
-      undefined,
-      new PropertySignatureDeclaration(from.ast, true),
-      new PropertySignatureDeclaration(to.ast, true),
+      new FromPropertySignature(from.ast, true, true, {}, undefined),
+      new ToPropertySignature(to.ast, true, true, {}),
       decode,
       encode
     )
@@ -1714,7 +1771,7 @@ export const optional: {
           identity
         )
       } else {
-        return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true))
+        return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true, true, {}, undefined))
       }
     }
   } else {
@@ -1759,7 +1816,9 @@ export const optional: {
           identity
         )
       } else {
-        return new $PropertySignature(new PropertySignatureDeclaration(orUndefined(schema).ast, true))
+        return new $PropertySignature(
+          new PropertySignatureDeclaration(orUndefined(schema).ast, true, true, {}, undefined)
+        )
       }
     }
   }
@@ -1939,21 +1998,32 @@ class $typeLiteral<
           const ast: PropertySignature.AST = field.ast
           switch (ast._tag) {
             case "PropertySignatureDeclaration": {
-              const type = ast.ast
+              const type = ast.type
               const isOptional = ast.isOptional
               const toAnnotations = ast.annotations
-              from.push(new AST.PropertySignature(key, type, isOptional, true))
+              const encodedAnnotations = ast.encodedAnnotations
+                ? { [AST.EncodedAnnotationsAnnotationId]: ast.encodedAnnotations }
+                : undefined
+              from.push(new AST.PropertySignature(key, type, isOptional, true, encodedAnnotations))
               to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
-              pss.push(new AST.PropertySignature(key, type, isOptional, true, toAnnotations))
+              pss.push(
+                new AST.PropertySignature(key, type, isOptional, true, { ...toAnnotations, ...encodedAnnotations })
+              )
               break
             }
             case "PropertySignatureTransformation": {
-              const fromKey = ast.fromKey ?? key
+              const fromKey = ast.from.fromKey ?? key
+              const encodedAnnotations = ast.from.encodedAnnotations
+                ? { [AST.EncodedAnnotationsAnnotationId]: ast.from.encodedAnnotations }
+                : undefined
               from.push(
-                new AST.PropertySignature(fromKey, ast.from.ast, ast.from.isOptional, true, ast.from.annotations)
+                new AST.PropertySignature(fromKey, ast.from.type, ast.from.isOptional, true, {
+                  ...ast.from.annotations,
+                  ...encodedAnnotations
+                })
               )
               to.push(
-                new AST.PropertySignature(key, ast.to.ast, ast.to.isOptional, true, ast.to.annotations)
+                new AST.PropertySignature(key, ast.to.type, ast.to.isOptional, true, ast.to.annotations)
               )
               transformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
               break
