@@ -1707,8 +1707,10 @@ export const annotations = (ast: AST, annotations: Annotations): AST => {
  */
 export const keyof = (ast: AST): AST => Union.make(_keyof(ast))
 
-/** @internal */
-export const getTemplateLiteralRegex = (ast: TemplateLiteral): RegExp => {
+/**
+ * @since 1.0.0
+ */
+export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
   let pattern = `^${ast.head}`
   for (const span of ast.spans) {
     if (isStringKeyword(span.type)) {
@@ -1792,7 +1794,7 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
             const parameterBase = getParameterBase(is.parameter)
             switch (parameterBase._tag) {
               case "TemplateLiteral": {
-                const regex = getTemplateLiteralRegex(parameterBase)
+                const regex = getTemplateLiteralRegExp(parameterBase)
                 if (regex.test(name)) {
                   return new PropertySignature(name, is.type, false, false)
                 }

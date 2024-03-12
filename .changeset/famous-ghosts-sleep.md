@@ -2,6 +2,10 @@
 "@effect/schema": patch
 ---
 
+## `AST` module
+
+- expose the `getTemplateLiteralRegExp` API
+
 ## `Schema` module
 
 - enhance the `struct` API to allow records:
