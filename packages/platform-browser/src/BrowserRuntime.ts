@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type * as Effect from "effect/Effect"
+import type { RunMain } from "@effect/platform/Runtime"
 import * as internal from "./internal/runtime.js"
 
 /**
  * @since 1.0.0
  * @category runtime
  */
-export const runMain: <E, A>(effect: Effect.Effect<A, E>) => void = internal.runMain
+export const runMain: RunMain = internal.runMain
