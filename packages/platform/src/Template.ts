@@ -82,7 +82,7 @@ export function make<A extends ReadonlyArray<Interpolated>>(
     if (Option.isOption(arg)) {
       values[i] = arg._tag === "Some" ? primitiveToString(arg.value) : ""
     } else if (isSuccess(arg)) {
-      values[i] = primitiveToString(arg.i0 as Primitive)
+      values[i] = primitiveToString(arg.effect_instruction_i0 as Primitive)
     } else if (Effect.isEffect(arg)) {
       effects.push([i, arg])
     } else {
@@ -131,7 +131,7 @@ export function stream<A extends ReadonlyArray<InterpolatedWithStream>>(
     if (Option.isOption(arg)) {
       buffer += arg._tag === "Some" ? primitiveToString(arg.value) : ""
     } else if (isSuccess(arg)) {
-      buffer += primitiveToString(arg.i0 as Primitive)
+      buffer += primitiveToString(arg.effect_instruction_i0 as Primitive)
     } else if (Predicate.hasProperty(arg, Stream.StreamTypeId)) {
       if (buffer.length > 0) {
         chunks.push(buffer)

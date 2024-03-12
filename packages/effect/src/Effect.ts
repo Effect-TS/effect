@@ -18,6 +18,7 @@ import type * as FiberId from "./FiberId.js"
 import type * as FiberRef from "./FiberRef.js"
 import type * as FiberRefs from "./FiberRefs.js"
 import type * as FiberRefsPatch from "./FiberRefsPatch.js"
+import type * as FiberStatus from "./FiberStatus.js"
 import type { LazyArg } from "./Function.js"
 import { dual } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
@@ -129,8 +130,8 @@ export interface EffectTypeLambda extends TypeLambda {
  */
 export interface Blocked<out A, out E> extends Effect<A, E> {
   readonly _op: "Blocked"
-  readonly i0: RequestBlock
-  readonly i1: Effect<A, E>
+  readonly effect_instruction_i0: RequestBlock
+  readonly effect_instruction_i1: Effect<A, E>
 }
 
 /**
@@ -993,6 +994,48 @@ export const async: <A, E = never, R = never>(
 export const asyncEffect: <A, E, R, R3, E2, R2>(
   register: (callback: (_: Effect<A, E, R>) => void) => Effect<Effect<void, never, R3> | void, E2, R2>
 ) => Effect<A, E | E2, R | R2 | R3> = _runtime.asyncEffect
+
+/**
+ * Low level constructor that enables for custom stack tracing cutpoints.
+ *
+ * It is meant to be called with a bag of instructions that become available in the "this" of the effect.
+ *
+ * @example
+ * import * as Effect from "effect/Effect"
+ *
+ * const throwingFunction = () => { throw new Error() }
+ * const blowUp = Effect.custom(throwingFunction, function() {
+ *   return Effect.succeed(this.effect_instruction_i0())
+ * })
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const custom: {
+  <X, A, E, R>(i0: X, body: (this: { effect_instruction_i0: X }) => Effect<A, E, R>): Effect<A, E, R>
+  <X, Y, A, E, R>(
+    i0: X,
+    i1: Y,
+    body: (this: { effect_instruction_i0: X; effect_instruction_i1: Y }) => Effect<A, E, R>
+  ): Effect<A, E, R>
+  <X, Y, Z, A, E, R>(
+    i0: X,
+    i1: Y,
+    i2: Z,
+    body: (this: { effect_instruction_i0: X; effect_instruction_i1: Y; effect_instruction_i2: Z }) => Effect<A, E, R>
+  ): Effect<A, E, R>
+} = core.custom
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const withFiberRuntime: <A, E = never, R = never>(
+  withRuntime: (
+    fiber: Fiber.RuntimeFiber<A, E>,
+    status: FiberStatus.Running
+  ) => Effect<A, E, R>
+) => Effect<A, E, R> = core.withFiberRuntime
 
 /**
  * @since 2.0.0

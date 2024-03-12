@@ -40,7 +40,7 @@ export interface Failure<out A, out E> extends Effect.Effect<A, E>, Pipeable, In
   [Unify.unifySymbol]?: ExitUnify<this>
   [Unify.ignoreSymbol]?: ExitUnifyIgnore
   /** @internal */
-  readonly i0: Cause.Cause<E>
+  readonly effect_instruction_i0: Cause.Cause<E>
 }
 
 /**
@@ -74,7 +74,7 @@ export interface Success<out A, out E> extends Effect.Effect<A, E>, Pipeable, In
   [Unify.unifySymbol]?: ExitUnify<this>
   [Unify.ignoreSymbol]?: ExitUnifyIgnore
   /** @internal */
-  readonly i0: A
+  readonly effect_instruction_i0: A
 }
 
 /**

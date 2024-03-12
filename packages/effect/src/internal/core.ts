@@ -43,7 +43,6 @@ import * as internalDiffer from "./differ.js"
 import { effectVariance, StructuralCommitPrototype } from "./effectable.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
-import { internalize } from "./internalize.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
@@ -87,8 +86,8 @@ export const blocked = <A, E>(
   _continue: Effect.Effect<A, E>
 ): Effect.Blocked<A, E> => {
   const effect = new EffectPrimitive("Blocked") as any
-  effect.i0 = blockedRequests
-  effect.i1 = _continue
+  effect.effect_instruction_i0 = blockedRequests
+  effect.effect_instruction_i1 = _continue
   return effect
 }
 
@@ -99,7 +98,7 @@ export const runRequestBlock = (
   blockedRequests: BlockedRequests.RequestBlock
 ): Effect.Effect<void> => {
   const effect = new EffectPrimitive("RunBlocked") as any
-  effect.i0 = blockedRequests
+  effect.effect_instruction_i0 = blockedRequests
   return effect
 }
 
@@ -148,9 +147,9 @@ export class RevertFlags {
 
 /** @internal */
 class EffectPrimitive {
-  public i0 = undefined
-  public i1 = undefined
-  public i2 = undefined
+  public effect_instruction_i0 = undefined
+  public effect_instruction_i1 = undefined
+  public effect_instruction_i2 = undefined
   public trace = undefined;
   [EffectTypeId] = effectVariance
   constructor(readonly _op: Primitive["_op"]) {}
@@ -167,9 +166,9 @@ class EffectPrimitive {
     return {
       _id: "Effect",
       _op: this._op,
-      i0: toJSON(this.i0),
-      i1: toJSON(this.i1),
-      i2: toJSON(this.i2)
+      effect_instruction_i0: toJSON(this.effect_instruction_i0),
+      effect_instruction_i1: toJSON(this.effect_instruction_i1),
+      effect_instruction_i2: toJSON(this.effect_instruction_i2)
     }
   }
   toString() {
@@ -182,9 +181,9 @@ class EffectPrimitive {
 
 /** @internal */
 class EffectPrimitiveFailure {
-  public i0 = undefined
-  public i1 = undefined
-  public i2 = undefined
+  public effect_instruction_i0 = undefined
+  public effect_instruction_i1 = undefined
+  public effect_instruction_i2 = undefined
   public trace = undefined;
   [EffectTypeId] = effectVariance
   constructor(readonly _op: Primitive["_op"]) {
@@ -198,7 +197,7 @@ class EffectPrimitiveFailure {
     return Hash.cached(this, Hash.random(this))
   }
   get cause() {
-    return this.i0
+    return this.effect_instruction_i0
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -220,9 +219,9 @@ class EffectPrimitiveFailure {
 
 /** @internal */
 class EffectPrimitiveSuccess {
-  public i0 = undefined
-  public i1 = undefined
-  public i2 = undefined
+  public effect_instruction_i0 = undefined
+  public effect_instruction_i1 = undefined
+  public effect_instruction_i2 = undefined
   public trace = undefined;
   [EffectTypeId] = effectVariance
   constructor(readonly _op: Primitive["_op"]) {
@@ -236,7 +235,7 @@ class EffectPrimitiveSuccess {
     return Hash.cached(this, Hash.random(this))
   }
   get value() {
-    return this.i0
+    return this.effect_instruction_i0
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -264,30 +263,30 @@ export type Op<Tag extends string, Body = {}> = Effect.Effect<never> & Body & {
 /** @internal */
 export interface Async extends
   Op<OpCodes.OP_ASYNC, {
-    i0(resume: (effect: Primitive) => void): void
-    readonly i1: FiberId.FiberId
+    effect_instruction_i0(resume: (effect: Primitive) => void): void
+    readonly effect_instruction_i1: FiberId.FiberId
   }>
 {}
 
 /** @internal */
 export interface Blocked<out E = any, out A = any> extends
   Op<"Blocked", {
-    readonly i0: BlockedRequests.RequestBlock
-    readonly i1: Effect.Effect<A, E>
+    readonly effect_instruction_i0: BlockedRequests.RequestBlock
+    readonly effect_instruction_i1: Effect.Effect<A, E>
   }>
 {}
 
 /** @internal */
 export interface RunBlocked extends
   Op<"RunBlocked", {
-    readonly i0: BlockedRequests.RequestBlock
+    readonly effect_instruction_i0: BlockedRequests.RequestBlock
   }>
 {}
 
 /** @internal */
 export interface Failure extends
   Op<OpCodes.OP_FAILURE, {
-    readonly i0: Cause.Cause<unknown>
+    readonly effect_instruction_i0: Cause.Cause<unknown>
   }>
 {}
 
@@ -304,66 +303,66 @@ export interface Commit extends
 /** @internal */
 export interface OnFailure extends
   Op<OpCodes.OP_ON_FAILURE, {
-    readonly i0: Primitive
-    i1(a: Cause.Cause<unknown>): Primitive
+    readonly effect_instruction_i0: Primitive
+    effect_instruction_i1(a: Cause.Cause<unknown>): Primitive
   }>
 {}
 
 /** @internal */
 export interface OnSuccess extends
   Op<OpCodes.OP_ON_SUCCESS, {
-    readonly i0: Primitive
-    i1(a: unknown): Primitive
+    readonly effect_instruction_i0: Primitive
+    effect_instruction_i1(a: unknown): Primitive
   }>
 {}
 
 /** @internal */
-export interface OnStep extends Op<"OnStep", { readonly i0: Primitive }> {}
+export interface OnStep extends Op<"OnStep", { readonly effect_instruction_i0: Primitive }> {}
 
 /** @internal */
 export interface OnSuccessAndFailure extends
   Op<OpCodes.OP_ON_SUCCESS_AND_FAILURE, {
-    readonly i0: Primitive
-    i1(a: Cause.Cause<unknown>): Primitive
-    i2(a: unknown): Primitive
+    readonly effect_instruction_i0: Primitive
+    effect_instruction_i1(a: Cause.Cause<unknown>): Primitive
+    effect_instruction_i2(a: unknown): Primitive
   }>
 {}
 
 /** @internal */
 export interface Success extends
   Op<OpCodes.OP_SUCCESS, {
-    readonly i0: unknown
+    readonly effect_instruction_i0: unknown
   }>
 {}
 
 /** @internal */
 export interface Sync extends
   Op<OpCodes.OP_SYNC, {
-    i0(): unknown
+    effect_instruction_i0(): unknown
   }>
 {}
 
 /** @internal */
 export interface UpdateRuntimeFlags extends
   Op<OpCodes.OP_UPDATE_RUNTIME_FLAGS, {
-    readonly i0: RuntimeFlagsPatch.RuntimeFlagsPatch
-    readonly i1?: (oldRuntimeFlags: RuntimeFlags.RuntimeFlags) => Primitive
+    readonly effect_instruction_i0: RuntimeFlagsPatch.RuntimeFlagsPatch
+    readonly effect_instruction_i1?: (oldRuntimeFlags: RuntimeFlags.RuntimeFlags) => Primitive
   }>
 {}
 
 /** @internal */
 export interface While extends
   Op<OpCodes.OP_WHILE, {
-    i0(): boolean
-    i1(): Primitive
-    i2(a: unknown): void
+    effect_instruction_i0(): boolean
+    effect_instruction_i1(): Primitive
+    effect_instruction_i2(a: unknown): void
   }>
 {}
 
 /** @internal */
 export interface WithRuntime extends
   Op<OpCodes.OP_WITH_RUNTIME, {
-    i0(fiber: FiberRuntime.FiberRuntime<unknown, unknown>, status: FiberStatus.Running): Primitive
+    effect_instruction_i0(fiber: FiberRuntime.FiberRuntime<unknown, unknown>, status: FiberStatus.Running): Primitive
   }>
 {}
 
@@ -377,9 +376,8 @@ export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unkno
 export const withFiberRuntime = <A, E = never, R = never>(
   withRuntime: (fiber: FiberRuntime.FiberRuntime<A, E>, status: FiberStatus.Running) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => {
-  internalize(withRuntime)
   const effect = new EffectPrimitive(OpCodes.OP_WITH_RUNTIME) as any
-  effect.i0 = withRuntime
+  effect.effect_instruction_i0 = withRuntime
   return effect
 }
 
@@ -409,7 +407,7 @@ export const acquireUseRelease: {
               onFailure: (cause) => {
                 switch (exit._tag) {
                   case OpCodes.OP_FAILURE:
-                    return failCause(internalCause.parallel(exit.i0, cause))
+                    return failCause(internalCause.parallel(exit.effect_instruction_i0, cause))
                   case OpCodes.OP_SUCCESS:
                     return failCause(cause)
                 }
@@ -434,15 +432,58 @@ export const as: {
 export const asUnit = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<void, E, R> => as(self, void 0)
 
 /* @internal */
+export const custom: {
+  <X, A, E, R>(i0: X, body: (this: { effect_instruction_i0: X }) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
+  <X, Y, A, E, R>(
+    i0: X,
+    i1: Y,
+    body: (this: { effect_instruction_i0: X; effect_instruction_i1: Y }) => Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E, R>
+  <X, Y, Z, A, E, R>(
+    i0: X,
+    i1: Y,
+    i2: Z,
+    body: (
+      this: { effect_instruction_i0: X; effect_instruction_i1: Y; effect_instruction_i2: Z }
+    ) => Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E, R>
+} = function() {
+  const wrapper = new EffectPrimitive(OpCodes.OP_COMMIT) as any
+  switch (arguments.length) {
+    case 2: {
+      wrapper.effect_instruction_i0 = arguments[0]
+      wrapper.commit = arguments[1]
+      break
+    }
+    case 3: {
+      wrapper.effect_instruction_i0 = arguments[0]
+      wrapper.effect_instruction_i1 = arguments[1]
+      wrapper.commit = arguments[2]
+      break
+    }
+    case 4: {
+      wrapper.effect_instruction_i0 = arguments[0]
+      wrapper.effect_instruction_i1 = arguments[1]
+      wrapper.effect_instruction_i2 = arguments[2]
+      wrapper.commit = arguments[3]
+      break
+    }
+    default: {
+      throw new Error("Bug, you're not supposed to end up here")
+    }
+  }
+  return wrapper
+}
+
+/* @internal */
 export const async = <A, E = never, R = never>(
   register: (
     callback: (_: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
   ) => void | Effect.Effect<void, never, R>,
   blockingOn: FiberId.FiberId = FiberId.none
-): Effect.Effect<A, E, R> =>
-  suspend(() => {
-    internalize(register)
+): Effect.Effect<A, E, R> => {
+  return custom(register, function() {
     let backingResume: ((_: Effect.Effect<A, E, R>) => void) | undefined = undefined
     let pendingEffect: Effect.Effect<A, E, R> | undefined = undefined
     function proxyResume(effect: Effect.Effect<A, E, R>) {
@@ -453,23 +494,21 @@ export const async = <A, E = never, R = never>(
       }
     }
     const effect = new EffectPrimitive(OpCodes.OP_ASYNC) as any
-    effect.i0 = (resume: (_: Effect.Effect<A, E, R>) => void) => {
+    effect.effect_instruction_i0 = (resume: (_: Effect.Effect<A, E, R>) => void) => {
       backingResume = resume
       if (pendingEffect) {
         resume(pendingEffect)
       }
     }
-    effect.i1 = blockingOn
-
+    effect.effect_instruction_i1 = blockingOn
     let cancelerRef: Effect.Effect<void, never, R> | void = undefined
     let controllerRef: AbortController | void = undefined
-    if (register.length !== 1) {
+    if (this.effect_instruction_i0.length !== 1) {
       controllerRef = new AbortController()
-      cancelerRef = register(proxyResume, controllerRef.signal)
+      cancelerRef = this.effect_instruction_i0(proxyResume, controllerRef.signal)
     } else {
-      cancelerRef = (register as any)(proxyResume)
+      cancelerRef = (this.effect_instruction_i0 as any)(proxyResume)
     }
-
     return (cancelerRef || controllerRef) ?
       onInterrupt(effect, (_) => {
         if (controllerRef) {
@@ -479,6 +518,7 @@ export const async = <A, E = never, R = never>(
       }) :
       effect
   })
+}
 
 /* @internal */
 export const catchAllCause = dual<
@@ -491,9 +531,8 @@ export const catchAllCause = dual<
   ) => Effect.Effect<A2 | A, E2, R2 | R>
 >(2, (self, f) => {
   const effect = new EffectPrimitive(OpCodes.OP_ON_FAILURE) as any
-  effect.i0 = self
-  effect.i1 = f
-  internalize(f)
+  effect.effect_instruction_i0 = self
+  effect.effect_instruction_i1 = f
   return effect
 })
 
@@ -650,7 +689,7 @@ export const failSync = <E>(evaluate: LazyArg<E>): Effect.Effect<never, E> => fl
 /* @internal */
 export const failCause = <E>(cause: Cause.Cause<E>): Effect.Effect<never, E> => {
   const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
-  effect.i0 = cause
+  effect.effect_instruction_i0 = cause
   return effect
 }
 
@@ -679,10 +718,9 @@ export const flatMap = dual<
 >(
   2,
   (self, f) => {
-    internalize(f)
     const effect = new EffectPrimitive(OpCodes.OP_ON_SUCCESS) as any
-    effect.i0 = self
-    effect.i1 = f
+    effect.effect_instruction_i0 = self
+    effect.effect_instruction_i1 = f
     return effect
   }
 )
@@ -733,7 +771,7 @@ export const step = <A, E, R>(
   self: Effect.Effect<A, E, R>
 ): Effect.Effect<Exit.Exit<A, E> | Effect.Blocked<A, E>, never, R> => {
   const effect = new EffectPrimitive("OnStep") as any
-  effect.i0 = self
+  effect.effect_instruction_i0 = self
   return effect
 }
 
@@ -796,11 +834,9 @@ export const matchCauseEffect: {
   }
 ): Effect.Effect<A2 | A3, E2 | E3, R2 | R3 | R> => {
   const effect = new EffectPrimitive(OpCodes.OP_ON_SUCCESS_AND_FAILURE) as any
-  effect.i0 = self
-  effect.i1 = options.onFailure
-  effect.i2 = options.onSuccess
-  internalize(options.onFailure)
-  internalize(options.onSuccess)
+  effect.effect_instruction_i0 = self
+  effect.effect_instruction_i1 = options.onFailure
+  effect.effect_instruction_i2 = options.onSuccess
   return effect
 })
 
@@ -929,24 +965,24 @@ export const interruptWith = (fiberId: FiberId.FiberId): Effect.Effect<never> =>
 /* @internal */
 export const interruptible = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
-  effect.i1 = () => self
+  effect.effect_instruction_i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
+  effect.effect_instruction_i1 = () => self
   return effect
 }
 
 /* @internal */
 export const interruptibleMask = <A, E, R>(
   f: (restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> => {
-  internalize(f)
-  const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
-  effect.i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
-    _runtimeFlags.interruption(oldFlags)
-      ? f(interruptible)
-      : f(uninterruptible)
-  return effect
-}
+): Effect.Effect<A, E, R> =>
+  custom(f, function() {
+    const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
+    effect.effect_instruction_i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
+    effect.effect_instruction_i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
+      _runtimeFlags.interruption(oldFlags)
+        ? this.effect_instruction_i0(interruptible)
+        : this.effect_instruction_i0(uninterruptible)
+    return effect
+  })
 
 /* @internal */
 export const intoDeferred: {
@@ -1026,7 +1062,8 @@ export const onError: {
 } = dual(2, <A, E, R, X, R2>(
   self: Effect.Effect<A, E, R>,
   cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
-): Effect.Effect<A, E, R2 | R> => onExit(self, (exit) => exitIsSuccess(exit) ? unit : cleanup(exit.i0)))
+): Effect.Effect<A, E, R2 | R> =>
+  onExit(self, (exit) => exitIsSuccess(exit) ? unit : cleanup(exit.effect_instruction_i0)))
 
 /* @internal */
 export const onExit: {
@@ -1142,7 +1179,7 @@ export const runtimeFlags: Effect.Effect<RuntimeFlags.RuntimeFlags> = withFiberR
 /* @internal */
 export const succeed = <A>(value: A): Effect.Effect<A> => {
   const effect = new EffectPrimitiveSuccess(OpCodes.OP_SUCCESS) as any
-  effect.i0 = value
+  effect.effect_instruction_i0 = value
   return effect
 }
 
@@ -1152,9 +1189,8 @@ export const suspend = <A, E, R>(effect: LazyArg<Effect.Effect<A, E, R>>): Effec
 
 /* @internal */
 export const sync = <A>(evaluate: LazyArg<A>): Effect.Effect<A> => {
-  internalize(evaluate)
   const effect = new EffectPrimitive(OpCodes.OP_SYNC) as any
-  effect.i0 = evaluate
+  effect.effect_instruction_i0 = evaluate
   return effect
 }
 
@@ -1245,24 +1281,24 @@ export const uninterruptible: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.
   self: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
-  effect.i1 = () => self
+  effect.effect_instruction_i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
+  effect.effect_instruction_i1 = () => self
   return effect
 }
 
 /* @internal */
 export const uninterruptibleMask = <A, E, R>(
   f: (restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> => {
-  internalize(f)
-  const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
-  effect.i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
-    _runtimeFlags.interruption(oldFlags)
-      ? f(interruptible)
-      : f(uninterruptible)
-  return effect
-}
+): Effect.Effect<A, E, R> =>
+  custom(f, function() {
+    const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
+    effect.effect_instruction_i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
+    effect.effect_instruction_i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
+      _runtimeFlags.interruption(oldFlags)
+        ? this.effect_instruction_i0(interruptible)
+        : this.effect_instruction_i0(uninterruptible)
+    return effect
+  })
 
 /* @internal */
 export const unit: Effect.Effect<void> = succeed(void 0)
@@ -1270,8 +1306,8 @@ export const unit: Effect.Effect<void> = succeed(void 0)
 /* @internal */
 export const updateRuntimeFlags = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): Effect.Effect<void> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = patch
-  effect.i1 = void 0
+  effect.effect_instruction_i0 = patch
+  effect.effect_instruction_i1 = void 0
   return effect
 }
 
@@ -1306,12 +1342,9 @@ export const whileLoop = <A, E, R>(
   }
 ): Effect.Effect<void, E, R> => {
   const effect = new EffectPrimitive(OpCodes.OP_WHILE) as any
-  effect.i0 = options.while
-  effect.i1 = options.body
-  effect.i2 = options.step
-  internalize(options.body)
-  internalize(options.step)
-  internalize(options.while)
+  effect.effect_instruction_i0 = options.while
+  effect.effect_instruction_i1 = options.body
+  effect.effect_instruction_i2 = options.step
   return effect
 }
 
@@ -1333,8 +1366,8 @@ export const withRuntimeFlags = dual<
   <A, E, R>(self: Effect.Effect<A, E, R>, update: RuntimeFlagsPatch.RuntimeFlagsPatch) => Effect.Effect<A, E, R>
 >(2, (self, update) => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = update
-  effect.i1 = () => self
+  effect.effect_instruction_i0 = update
+  effect.effect_instruction_i1 = () => self
   return effect
 })
 
@@ -2373,7 +2406,7 @@ export const exitIsSuccess = <A, E>(self: Exit.Exit<A, E>): self is Exit.Success
 export const exitIsInterrupted = <A, E>(self: Exit.Exit<A, E>): boolean => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return internalCause.isInterrupted(self.i0)
+      return internalCause.isInterrupted(self.effect_instruction_i0)
     case OpCodes.OP_SUCCESS:
       return false
   }
@@ -2386,7 +2419,7 @@ export const exitAs = dual<
 >(2, <A, E, A2>(self: Exit.Exit<A, E>, value: A2): Exit.Exit<A2, E> => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE: {
-      return exitFailCause(self.i0)
+      return exitFailCause(self.effect_instruction_i0)
     }
     case OpCodes.OP_SUCCESS: {
       return exitSucceed(value) as Exit.Exit<A2, E>
@@ -2401,7 +2434,7 @@ export const exitAsUnit = <A, E>(self: Exit.Exit<A, E>): Exit.Exit<void, E> => e
 export const exitCauseOption = <A, E>(self: Exit.Exit<A, E>): Option.Option<Cause.Cause<E>> => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return Option.some(self.i0)
+      return Option.some(self.effect_instruction_i0)
     case OpCodes.OP_SUCCESS:
       return Option.none()
   }
@@ -2431,7 +2464,7 @@ export const exitExists: {
     case OpCodes.OP_FAILURE:
       return false
     case OpCodes.OP_SUCCESS:
-      return refinement(self.i0)
+      return refinement(self.effect_instruction_i0)
   }
 })
 
@@ -2442,7 +2475,7 @@ export const exitFail = <E>(error: E): Exit.Exit<never, E> =>
 /** @internal */
 export const exitFailCause = <E>(cause: Cause.Cause<E>): Exit.Exit<never, E> => {
   const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
-  effect.i0 = cause
+  effect.effect_instruction_i0 = cause
   return effect
 }
 
@@ -2453,10 +2486,10 @@ export const exitFlatMap = dual<
 >(2, <A, E, E2, A2>(self: Exit.Exit<A, E>, f: (a: A) => Exit.Exit<A2, E2>): Exit.Exit<A2, E | E2> => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE: {
-      return exitFailCause(self.i0)
+      return exitFailCause(self.effect_instruction_i0)
     }
     case OpCodes.OP_SUCCESS: {
-      return f(self.i0)
+      return f(self.effect_instruction_i0)
     }
   }
 })
@@ -2476,10 +2509,10 @@ export const exitFlatMapEffect: {
 ): Effect.Effect<Exit.Exit<A2, E>, E2, R> => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE: {
-      return succeed(exitFailCause(self.i0))
+      return succeed(exitFailCause(self.effect_instruction_i0))
     }
     case OpCodes.OP_SUCCESS: {
-      return f(self.i0)
+      return f(self.effect_instruction_i0)
     }
   }
 })
@@ -2504,10 +2537,10 @@ export const exitForEachEffect: {
 ): Effect.Effect<Exit.Exit<B, E | E2>, never, R> => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE: {
-      return succeed(exitFailCause(self.i0))
+      return succeed(exitFailCause(self.effect_instruction_i0))
     }
     case OpCodes.OP_SUCCESS: {
-      return exit(f(self.i0))
+      return exit(f(self.effect_instruction_i0))
     }
   }
 })
@@ -2539,9 +2572,9 @@ export const exitGetOrElse = dual<
 >(2, (self, orElse) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return orElse(self.i0)
+      return orElse(self.effect_instruction_i0)
     case OpCodes.OP_SUCCESS:
-      return self.i0
+      return self.effect_instruction_i0
   }
 })
 
@@ -2556,9 +2589,9 @@ export const exitMap = dual<
 >(2, (self, f) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return exitFailCause(self.i0)
+      return exitFailCause(self.effect_instruction_i0)
     case OpCodes.OP_SUCCESS:
-      return exitSucceed(f(self.i0))
+      return exitSucceed(f(self.effect_instruction_i0))
   }
 })
 
@@ -2580,9 +2613,9 @@ export const exitMapBoth = dual<
 >(2, (self, { onFailure, onSuccess }) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return exitFailCause(pipe(self.i0, internalCause.map(onFailure)))
+      return exitFailCause(pipe(self.effect_instruction_i0, internalCause.map(onFailure)))
     case OpCodes.OP_SUCCESS:
-      return exitSucceed(onSuccess(self.i0))
+      return exitSucceed(onSuccess(self.effect_instruction_i0))
   }
 })
 
@@ -2593,9 +2626,9 @@ export const exitMapError = dual<
 >(2, (self, f) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return exitFailCause(pipe(self.i0, internalCause.map(f)))
+      return exitFailCause(pipe(self.effect_instruction_i0, internalCause.map(f)))
     case OpCodes.OP_SUCCESS:
-      return exitSucceed(self.i0)
+      return exitSucceed(self.effect_instruction_i0)
   }
 })
 
@@ -2606,9 +2639,9 @@ export const exitMapErrorCause = dual<
 >(2, (self, f) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return exitFailCause(f(self.i0))
+      return exitFailCause(f(self.effect_instruction_i0))
     case OpCodes.OP_SUCCESS:
-      return exitSucceed(self.i0)
+      return exitSucceed(self.effect_instruction_i0)
   }
 })
 
@@ -2625,9 +2658,9 @@ export const exitMatch = dual<
 >(2, (self, { onFailure, onSuccess }) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return onFailure(self.i0)
+      return onFailure(self.effect_instruction_i0)
     case OpCodes.OP_SUCCESS:
-      return onSuccess(self.i0)
+      return onSuccess(self.effect_instruction_i0)
   }
 })
 
@@ -2649,16 +2682,16 @@ export const exitMatchEffect = dual<
 >(2, (self, { onFailure, onSuccess }) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE:
-      return onFailure(self.i0)
+      return onFailure(self.effect_instruction_i0)
     case OpCodes.OP_SUCCESS:
-      return onSuccess(self.i0)
+      return onSuccess(self.effect_instruction_i0)
   }
 })
 
 /** @internal */
 export const exitSucceed = <A>(value: A): Exit.Exit<A> => {
   const effect = new EffectPrimitiveSuccess(OpCodes.OP_SUCCESS) as any
-  effect.i0 = value
+  effect.effect_instruction_i0 = value
   return effect
 }
 
@@ -2751,18 +2784,18 @@ export const exitZipWith = dual<
     case OpCodes.OP_FAILURE: {
       switch (that._tag) {
         case OpCodes.OP_SUCCESS:
-          return exitFailCause(self.i0)
+          return exitFailCause(self.effect_instruction_i0)
         case OpCodes.OP_FAILURE: {
-          return exitFailCause(onFailure(self.i0, that.i0))
+          return exitFailCause(onFailure(self.effect_instruction_i0, that.effect_instruction_i0))
         }
       }
     }
     case OpCodes.OP_SUCCESS: {
       switch (that._tag) {
         case OpCodes.OP_SUCCESS:
-          return exitSucceed(onSuccess(self.i0, that.i0))
+          return exitSucceed(onSuccess(self.effect_instruction_i0, that.effect_instruction_i0))
         case OpCodes.OP_FAILURE:
-          return exitFailCause(that.i0)
+          return exitFailCause(that.effect_instruction_i0)
       }
     }
   }

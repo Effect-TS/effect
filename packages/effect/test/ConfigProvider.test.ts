@@ -357,11 +357,14 @@ describe("ConfigProvider", () => {
       )
       assert.isTrue(
         Exit.isFailure(result) &&
-          Cause.isFailType(result.i0) &&
-          ConfigError.isMissingData(result.i0.error) &&
+          Cause.isFailType(result.effect_instruction_i0) &&
+          ConfigError.isMissingData(result.effect_instruction_i0.error) &&
           // TODO: fix error message to not include `.[index]`
-          result.i0.error.message === "Expected employees.[1].id to exist in the provided map" &&
-          Equal.equals(Chunk.unsafeFromArray(result.i0.error.path), Chunk.make("employees", "[1]", "id"))
+          result.effect_instruction_i0.error.message === "Expected employees.[1].id to exist in the provided map" &&
+          Equal.equals(
+            Chunk.unsafeFromArray(result.effect_instruction_i0.error.path),
+            Chunk.make("employees", "[1]", "id")
+          )
       )
     }))
 

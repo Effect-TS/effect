@@ -143,7 +143,7 @@ const contOpSuccess = {
     cont: core.OnSuccess,
     value: unknown
   ) => {
-    return cont.i1(value)
+    return cont.effect_instruction_i1(value)
   },
   ["OnStep"]: (
     _: FiberRuntime<any, any>,
@@ -157,7 +157,7 @@ const contOpSuccess = {
     cont: core.OnSuccessAndFailure,
     value: unknown
   ) => {
-    return cont.i2(value)
+    return cont.effect_instruction_i2(value)
   },
   [OpCodes.OP_REVERT_FLAGS]: (
     self: FiberRuntime<any, any>,
@@ -176,10 +176,10 @@ const contOpSuccess = {
     cont: core.While,
     value: unknown
   ) => {
-    cont.i2(value)
-    if (cont.i0()) {
+    cont.effect_instruction_i2(value)
+    if (cont.effect_instruction_i0()) {
       self.pushStack(cont)
-      return cont.i1()
+      return cont.effect_instruction_i1()
     } else {
       return core.unit
     }
@@ -1064,7 +1064,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_SYNC](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
-    const value = op.i0()
+    const value = op.effect_instruction_i0()
     const cont = this.getNextSuccessCont()
     if (cont !== undefined) {
       if (!(cont._op in contOpSuccess)) {
@@ -1088,7 +1088,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         absurd(cont)
       }
       // @ts-expect-error
-      return contOpSuccess[cont._op](this, cont, oldCur.i0)
+      return contOpSuccess[cont._op](this, cont, oldCur.effect_instruction_i0)
     } else {
       yieldedOpChannel.currentOp = oldCur
       return YieldedOp
@@ -1096,14 +1096,14 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_FAILURE](op: core.Primitive & { _op: OpCodes.OP_FAILURE }) {
-    const cause = op.i0
+    const cause = op.effect_instruction_i0
     const cont = this.getNextFailCont()
     if (cont !== undefined) {
       switch (cont._op) {
         case OpCodes.OP_ON_FAILURE:
         case OpCodes.OP_ON_SUCCESS_AND_FAILURE: {
           if (!(_runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted())) {
-            return cont.i1(cause)
+            return cont.effect_instruction_i1(cause)
           } else {
             return core.exitFailCause(internalCause.stripFailures(cause))
           }
@@ -1134,7 +1134,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_WITH_RUNTIME](op: core.Primitive & { _op: OpCodes.OP_WITH_RUNTIME }) {
-    return op.i0(
+    return op.effect_instruction_i0(
       this as FiberRuntime<unknown, unknown>,
       FiberStatus.running(this._runtimeFlags) as FiberStatus.Running
     )
@@ -1156,7 +1156,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
       const patchRefs = FiberRefsPatch.diff(snap.refs, refs)
       const patchFlags = _runtimeFlags.diff(snap.flags, flags)
       return core.exitSucceed(core.blocked(
-        op.i0,
+        op.effect_instruction_i0,
         core.withFiberRuntime<unknown, unknown>((newFiber) => {
           while (frames.length > 0) {
             newFiber.pushStack(frames.pop()!)
@@ -1165,24 +1165,24 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
             FiberRefsPatch.patch(newFiber.id(), newFiber.getFiberRefs())(patchRefs)
           )
           newFiber._runtimeFlags = _runtimeFlags.patch(patchFlags)(newFiber._runtimeFlags)
-          return op.i1
+          return op.effect_instruction_i1
         })
       ))
     }
     return core.uninterruptibleMask((restore) =>
       core.flatMap(
-        forkDaemon(core.runRequestBlock(op.i0)),
-        () => restore(op.i1)
+        forkDaemon(core.runRequestBlock(op.effect_instruction_i0)),
+        () => restore(op.effect_instruction_i1)
       )
     )
   }
 
   ["RunBlocked"](op: core.Primitive & { _op: "RunBlocked" }) {
-    return runBlockedRequests(op.i0)
+    return runBlockedRequests(op.effect_instruction_i0)
   }
 
   [OpCodes.OP_UPDATE_RUNTIME_FLAGS](op: core.Primitive & { _op: OpCodes.OP_UPDATE_RUNTIME_FLAGS }) {
-    const updateFlags = op.i0
+    const updateFlags = op.effect_instruction_i0
     const oldRuntimeFlags = this._runtimeFlags
     const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, updateFlags)
     // One more chance to short circuit: if we're immediately going
@@ -1194,11 +1194,11 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     } else {
       // Impossible to short circuit, so record the changes
       this.patchRuntimeFlags(this._runtimeFlags, updateFlags)
-      if (op.i1) {
+      if (op.effect_instruction_i1) {
         // Since we updated the flags, we need to revert them
         const revertFlags = _runtimeFlags.diff(newRuntimeFlags, oldRuntimeFlags)
         this.pushStack(new core.RevertFlags(revertFlags, op))
-        return op.i1(oldRuntimeFlags)
+        return op.effect_instruction_i1(oldRuntimeFlags)
       } else {
         return core.exitUnit
       }
@@ -1207,27 +1207,27 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
 
   [OpCodes.OP_ON_SUCCESS](op: core.Primitive & { _op: OpCodes.OP_ON_SUCCESS }) {
     this.pushStack(op)
-    return op.i0
+    return op.effect_instruction_i0
   }
 
   ["OnStep"](op: core.Primitive & { _op: "OnStep" }) {
     this.pushStack(op)
-    return op.i0
+    return op.effect_instruction_i0
   }
 
   [OpCodes.OP_ON_FAILURE](op: core.Primitive & { _op: OpCodes.OP_ON_FAILURE }) {
     this.pushStack(op)
-    return op.i0
+    return op.effect_instruction_i0
   }
 
   [OpCodes.OP_ON_SUCCESS_AND_FAILURE](op: core.Primitive & { _op: OpCodes.OP_ON_SUCCESS_AND_FAILURE }) {
     this.pushStack(op)
-    return op.i0
+    return op.effect_instruction_i0
   }
 
   [OpCodes.OP_ASYNC](op: core.Primitive & { _op: OpCodes.OP_ASYNC }) {
-    this._asyncBlockingOn = op.i1
-    this.initiateAsync(this._runtimeFlags, op.i0)
+    this._asyncBlockingOn = op.effect_instruction_i1
+    this.initiateAsync(this._runtimeFlags, op.effect_instruction_i0)
     yieldedOpChannel.currentOp = op
     return YieldedOp
   }
@@ -1239,8 +1239,8 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_WHILE](op: core.Primitive & { _op: OpCodes.OP_WHILE }) {
-    const check = op.i0
-    const body = op.i1
+    const check = op.effect_instruction_i0
+    const body = op.effect_instruction_i1
     if (check()) {
       this.pushStack(op)
       return body()
@@ -1831,7 +1831,7 @@ export const allSuccesses = <A, E, R>(
 ): Effect.Effect<Array<A>, never, R> =>
   core.map(
     all(RA.fromIterable(elements).map(core.exit), options),
-    RA.filterMap((exit) => core.exitIsSuccess(exit) ? Option.some(exit.i0) : Option.none())
+    RA.filterMap((exit) => core.exitIsSuccess(exit) ? Option.some(exit.effect_instruction_i0) : Option.none())
   )
 
 /* @internal */
@@ -2097,7 +2097,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                   if (wrapped._op === "Failure") {
                     exit = wrapped
                   } else {
-                    exit = wrapped.i0 as any
+                    exit = wrapped.effect_instruction_i0 as any
                   }
                   joinOrder.push(fiber)
                   fibers.delete(fiber)
@@ -2108,7 +2108,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                       () => core.exitUnit
                     )))
                   } else if (residual.length + results.length === target) {
-                    const requests = residual.map((blocked) => blocked.i0).reduce(_RequestBlock.par)
+                    const requests = residual.map((blocked) => blocked.effect_instruction_i0).reduce(_RequestBlock.par)
                     resume(core.succeed(core.blocked(
                       requests,
                       forEachConcurrentDiscard(
@@ -2117,7 +2117,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                             core.exitCollectAll(collectExits(), { parallel: true }),
                             () => core.exitUnit
                           ),
-                          ...residual.map((blocked) => blocked.i1)
+                          ...residual.map((blocked) => blocked.effect_instruction_i1)
                         ],
                         (i) => i,
                         batching,

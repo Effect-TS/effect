@@ -300,7 +300,7 @@ describe("Effect", () => {
       yield* $(
         Effect.die(Cause.RuntimeException),
         Effect.onExit((exit) =>
-          Exit.isFailure(exit) && Cause.isDie(exit.i0) ?
+          Exit.isFailure(exit) && Cause.isDie(exit.effect_instruction_i0) ?
             Ref.set(ref, true) :
             Effect.unit
         ),
@@ -319,7 +319,7 @@ describe("Effect", () => {
           Deferred.succeed(latch1, void 0),
           Effect.zipRight(Effect.never),
           Effect.onExit((exit) =>
-            Exit.isFailure(exit) && Cause.isInterrupted(exit.i0) ?
+            Exit.isFailure(exit) && Cause.isInterrupted(exit.effect_instruction_i0) ?
               pipe(Deferred.succeed(latch2, void 0), Effect.asUnit) :
               Effect.unit
           ),
