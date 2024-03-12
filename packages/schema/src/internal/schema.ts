@@ -40,9 +40,9 @@ export const toASTAnnotations = (
       out[AST.TypeAnnotationId] = typeId
     }
   }
-  const move = (from: keyof typeof annotations, to: symbol) => {
+  const move = (from: keyof typeof annotations, to: symbol, recursive = false) => {
     if (annotations[from] !== undefined) {
-      out[to] = annotations[from]
+      out[to] = recursive ? toASTAnnotations(annotations[from]) : annotations[from]
     }
   }
   move("message", AST.MessageAnnotationId)
@@ -58,6 +58,7 @@ export const toASTAnnotations = (
   move("equivalence", _hooks.EquivalenceHookId)
   move("concurrency", AST.ConcurrencyAnnotationId)
   move("batching", AST.BatchingAnnotationId)
+  move("encodedAnnotations", AST.EncodedAnnotationsAnnotationId, true)
 
   return out
 }

@@ -166,4 +166,32 @@ describe("Schema > PropertySignature", () => {
       await Util.expectEncodeSuccess(schema, { a, b: 1 }, { [a]: "@effect/schema/test/a", b: 1 })
     })
   })
+
+  describe("should support encodedAnnotations", () => {
+    it("PropertySignatureDeclaration", () => {
+      const schema = S.struct({
+        a: S.optional(S.NumberFromString).annotations({ encodedAnnotations: { description: "description" } })
+          .annotations({ encodedAnnotations: { title: "title" } })
+      })
+      const encodedAST = S.encodedSchema(schema).ast as AST.TypeLiteral
+      expect(encodedAST.propertySignatures[0].annotations).toStrictEqual({
+        [AST.DescriptionAnnotationId]: "description",
+        [AST.TitleAnnotationId]: "title"
+      })
+    })
+
+    it("PropertySignatureTransformation", () => {
+      const schema = S.struct({
+        a: S.optional(S.NumberFromString, { default: () => 0 }).annotations({
+          encodedAnnotations: { description: "description" }
+        })
+          .annotations({ encodedAnnotations: { title: "title" } })
+      })
+      const encodedAST = S.encodedSchema(schema).ast as AST.TypeLiteral
+      expect(encodedAST.propertySignatures[0].annotations).toStrictEqual({
+        [AST.DescriptionAnnotationId]: "description",
+        [AST.TitleAnnotationId]: "title"
+      })
+    })
+  })
 })

@@ -735,11 +735,11 @@ describe("JSONSchema", () => {
       })
     })
 
-    it.skip("should allow for encoded annotations", () => {
+    it("should allow for encoded annotations", () => {
       const schema = S.struct({
         a: S.optional(S.NumberFromString, {
           default: () => 0
-        })
+        }).annotations({ encodedAnnotations: { description: "an optional string" } })
       })
       const encodedSchema = S.encodedSchema(schema)
       const encodedJsonSchema = JSONSchema.make(encodedSchema)
