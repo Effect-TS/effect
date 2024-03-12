@@ -1386,7 +1386,7 @@ S.asSchema(S.SecretFromSelf)
 S.SecretFromSelf
 
 // ---------------------------------------------
-// propertySignatureDeclaration
+// propertySignature
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, ":", string, never>
