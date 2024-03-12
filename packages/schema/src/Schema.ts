@@ -1240,22 +1240,12 @@ export declare namespace PropertySignature {
   /**
    * @since 1.0.0
    */
-  export type AST =
-    | PropertySignatureDeclaration
-    | PropertySignatureTransformation
-
-  /**
-   * @since 1.0.0
-   */
   export interface Annotations<A, I> extends Annotations.Doc<A> {
     readonly encodedAnnotations?: Annotations.Doc<I>
   }
 }
 
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
+/** @internal */
 export class PropertySignatureDeclaration {
   /**
    * @since 1.0.0
@@ -1270,10 +1260,7 @@ export class PropertySignatureDeclaration {
   ) {}
 }
 
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
+/** @internal */
 export class FromPropertySignature implements AST.Annotated {
   constructor(
     readonly type: AST.AST,
@@ -1285,10 +1272,7 @@ export class FromPropertySignature implements AST.Annotated {
   ) {}
 }
 
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
+/** @internal */
 export class ToPropertySignature implements AST.Annotated {
   constructor(
     readonly type: AST.AST,
@@ -1298,10 +1282,7 @@ export class ToPropertySignature implements AST.Annotated {
   ) {}
 }
 
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
+/** @internal */
 export class PropertySignatureTransformation {
   /**
    * @since 1.0.0
@@ -1343,10 +1324,14 @@ const mergeAnnotations = (
   }
 }
 
+type PropertySignatureAST =
+  | PropertySignatureDeclaration
+  | PropertySignatureTransformation
+
 const _propertySignatureAnnotations = (
-  ast: PropertySignature.AST,
+  ast: PropertySignatureAST,
   annotations: AST.Annotations
-): PropertySignature.AST => {
+): PropertySignatureAST => {
   switch (ast._tag) {
     case "PropertySignatureDeclaration": {
       const [rest, encodedAnnotations] = splitPropertySignatureAnnotations(annotations)
@@ -1392,14 +1377,15 @@ export interface PropertySignature<
   readonly _EncodedToken: EncodedToken
   readonly _TypeToken: TypeToken
   readonly _Key: Key
-  readonly ast: PropertySignature.AST
+  readonly ast: PropertySignatureAST
 
   annotations(
     annotations: PropertySignature.Annotations<Type, Encoded>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, R>
 }
 
-class $PropertySignature<
+/** @internal */
+export class $PropertySignature<
   TypeToken extends PropertySignature.Token,
   Type,
   Key extends PropertyKey,
@@ -1414,7 +1400,7 @@ class $PropertySignature<
   readonly _TypeToken!: TypeToken
 
   constructor(
-    readonly ast: PropertySignature.AST
+    readonly ast: PropertySignatureAST
   ) {}
 
   pipe() {
@@ -1458,57 +1444,6 @@ export const propertySignatureAnnotations = <A, I>(
     )
   )
 }
-
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
-export const propertySignatureTransformation = <
-  FA,
-  FI,
-  FR,
-  FromIsOptional extends boolean,
-  TA,
-  TI,
-  TR,
-  ToIsOptional extends boolean,
-  const Key extends PropertyKey = never
->(
-  from: {
-    readonly schema: Schema<FA, FI, FR>
-    readonly isOptional: FromIsOptional
-    readonly annotations?: Annotations.Schema<FA> | undefined
-    readonly key?: Key | undefined
-  },
-  to: {
-    readonly schema: Schema<TA, TI, TR>
-    readonly isOptional: ToIsOptional
-  },
-  decode: (o: Option.Option<FA>) => Option.Option<TI>,
-  encode: (o: Option.Option<TI>) => Option.Option<FA>
-): PropertySignature<
-  PropertySignature.GetToken<ToIsOptional>,
-  TA,
-  Key,
-  PropertySignature.GetToken<FromIsOptional>,
-  FI,
-  FR | TR
-> =>
-  new $PropertySignature(
-    new PropertySignatureTransformation(
-      new FromPropertySignature(
-        from.schema.ast,
-        from.isOptional,
-        true,
-        _schema.toASTAnnotations(from.annotations),
-        undefined,
-        from.key
-      ),
-      new ToPropertySignature(to.schema.ast, to.isOptional, true, {}),
-      decode,
-      encode
-    )
-  )
 
 /**
  * @category PropertySignature
@@ -1995,7 +1930,7 @@ class $typeLiteral<
         const key = ownKeys[i]
         const field = fields[key]
         if (isPropertySignature(field)) {
-          const ast: PropertySignature.AST = field.ast
+          const ast: PropertySignatureAST = field.ast
           switch (ast._tag) {
             case "PropertySignatureDeclaration": {
               const type = ast.type
