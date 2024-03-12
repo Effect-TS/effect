@@ -392,7 +392,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
           }
           case "TemplateLiteral": {
             patternProperties = {
-              [AST.getTemplateLiteralRegex(parameter).source]: goWithIdentifier(
+              [AST.getTemplateLiteralRegExp(parameter).source]: goWithIdentifier(
                 is.type,
                 $defs
               )
@@ -497,7 +497,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       throw new Error("cannot build a JSON Schema for a refinement without a JSON Schema annotation")
     }
     case "TemplateLiteral": {
-      const regex = AST.getTemplateLiteralRegex(ast)
+      const regex = AST.getTemplateLiteralRegExp(ast)
       return {
         type: "string",
         description: "a template literal",

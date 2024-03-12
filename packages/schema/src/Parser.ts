@@ -460,7 +460,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     case "Enums":
       return fromRefinement(ast, (u): u is any => ast.enums.some(([_, value]) => value === u))
     case "TemplateLiteral": {
-      const regex = AST.getTemplateLiteralRegex(ast)
+      const regex = AST.getTemplateLiteralRegExp(ast)
       return fromRefinement(ast, (u): u is any => Predicate.isString(u) && regex.test(u))
     }
     case "TupleType": {
