@@ -106,7 +106,7 @@ const fileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.declare(isPers
 export const filesSchema: Schema.Schema<ReadonlyArray<Multipart.PersistedFile>> = Schema.array(fileSchema)
 
 /** @internal */
-export const schemaPersisted = <R, I extends Multipart.Persisted, A>(
+export const schemaPersisted = <R, I extends Partial<Multipart.Persisted>, A>(
   schema: Schema.Schema<A, I, R>
 ) => {
   const parse = Schema.decodeUnknown(schema)

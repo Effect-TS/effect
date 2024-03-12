@@ -48,7 +48,7 @@ const isMultipart = (request: ServerRequest.ServerRequest) =>
   request.headers["content-type"]?.toLowerCase().includes("multipart/form-data")
 
 /** @internal */
-export const schemaBodyForm = <R, I extends Multipart.Persisted, A>(
+export const schemaBodyForm = <R, I extends Partial<Multipart.Persisted>, A>(
   schema: Schema.Schema<A, I, R>
 ) => {
   const parseMultipart = Multipart.schemaPersisted(schema)
@@ -74,7 +74,7 @@ export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>
 }
 
 /** @internal */
-export const schemaBodyMultipart = <R, I extends Multipart.Persisted, A>(
+export const schemaBodyMultipart = <R, I extends Partial<Multipart.Persisted>, A>(
   schema: Schema.Schema<A, I, R>
 ) => {
   const parse = Multipart.schemaPersisted(schema)

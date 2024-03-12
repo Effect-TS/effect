@@ -227,7 +227,7 @@ export const schemaJson: <A, I, R>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaPersisted: <R, I extends Persisted, A>(
+export const schemaPersisted: <R, I extends Partial<Persisted>, A>(
   schema: Schema.Schema<A, I, R>
 ) => (persisted: Persisted) => Effect.Effect<A, ParseResult.ParseError, R> = internal.schemaPersisted
 

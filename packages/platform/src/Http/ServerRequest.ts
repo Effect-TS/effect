@@ -124,12 +124,12 @@ export const schemaBodyJson: <A, I, R>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyForm: <R, I extends Multipart.Persisted, A>(
+export const schemaBodyForm: <R, I extends Partial<Multipart.Persisted>, A>(
   schema: Schema.Schema<A, I, R>
 ) => Effect.Effect<
   A,
-  Multipart.MultipartError | Error.RequestError | ParseResult.ParseError,
-  ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path | R
+  Multipart.MultipartError | ParseResult.ParseError | Error.RequestError,
+  R | ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path
 > = internal.schemaBodyForm
 
 /**
@@ -144,7 +144,7 @@ export const schemaBodyUrlParams: <R, I extends Readonly<Record<string, string>>
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyMultipart: <R, I extends Multipart.Persisted, A>(
+export const schemaBodyMultipart: <R, I extends Partial<Multipart.Persisted>, A>(
   schema: Schema.Schema<A, I, R>
 ) => Effect.Effect<
   A,
