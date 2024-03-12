@@ -31,6 +31,9 @@ export const defaultTeardown: Teardown = <E, A>(
 export interface RunMain {
   <E, A>(
     effect: Effect.Effect<A, E>,
-    teardown?: Teardown
+    options?: {
+      readonly disableErrorReporting?: boolean
+      readonly teardown?: Teardown
+    }
   ): void
 }

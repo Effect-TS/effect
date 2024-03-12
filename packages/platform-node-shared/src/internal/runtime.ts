@@ -3,19 +3,22 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 
 /** @internal */
-export const runMain: RunMain = <E, A>(
-  effect: Effect.Effect<A, E>,
-  teardown = defaultTeardown
+export const runMain: RunMain = (
+  effect,
+  options
 ) => {
+  const teardown = options?.teardown ?? defaultTeardown
   const keepAlive = setInterval(() => {}, 2 ** 31 - 1)
 
   const fiber = Effect.runFork(
-    Effect.tapErrorCause(effect, (cause) => {
-      if (Cause.isInterruptedOnly(cause)) {
-        return Effect.unit
-      }
-      return Effect.logError(cause)
-    })
+    options?.disableErrorReporting === true ?
+      effect :
+      Effect.tapErrorCause(effect, (cause) => {
+        if (Cause.isInterruptedOnly(cause)) {
+          return Effect.unit
+        }
+        return Effect.logError(cause)
+      })
   )
 
   fiber.addObserver((exit) => {
