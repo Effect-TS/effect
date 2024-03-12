@@ -109,10 +109,7 @@
   ```
 
 - use `TreeFormatter` in `BrandSchema`s
-- Schema annotations interfaces have been refactored:
-  - add `PropertySignatureAnnotations` (baseline)
-  - remove `DocAnnotations`
-  - rename `DeclareAnnotations` to `Annotations`
+- Schema annotations interfaces have been refactored into a namespace `Annotations`
 - the `annotations` option of the `optional` constructor has been replaced by the `annotations` method
   Before
 

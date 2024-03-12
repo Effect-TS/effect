@@ -256,7 +256,7 @@ aContext.pipe(S.compose(bContext, { strict: false }))
 // suspend
 // ---------------------------------------------
 
-// $ExpectType Schema<string, string, "aContext">
+// $ExpectType suspend<string, string, "aContext">
 S.suspend(() => aContext)
 
 // ---------------------------------------------
