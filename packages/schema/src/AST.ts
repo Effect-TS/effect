@@ -315,11 +315,6 @@ const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIde
 /** @internal */
 export const getJSONIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(JSONIdentifierAnnotationId)
 
-/** @internal */
-export const EncodedAnnotationsAnnotationId = Symbol.for("@effect/schema/annotation/EncodedAnnotations")
-
-const getEncodedAnnotationsAnnotation = getAnnotation<Annotations>(EncodedAnnotationsAnnotationId)
-
 /**
  * @category model
  * @since 1.0.0
@@ -2158,16 +2153,9 @@ export const encodedAST = (ast: AST): AST => {
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (ps) => {
         const type = encodedAST(ps.type)
-        const encodedAnnotations = getEncodedAnnotationsAnnotation(ps)
-        return type === ps.type && Option.isNone(encodedAnnotations)
+        return type === ps.type
           ? ps
-          : new PropertySignature(
-            ps.name,
-            type,
-            ps.isOptional,
-            ps.isReadonly,
-            Option.getOrUndefined(encodedAnnotations)
-          )
+          : new PropertySignature(ps.name, type, ps.isOptional, ps.isReadonly)
       })
       const indexSignatures = changeMap(ast.indexSignatures, (is) => {
         const type = encodedAST(is.type)
