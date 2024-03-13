@@ -11,15 +11,12 @@ describe("Schema > pluck", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "2" },
-        `({ a: string; b: NumberFromString } <-> string)
+        `({ a: string } <-> string)
 └─ Encoded side transformation failure
-   └─ { a: string; b: NumberFromString }
+   └─ { a: string }
       └─ ["a"]
          └─ Expected a string, actual 1`
       )
-
-      const schemaNoTransformation = S.pluck(origin, "b", { transformation: false })
-      await Util.expectDecodeUnknownSuccess(schemaNoTransformation, "2", 2)
     })
 
     it("struct (symbol keys)", async () => {
@@ -31,15 +28,12 @@ describe("Schema > pluck", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: 1, [b]: "2" },
-        `({ Symbol(effect/schema/test/a): string; Symbol(effect/schema/test/b): NumberFromString } <-> string)
+        `({ Symbol(effect/schema/test/a): string } <-> string)
 └─ Encoded side transformation failure
-   └─ { Symbol(effect/schema/test/a): string; Symbol(effect/schema/test/b): NumberFromString }
+   └─ { Symbol(effect/schema/test/a): string }
       └─ [Symbol(effect/schema/test/a)]
          └─ Expected a string, actual 1`
       )
-
-      const schemaNoTransformation = S.pluck(origin, b, { transformation: false })
-      await Util.expectDecodeUnknownSuccess(schemaNoTransformation, "2", 2)
     })
 
     it("struct with optional key", async () => {
@@ -48,10 +42,6 @@ describe("Schema > pluck", () => {
       await Util.expectSuccess(S.decodeUnknown(schema)({ b: 2 }), undefined)
       await Util.expectSuccess(S.decodeUnknown(schema)({ a: undefined, b: 2 }), undefined)
       await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: 2 }, "a")
-
-      const schemaNoTransformation = S.pluck(origin, "a", { transformation: false })
-      await Util.expectSuccess(S.decodeUnknown(schemaNoTransformation)(undefined), undefined)
-      await Util.expectDecodeUnknownSuccess(schemaNoTransformation, "a")
     })
 
     it("union", async () => {
@@ -62,39 +52,17 @@ describe("Schema > pluck", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `({ _tag: "A" } | { _tag: "B" } <-> "A" | "B")
+        `({ _tag: "A" | "B" } <-> "A" | "B")
 └─ Encoded side transformation failure
-   └─ { _tag: "A" } | { _tag: "B" }
-      └─ { _tag: "A" | "B" }
-         └─ ["_tag"]
-            └─ is missing`
+   └─ { _tag: "A" | "B" }
+      └─ ["_tag"]
+         └─ is missing`
       )
-
-      const schemaNoTransformation = S.pluck(origin, "_tag", { transformation: false })
-      await Util.expectDecodeUnknownSuccess(schemaNoTransformation, "A")
-      await Util.expectDecodeUnknownSuccess(schemaNoTransformation, "B")
     })
   })
 
   describe("encoding", () => {
-    it("struct (always fails)", async () => {
-      const origin = S.struct({ a: S.string, b: S.number })
-      const schema = S.pluck(origin, "a")
-      await Util.expectEncodeFailure(
-        schema,
-        "a",
-        `({ a: string; b: number } <-> string)
-└─ Encoded side transformation failure
-   └─ { a: string; b: number }
-      └─ ["b"]
-         └─ is missing`
-      )
-
-      const schemaNoTransformation = S.pluck(origin, "a", { transformation: false })
-      await Util.expectEncodeSuccess(schemaNoTransformation, "a", "a")
-    })
-
-    it("struct (string keys, possibly successful)", async () => {
+    it("struct (string keys)", async () => {
       const origin = S.struct({ a: S.NonEmpty })
       const schema = S.pluck(origin, "a")
       await Util.expectEncodeSuccess(schema, "a", { a: "a" })
@@ -107,12 +75,9 @@ describe("Schema > pluck", () => {
       └─ Predicate refinement failure
          └─ Expected NonEmpty (a non empty string), actual ""`
       )
-
-      const schemaNoTransformation = S.pluck(origin, "a", { transformation: false })
-      await Util.expectEncodeSuccess(schemaNoTransformation, "a", "a")
     })
 
-    it("struct (symbol keys, possibly successful)", async () => {
+    it("struct (symbol keys)", async () => {
       const a = Symbol.for("effect/schema/test/a")
       const origin = S.struct({ [a]: S.NonEmpty })
       const schema = S.pluck(origin, a)
@@ -126,9 +91,6 @@ describe("Schema > pluck", () => {
       └─ Predicate refinement failure
          └─ Expected NonEmpty (a non empty string), actual ""`
       )
-
-      const schemaNoTransformation = S.pluck(origin, a, { transformation: false })
-      await Util.expectEncodeSuccess(schemaNoTransformation, "a", "a")
     })
   })
 
@@ -137,10 +99,6 @@ describe("Schema > pluck", () => {
     const schema = S.pluck(origin, "a")
     await Util.expectEncodeSuccess(schema, undefined, {})
     await Util.expectEncodeSuccess(schema, "a", { a: "a" })
-
-    const schemaNoTransformation = S.pluck(origin, "a", { transformation: false })
-    await Util.expectEncodeSuccess(schemaNoTransformation, undefined, undefined)
-    await Util.expectEncodeSuccess(schemaNoTransformation, "a", "a")
   })
 
   it("struct with exact optional key", async () => {
@@ -148,9 +106,5 @@ describe("Schema > pluck", () => {
     const schema = S.pluck(origin, "a")
     await Util.expectEncodeSuccess(schema, undefined, {})
     await Util.expectEncodeSuccess(schema, "a", { a: "a" })
-
-    const schemaNoTransformation = S.pluck(origin, "a", { transformation: false })
-    await Util.expectEncodeSuccess(schemaNoTransformation, undefined, undefined)
-    await Util.expectEncodeSuccess(schemaNoTransformation, "a", "a")
   })
 })
