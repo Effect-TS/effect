@@ -287,9 +287,15 @@ export const unsafeRunPromiseExit =
       fiber.addObserver((exit) => {
         resolve(exit)
       })
-      options?.signal?.addEventListener("abort", () => {
-        fiber.unsafeInterruptAsFork(fiber.id())
-      })
+      if (options?.signal !== undefined) {
+        if (options.signal.aborted) {
+          fiber.unsafeInterruptAsFork(fiber.id())
+        } else {
+          options.signal.addEventListener("abort", () => {
+            fiber.unsafeInterruptAsFork(fiber.id())
+          })
+        }
+      }
     })
 
 /** @internal */
