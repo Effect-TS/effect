@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { hole, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import type * as Order from "effect/Order"
+import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 
@@ -215,6 +215,15 @@ pipe(nonEmptyabs, ReadonlyArray.sort(ordera))
 
 // $ExpectType [AB, ...AB[]]
 ReadonlyArray.sort(ordera)(nonEmptyabs)
+
+// @ts-expect-error
+pipe([1], ReadonlyArray.sort(Order.string))
+
+// @ts-expect-error
+ReadonlyArray.sort([1], Order.string)
+
+// @ts-expect-error
+ReadonlyArray.sort(Order.string)([1])
 
 // -------------------------------------------------------------------------------------
 // sortWith
