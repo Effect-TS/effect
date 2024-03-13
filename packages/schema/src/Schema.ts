@@ -1421,21 +1421,6 @@ export const propertySignature = <A, I, R>(
  * @category PropertySignature
  * @since 1.0.0
  */
-export const propertySignatureAnnotations = <A>(
-  annotations: PropertySignature.Annotations<A>
-) =>
-<I, R>(
-  self: Schema<A, I, R>
-): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> => {
-  return new $PropertySignature(
-    new PropertySignatureDeclaration(self.ast, false, true, _schema.toASTAnnotations(annotations))
-  )
-}
-
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
 export const fromKey: {
   <Key extends PropertyKey>(key: Key): <
     Type,
