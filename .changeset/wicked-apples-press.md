@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-fix: Effect.if (#2271)
+Prevent Effect.if from crashing when first argument is not an Effect
