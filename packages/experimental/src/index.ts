@@ -16,6 +16,11 @@ export * as MsgPack from "./MsgPack.js"
 /**
  * @since 1.0.0
  */
+export * as Ndjson from "./Ndjson.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Persistence from "./Persistence.js"
 
 /**
