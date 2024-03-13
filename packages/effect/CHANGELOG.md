@@ -1,5 +1,40 @@
 # effect
 
+## 2.4.4
+
+### Patch Changes
+
+- [#2172](https://github.com/Effect-TS/effect/pull/2172) [`5d47ee0`](https://github.com/Effect-TS/effect/commit/5d47ee0855e492532085b6092879b1b952d84949) Thanks [@gcanti](https://github.com/gcanti)! - Brand: add `refined` overload
+
+  ```ts
+  export function refined<A extends Brand<any>>(
+    f: (unbranded: Brand.Unbranded<A>) => Option.Option<Brand.BrandErrors>,
+  ): Brand.Constructor<A>;
+  ```
+
+- [#2285](https://github.com/Effect-TS/effect/pull/2285) [`817a04c`](https://github.com/Effect-TS/effect/commit/817a04cb2df0f4140984dc97eb3e1bb14a6c4a38) Thanks [@tim-smart](https://github.com/tim-smart)! - add support for AbortSignal's to runPromise
+
+  If the signal is aborted, the effect execution will be interrupted.
+
+  ```ts
+  import { Effect } from "effect";
+
+  const controller = new AbortController();
+
+  Effect.runPromise(Effect.never, { signal: controller.signal });
+
+  // abort after 1 second
+  setTimeout(() => controller.abort(), 1000);
+  ```
+
+- [#2293](https://github.com/Effect-TS/effect/pull/2293) [`d90a99d`](https://github.com/Effect-TS/effect/commit/d90a99d03d074adc7cd2533f15419138264da5a2) Thanks [@tim-smart](https://github.com/tim-smart)! - add AbortSignal support to ManagedRuntime
+
+- [#2288](https://github.com/Effect-TS/effect/pull/2288) [`dd05faa`](https://github.com/Effect-TS/effect/commit/dd05faa621555ef3585ecd914ac13ecd89b710f4) Thanks [@tim-smart](https://github.com/tim-smart)! - optimize addition of blocked requests to parallel collection
+
+- [#2288](https://github.com/Effect-TS/effect/pull/2288) [`dd05faa`](https://github.com/Effect-TS/effect/commit/dd05faa621555ef3585ecd914ac13ecd89b710f4) Thanks [@tim-smart](https://github.com/tim-smart)! - use Chunk for request block collections
+
+- [#2280](https://github.com/Effect-TS/effect/pull/2280) [`802674b`](https://github.com/Effect-TS/effect/commit/802674b379b7559ad3ff09b33388891445a9e48b) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added support for PromiseLike
+
 ## 2.4.3
 
 ### Patch Changes
