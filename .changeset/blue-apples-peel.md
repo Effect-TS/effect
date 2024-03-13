@@ -129,6 +129,7 @@
   ```
 
 - Updated the `pluck` function to return `Schema<A[K], { readonly [key]: I[K] }>` instead of `Schema<A[K], I>`. Removed the `{ transformation: false }` option in favor of selecting the specific field from the `fields` exposed by a struct.
+- Removed `propertySignatureAnnotations`, use `propertySignature(schema).annotations()`
 
 ## `Serializable` module
 
