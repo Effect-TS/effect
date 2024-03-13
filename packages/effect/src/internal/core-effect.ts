@@ -1171,17 +1171,15 @@ export const patchFiberRefs = (patch: FiberRefsPatch.FiberRefsPatch): Effect.Eff
   updateFiberRefs((fiberId, fiberRefs) => pipe(patch, fiberRefsPatch.patch(fiberId, fiberRefs)))
 
 /* @internal */
-export const promise = <A>(evaluate: (signal: AbortSignal) => Promise<A>): Effect.Effect<A> =>
+export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A> =>
   evaluate.length >= 1
     ? core.async((resolve, signal) => {
       evaluate(signal)
-        .then((a) => resolve(core.exitSucceed(a)))
-        .catch((e) => resolve(core.exitDie(e)))
+        .then((a) => resolve(core.exitSucceed(a)), (e) => resolve(core.exitDie(e)))
     })
     : core.async((resolve) => {
-      ;(evaluate as LazyArg<Promise<A>>)()
-        .then((a) => resolve(core.exitSucceed(a)))
-        .catch((e) => resolve(core.exitDie(e)))
+      ;(evaluate as LazyArg<PromiseLike<A>>)()
+        .then((a) => resolve(core.exitSucceed(a)), (e) => resolve(core.exitDie(e)))
     })
 
 /* @internal */
@@ -1620,23 +1618,23 @@ export const tracer: Effect.Effect<Tracer.Tracer> = tracerWith(core.succeed)
 export const tryPromise: {
   <A, E>(
     options: {
-      readonly try: (signal: AbortSignal) => Promise<A>
+      readonly try: (signal: AbortSignal) => PromiseLike<A>
       readonly catch: (error: unknown) => E
     }
   ): Effect.Effect<A, E>
-  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect.Effect<A, Cause.UnknownException>
+  <A>(try_: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A, Cause.UnknownException>
 } = <A, E>(
-  arg: ((signal: AbortSignal) => Promise<A>) | {
-    readonly try: (signal: AbortSignal) => Promise<A>
+  arg: ((signal: AbortSignal) => PromiseLike<A>) | {
+    readonly try: (signal: AbortSignal) => PromiseLike<A>
     readonly catch: (error: unknown) => E
   }
 ): Effect.Effect<A, E | Cause.UnknownException> => {
-  let evaluate: (signal?: AbortSignal) => Promise<A>
+  let evaluate: (signal?: AbortSignal) => PromiseLike<A>
   let catcher: ((error: unknown) => E) | undefined = undefined
   if (typeof arg === "function") {
-    evaluate = arg as (signal?: AbortSignal) => Promise<A>
+    evaluate = arg as (signal?: AbortSignal) => PromiseLike<A>
   } else {
-    evaluate = arg.try as (signal?: AbortSignal) => Promise<A>
+    evaluate = arg.try as (signal?: AbortSignal) => PromiseLike<A>
     catcher = arg.catch
   }
 
@@ -1644,12 +1642,10 @@ export const tryPromise: {
     return core.async((resolve, signal) => {
       try {
         evaluate(signal)
-          .then((a) => resolve(core.exitSucceed(a)))
-          .catch((e) =>
+          .then((a) => resolve(core.exitSucceed(a)), (e) =>
             resolve(core.fail(
               catcher ? catcher(e) : new core.UnknownException(e)
-            ))
-          )
+            )))
       } catch (e) {
         resolve(core.fail(
           catcher ? catcher(e) : new core.UnknownException(e)
@@ -1661,12 +1657,10 @@ export const tryPromise: {
   return core.async((resolve) => {
     try {
       evaluate()
-        .then((a) => resolve(core.exitSucceed(a)))
-        .catch((e) =>
+        .then((a) => resolve(core.exitSucceed(a)), (e) =>
           resolve(core.fail(
             catcher ? catcher(e) : new core.UnknownException(e)
-          ))
-        )
+          )))
     } catch (e) {
       resolve(core.fail(
         catcher ? catcher(e) : new core.UnknownException(e)
@@ -1701,21 +1695,21 @@ export const tryMap = dual<
 export const tryMapPromise = dual<
   <A, B, E1>(
     options: {
-      readonly try: (a: A, signal: AbortSignal) => Promise<B>
+      readonly try: (a: A, signal: AbortSignal) => PromiseLike<B>
       readonly catch: (error: unknown) => E1
     }
   ) => <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E | E1, R>,
   <A, E, R, B, E1>(
     self: Effect.Effect<A, E, R>,
     options: {
-      readonly try: (a: A, signal: AbortSignal) => Promise<B>
+      readonly try: (a: A, signal: AbortSignal) => PromiseLike<B>
       readonly catch: (error: unknown) => E1
     }
   ) => Effect.Effect<B, E | E1, R>
 >(2, <A, E, R, B, E1>(
   self: Effect.Effect<A, E, R>,
   options: {
-    readonly try: (a: A, signal: AbortSignal) => Promise<B>
+    readonly try: (a: A, signal: AbortSignal) => PromiseLike<B>
     readonly catch: (error: unknown) => E1
   }
 ) =>
@@ -1723,7 +1717,7 @@ export const tryMapPromise = dual<
     tryPromise({
       try: options.try.length >= 1
         ? (signal) => options.try(a, signal)
-        : () => (options.try as (a: A) => Promise<B>)(a),
+        : () => (options.try as (a: A) => PromiseLike<B>)(a),
       catch: options.catch
     })))
 
