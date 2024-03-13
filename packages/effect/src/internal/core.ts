@@ -26,7 +26,7 @@ import type * as MetricLabel from "../MetricLabel.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isObject, isPromise, isString, type Predicate, type Refinement } from "../Predicate.js"
+import { hasProperty, isObject, isPromiseLike, isString, type Predicate, type Refinement } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
 import type * as Request from "../Request.js"
 import type * as BlockedRequests from "../RequestBlock.js"
@@ -694,35 +694,35 @@ export const andThen: {
   ): <E, R>(
     self: Effect.Effect<A, E, R>
   ) => [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>
-    : [X] extends [Promise<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
+    : [X] extends [PromiseLike<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
     : Effect.Effect<X, E, R>
   <X>(
     f: NotFunction<X>
   ): <A, E, R>(
     self: Effect.Effect<A, E, R>
   ) => [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>
-    : [X] extends [Promise<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
+    : [X] extends [PromiseLike<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
     : Effect.Effect<X, E, R>
   <A, E, R, X>(
     self: Effect.Effect<A, E, R>,
     f: (a: NoInfer<A>) => X
   ): [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>
-    : [X] extends [Promise<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
+    : [X] extends [PromiseLike<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
     : Effect.Effect<X, E, R>
   <A, E, R, X>(
     self: Effect.Effect<A, E, R>,
     f: NotFunction<X>
   ): [X] extends [Effect.Effect<infer A1, infer E1, infer R1>] ? Effect.Effect<A1, E | E1, R | R1>
-    : [X] extends [Promise<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
+    : [X] extends [PromiseLike<infer A1>] ? Effect.Effect<A1, E | Cause.UnknownException, R>
     : Effect.Effect<X, E, R>
 } = dual(2, (self, f) =>
   flatMap(self, (a) => {
     const b = typeof f === "function" ? (f as any)(a) : f
     if (isEffect(b)) {
       return b
-    } else if (isPromise(b)) {
+    } else if (isPromiseLike(b)) {
       return async<any, Cause.UnknownException>((resume) => {
-        b.then((a) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
+        b.then((a) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
       })
     }
     return succeed(b)
@@ -1166,14 +1166,14 @@ export const tap = dual<
     ): <E, R>(
       self: Effect.Effect<A, E, R>
     ) => [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
-      : [X] extends [Promise<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
+      : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
     <X>(
       f: NotFunction<X>
     ): <A, E, R>(
       self: Effect.Effect<A, E, R>
     ) => [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
-      : [X] extends [Promise<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
+      : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
   },
   {
@@ -1181,13 +1181,13 @@ export const tap = dual<
       self: Effect.Effect<A, E, R>,
       f: (a: NoInfer<A>) => X
     ): [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
-      : [X] extends [Promise<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
+      : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
     <A, E, R, X>(
       self: Effect.Effect<A, E, R>,
       f: NotFunction<X>
     ): [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
-      : [X] extends [Promise<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
+      : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
   }
 >(2, (self, f) =>
@@ -1195,9 +1195,9 @@ export const tap = dual<
     const b = typeof f === "function" ? (f as any)(a) : f
     if (isEffect(b)) {
       return as(b, a)
-    } else if (isPromise(b)) {
+    } else if (isPromiseLike(b)) {
       return async<any, Cause.UnknownException>((resume) => {
-        b.then((_) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
+        b.then((_) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
       })
     }
     return succeed(a)
