@@ -1,5 +1,5 @@
 import * as AST from "@effect/schema/AST"
-import * as P from "@effect/schema/Parser"
+import * as P from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 

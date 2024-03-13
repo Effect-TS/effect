@@ -31,11 +31,6 @@ export * as ParseResult from "./ParseResult.js"
 /**
  * @since 1.0.0
  */
-export * as Parser from "./Parser.js"
-
-/**
- * @since 1.0.0
- */
 export * as Pretty from "./Pretty.js"
 
 /**

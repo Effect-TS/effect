@@ -1,7 +1,7 @@
 import * as A from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
-import { getFinalTransformation } from "@effect/schema/Parser"
+import { getFinalTransformation } from "@effect/schema/ParseResult"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { formatError } from "@effect/schema/TreeFormatter"
