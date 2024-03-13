@@ -1033,6 +1033,12 @@ export class Element {
       isOptional: this.isOptional
     }
   }
+  /**
+   * @since 1.0.0
+   */
+  toString() {
+    return String(this.type) + (this.isOptional ? "?" : "")
+  }
 }
 
 /**
@@ -1085,7 +1091,7 @@ export class TupleType implements Annotated {
 }
 
 const formatTuple = (ast: TupleType): string => {
-  const formattedElements = ast.elements.map((element) => String(element.type) + (element.isOptional ? "?" : ""))
+  const formattedElements = ast.elements.map(String)
     .join(", ")
   return ReadonlyArray.matchLeft(ast.rest, {
     onEmpty: () => `readonly [${formattedElements}]`,
