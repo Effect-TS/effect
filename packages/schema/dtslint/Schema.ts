@@ -1567,6 +1567,12 @@ hole<ConstructorParameters<typeof VoidTaggedClass>>()
 // Struct.Type
 // ---------------------------------------------
 
+export const StructTypeTest1 = <S extends S.Schema.Any>(
+  input: S.Struct.Type<{ s: S }>
+) => {
+  input // $ExpectType Type<{ s: S; }>
+}
+
 // $ExpectType {}
 hole<Simplify<S.Struct.Type<{}>>>()
 
@@ -1632,6 +1638,12 @@ hole<
 // ---------------------------------------------
 // Struct.Encoded
 // ---------------------------------------------
+
+export const StructEncodedTest1 = <S extends S.Schema.Any>(
+  input: S.Struct.Encoded<{ s: S }>
+) => {
+  input // $ExpectType Encoded<{ s: S; }>
+}
 
 // $ExpectType {}
 hole<Simplify<S.Struct.Encoded<{}>>>()
