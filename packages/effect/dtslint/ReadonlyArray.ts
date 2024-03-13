@@ -767,20 +767,38 @@ ReadonlyArray.zip(nonEmptyNumbers)(nonEmptyStrings)
 // $ExpectType string[]
 ReadonlyArray.intersperse(strings, "a")
 
+// $ExpectType (string | number)[]
+ReadonlyArray.intersperse(strings, 1)
+
 // $ExpectType string[]
 pipe(strings, ReadonlyArray.intersperse("a"))
+
+// $ExpectType (string | number)[]
+pipe(strings, ReadonlyArray.intersperse(1))
 
 // $ExpectType string[]
 ReadonlyArray.intersperse("a")(strings)
 
+// $ExpectType (string | number)[]
+ReadonlyArray.intersperse(1)(strings)
+
 // $ExpectType [string, ...string[]]
 ReadonlyArray.intersperse(nonEmptyStrings, "a")
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.intersperse(nonEmptyStrings, 1)
 
 // $ExpectType [string, ...string[]]
 pipe(nonEmptyStrings, ReadonlyArray.intersperse("a"))
 
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, ReadonlyArray.intersperse(1))
+
 // $ExpectType [string, ...string[]]
 ReadonlyArray.intersperse("a")(nonEmptyStrings)
+
+// $ExpectType [string | number, ...(string | number)[]]
+ReadonlyArray.intersperse(1)(nonEmptyStrings)
 
 // -------------------------------------------------------------------------------------
 // rotate
