@@ -2,9 +2,9 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("ReadonlyArray > headOr", () => {
+describe("ReadonlyArray > headOrElse", () => {
   it("decoding (without fallback)", async () => {
-    const schema = S.headOr(S.array(S.NumberFromString))
+    const schema = S.headOrElse(S.array(S.NumberFromString))
     await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -27,7 +27,7 @@ describe("ReadonlyArray > headOr", () => {
   })
 
   it("decoding (with fallback)", async () => {
-    const schema = S.headOr(S.array(S.NumberFromString), () => 0)
+    const schema = S.headOrElse(S.array(S.NumberFromString), () => 0)
     await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
     await Util.expectDecodeUnknownSuccess(schema, [], 0)
     await Util.expectDecodeUnknownFailure(
@@ -42,13 +42,13 @@ describe("ReadonlyArray > headOr", () => {
                └─ Expected NumberFromString, actual "a"`
     )
 
-    const schema2 = S.array(S.NumberFromString).pipe(S.headOr(() => 0))
+    const schema2 = S.array(S.NumberFromString).pipe(S.headOrElse(() => 0))
     await Util.expectDecodeUnknownSuccess(schema2, ["1"], 1)
     await Util.expectDecodeUnknownSuccess(schema2, [], 0)
   })
 
   it("decoding (struct)", async () => {
-    const schema = S.headOr(
+    const schema = S.headOrElse(
       S.array(
         S.struct({
           id: S.string,
@@ -65,7 +65,7 @@ describe("ReadonlyArray > headOr", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.headOr(S.array(S.number))
+    const schema = S.headOrElse(S.array(S.number))
     await Util.expectEncodeSuccess(schema, 1, [1])
   })
 })
