@@ -11,6 +11,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
@@ -362,7 +363,8 @@ export const fromWebSocket = (
               })
           ),
           Effect.forever,
-          Effect.fork
+          Effect.fork,
+          Effect.withUnhandledErrorLogLevel(Option.none())
         )
 
         yield* _(
