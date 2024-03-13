@@ -22,7 +22,6 @@ import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
 import * as FiberRuntime from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
-import { internalize } from "./internalize.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as _supervisor from "./supervisor.js"
@@ -126,9 +125,9 @@ export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): A => {
   const result = unsafeRunSyncExit(runtime)(effect)
   if (result._tag === "Failure") {
-    throw fiberFailure(result.i0)
+    throw fiberFailure(result.effect_instruction_i0)
   } else {
-    return result.i0
+    return result.effect_instruction_i0
   }
 }
 
@@ -267,10 +266,10 @@ export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) =>
   unsafeRunPromiseExit(runtime)(effect, options).then((result) => {
     switch (result._tag) {
       case OpCodes.OP_SUCCESS: {
-        return result.i0
+        return result.effect_instruction_i0
       }
       case OpCodes.OP_FAILURE: {
-        throw fiberFailure(result.i0)
+        throw fiberFailure(result.effect_instruction_i0)
       }
     }
   })
@@ -477,7 +476,6 @@ export const asyncEffect = <A, E, R, R3, E2, R2>(
   ) => Effect.Effect<Effect.Effect<void, never, R3> | void, E2, R2>
 ): Effect.Effect<A, E | E2, R | R2 | R3> =>
   core.suspend(() => {
-    internalize(register)
     let cleanup: Effect.Effect<void, never, R3> | void = undefined
     return core.flatMap(
       core.deferredMake<A, E | E2>(),

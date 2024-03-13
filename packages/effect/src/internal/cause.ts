@@ -971,8 +971,8 @@ const filterStack = (stack: string) => {
   const lines = stack.split("\n")
   const out: Array<string> = []
   for (let i = 0; i < lines.length; i++) {
-    out.push(lines[i].replace(/at .*effect_cutpoint.*\((.*)\)/, "at $1"))
-    if (lines[i].includes("effect_cutpoint")) {
+    out.push(lines[i].replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1"))
+    if (lines[i].includes("effect_instruction_i")) {
       return out.join("\n")
     }
   }

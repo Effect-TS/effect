@@ -205,7 +205,7 @@ describe("Effect", () => {
         }),
         Effect.exit
       )
-      assert.isTrue(Exit.isFailure(result) && Cause.isDie(result.i0))
+      assert.isTrue(Exit.isFailure(result) && Cause.isDie(result.effect_instruction_i0))
     }))
   it.effect("forEach/concurrency - runs a task that is interrupted", () =>
     Effect.gen(function*($) {

@@ -232,9 +232,9 @@ class MemoMapImpl implements Layer.MemoMap {
                               switch (exit._tag) {
                                 case EffectOpCodes.OP_FAILURE: {
                                   return pipe(
-                                    core.deferredFailCause(deferred, exit.i0),
+                                    core.deferredFailCause(deferred, exit.effect_instruction_i0),
                                     core.zipRight(core.scopeClose(innerScope, exit)),
-                                    core.zipRight(core.failCause(exit.i0))
+                                    core.zipRight(core.failCause(exit.effect_instruction_i0))
                                   )
                                 }
                                 case EffectOpCodes.OP_SUCCESS: {
@@ -256,8 +256,8 @@ class MemoMapImpl implements Layer.MemoMap {
                                           core.flatMap((finalizer) => finalizer(exit))
                                         ))
                                     ),
-                                    core.zipRight(core.deferredSucceed(deferred, exit.i0)),
-                                    core.as(exit.i0[1])
+                                    core.zipRight(core.deferredSucceed(deferred, exit.effect_instruction_i0)),
+                                    core.as(exit.effect_instruction_i0[1])
                                   )
                                 }
                               }
