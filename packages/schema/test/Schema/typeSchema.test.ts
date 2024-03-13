@@ -2,8 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/to", () => {
-  it("transform", () => {
+describe("Schema > typeSchema", () => {
+  it("transformation", () => {
     const schema = S.string.pipe(
       S.transform(
         S.tuple(S.NumberFromString, S.NumberFromString),

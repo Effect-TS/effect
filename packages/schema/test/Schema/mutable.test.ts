@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import { identity } from "effect"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/mutable", () => {
+describe("Schema > mutable", () => {
   it("string", () => {
     expect(S.mutable(S.string).ast).toEqual(S.string.ast)
   })
@@ -63,7 +63,7 @@ describe("Schema/mutable", () => {
     }
   })
 
-  it("transform", () => {
+  it("transformation", () => {
     const schema = S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
     if (AST.isTransform(schema.ast)) {
       expect(schema.ast.from).toEqual(
