@@ -67,7 +67,7 @@ export const logger = make((httpApp) => {
                       : 503
                     : 500
                 }) :
-                Effect.annotateLogs(Effect.log(""), {
+                Effect.annotateLogs(Effect.log("Sent HTTP response"), {
                   "http.method": request.method,
                   "http.url": request.url,
                   "http.status": exit.value.status
